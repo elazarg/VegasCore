@@ -225,6 +225,10 @@ future private values changed by repair are outside the claim.
   that earlier prefix from persistent fields and lower-rank completions under
   arbitrary legal continuations. Native ancestor assembly and perturbed waiting
   transport remain open.
+- [SourceServiceFirstInputAncestor](../Vegas/Game/SourceServiceFirstInputAncestor.lean)
+  derives the actual owned ancestor's prefix from readiness and sequential
+  order, then preserves its readout through every legal native descendant.
+  It requires neither clean play nor a common information-history depth.
 - [SourceServiceInitialTraffic](../Vegas/Game/SourceServiceInitialTraffic.lean)
   derives the actual initialized parameter/source/full-traffic factor through
   the whole source view. Correlated initial private types are retained; the
@@ -249,6 +253,11 @@ future private values changed by repair are outside the claim.
   the actual turn-counted continuation. Real recorded recall suppresses calls
   until this event completes; future-event policy is retained. Acceptance
   probabilities and waiting incentives remain separate.
+- [LateResolutionService](../Vegas/Examples/LateResolutionService.lean)
+  proves the asynchronous contract at every raw history of a concrete compiled
+  resolution. Its public scheduler can censor late TRUE while including late
+  FALSE before expiry. The actual payoff comparison and source equilibrium
+  still need proof.
 - [SourceServiceResolutionIntentionFactorization](../Vegas/Game/SourceServiceResolutionIntentionFactorization.lean)
   carries original and effective disclosure histories through the actual
   response traffic law. FALSE packets can represent failed TRUE intentions;

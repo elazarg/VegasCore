@@ -68,6 +68,7 @@ import Vegas.Game.SourceServiceFirstInputPassage
 import Vegas.Game.SourceServiceFirstInputSourceLaw
 import Vegas.Game.SourceServiceFirstInputReadoutPosterior
 import Vegas.Game.SourceServicePastPrefix
+import Vegas.Game.SourceServiceFirstInputAncestor
 import Vegas.Game.SourceServiceFirstBindingTraffic
 import Vegas.Game.SourceServiceFirstTurnBindingFactorization
 import Vegas.Game.SourceServiceFirstResolutionTraffic

@@ -251,6 +251,10 @@ before-rank source state from persistent fields and filtered completion history.
 It agrees with the rank-seed decoder and is invariant under every legal native
 continuation. The terminal/ancestor joint assembly and perturbed waiting
 posteriors still need proof.
+[SourceServiceFirstInputAncestor](../Vegas/Game/SourceServiceFirstInputAncestor.lean)
+derives the real owned ancestor's prefix from its ready input alone and retains
+the same source readout at every descendant. This supplies the operational
+ancestor bridge without a cleanliness or fixed-depth assumption.
 
 The actual binding-response law now composes with protected completion,
 retaining the transmitting draw and full stopped traffic. The native Bayes
@@ -317,6 +321,11 @@ The real recorded call makes this event's completion-stopped law silent;
 the owner's policy at later events remains available. This bridge requires
 neither protected delivery nor a chosen acceptance probability, and supplies
 no strategic upper comparison.
+[LateResolutionService](../Vegas/Examples/LateResolutionService.lean)
+proves all three service clauses over every raw history of a concrete compiled
+resolution. Its public scheduler includes only FALSE at the second timely
+opportunity and expires the event when the late inclusion bound ends. Its
+actual audited payoff comparison and source equilibrium remain separate.
 The [late-decision signaling probe](../scripts/experiments/late_decision_signaling_probe.py)
 checks this distinction with exact Bayes limits and every whole-policy
 comparison. Equal waiting trembles make waiting profitable for one type;

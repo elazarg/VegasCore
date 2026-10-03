@@ -16,6 +16,7 @@ import Vegas.Examples.ContinuationRecovery
 import Vegas.Examples.DisclosureMonitoring
 import Vegas.Examples.EventService
 import Vegas.Examples.InFlightCommitment
+import Vegas.Examples.LateResolutionService
 import Vegas.Examples.MonitoredGuessing
 import Vegas.Examples.OpeningTimingChannel
 import Vegas.Examples.ParameterOutcomes

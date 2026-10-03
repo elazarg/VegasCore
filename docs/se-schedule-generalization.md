@@ -1662,6 +1662,11 @@ the earlier prefix from persistent fields and completions below its rank. It
 agrees with the prefix decoder at the rank seed and survives arbitrary legal
 native continuations. Composing these laws with actual ancestor beliefs and
 extending them to perturbed waiting remain separate obligations.
+[SourceServiceFirstInputAncestor](../Vegas/Game/SourceServiceFirstInputAncestor.lean)
+derives the before-event prefix directly from an actual owned information
+history's ready input and sequential graph order. Every native descendant
+retains that same ancestor readout, at any decision depth and under arbitrary
+raw responses. No separate clean-prefix premise is needed.
 [SourceServiceWaitRiskConfounding](../Vegas/Game/SourceServiceWaitRiskConfounding.lean)
 checks that protected and unprotected timely binding responses can emit the
 same typed-success packet, receive acceptance at the same clock, and give a
@@ -1675,6 +1680,13 @@ uses real recorded recall to transfer the timely call's chosen-step/public-miss
 dichotomy to the actual turn-counted continuation. Its law stops at the current
 event's completion, preserving the owner's later-event policy. It does not
 supply acceptance probabilities or a waiting comparison.
+[LateResolutionService](../Vegas/Examples/LateResolutionService.lean)
+certifies a concrete public scheduler over all raw histories. An authentic
+opening on the first opportunity is included; on a later timely opportunity,
+only FALSE withholding is included before expiry. The inclusion bound for the
+late packet ends at the deadline, so the contract permits this censorship.
+This is a checked service instance; its audited payoff comparison and source
+equilibrium are separate proof obligations.
 
 [SourceServiceSampleCompletion](../Vegas/Game/SourceServiceSampleCompletion.lean)
 derives actual silence, whole stopped-run equality with silent play, and the
