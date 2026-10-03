@@ -314,7 +314,16 @@ future private values changed by repair are outside the claim.
   derives the deterministic actual first native input under every profile,
   identifies its entire information fiber and proves its clear menu admits
   only WAIT or canonical FALSE/TRUE. TRUE availability uses actual message
-  bounds coverage. The other decision sites and whole equilibrium remain open.
+  bounds coverage.
+- [LateResolutionFirstDecision](../Vegas/Examples/LateResolutionFirstDecision.lean)
+  proves actual first FALSE/TRUE acceptance and the forced silent completed
+  second menu.
+- [LateResolutionNativeSites](../Vegas/Examples/LateResolutionNativeSites.lean)
+  exhaustively classifies actual initialized decision sites as first, late
+  unrecorded, or late completed.
+- [LateResolutionFirstPayoff](../Vegas/Examples/LateResolutionFirstPayoff.lean)
+  derives the accepted first decision's full typed source readout and zero
+  authentic partial-audit charge. Whole native equilibrium remains open.
 - [SourceServiceResolutionIntentionFactorization](../Vegas/Game/SourceServiceResolutionIntentionFactorization.lean)
   carries original and effective disclosure histories through the actual
   response traffic law. FALSE packets can represent failed TRUE intentions;
@@ -536,6 +545,28 @@ future private values changed by repair are outside the claim.
   prefix parameter joint. Foreign raw policies remain unchanged. Absent
   selected turns, lost protection and finite-budget exhaustion remain real
   outcomes; the selected-family strategic comparison remains separate.
+
+- [SourceServiceBindingSelectedInput](../Vegas/Game/SourceServiceBindingSelectedInput.lean)
+  derives the actual chronological selected input and supported canonical
+  response, or completion before it with no owner event packet, a public miss
+  and typed failure. No selected-slot visit or source admission is assumed.
+- [SourceServiceBindingStoppedResponse](../Vegas/Game/SourceServiceBindingStoppedResponse.lean)
+  decomposes an actual protected geometric response and its full stopped
+  continuation into real waiting and receipt-driven source commitment
+  selection. Earlier waits remain in the original input. The full selected
+  family assembly and strategic comparison remain open.
+- [ReactiveBindingUsableStep](../Vegas/Pending/ReactiveBindingUsableStep.lean)
+  derives full-frame inclusion closure for matching fixed owner candidates,
+  including rejected and late calls. Fresh usable submission establishes
+  those matching meanings with actual completed-boundary memory.
+- [ReactiveUsedBindingOpening](../Vegas/Pending/ReactiveUsedBindingOpening.lean)
+  proves every opening of a used mistyped candidate is rejected. An authentic
+  certificate can violate public association or typed guards.
+- [SourceServiceUsedBindingOpening](../Vegas/Game/SourceServiceUsedBindingOpening.lean)
+  derives the used association from an actual recalled protected sole
+  commitment before a later owned resolution and classifies its mistyped
+  opening under existing partial collection. Whole-policy repair and payoff
+  domination remain open.
 
 ## Proof and build discipline
 

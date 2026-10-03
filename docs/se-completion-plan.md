@@ -386,7 +386,15 @@ still needs rationality at the other sites.
 derives the actual deterministic first native input under every profile and
 identifies its entire information fiber. Its clear menu contains only WAIT
 or canonical FALSE/TRUE; TRUE availability requires actual message bounds
-coverage. The other decision sites and whole equilibrium remain open.
+coverage.
+[LateResolutionFirstDecision](../Vegas/Examples/LateResolutionFirstDecision.lean)
+proves actual first FALSE/TRUE acceptance and the forced silent completed
+second menu. [LateResolutionNativeSites](../Vegas/Examples/LateResolutionNativeSites.lean)
+exhaustively classifies all initialized native decision sites as first, late
+unrecorded, or late completed.
+[LateResolutionFirstPayoff](../Vegas/Examples/LateResolutionFirstPayoff.lean)
+derives the accepted first decision's full typed source readout and zero
+authentic partial-audit charge. Whole native equilibrium remains open.
 The [late-decision signaling probe](../scripts/experiments/late_decision_signaling_probe.py)
 checks this distinction with exact Bayes limits and every whole-policy
 comparison. Equal waiting trembles make waiting profitable for one type;
@@ -467,6 +475,16 @@ family runs. Typed output, all public/foreign traffic and the same prefix
 parameter are joint. The original prior is derived from actual untouched
 recall; no posterior or acceptance law is supplied. Selected turns can be
 absent or lose protection, and finite-budget exhaustion remains represented.
+
+[SourceServiceBindingSelectedInput](../Vegas/Game/SourceServiceBindingSelectedInput.lean)
+derives the actual chronological selected input and supported canonical
+response, or completion before it with no owner event packet, a public miss
+and typed failure. No selected-slot visit or source admission is assumed.
+[SourceServiceBindingStoppedResponse](../Vegas/Game/SourceServiceBindingStoppedResponse.lean)
+decomposes an actual protected geometric response and its full completion
+continuation into real waiting and receipt-driven source commitment selection.
+Earlier deferrals remain in the original input; waiting can later attempt or
+miss. Full selected-family assembly and strategic comparison remain open.
 
 The watcher samples authentic evidence partially; observation and report
 delivery may be correlated. Positive conditional coverage and a finite
@@ -609,6 +627,21 @@ extra capstone assumption. Reused handles use their fixed candidate meaning,
 rather than newly supplied private material.
 Arbitrary later mistyped bindings remain a capability boundary: material that
 fails the current payload type can be usable at another binding.
+
+[ReactiveBindingUsableStep](../Vegas/Pending/ReactiveBindingUsableStep.lean)
+proves full-frame inclusion closure for matching fixed owner candidates,
+including rejected and late calls. Actual fresh usable submission establishes
+these matching meanings and completed-boundary memory without assuming
+protected inclusion. Arbitrary later binding response closure remains open.
+[ReactiveUsedBindingOpening](../Vegas/Pending/ReactiveUsedBindingOpening.lean)
+proves every opening of a used mistyped candidate is rejected. Its authentic
+certificate may fail the public association or typed guard check.
+[SourceServiceUsedBindingOpening](../Vegas/Game/SourceServiceUsedBindingOpening.lean)
+derives the used association from an actual recalled protected sole commitment
+before a later owned resolution, then places its mistyped opening in the
+existing auditable public-breach class. Partial collection applies without
+treating authentic certification as a signed-content breach. Whole-policy
+repair and payoff domination remain open.
 
 ## Validation
 

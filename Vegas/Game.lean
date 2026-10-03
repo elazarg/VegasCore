@@ -323,6 +323,9 @@ import Vegas.Game.SourceStateKernel
 import Vegas.Game.SourcePrefixKernel
 import Vegas.Game.SourceObservationRecall
 import Vegas.Game.BehavioralSubgame
+import Vegas.Game.SourceServiceBindingStoppedResponse
+import Vegas.Game.SourceServiceBindingSelectedInput
+import Vegas.Game.SourceServiceUsedBindingOpening
 
 /-! Strategic source-to-graph and graph-to-message correspondence. -/
 

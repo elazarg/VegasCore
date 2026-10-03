@@ -274,5 +274,7 @@ import Vegas.Pending.ReactiveSelectionObservation
 import Vegas.Pending.ReactiveServiceFootprint
 import Vegas.Pending.ReactiveAssociationPersistence
 import Vegas.Pending.ReactiveServiceFiniteness
+import Vegas.Pending.ReactiveBindingUsableStep
+import Vegas.Pending.ReactiveUsedBindingOpening
 
 /-! Graph execution and strategic refinement over public pending messages. -/

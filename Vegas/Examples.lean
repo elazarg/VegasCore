@@ -58,6 +58,9 @@ import Vegas.Examples.SetupProtocol
 import Vegas.Examples.SourceProtocol
 import Vegas.Examples.SuccessfulEvidenceAliases
 import Vegas.Examples.UnusableBindingAudit
+import Vegas.Examples.LateResolutionFirstDecision
+import Vegas.Examples.LateResolutionNativeSites
+import Vegas.Examples.LateResolutionFirstPayoff
 
 /-! Checked strategic analyses of concrete source games, native runtime
 fixtures, and the counterexamples that delimit the compiler results. -/

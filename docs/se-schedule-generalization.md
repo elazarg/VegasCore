@@ -189,8 +189,8 @@ later grants preserve it, since a service that revisits unfinished events
 could otherwise postpone expiry indefinitely, and grants of unready events
 start nothing. The contract accepts moves only for the currently granted event.
 
-**D4. Service-issued grants, advisory, with long deadlines.** The current
-model: grants are advisory and timers start at readiness. Each deadline is
+**D4. Service-issued grants, advisory, with long deadlines.** Grants are
+advisory and timers start at readiness. Each deadline is
 sized to cover the longest delay the service can impose before the grant, for
 example the number of concurrent bindings times the block length.
 
@@ -1754,7 +1754,15 @@ continuation; a whole native equilibrium still needs its other sites.
 derives the actual deterministic first native input under every profile and
 identifies its entire information fiber. Its clear menu contains only WAIT
 or canonical FALSE/TRUE; TRUE availability requires actual message bounds
-coverage. The other decision sites and whole equilibrium remain open.
+coverage.
+[LateResolutionFirstDecision](../Vegas/Examples/LateResolutionFirstDecision.lean)
+proves actual first FALSE/TRUE acceptance and the forced silent completed
+second menu. [LateResolutionNativeSites](../Vegas/Examples/LateResolutionNativeSites.lean)
+exhaustively classifies all initialized native decision sites as first, late
+unrecorded, or late completed.
+[LateResolutionFirstPayoff](../Vegas/Examples/LateResolutionFirstPayoff.lean)
+derives the accepted first decision's full typed source readout and zero
+authentic partial-audit charge. Whole native equilibrium remains open.
 
 [SourceServiceSampleCompletion](../Vegas/Game/SourceServiceSampleCompletion.lean)
 derives actual silence, whole stopped-run equality with silent play, and the
@@ -2018,6 +2026,21 @@ candidate meaning. Later mistyped registration
 can add material usable at another payload type without itself being a signed
 breach, so arbitrary later bindings need a distinct capability argument.
 
+[ReactiveBindingUsableStep](../Vegas/Pending/ReactiveBindingUsableStep.lean)
+proves full-frame inclusion closure for matching fixed owner candidates,
+including rejected and late calls. Actual fresh usable submission establishes
+these matching meanings and completed-boundary memory without assuming
+protected inclusion. Arbitrary later binding response closure remains open.
+[ReactiveUsedBindingOpening](../Vegas/Pending/ReactiveUsedBindingOpening.lean)
+proves every opening of a used mistyped candidate is rejected. Its authentic
+certificate may fail the public association or typed guard check.
+[SourceServiceUsedBindingOpening](../Vegas/Game/SourceServiceUsedBindingOpening.lean)
+derives the used association from an actual recalled protected sole commitment
+before a later owned resolution, then places its mistyped opening in the
+existing auditable public-breach class. Partial collection applies without
+treating authentic certification as a signed-content breach. Whole-policy
+repair and payoff domination remain open.
+
 ### Deviation proof boundaries
 
 Each excluded action needs one legal continuation comparison, shared across
@@ -2030,7 +2053,7 @@ their own rationality proof; an exclusion theorem cannot supply it.
 | --- | --- | --- |
 | Protected fresh binding call | Show that completion records its actual handle and cannot be an omission. | Exact first-turn play supplies the protected call and keeps the owner's omission detector and full risk flag clear against arbitrary foreign raw policies. Its packets pass the actual final-record verdict, so authentic sampling collects zero owner charge. The strategic source embedding and local continuation comparisons remain separate. |
 | Normalization-equivalent responses | Preserve the actual response transition and emitted packet. | Reactive normalization supplies the exact local equality. This does not erase a distinct fresh identifier or authentic extra evidence. |
-| Canonical binding with unusable private opening | Repair private candidate capability while preserving the full typed source readout and actual settlement. | Actual accepted unusable bindings have a constructed frame and exact common completion; due expiry also preserves the pending-failure frame. Later claims for a genuinely blocked handle are signed breaches. Mistyped material has an owned certificate capability absent from a typed-default replacement. Later raw closure and the whole-policy equilibrium comparison remain open. |
+| Canonical binding with unusable private opening | Repair private candidate capability while preserving the full typed source readout and actual settlement. | Actual accepted unusable bindings have a constructed frame and exact common completion; due expiry also preserves the pending-failure frame. Later claims for a genuinely blocked handle are signed breaches. Mistyped material has an authentic certificate capability absent from a typed-default replacement, but protected sole acceptance makes its later opening an auditable public association or guard breach. Later raw closure and the whole-policy equilibrium comparison remain open. |
 | Forbidden signed packets at a clear protected history | Bound base gain and actual collection, and exhibit one clean legal continuation under the same belief. | Constructor breaches, invalid-token or foreign-actor packets, wrong node kinds, fresh packets addressed to completed events, wrong current-event handles, public guard failures and wrong opening ownership or public binding association have derived conditional collection. The information-local classifier supplies the actual risk-to-effective-to-raw extension with the fixed deposit and comparator. Other exclusions and the source equilibrium embedding remain open. |
 | Two packets for one event before completion | Select a forbidden actual envelope from the pair and derive its collection bound. | Actual initialized settlement accepts at most one identifier for the event. A clear recorded prefix plus another same-event response reconstructs the pair; at least one packet is forbidden, even if the builder accepts the newer one. The actual committed-choice collection and risk-extension comparison are checked. This is a total-charge bound at a clear site, without renewed deterrence after a fine. |
 | Late unrecorded first binding opportunity | Admit rational native continuation before a content-dependent acceptance/miss lottery. | Probe C7 demonstrates why excluding the evidence packet can fail for every positive deposit. The auxiliary source/native embedding and its earlier incentive comparisons remain open. |
@@ -2398,7 +2421,8 @@ before expiry. Clarity at that boundary alone cannot guarantee a clean suffix.
 
 Disqualification with default future actions is not the planned simplification.
 An implementable trigger would require a public contract verdict, whose timing
-depends on observation and report delivery. Disabling contract actions would
+Quitting enforced through watcher evidence depends on observation and report
+delivery. Disabling contract actions would
 still leave the player able to send verifiable information through pending
 packets or off-chain. Once collection is certain, the one-time deposit gives
 no additional deterrence for that communication. Quitting therefore does not
@@ -2509,6 +2533,16 @@ the final equilibrium's supported play.
   prefix parameter remain joint. A selected turn may be absent or lose
   protection; finite-budget exhaustion remains represented. This supplies
   the operational mixture, not its strategic source-extension comparison.
+  [SourceServiceBindingSelectedInput](../Vegas/Game/SourceServiceBindingSelectedInput.lean)
+  derives the actual chronological selected input and supported canonical
+  response, or completion before it with no owner event packet, a public miss
+  and typed failure. No selected-slot visit or source admission is assumed.
+  [SourceServiceBindingStoppedResponse](../Vegas/Game/SourceServiceBindingStoppedResponse.lean)
+  decomposes an actual protected geometric response and its full stopped
+  continuation into real waiting and receipt-driven source commitment
+  selection. Earlier deferrals remain in the original input; waiting can later
+  attempt or miss. Full selected-family assembly and strategic comparison
+  remain open.
 - **Stage B beliefs.** Probe C5 suggests that depth differences are no
   obstruction, but the concurrent-window information sets are new. If they
   break the extension, D2's contract-ordered service is the fallback.
