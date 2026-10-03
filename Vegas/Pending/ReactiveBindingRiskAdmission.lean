@@ -235,6 +235,10 @@ private theorem usable_retained_invoke_coupling
     exact retained response member
   have retainedLaw := retainedImplementation_respond_eq runtime leaks menu owner reference
     (players owner) memory (repaired.recall owner, repaired.observe app owner) covered
+      (by
+        intro response chosen _
+        rw [frame.past, frame.observed] at chosen
+        exact frame.usable_copyResponse_eq_repairResponse response (usable response chosen))
   have effectiveLaw := retainedImplementation_respond_eq runtime leaks effectiveMenu owner
     reference (players owner) memory (repaired.recall owner, repaired.observe app owner)
       (by
@@ -249,6 +253,10 @@ private theorem usable_retained_invoke_coupling
         exact (runtime.effectiveResponse_openable_transport leaks bounds owner original repaired
           leftRecall rightRecall frame.network frame.publicView frame.slots preserved response
             (effective response member)).1)
+      (by
+        intro response chosen _
+        rw [frame.past, frame.observed] at chosen
+        exact frame.usable_copyResponse_eq_repairResponse response (usable response chosen))
   have resumeEq :
       (retainedImplementation runtime leaks menu owner reference (players owner)).resume
           owner players (some owner) repaired memory =

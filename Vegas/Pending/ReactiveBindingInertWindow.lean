@@ -90,7 +90,13 @@ theorem inert_effective_response_coupling
         rw [responseLaw]
         intro result supported
         obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ supported
-        exact (transported response chosen).1), responseLaw]
+        exact (transported response chosen).1) (by
+        intro response chosen _
+        rw [frame.past, frame.observed] at chosen
+        rw [memory.copyResponse_noncommitment runtime leaks owner
+          (repaired.observe app owner) response (noncommitment response chosen),
+          memory.repairResponse_noncommitment runtime leaks owner
+            (repaired.observe app owner) response (noncommitment response chosen)]), responseLaw]
   let coupling := law.map fun response =>
     (original.respond app owner response, repaired.respond app owner response, updated response)
   refine ⟨coupling, ?_, ?_, ?_⟩

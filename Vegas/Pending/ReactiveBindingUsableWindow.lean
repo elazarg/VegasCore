@@ -47,6 +47,34 @@ variable {runtime : EventGraphRuntime graph}
   {original repaired : (runtime.reactiveApplication leaks).Execution}
 
 omit [Fintype Player] in
+/-- Copying and defaulting have the same full candidate-memory update
+on noncommitment or genuinely fresh usable binding responses. -/
+theorem usable_copyResponse_eq_repairResponse
+    (frame : Frame runtime leaks memory owner original repaired)
+    (response : (runtime.reactiveApplication leaks).Action)
+    (usable : (∀ material, response.transmission = some material →
+        ∀ event candidate, material.call.packet ≠ .commitment event candidate) ∨
+      FreshUsableBindingResponse runtime leaks owner
+        (original.observe (runtime.reactiveApplication leaks) owner).application response) :
+    memory.copyResponse runtime leaks owner
+        (repaired.observe (runtime.reactiveApplication leaks) owner) response =
+      memory.repairResponse runtime leaks owner
+        (repaired.observe (runtime.reactiveApplication leaks) owner) response := by
+  rcases usable with noncommitment | freshUsable
+  · rw [memory.copyResponse_noncommitment runtime leaks owner _ response noncommitment,
+      memory.repairResponse_noncommitment runtime leaks owner _ response noncommitment]
+  · obtain ⟨event, payload, outputEq, codeEq, serial, raw, value, node, _ready, fresh,
+      typed, rfl⟩ := freshUsable
+    have rightFresh := (frame.slots (.prepared serial)).mp fresh
+    have reconstructedFresh : (memory.shadow.inputView runtime leaks
+        (repaired.observe (runtime.reactiveApplication leaks) owner)).application.candidates
+          (.prepared serial) = .fresh := by
+      rw [frame.observed]
+      exact fresh
+    exact memory.copyResponse_usable_eq_repairResponse runtime leaks owner _ event payload
+      outputEq codeEq node serial (some raw) reconstructedFresh rightFresh value typed
+
+omit [Fintype Player] in
 private theorem same_response_openable
     (frame : Frame runtime leaks memory owner original repaired)
     (preserved : ∀ slot raw,
@@ -259,7 +287,11 @@ theorem usable_effective_response_coupling
         rw [responseLaw]
         intro result supported
         obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ supported
-        exact (transported response chosen).1), responseLaw]
+        exact (transported response chosen).1) (by
+        intro response chosen _
+        rw [frame.past, frame.observed] at chosen
+        exact frame.usable_copyResponse_eq_repairResponse response
+          (usable response chosen)), responseLaw]
   let coupling := law.map fun response =>
     (original.respond app owner response, repaired.respond app owner response, updated response)
   refine ⟨coupling, ?_, ?_, ?_⟩

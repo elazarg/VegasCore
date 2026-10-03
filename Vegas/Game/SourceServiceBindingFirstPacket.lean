@@ -80,7 +80,9 @@ private theorem environment_packets
       obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact packets
 
-private theorem silent_owner_packets
+/-- Owner silence preserves an actual packet invariant against arbitrary foreign
+responses and public scheduler commands. -/
+theorem sourceService_silent_owner_packets
     (app : ReactiveApplication Player) (players : Player → app.Policy)
     (owner : Player) (safe : Message Player app.Payload → Prop)
     (foreign : ∀ message, message.sender ≠ owner → safe message) :
@@ -198,7 +200,8 @@ theorem sourceService_binding_first_packet
     timing profile owner follows _ submitted event afterReady owned recorded] at reached
   obtain ⟨used, _budget, rounds, _length⟩ := app.runUntil_runRounds scheduler _ _ _ submitted
     final reached
-  exact (silent_owner_packets app players owner safe (fun packet foreign authored _named =>
-    (foreign authored).elim)).runRounds scheduler used submitted final packets rounds
+  exact (sourceService_silent_owner_packets app players owner safe
+    (fun packet foreign authored _named => (foreign authored).elim)).runRounds scheduler used
+      submitted final packets rounds
 
 end Vegas

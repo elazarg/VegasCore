@@ -139,7 +139,10 @@ theorem withholding_risk_response_coupling
         rw [responseLaw]
         intro result supported
         obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ supported
-        exact retained response chosen), responseLaw]
+        exact retained response chosen) (by
+        intro response chosen _
+        rw [frame.past, frame.observed] at chosen
+        rcases withholding response chosen with rfl | rfl <;> rfl), responseLaw]
   let coupling := law.map fun response =>
     (original.respond app owner response, repaired.respond app owner response, updated response)
   refine ⟨coupling, ?_, ?_, ?_⟩

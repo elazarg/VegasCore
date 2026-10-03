@@ -78,7 +78,7 @@ import Vegas.Game.SourceServiceBindingFirstPacket
 import Vegas.Game.SourceServiceBindingAttemptCompletion
 import Vegas.Game.SourceServiceBindingAttemptLaw
 import Vegas.Game.SourceServiceBindingNoAttempt
-import Vegas.Game.SourceServiceBindingTimingMixture
+import Vegas.Game.SourceServiceTimingMixture
 import Vegas.Game.SourceServiceMissingStoppedCoupling
 import Vegas.Game.AsyncServiceFirstTurnBeliefResources
 import Vegas.Game.SourceServiceFirstBindingTraffic
@@ -246,6 +246,10 @@ import Vegas.Game.SourceServiceResolutionIntentionFactorization
 import Vegas.Game.SourceServiceBindingResponseFactorization
 import Vegas.Game.SourceServiceBindingResponseCompletion
 import Vegas.Game.SourceServiceLateDecisionCompletion
+import Vegas.Game.SourceServiceProtectedDecisionCompletion
+import Vegas.Game.SourceServiceResolutionProtectedCompletion
+import Vegas.Game.SourceServiceResolutionSelectedCompletionLaw
+import Vegas.Game.SourceServiceSilentDecisionCompletion
 import Vegas.Game.SourceServiceLateTurnCompletion
 import Vegas.Game.SourceServiceBindingPrefixCompletion
 import Vegas.Game.SourceServiceResolutionResponseLaw
@@ -338,6 +342,7 @@ import Vegas.Game.SourceServiceSelectedReference
 import Vegas.Game.SourceServiceBindingSelectedReference
 import Vegas.Game.SourceServiceBindingSelectedCompletionLaw
 import Vegas.Game.AsyncServicePrescribedCompletion
+import Vegas.Game.AsyncServiceInitializedDomination
 
 /-! Strategic source-to-graph and graph-to-message correspondence. -/
 

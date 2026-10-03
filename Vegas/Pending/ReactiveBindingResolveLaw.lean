@@ -249,15 +249,25 @@ theorem resolve_response_coupling
       (retainedImplementation runtime leaks menu owner reference (players owner)).respond memory
         (repaired.recall owner, repaired.observe app owner) =
           law.map (fun response => (response, updated response)) := by
-    change ((implementation runtime leaks owner reference (players owner)).respond memory
-      (repaired.recall owner, repaired.observe app owner)).map _ = _
-    rw [responseLaw, PMF.map_comp]
-    apply map_congr_on_support _
-    intro response supported
-    simp only [Function.comp_def]
-    have member : response ∈ menu.actions owner (repaired.recall owner)
-        (repaired.observe app owner) := coverage (retained response supported)
-    rw [ite_eq_left member]
+    rw [retainedImplementation_respond_eq runtime leaks menu owner reference (players owner)
+      memory (repaired.recall owner, repaired.observe app owner) (by
+        rw [responseLaw]
+        intro result supported
+        obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ supported
+        exact coverage (retained response chosen)) (by
+        intro response chosen _
+        rw [frame.past, frame.observed] at chosen
+        rcases clean response chosen with replay | ⟨value, stored, resolved, same, _⟩
+        · rcases app.silentPolicy_cases _ _ response replay with rfl
+          rfl
+        · obtain ⟨_, candidate, associated, _, owned, fixed, _⟩ :=
+            frame.successful_opening leftBinding rightBinding binding value stored
+          have actual := runtime.serviceDecision_successful_opening leaks original leftRecall owner
+            event payload binding checks outputEq codeEq node candidate value associated owned fixed
+              resolved
+          rw [same, actual]
+          simp only [copyResponse, repairResponse, disclosureSubmission,
+            WitnessedSubmission.normalizeReactive, Submission.normalizeReactive_none]), responseLaw]
   let coupling := law.map fun response =>
     (original.respond app owner response, repaired.respond app owner response, updated response)
   refine ⟨coupling, ?_, ?_, ?_⟩

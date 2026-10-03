@@ -64,7 +64,6 @@ import Vegas.Pending.ReactiveResolutionWindowSupport
 import Vegas.Pending.ReactiveResolutionWindowState
 import Vegas.Pending.ReactiveResolutionSettlement
 import Vegas.Pending.ReactivePlayerWindow
-import Vegas.Pending.ReactiveBindingRetainedBlock
 import Vegas.Pending.ReactiveBindingLegalContinuation
 import Vegas.Pending.ReactiveGuardConformance
 import Vegas.Pending.ReactiveGuardedResponse

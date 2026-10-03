@@ -252,10 +252,11 @@ theorem binding_window_stopped_coupling
             (repaired.observe app owner), response)]⟩ :
             BindingMemory (runtime setup) leaks))
       let adjusted (response : app.Action) :=
-        (if (proposed response).1 ∈ menu.actions owner (repaired.recall owner)
-            (repaired.observe app owner) then (proposed response).1
-          else (menu.nonempty owner (repaired.recall owner) (repaired.observe app owner)).choose,
-          (proposed response).2)
+        let changed := BindingMemory.retainedResponse (runtime setup) leaks menu owner memory
+          (repaired.recall owner, repaired.observe app owner) response
+        (changed.1, (⟨changed.2, memory.responses ++
+          [(memory.shadow.inputView (runtime setup) leaks
+            (repaired.observe app owner), response)]⟩ : BindingMemory (runtime setup) leaks))
       let leftRun (response : app.Action) := (runtime setup).runInteractionPlan leaks players
         network plan (original.respond app owner response)
       let rightRun (response : app.Action) := strategy.runJoint owner players scheduler plan.length
@@ -269,13 +270,12 @@ theorem binding_window_stopped_coupling
           next.2.2.shadow.CompletedAt next.1.application.config)
       have responseLaw : strategy.respond memory (repaired.recall owner,
           repaired.observe app owner) = law.map adjusted := by
-        change ((BindingMemory.implementation (runtime setup) leaks owner reference
-          (players owner)).respond memory
-            (repaired.recall owner, repaired.observe app owner)).map _ = _
-        rw [BindingMemory.implementation_respond (runtime setup) leaks owner reference
-          (players owner) memory (repaired.recall owner) (repaired.observe app owner) started,
-          frame.past, frame.observed, PMF.map_comp]
-        simp only [law, adjusted, proposed, frame.observed, app, menu, Function.comp_def]
+        rw [BindingMemory.retainedImplementation_respond (runtime setup) leaks menu owner
+          reference (players owner) memory (repaired.recall owner) (repaired.observe app owner)
+          started, frame.past, frame.observed]
+        simp only [law, adjusted]
+        rw [show memory.shadow.inputView (runtime setup) leaks (repaired.observe app owner) =
+          original.observe app owner from frame.observed]
       have existsBranch (response : app.Action) (member : response ∈ law.support) :
           ∃ coupling : PMF (app.Execution × app.Execution ×
             BindingMemory (runtime setup) leaks),
@@ -298,8 +298,12 @@ theorem binding_window_stopped_coupling
             apply bounds.silent_compiled
             exact app.mem_silentPolicy_support.mpr (app.silentPolicy_cases _ _ response replay)
           have adjustedEq : adjusted response = proposed response := by
-            dsimp only [adjusted]
-            rw [ite_eq_left legal]
+            dsimp only [adjusted, proposed]
+            rw [BindingMemory.retainedResponse_eq_repairResponse (runtime setup) leaks menu owner
+              memory (repaired.recall owner, repaired.observe app owner) response legal (by
+                intro _
+                rcases app.silentPolicy_cases _ _ response replay with rfl
+                rfl)]
           have nextEnough : foreign.length + 1 ≤ remaining := by
             simp only [visitsEq, List.length_append, List.length_cons] at enough
             omega
@@ -487,8 +491,22 @@ theorem binding_window_stopped_coupling
             · rw [frame.observed]
               exact originalFresh
           have adjustedEq : adjusted action = proposed action := by
-            dsimp only [adjusted]
-            rw [ite_eq_left legal]
+            dsimp only [adjusted, proposed]
+            rw [BindingMemory.retainedResponse_eq_repairResponse (runtime setup) leaks menu owner
+              memory (repaired.recall owner, repaired.observe app owner) action legal (by
+                intro admitted
+                apply BindingMemory.copyResponse_binding_eq_of_compiled (runtime setup) leaks
+                  bounds owner memory (repaired.recall owner) (repaired.observe app owner)
+                  event payload outputEq codeEq node
+                  ((soleReady_of_ready setup repaired.application ready).ownTurn owned) owned
+                  ((repaired.application.publicView_eventReady event).mpr ready)
+                  (original.application.publicView.bindingCount owner)
+                · rw [counted]
+                  exact selected
+                · rw [frame.observed]
+                  exact originalFresh
+                · exact sourceServiceMenu_in_compiled setup leaks bounds rosters
+                    owner _ _ admitted)]
           obtain ⟨coupling, first, second, related⟩ := first_binding_block_coupling setup leaks
             bounds rosters network players owner event payload outputEq codeEq node
               (original.application.publicView.bindingCount owner) opening memory original repaired

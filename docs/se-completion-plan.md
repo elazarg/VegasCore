@@ -438,8 +438,9 @@ Continue in this order:
 
 1. For nonpure timing, derive the actual missing-turn/public-miss decomposition
    and relative escape bounds; pure first-turn laws do not cover those branches.
-2. Derive source-relative conditional beliefs and escape bounds at native
-   information sites. Clean-prefix probability equality alone is insufficient.
+2. Construct one native tremble family with source-relative conditional beliefs
+   and escape bounds at every information site. Uniform waiting rates need not
+   yield rational signaling beliefs; clean-prefix equality alone is insufficient.
 3. Compare protected decisions, waiting, late first attempts and departures
    under the actual audited utility.
 4. Transport the free-site completion through the original source assessment
@@ -456,6 +457,15 @@ initialized history law equals first-turn play, including the joint full typed
 readout and sampled settlement vector. This is not yet an equilibrium: rationality
 at prescribed sites and transport from the original varying source assessment
 sequence remain open. Off-path normalization need not commute with taking limits.
+
+[AsyncServiceInitializedDomination](../Vegas/Game/AsyncServiceInitializedDomination.lean)
+compares the actual uniformly perturbed geometric pins, with arbitrary free
+continuation, to first-turn play of the same effective profile. Every initialized
+history keeps at least `((1 - δ)(1 - ε))^(card Player * fuel)` of its first-turn
+mass. The corresponding total variation loss vanishes uniformly in the source
+profile and free continuation. This permits varying original source approximants
+without assuming convergence of off-path normalization. It does not control
+beliefs conditioned on rare inputs or select incentive-compatible waiting rates.
 
 [ReactiveBindingPublicTraffic](../Vegas/Pending/ReactiveBindingPublicTraffic.lean)
 proves joint equality of the network, receipts, public scheduler input and
@@ -512,11 +522,11 @@ protection cannot reopen. Every timing lottery is silent until actual
 completion; complete play gives a public miss, typed failure and no owner
 packet naming the event anywhere in the network. Foreign raw policies are
 arbitrary. The waiting incentive comparison remains open.
-[SourceServiceBindingTimingMixture](../Vegas/Game/SourceServiceBindingTimingMixture.lean)
-identifies the actual completion-stopped binding law from an untouched
+[SourceServiceTimingMixture](../Vegas/Game/SourceServiceTimingMixture.lean)
+identifies the whole completion-stopped strategic execution from an untouched
 boundary with the original finite timing prior over real owner-only turn
-family runs. Typed output, all public/foreign traffic and the same prefix
-parameter are joint. The original prior is derived from actual untouched
+family runs. Private recall and all traffic stay joint; binding and resolution
+consumers retain the same prefix parameter. The prior is derived from actual untouched
 recall; no posterior or acceptance law is supplied. Selected turns can be
 absent or lose protection, and finite-budget exhaustion remains represented.
 
@@ -555,6 +565,14 @@ Absence of a selected input gives actual completion, a public miss and no owner
 packet. [ReactiveResolutionMiss](../Vegas/Pending/ReactiveResolutionMiss.lean)
 derives immutable typed publication failure from that real miss marker on every
 initialized raw history.
+[SourceServiceResolutionSelectedCompletionLaw](../Vegas/Game/SourceServiceResolutionSelectedCompletionLaw.lean)
+joins the original timing prior to the actual resolution input and completion.
+Protected FALSE/TRUE draws use their own full traffic kernels; closed hits and
+absent selection give actual misses and typed failure.
+[SourceServiceResolutionProtectedCompletion](../Vegas/Game/SourceServiceResolutionProtectedCompletion.lean)
+derives acceptance from compiler-aligned effective disclosures through the
+shared [physical completion](../Vegas/Game/SourceServiceProtectedDecisionCompletion.lean).
+These operational laws do not establish waiting incentives.
 [SourceServiceBindingSelectedReference](../Vegas/Game/SourceServiceBindingSelectedReference.lean)
 derives the silent reference's actual selected before-response input, initialized
 raw trace, unchanged source configuration, fresh slot and original commitment
@@ -750,8 +768,12 @@ fails the current payload type can be usable at another binding.
 [ReactiveBindingCopiedSubmission](../Vegas/Pending/ReactiveBindingCopiedSubmission.lean)
 proves that copying a later fresh bare commitment with its original material
 preserves the full frame and its actual raw candidate capability, including
-mistyped or absent material. This response-step lemma does not yet change the
-retained implementation or close the reused-candidate and terminal comparisons.
+mistyped or absent material. The retained implementation copies originals
+already admitted at the actual input, otherwise trying default repair and a
+legal fallback. Both transformations share one sampling and response-recording
+engine. Calendar callers derive agreement from the actual compiled menu.
+General stopped fresh-copy closure and reused-candidate/terminal comparisons
+remain open.
 
 [ReactiveBindingUsableStep](../Vegas/Pending/ReactiveBindingUsableStep.lean)
 proves full-frame inclusion closure for matching fixed owner candidates,

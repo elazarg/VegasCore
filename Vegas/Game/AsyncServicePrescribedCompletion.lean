@@ -47,7 +47,9 @@ def immediateProfile (profile : BehavioralProfile service.setup.program) :
     (sourceServiceImmediatePolicy service.setup service.leaks service.bound profile who)
 
 omit [Fintype Player] in
-private theorem recorded_turn_silent
+/-- A recorded event makes the actual owner turn policy silent for every
+timing lottery and source profile. -/
+theorem sourceServiceTurnPolicy_recorded_silent
     (turns : Nat) (timing : TurnTiming service.setup turns)
     (profile : BehavioralProfile service.setup.program) (who : Player)
     (past : List (app).PlayerEntry) (view : (app).PlayerView)
@@ -74,8 +76,8 @@ private theorem recorded_turn_silent
 omit [Fintype Player] in
 /-- Only actual initialized support is needed to identify immediate play
 with exact first-turn play. Its recorded past cannot contain an unsent old
-own turn. Foreign response policies need not be prescribed. -/
-private theorem immediate_firstTurn_roundSupported
+own turn. -/
+theorem sourceServiceImmediatePolicy_firstTurn_roundSupported
     (turns : Nat) (profile : BehavioralProfile service.setup.program)
     (control : (app).Control) (who : Player)
     (actual : (app).RoundSupported (initialLaw service.setup) service.horizon service.scheduler
@@ -95,8 +97,8 @@ private theorem immediate_firstTurn_roundSupported
       rw [sourceServiceImmediatePolicy_at_event clear turn]
       by_cases recorded : (runtime service.setup).eventRecorded service.leaks
           (control.execution.recall who) event = true
-      · rw [recorded_turn_silent service turns (firstTurnTiming service.setup turns) profile who
-          _ _ event turn recorded]
+      · rw [sourceServiceTurnPolicy_recorded_silent service turns
+          (firstTurnTiming service.setup turns) profile who _ _ event turn recorded]
         simp only [sourceServiceCanonicalOpportunity, recorded, ↓reduceIte,
           ReactiveApplication.silentPolicy]
       · have unrecorded : (runtime service.setup).eventRecorded service.leaks
@@ -155,7 +157,8 @@ theorem immediateProfile_initialized_history (turns : Nat)
                 service.initialValues service.capacity service.bound profile who (permitted who)
                   control trace response chosen)]
         exact congrArg (PMF.map some)
-          (immediate_firstTurn_roundSupported service turns profile control who actual).symm
+          (sourceServiceImmediatePolicy_firstTurn_roundSupported service turns profile control who
+            actual).symm
   · exact (model).behavioral_eq_of_not_active _ _ history.trace active
 
 private def completionWeight (n : Nat) : ℝ := (1 / ((n : ℝ) + 1)) / 2
@@ -216,7 +219,8 @@ private theorem compatible_geometric_immediate_limit
         rw [sourceServiceImmediatePolicy_at_event clear turn]
         by_cases recorded : (runtime service.setup).eventRecorded service.leaks
             (execution.recall who) event = true
-        · simp_rw [recorded_turn_silent service _ _ profile who _ _ event turn recorded]
+        · simp_rw [sourceServiceTurnPolicy_recorded_silent service _ _ profile who _ _ event turn
+            recorded]
           simp only [sourceServiceCanonicalOpportunity, recorded, ↓reduceIte,
             ReactiveApplication.silentPolicy]
           exact pmfConvergesPointwise_const _

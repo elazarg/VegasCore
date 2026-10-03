@@ -158,7 +158,8 @@ theorem final_binding_history_coupling
       originalReady originalTimely originalUnused unsent originalVacant originalPublished
       entered ((runtime setup).deadline event) originalActivated due visits absent
       (frame.network ▸ serials)
-      (required_decision_sourceService setup leaks bounds rosters owner _ _) available
+      (required_decision_sourceService setup leaks bounds rosters owner _ _)
+      (sourceServiceMenu_in_compiled setup leaks bounds rosters owner _ _) available
   refine ⟨coupling, first, ?_, related⟩
   rw [second]
   apply bind_congr_on_support _

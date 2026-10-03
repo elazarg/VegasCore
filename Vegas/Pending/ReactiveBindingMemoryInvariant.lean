@@ -5,9 +5,9 @@ import Vegas.Pending.ReactiveBindingShadowInvariant
 
 /-! # Binding-memory preservation through retained execution
 
-The repair implementation records only the focal player's own bindings. Its
-legal-response fallback changes the emitted action without changing the
-proposed memory. The same invariant therefore holds through every supported
+Copied responses record only candidate meanings. Default repairs override
+only the focal player's own binding outcomes, and the legal-response fallback
+preserves that proposed shadow. The same invariant therefore holds through every supported
 joint execution, against arbitrary opponents and schedulers.
 -/
 
@@ -23,8 +23,8 @@ variable {Player : Type} [DecidableEq Player]
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
   (menu : (runtime.reactiveApplication leaks).ResponseMenu)
 
-/-- Both a repaired response and the legal-response fallback retain the
-invariant that all remembered completions belong to the owner's bindings. -/
+/-- Copy, repair and legal fallback all retain the invariant that remembered
+completions belong to the owner's bindings. -/
 theorem retainedImplementation_response_ownBindings (owner : Player)
     (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
     (policy : (runtime.reactiveApplication leaks).Policy)
@@ -34,12 +34,15 @@ theorem retainedImplementation_response_ownBindings (owner : Player)
     (next : (runtime.reactiveApplication leaks).Action × BindingMemory runtime leaks)
     (reached : next ∈ ((retainedImplementation runtime leaks menu owner reference policy).respond
       memory input).support) : next.2.shadow.OwnBindings owner := by
-  obtain ⟨proposed, supported, rfl⟩ := PMF.support_map .. ▸ reached
-  obtain ⟨response, _, rfl⟩ := PMF.support_map .. ▸ supported
+  obtain ⟨response, _, rfl⟩ := PMF.support_map .. ▸ reached
   dsimp only
   split
   · exact onlyBindings
-  · exact repairResponse_ownBindings runtime leaks owner memory onlyBindings input.2 response
+  · change (retainedResponse runtime leaks menu owner memory input response).2.OwnBindings owner
+    unfold retainedResponse
+    split
+    · exact copyResponse_ownBindings runtime leaks owner memory onlyBindings input.2 response
+    · exact repairResponse_ownBindings runtime leaks owner memory onlyBindings input.2 response
 
 /-- A passive command or foreign response leaves private memory untouched;
 a focal response preserves the own-binding invariant by construction. -/

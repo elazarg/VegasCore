@@ -112,22 +112,33 @@ theorem repeated_submission_stopped_response_coupling
       [(memory.shadow.inputView runtime leaks (repaired.observe app owner), response)]⟩ :
         BindingMemory runtime leaks))
   let adjusted (response : app.Action) :=
-    (if (proposed response).1 ∈ menu.actions owner (repaired.recall owner)
-        (repaired.observe app owner) then (proposed response).1
-      else (menu.nonempty owner (repaired.recall owner) (repaired.observe app owner)).choose,
-      (proposed response).2)
+    let changed := retainedResponse runtime leaks menu owner memory
+      (repaired.recall owner, repaired.observe app owner) response
+    (changed.1, (⟨changed.2, memory.responses ++
+      [(memory.shadow.inputView runtime leaks (repaired.observe app owner), response)]⟩ :
+        BindingMemory runtime leaks))
   let coupling := law.map fun response =>
     (original.respond app owner response, repaired.respond app owner (adjusted response).1,
       (adjusted response).2)
   have responseLaw :
       (retainedImplementation runtime leaks menu owner reference (players owner)).respond memory
         (repaired.recall owner, repaired.observe app owner) = law.map adjusted := by
-    change ((implementation runtime leaks owner reference (players owner)).respond memory
-      (repaired.recall owner, repaired.observe app owner)).map _ = _
-    rw [implementation_respond runtime leaks owner reference (players owner) memory
-      (repaired.recall owner) (repaired.observe app owner) started, frame.past, frame.observed,
-        PMF.map_comp]
-    simp only [law, adjusted, proposed, frame.observed, app, Function.comp_def]
+    rw [retainedImplementation_respond runtime leaks menu owner reference (players owner) memory
+      (repaired.recall owner) (repaired.observe app owner) started, frame.past, frame.observed]
+    simp only [law, adjusted]
+    rw [show memory.shadow.inputView runtime leaks (repaired.observe app owner) =
+      original.observe app owner from frame.observed]
+  have adjustedEq (response : app.Action)
+      (legal : (proposed response).1 ∈ menu.actions owner (repaired.recall owner)
+        (repaired.observe app owner))
+      (copyEq : response ∈ menu.actions owner (repaired.recall owner)
+          (repaired.observe app owner) →
+        memory.copyResponse runtime leaks owner (repaired.observe app owner) response =
+          memory.repairResponse runtime leaks owner (repaired.observe app owner) response) :
+      adjusted response = proposed response := by
+    dsimp only [adjusted, proposed]
+    rw [retainedResponse_eq_repairResponse runtime leaks menu owner memory
+      (repaired.recall owner, repaired.observe app owner) response legal copyEq]
   have replayLaw :
       app.silentPolicy (original.recall owner) (original.observe app owner) =
         app.silentPolicy (repaired.recall owner) (repaired.observe app owner) := rfl
@@ -156,8 +167,11 @@ theorem repeated_submission_stopped_response_coupling
         rw [replayLaw] at replay
         exact bounds.silent_compiled runtime leaks owner _ _ response replay
       right
-      dsimp only [adjusted]
-      rw [ite_eq_left legal]
+      dsimp only
+      rw [adjustedEq response legal (by
+        intro _
+        rcases app.silentPolicy_cases _ _ response replay with rfl
+        rfl)]
       dsimp only [proposed]
       rw [unchanged]
       refine ⟨frame.transport_response response ?_, ?_, rfl, ?_⟩

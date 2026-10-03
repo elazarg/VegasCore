@@ -4,7 +4,7 @@ import Vegas.Game.SourceServiceBindingSelectedReference
 import Vegas.Game.SourceServiceBindingSelectedAttemptLaw
 import Vegas.Game.SourceServiceBindingSelectedClosedCompletion
 import Vegas.Game.SourceServiceBindingProtectedAttempt
-import Vegas.Game.SourceServiceBindingTimingMixture
+import Vegas.Game.SourceServiceTimingMixture
 
 /-! # The literal binding timing family through actual completion
 
@@ -297,9 +297,9 @@ theorem BindingSource.timing_completion_law
       joint.map (fun chosen => (chosen.2.2.1, chosen.2.2.2.1, chosen.2.2.2.2)) := by
   classical
   dsimp only
-  rw [sourceService_binding_timing_mixture parameter scheduler players bound turns timing profile
-    site.owner follows event site.payload site.owned site.outputEq execution boundary horizon,
-    PMF.map_bind]
+  rw [sourceService_timing_mixture scheduler players bound turns timing profile
+    site.owner follows event site.owned execution boundary horizon]
+  simp only [PMF.map_bind]
   apply bind_congr_on_support (timing event site.owner site.owned)
   intro slot _chosen
   have actual := site.selected_family_completion_law parameter contract players turns timing

@@ -24,7 +24,9 @@ variable {Player : Type} [DecidableEq Player]
   {setup : Setup (Player := Player) (L := L)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
-private theorem revealSource_code
+/-- Compiler alignment identifies the actual resolution code and its binding
+reference at this source disclosure. -/
+theorem RevealSource.code
     {profile : BehavioralProfile setup.program} {event : (graph setup).EventId}
     {config : (graph setup).Config} (site : RevealSource setup profile event config) :
     cast (congrArg (EventGraph.EventCode (graph setup).layout) site.outputEq)
@@ -158,7 +160,7 @@ theorem sourceServiceTurnPolicy_recorded_resolution_realizes {horizon : Nat}
     sourceServiceTurnPolicy_recalled_resolution_choice timing profile players count within start
       reached event site follows ready issuer issuerMember issuerNamed material transmission
   refine ⟨disclose, supported, entry, member, message, named, call, ?_, completion⟩
-  have codeEq := revealSource_code site
+  have codeEq := RevealSource.code site
   have node := nodeView_eq_resolve site.outputEq codeEq
   have packet : material.call.packet = reactiveResolutionPacket site.owner event site.payload
       (site.refs.get site.binding)
@@ -279,7 +281,7 @@ theorem sourceServiceTurnPolicy_recorded_resolution_completion {horizon : Nat}
       site.owner timing profile follows count within start reached event site.owned ready
       (cast (congrArg EventGraph.EventField.Action site.outputEq.symm) disclose) entry member
       message named call realized stopped stoppedSupported
-    have codeEq := revealSource_code site
+    have codeEq := RevealSource.code site
     rw [start.application.config.step_eq_map_of_code event ready site.outputEq _ codeEq disclose
       (PMF.pure (disclosureResult site.published site.binding site.source disclose))
       (compileResolve_eval? site.refs site.source.registry site.source.revelations site.source.state

@@ -2077,8 +2077,12 @@ breach, so arbitrary later bindings need a distinct capability argument.
 preserves the full frame and actual raw candidate capability when a later fresh
 bare commitment is copied with its original material. This includes mistyped or
 absent material, without a typed-default replacement. The response-step result
-does not yet alter the retained implementation or close the reused-candidate
-and whole-policy utility comparisons.
+is used by the membership-aware retained implementation: an original already
+admitted at the actual input is copied; unavailable originals use default repair
+and, if necessary, a legal fallback. One sampling engine records the original
+response in either case. Calendar callers derive full copy/repair agreement
+from their actual compiled menu. General stopped fresh-copy closure, initially
+changed candidate reuse and whole-policy utility comparison remain open.
 
 [ReactiveBindingUsableStep](../Vegas/Pending/ReactiveBindingUsableStep.lean)
 proves full-frame inclusion closure for matching fixed owner candidates,
@@ -2484,6 +2488,17 @@ vector. Rationality at prescribed sites and transport through the original
 varying source assessment sequence remain open. In particular, this result does
 not assume normalization is continuous at zero-probability source transcripts.
 
+[AsyncServiceInitializedDomination](../Vegas/Game/AsyncServiceInitializedDomination.lean)
+bounds every complete initialized history under the actual uniformly perturbed
+geometric pins and arbitrary free continuation. Relative to first-turn play of
+the same effective profile, its mass is at least
+`((1 - δ)(1 - ε))^(card Player * fuel)` times the original mass. Total variation
+loss therefore vanishes uniformly in the profile and free continuation. This
+supports varying original source approximants without assuming normalization
+continuity at unreachable source transcripts. It does not control rare-input
+posteriors. In particular, a common waiting probability can cancel from Bayes'
+rule, so its vanishing alone does not settle signaling or choose rational rates.
+
 [SourceServiceAliasEquilibrium](../Vegas/Game/SourceServiceAliasEquilibrium.lean)
 supplies the final normalization stage: an audited SE of the complete
 effective native menu lifts to its raw private-action aliases, with projected
@@ -2608,11 +2623,12 @@ the final equilibrium's supported play.
   a public miss and typed failure. No owner packet naming the event exists
   anywhere in the stopped network. Foreign raw policies are arbitrary.
   The strategic waiting comparison remains open.
-  [SourceServiceBindingTimingMixture](../Vegas/Game/SourceServiceBindingTimingMixture.lean)
+  [SourceServiceTimingMixture](../Vegas/Game/SourceServiceTimingMixture.lean)
   derives the original timing prior from actual untouched owner recall and
-  decomposes the actual completion-stopped binding law into real owner-only
-  turn-family runs. Typed output, all public/foreign traffic and the same
-  prefix parameter remain joint. A selected turn may be absent or lose
+  decomposes the whole completion-stopped strategic execution into real
+  owner-only turn-family runs. Private recall and all traffic stay joint;
+  binding and resolution consumers retain the same prefix parameter.
+  A selected turn may be absent or lose
   protection; finite-budget exhaustion remains represented. This supplies
   the operational mixture, not its strategic source-extension comparison.
   [SourceServiceBindingSelectedInput](../Vegas/Game/SourceServiceBindingSelectedInput.lean)
@@ -2648,6 +2664,14 @@ the final equilibrium's supported play.
   [ReactiveResolutionMiss](../Vegas/Pending/ReactiveResolutionMiss.lean) derives
   immutable typed publication failure from that marker on all initialized raw
   histories; watcher knowledge is not a premise.
+  [SourceServiceResolutionSelectedCompletionLaw](../Vegas/Game/SourceServiceResolutionSelectedCompletionLaw.lean)
+  joins the original timing prior to the actual resolution input and completion.
+  Protected FALSE/TRUE draws use their own full traffic kernels; closed hits and
+  absent selection give actual misses and typed failure.
+  [SourceServiceResolutionProtectedCompletion](../Vegas/Game/SourceServiceResolutionProtectedCompletion.lean)
+  derives acceptance from effective compiler-aligned disclosures through the
+  shared [physical completion](../Vegas/Game/SourceServiceProtectedDecisionCompletion.lean).
+  These operational laws do not establish waiting incentives.
   [SourceServiceSelectedResponse](../Vegas/Game/SourceServiceSelectedResponse.lean)
   proves the exact stopped execution law by replacing the actual silent reference
   response with the original selected input's canonical lottery. Its last recall

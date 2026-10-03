@@ -172,9 +172,10 @@ a canonical public packet with arbitrary hidden material; an actual signed
 noncanonical packet; or a protected inclusion/expiry suffix with public
 missed-binding evidence. The last case detects obligation failure from the
 ledger and deadline, not from absence in a partial packet sample. The
-[retained implementation coupling](../../Vegas/Pending/ReactiveBindingRetainedBlock.lean)
-covers the first case using its actual menu-restricted implementation and proves
-its off-path fallback unnecessary at that binding.
+[actual stopped-response coupling](../../Vegas/Pending/ReactiveBindingAuditStep.lean)
+covers the canonical case using its actual menu-restricted implementation.
+Menu coverage and the actual compiled upper bound derive the complete copying
+or repair memory update; the legal fallback is unnecessary on this branch.
 
 The [legal continuation theorem](../../Vegas/Pending/ReactiveBindingLegalContinuation.lean)
 realizes the private repair as one actual retained continuation against the

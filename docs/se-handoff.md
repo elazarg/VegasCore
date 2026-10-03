@@ -62,6 +62,14 @@ future private values changed by repair are outside the claim.
   first-turn play. Prescribed-site rationality and transport of the original
   varying source assessment sequence remain open; off-path normalization
   continuity is not assumed.
+- [AsyncServiceInitializedDomination](../Vegas/Game/AsyncServiceInitializedDomination.lean)
+  bounds the whole initialized history law of uniformly perturbed geometric
+  pins with arbitrary free continuation. Every first-turn history retains
+  at least `((1 - δ)(1 - ε))^(card Player * fuel)` of its mass, so total variation
+  loss vanishes uniformly over source profiles and free play. This supports
+  varying original source approximants without off-path normalization continuity.
+  Conditional rare-input beliefs and incentive-compatible waiting rates remain
+  separate obligations.
 - [SourceServiceRecordedDecisionCompletion](../Vegas/Game/SourceServiceRecordedDecisionCompletion.lean)
   gives acceptance of the exact original recorded packet and no public miss
   under the asynchronous contract. [SourceServiceRecordedBindingCompletion](../Vegas/Game/SourceServiceRecordedBindingCompletion.lean)
@@ -576,11 +584,11 @@ future private values changed by repair are outside the claim.
   Activation persistence and clock monotonicity keep the gate closed, so any
   timing lottery is silent until complete play ends the event. Foreign raw
   policies are arbitrary; waiting incentive comparisons remain open.
-- [SourceServiceBindingTimingMixture](../Vegas/Game/SourceServiceBindingTimingMixture.lean)
+- [SourceServiceTimingMixture](../Vegas/Game/SourceServiceTimingMixture.lean)
   derives the original finite timing prior from actual untouched recall and
-  decomposes the completion-stopped binding law into real owner-only turn
-  family runs, with typed output, full public/foreign traffic and the same
-  prefix parameter joint. Foreign raw policies remain unchanged. Absent
+  decomposes the whole completion-stopped strategic execution into real
+  owner-only turn-family runs. Private recall and all traffic stay joint;
+  binding and resolution consumers retain the same prefix parameter. Absent
   selected turns, lost protection and finite-budget exhaustion remain real
   outcomes; the selected-family strategic comparison remains separate.
 
@@ -665,6 +673,14 @@ future private values changed by repair are outside the claim.
   [ReactiveResolutionMiss](../Vegas/Pending/ReactiveResolutionMiss.lean) derives
   immutable typed publication failure from the actual marker on all initialized
   raw histories, independently of watcher evidence.
+- [SourceServiceResolutionSelectedCompletionLaw](../Vegas/Game/SourceServiceResolutionSelectedCompletionLaw.lean)
+  joins the original timing prior to the actual resolution input and completion.
+  Protected FALSE/TRUE draws use their own full traffic kernels; closed hits and
+  absent selection give actual misses and typed failure.
+  [SourceServiceResolutionProtectedCompletion](../Vegas/Game/SourceServiceResolutionProtectedCompletion.lean)
+  derives acceptance from effective compiler-aligned disclosures through
+  [SourceServiceProtectedDecisionCompletion](../Vegas/Game/SourceServiceProtectedDecisionCompletion.lean).
+  Waiting incentives remain open.
 - [SourceServiceSelectedResponse](../Vegas/Game/SourceServiceSelectedResponse.lean)
   proves the exact stopped execution law by replacing the actual silent
   reference response with the original selected input's canonical lottery.
@@ -692,13 +708,17 @@ future private values changed by repair are outside the claim.
   the literal family's selected closed-gate silence. These physical laws do not
   supply the rational free continuation or its conditional incentive comparisons.
 
-## Proof and build discipline
-
 [ReactiveBindingCopiedSubmission](../Vegas/Pending/ReactiveBindingCopiedSubmission.lean)
 preserves the full frame and actual raw candidate capability when a later fresh
 bare commitment is copied with its original material, including mistyped or
-absent material. This does not yet alter the retained implementation or prove
-reused-candidate closure and whole-policy utility domination.
+absent material. The retained implementation copies originals already admitted
+at the actual input, otherwise trying default repair and a legal fallback. One
+sampling engine records the original response in either case. Calendar callers
+derive full copy/repair agreement from their actual compiled menu. General
+stopped fresh-copy closure, initially changed candidate reuse and whole-policy
+utility domination remain open.
+
+## Proof and build discipline
 
 Read `AGENTS.md` and inspect the actual Git state before editing. Generic
 mathematics belongs in `GameTheoryExtensions`, generic execution in

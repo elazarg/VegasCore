@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceBindingSelectedInput
-import Vegas.Game.SourceServiceBindingTimingMixture
+import Vegas.Game.SourceServiceTimingMixture
 
 /-! # The original binding timing lottery stopped at its actual selected input
 
@@ -74,8 +74,9 @@ theorem sourceService_binding_selected_assembly
     ⟨.inr event, outputEq⟩
   let completed := fun final : app.Execution => event ∈ final.application.config.cut.completed
   let traffic := (runtime setup).bindingPublicTraffic leaks owner
-  rw [sourceService_binding_timing_mixture parameter scheduler players bound turns timing profile
-    owner follows event payload owned outputEq execution boundary horizon, PMF.map_bind]
+  rw [sourceService_timing_mixture scheduler players bound turns timing profile
+    owner follows event owned execution boundary horizon]
+  simp only [PMF.map_bind]
   apply bind_congr_on_support (timing event owner owned)
   intro slot _chosen
   let familyPlayers := Function.update players owner
@@ -86,7 +87,8 @@ theorem sourceService_binding_selected_assembly
     completed (fun _ done => Or.inl done) horizon execution
   have mapped := congrArg (fun law => law.map (fun final =>
     (parameter, output.get? final.application.config.store, traffic final))) ordered
-  rw [mapped, PMF.map_bind, PMF.map_bind]
+  rw [mapped]
+  simp only [PMF.map_bind]
   apply bind_congr_on_support
     (app.runUntilHorizon scheduler familyPlayers earlier horizon execution)
   intro next reached

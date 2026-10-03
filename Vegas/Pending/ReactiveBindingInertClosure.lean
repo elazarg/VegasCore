@@ -115,27 +115,19 @@ theorem retainedImplementation_resume_shadow
       subst actor
       simp only [ReactiveApplication.Implementation.resume, ↓reduceIte] at reached
       obtain ⟨chosen, chosenMember, rfl⟩ := PMF.support_map .. ▸ reached
-      change chosen ∈
-        (((implementation runtime leaks who reference (players who)).respond memory
-          (execution.recall who, execution.observe (runtime.reactiveApplication leaks) who)).map
-            _).support at chosenMember
-      obtain ⟨original, originalMember, chosenEq⟩ := PMF.support_map .. ▸ chosenMember
-      change chosen.2.shadow = memory.shadow
-      rw [← chosenEq]
-      change original.2.shadow = memory.shadow
-      rw [implementation_respond runtime leaks who reference (players who) memory
+      rw [retainedImplementation_respond runtime leaks menu who reference (players who) memory
         (execution.recall who) (execution.observe (runtime.reactiveApplication leaks) who)
-          started] at originalMember
-      obtain ⟨response, supported, rfl⟩ := PMF.support_map .. ▸ originalMember
-      have inert := noncommitment _ _ response supported
-      rcases response with ⟨transmission⟩
-      cases transmission with
-      | none => rfl
-      | some material =>
-          rcases material with ⟨⟨call, opening⟩, evidence⟩
-          cases call with
-          | commitment event candidate => exact (inert _ rfl event candidate rfl).elim
-          | opening | withhold | malformed => rfl
+          started] at chosenMember
+      obtain ⟨response, supported, rfl⟩ := PMF.support_map .. ▸ chosenMember
+      change (retainedResponse runtime leaks menu who memory
+        (execution.recall who, execution.observe (runtime.reactiveApplication leaks) who)
+          response).2 = memory.shadow
+      unfold retainedResponse
+      split
+      · exact congrArg Prod.snd (memory.copyResponse_noncommitment runtime leaks who _ response
+          (noncommitment _ _ response supported))
+      · exact congrArg Prod.snd (memory.repairResponse_noncommitment runtime leaks who _ response
+          (noncommitment _ _ response supported))
 
 end BindingMemory
 

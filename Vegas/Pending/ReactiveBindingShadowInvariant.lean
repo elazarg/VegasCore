@@ -86,6 +86,48 @@ variable [DecidableEq Player]
 
 namespace BindingMemory
 
+/-- Copying records candidates only, even when an arbitrary raw packet
+addresses a foreign or nonbinding event. It installs no completion override. -/
+theorem copyResponse_ownBindings (who : Player) (memory : BindingMemory runtime leaks)
+    (onlyBindings : memory.shadow.OwnBindings who)
+    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (response : (runtime.reactiveApplication leaks).Action) :
+    (memory.copyResponse runtime leaks who view response).2.OwnBindings who := by
+  rcases response with ⟨transmission⟩
+  cases transmission with
+  | none => exact onlyBindings
+  | some material =>
+      rcases material with ⟨⟨packet, opening⟩, request⟩
+      cases packet with
+      | commitment event candidate =>
+          rcases candidate with ⟨author, slot⟩
+          simp only [copyResponse]
+          split
+          · exact onlyBindings.rememberCandidate _ _
+          · exact onlyBindings
+      | opening | withhold | malformed => exact onlyBindings
+
+/-- Copying creates no completion override. Any actual completed-boundary
+invariant therefore survives even raw node-kind and candidate-alias responses. -/
+theorem copyResponse_completedAt (who : Player) (memory : BindingMemory runtime leaks)
+    (config : graph.Config) (past : memory.shadow.CompletedAt config)
+    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (response : (runtime.reactiveApplication leaks).Action) :
+    (memory.copyResponse runtime leaks who view response).2.CompletedAt config := by
+  rcases response with ⟨transmission⟩
+  cases transmission with
+  | none => exact past
+  | some material =>
+      rcases material with ⟨⟨packet, opening⟩, request⟩
+      cases packet with
+      | commitment event candidate =>
+          rcases candidate with ⟨author, slot⟩
+          simp only [copyResponse]
+          split
+          · exact past.rememberCandidate _ _
+          · exact past
+      | opening | withhold | malformed => exact past
+
 theorem repairResponse_ownBindings (who : Player) (memory : BindingMemory runtime leaks)
     (onlyBindings : memory.shadow.OwnBindings who)
     (view : (runtime.reactiveApplication leaks).PlayerView)

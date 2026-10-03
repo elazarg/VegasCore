@@ -112,7 +112,6 @@ the cited result in `Paper.lean` or to retire it together with its citation.
 | `Vegas.Pending.ReactiveBindingPosterior` | `research/se-runtime-assumptions.md` |
 | `Vegas.Pending.ReactiveBindingRequiredStep` | `research/se-runtime-assumptions.md` |
 | `Vegas.Pending.ReactiveBindingResources` | `research/se-pmf-interaction.md`, `research/se-runtime-assumptions.md` |
-| `Vegas.Pending.ReactiveBindingRetainedBlock` | `research/se-hidden-binding.md` |
 | `Vegas.Pending.ReactiveBindingService` | `ambient-communication.md`, `sequential-equilibrium-design.md` |
 | `Vegas.Pending.ReactiveBindingServiceRepair` | used by other modules |
 | `Vegas.Pending.ReactiveBindingStopped` | `research/se-hidden-binding.md` |

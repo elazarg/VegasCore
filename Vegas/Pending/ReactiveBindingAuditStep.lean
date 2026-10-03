@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ReactiveBindingRetainedBlock
+import Vegas.Pending.ReactiveBindingFrameLaw
+import Vegas.Pending.ReactiveBindingMenuRepair
+import Vegas.Pending.ReactiveBindingWindowLaw
 import Vegas.Pending.ReactiveServiceConformance
 import Interaction.ReactiveTrafficState
 
@@ -133,6 +135,10 @@ theorem binding_stopped_response_coupling
       (repaired.observe (runtime.reactiveApplication leaks) owner) ⊆
         menu.actions owner (repaired.recall owner)
           (repaired.observe (runtime.reactiveApplication leaks) owner))
+    (upper : menu.actions owner (repaired.recall owner)
+      (repaired.observe (runtime.reactiveApplication leaks) owner) ⊆
+        bounds.compiledActions runtime leaks owner (repaired.recall owner)
+          (repaired.observe (runtime.reactiveApplication leaks) owner))
     (available : ∀ response ∈ (players owner (original.recall owner)
       (original.observe (runtime.reactiveApplication leaks) owner)).support,
         response ∈ (bounds.menu runtime leaks).actions owner (original.recall owner)
@@ -160,22 +166,33 @@ theorem binding_stopped_response_coupling
       [(memory.shadow.inputView runtime leaks (repaired.observe app owner), response)]⟩ :
         BindingMemory runtime leaks))
   let adjusted (response : app.Action) :=
-    (if (proposed response).1 ∈ menu.actions owner (repaired.recall owner)
-        (repaired.observe app owner) then (proposed response).1
-      else (menu.nonempty owner (repaired.recall owner) (repaired.observe app owner)).choose,
-      (proposed response).2)
+    let changed := retainedResponse runtime leaks menu owner memory
+      (repaired.recall owner, repaired.observe app owner) response
+    (changed.1, (⟨changed.2, memory.responses ++
+      [(memory.shadow.inputView runtime leaks (repaired.observe app owner), response)]⟩ :
+        BindingMemory runtime leaks))
   let coupling := law.map fun response =>
     (original.respond app owner response, repaired.respond app owner (adjusted response).1,
       (adjusted response).2)
   have responseLaw :
       (retainedImplementation runtime leaks menu owner reference (players owner)).respond memory
         (repaired.recall owner, repaired.observe app owner) = law.map adjusted := by
-    change ((implementation runtime leaks owner reference (players owner)).respond memory
-      (repaired.recall owner, repaired.observe app owner)).map _ = _
-    rw [implementation_respond runtime leaks owner reference (players owner) memory
-      (repaired.recall owner) (repaired.observe app owner) started, frame.past, frame.observed,
-        PMF.map_comp]
-    simp only [law, adjusted, proposed, frame.observed, app, Function.comp_def]
+    rw [retainedImplementation_respond runtime leaks menu owner reference (players owner) memory
+      (repaired.recall owner) (repaired.observe app owner) started, frame.past, frame.observed]
+    simp only [law, adjusted]
+    rw [show memory.shadow.inputView runtime leaks (repaired.observe app owner) =
+      original.observe app owner from frame.observed]
+  have adjustedEq (response : app.Action)
+      (legal : (proposed response).1 ∈ menu.actions owner (repaired.recall owner)
+        (repaired.observe app owner))
+      (copyEq : response ∈ menu.actions owner (repaired.recall owner)
+          (repaired.observe app owner) →
+        memory.copyResponse runtime leaks owner (repaired.observe app owner) response =
+          memory.repairResponse runtime leaks owner (repaired.observe app owner) response) :
+      adjusted response = proposed response := by
+    dsimp only [adjusted, proposed]
+    rw [retainedResponse_eq_repairResponse runtime leaks menu owner memory
+      (repaired.recall owner, repaired.observe app owner) response legal copyEq]
   have replayLaw :
       app.silentPolicy (original.recall owner) (original.observe app owner) =
         app.silentPolicy (repaired.recall owner) (repaired.observe app owner) := rfl
@@ -219,8 +236,11 @@ theorem binding_stopped_response_coupling
         rw [replayLaw] at replay
         exact bounds.silent_compiled runtime leaks owner _ _ response replay
       right
-      dsimp only [adjusted]
-      rw [ite_eq_left legal]
+      dsimp only
+      rw [adjustedEq response legal (by
+        intro _
+        rcases app.silentPolicy_cases _ _ response replay with rfl
+        rfl)]
       dsimp only [proposed]
       rw [unchanged]
       refine ⟨frame.transport_response response ?_, ?_⟩
@@ -240,8 +260,12 @@ theorem binding_stopped_response_coupling
           rightTurn owned rightReady (first counted) serial actualSlot capacity default opening
           bounded originalFresh
       right
-      dsimp only [adjusted]
-      rw [ite_eq_left legal]
+      dsimp only
+      rw [adjustedEq _ legal (by
+        intro admitted
+        exact copyResponse_binding_eq_of_compiled runtime leaks bounds owner memory
+          (repaired.recall owner) (repaired.observe app owner) event payload outputEq codeEq node
+          rightTurn owned rightReady serial actualSlot opening originalFresh (upper admitted))]
       refine ⟨frame.binding_submission event payload outputEq codeEq node serial opening fresh
         ready, ?_⟩
       rw [app.respond_recall_length]
@@ -284,6 +308,13 @@ theorem binding_stopped_activation_coupling
         (activated.observe (runtime.reactiveApplication leaks) owner) ⊆
           menu.actions owner (activated.recall owner)
             (activated.observe (runtime.reactiveApplication leaks) owner))
+    (upper : ∀ selected ∈ (leaks owner original.network.pending).support,
+      let activated := repaired.sampledActivation (runtime.reactiveApplication leaks)
+        owner selected
+      menu.actions owner (activated.recall owner)
+        (activated.observe (runtime.reactiveApplication leaks) owner) ⊆
+          bounds.compiledActions runtime leaks owner (activated.recall owner)
+            (activated.observe (runtime.reactiveApplication leaks) owner))
     (available : ∀ selected ∈ (leaks owner original.network.pending).support,
       let activated := original.sampledActivation (runtime.reactiveApplication leaks)
         owner selected
@@ -313,7 +344,7 @@ theorem binding_stopped_activation_coupling
     (frame.activate owner selected).binding_stopped_response_coupling bounds menu players
       reference started leftRecall remaining event payload outputEq codeEq node
       fresh actualSlot capacity default turn ready first (serials.learn owner selected)
-      (coverage selected supported) (available selected supported)
+      (coverage selected supported) (upper selected supported) (available selected supported)
   let step := fun selected supported => (existsStep selected supported).choose
   refine ⟨sample.bindOnSupport step, ?_, ?_, ?_⟩
   · rw [map_bindOnSupport]

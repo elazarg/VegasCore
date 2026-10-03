@@ -163,22 +163,33 @@ theorem resolution_stopped_response_coupling
       [(memory.shadow.inputView runtime leaks (repaired.observe app owner), response)]⟩ :
         BindingMemory runtime leaks))
   let adjusted (response : app.Action) :=
-    (if (proposed response).1 ∈ menu.actions owner (repaired.recall owner)
-        (repaired.observe app owner) then (proposed response).1
-      else (menu.nonempty owner (repaired.recall owner) (repaired.observe app owner)).choose,
-      (proposed response).2)
+    let changed := retainedResponse runtime leaks menu owner memory
+      (repaired.recall owner, repaired.observe app owner) response
+    (changed.1, (⟨changed.2, memory.responses ++
+      [(memory.shadow.inputView runtime leaks (repaired.observe app owner), response)]⟩ :
+        BindingMemory runtime leaks))
   let coupling := law.map fun response =>
     (original.respond app owner response, repaired.respond app owner (adjusted response).1,
       (adjusted response).2)
   have responseLaw :
       (retainedImplementation runtime leaks menu owner reference (players owner)).respond memory
         (repaired.recall owner, repaired.observe app owner) = law.map adjusted := by
-    change ((implementation runtime leaks owner reference (players owner)).respond memory
-      (repaired.recall owner, repaired.observe app owner)).map _ = _
-    rw [implementation_respond runtime leaks owner reference (players owner) memory
-      (repaired.recall owner) (repaired.observe app owner) started, frame.past, frame.observed,
-        PMF.map_comp]
-    simp only [law, adjusted, proposed, frame.observed, app, Function.comp_def]
+    rw [retainedImplementation_respond runtime leaks menu owner reference (players owner) memory
+      (repaired.recall owner) (repaired.observe app owner) started, frame.past, frame.observed]
+    simp only [law, adjusted]
+    rw [show memory.shadow.inputView runtime leaks (repaired.observe app owner) =
+      original.observe app owner from frame.observed]
+  have adjustedEq (response : app.Action)
+      (legal : (proposed response).1 ∈ menu.actions owner (repaired.recall owner)
+        (repaired.observe app owner))
+      (copyEq : response ∈ menu.actions owner (repaired.recall owner)
+          (repaired.observe app owner) →
+        memory.copyResponse runtime leaks owner (repaired.observe app owner) response =
+          memory.repairResponse runtime leaks owner (repaired.observe app owner) response) :
+      adjusted response = proposed response := by
+    dsimp only [adjusted, proposed]
+    rw [retainedResponse_eq_repairResponse runtime leaks menu owner memory
+      (repaired.recall owner, repaired.observe app owner) response legal copyEq]
   have replayLaw :
       app.silentPolicy (original.recall owner) (original.observe app owner) =
         app.silentPolicy (repaired.recall owner) (repaired.observe app owner) := rfl
@@ -213,8 +224,11 @@ theorem resolution_stopped_response_coupling
         rw [replayLaw] at replay
         exact bounds.silent_compiled runtime leaks owner _ _ response replay
       right
-      dsimp only [adjusted]
-      rw [ite_eq_left legal]
+      dsimp only
+      rw [adjustedEq response legal (by
+        intro _
+        rcases app.silentPolicy_cases _ _ response replay with rfl
+        rfl)]
       dsimp only [proposed]
       rw [unchanged]
       refine ⟨frame.transport_response response ?_, ?_, rfl⟩
@@ -240,8 +254,11 @@ theorem resolution_stopped_response_coupling
           codeEq node turn owned
         rwa [actual] at firstResponse
       right
-      dsimp only [adjusted]
-      rw [ite_eq_left legal]
+      dsimp only
+      rw [adjustedEq response legal (by
+        intro _
+        rw [actual]
+        rfl)]
       dsimp only [proposed]
       rw [unchanged]
       refine ⟨?_, ?_, rfl⟩
@@ -269,8 +286,17 @@ theorem resolution_stopped_response_coupling
           rightBinding event payload binding checks outputEq codeEq node turn owned ready timely
             value stored resolved response same (available response selected) firstResponse
       right
-      dsimp only [adjusted]
-      rw [ite_eq_left legal]
+      dsimp only
+      rw [adjustedEq response legal (by
+        intro _
+        obtain ⟨_, candidate, associated, _, candidateOwned, fixed, _⟩ :=
+          frame.successful_opening leftBinding rightBinding binding value stored
+        have actual := runtime.serviceDecision_successful_opening leaks original leftRecall owner
+          event payload binding checks outputEq codeEq node candidate value associated
+            candidateOwned fixed resolved
+        rw [same, actual]
+        simp only [copyResponse, repairResponse, disclosureSubmission,
+          WitnessedSubmission.normalizeReactive, Submission.normalizeReactive_none])]
       dsimp only [proposed]
       rw [unchanged]
       refine ⟨?_, ?_, rfl⟩

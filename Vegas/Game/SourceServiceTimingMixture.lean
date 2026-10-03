@@ -1,16 +1,16 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceServiceBindingSelection
 import Vegas.Game.SourceServiceFirstTurnMixture
 
-/-! # The original timing lottery through an actual binding phase
+/-! # The original timing lottery through an actual strategic phase
 
 At an untouched completion boundary, every earlier owner input was outside
 the current event. All current timing families therefore agreed there, so
 their behavioral realization still has the original timing prior. Until the
 event completes, the actual owner policy is that same timing mixture at its
-sole ready event. The finite mixture below retains the actual typed endpoint,
-the complete public and foreign traffic, and the same fixed prefix parameter.
+sole ready event. The finite mixture below retains the whole completed
+physical execution, including private recall and every public and foreign
+traffic component.
 
 Each component is an actual run of the selected turn family. A selected turn
 can be absent or lose protection; no source-extension admission, acceptance
@@ -28,36 +28,25 @@ variable {Player : Type} [DecidableEq Player]
   {setup : Setup (Player := Player) (L := L)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
-/-- From the original untouched boundary the stopped physical law is the
-original finite timing mixture, retaining typed output and joint traffic. -/
-theorem sourceService_binding_timing_mixture
-    {Parameter : Type} (parameter : Parameter)
+/-- At the original untouched boundary, the whole stopped execution law is
+exactly the original finite timing prior over actual selected-family runs. -/
+theorem sourceService_timing_mixture
     (scheduler : (application setup leaks).Scheduler)
     (players : Player → (application setup leaks).Policy)
     (bound : (graph setup).EventId → Nat) (turns : Nat) (timing : TurnTiming setup turns)
     (profile : BehavioralProfile setup.program) (owner : Player)
     (follows : players owner = sourceServiceTurnPolicy setup leaks bound turns timing profile owner)
-    (event : (graph setup).EventId) (payload : L.Ty)
-    (owned : (graph setup).actor? event = some owner)
-    (outputEq : (graph setup).outputLayout event = .binding owner payload)
+    (event : (graph setup).EventId) (owned : (graph setup).actor? event = some owner)
     (execution : (application setup leaks).Execution)
     (boundary : CompletionBoundary setup leaks scheduler players event.val execution)
     (horizon : Nat) :
-    (((application setup leaks).runUntilHorizon scheduler players
-      (fun final => event ∈ final.application.config.cut.completed) horizon execution).map
-      fun final => (parameter,
-        (⟨.inr event, outputEq⟩ : EventGraph.FieldRef (graph setup).layout
-          (.binding owner payload)).get? final.application.config.store,
-        (runtime setup).bindingPublicTraffic leaks owner final)) =
-    ((timing event owner owned).bind fun slot =>
-      ((application setup leaks).runUntilHorizon scheduler
-        (Function.update players owner
-          (sourceServiceTurnFamily setup leaks bound profile owner event turns slot))
-        (fun final => event ∈ final.application.config.cut.completed) horizon execution).map
-          fun final => (parameter,
-            (⟨.inr event, outputEq⟩ : EventGraph.FieldRef (graph setup).layout
-              (.binding owner payload)).get? final.application.config.store,
-            (runtime setup).bindingPublicTraffic leaks owner final)) := by
+    (application setup leaks).runUntilHorizon scheduler players
+        (fun final => event ∈ final.application.config.cut.completed) horizon execution =
+      (timing event owner owned).bind fun slot =>
+        (application setup leaks).runUntilHorizon scheduler
+          (Function.update players owner
+            (sourceServiceTurnFamily setup leaks bound profile owner event turns slot))
+          (fun final => event ∈ final.application.config.cut.completed) horizon execution := by
   let app := application setup leaks
   let stop := fun final : app.Execution => event ∈ final.application.config.cut.completed
   let family := sourceServiceTurnFamily setup leaks bound profile owner event turns
@@ -123,11 +112,6 @@ theorem sourceService_binding_timing_mixture
     rw [congruent, ← app.runUntil_policyMixture scheduler (timing event owner owned) family owner
       players stop _ execution]
     rw [prior]
-  have mapped := congrArg (fun law => law.map (fun final =>
-    (parameter,
-      (⟨.inr event, outputEq⟩ : EventGraph.FieldRef (graph setup).layout
-        (.binding owner payload)).get? final.application.config.store,
-      (runtime setup).bindingPublicTraffic leaks owner final))) law
-  simpa only [PMF.map_bind] using mapped
+  exact law
 
 end Vegas
