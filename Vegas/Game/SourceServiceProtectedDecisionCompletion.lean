@@ -282,4 +282,161 @@ theorem sourceCompatibleInfo_immediate_protected_completion
       (stoppedLaw ▸ reached)
   exact ⟨action, rfl, effectiveAction, actual⟩
 
+/-- The actual immediate response and stopped continuation have the compiled
+strategic successor law. Each action retains its own real full-traffic channel;
+no equality between the FALSE and TRUE resolution channels is required. -/
+theorem sourceCompatibleInfo_immediate_protected_law
+    (profile : BehavioralProfile service.setup.program)
+    (effective : ∀ who, (profile who).EffectiveDisclosures service.setup.program []
+      (Revelations.initial service.setup.context))
+    {remaining : Nat} (execution : (app).Execution) (who : Player)
+    (trace : ((menu).protocol (initialLaw service.setup) service.horizon
+      service.scheduler).Trace (some ⟨remaining, some who, execution⟩))
+    (compatible : service.sourceCompatibleInfo who
+      (some (execution.recall who, execution.observe (app) who)))
+    (event : (graph service.setup).EventId)
+    (turn : execution.application.publicView.ownTurn? who = some event)
+    (unrecorded : (runtime service.setup).eventRecorded service.leaks
+      (execution.recall who) event = false)
+    (players : Player → (app).Policy)
+    (follows : players who = sourceServiceImmediatePolicy service.setup service.leaks
+      service.bound profile who) :
+    let ready := (execution.application.publicView_eventReady event).mp
+      (PublicView.ownTurn?_spec _ who event turn).1
+    let decided := (runtime service.setup).canonicalServiceDecision service.leaks who
+      (execution.recall who) (execution.observe (app) who) event
+    let continued := fun response => (app).runUntilHorizon service.scheduler players
+      (fun final => event ∈ final.application.config.cut.completed) service.horizon
+      (execution.respond (app) who response)
+    let actual := (sourceServiceImmediatePolicy service.setup service.leaks service.bound
+      profile who (execution.recall who) (execution.observe (app) who)).bind continued
+    let traffic := (runtime service.setup).bindingTraffic service.leaks who
+    ∃ (source : ProtocolState service.setup.program)
+        (law : PMF ((graph service.setup).Action event)),
+      sourceServicePrefix? service.setup event.val execution.application.config = some source ∧
+      (ProtocolState.behavioralStateStep service.setup.program profile source).map some =
+        (law.bind (fun action => execution.application.config.step event ready action)).map
+          (sourceServicePrefix? service.setup (event.val + 1)) ∧
+      sourceServiceImmediatePolicy service.setup service.leaks service.bound profile who
+          (execution.recall who) (execution.observe (app) who) = law.map decided ∧
+      (∀ action ∈ law.support, EffectiveAction execution.application.config event action) ∧
+      actual.map (fun final => final.application.config) =
+        law.bind (fun action => execution.application.config.step event ready action) ∧
+      (∀ final ∈ actual.support,
+        event ∈ final.application.config.cut.completed ∧
+        ((who, execution.network.nextSerial who), true) ∈ final.receipts ∧
+        event ∉ final.application.missedEvents) ∧
+      actual.map (fun final => (final.application.config, traffic final)) =
+        law.bind (fun action =>
+          (execution.application.config.step event ready action).bind fun next =>
+            ((continued (decided action)).map traffic).map fun read => (next, read)) := by
+  dsimp only
+  let ready := (execution.application.publicView_eventReady event).mp
+    (PublicView.ownTurn?_spec _ who event turn).1
+  let decided := (runtime service.setup).canonicalServiceDecision service.leaks who
+    (execution.recall who) (execution.observe (app) who) event
+  let continued := fun response => (app).runUntilHorizon service.scheduler players
+    (fun final => event ∈ final.application.config.cut.completed) service.horizon
+    (execution.respond (app) who response)
+  let actual := (sourceServiceImmediatePolicy service.setup service.leaks service.bound
+    profile who (execution.recall who) (execution.observe (app) who)).bind continued
+  let traffic := (runtime service.setup).bindingTraffic service.leaks who
+  have rawTrace := (menu).toRawTrace (initialLaw service.setup) service.horizon service.scheduler
+    trace
+  obtain ⟨clear, atTurn, slots, _calls, _conform, _once, _good⟩ :=
+    service.sourceCompatibleInfo_raw_prefixFacts ⟨remaining, some who, execution⟩ rawTrace who
+      compatible
+  have owned := (PublicView.ownTurn?_spec _ who event turn).2
+  have fits := (runtime service.setup).serviceRisk_clear_protected_opportunity service.leaks
+    service.bound who (execution.recall who) (execution.observe (app) who) event rfl turn
+      unrecorded clear
+  obtain ⟨residual⟩ := menu_ready_sourceResidual service.setup service.leaks profile (menu)
+    service.horizon service.scheduler trace ⟨remaining, some who, execution⟩ rfl event ready
+  obtain ⟨law, prefixLaw, canonical, operational⟩ := SourceResidual.head_step service.leaks
+    residual event rfl ready
+  have decisions : sourceServiceImmediatePolicy service.setup service.leaks service.bound
+      profile who (execution.recall who) (execution.observe (app) who) = law.map decided := by
+    rw [sourceServiceImmediatePolicy_at_event clear turn,
+      sourceServiceCanonicalOpportunity_protected service.bound profile who event
+        (execution.recall who) (execution.observe (app) who) unrecorded fits]
+    exact canonical who owned execution rfl
+  have endpoint (action : (graph service.setup).Action event) (selected : action ∈ law.support)
+      (final : (app).Execution) (reached : final ∈ (continued (decided action)).support) :
+      event ∈ final.application.config.cut.completed ∧
+      ((who, execution.network.nextSerial who), true) ∈ final.receipts ∧
+      event ∉ final.application.missedEvents ∧
+      final.application.config ∈ (execution.application.config.step event ready action).support :=
+      by
+    have chosen : decided action ∈
+        (sourceServiceImmediatePolicy service.setup service.leaks service.bound profile who
+          (execution.recall who) (execution.observe (app) who)).support := by
+      rw [decisions, PMF.support_map]
+      exact ⟨action, selected, rfl⟩
+    obtain ⟨_material, _responseEq, _freshCall, recorded⟩ := sourceServiceImmediatePolicy_call
+      rawTrace atTurn slots clear event turn unrecorded (decided action) chosen
+    have afterReady : (execution.respond (app) who (decided action)).application.config.cut.Ready
+        event := by
+      rw [((runtime service.setup).reactive_respond_application service.leaks execution who
+        (decided action)).1]
+      exact ready
+    have stoppedLaw : continued (decided action) =
+        (app).runUntilHorizon service.scheduler (Function.update players who (app).silentPolicy)
+          (fun final => event ∈ final.application.config.cut.completed) service.horizon
+          (execution.respond (app) who (decided action)) := by
+      unfold continued ReactiveApplication.runUntilHorizon
+      apply sourceServicePolicy_runUntil_owner_silent service.setup service.leaks service.scheduler
+        players who _ _ event afterReady recorded
+      intro current currentReady currentRecorded
+      rw [follows]
+      exact service.immediate_input_of_recorded profile current who event currentReady owned
+        currentRecorded
+    exact sourceServiceCanonicalDecision_protected_completion service.contract who execution
+      rawTrace event owned ready unrecorded fits action (operational effective action selected)
+      (Function.update players who (app).silentPolicy) (Function.update_self ..) final
+        (stoppedLaw ▸ reached)
+  have fixed (action : (graph service.setup).Action event) (selected : action ∈ law.support) :
+      ∃ next : (graph service.setup).Config,
+        execution.application.config.step event ready action = PMF.pure next ∧
+        ∀ final ∈ (continued (decided action)).support, final.application.config = next := by
+    obtain ⟨reference, reached⟩ := (continued (decided action)).support_nonempty
+    have supported := (endpoint action selected reference reached).2.2.2
+    have step := execution.application.config.step_eq_pure_of_actor event ready action who owned
+      reference.application.config supported
+    refine ⟨reference.application.config, step, ?_⟩
+    intro final reached
+    have supported := (endpoint action selected final reached).2.2.2
+    rwa [step, PMF.mem_support_pure_iff] at supported
+  refine ⟨residual.lift (ProtocolState.entry residual.program residual.source), law,
+    residual.decode, prefixLaw, decisions, operational effective, ?_, ?_, ?_⟩
+  · change (actual.map fun final => final.application.config) = _
+    dsimp only [actual]
+    rw [decisions, PMF.bind_map, PMF.map_bind]
+    apply bind_congr_on_support law
+    intro action selected
+    obtain ⟨next, step, same⟩ := fixed action selected
+    rw [step]
+    change (continued (decided action)).map (fun final => final.application.config) = PMF.pure next
+    calc
+      _ = (continued (decided action)).map (fun _ => next) := map_congr_on_support _ same
+      _ = _ := PMF.map_const _ _
+  · intro final reached
+    change final ∈ actual.support at reached
+    dsimp only [actual] at reached
+    obtain ⟨response, chosen, continued⟩ :=
+      Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+    obtain ⟨_action, _responseEq, _operational, completed, receipt, noMiss, _step⟩ :=
+      service.sourceCompatibleInfo_immediate_protected_completion profile effective execution who
+        trace compatible event turn unrecorded response chosen players follows final continued
+    exact ⟨completed, receipt, noMiss⟩
+  · change (actual.map fun final => (final.application.config, traffic final)) = _
+    dsimp only [actual]
+    rw [decisions, PMF.bind_map, PMF.map_bind]
+    apply bind_congr_on_support law
+    intro action selected
+    obtain ⟨next, step, same⟩ := fixed action selected
+    rw [step, PMF.pure_bind, PMF.map_comp]
+    apply map_congr_on_support _
+    intro final reached
+    exact congrArg (fun config => (config, traffic final)) (same final reached)
+
 end Vegas.AsyncServiceSpec

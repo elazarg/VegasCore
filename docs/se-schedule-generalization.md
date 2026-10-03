@@ -2187,6 +2187,15 @@ histories; the repaired binding memory is valid at the resulting completed cut.
 Transport through later arbitrary responses and the whole-policy payoff
 comparison remain open. Mistyped certificates can change future capability,
 so their literal availability is not equated with the typed default's.
+[SourceServiceUnclassifiedTransport](../Vegas/Game/SourceServiceUnclassifiedTransport.lean)
+derives preservation of the certificate actually requested by each uncharged,
+unrecorded effective original response. Successful typed binding provenance
+and the same repair frame justify a valid opening certificate; effective bare
+commitments and withholding request none. The same response is then effective
+at the repaired input and emits the same envelope with the same resulting
+network. Charged and recorded responses remain separate exits. This local
+transport supplies neither an unconditional future frame nor a whole-policy
+utility comparison.
 
 [SourceServiceSiteKind](../Vegas/Game/SourceServiceSiteKind.lean) derives the
 actual local input and either a publicly completed cut or a ready event with
@@ -2729,8 +2738,11 @@ the selected typed graph successor under arbitrary foreign raw continuation.
 Compatibility supplies the actual slot, fresh-call and protected-window resources;
 no original source-supported history or source-posterior premise is added.
 The recorded immediate policy and turn-counted policies use the same general
-owner-silent completion-stopping proof. Conditional source beliefs and utility
-comparisons remain separate.
+owner-silent completion-stopping proof. The actual compiled action lottery gives
+the exact stopped typed-configuration marginal and the real effective source
+head step. Its joint full-traffic law retains each action's actual stopped
+channel; TRUE and FALSE resolution channels are not equated. Conditional source
+beliefs and utility comparisons remain separate.
 [SourceServiceCompatibleCollection](../Vegas/Game/SourceServiceCompatibleCollection.lean)
 derives the backend's collection bound for a classified forbidden packet or
 repeated submission at compatible information in any response menu. The
@@ -2750,9 +2762,19 @@ packets or recorded repetitions. The producer retains authentic partial sampling
 its new conclusion requires alignment with the actual backend and configured
 observation/delivery product, final-evidence coverage, nonnegative delivery rates
 and a positive focal collection bound. This uses the existing one-time deposit.
-The completion built from the varying original source sequence needs a separate
-limit argument for this comparison. Uncharged unusable choices, other unfinished
-prescribed comparisons and SE preservation remain open.
+[SourceServiceCompatiblePinValue](../Vegas/Game/SourceServiceCompatiblePinValue.lean)
+supplies the comparison for the varying original source sequence. Its real
+uniform/WAIT/immediate pin equation and the returned native convergence force
+the immediate laws to converge at compatible sites. Compactness over genuine
+own decision sites supplies one limiting whole comparator, whose agreement at
+compatible sites and the actual free-site comparisons bound its value by the
+returned assessment. Actual authentic zero charge and continuation continuity
+give that assessment the finite base-payoff minimum. The shared collection
+bound places a classified forbidden packet or recorded repetition below the
+same minimum, so both actual completion producers rule out those pure choices
+under the explicit backend conditions. No global normalized source-policy
+limit or source-posterior equation is supplied. Uncharged unusable choices,
+other unfinished prescribed comparisons and SE preservation remain open.
 
 [AsyncServiceCompatibleRecall](../Vegas/Game/AsyncServiceCompatibleRecall.lean)
 derives source compatibility of every earlier own recalled decision at a
@@ -2767,7 +2789,9 @@ assessment sequence, with one common strategy/belief subsequence and consistent
 limit. Free sites are optimal against every whole continuation, initialized
 support visits only source-compatible sites, and its joint full typed outcome
 and realized sampled settlement law equal
-the original source strategy's law. WAIT rates may depend on actual information
+the original source strategy's law. The same returned assessment bounds
+classified forbidden packets and recorded repetitions under actual backend
+coverage and matching observation/delivery deposit parameters. WAIT rates may depend on actual information
 and have a common vanishing upper bound at compatible sites. Actual normalized
 pin limits are retained at off-path inputs. Source-relative conditional beliefs,
 rationality at unfinished prescribed sites and selection of suitable waiting

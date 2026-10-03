@@ -87,6 +87,123 @@ theorem unclassifiedSubmission_opportunity
 
 variable [Fintype Player]
 
+omit [Fintype Player] in
+/-- Public packet complements at an actual ready timely resolution establish
+conformance. The signed certificate, token and association are checked rather
+than supplied as a fresh-envelope premise. -/
+theorem unclassifiedResolutionSubmission_conforms
+    {horizon remaining : Nat} {scheduler : (application setup leaks).Scheduler}
+    (execution : (application setup leaks).Execution) (who : Player)
+    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨remaining, some who, execution⟩))
+    (event : (graph setup).EventId) (payload : L.Ty)
+    (binding : FieldRef (graph setup).layout (.binding who payload))
+    (checks : List (GuardCheck (graph setup).layout payload))
+    (outputEq : (graph setup).outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .resolve who payload binding checks)
+    (node : nodeView (graph setup) event = .resolve who payload binding checks outputEq codeEq)
+    (turn : execution.application.publicView.ownTurn? who = some event)
+    (ready : execution.application.config.cut.Ready event)
+    (timely : execution.application.publicView.WithinDeadline (runtime setup) event)
+    (material : (application setup leaks).Submission)
+    (named : material.call.packet.event? (graph setup) = some event)
+    (notPacket : ¬ auditableServiceResponse setup leaks who (execution.recall who)
+      (execution.observe (application setup leaks) who) ⟨some material⟩) :
+    (runtime setup).freshServiceEnvelope execution.application.publicView
+      ⟨(who, execution.network.nextSerial who), (application setup leaks).packet
+        ((application setup leaks).submit execution.application who material) who
+          (execution.network.known who) material⟩ := by
+  classical
+  let app := application setup leaks
+  let message : Message Player (WitnessedPacket (graph setup)) :=
+    ⟨(who, execution.network.nextSerial who), app.packet
+      (app.submit execution.application who material) who
+        (execution.network.known who) material⟩
+  have notAuditable : ¬ AuditableServicePacket setup execution.application.publicView who
+      message := by
+    intro classified
+    apply notPacket
+    refine ⟨material, rfl, ?_⟩
+    rw [localServiceEnvelope_actual setup leaks trace who material]
+    exact classified
+  have content : ¬ SignedContentBreach message := fun bad => notAuditable (Or.inl bad)
+  have compatible : message.payload.call.MatchesNode := by
+    by_contra incompatible
+    exact notAuditable (Or.inr (Or.inr (Or.inl incompatible)))
+  have token : message.payload.token = some ⟨event⟩ := by
+    exact (runtime setup).reactiveApplication_packet_token leaks execution.application who
+      (execution.network.known who) material |>.trans
+        (execution.application.publicView_tokenFor_of_ready material.call.packet event
+          named ready)
+  have permitted : (runtime setup).freshServiceEnvelope execution.application.publicView
+      message := by
+    have packetNamed : message.payload.call.event? (graph setup) = some event := named
+    cases called : message.payload.call with
+    | malformed raw =>
+        rw [called] at packetNamed
+        cases packetNamed
+    | commitment addressed candidate =>
+        rw [called] at packetNamed
+        have addressedEq : addressed = event := Option.some.inj packetNamed
+        subst addressed
+        simp only [Payload.MatchesNode, called, node] at compatible
+    | withhold addressed =>
+        rw [called] at packetNamed
+        have addressedEq : addressed = event := Option.some.inj packetNamed
+        subst addressed
+        have empty : message.payload.evidence = none := by
+          by_contra present
+          exact content (Or.inr (Or.inl ⟨event, called, present⟩))
+        simp only [freshServiceEnvelope, called, node]
+        exact ⟨(execution.application.publicView_eventReady event).mpr ready,
+          timely, empty, token, rfl⟩
+    | opening addressed candidate raw =>
+        rw [called] at packetNamed
+        have addressedEq : addressed = event := Option.some.inj packetNamed
+        subst addressed
+        have certified : certifiedOpening message.payload = true := by
+          by_contra notCertified
+          have uncertified := Bool.eq_false_iff.mpr notCertified
+          exact content (Or.inr (Or.inr (Or.inr
+            ⟨event, candidate, raw, called, uncertified⟩)))
+        have publicChecks : ¬ (execution.application.publicView.openingGuardsAccepted
+            message.payload = false ∨ candidate.1 ≠ who ∨
+              execution.application.publicView.accepted binding.field ≠ some candidate) :=
+          by
+            intro bad
+            apply notAuditable
+            refine Or.inr (Or.inr (Or.inr (Or.inr ⟨event, turn,
+              Or.inr ⟨candidate, raw, called, ?_⟩⟩)))
+            simpa only [node] using bad
+        have guarded : execution.application.publicView.openingGuardsAccepted
+            message.payload = true := by
+          by_contra rejected
+          exact publicChecks (Or.inl (Bool.eq_false_iff.mpr rejected))
+        have handleOwner : candidate.1 = who := by
+          by_contra foreign
+          exact publicChecks (Or.inr (Or.inl foreign))
+        have associated : execution.application.publicView.accepted binding.field =
+            some candidate := by
+          by_contra absent
+          exact publicChecks (Or.inr (Or.inr absent))
+        have rawType : raw.ty = payload := by
+          have guards := guarded
+          simp only [PublicView.openingGuardsAccepted, called, node] at guards
+          cases typed : raw.as? payload with
+          | none => simp only [typed, Option.any_none, Bool.false_eq_true] at guards
+          | some value =>
+              rcases raw with ⟨kind, input⟩
+              unfold Raw.as? at typed
+              split at typed
+              · assumption
+              · cases typed
+        simp only [freshServiceEnvelope, called, node]
+        exact ⟨(execution.application.publicView_eventReady event).mpr ready,
+          timely, certified, guarded, rfl, handleOwner, associated, rawType,
+          token⟩
+  exact permitted
+
 /-- At an actual ready resolution, an effective response outside the packet
 and recalled-duplicate classes is retained. The conformance premise is derived
 from public classifier complements and legal trace facts rather than assumed. -/
@@ -131,92 +248,9 @@ theorem unclassifiedResolution_retained
               notPacket notRecorded
           have same : other = event := Option.some.inj (selected.symm.trans turn)
           subst other
-          let message : Message Player (WitnessedPacket (graph setup)) :=
-            ⟨(who, execution.network.nextSerial who), app.packet
-              (app.submit execution.application who material) who
-                (execution.network.known who) material⟩
-          have notAuditable : ¬ AuditableServicePacket setup execution.application.publicView who
-              message := by
-            intro classified
-            apply notPacket
-            refine ⟨material, rfl, ?_⟩
-            rw [localServiceEnvelope_actual setup leaks rawTrace who material]
-            exact classified
-          have content : ¬ SignedContentBreach message := fun bad => notAuditable (Or.inl bad)
-          have compatible : message.payload.call.MatchesNode := by
-            by_contra incompatible
-            exact notAuditable (Or.inr (Or.inr (Or.inl incompatible)))
-          have token : message.payload.token = some ⟨event⟩ := by
-            exact (runtime setup).reactiveApplication_packet_token leaks execution.application who
-              (execution.network.known who) material |>.trans
-                (execution.application.publicView_tokenFor_of_ready material.call.packet event
-                  named ready)
-          have permitted : (runtime setup).freshServiceEnvelope execution.application.publicView
-              message := by
-            have packetNamed : message.payload.call.event? (graph setup) = some event := named
-            cases called : message.payload.call with
-            | malformed raw =>
-                rw [called] at packetNamed
-                cases packetNamed
-            | commitment addressed candidate =>
-                rw [called] at packetNamed
-                have addressedEq : addressed = event := Option.some.inj packetNamed
-                subst addressed
-                simp only [Payload.MatchesNode, called, node] at compatible
-            | withhold addressed =>
-                rw [called] at packetNamed
-                have addressedEq : addressed = event := Option.some.inj packetNamed
-                subst addressed
-                have empty : message.payload.evidence = none := by
-                  by_contra present
-                  exact content (Or.inr (Or.inl ⟨event, called, present⟩))
-                simp only [freshServiceEnvelope, called, node]
-                exact ⟨(execution.application.publicView_eventReady event).mpr ready,
-                  fits.withinDeadline, empty, token, rfl⟩
-            | opening addressed candidate raw =>
-                rw [called] at packetNamed
-                have addressedEq : addressed = event := Option.some.inj packetNamed
-                subst addressed
-                have certified : certifiedOpening message.payload = true := by
-                  by_contra notCertified
-                  have uncertified := Bool.eq_false_iff.mpr notCertified
-                  exact content (Or.inr (Or.inr (Or.inr
-                    ⟨event, candidate, raw, called, uncertified⟩)))
-                have publicChecks : ¬ (execution.application.publicView.openingGuardsAccepted
-                    message.payload = false ∨ candidate.1 ≠ who ∨
-                      execution.application.publicView.accepted binding.field ≠ some candidate) :=
-                  by
-                    intro bad
-                    apply notAuditable
-                    refine Or.inr (Or.inr (Or.inr (Or.inr ⟨event, turn,
-                      Or.inr ⟨candidate, raw, called, ?_⟩⟩)))
-                    simpa only [node] using bad
-                have guarded : execution.application.publicView.openingGuardsAccepted
-                    message.payload = true := by
-                  by_contra rejected
-                  exact publicChecks (Or.inl (Bool.eq_false_iff.mpr rejected))
-                have handleOwner : candidate.1 = who := by
-                  by_contra foreign
-                  exact publicChecks (Or.inr (Or.inl foreign))
-                have associated : execution.application.publicView.accepted binding.field =
-                    some candidate := by
-                  by_contra absent
-                  exact publicChecks (Or.inr (Or.inr absent))
-                have rawType : raw.ty = payload := by
-                  have guards := guarded
-                  simp only [PublicView.openingGuardsAccepted, called, node] at guards
-                  cases typed : raw.as? payload with
-                  | none => simp only [typed, Option.any_none, Bool.false_eq_true] at guards
-                  | some value =>
-                      rcases raw with ⟨kind, input⟩
-                      unfold Raw.as? at typed
-                      split at typed
-                      · assumption
-                      · cases typed
-                simp only [freshServiceEnvelope, called, node]
-                exact ⟨(execution.application.publicView_eventReady event).mpr ready,
-                  fits.withinDeadline, certified, guarded, rfl, handleOwner, associated, rawType,
-                  token⟩
+          have permitted := unclassifiedResolutionSubmission_conforms execution who rawTrace
+            event payload binding checks outputEq codeEq node turn ready fits.withinDeadline
+              material named notPacket
           have decided := (runtime setup).service_resolution_response leaks bounds execution who
             facts.evidence facts.binding facts.inputs event payload binding checks outputEq codeEq
               node material named available permitted

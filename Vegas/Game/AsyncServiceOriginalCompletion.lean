@@ -3,6 +3,8 @@
 import Vegas.Game.AsyncServiceInformationWaitDomination
 import Vegas.Game.SourceServiceCompletedRationality
 import Vegas.Game.SourceServiceFreeRationality
+import Vegas.Game.SourceServiceCompatiblePinValue
+import Vegas.Game.SourceServiceCompatibleChargedComparison
 import Vegas.Game.SourceContinuation
 import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
 
@@ -17,8 +19,9 @@ original source joint law in that limit without assuming global continuity of
 disclosure normalization.
 
 The result gives consistency, whole-policy rational free sites, rational
-completed compatible sites with nonnegative deposits, and the actual initialized
-typed outcome and sampled settlement law. Prescribed-site comparisons and
+completed compatible sites with nonnegative deposits, classified charged choice
+comparisons under actual backend coverage, and the actual initialized
+typed outcome and sampled settlement law. Uncharged prescribed-site comparisons and
 conditional escape relative to rare observations remain separate obligations.
 The uniform maximum bound controls only initialized loss; it does not assert
 that the information-dependent waiting rates enforce those comparisons.
@@ -97,8 +100,9 @@ open Classical in
 /-- Actual original source assessments admit one consistent native completion
 in the full effective game with their real normalized pin limits.
 Free information sites are optimal against whole-policy deviations; completed
-compatible sites under nonnegative deposits are rational; initialized typed
-outcomes and sampled payoffs agree exactly. -/
+compatible sites under nonnegative deposits are rational; actual backend coverage
+bounds classified charged pure choices; initialized typed outcomes and sampled
+payoffs agree exactly. -/
 theorem exists_consistent_original_sequence_completion
     (source : (sourceModel).BehavioralAssessment)
     (sourceSequence : Nat → (sourceModel).BehavioralAssessment)
@@ -172,6 +176,22 @@ theorem exists_consistent_original_sequence_completion
           (∀ event, event ∈ view.application.publicView.observation.completionOrder) →
           (assessment.continuationContext certificate site (payoff who)).IsLocallyOptimal
             Set.univ (assessment.strategy who)) ∧
+      (∀ (backend : EvidenceReportService (SettledEvidence service.setup))
+        (observationRate deliveryRate : Player → ℝ), sample = backend.sample →
+        probability = (fun player => observationRate player * deliveryRate player) →
+        (∀ player, 0 ≤ deliveryRate player) →
+        FinalForbiddenEvidenceCoverage backend observationRate deliveryRate →
+        ∀ who (site : (model).InformationSite who),
+          service.sourceCompatibleInfo who site.1 → 0 < observationRate who * deliveryRate who →
+          ∀ choice : (model).Choice who site.1,
+            (auditableServiceChoice service.setup service.leaks (menu) service.horizon
+              service.scheduler who site.1 choice ∨
+              recordedServiceChoice service.setup service.leaks (menu) service.horizon
+                service.scheduler who site.1 choice) →
+            (assessment.continuationContext certificate site (payoff who)).value
+                ((assessment.strategy who).commit site.1 choice) ≤
+              (assessment.continuationContext certificate site (payoff who)).value
+                (assessment.strategy who)) ∧
       (∀ fuel history, history ∈ ((model).runBehavioral assessment.strategy fuel).support →
         ∀ who, ((menu).protocol (initialLaw service.setup) service.horizon service.scheduler).active
           history.state who → service.sourceCompatibleInfo who ((model).infoOf who history.trace)) ∧
@@ -370,7 +390,7 @@ theorem exists_consistent_original_sequence_completion
       (Option.some_injective (State L service.setup.program.terminalCtx))] using limit
   have sourceTarget := sourceRuns.map (fun state => (some state, utility state))
   refine ⟨nativeSequence, assessment, index, mixed, bayes, increasing, converges, consistent,
-    ?_, ?_, ?_, ?_, compatiblePlay, ?_⟩
+    ?_, ?_, ?_, ?_, ?_, compatiblePlay, ?_⟩
   · intro n who site compatible
     exact kept n who site compatible
   · intro who site incompatible law
@@ -399,6 +419,28 @@ theorem exists_consistent_original_sequence_completion
     · intro player current incompatible law
       exact freeOptimal player current (Finset.mem_filter.mpr
         ⟨Finset.mem_univ _, incompatible⟩) law
+  · intro backend observationRate deliveryRate sampling rates deliveryNonnegative coverage
+      who site compatible positive choice classified
+    subst sample probability
+    have lower := service.sourceCompatibleInfo_pin_value_lower normalized permitted weight
+      weightNonnegative weightSmall bound bounded boundVanishes delta
+      (fun n => (deltaPositive n).le) (fun n => (deltaSmall n).le) deltaVanishes
+      nativeSequence assessment index increasing converges consistent
+      (fun n player current currentCompatible => kept n player current currentCompatible)
+      base backend.sample backend.sample_authentic
+      (service.auditDeposit base (fun player => observationRate player * deliveryRate player))
+      (fun player current incompatible law => freeOptimal player current
+        (Finset.mem_filter.mpr ⟨Finset.mem_univ _, incompatible⟩) law) who site compatible
+    have charged := service.charged_expected_utility_le_lower base backend observationRate
+      deliveryRate deliveryNonnegative coverage who positive assessment.strategy site compatible
+      choice classified (assessment.belief who site)
+    have tower := assessment.continuationContextWith_value_tower
+      ((model).runBehavioralTerminalFrom certificate) site (payoff who)
+      ((assessment.strategy who).commit site.1 choice) (payoffIntegrable_of_finite _ _)
+    change (assessment.continuationContextWith ((model).runBehavioralTerminalFrom certificate)
+      site (payoff who)).value ((assessment.strategy who).commit site.1 choice) ≤ _
+    rw [tower]
+    exact charged.trans lower
   · have sourceAlong := sourceTarget.subseq increasing
     have aligned := nativeJoint
     simp only [referenceJoint] at aligned

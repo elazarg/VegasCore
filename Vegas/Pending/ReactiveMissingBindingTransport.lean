@@ -91,6 +91,35 @@ private theorem openingEffective_congr_of_fresh
       | prepared serial => exact and_congr_right fun _ => fresh (.prepared serial)
   | opening | withhold | malformed => rfl
 
+/-- Fresh-slot equality preserves the private submission normal form when
+its actual requested certificate resolves equally on the two inputs. -/
+theorem WitnessedSubmission.normalized_of_resolve_eq
+    (who : Player) (left right : ReactivePlayerView graph)
+    (known : List (Message Player (WitnessedPacket graph)))
+    (fresh : ∀ slot, left.candidates slot = .fresh ↔ right.candidates slot = .fresh)
+    (submission : WitnessedSubmission graph)
+    (normal : submission.normalizeReactive who left known = submission)
+    (resolved : submission.evidence.resolve who
+      (submission.call.candidateAfter who left.candidates) known =
+        submission.evidence.resolve who (submission.call.candidateAfter who right.candidates)
+          known) :
+    submission.normalizeReactive who right known = submission := by
+  have callEq : submission.call.normalizeReactive who left =
+      submission.call.normalizeReactive who right := by
+    unfold Submission.normalizeReactive
+    rw [propext (openingEffective_congr_of_fresh who left right fresh submission.call.packet)]
+  have evidenceEq : submission.evidence.normalize who
+      (submission.call.candidateAfter who left.candidates) known =
+        submission.evidence.normalize who
+          (submission.call.candidateAfter who right.candidates) known := by
+    exact congrArg (EvidenceRequest.canonical known) resolved
+  calc
+    submission.normalizeReactive who right known =
+        submission.normalizeReactive who left known := by
+      unfold normalizeReactive
+      rw [← callEq, ← evidenceEq]
+    _ = submission := normal
+
 /-- Every effective witnessed submission keeps its normal form and resolved
 certificate when only unavailable owned capabilities are added. -/
 theorem WitnessedSubmission.normalized_openable_transport
@@ -112,27 +141,12 @@ theorem WitnessedSubmission.normalized_openable_transport
   have resolved := EvidenceRequest.resolve_normalized_of_openable_mono who _ _ known
     (submission.call.candidateAfter_openable_mono who left.candidates right.candidates fresh
       preserved) submission.evidence evidenceNormal
-  refine ⟨?_, resolved⟩
-  have callEq : submission.call.normalizeReactive who left =
-      submission.call.normalizeReactive who right := by
-    unfold Submission.normalizeReactive
-    rw [propext (openingEffective_congr_of_fresh who left right fresh submission.call.packet)]
-  have evidenceEq : submission.evidence.normalize who
-      (submission.call.candidateAfter who left.candidates) known =
-        submission.evidence.normalize who
-          (submission.call.candidateAfter who right.candidates) known := by
-    exact congrArg (EvidenceRequest.canonical known) resolved
-  calc
-    submission.normalizeReactive who right known =
-        submission.normalizeReactive who left known := by
-      unfold normalizeReactive
-      rw [← callEq, ← evidenceEq]
-    _ = submission := normal
+  exact ⟨submission.normalized_of_resolve_eq who left right known fresh normal resolved, resolved⟩
 
-/-- Actual effective response transport under added owned capabilities. The common
-network and recalled inputs determine the same resolved certificate and bounded
-normal form; no right-menu coverage premise is supplied. -/
-theorem effectiveResponse_openable_transport [Fintype Player]
+/-- Actual effective response transport from equality of the certificate resolved
+by this response. The bounded normal form and emitted packet are derived; no
+right-menu coverage premise is supplied. -/
+theorem effectiveResponse_resolved_transport [Fintype Player]
     (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (bounds : MessageBounds graph) (who : Player)
@@ -143,9 +157,14 @@ theorem effectiveResponse_openable_transport [Fintype Player]
     (publicEq : left.application.publicView = right.application.publicView)
     (fresh : ∀ slot, left.application.candidates.lookup (who, slot) = .fresh ↔
       right.application.candidates.lookup (who, slot) = .fresh)
-    (preserved : ∀ slot raw, left.application.candidates.lookup (who, slot) = .openable raw →
-      right.application.candidates.lookup (who, slot) = .openable raw)
     (response : (runtime.reactiveApplication leaks).Action)
+    (resolved : ∀ material, response.transmission = some material →
+      material.evidence.resolve who
+        (material.call.candidateAfter who (fun slot =>
+          left.application.candidates.lookup (who, slot))) (left.network.known who) =
+      material.evidence.resolve who
+        (material.call.candidateAfter who (fun slot =>
+          right.application.candidates.lookup (who, slot))) (right.network.known who))
     (allowed : response ∈ (bounds.menu runtime leaks).actions who (left.recall who)
       (left.observe (runtime.reactiveApplication leaks) who)) :
     let app := runtime.reactiveApplication leaks
@@ -182,9 +201,11 @@ theorem effectiveResponse_openable_transport [Fintype Player]
             (left.observe app who))) = some submission at same
         rw [leftKnown] at same
         exact Option.some.inj same
-      have transported := submission.normalized_openable_transport who
+      have certificateEq := resolved submission rfl
+      rw [← known] at certificateEq
+      have transported := submission.normalized_of_resolve_eq who
         (app.observePlayer left.application who) (app.observePlayer right.application who)
-        (left.network.known who) fresh preserved normal
+        (left.network.known who) fresh normal certificateEq
       have emitted : app.packet (app.submit left.application who submission) who
           (left.network.known who) submission =
         app.packet (app.submit right.application who submission) who
@@ -202,7 +223,7 @@ theorem effectiveResponse_openable_transport [Fintype Player]
           publicEq]
         rw [leftCandidates, rightCandidates, ← known]
         exact congrArg (fun certificate => WitnessedPacket.mk submission.call.packet certificate
-          (right.application.publicView.tokenFor submission.call.packet)) transported.2
+          (right.application.publicView.tokenFor submission.call.packet)) certificateEq
       refine ⟨(bounds.menu_mem runtime leaks who _ _ _).mpr ⟨?_, ?_⟩, ?_, ?_⟩
       · have bound := allowed.1
         change (bounds.AllowsPacket submission.call.packet ∧
@@ -219,12 +240,78 @@ theorem effectiveResponse_openable_transport [Fintype Player]
       · change (⟨some (submission.normalizeReactive who (app.observePlayer right.application who)
           (ReactiveApplication.ResponseMenu.knownPackets (right.recall who)
             (right.observe app who)))⟩ : app.Action) = ⟨some submission⟩
-        rw [rightKnown, ← known, transported.1]
+        rw [rightKnown, ← known, transported]
       · change (left.network.submit who _).2 = (right.network.submit who _).2
         rw [emitted, network]
       · intro material same
         cases Option.some.inj same
         exact emitted
+
+/-- Actual effective response transport under added owned capabilities. The common
+network and recalled inputs determine the same resolved certificate and bounded
+normal form; no right-menu coverage premise is supplied. -/
+theorem effectiveResponse_openable_transport [Fintype Player]
+    (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (bounds : MessageBounds graph) (who : Player)
+    (left right : (runtime.reactiveApplication leaks).Execution)
+    (leftRecall : left.InputRecall (runtime.reactiveApplication leaks))
+    (rightRecall : right.InputRecall (runtime.reactiveApplication leaks))
+    (network : left.network = right.network)
+    (publicEq : left.application.publicView = right.application.publicView)
+    (fresh : ∀ slot, left.application.candidates.lookup (who, slot) = .fresh ↔
+      right.application.candidates.lookup (who, slot) = .fresh)
+    (preserved : ∀ slot raw, left.application.candidates.lookup (who, slot) = .openable raw →
+      right.application.candidates.lookup (who, slot) = .openable raw)
+    (response : (runtime.reactiveApplication leaks).Action)
+    (allowed : response ∈ (bounds.menu runtime leaks).actions who (left.recall who)
+      (left.observe (runtime.reactiveApplication leaks) who)) :
+    let app := runtime.reactiveApplication leaks
+    response ∈ (bounds.menu runtime leaks).actions who (right.recall who)
+        (right.observe app who) ∧
+      (left.respond app who response).network = (right.respond app who response).network ∧
+      ∀ material, response.transmission = some material →
+        app.packet (app.submit left.application who material) who (left.network.known who)
+            material =
+          app.packet (app.submit right.application who material) who (right.network.known who)
+            material := by
+  let app := runtime.reactiveApplication leaks
+  have knownRecall : ReactiveApplication.ResponseMenu.knownPackets (left.recall who)
+      (left.observe app who) = left.network.known who :=
+    (app.known_from_recall left who leftRecall).symm
+  have resolved (material : app.Submission) (transmitted : response.transmission = some material) :
+      material.evidence.resolve who
+        (material.call.candidateAfter who (fun slot =>
+          left.application.candidates.lookup (who, slot))) (left.network.known who) =
+      material.evidence.resolve who
+        (material.call.candidateAfter who (fun slot =>
+          right.application.candidates.lookup (who, slot))) (right.network.known who) := by
+    have member := (bounds.menu_mem runtime leaks who _ _ _).mp allowed
+    have normal : material.normalizeReactive who (app.observePlayer left.application who)
+        (left.network.known who) = material := by
+      have same := congrArg ReactiveApplication.Action.transmission member.2
+      cases response with
+      | mk transmission =>
+          cases transmitted
+          change some (material.normalizeReactive who (app.observePlayer left.application who)
+            (ReactiveApplication.ResponseMenu.knownPackets (left.recall who)
+              (left.observe app who))) = some material at same
+          rw [knownRecall] at same
+          exact Option.some.inj same
+    have actual := material.normalized_openable_transport who
+      (app.observePlayer left.application who) (app.observePlayer right.application who)
+      (left.network.known who) fresh preserved normal |>.2
+    change material.evidence.resolve who
+      (material.call.candidateAfter who (fun slot =>
+        left.application.candidates.lookup (who, slot))) (left.network.known who) =
+      material.evidence.resolve who
+        (material.call.candidateAfter who (fun slot =>
+          right.application.candidates.lookup (who, slot))) (left.network.known who) at actual
+    rw [show right.network.known who = left.network.known who from
+      congrArg (fun net => net.known who) network.symm]
+    exact actual
+  exact effectiveResponse_resolved_transport runtime leaks bounds who left right leftRecall
+    rightRecall network publicEq fresh response resolved allowed
 
 /-- Omitting private material fixes the actual fresh prepared candidate to a
 blocked meaning rather than retaining any owned opening certificate. -/
@@ -254,7 +341,7 @@ theorem missingBinding_repair_response_transport [Fintype Player]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (bounds : MessageBounds graph)
     (execution : (runtime.reactiveApplication leaks).Execution)
-    (recall : execution.InputRecall (runtime.reactiveApplication leaks))
+    (inputRecall : execution.InputRecall (runtime.reactiveApplication leaks))
     (who : Player) (event : graph.EventId) (serial : Nat) (replacement : Raw L)
     (fresh : execution.application.candidates.lookup (who, .prepared serial) = .fresh)
     (response : (runtime.reactiveApplication leaks).Action) :
@@ -316,8 +403,8 @@ theorem missingBinding_repair_response_transport [Fintype Player]
   have physical := runtime.rawBinding_submit_hidden_congr leaks execution execution who rfl rfl
     rfl (fun _ _ => rfl) (fun _ _ => rfl) event serial none (some replacement)
   exact effectiveResponse_openable_transport runtime leaks bounds who original repaired
-    (app.respond_inputRecall execution who _ recall)
-    (app.respond_inputRecall execution who _ recall)
+    (app.respond_inputRecall execution who _ inputRecall)
+    (app.respond_inputRecall execution who _ inputRecall)
     physical.1 physical.2.2.1 freshSlots preserved response allowed
 
 /-- An arbitrary bounded raw response can be copied after normalizing at the
@@ -328,7 +415,7 @@ theorem missingBinding_repair_raw_response_transport [Fintype Player]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (bounds : MessageBounds graph)
     (execution : (runtime.reactiveApplication leaks).Execution)
-    (recall : execution.InputRecall (runtime.reactiveApplication leaks))
+    (inputRecall : execution.InputRecall (runtime.reactiveApplication leaks))
     (who : Player) (event : graph.EventId) (serial : Nat) (replacement : Raw L)
     (fresh : execution.application.candidates.lookup (who, .prepared serial) = .fresh)
     (response : (runtime.reactiveApplication leaks).Action) :
@@ -359,9 +446,9 @@ theorem missingBinding_repair_raw_response_transport [Fintype Player]
     exact ((runtime.reactiveNormalization leaks).menu_mem (bounds.rawMenu runtime leaks)
       who _ _ _).mpr ⟨response, allowed, rfl⟩
   have transported := runtime.missingBinding_repair_response_transport leaks bounds execution
-    recall who event serial replacement fresh chosen available
+    inputRecall who event serial replacement fresh chosen available
   have effects := (runtime.reactiveNormalization leaks).effects original who response
-    (app.respond_inputRecall execution who _ recall)
+    (app.respond_inputRecall execution who _ inputRecall)
   exact ⟨transported.1, effects.2.1.symm.trans transported.2.1⟩
 
 end Vegas.EventGraphRuntime
