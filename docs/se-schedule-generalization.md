@@ -1738,6 +1738,13 @@ the entire finite-menu turn prescription sequentially rational or an SE,
 for any timing lottery. Genuine consistent native beliefs exist but cannot
 remove this regret. This rules out that entire prescription, including at
 free late inputs; rational free completion still permits preservation.
+[LateResolutionNativePerturbation](../Vegas/Examples/LateResolutionNativePerturbation.lean)
+computes the comparison under the actual fully mixed native Bayes assessment.
+Its regret is at least `(1 − ε)D − ε`. At one fixed actual information site it
+is eventually at least `D/2` as trembles vanish, even if source and timing
+approximants vary. Every actual fiber history is supported. This rules out
+vanishing conditional regret for the waiting prescription; it leaves rational
+free late completion available.
 
 [SourceServiceSampleCompletion](../Vegas/Game/SourceServiceSampleCompletion.lean)
 derives actual silence, whole stopped-run equality with silent play, and the
@@ -1992,6 +1999,13 @@ derive ordinary service invariants; the completed preparation frame and
 opening-capability relation remain explicit resources. The implementation
 uses the complete bounded effective menu. Later owner bindings, admission
 to the narrower risk menu and terminal utility domination remain open.
+Fresh usable later bindings must retain their actual success or expiry;
+intended-success completion memory does not justify this case. The internal
+completed-boundary induction must carry `BindingShadow.CompletedAt`, which
+rules out stale completion overrides at a ready event. Reused handles are
+interpreted using their fixed candidate meaning. Later mistyped registration
+can add material usable at another payload type without itself being a signed
+breach, so arbitrary later bindings need a distinct capability argument.
 
 ### Deviation proof boundaries
 
@@ -2447,6 +2461,16 @@ the final equilibrium's supported play.
   conditionally on the same physical prefix and correlated initial parameter.
   Its failure reference packet is only a physical proof experiment. No source
   admission or acceptance probability is assumed for that reference.
+  [SourceServiceBindingFirstPacket](../Vegas/Game/SourceServiceBindingFirstPacket.lean)
+  uses initialized recall and provenance to exclude earlier owner packets for
+  an unrecorded event. After a manual canonical call, every retained owner
+  packet naming this event is that exact envelope throughout the stopped
+  recorded-policy continuation, against arbitrary foreign raw policies.
+  [ReactiveBindingAcceptanceReceipts](../Vegas/Pending/ReactiveBindingAcceptanceReceipts.lean)
+  derives an owner-authored ledger commitment and accepting receipt for each
+  actual accepted binding association. Receipt origin and unique-call resources
+  are checked; their typed acceptance-of-this-attempt/public-miss composition
+  and the waiting comparison remain separate.
 - **Stage B beliefs.** Probe C5 suggests that depth differences are no
   obstruction, but the concurrent-window information sets are new. If they
   break the extension, D2's contract-ordered service is the fallback.

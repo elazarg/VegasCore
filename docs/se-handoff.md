@@ -299,6 +299,12 @@ future private values changed by repair are outside the claim.
   current turn prescription fails native sequential rationality and SE for
   every timing lottery. Consistent native beliefs exist but do not remove
   this regret. Rational free late completion remains available.
+- [LateResolutionNativePerturbation](../Vegas/Examples/LateResolutionNativePerturbation.lean)
+  proves regret at least `(1 − ε)D − ε` under the actual fully mixed native
+  Bayes assessment. At one fixed site it is eventually at least `D/2` as
+  trembles vanish, even for varying source and timing approximants. Every
+  actual fiber history is supported. This concerns the waiting prescription;
+  source-preserving rational free completion remains possible.
 - [SourceServiceResolutionIntentionFactorization](../Vegas/Game/SourceServiceResolutionIntentionFactorization.lean)
   carries original and effective disclosure histories through the actual
   response traffic law. FALSE packets can represent failed TRUE intentions;
@@ -454,6 +460,11 @@ future private values changed by repair are outside the claim.
   completed preparation frame and opening-capability relation are resources;
   this uses the complete bounded effective menu. Later owner bindings,
   risk-menu admission and terminal utility domination remain open.
+  Fresh usable later bindings require candidate-only memory, preserving actual
+  acceptance or expiry. Internal completed-boundary induction must carry
+  `BindingShadow.CompletedAt` to rule out stale ready-event overrides. Reused
+  handles use fixed material; arbitrary later mistyped registrations can add
+  a capability usable at another payload type without an immediate signed breach.
 - [SourceServiceAliasEquilibrium](../Vegas/Game/SourceServiceAliasEquilibrium.lean)
   supplies the final private raw-alias transport, retaining correlated
   collection and prior charges.
@@ -477,6 +488,16 @@ future private values changed by repair are outside the claim.
   selection law at the same physical prefix and initial parameter. The failure
   reference packet is only a physical proof experiment. Completion and
   acceptance probabilities are not premises of this factorization.
+- [SourceServiceBindingFirstPacket](../Vegas/Game/SourceServiceBindingFirstPacket.lean)
+  identifies every owner packet naming an initially unrecorded current event
+  with the exact manual canonical call, throughout its recorded-policy stop.
+  Actual recall and provenance exclude an earlier packet; arbitrary foreign
+  responses and scheduler commands preserve the whole envelope.
+- [ReactiveBindingAcceptanceReceipts](../Vegas/Pending/ReactiveBindingAcceptanceReceipts.lean)
+  derives an actual owner-authored ledger commitment and accepting receipt
+  for each accepted binding association on every initialized raw history.
+  This closes receipt origin; the typed acceptance-of-this-attempt/public-miss
+  decomposition still needs composition with the completion law.
 
 ## Proof and build discipline
 

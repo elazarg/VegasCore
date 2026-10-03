@@ -371,6 +371,12 @@ of the entire current turn policy fails sequential rationality for any timing
 lottery, including pure first-turn timing. Actual consistent native beliefs
 exist but cannot remove this regret. Preservation remains possible through
 rational free continuation at late inputs.
+[LateResolutionNativePerturbation](../Vegas/Examples/LateResolutionNativePerturbation.lean)
+uses the actual fully mixed native Bayes assessment. Its late conditional
+regret is at least `(1 − ε)D − ε`, and eventually at least `D/2` at one fixed
+site as trembles vanish, even with varying source and timing approximants.
+Every history in that site's actual fiber has positive native probability.
+This certifies the need for free late completion, not a failure of preservation.
 The [late-decision signaling probe](../scripts/experiments/late_decision_signaling_probe.py)
 checks this distinction with exact Bayes limits and every whole-policy
 comparison. Equal waiting trembles make waiting profitable for one type;
@@ -414,6 +420,16 @@ joins the actual sampled source commitment value to this selection law,
 conditionally on the same physical prefix and correlated initial parameter.
 The reference failure packet is a physical proof experiment, not an assumed
 admitted source action. No acceptance probability is supplied.
+[SourceServiceBindingFirstPacket](../Vegas/Game/SourceServiceBindingFirstPacket.lean)
+derives absence of prior owner packets naming an unrecorded event from actual
+initialized recall and provenance. After a manual canonical first call, every
+such owner packet throughout the stopped recorded-policy run is its exact
+envelope, including identifier and readiness token. Foreign raw policies are
+arbitrary. [ReactiveBindingAcceptanceReceipts](../Vegas/Pending/ReactiveBindingAcceptanceReceipts.lean)
+derives the reverse receipt resource on every initialized raw history: each
+accepted event handle has an actual owner-authored ledger commitment with
+its accepting receipt. Combining these with typed completion to classify
+this attempt's acceptance or public miss remains separate.
 
 The watcher samples authentic evidence partially; observation and report
 delivery may be correlated. Positive conditional coverage and a finite
@@ -548,6 +564,13 @@ traces and the real evaluator. A completed preparation frame and capability
 preservation remain explicit resources. This uses the complete bounded
 effective menu; later owner bindings, a legal risk-menu comparator and
 terminal utility domination remain open.
+Later usable bindings must preserve their actual success or expiry, without
+installing an intended-success completion override. The generated-memory
+`BindingShadow.CompletedAt` invariant supplies absence of stale overrides
+at a ready event; the internal calendar induction must carry it. Reused handles
+use their fixed candidate meaning, rather than newly supplied private material.
+Arbitrary later mistyped bindings remain a capability boundary: material that
+fails the current payload type can be usable at another binding.
 
 ## Validation
 

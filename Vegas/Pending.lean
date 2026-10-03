@@ -251,6 +251,7 @@ import Vegas.Pending.ReactiveDecisionWindowLikelihood
 import Vegas.Pending.ReactiveDecisionWindowExpiry
 import Vegas.Pending.ReactiveBindingRecordedOmission
 import Vegas.Pending.ReactiveBindingReceipts
+import Vegas.Pending.ReactiveBindingAcceptanceReceipts
 import Vegas.Pending.ReactiveBindingFirstSubmission
 import Vegas.Pending.ReactiveBindingFrameAudit
 import Vegas.Pending.ReactiveBindingMemoryInvariant
