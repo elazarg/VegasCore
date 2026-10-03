@@ -331,9 +331,9 @@ future private values changed by repair are outside the claim.
   constructs a native risk-menu SE: TRUE first, FALSE late after WAIT, forced
   silence after completion. It preserves the source opening equilibrium's
   initialized joint full typed readout and realized settlement vector under
-  any authentic partial sampler and nonnegative deposit. This is a concrete
-  risk-menu result; full effective/raw extension and the general theorem
-  remain separate.
+  any authentic partial sampler and nonnegative deposit. The concrete larger
+  menu extension below supplies rational completion; arbitrary-service
+  preservation remains open.
 - [SourceServiceResolutionIntentionFactorization](../Vegas/Game/SourceServiceResolutionIntentionFactorization.lean)
   carries original and effective disclosure histories through the actual
   response traffic law. FALSE packets can represent failed TRUE intentions;
@@ -505,6 +505,12 @@ future private values changed by repair are outside the claim.
   response is not recorded yet. Paired owner responses preserve these records
   when they name the same event. Risk equality alone does not admit arbitrary
   effective responses at clear canonical-menu sites.
+- [ReactiveBindingRiskAdmission](../Vegas/Pending/ReactiveBindingRiskAdmission.lean)
+  derives same-response repaired risk-menu admission at clear binding and
+  resolution inputs from actual original risk membership and invariants. Fresh
+  typed slots, protected windows and TRUE certificate/guard success are derived.
+  The same retained implementation realizes each local owner invocation law.
+  Whole-run admission and terminal utility domination remain separate.
 - [SourceServiceAliasEquilibrium](../Vegas/Game/SourceServiceAliasEquilibrium.lean)
   supplies the final private raw-alias transport, retaining correlated
   collection and prior charges.
@@ -602,8 +608,17 @@ future private values changed by repair are outside the claim.
 - [LateResolutionPreservation](../Vegas/Examples/LateResolutionPreservation.lean)
   preserves EVERY source SE of the concrete fixture in the native risk menu,
   with the same full typed terminal state and realized settlement vector.
-  Actual source rationality derives its TRUE law. Full effective/raw extension
-  and arbitrary-service preservation remain open.
+  Actual source rationality derives its TRUE law.
+- [LateResolutionEffectiveExtension](../Vegas/Examples/LateResolutionEffectiveExtension.lean)
+  bounds every effective continuation at each retained history by an actual
+  clean retained continuation. It extends every audited risk-menu SE to the
+  complete effective menu and preserves the whole terminal control law.
+- [LateResolutionRawPreservation](../Vegas/Examples/LateResolutionRawPreservation.lean)
+  preserves EVERY original source SE of this fixture in the full bounded raw
+  runtime, with the same joint typed terminal state and realized sampled
+  settlement vector. It needs authentic partial observation and a nonnegative
+  deposit, without a detection bound. Arbitrary-service preservation remains
+  open.
 - [ReactiveCompletedConfig](../Vegas/Pending/ReactiveCompletedConfig.lean)
   proves that arbitrary raw submissions and environment commands preserve the
   entire graph configuration once all events complete. Further traffic and
@@ -625,6 +640,11 @@ future private values changed by repair are outside the claim.
   earlier owner packet at the real selected raw input. Its aligned source
   configuration is unchanged; protection gives the actual source commitment
   kernel, and a closed gate gives silence. Other owners may use raw actions.
+- [SourceServiceBindingSelectedResponse](../Vegas/Game/SourceServiceBindingSelectedResponse.lean)
+  proves the exact stopped execution law by replacing the actual silent
+  reference response with the original selected input's canonical lottery.
+  Removing its last own recall entry recovers the same before-response
+  execution; no assumed selection probability or support redraw is used.
 - [SourceServiceBindingSelectedContinuation](../Vegas/Game/SourceServiceBindingSelectedContinuation.lean)
   proves the full selected-family stopped continuation equals actual owner
   silence after its selected response, including closed-gate silence. This

@@ -67,6 +67,8 @@ import Vegas.Examples.LateResolutionPreservation
 
 import Vegas.Examples.LateResolutionCompletedContinuation
 import Vegas.Examples.LateResolutionExtensionResources
+import Vegas.Examples.LateResolutionEffectiveExtension
+import Vegas.Examples.LateResolutionRawPreservation
 
 /-! Checked strategic analyses of concrete source games, native runtime
 fixtures, and the counterexamples that delimit the compiler results. -/

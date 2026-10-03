@@ -56,7 +56,9 @@ private theorem family_waits_before_input
   rw [waits] at supported
   exact ⟨absent, app.silentPolicy_cases _ _ response supported⟩
 
-private theorem slots_silent_response
+/-- An actual silent owner response preserves the submission-turn and
+canonical-slot invariants. -/
+theorem canonicalSlots_silent_response
     (current : (application setup leaks).Execution) (owner : Player)
     (atTurn : OwnSubmissionsAtTurn setup leaks current owner)
     (slots : CanonicalSlotsUsed setup leaks current owner) :
@@ -112,7 +114,7 @@ private theorem family_slots_before_input
       obtain ⟨absent, rfl⟩ := family_waits_before_input bound profile owner event turns slot
         current response supported after
       obtain ⟨atTurn, slots⟩ := holds absent
-      exact slots_silent_response current owner atTurn slots
+      exact canonicalSlots_silent_response current owner atTurn slots
     · rw [app.respond_recall_other current actor owner (Ne.symm same) response] at after
       obtain ⟨atTurn, slots⟩ := holds after
       refine ⟨?_, canonicalSlotsUsed_respond_other current (Ne.symm same) response slots⟩

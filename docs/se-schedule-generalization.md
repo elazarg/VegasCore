@@ -1770,15 +1770,25 @@ optimal at both completed second fibers, under any beliefs.
 constructs a native risk-menu SE: TRUE first, FALSE late after WAIT, forced
 silence after completion. Its initialized joint full typed readout and actual
 realized settlement vector equal those of the source opening equilibrium,
-under any authentic partial sampler and nonnegative deposit. This proves the
-concrete risk-menu completion; full effective/raw extension and the general
-source-preservation theorem remain separate.
+under any authentic partial sampler and nonnegative deposit. The concrete
+larger-menu extension below supplies rational completion; arbitrary-service
+source preservation remains open.
 
 [LateResolutionPreservation](../Vegas/Examples/LateResolutionPreservation.lean)
 preserves EVERY source SE of this concrete fixture in the native risk menu,
 including the same full typed terminal state and realized settlement vector.
-Actual source rationality derives its TRUE law. Full effective/raw extension
-and arbitrary-service preservation remain open.
+Actual source rationality derives its TRUE law.
+[LateResolutionEffectiveExtension](../Vegas/Examples/LateResolutionEffectiveExtension.lean)
+bounds every effective continuation at each retained history by an actual clean
+retained continuation: TRUE first, FALSE after an unrecorded deferral, silence
+after completion. This extends every audited risk-menu SE to the full effective
+menu with the same complete terminal control law.
+[LateResolutionRawPreservation](../Vegas/Examples/LateResolutionRawPreservation.lean)
+then preserves EVERY original source SE of this fixture in the full bounded raw
+runtime, with the same joint typed terminal state and realized sampled-settlement
+vector. It uses authentic partial observation and a nonnegative deposit, without
+a detection bound. This is a concrete service; arbitrary-service preservation
+remains open.
 [ReactiveCompletedConfig](../Vegas/Pending/ReactiveCompletedConfig.lean)
 proves arbitrary raw submissions and environment commands preserve the entire
 graph configuration once all events complete. Further traffic and charges
@@ -2045,6 +2055,12 @@ public activation history. Each remembered public before-view is the actual
 activation view; a pending activation has no response record yet. Paired owner
 responses preserve these records when they name the same event. Equal risk flags
 alone do not establish canonical response admission at clear sites.
+[ReactiveBindingRiskAdmission](../Vegas/Pending/ReactiveBindingRiskAdmission.lean)
+transports actual risk-supported responses at clear binding and resolution inputs
+to the same repaired risk menu. Fresh typed slots, protected windows and TRUE
+certificate/guard success are derived from the selected response and actual
+invariants. Its local invocation couplings use the same retained implementation;
+whole-run risk-menu admission and terminal utility domination remain separate.
 Fresh usable bindings retain their actual success or expiry through
 candidate-only repair memory. The fixed-calendar repair induction carries
 `BindingShadow.CompletedAt` from empty initial memory through actual completed
@@ -2600,6 +2616,11 @@ the final equilibrium's supported play.
   earlier owner packet at the real selected raw input. Its aligned source
   configuration is unchanged; protection gives the actual source commitment
   kernel, and a closed gate gives silence. Other owners may use raw actions.
+  [SourceServiceBindingSelectedResponse](../Vegas/Game/SourceServiceBindingSelectedResponse.lean)
+  proves the exact stopped execution law by replacing the actual silent reference
+  response with the original selected input's canonical lottery. Its last recall
+  entry recovers that same before-response execution; no response is redrawn from
+  support or assigned an assumed selection probability.
   [SourceServiceBindingSelectedContinuation](../Vegas/Game/SourceServiceBindingSelectedContinuation.lean)
   proves the full selected-family stopped continuation equals actual owner
   silence after its selected response, including closed-gate silence. This

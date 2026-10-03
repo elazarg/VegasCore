@@ -114,7 +114,8 @@ theorem sourceServiceSelectedInput?_respond (who : Player) (event : (graph setup
     simp only [Option.none_or, List.find?_cons_of_neg unnamed, List.find?_nil,
       Option.bind_none, current, ↓reduceIte]
 
-private theorem selectedInput_untouched (owner : Player) (event : (graph setup).EventId)
+/-- An untouched event has no previously recalled selected input. -/
+theorem sourceServiceSelectedInput?_of_untouched (owner : Player) (event : (graph setup).EventId)
     (selected : Nat) (execution : (application setup leaks).Execution)
     (untouched : Untouched setup leaks event execution) :
     sourceServiceSelectedInput? setup leaks owner event selected (execution.recall owner) =
@@ -189,7 +190,10 @@ private theorem selectedFamily_no_packet
     rw [app.environmentStep_recall current next command moved] at after ⊢
     exact holds after
 
-private theorem selectedInput_origin
+/-- A selected-input stop records the actual last owner response and its
+original before-response execution. Before that response the configuration
+has not completed the sole ready event. -/
+theorem sourceServiceSelectedInput_origin
     (scheduler : (application setup leaks).Scheduler)
     (players : Player → (application setup leaks).Policy)
     (owner : Player) (event : (graph setup).EventId) (selected : Nat)
@@ -358,8 +362,8 @@ theorem sourceService_binding_selected_stop
     sourceServiceSelectedInput? setup leaks owner event slot.val (final.recall owner) ≠ none
   have ready := (ready_iff_rank setup execution.application.config event.val boundary.ordered
     event).mpr rfl
-  have absent := selectedInput_untouched owner event slot.val execution (boundary.untouched event
-    rfl)
+  have absent := sourceServiceSelectedInput?_of_untouched owner event slot.val execution
+    (boundary.untouched event rfl)
   have initialUnrecorded : (runtime setup).eventRecorded leaks (execution.recall owner) event =
       false := by
     have atTurn := (canonicalSlots_roundsFrom scheduler players owner timing profile follows
@@ -387,9 +391,9 @@ theorem sourceService_binding_selected_stop
       (stopped.recall owner) ≠ none
   · left
     obtain ⟨used, before, middle, response, within, actual, configEq, noInput, chosen, observed,
-      current, supported, result, readout⟩ := selectedInput_origin scheduler familyPlayers owner
-        event slot.val (horizon - execution.environmentRecall.length) execution ready absent
-          stopped hit reached
+      current, supported, result, readout⟩ := sourceServiceSelectedInput_origin scheduler
+        familyPlayers owner event slot.val (horizon - execution.environmentRecall.length) execution
+          ready absent stopped hit reached
     have beforeLength := app.runRounds_environmentRecall_length scheduler familyPlayers used
       execution before actual
     obtain ⟨beforeTrace⟩ := app.raw_trace_runRounds (initialLaw setup) horizon scheduler
