@@ -312,6 +312,12 @@ conditional private risk one half for every positive alpha. This certifies the
 rare-fiber limitation of an unconditional convergence estimate. It does not
 prove the behavior of rational free completion, source-payoff distortion or
 failure of SE preservation.
+[OpaqueBindingForkSourcePosterior](../Vegas/Examples/OpaqueBindingForkSourcePosterior.lean)
+proves that the actual conditional typed configuration is the clean witness's
+configuration. Both physical decoders succeed, and the common original-memory
+lottery retains exactly the same initial parameter and source-prefix law.
+Surviving private risk therefore does not distort this fixture's projected
+source-prefix belief. Future free-policy choices and payoffs remain separate.
 
 For waiting comparisons, a late canonical packet can still be accepted before
 expiry without a charge, so the accepted branch needs source-continuation
@@ -517,8 +523,12 @@ derives the actual owner's packet and slot resources from compatible information
 at every initialized raw prefix. After its immediate response, arbitrary foreign
 raw policies preserve owner clarity and zero terminal collection under authentic
 partial sampling. The physical policy uses one whole continuation across hidden
-histories; its finite effective-menu realization and source payoff comparison
-remain separate.
+histories. [SourceServiceEffectiveImmediateComparator](../Vegas/Game/SourceServiceEffectiveImmediateComparator.lean)
+represents that same whole policy in the complete effective game. Actual local
+owner slots and bounded records derive admission along its supported suffix;
+one shared generic restriction induction gives the exact physical terminal law.
+Every hidden history at a compatible effective input has zero owner collection
+against arbitrary effective opponents. Source payoff comparisons remain open.
 [SourceServiceCompatibleCollection](../Vegas/Game/SourceServiceCompatibleCollection.lean)
 derives the backend's collection bound for a classified forbidden packet or
 repeated submission at compatible information in any response menu. The

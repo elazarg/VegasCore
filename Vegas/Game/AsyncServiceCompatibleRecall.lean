@@ -2,6 +2,7 @@
 
 import Vegas.Game.AsyncServiceCounterfactualBeliefs
 import Interaction.ReactiveRoundTrace
+import Interaction.ReactiveRecallEntries
 import Vegas.Pending.ReactiveServiceRecall
 
 /-! # Source compatibility of actual earlier own decision inputs
@@ -217,24 +218,6 @@ theorem sourceCompatibleInfo_recalled_input (who : Player)
   rw [← pastEq, recalls] at recorded ⊢
   exact priorFacts index entry recorded
 
-omit [Fintype Player] in
-private theorem ownPlayFrom_recorded_input (earlier past : List (app).PlayerEntry)
-    (input : (app).Info) (action : (app).Action)
-    (member : (input, action) ∈ (app).ownPlayFrom earlier past) :
-    ∃ index entry, past[index]? = some entry ∧
-      input = some (earlier ++ past.take index, entry.beforeView) := by
-  induction past generalizing earlier with
-  | nil => cases member
-  | cons first rest ih =>
-      simp only [ReactiveApplication.ownPlayFrom, List.mem_append, List.mem_singleton] at member
-      rcases member with prior | current
-      · obtain ⟨index, entry, recorded, seen⟩ := ih (earlier ++ [first]) prior
-        refine ⟨index + 1, entry, ?_, ?_⟩
-        · simpa only [List.getElem?_cons_succ] using recorded
-        · simpa only [List.take_succ_cons, List.append_assoc, List.singleton_append] using seen
-      · obtain ⟨rfl, rfl⟩ := Prod.mk.inj current
-        exact ⟨0, first, rfl, by simp⟩
-
 /-- Every information value in the focal own-action record lies in the
 prescribed classifier. This includes preceding WAIT inputs at their original
 views, rather than restarting a timing prior at the current input. -/
@@ -244,7 +227,7 @@ theorem sourceCompatibleInfo_ownPlay (who : Player)
     (input : (app).Info) (action : (app).Action)
     (member : (input, action) ∈ (app).recallOwnPlay past) :
     service.sourceCompatibleInfo who input := by
-  obtain ⟨index, entry, recorded, seen⟩ := service.ownPlayFrom_recorded_input [] past input action
+  obtain ⟨index, entry, recorded, seen⟩ := (app).ownPlayFrom_recorded_input [] past input action
     member
   simp only [List.nil_append] at seen
   rw [seen]

@@ -473,27 +473,28 @@ private theorem completed_native_comparison
   exact (alternateValue.trans alternateAt).trans_le
     (alternateBound.trans_eq (silentValue.trans (silentAt.trans exactValue)).symm)
 
-/-- In the full bounded effective game, silent whole continuation is optimal
+/-- In an actual finite response menu retaining silence, silent whole continuation is optimal
 at a compatible owner input whose public record shows every event complete.
 The comparison covers every hidden history under any belief and arbitrary
-foreign effective policies. It does not supply rationality at unfinished sites. -/
+foreign menu policies. It does not supply rationality at unfinished sites. -/
 theorem sourceCompatibleInfo_completed_silent_optimal
+    (menu : (application service.setup service.leaks).ResponseMenu)
+    (silence : ∀ player past view,
+      (⟨none⟩ : (application service.setup service.leaks).Action) ∈ menu.actions player past view)
     (who : Player)
-    (site : ((service.bounds.menu (runtime service.setup) service.leaks).information
+    (site : (menu.information
       (initialLaw service.setup) service.horizon service.scheduler).InformationSite who)
     (compatible : service.sourceCompatibleInfo who site.1)
     (past : List (application service.setup service.leaks).PlayerEntry)
     (view : (application service.setup service.leaks).PlayerView)
     (observed : site.1 = some (past, view))
     (completed : ∀ event, event ∈ view.application.publicView.observation.completionOrder)
-    (assessment : ((service.bounds.menu (runtime service.setup) service.leaks).information
+    (assessment : (menu.information
       (initialLaw service.setup) service.horizon service.scheduler).BehavioralAssessment)
     (utility : State L service.setup.program.terminalCtx → Player → ℝ)
     (sample : List (SettledEvidence service.setup) → PMF (List (SettledEvidence service.setup)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (deposit : Player → ℝ) (nonnegative : 0 ≤ deposit who) :
-    let menu : (application service.setup service.leaks).ResponseMenu :=
-      service.bounds.menu (runtime service.setup) service.leaks
     let silent := menu.restrictPolicy (initialLaw service.setup) service.horizon service.scheduler
       who (application service.setup service.leaks).silentPolicy
     (assessment.truncatedContinuationContext site
@@ -501,7 +502,7 @@ theorem sourceCompatibleInfo_completed_silent_optimal
         ((runtime service.setup).serviceAuditObservation service.leaks)
         (sourceServiceAudit service.setup service.leaks sample) deposit final.state who)
       (2 * service.horizon + 1)).IsLocallyOptimal Set.univ silent := by
-  intro menu silent
+  intro silent
   let model := menu.information (initialLaw service.setup) service.horizon service.scheduler
   let payoff := fun final : (menu.protocol (initialLaw service.setup) service.horizon
     service.scheduler).History =>
@@ -522,11 +523,8 @@ theorem sourceCompatibleInfo_completed_silent_optimal
   refine alternateTower.trans_le ((expect_mono ?_ (payoffIntegrable_of_finite _ _)
     (payoffIntegrable_of_finite _ _)).trans_eq silentTower.symm)
   intro history _
-  apply completed_native_comparison service menu _ who site compatible past view observed completed
-    history assessment.strategy alternative utility sample authentic deposit nonnegative
-  intro player earlier atView
-  exact (service.bounds.menu_mem (runtime service.setup) service.leaks player earlier atView _).mpr
-    ⟨trivial, rfl⟩
+  exact completed_native_comparison service menu silence who site compatible past view observed
+    completed history assessment.strategy alternative utility sample authentic deposit nonnegative
 
 end AsyncServiceSpec
 

@@ -124,6 +124,88 @@ private theorem decode_restrictPolicy_at (who : Principal) (policy : app.Policy)
 
 variable [Fintype Principal]
 
+/-- Finite restriction preserves an arbitrary legal continuation when the
+original supported responses are admitted along its actual invariant. -/
+theorem run_restrict_supported_controlSteps_from
+    (predicate : app.ProtocolState → Prop)
+    (covered : ∀ who control,
+      (menu.protocol initial horizon scheduler).Trace (some control) →
+      predicate (some control) → control.actor = some who → ∀ response ∈
+        (players who (control.execution.recall who)
+          (control.execution.observe app who)).support,
+        response ∈ menu.actions who (control.execution.recall who)
+          (control.execution.observe app who))
+    (preserved : ∀ state,
+      (menu.protocol initial horizon scheduler).Trace state → predicate state →
+      ∀ next ∈ (app.controlStep initial horizon scheduler players state).support,
+        predicate next)
+    (fuel : Nat) (history : (menu.protocol initial horizon scheduler).History)
+    (holds : predicate history.state) :
+    ((menu.information initial horizon scheduler).runBehavioralFrom
+      (fun who => menu.restrictPolicy initial horizon scheduler who (players who)) fuel
+      history).map History.state =
+      (fun law => law.bind (app.controlStep initial horizon scheduler players))^[fuel]
+        (PMF.pure history.state) := by
+  let profile := fun who => menu.restrictPolicy initial horizon scheduler who (players who)
+  let decoded := menu.decodeProfile initial horizon scheduler profile
+  have joint : ∀ fuel,
+      ((menu.information initial horizon scheduler).runBehavioralFrom profile fuel history).map
+          History.state =
+        (fun law => law.bind (app.controlStep initial horizon scheduler players))^[fuel]
+          (PMF.pure history.state) ∧
+      ∀ state ∈ ((fun law => law.bind
+        (app.controlStep initial horizon scheduler players))^[fuel]
+          (PMF.pure history.state)).support, predicate state := by
+    intro fuel
+    induction fuel with
+    | zero =>
+        refine ⟨?_, ?_⟩
+        · rw [menu.run_map_controlStep]
+          rfl
+        · intro state reached
+          cases (PMF.mem_support_pure_iff _ _).mp reached
+          exact holds
+    | succ fuel ih =>
+        have stateTrace : ∀ state ∈ ((fun law => law.bind
+            (app.controlStep initial horizon scheduler players))^[fuel]
+              (PMF.pure history.state)).support,
+            Nonempty ((menu.protocol initial horizon scheduler).Trace state) := by
+          intro state reached
+          rw [← ih.1, PMF.support_map] at reached
+          obtain ⟨atHistory, _, rfl⟩ := reached
+          exact ⟨atHistory.trace⟩
+        refine ⟨?_, ?_⟩
+        · rw [menu.run_map_controlStep, Function.iterate_succ_apply',
+            Function.iterate_succ_apply']
+          have earlier := ih.1
+          rw [menu.run_map_controlStep] at earlier
+          rw [earlier]
+          apply bind_congr_on_support _
+          intro state reached
+          cases state with
+          | none => rfl
+          | some control =>
+              rcases control with ⟨remaining, actor, execution⟩
+              cases actor with
+              | none => rfl
+              | some who =>
+                  have law : decoded who (execution.recall who) (execution.observe app who) =
+                      players who (execution.recall who) (execution.observe app who) :=
+                    menu.decode_restrictPolicy_at initial horizon scheduler who (players who)
+                      _ _ (covered who _ (Classical.choice (stateTrace _ reached))
+                        (ih.2 _ reached) rfl)
+                  simpa only [controlStep, actor, Option.bind_some] using
+                    congrArg (fun responseLaw => responseLaw.bind fun response =>
+                      app.transition initial horizon scheduler
+                        (some ⟨remaining, some who, execution⟩)
+                        (fun observer => if observer = who then some response else none)) law
+        · intro state reached
+          rw [Function.iterate_succ_apply', PMF.support_bind] at reached
+          obtain ⟨prior, supported, moved⟩ := Set.mem_iUnion₂.mp reached
+          exact preserved prior (Classical.choice (stateTrace prior supported))
+            (ih.2 prior supported) state moved
+  exact (joint fuel).1
+
 /-- Every initialized prefix has the original physical state law. Admission
 is checked only where legal menu history and actual physical support meet. -/
 theorem run_restrict_supported_controlSteps
@@ -140,44 +222,12 @@ theorem run_restrict_supported_controlSteps
       (fun who => menu.restrictPolicy initial horizon scheduler who (players who)) fuel
       (menu.protocol initial horizon scheduler).initHistory).map History.state =
       (fun law => law.bind (app.controlStep initial horizon scheduler players))^[fuel]
-        (PMF.pure none) := by
-  let profile := fun who => menu.restrictPolicy initial horizon scheduler who (players who)
-  let decoded := menu.decodeProfile initial horizon scheduler profile
-  rw [menu.run_map_controlStep]
-  change (fun law => law.bind (app.controlStep initial horizon scheduler decoded))^[fuel]
-      (PMF.pure none) = _
-  induction fuel with
-  | zero => rfl
-  | succ fuel ih =>
-      rw [Function.iterate_succ_apply', Function.iterate_succ_apply', ih]
-      apply bind_congr_on_support _
-      intro state reached
-      have valid := app.roundSupported_iterate_controlStep initial horizon scheduler players
-        fuel state reached
-      have menuReached : state ∈
-          (((menu.information initial horizon scheduler).runBehavioralFrom profile fuel
-            (menu.protocol initial horizon scheduler).initHistory).map History.state).support := by
-        rw [menu.run_map_controlStep]
-        exact ih ▸ reached
-      obtain ⟨history, _supported, same⟩ := PMF.support_map .. ▸ menuReached
-      cases state with
-      | none => rfl
-      | some control =>
-          have traced : (menu.protocol initial horizon scheduler).Trace (some control) :=
-            same ▸ history.trace
-          rcases control with ⟨remaining, actor, execution⟩
-          cases actor with
-          | none => rfl
-          | some who =>
-              have law : decoded who (execution.recall who) (execution.observe app who) =
-                  players who (execution.recall who) (execution.observe app who) := by
-                exact menu.decode_restrictPolicy_at initial horizon scheduler who (players who)
-                  _ _ (covered who _ traced valid rfl)
-              simpa only [controlStep, actor, Option.bind_some] using
-                congrArg (fun responseLaw => responseLaw.bind fun response =>
-                  app.transition initial horizon scheduler
-                    (some ⟨remaining, some who, execution⟩)
-                    (fun observer => if observer = who then some response else none)) law
+        (PMF.pure none) :=
+  menu.run_restrict_supported_controlSteps_from initial horizon scheduler players
+    (app.RoundSupported initial horizon scheduler players) covered
+    (fun state _ valid next reached =>
+      app.roundSupported_controlStep initial horizon scheduler players state next valid reached)
+    fuel (menu.protocol initial horizon scheduler).initHistory trivial
 
 /-- Terminal finite-menu play represents the complete initialized physical
 execution, including its final network, application and all private recall. -/

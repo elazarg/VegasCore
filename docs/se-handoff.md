@@ -92,8 +92,13 @@ future private values changed by repair are outside the claim.
   transfers actual owner packet and slot resources from compatible information
   to every initialized raw prefix. The same physical immediate-owner policy
   then has zero terminal charge against arbitrary foreign raw policies under
-  authentic partial sampling. Its effective-menu realization and source payoff
-  comparison remain separate.
+  authentic partial sampling.
+- [SourceServiceEffectiveImmediateComparator](../Vegas/Game/SourceServiceEffectiveImmediateComparator.lean)
+  represents the same whole policy in the complete effective game. Actual local
+  owner slots and bounded records admit its supported responses, and the generic
+  restriction induction preserves the exact physical terminal law. Every hidden
+  compatible history has zero owner collection against arbitrary effective
+  opponents. Source payoff comparisons remain open.
 - [SourceServiceCompatibleCollection](../Vegas/Game/SourceServiceCompatibleCollection.lean)
   derives actual collection for both classified forbidden packets and repeated
   submissions at compatible information in any response menu. The replay kernel
@@ -330,6 +335,11 @@ future private values changed by repair are outside the claim.
   proves that one admitted policy's initialized delayed fiber has mass alpha
   and conditional private risk one half for every alpha > 0. Rational free
   completion, source-payoff distortion and SE impossibility are not claimed.
+  [OpaqueBindingForkSourcePosterior](../Vegas/Examples/OpaqueBindingForkSourcePosterior.lean)
+  proves the conditional typed configuration and decoded common-memory lottery
+  equal the clean witness's, retaining the same initial parameter. Private risk
+  does not distort this fixture's projected source prefix; future free-policy
+  choices and payoffs remain separate.
 - [SourceServiceLateTurnCompletion](../Vegas/Game/SourceServiceLateTurnCompletion.lean)
   transfers the timely canonical call's accepted-step/public-miss dichotomy to
   the actual turn-counted continuation. Real recorded recall suppresses calls

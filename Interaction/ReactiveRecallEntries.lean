@@ -35,6 +35,24 @@ theorem recallOwnPlay_entry_mem (past : List app.PlayerEntry) (index : Nat)
   simp only [List.nil_append, ownPlayFrom, List.mem_append, List.mem_singleton]
   exact Or.inr trivial
 
+/-- A remembered own-play input has its actual preceding recall and recorded view. -/
+theorem ownPlayFrom_recorded_input (earlier past : List app.PlayerEntry)
+    (input : app.Info) (action : app.Action)
+    (member : (input, action) ∈ app.ownPlayFrom earlier past) :
+    ∃ index entry, past[index]? = some entry ∧
+      input = some (earlier ++ past.take index, entry.beforeView) := by
+  induction past generalizing earlier with
+  | nil => cases member
+  | cons first rest ih =>
+      simp only [ReactiveApplication.ownPlayFrom, List.mem_append, List.mem_singleton] at member
+      rcases member with prior | current
+      · obtain ⟨index, entry, recorded, seen⟩ := ih (earlier ++ [first]) prior
+        refine ⟨index + 1, entry, ?_, ?_⟩
+        · simpa only [List.getElem?_cons_succ] using recorded
+        · simpa only [List.take_succ_cons, List.append_assoc, List.singleton_append] using seen
+      · obtain ⟨rfl, rfl⟩ := Prod.mk.inj current
+        exact ⟨0, first, rfl, by simp⟩
+
 namespace ResponseMenu
 
 variable [DecidableEq Principal] {app} (menu : app.ResponseMenu)

@@ -118,6 +118,7 @@ import Vegas.Game.SourceServiceImmediateRisk
 import Vegas.Game.SourceServiceCleanContinuation
 import Vegas.Game.SourceServiceImmediateAudit
 import Vegas.Game.SourceServiceCompatibleImmediateAudit
+import Vegas.Game.SourceServiceEffectiveImmediateComparator
 import Vegas.Game.SourceServiceImmediateComparator
 import Vegas.Game.SourceServiceSignedExclusion
 import Vegas.Game.SourceServiceSignedCollection
