@@ -9,6 +9,8 @@ An actual initialized pending activation supplies its semantic residual before
 any response is chosen. The residual's real decoder transport identifies the
 whole-program source successor of each protected transmitting binding draw.
 Both its typed store and own history come from the actual stopped execution.
+The probability law retains the same response and stopped-execution draws,
+including their full traffic, and gives the whole source step on transmission.
 
 The profile here is the profile used by the compiler. When that profile has
 been normalized, this readout represents its effective source history; erased
@@ -156,5 +158,103 @@ theorem sourceServiceDecision_clear_binding_prefix_completion {horizon remaining
         (commitSuccessor name guard source value).history).map Sum.inr).map lift = _
       rw [read]
       rfl
+
+/-- The actual response and stopped-execution draws retain their whole typed
+source prefix and full traffic jointly. The normalized transmitting readout
+is the whole source step; waiting is a separate, unfinished branch. -/
+theorem sourceServiceDecision_clear_binding_prefix_probability {horizon remaining : Nat}
+    {scheduler : (application setup leaks).Scheduler}
+    {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
+      delay bound)
+    (bounds : MessageBounds (graph setup))
+    (profile : BehavioralProfile setup.program)
+    (players : Player → (application setup leaks).Policy)
+    (who : Player) (execution : (application setup leaks).Execution)
+    (event : (graph setup).EventId)
+    (bindingOwner : Player) (bindingPayload : L.Ty)
+    (binding : (graph setup).outputLayout event = .binding bindingOwner bindingPayload)
+    (trace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup) horizon
+      scheduler).Trace (some ⟨remaining, some who, execution⟩))
+    (initialized : (application setup leaks).RoundSupported (initialLaw setup) horizon scheduler
+      players (some ⟨remaining, some who, execution⟩))
+    (clear : ∀ player, (runtime setup).persistentServiceRisk leaks bound player
+      (execution.recall player) (execution.observe (application setup leaks) player) = false)
+    (unrecorded : (runtime setup).eventRecorded leaks (execution.recall who) event = false)
+    (turn : execution.application.publicView.ownTurn? who = some event)
+    (fits : execution.application.publicView.InclusionFitsDeadline (runtime setup) bound event)
+    (weight : ℝ) (positive : 0 < weight) (below : weight < 1)
+    (follows : players who = sourceServiceTurnPolicy setup leaks bound horizon
+      (geometricTiming setup horizon weight positive.le below.le) profile who)
+    (focal : Player) :
+    ∃ (before : ProtocolState setup.program)
+      (site : BindingSource setup profile event execution.application.config)
+      (embed : Config Player L ((site.name, .commitment site.owner site.payload) :: site.Γ) →
+        ProtocolState setup.program),
+      sourceServicePrefix? setup event.val execution.application.config = some before ∧
+      site.owner = who ∧
+      ((players who (execution.recall who)
+          (execution.observe (application setup leaks) who)).bind fun response =>
+        if response.transmission.isSome then
+          ((application setup leaks).runUntilHorizon scheduler players
+            (fun final => event ∈ final.application.config.cut.completed) horizon
+            (execution.respond (application setup leaks) who response)).map fun final =>
+              (sourceServicePrefix? setup (event.val + 1) final.application.config,
+                (runtime setup).bindingTraffic leaks focal final)
+        else PMF.pure (none, (runtime setup).bindingTraffic leaks focal
+          (execution.respond (application setup leaks) who response))) =
+        mix weight positive.le below.le
+          (PMF.pure (none, (runtime setup).bindingTraffic leaks focal
+            (execution.respond (application setup leaks) who ⟨none⟩)))
+          ((commitKernel site.residual (site.source.view site.owner)).bind fun value =>
+            ((application setup leaks).runUntilHorizon scheduler players
+              (fun final => event ∈ final.application.config.cut.completed) horizon
+              (execution.respond (application setup leaks) site.owner
+                ((runtime setup).reactiveBinding leaks site.owner event site.payload value
+                  (execution.application.publicView.bindingCount site.owner)))).map fun final =>
+                (some (embed (commitSuccessor site.name site.guard site.source value)),
+                  (runtime setup).bindingTraffic leaks focal final)) ∧
+      ((commitKernel site.residual (site.source.view site.owner)).bind fun value =>
+        ((application setup leaks).runUntilHorizon scheduler players
+          (fun final => event ∈ final.application.config.cut.completed) horizon
+          (execution.respond (application setup leaks) site.owner
+            ((runtime setup).reactiveBinding leaks site.owner event site.payload value
+              (execution.application.publicView.bindingCount site.owner)))).map fun final =>
+                sourceServicePrefix? setup (event.val + 1) final.application.config) =
+        (ProtocolState.behavioralStateStep setup.program profile before).map some := by
+  obtain ⟨before, site, embed, beforeRead, ownerEq, step, completed⟩ :=
+    sourceServiceDecision_clear_binding_prefix_completion contract bounds profile players who
+      execution event bindingOwner bindingPayload binding trace initialized clear unrecorded
+      turn fits weight positive below follows
+  subst who
+  have responseLaw := sourceServiceDecision_clear_binding_response bounds bound profile execution
+    event site trace clear unrecorded turn fits weight positive below
+  refine ⟨before, site, embed, beforeRead, rfl, ?_, ?_⟩
+  · rw [follows, responseLaw, mix_bind, PMF.pure_bind]
+    simp only [Option.isSome_none, Bool.false_eq_true, ↓reduceIte, PMF.bind_map]
+    congr 1
+    apply bind_congr_on_support _
+    intro value sampled
+    apply map_congr_on_support _
+    intro stopped supported
+    exact Prod.ext (completed value sampled stopped supported) rfl
+  · rw [step, PMF.map_comp]
+    calc
+      _ = (commitKernel site.residual (site.source.view site.owner)).bind fun value =>
+          PMF.pure (some (embed (commitSuccessor site.name site.guard site.source value))) := by
+        apply bind_congr_on_support _
+        intro value sampled
+        calc
+          _ = ((application setup leaks).runUntilHorizon scheduler players
+              (fun final => event ∈ final.application.config.cut.completed) horizon
+              (execution.respond (application setup leaks) site.owner
+                ((runtime setup).reactiveBinding leaks site.owner event site.payload value
+                  (execution.application.publicView.bindingCount site.owner)))).map
+              (fun _ => some (embed (commitSuccessor site.name site.guard site.source value))) := by
+            apply map_congr_on_support _
+            exact completed value sampled
+          _ = _ := PMF.map_const _ _
+      _ = _ := PMF.bind_pure_comp _ _
+
 
 end Vegas

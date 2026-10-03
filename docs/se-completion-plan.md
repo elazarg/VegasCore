@@ -117,6 +117,12 @@ Protected binding completion also identifies the actual whole-program source
 prefix and behavioral step through its derived residual. Original disclosure
 memory, joint native-input likelihoods and source assessment transport remain
 separate obligations.
+Supported original resolution intentions now have exact protected packet
+completion and typed-state agreement, with effective history kept distinct.
+A single timely canonical transmission followed by owner silence also has an
+actual accepted-action/public-miss dichotomy outside the protected window.
+Its acceptance law can depend on the builder and the public packet content;
+the dichotomy alone does not bound the value of waiting.
 
 Continue in this order:
 

@@ -1367,6 +1367,9 @@ completion decodes to that same drawn successor through the residual's real
 transport map. Only the owner follows the prescribed policy. This identifies
 the compiler profile's source prefix; for a normalized profile it does not
 restore erased original disclosure intentions or supply a source prior.
+Its probability theorem keeps the same actual response and stopping draws
+joint with full traffic. The normalized transmitting prefix marginal equals
+that whole behavioral source step; waiting remains an unfinished branch.
 
 [SourceServiceResolutionResponseLaw](../Vegas/Game/SourceServiceResolutionResponseLaw.lean)
 derives the corresponding physical FALSE/TRUE packet marginal for effective
@@ -1387,6 +1390,23 @@ joint law has the actual protected native policy's traffic marginal. The prior
 channel is supplied only for the effective source configuration. This local
 memory lift does not assemble all owners' original histories or identify the
 source assessment at a native information site.
+
+[SourceServiceResolutionResponseCompletion](../Vegas/Game/SourceServiceResolutionResponseCompletion.lean)
+connects a supported original intention from that memory lottery to the actual
+normalized response and its initialized continuation. Protected stopping
+accepts the newly submitted packet's exact identifier and leaves no miss.
+The endpoint agrees with both the effective successor's typed state and the
+restored intended successor's typed state; its decoded history is the
+effective one. Foreign policies may be arbitrary. The whole original history
+and stopped response probabilities still need their joint transport.
+
+[SourceServiceLateDecisionCompletion](../Vegas/Game/SourceServiceLateDecisionCompletion.lean)
+handles an actual timely effective canonical transmission outside protected
+inclusion as well. If the owner is silent afterward, every supported stopped
+endpoint completes the event either with that chosen typed action or with
+its real public expiry marker. Foreign policies are arbitrary, and the
+horizon comes from the initialized trace and service contract. The result
+gives no acceptance probability or independence, and no payoff comparison.
 
 [SourceServiceSampleEnvironmentFactorization](../Vegas/Game/SourceServiceSampleEnvironmentFactorization.lean)
 proves the real public sampling command's joint law. The sampled value is read
