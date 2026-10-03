@@ -110,8 +110,8 @@ readout integrates the actual response lottery after the same passive sample.
 [SourceServiceFirstActivationFactorization](../Vegas/Game/SourceServiceFirstActivationFactorization.lean)
 preserves a prior source-view/full-traffic factorization through the entire
 binding or resolution wait to that input, with total mass on real inputs at
-every supported prior view. Whole-prefix source/traffic assembly remains a
-separate obligation.
+every supported prior view. The initialized pure-first-turn assembly below
+supplies its actual prior; perturbed timing remains separate.
 
 [SourceServiceFirstTurnCompletes](../Vegas/Game/SourceServiceFirstTurnCompletes.lean)
 identifies the whole next-prefix law of the local first-turn completion phase
@@ -142,7 +142,7 @@ traffic and physical own input; no factorization is assumed.
 joins the actual first-turn binding draw and whole source successor with the
 same stopped full traffic. Its fixed-draw coupling carries an
 original/effective successor pair from the prior source-view/traffic law.
-Whole-prefix traffic induction remains open.
+The pure-first-turn whole-prefix induction is assembled below.
 [SourceServiceFirstResolutionTraffic](../Vegas/Game/SourceServiceFirstResolutionTraffic.lean)
 joins the global first-turn resolution draw, whole next-prefix decoder and
 same full stopped traffic. Effective disclosures derive supported TRUE
@@ -152,8 +152,8 @@ couples traffic through the untouched wait, actual first protected response
 and completion stop. Its prior pair-view/traffic induction hypothesis yields
 original/effective successors with the same actual stopped traffic. Trace,
 protection, fresh-slot and conforming-call resources are derived internally.
-Joining this latent intention law to actual global source selection and the
-whole-prefix induction remains open.
+The whole-view consumer and rank induction below join the actual effective
+source selection. Restoring original histories uses the common lottery.
 [SourceServiceFirstActivationResources](../Vegas/Game/SourceServiceFirstActivationResources.lean)
 derives first-input trace, protection, fresh-slot and conformance facts for
 both owned decision kinds. The binding proof consumes them, and the actual
@@ -171,7 +171,8 @@ and full traffic.
 joins both carried source successors and an unchanged parameter with the same
 actual draw and traffic,
 deriving the sample marginal from the boundary and complete play. These
-local phase laws still need whole-prefix induction and native belief transport.
+These local phase laws support the pure-first-turn induction below; native
+belief transport remains separate.
 [SourceServiceInitialTraffic](../Vegas/Game/SourceServiceInitialTraffic.lean)
 supplies the actual initialized parameter/source/full-traffic factor through
 the whole source view, without an independence assumption on private types.
@@ -199,8 +200,17 @@ composes these actual phases at every initialized pure-first-turn rank. Its
 joint law is the true whole source behavioral iteration with the same initial
 parameter and full stopped traffic. The channel reads only the whole effective
 source observation. Neither a source marginal nor an endpoint or likelihood
-equation is a premise. Original-memory and native belief transport remain
-separate.
+equation is a premise.
+[SourceServiceOriginalRankTraffic](../Vegas/Game/SourceServiceOriginalRankTraffic.lean)
+then derives the true original source-prefix/full-traffic law through the same
+all-owner restoration draw, retaining the initial parameter. Its channel reads
+only the compressed original focal observation.
+[SourceServiceOriginalFirstInput](../Vegas/Game/SourceServiceOriginalFirstInput.lean)
+propagates this law to the actual first ready binding or resolution owner
+input, before the response. The channel is total on real inputs at every
+supported original source prefix. Physical private recall is retained; the
+restored histories remain auxiliary source data. Conditional native beliefs
+and nonpure timing are still separate obligations.
 
 The actual binding-response law now composes with protected completion,
 retaining the transmitting draw and full stopped traffic. The native Bayes
@@ -214,9 +224,9 @@ For waiting comparisons, a late canonical packet can still be accepted before
 expiry without a charge, so the accepted branch needs source-continuation
 control as well as the miss branch's real collection bound.
 Protected binding completion also identifies the actual whole-program source
-prefix and behavioral step through its derived residual. Original disclosure
-memory, joint native-input likelihoods and source assessment transport remain
-separate obligations.
+prefix and behavioral step through its derived residual. The pure-first-turn
+original-memory/input law above does not supply conditional assessment
+transport for perturbed waiting or late decisions.
 Supported original resolution intentions now have exact protected packet
 completion and typed-state agreement, with effective history kept distinct.
 Their joint response law also composes with the actual stopping kernel,
@@ -230,16 +240,16 @@ both source successors and the same actual stopped traffic.
 [DisclosureProfilePrefix](../Vegas/Game/DisclosureProfilePrefix.lean) composes
 all owners' real memory kernels to recover the complete original source law
 at every normalized source prefix. The initialized native rank carrier has
-that original law; its joint traffic likelihood and conditional-prefix bridge
-to native information still need assembly.
+that original law with the actual traffic channel and first owner input;
+conditional-prefix transport to native beliefs remains open.
 The actual restoration also retracts to the same effective state on support,
 and its view compression transports an effective source-view channel through
 the common original-memory lottery. Waiting in the binding prefix law uses
 the real decoder's unfinished result, derived from the unwritten ready field.
 [DisclosureProfileJointChannel](../Vegas/Game/DisclosureProfileJointChannel.lean)
 retains correlated initial parameters in that same original-state and channel
-law. The channel reads the effective source view; its identification with
-actual native traffic remains a separate obligation.
+law. The pure-first-turn original rank theorem identifies that channel with
+the actual native traffic; perturbed timing still needs its own law.
 A single timely canonical transmission followed by owner silence also has an
 actual accepted-action/public-miss dichotomy outside the protected window.
 Its acceptance law can depend on the builder and the public packet content;
@@ -253,12 +263,10 @@ across all native information sets and account for its timing likelihoods.
 
 Continue in this order:
 
-1. Use the proved initialized pure-first-turn source-prefix/full-traffic law
-   to restore original histories once at the requested
-   prefix through the same all-owner memory lottery, retaining the initial
-   parameter. For nonpure timing,
-   derive the actual missing-turn/public-miss decomposition and relative
-   escape bounds; the pure first-turn rank law does not cover those branches.
+1. Condition the proved original-source/first-owner-input joint law using
+   recovery of the compressed source observation from the actual input.
+   For nonpure timing, derive the actual missing-turn/public-miss decomposition
+   and relative escape bounds; pure first-turn laws do not cover those branches.
 2. Derive source-relative conditional beliefs and escape bounds at native
    information sites. Clean-prefix probability equality alone is insufficient.
 3. Compare protected decisions, waiting, late first attempts and departures
@@ -320,6 +328,17 @@ response is retained or is a canonical binding with absent or mistyped private
 opening material. The risk extension derives this residual from a genuine
 information-site history and confines its remaining upper comparison to that
 class. Its whole-policy continuation comparison remains an explicit obligation.
+[ReactiveBindingPendingExpiry](../Vegas/Pending/ReactiveBindingPendingExpiry.lean)
+preserves the pending-failure frame through actual due expiry, including the
+public miss marker and service recall. The shared completion congruence lives
+in [EventCompletionObservation](../Vegas/Pending/EventCompletionObservation.lean).
+[ReactiveBindingCertificateRepair](../Vegas/Pending/ReactiveBindingCertificateRepair.lean)
+proves that a mistyped bare commitment installs a real owned certificate
+capability absent from its typed-default replacement despite equal networks.
+This is a continuation-coupling gap, not a profitable-deviation theorem. A
+stopped comparison must act at a real owner input, handle uncharged late
+acceptance, and supply rational continuation after a public miss with the
+one-time deposit already sunk.
 
 ## Validation
 

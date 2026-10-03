@@ -177,49 +177,6 @@ theorem advanceClock (frame : Frame runtime leaks memory owner original repaired
       { view with publicView := { view.publicView with clock := view.publicView.clock + 1 } })
         (frame.views who different)
 
-omit [DecidableEq Player] in
-private theorem complete_publicView (left right : State graph)
-    (publicEq : left.publicView = right.publicView)
-    (event : graph.EventId) (leftReady : left.config.cut.Ready event)
-    (rightReady : right.config.cut.Ready event) (action : graph.Action event)
-    (value : (graph.outputLayout event).Value) :
-    (left.complete event leftReady action value).publicView =
-      (right.complete event rightReady action value).publicView := by
-  classical
-  have observations := congrArg PublicView.observation publicEq
-  have orders := congrArg PublicObservation.completionOrder observations
-  have cuts := cut_eq_of_completionOrder_eq left.config right.config orders
-  have observed : graph.publicObserve (left.config.complete event leftReady action value) =
-      graph.publicObserve (right.config.complete event rightReady action value) := by
-    apply PublicObservation.ext graph
-    · simpa only [State.publicView, publicObserve, Config.complete,
-        List.map_append, List.map_cons, List.map_nil] using
-        congrArg (fun order => order ++ [event]) orders
-    · apply graph.publicStore_congr
-      intro field visible
-      rw [store_complete, store_complete]
-      by_cases selected : field = .inr event
-      · subst field
-        rw [Function.update_self, Function.update_self]
-      · rw [Function.update_of_ne selected, Function.update_of_ne selected]
-        have prior := congrFun (congrArg PublicObservation.store observations) field
-        simpa only [State.publicView, publicObserve, publicStore_of_public, visible] using prior
-  have clockEq := congrArg PublicView.clock publicEq
-  have activatedEq := congrArg PublicView.activatedAt publicEq
-  have acceptedEq := congrArg PublicView.accepted publicEq
-  have missedEq := congrArg PublicView.missedEvents publicEq
-  have nextActivated :
-      State.refreshActivated (left.config.complete event leftReady action value)
-          left.clock left.activatedAt =
-        State.refreshActivated (right.config.complete event rightReady action value)
-          right.clock right.activatedAt := by
-    funext query
-    simp only [State.refreshActivated, Config.complete_cut, cuts]
-    rw [show left.clock = right.clock from clockEq,
-      show left.activatedAt = right.activatedAt from activatedEq]
-  unfold State.publicView State.complete
-  congr 1
-
 /-- A completion outside the shadow is read from the real runtime on both
 sides. This covers public results and other players' private bindings. -/
 theorem complete_unmodified (frame : Frame runtime leaks memory owner original repaired)
@@ -239,7 +196,8 @@ theorem complete_unmodified (frame : Frame runtime leaks memory owner original r
     (congrArg (fun view : ReactivePlayerView graph => view.observation.store) application)
     (congrArg (fun view : ReactivePlayerView graph => view.observation.ownActions) application)
     event leftReady rightReady noValue noAction action value
-  have nextPublic := complete_publicView original.application repaired.application frame.publicView
+  have nextPublic := State.complete_publicView_congr original.application repaired.application
+    frame.publicView
     event leftReady rightReady action value
   have nextObservation :
       (memory.shadow.view (app.observePlayer

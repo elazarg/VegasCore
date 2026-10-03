@@ -2,6 +2,7 @@
 
 import Vegas.Pending.EventApplication
 import Vegas.EventGraph.ObservationStep
+import Vegas.EventGraph.Commutation
 
 /-! # Native observations of paired graph completions -/
 
@@ -75,6 +76,51 @@ theorem State.markMissed_playerView_congr (left right : State graph) (focal : Pl
   exact congrArg (fun view : PlayerView graph =>
     { view with publicView := { view.publicView with
       missedEvents := insert event view.publicView.missedEvents } }) views
+
+omit [DecidableEq Player] in
+/-- Equal public views remain equal after the same actual event completion,
+including deadline activation and native acceptance and miss metadata. -/
+theorem State.complete_publicView_congr (left right : State graph)
+    (publicEq : left.publicView = right.publicView)
+    (event : graph.EventId) (leftReady : left.config.cut.Ready event)
+    (rightReady : right.config.cut.Ready event) (action : graph.Action event)
+    (value : (graph.outputLayout event).Value) :
+    (left.complete event leftReady action value).publicView =
+      (right.complete event rightReady action value).publicView := by
+  classical
+  have observations := congrArg PublicView.observation publicEq
+  have orders := congrArg PublicObservation.completionOrder observations
+  have cuts := cut_eq_of_completionOrder_eq left.config right.config orders
+  have observed : graph.publicObserve (left.config.complete event leftReady action value) =
+      graph.publicObserve (right.config.complete event rightReady action value) := by
+    apply PublicObservation.ext graph
+    · simpa only [State.publicView, publicObserve, Config.complete,
+        List.map_append, List.map_cons, List.map_nil] using
+        congrArg (fun order => order ++ [event]) orders
+    · apply graph.publicStore_congr
+      intro field visible
+      rw [store_complete, store_complete]
+      by_cases selected : field = .inr event
+      · subst field
+        rw [Function.update_self, Function.update_self]
+      · rw [Function.update_of_ne selected, Function.update_of_ne selected]
+        have prior := congrFun (congrArg PublicObservation.store observations) field
+        simpa only [State.publicView, publicObserve, publicStore_of_public, visible] using prior
+  have clockEq := congrArg PublicView.clock publicEq
+  have activatedEq := congrArg PublicView.activatedAt publicEq
+  have acceptedEq := congrArg PublicView.accepted publicEq
+  have missedEq := congrArg PublicView.missedEvents publicEq
+  have nextActivated :
+      State.refreshActivated (left.config.complete event leftReady action value)
+          left.clock left.activatedAt =
+        State.refreshActivated (right.config.complete event rightReady action value)
+          right.clock right.activatedAt := by
+    funext query
+    simp only [State.refreshActivated, Config.complete_cut, cuts]
+    rw [show left.clock = right.clock from clockEq,
+      show left.activatedAt = right.activatedAt from activatedEq]
+  unfold State.publicView State.complete
+  congr 1
 
 /-- Completing the same event exposes only its public result and the focal
 player's own action. Clock activation and native service metadata introduce

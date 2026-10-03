@@ -75,7 +75,7 @@ future private values changed by repair are outside the claim.
   on real inputs at every supported prior view. The source carrier may retain
   original and effective states together. It preserves the given carrier
   marginal. The initialized rank law supplies the source marginal separately;
-  assembling the whole source/traffic induction remains open.
+  the actual pure-first-turn source/traffic induction is assembled below.
 - [SourceServiceFirstTurnCompletes](../Vegas/Game/SourceServiceFirstTurnCompletes.lean)
   identifies the actual next-prefix decoder law of the local first-turn
   completion phase with the whole source behavioral step. This includes
@@ -115,8 +115,8 @@ future private values changed by repair are outside the claim.
   stopped traffic. Fixed-draw traffic coupling preserves original/effective
   successor pairs and an unchanged parameter from a prior source-view/traffic
   factorization. The law
-  applies to initialized exact first-turn phases; whole-prefix traffic
-  induction and retained-waiting incentives remain separate.
+  applies to initialized exact first-turn phases. The whole-prefix consumer
+  below supplies that induction; retained-waiting incentives remain separate.
 - [SourceServiceFirstTurnBindingFactorization](../Vegas/Game/SourceServiceFirstTurnBindingFactorization.lean)
   lifts the actual global commitment phase through one fixed aligned slice.
   It derives the source choice and next-prefix decoder and retains the same
@@ -132,7 +132,8 @@ future private values changed by repair are outside the claim.
   retains original and effective successors and an unchanged parameter with
   the same stopped traffic.
   The whole-view consumer below identifies actual global effective choices;
-  common original-memory and whole-prefix assembly remain separate.
+  the pure-first-turn rank law below assembles those phases. The common
+  original-memory carrier is restored through the same actual traffic.
 - [SourceServiceFirstTurnResolutionFactorization](../Vegas/Game/SourceServiceFirstTurnResolutionFactorization.lean)
   lifts the actual global resolution phase through the shared source slice.
   Tail effectiveness supplies supported normalization and realizability;
@@ -149,8 +150,8 @@ future private values changed by repair are outside the claim.
   [SourceServiceStoppedSampleFactorization](../Vegas/Game/SourceServiceStoppedSampleFactorization.lean)
   joins the actual public draw, both source successors, an unchanged parameter
   and that same traffic
-  channel from the prior source-view factorization. Whole prefix induction
-  and native assessment transport remain separate.
+  channel from the prior source-view factorization. Pure-first-turn induction
+  is assembled below; native assessment transport remains separate.
   [SourceServiceFirstTurnSampleFactorization](../Vegas/Game/SourceServiceFirstTurnSampleFactorization.lean)
   lifts that actual sample law through one fixed aligned source slice,
   preserving the same parameter and full traffic through the whole source
@@ -180,8 +181,16 @@ future private values changed by repair are outside the claim.
   derives the actual initialized whole source-prefix/full-traffic law at every
   pure-first-turn rank, preserving the same initial parameter. The marginal
   is the true source behavioral iteration; traffic factors through the whole
-  effective source observation. Original-memory, native Bayes and retained
-  waiting remain separate.
+  effective source observation.
+- [SourceServiceOriginalRankTraffic](../Vegas/Game/SourceServiceOriginalRankTraffic.lean)
+  restores all original histories once, with the same initial parameter and
+  actual full traffic. Its channel reads the compressed original focal view;
+  no marginal or likelihood equation is supplied.
+- [SourceServiceOriginalFirstInput](../Vegas/Game/SourceServiceOriginalFirstInput.lean)
+  derives the true original prefix/parameter joint law with the actual first
+  ready owner input for bindings and resolutions. The source-view channel is
+  total on actual inputs, read before the response. These pure-first-turn laws
+  do not replace physical recall or supply native Bayes/retained-waiting proofs.
 - [SourceServiceInitialTraffic](../Vegas/Game/SourceServiceInitialTraffic.lean)
   derives the actual initialized parameter/source/full-traffic factor through
   the whole source view. Correlated initial private types are retained; the
@@ -213,12 +222,13 @@ future private values changed by repair are outside the claim.
 - [DisclosureProfileRetraction](../Vegas/Game/DisclosureProfileRetraction.lean)
   proves supported original memories compress back to the same effective
   source prefix. Its view law carries an effective source-view channel
-  through the restoration without assuming a posterior equation. Actual
-  native traffic still needs to be identified with that channel.
+  through the restoration without assuming a posterior equation. The original
+  rank law identifies it with actual pure-first-turn native traffic.
 - [DisclosureProfileJointChannel](../Vegas/Game/DisclosureProfileJointChannel.lean)
   retains correlated initial parameters, the complete original source state
   and the same source-view channel draw through the common memory lottery.
-  It does not identify the channel with native input probabilities.
+  The original rank and first-input laws above identify the actual channel
+  for pure-first-turn execution. Perturbed timing remains separate.
 - [SourceServiceAuthorizationBreach](../Vegas/Game/SourceServiceAuthorizationBreach.lean)
   proves final rejection of actual invalid-token and foreign-actor packets.
   [SourceServiceAuditableCollection](../Vegas/Game/SourceServiceAuditableCollection.lean)
@@ -267,6 +277,18 @@ future private values changed by repair are outside the claim.
   retained or a canonical binding with absent or mistyped private opening.
   The risk extension confines its remaining upper comparison to that exact
   information-local residual. The continuation comparison remains unproved.
+- [ReactiveBindingPendingExpiry](../Vegas/Pending/ReactiveBindingPendingExpiry.lean)
+  proves the pending unusable binding's actual due-expiry frame law. Both
+  executions complete with the remembered original failure and retain the
+  public miss, service recall, traffic and reconstructed owner input. It
+  supplies no whole-policy settlement comparison or additional fine.
+- [ReactiveBindingCertificateRepair](../Vegas/Pending/ReactiveBindingCertificateRepair.lean)
+  proves that the actual mistyped bare commitment installs an owned certificate
+  capability its typed-default replacement cannot reproduce, despite equal
+  networks. This identifies a coupling gap, not an SE counterexample. Later
+  public misses can occur without another owner turn, their deposit is sunk,
+  and late canonical acceptance can remain uncharged. A stopped repair needs
+  the genuine shared waiting and continuation comparisons.
 - [SourceServiceAliasEquilibrium](../Vegas/Game/SourceServiceAliasEquilibrium.lean)
   supplies the final private raw-alias transport, retaining correlated
   collection and prior charges.

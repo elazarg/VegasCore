@@ -1606,11 +1606,19 @@ source view; no phase, source-marginal, endpoint or likelihood law is supplied.
 starts that induction from the actual setup law, retaining any parameter from
 the same initial draw beside the whole source entry and full traffic. The
 owned initial candidate catalogue is determined by the focal source view.
-All owners' original histories can then be restored once at
-the requested prefix through the same channel and memory lottery, retaining
-correlated initial parameters. This avoids identifying a selected owner's
-restoration with the common original carrier. Nonpure timing needs its own
-actual miss decomposition and conditional passage/escape bounds.
+[SourceServiceOriginalRankTraffic](../Vegas/Game/SourceServiceOriginalRankTraffic.lean)
+restores all owners' original histories once at the requested rank through
+the common memory lottery, retaining the same initial parameter and full
+traffic. Its channel reads the compressed original focal view. Supported
+actual decoders remove the fallback branch; no marginal or channel equation
+is supplied.
+[SourceServiceOriginalFirstInput](../Vegas/Game/SourceServiceOriginalFirstInput.lean)
+carries that joint law to the actual first binding or resolution owner input,
+before the response draw. The channel has total mass on real inputs at every
+supported original source prefix. These are pure-first-turn laws; conditional
+native beliefs and nonpure timing still need actual miss decompositions and
+conditional passage/escape bounds. Restored histories remain auxiliary source
+data and do not replace physical private recall.
 
 [SourceServiceSampleCompletion](../Vegas/Game/SourceServiceSampleCompletion.lean)
 derives actual silence, whole stopped-run equality with silent play, and the
@@ -1758,26 +1766,35 @@ inclusion, without a calendar assumption.
 [ReactiveBindingFrameCommands](../Vegas/Pending/ReactiveBindingFrameCommands.lean)
 couples the actual clock, sample and expiry commands when the shadow's
 remembered outcomes belong to completed events. The law includes service
-recall and audit data. It does not cover packet inclusion or expiry with a
-pending private override; generic continuation closure, retained admission
-and consistent beliefs remain open.
+recall and audit data. Packet inclusion and general pending private overrides
+remain separate.
+[ReactiveBindingPendingExpiry](../Vegas/Pending/ReactiveBindingPendingExpiry.lean)
+proves the actual due-expiry joint law for a pending unusable binding: private
+repair remembers the original failure, and both executions complete with that
+same failure and public miss marker. The frame retains service recall, traffic,
+receipts and reconstructed owner input. This supplies no additional fine or
+whole-policy settlement comparison; generic continuation closure, retained
+admission and consistent beliefs remain open.
 
 [BindingFrameSettlement](../Vegas/Game/BindingFrameSettlement.lean) proves
 that every preserved frame gives exactly the same actual traffic, final
 record, audit kernel, expected utility vector and realized payoff-vector law.
 Earlier charges and correlated partial collection are allowed. The open
-continuation proof must preserve that frame: the current per-event attempted
-binding memory can overwrite an actual expiry failure, and multiple pending
-attempts require identifying the original candidate by the accepted handle.
-Mistyped but certifiable material also carries authentic communication
-capabilities that a typed repair does not automatically reproduce.
-Replacing that material can remove a certificate the original owner could
-send in a later raw continuation. This obstructs an exact coupling of every
-future raw action, even if the public result is initially unchanged. It does
-not by itself refute equilibrium preservation: comparison at an earlier
-clean protected history can still charge a later first offense. A stopping
-comparison must keep the original capabilities on charged raw branches and
-prove that its stopping packet is forbidden by the actual settled record.
+continuation proof must preserve that frame, including the correct original
+candidate selected by the accepted handle when attempts overlap.
+[ReactiveBindingCertificateRepair](../Vegas/Pending/ReactiveBindingCertificateRepair.lean)
+proves a concrete capability distinction. The actual bare response fixes its
+fresh owned candidate to arbitrary raw material without checking the source
+payload type. A mistyped owned certificate then resolves in the original
+execution and fails in the typed-default replacement, although their networks
+are equal. This obstructs copying every future raw response and supplies no
+profitable-deviation or equilibrium counterexample.
+A stopped comparison would need one legal continuation shared across hidden
+histories. After a public miss the one-time deposit is already sunk; another
+packet's total collection bound supplies no incremental fine. An environment
+expiry can occur without an owner turn, so repair cannot insert a decision
+there. A late canonical call can also be accepted without a miss or charge;
+stopping earlier at a protected wait needs the actual waiting comparison.
 
 ### Deviation proof boundaries
 
@@ -1791,7 +1808,7 @@ their own rationality proof; an exclusion theorem cannot supply it.
 | --- | --- | --- |
 | Protected fresh binding call | Show that completion records its actual handle and cannot be an omission. | Exact first-turn play supplies the protected call and keeps the owner's omission detector and full risk flag clear against arbitrary foreign raw policies. Its packets pass the actual final-record verdict, so authentic sampling collects zero owner charge. The strategic source embedding and local continuation comparisons remain separate. |
 | Normalization-equivalent responses | Preserve the actual response transition and emitted packet. | Reactive normalization supplies the exact local equality. This does not erase a distinct fresh identifier or authentic extra evidence. |
-| Canonical binding with unusable private opening | Repair private candidate capability while preserving the full typed source readout and actual settlement. | Candidate-only frames preserve the full typed payoff. Actual accepted canonical bindings whose private material decodes to failure have a constructed frame and exact common completion. Later raw closure, certificate exposure and the equilibrium comparison remain open. |
+| Canonical binding with unusable private opening | Repair private candidate capability while preserving the full typed source readout and actual settlement. | Actual accepted unusable bindings have a constructed frame and exact common completion; due expiry also preserves the pending-failure frame. Mistyped material has an owned certificate capability absent from a typed-default replacement. Later raw closure and the whole-policy equilibrium comparison remain open. |
 | Forbidden signed packets at a clear protected history | Bound base gain and actual collection, and exhibit one clean legal continuation under the same belief. | Constructor breaches, invalid-token or foreign-actor packets, wrong node kinds, fresh packets addressed to completed events, wrong current-event handles, public guard failures and wrong opening ownership or public binding association have derived conditional collection. The information-local classifier supplies the actual risk-to-effective-to-raw extension with the fixed deposit and comparator. Other exclusions and the source equilibrium embedding remain open. |
 | Two packets for one event before completion | Select a forbidden actual envelope from the pair and derive its collection bound. | Actual initialized settlement accepts at most one identifier for the event. A clear recorded prefix plus another same-event response reconstructs the pair; at least one packet is forbidden, even if the builder accepts the newer one. The actual committed-choice collection and risk-extension comparison are checked. This is a total-charge bound at a clear site, without renewed deterrence after a fine. |
 | Late unrecorded first binding opportunity | Admit rational native continuation before a content-dependent acceptance/miss lottery. | Probe C7 demonstrates why excluding the evidence packet can fail for every positive deposit. The auxiliary source/native embedding and its earlier incentive comparisons remain open. |

@@ -60,6 +60,8 @@ import Vegas.Game.SourceServiceFirstTurnSharedCheckpoint
 import Vegas.Game.SourceServiceFirstTurnRankFactorization
 import Vegas.Game.SourceServiceOriginalPrefix
 import Vegas.Game.SourceServiceOriginalPrefixRetraction
+import Vegas.Game.SourceServiceOriginalRankTraffic
+import Vegas.Game.SourceServiceOriginalFirstInput
 import Vegas.Game.SourceServiceFirstBindingTraffic
 import Vegas.Game.SourceServiceFirstTurnBindingFactorization
 import Vegas.Game.SourceServiceFirstResolutionTraffic
