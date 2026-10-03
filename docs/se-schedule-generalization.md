@@ -2073,6 +2073,12 @@ extra capstone assumption. Reused handles are interpreted using their fixed
 candidate meaning. Later mistyped registration
 can add material usable at another payload type without itself being a signed
 breach, so arbitrary later bindings need a distinct capability argument.
+[ReactiveBindingCopiedSubmission](../Vegas/Pending/ReactiveBindingCopiedSubmission.lean)
+preserves the full frame and actual raw candidate capability when a later fresh
+bare commitment is copied with its original material. This includes mistyped or
+absent material, without a typed-default replacement. The response-step result
+does not yet alter the retained implementation or close the reused-candidate
+and whole-policy utility comparisons.
 
 [ReactiveBindingUsableStep](../Vegas/Pending/ReactiveBindingUsableStep.lean)
 proves full-frame inclusion closure for matching fixed owner candidates,
@@ -2468,6 +2474,16 @@ initialized terminal history law if reference play only visits prescribed
 decisions. The site classification and convergence remain premises; prescribed
 site rationality and compatibility with the given source beliefs remain open.
 
+[AsyncServicePrescribedCompletion](../Vegas/Game/AsyncServicePrescribedCompletion.lean)
+discharges that construction for each fixed admitted effective source profile:
+it produces a consistent native assessment with immediate decisions at
+source-compatible sites and rational continuation at every free site under the
+actual audited utility. Its complete initialized history law equals first-turn
+play, including the joint full typed readout and realized sampled settlement
+vector. Rationality at prescribed sites and transport through the original
+varying source assessment sequence remain open. In particular, this result does
+not assume normalization is continuous at zero-probability source transcripts.
+
 [SourceServiceAliasEquilibrium](../Vegas/Game/SourceServiceAliasEquilibrium.lean)
 supplies the final normalization stage: an audited SE of the complete
 effective native menu lifts to its raw private-action aliases, with projected
@@ -2625,12 +2641,19 @@ the final equilibrium's supported play.
   raw trace, unchanged source configuration, fresh slot and original commitment
   lottery. It needs an actual completion boundary and horizon bound, without an
   assumed selected visit or global risk clarity.
-  [SourceServiceBindingSelectedResponse](../Vegas/Game/SourceServiceBindingSelectedResponse.lean)
+  [SourceServiceSelectedReference](../Vegas/Game/SourceServiceSelectedReference.lean)
+  supplies the actual selected before-response trace, unchanged configuration
+  and recalled turn resources for either strategic event kind. No selected input
+  gives actual completion, a public miss and no owner packet.
+  [ReactiveResolutionMiss](../Vegas/Pending/ReactiveResolutionMiss.lean) derives
+  immutable typed publication failure from that marker on all initialized raw
+  histories; watcher knowledge is not a premise.
+  [SourceServiceSelectedResponse](../Vegas/Game/SourceServiceSelectedResponse.lean)
   proves the exact stopped execution law by replacing the actual silent reference
   response with the original selected input's canonical lottery. Its last recall
   entry recovers that same before-response execution; no response is redrawn from
   support or assigned an assumed selection probability.
-  [SourceServiceBindingSelectedContinuation](../Vegas/Game/SourceServiceBindingSelectedContinuation.lean)
+  [SourceServiceSelectedContinuation](../Vegas/Game/SourceServiceSelectedContinuation.lean)
   proves the full selected-family stopped continuation equals actual owner
   silence after its selected response, including closed-gate silence. This
   literal timing-policy law does not supply rational free late completion.

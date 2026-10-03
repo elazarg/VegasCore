@@ -54,6 +54,14 @@ future private values changed by repair are outside the claim.
   preserves actual clean-prefix probabilities under arbitrary completion away
   from source-compatible information. It neither constructs that completion nor
   controls escaped histories at the same native information value.
+- [AsyncServicePrescribedCompletion](../Vegas/Game/AsyncServicePrescribedCompletion.lean)
+  constructs a consistent assessment for each fixed admitted effective source
+  profile, with immediate decisions at source-compatible sites and optimal
+  continuation at every free site under the actual audited utility. Its complete
+  initialized history law and joint typed readout/realized settlement law equal
+  first-turn play. Prescribed-site rationality and transport of the original
+  varying source assessment sequence remain open; off-path normalization
+  continuity is not assumed.
 - [SourceServiceRecordedDecisionCompletion](../Vegas/Game/SourceServiceRecordedDecisionCompletion.lean)
   gives acceptance of the exact original recorded packet and no public miss
   under the asynchronous contract. [SourceServiceRecordedBindingCompletion](../Vegas/Game/SourceServiceRecordedBindingCompletion.lean)
@@ -650,12 +658,19 @@ future private values changed by repair are outside the claim.
   trace, unchanged source configuration, fresh slot and original commitment
   lottery from the actual completion boundary and horizon bound. It assumes
   neither a selected visit nor global risk clarity.
-- [SourceServiceBindingSelectedResponse](../Vegas/Game/SourceServiceBindingSelectedResponse.lean)
+- [SourceServiceSelectedReference](../Vegas/Game/SourceServiceSelectedReference.lean)
+  supplies the same actual before-response trace, source configuration and
+  recalled turn resources for both strategic event kinds. A missing selected
+  input derives actual completion, a public miss and no owner packet.
+  [ReactiveResolutionMiss](../Vegas/Pending/ReactiveResolutionMiss.lean) derives
+  immutable typed publication failure from the actual marker on all initialized
+  raw histories, independently of watcher evidence.
+- [SourceServiceSelectedResponse](../Vegas/Game/SourceServiceSelectedResponse.lean)
   proves the exact stopped execution law by replacing the actual silent
   reference response with the original selected input's canonical lottery.
   Removing its last own recall entry recovers the same before-response
   execution; no assumed selection probability or support redraw is used.
-- [SourceServiceBindingSelectedContinuation](../Vegas/Game/SourceServiceBindingSelectedContinuation.lean)
+- [SourceServiceSelectedContinuation](../Vegas/Game/SourceServiceSelectedContinuation.lean)
   proves the full selected-family stopped continuation equals actual owner
   silence after its selected response, including closed-gate silence. This
   literal timing-policy law does not supply rational free late completion.
@@ -678,6 +693,12 @@ future private values changed by repair are outside the claim.
   supply the rational free continuation or its conditional incentive comparisons.
 
 ## Proof and build discipline
+
+[ReactiveBindingCopiedSubmission](../Vegas/Pending/ReactiveBindingCopiedSubmission.lean)
+preserves the full frame and actual raw candidate capability when a later fresh
+bare commitment is copied with its original material, including mistyped or
+absent material. This does not yet alter the retained implementation or prove
+reused-candidate closure and whole-policy utility domination.
 
 Read `AGENTS.md` and inspect the actual Git state before editing. Generic
 mathematics belongs in `GameTheoryExtensions`, generic execution in

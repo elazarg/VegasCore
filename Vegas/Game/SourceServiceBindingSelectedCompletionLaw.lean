@@ -113,7 +113,7 @@ theorem BindingSource.selected_family_completion_law
   let traffic := (runtime setup).bindingPublicTraffic leaks site.owner
   have absent := sourceServiceSelectedInput?_of_untouched site.owner event slot.val execution
     (boundary.untouched event rfl)
-  have stopLaw := sourceService_binding_selected_response_law scheduler players bound profile
+  have stopLaw := sourceService_selected_response_law scheduler players bound profile
     site.owner event turns slot (horizon - execution.environmentRecall.length) execution absent
   have ordered := app.runUntilHorizon_eq_runUntilHorizon_bind scheduler familyPlayers earlier
     completed (fun _ done => Or.inl done) horizon execution
@@ -232,13 +232,13 @@ theorem BindingSource.selected_family_completion_law
           (before.recall site.owner) (before.observe app site.owner) = PMF.pure ⟨none⟩ := by
         rw [responseLaw, ite_eq_right fits]
       rw [silence, PMF.pure_bind,
-        sourceService_binding_selected_continuation_silent scheduler players bound profile
+        sourceService_selected_continuation_silent scheduler players bound profile
           site.owner event turns slot before selected]
       apply map_congr_on_support _
       intro final finalSupported
       have familySupported : final ∈ (app.runUntilHorizon scheduler familyPlayers completed
           horizon (before.respond app site.owner ⟨none⟩)).support := by
-        rw [sourceService_binding_selected_continuation_silent scheduler players bound profile
+        rw [sourceService_selected_continuation_silent scheduler players bound profile
           site.owner event turns slot before selected]
         exact finalSupported
       have missed := sourceService_binding_selected_closed_completion contract players timing

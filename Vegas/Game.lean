@@ -328,14 +328,16 @@ import Vegas.Game.SourceServiceBindingSelectedInput
 import Vegas.Game.SourceServiceUsedBindingOpening
 import Vegas.Game.SourceServiceBindingSelectedAssembly
 import Vegas.Game.SourceServiceBindingSelectedResources
-import Vegas.Game.SourceServiceBindingSelectedContinuation
+import Vegas.Game.SourceServiceSelectedContinuation
 
 import Vegas.Game.SourceServiceBindingProtectedAttempt
 import Vegas.Game.SourceServiceBindingSelectedAttemptLaw
 import Vegas.Game.SourceServiceBindingSelectedClosedCompletion
-import Vegas.Game.SourceServiceBindingSelectedResponse
+import Vegas.Game.SourceServiceSelectedResponse
+import Vegas.Game.SourceServiceSelectedReference
 import Vegas.Game.SourceServiceBindingSelectedReference
 import Vegas.Game.SourceServiceBindingSelectedCompletionLaw
+import Vegas.Game.AsyncServicePrescribedCompletion
 
 /-! Strategic source-to-graph and graph-to-message correspondence. -/
 

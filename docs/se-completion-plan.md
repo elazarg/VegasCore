@@ -442,11 +442,20 @@ Continue in this order:
    information sites. Clean-prefix probability equality alone is insufficient.
 3. Compare protected decisions, waiting, late first attempts and departures
    under the actual audited utility.
-4. Supply consistent rational continuation at free sites, including after
-   collection of the one-time deposit has become certain.
+4. Transport the free-site completion through the original source assessment
+   sequence, including after collection of the one-time deposit has become certain.
 5. Complete the source-to-risk-menu equilibrium embedding, general continuation
    repair, effective-menu extension and raw-alias lift.
 6. Compose the arbitrary-builder capstone and derive the calendar corollary.
+
+[AsyncServicePrescribedCompletion](../Vegas/Game/AsyncServicePrescribedCompletion.lean)
+constructs a consistent native assessment for each fixed admitted effective
+source profile. It agrees with immediate decisions at source-compatible sites
+and is rational at every free site under the actual audited utility. Its whole
+initialized history law equals first-turn play, including the joint full typed
+readout and sampled settlement vector. This is not yet an equilibrium: rationality
+at prescribed sites and transport from the original varying source assessment
+sequence remain open. Off-path normalization need not commute with taking limits.
 
 [ReactiveBindingPublicTraffic](../Vegas/Pending/ReactiveBindingPublicTraffic.lean)
 proves joint equality of the network, receipts, public scheduler input and
@@ -539,17 +548,24 @@ derives fresh counted candidates, actual owner turn/slot invariants and no
 earlier owner packet at the real selected raw input. Its aligned source
 configuration is unchanged; protection gives the actual source commitment
 kernel, and a closed gate gives silence. Other owners may use raw actions.
+[SourceServiceSelectedReference](../Vegas/Game/SourceServiceSelectedReference.lean)
+derives the actual selected before-response input, raw trace, unchanged source
+configuration and recalled turn resources for either strategic event kind.
+Absence of a selected input gives actual completion, a public miss and no owner
+packet. [ReactiveResolutionMiss](../Vegas/Pending/ReactiveResolutionMiss.lean)
+derives immutable typed publication failure from that real miss marker on every
+initialized raw history.
 [SourceServiceBindingSelectedReference](../Vegas/Game/SourceServiceBindingSelectedReference.lean)
 derives the silent reference's actual selected before-response input, initialized
 raw trace, unchanged source configuration, fresh slot and original commitment
 lottery. It needs an actual completion boundary and horizon bound, without an
 assumed selected visit or global risk clarity.
-[SourceServiceBindingSelectedResponse](../Vegas/Game/SourceServiceBindingSelectedResponse.lean)
+[SourceServiceSelectedResponse](../Vegas/Game/SourceServiceSelectedResponse.lean)
 proves the exact stopped execution law by replacing the actual silent reference
 response with the original selected input's canonical lottery. Its last recall
 entry recovers that same before-response execution; no response is redrawn from
 support or assigned an assumed selection probability.
-[SourceServiceBindingSelectedContinuation](../Vegas/Game/SourceServiceBindingSelectedContinuation.lean)
+[SourceServiceSelectedContinuation](../Vegas/Game/SourceServiceSelectedContinuation.lean)
 proves the full selected-family stopped continuation equals actual owner
 silence after its selected response, including closed-gate silence. This
 literal timing-policy law does not supply rational free late completion.
@@ -731,6 +747,11 @@ extra capstone assumption. Reused handles use their fixed candidate meaning,
 rather than newly supplied private material.
 Arbitrary later mistyped bindings remain a capability boundary: material that
 fails the current payload type can be usable at another binding.
+[ReactiveBindingCopiedSubmission](../Vegas/Pending/ReactiveBindingCopiedSubmission.lean)
+proves that copying a later fresh bare commitment with its original material
+preserves the full frame and its actual raw candidate capability, including
+mistyped or absent material. This response-step lemma does not yet change the
+retained implementation or close the reused-candidate and terminal comparisons.
 
 [ReactiveBindingUsableStep](../Vegas/Pending/ReactiveBindingUsableStep.lean)
 proves full-frame inclusion closure for matching fixed owner candidates,

@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceServiceBindingSelectedContinuation
+import Vegas.Game.SourceServiceSelectedContinuation
 
 /-! # The literal selected family after a closed-gate response
 
@@ -83,7 +83,7 @@ theorem sourceService_binding_selected_closed_completion
     unfold ReactiveApplication.runUntilHorizon
     exact sourceServiceTurnPolicy_runUntil_owner_closed scheduler players bound turns timing profile
       owner follows _ start valid event ready owned closed
-  rw [sourceService_binding_selected_continuation_silent scheduler players bound profile owner
+  rw [sourceService_selected_continuation_silent scheduler players bound profile owner
     event turns slot middle selected, ← originalLaw] at reached
   exact sourceService_binding_no_attempt contract players timing profile owner follows start
     startTrace event ready owned payload outputEq startUnrecorded closed stopped reached

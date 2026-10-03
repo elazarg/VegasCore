@@ -3,7 +3,7 @@
 import Vegas.Game.SourceServiceBindingSelectedInput
 import Vegas.Game.SourceServiceBindingNoAttempt
 
-/-! # The actual continuation after the family's selected binding input
+/-! # The actual continuation after the family's selected owned input
 
 Responding at the selected input increases the owner's actual counted turn
 index. Every later owner recall extends that recall, so the selected family
@@ -69,7 +69,7 @@ private theorem family_silent_after_selected_input
 /-- The selected family makes no second decision at its event. The equality
 retains the whole actual stopped execution law, with arbitrary foreign policies
 and without requiring that the selected response transmitted a packet. -/
-theorem sourceService_binding_selected_continuation_silent
+theorem sourceService_selected_continuation_silent
     (scheduler : (application setup leaks).Scheduler)
     (players : Player → (application setup leaks).Policy)
     (bound : (graph setup).EventId → Nat) (profile : BehavioralProfile setup.program)

@@ -35,7 +35,9 @@ def resolutionResponseDecision? (setup : Setup (Player := Player) (L := L))
     | .opening addressed _ _ => if addressed = event then some true else none
     | .commitment .. | .malformed .. => none
 
-private theorem revealSource_response_law
+/-- The aligned ready disclosure renders its actual residual Boolean lottery
+through canonical packets at the original own recall and observation. -/
+theorem RevealSource.canonical_response_law
     {profile : BehavioralProfile setup.program} {event : (graph setup).EventId}
     (execution : (application setup leaks).Execution)
     (site : RevealSource setup profile event execution.application.config)
@@ -85,7 +87,7 @@ theorem sourceServiceDecision_clear_protected_resolution_response {horizon remai
   have law := sourceServiceDecision_clear_protected_compiled_response bounds bound profile
     site.owner execution trace clear event unrecorded turn fits weight positive below
   rw [← sourceServiceCanonicalPolicy_at_event setup leaks profile site.owner execution event turn
-      site.owned, revealSource_response_law execution site ready] at law
+      site.owned, RevealSource.canonical_response_law execution site ready] at law
   exact law
 
 omit [Fintype Player] in

@@ -2,7 +2,7 @@
 
 import Vegas.Game.SourceServiceBindingSelectedInput
 
-/-! # The actual lottery at the selected binding input
+/-! # The actual lottery at the selected owned input
 
 The same early-stop evaluator, with the owner silent, retains the original
 before-response execution at a selected hit. Removing its last silent own
@@ -54,7 +54,7 @@ theorem sourceService_silent_response_dropLast (owner : Player)
 at its selected input, by that input's actual canonical response lottery.
 The before-response execution is read from the last silent recall entry;
 the chosen response is neither conditioned on support nor drawn twice. -/
-theorem sourceService_binding_selected_response_law
+theorem sourceService_selected_response_law
     (scheduler : (application setup leaks).Scheduler)
     (players : Player → (application setup leaks).Policy)
     (bound : (graph setup).EventId → Nat) (profile : BehavioralProfile setup.program)

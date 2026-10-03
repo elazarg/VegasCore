@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceBindingAttemptLaw
-import Vegas.Game.SourceServiceBindingSelectedContinuation
+import Vegas.Game.SourceServiceSelectedContinuation
 import Vegas.Game.SourceServiceBindingResponseFactorization
 
 /-! # The actual selected binding response and its stopped joint law
@@ -113,7 +113,7 @@ theorem BindingSource.selected_attempt_law
       app.runUntilHorizon scheduler players stop horizon
         (execution.respond app site.owner
           ((runtime setup).reactiveBinding leaks site.owner event site.payload value serial)) := by
-    rw [sourceService_binding_selected_continuation_silent scheduler players bound profile
+    rw [sourceService_selected_continuation_silent scheduler players bound profile
       site.owner event turns slot execution selected]
     symm
     unfold ReactiveApplication.runUntilHorizon

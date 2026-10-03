@@ -283,5 +283,7 @@ import Vegas.Pending.ReactiveBindingUsableResume
 
 import Vegas.Pending.ReactiveBindingRiskRecall
 import Vegas.Pending.ReactiveBindingRiskAdmission
+import Vegas.Pending.ReactiveBindingCopiedSubmission
+import Vegas.Pending.ReactiveResolutionMiss
 
 /-! Graph execution and strategic refinement over public pending messages. -/
