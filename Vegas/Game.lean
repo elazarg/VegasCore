@@ -77,6 +77,7 @@ import Vegas.Game.SourceServiceBindingChoiceSelection
 import Vegas.Game.SourceServiceBindingFirstPacket
 import Vegas.Game.SourceServiceBindingAttemptCompletion
 import Vegas.Game.SourceServiceBindingAttemptLaw
+import Vegas.Game.SourceServiceBindingAcceptancePosterior
 import Vegas.Game.SourceServiceBindingNoAttempt
 import Vegas.Game.SourceServiceTimingMixture
 import Vegas.Game.SourceServiceMissingStoppedCoupling
@@ -127,6 +128,7 @@ import Vegas.Game.SourceServiceDuplicatePackets
 import Vegas.Game.SourceServiceRecordedCollection
 import Vegas.Game.SourceServiceResolutionComplement
 import Vegas.Game.SourceServiceUnusableBinding
+import Vegas.Game.SourceServiceUnusableProtectedCall
 import Vegas.Game.SourceServiceRiskExtension
 import Vegas.Game.SourceServiceAliasEquilibrium
 import Vegas.Game.SourceServiceRiskRawExtension

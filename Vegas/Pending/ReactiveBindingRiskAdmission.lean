@@ -13,8 +13,9 @@ input. Clear binding and resolution inputs derive fresh typed slots, protected
 opportunities, and actual certificate and guard transport. Expanded inputs
 retain every bounded effective response using their equal risk records. The
 actual invocation and resume coupling permits noncommitments, fresh owned
-registrations and actual matching fixed reuses. Reuse of a changed fixed
-candidate and whole-continuation utility remain separate.
+registrations and fixed reuses with matching meanings or public associations.
+Unassociated changed fixed candidates and whole-continuation utility remain
+separate.
 -/
 
 noncomputable section
@@ -177,7 +178,8 @@ private theorem copied_retained_invoke_coupling
     (frame : Frame runtime leaks memory owner original repaired)
     (onlyBindings : memory.shadow.OwnBindings owner)
     (past : memory.shadow.CompletedAt original.application.config)
-    (provenance : OwnerCommitmentsSettledOrMatching owner original repaired)
+    (provenance : OwnerCommitmentsInertOrMatching owner original repaired)
+    (leftBinding : original.application.BindingInvariant)
     (bounds : MessageBounds graph) (menu : (runtime.reactiveApplication leaks).ResponseMenu)
     (leftRecall : original.InputRecall (runtime.reactiveApplication leaks))
     (rightRecall : repaired.InputRecall (runtime.reactiveApplication leaks))
@@ -197,7 +199,7 @@ private theorem copied_retained_invoke_coupling
           ∀ addressed candidate, material.call.packet ≠ .commitment addressed candidate) ∨
         FreshOwnedBindingResponse runtime leaks owner
           (original.observe (runtime.reactiveApplication leaks) owner).application response ∨
-        MatchingFixedOwnedBindingResponse runtime leaks owner
+        InertFixedOwnedBindingResponse runtime leaks owner
           (original.observe (runtime.reactiveApplication leaks) owner).application
           (repaired.observe (runtime.reactiveApplication leaks) owner).application response)
     (retained : ∀ response ∈ (players owner (original.recall owner)
@@ -214,7 +216,7 @@ private theorem copied_retained_invoke_coupling
         Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
           next.2.2.shadow.OwnBindings owner ∧
           next.2.2.shadow.CompletedAt next.1.application.config ∧
-          OwnerCommitmentsSettledOrMatching owner next.1 next.2.1 ∧
+          OwnerCommitmentsInertOrMatching owner next.1 next.2.1 ∧
           reference.length ≤ (next.2.1.recall owner).length ∧
           next.1.InputRecall app ∧ next.2.1.InputRecall app ∧
           ∀ slot raw, next.1.application.candidates.lookup (owner, slot) = .openable raw →
@@ -243,7 +245,8 @@ private theorem copied_retained_invoke_coupling
     simp only [ReactiveApplication.Implementation.resume, ↓reduceIte]
     rw [retainedLaw, effectiveLaw]
   obtain ⟨coupling, left, right, related⟩ := frame.copied_effective_response_coupling
-    onlyBindings past provenance bounds leftRecall rightRecall preserved players reference
+    onlyBindings past provenance leftBinding bounds leftRecall rightRecall preserved players
+      reference
       started effective copied
   exact ⟨coupling, left, right.trans resumeEq.symm, related⟩
 
@@ -495,13 +498,13 @@ theorem risk_response_retained
                   node turn risky response member).2.1
 
 /-- A whole-input risk-supported owner law has an actual risk-menu invocation
-coupling on its explicit noncommitment/fresh-or-matching response slice. Repaired
+coupling on its explicit noncommitment/fresh-or-inert response slice. Repaired
 menu membership is derived, including at already expanded inputs. -/
 theorem risk_copied_invoke_coupling
     (frame : Frame runtime leaks memory owner original repaired)
     (onlyBindings : memory.shadow.OwnBindings owner)
     (past : memory.shadow.CompletedAt original.application.config)
-    (provenance : OwnerCommitmentsSettledOrMatching owner original repaired)
+    (provenance : OwnerCommitmentsInertOrMatching owner original repaired)
     (bounds : MessageBounds graph) (bound : graph.EventId → Nat)
     (riskRecords : (original.recall owner).map (runtime.submissionRiskRecord leaks) =
       (repaired.recall owner).map (runtime.submissionRiskRecord leaks))
@@ -525,7 +528,7 @@ theorem risk_copied_invoke_coupling
           ∀ addressed candidate, material.call.packet ≠ .commitment addressed candidate) ∨
         FreshOwnedBindingResponse runtime leaks owner
           (original.observe (runtime.reactiveApplication leaks) owner).application response ∨
-        MatchingFixedOwnedBindingResponse runtime leaks owner
+        InertFixedOwnedBindingResponse runtime leaks owner
           (original.observe (runtime.reactiveApplication leaks) owner).application
           (repaired.observe (runtime.reactiveApplication leaks) owner).application response) :
     let app := runtime.reactiveApplication leaks
@@ -538,12 +541,12 @@ theorem risk_copied_invoke_coupling
         Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
           next.2.2.shadow.OwnBindings owner ∧
           next.2.2.shadow.CompletedAt next.1.application.config ∧
-          OwnerCommitmentsSettledOrMatching owner next.1 next.2.1 ∧
+          OwnerCommitmentsInertOrMatching owner next.1 next.2.1 ∧
           reference.length ≤ (next.2.1.recall owner).length ∧
           next.1.InputRecall app ∧ next.2.1.InputRecall app ∧
           ∀ slot raw, next.1.application.candidates.lookup (owner, slot) = .openable raw →
             next.2.1.application.candidates.lookup (owner, slot) = .openable raw := by
-  apply copied_retained_invoke_coupling frame onlyBindings past provenance bounds
+  apply copied_retained_invoke_coupling frame onlyBindings past provenance leftBinding bounds
     (bounds.riskMenu runtime leaks bound) leftRecall rightRecall preserved players reference started
   · intro response chosen
     exact bounds.riskActions_effective runtime leaks bound owner _ _ (supported response chosen)
@@ -554,12 +557,12 @@ theorem risk_copied_invoke_coupling
 
 /-- Arbitrary foreign raw responses use their unchanged law and the existing
 scalar coupling. Only the owner's locally reconstructed response is restricted
-by the risk menu; fixed reuses require their actual matching meanings. -/
+by the risk menu; fixed reuses require matching meanings or a public association. -/
 theorem risk_copied_resume_coupling
     (frame : Frame runtime leaks memory owner original repaired)
     (onlyBindings : memory.shadow.OwnBindings owner)
     (past : memory.shadow.CompletedAt original.application.config)
-    (provenance : OwnerCommitmentsSettledOrMatching owner original repaired)
+    (provenance : OwnerCommitmentsInertOrMatching owner original repaired)
     (bounds : MessageBounds graph) (bound : graph.EventId → Nat)
     (riskRecords : (original.recall owner).map (runtime.submissionRiskRecord leaks) =
       (repaired.recall owner).map (runtime.submissionRiskRecord leaks))
@@ -583,7 +586,7 @@ theorem risk_copied_resume_coupling
           ∀ event candidate, material.call.packet ≠ .commitment event candidate) ∨
         FreshOwnedBindingResponse runtime leaks owner
           (original.observe (runtime.reactiveApplication leaks) owner).application response ∨
-        MatchingFixedOwnedBindingResponse runtime leaks owner
+        InertFixedOwnedBindingResponse runtime leaks owner
           (original.observe (runtime.reactiveApplication leaks) owner).application
           (repaired.observe (runtime.reactiveApplication leaks) owner).application response)
     (actor : Option Player) :
@@ -597,7 +600,7 @@ theorem risk_copied_resume_coupling
         Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
           next.2.2.shadow.OwnBindings owner ∧
           next.2.2.shadow.CompletedAt next.1.application.config ∧
-          OwnerCommitmentsSettledOrMatching owner next.1 next.2.1 ∧
+          OwnerCommitmentsInertOrMatching owner next.1 next.2.1 ∧
           reference.length ≤ (next.2.1.recall owner).length ∧
           next.1.InputRecall app ∧ next.2.1.InputRecall app ∧
           ∀ slot raw, next.1.application.candidates.lookup (owner, slot) = .openable raw →
@@ -609,7 +612,7 @@ theorem risk_copied_resume_coupling
       leftRecall rightRecall leftBinding rightBinding preserved players reference started
         supported copied
   · obtain ⟨coupling, left, right, related⟩ := frame.copied_effective_resume_coupling onlyBindings
-      past provenance bounds leftRecall rightRecall preserved players reference started
+      past provenance leftBinding bounds leftRecall rightRecall preserved players reference started
         (fun response chosen => bounds.riskActions_effective runtime leaks bound
           owner _ _ (supported response chosen)) copied actor
     have resumeEq :

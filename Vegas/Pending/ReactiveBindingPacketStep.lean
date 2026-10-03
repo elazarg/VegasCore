@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ReactiveBindingUsableStep
+import Vegas.Pending.ReactiveBindingUsedCommitment
 import Vegas.Pending.ReactiveBindingFrameCommands
 
 /-! # Actual packet inclusion up to an owner's signed breach
@@ -129,6 +129,7 @@ theorem packet_step_or_owner_breach
         id.1 = owner →
         (WitnessedPacket.mk (.commitment event candidate) evidence token).tokenValid = true →
           event ∈ original.application.config.cut.completed ∨
+            (∃ field, original.application.accepted field = some candidate) ∨
             (original.application.candidates.lookup candidate ≠ .fresh ∧
               original.application.candidates.lookup candidate =
                 repaired.application.candidates.lookup candidate))
@@ -157,9 +158,12 @@ theorem packet_step_or_owner_breach
       · exact Or.inl (frame.commitment_step_completed_owner onlyBindings fixed id event candidate
           evidence token found (fun _ tokened => (valid tokened).elim))
       rcases ownerCommitment id event candidate evidence token found authored valid with
-        completed | matching
+        completed | used | matching
       · exact Or.inl (frame.commitment_step_completed_owner onlyBindings fixed id event candidate
           evidence token found (fun _ _ => completed))
+      · obtain ⟨field, associated⟩ := used
+        exact Or.inl (frame.commitment_step_associated id event candidate evidence token found
+          field associated)
       · exact Or.inl (frame.commitment_step_matching_owner past id authored event candidate
           evidence token found matching.1 matching.2).1
   | withhold event =>
@@ -198,6 +202,7 @@ theorem include_coupling_or_owner_breach
         id.1 = owner →
         (WitnessedPacket.mk (.commitment event candidate) evidence token).tokenValid = true →
           event ∈ original.application.config.cut.completed ∨
+            (∃ field, original.application.accepted field = some candidate) ∨
             (original.application.candidates.lookup candidate ≠ .fresh ∧
               original.application.candidates.lookup candidate =
                 repaired.application.candidates.lookup candidate))
@@ -262,6 +267,7 @@ theorem environment_coupling_or_owner_breach
         id.1 = owner →
         (WitnessedPacket.mk (.commitment event candidate) evidence token).tokenValid = true →
           event ∈ original.application.config.cut.completed ∨
+            (∃ field, original.application.accepted field = some candidate) ∨
             (original.application.candidates.lookup candidate ≠ .fresh ∧
               original.application.candidates.lookup candidate =
                 repaired.application.candidates.lookup candidate))

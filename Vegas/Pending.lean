@@ -274,6 +274,7 @@ import Vegas.Pending.ReactiveServiceFootprint
 import Vegas.Pending.ReactiveAssociationPersistence
 import Vegas.Pending.ReactiveServiceFiniteness
 import Vegas.Pending.ReactiveBindingUsableStep
+import Vegas.Pending.ReactiveBindingUsedCommitment
 import Vegas.Pending.ReactiveUsedBindingOpening
 import Vegas.Pending.ReactiveBindingCommitmentProvenance
 import Vegas.Pending.ReactiveCompletedConfig

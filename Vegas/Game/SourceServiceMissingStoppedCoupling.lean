@@ -192,7 +192,7 @@ private def resumeCouplings
     BindingMemory.Frame (runtime setup) leaks memory owner original repaired →
     memory.shadow.OwnBindings owner →
     memory.shadow.CompletedAt original.application.config →
-    OwnerCommitmentsSettledOrMatching owner original repaired →
+    OwnerCommitmentsInertOrMatching owner original repaired →
     (original.recall owner).map ((runtime setup).submissionRiskRecord leaks) =
       (repaired.recall owner).map ((runtime setup).submissionRiskRecord leaks) →
     continuationFacts original → continuationFacts repaired →
@@ -210,7 +210,7 @@ private def resumeCouplings
         BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
           next.2.2.shadow.OwnBindings owner ∧
           next.2.2.shadow.CompletedAt next.1.application.config ∧
-          OwnerCommitmentsSettledOrMatching owner next.1 next.2.1 ∧
+          OwnerCommitmentsInertOrMatching owner next.1 next.2.1 ∧
           reference.length ≤ (next.2.1.recall owner).length ∧
           next.1.InputRecall app ∧ next.2.1.InputRecall app ∧
           ∀ slot raw, next.1.application.candidates.lookup (owner, slot) = .openable raw →
@@ -222,7 +222,7 @@ private theorem clean_dispatch_coupling
     (frame : BindingMemory.Frame (runtime setup) leaks memory owner original repaired)
     (onlyBindings : memory.shadow.OwnBindings owner)
     (past : memory.shadow.CompletedAt original.application.config)
-    (provenance : OwnerCommitmentsSettledOrMatching owner original repaired)
+    (provenance : OwnerCommitmentsInertOrMatching owner original repaired)
     (riskRecords : (original.recall owner).map ((runtime setup).submissionRiskRecord leaks) =
       (repaired.recall owner).map ((runtime setup).submissionRiskRecord leaks))
     (leftFacts : continuationFacts original) (rightFacts : continuationFacts repaired)
@@ -247,7 +247,7 @@ private theorem clean_dispatch_coupling
         BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
           next.2.2.shadow.OwnBindings owner ∧
           next.2.2.shadow.CompletedAt next.1.application.config ∧
-          OwnerCommitmentsSettledOrMatching owner next.1 next.2.1 ∧
+          OwnerCommitmentsInertOrMatching owner next.1 next.2.1 ∧
           reference.length ≤ (next.2.1.recall owner).length ∧
           (next.1.recall owner).map ((runtime setup).submissionRiskRecord leaks) =
             (next.2.1.recall owner).map ((runtime setup).submissionRiskRecord leaks) ∧
@@ -299,8 +299,8 @@ private theorem clean_dispatch_coupling
       original.application.config.cut.completed).environmentStep original pair.1 command
         (Finset.Subset.refl _) (leftSupport pair member))
   have provenanceAfter (pair) (member : pair ∈ environment.support) :
-      OwnerCommitmentsSettledOrMatching owner pair.1 pair.2 :=
-    provenance.environment pair.1 pair.2 command
+      OwnerCommitmentsInertOrMatching owner pair.1 pair.2 :=
+    provenance.environment leftFacts.2.1 pair.1 pair.2 command
       (leftSupport pair member) (rightSupport pair member)
   have recordsAfter (pair) (member : pair ∈ environment.support) :
       (pair.1.recall owner).map ((runtime setup).submissionRiskRecord leaks) =
@@ -360,7 +360,7 @@ private theorem clean_round_coupling
     (frame : BindingMemory.Frame (runtime setup) leaks memory owner original repaired)
     (onlyBindings : memory.shadow.OwnBindings owner)
     (past : memory.shadow.CompletedAt original.application.config)
-    (provenance : OwnerCommitmentsSettledOrMatching owner original repaired)
+    (provenance : OwnerCommitmentsInertOrMatching owner original repaired)
     (riskRecords : (original.recall owner).map ((runtime setup).submissionRiskRecord leaks) =
       (repaired.recall owner).map ((runtime setup).submissionRiskRecord leaks))
     (leftFacts : continuationFacts original) (rightFacts : continuationFacts repaired)
@@ -384,7 +384,7 @@ private theorem clean_round_coupling
         BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
           next.2.2.shadow.OwnBindings owner ∧
           next.2.2.shadow.CompletedAt next.1.application.config ∧
-          OwnerCommitmentsSettledOrMatching owner next.1 next.2.1 ∧
+          OwnerCommitmentsInertOrMatching owner next.1 next.2.1 ∧
           reference.length ≤ (next.2.1.recall owner).length ∧
           (next.1.recall owner).map ((runtime setup).submissionRiskRecord leaks) =
             (next.2.1.recall owner).map ((runtime setup).submissionRiskRecord leaks) ∧
@@ -463,7 +463,7 @@ private theorem missing_copied_stopped_coupling
         (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
           next.2.2.shadow.OwnBindings owner ∧
           next.2.2.shadow.CompletedAt next.1.application.config ∧
-          OwnerCommitmentsSettledOrMatching owner next.1 next.2.1 ∧
+          OwnerCommitmentsInertOrMatching owner next.1 next.2.1 ∧
           reference.length ≤ (next.2.1.recall owner).length ∧
           (next.1.recall owner).map ((runtime setup).submissionRiskRecord leaks) =
             (next.2.1.recall owner).map ((runtime setup).submissionRiskRecord leaks) ∧
@@ -484,7 +484,7 @@ private theorem missing_copied_stopped_coupling
     BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
       next.2.2.shadow.OwnBindings owner ∧
       next.2.2.shadow.CompletedAt next.1.application.config ∧
-      OwnerCommitmentsSettledOrMatching owner next.1 next.2.1 ∧
+      OwnerCommitmentsInertOrMatching owner next.1 next.2.1 ∧
       reference.length ≤ (next.2.1.recall owner).length ∧
       (next.1.recall owner).map ((runtime setup).submissionRiskRecord leaks) =
         (next.2.1.recall owner).map ((runtime setup).submissionRiskRecord leaks) ∧
@@ -505,7 +505,7 @@ private theorem missing_copied_stopped_coupling
   have initialBound := (ownerCommitmentRanksBelow_policyInvariant setup leaks prefixPlayers owner
     current.val prefixNoncommitment).runRounds scheduler preparation _ original.execution
       (ownerCommitmentRanksBelow_of_ready setup leaks _ startFacts owner current readyAfter) arrival
-  have initialProvenance : OwnerCommitmentsSettledOrMatching owner original.execution
+  have initialProvenance : OwnerCommitmentsInertOrMatching owner original.execution
       repaired.execution := by
     intro message member authored event candidate committed valid
     exact Or.inl (ownerCommitmentRanksBelow_completed setup leaks original.execution owner
@@ -690,7 +690,7 @@ theorem sourceService_missing_copied_stopped_coupling
         (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
           next.2.2.shadow.OwnBindings owner ∧
           next.2.2.shadow.CompletedAt next.1.application.config ∧
-          OwnerCommitmentsSettledOrMatching owner next.1 next.2.1 ∧
+          OwnerCommitmentsInertOrMatching owner next.1 next.2.1 ∧
           reference.length ≤ (next.2.1.recall owner).length ∧
           (next.1.recall owner).map ((runtime setup).submissionRiskRecord leaks) =
             (next.2.1.recall owner).map ((runtime setup).submissionRiskRecord leaks) ∧
@@ -710,7 +710,8 @@ theorem sourceService_missing_copied_stopped_coupling
       started count
   intro memory original repaired frame onlyBindings past provenance _records leftFacts rightFacts
     preserved started actor
-  exact frame.copied_effective_resume_coupling onlyBindings past provenance bounds
+  exact frame.copied_effective_resume_coupling onlyBindings past provenance
+    leftFacts.2.1 bounds
     leftFacts.2.2.2.2.2 rightFacts.2.2.2.2.2 preserved players reference started (effective _ _) (by
       intro response chosen
       rcases copied _ _ response chosen with noncommitment | fresh
@@ -774,7 +775,7 @@ theorem sourceService_missing_risk_stopped_coupling
         (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
           next.2.2.shadow.OwnBindings owner ∧
           next.2.2.shadow.CompletedAt next.1.application.config ∧
-          OwnerCommitmentsSettledOrMatching owner next.1 next.2.1 ∧
+          OwnerCommitmentsInertOrMatching owner next.1 next.2.1 ∧
           reference.length ≤ (next.2.1.recall owner).length ∧
           (next.1.recall owner).map ((runtime setup).submissionRiskRecord leaks) =
             (next.2.1.recall owner).map ((runtime setup).submissionRiskRecord leaks) ∧

@@ -36,15 +36,17 @@ def FreshOwnedBindingResponse (runtime : EventGraphRuntime graph)
     view.candidates (.prepared serial) = .fresh ∧
       response = ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩
 
-/-- A bare reused owned commitment has an actual fixed meaning shared by the
-two views. This is an operational relation of the coupled inputs, not an extra
-observation available to a runtime player. -/
-def MatchingFixedOwnedBindingResponse (runtime : EventGraphRuntime graph)
+/-- A bare fixed owned commitment either has matching meanings or uses a
+publicly associated handle, which both handlers reject. This is a relation on
+actual coupled inputs, not an extra observation supplied to a runtime player. -/
+def InertFixedOwnedBindingResponse (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (owner : Player) (left right : ReactivePlayerView graph)
     (response : (runtime.reactiveApplication leaks).Action) : Prop :=
   ∃ (event : graph.EventId) (slot : CandidateSlot graph) (opening : Option (Raw L)),
-    left.candidates slot ≠ .fresh ∧ left.candidates slot = right.candidates slot ∧
+    left.candidates slot ≠ .fresh ∧
+      (left.candidates slot = right.candidates slot ∨
+        ∃ field, left.publicView.accepted field = some (owner, slot)) ∧
       response = ⟨some ⟨⟨.commitment event (owner, slot), opening⟩, .none⟩⟩
 
 namespace BindingMemory.Frame

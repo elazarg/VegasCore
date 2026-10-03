@@ -25,12 +25,13 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 
 /-- One actual resumption has exact original and retained-implementation
 marginals, including arbitrary foreign responses. Its owner slice permits
-noncommitments, fresh owned registrations and matching fixed reuses. -/
+noncommitments, fresh owned registrations and inert fixed reuses. -/
 theorem copied_effective_resume_coupling
     (frame : Frame runtime leaks memory owner original repaired)
     (onlyBindings : memory.shadow.OwnBindings owner)
     (past : memory.shadow.CompletedAt original.application.config)
-    (provenance : OwnerCommitmentsSettledOrMatching owner original repaired)
+    (provenance : OwnerCommitmentsInertOrMatching owner original repaired)
+    (leftBinding : original.application.BindingInvariant)
     (bounds : MessageBounds graph)
     (leftRecall : original.InputRecall (runtime.reactiveApplication leaks))
     (rightRecall : repaired.InputRecall (runtime.reactiveApplication leaks))
@@ -50,7 +51,7 @@ theorem copied_effective_resume_coupling
           ∀ event candidate, material.call.packet ≠ .commitment event candidate) ∨
         FreshOwnedBindingResponse runtime leaks owner
           (original.observe (runtime.reactiveApplication leaks) owner).application response ∨
-        MatchingFixedOwnedBindingResponse runtime leaks owner
+        InertFixedOwnedBindingResponse runtime leaks owner
           (original.observe (runtime.reactiveApplication leaks) owner).application
           (repaired.observe (runtime.reactiveApplication leaks) owner).application response)
     (actor : Option Player) :
@@ -64,7 +65,7 @@ theorem copied_effective_resume_coupling
         Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
           next.2.2.shadow.OwnBindings owner ∧
           next.2.2.shadow.CompletedAt next.1.application.config ∧
-          OwnerCommitmentsSettledOrMatching owner next.1 next.2.1 ∧
+          OwnerCommitmentsInertOrMatching owner next.1 next.2.1 ∧
           reference.length ≤ (next.2.1.recall owner).length ∧
           next.1.InputRecall app ∧ next.2.1.InputRecall app ∧
           ∀ slot raw, next.1.application.candidates.lookup (owner, slot) = .openable raw →
@@ -82,7 +83,8 @@ theorem copied_effective_resume_coupling
   | some actor =>
       by_cases own : actor = owner
       · subst actor
-        exact frame.copied_effective_response_coupling onlyBindings past provenance bounds
+        exact frame.copied_effective_response_coupling onlyBindings past provenance leftBinding
+          bounds
           leftRecall rightRecall preserved players reference started effective copied
       · let law := players actor (original.recall actor) (original.observe app actor)
         let coupling := law.map fun response =>
@@ -113,7 +115,7 @@ theorem copied_effective_resume_coupling
                       (material.call.register_other execution.application actor owner (Ne.symm own))
                 exact congrFun (congrArg PlayerView.candidates view) slot
           refine ⟨frame.foreign_response actor own response, onlyBindings, ?_,
-            provenance.respond_noncommitment actor response response
+            provenance.respond_noncommitment leftBinding actor response response
               (fun same => (own same).elim), ?_,
             app.respond_inputRecall original actor response leftRecall,
             app.respond_inputRecall repaired actor response rightRecall, ?_⟩

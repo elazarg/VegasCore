@@ -559,7 +559,7 @@ future private values changed by repair are outside the claim.
   derive fresh typed slots, protected windows and TRUE certificate/guard
   success; expanded inputs transport effective responses. The same retained
   implementation realizes invocation and resume coupling on the explicit
-  noncommitment/fresh-copy/matching-fixed slice. The stopped coupling currently
+  noncommitment/fresh-copy/fixed-reuse slice. The stopped coupling currently
   composes fresh copies; finite reused-candidate closure and terminal utility
   domination remain separate.
 - [SourceServiceAliasEquilibrium](../Vegas/Game/SourceServiceAliasEquilibrium.lean)
@@ -652,9 +652,10 @@ future private values changed by repair are outside the claim.
   completed binding law. The auxiliary input is the original chronological
   before-response recall. No selected visit or acceptance mass is assumed.
 - [ReactiveBindingCommitmentProvenance](../Vegas/Pending/ReactiveBindingCommitmentProvenance.lean)
-  preserves actual owner commitments that either address completed events or
-  have matching fixed candidate meanings, across foreign/noncommitment
-  responses, shared fresh registration and all environment commands. Later
+  preserves actual owner commitments that address completed events, use a
+  publicly associated handle or have matching fixed candidate meanings, across
+  foreign/noncommitment responses, shared fresh registration and all environment
+  commands. Later
   Fresh usable whole-run repair is proved by the stopped coupling below.
 
 - [LateResolutionPreservation](../Vegas/Examples/LateResolutionPreservation.lean)
@@ -678,8 +679,9 @@ future private values changed by repair are outside the claim.
 - [ReactiveBindingCopiedWindow](../Vegas/Pending/ReactiveBindingCopiedWindow.lean)
   couples one actual effective owner response law to the same retained private
   implementation, permitting noncommitments, fresh bare registrations with
-  arbitrary private material and actual matching fixed reuses.
-  It preserves current memory, the full frame, completed-or-matching traffic
+  arbitrary private material and fixed reuses with matching meanings or actual
+  public associations.
+  It preserves current memory, the full frame, commitment provenance
   and original opening capabilities.
 - [ReactiveBindingCopiedResume](../Vegas/Pending/ReactiveBindingCopiedResume.lean)
   extends this real one-policy response law to arbitrary foreign raw actions
@@ -739,6 +741,26 @@ future private values changed by repair are outside the claim.
   derives the real public miss, typed failure and absence of owner packets after
   the literal family's selected closed-gate silence. These physical laws do not
   supply the rational free continuation or its conditional incentive comparisons.
+
+[SourceServiceBindingAcceptancePosterior](../Vegas/Game/SourceServiceBindingAcceptancePosterior.lean)
+conditions an actual timely first binding call on its real receipt flag. The
+residual source draw remains independent of the same conditioned public/foreign
+traffic kernel, with accepted typed value or actual missed failure. It covers
+unprotected calls under the owner's recorded turn-policy continuation. Returned
+free continuations may send further raw packets, so this does not yet identify
+their conditional source law.
+
+[SourceServiceUnusableProtectedCall](../Vegas/Game/SourceServiceUnusableProtectedCall.lean)
+derives the actual acceptable protected call from a clear legal unusable-binding
+input, including absent or mistyped material. At a completed raw continuation,
+its sole identifier gives an accepting receipt and the actual used-handle
+association. Sole remains explicit because a later raw retry can void protection.
+[ReactiveBindingUsedCommitment](../Vegas/Pending/ReactiveBindingUsedCommitment.lean)
+derives complete-frame rejection of any commitment reusing a publicly associated
+handle, regardless of private candidate meaning. The actual traffic relation
+retains completed events, permanent used associations or matching candidate meanings
+through arbitrary responses and scheduler commands. General finite reuse closure
+and the duplicate-packet strategic comparison remain open.
 
 [ReactiveBindingCopiedSubmission](../Vegas/Pending/ReactiveBindingCopiedSubmission.lean)
 preserves the full frame and actual raw candidate capability when a later fresh

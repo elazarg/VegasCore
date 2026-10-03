@@ -2062,9 +2062,10 @@ transports actual original risk-supported responses to the same repaired risk
 menu at whole inputs. Clear binding and resolution cases derive fresh typed slots,
 protected windows and TRUE certificate/guard success; expanded inputs transport
 effective responses. Invocation and resume coupling use the same retained
-implementation for noncommitments, fresh copies and actual matching fixed
-reuses. The finite stopped coupling currently composes the fresh-copy slice;
-finite reused-candidate closure and terminal utility domination remain open.
+implementation for noncommitments, fresh copies and fixed reuses with matching
+meanings or actual public associations. The finite stopped coupling currently
+composes the fresh-copy slice; finite reused-candidate closure and terminal utility
+domination remain open.
 Fresh copied bindings retain their actual handler outcome or expiry through
 candidate-only repair memory. The fixed-calendar repair induction carries
 `BindingShadow.CompletedAt` from empty initial memory through actual completed
@@ -2073,6 +2074,26 @@ extra capstone assumption. Reused handles are interpreted using their fixed
 candidate meaning. Fresh copied mistyped material retains its actual capability
 at other payload types. Reuse of the initially changed candidate still requires
 a separate continuation argument.
+[SourceServiceBindingAcceptancePosterior](../Vegas/Game/SourceServiceBindingAcceptancePosterior.lean)
+conditions an actual timely first binding call on its real receipt flag. The
+residual source draw remains independent of the same conditioned public/foreign
+traffic kernel, with accepted typed value or actual missed failure. It covers
+unprotected calls under the owner's recorded turn-policy continuation. Returned
+free continuations may send further raw packets, so this does not yet identify
+their conditional source law.
+
+[SourceServiceUnusableProtectedCall](../Vegas/Game/SourceServiceUnusableProtectedCall.lean)
+derives the actual acceptable protected call from a clear legal unusable-binding
+input, including absent or mistyped material. At a completed raw continuation,
+its sole identifier gives an accepting receipt and the actual used-handle
+association. Sole remains explicit because a later raw retry can void protection.
+[ReactiveBindingUsedCommitment](../Vegas/Pending/ReactiveBindingUsedCommitment.lean)
+derives complete-frame rejection of any commitment reusing a publicly associated
+handle, regardless of private candidate meaning. The actual traffic relation
+retains completed events, permanent used associations or matching candidate meanings
+through arbitrary responses and scheduler commands. General finite reuse closure
+and the duplicate-packet strategic comparison remain open.
+
 [ReactiveBindingCopiedSubmission](../Vegas/Pending/ReactiveBindingCopiedSubmission.lean)
 preserves the full frame and actual raw candidate capability when a later fresh
 bare commitment is copied with its original material. This includes mistyped or
@@ -2090,7 +2111,7 @@ proves full-frame inclusion closure for matching fixed owner candidates,
 including rejected and late calls. Actual fresh usable submission establishes
 these matching meanings and completed-boundary memory without assuming
 protected inclusion. Local matching-fixed response closure is also checked;
-finite reuse closure and the initially changed candidate remain open.
+finite reuse closure and changed unassociated candidates remain open.
 [ReactiveUsedBindingOpening](../Vegas/Pending/ReactiveUsedBindingOpening.lean)
 proves every opening of a used mistyped candidate is rejected. Its authentic
 certificate may fail the public association or typed guard check.
@@ -2102,16 +2123,18 @@ treating authentic certification as a signed-content breach. Whole-policy
 repair and payoff domination remain open.
 
 [ReactiveBindingCommitmentProvenance](../Vegas/Pending/ReactiveBindingCommitmentProvenance.lean)
-preserves actual owner commitments that either address completed events or
-have matching fixed candidate meanings, across foreign/noncommitment
-responses, shared fresh registration and all environment commands. Later
+preserves actual owner commitments that address completed events, use a
+publicly associated handle or have matching fixed candidate meanings, across
+foreign/noncommitment responses, shared fresh registration and all environment
+commands. Later
 fresh-copy whole-run coupling is proved by the stopped coupling above.
 
 [ReactiveBindingCopiedWindow](../Vegas/Pending/ReactiveBindingCopiedWindow.lean)
 couples one actual effective owner response law to the same retained private
 implementation. Noncommitments, fresh bare registrations with arbitrary
-private material and matching fixed reuses preserve current memory, the full
-frame, completed-or-matching traffic and original opening capabilities.
+private material and fixed reuses with matching meanings or public associations
+preserve current memory, the full frame, commitment provenance and original
+opening capabilities.
 [ReactiveBindingCopiedResume](../Vegas/Pending/ReactiveBindingCopiedResume.lean)
 extends that law to arbitrary foreign raw actions and inactive resumptions.
 [ReactiveBindingPacketStep](../Vegas/Pending/ReactiveBindingPacketStep.lean)
