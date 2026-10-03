@@ -102,6 +102,7 @@ import Vegas.Game.AsyncServiceFirstTurnProfile
 import Vegas.Game.AsyncServiceSourceSites
 import Vegas.Game.SourceServiceCleanPrefixLaw
 import Vegas.Game.AsyncServiceCleanCompletionLaw
+import Vegas.Game.AsyncServiceCounterfactualBeliefs
 import Vegas.Game.SourceServiceBindingSource
 import Vegas.Game.SourceServiceResidualSites
 import Vegas.Game.SourceServiceReadyObservation
@@ -193,8 +194,10 @@ import Vegas.Game.SourceServiceRecordedResolutionAlignment
 import Vegas.Game.SourceServiceProtectedDecisionLaw
 import Vegas.Game.SourceServiceResolutionIntentionFactorization
 import Vegas.Game.SourceServiceBindingResponseFactorization
+import Vegas.Game.SourceServiceBindingResponseCompletion
 import Vegas.Game.SourceServiceResolutionResponseLaw
 import Vegas.Game.SourceServiceResolutionMemoryLaw
+import Vegas.Game.SourceServiceResolutionMemoryFactorization
 import Vegas.Game.SourceServiceAsyncFactorization
 import Vegas.Game.SourceServiceBindingDecisionFactorization
 import Vegas.Game.SourceServiceDisclosureFactorization

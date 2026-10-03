@@ -102,6 +102,13 @@ play; readiness starts the timer. The general retained menu keeps deferrals.
 Late unrecorded opportunities and persistent owner risk open the bounded raw
 continuation menu.
 
+The actual binding-response law now composes with protected completion,
+retaining the transmitting draw and full stopped traffic. The native Bayes
+law cancels the complete focal owner's recalled-action likelihood, including
+earlier waiting. Foreign deferral probabilities remain in counterfactual
+reach. A conditional escape estimate must compare against that actual
+denominator; a small unconditional escape probability alone is insufficient.
+
 Continue in this order:
 
 1. Join actual decision, inclusion, sampling and stopped traffic kernels into

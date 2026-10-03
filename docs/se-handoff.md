@@ -64,10 +64,23 @@ future private values changed by repair are outside the claim.
 - [SourceServiceProtectedDecisionLaw](../Vegas/Game/SourceServiceProtectedDecisionLaw.lean)
   derives the geometric response marginal at any actual protected unrecorded
   turn from full own recall, including earlier benign deferrals.
+- [SourceServiceBindingResponseCompletion](../Vegas/Game/SourceServiceBindingResponseCompletion.lean)
+  joins the actual transmitting draw to its typed successor and full stopped
+  traffic. Waiting remains separate; prescribed foreign continuations are
+  required for the probability factorization.
+- [AsyncServiceCounterfactualBeliefs](../Vegas/Game/AsyncServiceCounterfactualBeliefs.lean)
+  cancels the entire focal owner's recalled-action likelihood from native
+  Bayes normalization. Relative escape still needs a bound against the actual
+  opponent-and-nature denominator, including foreign waiting probabilities.
 - [SourceServiceResolutionIntentionFactorization](../Vegas/Game/SourceServiceResolutionIntentionFactorization.lean)
   carries original and effective disclosure histories through the actual
   response traffic law. FALSE packets can represent failed TRUE intentions;
   source-relative beliefs must retain that distinction.
+- [SourceServiceResolutionMemoryFactorization](../Vegas/Game/SourceServiceResolutionMemoryFactorization.lean)
+  restores the current owner's original memory using the actual source
+  normalizer and joins waiting and transmission to full traffic. Its native
+  traffic marginal is the real protected policy; whole-source prefix and
+  belief assembly remain separate.
 - [SourceServiceRiskExtension](../Vegas/Game/SourceServiceRiskExtension.lean)
   extends an audited risk-menu equilibrium after classified packet coverage
   and other-exclusion comparisons are supplied. It does not embed a source

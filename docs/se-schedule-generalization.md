@@ -947,14 +947,18 @@ Open obligations this creates:
   A builder may condition inclusion on public packet content, so the lottery
   need not equal sending no packet and paying a public-miss charge. Packets
   forbidden by the final record remain auditable.
-- **Source embedding and beliefs.** The prescribed site set must include benign
-  earlier deferrals. A clean-prefix law stops at the first risk; arbitrary
-  deferral timing is not closed through termination. The relative mass of
-  escaped branches at each information site must vanish, including at sites
-  whose own passage probability tends to zero. Global outcome error alone
-  does not prove this posterior statement. Probe C6's penalized public-miss
-  source is a useful finite abstraction, but omits native attempted-choice
-  recall and certificate observations needed for this embedding.
+- **Source embedding and beliefs.** The current candidate prescribed site set
+  includes benign earlier deferrals. A clean-prefix law stops at the first
+  risk; arbitrary deferral timing is not closed through termination. This
+  source-belief route needs the relative escaped mass to vanish at prescribed
+  information, including where passage tends to zero. Global outcome error
+  alone does not prove that statement. Canceling the focal owner's likelihood
+  still leaves foreign waiting probabilities in the clean denominator.
+  Restricting prescriptions to first-turn-compatible information would avoid
+  those waiting factors in its witness, but also needs an upper payoff bound
+  for a retained wait into free continuation. Rational completion alone gives
+  no such bound. Probe C6's penalized public-miss source omits the native
+  attempted-choice recall and certificate observations needed here.
 
 ### Monitoring and punishment
 
@@ -1340,6 +1344,15 @@ hypothesis. The actual compiler kernel, counted-slot freshness and geometric
 response law follow from aligned configurations and clear protected traces.
 The native configuration advances later, at acceptance.
 
+[SourceServiceBindingResponseCompletion](../Vegas/Game/SourceServiceBindingResponseCompletion.lean)
+joins this transmitting draw to its actual protected completion. The newly
+submitted packet fixes the exact typed successor, source store, decoded
+history and accepting receipt at every supported stopped endpoint. Its joint
+law keeps the waiting branch with weight `w` and the transmitting branch with
+weight `1 - w`, including the same response's full stopped traffic. Packet
+completion allows arbitrary foreign policies; traffic factorization uses
+prescribed foreign continuations. It does not identify a native posterior.
+
 [SourceServiceResolutionResponseLaw](../Vegas/Game/SourceServiceResolutionResponseLaw.lean)
 derives the corresponding physical FALSE/TRUE packet marginal for effective
 profiles. [SourceServiceResolutionMemoryLaw](../Vegas/Game/SourceServiceResolutionMemoryLaw.lean)
@@ -1349,6 +1362,16 @@ memory; transmission carries the original intended successor through the
 normalizer's conditional memory law. Its native marginal is the actual
 protected geometric policy after earlier deferrals. The joint native
 information-site law and source-relative assessment still need transport.
+
+[SourceServiceResolutionMemoryFactorization](../Vegas/Game/SourceServiceResolutionMemoryFactorization.lean)
+joins that actual response to its full traffic channel. The source normalizer's
+memory lottery restores the current owner's original history; other histories
+remain as carried by the prior configuration. Waiting preserves this pair,
+and transmission advances its intended and effective successors. The same
+joint law has the actual protected native policy's traffic marginal. The prior
+channel is supplied only for the effective source configuration. This local
+memory lift does not assemble all owners' original histories or identify the
+source assessment at a native information site.
 
 [SourceServiceSampleEnvironmentFactorization](../Vegas/Game/SourceServiceSampleEnvironmentFactorization.lean)
 proves the real public sampling command's joint law. The sampled value is read
@@ -1621,6 +1644,15 @@ opportunity. Earlier silent turns remain in recall. Exact first-turn behavioral
 play visits only classified decision inputs. A history with hidden foreign
 risk can share such an information value; the classifier does not erase that
 history from the belief.
+
+[AsyncServiceCounterfactualBeliefs](../Vegas/Game/AsyncServiceCounterfactualBeliefs.lean)
+derives the common owner-reach factor from actual own recall throughout the
+native information fiber. Every previous silence and its preceding view enter
+that factor. At supported information it cancels exactly from Bayes
+normalization, leaving opponent-and-nature reach mass. Clean and escaped
+conditional probabilities are their respective counterfactual masses divided
+by the sum. This identity does not bound their ratio or remove foreign
+deferral probabilities from the clean denominator.
 
 [ReactiveCleanPrefix](../Vegas/Pending/ReactiveCleanPrefix.lean) proves that a
 risk-menu prefix with every owner's persistent flag clear has a canonical

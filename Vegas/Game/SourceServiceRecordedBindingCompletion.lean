@@ -145,7 +145,8 @@ theorem BindingSource.code
   simpa [eventCount, compileRankedNodes] using
     aligned.graphSuffix.nodeEq ⟨0, by simp [eventCount]⟩
 
-private theorem bindingSource_action
+/-- The aligned typed choice decodes to its source commitment action. -/
+theorem BindingSource.action
     {profile : BehavioralProfile setup.program} {event : (graph setup).EventId}
     {config : (graph setup).Config} (site : BindingSource setup profile event config)
     (value : PublicationResult (L.Val site.payload)) :
@@ -320,7 +321,7 @@ theorem sourceServiceTurnPolicy_recorded_binding_completion {horizon : Nat}
     have decoded := decodeHistory_append_completion setup.program
       (start.application.config.history.map (setup.eventGraph.fromModeCompletion .sequential))
       event (cast (congrArg EventGraph.EventField.Action site.outputEq.symm) value)
-    rw [bindingSource_action site value, site.history] at decoded
+    rw [site.action value, site.history] at decoded
     exact decoded
 
 end Vegas
