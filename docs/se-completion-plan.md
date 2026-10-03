@@ -128,6 +128,12 @@ A single timely canonical transmission followed by owner silence also has an
 actual accepted-action/public-miss dichotomy outside the protected window.
 Its acceptance law can depend on the builder and the public packet content;
 the dichotomy alone does not bound the value of waiting.
+The [late-decision signaling probe](../scripts/experiments/late_decision_signaling_probe.py)
+checks this distinction with exact Bayes limits and every whole-policy
+comparison. Equal waiting trembles make waiting profitable for one type;
+view-dependent waiting trembles yield a rational preserving limit in that
+finite tree. The general construction must choose one consistent family
+across all native information sets and account for its timing likelihoods.
 
 Continue in this order:
 

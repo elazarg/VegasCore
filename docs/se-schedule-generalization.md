@@ -1424,6 +1424,26 @@ its real public expiry marker. Foreign policies are arbitrary, and the
 horizon comes from the initialized trace and service contract. The result
 gives no acceptance probability or independence, and no payoff comparison.
 
+The [late-decision signaling probe](../scripts/experiments/late_decision_signaling_probe.py)
+isolates the waiting comparison in a finite tree. Good and Bad sender types
+both disclose in the source equilibrium, earning respectively `3` and `1`.
+Off-path withholding is answered Good, consistently with withholding trembles
+of orders `epsilon` and `epsilon²`. After waiting, the builder accepts Good's
+disclosure and either type's withholding, but lets Bad's disclosure expire.
+Every miss pays the actual default FALSE utility minus deposit `10`.
+With equal waiting probabilities `epsilon`, late withholding is attributed to
+Bad in the limit. Rational late play then gives Bad `2`, so its earlier wait
+is profitable despite the miss penalty. Waiting probabilities `epsilon` for
+Good and `epsilon³` for Bad instead make the same late withholding attributed
+to Good. The resulting consistent limit is rational at every information set,
+including after a public miss, and preserves the source terminal law.
+The probe checks full support, exact Bayes limits and whole replacement
+policies. It shows why the event-only geometric construction needs further
+work; extending the successful view-dependent construction to all native
+information sets still requires a joint likelihood and incentive argument.
+This finite tree supplies no certified asynchronous scheduler or reporting
+backend.
+
 [SourceServiceSampleEnvironmentFactorization](../Vegas/Game/SourceServiceSampleEnvironmentFactorization.lean)
 proves the real public sampling command's joint law. The sampled value is read
 from the actual typed output and advances both carried source states. The
