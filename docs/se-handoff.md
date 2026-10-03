@@ -229,6 +229,11 @@ future private values changed by repair are outside the claim.
   derives the actual owned ancestor's prefix from readiness and sequential
   order, then preserves its readout through every legal native descendant.
   It requires neither clean play nor a common information-history depth.
+- [SourceServiceFirstInputTerminalLaw](../Vegas/Game/SourceServiceFirstInputTerminalLaw.lean)
+  identifies the represented first-turn terminal source-restoration/input
+  joint law with the genuine stopped law. Its same-draw restoration kernel is
+  preserved along actual continuations. Native ancestor Bayes assembly and
+  perturbed timing transport still need proof.
 - [SourceServiceInitialTraffic](../Vegas/Game/SourceServiceInitialTraffic.lean)
   derives the actual initialized parameter/source/full-traffic factor through
   the whole source view. Correlated initial private types are retained; the

@@ -1667,6 +1667,12 @@ derives the before-event prefix directly from an actual owned information
 history's ready input and sequential graph order. Every native descendant
 retains that same ancestor readout, at any decision depth and under arbitrary
 raw responses. No separate clean-prefix premise is needed.
+[SourceServiceFirstInputTerminalLaw](../Vegas/Game/SourceServiceFirstInputTerminalLaw.lean)
+identifies the represented normalized first-turn terminal law jointly with
+the earlier prefix restoration, same initial parameter and chronological first
+input. Its restoration kernel is preserved along actual native descendants.
+This supplies the full terminal joint law for ancestor conditioning; the
+native Bayes assembly and perturbed waiting transport remain separate.
 [SourceServiceWaitRiskConfounding](../Vegas/Game/SourceServiceWaitRiskConfounding.lean)
 checks that protected and unprotected timely binding responses can emit the
 same typed-success packet, receive acceptance at the same clock, and give a

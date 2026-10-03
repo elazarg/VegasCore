@@ -255,6 +255,11 @@ posteriors still need proof.
 derives the real owned ancestor's prefix from its ready input alone and retains
 the same source readout at every descendant. This supplies the operational
 ancestor bridge without a cleanliness or fixed-depth assumption.
+[SourceServiceFirstInputTerminalLaw](../Vegas/Game/SourceServiceFirstInputTerminalLaw.lean)
+identifies the full represented terminal prefix-restoration/input joint with
+the genuine initialized stopped law. The common restoration kernel survives
+actual native continuations. Native ancestor conditioning remains to be
+assembled, and perturbed waiting needs its own posterior transport.
 
 The actual binding-response law now composes with protected completion,
 retaining the transmitting draw and full stopped traffic. The native Bayes
