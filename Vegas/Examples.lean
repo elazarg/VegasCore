@@ -19,6 +19,9 @@ import Vegas.Examples.InFlightCommitment
 import Vegas.Examples.LateResolutionService
 import Vegas.Examples.LateResolutionContinuation
 import Vegas.Examples.LateResolutionSourceEquilibrium
+import Vegas.Examples.LateResolutionNativeSite
+import Vegas.Examples.LateResolutionNativeInformation
+import Vegas.Examples.LateResolutionNativeContinuation
 import Vegas.Examples.MonitoredGuessing
 import Vegas.Examples.OpeningTimingChannel
 import Vegas.Examples.ParameterOutcomes

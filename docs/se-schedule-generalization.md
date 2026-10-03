@@ -1714,8 +1714,24 @@ is necessary.
 constructs an actual consistent source SE that surely opens, for the declared
 source payoff. Every source strategic history reaches the same resolution
 after two deterministic samples; its payoff one dominates all alternatives.
-The native information-site comparison remains separate. These results do
-not disprove equilibrium preservation.
+[LateResolutionNativeSite](../Vegas/Examples/LateResolutionNativeSite.lean)
+supplies an actual bounded risk-menu decision site with legal FALSE at that
+same input. The initialized geometric turn policy supports such a late site
+for every positive deferral weight below one and every source profile, when
+later timing slots exist. This is real physical policy reach and same-input
+regret; a belief-averaged whole-fiber comparison and native full mixing remain
+separate. These results do not disprove equilibrium preservation.
+[LateResolutionNativeInformation](../Vegas/Examples/LateResolutionNativeInformation.lean)
+derives the audited suffix's operational premises throughout the entire actual
+information fiber. In this one-player fixture, matching own recall and
+authentic provenance force the whole network empty; matching public observation
+identifies the ready event, clock, activation time and remaining commands.
+No belief equation is assumed. Native terminal-context comparison remains open.
+[LateResolutionNativeContinuation](../Vegas/Examples/LateResolutionNativeContinuation.lean)
+proves that the actual native terminal-state law first draws the current
+response and then runs those four passive physical commands. Future player
+policies cannot change that suffix. The assessment-level whole-fiber regret
+comparison remains separate.
 
 [SourceServiceSampleCompletion](../Vegas/Game/SourceServiceSampleCompletion.lean)
 derives actual silence, whole stopped-run equality with silent play, and the

@@ -347,7 +347,24 @@ because its protected gate is closed. This requires rational free completion.
 [LateResolutionSourceEquilibrium](../Vegas/Examples/LateResolutionSourceEquilibrium.lean)
 constructs a genuine consistent source SE with strategy TRUE for the declared
 payoff, classifying actual source histories and deriving source finiteness and
-full mixing. The native information-site comparison remains separate.
+full mixing.
+[LateResolutionNativeSite](../Vegas/Examples/LateResolutionNativeSite.lean)
+reaches the actual bounded risk menu's late decision information site, proves
+FALSE is a legal choice at that same input, and gives its strict physical
+continuation improvement over the current policy. The actual initialized
+geometric policy reaches such a site for every positive deferral weight below
+one and every source profile, when later timing slots exist. A belief-averaged
+whole-information-fiber comparison and native full mixing remain separate.
+[LateResolutionNativeInformation](../Vegas/Examples/LateResolutionNativeInformation.lean)
+derives the same late clock, readiness, activation time, remaining commands
+and entire empty network at every actual history sharing the witness input.
+Actual recall, response provenance and serial invariants supply these facts,
+without a belief equation. Native terminal-context comparison remains open.
+[LateResolutionNativeContinuation](../Vegas/Examples/LateResolutionNativeContinuation.lean)
+identifies the actual native terminal-state law with its current response
+draw followed by the four physical passive commands. Every future player
+policy has the same suffix law. Combining this with the whole-fiber resources
+to prove assessment-level regret remains separate.
 The [late-decision signaling probe](../scripts/experiments/late_decision_signaling_probe.py)
 checks this distinction with exact Bayes limits and every whole-policy
 comparison. Equal waiting trembles make waiting profitable for one type;

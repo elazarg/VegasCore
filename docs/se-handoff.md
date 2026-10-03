@@ -279,6 +279,21 @@ future private values changed by repair are outside the claim.
   constructs a consistent source assessment with TRUE as its strategy and
   proves SE for the declared source payoff. Actual source histories supply the
   single strategic resolution, finiteness and full-mixing resources.
+- [LateResolutionNativeSite](../Vegas/Examples/LateResolutionNativeSite.lean)
+  supplies a real bounded risk-menu decision site and legal FALSE at the same
+  input as the forced-silence regret. Its late prefix is supported by the actual
+  geometric turn policy for every positive deferral weight below one, when
+  later timing slots exist. Whole-fiber native context comparisons and native
+  full mixing remain separate.
+- [LateResolutionNativeInformation](../Vegas/Examples/LateResolutionNativeInformation.lean)
+  derives the audited suffix resources at every actual history sharing that
+  native input. Authentic provenance and silent own recall force the entire
+  network empty in this one-player fixture; public observation identifies
+  readiness, clock and remaining commands. No Bayes premise is supplied.
+- [LateResolutionNativeContinuation](../Vegas/Examples/LateResolutionNativeContinuation.lean)
+  proves the actual native terminal-state law is the current response followed
+  by four passive commands, independently of all future player policies.
+  The assessment-level whole-fiber regret comparison remains separate.
 - [SourceServiceResolutionIntentionFactorization](../Vegas/Game/SourceServiceResolutionIntentionFactorization.lean)
   carries original and effective disclosure histories through the actual
   response traffic law. FALSE packets can represent failed TRUE intentions;
