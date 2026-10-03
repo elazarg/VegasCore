@@ -73,6 +73,8 @@ import Vegas.Game.SourceServiceFirstInputTerminalLaw
 import Vegas.Game.SourceServiceFirstInputNativePosterior
 import Vegas.Game.SourceServicePastCommitmentTraffic
 import Vegas.Game.SourceServiceBindingSelection
+import Vegas.Game.SourceServiceBindingChoiceSelection
+import Vegas.Game.SourceServiceMissingStoppedCoupling
 import Vegas.Game.AsyncServiceFirstTurnBeliefResources
 import Vegas.Game.SourceServiceFirstBindingTraffic
 import Vegas.Game.SourceServiceFirstTurnBindingFactorization

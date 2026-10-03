@@ -353,18 +353,24 @@ reaches the actual bounded risk menu's late decision information site, proves
 FALSE is a legal choice at that same input, and gives its strict physical
 continuation improvement over the current policy. The actual initialized
 geometric policy reaches such a site for every positive deferral weight below
-one and every source profile, when later timing slots exist. A belief-averaged
-whole-information-fiber comparison and native full mixing remain separate.
+one and every source profile, when later timing slots exist. This reach is for
+the physical policy; its finite-menu representation needs whole-law coverage.
 [LateResolutionNativeInformation](../Vegas/Examples/LateResolutionNativeInformation.lean)
 derives the same late clock, readiness, activation time, remaining commands
 and entire empty network at every actual history sharing the witness input.
 Actual recall, response provenance and serial invariants supply these facts,
-without a belief equation. Native terminal-context comparison remains open.
+without a belief equation.
 [LateResolutionNativeContinuation](../Vegas/Examples/LateResolutionNativeContinuation.lean)
 identifies the actual native terminal-state law with its current response
 draw followed by the four physical passive commands. Every future player
-policy has the same suffix law. Combining this with the whole-fiber resources
-to prove assessment-level regret remains separate.
+policy has the same suffix law.
+[LateResolutionNativeRationality](../Vegas/Examples/LateResolutionNativeRationality.lean)
+proves WAIT has value `−D` and legal FALSE has value `0` under every native
+assessment belief at this site. For `D > 0`, the finite-menu representation
+of the entire current turn policy fails sequential rationality for any timing
+lottery, including pure first-turn timing. Actual consistent native beliefs
+exist but cannot remove this regret. Preservation remains possible through
+rational free continuation at late inputs.
 The [late-decision signaling probe](../scripts/experiments/late_decision_signaling_probe.py)
 checks this distinction with exact Bayes limits and every whole-policy
 comparison. Equal waiting trembles make waiting profitable for one type;
@@ -403,6 +409,11 @@ private value preserves public selection, misses and all foreign inputs with
 the same correlated prefix parameter. Horizon exhaustion is retained. A
 binary acceptance-of-this-packet/public-miss decomposition still needs actual
 unique-call prefix resources; the strategic waiting comparison remains open.
+[SourceServiceBindingChoiceSelection](../Vegas/Game/SourceServiceBindingChoiceSelection.lean)
+joins the actual sampled source commitment value to this selection law,
+conditionally on the same physical prefix and correlated initial parameter.
+The reference failure packet is a physical proof experiment, not an assumed
+admitted source action. No acceptance probability is supplied.
 
 The watcher samples authentic evidence partially; observation and report
 delivery may be correlated. Positive conditional coverage and a finite
@@ -517,7 +528,7 @@ completed event. These are stopping-proof resources, not terminal dominance.
 uses this completed-event resource to preserve the full frame through actual
 owner commitment inclusions. Foreign commitments retain their actual immutable
 candidate meaning; invalid tokens and public rejections are consumed with
-matching false receipts. The whole stopped evaluator remains open.
+matching false receipts.
 [ReactiveBindingPacketStep](../Vegas/Pending/ReactiveBindingPacketStep.lean)
 combines every actual packet constructor and scheduler command, preserving
 the full frame or identifying the same pending owner-authored signed breach.
@@ -527,8 +538,16 @@ keeps the actual implementation shadow fixed on the noncommitment owner slice
 and derives preservation of opening capabilities under every environment
 transition. [ReactiveImplementationInvariant](../Interaction/ReactiveImplementationInvariant.lean)
 carries ordinary unrestricted service invariants through the same private
-implementation's real joint evaluator. The full stopped induction, later
-owner bindings and risk-menu comparator remain separate obligations.
+implementation's real joint evaluator.
+[SourceServiceMissingStoppedCoupling](../Vegas/Game/SourceServiceMissingStoppedCoupling.lean)
+couples the full actual run and the same retained implementation's joint
+execution and memory law on the noncommitment owner slice. Every endpoint
+preserves the full frame or carries the same actual owner-authored signed
+breach in both inputs. Ordinary runtime invariants come from initialized raw
+traces and the real evaluator. A completed preparation frame and capability
+preservation remain explicit resources. This uses the complete bounded
+effective menu; later owner bindings, a legal risk-menu comparator and
+terminal utility domination remain open.
 
 ## Validation
 

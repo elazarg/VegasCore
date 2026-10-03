@@ -273,8 +273,8 @@ future private values changed by repair are outside the claim.
   reaches an initialized legal late turn and computes the actual terminal
   typed payoff and collected audit. TRUE and silence yield `−D`; accepted
   FALSE yields `0` for every authentic partial audit. Every current timing
-  policy is silent at this input because protection has ended. A native
-  information-site comparison remains separate; preservation is not disproved.
+  policy is silent at this input because protection has ended. Preservation
+  remains possible through rational free continuation there.
 - [LateResolutionSourceEquilibrium](../Vegas/Examples/LateResolutionSourceEquilibrium.lean)
   constructs a consistent source assessment with TRUE as its strategy and
   proves SE for the declared source payoff. Actual source histories supply the
@@ -283,8 +283,8 @@ future private values changed by repair are outside the claim.
   supplies a real bounded risk-menu decision site and legal FALSE at the same
   input as the forced-silence regret. Its late prefix is supported by the actual
   geometric turn policy for every positive deferral weight below one, when
-  later timing slots exist. Whole-fiber native context comparisons and native
-  full mixing remain separate.
+  later timing slots exist. This is physical policy reach; identifying its
+  finite-menu representation also needs whole-law coverage.
 - [LateResolutionNativeInformation](../Vegas/Examples/LateResolutionNativeInformation.lean)
   derives the audited suffix resources at every actual history sharing that
   native input. Authentic provenance and silent own recall force the entire
@@ -293,7 +293,12 @@ future private values changed by repair are outside the claim.
 - [LateResolutionNativeContinuation](../Vegas/Examples/LateResolutionNativeContinuation.lean)
   proves the actual native terminal-state law is the current response followed
   by four passive commands, independently of all future player policies.
-  The assessment-level whole-fiber regret comparison remains separate.
+- [LateResolutionNativeRationality](../Vegas/Examples/LateResolutionNativeRationality.lean)
+  proves native WAIT value `−D` and legal FALSE value `0` under every belief
+  at the entire late information fiber. For a positive deposit, the entire
+  current turn prescription fails native sequential rationality and SE for
+  every timing lottery. Consistent native beliefs exist but do not remove
+  this regret. Rational free late completion remains available.
 - [SourceServiceResolutionIntentionFactorization](../Vegas/Game/SourceServiceResolutionIntentionFactorization.lean)
   carries original and effective disclosure histories through the actual
   response traffic law. FALSE packets can represent failed TRUE intentions;
@@ -440,8 +445,15 @@ future private values changed by repair are outside the claim.
   implementation shadow under the noncommitment owner slice.
 - [ReactiveImplementationInvariant](../Interaction/ReactiveImplementationInvariant.lean)
   preserves unrestricted service invariants in the actual private-memory
-  joint evaluator. Full stopped induction, later owner bindings and a legal
-  risk-menu comparator remain separate.
+  joint evaluator.
+- [SourceServiceMissingStoppedCoupling](../Vegas/Game/SourceServiceMissingStoppedCoupling.lean)
+  couples the actual whole continuation and the same implementation's joint
+  memory law when the owner sends no further commitments. Endpoints preserve
+  the full frame or the same owner-authored signed breach in both inputs.
+  Actual initialized traces discharge ordinary service invariants. The
+  completed preparation frame and opening-capability relation are resources;
+  this uses the complete bounded effective menu. Later owner bindings,
+  risk-menu admission and terminal utility domination remain open.
 - [SourceServiceAliasEquilibrium](../Vegas/Game/SourceServiceAliasEquilibrium.lean)
   supplies the final private raw-alias transport, retaining correlated
   collection and prior charges.
@@ -460,6 +472,11 @@ future private values changed by repair are outside the claim.
   inputs under changes to the canonical binding's private value, jointly with
   the same correlated prefix parameter. Finite-budget exhaustion is allowed.
   Unique-call acceptance/miss classification and waiting incentives are separate.
+- [SourceServiceBindingChoiceSelection](../Vegas/Game/SourceServiceBindingChoiceSelection.lean)
+  joins the actual source commitment draw with this private-value-independent
+  selection law at the same physical prefix and initial parameter. The failure
+  reference packet is only a physical proof experiment. Completion and
+  acceptance probabilities are not premises of this factorization.
 
 ## Proof and build discipline
 

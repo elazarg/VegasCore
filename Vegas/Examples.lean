@@ -22,6 +22,7 @@ import Vegas.Examples.LateResolutionSourceEquilibrium
 import Vegas.Examples.LateResolutionNativeSite
 import Vegas.Examples.LateResolutionNativeInformation
 import Vegas.Examples.LateResolutionNativeContinuation
+import Vegas.Examples.LateResolutionNativeRationality
 import Vegas.Examples.MonitoredGuessing
 import Vegas.Examples.OpeningTimingChannel
 import Vegas.Examples.ParameterOutcomes

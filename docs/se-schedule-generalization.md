@@ -1719,19 +1719,25 @@ supplies an actual bounded risk-menu decision site with legal FALSE at that
 same input. The initialized geometric turn policy supports such a late site
 for every positive deferral weight below one and every source profile, when
 later timing slots exist. This is real physical policy reach and same-input
-regret; a belief-averaged whole-fiber comparison and native full mixing remain
-separate. These results do not disprove equilibrium preservation.
+regret. Identifying this physical policy with its finite-menu representation
+also needs whole-law coverage. These results do not disprove preservation.
 [LateResolutionNativeInformation](../Vegas/Examples/LateResolutionNativeInformation.lean)
 derives the audited suffix's operational premises throughout the entire actual
 information fiber. In this one-player fixture, matching own recall and
 authentic provenance force the whole network empty; matching public observation
 identifies the ready event, clock, activation time and remaining commands.
-No belief equation is assumed. Native terminal-context comparison remains open.
+No belief equation is assumed.
 [LateResolutionNativeContinuation](../Vegas/Examples/LateResolutionNativeContinuation.lean)
 proves that the actual native terminal-state law first draws the current
 response and then runs those four passive physical commands. Future player
-policies cannot change that suffix. The assessment-level whole-fiber regret
-comparison remains separate.
+policies cannot change that suffix.
+[LateResolutionNativeRationality](../Vegas/Examples/LateResolutionNativeRationality.lean)
+then proves WAIT value `−D` and legal FALSE value `0` under every native belief
+at that information site. With a positive deposit, no assessment can make
+the entire finite-menu turn prescription sequentially rational or an SE,
+for any timing lottery. Genuine consistent native beliefs exist but cannot
+remove this regret. This rules out that entire prescription, including at
+free late inputs; rational free completion still permits preservation.
 
 [SourceServiceSampleCompletion](../Vegas/Game/SourceServiceSampleCompletion.lean)
 derives actual silence, whole stopped-run equality with silent play, and the
@@ -1961,8 +1967,7 @@ supplies actual old-commitment provenance for the stopped repair. Issued tokens
 at a ready sequential event cannot name a later rank. Sending no further owner
 commitments preserves this bound under every foreign response and scheduler
 command; after the current event completes, old token-valid owner commitments
-can only address completed events. The whole stopped evaluator and terminal
-comparison remain open.
+can only address completed events. Terminal comparison remains separate.
 [ReactiveBindingCommitmentStep](../Vegas/Pending/ReactiveBindingCommitmentStep.lean)
 uses completed addressed events to couple old owner commitment inclusions.
 Foreign commitments use their actual immutable candidate meaning; invalid
@@ -1977,8 +1982,16 @@ derives preservation of opening capability under every environment transition
 and keeps the actual implementation shadow fixed on the noncommitment owner
 slice. [ReactiveImplementationInvariant](../Interaction/ReactiveImplementationInvariant.lean)
 carries ordinary unrestricted service invariants through that same joint
-private-memory evaluator. The full stopped induction, later owner bindings
-and a legal risk-menu whole-policy comparator remain separate.
+private-memory evaluator.
+[SourceServiceMissingStoppedCoupling](../Vegas/Game/SourceServiceMissingStoppedCoupling.lean)
+extends these facts through the actual full run and the same retained
+implementation's joint execution and memory law on the noncommitment owner
+slice. Each endpoint has the full frame or the same owner-authored signed
+breach in both actual inputs. Initialized raw traces and the real evaluator
+derive ordinary service invariants; the completed preparation frame and
+opening-capability relation remain explicit resources. The implementation
+uses the complete bounded effective menu. Later owner bindings, admission
+to the narrower risk menu and terminal utility domination remain open.
 
 ### Deviation proof boundaries
 
@@ -2429,6 +2442,11 @@ the final equilibrium's supported play.
   canonical binding's private value changes. Horizon exhaustion is allowed;
   a binary acceptance-of-this-packet/miss split needs actual unique-call prefix
   resources, and the waiting incentive comparison remains open.
+  [SourceServiceBindingChoiceSelection](../Vegas/Game/SourceServiceBindingChoiceSelection.lean)
+  joins the actual source commitment draw to this public selection kernel,
+  conditionally on the same physical prefix and correlated initial parameter.
+  Its failure reference packet is only a physical proof experiment. No source
+  admission or acceptance probability is assumed for that reference.
 - **Stage B beliefs.** Probe C5 suggests that depth differences are no
   obstruction, but the concurrent-window information sets are new. If they
   break the extension, D2's contract-ordered service is the fallback.

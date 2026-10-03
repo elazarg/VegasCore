@@ -59,7 +59,9 @@ private theorem ready_after_round
     intro equal
     exact unfinished ((EventOrder.Cut.mem_complete _ _ _ _).mpr (Or.inl equal))
 
-private theorem owner_runUntil_of_recorded
+/-- Once its current event is recorded, the actual turn policy is silent until
+that event completes, for every timing lottery and every foreign policy. -/
+theorem sourceServiceTurnPolicy_runUntil_owner_silent
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (scheduler : (application setup leaks).Scheduler)
@@ -198,10 +200,10 @@ theorem sourceServiceTurnPolicy_recorded_binding_public_law
   have owned := nodeView_bind_actor outputEq codeEq
   unfold ReactiveApplication.runUntilHorizon
   rw [← recalled,
-    owner_runUntil_of_recorded setup leaks scheduler players bound turns timing profile owner
-      follows _ left event ready owned leftRecorded,
-    owner_runUntil_of_recorded setup leaks scheduler players bound turns timing profile owner
-      follows _ right event rightReady owned rightRecorded]
+    sourceServiceTurnPolicy_runUntil_owner_silent setup leaks scheduler players bound turns timing
+      profile owner follows _ left event ready owned leftRecorded,
+    sourceServiceTurnPolicy_runUntil_owner_silent setup leaks scheduler players bound turns timing
+      profile owner follows _ right event rightReady owned rightRecorded]
   exact public_runUntil setup leaks scheduler players owner left right same event ready payload
     outputEq codeEq node _
 
