@@ -105,8 +105,11 @@ theorem sourceService_binding_attempt_completion
       app.runUntilHorizon scheduler (Function.update players owner app.silentPolicy)
         (fun final => event ∈ final.application.config.cut.completed) horizon start := by
     unfold ReactiveApplication.runUntilHorizon
-    exact sourceServiceTurnPolicy_runUntil_owner_silent setup leaks scheduler players bound turns
-      timing profile owner follows _ start event afterReady site.owned recorded
+    exact sourceServicePolicy_runUntil_owner_silent setup leaks scheduler players owner _ start
+      event afterReady recorded (fun current currentReady currentRecorded => by
+        rw [follows]
+        exact sourceServiceTurnPolicy_input_of_recorded setup leaks bound turns timing profile
+          current owner event currentReady site.owned currentRecorded owner)
   have silentReached := stoppedLaw ▸ reached
   have dichotomy := sourceServiceCanonicalDecision_include_or_miss contract owner execution
     rawTrace event site.owned ready timely unrecorded action effective

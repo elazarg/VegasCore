@@ -59,20 +59,23 @@ private theorem ready_after_round
     intro equal
     exact unfinished ((EventOrder.Cut.mem_complete _ _ _ _).mpr (Or.inl equal))
 
-/-- Once its current event is recorded, the actual turn policy is silent until
-that event completes, for every timing lottery and every foreign policy. -/
-theorem sourceServiceTurnPolicy_runUntil_owner_silent
+/-- A policy silent at recorded ready inputs has exactly the owner-silent
+completion-stopped law. Foreign policies remain arbitrary. Actual progress
+and recorded-call persistence supply the stopped continuation invariant. -/
+theorem sourceServicePolicy_runUntil_owner_silent
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (scheduler : (application setup leaks).Scheduler)
     (players : Player → (application setup leaks).Policy)
-    (bound : (graph setup).EventId → Nat) (turns : Nat) (timing : TurnTiming setup turns)
-    (profile : BehavioralProfile setup.program) (owner : Player)
-    (follows : players owner = sourceServiceTurnPolicy setup leaks bound turns timing profile owner)
-    (count : Nat) (execution : (application setup leaks).Execution)
+    (owner : Player) (count : Nat) (execution : (application setup leaks).Execution)
     (event : (graph setup).EventId) (ready : execution.application.config.cut.Ready event)
-    (owned : (graph setup).actor? event = some owner)
-    (recorded : (runtime setup).eventRecorded leaks (execution.recall owner) event = true) :
+    (recorded : (runtime setup).eventRecorded leaks (execution.recall owner) event = true)
+    (silent : ∀ current : (application setup leaks).Execution,
+      current.application.config.cut.Ready event →
+      (runtime setup).eventRecorded leaks (current.recall owner) event = true →
+      players owner (current.recall owner) (current.observe (application setup leaks) owner) =
+        (application setup leaks).silentPolicy (current.recall owner)
+          (current.observe (application setup leaks) owner)) :
     (application setup leaks).runUntil scheduler players
         (fun final => event ∈ final.application.config.cut.completed) count execution =
       (application setup leaks).runUntil scheduler
@@ -92,14 +95,13 @@ theorem sourceServiceTurnPolicy_runUntil_owner_silent
     · simp only [Function.update_of_ne foreign]
     · have own : who = owner := not_ne_iff.mp foreign
       subst who
-      rw [Function.update_self, follows]
+      rw [Function.update_self]
       cases command with
       | activate actor =>
           have applicationEq := activation_application setup leaks current middle actor moved
           have recallEq := app.environmentStep_recall current middle (.activate actor) moved
-          exact sourceServiceTurnPolicy_input_of_recorded setup leaks bound turns timing profile
-            middle owner event (by rw [applicationEq]; exact readyOf current holds running)
-            owned (by rw [recallEq]; exact holds.2) owner
+          exact silent middle (by rw [applicationEq]; exact readyOf current holds running)
+            (by rw [recallEq]; exact holds.2)
       | «include» _ | application _ | wait => cases active
   · intro current holds running next reached
     have currentReady := readyOf current holds running
@@ -199,11 +201,20 @@ theorem sourceServiceTurnPolicy_recorded_binding_public_law
     exact ready
   have owned := nodeView_bind_actor outputEq codeEq
   unfold ReactiveApplication.runUntilHorizon
+  have silent (current : (application setup leaks).Execution)
+      (currentReady : current.application.config.cut.Ready event)
+      (currentRecorded : (runtime setup).eventRecorded leaks (current.recall owner) event = true) :
+      players owner (current.recall owner) (current.observe (application setup leaks) owner) =
+        (application setup leaks).silentPolicy (current.recall owner)
+          (current.observe (application setup leaks) owner) := by
+    rw [follows]
+    exact sourceServiceTurnPolicy_input_of_recorded setup leaks bound turns timing profile current
+      owner event currentReady owned currentRecorded owner
   rw [← recalled,
-    sourceServiceTurnPolicy_runUntil_owner_silent setup leaks scheduler players bound turns timing
-      profile owner follows _ left event ready owned leftRecorded,
-    sourceServiceTurnPolicy_runUntil_owner_silent setup leaks scheduler players bound turns timing
-      profile owner follows _ right event rightReady owned rightRecorded]
+    sourceServicePolicy_runUntil_owner_silent setup leaks scheduler players owner _ left event ready
+      leftRecorded silent,
+    sourceServicePolicy_runUntil_owner_silent setup leaks scheduler players owner _ right event
+      rightReady rightRecorded silent]
   exact public_runUntil setup leaks scheduler players owner left right same event ready payload
     outputEq codeEq node _
 

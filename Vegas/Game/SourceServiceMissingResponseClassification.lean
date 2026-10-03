@@ -164,19 +164,15 @@ and original unavailability are derived from the real paired histories. -/
 theorem sourceServiceMissing_unusable_default_retained
     (bounds : MessageBounds (graph setup)) (bound : (graph setup).EventId → Nat)
     (values : bounds.CoversBindingValues)
-    {horizon leftRemaining rightRemaining : Nat}
+    {horizon rightRemaining : Nat}
     {scheduler : (application setup leaks).Scheduler}
     (original repaired : (application setup leaks).Execution) (who : Player)
     (memory : BindingMemory (runtime setup) leaks)
     (frame : memory.Frame (runtime setup) leaks who original repaired)
-    (leftTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-      (some ⟨leftRemaining, some who, original⟩))
     (rightTrace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup)
       horizon scheduler).Trace (some ⟨rightRemaining, some who, repaired⟩))
     (clear : (runtime setup).serviceRisk leaks bound who (repaired.recall who)
       (repaired.observe (application setup leaks) who) = false)
-    (preserved : ∀ slot raw, original.application.candidates.lookup (who, slot) = .openable raw →
-      repaired.application.candidates.lookup (who, slot) = .openable raw)
     (response : (application setup leaks).Action)
     (effective : response ∈ (bounds.menu (runtime setup) leaks).actions who
       (original.recall who) (original.observe (application setup leaks) who))
@@ -198,8 +194,6 @@ theorem sourceServiceMissing_unusable_default_retained
   let past := repaired.recall who
   let view := repaired.observe app who
   let serial := repaired.application.publicView.bindingCount who
-  obtain ⟨available, _, _⟩ := sourceServiceMissing_response_classifiers bounds bound original
-    repaired who memory frame leftTrace rightTrace preserved response effective
   obtain ⟨event, payload, outputEq, codeEq, node, turn, unrecorded, opening, responseEq,
     missing⟩ := unusable
   have persistent := ((runtime setup).serviceRisk_clear_iff leaks bound who past view).mp clear
@@ -213,8 +207,9 @@ theorem sourceServiceMissing_unusable_default_retained
     rw [frame.observed]
     exact (frame.slots (.prepared serial)).mpr actualFresh
   have capacity : serial < bounds.candidateCount := by
-    rw [responseEq] at available
-    exact ((bounds.menu_mem (runtime setup) leaks who past view _).mp available).1.1.1
+    rw [responseEq] at effective
+    exact ((bounds.menu_mem (runtime setup) leaks who (original.recall who)
+      (original.observe app who) _).mp effective).1.1.1
   have included : (⟨payload, L.someValue payload⟩ : Raw L) ∈ bounds.values := by
     have all := values event
     rw [outputEq] at all

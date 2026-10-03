@@ -117,13 +117,15 @@ theorem BindingSource.selected_attempt_law
       site.owner event turns slot execution selected]
     symm
     unfold ReactiveApplication.runUntilHorizon
-    apply sourceServiceTurnPolicy_runUntil_owner_silent setup leaks scheduler players bound turns
-      timing profile site.owner follows
+    apply sourceServicePolicy_runUntil_owner_silent setup leaks scheduler players site.owner
     · rw [((runtime setup).reactive_respond_application leaks execution site.owner _).1]
       exact (execution.application.publicView_eventReady event).mp
         (PublicView.ownTurn?_spec _ site.owner event turn).1
-    · exact site.owned
     · exact (runtime setup).eventRecorded_respond leaks execution site.owner _ event rfl
+    · intro current currentReady currentRecorded
+      rw [follows]
+      exact sourceServiceTurnPolicy_input_of_recorded setup leaks bound turns timing profile
+        current site.owner event currentReady site.owned currentRecorded site.owner
   have currentResult (value : PublicationResult (L.Val site.payload)) :
       bindingResponseResult? site.owner site.payload execution
         ((runtime setup).reactiveBinding leaks site.owner event site.payload value serial) =

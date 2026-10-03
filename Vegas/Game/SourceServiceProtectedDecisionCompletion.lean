@@ -2,6 +2,9 @@
 
 import Vegas.Game.SourceServiceBindingFirstPacket
 import Vegas.Game.SourceServiceLateDecisionCompletion
+import Vegas.Game.SourceServiceCompatibleImmediateAudit
+import Vegas.Game.SourceServiceResidualSites
+import Vegas.Game.SourceServiceProtectedDecisionLaw
 
 /-! # Actual protected canonical decisions through completion
 
@@ -164,3 +167,119 @@ theorem sourceServiceCanonicalDecision_protected_completion
   exact actual.2.resolve_left settled.2.2.2
 
 end Vegas
+
+namespace Vegas.AsyncServiceSpec
+
+open SourceProgram Interaction EventGraphRuntime GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] [Fintype Player]
+  {L : IExpr} [IExpr.ResultTypes L] (service : AsyncServiceSpec Player L)
+
+local notation "app" => application service.setup service.leaks
+local notation "menu" => service.bounds.menu (runtime service.setup) service.leaks
+
+omit [Fintype Player] in
+private theorem immediate_input_of_recorded
+    (profile : BehavioralProfile service.setup.program)
+    (execution : (app).Execution) (who : Player) (event : (graph service.setup).EventId)
+    (ready : execution.application.config.cut.Ready event)
+    (owned : (graph service.setup).actor? event = some who)
+    (recorded : (runtime service.setup).eventRecorded service.leaks
+      (execution.recall who) event = true) :
+    sourceServiceImmediatePolicy service.setup service.leaks service.bound profile who
+        (execution.recall who) (execution.observe (app) who) =
+      (app).silentPolicy (execution.recall who) (execution.observe (app) who) := by
+  have turn := ownTurn?_of_ready service.setup execution.application ready owned
+  change (execution.observe (app) who).application.publicView.ownTurn? who = some event at turn
+  unfold sourceServiceImmediatePolicy
+  split
+  · simp only [turn, sourceServiceCanonicalOpportunity, recorded, ↓reduceIte]
+  · rfl
+
+/-- A real immediate draw at compatible full-menu information is accepted with
+its original packet identifier and makes its selected typed graph successor.
+The actual source residual and owner resources are derived from the legal
+prefix. Foreign prefix and suffix policies need not be source-supported. -/
+theorem sourceCompatibleInfo_immediate_protected_completion
+    (profile : BehavioralProfile service.setup.program)
+    (effective : ∀ who, (profile who).EffectiveDisclosures service.setup.program []
+      (Revelations.initial service.setup.context))
+    {remaining : Nat} (execution : (app).Execution) (who : Player)
+    (trace : ((menu).protocol (initialLaw service.setup) service.horizon
+      service.scheduler).Trace (some ⟨remaining, some who, execution⟩))
+    (compatible : service.sourceCompatibleInfo who
+      (some (execution.recall who, execution.observe (app) who)))
+    (event : (graph service.setup).EventId)
+    (turn : execution.application.publicView.ownTurn? who = some event)
+    (unrecorded : (runtime service.setup).eventRecorded service.leaks
+      (execution.recall who) event = false)
+    (response : (app).Action)
+    (chosen : response ∈ (sourceServiceImmediatePolicy service.setup service.leaks service.bound
+      profile who (execution.recall who) (execution.observe (app) who)).support)
+    (players : Player → (app).Policy)
+    (follows : players who = sourceServiceImmediatePolicy service.setup service.leaks
+      service.bound profile who)
+    (stopped : (app).Execution)
+    (reached : stopped ∈ ((app).runUntilHorizon service.scheduler players
+      (fun final => event ∈ final.application.config.cut.completed) service.horizon
+      (execution.respond (app) who response)).support) :
+    ∃ action : (graph service.setup).Action event,
+      response = (runtime service.setup).canonicalServiceDecision service.leaks who
+        (execution.recall who) (execution.observe (app) who) event action ∧
+      EffectiveAction execution.application.config event action ∧
+      event ∈ stopped.application.config.cut.completed ∧
+      ((who, execution.network.nextSerial who), true) ∈ stopped.receipts ∧
+      event ∉ stopped.application.missedEvents ∧
+      stopped.application.config ∈ (execution.application.config.step event
+        ((execution.application.publicView_eventReady event).mp
+          (PublicView.ownTurn?_spec _ who event turn).1) action).support := by
+  have rawTrace := (menu).toRawTrace (initialLaw service.setup) service.horizon service.scheduler
+    trace
+  obtain ⟨clear, atTurn, slots, _calls, _conform, _once, _good⟩ :=
+    service.sourceCompatibleInfo_raw_prefixFacts ⟨remaining, some who, execution⟩ rawTrace who
+      compatible
+  have ready := (execution.application.publicView_eventReady event).mp
+    (PublicView.ownTurn?_spec _ who event turn).1
+  have owned := (PublicView.ownTurn?_spec _ who event turn).2
+  have fits := (runtime service.setup).serviceRisk_clear_protected_opportunity service.leaks
+    service.bound who (execution.recall who) (execution.observe (app) who) event rfl turn
+      unrecorded clear
+  obtain ⟨residual⟩ := menu_ready_sourceResidual service.setup service.leaks profile (menu)
+    service.horizon service.scheduler trace ⟨remaining, some who, execution⟩ rfl event ready
+  obtain ⟨law, _prefixLaw, canonical, operational⟩ := SourceResidual.head_step service.leaks
+    residual event rfl ready
+  have actualChosen := chosen
+  rw [sourceServiceImmediatePolicy_at_event clear turn,
+    sourceServiceCanonicalOpportunity_protected service.bound profile who event
+      (execution.recall who) (execution.observe (app) who) unrecorded fits,
+    canonical who owned execution rfl, PMF.support_map] at chosen
+  obtain ⟨action, selected, rfl⟩ := chosen
+  have effectiveAction := operational effective action selected
+  let response := (runtime service.setup).canonicalServiceDecision service.leaks who
+    (execution.recall who) (execution.observe (app) who) event action
+  let start := execution.respond (app) who response
+  obtain ⟨_material, _responseEq, _freshCall, recorded⟩ := sourceServiceImmediatePolicy_call
+    rawTrace atTurn slots clear event turn unrecorded response actualChosen
+  have afterReady : start.application.config.cut.Ready event := by
+    rw [((runtime service.setup).reactive_respond_application service.leaks execution who
+      response).1]
+    exact ready
+  have stoppedLaw :
+      (app).runUntilHorizon service.scheduler players
+        (fun final => event ∈ final.application.config.cut.completed) service.horizon start =
+      (app).runUntilHorizon service.scheduler (Function.update players who (app).silentPolicy)
+        (fun final => event ∈ final.application.config.cut.completed) service.horizon start := by
+    unfold ReactiveApplication.runUntilHorizon
+    apply sourceServicePolicy_runUntil_owner_silent service.setup service.leaks service.scheduler
+      players who _ start event afterReady recorded
+    intro current currentReady currentRecorded
+    rw [follows]
+    exact service.immediate_input_of_recorded profile current who event currentReady owned
+      currentRecorded
+  have actual := sourceServiceCanonicalDecision_protected_completion service.contract who
+    execution rawTrace event owned ready unrecorded fits action effectiveAction
+    (Function.update players who (app).silentPolicy) (Function.update_self ..) stopped
+      (stoppedLaw ▸ reached)
+  exact ⟨action, rfl, effectiveAction, actual⟩
+
+end Vegas.AsyncServiceSpec

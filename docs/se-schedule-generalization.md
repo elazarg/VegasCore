@@ -873,20 +873,26 @@ and is committed separately.
       theorem for any scheduler. Actual policy-supported responses supply
       the needed support through `sourceResponse_roundSupported`; legal
       one-shot deviations need a fully mixed menu or changed-profile witness.
-   7. Embed each source equilibrium into the actual audited risk-menu game.
-      Retained deferrals can miss and be charged; zero charge is required on
-      final equilibrium-supported play. Identify source-compatible information
-      sites, including protected deferrals, and supply rational completion at
-      the other sites. Carry the source-view traffic factorization through
-      decisions and disclosures as well as silent binding rounds.
+   7. Construct the actual audited full effective assessment from the original
+      source assessment sequence. Retained deferrals can miss and be charged;
+      zero charge is required on final equilibrium-supported play. The
+      source-compatible classifier includes protected deferrals. Consistent
+      whole-policy rational completion at other sites, completed compatible
+      rationality and the initialized source/settlement law are checked.
+      Rationality at unfinished compatible sites remains to be established
+      for that same assessment. Carry the source-view traffic factorization
+      through decisions and disclosures as well as silent binding rounds.
    8. Milestone 4's beliefs.
    9. Generic local comparisons for every site kind, each bound with
       `BoundaryContinuationWithin`.
    10. Generic source-to-compiled step through
        `exists_sequentialEquilibrium_limit_of_local_comparisons_of_lawError`.
-   11. Generic repair coupling (same public state, different private
-       catalogue, round by round), the second-identifier lemma, and the
-       compiled-to-native step through the depth-free extension.
+   11. Generic repair coupling for uncharged unusable bindings (same public
+       state, different private catalogue, round by round) and the
+       second-identifier comparison. The complete effective native SE then
+       lifts through the checked private-alias extension. A risk-menu route
+       instead needs the depth-free extension and its additional comparisons
+       for arbitrary extending profiles.
    12. The new capstone, the calendar corollary, and retirement of the
        calendar chain.
 
@@ -955,11 +961,15 @@ Open obligations this creates:
   missed branches need separate continuation comparisons.
 - **Source embedding and beliefs.** The current candidate prescribed site set
   includes benign earlier deferrals. A clean-prefix law stops at the first
-  risk; arbitrary deferral timing is not closed through termination. This
-  source-belief route needs the relative escaped mass to vanish at prescribed
-  information, including where passage tends to zero. Global outcome error
-  alone does not prove that statement. Canceling the focal owner's likelihood
-  still leaves foreign waiting probabilities in the clean denominator.
+  risk; arbitrary deferral timing is not closed through termination. The full
+  effective completion preserves the initialized source law but does not yet
+  identify source-relative conditional beliefs or prove unfinished prescribed
+  comparisons. Global outcome error cannot control rare information fibers.
+  Canceling the focal owner's likelihood still leaves foreign waiting
+  probabilities in the clean denominator. Private risk need not distort the
+  source posterior, so its vanishing is not itself a required conclusion.
+  The source-belief argument must instead bound actual source distortion and
+  the continuation incentives at the same returned assessment.
   Restricting prescriptions to first-turn-compatible information would avoid
   those waiting factors in its witness, but also needs an upper payoff bound
   for a retained wait into free continuation. Rational completion alone gives
@@ -2166,9 +2176,17 @@ input, without original risk-menu support. Actual envelope and recalled-event
 transport give the retained copy or excluded auditable, recorded or unusable
 branches of the same implementation. Static value coverage, real counted-slot
 freshness, capacity and protection derive typed-default admission for the
-uncharged unusable branch. This does not preserve a frame after fallback or
-control the resulting whole-policy payoff; mistyped certificates can still
-change the future capability relation.
+uncharged unusable branch. This default uses actual full effective response
+admission and the clear repaired history; it needs neither an original risk-menu
+history nor preservation of every original openable certificate.
+[SourceServiceUnusableResponseFrame](../Vegas/Game/SourceServiceUnusableResponseFrame.lean)
+preserves the same repair memory's frame and ownership invariant through the
+actual default response and inclusion of both newly allocated packets. Actual
+freshness, readiness, deadline and acceptance checks come from the two legal
+histories; the repaired binding memory is valid at the resulting completed cut.
+Transport through later arbitrary responses and the whole-policy payoff
+comparison remain open. Mistyped certificates can change future capability,
+so their literal availability is not equated with the typed default's.
 
 [SourceServiceSiteKind](../Vegas/Game/SourceServiceSiteKind.lean) derives the
 actual local input and either a publicly completed cut or a ready event with
@@ -2703,6 +2721,16 @@ owner slots and bounded records derive admission along its supported suffix;
 one shared generic restriction induction gives the exact physical terminal law.
 Every hidden history at a compatible effective input has zero owner collection
 against arbitrary effective opponents. Source payoff comparisons remain open.
+[SourceServiceProtectedDecisionCompletion](../Vegas/Game/SourceServiceProtectedDecisionCompletion.lean)
+derives the actual aligned source residual and supported effective action at
+every compatible full-menu ready prefix. Its immediate response completes with
+an accepting receipt for the original packet identifier, no public miss and
+the selected typed graph successor under arbitrary foreign raw continuation.
+Compatibility supplies the actual slot, fresh-call and protected-window resources;
+no original source-supported history or source-posterior premise is added.
+The recorded immediate policy and turn-counted policies use the same general
+owner-silent completion-stopping proof. Conditional source beliefs and utility
+comparisons remain separate.
 [SourceServiceCompatibleCollection](../Vegas/Game/SourceServiceCompatibleCollection.lean)
 derives the backend's collection bound for a classified forbidden packet or
 repeated submission at compatible information in any response menu. The

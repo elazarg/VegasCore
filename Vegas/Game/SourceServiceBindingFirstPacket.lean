@@ -196,8 +196,11 @@ theorem sourceService_binding_first_packet
     (fun current => event ∈ current.application.config.cut.completed) horizon submitted).support
     at reached
   unfold ReactiveApplication.runUntilHorizon at reached
-  rw [sourceServiceTurnPolicy_runUntil_owner_silent setup leaks scheduler players bound turns
-    timing profile owner follows _ submitted event afterReady owned recorded] at reached
+  rw [sourceServicePolicy_runUntil_owner_silent setup leaks scheduler players owner _ submitted
+    event afterReady recorded (fun current currentReady currentRecorded => by
+      rw [follows]
+      exact sourceServiceTurnPolicy_input_of_recorded setup leaks bound turns timing profile
+        current owner event currentReady owned currentRecorded owner)] at reached
   obtain ⟨used, _budget, rounds, _length⟩ := app.runUntil_runRounds scheduler _ _ _ submitted
     final reached
   exact (sourceService_silent_owner_packets app players owner safe

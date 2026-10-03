@@ -84,6 +84,7 @@ import Vegas.Game.SourceServiceMissingStoppedCoupling
 import Vegas.Game.SourceServiceMissingAssociatedCoupling
 import Vegas.Game.SourceServiceMissingSignedResponse
 import Vegas.Game.SourceServiceMissingResponseClassification
+import Vegas.Game.SourceServiceUnusableResponseFrame
 import Vegas.Game.AsyncServiceFirstTurnBeliefResources
 import Vegas.Game.SourceServiceFirstBindingTraffic
 import Vegas.Game.SourceServiceFirstTurnBindingFactorization
