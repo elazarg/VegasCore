@@ -76,6 +76,8 @@ import Vegas.Pending.ReactiveBindingFrame
 import Vegas.Pending.ReactiveBindingFrameStep
 import Vegas.Pending.ReactiveBindingFrameOpening
 import Vegas.Pending.ReactiveBindingAcceptedOpening
+import Vegas.Pending.ReactiveBindingOpeningStep
+import Vegas.Pending.ReactiveBindingCommitmentStep
 import Vegas.Pending.ReactiveBindingInertWindow
 import Vegas.Pending.ReactiveBindingPublicTraffic
 import Vegas.Pending.ReactiveBindingFrameLaw

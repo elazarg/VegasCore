@@ -71,6 +71,7 @@ import Vegas.Game.SourceServicePastPrefix
 import Vegas.Game.SourceServiceFirstInputAncestor
 import Vegas.Game.SourceServiceFirstInputTerminalLaw
 import Vegas.Game.SourceServiceFirstInputNativePosterior
+import Vegas.Game.SourceServicePastCommitmentTraffic
 import Vegas.Game.AsyncServiceFirstTurnBeliefResources
 import Vegas.Game.SourceServiceFirstBindingTraffic
 import Vegas.Game.SourceServiceFirstTurnBindingFactorization

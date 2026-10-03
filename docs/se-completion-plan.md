@@ -471,6 +471,22 @@ emit no new commitment, while foreign raw responses and public scheduler
 choices retain their joint law. The coupling carries the full repair frame,
 input recall and old opening capabilities. Inclusion and terminal dominance
 are separate obligations; this restricted window is not a whole-policy repair.
+[ReactiveBindingOpeningStep](../Vegas/Pending/ReactiveBindingOpeningStep.lean)
+classifies the actual pending opening transition: the full frame is preserved,
+including invalid-token and rejected inclusions, or the same envelope is an
+owner-authored signed breach. Foreign catalogue equality derives ownership
+of a repaired-only acceptance.
+[SourceServicePastCommitmentTraffic](../Vegas/Game/SourceServicePastCommitmentTraffic.lean)
+derives prior owner-commitment provenance from actual issued readiness tokens
+at a ready sequential event. Under a policy sending no further commitments,
+arbitrary foreign responses and scheduler commands preserve the rank bound;
+once this event completes, every old token-valid owner commitment names a
+completed event. These are stopping-proof resources, not terminal dominance.
+[ReactiveBindingCommitmentStep](../Vegas/Pending/ReactiveBindingCommitmentStep.lean)
+uses this completed-event resource to preserve the full frame through actual
+owner commitment inclusions. Foreign commitments retain their actual immutable
+candidate meaning; invalid tokens and public rejections are consumed with
+matching false receipts. The whole stopped evaluator remains open.
 
 ## Validation
 

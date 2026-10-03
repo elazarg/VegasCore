@@ -1928,6 +1928,22 @@ commitment; foreign raw responses and the adaptive public scheduler keep
 their joint law. These operational restrictions define the proved window,
 not a general repair theorem. Inclusion, first-breach stopping and the
 terminal payoff comparison remain separate.
+[ReactiveBindingOpeningStep](../Vegas/Pending/ReactiveBindingOpeningStep.lean)
+classifies actual pending opening inclusion, covering invalid tokens and
+paired rejections. It preserves the full frame or identifies an owner-authored
+signed breach in that same envelope. Unchanged foreign catalogues derive the
+author of repaired-only acceptance.
+[SourceServicePastCommitmentTraffic](../Vegas/Game/SourceServicePastCommitmentTraffic.lean)
+supplies actual old-commitment provenance for the stopped repair. Issued tokens
+at a ready sequential event cannot name a later rank. Sending no further owner
+commitments preserves this bound under every foreign response and scheduler
+command; after the current event completes, old token-valid owner commitments
+can only address completed events. The whole stopped evaluator and terminal
+comparison remain open.
+[ReactiveBindingCommitmentStep](../Vegas/Pending/ReactiveBindingCommitmentStep.lean)
+uses completed addressed events to couple old owner commitment inclusions.
+Foreign commitments use their actual immutable candidate meaning; invalid
+tokens and public rejections retain the same false receipt and full frame.
 
 ### Deviation proof boundaries
 

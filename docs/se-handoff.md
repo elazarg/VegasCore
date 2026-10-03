@@ -396,6 +396,21 @@ future private values changed by repair are outside the claim.
   normalized bounded responses without new commitments; foreign raw policies
   and public scheduler choices retain their joint law. Inclusion, the first
   breach stopping argument and terminal dominance remain open.
+- [ReactiveBindingOpeningStep](../Vegas/Pending/ReactiveBindingOpeningStep.lean)
+  classifies actual opening inclusion as full-frame preservation or a concrete
+  owner-authored signed breach in the same pending envelope. Invalid tokens
+  and paired rejections preserve the frame; foreign catalogue equality
+  identifies the author of repaired-only acceptance.
+- [SourceServicePastCommitmentTraffic](../Vegas/Game/SourceServicePastCommitmentTraffic.lean)
+  derives old commitment ranks from issued readiness tokens in an actual
+  ready sequential prefix. A policy sending no new owner commitments preserves
+  the bound under arbitrary foreign responses and scheduler commands. Once
+  this event completes, all old token-valid owner commitments name completed
+  events. The first-breach evaluator and terminal comparison remain open.
+- [ReactiveBindingCommitmentStep](../Vegas/Pending/ReactiveBindingCommitmentStep.lean)
+  preserves the full inclusion frame for old owner commitments addressed to
+  completed events and foreign commitments using their actual fixed candidate
+  meaning. Invalid tokens and public rejections retain matching false receipts.
 - [SourceServiceAliasEquilibrium](../Vegas/Game/SourceServiceAliasEquilibrium.lean)
   supplies the final private raw-alias transport, retaining correlated
   collection and prior charges.
