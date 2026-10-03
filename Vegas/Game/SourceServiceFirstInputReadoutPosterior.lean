@@ -1,0 +1,97 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.SourceServiceFirstInputSourceLaw
+
+/-! # Actual stopped source-restoration posteriors
+
+Conditioning the same all-owner restoration draw read from an actual first-input
+stopped configuration gives the true original source prefix posterior. The
+initial parameter is decoded from the same physical configuration. This is a
+stopped-execution posterior; native information-history transport is separate.
+-/
+
+noncomputable section
+
+namespace Vegas
+
+open SourceProgram Interaction EventGraphRuntime GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] [Fintype Player]
+  {L : IExpr} [IExpr.ResultTypes L]
+  {setup : Setup (Player := Player) (L := L)}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+
+/-- An actual stopped-input fiber conditions the true original carrier on
+its recovered compressed own view. Neither original intention histories nor
+correlated initial parameters are independently sampled after conditioning. -/
+theorem sourceServiceFirstTurn_first_input_readout_posterior {Parameter : Type}
+    {scheduler : (application setup leaks).Scheduler} {horizon turns : Nat}
+    {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
+      delay bound)
+    (timely : AsyncTimely (runtime setup) delay bound)
+    (profile : BehavioralProfile setup.program)
+    (parameter : State L setup.context → Parameter)
+    (who : Player) (event : (graph setup).EventId)
+    (owned : (graph setup).actor? event = some who) :
+    let originalLaw := setup.initialLaw.bind fun initial =>
+      ((fun law => law.bind (ProtocolState.behavioralStateStep setup.program profile))^[event.val]
+        (PMF.pure (ProtocolState.entry setup.program (setup.initialConfig initial)))).map
+          fun original => (parameter initial, original)
+    let observe := fun carried : Parameter × ProtocolState setup.program =>
+      ProtocolView.normalizeDisclosureRecall setup.program (fun view => view.2)
+        (ProtocolState.observe who setup.program carried.2)
+    let normalized := normalizeDisclosureProfile setup.program []
+      (Revelations.initial setup.context) profile
+    let players := sourceServiceTurnPolicy setup leaks bound turns (firstTurnTiming setup turns)
+      normalized
+    let rank := fun initial => (application setup leaks).runUntilHorizon scheduler players
+      (sourceServiceRankCompleted event.val) horizon
+      (.initial (application setup leaks)
+        (EventGraphRuntime.State.initial (setup.eventInputs initial)))
+    let first := fun execution => (application setup leaks).runUntilHorizon scheduler players
+      (fun final => sourceServiceTurnInput? setup leaks who event (final.recall who) ≠ none)
+      horizon execution
+    let actual := setup.initialLaw.bind fun initial => (rank initial).bind fun execution =>
+      (first execution).bind fun stopped =>
+        (sourceServiceRestoredPrefixReadout profile parameter event.val
+          stopped.application.config).map fun restored =>
+            (restored, sourceServiceTurnInput? setup leaks who event (stopped.recall who))
+    ∃ recover : (application setup leaks).Info → Option (ProtocolView who setup.program),
+      ∀ input ∈ (actual.map Prod.snd).support,
+        ∃ view, recover input = some view ∧
+          (fiberPosterior actual Prod.snd input).map Prod.fst =
+            (fiberPosterior originalLaw observe view).map some := by
+  classical
+  intro originalLaw observe normalized players rank first actual
+  let joint := setup.initialLaw.bind fun initial => (rank initial).bind fun execution =>
+    (sourceServiceOriginalPrefixCarrier profile initial event.val execution).bind fun original =>
+      (first execution).map fun stopped => ((parameter initial, original),
+        sourceServiceTurnInput? setup leaks who event (stopped.recall who))
+  let lift := fun selected : (Parameter × ProtocolState setup.program) ×
+      (application setup leaks).Info => (some selected.1, selected.2)
+  have physical : actual = joint.map lift :=
+    sourceServiceFirstTurn_first_input_joint_readout contract timely profile parameter who event
+      owned
+  obtain ⟨recover, _recovery, posterior⟩ :=
+    sourceServiceFirstTurn_original_first_input_posterior contract timely profile parameter who
+      event owned
+  change ∀ input ∈ (joint.map Prod.snd).support,
+    ∃ view, recover input = some view ∧
+      (fiberPosterior joint Prod.snd input).map Prod.fst =
+        fiberPosterior originalLaw observe view at posterior
+  refine ⟨recover, ?_⟩
+  intro input present
+  have sourcePresent : input ∈ (joint.map Prod.snd).support := by
+    simpa only [physical, PMF.map_comp, lift, Function.comp_def] using present
+  obtain ⟨view, recovered, conditioned⟩ := posterior input sourcePresent
+  refine ⟨view, recovered, ?_⟩
+  have transported := map_fiberPosterior_readout joint lift Prod.snd input
+    (by simpa only [lift, Function.comp_def] using sourcePresent)
+  change (fiberPosterior joint Prod.snd input).map lift =
+    fiberPosterior (joint.map lift) Prod.snd input at transported
+  rw [physical, ← transported, PMF.map_comp]
+  have tagged := congrArg (PMF.map some) conditioned
+  simpa only [PMF.map_comp, lift, Function.comp_def] using tagged
+
+end Vegas

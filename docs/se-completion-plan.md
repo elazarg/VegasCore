@@ -240,6 +240,17 @@ graph inputs at every initialized descendant and legal native history.
 Encoding injectivity makes this state unique, and terminal source readout
 agrees with it. Correlated parameters can therefore use the same initial draw
 in an ancestor carrier; the decoder adds no player observation.
+[SourceServiceFirstInputSourceLaw](../Vegas/Game/SourceServiceFirstInputSourceLaw.lean)
+identifies the actual stopped prefix restoration and input jointly, using that
+same decoded initial draw and one common all-owner lottery.
+[SourceServiceFirstInputReadoutPosterior](../Vegas/Game/SourceServiceFirstInputReadoutPosterior.lean)
+derives the true original source posterior from each supported physical stopped
+input.
+[SourceServicePastPrefix](../Vegas/Game/SourceServicePastPrefix.lean) recovers the
+before-rank source state from persistent fields and filtered completion history.
+It agrees with the rank-seed decoder and is invariant under every legal native
+continuation. The terminal/ancestor joint assembly and perturbed waiting
+posteriors still need proof.
 
 The actual binding-response law now composes with protected completion,
 retaining the transmitting draw and full stopped traffic. The native Bayes

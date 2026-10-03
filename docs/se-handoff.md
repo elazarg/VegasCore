@@ -216,6 +216,15 @@ future private values changed by repair are outside the claim.
   arbitrary initialized descendants and legal native histories. The input
   encoding is injective, and terminal source readout has the same initial
   state. This is an analysis readout, not a new private or public observation.
+- [SourceServiceFirstInputSourceLaw](../Vegas/Game/SourceServiceFirstInputSourceLaw.lean)
+  joins the real stopped configuration's original-prefix restoration, same
+  decoded initial parameter and actual input in one common memory draw.
+  [SourceServiceFirstInputReadoutPosterior](../Vegas/Game/SourceServiceFirstInputReadoutPosterior.lean)
+  derives its true source posterior on the recovered compressed view.
+  [SourceServicePastPrefix](../Vegas/Game/SourceServicePastPrefix.lean) recovers
+  that earlier prefix from persistent fields and lower-rank completions under
+  arbitrary legal continuations. Native ancestor assembly and perturbed waiting
+  transport remain open.
 - [SourceServiceInitialTraffic](../Vegas/Game/SourceServiceInitialTraffic.lean)
   derives the actual initialized parameter/source/full-traffic factor through
   the whole source view. Correlated initial private types are retained; the

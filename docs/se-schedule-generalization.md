@@ -1651,6 +1651,17 @@ completion and under arbitrary native policies and scheduler commands.
 Injectivity rules out a second compatible initialization; terminal source
 readout retains this same environment. An ancestor parameter can be read from
 it without resampling or adding a player observation.
+[SourceServiceFirstInputSourceLaw](../Vegas/Game/SourceServiceFirstInputSourceLaw.lean)
+joins that decoded initial draw, the real stopped prefix and actual input through
+one common all-owner restoration lottery.
+[SourceServiceFirstInputReadoutPosterior](../Vegas/Game/SourceServiceFirstInputReadoutPosterior.lean)
+conditions this physical stopped readout to obtain the true original source
+prefix/parameter posterior on the recovered compressed view.
+[SourceServicePastPrefix](../Vegas/Game/SourceServicePastPrefix.lean) reconstructs
+the earlier prefix from persistent fields and completions below its rank. It
+agrees with the prefix decoder at the rank seed and survives arbitrary legal
+native continuations. Composing these laws with actual ancestor beliefs and
+extending them to perturbed waiting remain separate obligations.
 [SourceServiceWaitRiskConfounding](../Vegas/Game/SourceServiceWaitRiskConfounding.lean)
 checks that protected and unprotected timely binding responses can emit the
 same typed-success packet, receive acceptance at the same clock, and give a
