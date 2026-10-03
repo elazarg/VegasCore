@@ -234,6 +234,12 @@ identifies the represented normalized first-turn profile's complete input law
 with genuine initialization, rank stopping and first-activation stopping.
 This identifies the input marginal; carrying the same source-prefix restoration
 through the actual ancestor belief remains separate.
+[SourceServiceInitialReadout](../Vegas/Game/SourceServiceInitialReadout.lean)
+recovers the exact initial source environment from the existing persistent
+graph inputs at every initialized descendant and legal native history.
+Encoding injectivity makes this state unique, and terminal source readout
+agrees with it. Correlated parameters can therefore use the same initial draw
+in an ancestor carrier; the decoder adds no player observation.
 
 The actual binding-response law now composes with protected completion,
 retaining the transmitting draw and full stopped traffic. The native Bayes

@@ -211,6 +211,11 @@ future private values changed by repair are outside the claim.
   identifies the normalized first-turn profile's initialized complete input law
   with the actual rank and first-activation stopped law. The joint ancestor
   restoration and perturbed source transport remain open.
+- [SourceServiceInitialReadout](../Vegas/Game/SourceServiceInitialReadout.lean)
+  decodes the same initial source environment from persistent graph inputs at
+  arbitrary initialized descendants and legal native histories. The input
+  encoding is injective, and terminal source readout has the same initial
+  state. This is an analysis readout, not a new private or public observation.
 - [SourceServiceInitialTraffic](../Vegas/Game/SourceServiceInitialTraffic.lean)
   derives the actual initialized parameter/source/full-traffic factor through
   the whole source view. Correlated initial private types are retained; the

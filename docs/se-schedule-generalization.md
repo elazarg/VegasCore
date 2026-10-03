@@ -1645,6 +1645,12 @@ identifies the normalized first-turn profile's complete input law with actual
 initialization, rank stopping and first-activation stopping. This is the input
 marginal. Joint source-prefix restoration through the genuine ancestor belief
 and perturbed timing transport remain separate.
+[SourceServiceInitialReadout](../Vegas/Game/SourceServiceInitialReadout.lean)
+recovers the same initial source state from persistent graph inputs, before
+completion and under arbitrary native policies and scheduler commands.
+Injectivity rules out a second compatible initialization; terminal source
+readout retains this same environment. An ancestor parameter can be read from
+it without resampling or adding a player observation.
 
 [SourceServiceSampleCompletion](../Vegas/Game/SourceServiceSampleCompletion.lean)
 derives actual silence, whole stopped-run equality with silent play, and the
