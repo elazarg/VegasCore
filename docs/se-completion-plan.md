@@ -292,8 +292,13 @@ derives the actual ready owned opportunity, unrecorded status and protection
 from a minted token, clear risk and both classifier complements. At an owned
 resolution, public checks and actual trace invariants then prove the bounded
 effective response is retained. A fresh-envelope or acceptance promise is
-not a premise. The remaining private binding-material case is separate;
-the complete exclusion partition and its upper integration still need assembly.
+not a premise.
+[SourceServiceUnusableBinding](../Vegas/Game/SourceServiceUnusableBinding.lean)
+completes the actual partition: outside both charged classes, an effective
+response is retained or is a canonical binding with absent or mistyped private
+opening material. The risk extension derives this residual from a genuine
+information-site history and confines its remaining upper comparison to that
+class. Its whole-policy continuation comparison remains an explicit obligation.
 
 ## Validation
 

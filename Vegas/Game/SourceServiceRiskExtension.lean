@@ -4,6 +4,7 @@ import Vegas.Game.SourceServiceImmediateComparator
 import Vegas.Game.AsyncServiceDeposit
 import Vegas.Game.SourceServiceAuditableCollection
 import Vegas.Game.SourceServiceRecordedCollection
+import Vegas.Game.SourceServiceUnusableBinding
 import Vegas.Pending.ReactiveSignedEvidence
 import Interaction.ReactiveFiniteAssessment
 import GameTheoryExtensions.Analysis.Protocol.LocalizedEnforcement
@@ -17,8 +18,8 @@ choice can occur only at a clear local information site. There the fixed
 immediate comparator supplies a clean whole-policy continuation.
 
 The asynchronous deposit uses extrema over this complete effective history space.
-Authentic coverage of packets forbidden by the final record and the comparison
-for other excluded responses remain separate runtime obligations. The result
+Authentic final-record coverage handles the actual charged classes. The remaining
+comparison is confined to a canonical binding with absent or mistyped private material. The result
 extends an audited risk-menu equilibrium; embedding a source-language
 equilibrium is separate.
 -/
@@ -117,11 +118,67 @@ def auditableBreachAtSite
       (service.bounds.menu (runtime service.setup) service.leaks) service.horizon service.scheduler
       who (service.riskRestriction.site who site).1 action
 
+/-- Every genuinely excluded uncharged effective choice at a legal clear
+risk-menu information site is the exact private unusable-binding residual.
+The witness and all runtime resources are derived from the actual information site. -/
+theorem riskRestriction_other_unusableBinding
+    (who : Player)
+    (site : ((service.bounds.riskMenu (runtime service.setup) service.leaks
+      service.bound).information (initialLaw service.setup) service.horizon
+        service.scheduler).InformationSite who)
+    (action : ((service.bounds.menu (runtime service.setup) service.leaks).information
+      (initialLaw service.setup) service.horizon service.scheduler).Choice who
+        ((service.riskRestriction.site who site).1))
+    (extra : action ∉ Set.range (service.riskRestriction.choice who site.1))
+    (notCharged : ¬ service.auditableBreachAtSite who site action) :
+    unusableServiceBindingChoice service.setup service.leaks
+      (service.bounds.menu (runtime service.setup) service.leaks) service.horizon service.scheduler
+      who (service.riskRestriction.site who site).1 action := by
+  let app := application service.setup service.leaks
+  let menu := service.bounds.riskMenu (runtime service.setup) service.leaks service.bound
+  let initial := initialLaw service.setup
+  let count := service.horizon
+  let scheduler := service.scheduler
+  obtain ⟨past, view, response, input, value, available, absent, clear⟩ :=
+    service.riskRestriction_extra_clear who site action extra
+  have notPacket : ¬ auditableServiceResponse service.setup service.leaks who past view
+      response := by
+    intro packet
+    exact notCharged (Or.inl ⟨past, view, response, input, value, packet⟩)
+  have notRecorded : ¬ recordedServiceResponse service.setup service.leaks past response := by
+    intro recorded
+    exact notCharged (Or.inr ⟨past, view, response, input, value, recorded⟩)
+  obtain ⟨history, _, _⟩ := site.2
+  have observedState : app.observe who history.1.state = some (past, view) :=
+    (menu.info initial count scheduler who history.1.trace).symm.trans (history.2.trans input)
+  have active := (app.observe_isSome who history.1.state).mp (by rw [observedState]; rfl)
+  cases current : history.1.state with
+  | none => rw [current] at active; cases active
+  | some control =>
+      rcases control with ⟨remaining, actor, execution⟩
+      rw [current] at active
+      change actor = some who at active
+      subst actor
+      have actualInput : (execution.recall who, execution.observe app who) = (past, view) := by
+        apply Option.some.inj
+        simpa only [current, ReactiveApplication.observe, ↓reduceIte] using observedState
+      have pastEq : execution.recall who = past := congrArg Prod.fst actualInput
+      have viewEq : execution.observe app who = view := congrArg Prod.snd actualInput
+      subst past
+      subst view
+      have actualTrace : (menu.protocol initial count scheduler).Trace
+          (some ⟨remaining, some who, execution⟩) := current ▸ history.1.trace
+      rcases unclassifiedResponse_cases service.bounds service.bound execution who actualTrace
+          clear response available notPacket notRecorded with retained | unusable
+      · exact (absent retained).elim
+      · exact ⟨_, _, response, input, value, unusable⟩
+
 open Classical in
-/-- Every excluded effective response outside the auditable packet classes has a
-legal risk-menu continuation dominating its actual audited continuation.
-One policy serves all hidden histories under the specified belief. Private
-binding material and certificate capabilities remain explicit obligations. -/
+/-- For an excluded canonical binding with unusable private material, one legal
+risk-menu continuation dominates its actual audited continuation under the
+specified belief. Actual legal-prefix classification derives that this is the
+only excluded class outside authentic collection. The comparison remains an
+explicit obligation for arbitrary terminal utility. -/
 def riskOtherExclusionComparisons
     (utility : State L service.setup.program.terminalCtx → Player → ℝ)
     (sample : List (SettledEvidence service.setup) → PMF (List (SettledEvidence service.setup)))
@@ -145,7 +202,8 @@ def riskOtherExclusionComparisons
       (action : (effective.information initial count scheduler).Choice who
         (restriction.site who site).1),
       action ∉ Set.range (restriction.choice who site.1) →
-      ¬ service.auditableBreachAtSite who site action →
+      unusableServiceBindingChoice service.setup service.leaks effective count scheduler
+        who (restriction.site who site).1 action →
       ∀ belief : PMF ((menu.information initial count scheduler).InformationHistory who site.1),
         ∃ alternative : (menu.information initial count scheduler).BehavioralPolicy who,
           expect belief (fun history =>
@@ -166,7 +224,7 @@ def riskOtherExclusionComparisons
 
 open Classical in
 /-- An audited risk-menu SE extends to the complete effective runtime once
-backend coverage and the other-exclusion comparison obligations hold.
+backend coverage and the unusable-binding comparison obligation hold.
 The source payoff includes actual retained charges. Structural embedding,
 finite histories, decision recall, payoff bounds, deposit sufficiency and the
 fixed clean comparator are derived for this service.
@@ -175,8 +233,9 @@ Coverage concerns actual signed evidence forbidden by the final settled
 record. Delivery is conditional on the full observation and includes delivery
 before the challenge-window bound. This contract implies collection after
 each classified excluded response without independence or a continuation-fuel
-premise. The other comparison requires one legal continuation shared across
-the belief's hidden histories. Both remain hypotheses. -/
+premise. Only unusable private binding material requires the separate comparison,
+with one legal continuation shared across the belief's hidden histories. Coverage
+and this comparison remain hypotheses. -/
 theorem risk_sequentialEquilibrium_extends
     (utility : State L service.setup.program.terminalCtx → Player → ℝ)
     (backend : EvidenceReportService (SettledEvidence service.setup))
@@ -309,7 +368,10 @@ theorem risk_sequentialEquilibrium_extends
           (FinitePayoffBounds.lower (extremum who))
           (fun final _ => (effectiveBounds who (restriction.history final)).1) belief
         exact ⟨alternative, clean⟩)
-      otherComparison source equilibrium
+      (fun sourceProfile targetProfile extended who site action extra notCharged belief =>
+        otherComparison sourceProfile targetProfile extended who site action extra
+          (service.riskRestriction_other_unusableBinding who site action extra notCharged) belief)
+      source equilibrium
   refine ⟨target, targetSE, agrees, beliefs, histories, ?_⟩
   rw [← histories, PMF.bind_map]
   rfl

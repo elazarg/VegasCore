@@ -238,7 +238,11 @@ future private values changed by repair are outside the claim.
   proves effective responses outside both charged classifiers are retained
   at a clear actual resolution prefix. Tokens, public checks and trace
   invariants derive conformance; no fresh-envelope premise is supplied.
-  Private binding-material repair remains separate.
+  [SourceServiceUnusableBinding](../Vegas/Game/SourceServiceUnusableBinding.lean)
+  completes the clear-prefix partition: every other effective response is
+  retained or a canonical binding with absent or mistyped private opening.
+  The risk extension confines its remaining upper comparison to that exact
+  information-local residual. The continuation comparison remains unproved.
 - [SourceServiceAliasEquilibrium](../Vegas/Game/SourceServiceAliasEquilibrium.lean)
   supplies the final private raw-alias transport, retaining correlated
   collection and prior charges.

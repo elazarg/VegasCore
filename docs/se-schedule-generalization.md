@@ -1814,10 +1814,10 @@ bound for classified auditable packets from the challenge-report contract, uses 
 comparator, and sizes the deposit with the existing payoff extrema.
 Retained payoffs are the actual net utility, including prior charges. The
 conclusion preserves retained beliefs, complete history laws and the joint
-realized settlement law. Other excluded responses require a separate shared
-continuation comparison, isolated in `riskOtherExclusionComparisons`; this
-includes private material and certificate capability, and does not declare
-every unclassified packet harmless. The predicate compares actual audited
+realized settlement law. Actual legal-prefix classification confines the
+separate shared continuation comparison, `riskOtherExclusionComparisons`, to
+a canonical binding with absent or mistyped private opening material.
+The predicate compares actual audited
 continuations and requires one legal policy across the hidden histories of
 the information site.
 
@@ -1949,8 +1949,17 @@ event. Classifier complements derive the public guard, ownership, association
 and content checks; actual soundness, binding and input-recall invariants then
 derive the fresh envelope and retained TRUE or FALSE response. Silence is
 retained directly. No fresh-envelope, source-policy or backend premise is
-added. This isolates private binding-material repair as a separate case;
-the complete exclusion partition and upper integration remain open.
+added.
+
+[SourceServiceUnusableBinding](../Vegas/Game/SourceServiceUnusableBinding.lean)
+completes the actual clear-prefix partition. A remaining binding uses the
+current canonical counted handle with evidence-free content. Well-typed
+private opening material gives a retained response; absent or mistyped
+material is the exact remaining uncharged class. The information-site caller
+derives that class from an actual history witness and the risk extension
+narrows its upper comparison accordingly. The same arbitrary terminal
+utility and evidence backend remain in scope. This class is not assumed
+harmless; its shared whole-policy continuation comparison remains open.
 
 [SourceServicePublicRejection](../Vegas/Game/SourceServicePublicRejection.lean)
 derives persistent nonacceptance from an event's prior completion or failing
