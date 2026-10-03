@@ -4,13 +4,15 @@ import Vegas.Game.SourceServiceContinuationBridge
 
 /-! # Kinds of native decision sites
 
-Every native information site of the permitted service model is a decision
-during the phase of the one ready event. What the acting player faces there is
-decided by that event, the player's own recall, and its view: a public sample,
-another player's binding or disclosure, or the player's own binding or
-disclosure, before or after its submission. Each kind carries the
-facts its local comparison uses. Since the kind is a function of the site's
-information state, every history of a site has the same kind.
+Every actual native information site has a full local input and either a
+completed cut or a ready event. Arbitrary builders may activate players after
+graph completion. At a ready event, its constructor and the player's recall
+classify the decision as a public sample, a foreign binding or disclosure, or
+an own binding or disclosure before or after submission. These public and
+recalled facts agree throughout the site's hidden history fiber.
+
+The fixed calendar additionally supplies a current ready-event phase at every
+decision. Its specialized consumer excludes the completed-cut alternative.
 -/
 
 noncomputable section
@@ -91,6 +93,44 @@ theorem DecisionSiteKind.classify (setup : Setup (Player := Player) (L := L))
         | true => exact .recordedDisclosure payload owned outputEq recorded
         | false => exact .unsentDisclosure payload owned outputEq recorded
       · exact .foreignDisclosure owner payload same owned outputEq
+
+/-- Every actual native decision has a full local input and either a completed
+cut or a ready source constructor. An arbitrary builder may activate a player
+after graph completion, so no fixed-calendar phase premise is used. -/
+theorem sourceServiceInformationSite_cases
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (menu : (application setup leaks).ResponseMenu)
+    (initial : PMF (EventGraphRuntime.State (graph setup))) (horizon : Nat)
+    (scheduler : (application setup leaks).Scheduler) (who : Player)
+    (site : (menu.information initial horizon scheduler).InformationSite who) :
+    ∃ past view, site.1 = some (past, view) ∧
+      ((∀ event, event ∈ view.application.publicView.observation.completionOrder) ∨
+        ∃ event, view.application.publicView.EventReady event ∧
+          DecisionSiteKind setup leaks who past view event) := by
+  let app := application setup leaks
+  let model := menu.information initial horizon scheduler
+  obtain ⟨history, _, _⟩ := site.2
+  have active := InformationModel.InformationSite.active model site history
+  obtain ⟨control, current⟩ : ∃ control, history.1.state = some control := by
+    cases state : history.1.state with
+    | none => rw [state] at active; cases active
+    | some control => exact ⟨control, rfl⟩
+  have acting : control.actor = some who := by rw [current] at active; exact active
+  have observed : site.1 = some (control.execution.recall who,
+      control.execution.observe app who) := by
+    have input := history.2.symm.trans (menu.info initial horizon scheduler who history.1.trace)
+    simpa only [current, ReactiveApplication.observe, acting, ↓reduceIte] using input
+  refine ⟨control.execution.recall who, control.execution.observe app who, observed, ?_⟩
+  by_cases complete : control.execution.application.config.cut.Terminal
+  · left
+    intro event
+    exact (control.execution.application.config.history_exact event).mpr
+      (complete.symm ▸ Finset.mem_univ event)
+  · obtain ⟨event, ready⟩ :=
+      control.execution.application.config.cut.exists_ready_of_not_terminal complete
+    exact Or.inr ⟨event, (control.execution.application.publicView_eventReady event).mpr ready,
+      DecisionSiteKind.classify setup leaks who _ _ event⟩
 
 variable [Fintype Player]
 

@@ -2,7 +2,7 @@
 
 import Vegas.Game.SourceServiceRiskPrefix
 import Vegas.Game.SourceServiceAudit
-import Vegas.Game.AsyncServiceForeignEscape
+import Vegas.Game.AsyncServiceSourceSites
 
 /-! # Audit soundness at an actual clear owner prefix
 
@@ -17,10 +17,10 @@ permits its pending packets; this does not make its current verdict immutable.
 No statement concerns later responses after risk expansion, future collection,
 watcher coverage, or equilibrium comparisons.
 
-At source-compatible native information the owner's actual recalled input
-derives the same clarity in every member hidden history. The current audit
-therefore assigns zero owner charge throughout that fiber, even when other
-owners' private risk is hidden.
+At source-compatible native information, own recall, public state and receipts
+transfer the current owner verdict from an actual legal witness to every
+initialized RAW history with that input. The current audit consequently has
+zero owner charge there without restricting foreign effective or RAW choices.
 -/
 
 noncomputable section
@@ -109,31 +109,137 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (service : AsyncServiceSpec Player L)
 
 local notation "app" => application service.setup service.leaks
-local notation "menu" => service.bounds.riskMenu (runtime service.setup) service.leaks
-  service.bound
-local notation "model" => ReactiveApplication.ResponseMenu.information
-  (service.bounds.riskMenu (runtime service.setup) service.leaks service.bound)
-  (initialLaw service.setup) service.horizon service.scheduler
+local notation "runtime" => runtime service.setup
+local notation "menu" => service.bounds.riskMenu (runtime) service.leaks service.bound
 
-/-- Actual compatible information excludes current owner charge pointwise
-on its full hidden history fiber. Foreign private risk need not be clear. -/
-theorem sourceCompatibleInfo_history_audit_clear (who : Player)
-    (site : (model).InformationSite who)
-    (compatible : service.sourceCompatibleInfo who site.1)
-    (history : (model).InformationHistory who site.1)
+/-- The source-compatible local information itself certifies the current
+owner's verdicts on any actual initialized raw history. Foreign unusable
+commitments and other excluded responses are not ruled out by this premise. -/
+theorem sourceCompatibleInfo_raw_history_clear
+    (control : (app).Control)
+    (trace : ((app).protocol (initialLaw service.setup) service.horizon service.scheduler).Trace
+      (some control)) (who : Player)
+    (compatible : service.sourceCompatibleInfo who
+      (some (control.execution.recall who, control.execution.observe (app) who))) :
+    control.execution.application.publicView.missedDecisionBy who = false ∧
+      ∀ record ∈ (app).executionTraffic control.execution,
+        record.envelope.sender = who →
+          ((runtime).settledRecord service.leaks control.execution).permits record.envelope =
+            true := by
+  obtain ⟨_profile, _turns, _timing, _permitted, _effective, history, remaining, witness,
+    current, observed, _supported, allClear, _clear⟩ := compatible
+  have witnessTrace : ((menu).protocol (initialLaw service.setup) service.horizon
+      service.scheduler).Trace (some ⟨remaining, some who, witness⟩) := current ▸ history.trace
+  have input : (witness.recall who, witness.observe (app) who) =
+      (control.execution.recall who, control.execution.observe (app) who) := by
+    apply Option.some.inj
+    have atState : ((menu).information (initialLaw service.setup) service.horizon
+        service.scheduler).infoOf who history.trace = (app).observe who history.state :=
+      (menu).info (initialLaw service.setup) service.horizon service.scheduler who history.trace
+    rw [atState, current] at observed
+    simpa only [ReactiveApplication.observe, ↓reduceIte] using observed
+  have recalled : witness.recall who = control.execution.recall who := congrArg Prod.fst input
+  have viewed : witness.observe (app) who = control.execution.observe (app) who :=
+    congrArg Prod.snd input
+  have publicEq : witness.application.publicView = control.execution.application.publicView :=
+    congrArg (fun view : (app).PlayerView => view.application.publicView) viewed
+  have receiptsEq : witness.receipts = control.execution.receipts :=
+    congrArg ReactiveApplication.PlayerView.receipts viewed
+  have settledEq : (runtime).settledRecord service.leaks witness =
+      (runtime).settledRecord service.leaks control.execution := by
+    unfold EventGraphRuntime.settledRecord
+    rw [publicEq, receiptsEq]
+  obtain ⟨noMiss, good⟩ := sourceServiceRisk_history_clear service.bounds service.bound
+    service.contract ⟨remaining, some who, witness⟩ witnessTrace who (allClear who)
+  have witnessRaw := (menu).toRawTrace (initialLaw service.setup) service.horizon service.scheduler
+    witnessTrace
+  have witnessFacts := legalFacts service.setup service.leaks service.horizon service.scheduler
+    ⟨remaining, some who, witness⟩ witnessRaw
+  have actualFacts := legalFacts service.setup service.leaks service.horizon service.scheduler
+    control trace
+  have actualTraffic := (app).stateTraffic_inputs (initialLaw service.setup) service.horizon
+    service.scheduler trace
+  have witnessTraffic := (app).stateTraffic_inputs (initialLaw service.setup) service.horizon
+    service.scheduler witnessRaw
+  change ((app).executionTraffic control.execution).map ReactiveApplication.TrafficRecord.envelope
+    = control.execution.network.inputs at actualTraffic
+  change ((app).executionTraffic witness).map ReactiveApplication.TrafficRecord.envelope =
+    witness.network.inputs at witnessTraffic
+  refine ⟨?_, ?_⟩
+  · rw [← publicEq]
+    exact noMiss
+  · intro record member authored
+    have emitted : record.envelope ∈ control.execution.network.inputs := by
+      rw [← actualTraffic]
+      exact List.mem_map.mpr ⟨record, member, rfl⟩
+    have owned : record.envelope ∈ control.execution.network.inputs.filter
+        (fun message => message.sender = who) :=
+      List.mem_filter.mpr ⟨emitted, by simpa only [decide_eq_true_eq] using authored⟩
+    rw [actualFacts.inputs who, ← recalled, ← witnessFacts.inputs who] at owned
+    have prior : record.envelope ∈ witness.network.inputs := (List.mem_filter.mp owned).1
+    rw [← witnessTraffic] at prior
+    obtain ⟨priorRecord, priorMember, same⟩ := List.mem_map.mp prior
+    rw [← settledEq, ← same]
+    exact good priorRecord priorMember ((congrArg Message.sender same).trans authored)
+
+/-- Authentic partial evidence has zero current charge in a compatible raw
+history. No source-strategy, foreign-conformance, or risk-menu trace premise
+is imposed on that history. -/
+theorem sourceCompatibleInfo_raw_history_audit_clear
+    (control : (app).Control)
+    (trace : ((app).protocol (initialLaw service.setup) service.horizon service.scheduler).Trace
+      (some control)) (who : Player)
+    (compatible : service.sourceCompatibleInfo who
+      (some (control.execution.recall who, control.execution.observe (app) who)))
     (sample : List (SettledEvidence service.setup) → PMF (List (SettledEvidence service.setup)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual) :
-    TerminalAudit.charge ((runtime service.setup).serviceAuditObservation service.leaks)
+    TerminalAudit.charge ((runtime).serviceAuditObservation service.leaks)
+      (sourceServiceAudit service.setup service.leaks sample) (some control) who = 0 := by
+  obtain ⟨noMiss, good⟩ :=
+    service.sourceCompatibleInfo_raw_history_clear control trace who compatible
+  unfold sourceServiceAudit
+  rw [(runtime).serviceAudit_charge, noMiss]
+  simp only [Bool.false_eq_true, ↓reduceIte]
+  apply (app).sampledTrafficAudit_sound
+  · exact authentic _
+  · exact good
+
+/-- Every hidden member of a compatible native information site has zero
+current charge. The supplied actual response menu may be the complete effective
+menu or the retained risk menu; legal history derives raw initialization and
+the owner's actual full input. No future charge or posterior claim follows. -/
+theorem sourceCompatibleInfo_history_audit_clear
+    (responseMenu : (application service.setup service.leaks).ResponseMenu)
+    (who : Player)
+    (site : (responseMenu.information (initialLaw service.setup) service.horizon
+      service.scheduler).InformationSite who)
+    (compatible : service.sourceCompatibleInfo who site.1)
+    (history : (responseMenu.information (initialLaw service.setup) service.horizon
+      service.scheduler).InformationHistory who site.1)
+    (sample : List (SettledEvidence service.setup) → PMF (List (SettledEvidence service.setup)))
+    (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual) :
+    TerminalAudit.charge ((runtime).serviceAuditObservation service.leaks)
       (sourceServiceAudit service.setup service.leaks sample) history.1.state who = 0 := by
-  cases current : history.1.state with
-  | none => exact (runtime service.setup).serviceAudit_charge_none service.leaks _ who
+  obtain ⟨past, view, observed, _identity, _clear⟩ :=
+    service.sourceCompatibleInfo_clear who site.1 compatible
+  rcases history with ⟨⟨state, trace⟩, same⟩
+  change (responseMenu.signals (initialLaw service.setup) service.horizon
+    service.scheduler).infoOf who trace = site.1 at same
+  rw [responseMenu.info (initialLaw service.setup) service.horizon service.scheduler who trace,
+    observed] at same
+  cases state with
+  | none => cases same
   | some control =>
-      have clear := ((runtime service.setup).serviceRisk_clear_iff service.leaks service.bound who
-        _ _).mp (service.sourceCompatibleInfo_history_focal_clear who site compatible history
-          control current) |>.1
-      have trace : ((menu).protocol (initialLaw service.setup) service.horizon
-          service.scheduler).Trace (some control) := current ▸ history.1.trace
-      exact sourceServiceRisk_history_audit_clear service.bounds service.bound service.contract
-        control trace who clear sample authentic
+      by_cases active : control.actor = some who
+      · simp only [ReactiveApplication.observe, active, ↓reduceIte] at same
+        have actualCompatible : service.sourceCompatibleInfo who
+            (some (control.execution.recall who, control.execution.observe (app) who)) := by
+          rw [observed] at compatible
+          exact (congrArg some (Option.some.inj same)).symm ▸ compatible
+        exact service.sourceCompatibleInfo_raw_history_audit_clear control
+          (responseMenu.toRawTrace (initialLaw service.setup) service.horizon service.scheduler
+            trace) who actualCompatible sample authentic
+      · simp only [ReactiveApplication.observe, active, ↓reduceIte] at same
+        cases same
 
 end Vegas.AsyncServiceSpec

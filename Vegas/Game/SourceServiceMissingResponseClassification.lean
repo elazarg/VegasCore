@@ -1,0 +1,268 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.SourceServiceUnusableBinding
+import Vegas.Pending.ReactiveBindingContinuation
+import Vegas.Pending.ReactiveBindingFrame
+import Vegas.Pending.ReactiveMissingBindingTransport
+
+/-! # Actual response classification at a repaired clear input
+
+An arbitrary effective response from the original RAW history is effective at
+the paired repaired input. Its actual envelope and remembered event agree, so
+the charged classifiers agree too. At a clear legal repaired history, the
+single retained implementation copies a retained original or selects its
+actual repair or fallback. Every excluded original is an auditable packet,
+a recorded response or the private unusable-binding residual.
+
+This is a local constructor partition. It does not assume risk-menu support
+of the original continuation and does not preserve a frame through fallback.
+-/
+
+noncomputable section
+
+namespace Vegas
+
+open SourceProgram Interaction EventGraphRuntime EventGraph GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] [Fintype Player]
+  {L : IExpr} [IExpr.ResultTypes L]
+  {setup : Setup (Player := Player) (L := L)}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+
+/-- An effective original response has the same actual public packet classifier
+and recalled-event classifier at the paired repaired input. The original
+history is RAW and is not required to follow the risk menu. -/
+theorem sourceServiceMissing_response_classifiers
+    (bounds : MessageBounds (graph setup)) (bound : (graph setup).EventId → Nat)
+    {horizon leftRemaining rightRemaining : Nat}
+    {scheduler : (application setup leaks).Scheduler}
+    (original repaired : (application setup leaks).Execution) (who : Player)
+    (memory : BindingMemory (runtime setup) leaks)
+    (frame : memory.Frame (runtime setup) leaks who original repaired)
+    (leftTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨leftRemaining, some who, original⟩))
+    (rightTrace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup)
+      horizon scheduler).Trace (some ⟨rightRemaining, some who, repaired⟩))
+    (preserved : ∀ slot raw, original.application.candidates.lookup (who, slot) = .openable raw →
+      repaired.application.candidates.lookup (who, slot) = .openable raw)
+    (response : (application setup leaks).Action)
+    (effective : response ∈ (bounds.menu (runtime setup) leaks).actions who
+      (original.recall who) (original.observe (application setup leaks) who)) :
+    response ∈ (bounds.menu (runtime setup) leaks).actions who (repaired.recall who)
+        (repaired.observe (application setup leaks) who) ∧
+      (auditableServiceResponse setup leaks who (original.recall who)
+        (original.observe (application setup leaks) who) response ↔
+       auditableServiceResponse setup leaks who (repaired.recall who)
+        (repaired.observe (application setup leaks) who) response) ∧
+      (recordedServiceResponse setup leaks (original.recall who) response ↔
+       recordedServiceResponse setup leaks (repaired.recall who) response) := by
+  let app := application setup leaks
+  have rawRight := (bounds.riskMenu (runtime setup) leaks bound).toRawTrace
+    (initialLaw setup) horizon scheduler rightTrace
+  have transported := (runtime setup).effectiveResponse_openable_transport leaks bounds who
+    original repaired (app.history_inputRecall (initialLaw setup) horizon scheduler leftTrace)
+    (app.history_inputRecall (initialLaw setup) horizon scheduler rawRight) frame.network
+    frame.publicView frame.slots preserved response effective
+  have sameEnvelope (material : app.Submission)
+      (transmission : response.transmission = some material) :
+      localServiceEnvelope setup leaks who (original.recall who) (original.observe app who)
+          material =
+        localServiceEnvelope setup leaks who (repaired.recall who) (repaired.observe app who)
+          material := by
+    rw [localServiceEnvelope_actual setup leaks leftTrace who material,
+      localServiceEnvelope_actual setup leaks rawRight who material]
+    have serial := congrArg
+      (fun network : MessageNetwork Player (WitnessedPacket (graph setup)) =>
+        network.nextSerial who) frame.network
+    rw [serial, transported.2.2 material transmission]
+  refine ⟨transported.1, ?_, ?_⟩
+  · unfold auditableServiceResponse
+    constructor
+    · rintro ⟨material, transmission, classified⟩
+      refine ⟨material, transmission, ?_⟩
+      change AuditableServicePacket setup original.application.publicView who _ at classified
+      change AuditableServicePacket setup repaired.application.publicView who _
+      rwa [frame.publicView, sameEnvelope material transmission] at classified
+    · rintro ⟨material, transmission, classified⟩
+      refine ⟨material, transmission, ?_⟩
+      change AuditableServicePacket setup repaired.application.publicView who _ at classified
+      change AuditableServicePacket setup original.application.publicView who _
+      rwa [← frame.publicView, ← sameEnvelope material transmission] at classified
+  · unfold recordedServiceResponse
+    constructor <;> rintro ⟨event, recorded, named⟩
+    · exact ⟨event, ((runtime setup).eventRecorded_congr leaks _ _ frame.submissions event)
+        ▸ recorded, named⟩
+    · exact ⟨event, ((runtime setup).eventRecorded_congr leaks _ _ frame.submissions event).symm
+        ▸ recorded, named⟩
+
+open Classical in
+/-- The same retained implementation has an exact local copy/default/fallback
+split for every effective original response. Charged labels refer to its actual
+original envelope and recall; only the private residual uses the repaired input. -/
+theorem sourceServiceMissing_response_cases
+    (bounds : MessageBounds (graph setup)) (bound : (graph setup).EventId → Nat)
+    {horizon leftRemaining rightRemaining : Nat}
+    {scheduler : (application setup leaks).Scheduler}
+    (original repaired : (application setup leaks).Execution) (who : Player)
+    (memory : BindingMemory (runtime setup) leaks)
+    (frame : memory.Frame (runtime setup) leaks who original repaired)
+    (leftTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨leftRemaining, some who, original⟩))
+    (rightTrace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup)
+      horizon scheduler).Trace (some ⟨rightRemaining, some who, repaired⟩))
+    (clear : (runtime setup).serviceRisk leaks bound who (repaired.recall who)
+      (repaired.observe (application setup leaks) who) = false)
+    (preserved : ∀ slot raw, original.application.candidates.lookup (who, slot) = .openable raw →
+      repaired.application.candidates.lookup (who, slot) = .openable raw)
+    (response : (application setup leaks).Action)
+    (effective : response ∈ (bounds.menu (runtime setup) leaks).actions who
+      (original.recall who) (original.observe (application setup leaks) who)) :
+    let menu := bounds.riskMenu (runtime setup) leaks bound
+    let input := (repaired.recall who, repaired.observe (application setup leaks) who)
+    let selected := BindingMemory.retainedResponse (runtime setup) leaks menu who memory
+      input response
+    (response ∈ menu.actions who input.1 input.2 ∧
+      selected = memory.copyResponse (runtime setup) leaks who input.2 response ∧
+      selected.1 = response) ∨
+    (response ∉ menu.actions who input.1 input.2 ∧
+      (auditableServiceResponse setup leaks who (original.recall who)
+          (original.observe (application setup leaks) who) response ∨
+        recordedServiceResponse setup leaks (original.recall who) response ∨
+        unusableServiceBindingResponse setup leaks who input.1 input.2 response) ∧
+      selected =
+        (if (memory.repairResponse (runtime setup) leaks who input.2 response).1 ∈
+            menu.actions who input.1 input.2 then
+          (memory.repairResponse (runtime setup) leaks who input.2 response).1
+        else (menu.nonempty who input.1 input.2).choose,
+          (memory.repairResponse (runtime setup) leaks who input.2 response).2)) := by
+  classical
+  obtain ⟨available, packetIff, recordedIff⟩ := sourceServiceMissing_response_classifiers bounds
+    bound original repaired who memory frame leftTrace rightTrace preserved response effective
+  dsimp only
+  by_cases admitted : response ∈ bounds.riskActions (runtime setup) leaks bound who
+      (repaired.recall who) (repaired.observe (application setup leaks) who)
+  · left
+    refine ⟨admitted, ?_, ?_⟩
+    · simp only [BindingMemory.retainedResponse, MessageBounds.riskMenu, admitted, ↓reduceIte]
+    · simp only [BindingMemory.retainedResponse, MessageBounds.riskMenu, admitted, ↓reduceIte,
+        BindingMemory.copyResponse_action]
+  · right
+    refine ⟨admitted, ?_, ?_⟩
+    · by_cases packet : auditableServiceResponse setup leaks who (original.recall who)
+          (original.observe (application setup leaks) who) response
+      · exact Or.inl packet
+      · by_cases recorded : recordedServiceResponse setup leaks (original.recall who) response
+        · exact Or.inr (Or.inl recorded)
+        · exact Or.inr (Or.inr ((unclassifiedResponse_cases bounds bound repaired who rightTrace
+            clear response available (fun h => packet (packetIff.mpr h))
+            (fun h => recorded (recordedIff.mpr h))).resolve_left admitted))
+    · simp only [BindingMemory.retainedResponse, MessageBounds.riskMenu, admitted, ↓reduceIte]
+
+/-- The uncharged private residual takes the actual typed default rather than
+fallback when the bounds cover binding values. Freshness, capacity, protection
+and original unavailability are derived from the real paired histories. -/
+theorem sourceServiceMissing_unusable_default_retained
+    (bounds : MessageBounds (graph setup)) (bound : (graph setup).EventId → Nat)
+    (values : bounds.CoversBindingValues)
+    {horizon leftRemaining rightRemaining : Nat}
+    {scheduler : (application setup leaks).Scheduler}
+    (original repaired : (application setup leaks).Execution) (who : Player)
+    (memory : BindingMemory (runtime setup) leaks)
+    (frame : memory.Frame (runtime setup) leaks who original repaired)
+    (leftTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨leftRemaining, some who, original⟩))
+    (rightTrace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup)
+      horizon scheduler).Trace (some ⟨rightRemaining, some who, repaired⟩))
+    (clear : (runtime setup).serviceRisk leaks bound who (repaired.recall who)
+      (repaired.observe (application setup leaks) who) = false)
+    (preserved : ∀ slot raw, original.application.candidates.lookup (who, slot) = .openable raw →
+      repaired.application.candidates.lookup (who, slot) = .openable raw)
+    (response : (application setup leaks).Action)
+    (effective : response ∈ (bounds.menu (runtime setup) leaks).actions who
+      (original.recall who) (original.observe (application setup leaks) who))
+    (unusable : unusableServiceBindingResponse setup leaks who (repaired.recall who)
+      (repaired.observe (application setup leaks) who) response) :
+    let menu := bounds.riskMenu (runtime setup) leaks bound
+    let input := (repaired.recall who, repaired.observe (application setup leaks) who)
+    BindingMemory.retainedResponse (runtime setup) leaks menu who memory input response =
+        memory.repairResponse (runtime setup) leaks who input.2 response ∧
+      (memory.repairResponse (runtime setup) leaks who input.2 response).1 ∈
+        menu.actions who input.1 input.2 ∧
+      ∃ event payload,
+        repaired.application.publicView.InclusionFitsDeadline (runtime setup) bound event ∧
+        (memory.repairResponse (runtime setup) leaks who input.2 response).1 =
+          (runtime setup).reactiveBinding leaks who event payload (.success (L.someValue payload))
+            (repaired.application.publicView.bindingCount who) := by
+  classical
+  let app := application setup leaks
+  let past := repaired.recall who
+  let view := repaired.observe app who
+  let serial := repaired.application.publicView.bindingCount who
+  obtain ⟨available, _, _⟩ := sourceServiceMissing_response_classifiers bounds bound original
+    repaired who memory frame leftTrace rightTrace preserved response effective
+  obtain ⟨event, payload, outputEq, codeEq, node, turn, unrecorded, opening, responseEq,
+    missing⟩ := unusable
+  have persistent := ((runtime setup).serviceRisk_clear_iff leaks bound who past view).mp clear
+    |>.1
+  have actualFresh := riskCanonicalSlot_fresh_at_turn bounds bound _ rightTrace who persistent
+    event turn unrecorded
+  have selectedSlot : canonicalFreshSlot who view.application = some serial :=
+    canonicalFreshSlot_canonical who view.application actualFresh
+  have originalFresh : (memory.shadow.inputView (runtime setup) leaks view).application.candidates
+      (.prepared serial) = .fresh := by
+    rw [frame.observed]
+    exact (frame.slots (.prepared serial)).mpr actualFresh
+  have capacity : serial < bounds.candidateCount := by
+    rw [responseEq] at available
+    exact ((bounds.menu_mem (runtime setup) leaks who past view _).mp available).1.1.1
+  have included : (⟨payload, L.someValue payload⟩ : Raw L) ∈ bounds.values := by
+    have all := values event
+    rw [outputEq] at all
+    exact all (L.someValue payload)
+  obtain ⟨ready, owned⟩ := PublicView.ownTurn?_spec repaired.application.publicView who event turn
+  have fits := (runtime setup).serviceRisk_clear_protected_opportunity leaks bound who past view
+    event rfl turn unrecorded clear
+  have defaultEq : (memory.repairResponse (runtime setup) leaks who view response).1 =
+      (runtime setup).reactiveBinding leaks who event payload (.success (L.someValue payload))
+        serial := by
+    rw [responseEq]
+    exact memory.repairResponse_unusable (runtime setup) leaks who view event payload outputEq
+      codeEq node serial opening originalFresh actualFresh missing
+  have defaultMember : (memory.repairResponse (runtime setup) leaks who view response).1 ∈
+      bounds.riskActions (runtime setup) leaks bound who past view := by
+    have canonical := bounds.canonical_binding_value_retained (runtime setup) leaks who past view
+      event payload outputEq codeEq node turn owned ready fits.withinDeadline unrecorded serial
+      selectedSlot capacity (L.someValue payload) included
+    rw [(runtime setup).canonicalServiceDecision_binding leaks who past view event payload
+      outputEq codeEq node serial selectedSlot] at canonical
+    rw [defaultEq]
+    exact bounds.canonicalActions_subset_risk (runtime setup) leaks bound who past view canonical
+  have excluded : response ∉ bounds.riskActions (runtime setup) leaks bound who past view := by
+    intro retained
+    rw [bounds.riskActions_of_clear (runtime setup) leaks bound who past view clear] at retained
+    let material : app.Submission := ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩
+    have transmission : response.transmission = some material := by rw [responseEq]; rfl
+    obtain ⟨other, choice, otherTurn, _, _, _, _, represented, same⟩ :=
+      bounds.canonicalActions_submission (runtime setup) leaks who past view response retained
+        material transmission
+    have sameEvent : other = event := Option.some.inj (otherTurn.symm.trans turn)
+    subst other
+    simp only [MessageBounds.canonicalChoices, node] at represented
+    obtain ⟨value, _, rfl⟩ := Finset.mem_image.mp represented
+    rw [(runtime setup).canonicalServiceDecision_binding leaks who past view event payload
+      outputEq codeEq node serial selectedSlot] at same
+    have openingEq := congrArg (fun action : app.Action =>
+      action.transmission.bind (fun submission => submission.call.opening))
+        (responseEq.symm.trans same)
+    change opening = some (⟨payload, value⟩ : Raw L) at openingEq
+    rw [openingEq, Option.bind_some, Raw.as?_mk] at missing
+    cases missing
+  dsimp only
+  refine ⟨?_, defaultMember, event, payload, fits, defaultEq⟩
+  change BindingMemory.retainedResponse (runtime setup) leaks
+    (bounds.riskMenu (runtime setup) leaks bound) who memory (past, view) response =
+      memory.repairResponse (runtime setup) leaks who view response
+  simp only [BindingMemory.retainedResponse, MessageBounds.riskMenu, excluded, defaultMember,
+    ↓reduceIte, Prod.mk.eta]
+
+end Vegas

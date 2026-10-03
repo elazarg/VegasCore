@@ -82,9 +82,12 @@ future private values changed by repair are outside the claim.
   the shared finite induction. No incentive-compatible rate selection is proved.
 - [SourceServiceClearAudit](../Vegas/Game/SourceServiceClearAudit.lean)
   derives no owner miss and zero current audit charge from focal persistent
-  clarity at a real risk-menu prefix. Every hidden history at a compatible
-  site has this property, despite possible foreign private risk. Only sample
-  authenticity is needed; future charges and unfinished verdicts may change.
+  clarity at a real risk-menu prefix. Own recall, public state and receipts
+  transfer the verdict to every initialized RAW history at compatible
+  information. Its fiber consumer covers any actual response menu, including
+  the full effective game, without original risk support or restrictions on
+  foreign deviations. Only sample authenticity is needed; future charges and
+  unfinished verdicts may change.
 - [AsyncServiceCompatibleRecall](../Vegas/Game/AsyncServiceCompatibleRecall.lean)
   derives compatibility of every earlier own recalled decision and equality of
   the complete focal likelihood for profiles agreeing on compatible inputs.
@@ -777,12 +780,13 @@ changed-slot avoidance premise. Initial mistyped material and the signed-breach
 exception remain separate.
 
 [SourceServiceMissingSignedResponse](../Vegas/Game/SourceServiceMissingSignedResponse.lean)
-locates an actual signed opening before emission while the repaired history is
-still clear and legal. The shared frame derives absence of any earlier owner
-signed breach; effective normal form transports the proposed envelope and
-derives repaired risk-menu exclusion. The existing retained implementation
-selects its legal fallback with unchanged shadow. This is a local replacement
-point, not a whole-policy utility comparison after risk expansion.
+handles an actual signed opening or evidence-bearing commitment at a repaired
+input, using full effective original support. A clear legal repaired input
+excludes the signed breach and the existing retained implementation selects its
+legal fallback with unchanged shadow. An expanded input copies the effective
+commitment and its actual signed envelope. One shared draw gives both the
+original invocation and actual retained implementation marginals. No frame is
+asserted after fallback, and whole-policy payoff comparison remains open.
 
 [ReactiveBindingForeignCommitment](../Vegas/Pending/ReactiveBindingForeignCommitment.lean)
 derives permanent public rejection for a bare commitment naming another
@@ -791,6 +795,23 @@ shadow unchanged, including for fresh foreign handles. The commitment ledger
 and the same finite fixed/associated continuation consumers carry this class
 using the real ownership test. Evidence-bearing commitments remain a separate
 signed-breach case; terminal payoff domination is not inferred.
+
+[SourceServiceMissingResponseClassification](../Vegas/Game/SourceServiceMissingResponseClassification.lean)
+classifies every effective original response at the actual clear repaired
+input, without original risk-menu support. Actual envelope and recalled-event
+transport give the retained copy or excluded auditable, recorded or unusable
+branches of the same implementation. Static value coverage, real counted-slot
+freshness, capacity and protection derive typed-default admission for the
+uncharged unusable branch. This does not preserve a frame after fallback or
+control the resulting whole-policy payoff; mistyped certificates can still
+change the future capability relation.
+
+[SourceServiceSiteKind](../Vegas/Game/SourceServiceSiteKind.lean) derives the
+actual local input and either a publicly completed cut or a ready event with
+one of the seven source constructor kinds at every actual response-menu site.
+This applies to arbitrary builders, including activations after graph
+completion. The completed-cut branch needs its own payoff comparison; the
+fixed-calendar ready-phase exhaustion alone does not cover it.
 
 The risk-menu continuation consumers still require original risk-supported
 future responses. An excluded initial response can reach information states
