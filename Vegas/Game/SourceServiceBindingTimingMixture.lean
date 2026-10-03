@@ -1,0 +1,133 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.SourceServiceBindingSelection
+import Vegas.Game.SourceServiceFirstTurnMixture
+
+/-! # The original timing lottery through an actual binding phase
+
+At an untouched completion boundary, every earlier owner input was outside
+the current event. All current timing families therefore agreed there, so
+their behavioral realization still has the original timing prior. Until the
+event completes, the actual owner policy is that same timing mixture at its
+sole ready event. The finite mixture below retains the actual typed endpoint,
+the complete public and foreign traffic, and the same fixed prefix parameter.
+
+Each component is an actual run of the selected turn family. A selected turn
+can be absent or lose protection; no source-extension admission, acceptance
+probability or strategic comparison is assumed.
+-/
+
+noncomputable section
+
+namespace Vegas
+
+open SourceProgram Interaction EventGraphRuntime GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player]
+  {L : IExpr} [IExpr.ResultTypes L]
+  {setup : Setup (Player := Player) (L := L)}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+
+/-- From the original untouched boundary the stopped physical law is the
+original finite timing mixture, retaining typed output and joint traffic. -/
+theorem sourceService_binding_timing_mixture
+    {Parameter : Type} (parameter : Parameter)
+    (scheduler : (application setup leaks).Scheduler)
+    (players : Player → (application setup leaks).Policy)
+    (bound : (graph setup).EventId → Nat) (turns : Nat) (timing : TurnTiming setup turns)
+    (profile : BehavioralProfile setup.program) (owner : Player)
+    (follows : players owner = sourceServiceTurnPolicy setup leaks bound turns timing profile owner)
+    (event : (graph setup).EventId) (payload : L.Ty)
+    (owned : (graph setup).actor? event = some owner)
+    (outputEq : (graph setup).outputLayout event = .binding owner payload)
+    (execution : (application setup leaks).Execution)
+    (boundary : CompletionBoundary setup leaks scheduler players event.val execution)
+    (horizon : Nat) :
+    (((application setup leaks).runUntilHorizon scheduler players
+      (fun final => event ∈ final.application.config.cut.completed) horizon execution).map
+      fun final => (parameter,
+        (⟨.inr event, outputEq⟩ : EventGraph.FieldRef (graph setup).layout
+          (.binding owner payload)).get? final.application.config.store,
+        (runtime setup).bindingPublicTraffic leaks owner final)) =
+    ((timing event owner owned).bind fun slot =>
+      ((application setup leaks).runUntilHorizon scheduler
+        (Function.update players owner
+          (sourceServiceTurnFamily setup leaks bound profile owner event turns slot))
+        (fun final => event ∈ final.application.config.cut.completed) horizon execution).map
+          fun final => (parameter,
+            (⟨.inr event, outputEq⟩ : EventGraph.FieldRef (graph setup).layout
+              (.binding owner payload)).get? final.application.config.store,
+            (runtime setup).bindingPublicTraffic leaks owner final)) := by
+  let app := application setup leaks
+  let stop := fun final : app.Execution => event ∈ final.application.config.cut.completed
+  let family := sourceServiceTurnFamily setup leaks bound profile owner event turns
+  let mixture := app.policyMixture (timing event owner owned) family
+  have prior : mixture.posterior (execution.recall owner) = timing event owner owned := by
+    apply app.policyMixture_posterior_of_agree _ _ app.silentPolicy
+    intro earlier entry member slot
+    apply app.turnScheduledPolicy_of_none
+    apply sourceServiceTurn_of_not_turn
+    intro turn
+    have entryMember : entry ∈ execution.recall owner :=
+      member.subset (List.mem_append_right _ (List.mem_singleton_self _))
+    exact boundary.untouched event rfl owner entry entryMember
+      (PublicView.ownTurn?_spec _ owner event turn).1
+  have ready := (ready_iff_rank setup execution.application.config event.val boundary.ordered
+    event).mpr rfl
+  let invariant := fun current : app.Execution =>
+    current.application.config.cut.Ready event ∨ event ∈ current.application.config.cut.completed
+  have congruent : app.runUntil scheduler players stop
+      (horizon - execution.environmentRecall.length) execution =
+      app.runUntil scheduler (Function.update players owner mixture.policy) stop
+        (horizon - execution.environmentRecall.length) execution := by
+    apply app.runUntil_congr_of_agree scheduler _ _ _ invariant
+    · intro current holds running command _ middle moved who active
+      by_cases foreign : who ≠ owner
+      · simp only [Function.update_of_ne foreign]
+      · have own : who = owner := not_ne_iff.mp foreign
+        subst who
+        rw [Function.update_self, follows]
+        cases command with
+        | activate actor =>
+            have applicationEq := activation_application setup leaks current middle actor moved
+            have currentReady := holds.resolve_right running
+            have middleReady : middle.application.config.cut.Ready event := by
+              rw [applicationEq]
+              exact currentReady
+            have sole := soleReady_of_ready setup middle.application middleReady
+            have turn := PublicView.ownTurn?_of_ownTurn middle.application.publicView owner event
+              (sole.ownTurn owned)
+            exact sourceServiceTurnPolicy_turn setup leaks bound turns timing profile owner
+              (middle.recall owner) (middle.observe app owner) event owned turn
+        | «include» _ | application _ | wait => cases active
+    · intro current holds running next reached
+      by_cases finished : event ∈ next.application.config.cut.completed
+      · exact Or.inr finished
+      · left
+        have currentReady := holds.resolve_right running
+        rcases round_configStep setup leaks scheduler players current next reached with
+          same | ⟨target, targetReady, action, supported⟩
+        · rw [same]
+          exact currentReady
+        · rw [current.application.config.step_cut target targetReady action
+            next.application.config supported] at finished ⊢
+          apply currentReady.after_complete targetReady
+          intro equal
+          exact finished ((EventOrder.Cut.mem_complete _ _ _ _).mpr (Or.inl equal))
+    · exact Or.inl ready
+  have law : app.runUntilHorizon scheduler players stop horizon execution =
+      (timing event owner owned).bind (fun slot =>
+        app.runUntilHorizon scheduler (Function.update players owner (family slot)) stop horizon
+          execution) := by
+    unfold ReactiveApplication.runUntilHorizon
+    rw [congruent, ← app.runUntil_policyMixture scheduler (timing event owner owned) family owner
+      players stop _ execution]
+    rw [prior]
+  have mapped := congrArg (fun law => law.map (fun final =>
+    (parameter,
+      (⟨.inr event, outputEq⟩ : EventGraph.FieldRef (graph setup).layout
+        (.binding owner payload)).get? final.application.config.store,
+      (runtime setup).bindingPublicTraffic leaks owner final))) law
+  simpa only [PMF.map_bind] using mapped
+
+end Vegas

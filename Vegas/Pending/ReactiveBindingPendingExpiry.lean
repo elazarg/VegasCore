@@ -45,7 +45,7 @@ theorem repairResponse_unusable_shadow_failure
       change.2.values (.inr event) = some
         (cast (congrArg EventField.Value outputEq.symm) PublicationResult.failure) := by
   simp only [repairResponse, node, originalFresh, actualFresh, unusable, and_self,
-    ↓reduceIte, Option.elim_none, BindingShadow.rememberCompletion, Function.update_self]
+    ↓reduceIte, BindingShadow.rememberCompletion, Function.update_self]
 
 namespace Frame
 

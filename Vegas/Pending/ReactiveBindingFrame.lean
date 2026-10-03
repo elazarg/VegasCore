@@ -214,6 +214,8 @@ theorem binding (frame : Frame runtime leaks memory owner original repaired)
       (graph.nodes event) = .bind owner payload)
     (node : nodeView graph event = .bind owner payload outputEq codeEq)
     (serial : Nat) (opening : Option (Raw L))
+    (clearUsable : ∀ value, opening.bind (fun raw => raw.as? payload) = some value →
+      memory.shadow.actions event = none ∧ memory.shadow.values (.inr event) = none)
     (fresh : original.application.candidates.lookup (owner, .prepared serial) = .fresh)
     (ready : original.application.config.cut.Ready event)
     (timely : original.application.WithinDeadline runtime event)
@@ -266,12 +268,12 @@ theorem binding (frame : Frame runtime leaks memory owner original repaired)
         simp only [replacementOpening, decoded]
         rfl
     | some value =>
-        rw [memory.repairResponse_usable runtime leaks owner view event payload outputEq codeEq
-          node serial opening ownFresh actualFresh value decoded]
+        rw [congrArg Prod.fst (memory.repairResponse_usable runtime leaks owner view event payload
+          outputEq codeEq node serial opening ownFresh actualFresh value decoded)]
         simp only [replacementOpening, decoded]
   have restored := memory.repairResponse_include_input runtime leaks owner original repaired
     frame.lengths frame.past frame.observed frame.network event payload outputEq codeEq node
-      serial opening fresh actualFresh ready timely vacant unused serials
+      serial opening fresh actualFresh clearUsable ready timely vacant unused serials
   change remembered.restoreRecall runtime leaks (rightNext.recall owner) =
       leftNext.recall owner ∧
     remembered.shadow.inputView runtime leaks (rightNext.observe app owner) =

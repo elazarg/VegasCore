@@ -133,6 +133,7 @@ compiled-menu continuation. In particular the same repaired strategy works
 across all hidden initial executions sharing its private-memory seed. -/
 theorem binding_retained_coupling
     (frame : Frame runtime leaks memory owner original repaired)
+    (completedMemory : memory.shadow.CompletedAt original.application.config)
     (bounds : MessageBounds graph)
     (menu : (runtime.reactiveApplication leaks).ResponseMenu)
     (players : Player → (runtime.reactiveApplication leaks).Policy)
@@ -175,7 +176,8 @@ theorem binding_retained_coupling
           (runtime.interactionStep leaks players scheduler (.includeLatest event owner)
             next.1).map fun execution => (execution, next.2)) ∧
       ∀ next ∈ coupling.support,
-        Frame runtime leaks next.2.2 owner next.1 next.2.1 := by
+        Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
+          next.2.2.shadow.CompletedAt next.1.application.config := by
   have turnSome := repaired.application.publicView.ownTurn?_of_ownTurn owner event turn
   let app := runtime.reactiveApplication leaks
   have owned : graph.actor? event = some owner := by
@@ -209,7 +211,8 @@ theorem binding_retained_coupling
         owner players (some owner) repaired memory := by
     simp only [ReactiveApplication.Implementation.resume, ↓reduceIte]
     rw [responseEq]
-  obtain ⟨coupling, first, second, related⟩ := frame.binding_response_coupling players scheduler
+  obtain ⟨coupling, first, second, related⟩ := frame.binding_response_coupling
+    completedMemory players scheduler
     reference started event payload outputEq codeEq node serial fresh ready timely vacant unused
     serials (fun response member => by
       obtain ⟨opening, _, equal⟩ := canonical response member

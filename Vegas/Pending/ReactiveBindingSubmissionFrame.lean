@@ -74,8 +74,8 @@ theorem binding_submission
         simp only [replacementOpening, decoded]
         rfl
     | some value =>
-        rw [memory.repairResponse_usable runtime leaks owner view event payload outputEq codeEq
-          node serial opening ownFresh actualFresh value decoded]
+        rw [congrArg Prod.fst (memory.repairResponse_usable runtime leaks owner view event payload
+          outputEq codeEq node serial opening ownFresh actualFresh value decoded)]
         simp only [replacementOpening, decoded]
   have restored := memory.repairResponse_submit_input runtime leaks owner original repaired
     frame.lengths frame.past frame.observed frame.network event payload outputEq codeEq node
@@ -156,7 +156,8 @@ theorem pending_binding_inclusion
       none found
   have own := memory.shadow.include_binding_input runtime leaks original repaired owner
     frame.observed frame.network event payload outputEq codeEq node id candidate sender owned
-      found ready timely vacant unused leftFixed rightFixed rememberedAction rememberedValue
+      found ready timely vacant unused leftFixed rightFixed
+        (Or.inl ⟨rememberedAction, rememberedValue⟩)
   have recall (execution : app.Execution) :
       (execution.includePending app id).recall = execution.recall := by
     simp only [ReactiveApplication.Execution.includePending]

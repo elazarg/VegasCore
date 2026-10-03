@@ -49,6 +49,7 @@ theorem resolution_block_stopped_coupling
     (original repaired : (application setup leaks).Execution)
     (frame : BindingMemory.Frame (runtime setup) leaks memory owner original repaired)
     (onlyBindings : memory.shadow.OwnBindings owner)
+    (completedMemory : memory.shadow.CompletedAt original.application.config)
     (started : reference.length ≤ (repaired.recall owner).length)
     (leftRecall : original.InputRecall (application setup leaks))
     (sound : ((runtime setup).packetEvidence leaks).Sound original)
@@ -93,7 +94,8 @@ theorem resolution_block_stopped_coupling
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
             record.envelope = false) ∨
           next.1.application.publicView.missedDecisionBy owner = true ∨
-          BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
+          (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
+            next.2.2.shadow.CompletedAt next.1.application.config)) := by
   classical
   intro app players strategy ending
   let menu := sourceServiceMenu setup leaks bounds rosters
@@ -120,7 +122,8 @@ theorem resolution_block_stopped_coupling
             record.envelope = false) ∨
           (∀ final ∈ ((runtime setup).runInteractionPlan leaks players network ending
             next.1).support, final.application.publicView.missedDecisionBy owner = true) ∨
-          BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
+          (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
+            next.2.2.shadow = memory.shadow)) := by
     by_cases same : actor = owner
     · subst actor
       obtain ⟨coupling, first, second, related⟩ := resolution_roster_stopped_coupling setup leaks
@@ -141,7 +144,7 @@ theorem resolution_block_stopped_coupling
           (EventGraph.EventCode.actor_cast outputEq ((graph setup).nodes event)).symm.trans
             (congrArg EventGraph.EventCode.actor codeEq)
         exact PublicView.missedDecisionBy_of_event _ owner event owned (missed final reached)
-      · exact Or.inr (Or.inr framed.1)
+      · exact Or.inr (Or.inr ⟨framed.1, framed.2.2⟩)
     · have owned : (graph setup).actor? event = some actor := by
         have actual := congrArg EventCode.actor codeEq
         rw [EventCode.actor_cast outputEq ((graph setup).nodes event)] at actual
@@ -163,7 +166,7 @@ theorem resolution_block_stopped_coupling
           (by simpa only [ending, List.append_assoc] using split) position
       exact ⟨coupling, first, second, fun next member =>
         ⟨(related next member).1, ((related next member).2).imp_right
-          (fun good => Or.inr good.1)⟩⟩
+          (fun good => Or.inr ⟨good.1, good.2.1⟩)⟩⟩
   obtain ⟨window, first, second, related⟩ := existsWindow
   have existsTail next (member : next ∈ window.support) :
       ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
@@ -176,7 +179,8 @@ theorem resolution_block_stopped_coupling
             (runtime setup).permittedServiceEnvelope record.observation record.ledger
               record.envelope = false) ∨
             final.1.application.publicView.missedDecisionBy owner = true ∨
-            BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1 := by
+            (BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1 ∧
+            final.2.2.shadow = memory.shadow) := by
     by_cases bad : ∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
         (runtime setup).permittedServiceEnvelope record.observation record.ledger
           record.envelope = false
@@ -204,7 +208,8 @@ theorem resolution_block_stopped_coupling
         change final.1 ∈ left.support
         rw [← bindPairLaw_map_fst left (fun _ => right), PMF.support_map]
         exact ⟨final, supported, rfl⟩
-      · have paired := (((related next member).2).resolve_left bad).resolve_left missed
+      · obtain ⟨paired, shadow⟩ :=
+          (((related next member).2).resolve_left bad).resolve_left missed
         obtain ⟨nextTrace⟩ := (related next member).1
         have reached : next.1 ∈ ((runtime setup).runInteractionPlan leaks players network
             (visits.map ServiceInstruction.player) original).support := by
@@ -247,7 +252,9 @@ theorem resolution_block_stopped_coupling
               (by rw [← length]; exact nextTrace)
               (before ++ visits.map ServiceInstruction.player) after split nextPosition
         exact ⟨coupling, leftLaw, rightLaw, fun final supported =>
-          Or.inr (Or.inr (connected final supported).2.1)⟩
+          Or.inr (Or.inr ⟨(connected final supported).2.1, by
+            rw [(connected final supported).2.2]
+            exact shadow⟩)⟩
   let tail := fun next member => (existsTail next member).choose
   let coupling := window.bindOnSupport tail
   have leftLaw : coupling.map Prod.fst = (runtime setup).runInteractionPlan leaks players network
@@ -301,6 +308,16 @@ theorem resolution_block_stopped_coupling
       exact trace
   · obtain ⟨next, member, reached⟩ :=
       Set.mem_iUnion₂.mp (PMF.support_bindOnSupport .. ▸ supported)
-    exact (existsTail next member).choose_spec.2.2 final reached
+    rcases (existsTail next member).choose_spec.2.2 final reached with
+      bad | missed | ⟨paired, shadow⟩
+    · exact Or.inl bad
+    · exact Or.inr (Or.inl missed)
+    · refine Or.inr (Or.inr ⟨paired, ?_⟩)
+      rw [shadow]
+      apply completedMemory.mono
+      apply (runtime setup).runInteractionPlan_completed_subset leaks players network
+        (visits.map ServiceInstruction.player ++ ending) original final.1
+      rw [← leftLaw, PMF.support_map]
+      exact ⟨final, supported, rfl⟩
 
 end Vegas

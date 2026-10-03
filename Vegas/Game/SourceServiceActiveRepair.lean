@@ -156,6 +156,8 @@ theorem active_history_stopped_coupling
       (visited.map ServiceInstruction.player) prior reached).2.1
   have frame := BindingMemory.frame_atRecall (runtime setup) leaks owner execution
   have onlyBindings : memory.shadow.OwnBindings owner := BindingShadow.ownBindings_empty owner
+  have completedMemory : memory.shadow.CompletedAt execution.application.config :=
+    BindingShadow.completedAt_empty _
   have existsCurrent :
       ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
         coupling.map Prod.fst = (app.invoke players owner execution).bind
@@ -171,7 +173,8 @@ theorem active_history_stopped_coupling
             (runtime setup).permittedServiceEnvelope record.observation record.ledger
               record.envelope = false) ∨
             next.1.application.publicView.missedDecisionBy owner = true ∨
-            BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
+            (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
+              next.2.2.shadow.CompletedAt next.1.application.config)) := by
     by_cases ownBinding : ∃ payload, (graph setup).outputLayout event = .binding owner payload
     · obtain ⟨payload, outputEq⟩ := ownBinding
       cases node : nodeView (graph setup) event with
@@ -209,7 +212,8 @@ theorem active_history_stopped_coupling
               setup leaks bounds values capacity rosters opportunities network source target
               agrees owner policy available reference event payload shape codeEq node remaining
               prior
-              execution execution activated memory frame trace (Nat.le_refl _) recalled ready
+              execution execution activated memory frame completedMemory trace (Nat.le_refl _)
+              recalled ready
               (Bool.eq_false_iff.mpr recorded) visited visits roster
               (by rw [visitedLength]; exact currentPosition) before future
               (by simpa only [tailEq, List.append_assoc] using split) position
@@ -232,7 +236,7 @@ theorem active_history_stopped_coupling
         setup leaks bounds values capacity rosters opportunities network source target
         agrees
         owner policy available reference memory prior execution execution activated frame
-        onlyBindings
+        onlyBindings completedMemory
         (Nat.le_refl _) recalled sound binding remembered event
         (fun payload shape => ownBinding ⟨payload, shape⟩)
         ready future.length visits ((runtime setup).deadline event) (Nat.le_refl _) (by
@@ -277,7 +281,8 @@ theorem active_history_stopped_coupling
           owner next.1 final.1 missed reached))
     · have connected := related next member
       obtain ⟨nextTrace⟩ := connected.1
-      have paired := (connected.2.resolve_left (fun traffic => bad (Or.inl traffic))).resolve_left
+      obtain ⟨paired, nextCompleted⟩ :=
+        (connected.2.resolve_left (fun traffic => bad (Or.inl traffic))).resolve_left
         (fun missed => bad (Or.inr missed))
       have leftSupport : next.1 ∈ ((app.invoke players owner execution).bind
           ((runtime setup).runInteractionPlan leaks players network current)).support := by
@@ -338,13 +343,15 @@ theorem active_history_stopped_coupling
       obtain ⟨coupling, first, second, related⟩ :=
         remaining_events_stopped_coupling setup leaks bounds
         values capacity rosters opportunities network source target agrees owner policy
-        available reference next.2.2 next.1 next.2.1 paired nextMemory nextStarted nextRecall
+        available reference next.2.2 next.1 next.2.1 paired nextMemory nextCompleted nextStarted
+        nextRecall
         nextSound
         nextBinding nextRemembered events 0
         (by simpa only [Nat.zero_add] using nextTrace) (before ++ current) []
         (by simpa only [List.append_nil] using split) (event.val + 1) rfl prefixNext
         nextPosition
-      exact ⟨coupling, first, second, fun final supported => (related final supported).2.2⟩
+      exact ⟨coupling, first, second, fun final supported =>
+        ((related final supported).2.2).imp_right (fun result => result.imp_right And.left)⟩
   let tail := fun next member => (existsTail next member).choose
   let coupling := firstBlock.bindOnSupport tail
   have physical : coupling.map Prod.fst = (app.invoke players owner execution).bind

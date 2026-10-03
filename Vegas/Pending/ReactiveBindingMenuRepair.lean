@@ -52,9 +52,9 @@ theorem repairResponse_binding_available
         outputEq codeEq node turn owned ready unsent serial fresh capacity default opening
           originalFresh decoded
   | some value =>
-      rw [memory.repairResponse_usable runtime leaks who view event payload outputEq codeEq node
-        serial opening originalFresh (reactiveFreshSlot_spec view.application serial fresh)
-          value decoded]
+      rw [congrArg Prod.fst (memory.repairResponse_usable runtime leaks who view event payload
+        outputEq codeEq node serial opening originalFresh
+          (reactiveFreshSlot_spec view.application serial fresh) value decoded)]
       have cases := bounds.canonical_binding_response_cases runtime leaks who past view event
         payload outputEq codeEq node turn owned ready unsent serial fresh capacity
         opening bounded

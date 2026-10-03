@@ -30,6 +30,7 @@ service tail. The repaired marginal is the same retained implementation across
 all hidden responses, including both detectable and unobservable deviations. -/
 theorem required_binding_final_block_coupling
     (frame : Frame runtime leaks memory owner original repaired)
+    (completedMemory : memory.shadow.CompletedAt original.application.config)
     (bounds : MessageBounds graph)
     (menu : (runtime.reactiveApplication leaks).ResponseMenu)
     (players : Player → (runtime.reactiveApplication leaks).Policy)
@@ -90,7 +91,8 @@ theorem required_binding_final_block_coupling
           runtime.permittedServiceEnvelope record.observation record.ledger
             record.envelope = false) ∨
         event ∈ next.1.application.missedEvents ∨
-        Frame runtime leaks next.2.2 owner next.1 next.2.1 := by
+        (Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
+          next.2.2.shadow.CompletedAt next.1.application.config) := by
   classical
   have turnSome := original.application.publicView.ownTurn?_of_ownTurn owner event turn
   intro app strategy plan
@@ -144,7 +146,8 @@ theorem required_binding_final_block_coupling
       ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory runtime leaks),
         coupling.map Prod.fst = leftRun response ∧ coupling.map Prod.snd = rightRun response ∧
         ∀ next ∈ coupling.support,
-          bad next.1 ∨ Frame runtime leaks next.2.2 owner next.1 next.2.1 := by
+          bad next.1 ∨ (Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
+            next.2.2.shadow.CompletedAt next.1.application.config) := by
     refine ⟨bindPairLaw (leftRun response) (fun _ => (rightRun response)),
       bindPairLaw_map_fst .., bindPairLaw_const_map_snd .., ?_⟩
     intro next supported
@@ -156,7 +159,8 @@ theorem required_binding_final_block_coupling
       ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory runtime leaks),
         coupling.map Prod.fst = leftRun response ∧ coupling.map Prod.snd = rightRun response ∧
         ∀ next ∈ coupling.support,
-          bad next.1 ∨ Frame runtime leaks next.2.2 owner next.1 next.2.1 := by
+          bad next.1 ∨ (Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
+            next.2.2.shadow.CompletedAt next.1.application.config) := by
     rcases runtime.binding_audit_response_cases leaks bounds original owner remaining event
         payload outputEq codeEq node turn fresh leftRecall serials response
           (available response member) with replay | canonical | departure
@@ -187,7 +191,8 @@ theorem required_binding_final_block_coupling
         dsimp only [adjusted]
         rw [ite_eq_left legal]
       obtain ⟨coupling, first, second, related⟩ := frame.binding_submission_foreign_block_coupling
-        players network event payload outputEq codeEq node serial opening fresh ready timely
+        completedMemory players network event payload outputEq codeEq node serial opening
+          fresh ready timely
           unbound unused serials published visits absent ticks
       refine ⟨coupling.map (fun pair => (pair.1, pair.2, (proposed response).2)), ?_, ?_, ?_⟩
       · rw [PMF.map_comp]

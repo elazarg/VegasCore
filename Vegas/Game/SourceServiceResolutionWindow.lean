@@ -115,7 +115,8 @@ theorem resolution_roster_stopped_coupling
           (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event])
             next.1).support, event ∈ final.application.missedEvents) ∨
         BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
-          reference.length ≤ (next.2.1.recall owner).length) := by
+          reference.length ≤ (next.2.1.recall owner).length ∧
+          next.2.2.shadow = memory.shadow) := by
   classical
   intro app players strategy
   let menu := sourceServiceMenu setup leaks bounds rosters
@@ -137,7 +138,7 @@ theorem resolution_roster_stopped_coupling
         PMF.pure_map .., ?_⟩
       intro next member
       cases (PMF.mem_support_pure_iff _ _).mp member
-      exact ⟨⟨trace⟩, Or.inr (Or.inr ⟨frame, started⟩)⟩
+      exact ⟨⟨trace⟩, Or.inr (Or.inr ⟨frame, started, rfl⟩)⟩
   | cons actor rest ih =>
       have cursor : repaired.environmentRecall.length = before.length := by
         rw [← frame.service]
@@ -169,7 +170,8 @@ theorem resolution_roster_stopped_coupling
                   (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event]))
                     next.1).support, event ∈ final.application.missedEvents) ∨
               BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
-                reference.length ≤ (next.2.1.recall owner).length) := by
+                reference.length ≤ (next.2.1.recall owner).length ∧
+                next.2.2.shadow = memory.shadow) := by
         by_cases same : actor = owner
         · subst actor
           obtain ⟨coupling, first, second, related⟩ := resolution_history_activation_coupling
@@ -222,7 +224,7 @@ theorem resolution_roster_stopped_coupling
             refine ⟨menu.trace_implementation_round (initialLaw setup)
               (rosterPlan setup rosters).length scheduler strategy owner players opponents own
                 (remaining + rest.length) repaired memory currentTrace _ rightSupport,
-              Or.inr (Or.inr ⟨related pair supported, ?_⟩)⟩
+              Or.inr (Or.inr ⟨related pair supported, ?_, rfl⟩)⟩
             have reached : pair.2 ∈ (app.dispatch players (.activate actor) repaired).support := by
               rw [← second, PMF.support_map]
               exact ⟨pair, supported, rfl⟩
@@ -249,7 +251,8 @@ theorem resolution_roster_stopped_coupling
                 (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event])
                   final.1).support, event ∈ endpoint.application.missedEvents) ∨
               BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1 ∧
-                reference.length ≤ (final.2.1.recall owner).length := by
+                reference.length ≤ (final.2.1.recall owner).length ∧
+                final.2.2.shadow = memory.shadow := by
         by_cases bad : ∃ record ∈ app.executionTraffic next.1,
             record.envelope.sender = owner ∧
             (runtime setup).permittedServiceEnvelope record.observation record.ledger
@@ -288,7 +291,7 @@ theorem resolution_roster_stopped_coupling
             rw [← bindPairLaw_map_fst left (fun _ => right), PMF.support_map]
             exact ⟨final, supported, rfl⟩
           · obtain ⟨nextTrace⟩ := (related next member).1
-            obtain ⟨paired, begun⟩ :=
+            obtain ⟨paired, begun, shadow⟩ :=
               (((related next member).2).resolve_left bad).resolve_left missed
             have reached : next.1 ∈ (app.dispatch players (.activate actor) original).support := by
               rw [← first, PMF.support_map]
@@ -316,7 +319,8 @@ theorem resolution_roster_stopped_coupling
                   using split)
                   nextPosition
             exact ⟨coupling, leftLaw, rightLaw, fun final supported =>
-              (connected final supported).2⟩
+              ((connected final supported).2).imp_right (fun result =>
+                result.imp_right (fun good => ⟨good.1, good.2.1, good.2.2.trans shadow⟩))⟩
       let tail := fun next member => (existsTail next member).choose
       let coupling := step.bindOnSupport tail
       have leftLaw : coupling.map Prod.fst =

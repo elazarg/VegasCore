@@ -377,10 +377,10 @@ theorem restoreRecall_submit (memory : BindingMemory runtime leaks)
     Message Player (WitnessedPacket graph))) packet.symm
 
 open Classical in
-/-- Record each newly fixed owned binding and replace only unusable private
-material. Every test and memory update uses the current own input. Recording
-usable bindings keeps their response unchanged and gives one reconstruction
-rule for subsequent inclusion. Other responses are left intact. -/
+/-- Record each newly fixed owned candidate and replace unusable private
+material. Usable material changes no completion memory: actual acceptance and
+expiry remain distinct runtime outcomes. Every test uses the current own input.
+Other responses are left intact. -/
 def repairResponse (who : Player) (memory : BindingMemory runtime leaks)
     (actual : (runtime.reactiveApplication leaks).PlayerView)
     (response : (runtime.reactiveApplication leaks).Action) :
@@ -397,15 +397,16 @@ def repairResponse (who : Player) (memory : BindingMemory runtime leaks)
             let remembered := memory.shadow.rememberCandidate (.prepared serial)
               (call.candidateAfter who original.application.candidates (.prepared serial))
             let decoded := opening.bind (fun raw => raw.as? payload)
-            let result := decoded.elim PublicationResult.failure PublicationResult.success
-            let replacement := match decoded with
-              | none => runtime.reactiveBinding leaks who event payload
-                  (.success (L.someValue payload)) serial
-              | some _ => response
-            (replacement,
-              remembered.rememberCompletion event
-                (cast (congrArg EventGraph.EventField.Action outputEq.symm) result)
-                (cast (congrArg EventGraph.EventField.Value outputEq.symm) result))
+            match decoded with
+            | none =>
+                (runtime.reactiveBinding leaks who event payload
+                  (.success (L.someValue payload)) serial,
+                  remembered.rememberCompletion event
+                    (cast (congrArg EventGraph.EventField.Action outputEq.symm)
+                      PublicationResult.failure)
+                    (cast (congrArg EventGraph.EventField.Value outputEq.symm)
+                      PublicationResult.failure))
+            | some _ => (response, remembered)
           else (response, memory.shadow)
       | .sample .. | .resolve .. => (response, memory.shadow)
   | _ => (response, memory.shadow)
@@ -429,7 +430,8 @@ theorem repairResponse_unusable (who : Player) (memory : BindingMemory runtime l
       runtime.reactiveBinding leaks who event payload (.success (L.someValue payload)) serial := by
   simp only [repairResponse, node, originalFresh, actualFresh, unusable, and_self, ↓reduceIte]
 
-/-- Uniform private recording does not change a usable binding response. -/
+/-- Usable private material is submitted unchanged. Only its actual fixed
+candidate meaning is remembered; no intended completion is installed. -/
 theorem repairResponse_usable (who : Player) (memory : BindingMemory runtime leaks)
     (actual : (runtime.reactiveApplication leaks).PlayerView)
     (event : graph.EventId) (payload : L.Ty)
@@ -442,9 +444,13 @@ theorem repairResponse_usable (who : Player) (memory : BindingMemory runtime lea
       (.prepared serial) = .fresh)
     (actualFresh : actual.application.candidates (.prepared serial) = .fresh)
     (value : L.Val payload) (usable : opening.bind (fun raw => raw.as? payload) = some value) :
-    (memory.repairResponse runtime leaks who actual
-      ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩).1 =
-      ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩ := by
+    memory.repairResponse runtime leaks who actual
+      ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩ =
+      (⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩,
+        memory.shadow.rememberCandidate (.prepared serial)
+          ((⟨.commitment event (who, .prepared serial), opening⟩ : Submission graph).candidateAfter
+            who (memory.shadow.inputView runtime leaks actual).application.candidates
+              (.prepared serial))) := by
   simp only [repairResponse, node, originalFresh, actualFresh, usable, and_self, ↓reduceIte]
 
 open Classical in

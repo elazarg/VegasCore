@@ -90,6 +90,7 @@ theorem binding_phase_stopped_coupling
     (memory : BindingMemory (runtime setup) leaks)
     (original repaired : (application setup leaks).Execution)
     (frame : BindingMemory.Frame (runtime setup) leaks memory owner original repaired)
+    (completedMemory : memory.shadow.CompletedAt original.application.config)
     (started : reference.length ≤ (repaired.recall owner).length)
     (leftRecall : original.InputRecall (application setup leaks))
     (event : (graph setup).EventId) (payload : L.Ty)
@@ -133,7 +134,8 @@ theorem binding_phase_stopped_coupling
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
             record.envelope = false) ∨
           event ∈ next.1.application.missedEvents ∨
-          BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
+          (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
+            next.2.2.shadow.CompletedAt next.1.application.config)) := by
   classical
   intro app players strategy ending
   let scheduler := rosterScheduler setup leaks rosters network
@@ -178,7 +180,8 @@ theorem binding_phase_stopped_coupling
             (runtime setup).permittedServiceEnvelope record.observation record.ledger
               record.envelope = false) ∨
             event ∈ final.1.application.missedEvents ∨
-            BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1) := by
+            (BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1 ∧
+              final.2.2.shadow.CompletedAt final.1.application.config)) := by
     obtain ⟨paired, sameMemory, nextTrace, prior, priorSupport, sampled⟩ := related next member
     obtain ⟨nextTrace⟩ := nextTrace
     have priorRecall := foreign_roster_recall setup leaks players network owner foreign absent
@@ -215,10 +218,18 @@ theorem binding_phase_stopped_coupling
         rw [← equal]
         simp only [List.length_append, List.length_singleton, priorPosition,
           List.length_map, position]
+    have nextCompleted : next.2.2.shadow.CompletedAt next.1.application.config := by
+      rw [sameMemory]
+      apply completedMemory.mono
+      exact ((runtime setup).reactiveCompletedInvariant leaks
+        original.application.config.cut.completed).environmentStep prior next.1 (.activate owner)
+          ((runtime setup).runInteractionPlan_completed_subset leaks players network
+            (foreign.map ServiceInstruction.player) original prior priorSupport) sampled
     simpa only [suffixLength] using binding_window_stopped_coupling setup leaks bounds values
       capacity rosters opportunities
       network source target agrees owner policy available reference event payload outputEq
-        codeEq node rank prior next.1 next.2.1 sampled next.2.2 paired nextTrace nextStarted
+        codeEq node rank prior next.1 next.2.1 sampled next.2.2 paired nextCompleted nextTrace
+        nextStarted
           recalled
         nextReady nextUnsent foreign rest roster
         (by rw [currentPosition, phase])

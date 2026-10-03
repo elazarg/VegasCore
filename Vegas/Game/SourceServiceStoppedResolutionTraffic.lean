@@ -131,46 +131,6 @@ theorem source_resolution_conforming_silent_runUntil
                   (ready_after_unfinished_round setup leaks scheduler _ ready leftMove finished)
                   nextSame (by omega) (by omega)
 
-private theorem rawTrace_remaining
-    {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication Principal)
-    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler) :
-    ∀ {state} (_trace : (app.protocol initial horizon scheduler).Trace state),
-      state.elim True (fun control =>
-        control.execution.environmentRecall.length + control.remaining = horizon) := by
-  intro state trace
-  induction trace with
-  | start => trivial
-  | @extend before after prior joint _legal reached ih =>
-      change after ∈ (app.transition initial horizon scheduler before joint).support at reached
-      cases before with
-      | none =>
-          obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ reached
-          change 0 + horizon = horizon
-          exact Nat.zero_add horizon
-      | some control =>
-          rcases control with ⟨remaining, actor, execution⟩
-          change execution.environmentRecall.length + remaining = horizon at ih
-          cases actor with
-          | some who =>
-              cases (PMF.mem_support_pure_iff _ _).mp reached
-              change (execution.respond app who ((joint who).getD ⟨none⟩)).environmentRecall.length
-                + remaining = horizon
-              rw [app.respond_environmentRecall]
-              exact ih
-          | none =>
-              cases remaining with
-              | zero =>
-                  cases (PMF.mem_support_pure_iff _ _).mp reached
-                  exact ih
-              | succ remaining =>
-                  obtain ⟨command, _, supported⟩ :=
-                    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-                  obtain ⟨next, moved, rfl⟩ := PMF.support_map .. ▸ supported
-                  obtain ⟨updated, _, rfl⟩ := PMF.support_map .. ▸ moved
-                  change (execution.environmentRecall ++ [_]).length + remaining = horizon
-                  simp only [List.length_append, List.length_singleton]
-                  omega
-
 /-- The actual initialized horizon supplies the round budgets, and equal
 scheduler recall gives the same remaining count on both sides. -/
 theorem source_resolution_conforming_silent_runUntilHorizon
@@ -205,9 +165,9 @@ theorem source_resolution_conforming_silent_runUntilHorizon
         (fun _ => (application setup leaks).silentPolicy)
         (fun final => event ∈ final.application.config.cut.completed) horizon right).map
           ((runtime setup).bindingTraffic leaks focal) := by
-  have leftAccounted := rawTrace_remaining (application setup leaks) (initialLaw setup)
+  have leftAccounted := (application setup leaks).raw_trace_accounted (initialLaw setup)
     horizon scheduler leftTrace
-  have rightAccounted := rawTrace_remaining (application setup leaks) (initialLaw setup)
+  have rightAccounted := (application setup leaks).raw_trace_accounted (initialLaw setup)
     horizon scheduler rightTrace
   have recalled := congrArg (fun read => read.2.2.1) same
   dsimp only [bindingTraffic] at recalled

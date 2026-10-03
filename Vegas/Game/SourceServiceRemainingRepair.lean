@@ -77,6 +77,7 @@ theorem remaining_events_stopped_coupling
     (original repaired : (application setup leaks).Execution)
     (frame : BindingMemory.Frame (runtime setup) leaks memory owner original repaired)
     (onlyBindings : memory.shadow.OwnBindings owner)
+    (completedMemory : memory.shadow.CompletedAt original.application.config)
     (started : reference.length ≤ (repaired.recall owner).length)
     (leftRecall : original.InputRecall (application setup leaks))
     (sound : ((runtime setup).packetEvidence leaks).Sound original)
@@ -113,7 +114,8 @@ theorem remaining_events_stopped_coupling
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
             record.envelope = false) ∨
           next.1.application.publicView.missedDecisionBy owner = true ∨
-          BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
+          (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
+            next.2.2.shadow.CompletedAt next.1.application.config)) := by
   classical
   intro app players strategy
   let menu := sourceServiceMenu setup leaks bounds rosters
@@ -134,14 +136,15 @@ theorem remaining_events_stopped_coupling
           ReactiveApplication.Implementation.runJoint, PMF.pure_map]
       · intro next reached
         cases (PMF.mem_support_pure_iff _ _).mp reached
-        exact ⟨⟨trace⟩, onlyBindings, Or.inr (Or.inr frame)⟩
+        exact ⟨⟨trace⟩, onlyBindings, Or.inr (Or.inr ⟨frame, completedMemory⟩)⟩
   | cons event rest ih =>
       let block := rosterBlock setup rosters event
       let suffix := rest.flatMap (rosterBlock setup rosters)
       obtain ⟨eventRank, restEq⟩ := finRange_drop_cons eventsEq
       obtain ⟨step, first, second, related⟩ := event_block_stopped_coupling setup leaks bounds
         values capacity rosters opportunities network source target agrees owner policy
-          available reference memory original repaired frame onlyBindings started leftRecall sound
+          available reference memory original repaired frame onlyBindings completedMemory started
+            leftRecall sound
             leftBinding leftRemembered event (remaining + suffix.length) (by
               have equal : remaining + suffix.length + block.length =
                   remaining + ((event :: rest).flatMap (rosterBlock setup rosters)).length := by
@@ -165,7 +168,8 @@ theorem remaining_events_stopped_coupling
                 (runtime setup).permittedServiceEnvelope record.observation record.ledger
                   record.envelope = false) ∨
                 final.1.application.publicView.missedDecisionBy owner = true ∨
-                BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1) := by
+                (BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1 ∧
+                  final.2.2.shadow.CompletedAt final.1.application.config)) := by
         by_cases bad : (∃ record ∈ app.executionTraffic next.1,
             record.envelope.sender = owner ∧
               (runtime setup).permittedServiceEnvelope record.observation record.ledger
@@ -186,7 +190,7 @@ theorem remaining_events_stopped_coupling
               owner next.1 final.1 missed reached))
         · have connected := related next member
           obtain ⟨nextTrace⟩ := connected.1
-          have paired := (connected.2.resolve_left (fun traffic => bad (Or.inl
+          obtain ⟨paired, nextCompleted⟩ := (connected.2.resolve_left (fun traffic => bad (Or.inl
             traffic))).resolve_left
             (fun omission => bad (Or.inr omission))
           have leftSupport : next.1 ∈
@@ -234,7 +238,8 @@ theorem remaining_events_stopped_coupling
             rw [(runtime setup).runInteractionPlan_recall leaks players network block original
               next.1 leftSupport, position, List.length_append]
           obtain ⟨coupling, leftLaw, rightLaw, connected⟩ := ih next.2.2 next.1 next.2.1 paired
-            nextMemory nextStarted nextRecall nextSound nextBinding nextRemembered nextTrace
+            nextMemory nextCompleted nextStarted nextRecall nextSound nextBinding nextRemembered
+            nextTrace
             (before ++ block)
             (by simpa only [List.flatMap_cons, List.append_assoc, block, suffix] using split)
             (rank + 1) restEq (by rw [beforeEq, ← eventRank, rosterPlanPrefix_succ]) nextPosition

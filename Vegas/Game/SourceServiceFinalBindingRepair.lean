@@ -38,6 +38,7 @@ theorem final_binding_history_coupling
       (prior.environmentStep (application setup leaks) (.activate owner)).support)
     (memory : BindingMemory (runtime setup) leaks)
     (frame : BindingMemory.Frame (runtime setup) leaks memory owner original repaired)
+    (completedMemory : memory.shadow.CompletedAt original.application.config)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         (some ⟨remaining, some owner, repaired⟩))
@@ -78,7 +79,8 @@ theorem final_binding_history_coupling
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
             record.envelope = false) ∨
         event ∈ next.1.application.missedEvents ∨
-        BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 := by
+        (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
+          next.2.2.shadow.CompletedAt next.1.application.config) := by
   classical
   intro app strategy plan
   have owned : (graph setup).actor? event = some owner := by
@@ -146,7 +148,8 @@ theorem final_binding_history_coupling
     have covered := values event
     rw [outputEq] at covered
     exact covered (L.someValue payload)
-  obtain ⟨coupling, first, second, related⟩ := frame.required_binding_final_block_coupling bounds
+  obtain ⟨coupling, first, second, related⟩ := frame.required_binding_final_block_coupling
+    completedMemory bounds
     (sourceServiceMenu setup leaks bounds rosters) players network prior sampled reference started
       recalled remaining event payload outputEq codeEq node
       (by rw [counted]; exact (frame.slots _).mpr fresh)

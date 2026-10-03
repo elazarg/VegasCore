@@ -13,14 +13,126 @@ noncomputable section
 
 namespace Vegas.EventGraphRuntime
 
-open Interaction GameTheory.Math.Probability
+open Interaction EventGraph GameTheory.Math.Probability
 
-variable {Player : Type} [DecidableEq Player]
+variable {Player : Type}
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
   (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
+namespace BindingShadow
+
+/-- At a completed boundary, completion overrides name completed events.
+A pending unusable failure override satisfies this invariant once actual
+inclusion or expiry completes its event. -/
+def CompletedAt (memory : BindingShadow graph) (config : graph.Config) : Prop :=
+  ∀ event, (memory.actions event).isSome ∨ (memory.values (.inr event)).isSome →
+    event ∈ config.cut.completed
+
+theorem completedAt_empty (config : graph.Config) :
+    (empty : BindingShadow graph).CompletedAt config := by
+  intro event present
+  rcases present with present | present <;> cases present
+
+/-- A completed-boundary shadow remains valid as the completed cut grows. -/
+theorem CompletedAt.mono {memory : BindingShadow graph} {before after : graph.Config}
+    (past : memory.CompletedAt before)
+    (completed : before.cut.completed ⊆ after.cut.completed) :
+    memory.CompletedAt after := by
+  intro event present
+  exact completed (past event present)
+
+theorem CompletedAt.rememberCandidate {memory : BindingShadow graph} {config : graph.Config}
+    (past : memory.CompletedAt config) (slot : CandidateSlot graph)
+    (value : CommitmentCandidate (Raw L)) :
+    (memory.rememberCandidate slot value).CompletedAt config := past
+
+theorem CompletedAt.complete {memory : BindingShadow graph} {config : graph.Config}
+    (past : memory.CompletedAt config) (event : graph.EventId) (ready : config.cut.Ready event)
+    (action : graph.Action event) (value : (graph.outputLayout event).Value) :
+    memory.CompletedAt (config.complete event ready action value) := by
+  intro query present
+  rw [Config.complete_cut, EventOrder.Cut.mem_complete]
+  exact Or.inr (past query present)
+
+theorem CompletedAt.rememberCompletion_of_completed
+    {memory : BindingShadow graph} {config : graph.Config}
+    (past : memory.CompletedAt config) (event : graph.EventId)
+    (completed : event ∈ config.cut.completed)
+    (action : graph.Action event) (value : (graph.outputLayout event).Value) :
+    (memory.rememberCompletion event action value).CompletedAt config := by
+  classical
+  intro query present
+  by_cases same : query = event
+  · exact same ▸ completed
+  · apply past query
+    simpa only [BindingShadow.rememberCompletion, Function.update_of_ne same,
+      Function.update_of_ne (Sum.inr_injective.ne same)] using present
+
+theorem CompletedAt.rememberCompletion {memory : BindingShadow graph} {config : graph.Config}
+    (past : memory.CompletedAt config) (event : graph.EventId) (ready : config.cut.Ready event)
+    (originalAction actualAction : graph.Action event)
+    (originalValue actualValue : (graph.outputLayout event).Value) :
+    (memory.rememberCompletion event originalAction originalValue).CompletedAt
+      (config.complete event ready actualAction actualValue) := by
+  classical
+  intro query present
+  rw [Config.complete_cut, EventOrder.Cut.mem_complete]
+  by_cases same : query = event
+  · exact Or.inl same
+  · apply Or.inr
+    apply past query
+    simpa only [BindingShadow.rememberCompletion, Function.update_of_ne same,
+      Function.update_of_ne (Sum.inr_injective.ne same)] using present
+
+theorem CompletedAt.ready_none {memory : BindingShadow graph} {config : graph.Config}
+    (past : memory.CompletedAt config) (event : graph.EventId) (ready : config.cut.Ready event) :
+    memory.actions event = none ∧ memory.values (.inr event) = none := by
+  constructor
+  · cases stored : memory.actions event with
+    | none => rfl
+    | some action =>
+        exact False.elim (ready.1 (past event (Or.inl (by simp only [stored]; rfl))))
+  · cases stored : memory.values (.inr event) with
+    | none => rfl
+    | some value =>
+        exact False.elim (ready.1 (past event (Or.inr (by simp only [stored]; rfl))))
+
+
+end BindingShadow
+
+variable [DecidableEq Player]
+
 namespace BindingMemory
+
+/-- The actual fresh-binding repair memory is valid at every later completed
+boundary containing the addressed event. Usable responses add no completion
+override; unusable responses add only that event's failure override. -/
+theorem repairResponse_completedAt (who : Player) (memory : BindingMemory runtime leaks)
+    (actual : (runtime.reactiveApplication leaks).PlayerView)
+    (event : graph.EventId) (payload : L.Ty)
+    (outputEq : graph.outputLayout event = .binding who payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode graph.layout) outputEq)
+      (graph.nodes event) = .bind who payload)
+    (node : nodeView graph event = .bind who payload outputEq codeEq)
+    (serial : Nat) (opening : Option (Raw L))
+    (originalFresh : (memory.shadow.inputView runtime leaks actual).application.candidates
+      (.prepared serial) = .fresh)
+    (actualFresh : actual.application.candidates (.prepared serial) = .fresh)
+    (before after : graph.Config) (past : memory.shadow.CompletedAt before)
+    (advanced : before.cut.completed ⊆ after.cut.completed)
+    (completed : event ∈ after.cut.completed) :
+    (memory.repairResponse runtime leaks who actual
+      ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩).2.CompletedAt
+        after := by
+  cases decoded : opening.bind (fun raw => raw.as? payload) with
+  | none =>
+      simp only [repairResponse, node, originalFresh, actualFresh, decoded, and_self, ↓reduceIte]
+      exact ((past.mono advanced).rememberCandidate _ _).rememberCompletion_of_completed
+        event completed _ _
+  | some value =>
+      simp only [repairResponse, node, originalFresh, actualFresh, decoded, and_self, ↓reduceIte]
+      exact (past.mono advanced).rememberCandidate _ _
 
 theorem repairResponse_submit_input (who : Player) (memory : BindingMemory runtime leaks)
     (left right : (runtime.reactiveApplication leaks).Execution)
@@ -66,11 +178,11 @@ theorem repairResponse_submit_input (who : Player) (memory : BindingMemory runti
   let catalog := memory.shadow.rememberCandidate (.prepared serial)
     (originalCall.candidateAfter who
       (memory.shadow.inputView runtime leaks beforeView).application.candidates (.prepared serial))
-  let result : PublicationResult (L.Val payload) :=
-    decoded.elim PublicationResult.failure PublicationResult.success
-  let shadow := catalog.rememberCompletion event
-    (cast (congrArg EventGraph.EventField.Action outputEq.symm) result)
-    (cast (congrArg EventGraph.EventField.Value outputEq.symm) result)
+  let shadow := match decoded with
+    | none => catalog.rememberCompletion event
+        (cast (congrArg EventGraph.EventField.Action outputEq.symm) PublicationResult.failure)
+        (cast (congrArg EventGraph.EventField.Value outputEq.symm) PublicationResult.failure)
+    | some _ => catalog
   have ownFresh : (memory.shadow.inputView runtime leaks beforeView).application.candidates
       (.prepared serial) = .fresh := by
     rw [observed]
@@ -81,14 +193,15 @@ theorem repairResponse_submit_input (who : Player) (memory : BindingMemory runti
       (repaired, shadow) := by
     simp only [repairResponse, original, originalCall, node, ownFresh, actualLocalFresh,
       and_self, ↓reduceIte]
-    change ((match decoded with
-      | none => runtime.reactiveBinding leaks who event payload
-          (.success (L.someValue payload)) serial
-      | some _ => original), shadow) = (repaired, shadow)
-    apply Prod.ext
-    · dsimp only [repaired, repairedCall, replacementOpening]
-      cases decoded <;> rfl
-    · rfl
+    change (match decoded with
+      | none => (runtime.reactiveBinding leaks who event payload
+          (.success (L.someValue payload)) serial,
+          catalog.rememberCompletion event
+            (cast (congrArg EventGraph.EventField.Action outputEq.symm) PublicationResult.failure)
+            (cast (congrArg EventGraph.EventField.Value outputEq.symm) PublicationResult.failure))
+      | some _ => (original, catalog)) = (repaired, shadow)
+    cases decodedEq : decoded <;>
+      simp only [repaired, repairedCall, replacementOpening, shadow, decodedEq] <;> rfl
   let before := left.respond app who original
   let after := right.respond app who repaired
   let remembered : BindingMemory runtime leaks :=
@@ -118,11 +231,20 @@ theorem repairResponse_submit_input (who : Player) (memory : BindingMemory runti
     app.observePlayer before.application who at catalogEq
   have shadowEq : shadow.view (app.observePlayer after.application who) =
       app.observePlayer before.application who := by
-    rw [show shadow.view (app.observePlayer after.application who) =
-      catalog.view (app.observePlayer after.application who) from
-        catalog.rememberCompletion_pending runtime leaks after.application who event
-          (submittedConfig ▸ ready) _ _]
-    exact catalogEq
+    cases decodedEq : decoded with
+    | none =>
+        rw [show shadow.view (app.observePlayer after.application who) =
+          catalog.view (app.observePlayer after.application who) from
+            by simpa only [shadow, decodedEq] using
+              catalog.rememberCompletion_pending runtime leaks after.application who event
+                (submittedConfig ▸ ready)
+                (cast (congrArg EventGraph.EventField.Action outputEq.symm)
+                  PublicationResult.failure)
+                (cast (congrArg EventGraph.EventField.Value outputEq.symm)
+                  PublicationResult.failure)]
+        exact catalogEq
+    | some value =>
+        simpa only [shadow, decodedEq] using catalogEq
   have publicEq : right.application.publicView = left.application.publicView :=
     congrArg (fun view : app.PlayerView => view.application.publicView) observed
   have packetEq : (⟨originalCall, .none⟩ : WitnessedSubmission graph).emit

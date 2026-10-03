@@ -3,6 +3,7 @@
 import Vegas.Game.SourceServiceOffTurnWindow
 import Vegas.Pending.ReactiveBindingExpiry
 import Vegas.Pending.ReactiveServiceTraffic
+import Vegas.Pending.ReactiveServiceProgress
 import Vegas.Pending.ReactivePlayerWindow
 
 /-! # A whole public-sample block in the stopped private repair
@@ -122,6 +123,7 @@ theorem sample_block_stopped_coupling
     (original repaired : (application setup leaks).Execution)
     (frame : BindingMemory.Frame (runtime setup) leaks memory owner original repaired)
     (onlyBindings : memory.shadow.OwnBindings owner)
+    (completedMemory : memory.shadow.CompletedAt original.application.config)
     (started : reference.length ≤ (repaired.recall owner).length)
     (leftRecall : original.InputRecall (application setup leaks))
     (rightRecall : repaired.InputRecall (application setup leaks))
@@ -162,7 +164,8 @@ theorem sample_block_stopped_coupling
         ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
             record.envelope = false) ∨
-          BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
+          (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
+            next.2.2.shadow.CompletedAt next.1.application.config)) := by
   classical
   intro app players strategy ending
   let menu := sourceServiceMenu setup leaks bounds rosters
@@ -192,7 +195,8 @@ theorem sample_block_stopped_coupling
           (∃ record ∈ app.executionTraffic final.1, record.envelope.sender = owner ∧
             (runtime setup).permittedServiceEnvelope record.observation record.ledger
               record.envelope = false) ∨
-          BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1 := by
+          (BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1 ∧
+            final.2.2.shadow = memory.shadow) := by
     by_cases bad : ∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
         (runtime setup).permittedServiceEnvelope record.observation record.ledger
           record.envelope = false
@@ -227,7 +231,7 @@ theorem sample_block_stopped_coupling
         rfl
       · intro final member
         obtain ⟨pair, chosen, rfl⟩ := PMF.support_map .. ▸ member
-        exact Or.inr (connected pair chosen)
+        exact Or.inr ⟨connected pair chosen, shadow⟩
   let tail := fun next supported => (existsTail next supported).choose
   let coupling := window.bindOnSupport tail
   have leftLaw : coupling.map Prod.fst = (runtime setup).runInteractionPlan leaks players network
@@ -284,6 +288,14 @@ theorem sample_block_stopped_coupling
       exact trace
   · obtain ⟨next, member, reached⟩ :=
       Set.mem_iUnion₂.mp (PMF.support_bindOnSupport .. ▸ supported)
-    exact (existsTail next member).choose_spec.2.2 final reached
+    rcases (existsTail next member).choose_spec.2.2 final reached with bad | ⟨paired, shadow⟩
+    · exact Or.inl bad
+    · refine Or.inr ⟨paired, ?_⟩
+      rw [shadow]
+      apply completedMemory.mono
+      apply (runtime setup).runInteractionPlan_completed_subset leaks players network
+        (visits.map ServiceInstruction.player ++ ending) original final.1
+      rw [← leftLaw, PMF.support_map]
+      exact ⟨final, supported, rfl⟩
 
 end Vegas

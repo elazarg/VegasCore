@@ -34,7 +34,9 @@ theorem binding_submission_pending
       (graph.nodes event) = .bind owner payload)
     (node : nodeView graph event = .bind owner payload outputEq codeEq)
     (serial : Nat) (opening : Option (Raw L))
-    (fresh : original.application.candidates.lookup (owner, .prepared serial) = .fresh) :
+    (fresh : original.application.candidates.lookup (owner, .prepared serial) = .fresh)
+    (clearUsable : ∀ value, opening.bind (fun raw => raw.as? payload) = some value →
+      memory.shadow.actions event = none ∧ memory.shadow.values (.inr event) = none) :
     let app := runtime.reactiveApplication leaks
     let view := repaired.observe app owner
     let response : app.Action :=
@@ -44,12 +46,17 @@ theorem binding_submission_pending
     let right := repaired.respond app owner changed.1
     left.application.candidates.lookup (owner, .prepared serial) ≠ .fresh ∧
       right.application.candidates.lookup (owner, .prepared serial) ≠ .fresh ∧
-      changed.2.actions event = some (cast (congrArg EventField.Action outputEq.symm)
-        (left.application.bindingResult (owner, .prepared serial) payload)) ∧
-      changed.2.values (.inr event) = some (cast (congrArg EventField.Value outputEq.symm)
-        (left.application.bindingResult (owner, .prepared serial) payload)) ∧
-      ∀ value, left.application.bindingResult (owner, .prepared serial) payload = .success value →
-        right.application.bindingResult (owner, .prepared serial) payload = .success value := by
+      ((changed.2.actions event = some
+          (cast (congrArg EventField.Action outputEq.symm)
+            (left.application.bindingResult (owner, .prepared serial) payload)) ∧
+        changed.2.values (.inr event) = some
+          (cast (congrArg EventField.Value outputEq.symm)
+            (left.application.bindingResult (owner, .prepared serial) payload)) ∧
+        ∀ value, left.application.bindingResult (owner, .prepared serial) payload = .success value →
+          right.application.bindingResult (owner, .prepared serial) payload = .success value) ∨
+      (changed.2.actions event = none ∧ changed.2.values (.inr event) = none ∧
+        right.application.bindingResult (owner, .prepared serial) payload =
+          left.application.bindingResult (owner, .prepared serial) payload)) := by
   let app := runtime.reactiveApplication leaks
   let view := repaired.observe app owner
   let response : app.Action :=
@@ -66,8 +73,7 @@ theorem binding_submission_pending
   have result : left.application.bindingResult (owner, .prepared serial) payload =
       (opening.bind fun raw => raw.as? payload).elim .failure PublicationResult.success :=
     runtime.submitted_bindingResult leaks original owner event payload serial opening fresh
-  change _ ∧ _ ∧ _ ∧ _ ∧ _
-  refine ⟨submitStep_commitment_fixed _ owner event (.prepared serial), ?_, ?_, ?_, ?_⟩
+  refine ⟨submitStep_commitment_fixed _ owner event (.prepared serial), ?_, ?_⟩
   · cases decoded : opening.bind (fun raw => raw.as? payload) with
     | none =>
         change (repaired.respond app owner changed.1).application.candidates.lookup _ ≠ .fresh
@@ -76,30 +82,43 @@ theorem binding_submission_pending
         exact submitStep_commitment_fixed _ owner event (.prepared serial)
     | some value =>
         change (repaired.respond app owner changed.1).application.candidates.lookup _ ≠ .fresh
-        rw [memory.repairResponse_usable runtime leaks owner view event payload outputEq codeEq
-          node serial opening ownFresh actualFresh value decoded]
+        rw [congrArg Prod.fst (memory.repairResponse_usable runtime leaks owner view event payload
+          outputEq codeEq node serial opening ownFresh actualFresh value decoded)]
         exact submitStep_commitment_fixed _ owner event (.prepared serial)
-  · change changed.2.actions event = some (cast (congrArg EventField.Action outputEq.symm)
-      (left.application.bindingResult (owner, .prepared serial) payload))
-    simp only [changed, repairResponse, response, node, ownFresh, localFresh, and_self,
-      ↓reduceIte, result, BindingShadow.rememberCompletion, Function.update_self]
-  · change changed.2.values (.inr event) = some (cast (congrArg EventField.Value outputEq.symm)
-      (left.application.bindingResult (owner, .prepared serial) payload))
-    simp only [changed, repairResponse, response, node, ownFresh, localFresh, and_self,
-      ↓reduceIte, result, BindingShadow.rememberCompletion, Function.update_self]
-  · intro value same
-    change left.application.bindingResult (owner, .prepared serial) payload = .success value at same
-    rw [result] at same
-    cases decoded : opening.bind (fun raw => raw.as? payload) with
-    | none => simp only [decoded, Option.elim_none] at same; cases same
-    | some chosen =>
-        simp only [decoded, Option.elim_some, PublicationResult.success.injEq] at same
-        subst chosen
-        change (repaired.respond app owner changed.1).application.bindingResult _ _ = _
-        rw [memory.repairResponse_usable runtime leaks owner view event payload outputEq codeEq
-          node serial opening ownFresh actualFresh value decoded]
-        rw [runtime.submitted_bindingResult leaks repaired owner event payload serial
-          opening actualFresh, decoded, Option.elim_some]
+  · cases decoded : opening.bind (fun raw => raw.as? payload) with
+    | none =>
+        left
+        refine ⟨?_, ?_, ?_⟩
+        · change changed.2.actions event = some
+            (cast (congrArg EventField.Action outputEq.symm)
+              (left.application.bindingResult (owner, .prepared serial) payload))
+          simp only [changed, repairResponse, response, node, ownFresh, localFresh, and_self,
+            ↓reduceIte, decoded, result, Option.elim_none, BindingShadow.rememberCompletion,
+            Function.update_self]
+        · change changed.2.values (.inr event) = some
+            (cast (congrArg EventField.Value outputEq.symm)
+              (left.application.bindingResult (owner, .prepared serial) payload))
+          simp only [changed, repairResponse, response, node, ownFresh, localFresh, and_self,
+            ↓reduceIte, decoded, result, Option.elim_none, BindingShadow.rememberCompletion,
+            Function.update_self]
+        · intro value same
+          rw [result, decoded, Option.elim_none] at same
+          cases same
+    | some value =>
+        right
+        obtain ⟨noAction, noValue⟩ := clearUsable value decoded
+        refine ⟨?_, ?_, ?_⟩
+        · change changed.2.actions event = none
+          simpa only [changed, repairResponse, response, node, ownFresh, localFresh, and_self,
+            ↓reduceIte, decoded, BindingShadow.rememberCandidate] using noAction
+        · change changed.2.values (.inr event) = none
+          simpa only [changed, repairResponse, response, node, ownFresh, localFresh, and_self,
+            ↓reduceIte, decoded, BindingShadow.rememberCandidate] using noValue
+        · change (repaired.respond app owner changed.1).application.bindingResult _ _ = _
+          rw [congrArg Prod.fst (memory.repairResponse_usable runtime leaks owner view event payload
+            outputEq codeEq node serial opening ownFresh actualFresh value decoded)]
+          rw [runtime.submitted_bindingResult leaks repaired owner event payload serial opening
+            actualFresh, result]
 
 /-- This is the real pre-inclusion mixed-response law, including the original
 strategy's correlation between waiting and its eventual binding value. -/

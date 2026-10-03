@@ -28,6 +28,7 @@ The support condition states the clean branch of the response classification;
 it does not assert that all raw deviations are clean. -/
 theorem binding_response_coupling
     (frame : Frame runtime leaks memory owner original repaired)
+    (completedMemory : memory.shadow.CompletedAt original.application.config)
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (scheduler : runtime.NetworkPolicy leaks)
     (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -58,7 +59,8 @@ theorem binding_response_coupling
           (runtime.interactionStep leaks players scheduler (.includeLatest event owner)
             next.1).map fun execution => (execution, next.2)) ∧
       ∀ next ∈ coupling.support,
-        Frame runtime leaks next.2.2 owner next.1 next.2.1 := by
+        Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
+          next.2.2.shadow.CompletedAt next.1.application.config := by
   let app := runtime.reactiveApplication leaks
   let strategy := implementation runtime leaks owner reference (players owner)
   let law := players owner (original.recall owner) (original.observe app owner)
@@ -116,8 +118,9 @@ theorem binding_response_coupling
         change runtime.interactionStep leaks players scheduler (.includeLatest event owner)
           (repaired.respond app owner
             (memory.repairResponse runtime leaks owner (repaired.observe app owner) _).1) = _
-        rw [memory.repairResponse_usable runtime leaks owner (repaired.observe app owner)
-          event payload outputEq codeEq node serial opening originalFresh actualFresh value decoded]
+        rw [congrArg Prod.fst (memory.repairResponse_usable runtime leaks owner
+          (repaired.observe app owner) event payload outputEq codeEq node serial opening
+          originalFresh actualFresh value decoded)]
         exact selected repaired opening (frame.network ▸ serials)
           (congrArg (fun net => net.nextSerial owner) frame.network.symm)
   have responseLaw : strategy.respond memory (repaired.recall owner,
@@ -150,7 +153,31 @@ theorem binding_response_coupling
   · intro next member
     obtain ⟨response, supported, rfl⟩ := PMF.support_map .. ▸ member
     obtain ⟨opening, rfl⟩ := canonical response supported
-    exact frame.binding event payload outputEq codeEq node serial opening fresh ready timely
-      vacant unused serials
+    refine ⟨frame.binding event payload outputEq codeEq node serial opening
+      (fun _ _ => completedMemory.ready_none event ready) fresh ready timely vacant unused serials,
+      ?_⟩
+    have configLaw := runtime.rawBinding_reserved_config leaks original owner event payload
+      outputEq codeEq node serial opening ready timely fresh vacant unused serials players scheduler
+    change (runtime.interactionStep leaks players scheduler (.includeLatest event owner)
+      (original.respond app owner
+        ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩)).map
+          (fun final => (final.application.config, final.receipts)) = _ at configLaw
+    rw [selected original opening serials rfl, PMF.pure_map] at configLaw
+    have configEq := congrArg Prod.fst ((PMF.mem_support_pure_iff _ _).mp
+      (configLaw ▸ ((PMF.mem_support_pure_iff _ _).mpr rfl)))
+    let final := finish (original.respond app owner
+      ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩)
+    change final.application.config = _ at configEq
+    have advanced : original.application.config.cut.completed ⊆
+        final.application.config.cut.completed := by
+      rw [configEq, Config.complete_cut]
+      exact fun _ present => Finset.mem_insert_of_mem present
+    have completed : event ∈ final.application.config.cut.completed := by
+      rw [configEq, Config.complete_cut]
+      exact Finset.mem_insert_self _ _
+    exact memory.repairResponse_completedAt runtime leaks owner (repaired.observe app owner)
+      event payload outputEq codeEq node serial opening
+      (by rw [frame.observed]; exact fresh) ((frame.slots (.prepared serial)).mp fresh)
+      original.application.config _ completedMemory advanced completed
 
 end Vegas.EventGraphRuntime.BindingMemory.Frame

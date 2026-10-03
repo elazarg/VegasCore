@@ -24,6 +24,8 @@ import Vegas.Examples.LateResolutionNativeInformation
 import Vegas.Examples.LateResolutionNativeContinuation
 import Vegas.Examples.LateResolutionNativeRationality
 import Vegas.Examples.LateResolutionNativePerturbation
+import Vegas.Examples.LateResolutionFreeLate
+import Vegas.Examples.LateResolutionFirstActivation
 import Vegas.Examples.MonitoredGuessing
 import Vegas.Examples.OpeningTimingChannel
 import Vegas.Examples.ParameterOutcomes

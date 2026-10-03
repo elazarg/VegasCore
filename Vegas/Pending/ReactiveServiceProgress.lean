@@ -2,6 +2,8 @@
 
 import Vegas.Pending.ReactiveServiceEvaluation
 import Vegas.Pending.EventProgress
+import Vegas.Pending.ReactiveServiceRecall
+import Vegas.Pending.ReactiveAuthorizationProgress
 
 /-! # Progress under arbitrary reactive player and network policies
 
@@ -18,6 +20,20 @@ open GameTheory.Math.Probability Interaction
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
+
+/-- Actual service execution retains every event already completed at its start,
+for arbitrary player responses and scheduler choices. -/
+theorem runInteractionPlan_completed_subset (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (network : runtime.NetworkPolicy leaks) (plan : List (ServiceInstruction graph))
+    (before after : (runtime.reactiveApplication leaks).Execution)
+    (supported : after ∈ (runtime.runInteractionPlan leaks players network plan before).support) :
+    before.application.config.cut.completed ⊆ after.application.config.cut.completed :=
+  runtime.runInteractionPlan_preserves leaks players network _
+    (ReactiveApplication.Invariant.policyInvariant (runtime.reactiveApplication leaks)
+      (runtime.reactiveCompletedInvariant leaks before.application.config.cut.completed)
+      players) plan before after (fun _ member => member) supported
 
 theorem reactive_respond_progress (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))

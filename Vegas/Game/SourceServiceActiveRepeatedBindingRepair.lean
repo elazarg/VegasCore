@@ -86,7 +86,8 @@ private theorem recorded_response_tail
         (∃ record ∈ app.executionTraffic final.1, record.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
             record.envelope = false) ∨
-        BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1 := by
+        (BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1 ∧
+          final.2.2.shadow.CompletedAt final.1.application.config) := by
   intro app strategy tail
   let message : Message Player (WitnessedPacket (graph setup)) :=
     ⟨(owner, nonce), ⟨.commitment event (owner, .prepared serial), none, some ⟨event⟩⟩⟩
@@ -138,6 +139,10 @@ private theorem recorded_response_tail
     exact data.2.2.2.2.1.mono (fun _ valid _ => valid)
   exact repeated_binding_block_coupling setup leaks bounds rosters network players owner event
     payload outputEq codeEq node (.prepared serial) nonce memory left right frame
+    (by
+      intro other _ present
+      rw [shadow] at present
+      rcases present with present | present <;> cases present)
     reference started leftRecall rightRecall serialsNow
     (by rw [frame.network, rightCounter, rightLedger]; exact repeated)
     (by
@@ -369,7 +374,8 @@ theorem recorded_binding_history_response_block_coupling
         ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
             record.envelope = false) ∨
-        BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
+        (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
+          next.2.2.shadow.CompletedAt next.1.application.config)) := by
   classical
   intro app players reference memory strategy tail
   let menu := sourceServiceMenu setup leaks bounds rosters
@@ -450,7 +456,8 @@ theorem recorded_binding_history_response_block_coupling
           (∃ record ∈ app.executionTraffic final.1, record.envelope.sender = owner ∧
             (runtime setup).permittedServiceEnvelope record.observation record.ledger
               record.envelope = false) ∨
-          BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1 := by
+          (BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1 ∧
+          final.2.2.shadow.CompletedAt final.1.application.config) := by
     rcases firstRelated next member with ⟨record, step, authored, rejected⟩ | good
     · let left := (runtime setup).runInteractionPlan leaks players network tail next.1
       let right := strategy.runJoint owner players scheduler tail.length next.2.1 next.2.2

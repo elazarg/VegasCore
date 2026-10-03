@@ -77,57 +77,6 @@ theorem OwnBindings.public_action_none {memory : BindingShadow graph} {who : Pla
 
 variable [DecidableEq Player]
 
-/-- A completion with no private override is read from the real runtime.
-This includes public results and other owners' private bindings. -/
-theorem complete_unmodified_observation (memory : BindingShadow graph) (who : Player)
-    (left right : graph.Config)
-    (stores : memory.store (graph.playerObserve who right).store =
-      (graph.playerObserve who left).store)
-    (actions : (graph.playerObserve who right).ownActions.map memory.completion =
-      (graph.playerObserve who left).ownActions)
-    (event : graph.EventId) (leftReady : left.cut.Ready event)
-    (rightReady : right.cut.Ready event)
-    (noValue : memory.values (.inr event) = none)
-    (noAction : memory.actions event = none)
-    (action : graph.Action event) (value : (graph.outputLayout event).Value) :
-    memory.store (graph.playerObserve who
-      (right.complete event rightReady action value)).store =
-        (graph.playerObserve who (left.complete event leftReady action value)).store ∧
-    ((graph.playerObserve who
-      (right.complete event rightReady action value)).ownActions.map memory.completion) =
-        (graph.playerObserve who (left.complete event leftReady action value)).ownActions := by
-  classical
-  constructor
-  · funext field
-    by_cases selected : field = .inr event
-    · subst field
-      by_cases visible : graph.fieldVisibleTo who (.inr event)
-      · simp only [store, EventGraph.playerObserve, EventGraph.playerStore_of_visible,
-          visible, EventGraph.Config.store_output, EventGraph.Config.complete_output_same,
-          noValue, Option.map_some, Option.getD_none]
-      · simp only [store, EventGraph.playerObserve,
-          EventGraph.playerStore, visible, ↓reduceIte, Option.map_none]
-    · change memory.store (graph.playerStore who
-        (right.complete event rightReady action value).store) field =
-          graph.playerStore who (left.complete event leftReady action value).store field
-      rw [EventGraph.store_complete, EventGraph.store_complete]
-      have prior := congrFun stores field
-      simpa only [store, EventGraph.playerObserve, EventGraph.playerStore,
-        Function.update_of_ne selected] using prior
-  · change List.map memory.completion
-      (graph.ownCompletions who (right.history ++ [⟨event, action⟩])) =
-        graph.ownCompletions who (left.history ++ [⟨event, action⟩])
-    by_cases owned : graph.actor? event = some who
-    · simp only [EventGraph.ownCompletions, List.filter_append, List.filter_cons, owned,
-        decide_true, ↓reduceIte, List.filter_nil, List.map_append, List.map_cons, List.map_nil]
-      change (graph.playerObserve who right).ownActions.map memory.completion ++
-        [memory.completion ⟨event, action⟩] =
-          (graph.playerObserve who left).ownActions ++ [⟨event, action⟩]
-      rw [actions]
-      simp only [completion, noAction, Option.getD_none]
-    · simp only [EventGraph.ownCompletions, List.filter_append, List.filter_cons, owned,
-        decide_false, Bool.false_eq_true, ↓reduceIte, List.filter_nil, List.append_nil]
-      exact actions
 
 end BindingShadow
 
@@ -151,7 +100,9 @@ theorem repairResponse_ownBindings (who : Player) (memory : BindingMemory runtim
       · rename_i selected
         have owned := selected.2.1
         subst owner
-        exact (onlyBindings.rememberCandidate _ _).rememberCompletion _ payload outputEq _ _
+        split
+        · exact (onlyBindings.rememberCandidate _ _).rememberCompletion _ payload outputEq _ _
+        · exact onlyBindings.rememberCandidate _ _
       · exact onlyBindings
     · exact onlyBindings
     · exact onlyBindings

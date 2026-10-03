@@ -97,7 +97,8 @@ theorem required_resolution_stopped_response_coupling
               (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event]))
                 next.1).support → event ∈ final.application.missedEvents) ∨
         (Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
-          reference.length ≤ (next.2.1.recall owner).length) := by
+          reference.length ≤ (next.2.1.recall owner).length ∧
+          next.2.2.shadow = memory.shadow) := by
   classical
   have turnSome := original.application.publicView.ownTurn?_of_ownTurn owner event turn
   let app := runtime.reactiveApplication leaks
@@ -176,7 +177,7 @@ theorem required_resolution_stopped_response_coupling
       rw [ite_eq_left legal]
       dsimp only [proposed]
       rw [unchanged]
-      refine ⟨?_, ?_⟩
+      refine ⟨?_, ?_, rfl⟩
       · rw [actual]
         exact frame.withholding_response_frame event
       · rw [app.respond_recall_length]
@@ -215,7 +216,7 @@ theorem required_resolution_stopped_response_coupling
       rw [ite_eq_left legal]
       dsimp only [proposed]
       rw [unchanged]
-      refine ⟨?_, ?_⟩
+      refine ⟨?_, ?_, rfl⟩
       · rw [same]
         exact frame.successful_response_frame leftRecall leftBinding rightBinding event payload
           binding checks outputEq codeEq node value stored resolved
@@ -287,7 +288,8 @@ theorem required_resolution_stopped_activation_coupling
               (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event]))
                 next.1).support → event ∈ final.application.missedEvents) ∨
         (Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
-          reference.length ≤ (next.2.1.recall owner).length) := by
+          reference.length ≤ (next.2.1.recall owner).length ∧
+          next.2.2.shadow = memory.shadow) := by
   classical
   have turnSome := original.application.publicView.ownTurn?_of_ownTurn owner event turn
   let app := runtime.reactiveApplication leaks

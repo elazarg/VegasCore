@@ -71,7 +71,8 @@ theorem off_turn_history_response_coupling
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
             record.envelope = false) ∨
         BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
-          reference.length ≤ (next.2.1.recall owner).length) := by
+          reference.length ≤ (next.2.1.recall owner).length ∧
+          next.2.2.shadow = memory.shadow) := by
   classical
   intro app players strategy
   let menu := sourceServiceMenu setup leaks bounds rosters
@@ -130,6 +131,6 @@ theorem off_turn_history_response_coupling
         ⟨remaining, some owner, original⟩ ⟨remaining, none, next.1⟩ publicSame rfl
       rw [same, trafficSame, step]
       exact List.mem_append_right _ (List.mem_singleton_self _)
-    · exact Or.inr ⟨good.1, good.2.1⟩
+    · exact Or.inr ⟨good.1, good.2.1, good.2.2.1⟩
 
 end Vegas

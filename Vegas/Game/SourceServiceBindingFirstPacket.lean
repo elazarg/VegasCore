@@ -25,7 +25,9 @@ open SourceProgram Interaction EventGraphRuntime GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
-private theorem unrecorded_packets
+/-- Actual envelope provenance and an unrecorded own event exclude every
+earlier owner packet naming that event from the entire network. -/
+theorem sourceService_unrecorded_event_packets
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (execution : (application setup leaks).Execution) (owner : Player)
@@ -176,7 +178,8 @@ theorem sourceService_binding_first_packet
     packet.sender = owner → packet.payload.call.event? (graph setup) = some event →
       packet = message
   have packets : submitted.network.Satisfies safe := first_binding_packets setup leaks execution
-    owner event payload value serial (unrecorded_packets setup leaks execution owner event
+    owner event payload value serial
+      (sourceService_unrecorded_event_packets setup leaks execution owner event
       (legalFacts setup leaks horizon scheduler _ trace).provenance unrecorded)
   have afterReady : submitted.application.config.cut.Ready event := by
     rw [((runtime setup).reactive_respond_application leaks execution owner response).1]

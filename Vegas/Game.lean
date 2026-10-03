@@ -76,6 +76,9 @@ import Vegas.Game.SourceServiceBindingSelection
 import Vegas.Game.SourceServiceBindingChoiceSelection
 import Vegas.Game.SourceServiceBindingFirstPacket
 import Vegas.Game.SourceServiceBindingAttemptCompletion
+import Vegas.Game.SourceServiceBindingAttemptLaw
+import Vegas.Game.SourceServiceBindingNoAttempt
+import Vegas.Game.SourceServiceBindingTimingMixture
 import Vegas.Game.SourceServiceMissingStoppedCoupling
 import Vegas.Game.AsyncServiceFirstTurnBeliefResources
 import Vegas.Game.SourceServiceFirstBindingTraffic

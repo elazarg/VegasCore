@@ -1745,6 +1745,16 @@ is eventually at least `D/2` as trembles vanish, even if source and timing
 approximants vary. Every actual fiber history is supported. This rules out
 vanishing conditional regret for the waiting prescription; it leaves rational
 free late completion available.
+[LateResolutionFreeLate](../Vegas/Examples/LateResolutionFreeLate.lean)
+proves that every raw response at this entire late fiber yields typed failure
+and audited value at most zero for a nonnegative deposit. Legal FALSE attains
+zero and is locally optimal under any beliefs. This supplies the free late
+continuation; a whole native equilibrium still needs its other sites.
+[LateResolutionFirstActivation](../Vegas/Examples/LateResolutionFirstActivation.lean)
+derives the actual deterministic first native input under every profile and
+identifies its entire information fiber. Its clear menu contains only WAIT
+or canonical FALSE/TRUE; TRUE availability requires actual message bounds
+coverage. The other decision sites and whole equilibrium remain open.
 
 [SourceServiceSampleCompletion](../Vegas/Game/SourceServiceSampleCompletion.lean)
 derives actual silence, whole stopped-run equality with silent play, and the
@@ -1999,11 +2009,12 @@ derive ordinary service invariants; the completed preparation frame and
 opening-capability relation remain explicit resources. The implementation
 uses the complete bounded effective menu. Later owner bindings, admission
 to the narrower risk menu and terminal utility domination remain open.
-Fresh usable later bindings must retain their actual success or expiry;
-intended-success completion memory does not justify this case. The internal
-completed-boundary induction must carry `BindingShadow.CompletedAt`, which
-rules out stale completion overrides at a ready event. Reused handles are
-interpreted using their fixed candidate meaning. Later mistyped registration
+Fresh usable bindings retain their actual success or expiry through
+candidate-only repair memory. The fixed-calendar repair induction carries
+`BindingShadow.CompletedAt` from empty initial memory through actual completed
+blocks, ruling out stale completion overrides at a ready event without an
+extra capstone assumption. Reused handles are interpreted using their fixed
+candidate meaning. Later mistyped registration
 can add material usable at another payload type without itself being a signed
 breach, so arbitrary later bindings need a distinct capability argument.
 
@@ -2477,8 +2488,27 @@ the final equilibrium's supported play.
   Complete play, packet uniqueness and counted-slot freshness are derived.
   Its subsequent owner follows any recorded timing policy, with foreign raw
   policies arbitrary. The current call need not be protected or supported
-  by that timing policy. Source-draw composition and waiting incentives remain
-  separate obligations.
+  by that timing policy.
+  [SourceServiceBindingAttemptLaw](../Vegas/Game/SourceServiceBindingAttemptLaw.lean)
+  joins the actual residual source commitment draw with this typed output and
+  same public/foreign traffic, retaining the prefix parameter. Acceptance of
+  this identifier in the real failure-reference selection experiment chooses
+  the drawn value; otherwise the actual output is typed failure with a public
+  miss.
+  [SourceServiceBindingNoAttempt](../Vegas/Game/SourceServiceBindingNoAttempt.lean)
+  proves the actual no-attempt branch at an initialized unrecorded binding
+  with closed protection. Activation persistence and clock monotonicity keep
+  the gate closed; every timing lottery is silent until complete play gives
+  a public miss and typed failure. No owner packet naming the event exists
+  anywhere in the stopped network. Foreign raw policies are arbitrary.
+  The strategic waiting comparison remains open.
+  [SourceServiceBindingTimingMixture](../Vegas/Game/SourceServiceBindingTimingMixture.lean)
+  derives the original timing prior from actual untouched owner recall and
+  decomposes the actual completion-stopped binding law into real owner-only
+  turn-family runs. Typed output, all public/foreign traffic and the same
+  prefix parameter remain joint. A selected turn may be absent or lose
+  protection; finite-budget exhaustion remains represented. This supplies
+  the operational mixture, not its strategic source-extension comparison.
 - **Stage B beliefs.** Probe C5 suggests that depth differences are no
   obstruction, but the concurrent-window information sets are new. If they
   break the extension, D2's contract-ordered service is the fallback.

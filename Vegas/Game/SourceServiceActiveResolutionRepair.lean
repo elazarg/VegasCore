@@ -143,7 +143,8 @@ theorem resolution_history_response_coupling
               (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event]))
                 next.1).support → event ∈ final.application.missedEvents) ∨
         BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
-          reference.length ≤ (next.2.1.recall owner).length) := by
+          reference.length ≤ (next.2.1.recall owner).length ∧
+          next.2.2.shadow = memory.shadow) := by
   classical
   intro app players strategy
   let menu := sourceServiceMenu setup leaks bounds rosters
@@ -198,7 +199,8 @@ theorem resolution_history_response_coupling
               (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event]))
                 next.1).support → event ∈ final.application.missedEvents) ∨
         BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
-          reference.length ≤ (next.2.1.recall owner).length := by
+          reference.length ≤ (next.2.1.recall owner).length ∧
+          next.2.2.shadow = memory.shadow := by
     by_cases required : decisionRequired setup leaks rosters owner
         (repaired.recall owner) (repaired.observe app owner)
     · have requirement := required

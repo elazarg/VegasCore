@@ -377,6 +377,16 @@ regret is at least `(1 − ε)D − ε`, and eventually at least `D/2` at one fi
 site as trembles vanish, even with varying source and timing approximants.
 Every history in that site's actual fiber has positive native probability.
 This certifies the need for free late completion, not a failure of preservation.
+[LateResolutionFreeLate](../Vegas/Examples/LateResolutionFreeLate.lean)
+proves every raw response at that entire late fiber has typed failure and
+audited value at most zero for a nonnegative deposit. Legal FALSE attains
+zero and is locally optimal under any beliefs. A whole native equilibrium
+still needs rationality at the other sites.
+[LateResolutionFirstActivation](../Vegas/Examples/LateResolutionFirstActivation.lean)
+derives the actual deterministic first native input under every profile and
+identifies its entire information fiber. Its clear menu contains only WAIT
+or canonical FALSE/TRUE; TRUE availability requires actual message bounds
+coverage. The other decision sites and whole equilibrium remain open.
 The [late-decision signaling probe](../scripts/experiments/late_decision_signaling_probe.py)
 checks this distinction with exact Bayes limits and every whole-policy
 comparison. Equal waiting trembles make waiting profitable for one type;
@@ -436,8 +446,27 @@ identifier's accepting receipt, no miss and the exact chosen typed successor,
 or its actual public miss, no accepting receipt for this identifier and typed
 failure. Complete play, freshness and uniqueness are derived. The subsequent
 owner follows any recorded timing policy; foreign raw policies are arbitrary.
-The call need not be protected or supported by that timing policy. Sampling
-this dichotomy jointly with the source choice remains separate.
+The call need not be protected or supported by that timing policy.
+[SourceServiceBindingAttemptLaw](../Vegas/Game/SourceServiceBindingAttemptLaw.lean)
+joins the actual residual source commitment draw, typed binding output and
+same public/foreign traffic, retaining the prefix parameter. The real
+failure-reference selection kernel's accepting receipt for this identifier
+selects the drawn value; absent acceptance selects typed failure with a real
+miss.
+[SourceServiceBindingNoAttempt](../Vegas/Game/SourceServiceBindingNoAttempt.lean)
+derives the other branch at an actual initialized unrecorded binding with
+closed protection. Activation remains fixed while the clock increases, so
+protection cannot reopen. Every timing lottery is silent until actual
+completion; complete play gives a public miss, typed failure and no owner
+packet naming the event anywhere in the network. Foreign raw policies are
+arbitrary. The waiting incentive comparison remains open.
+[SourceServiceBindingTimingMixture](../Vegas/Game/SourceServiceBindingTimingMixture.lean)
+identifies the actual completion-stopped binding law from an untouched
+boundary with the original finite timing prior over real owner-only turn
+family runs. Typed output, all public/foreign traffic and the same prefix
+parameter are joint. The original prior is derived from actual untouched
+recall; no posterior or acceptance law is supplied. Selected turns can be
+absent or lose protection, and finite-budget exhaustion remains represented.
 
 The watcher samples authentic evidence partially; observation and report
 delivery may be correlated. Positive conditional coverage and a finite
@@ -572,11 +601,12 @@ traces and the real evaluator. A completed preparation frame and capability
 preservation remain explicit resources. This uses the complete bounded
 effective menu; later owner bindings, a legal risk-menu comparator and
 terminal utility domination remain open.
-Later usable bindings must preserve their actual success or expiry, without
-installing an intended-success completion override. The generated-memory
-`BindingShadow.CompletedAt` invariant supplies absence of stale overrides
-at a ready event; the internal calendar induction must carry it. Reused handles
-use their fixed candidate meaning, rather than newly supplied private material.
+Fresh usable bindings use candidate-only repair memory and preserve their
+actual success or expiry. The fixed-calendar repair induction carries
+`BindingShadow.CompletedAt` from empty initial memory through actual completed
+blocks. It rules out stale completion overrides at a ready event without an
+extra capstone assumption. Reused handles use their fixed candidate meaning,
+rather than newly supplied private material.
 Arbitrary later mistyped bindings remain a capability boundary: material that
 fails the current payload type can be usable at another binding.
 

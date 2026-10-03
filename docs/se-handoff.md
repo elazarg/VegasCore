@@ -305,6 +305,16 @@ future private values changed by repair are outside the claim.
   trembles vanish, even for varying source and timing approximants. Every
   actual fiber history is supported. This concerns the waiting prescription;
   source-preserving rational free completion remains possible.
+- [LateResolutionFreeLate](../Vegas/Examples/LateResolutionFreeLate.lean)
+  proves every raw response at the concrete late fiber has terminal typed
+  failure and audited value at most zero for a nonnegative deposit. Legal
+  FALSE attains zero and is locally optimal under any beliefs. This is a
+  free late continuation; the whole native equilibrium remains separate.
+- [LateResolutionFirstActivation](../Vegas/Examples/LateResolutionFirstActivation.lean)
+  derives the deterministic actual first native input under every profile,
+  identifies its entire information fiber and proves its clear menu admits
+  only WAIT or canonical FALSE/TRUE. TRUE availability uses actual message
+  bounds coverage. The other decision sites and whole equilibrium remain open.
 - [SourceServiceResolutionIntentionFactorization](../Vegas/Game/SourceServiceResolutionIntentionFactorization.lean)
   carries original and effective disclosure histories through the actual
   response traffic law. FALSE packets can represent failed TRUE intentions;
@@ -461,11 +471,13 @@ future private values changed by repair are outside the claim.
   completed preparation frame and opening-capability relation are resources;
   this uses the complete bounded effective menu. Later owner bindings,
   risk-menu admission and terminal utility domination remain open.
-  Fresh usable later bindings require candidate-only memory, preserving actual
-  acceptance or expiry. Internal completed-boundary induction must carry
-  `BindingShadow.CompletedAt` to rule out stale ready-event overrides. Reused
-  handles use fixed material; arbitrary later mistyped registrations can add
-  a capability usable at another payload type without an immediate signed breach.
+  Fresh usable bindings use candidate-only memory, preserving actual
+  acceptance or expiry. The fixed-calendar repair induction carries
+  `BindingShadow.CompletedAt` from empty initial memory through actual
+  completed blocks, ruling out stale ready-event overrides without an extra
+  capstone assumption. Reused handles use fixed material; arbitrary later
+  mistyped registrations can add a capability usable at another payload type
+  without an immediate signed breach.
 - [SourceServiceAliasEquilibrium](../Vegas/Game/SourceServiceAliasEquilibrium.lean)
   supplies the final private raw-alias transport, retaining correlated
   collection and prior charges.
@@ -505,8 +517,25 @@ future private values changed by repair are outside the claim.
   successor, or actual public miss, no accepting receipt and typed failure.
   Initialization and complete play derive all endpoint resources. The owner
   subsequently follows any recorded timing policy, against arbitrary foreign
-  raw policies. The current call need not be protected or policy-supported;
-  joining the source draw to this outcome remains separate.
+  raw policies. The current call need not be protected or policy-supported.
+- [SourceServiceBindingAttemptLaw](../Vegas/Game/SourceServiceBindingAttemptLaw.lean)
+  joins the actual residual source commitment draw, typed output and the same
+  public/foreign traffic with the prefix parameter retained. The actual
+  failure-reference selection kernel's receipt for this identifier selects
+  the drawn value or typed failure. The miss marker remains in public traffic.
+- [SourceServiceBindingNoAttempt](../Vegas/Game/SourceServiceBindingNoAttempt.lean)
+  derives actual public miss, typed failure and absence of every owner event
+  packet when an initialized unrecorded binding's protection has closed.
+  Activation persistence and clock monotonicity keep the gate closed, so any
+  timing lottery is silent until complete play ends the event. Foreign raw
+  policies are arbitrary; waiting incentive comparisons remain open.
+- [SourceServiceBindingTimingMixture](../Vegas/Game/SourceServiceBindingTimingMixture.lean)
+  derives the original finite timing prior from actual untouched recall and
+  decomposes the completion-stopped binding law into real owner-only turn
+  family runs, with typed output, full public/foreign traffic and the same
+  prefix parameter joint. Foreign raw policies remain unchanged. Absent
+  selected turns, lost protection and finite-budget exhaustion remain real
+  outcomes; the selected-family strategic comparison remains separate.
 
 ## Proof and build discipline
 

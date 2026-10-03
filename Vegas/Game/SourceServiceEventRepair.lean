@@ -47,6 +47,7 @@ theorem event_block_stopped_coupling
     (original repaired : (application setup leaks).Execution)
     (frame : BindingMemory.Frame (runtime setup) leaks memory owner original repaired)
     (onlyBindings : memory.shadow.OwnBindings owner)
+    (completedMemory : memory.shadow.CompletedAt original.application.config)
     (started : reference.length ≤ (repaired.recall owner).length)
     (leftRecall : original.InputRecall (application setup leaks))
     (sound : ((runtime setup).packetEvidence leaks).Sound original)
@@ -80,7 +81,8 @@ theorem event_block_stopped_coupling
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
             record.envelope = false) ∨
           next.1.application.publicView.missedDecisionBy owner = true ∨
-          BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
+          (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
+            next.2.2.shadow.CompletedAt next.1.application.config)) := by
   classical
   intro app players strategy
   let menu := sourceServiceMenu setup leaks bounds rosters
@@ -146,7 +148,8 @@ theorem event_block_stopped_coupling
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
             record.envelope = false) ∨
           next.1.application.publicView.missedDecisionBy owner = true ∨
-          BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
+          (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
+            next.2.2.shadow.CompletedAt next.1.application.config)) := by
     have repairedReady : repaired.application.config.cut.Ready event := boundary.ready event rfl
     cases node : nodeView (graph setup) event with
     | sample payload law outputEq codeEq =>
@@ -158,7 +161,7 @@ theorem event_block_stopped_coupling
         ready_of_publicView_eq frame.publicView repairedReady
       obtain ⟨coupling, first, second, related⟩ := sample_block_stopped_coupling setup leaks bounds
         rosters network source target agrees owner policy available reference memory
-        original repaired paired onlyBindings nextStarted leftNextRecall
+        original repaired paired onlyBindings completedMemory nextStarted leftNextRecall
         rightRecall (by rw [paired.network]; exact boundary.serials)
         event payload law outputEq codeEq node
         ready remaining (rosters event) (event.val + 1) phaseTrace
@@ -178,7 +181,7 @@ theorem event_block_stopped_coupling
         have deadline : (runtime setup).deadline event = event.val + 1 := rfl
         obtain ⟨coupling, first, second, related⟩ := binding_phase_stopped_coupling setup leaks
           bounds values capacity rosters opportunities network source target agrees owner
-          policy available reference memory original repaired paired
+          policy available reference memory original repaired paired completedMemory
           nextStarted leftNextRecall event payload outputEq codeEq node repairedReady
           (boundary.unsent owner event (Nat.le_refl _)) remaining phaseTrace
           before after
@@ -195,7 +198,8 @@ theorem event_block_stopped_coupling
       · obtain ⟨coupling, first, second, related⟩ := foreign_binding_block_stopped_coupling setup
           leaks bounds values capacity rosters opportunities network source target agrees
           owner policy available reference memory original repaired paired
-          onlyBindings nextStarted leftNextRecall event actor same payload outputEq codeEq node
+          onlyBindings completedMemory nextStarted leftNextRecall event actor same payload outputEq
+          codeEq node
           repairedReady remaining (rosters event) (event.val + 1) phaseTrace
           before after
           (by simpa only [body, owned, List.append_assoc] using nextSplit) nextPosition
@@ -210,7 +214,7 @@ theorem event_block_stopped_coupling
             code.actor) codeEq)
       obtain ⟨coupling, first, second, related⟩ := resolution_block_stopped_coupling setup leaks
         bounds values capacity rosters opportunities network source target agrees owner
-        policy available reference memory original repaired paired onlyBindings
+        policy available reference memory original repaired paired onlyBindings completedMemory
         nextStarted leftNextRecall leftSound leftNextBinding leftRemembered
         event actor payload binding checks
         outputEq codeEq node repairedReady remaining (rosters event)

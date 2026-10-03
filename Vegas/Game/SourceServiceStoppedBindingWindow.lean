@@ -68,6 +68,7 @@ theorem binding_window_stopped_coupling
       (prior.environmentStep (application setup leaks) (.activate owner)).support)
     (memory : BindingMemory (runtime setup) leaks)
     (frame : BindingMemory.Frame (runtime setup) leaks memory owner original repaired)
+    (completedMemory : memory.shadow.CompletedAt original.application.config)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         (some ⟨remaining, some owner, repaired⟩))
@@ -108,7 +109,8 @@ theorem binding_window_stopped_coupling
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
             record.envelope = false) ∨
         event ∈ next.1.application.missedEvents ∨
-        BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
+        (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
+          next.2.2.shadow.CompletedAt next.1.application.config)) := by
   classical
   intro app players strategy
   suffices result :
@@ -126,7 +128,8 @@ theorem binding_window_stopped_coupling
             (runtime setup).permittedServiceEnvelope record.observation record.ledger
               record.envelope = false) ∨
           event ∈ next.1.application.missedEvents ∨
-          BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 by
+          (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
+            next.2.2.shadow.CompletedAt next.1.application.config) by
     obtain ⟨coupling, first, second, related⟩ := result
     let menu := sourceServiceMenu setup leaks bounds rosters
     let scheduler := rosterScheduler setup leaks rosters network
@@ -179,7 +182,8 @@ theorem binding_window_stopped_coupling
     by_cases last : owner ∉ visits
     · obtain ⟨coupling, first, second, related⟩ := final_binding_history_coupling setup leaks
         bounds values capacity rosters opportunities network players owner remaining
-          prior original repaired sampled memory frame trace reference started recalled event
+          prior original repaired sampled memory frame completedMemory trace reference started
+          recalled event
           payload outputEq codeEq node ready unsent (covered _ _) before after visits last
           (by simpa only [List.append_assoc, List.singleton_append, List.cons_append,
             List.nil_append] using split)
@@ -261,7 +265,8 @@ theorem binding_window_stopped_coupling
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
             record.envelope = false) ∨
         event ∈ next.1.application.missedEvents ∨
-        BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1
+        (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
+          next.2.2.shadow.CompletedAt next.1.application.config)
       have responseLaw : strategy.respond memory (repaired.recall owner,
           repaired.observe app owner) = law.map adjusted := by
         change ((BindingMemory.implementation (runtime setup) leaks owner reference
@@ -369,9 +374,22 @@ theorem binding_window_stopped_coupling
             have shorter : rest.length < size := by
               rw [visitsEq, List.length_append, List.length_cons] at count
               omega
+            have nextCompleted : next.2.2.shadow.CompletedAt next.1.application.config := by
+              rw [memoryEq]
+              change memory.shadow.CompletedAt next.1.application.config
+              apply completedMemory.mono
+              have priorCompleted := (runtime setup).runInteractionPlan_completed_subset leaks
+                players network (foreign.map ServiceInstruction.player)
+                  (original.respond app owner response) predecessor reached
+              rw [((runtime setup).reactive_respond_application leaks original owner response).1]
+                at priorCompleted
+              exact ((runtime setup).reactiveCompletedInvariant leaks
+                original.application.config.cut.completed).environmentStep predecessor next.1
+                  (.activate owner) priorCompleted activated
             obtain ⟨coupling, left, right, good⟩ := ih rest.length shorter
               (remaining - (foreign.length + 1)) predecessor next.1 next.2.1 activated next.2.2
-              paired nextTrace nextStarted nextRecall nextReady nextUnsent nextVisited rest
+              paired nextCompleted nextTrace nextStarted nextRecall nextReady nextUnsent nextVisited
+              rest
               newRoster newSlot nextBefore newSplit newPosition newEnough rfl
             refine ⟨coupling, left, ?_, good⟩
             rw [restLength]
@@ -474,7 +492,8 @@ theorem binding_window_stopped_coupling
           obtain ⟨coupling, first, second, related⟩ := first_binding_block_coupling setup leaks
             bounds rosters network players owner event payload outputEq codeEq node
               (original.application.publicView.bindingCount owner) opening memory original repaired
-              frame reference started recalled rightRecall originalSerials countedSerial
+              frame completedMemory reference started recalled rightRecall originalSerials
+              countedSerial
               originalFresh originalReady originalTimely originalVacant originalUnused
               originalPublished covered before after visits ((runtime setup).deadline event)
               split position

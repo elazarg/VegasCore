@@ -48,18 +48,6 @@ def SourcePosition.state : SourcePosition → setup.ProtocolState
   | .ready => some (.inr (.inr (.inl sourceReady)))
   | .done disclose => some (.inr (.inr (.inr (sourceDone disclose))))
 
-private theorem pure_boolean_denote (value : Bool) :
-    (RationalLaw.pure value).denote = PMF.pure value := by
-  unfold RationalLaw.denote
-  calc
-    _ = (RationalLaw.pure value).indexLaw.map (fun _ => value) := by
-      apply map_congr_on_support _
-      intro index _
-      change Fin 1 at index
-      fin_cases index
-      rfl
-    _ = _ := PMF.map_const _ _
-
 theorem source_position_trace : ∀ {state} (_trace : sourceArena.Trace state),
     ∃ position : SourcePosition, state = position.state
   | _, .start => ⟨.root, rfl⟩
@@ -76,7 +64,7 @@ theorem source_position_trace : ∀ {state} (_trace : sourceArena.Trace state),
               PMF.pure SourcePosition.sampled.state := by
             simp [sourceArena, Setup.executionProtocol, Setup.protocolStep, SourcePosition.state,
               setup, program, ProtocolState.step, ProtocolState.entry, sourceSampled,
-              IExpr.evalDist, simpleExpr, evalLawDistExpr, pure_boolean_denote, PMF.pure_map]
+              IExpr.evalDist, simpleExpr, evalLawDistExpr, RationalLaw.denote_pure, PMF.pure_map]
           rw [step] at supported
           exact ⟨.sampled, (PMF.mem_support_pure_iff _ _).mp supported⟩
       | sampled =>
@@ -84,7 +72,7 @@ theorem source_position_trace : ∀ {state} (_trace : sourceArena.Trace state),
               PMF.pure SourcePosition.ready.state := by
             simp [sourceArena, Setup.executionProtocol, Setup.protocolStep, SourcePosition.state,
               setup, program, ProtocolState.step, ProtocolState.entry, sourceReady,
-              IExpr.evalDist, simpleExpr, evalLawDistExpr, pure_boolean_denote, PMF.pure_map]
+              IExpr.evalDist, simpleExpr, evalLawDistExpr, RationalLaw.denote_pure, PMF.pure_map]
           rw [step] at supported
           exact ⟨.ready, (PMF.mem_support_pure_iff _ _).mp supported⟩
       | ready =>

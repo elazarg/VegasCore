@@ -49,6 +49,7 @@ theorem active_nonbinding_block_stopped_coupling
       (prior.environmentStep (application setup leaks) (.activate owner)).support)
     (frame : BindingMemory.Frame (runtime setup) leaks memory owner original repaired)
     (onlyBindings : memory.shadow.OwnBindings owner)
+    (completedMemory : memory.shadow.CompletedAt original.application.config)
     (started : reference.length ≤ (repaired.recall owner).length)
     (leftRecall : original.InputRecall (application setup leaks))
     (sound : ((runtime setup).packetEvidence leaks).Sound original)
@@ -95,7 +96,8 @@ theorem active_nonbinding_block_stopped_coupling
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
             record.envelope = false) ∨
           next.1.application.publicView.missedDecisionBy owner = true ∨
-          BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
+          (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
+            next.2.2.shadow.CompletedAt next.1.application.config)) := by
   classical
   intro app players strategy ending
   let menu := sourceServiceMenu setup leaks bounds rosters
@@ -119,7 +121,8 @@ theorem active_nonbinding_block_stopped_coupling
             (∀ final ∈ ((runtime setup).runInteractionPlan leaks players network suffix
             next.1).support, final.application.publicView.missedDecisionBy owner = true) ∨
           BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
-              reference.length ≤ (next.2.1.recall owner).length) := by
+              reference.length ≤ (next.2.1.recall owner).length ∧
+              next.2.2.shadow = memory.shadow) := by
     by_cases owned : (graph setup).actor? event = some owner
     · cases node : nodeView (graph setup) event with
       | bind actor payload outputEq codeEq =>
@@ -180,7 +183,8 @@ theorem active_nonbinding_block_stopped_coupling
             (runtime setup).permittedServiceEnvelope record.observation record.ledger
               record.envelope = false) ∨
             final.1.application.publicView.missedDecisionBy owner = true ∨
-            BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1) := by
+            (BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1 ∧
+              final.2.2.shadow.CompletedAt final.1.application.config)) := by
     obtain ⟨nextTrace⟩ := (related next member).1
     by_cases bad : (∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
         (runtime setup).permittedServiceEnvelope record.observation record.ledger
@@ -216,7 +220,7 @@ theorem active_nonbinding_block_stopped_coupling
         · exact Or.inl ⟨record, ((runtime setup).executionTraffic_runInteractionPlan leaks players
             network suffix next.1 final.1 leftSupport).subset present, authored, forbidden⟩
         · exact Or.inr (Or.inl (missed final.1 leftSupport))
-    · obtain ⟨paired, nextStarted⟩ :=
+    · obtain ⟨paired, nextStarted, shadow⟩ :=
         (((related next member).2).resolve_left (fun traffic => bad (Or.inl traffic))).resolve_left
           (fun missed => bad (Or.inr missed))
       have moved : next.1 ∈ (app.invoke players owner original).support := by
@@ -241,6 +245,9 @@ theorem active_nonbinding_block_stopped_coupling
         exact ((runtime setup).reactiveBindingInvariant leaks).respond original owner response
           leftBinding
       have unchanged := (runtime setup).reactive_respond_application leaks original owner response
+      have nextCompleted : next.2.2.shadow.CompletedAt next.1.application.config := by
+        rw [shadow, ← same, unchanged.1]
+        exact completedMemory
       have nextReady : next.1.application.config.cut.Ready event := by
         rw [← same, unchanged.1]
         exact ready
@@ -260,7 +267,7 @@ theorem active_nonbinding_block_stopped_coupling
             scheduler nextTrace
           obtain ⟨coupling, leftLaw, rightLaw, connected⟩ := sample_block_stopped_coupling
             setup leaks bounds rosters network source target agrees owner policy available reference
-            next.2.2 next.1 next.2.1 paired nextMemory nextStarted nextRecall
+            next.2.2 next.1 next.2.1 paired nextMemory nextCompleted nextStarted nextRecall
             (app.history_inputRecall (initialLaw setup) (rosterPlan setup rosters).length scheduler
               rawTrace)
             (paired.network ▸ app.serialsBeforeNext_history scheduler (initialLaw setup)
@@ -284,7 +291,7 @@ theorem active_nonbinding_block_stopped_coupling
           obtain ⟨coupling, leftLaw, rightLaw, connected⟩ := foreign_binding_block_stopped_coupling
             setup leaks bounds values capacity rosters opportunities network source target
             agrees owner policy available reference next.2.2 next.1 next.2.1 paired nextMemory
-            nextStarted nextRecall event actor different payload outputEq codeEq node
+            nextCompleted nextStarted nextRecall event actor different payload outputEq codeEq node
             nextRepairedReady remaining visits ticks nextTrace before after
             (by simpa only [actual] using split) nextPosition
           exact ⟨coupling, by simpa only [suffix, ending, actual] using leftLaw,
@@ -303,7 +310,7 @@ theorem active_nonbinding_block_stopped_coupling
           obtain ⟨coupling, leftLaw, rightLaw, connected⟩ := resolution_block_stopped_coupling
             setup leaks bounds values capacity rosters opportunities network source target
             agrees owner policy available reference next.2.2 next.1 next.2.1 paired nextMemory
-            nextStarted nextRecall nextSound nextBinding nextRemembered
+            nextCompleted nextStarted nextRecall nextSound nextBinding nextRemembered
             event actor payload binding checks
             outputEq codeEq node nextRepairedReady remaining visits ticks dueTicks nextTrace
             before after (by simpa only [actual] using split) nextPosition

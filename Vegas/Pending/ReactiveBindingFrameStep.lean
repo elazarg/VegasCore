@@ -31,59 +31,6 @@ theorem OwnBindings.input_value_none {memory : BindingShadow graph} {owner : Pla
         (by simp only [stored]; rfl)
       cases impossible
 
-/-- At a completed service boundary, remembered completions refer only to
-past events. The temporary shadow created by submission becomes such a past
-completion at the immediately following protected inclusion. -/
-def CompletedAt (memory : BindingShadow graph) (config : graph.Config) : Prop :=
-  ∀ event, (memory.actions event).isSome ∨ (memory.values (.inr event)).isSome →
-    event ∈ config.cut.completed
-
-theorem completedAt_empty (config : graph.Config) :
-    (empty : BindingShadow graph).CompletedAt config := by
-  intro event present
-  rcases present with present | present <;> cases present
-
-theorem CompletedAt.rememberCandidate {memory : BindingShadow graph} {config : graph.Config}
-    (past : memory.CompletedAt config) (slot : CandidateSlot graph)
-    (value : CommitmentCandidate (Raw L)) :
-    (memory.rememberCandidate slot value).CompletedAt config := past
-
-theorem CompletedAt.complete {memory : BindingShadow graph} {config : graph.Config}
-    (past : memory.CompletedAt config) (event : graph.EventId) (ready : config.cut.Ready event)
-    (action : graph.Action event) (value : (graph.outputLayout event).Value) :
-    memory.CompletedAt (config.complete event ready action value) := by
-  intro query present
-  rw [Config.complete_cut, EventOrder.Cut.mem_complete]
-  exact Or.inr (past query present)
-
-theorem CompletedAt.rememberCompletion {memory : BindingShadow graph} {config : graph.Config}
-    (past : memory.CompletedAt config) (event : graph.EventId) (ready : config.cut.Ready event)
-    (originalAction actualAction : graph.Action event)
-    (originalValue actualValue : (graph.outputLayout event).Value) :
-    (memory.rememberCompletion event originalAction originalValue).CompletedAt
-      (config.complete event ready actualAction actualValue) := by
-  classical
-  intro query present
-  rw [Config.complete_cut, EventOrder.Cut.mem_complete]
-  by_cases same : query = event
-  · exact Or.inl same
-  · apply Or.inr
-    apply past query
-    simpa only [BindingShadow.rememberCompletion, Function.update_of_ne same,
-      Function.update_of_ne (Sum.inr_injective.ne same)] using present
-
-theorem CompletedAt.ready_none {memory : BindingShadow graph} {config : graph.Config}
-    (past : memory.CompletedAt config) (event : graph.EventId) (ready : config.cut.Ready event) :
-    memory.actions event = none ∧ memory.values (.inr event) = none := by
-  constructor
-  · cases stored : memory.actions event with
-    | none => rfl
-    | some action =>
-        exact False.elim (ready.1 (past event (Or.inl (by simp only [stored]; rfl))))
-  · cases stored : memory.values (.inr event) with
-    | none => rfl
-    | some value =>
-        exact False.elim (ready.1 (past event (Or.inr (by simp only [stored]; rfl))))
 
 end BindingShadow
 
