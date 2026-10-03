@@ -24,7 +24,9 @@ open SourceProgram Interaction EventGraphRuntime GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
-private theorem recorded_turn_input_silent
+/-- Once the owner has recorded this ready decision, the actual turn policy
+is silent at every player's input, for any timing lottery. -/
+theorem sourceServiceTurnPolicy_input_of_recorded
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bound : (graph setup).EventId → Nat) (turns : Nat) (timing : TurnTiming setup turns)
@@ -85,7 +87,8 @@ private theorem recorded_activation_input_silent
       have applicationEq := activation_application setup leaks execution middle actor moved
       have recallEq := (application setup leaks).environmentStep_recall execution middle
         (.activate actor) moved
-      exact recorded_turn_input_silent setup leaks bound turns timing profile middle owner event
+      exact sourceServiceTurnPolicy_input_of_recorded setup leaks bound turns timing profile
+        middle owner event
         (by rw [applicationEq]; exact ready) owned (by rw [recallEq]; exact recorded) who
   | «include» _ => cases active
   | application _ => cases active
@@ -204,7 +207,8 @@ theorem sourceServiceTurnPolicy_runUntilHorizon_of_recorded
   unfold ReactiveApplication.runUntilHorizon
   exact sourceServicePolicy_runUntil_of_recorded setup leaks scheduler _ _ execution owner
     event ready recorded (fun current currentReady currentRecorded who =>
-      recorded_turn_input_silent setup leaks bound turns timing profile current owner event
+      sourceServiceTurnPolicy_input_of_recorded setup leaks bound turns timing profile current
+        owner event
         currentReady owned currentRecorded who)
 
 /-- The actual prescribed turn policy preserves an existing source-conditioned

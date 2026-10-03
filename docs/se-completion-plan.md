@@ -375,8 +375,17 @@ recall, and every foreign player's input and recall while private binding
 values differ. Canonical binding transmission, arbitrary foreign raw
 responses and every pending inclusion at a sole-ready binding preserve this
 joint readout. Its public coordinate is explicit even in a one-player game.
-The complete stopped scheduler law and value-independent miss probabilities
-still need their own proofs.
+[ReactiveBindingPublicRounds](../Vegas/Pending/ReactiveBindingPublicRounds.lean)
+extends this readout equality through actual scheduler rounds, including a
+common partial observation draw, every command and arbitrary foreign raw
+policies. Only the binding owner is replaced by physical silence.
+[SourceServiceBindingSelection](../Vegas/Game/SourceServiceBindingSelection.lean)
+derives that replacement from actual recorded turn policy for any timing and
+proves the full completion-stopped joint law. Changing the canonical binding's
+private value preserves public selection, misses and all foreign inputs with
+the same correlated prefix parameter. Horizon exhaustion is retained. A
+binary acceptance-of-this-packet/public-miss decomposition still needs actual
+unique-call prefix resources; the strategic waiting comparison remains open.
 
 The watcher samples authentic evidence partially; observation and report
 delivery may be correlated. Positive conditional coverage and a finite

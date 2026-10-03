@@ -17,8 +17,8 @@ The source decision is the canonical one
 the audit expects, and no fresh call is made once a packet included within the
 inclusion bound `bound event` would miss the event's deadline.
 
-Deciding at the first turn is the limiting policy. Fully mixed approximants
-defer the decision with a small total weight, uniformly over later turns. A
+Deciding at the first turn is the limiting timing. Timing approximants
+defer the decision with a small total weight over later turns. A
 later turn need not occur under an arbitrary scheduler, so the deferral weight
 is the error by which an approximant may miss the source decision
 (`Vegas.TurnTiming.deferral`).

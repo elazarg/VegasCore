@@ -2387,8 +2387,18 @@ the final equilibrium's supported play.
   recall, and all foreign inputs when private binding values differ. Canonical
   transmission, foreign raw responses and every inclusion at a sole-ready
   binding preserve it, including rejected and malformed packets. This is
-  transition closure; the complete stopped scheduler law and value-independent
-  miss probability remain separate.
+  transition closure.
+  [ReactiveBindingPublicRounds](../Vegas/Pending/ReactiveBindingPublicRounds.lean)
+  extends it through actual public scheduler rounds, every command and a
+  common partial observation draw. Foreign raw policies remain arbitrary;
+  only the binding owner is replaced by silence.
+  [SourceServiceBindingSelection](../Vegas/Game/SourceServiceBindingSelection.lean)
+  derives that replacement from the actual recorded turn policy for any timing
+  and proves its full completion-stopped joint law. The same correlated prefix
+  parameter, public selection and all foreign inputs are retained when the
+  canonical binding's private value changes. Horizon exhaustion is allowed;
+  a binary acceptance-of-this-packet/miss split needs actual unique-call prefix
+  resources, and the waiting incentive comparison remains open.
 - **Stage B beliefs.** Probe C5 suggests that depth differences are no
   obstruction, but the concurrent-window information sets are new. If they
   break the extension, D2's contract-ordered service is the fallback.

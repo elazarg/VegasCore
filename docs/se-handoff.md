@@ -421,7 +421,17 @@ future private values changed by repair are outside the claim.
   retains public scheduler data and all foreign inputs jointly when private
   binding meanings differ. Canonical binding transmission, arbitrary foreign
   raw responses and arbitrary inclusion at a sole-ready binding preserve the
-  readout. The stopped scheduler law and miss probabilities remain separate.
+  readout.
+- [ReactiveBindingPublicRounds](../Vegas/Pending/ReactiveBindingPublicRounds.lean)
+  retains this whole joint readout through actual scheduler rounds and common
+  partial observation draws. Foreign raw policies remain arbitrary; only the
+  binding owner is silent.
+- [SourceServiceBindingSelection](../Vegas/Game/SourceServiceBindingSelection.lean)
+  identifies that silence with actual recorded turn policy for any timing.
+  Its complete stopped law preserves public selection, misses and all foreign
+  inputs under changes to the canonical binding's private value, jointly with
+  the same correlated prefix parameter. Finite-budget exhaustion is allowed.
+  Unique-call acceptance/miss classification and waiting incentives are separate.
 
 ## Proof and build discipline
 
