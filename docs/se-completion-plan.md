@@ -221,8 +221,19 @@ actual native state belief as terminal-history passage conditioned on reaching
 the information site, using the unique earlier control rather than the final
 control. [PassageBayes](../GameTheoryExtensions/Analysis/Protocol/PassageBayes.lean)
 derives ancestor weights from real continuation cones and their true reach
-probabilities. No common decision depth or stopped-history likelihood is a
-premise. Connecting this passage law to the first-input readout remains open.
+probabilities. Its stochastic readout theorem carries the same original-memory
+lottery through that genuine ancestor belief. No common decision depth or
+stopped-history likelihood is a premise.
+[SourceServiceFirstInputPassage](../Vegas/Game/SourceServiceFirstInputPassage.lean)
+reads the chronological first event input from actual own recall and proves
+that it records precisely passage through a first-event information site.
+Later activations preserve this input. Its terminal passage mass is the actual
+native information mass, with no common-depth assumption.
+[AsyncServiceFirstInputPassage](../Vegas/Game/AsyncServiceFirstInputPassage.lean)
+identifies the represented normalized first-turn profile's complete input law
+with genuine initialization, rank stopping and first-activation stopping.
+This identifies the input marginal; carrying the same source-prefix restoration
+through the actual ancestor belief remains separate.
 
 The actual binding-response law now composes with protected completion,
 retaining the transmitting draw and full stopped traffic. The native Bayes
@@ -282,8 +293,9 @@ across all native information sets and account for its timing likelihoods.
 
 Continue in this order:
 
-1. Identify the proved stopped first-input posterior with the represented
-   native history belief, allowing variable decision depths. For nonpure
+1. Carry the proved stopped first-input posterior through the represented
+   native ancestor belief, allowing variable decision depths and the same
+   original-memory restoration draw. For nonpure
    timing, derive the actual missing-turn/public-miss decomposition
    and relative escape bounds; pure first-turn laws do not cover those branches.
 2. Derive source-relative conditional beliefs and escape bounds at native

@@ -63,6 +63,7 @@ import Vegas.Game.SourceServiceOriginalPrefixRetraction
 import Vegas.Game.SourceServiceOriginalRankTraffic
 import Vegas.Game.SourceServiceOriginalFirstInput
 import Vegas.Game.SourceServiceOriginalFirstInputPosterior
+import Vegas.Game.SourceServiceFirstInputPassage
 import Vegas.Game.SourceServiceFirstBindingTraffic
 import Vegas.Game.SourceServiceFirstTurnBindingFactorization
 import Vegas.Game.SourceServiceFirstResolutionTraffic
@@ -128,6 +129,7 @@ import Vegas.Game.SourceServiceCalendarInstance
 import Vegas.Game.AsyncServiceDeposit
 import Vegas.Game.AsyncServiceFirstTurnLaw
 import Vegas.Game.AsyncServiceFirstTurnProfile
+import Vegas.Game.AsyncServiceFirstInputPassage
 import Vegas.Game.AsyncServiceSourceSites
 import Vegas.Game.SourceServiceCleanPrefixLaw
 import Vegas.Game.AsyncServiceCleanCompletionLaw

@@ -1628,12 +1628,23 @@ and conditional passage/escape bounds.
 [PassageBayes](../GameTheoryExtensions/Analysis/Protocol/PassageBayes.lean) derives
 the actual terminal-history ancestor law at any information antichain. Each
 ancestor has its true reach weight; conditioning on passage gives the standard
-Bayes belief even at variable depths.
+Bayes belief even at variable depths. A stochastic readout commutes with that
+conditioning, so the same memory lottery can be sampled from the actual earlier
+history.
 [ReactivePassageBayes](../Interaction/ReactivePassageBayes.lean) projects this law
 to native state beliefs, retaining the earlier observed control instead of
 the final control. Its positive-mass and Bayes-consistency hypotheses are the
-ordinary assessment conditions. Actual first-input passage identification and
-perturbed source transport remain separate.
+ordinary assessment conditions.
+[SourceServiceFirstInputPassage](../Vegas/Game/SourceServiceFirstInputPassage.lean)
+reads the chronological first event input from actual own recall and identifies
+it exactly with passage through a first-event information site. The input
+persists through later responses, and its terminal passage probability equals
+the site's actual information mass even at variable depths.
+[AsyncServiceFirstInputPassage](../Vegas/Game/AsyncServiceFirstInputPassage.lean)
+identifies the normalized first-turn profile's complete input law with actual
+initialization, rank stopping and first-activation stopping. This is the input
+marginal. Joint source-prefix restoration through the genuine ancestor belief
+and perturbed timing transport remain separate.
 
 [SourceServiceSampleCompletion](../Vegas/Game/SourceServiceSampleCompletion.lean)
 derives actual silence, whole stopped-run equality with silent play, and the

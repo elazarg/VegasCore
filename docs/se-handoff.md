@@ -198,11 +198,19 @@ future private values changed by repair are outside the claim.
   native assessment history identification and perturbed beliefs remain distinct.
 - [PassageBayes](../GameTheoryExtensions/Analysis/Protocol/PassageBayes.lean)
   derives actual terminal ancestor weights and conditional Bayes beliefs at
-  information antichains with variable depths.
+  information antichains with variable depths, including the same stochastic
+  readout or original-memory lottery on the actual earlier history.
   [ReactivePassageBayes](../Interaction/ReactivePassageBayes.lean) projects the
   earlier observed control to the native state posterior; it does not use the
-  final control or assume a stopping likelihood. First-input passage
-  identification and perturbed source transport remain open.
+  final control or assume a stopping likelihood.
+- [SourceServiceFirstInputPassage](../Vegas/Game/SourceServiceFirstInputPassage.lean)
+  identifies the terminal chronological first event input with actual passage
+  through a first-event native information site. Later turns cannot overwrite
+  this readout; its mass is the true native information mass at variable depths.
+  [AsyncServiceFirstInputPassage](../Vegas/Game/AsyncServiceFirstInputPassage.lean)
+  identifies the normalized first-turn profile's initialized complete input law
+  with the actual rank and first-activation stopped law. The joint ancestor
+  restoration and perturbed source transport remain open.
 - [SourceServiceInitialTraffic](../Vegas/Game/SourceServiceInitialTraffic.lean)
   derives the actual initialized parameter/source/full-traffic factor through
   the whole source view. Correlated initial private types are retained; the

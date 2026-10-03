@@ -131,4 +131,51 @@ theorem InformationSite.bayesBelief_eq_conditional_ancestor {who : Player}
       rw [site.terminal_ancestor_apply M antichain certificate strategy prior,
         div_eq_mul_inv]
 
+/-- Applying the same stochastic readout to an encountered information history
+commutes with conditioning on genuine passage. In particular, an auxiliary
+memory lottery is sampled from the actual earlier history, not the final state. -/
+theorem InformationSite.bayesBelief_bind_eq_conditional_passage {Result : Type}
+    {who : Player} (site : M.InformationSite who)
+    (antichain : site.IsHistoryAntichain) (certificate : E.WellFoundedHistories)
+    (strategy : ∀ player, M.BehavioralPolicy player)
+    (positive : 0 < M.informationMass strategy who site)
+    (readout : M.InformationHistory who site.1 → PMF Result) :
+    ((M.bayesBelief strategy who site antichain positive).bind readout).map some =
+      fiberPosterior
+        ((M.runBehavioralTerminalFrom certificate strategy E.initHistory).bind fun final =>
+          match site.ancestor? M final with
+          | none => PMF.pure none
+          | some prior => (readout prior).map some) Option.isSome true := by
+  classical
+  let terminal := M.runBehavioralTerminalFrom certificate strategy E.initHistory
+  let encountered := terminal.map (site.ancestor? M)
+  let lifted : Option (M.InformationHistory who site.1) → PMF (Option Result)
+    | none => PMF.pure none
+    | some prior => (readout prior).map some
+  have present : true ∈ (encountered.map Option.isSome).support := by
+    rw [PMF.mem_support_iff,
+      site.terminal_ancestor_passage M antichain certificate strategy]
+    exact positive.ne'
+  have retained : ∀ prior ∈ encountered.support,
+      ∀ result ∈ (lifted prior).support, result.isSome = prior.isSome := by
+    intro prior _supported result possible
+    cases prior with
+    | none =>
+        cases (PMF.mem_support_pure_iff _ _).mp possible
+        rfl
+    | some prior =>
+        obtain ⟨value, _chosen, rfl⟩ := PMF.support_map .. ▸ possible
+        rfl
+  have conditioned := fiberPosterior_bind_of_observation encountered lifted
+    Option.isSome Option.isSome retained true present
+  calc
+    _ = ((M.bayesBelief strategy who site antichain positive).map some).bind lifted := by
+      simp only [PMF.map_bind, PMF.bind_map, Function.comp_def, lifted]
+    _ = (fiberPosterior encountered Option.isSome true).bind lifted := by
+      rw [site.bayesBelief_eq_conditional_ancestor M antichain certificate strategy positive]
+    _ = fiberPosterior (encountered.bind lifted) Option.isSome true := conditioned.symm
+    _ = _ := by
+      simp only [encountered, PMF.bind_map, Function.comp_def, lifted, terminal]
+      rfl
+
 end GameTheory.Protocol.InformationModel
