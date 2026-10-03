@@ -124,6 +124,7 @@ import Vegas.Game.SourceServiceCanonicalSerial
 import Vegas.Game.SourceServiceSiteBridge
 import Vegas.Game.SourceServiceResponseCompletion
 import Vegas.Game.SourceServiceGeometricTiming
+import Vegas.Game.SourceServiceWaitRiskConfounding
 import Vegas.Game.SourceServiceTimingRates
 import Vegas.Game.AsyncServiceSpec
 import Vegas.Game.SourceServiceCalendarInstance

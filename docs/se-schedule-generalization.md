@@ -1651,6 +1651,14 @@ completion and under arbitrary native policies and scheduler commands.
 Injectivity rules out a second compatible initialization; terminal source
 readout retains this same environment. An ancestor parameter can be read from
 it without resampling or adding a player observation.
+[SourceServiceWaitRiskConfounding](../Vegas/Game/SourceServiceWaitRiskConfounding.lean)
+checks that protected and unprotected timely binding responses can emit the
+same typed-success packet, receive acceptance at the same clock, and give a
+foreign owner the same full input. Only the sender's private risk recall
+differs. A separate geometric two-branch calculation gives conditional risk
+one half at every positive waiting weight below one. This is a local runtime
+pair and a finite path law; certification as an initialized asynchronous
+service and identification with native Bayes likelihoods remain separate.
 
 [SourceServiceSampleCompletion](../Vegas/Game/SourceServiceSampleCompletion.lean)
 derives actual silence, whole stopped-run equality with silent play, and the
@@ -1845,6 +1853,13 @@ It does not preserve later handler acceptance: an uncertified opening claim
 may fail against the original candidate and succeed against the replacement.
 Those static packet breaches retain their collection comparison, with no new
 fine after an earlier public miss. Whole-policy repair remains open.
+[ReactiveMissingOpeningEvidence](../Vegas/Pending/ReactiveMissingOpeningEvidence.lean)
+derives this classification from an actual missing commitment and arbitrary
+subsequent native rounds. Its handle remains blocked; authentic owned or
+forwarded evidence cannot certify any later claimed opening of that handle.
+The emitted packet is therefore an existing signed-content breach, with the
+same final-record verdict and partial collection bounds. No payoff dominance
+or additional collection after an earlier charge is inferred.
 
 ### Deviation proof boundaries
 
@@ -1858,7 +1873,7 @@ their own rationality proof; an exclusion theorem cannot supply it.
 | --- | --- | --- |
 | Protected fresh binding call | Show that completion records its actual handle and cannot be an omission. | Exact first-turn play supplies the protected call and keeps the owner's omission detector and full risk flag clear against arbitrary foreign raw policies. Its packets pass the actual final-record verdict, so authentic sampling collects zero owner charge. The strategic source embedding and local continuation comparisons remain separate. |
 | Normalization-equivalent responses | Preserve the actual response transition and emitted packet. | Reactive normalization supplies the exact local equality. This does not erase a distinct fresh identifier or authentic extra evidence. |
-| Canonical binding with unusable private opening | Repair private candidate capability while preserving the full typed source readout and actual settlement. | Actual accepted unusable bindings have a constructed frame and exact common completion; due expiry also preserves the pending-failure frame. Mistyped material has an owned certificate capability absent from a typed-default replacement. Later raw closure and the whole-policy equilibrium comparison remain open. |
+| Canonical binding with unusable private opening | Repair private candidate capability while preserving the full typed source readout and actual settlement. | Actual accepted unusable bindings have a constructed frame and exact common completion; due expiry also preserves the pending-failure frame. Later claims for a genuinely blocked handle are signed breaches. Mistyped material has an owned certificate capability absent from a typed-default replacement. Later raw closure and the whole-policy equilibrium comparison remain open. |
 | Forbidden signed packets at a clear protected history | Bound base gain and actual collection, and exhibit one clean legal continuation under the same belief. | Constructor breaches, invalid-token or foreign-actor packets, wrong node kinds, fresh packets addressed to completed events, wrong current-event handles, public guard failures and wrong opening ownership or public binding association have derived conditional collection. The information-local classifier supplies the actual risk-to-effective-to-raw extension with the fixed deposit and comparator. Other exclusions and the source equilibrium embedding remain open. |
 | Two packets for one event before completion | Select a forbidden actual envelope from the pair and derive its collection bound. | Actual initialized settlement accepts at most one identifier for the event. A clear recorded prefix plus another same-event response reconstructs the pair; at least one packet is forbidden, even if the builder accepts the newer one. The actual committed-choice collection and risk-extension comparison are checked. This is a total-charge bound at a clear site, without renewed deterrence after a fine. |
 | Late unrecorded first binding opportunity | Admit rational native continuation before a content-dependent acceptance/miss lottery. | Probe C7 demonstrates why excluding the evidence packet can fail for every positive deposit. The auxiliary source/native embedding and its earlier incentive comparisons remain open. |

@@ -230,6 +230,11 @@ future private values changed by repair are outside the claim.
   The actual clean witness has positive counterfactual mass under full mixing;
   conditional escape is bounded by summed foreign private-risk mass divided
   by that clean mass. The required vanishing ratio is still unproved.
+- [SourceServiceWaitRiskConfounding](../Vegas/Game/SourceServiceWaitRiskConfounding.lean)
+  proves actual accepted typed-success branches with identical foreign input
+  but different sender opportunity-risk recall. Its separate finite path law
+  has conditional risk one half. Initialization, an all-history contract and
+  actual native likelihood identification are not supplied by this calculation.
 - [SourceServiceResolutionIntentionFactorization](../Vegas/Game/SourceServiceResolutionIntentionFactorization.lean)
   carries original and effective disclosure histories through the actual
   response traffic law. FALSE packets can represent failed TRUE intentions;
@@ -332,6 +337,12 @@ future private values changed by repair are outside the claim.
   copied after original-input normalization. The blocked candidate loses no
   original owned capability. Later handler acceptance can still differ for
   an uncertified opening, so whole-policy frame closure remains open.
+- [ReactiveMissingOpeningEvidence](../Vegas/Pending/ReactiveMissingOpeningEvidence.lean)
+  keeps the actual missing commitment's candidate blocked under arbitrary
+  continuations. Every later opening claim for that handle lacks matching
+  authentic evidence, including forwarding, and is an existing signed-content
+  breach. Its final verdict and partial collection laws apply without a new
+  backend premise; whole-policy dominance remains separate.
 - [SourceServiceAliasEquilibrium](../Vegas/Game/SourceServiceAliasEquilibrium.lean)
   supplies the final private raw-alias transport, retaining correlated
   collection and prior charges.

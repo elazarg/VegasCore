@@ -260,6 +260,7 @@ import Vegas.Pending.ReactiveBindingServiceRepair
 import Vegas.Pending.ReactiveRawBindingFrame
 import Vegas.Pending.ReactiveBindingCertificateRepair
 import Vegas.Pending.ReactiveMissingBindingTransport
+import Vegas.Pending.ReactiveMissingOpeningEvidence
 import Vegas.Pending.ReactiveSelectionObservation
 import Vegas.Pending.ReactiveServiceFootprint
 import Vegas.Pending.ReactiveAssociationPersistence

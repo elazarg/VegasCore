@@ -256,6 +256,16 @@ counterfactual mass is positive. The conditional escape bound divides the sum
 of foreign private-risk masses by that actual clean mass. Making this ratio
 vanish under one coherent perturbation family remains open; positivity is not
 an asymptotic lower bound.
+[SourceServiceWaitRiskConfounding](../Vegas/Game/SourceServiceWaitRiskConfounding.lean)
+checks a local runtime branch pair: with deadline three and inclusion bound
+two, a second turn at clock zero is protected and a second turn at clock one
+is timely but unprotected. The same typed successful commitment is accepted
+at clock one on both paths; the next player's full input agrees, while the
+sender's private opportunity-risk recall differs. A separate geometric path
+law gives both late paths the same weight and conditional risk one half.
+This calculation does not identify an initialized native Bayes law or certify
+an all-history service contract. It shows why acceptance and private risk
+must be distinguished when choosing the probability event to control.
 For waiting comparisons, a late canonical packet can still be accepted before
 expiry without a charge, so the accepted branch needs source-continuation
 control as well as the miss branch's real collection bound.
@@ -390,6 +400,13 @@ effective response has the same emitted packet, and bounded raw responses can
 be copied after original-input normalization. This is one response step:
 later handling of uncertified opening claims can differ, and full frame closure
 and settlement dominance remain unproved.
+[ReactiveMissingOpeningEvidence](../Vegas/Pending/ReactiveMissingOpeningEvidence.lean)
+derives that the actual missing commitment's blocked candidate remains blocked
+through arbitrary native continuations. Neither owned nor forwarded evidence
+can certify a later opening claim for that handle. Such a claim belongs to the
+existing signed-content breach class, so the same final-record verdict and
+partial collection bounds apply. This classification supplies no renewed
+fine or whole-policy dominance.
 
 ## Validation
 
