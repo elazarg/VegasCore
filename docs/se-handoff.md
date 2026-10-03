@@ -117,6 +117,10 @@ future private values changed by repair are outside the claim.
   factorization. The law
   applies to initialized exact first-turn phases; whole-prefix traffic
   induction and retained-waiting incentives remain separate.
+- [SourceServiceFirstTurnBindingFactorization](../Vegas/Game/SourceServiceFirstTurnBindingFactorization.lean)
+  lifts the actual global commitment phase through one fixed aligned slice.
+  It derives the source choice and next-prefix decoder and retains the same
+  parameter and full traffic through the whole behavioral source step.
 - [SourceServiceFirstResolutionTraffic](../Vegas/Game/SourceServiceFirstResolutionTraffic.lean)
   joins the actual global first-turn resolution kernel with the whole next
   prefix and the same full stopped traffic. Effective source disclosures
@@ -162,6 +166,11 @@ future private values changed by repair are outside the claim.
   same recursion, with decoder splitting for every store and history. Native
   Bayes transport
   still needs the actual source-prefix likelihood.
+- [SourceServiceFirstTurnSharedCheckpoint](../Vegas/Game/SourceServiceFirstTurnSharedCheckpoint.lean)
+  derives actual typed checkpoints in one shared aligned slice at every
+  initialized first-turn rank endpoint. Typed states and action histories
+  are read from the real store and completion history, without an endpoint
+  or source-likelihood premise.
 - [SourceServiceInitialTraffic](../Vegas/Game/SourceServiceInitialTraffic.lean)
   derives the actual initialized parameter/source/full-traffic factor through
   the whole source view. Correlated initial private types are retained; the

@@ -181,6 +181,13 @@ whole-source traffic kernels to their typed tails.
 propagates the prior whole-source-view factor through a fixed aligned sample
 slice and the real stopped sample run. It derives the whole next-prefix
 decoder and behavioral-step law, retaining the same parameter and traffic.
+[SourceServiceFirstTurnBindingFactorization](../Vegas/Game/SourceServiceFirstTurnBindingFactorization.lean)
+does the same for commitments, deriving the real compiler choice, protected
+first-turn mixture and endpoint decoder before reusing the fixed-draw traffic
+factor. [SourceServiceFirstTurnSharedCheckpoint](../Vegas/Game/SourceServiceFirstTurnSharedCheckpoint.lean)
+derives typed checkpoints in one fixed aligned slice at every initialized
+rank endpoint. Its state and action history come from the actual store and
+completion history; no endpoint or likelihood promise is supplied.
 
 The actual binding-response law now composes with protected completion,
 retaining the transmitting draw and full stopped traffic. The native Bayes
@@ -233,9 +240,10 @@ across all native information sets and account for its timing likelihoods.
 
 Continue in this order:
 
-1. Complete the binding and resolution lifts through one compiler-aligned
+1. Complete the resolution lift through one compiler-aligned
    decoder slice chosen before integrating histories. The initialized traffic
-   law, whole-view sample lift and both owned first-input channels are proved.
+   law, whole-view sample and binding lifts, shared typed checkpoints and both
+   owned first-input channels are proved.
    Compose the phase laws to carry the effective source prefix jointly with
    full stopped traffic. Restore original histories once at the requested
    prefix through the same all-owner memory lottery, retaining the initial

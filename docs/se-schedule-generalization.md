@@ -1517,6 +1517,14 @@ from initialized support. No separate source-draw or endpoint-agreement
 premise substitutes for that joint law. Whole-prefix traffic induction and
 native assessment transport remain open.
 
+[SourceServiceFirstTurnBindingFactorization](../Vegas/Game/SourceServiceFirstTurnBindingFactorization.lean)
+lifts the actual commitment phase through one fixed compiler-aligned slice.
+Its compiler choice, protected first-turn mixture and whole next-prefix
+decoder follow from actual policy alignment and checkpoints. It then reuses
+the fixed-draw traffic factor, retaining the same parameter and full traffic
+through the whole source behavioral step. Only the prior source-view/traffic
+factor is a probability induction hypothesis.
+
 [SourceServiceFirstResolutionTraffic](../Vegas/Game/SourceServiceFirstResolutionTraffic.lean)
 joins the actual global first-turn resolution draw, whole source successor
 and same full stopped traffic. The boundary derives its aligned reveal site
@@ -1562,6 +1570,15 @@ can therefore be restricted to the fixed typed tail by composition, and a
 typed successor channel can be lifted back using recovery. Actual aligned
 [source residuals](../Vegas/Game/SourceServiceReachedDecoding.lean) carry the
 same forward view map through initialization and every real graph step.
+
+[SourceServiceFirstTurnSharedCheckpoint](../Vegas/Game/SourceServiceFirstTurnSharedCheckpoint.lean)
+derives typed checkpoints in this one aligned slice at every actual initialized
+first-turn rank endpoint. Rank support supplies the completion boundary and
+horizon bound. The whole decoder's actual totality and universal slice
+transport imply a successful tail-state read. Its typed source state and
+action history come from the real completed store and history, yielding
+checkpoint agreement and the whole-prefix decoder identity. No endpoint,
+source marginal, traffic noise or posterior equation is assumed.
 
 The whole-prefix likelihood induction should carry the effective complete
 source state with actual traffic first. At each rank, choose the shared
