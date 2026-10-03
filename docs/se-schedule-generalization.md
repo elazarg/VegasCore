@@ -1518,10 +1518,23 @@ and source kernel; effective disclosures prove supported TRUE draws can
 really open, and the actual accepted endpoint supplies its checkpoint decoder.
 The global policy's whole stopped execution law equals the event-local phase
 by `sourceServiceTurnPolicy_firstTurn_phase`, preserving full traffic and
-private recall before any projection. The missing resolution traffic coupling
-is the untouched wait to the first owner input, which must retain actual
-trace and conforming-call resources. The post-response recorded silent
-suffix alone does not establish this preceding channel.
+private recall before any projection. The complete phase includes the
+untouched wait to the first owner input, which must retain actual trace and
+conforming-call resources; the recorded silent suffix alone does not
+establish this preceding channel.
+
+[SourceServiceFirstResolutionCoupling](../Vegas/Game/SourceServiceFirstResolutionCoupling.lean)
+proves that entire actual first-response/stopped traffic coupling. Before the
+first owner input, configuration stutter follows from actual initialized
+support and absence of that input. At activation, the protected canonical
+response, recorded call, new packet conformance and post-response trace are
+derived. Existing recorded silence then carries the same traffic to event
+completion. Its factorization retains an original intention and its effective
+decision through the same typed successor pair and stopped traffic; the
+only probability premise is the preceding pair-view/traffic induction
+hypothesis. Actual compiler code and typed store agreement connect the pair
+to the event. This is a latent phase law: joining it to actual global source
+selection and whole-prefix induction remains open.
 
 [SourceServiceFirstActivationResources](../Vegas/Game/SourceServiceFirstActivationResources.lean)
 derives first-input turn zero, actual trace, protected inclusion, unused
@@ -1531,8 +1544,8 @@ Binding traffic consumes these shared resources.
 proves silent coupling per actual scheduler command and then integrates the
 scheduler lottery in its round theorem. Its traces remain tied to the actual
 scheduler when splitting off an owner activation; substituting a constant
-scheduler would not establish those trace premises. The pre-first-owner
-resolution induction still needs assembly from these resources.
+scheduler would not establish those trace premises. The first-resolution
+coupling consumes these resources in its actual pre-first-owner induction.
 
 The whole-prefix likelihood induction should carry the effective complete
 source state with actual traffic first. At each rank, choose the shared

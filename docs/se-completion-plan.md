@@ -146,13 +146,19 @@ Whole-prefix traffic induction remains open.
 joins the global first-turn resolution draw, whole next-prefix decoder and
 same full stopped traffic. Effective disclosures derive supported TRUE
 realizability, and actual accepted completion supplies endpoint decoding.
-Coupling traffic through the untouched pre-first-owner wait remains open.
+[SourceServiceFirstResolutionCoupling](../Vegas/Game/SourceServiceFirstResolutionCoupling.lean)
+couples traffic through the untouched wait, actual first protected response
+and completion stop. Its prior pair-view/traffic induction hypothesis yields
+original/effective successors with the same actual stopped traffic. Trace,
+protection, fresh-slot and conforming-call resources are derived internally.
+Joining this latent intention law to actual global source selection and the
+whole-prefix induction remains open.
 [SourceServiceFirstActivationResources](../Vegas/Game/SourceServiceFirstActivationResources.lean)
 derives first-input trace, protection, fresh-slot and conformance facts for
 both owned decision kinds. The binding proof consumes them, and the actual
 resolution dispatch coupling is separated from its scheduler lottery in
 [SourceServiceResolutionPhaseTraffic](../Vegas/Game/SourceServiceResolutionPhaseTraffic.lean).
-These provide the resources for the missing preceding resolution channel.
+These provide the resources for the preceding resolution coupling.
 [SourceServiceSampleCompletion](../Vegas/Game/SourceServiceSampleCompletion.lean)
 derives the actual stopped sample/configuration law for any timing from its
 initialized boundary and complete play. The real one-round sample traffic
@@ -212,8 +218,8 @@ across all native information sets and account for its timing likelihoods.
 
 Continue in this order:
 
-1. Complete the resolution phase traffic coupling, then lift the checked
-   sample, binding and resolution branches through one decoder slice chosen
+1. Lift the checked sample, binding and resolution phase laws through one
+   decoder slice chosen
    before integrating histories. Start from the actual initialized traffic
    law and carry the effective source prefix jointly with full stopped
    traffic. Restore original histories once at the requested prefix through

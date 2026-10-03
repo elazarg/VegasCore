@@ -59,6 +59,7 @@ import Vegas.Game.SourceServiceOriginalPrefix
 import Vegas.Game.SourceServiceOriginalPrefixRetraction
 import Vegas.Game.SourceServiceFirstBindingTraffic
 import Vegas.Game.SourceServiceFirstResolutionTraffic
+import Vegas.Game.SourceServiceFirstResolutionCoupling
 import Vegas.Game.SourceServiceCanonicalSlots
 import Vegas.Game.SourceServiceRetainedSlots
 import Vegas.Game.SourceServiceRetainedPolicy

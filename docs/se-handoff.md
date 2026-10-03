@@ -118,9 +118,14 @@ future private values changed by repair are outside the claim.
 - [SourceServiceFirstResolutionTraffic](../Vegas/Game/SourceServiceFirstResolutionTraffic.lean)
   joins the actual global first-turn resolution kernel with the whole next
   prefix and the same full stopped traffic. Effective source disclosures
-  supply supported TRUE realizability; FALSE is an explicit packet. The
-  untouched pre-first-owner traffic coupling and whole-prefix induction
-  remain separate from this joint phase identity.
+  supply supported TRUE realizability; FALSE is an explicit packet.
+- [SourceServiceFirstResolutionCoupling](../Vegas/Game/SourceServiceFirstResolutionCoupling.lean)
+  couples the untouched wait, first protected resolution response and actual
+  completion stop. It derives trace, protection, fresh-slot and conformance
+  resources from initialized play. From the prior pair-view/traffic law it
+  retains original and effective successors with the same stopped traffic.
+  This latent phase factorization still needs joining to actual global source
+  selection and whole-prefix induction.
 - [SourceServiceSampleCompletion](../Vegas/Game/SourceServiceSampleCompletion.lean)
   derives silence and exact stopped sample/configuration laws for any turn
   timing from an actual boundary and complete play.
