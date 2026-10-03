@@ -74,6 +74,7 @@ import Vegas.Game.SourceServiceRiskPrefix
 import Vegas.Game.SourceServiceImmediatePolicy
 import Vegas.Game.SourceServiceImmediateRecall
 import Vegas.Game.SourceServiceFirstActivation
+import Vegas.Game.SourceServiceFirstActivationFactorization
 import Vegas.Game.SourceServiceImmediateRisk
 import Vegas.Game.SourceServiceCleanContinuation
 import Vegas.Game.SourceServiceImmediateAudit
@@ -84,6 +85,7 @@ import Vegas.Game.SourceServiceNoncanonicalBinding
 import Vegas.Game.SourceServiceGuardFailure
 import Vegas.Game.SourceServiceAuditableCollection
 import Vegas.Game.SourceServiceAuthorizationBreach
+import Vegas.Game.SourceServiceNodeKindBreach
 import Vegas.Game.SourceServiceRiskExtension
 import Vegas.Game.SourceServiceAliasEquilibrium
 import Vegas.Game.SourceServiceRiskRawExtension
@@ -211,6 +213,9 @@ import Vegas.Game.SourceServiceBindingDecisionFactorization
 import Vegas.Game.SourceServiceDisclosureFactorization
 import Vegas.Game.SourceServiceSampleFactorization
 import Vegas.Game.SourceServiceSampleEnvironmentFactorization
+import Vegas.Game.SourceServiceSampleCompletion
+import Vegas.Game.SourceServiceStoppedSampleTraffic
+import Vegas.Game.SourceServiceStoppedSampleFactorization
 import Vegas.Game.SourceServiceRosterPolicy
 import Vegas.Game.SourceServiceWaiting
 import Vegas.Game.SourceServiceDisclosure

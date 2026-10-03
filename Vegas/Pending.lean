@@ -6,6 +6,8 @@ import Vegas.Pending.ReactiveUnsubmittedWindow
 import Vegas.Pending.ReactiveServiceConformance
 import Vegas.Pending.ReactiveServiceSoundness
 import Vegas.Pending.ReactiveSampleLikelihood
+import Vegas.Pending.ReactiveSamplePhase
+import Vegas.Pending.PacketNodeKind
 import Vegas.Pending.ReactiveServiceTraffic
 import Vegas.Pending.ReactiveServiceAudit
 import Vegas.Pending.ReactiveServiceMarkers

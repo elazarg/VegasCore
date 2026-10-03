@@ -69,7 +69,29 @@ future private values changed by repair are outside the claim.
   within the contract horizon. The configuration is unchanged and the turn
   has protected inclusion. Actual recall recovers its before-response input;
   integrating the response lottery preserves that same passive sample.
-  The whole waiting-to-activation traffic channel remains separate.
+- [SourceServiceFirstActivationFactorization](../Vegas/Game/SourceServiceFirstActivationFactorization.lean)
+  carries a prior source-view/full-traffic factorization through the whole
+  binding wait to the actual first owner input. The source carrier may retain
+  original and effective states together. It preserves the given carrier
+  marginal; establishing that marginal and joining post-response traffic
+  remain separate.
+- [SourceServiceFirstTurnCompletes](../Vegas/Game/SourceServiceFirstTurnCompletes.lean)
+  identifies the actual next-prefix decoder law of the local first-turn
+  completion phase with the whole source behavioral step. This includes
+  samples, commitments and explicit withholding, before applying a source
+  continuation. It does not transport original disclosure intentions.
+- [SourceServiceSampleCompletion](../Vegas/Game/SourceServiceSampleCompletion.lean)
+  derives silence and exact stopped sample/configuration laws for any turn
+  timing from an actual boundary and complete play.
+  [ReactiveSamplePhase](../Vegas/Pending/ReactiveSamplePhase.lean) couples full
+  focal traffic through one real silent sample round under the public
+  scheduler. [SourceServiceStoppedSampleTraffic](../Vegas/Game/SourceServiceStoppedSampleTraffic.lean)
+  carries that coupling through the entire stopped sample run, retaining the
+  same public sample value and full traffic.
+  [SourceServiceStoppedSampleFactorization](../Vegas/Game/SourceServiceStoppedSampleFactorization.lean)
+  joins the actual public draw, both source successors and that same traffic
+  channel from the prior source-view factorization. Whole prefix induction
+  and native assessment transport remain separate.
 - [SourceServiceBindingResponseCompletion](../Vegas/Game/SourceServiceBindingResponseCompletion.lean)
   joins the actual transmitting draw to its typed successor and full stopped
   traffic. Waiting remains separate; prescribed foreign continuations are
@@ -121,8 +143,12 @@ future private values changed by repair are outside the claim.
   [SourceServiceAuditableCollection](../Vegas/Game/SourceServiceAuditableCollection.lean)
   includes these in its information-local classifier and derives collection
   from partial observation and conditional reporting coverage. Valid-token
-  off-turn packets, wrong-node-kind calls and private capabilities require
-  their own classifications or comparisons.
+  off-turn packets are not automatically forbidden.
+- [SourceServiceNodeKindBreach](../Vegas/Game/SourceServiceNodeKindBreach.lean)
+  derives final rejection of commitments at non-binding nodes and opening or
+  withholding at non-resolution nodes. The same auditable classifier uses
+  it with the existing collection bound. Private material, guard-passing
+  capability and other unclassified packets retain their own obligations.
 - [SourceServiceRiskExtension](../Vegas/Game/SourceServiceRiskExtension.lean)
   extends an audited risk-menu equilibrium after classified packet coverage
   and other-exclusion comparisons are supplied. It does not embed a source

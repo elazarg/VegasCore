@@ -11,10 +11,9 @@ it replays. Since the configuration does not change before the event
 completes, the kernel is the same at whichever input the first turn falls, so
 the owner's policy is a behavioral mixture over source actions of the policies
 that decide one fixed action at the first turn
-(`Vegas.firstTurn_runUntil_mixture`). The source side has the matching
-decomposition: the continuation from the boundary draws the head action and
-continues from the configuration completed with it
-(`Vegas.SourceResidual.head_law`).
+(`Vegas.firstTurn_runUntil_mixture`). The compiled head-action kernel and its
+actual next-prefix decoder have the same law as the whole source behavioral
+step (`Vegas.SourceResidual.head_step`).
 -/
 
 noncomputable section
@@ -245,21 +244,21 @@ theorem firstTurn_runUntil_mixture {scheduler : (application setup leaks).Schedu
 
 section Head
 
-variable [Finite Player] (leaks) {profile : BehavioralProfile setup.program}
+variable [Fintype Player] (leaks) {profile : BehavioralProfile setup.program}
 
-/-- **The source step at the head of a residual.** The source continuation of
-a decoded configuration draws the head event's source action and continues
-from the configuration completed with it. At an owned event that action law
-is the source decision, compiled to native responses by the source policy,
-and under effective disclosures every supported action is realized by the
-compiled decision. -/
-theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
+/-- The compiled head-action kernel reads the same whole source successor as
+the behavioral source step. At an owned event its action law is compiled by
+the canonical policy. Effective disclosures ensure every supported action is
+realized by that decision. The readout retains the intermediate source state,
+before applying any continuation or utility. -/
+theorem SourceResidual.head_step {rank : Nat} {config : (graph setup).Config}
     (residual : SourceResidual setup profile rank config) (event : (graph setup).EventId)
     (atRank : event.val = rank) (ready : config.cut.Ready event) :
     ∃ law : PMF ((graph setup).Action event),
-      sourceContinuation setup profile rank config =
-        law.bind (fun action => (config.step event ready action).bind
-          fun next => sourceContinuation setup profile (rank + 1) next) ∧
+      (ProtocolState.behavioralStateStep setup.program profile
+        (residual.lift (ProtocolState.entry residual.program residual.source))).map some =
+        (law.bind fun action => config.step event ready action).map
+          (sourceServicePrefix? setup (rank + 1)) ∧
       (∀ owner, (graph setup).actor? event = some owner →
         ∀ current : (application setup leaks).Execution, current.application.config = config →
           sourceServiceCanonicalPolicy setup leaks profile owner (current.recall owner)
@@ -270,33 +269,26 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
       ((∀ who, (profile who).EffectiveDisclosures setup.program []
           (Revelations.initial setup.context)) →
         ∀ action ∈ law.support, EffectiveAction config event action) := by
-  let := Fintype.ofFinite Player
-  have decoded := residual.decode
   rcases residual with ⟨Γ, names, program, residualProfile, source, refs, embedding, refsBefore,
     aligned, admitted, effective, supports, lift, _recoverView, _viewRecovered, commutes,
     steps, injective, transport,
     checkpoint⟩
-  dsimp only at decoded
   have counted := aligned.graphSuffix.countEq
   change rank + eventCount program = (graph setup).order.eventCount at counted
-  have sourceEq : sourceContinuation setup profile rank config =
+  have sourceStep :
+      (ProtocolState.behavioralStateStep setup.program profile
+        (lift (ProtocolState.entry program source))).map some =
       (ProtocolState.behavioralStateStep program residualProfile
-        (ProtocolState.entry program source)).bind
-          fun state => (ProtocolState.continuationLaw setup.program profile (lift state)).map
-            some := by
-    unfold sourceContinuation
-    rw [decoded]
-    change (ProtocolState.continuationLaw setup.program profile (lift _)).map some = _
-    rw [← sourceStep_continuation setup.program profile, commutes, PMF.bind_map, PMF.map_bind]
+        (ProtocolState.entry program source)).map (fun state => some (lift state)) := by
+    rw [commutes, PMF.map_comp]
     rfl
   have nextDecode (state : ProtocolState program) (next : (graph setup).Config)
       (read : decodeSourcePrefix? program refs source.registry source.revelations embedding.ref
         1 next.store (decodeHistory setup.program
           (next.history.map (setup.eventGraph.fromModeCompletion .sequential))) =
         some state) :
-      sourceContinuation setup profile (rank + 1) next =
-        (ProtocolState.continuationLaw setup.program profile (lift state)).map some := by
-    unfold sourceContinuation sourceServicePrefix?
+      sourceServicePrefix? setup (rank + 1) next = some (lift state) := by
+    unfold sourceServicePrefix?
     rw [transport 1, read]
     rfl
   cases program with
@@ -336,9 +328,9 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
               (L.evalDist distribution (sourcePublicEnv source.state)).map (fun value =>
                 Sum.inr (ProtocolState.entry next (sampleSuccessor name source value))) :=
           ProtocolState.behavioralStateStep_sample_entry residualProfile source
-        rw [sourceEq, entryStep, PMF.pure_bind, sample_step config _ ready outputEq refs
-          distribution codeEq source.state checkpoint.agrees, PMF.bind_map, PMF.bind_map]
-        apply bind_congr_on_support _
+        rw [sourceStep, entryStep, PMF.pure_bind, sample_step config _ ready outputEq refs
+          distribution codeEq source.state checkpoint.agrees, PMF.map_comp, PMF.map_comp]
+        apply map_congr_on_support _
         intro value _
         symm
         apply nextDecode
@@ -388,11 +380,12 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
               (commitKernel residualProfile (source.view owner)).map (fun choice =>
                 Sum.inr (ProtocolState.entry next (commitSuccessor name guard source choice))) :=
           ProtocolState.behavioralStateStep_commit_entry residualProfile source
-        rw [sourceEq, entryStep, PMF.bind_map, PMF.bind_map]
+        rw [sourceStep, entryStep, PMF.map_comp, PMF.bind_map, PMF.map_bind]
         apply bind_congr_on_support _
         intro choice _
         simp only [Function.comp_apply]
-        rw [commit_step config _ ready outputEq codeEq choice, PMF.pure_bind]
+        rw [commit_step config _ ready outputEq codeEq choice, PMF.pure_map]
+        apply congrArg PMF.pure
         symm
         apply nextDecode
         exact (decodeSourcePrefix?_commit fresh guard next refs source.registry
@@ -463,11 +456,12 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
                 Sum.inr (ProtocolState.entry next
                   (revealSuccessor published selected source disclose))) :=
           ProtocolState.behavioralStateStep_reveal_entry residualProfile source
-        rw [sourceEq, entryStep, PMF.bind_map, PMF.bind_map]
+        rw [sourceStep, entryStep, PMF.map_comp, PMF.bind_map, PMF.map_bind]
         apply bind_congr_on_support _
         intro disclose _
         simp only [Function.comp_apply]
-        rw [stepEq disclose, PMF.pure_bind]
+        rw [stepEq disclose, PMF.pure_map]
+        apply congrArg PMF.pure
         symm
         apply nextDecode
         exact (decodeSourcePrefix?_reveal fresh selected unresolved next refs source.registry

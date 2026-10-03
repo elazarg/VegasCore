@@ -4,6 +4,7 @@ import Vegas.Game.SourceServiceNoncanonicalBinding
 import Vegas.Game.SourceServiceGuardFailure
 import Vegas.Game.SourceServiceSignedCollection
 import Vegas.Game.SourceServiceAuthorizationBreach
+import Vegas.Game.SourceServiceNodeKindBreach
 import Interaction.ReactiveLocalContinuation
 import Interaction.ReactiveSubmissionSerial
 import Vegas.Pending.EvidenceNormalization
@@ -13,10 +14,10 @@ import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 Own recall and the current view reconstruct the next signed envelope. The
 charged classes are constructor-level breaches, invalid readiness tokens,
-packets addressed to another actor's event, a commitment to the current owned
-event with a noncanonical handle, and an opening of that event whose public
-guard check fails. The guard check reads the public store and signed opened
-value, so this classification needs no private configuration oracle.
+packets addressed to another actor's event or the wrong event constructor, a
+commitment to the current owned event with a noncanonical handle, and an
+opening of that event whose public guard check fails. The guard check reads
+the public store and signed opened value, so no private oracle is needed.
 
 Committing a classified response produces actual traffic. That traffic
 persists, and complete play supplies its final forbidden verdict under every
@@ -37,11 +38,12 @@ variable {Player : Type} [DecidableEq Player]
   (setup : Setup (Player := Player) (L := L))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
-/-- Constructor and authorization breaches need no opportunity. Handle and
-guard failures refer to the owner's ready event and public metadata. -/
+/-- Constructor, authorization and node-kind breaches need no opportunity.
+Handle and guard failures refer to the owner's ready event and public metadata. -/
 def AuditableServicePacket (view : PublicView (graph setup)) (who : Player)
     (message : Message Player (WitnessedPacket (graph setup))) : Prop :=
   SignedContentBreach message ∨ ServiceAuthorizationBreach message ∨
+    ServiceNodeKindBreach message ∨
     ∃ event, view.ownTurn? who = some event ∧
       ((∃ candidate, message.payload.call = .commitment event candidate ∧
           candidate ≠ (who, .prepared (view.bindingCount who))) ∨
@@ -139,9 +141,11 @@ theorem auditableServicePacket_forbidden_reaches
     (emitted : Emitted setup leaks after.execution message)
     (complete : after.execution.application.config.cut.Terminal) :
     ((runtime setup).settledRecord leaks after.execution).permits message = false := by
-  rcases classified with signed | unauthorized | ⟨event, turn, noncanonical | guarded⟩
+  rcases classified with signed | unauthorized | wrongKind |
+      ⟨event, turn, noncanonical | guarded⟩
   · exact signed.forbidden (runtime setup) leaks after.execution complete
   · exact unauthorized.forbidden_history (lastState ▸ last.trace) emitted complete
+  · exact wrongKind.forbidden_history (lastState ▸ last.trace) emitted complete
   · obtain ⟨candidate, committed, different⟩ := noncanonical
     have ready := (before.execution.application.publicView_eventReady event).mp
       ((before.execution.application.publicView.ownTurn?_spec who event turn).1)

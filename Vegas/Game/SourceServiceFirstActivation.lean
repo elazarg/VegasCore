@@ -181,7 +181,7 @@ theorem sourceServiceTurnInput?_dispatch_activation_congr
   have tagged := congrArg (PMF.map some) law
   simpa only [PMF.map_comp, Function.comp_def] using tagged
 
-private theorem completed_turn_input {horizon : Nat}
+theorem sourceServiceFirstTurn_completed_input {horizon : Nat}
     {scheduler : (application setup leaks).Scheduler}
     {delay bound : (graph setup).EventId → Nat}
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
@@ -253,8 +253,8 @@ theorem sourceServiceFirstActivation_stopped {horizon : Nat}
     have terminal : (app.protocol (initialLaw setup) horizon scheduler).terminal
         (some ⟨0, none, stopped⟩) := by trivial
     have completed := contract.completes ⟨0, none, stopped⟩ trace terminal
-    exact completed_turn_input contract timely players who turns profile follows _ bounded
-      stopped actual event owned (by rw [completed]; exact Finset.mem_univ _)
+    exact sourceServiceFirstTurn_completed_input contract timely players who turns profile follows
+      _ bounded stopped actual event owned (by rw [completed]; exact Finset.mem_univ _)
 
 /-- The actual stopped input has total mass on genuine owner inputs. -/
 theorem sourceServiceFirstActivation_input_isSome_law {horizon : Nat}
@@ -384,9 +384,9 @@ private theorem firstActivation_origin {horizon : Nat}
               rw [execution.application.config.step_cut event ready action next.application.config
                 stepped, EventOrder.Cut.mem_complete]
               exact Or.inl rfl
-            exact (completed_turn_input contract timely players who turns profile follows
-              next.environmentRecall.length (by omega) next nextActual event owned completed
-                nextAbsent).elim
+            exact (sourceServiceFirstTurn_completed_input contract timely players who turns profile
+              follows next.environmentRecall.length (by omega) next nextActual event owned
+                completed nextAbsent).elim
         obtain ⟨before, middle, response, actual, bounded, configEq, noInput, selected,
           observed, turn, chosen, result⟩ := ih next (by omega) nextActual (same ▸ ready)
             nextAbsent rest

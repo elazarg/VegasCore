@@ -1445,8 +1445,46 @@ The stop is reached within the asynchronous contract's horizon, retains the
 boundary configuration, and has protected inclusion. The actual own recall
 recovers the passive before-response input; integrating the response lottery
 preserves that same input sample. Equal complete owner traffic gives equal
-activation-input laws. Factoring the whole preceding public-scheduler waiting
-period still needs a separate composition proof.
+activation-input laws.
+
+[SourceServiceFirstActivationFactorization](../Vegas/Game/SourceServiceFirstActivationFactorization.lean)
+factors the whole preceding public-scheduler binding wait to that actual
+first owner input. It replaces pre-hit rounds with the actual silent kernel
+inside the stopped-input continuation; the stopping response lottery
+integrates out. A legitimate prior source-view/full-traffic factorization
+therefore retains its complete source carrier and yields an input channel.
+Complete play gives total mass on real inputs. The prior source marginal is
+preserved, rather than identified with a supplied source equilibrium, and
+post-response full traffic is not identified with pre-response input noise.
+
+[SourceServiceFirstTurnCompletes](../Vegas/Game/SourceServiceFirstTurnCompletes.lean)
+proves the actual next-prefix decoder law of the local first-turn completion
+phase equals the whole source behavioral step. The residual head-action
+kernel reads that prefix before applying a continuation; samples, bindings
+and explicit withholding are included. Its profile is the compiler's profile,
+with effective disclosures. Original disclosure intentions and the joint
+native source-prior law remain separate obligations.
+
+[SourceServiceSampleCompletion](../Vegas/Game/SourceServiceSampleCompletion.lean)
+derives actual silence, whole stopped-run equality with silent play, and the
+exact sampled value/configuration law from a real completion boundary and
+complete play. It applies to any turn timing.
+[ReactiveSamplePhase](../Vegas/Pending/ReactiveSamplePhase.lean) couples
+full focal traffic through a real silent round at the sole-ready sample,
+including rejected inclusions and all public scheduler commands.
+[SourceServiceStoppedSampleTraffic](../Vegas/Game/SourceServiceStoppedSampleTraffic.lean)
+extends this coupling through the whole stopped sample run, retaining the
+public sampled value with the same full traffic. It derives the stop and
+remaining horizon from that traffic, without a supplied sample-time law.
+
+[SourceServiceStoppedSampleFactorization](../Vegas/Game/SourceServiceStoppedSampleFactorization.lean)
+composes the actual stopped sample marginal with the prior source-view/full
+traffic factorization. It disintegrates the real public-value and traffic law
+using its own conditional kernel. Both carried source configurations advance
+by the same actual sampled value, and the complete stopped traffic factors
+through the effective successor view. The boundary and complete play derive
+the sample marginal; no sample-time or completed-endpoint premise is supplied.
+Whole-prefix induction and native information-site assembly remain separate.
 
 [SourceServiceResolutionResponseCompletion](../Vegas/Game/SourceServiceResolutionResponseCompletion.lean)
 connects a supported original intention from that memory lottery to the actual
@@ -1597,7 +1635,7 @@ their own rationality proof; an exclusion theorem cannot supply it.
 | Protected fresh binding call | Show that completion records its actual handle and cannot be an omission. | Exact first-turn play supplies the protected call and keeps the owner's omission detector and full risk flag clear against arbitrary foreign raw policies. Its packets pass the actual final-record verdict, so authentic sampling collects zero owner charge. The strategic source embedding and local continuation comparisons remain separate. |
 | Normalization-equivalent responses | Preserve the actual response transition and emitted packet. | Reactive normalization supplies the exact local equality. This does not erase a distinct fresh identifier or authentic extra evidence. |
 | Canonical binding with unusable private opening | Repair private candidate capability while preserving the full typed source readout and actual settlement. | Candidate-only frames preserve the full typed payoff. Actual accepted canonical bindings whose private material decodes to failure have a constructed frame and exact common completion. Later raw closure, certificate exposure and the equilibrium comparison remain open. |
-| Forbidden signed packets at a clear protected history | Bound base gain and actual collection, and exhibit one clean legal continuation under the same belief. | Constructor breaches, wrong handles at the current owned event and current-event public guard failures have derived conditional collection. The information-local classifier supplies the actual risk-to-effective-to-raw extension with the fixed deposit and comparator. Other exclusions and the source equilibrium embedding remain open. |
+| Forbidden signed packets at a clear protected history | Bound base gain and actual collection, and exhibit one clean legal continuation under the same belief. | Constructor breaches, invalid-token or foreign-actor packets, wrong node kinds, wrong handles at the current owned event and current-event public guard failures have derived conditional collection. The information-local classifier supplies the actual risk-to-effective-to-raw extension with the fixed deposit and comparator. Other exclusions and the source equilibrium embedding remain open. |
 | Late unrecorded first binding opportunity | Admit rational native continuation before a content-dependent acceptance/miss lottery. | Probe C7 demonstrates why excluding the evidence packet can fail for every positive deposit. The auxiliary source/native embedding and its earlier incentive comparisons remain open. |
 | Public binding miss | Admit rational continuation with the deposit already certain. | Actual post-miss whole-policy rationality equals base-payoff rationality. Joint beliefs and equilibrium completion of the auxiliary game remain open. |
 | Earlier packet offense with uncertain collection | Use the change in conditional expected collection, or admit rational raw continuation. | The exact incremental-charge identity is checked. Coverage of another packet alone supplies no positive increment; no independence premise is implicit. |
@@ -1722,8 +1760,9 @@ the private-capability continuation argument address separate parts of this
 obligation.
 
 [SourceServiceAuditableCollection](../Vegas/Game/SourceServiceAuditableCollection.lean)
-combines constructor breaches, authorization breaches, wrong current-event
-handles and public guard failures in an information-local predicate.
+combines constructor breaches, authorization breaches, wrong node kinds,
+wrong current-event handles and public guard failures in an information-local
+predicate.
 Own recall and current view reconstruct the entire actual emitted envelope,
 including its serial, evidence and readiness token. Committing a classified
 choice derives traffic persistence and the final forbidden verdict under
@@ -1737,9 +1776,17 @@ For these classes, receipt soundness uses the actual emitted envelope:
 identifier equality alone could refer to a different hypothetical packet.
 The collection continuation derives final emission from the chosen response
 and traffic persistence. A premature call without a readiness token is
-covered; valid-token off-turn calls are not automatically forbidden. Wrong
-node-kind calls, private material and guard-passing capability retain their
-own obligations.
+covered; valid-token off-turn calls are not automatically forbidden.
+
+[SourceServiceNodeKindBreach](../Vegas/Game/SourceServiceNodeKindBreach.lean)
+adds commitments addressed to a non-binding node and openings or withholding
+addressed to a non-resolution node. The public graph check is immutable.
+Actual handler acceptance certifies it, and initialized receipt soundness
+and emitted-envelope identity derive the final forbidden verdict. Thus even
+a valid-token, evidence-free withholding packet addressed to its sender's
+binding is classified. This class uses the same partial-evidence collection
+bound. Private material, guard-passing capability and other unclassified
+packets retain their own obligations.
 
 [ReactiveSettledCollection](../Vegas/Pending/ReactiveSettledCollection.lean)
 states that broader backend obligation as `FinalForbiddenEvidenceCoverage`.
