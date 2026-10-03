@@ -467,14 +467,36 @@ profile and free continuation. This permits varying original source approximants
 without assuming convergence of off-path normalization. It does not control
 beliefs conditioned on rare inputs or select incentive-compatible waiting rates.
 
+[AsyncServiceCompatibleWait](../Vegas/Game/AsyncServiceCompatibleWait.lean)
+derives exact geometric WAIT probability at every actual source-compatible input:
+`ε` before native trembles, and `δ * uniformWait + (1 - δ) * ε` after them.
+The input's real bounded execution excludes a final truncated turn. These
+likelihoods remain relevant for foreign players' conditional beliefs.
+[AsyncServiceInformationWait](../Vegas/Game/AsyncServiceInformationWait.lean)
+allows WAIT rates to depend on the owner's complete actual information, with
+uniform trembles and arbitrary completion outside compatible sites.
+[AsyncServiceInformationWaitDomination](../Vegas/Game/AsyncServiceInformationWaitDomination.lean)
+uses the shared initialized induction to retain at least
+`((1 - δ)(1 - b))^(card Player * fuel)` of first-turn mass when `b` bounds local
+WAIT rates at compatible sites. This controls initialized loss, without choosing
+rates that give source-relative beliefs or rational prescribed decisions.
+
+[AsyncServiceCompatibleRecall](../Vegas/Game/AsyncServiceCompatibleRecall.lean)
+derives source compatibility of every earlier own recalled decision at a
+compatible input. Agreement on compatible inputs therefore fixes the owner's
+entire recalled likelihood, independently of completion elsewhere. Existing
+counterfactual Bayes cancellation applies even to arbitrarily rare own WAITs;
+foreign WAIT likelihoods and conditional escape remain separate obligations.
+
 [AsyncServiceOriginalCompletion](../Vegas/Game/AsyncServiceOriginalCompletion.lean)
 uses the actual original source assessment sequence to construct a fully mixed
 native Bayes sequence and one common convergent strategy/belief subsequence.
 Its consistent limit is rational at all free sites, initialized play visits only
 source-compatible sites, and the joint full typed outcome and realized sampled
-settlement law equal the original source strategy's law. The pins retain the
-actual normalized approximants, including their off-path limits. This does not
-identify native conditional beliefs with source beliefs or prove prescribed-site
+settlement law equal the original source strategy's law. Its WAIT rates depend
+on actual information and have a common vanishing upper bound at compatible
+sites. The pins retain actual normalized approximants, including their off-path
+limits. This does not identify native conditional beliefs with source beliefs or prove prescribed-site
 rationality. Choosing waiting rates that support those comparisons remains open.
 
 [ReactiveBindingPublicTraffic](../Vegas/Pending/ReactiveBindingPublicTraffic.lean)
@@ -557,7 +579,7 @@ completion into one joint law. Its physical marginal is the actual completed
 binding law, retaining the same parameter and all public/foreign traffic. The
 auxiliary input is the original chronological before-response recall; no
 selected-slot visit or acceptance mass is assumed.
-[ReactiveBindingUsableProvenance](../Vegas/Pending/ReactiveBindingUsableProvenance.lean)
+[ReactiveBindingCommitmentProvenance](../Vegas/Pending/ReactiveBindingCommitmentProvenance.lean)
 preserves actual owner commitments that either address completed events or
 have matching fixed candidate meanings, across foreign/noncommitment
 responses, shared fresh registration and all environment commands. This
@@ -742,8 +764,9 @@ carries ordinary unrestricted service invariants through the same private
 implementation's real joint evaluator.
 [SourceServiceMissingStoppedCoupling](../Vegas/Game/SourceServiceMissingStoppedCoupling.lean)
 couples the full actual run and the same retained implementation's joint
-execution and memory law for noncommitment responses or later fresh typed
-bindings. The completed preparation still excludes additional owner commitments.
+execution and memory law for noncommitment responses or later fresh bare
+bindings with arbitrary private material. The completed preparation still
+excludes additional owner commitments.
 Every endpoint preserves the evolving frame, memory, actual candidate provenance
 and opening capabilities, or carries the same actual owner-authored signed breach
 in both inputs. Clean branches carry equal actual risk records and service risk
@@ -751,7 +774,7 @@ for every inclusion bound. Ordinary runtime invariants come from initialized raw
 the real evaluator. One common finite induction serves the complete bounded
 effective menu and the risk menu. Its risk consumer derives repaired admission
 from actual original risk support, current binding invariants and recalled
-records. Later unusable or reused bindings and terminal utility domination
+records. Reused bindings and terminal utility domination
 remain open.
 [ReactiveBindingRiskRecall](../Vegas/Pending/ReactiveBindingRiskRecall.lean)
 derives the actual initial risk-record equality from both raw traces, their
@@ -764,17 +787,18 @@ transports actual original risk-supported responses to the same repaired risk
 menu at whole inputs. Clear binding and resolution cases derive fresh typed slots,
 protected windows and TRUE certificate/guard success; expanded inputs transport
 effective responses. Invocation and resume coupling use the same retained
-implementation on the noncommitment/fresh-usable slice. The finite stopped
-coupling composes that slice; reused or unusable bindings and terminal utility
+implementation on the noncommitment/fresh-copy slice. The finite stopped
+coupling composes that slice; reused bindings and terminal utility
 domination remain separate.
-Fresh usable bindings use candidate-only repair memory and preserve their
-actual success or expiry. The fixed-calendar repair induction carries
+Fresh copied bindings use candidate-only repair memory and preserve their
+actual handler outcome or expiry. The fixed-calendar repair induction carries
 `BindingShadow.CompletedAt` from empty initial memory through actual completed
 blocks. It rules out stale completion overrides at a ready event without an
 extra capstone assumption. Reused handles use their fixed candidate meaning,
 rather than newly supplied private material.
-Arbitrary later mistyped bindings remain a capability boundary: material that
-fails the current payload type can be usable at another binding.
+Later copied mistyped material retains its real raw capability, even when it
+fails the current payload type and is usable at another binding. The capability
+changed by the initial repair still requires a separate continuation argument.
 [ReactiveBindingCopiedSubmission](../Vegas/Pending/ReactiveBindingCopiedSubmission.lean)
 proves that copying a later fresh bare commitment with its original material
 preserves the full frame and its actual raw candidate capability, including
@@ -782,14 +806,14 @@ mistyped or absent material. The retained implementation copies originals
 already admitted at the actual input, otherwise trying default repair and a
 legal fallback. Both transformations share one sampling and response-recording
 engine. Calendar callers derive agreement from the actual compiled menu.
-General stopped fresh-copy closure and reused-candidate/terminal comparisons
-remain open.
+The stopped coupling composes fresh copies with arbitrary private material.
+Reused candidates and terminal utility comparisons remain open.
 
 [ReactiveBindingUsableStep](../Vegas/Pending/ReactiveBindingUsableStep.lean)
 proves full-frame inclusion closure for matching fixed owner candidates,
 including rejected and late calls. Actual fresh usable submission establishes
 these matching meanings and completed-boundary memory without assuming
-protected inclusion. Arbitrary later binding response closure remains open.
+protected inclusion. Reused-candidate response closure remains open.
 [ReactiveUsedBindingOpening](../Vegas/Pending/ReactiveUsedBindingOpening.lean)
 proves every opening of a used mistyped candidate is rejected. Its authentic
 certificate may fail the public association or typed guard check.
@@ -800,16 +824,16 @@ existing auditable public-breach class. Partial collection applies without
 treating authentic certification as a signed-content breach. Whole-policy
 repair and payoff domination remain open.
 
-[ReactiveBindingUsableWindow](../Vegas/Pending/ReactiveBindingUsableWindow.lean)
+[ReactiveBindingCopiedWindow](../Vegas/Pending/ReactiveBindingCopiedWindow.lean)
 couples one actual effective owner response law to the same retained private
-implementation. Noncommitments and fresh typed registrations preserve current
-memory, the full frame, completed-or-matching traffic and original opening
-capabilities. [ReactiveBindingUsableResume](../Vegas/Pending/ReactiveBindingUsableResume.lean)
+implementation. Noncommitments and fresh bare registrations with arbitrary
+private material preserve current memory, the full frame, completed-or-matching traffic and original opening
+capabilities. [ReactiveBindingCopiedResume](../Vegas/Pending/ReactiveBindingCopiedResume.lean)
 extends that law to arbitrary foreign raw actions and inactive resumptions.
 [ReactiveBindingPacketStep](../Vegas/Pending/ReactiveBindingPacketStep.lean)
 also admits actual fixed matching owner candidates at inclusion. The full
-usable suffix is composed by both effective and risk-menu stopped couplings;
-utility comparison and general later-binding admission remain open.
+fresh-copy suffix is composed by both effective and risk-menu stopped couplings;
+utility comparison and reused-candidate closure remain open.
 
 ## Validation
 

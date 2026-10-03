@@ -1,8 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ReactiveBindingUsableWindow
+import Vegas.Pending.ReactiveBindingCopiedWindow
 
-/-! # Arbitrary foreign responses around fresh usable owner registrations
+/-! # Arbitrary foreign responses around fresh copied owner registrations
 
 The same retained implementation handles the owner at reconstructed own input.
 All other raw response laws stay unchanged. Current completed memory and actual
@@ -25,8 +25,8 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 
 /-- One actual resumption has exact original and retained-implementation
 marginals, including arbitrary foreign responses. Its owner slice permits
-noncommitment calls and fresh typed private registrations. -/
-theorem usable_effective_resume_coupling
+noncommitment calls and fresh owned private registrations. -/
+theorem copied_effective_resume_coupling
     (frame : Frame runtime leaks memory owner original repaired)
     (onlyBindings : memory.shadow.OwnBindings owner)
     (past : memory.shadow.CompletedAt original.application.config)
@@ -42,10 +42,10 @@ theorem usable_effective_resume_coupling
     (started : reference.length ≤ (repaired.recall owner).length)
     (effective : ∀ earlier view response, response ∈ (players owner earlier view).support →
       response ∈ (bounds.menu runtime leaks).actions owner earlier view)
-    (usable : ∀ earlier view response, response ∈ (players owner earlier view).support →
+    (copied : ∀ earlier view response, response ∈ (players owner earlier view).support →
       (∀ material, response.transmission = some material →
           ∀ event candidate, material.call.packet ≠ .commitment event candidate) ∨
-        FreshUsableBindingResponse runtime leaks owner view.application response)
+        FreshOwnedBindingResponse runtime leaks owner view.application response)
     (actor : Option Player) :
     let app := runtime.reactiveApplication leaks
     let strategy := retainedImplementation runtime leaks (bounds.menu runtime leaks)
@@ -75,8 +75,8 @@ theorem usable_effective_resume_coupling
   | some actor =>
       by_cases own : actor = owner
       · subst actor
-        exact frame.usable_effective_response_coupling onlyBindings past provenance bounds
-          leftRecall rightRecall preserved players reference started (effective _ _) (usable _ _)
+        exact frame.copied_effective_response_coupling onlyBindings past provenance bounds
+          leftRecall rightRecall preserved players reference started (effective _ _) (copied _ _)
       · let law := players actor (original.recall actor) (original.observe app actor)
         let coupling := law.map fun response =>
           (original.respond app actor response, repaired.respond app actor response, memory)

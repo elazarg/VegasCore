@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ReactiveBindingUsableWindow
+import Vegas.Pending.ReactiveBindingFrame
+import Vegas.Pending.ReactiveBindingCertificateRepair
 
 /-! # Copying a later bare commitment with its actual candidate meaning
 
@@ -17,13 +18,27 @@ Inclusion of a reused changed candidate remains a separate obligation.
 
 noncomputable section
 
-namespace Vegas.EventGraphRuntime.BindingMemory.Frame
+namespace Vegas.EventGraphRuntime
 
 open Interaction EventGraph
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-  {runtime : EventGraphRuntime graph}
+
+/-- A new owned registration is described by the actual input and chosen
+bare response. Missing and mistyped raw material retain their actual meanings;
+the addressed node need not be a binding. -/
+def FreshOwnedBindingResponse (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (owner : Player) (view : ReactivePlayerView graph)
+    (response : (runtime.reactiveApplication leaks).Action) : Prop :=
+  ∃ (event : graph.EventId) (serial : Nat) (opening : Option (Raw L)),
+    view.candidates (.prepared serial) = .fresh ∧
+      response = ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩
+
+namespace BindingMemory.Frame
+
+variable {runtime : EventGraphRuntime graph}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)}
   {memory : BindingMemory runtime leaks} {owner : Player}
   {original repaired : (runtime.reactiveApplication leaks).Execution}
@@ -134,4 +149,6 @@ theorem copied_binding_fresh_meaning
   cases opening <;> simp only [call, Submission.candidateAfter, fresh, rightFresh, and_self,
     ↓reduceIte, Option.elim_none, Option.elim_some] <;> simp
 
-end Vegas.EventGraphRuntime.BindingMemory.Frame
+end BindingMemory.Frame
+
+end Vegas.EventGraphRuntime

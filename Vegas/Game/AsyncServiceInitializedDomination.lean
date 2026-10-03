@@ -4,13 +4,16 @@ import Vegas.Game.AsyncServicePrescribedCompletion
 import GameTheory.Analysis.Protocol.RestrictionDomination
 import GameTheoryExtensions.Math.Probability.TotalVariation
 
-/-! # Uniform initialized loss under geometric native completion
+/-! # Actual-support initialized domination and native completion loss
 
 The actual first-turn support supplies risk clarity and genuine coverage of
 the geometric response law. Uniform native trembles retain a fixed fraction
 of each supported first-turn choice. Finite execution therefore retains that
 fraction of every complete history, independently of the source profile's
 unreachable laws and all completion play after departure.
+
+The same supported-choice kernel also permits information-dependent timing
+rates, provided their actual choice laws supply a uniform lower bound.
 
 These are unconditional initialized bounds. They do not compare beliefs
 conditioned on rare information values or prove prescribed-site rationality.
@@ -285,46 +288,93 @@ theorem completedGeometricProfile_firstTurn_choice_lower
     exact mul_le_of_le_one_left ENNReal.toReal_nonneg
       (completionFactor_small weight delta positive.le deltaNonnegative deltaSmall)
 
-/-- One actual supported first-turn step retains its whole history law,
-including scheduler randomness, pending-message observations and own recall. -/
-theorem completedGeometricProfile_firstTurn_step_lower
+private theorem firstTurnProfile_step_lower_of_choice
     (profile : BehavioralProfile service.setup.program)
-    (permitted : ∀ who, (profile who).Admitted service.setup.program
-      (CommitmentInterface.values service.setup.program))
-    (effective : ∀ who, (profile who).EffectiveDisclosures service.setup.program []
-      (Revelations.initial service.setup.context))
-    (weight : ℝ) (positive : 0 < weight) (small : weight < 1)
-    (delta : ℝ) (deltaNonnegative : 0 ≤ delta) (deltaSmall : delta ≤ 1)
-    (continuation : ∀ who, (model).BehavioralPolicy who)
-    (fuel : Nat)
+    (target : ∀ who, (model).BehavioralPolicy who)
+    (factor : ℝ) (nonnegative : 0 ≤ factor)
     (history :
       ((menu).protocol (initialLaw service.setup) service.horizon service.scheduler).History)
-    (reached : history ∈ ((model).runBehavioral
-      (service.firstTurnProfile service.horizon profile) fuel).support)
+    (lower : ∀ who choice,
+      factor * ((service.firstTurnProfile service.horizon profile who
+        ((model).infoOf who history.trace)) choice).toReal ≤
+          ((target who ((model).infoOf who history.trace)) choice).toReal)
     (next :
       ((menu).protocol (initialLaw service.setup) service.horizon service.scheduler).History) :
-    ((1 - delta) * (1 - weight)) ^ Fintype.card Player *
+    factor ^ Fintype.card Player *
         (((model).runBehavioralFrom (service.firstTurnProfile service.horizon profile) 1 history)
           next).toReal ≤
-      (((model).runBehavioralFrom (service.completedGeometricProfile profile weight positive.le
-        small.le delta deltaNonnegative deltaSmall continuation) 1 history) next).toReal := by
+      (((model).runBehavioralFrom target 1 history) next).toReal := by
   rw [(model).runBehavioralFrom_one_localStep, (model).runBehavioralFrom_one_localStep]
   apply prob_bind_ge_mul _ _ _ _ ((model).localStep history) next
   intro choices
   have lower := prob_pi_ge_prod_mul
     (fun who => service.firstTurnProfile service.horizon profile who
       ((model).infoOf who history.trace))
-    (fun who => service.completedGeometricProfile profile weight positive.le small.le delta
-      deltaNonnegative deltaSmall continuation who ((model).infoOf who history.trace))
-    (fun _ => (1 - delta) * (1 - weight))
-    (fun _ => completionFactor_nonnegative weight delta small.le deltaSmall)
-    (fun who choice => service.completedGeometricProfile_firstTurn_choice_lower profile permitted
-      effective weight positive small delta deltaNonnegative deltaSmall continuation fuel history
-        reached who choice) choices
+    (fun who => target who ((model).infoOf who history.trace))
+    (fun _ => factor) (fun _ => nonnegative) lower choices
   simpa only [Finset.prod_const, Finset.card_univ] using lower
 
-/-- Initialized play retains a uniform fraction of each exact first-turn
-history. No off-path policy convergence or post-departure conformity is used. -/
+/-- Choice domination is required only at actual initialized first-turn
+histories. The target may use arbitrary policies after leaving that support. -/
+theorem firstTurnProfile_initialized_domination_of_choice
+    (profile : BehavioralProfile service.setup.program)
+    (target : ∀ who, (model).BehavioralPolicy who)
+    (factor : ℝ) (nonnegative : 0 ≤ factor)
+    (lower : ∀ fuel history,
+      history ∈ ((model).runBehavioral
+        (service.firstTurnProfile service.horizon profile) fuel).support → ∀ who choice,
+      factor * ((service.firstTurnProfile service.horizon profile who
+        ((model).infoOf who history.trace)) choice).toReal ≤
+          ((target who ((model).infoOf who history.trace)) choice).toReal)
+    (fuel : Nat)
+    (next :
+      ((menu).protocol (initialLaw service.setup) service.horizon service.scheduler).History) :
+    factor ^ (Fintype.card Player * fuel) *
+        (((model).runBehavioral (service.firstTurnProfile service.horizon profile) fuel)
+          next).toReal ≤
+      (((model).runBehavioral target fuel) next).toReal := by
+  let baseline := service.firstTurnProfile service.horizon profile
+  let stepFactor := factor ^ Fintype.card Player
+  have stepNonnegative : 0 ≤ stepFactor := pow_nonneg nonnegative _
+  have retained (count : Nat) (last :
+      ((menu).protocol (initialLaw service.setup) service.horizon service.scheduler).History) :
+      stepFactor ^ count * (((model).runBehavioral baseline count) last).toReal ≤
+        (((model).runBehavioral target count) last).toReal := by
+    induction count generalizing last with
+    | zero => simp only [pow_zero, one_mul]; exact le_rfl
+    | succ count ih =>
+        unfold InformationModel.runBehavioral
+        rw [(model).runBehavioralFrom_add baseline count 1,
+          (model).runBehavioralFrom_add target count 1, pow_succ]
+        apply bind_supported_domination _ _ _ _ (stepFactor ^ count) stepFactor
+          (pow_nonneg stepNonnegative _) (fun last => ih last)
+        intro history reached next
+        exact firstTurnProfile_step_lower_of_choice service profile target factor nonnegative
+          history (lower count history reached) next
+  simpa only [stepFactor, ← pow_mul] using retained fuel next
+
+/-- The supported-choice bound controls every event of whole initialized
+histories, including private recall and pending-message observations. -/
+theorem firstTurnProfile_initialized_close_of_choice
+    (profile : BehavioralProfile service.setup.program)
+    (target : ∀ who, (model).BehavioralPolicy who)
+    (factor : ℝ) (nonnegative : 0 ≤ factor) (small : factor ≤ 1)
+    (lower : ∀ fuel history,
+      history ∈ ((model).runBehavioral
+        (service.firstTurnProfile service.horizon profile) fuel).support → ∀ who choice,
+      factor * ((service.firstTurnProfile service.horizon profile who
+        ((model).infoOf who history.trace)) choice).toReal ≤
+          ((target who ((model).infoOf who history.trace)) choice).toReal)
+    (fuel : Nat) :
+    PMF.WithinTV (1 - factor ^ (Fintype.card Player * fuel))
+      ((model).runBehavioral (service.firstTurnProfile service.horizon profile) fuel)
+      ((model).runBehavioral target fuel) := by
+  apply withinTV_of_domination _ _ _ (pow_le_one₀ nonnegative small)
+  exact service.firstTurnProfile_initialized_domination_of_choice profile target factor
+    nonnegative lower fuel
+
+/-- Geometric completion retains a uniform fraction of each exact first-turn
+history. Its supported-choice bound is derived from the actual runtime. -/
 theorem completedGeometricProfile_initialized_domination
     (profile : BehavioralProfile service.setup.program)
     (permitted : ∀ who, (profile who).Admitted service.setup.program
@@ -341,29 +391,10 @@ theorem completedGeometricProfile_initialized_domination
           next).toReal ≤
       (((model).runBehavioral (service.completedGeometricProfile profile weight positive.le small.le
         delta deltaNonnegative deltaSmall continuation) fuel) next).toReal := by
-  let baseline := service.firstTurnProfile service.horizon profile
-  let completed := service.completedGeometricProfile profile weight positive.le small.le delta
-    deltaNonnegative deltaSmall continuation
-  let factor := ((1 - delta) * (1 - weight)) ^ Fintype.card Player
-  have factorNonnegative : 0 ≤ factor :=
-    pow_nonneg (completionFactor_nonnegative weight delta small.le deltaSmall) _
-  have lower (count : Nat) (last :
-      ((menu).protocol (initialLaw service.setup) service.horizon service.scheduler).History) :
-      factor ^ count * (((model).runBehavioral baseline count) last).toReal ≤
-        (((model).runBehavioral completed count) last).toReal := by
-    induction count generalizing last with
-    | zero => simp only [pow_zero, one_mul]; exact le_rfl
-    | succ count ih =>
-        unfold InformationModel.runBehavioral
-        rw [(model).runBehavioralFrom_add baseline count 1,
-          (model).runBehavioralFrom_add completed count 1, pow_succ]
-        apply bind_supported_domination _ _ _ _ (factor ^ count) factor
-          (pow_nonneg factorNonnegative _) (fun last => ih last)
-        intro history reached next
-        exact service.completedGeometricProfile_firstTurn_step_lower profile permitted effective
-          weight positive small delta deltaNonnegative deltaSmall continuation count history reached
-            next
-  simpa only [factor, ← pow_mul] using lower fuel next
+  exact service.firstTurnProfile_initialized_domination_of_choice profile _ _
+    (completionFactor_nonnegative weight delta small.le deltaSmall)
+    (service.completedGeometricProfile_firstTurn_choice_lower profile permitted effective weight
+      positive small delta deltaNonnegative deltaSmall continuation) fuel next
 
 /-- The same uniform loss controls every initialized event of complete
 histories, with no lower bound on any particular history's probability. -/
@@ -380,10 +411,10 @@ theorem completedGeometricProfile_initialized_close
       ((model).runBehavioral (service.firstTurnProfile service.horizon profile) fuel)
       ((model).runBehavioral (service.completedGeometricProfile profile weight positive.le small.le
         delta deltaNonnegative deltaSmall continuation) fuel) := by
-  apply withinTV_of_domination _ _ _
-    (pow_le_one₀ (completionFactor_nonnegative weight delta small.le deltaSmall)
-      (completionFactor_small weight delta positive.le deltaNonnegative deltaSmall))
-  exact service.completedGeometricProfile_initialized_domination profile permitted effective weight
-    positive small delta deltaNonnegative deltaSmall continuation fuel
+  exact service.firstTurnProfile_initialized_close_of_choice profile _ _
+    (completionFactor_nonnegative weight delta small.le deltaSmall)
+    (completionFactor_small weight delta positive.le deltaNonnegative deltaSmall)
+    (service.completedGeometricProfile_firstTurn_choice_lower profile permitted effective weight
+      positive small delta deltaNonnegative deltaSmall continuation) fuel
 
 end Vegas.AsyncServiceSpec

@@ -87,6 +87,33 @@ theorem retainedImplementation_respond (who : Player)
               BindingMemory runtime leaks))) := by
   simp only [retainedImplementation, responseImplementation, not_lt.mpr started, ↓reduceIte]
 
+/-- When the original sampled responses are admitted at the actual input,
+the single policy draw copies their actual candidate registration without
+using default repair or fallback. -/
+theorem retainedImplementation_respond_of_members (who : Player)
+    (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (policy : (runtime.reactiveApplication leaks).Policy)
+    (memory : BindingMemory runtime leaks)
+    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (started : reference.length ≤ past.length)
+    (members : ∀ response ∈ (policy (memory.restoreRecall runtime leaks past)
+      (memory.shadow.inputView runtime leaks view)).support,
+      response ∈ menu.actions who past view) :
+    (retainedImplementation runtime leaks menu who reference policy).respond memory (past, view) =
+      (policy (memory.restoreRecall runtime leaks past)
+        (memory.shadow.inputView runtime leaks view)).map (fun response =>
+          let changed := memory.copyResponse runtime leaks who view response
+          (changed.1, (⟨changed.2, memory.responses ++
+            [(memory.shadow.inputView runtime leaks view, response)]⟩ :
+              BindingMemory runtime leaks))) := by
+  rw [retainedImplementation_respond runtime leaks menu who reference policy memory past view
+    started]
+  apply map_congr_on_support _
+  intro response selected
+  have admitted := members response selected
+  simp only [retainedResponse, admitted, ↓reduceIte]
+
 /-- The membership-aware and defaulting experiments agree when every
 proposed default is admitted and each admitted original has the same full
 copy and repair update. Action equality alone does not identify the shadow. -/

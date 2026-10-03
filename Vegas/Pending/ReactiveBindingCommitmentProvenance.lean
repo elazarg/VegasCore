@@ -2,8 +2,9 @@
 
 import Vegas.Pending.ReactiveBindingUsableStep
 import Vegas.Pending.ReactiveBindingInertClosure
+import Vegas.Pending.ReactiveBindingCopiedSubmission
 
-/-! # Commitment provenance through later fresh usable registrations
+/-! # Commitment provenance through later fresh owned registrations
 
 Each actual owner-authored commitment has either completed its addressed event
 or names a fixed candidate with the same meaning on both coupled executions.
@@ -98,12 +99,13 @@ theorem respond_noncommitment
 for its new actual envelope, while all prior commitment resources persist. -/
 theorem respond_fresh_binding
     (held : OwnerCommitmentsSettledOrMatching owner original repaired)
-    (event : graph.EventId) (serial : Nat) (raw : Raw L)
-    (leftFresh : original.application.candidates.lookup (owner, .prepared serial) = .fresh)
-    (rightFresh : repaired.application.candidates.lookup (owner, .prepared serial) = .fresh) :
+    {memory : BindingMemory runtime leaks}
+    (frame : BindingMemory.Frame runtime leaks memory owner original repaired)
+    (event : graph.EventId) (serial : Nat) (opening : Option (Raw L))
+    (fresh : original.application.candidates.lookup (owner, .prepared serial) = .fresh) :
     let app := runtime.reactiveApplication leaks
     let response : app.Action :=
-      ⟨some ⟨⟨.commitment event (owner, .prepared serial), some raw⟩, .none⟩⟩
+      ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩
     OwnerCommitmentsSettledOrMatching owner (original.respond app owner response)
       (repaired.respond app owner response) := by
   intro app response message member authored named candidate committed valid
@@ -113,7 +115,7 @@ theorem respond_fresh_binding
       valid
   · cases List.mem_singleton.mp added
     let material : WitnessedSubmission graph :=
-      ⟨⟨.commitment event (owner, .prepared serial), some raw⟩, .none⟩
+      ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩
     change (material.emit (app.submit original.application owner material) owner
       (original.network.known owner)).call = .commitment named candidate at committed
     have called : Payload.commitment event (owner, .prepared serial) =
@@ -121,13 +123,9 @@ theorem respond_fresh_binding
       (material.emit_call (app.submit original.application owner material) owner
         (original.network.known owner)).symm.trans committed
     cases called
-    have leftEq := runtime.bareBinding_submitted_openable leaks original owner event serial raw
-      leftFresh
-    have rightEq := runtime.bareBinding_submitted_openable leaks repaired owner event serial raw
-      rightFresh
     right
-    rw [leftEq, rightEq]
-    exact ⟨by simp, rfl⟩
+    have meaning := frame.copied_binding_fresh_meaning event serial opening fresh
+    exact ⟨meaning.1, meaning.2.1⟩
 
 /-- Paired actual scheduler transitions preserve the traffic relation under
 all commands, including inclusion, rejected calls, chance draws and overdue expiry. -/

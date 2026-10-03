@@ -275,10 +275,10 @@ import Vegas.Pending.ReactiveAssociationPersistence
 import Vegas.Pending.ReactiveServiceFiniteness
 import Vegas.Pending.ReactiveBindingUsableStep
 import Vegas.Pending.ReactiveUsedBindingOpening
-import Vegas.Pending.ReactiveBindingUsableProvenance
+import Vegas.Pending.ReactiveBindingCommitmentProvenance
 import Vegas.Pending.ReactiveCompletedConfig
-import Vegas.Pending.ReactiveBindingUsableWindow
-import Vegas.Pending.ReactiveBindingUsableResume
+import Vegas.Pending.ReactiveBindingCopiedWindow
+import Vegas.Pending.ReactiveBindingCopiedResume
 
 import Vegas.Pending.ReactiveBindingRiskRecall
 import Vegas.Pending.ReactiveBindingRiskAdmission

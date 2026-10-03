@@ -152,6 +152,7 @@ import Vegas.Game.AsyncServiceSourceSites
 import Vegas.Game.SourceServiceCleanPrefixLaw
 import Vegas.Game.AsyncServiceCleanCompletionLaw
 import Vegas.Game.AsyncServiceCounterfactualBeliefs
+import Vegas.Game.AsyncServiceCompatibleRecall
 import Vegas.Game.AsyncServiceForeignEscape
 import Vegas.Game.SourceServiceBindingSource
 import Vegas.Game.SourceServiceResidualSites
@@ -344,6 +345,9 @@ import Vegas.Game.SourceServiceBindingSelectedCompletionLaw
 import Vegas.Game.AsyncServicePrescribedCompletion
 import Vegas.Game.AsyncServiceInitializedDomination
 import Vegas.Game.AsyncServiceOriginalCompletion
+import Vegas.Game.AsyncServiceCompatibleWait
+import Vegas.Game.AsyncServiceInformationWait
+import Vegas.Game.AsyncServiceInformationWaitDomination
 
 /-! Strategic source-to-graph and graph-to-message correspondence. -/
 

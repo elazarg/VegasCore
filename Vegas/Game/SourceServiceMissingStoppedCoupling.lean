@@ -11,12 +11,12 @@ import Interaction.ReactiveImplementationInvariant
 
 The owner uses one retained private implementation at every hidden history.
 Its later operational slice permits effective noncommitment responses and
-fresh usable registrations. Foreign raw responses and scheduler commands remain
+fresh owned registrations. Foreign raw responses and scheduler commands remain
 arbitrary. The evaluator stops sharing
 draws once the original actual traffic contains an owner signed-content breach.
 The same envelope persists on both sides of subsequent independent tails.
 This is a finite continuation coupling, not terminal utility domination or
-admission of unusable or reused future owner binding responses.
+closure for fixed reused future owner binding responses.
 The owner's actual public response-risk records agree on clean support;
 their equality is seeded from the two legal raw traces and preserved by real
 response and environment steps. The same private induction supports the
@@ -418,7 +418,7 @@ private theorem clean_round_coupling
       Set.mem_iUnion₂.mp (PMF.support_bindOnSupport .. ▸ member)
     exact (existsDispatch command chosen).choose_spec.2.2 next reached
 
-private theorem missing_usable_stopped_coupling
+private theorem missing_copied_stopped_coupling
     (menu : (application setup leaks).ResponseMenu) (owner : Player)
     (players : Player → (application setup leaks).Policy)
     (scheduler : (application setup leaks).Scheduler) (horizon : Nat)
@@ -636,20 +636,20 @@ variable [Fintype Player]
 /-- From actual initialized prefixes and a completed private repair, one
 fixed owner implementation couples the full finite evaluator. Before the
 prepared event completes, the actual prefix policy sends no further owner
-commitments. Thereafter the owner may also register fresh typed values. The
+commitments. Thereafter the owner may also copy fresh owned registrations. The
 current memory and traffic resources evolve through those registrations.
 Foreign responses and all scheduler commands are arbitrary. The exceptional
 branch carries the SAME actual owner breach, without a renewed fine claim. -/
-theorem sourceService_missing_usable_stopped_coupling
+theorem sourceService_missing_copied_stopped_coupling
     (bounds : MessageBounds (graph setup)) (owner : Player)
     (players : Player → (application setup leaks).Policy)
     (scheduler : (application setup leaks).Scheduler) (horizon : Nat)
     (effective : ∀ earlier view response, response ∈ (players owner earlier view).support →
       response ∈ (bounds.menu (runtime setup) leaks).actions owner earlier view)
-    (usable : ∀ earlier view response, response ∈ (players owner earlier view).support →
+    (copied : ∀ earlier view response, response ∈ (players owner earlier view).support →
       (∀ material, response.transmission = some material →
           ∀ event candidate, material.call.packet ≠ .commitment event candidate) ∨
-        FreshUsableBindingResponse (runtime setup) leaks owner view.application response)
+        FreshOwnedBindingResponse (runtime setup) leaks owner view.application response)
     (prefixPlayers : Player → (application setup leaks).Policy)
     (prefixNoncommitment : ∀ earlier view response,
       response ∈ (prefixPlayers owner earlier view).support →
@@ -703,23 +703,23 @@ theorem sourceService_missing_usable_stopped_coupling
               (next.2.1.observe app owner)) ∨
           ∃ message, message.sender = owner ∧ SignedContentBreach message ∧
             message ∈ next.1.network.inputs ∧ message ∈ next.2.1.network.inputs := by
-  apply missing_usable_stopped_coupling (bounds.menu (runtime setup) leaks) owner players scheduler
+  apply missing_copied_stopped_coupling (bounds.menu (runtime setup) leaks) owner players scheduler
     horizon reference ?_
     prefixPlayers prefixNoncommitment before original repaired beforeTrace leftTrace rightTrace
       current ready response preparation arrival completed memory frame onlyBindings past preserved
       started count
   intro memory original repaired frame onlyBindings past provenance _records leftFacts rightFacts
     preserved started actor
-  exact frame.usable_effective_resume_coupling onlyBindings past provenance bounds
-    leftFacts.2.2.2.2.2 rightFacts.2.2.2.2.2 preserved players reference started effective usable
+  exact frame.copied_effective_resume_coupling onlyBindings past provenance bounds
+    leftFacts.2.2.2.2.2 rightFacts.2.2.2.2.2 preserved players reference started effective copied
       actor
 
 /-- The same finite evaluator has an actual risk-menu implementation when
-the original owner law is risk-supported on its noncommitment/fresh-usable
+the original owner law is risk-supported on its noncommitment/fresh-owned
 slice. Repaired admission follows from the current actual recall records,
 input recall and binding invariants; no repaired-support premise is supplied.
 The exceptional branch is the same persisted owner breach. This operational
-law does not assert utility domination or closure for unusable/reused bindings. -/
+law does not assert utility domination or closure for fixed reused bindings. -/
 theorem sourceService_missing_risk_stopped_coupling
     (bounds : MessageBounds (graph setup))
     (bound : (graph setup).EventId → Nat) (owner : Player)
@@ -727,10 +727,10 @@ theorem sourceService_missing_risk_stopped_coupling
     (scheduler : (application setup leaks).Scheduler) (horizon : Nat)
     (supported : ∀ earlier view response, response ∈ (players owner earlier view).support →
       response ∈ bounds.riskActions (runtime setup) leaks bound owner earlier view)
-    (usable : ∀ earlier view response, response ∈ (players owner earlier view).support →
+    (copied : ∀ earlier view response, response ∈ (players owner earlier view).support →
       (∀ material, response.transmission = some material →
           ∀ event candidate, material.call.packet ≠ .commitment event candidate) ∨
-        FreshUsableBindingResponse (runtime setup) leaks owner view.application response)
+        FreshOwnedBindingResponse (runtime setup) leaks owner view.application response)
     (prefixPlayers : Player → (application setup leaks).Policy)
     (prefixNoncommitment : ∀ earlier view response,
       response ∈ (prefixPlayers owner earlier view).support →
@@ -784,15 +784,15 @@ theorem sourceService_missing_risk_stopped_coupling
               (next.2.1.observe app owner)) ∨
           ∃ message, message.sender = owner ∧ SignedContentBreach message ∧
             message ∈ next.1.network.inputs ∧ message ∈ next.2.1.network.inputs := by
-  apply missing_usable_stopped_coupling (bounds.riskMenu (runtime setup) leaks bound) owner players
+  apply missing_copied_stopped_coupling (bounds.riskMenu (runtime setup) leaks bound) owner players
     scheduler horizon reference ?_
     prefixPlayers prefixNoncommitment before original repaired beforeTrace leftTrace rightTrace
       current ready response preparation arrival completed memory frame onlyBindings past preserved
       started count
   intro memory original repaired frame onlyBindings past provenance records leftFacts rightFacts
     preserved started actor
-  exact frame.risk_usable_resume_coupling onlyBindings past provenance bounds bound records
+  exact frame.risk_copied_resume_coupling onlyBindings past provenance bounds bound records
     leftFacts.2.2.2.2.2 rightFacts.2.2.2.2.2 leftFacts.2.1 rightFacts.2.1 preserved players
-      reference started supported usable actor
+      reference started supported copied actor
 
 end Vegas

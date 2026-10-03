@@ -1,20 +1,22 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.AsyncServiceInitializedDomination
+import Vegas.Game.AsyncServiceInformationWaitDomination
 import Vegas.Game.SourceContinuation
 import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
 
 /-! # Native completion along actual original source assessments
 
 Normalized source policies may have different limits at transcripts of zero
-source probability. The completion retains their actual geometric and uniform
-pin sequence, selecting one common native assessment subsequence. Uniform
-initialized history domination preserves the original source joint law in
+source probability. The completion retains their actual information-dependent
+WAIT and uniform pin sequence, selecting one common native assessment
+subsequence. Uniform initialized history domination preserves the original source joint law in
 that limit without assuming global continuity of disclosure normalization.
 
 The result gives consistency, rational free sites and the actual initialized
 typed outcome and sampled settlement law. Prescribed-site comparisons and
 conditional escape relative to rare observations remain separate obligations.
+The uniform maximum bound controls only initialized loss; it does not assert
+that the information-dependent waiting rates enforce those comparisons.
 -/
 
 noncomputable section
@@ -40,13 +42,13 @@ local notation "sourceModel" => service.setup.informationModel
 
 omit [DecidableEq Player] in
 private theorem completion_loss_vanishes
-    (weight delta : Nat → ℝ)
-    (weightVanishes : Tendsto weight atTop (nhds 0))
+    (bound delta : Nat → ℝ)
+    (boundVanishes : Tendsto bound atTop (nhds 0))
     (deltaVanishes : Tendsto delta atTop (nhds 0)) (fuel : Nat) :
-    Tendsto (fun n => 1 - ((1 - delta n) * (1 - weight n)) ^ (Fintype.card Player * fuel))
+    Tendsto (fun n => 1 - ((1 - delta n) * (1 - bound n)) ^ (Fintype.card Player * fuel))
       atTop (nhds 0) := by
   have one : Tendsto (fun _ : Nat => (1 : ℝ)) atTop (nhds 1) := tendsto_const_nhds
-  convert one.sub (((one.sub deltaVanishes).mul (one.sub weightVanishes)).pow
+  convert one.sub (((one.sub deltaVanishes).mul (one.sub boundVanishes)).pow
     (Fintype.card Player * fuel)) using 1
   simp only [sub_zero, one_mul, one_pow, sub_self]
 
@@ -95,9 +97,13 @@ theorem exists_consistent_original_sequence_completion
     (sourceSequence : Nat → (sourceModel).BehavioralAssessment)
     (sourceConverges : InformationModel.BehavioralAssessmentConvergesPointwise
       sourceSequence source)
-    (weight : Nat → ℝ) (weightPositive : ∀ n, 0 < weight n)
-    (weightSmall : ∀ n, weight n < 1)
-    (weightVanishes : Tendsto weight atTop (nhds 0))
+    (weight : Nat → Player → (app).Info → ℝ)
+    (weightNonnegative : ∀ n who info, 0 ≤ weight n who info)
+    (weightSmall : ∀ n who info, weight n who info ≤ 1)
+    (bound : Nat → ℝ) (boundNonnegative : ∀ n, 0 ≤ bound n)
+    (boundSmall : ∀ n, bound n ≤ 1)
+    (bounded : ∀ n who info, service.sourceCompatibleInfo who info → weight n who info ≤ bound n)
+    (boundVanishes : Tendsto bound atTop (nhds 0))
     (delta : Nat → ℝ) (deltaPositive : ∀ n, 0 < delta n)
     (deltaSmall : ∀ n, delta n < 1)
     (deltaVanishes : Tendsto delta atTop (nhds 0))
@@ -130,10 +136,14 @@ theorem exists_consistent_original_sequence_completion
           mix (delta n) (deltaPositive n).le (deltaSmall n).le
             ((menu).uniformPolicy (initialLaw service.setup) service.horizon service.scheduler who
               site.1)
-            (service.geometricProfile (normalizeDisclosureProfile service.setup.program []
-              (Revelations.initial service.setup.context) (service.setup.decodeBehavioralProfile
-                (CommitmentInterface.values service.setup.program) (sourceSequence n).strategy))
-                  (weight n) (weightPositive n).le (weightSmall n).le who site.1)) ∧
+            (mix (weight n who site.1) (weightNonnegative n who site.1)
+              (weightSmall n who site.1)
+              (((menu).restrictPolicy (initialLaw service.setup) service.horizon service.scheduler
+                who (app).silentPolicy) site.1)
+              (service.immediateProfile (normalizeDisclosureProfile service.setup.program []
+                (Revelations.initial service.setup.context) (service.setup.decodeBehavioralProfile
+                  (CommitmentInterface.values service.setup.program) (sourceSequence n).strategy))
+                    who site.1))) ∧
       (∀ who (site : (model).InformationSite who), ¬ service.sourceCompatibleInfo who site.1 →
         ∀ law : PMF ((model).Choice who site.1),
           (assessment.continuationContext certificate site (payoff who)).value
@@ -182,8 +192,11 @@ theorem exists_consistent_original_sequence_completion
       agent.2.1
   let pinned n : Profile ((model).agentForm fallback certificate).sig.mixed := fun agent =>
     mix (delta n) (deltaPositive n).le (deltaSmall n).le (reference agent)
-      (service.geometricProfile (normalized n) (weight n) (weightPositive n).le (weightSmall n).le
-        agent.1 agent.2.1)
+      (mix (weight n agent.1 agent.2.1) (weightNonnegative n agent.1 agent.2.1)
+        (weightSmall n agent.1 agent.2.1)
+        (((menu).restrictPolicy (initialLaw service.setup) service.horizon service.scheduler
+          agent.1 (app).silentPolicy) agent.2.1)
+        (service.immediateProfile (normalized n) agent.1 agent.2.1))
   have referenceFull (agent : (model).InformationAgent (model).playedInformation) :
       FullSupport (reference agent) := by
     intro choice
@@ -209,17 +222,17 @@ theorem exists_consistent_original_sequence_completion
         simpa only [free, Finset.mem_filter, Finset.mem_univ, true_and, not_not] using compatible))
   have constructed (n : Nat) (who : Player) (site : (model).InformationSite who) :
       (nativeSequence n).strategy who site.1 =
-        service.completedGeometricProfile (normalized n) (weight n) (weightPositive n).le
-          (weightSmall n).le (delta n) (deltaPositive n).le (deltaSmall n).le
+        service.completedInformationWaitProfile (normalized n) (weight n) (weightNonnegative n)
+          (weightSmall n) (delta n) (deltaPositive n).le (deltaSmall n).le
             (nativeSequence n).strategy who site.1 := by
     by_cases compatible : service.sourceCompatibleInfo who site.1
-    · simp only [completedGeometricProfile, compatible, ↓reduceIte]
+    · simp only [completedInformationWaitProfile, compatible, ↓reduceIte]
       exact kept n who site compatible
-    · simp only [completedGeometricProfile, compatible, ↓reduceIte]
+    · simp only [completedInformationWaitProfile, compatible, ↓reduceIte]
   have initialized (n fuel : Nat) :
       (model).runBehavioral (nativeSequence n).strategy fuel =
-        (model).runBehavioral (service.completedGeometricProfile (normalized n) (weight n)
-          (weightPositive n).le (weightSmall n).le (delta n) (deltaPositive n).le (deltaSmall n).le
+        (model).runBehavioral (service.completedInformationWaitProfile (normalized n) (weight n)
+          (weightNonnegative n) (weightSmall n) (delta n) (deltaPositive n).le (deltaSmall n).le
             (nativeSequence n).strategy) fuel := by
     apply (model).runBehavioralFrom_congr_on_support
     intro _ _ history _ running who
@@ -230,16 +243,17 @@ theorem exists_consistent_original_sequence_completion
       exact constructed n who site
     · exact (model).behavioral_eq_of_not_active _ _ history.trace active
   let budget := 2 * service.horizon + 1
-  let loss n := 1 - ((1 - delta n) * (1 - weight n)) ^ (Fintype.card Player * budget)
+  let loss n := 1 - ((1 - delta n) * (1 - bound n)) ^ (Fintype.card Player * budget)
   have lossVanishes : Tendsto loss atTop (nhds 0) :=
-    completion_loss_vanishes weight delta weightVanishes deltaVanishes budget
+    completion_loss_vanishes bound delta boundVanishes deltaVanishes budget
   have close (n : Nat) : PMF.WithinTV (loss n)
       ((model).runBehavioral (service.firstTurnProfile service.horizon (normalized n)) budget)
       ((model).runBehavioral (nativeSequence n).strategy budget) := by
     rw [initialized]
-    exact service.completedGeometricProfile_initialized_close (normalized n) (permitted n)
-      (effective n) (weight n) (weightPositive n) (weightSmall n) (delta n) (deltaPositive n).le
-        (deltaSmall n).le (nativeSequence n).strategy budget
+    exact service.completedInformationWaitProfile_initialized_close (normalized n) (permitted n)
+      (effective n) (weight n) (weightNonnegative n) (weightSmall n) (delta n) (deltaPositive n).le
+        (deltaSmall n).le (nativeSequence n).strategy (bound n) (boundNonnegative n)
+          (boundSmall n) (bounded n) budget
   have nativeLimit := (model).runBehavioralTerminalFrom_convergesPointwise certificate
     converges.strategy ((menu).protocol (initialLaw service.setup) service.horizon
       service.scheduler).initHistory
@@ -260,15 +274,16 @@ theorem exists_consistent_original_sequence_completion
       intro supported
       exact escaped (service.firstTurnProfile_sourceCompatibleInfo service.horizon (normalized n)
         (permitted n) (effective n) fuel history supported who active)
-    let prefixLoss n := 1 - ((1 - delta n) * (1 - weight n)) ^ (Fintype.card Player * fuel)
+    let prefixLoss n := 1 - ((1 - delta n) * (1 - bound n)) ^ (Fintype.card Player * fuel)
     have prefixVanishes : Tendsto prefixLoss atTop (nhds 0) :=
-      completion_loss_vanishes weight delta weightVanishes deltaVanishes fuel
+      completion_loss_vanishes bound delta boundVanishes deltaVanishes fuel
     have pointBound (n : Nat) :
         (((model).runBehavioral (nativeSequence n).strategy fuel) history).toReal ≤ prefixLoss n :=
       by
-      have estimate := service.completedGeometricProfile_initialized_close (normalized n)
-        (permitted n) (effective n) (weight n) (weightPositive n) (weightSmall n) (delta n)
-        (deltaPositive n).le (deltaSmall n).le (nativeSequence n).strategy fuel
+      have estimate := service.completedInformationWaitProfile_initialized_close (normalized n)
+        (permitted n) (effective n) (weight n) (weightNonnegative n) (weightSmall n) (delta n)
+        (deltaPositive n).le (deltaSmall n).le (nativeSequence n).strategy (bound n)
+        (boundNonnegative n) (boundSmall n) (bounded n) fuel
       rw [← initialized] at estimate
       have point := estimate.apply history
       rw [absent] at point

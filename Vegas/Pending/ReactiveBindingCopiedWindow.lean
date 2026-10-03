@@ -1,15 +1,17 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ReactiveBindingUsableProvenance
+import Vegas.Pending.ReactiveBindingCommitmentProvenance
 import Vegas.Pending.ReactiveBindingInertWindow
+import Vegas.Pending.ReactiveBindingCopiedSubmission
 
-/-! # Joint owner responses with later fresh usable bindings
+/-! # Joint owner responses with actual fresh binding material
 
 One effective policy is sampled at reconstructed own input. Its noncommitment
-responses and fresh typed registrations preserve the actual frame, completed
+responses and fresh owned registrations preserve the actual frame, completed
 memory and commitment provenance. The private implementation has no fallback
-on this support. This concerns the complete bounded effective menu, not admission
-to the service risk menu or a whole-policy payoff comparison.
+on this support. Fresh missing and mistyped openings are copied with their
+actual candidate meanings. This is the effective-menu response law; service risk
+admission and a whole-policy payoff comparison remain separate consumers.
 -/
 
 noncomputable section
@@ -47,34 +49,6 @@ variable {runtime : EventGraphRuntime graph}
   {original repaired : (runtime.reactiveApplication leaks).Execution}
 
 omit [Fintype Player] in
-/-- Copying and defaulting have the same full candidate-memory update
-on noncommitment or genuinely fresh usable binding responses. -/
-theorem usable_copyResponse_eq_repairResponse
-    (frame : Frame runtime leaks memory owner original repaired)
-    (response : (runtime.reactiveApplication leaks).Action)
-    (usable : (∀ material, response.transmission = some material →
-        ∀ event candidate, material.call.packet ≠ .commitment event candidate) ∨
-      FreshUsableBindingResponse runtime leaks owner
-        (original.observe (runtime.reactiveApplication leaks) owner).application response) :
-    memory.copyResponse runtime leaks owner
-        (repaired.observe (runtime.reactiveApplication leaks) owner) response =
-      memory.repairResponse runtime leaks owner
-        (repaired.observe (runtime.reactiveApplication leaks) owner) response := by
-  rcases usable with noncommitment | freshUsable
-  · rw [memory.copyResponse_noncommitment runtime leaks owner _ response noncommitment,
-      memory.repairResponse_noncommitment runtime leaks owner _ response noncommitment]
-  · obtain ⟨event, payload, outputEq, codeEq, serial, raw, value, node, _ready, fresh,
-      typed, rfl⟩ := freshUsable
-    have rightFresh := (frame.slots (.prepared serial)).mp fresh
-    have reconstructedFresh : (memory.shadow.inputView runtime leaks
-        (repaired.observe (runtime.reactiveApplication leaks) owner)).application.candidates
-          (.prepared serial) = .fresh := by
-      rw [frame.observed]
-      exact fresh
-    exact memory.copyResponse_usable_eq_repairResponse runtime leaks owner _ event payload
-      outputEq codeEq node serial (some raw) reconstructedFresh rightFresh value typed
-
-omit [Fintype Player] in
 private theorem same_response_openable
     (frame : Frame runtime leaks memory owner original repaired)
     (preserved : ∀ slot raw,
@@ -103,7 +77,7 @@ private theorem same_response_openable
 /-- Actual selected owner responses preserve full private reconstruction and
 the evolving completed-or-matching ledger. Certificate and effective-menu
 transport are derived from the original normal form and actual capabilities. -/
-theorem usable_response_resources
+theorem copied_response_resources
     (frame : Frame runtime leaks memory owner original repaired)
     (onlyBindings : memory.shadow.OwnBindings owner)
     (past : memory.shadow.CompletedAt original.application.config)
@@ -117,12 +91,12 @@ theorem usable_response_resources
     (response : (runtime.reactiveApplication leaks).Action)
     (effective : response ∈ (bounds.menu runtime leaks).actions owner (original.recall owner)
       (original.observe (runtime.reactiveApplication leaks) owner))
-    (usable : (∀ material, response.transmission = some material →
+    (copied : (∀ material, response.transmission = some material →
         ∀ event candidate, material.call.packet ≠ .commitment event candidate) ∨
-      FreshUsableBindingResponse runtime leaks owner
+      FreshOwnedBindingResponse runtime leaks owner
         (original.observe (runtime.reactiveApplication leaks) owner).application response) :
     let app := runtime.reactiveApplication leaks
-    let changed := memory.repairResponse runtime leaks owner (repaired.observe app owner) response
+    let changed := memory.copyResponse runtime leaks owner (repaired.observe app owner) response
     let updated : BindingMemory runtime leaks :=
       ⟨changed.2, memory.responses ++
         [(memory.shadow.inputView runtime leaks (repaired.observe app owner), response)]⟩
@@ -137,8 +111,8 @@ theorem usable_response_resources
   have transported := runtime.effectiveResponse_openable_transport leaks bounds owner
     original repaired leftRecall rightRecall frame.network frame.publicView frame.slots
       preserved response effective
-  rcases usable with noncommitment | freshUsable
-  · have changedEq := memory.repairResponse_noncommitment runtime leaks owner
+  rcases copied with noncommitment | freshOwned
+  · have changedEq := memory.copyResponse_noncommitment runtime leaks owner
       (repaired.observe app owner) response noncommitment
     have same : changed.1 = response := congrArg Prod.fst changedEq
     have shadow : updated.shadow = memory.shadow := congrArg Prod.snd changedEq
@@ -178,31 +152,26 @@ theorem usable_response_resources
           .openable raw
       rw [same]
       exact frame.same_response_openable preserved response
-  · obtain ⟨event, payload, outputEq, codeEq, serial, raw, value, node, ready, fresh,
-      typed, rfl⟩ := freshUsable
-    have actualReady := (original.application.publicView_eventReady event).mp ready
+  · obtain ⟨event, serial, opening, fresh, rfl⟩ := freshOwned
     have rightFresh := (frame.slots (.prepared serial)).mp fresh
     have ownFresh : (memory.shadow.inputView runtime leaks
         (repaired.observe app owner)).application.candidates (.prepared serial) = .fresh := by
       rw [frame.observed]
       exact fresh
-    have changedEq := memory.repairResponse_usable runtime leaks owner
-      (repaired.observe app owner) event payload outputEq codeEq node serial (some raw)
-        ownFresh rightFresh value typed
+    have changedEq := memory.copyResponse_fresh runtime leaks owner
+      (repaired.observe app owner) event (.prepared serial) opening .none ownFresh rightFresh
     have same : changed.1 =
-        (⟨some ⟨⟨.commitment event (owner, .prepared serial), some raw⟩, .none⟩⟩ : app.Action) :=
+        (⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩ : app.Action) :=
       congrArg Prod.fst changedEq
-    have resources := frame.fresh_usable_submission_resources past event payload outputEq
-      codeEq node serial raw value typed fresh actualReady
-    refine ⟨same, resources.1, ?_, resources.2.1, ?_, ?_⟩
-    · have shadow := congrArg Prod.snd changedEq
-      change updated.shadow = _ at shadow
-      rw [shadow]
-      exact onlyBindings.rememberCandidate _ _
+    have resources := frame.copied_binding_submission onlyBindings past event serial opening
+    refine ⟨same, ?_, ?_, ?_, ?_, ?_⟩
+    · simpa only [updated, left, right, changed, changedEq] using resources.1
+    · simpa only [updated, changed, changedEq] using resources.2.1
+    · simpa only [updated, changed, changedEq] using resources.2.2
     · change OwnerCommitmentsSettledOrMatching owner left
         (repaired.respond app owner changed.1)
       rw [same]
-      exact provenance.respond_fresh_binding event serial raw fresh rightFresh
+      exact provenance.respond_fresh_binding frame event serial opening fresh
     · change ∀ slot raw, left.application.candidates.lookup (owner, slot) = .openable raw →
         (repaired.respond app owner changed.1).application.candidates.lookup (owner, slot) =
           .openable raw
@@ -210,9 +179,9 @@ theorem usable_response_resources
       exact frame.same_response_openable preserved _
 
 /-- A single effective owner law is used at the original reconstructed input
-on every hidden history. Supported fresh usable calls add only candidate memory;
+on every hidden history. Supported fresh owned calls add only candidate memory;
 the exact joint law retains both evaluator marginals and the current resources. -/
-theorem usable_effective_response_coupling
+theorem copied_effective_response_coupling
     (frame : Frame runtime leaks memory owner original repaired)
     (onlyBindings : memory.shadow.OwnBindings owner)
     (past : memory.shadow.CompletedAt original.application.config)
@@ -230,11 +199,11 @@ theorem usable_effective_response_coupling
       (original.observe (runtime.reactiveApplication leaks) owner)).support,
       response ∈ (bounds.menu runtime leaks).actions owner (original.recall owner)
         (original.observe (runtime.reactiveApplication leaks) owner))
-    (usable : ∀ response ∈ (players owner (original.recall owner)
+    (copied : ∀ response ∈ (players owner (original.recall owner)
       (original.observe (runtime.reactiveApplication leaks) owner)).support,
       (∀ material, response.transmission = some material →
           ∀ event candidate, material.call.packet ≠ .commitment event candidate) ∨
-        FreshUsableBindingResponse runtime leaks owner
+        FreshOwnedBindingResponse runtime leaks owner
           (original.observe (runtime.reactiveApplication leaks) owner).application response) :
     let app := runtime.reactiveApplication leaks
     let strategy := retainedImplementation runtime leaks (bounds.menu runtime leaks)
@@ -256,42 +225,31 @@ theorem usable_effective_response_coupling
   let law := players owner (original.recall owner) (original.observe app owner)
   let menu := bounds.menu runtime leaks
   let changed (response : app.Action) :=
-    memory.repairResponse runtime leaks owner (repaired.observe app owner) response
+    memory.copyResponse runtime leaks owner (repaired.observe app owner) response
   let updated (response : app.Action) : BindingMemory runtime leaks :=
     ⟨(changed response).2, memory.responses ++
       [(memory.shadow.inputView runtime leaks (repaired.observe app owner), response)]⟩
   have resources (response : app.Action) (supported : response ∈ law.support) :=
-    frame.usable_response_resources onlyBindings past provenance bounds leftRecall rightRecall
-      preserved response (effective response supported) (usable response supported)
+    frame.copied_response_resources onlyBindings past provenance bounds leftRecall rightRecall
+      preserved response (effective response supported) (copied response supported)
   have transported (response : app.Action) (supported : response ∈ law.support) :=
     runtime.effectiveResponse_openable_transport leaks bounds owner original repaired
       leftRecall rightRecall frame.network frame.publicView frame.slots preserved response
         (effective response supported)
-  have responseLaw :
-      (implementation runtime leaks owner reference (players owner)).respond memory
-        (repaired.recall owner, repaired.observe app owner) =
-          law.map (fun response => (response, updated response)) := by
-    rw [implementation_respond runtime leaks owner reference (players owner) memory
-      (repaired.recall owner) (repaired.observe app owner) started, frame.past, frame.observed]
-    apply map_congr_on_support _
-    intro response supported
-    rw [← frame.observed]
-    change ((changed response).1, updated response) = (response, updated response)
-    rw [(resources response supported).1]
   have legalLaw :
       (retainedImplementation runtime leaks menu owner reference (players owner)).respond memory
         (repaired.recall owner, repaired.observe app owner) =
           law.map (fun response => (response, updated response)) := by
-    rw [retainedImplementation_respond_eq runtime leaks menu owner reference (players owner)
-      memory (repaired.recall owner, repaired.observe app owner) (by
-        rw [responseLaw]
-        intro result supported
-        obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ supported
-        exact (transported response chosen).1) (by
-        intro response chosen _
+    rw [retainedImplementation_respond_of_members runtime leaks menu owner reference (players owner)
+      memory (repaired.recall owner) (repaired.observe app owner) started (by
+        intro response chosen
         rw [frame.past, frame.observed] at chosen
-        exact frame.usable_copyResponse_eq_repairResponse response
-          (usable response chosen)), responseLaw]
+        exact (transported response chosen).1), frame.past, frame.observed]
+    apply map_congr_on_support _
+    intro response chosen
+    rw [← frame.observed]
+    change ((changed response).1, updated response) = (response, updated response)
+    rw [(resources response chosen).1]
   let coupling := law.map fun response =>
     (original.respond app owner response, repaired.respond app owner response, updated response)
   refine ⟨coupling, ?_, ?_, ?_⟩
