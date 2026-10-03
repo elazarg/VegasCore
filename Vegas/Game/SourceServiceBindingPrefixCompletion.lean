@@ -2,6 +2,7 @@
 
 import Vegas.Game.SourceServiceBindingResponseCompletion
 import Vegas.Game.SourceServiceResidualSites
+import Vegas.Game.SourceServiceUnfinishedPrefix
 
 /-! # Whole source-prefix readouts of protected binding completions
 
@@ -202,8 +203,11 @@ theorem sourceServiceDecision_clear_binding_prefix_probability {horizon remainin
             (execution.respond (application setup leaks) who response)).map fun final =>
               (sourceServicePrefix? setup (event.val + 1) final.application.config,
                 (runtime setup).bindingTraffic leaks focal final)
-        else PMF.pure (none, (runtime setup).bindingTraffic leaks focal
-          (execution.respond (application setup leaks) who response))) =
+        else PMF.pure
+          (sourceServicePrefix? setup (event.val + 1)
+            (execution.respond (application setup leaks) who response).application.config,
+          (runtime setup).bindingTraffic leaks focal
+            (execution.respond (application setup leaks) who response))) =
         mix weight positive.le below.le
           (PMF.pure (none, (runtime setup).bindingTraffic leaks focal
             (execution.respond (application setup leaks) who ⟨none⟩)))
@@ -228,11 +232,22 @@ theorem sourceServiceDecision_clear_binding_prefix_probability {horizon remainin
       execution event bindingOwner bindingPayload binding trace initialized clear unrecorded
       turn fits weight positive below follows
   subst who
+  have ready := (execution.application.publicView_eventReady event).mp
+    (PublicView.ownTurn?_spec _ site.owner event turn).1
+  obtain ⟨residual⟩ := menu_ready_sourceResidual setup leaks profile
+    (bounds.riskMenu (runtime setup) leaks bound) horizon scheduler trace
+    ⟨remaining, some site.owner, execution⟩ rfl event ready
+  have silentPrefix (response : (application setup leaks).Action) :
+      sourceServicePrefix? setup (event.val + 1)
+        (execution.respond (application setup leaks) site.owner response).application.config =
+      none := by
+    rw [((runtime setup).reactive_respond_application leaks execution site.owner response).1]
+    exact residual.next_decode_none event rfl ready
   have responseLaw := sourceServiceDecision_clear_binding_response bounds bound profile execution
     event site trace clear unrecorded turn fits weight positive below
   refine ⟨before, site, embed, beforeRead, rfl, ?_, ?_⟩
   · rw [follows, responseLaw, mix_bind, PMF.pure_bind]
-    simp only [Option.isSome_none, Bool.false_eq_true, ↓reduceIte, PMF.bind_map]
+    simp only [silentPrefix, Option.isSome_none, Bool.false_eq_true, ↓reduceIte, PMF.bind_map]
     congr 1
     apply bind_congr_on_support _
     intro value sampled

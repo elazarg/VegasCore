@@ -68,6 +68,9 @@ future private values changed by repair are outside the claim.
   joins the actual transmitting draw to its typed successor and full stopped
   traffic. Waiting remains separate; prescribed foreign continuations are
   required for the probability factorization.
+  [SourceServiceBindingPrefixCompletion](../Vegas/Game/SourceServiceBindingPrefixCompletion.lean)
+  identifies the whole source step, including the actual unfinished decoder
+  result on waiting.
 - [SourceServiceReachedDecoding](../Vegas/Game/SourceServiceReachedDecoding.lean)
   derives source residuals with partial view recovery from their actual
   transport maps. [SourceServiceDecoderSlice](../Vegas/Game/SourceServiceDecoderSlice.lean)
@@ -98,6 +101,11 @@ future private values changed by repair are outside the claim.
   original source law at every finite normalized source prefix, including
   correlated initial parameters. The effective-source conditional-prefix
   bridge to native information remains separate.
+- [DisclosureProfileRetraction](../Vegas/Game/DisclosureProfileRetraction.lean)
+  proves supported original memories compress back to the same effective
+  source prefix. Its view law carries an effective source-view channel
+  through the restoration without assuming a posterior equation. Actual
+  native traffic still needs to be identified with that channel.
 - [SourceServiceRiskExtension](../Vegas/Game/SourceServiceRiskExtension.lean)
   extends an audited risk-menu equilibrium after classified packet coverage
   and other-exclusion comparisons are supplied. It does not embed a source

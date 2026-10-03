@@ -21,7 +21,9 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {Γ : SourceCtx Player L} {O : Finset VarId}
 
-private def restoreDisclosureList
+/-- Compose the actual owner memory kernels in the supplied order. Each
+coordinate changes only that owner's recalled intentions. -/
+def restoreDisclosureList
     (program : SourceProgram Player L Γ O) (registry : Registry Γ)
     (revelations : Revelations Γ) (profile : BehavioralProfile program) :
     List Player → ProtocolState program → PMF (ProtocolState program)

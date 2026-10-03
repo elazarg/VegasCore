@@ -1369,7 +1369,10 @@ the compiler profile's source prefix; for a normalized profile it does not
 restore erased original disclosure intentions or supply a source prior.
 Its probability theorem keeps the same actual response and stopping draws
 joint with full traffic. The normalized transmitting prefix marginal equals
-that whole behavioral source step; waiting remains an unfinished branch.
+that whole behavioral source step. Waiting uses the actual next-prefix
+decoder; [SourceServiceUnfinishedPrefix](../Vegas/Game/SourceServiceUnfinishedPrefix.lean)
+proves its result is `none` because the ready event's typed output is still
+unwritten.
 The residual also carries a partial recovery of each owner's source view,
 proved directly for its actual transport map. Recovery uses the source
 constructors rather than a default private value.
@@ -1420,6 +1423,15 @@ telescopes one-owner prefix realization against arbitrary opponents and
 assumes no independence of the restored memories. Applying it to native
 information still requires the effective-source conditional-prefix bridge.
 
+[DisclosureProfileRetraction](../Vegas/Game/DisclosureProfileRetraction.lean)
+proves that every supported restored original state compresses back to that
+same effective source prefix. The full compression acts on each player's view
+through its existing own-recall compression. Consequently, a channel reading
+the effective source view can accompany the restored original source law with
+its weight read from the compressed original view. The support identity comes
+from the actual intermediate prefix laws; it is not an assumed information
+fiber equation. Identifying that channel with native traffic remains separate.
+
 [SourceServiceResolutionResponseCompletion](../Vegas/Game/SourceServiceResolutionResponseCompletion.lean)
 connects a supported original intention from that memory lottery to the actual
 normalized response and its initialized continuation. Protected stopping
@@ -1456,6 +1468,15 @@ work; extending the successful view-dependent construction to all native
 information sets still requires a joint likelihood and incentive argument.
 This finite tree supplies no certified asynchronous scheduler or reporting
 backend.
+The completion interface permits a separate waiting rate at each prescribed
+native information site. Free sites share a reference-tremble floor `lambda`,
+so the probe requires `wBad / (wGood * lambda)` to vanish. A further full-support
+tremble at prescribed sites must respect those relative rates. Choosing these
+rates simultaneously across all native histories remains open. Private-view
+dependent waits can also convey timing information about hidden types, even
+when the completed binding value is constant. Their ordinary source/traffic
+law therefore cannot reuse a source-view-only noise factorization simply by
+discarding the waiting tags.
 
 [SourceServiceSampleEnvironmentFactorization](../Vegas/Game/SourceServiceSampleEnvironmentFactorization.lean)
 proves the real public sampling command's joint law. The sampled value is read

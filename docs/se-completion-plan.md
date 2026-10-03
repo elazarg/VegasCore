@@ -127,6 +127,10 @@ static decoder slice supplies a lift and recovery shared across the prior.
 all owners' real memory kernels to recover the complete original source law
 at every normalized source prefix. The actual effective-source likelihood
 and conditional-prefix bridge to native information still need assembly.
+The actual restoration also retracts to the same effective state on support,
+and its view compression transports an effective source-view channel through
+the common original-memory lottery. Waiting in the binding prefix law uses
+the real decoder's unfinished result, derived from the unwritten ready field.
 A single timely canonical transmission followed by owner silence also has an
 actual accepted-action/public-miss dichotomy outside the protected window.
 Its acceptance law can depend on the builder and the public packet content;
