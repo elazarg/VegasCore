@@ -5,9 +5,9 @@ import Vegas.Pending.ReactiveRiskMenu
 import Interaction.ReactiveInvariantContinuation
 import GameTheoryExtensions.Analysis.Protocol.TerminalAuditContinuation
 
-/-! # Rational continuation after a public binding miss
+/-! # Rational continuation after a public decision miss
 
-A binding miss persists under every native continuation. The public branch of
+A decision miss persists under every native continuation. The public branch of
 the one-time audit therefore collects with certainty under every future policy,
 regardless of traffic observation or report delivery. At an information site
 where the owner sees this miss, the escrow subtracts the same constant from
@@ -27,7 +27,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 
 /-- The completed miss makes the collected charge constant under every
 bounded native continuation, including arbitrary future deviations. -/
-theorem serviceAudit_continuation_charge_of_omission (runtime : EventGraphRuntime graph)
+theorem serviceAudit_continuation_charge_of_miss (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (menu : (runtime.reactiveApplication leaks).ResponseMenu)
     (initial : PMF (State graph)) (horizon : Nat)
@@ -37,26 +37,24 @@ theorem serviceAudit_continuation_charge_of_omission (runtime : EventGraphRuntim
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (fuel : Nat) (before : (runtime.reactiveApplication leaks).Control)
     (trace : (menu.protocol initial horizon scheduler).Trace (some before))
-    (event : graph.EventId) (who : Player) (payload : L.Ty)
-    (binding : graph.outputLayout event = .binding who payload)
+    (event : graph.EventId) (who : Player)
     (owned : graph.actor? event = some who)
-    (missed : before.execution.application.publicView.missedBinding event = true)
+    (missed : event ∈ before.execution.application.missedEvents)
     (final : (menu.protocol initial horizon scheduler).History)
     (supported : final ∈ ((menu.information initial horizon scheduler).runBehavioralFrom
       profile fuel ⟨some before, trace⟩).support) :
     TerminalAudit.charge (runtime.serviceAuditObservation leaks)
       (runtime.serviceAudit leaks trafficAudit) final.state who = 1 := by
   obtain ⟨result, stateEq, persists⟩ :=
-    (runtime.reactiveMissedBindingInvariant leaks event who payload
-      binding).behavioral_continuation
+    (runtime.reactiveMissedDecisionInvariant leaks event).behavioral_continuation
       menu initial horizon scheduler profile fuel before trace final missed supported
   rw [stateEq]
-  exact runtime.serviceAudit_charge_of_omission leaks trafficAudit result who event owned persists
+  exact runtime.serviceAudit_charge_of_miss leaks trafficAudit result who event owned persists
 
 /-- The candidate continuation menu admits every effective later response after
 this owner's public miss, whatever future policies or service commands do.
 The miss is read from the actual later public view. -/
-theorem riskActions_continuation_of_omission (runtime : EventGraphRuntime graph)
+theorem riskActions_continuation_of_miss (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (bounds : MessageBounds graph) (bound : graph.EventId → Nat)
     (menu : (runtime.reactiveApplication leaks).ResponseMenu)
@@ -65,10 +63,9 @@ theorem riskActions_continuation_of_omission (runtime : EventGraphRuntime graph)
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (fuel : Nat) (before : (runtime.reactiveApplication leaks).Control)
     (trace : (menu.protocol initial horizon scheduler).Trace (some before))
-    (event : graph.EventId) (who : Player) (payload : L.Ty)
-    (binding : graph.outputLayout event = .binding who payload)
+    (event : graph.EventId) (who : Player)
     (owned : graph.actor? event = some who)
-    (missed : before.execution.application.publicView.missedBinding event = true)
+    (missed : event ∈ before.execution.application.missedEvents)
     (final : (menu.protocol initial horizon scheduler).History)
     (supported : final ∈ ((menu.information initial horizon scheduler).runBehavioralFrom
       profile fuel ⟨some before, trace⟩).support) :
@@ -78,17 +75,16 @@ theorem riskActions_continuation_of_omission (runtime : EventGraphRuntime graph)
         (bounds.menu runtime leaks).actions who (result.execution.recall who)
           (result.execution.observe (runtime.reactiveApplication leaks) who) := by
   obtain ⟨result, stateEq, persists⟩ :=
-    (runtime.reactiveMissedBindingInvariant leaks event who payload
-      binding).behavioral_continuation
+    (runtime.reactiveMissedDecisionInvariant leaks event).behavioral_continuation
       menu initial horizon scheduler profile fuel before trace final missed supported
   refine ⟨result, stateEq, bounds.riskActions_of_risk runtime leaks bound who _ _ ?_⟩
   apply runtime.serviceRisk_of_public_miss leaks bound
-  exact result.execution.application.publicView.missedBindingBy_of_event who event owned persists
+  exact result.execution.application.publicView.missedDecisionBy_of_event who event owned persists
 
 omit [Fintype Player] in
 /-- Every hidden history in a player's information site has the contract view
 the player currently sees. A publicly observed miss needs no watcher evidence. -/
-theorem missedBinding_at_information_history (runtime : EventGraphRuntime graph)
+theorem missedDecision_at_information_history (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (menu : (runtime.reactiveApplication leaks).ResponseMenu)
     (initial : PMF (State graph)) (horizon : Nat)
@@ -97,10 +93,10 @@ theorem missedBinding_at_information_history (runtime : EventGraphRuntime graph)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)
     (observed : site.1 = some (past, view)) (event : graph.EventId)
-    (missed : view.application.publicView.missedBinding event = true)
+    (missed : event ∈ view.application.publicView.missedEvents)
     (history : (menu.information initial horizon scheduler).InformationHistory who site.1) :
     ∃ control, history.1.state = some control ∧
-      control.execution.application.publicView.missedBinding event = true := by
+      event ∈ control.execution.application.missedEvents := by
   rcases history with ⟨⟨state, trace⟩, same⟩
   change (menu.signals initial horizon scheduler).infoOf who trace = site.1 at same
   rw [menu.info initial horizon scheduler who trace, observed] at same
@@ -111,15 +107,17 @@ theorem missedBinding_at_information_history (runtime : EventGraphRuntime graph)
       · simp only [ReactiveApplication.observe, active, ↓reduceIte] at same
         have views := congrArg (fun input => input.2.application.publicView)
           (Option.some.inj same)
-        exact ⟨control, rfl,
-          (congrArg (fun ledger => ledger.missedBinding event) views).trans missed⟩
+        have markers := congrArg PublicView.missedEvents views
+        change control.execution.application.missedEvents =
+          view.application.publicView.missedEvents at markers
+        exact ⟨control, rfl, markers ▸ missed⟩
       · simp only [ReactiveApplication.observe, active, ↓reduceIte] at same
         cases same
 
 /-- At a site where the owner sees its public miss, the actual audit changes
 none of the whole-policy rationality comparisons. Base expectations are
 explicitly integrable; no on-path or belief-consistency premise is required. -/
-theorem serviceAudit_rationalAt_iff_of_omission (runtime : EventGraphRuntime graph)
+theorem serviceAudit_rationalAt_iff_of_miss (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (menu : (runtime.reactiveApplication leaks).ResponseMenu)
     (initial : PMF (State graph)) (horizon : Nat)
@@ -133,10 +131,9 @@ theorem serviceAudit_rationalAt_iff_of_omission (runtime : EventGraphRuntime gra
     (site : (menu.information initial horizon scheduler).InformationSite who)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)
-    (observed : site.1 = some (past, view)) (event : graph.EventId) (payload : L.Ty)
-    (binding : graph.outputLayout event = .binding who payload)
+    (observed : site.1 = some (past, view)) (event : graph.EventId)
     (owned : graph.actor? event = some who)
-    (missed : view.application.publicView.missedBinding event = true)
+    (missed : event ∈ view.application.publicView.missedEvents)
     (integrable : ∀ alternative,
       (assessment.truncatedContinuationContext site (fun final => base final.state who)
         fuel).IntegrableAt alternative) :
@@ -169,13 +166,13 @@ theorem serviceAudit_rationalAt_iff_of_omission (runtime : EventGraphRuntime gra
       intro final supported
       obtain ⟨history, _possible, reached⟩ :=
         Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
-      obtain ⟨control, stateEq, failed⟩ := runtime.missedBinding_at_information_history leaks
+      obtain ⟨control, stateEq, failed⟩ := runtime.missedDecision_at_information_history leaks
         menu initial horizon scheduler who site past view observed event missed history
       rcases history with ⟨⟨state, trace⟩, _info⟩
       change state = some control at stateEq
       subst state
-      exact runtime.serviceAudit_continuation_charge_of_omission leaks menu initial horizon
-        scheduler trafficAudit _ fuel control trace event who payload binding owned failed
+      exact runtime.serviceAudit_continuation_charge_of_miss leaks menu initial horizon
+        scheduler trafficAudit _ fuel control trace event who owned failed
           final reached
     _ = 1 := expect_constant _ 1
 

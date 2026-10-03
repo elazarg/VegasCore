@@ -2,8 +2,8 @@
 
 ## Status
 
-This is a design note; nothing in it is checked in Lean except the library
-lemmas it cites. It describes which scheduling restrictions
+This note separates the checked implementation kernels from the remaining
+proof obligations. It describes which scheduling restrictions
 `Vegas.Paper.source_audited_raw_sequential_equilibrium` imposes, compares
 contract designs for ordering concurrent events, and lists the obligations of a
 general theorem. Finite probes support the argument that preservation survives
@@ -46,11 +46,10 @@ results remove the equilibrium-theoretic reasons for a common decision clock:
   terminal laws at the global horizon replaces domination at the common
   depth.
 
-The full-language proof still uses a common depth in two places: the
+The full-language calendar proof still uses a common depth in two places: the
 fixed-depth Bayes projections of `Vegas/Game/SourceServiceBayes.lean` and
-`Vegas/Game/RevealServiceRosterBayes.lean`, and the restriction extensions of
-`Vegas/Game/SourceServiceRestrictionExtension.lean` and
-`Vegas/Game/RevealServiceRosterAudit.lean`. The lemmas above can replace both,
+the restriction extension of
+`Vegas/Game/SourceServiceRestrictionExtension.lean`. The lemmas above can replace both,
 but the continuation comparisons those extensions call
 (`Vegas/Game/SourceServiceContinuationComparison.lean`) also derive their fuel
 from the rank, so retargeting belongs with replacing the calendar (below).
@@ -67,7 +66,7 @@ The service of `SourceServiceSpec` is a fixed calendar:
 - The next instruction is selected by the length of the history. Only
   delivery, through the network policy, is randomized.
 - The graph is `EventGraph.sequentialize` of the compiled graph
-  (`Vegas/Game/RevealService.lean`), so every source-earlier event is a
+  (`Vegas/Game/SourceServiceRuntime.lean`), so every source-earlier event is a
   predecessor of every later one.
 
 The pending-message theorems instead take an adaptive
@@ -488,16 +487,18 @@ is a design, not a checked result.
 | --- | --- |
 | Finite probes | Done (above). Design evidence, not proofs. |
 | Library lemmas | Done: proportional Bayes transport and the depth-free restriction extension in `GameTheoryExtensions`. |
-| Readiness instead of announcements | Done. Prescribed clients, response menus and the audit read readiness (`PublicView.ownTurn?`, `freshServiceEnvelope`); the service grant is deleted from the runtime. The calendar menu's required binding at the owner's last visit (`bindingRequired`) still reads the roster. `Vegas.Paper.source_audited_raw_sequential_equilibrium` is proved against this, still under the fixed calendar. |
+| Readiness instead of announcements | Done. Prescribed clients, response menus and the audit read readiness (`PublicView.ownTurn?`, `freshServiceEnvelope`); the service grant is deleted from the runtime. The calendar menu's required decision at the owner's last visit (`decisionRequired`) still reads the roster. `Vegas.Paper.source_audited_raw_sequential_equilibrium` is proved against this, still under the fixed calendar. |
 | Asynchronous chain model | The contract is `AsyncContract` with per-event bounds and `AsyncTimely` (`Vegas/Pending/ReactiveAsyncContract.lean`); `rosterScheduler_asyncContract` proves the fixed calendar an instance with reaction bounds `event.val` and inclusion bound 0 (`Vegas/Game/ServiceRosterAsync.lean`). `prescribed_packet_settles` proves timely acceptance for the turn-counted policy (`Vegas/Game/SourceServiceAsyncTimeliness.lean`). |
-| Phase from public history | Started: `sourceService_phase_boundary` identifies a phase start by plan position, and the watcher calendar reads decision depths from the public clock. `DecisionPhase.position` and the roster plan prefix and suffix still index the calendar. |
+| Phase from public history | Started: `sourceService_phase_boundary` identifies a phase start by plan position, and the calendar reads decision depths from its fixed roster. `DecisionPhase.position` and the roster plan prefix and suffix still index the calendar. |
 | Completion-stopped phase law (milestone 2a) | Done. `Interaction/ReactiveStopping.lean` splits a scheduler run at a stopping predicate. `SourceServiceSiteBridge.lean` uses the position-free `ReadySite` to derive completion boundaries and exact or `WithinTV` response bridges for any scheduler that completes play. The bridge applies to responses supported from initialization, and to every legal response under a fully mixed admissible menu assessment. `sourceServiceTurnPolicy_initialized_lawError` bounds the initialized outcome error by total deferral weight. `SourceServiceContinuationBridge.lean` separately instantiates the exact boundary law for the calendar. |
 | Turn-counted policy and approximate continuation (milestone 2b) | Done for every contract scheduler. `sourceServiceTurnPolicy_boundaryContinuationWithin` bounds the distance from the source continuation by the sum of the remaining events' deferral weights, and `sourceServiceTurnPolicy_firstTurnCompletes` discharges its hypothesis from `AsyncContract` and `AsyncTimely` alone (`Vegas/Game/SourceServiceFirstTurnCompletes.lean`). The calendar keeps its timed policy. |
 | Audit serial clause | Done. The audit's per-packet rule counts distinct identifiers per author (`Interaction.Message.distinctAuthoredCount`), so repeated evidence of one envelope does not shift serials, and the contract rejects a re-inclusion (`EventGraphRuntime.handle_eq_none_after_accepted_run`). Under `AsyncContract` alone, every fresh call of a player following the turn-counted policy, trembles included and whatever others do, carries the audit's serial and passes the full rule (`Vegas.sourceServiceTurnPolicy_serial`, `Vegas.sourceServiceTurnPolicy_permittedServiceEnvelope` in `Vegas/Game/SourceServiceCanonicalSerial.lean`). |
+| Explicit decision packets | A selected false disclosure sends authenticated evidence-free withholding; silence remains deferral. The runtime completion, packet/audit laws, general first-turn safety, timing posteriors, calendar prefix factorization and calendar Bayes kernels pass strict checks. Every actually recorded prescribed decision completes with an accepting receipt for its original packet under the asynchronous contract. The full fixed-calendar composition, including actual final-miss repair and the capstone axiom pins, passes the warning-strict project build. The arbitrary-builder equilibrium proof remains open. |
+| Source-conditioned traffic | Actual canonical binding and effective disclosure responses, and actual public sampling, have joint source-successor/traffic factorization laws. Recorded resolution continuations preserve the carried source-conditioned full traffic law through actual stopping. Exact clean-prefix probabilities survive arbitrary completion away from source-compatible information. Source-state agreement at stopped completion, relative escape bounds and native source-belief transport remain separate obligations. |
 | Owner-local prescribed safety | Exact first-turn play keeps the owner's full `serviceRisk` flag clear at every supported control (`Vegas/Game/SourceServiceFirstTurnSafe.lean`). For any turn timing, every authored packet is permitted by the actual settled record (`Vegas/Game/SourceServiceOwnerSettled.lean`). Combining packet soundness with first-turn absence of public misses gives zero owner charge under authentic sampling, against arbitrary foreign raw policies. `AsyncServiceSpec.normalizedFirstTurn_joint_law` preserves the complete typed source outcome and actual sampled payoff vector jointly for every source profile, after disclosure normalization. Initial private parameters remain correlated with public outcomes. These execution laws do not prove sequential rationality. |
 | Canonical retained menu | `MessageBounds.canonicalMenu` retains silence and bounded first canonical decisions under `WithinDeadline`, with no roster obligation. Local source-choice coverage and no second submission are proved in `Vegas/Pending/ReactiveCanonicalMenu.lean`. Used-slot and own-submission invariants hold on every legal retained history (`retainedCanonicalSlots_history`), including after misses. The prescribed policy is admitted at every such history (`sourceServiceTurnPolicy_retained` in `Vegas/Game/SourceServiceRetainedPolicy.lean`), including arbitrary turn timing. Equilibrium after misses remains open. |
-| Continuation after risk | The candidate `MessageBounds.riskMenu` opens an owner's bounded raw menu at a ready, unrecorded binding opportunity outside protected inclusion, or after its public miss or own recalled unprotected attempt. Any own response recalls that binding opportunity, including silence; recorded packets and lawful resolution withholding do not trigger it. Slot invariants use persistent risk separately from the current opportunity. Prescribed transmissions add no submission risk for any turn timing; silently deferring into a late binding opportunity may add opportunity risk. Actual post-miss rationality equals base-payoff rationality (`serviceAudit_rationalAt_iff_of_omission`). `LocalizedEnforcement` separates charged exclusions from private continuation comparisons, including retained charges. Source embedding, general command closure, beliefs and concrete comparisons remain open. |
-| General theorem | `AsyncServiceSpec`, the fixed deposit, geometric deferral bounds, the local retained menu and a fixed clean comparator are present. The initialized joint execution/settlement law is checked. Conditional enforcement of the classified auditable packets extends an actual audited risk-menu SE to the complete effective menu; exact alias transport supplies the bounded raw-runtime stage. Source SE embedding into that auxiliary game, joint resolution-default beliefs, the other comparisons and general repair remain open. |
+| Continuation after risk | The candidate `MessageBounds.riskMenu` opens an owner's bounded raw menu at a ready, unrecorded owned decision outside protected inclusion, or after its public miss or own recalled unprotected attempt. Any own response recalls that unprotected opportunity, including silence; protected recorded decisions, including explicit withholding, stay clear. Slot invariants use persistent risk separately from the current opportunity. Prescribed transmissions add no submission risk for any turn timing; silently deferring into a late owned opportunity may add opportunity risk. Actual post-miss rationality equals base-payoff rationality (`serviceAudit_rationalAt_iff_of_miss`). `LocalizedEnforcement` separates charged exclusions from private continuation comparisons, including retained charges. Source embedding, general command closure, beliefs and concrete comparisons remain open. |
+| General theorem | `AsyncServiceSpec`, the fixed deposit, geometric deferral bounds, the local retained menu and a fixed clean comparator are present. The initialized joint execution/settlement law is checked. Conditional enforcement of the classified auditable packets extends an actual audited risk-menu SE to the complete effective menu; exact alias transport supplies the bounded raw-runtime stage. Source SE embedding into that auxiliary game, joint native beliefs, the other comparisons and general repair remain open. |
 
 The pending-message stack (`Vegas/Pending/EventService*.lean`,
 `EventPrescribed*.lean`) separately proves exact honest and deviation laws and
@@ -847,12 +848,10 @@ and is committed separately.
    opportunity, before any attempt or public miss. Probe C7 checks both
    obstructions and rational raw continuations in finite games (see
    "Monitoring and punishment").
-6. **General theorem, stage A.** Generalize the scheduler parameter of
-   `SourceServiceSpec` to any contract scheduler, with the horizon as a field,
-   re-derive the deposit, and pin the new capstone in `Paper.lean`. The
+6. **General theorem, stage A.** Prove the capstone for `AsyncServiceSpec`,
+   with its arbitrary contract scheduler and horizon, and pin it in `Paper.lean`. The
    fixed-calendar theorem becomes a corollary through milestone 1's instance.
-   The work, as new modules that leave the calendar chain green until the
-   last step:
+   The proof chain is:
    1. `AsyncServiceSpec` (scheduler, horizon, delay, bound, contract, finite
       nature) and the calendar instance.
    2. The deposit over `(horizon, scheduler)` and its gain bound.
@@ -860,18 +859,16 @@ and is committed separately.
       The audit cannot reconstruct send time or reject an accepted canonical
       call solely because its guaranteed delivery bound would have been too late.
    4. Geometric deferral and source trembles must have compatible relative
-      rates at every prescribed site. Binding silence excludes a selected
-      binding decision. Resolution silence can instead be a selected false
-      source decision: making deferral much rarer than a vanishing false
-      tremble can prescribe continued silence where opening is profitable.
-      Event-dependent rates may separate these cases, but their sufficiency
-      for source-relative beliefs and rationality remains open. Later
-      resolution turns outside the protected-inclusion gate need a separate
-      prescription or completion argument.
+      rates at every prescribed site. Every selected owned decision sends a
+      packet, including false disclosure. Protected silence therefore excludes
+      that timing index independently of the source value. A closed unrecorded
+      owned opportunity opens the risk menu; its continuation is completed as
+      a free site. Joint source-relative beliefs and prescribed-site rationality
+      still need proofs.
    5. The canonical retained menu and its lemma suite. Retain silence and
       canonical calls that can still be accepted, including calls outside
       the prescribed policy's protected-inclusion gate. Delete the roster
-      rule `bindingRequired` when its calendar callers are replaced.
+      rule `decisionRequired` when its calendar callers are replaced.
    6. Use `ReadySite.response_completion_within` and its completion-boundary
       theorem for any scheduler. Actual policy-supported responses supply
       the needed support through `sourceResponse_roundSupported`; legal
@@ -884,13 +881,12 @@ and is committed separately.
       decisions and disclosures as well as silent binding rounds.
    8. Milestone 4's beliefs.
    9. Generic local comparisons for every site kind, each bound with
-      `BoundaryContinuationWithin`. Large; not previously listed.
+      `BoundaryContinuationWithin`.
    10. Generic source-to-compiled step through
        `exists_sequentialEquilibrium_limit_of_local_comparisons_of_lawError`.
    11. Generic repair coupling (same public state, different private
        catalogue, round by round), the second-identifier lemma, and the
-       compiled-to-native step through the depth-free extension. Large; not
-       previously listed.
+       compiled-to-native step through the depth-free extension.
    12. The new capstone, the calendar corollary, and retirement of the
        calendar chain.
 
@@ -901,8 +897,8 @@ and is committed separately.
 8. **Pending-message stack.** Collapse staging, express the epoch service as
    a contract scheduler, and retarget or retire.
 
-Milestones 2, 4 and 5 are each meaningful on the fixed calendar, so the
-capstone stays green throughout; only milestone 6 changes its statement.
+Milestones 2, 4 and 5 also apply to the fixed calendar. Shared runtime changes
+require its callers to be checked again; milestone 6 generalizes the capstone.
 
 ### Waiting, misses and the charge
 
@@ -921,7 +917,7 @@ these actual beliefs; the event order alone does not prove waiting uninformative
 Under the barrier order (stage B), waiting also reveals who has committed,
 and the barrier order must keep that from changing source incentives.
 
-A missed binding is charged. The contract cannot distinguish an owner who
+A missed owned decision is charged. The contract cannot distinguish an owner who
 chose not to send from one who was censored, so it charges both alike: it
 plays along with censorship. Protected inclusion is exactly the assumption
 that a timely sole packet is never censored, so a prescribed owner is charged
@@ -930,7 +926,7 @@ the forfeit stays hidden until the reveal (it compiles to a handle with no
 opening), while a miss is public at the deadline. The auxiliary game is the
 actual audited risk-menu game, retaining native pending state and attempted
 choices. Its rational continuation must be supplied both after misses and at
-late unrecorded binding opportunities, before the acceptance/miss lottery.
+late unrecorded owned opportunities, before the acceptance/miss lottery.
 
 Open obligations this creates:
 
@@ -984,7 +980,7 @@ concrete pending-message reporting implementation must establish these
 premises; the owner service contract alone does not.
 
 [ReactiveSignedEvidence](../Vegas/Pending/ReactiveSignedEvidence.lean)
-proves concrete collection for malformed packets, signed withholding,
+proves concrete collection for malformed packets, withholding carrying evidence,
 commitments carrying opening evidence, and uncertified openings. A named
 packet is forbidden once its event completes. Complete play supplies that
 final-record premise; actual emitted traffic persists under arbitrary later
@@ -1016,7 +1012,7 @@ every departure; continued compliance after a sunk penalty is not required.
 The penalty scheme may change if the proof needs it, but complexity must earn
 its place through a concrete missing incentive comparison.
 
-Public binding misses and packet evidence are separate cases. A public miss
+Public decision misses and packet evidence are separate cases. A public miss
 currently causes certain collection. Packet collection may remain uncertain
 to the author because the watcher's sample is private. After an earlier
 packet offense, a further offense is deterred only by its additional
@@ -1026,7 +1022,7 @@ No independence premise or uniform increase is assumed.
 
 A common delivery coin can deliver all observed reports together, so a
 second observed offense need not increase expected collection even when the
-collection rate is below one. After a public binding miss, the current OR audit
+collection rate is below one. After a public decision miss, the current OR audit
 collects with certainty at every continuation; its payoff is the base payoff
 minus a constant deposit. A complete extension must either admit rational raw
 continuation there or supply fresh reserves. Additive charges also need control
@@ -1037,8 +1033,8 @@ The proposed source miss extension has several distinct cases. A silent
 binding miss fails the binding and announces its owner and source name. A
 late binding attempt additionally leaves the attempted choice in private
 recall. A late opening can fail while leaving probabilistically collected
-signed evidence. A binding-only public `.miss` move does not yet represent
-those latter continuations. These are part of the open extension and incentive
+signed evidence. Public miss successors alone do not yet represent attempted
+private choices or later collected evidence. These are part of the open extension and incentive
 obligations, not consequences of the local retained-menu proofs.
 
 [PublicMiss](../Vegas/Source/PublicMiss.lean) supplies commitment and disclosure
@@ -1048,8 +1044,8 @@ announcement visible to every player. A commitment miss differs from hidden
 forfeiture; a disclosure miss differs from deliberate false disclosure even
 though its typed result is identical. The full execution protocol, no-miss
 embedding, SE extension, attempted-choice memory, and opening-evidence
-lotteries are not yet supplied. The runtime audit still identifies binding
-omissions only.
+lotteries are not yet supplied. The runtime audit reads strategic misses
+from the public contract marker for every owned decision.
 
 [EventApplication](../Vegas/Pending/EventApplication.lean) records strategic
 expiry in the public `EventGraphRuntime.State.missedEvents` set. Initial play
@@ -1057,38 +1053,41 @@ has no markers. Accepted
 player packets, including false disclosure, preserve the set; chance execution
 also preserves it. A ready, activated, due strategic expiry inserts exactly
 its event. Other expiry commands leave the set unchanged. This is contract
-state, independent of a watcher's partial packet sample. The calendar's silent
-false choices still reach marked expiry, and its checkpoint proofs derive the
-marker from completed publications. Generic omission sanctions and explicit
-false responses still need their coherent policy and audit changes.
+state, independent of a watcher's partial packet sample. Explicit false
+responses use authenticated withholding without opening evidence. The calendar
+restriction requires an actual decision by the last owner visit; the general
+canonical and risk menus retain deferral. Marker preservation and accepted
+packet completion are proved separately from the source miss game's still-open
+execution and equilibrium embedding.
 
 The candidate one-escrow menu is implemented in
 [ReactiveRiskMenu](../Vegas/Pending/ReactiveRiskMenu.lean). An owner's public
 miss or its own recalled unprotected attempt opens every bounded raw response
-for that owner. It also opens at a ready binding with no recorded own call
+for that owner. It also opens at a ready owned decision with no recorded own call
 once protected inclusion no longer fits, including when the deadline is due
 but expiry has not been commanded. Any own response there records the risky
 opportunity, even silence or a foreign-event packet. The scan tests each
 before-view against the preceding own recall prefix. It reads no hidden
 network state or watcher verdict. Already-recorded protected packets and
-lawful resolution withholding do not trigger it.
+explicit protected resolution withholding do not trigger it.
 
 Persistent public/recall risk is separate from the current opportunity, which
 can change under scheduler commands. [SourceServiceRiskSlots](../Vegas/Game/SourceServiceRiskSlots.lean)
 proves owner-local slot and freshness invariants for persistently clear
 owners, allowing foreign raw actions. Prescribed transmissions never add
 submission risk, for any turn timing, scheduler or chance steps. Silent
-deferral can reach a late binding and add opportunity risk; that broader
+deferral can reach a late owned decision and add opportunity risk; that broader
 no-risk conclusion is not claimed for approximants.
 [SourceServiceFirstTurnOpportunity](../Vegas/Game/SourceServiceFirstTurnOpportunity.lean)
 proves that the owner's actual first ready turn has a protected inclusion
 window, using answered activations and the reaction budget.
-[SourceServiceFirstTurnBinding](../Vegas/Game/SourceServiceFirstTurnBinding.lean)
-then supplies the actual fresh canonical commitment and records its event,
-including when the source binding has no private opening material.
+[SourceServiceFirstTurnCalls](../Vegas/Game/SourceServiceFirstTurnCalls.lean)
+then supplies and records every actual protected canonical decision. The
+binding specialization also identifies its prepared handle, including when
+the source binding has no private opening material.
 [SourceServiceFirstTurnRisk](../Vegas/Game/SourceServiceFirstTurnRisk.lean)
-proves that exact first-turn play never recalls an unprotected binding
-opportunity and records every earlier own binding turn. These are owner-local
+proves that exact first-turn play never recalls an unprotected owned
+opportunity and records every earlier own turn. These are owner-local
 results under `AsyncContract` and `AsyncTimely`, with arbitrary foreign raw
 policies and an explicit bound on rounds.
 [SourceServiceProtectedBinding](../Vegas/Game/SourceServiceProtectedBinding.lean)
@@ -1100,9 +1099,9 @@ This needs protected inclusion and the actual call/sole-identifier premises;
 it needs no watcher hypothesis.
 [SourceServiceFirstTurnNoMiss](../Vegas/Game/SourceServiceFirstTurnNoMiss.lean)
 discharges the operational coverage obligation for exact first-turn play:
-every owned binding's public omission flag, and the owner's entire
-`missedBindingBy` detector, stays clear at every supported round and pending
-activation within the horizon. A new binding miss would require due expiry;
+every owned event's public marker, and the owner's entire
+`missedDecisionBy` detector, stay clear at every supported round and pending
+activation within the horizon. A new strategic miss would require due expiry;
 the opportunity contract supplies an earlier answered owner turn, which has
 already recorded the protected call. Silent approximant deferrals remain
 outside this no-miss conclusion.
@@ -1160,88 +1159,43 @@ the total policy's fallback at other inputs carries no rationality claim.
 
 The prescribed limit at an earlier-deferral site must come from the timing
 approximants. Pure first-turn policy itself is silent after its selected turn
-has passed. At a protected binding site reached after an earlier silent turn,
+has passed. At a protected owned site reached after an earlier silent turn,
 geometric timing can instead have a limiting decision probability of one.
-At a resolution site, silence can also be an already drawn false source
-decision, so its conditional timing posterior needs a separate comparison.
+The same selected-decision distinction applies to resolutions: false is an
+actual withholding packet, while silence is deferral.
 
-[SourceServiceBindingTimingPosterior](../Vegas/Game/SourceServiceBindingTimingPosterior.lean)
+[SourceServiceDecisionTimingPosterior](../Vegas/Game/SourceServiceDecisionTimingPosterior.lean)
 derives the actual timing posterior after one silent response at a legal,
-protected first binding turn. Silence rules out timing index zero because the
-selected binding decision always sends a commitment, including a source
-failure value. With geometric timing, the next counted turn decides with
+protected first owned turn. Silence rules out timing index zero because every
+selected decision sends a packet, including a failed binding value or false
+disclosure. With geometric timing, the next counted turn decides with
 probability `1 - weight`, or surely at the final index. The response error is
 bounded by the actual posterior waiting probability. The lemma supplies the
 next view explicitly; it does not assume the scheduler provides or protects
 that later turn. Source-relative beliefs remain a separate obligation.
 The initialized first-turn execution law does not settle these off-path laws.
 
-[SourceServiceBindingRecallPosterior](../Vegas/Game/SourceServiceBindingRecallPosterior.lean)
+[SourceServiceDecisionRecallPosterior](../Vegas/Game/SourceServiceDecisionRecallPosterior.lean)
 extends the timing calculation to every earlier silent turn at the same
-binding in an actual clean legal prefix. Unrecordedness rules out earlier
+owned event in an actual clean legal prefix. Unrecordedness rules out earlier
 transmissions, and recalled opportunity protection supplies the likelihoods.
 The posterior is exactly the timing law restricted to indices at least the
 actual turn count. Geometric response error is at most the deferral weight,
 uniformly over varying admitted source profiles. The current response keeps
 its deadline gate; the proof supplies no later protected turn or source
-belief projection.
-
-[SourceServiceSilentChoicePosterior](../Vegas/Game/SourceServiceSilentChoicePosterior.lean)
-handles a selected canonical decision that itself has positive probability of
-silence. After the actual first silent response, timing index zero retains
-that silent likelihood in the posterior. At the next counted turn, geometric
-timing differs from staying silent by at most `weight / silentLikelihood`.
-Deferral weights can be chosen to make this ratio vanish even while the source
-profile approaches a deterministic choice. This is a response-limit fact,
-not a rationality theorem. When opening is uniquely optimal and false is only
-a source tremble, that limit can select silence instead of the profitable
-opening. A uniform requirement that deferral vanish faster than every source
-tremble therefore cannot supply the prescribed-site argument. Identifying
-the likelihood with a source disclosure choice, transporting its beliefs,
-and proving a compatible timing prescription remain separate requirements.
+belief projection. For that projection, the comparison between clean and
+escaped histories must retain full own recall and cancel its common response
+likelihoods, including earlier deferrals. An unconditional bound on escaped
+traffic cannot by itself control a rare information-set posterior.
 
 [SourceServiceResolutionLikelihood](../Vegas/Game/SourceServiceResolutionLikelihood.lean)
-identifies selected silence with the source false mass at an actual aligned,
-effective, unrecorded resolution with a protected inclusion window. It derives
-the authentic opening for supported true choices from the binding invariant.
-A closed inclusion gate instead forces silence regardless of source choice;
-the binding-only opportunity risk scan does not exclude this resolution case.
-
-[SourceServiceResolutionSilenceRates](../Vegas/Game/SourceServiceResolutionSilenceRates.lean)
-derives the actual two-slot continuation law after one silence. If first and
-next protected opportunities have source false mass `s`, its probability of
-transmitting next is `(1 - s) * w / (s * (1 - w) + w)`. In the local payoff
-test where transmitting earns one and silence earns zero, regret against
-sure transmission tends to one when `w / s` tends to zero. If both vanish and
-`s / w` tends to zero, that regret vanishes. The checked result keeps first
-and next silent likelihoods distinct until the numerical specialization.
-[SourceServiceResolutionTerminal](../Vegas/Game/SourceServiceResolutionTerminal.lean)
-realizes that comparison in the actual runtime. At a supplied protected
-activation, an authentic opening is accepted, while silence eventually
-expires to a false publication. Every packet in this suffix passes the final
-record, so authentic partial sampling leaves the actual payoff-vector law
-uncharged. The two-slot payoff and regret formulas therefore hold for this
-audited continuation. Initialization and information-set reachability,
-multi-turn source-view stability, closed gates and a sufficient global
-prescription remain separate obligations.
-
-[SourceServiceResolutionRecallPosterior](../Vegas/Game/SourceServiceResolutionRecallPosterior.lean)
-handles every earlier event turn in an actual clean legal history, including
-intervening actions at other events. If the first selected silence likelihood
-is positive, each current response differs from continued silence by at most
-`weight / firstSilentLikelihood`. A positive reference limit and vanishing
-weight therefore give continued silence, even if the current gate is closed.
-Likelihood transport to that reference and its incentive comparison remain
-explicit obligations.
-
-[SourceServiceResolutionOpeningPosterior](../Vegas/Game/SourceServiceResolutionOpeningPosterior.lean)
-proves the complementary decision limit. If every actual earlier selected
-silence likelihood is at most `eta`, the response error from deciding now is
-at most `weight + eta / weight ^ count`, where `count` is the actual number
-of earlier turns for this event. The posterior is derived from the legal
-history, including intervening responses at other events. Vanishing relative
-error and convergence of the current canonical law give its decision limit;
-both likelihood transport and canonical-law convergence remain premises.
+derives zero silence mass for the selected source law at a protected,
+unrecorded resolution. Both source booleans emit an actual decision. A closed
+inclusion gate defers the selected decision; the generic owned-opportunity
+scan opens the risk menu at that input. This removes the need to balance
+source false trembles against timing deferrals merely to distinguish their
+packets. The generalized timing posterior supplies a response limit; the joint
+source beliefs and their incentive comparison remain unproved.
 
 [SourceServiceResolutionRecallWindows](../Vegas/Game/SourceServiceResolutionRecallWindows.lean)
 derives protection at every earlier recalled turn from actual protection at
@@ -1258,27 +1212,18 @@ deferral independently vanishes faster than a positive source passage scale.
 This preserves existing source limits. Supplying the operational errors and
 proving joint belief transport remain separate obligations.
 
-These local rates do not settle downstream beliefs after resolution expiry.
-An ordinary false source choice and timing that misses all offered turns
-produce the same false publication. The public-miss mechanism identifies
-binding omissions only. A public builder can sometimes offer another
-protected turn and otherwise expire the event; slow resolution deferral may
-then dominate rare source false trembles and alter their conditional type
-ratios. Unconditional continuation error does not bound that conditional
-error. A source-relative treatment of default false, or coherent changes to
-false-response and public-miss semantics, is still needed. This is an open
-embedding argument, not a counterexample to initialized-law SE preservation.
+Downstream beliefs must distinguish an accepted false decision from a
+public miss. The authenticated `.withhold event` call carries no opening
+evidence; a strategic expiry adds its event to
+`EventGraphRuntime.State.missedEvents`. Both may have the same failed typed
+publication, but their public contract records differ. Partial watcher
+sampling cannot recover that distinction from a false output alone.
 
-The explicit false-response design uses the existing authenticated
-`.withhold event` call without opening evidence. The contract's
-`EventGraphRuntime.State.missedEvents`
-set distinguishes accepted withholding from strategic expiry; a false output
-alone cannot supply that distinction, and neither can partial watcher
-sampling. Canonical false responses remain silent in the current prescribed
-policy. Allowing their packets, their final verdict, generic omission/risk
-detection and the source public-miss execution protocol must be changed
-together. The public marker and source miss successors supply the foundation
-for that change; they do not prove its equilibrium embedding.
+The miss extension must carry that record through its execution protocol,
+attempted-choice memory, source beliefs and incentive comparisons. The runtime
+marker and source miss successors supply operational foundations; they do not
+prove the original source equilibrium embedding. Unconditional continuation
+error still does not bound conditional belief error at a rare information set.
 
 [SourceServiceAsyncFactorization](../Vegas/Game/SourceServiceAsyncFactorization.lean)
 preserves source-view traffic factorization through an actual silent round
@@ -1286,8 +1231,8 @@ while a binding is the only ready event. The arbitrary public scheduler may
 activate any player, include any pending packet, wait, advance the clock,
 expire an event, or request a sample. The proof retains actual network state,
 receipts, scheduler recall and focal private recall; it needs no independent
-grant-probability assumption. Source decisions, effective disclosure and
-beliefs at all native information sites still need their corresponding laws.
+grant-probability assumption. Stopped completion and beliefs at all native
+information sites still need their corresponding laws.
 
 [SourceServiceBindingDecisionFactorization](../Vegas/Game/SourceServiceBindingDecisionFactorization.lean)
 proves the binding decision kernel for the actual canonical commitment
@@ -1296,6 +1241,124 @@ source memories, and derives a joint traffic kernel conditional only on the
 focal source successor view. No scheduler command or independent traffic
 assumption enters this response step. Acceptance, source/runtime alignment,
 completion and the full source-information belief projection remain separate.
+
+[SourceServiceResolutionDecisionFactorization](../Vegas/Game/SourceServiceResolutionDecisionFactorization.lean)
+supplies the corresponding response kernel for effective false and true
+disclosure choices. Store alignment, binding provenance and actual input
+recall determine their authenticated withholding or opening packets. The
+joint source-successor and full traffic law factors through the focal source
+successor view. This is a response law; it assumes no scheduler opportunity
+or source equilibrium and asserts no packet acceptance or stopped completion.
+
+[SourceServiceResolutionIntentionFactorization](../Vegas/Game/SourceServiceResolutionIntentionFactorization.lean)
+retains both the original disclosure intention and its effective transmitted
+choice in that response law. A failed TRUE intention advances the original
+source history with TRUE while its actual packet and effective history use
+FALSE. The joint traffic channel depends on the effective successor view;
+it does not identify the original intention from the packet or assume a
+normalized-source equilibrium.
+
+[SourceServiceResolutionInclusionFactorization](../Vegas/Game/SourceServiceResolutionInclusionFactorization.lean)
+identifies actual fresh canonical inclusion, its accepting receipt and the
+source disclosure result for either Boolean choice. Initialized raw trace
+invariants supply the serial, evidence provenance and empty intention cache.
+It is a local accepted-inclusion law; stopped traffic and source alignment
+are proved separately below.
+
+[SourceServiceResolutionPhaseTraffic](../Vegas/Game/SourceServiceResolutionPhaseTraffic.lean)
+proves equal full traffic laws through an actual silent resolution round from
+initialized raw traces and the owner's actual conforming recalled calls. This
+covers earlier deferrals, arbitrary public commands, clock advancement and
+expiry. Actual conformance persists through supported silent rounds. Once a
+decision is recorded, the decided policy's whole round is the silent round,
+and an existing carried source/traffic factorization survives it. The carried
+source need not agree with the runtime after expiry; protected completion and
+the stopped source law remain separate obligations.
+
+[SourceServiceStoppedResolutionTraffic](../Vegas/Game/SourceServiceStoppedResolutionTraffic.lean)
+iterates the conforming silent-round law through the actual `runUntilHorizon`
+evaluator, stopped at current-event completion. Actual initialized traces
+derive the remaining budgets, public completion test, recalled conformance
+and readiness before completion. The carried source/traffic channel is
+preserved even after earlier deferrals. The horizon may exhaust unfinished;
+this traffic law does not itself establish protected completion or agreement
+between the carried source successor and the final runtime configuration.
+
+[SourceServiceStoppedBindingTraffic](../Vegas/Game/SourceServiceStoppedBindingTraffic.lean)
+proves the corresponding stopped binding law and its composition with the
+recorded turn policy. Equal complete traffic determines both the public stop
+test and the remaining horizon. The binding law needs no packet-conformance
+or calendar hypothesis. It preserves a carried source-conditioned channel;
+identifying that carrier with the actual source successor is still necessary.
+
+[SourceServiceRecordedResolutionTraffic](../Vegas/Game/SourceServiceRecordedResolutionTraffic.lean)
+connects that stopped law to the actual turn-counted policy for any timing.
+Once the owned resolution is recorded, its whole execution law through
+stopping equals silent continuation. The equality retains earlier deferrals,
+actual own recall and every scheduler observation. It does not identify the
+source successor or prove a belief comparison.
+
+[SourceServiceRecordedDecisionCompletion](../Vegas/Game/SourceServiceRecordedDecisionCompletion.lean)
+proves completion for any actually recorded owned decision under the
+asynchronous contract. Every supported stopped endpoint retains the original
+recalled call, accepts that exact packet identifier, completes the event and
+has no public miss marker. Only the owner's policy is prescribed; foreign
+policies and the owner's timing are arbitrary. The source-alignment laws below
+identify the endpoint's actual typed successor.
+
+[SourceServiceRecordedSourceChoice](../Vegas/Game/SourceServiceRecordedSourceChoice.lean)
+derives the original recalled resolution response's supported source Boolean
+from the actual initialized policy execution. Typed source observations remain
+fixed while the event is ready, so earlier deferrals need no original-execution
+oracle or assumed source-draw support. This is a support result, rather than
+an identification of the marginal probability of a source draw.
+
+[SourceServiceRecordedBindingCompletion](../Vegas/Game/SourceServiceRecordedBindingCompletion.lean)
+and [SourceServiceRecordedResolutionAlignment](../Vegas/Game/SourceServiceRecordedResolutionAlignment.lean)
+connect those actual draws to their original accepting packets and every
+supported stopped endpoint. They derive the exact compiled successor
+configuration, full typed source-store agreement and decoded source history.
+Binding candidate meanings persist from their original fresh submission;
+resolution provenance and current source alignment determine FALSE withholding
+or effective TRUE opening. The owner may have deferred earlier, and foreign
+policies remain arbitrary. These alignment kernels do not establish source
+draw probabilities or native source-relative beliefs.
+
+[SourceServiceProtectedDecisionLaw](../Vegas/Game/SourceServiceProtectedDecisionLaw.lean)
+identifies the actual response law at a clear protected unrecorded turn as
+geometric waiting mixed with the typed compiler choice kernel. The timing
+hazard is derived from the owner's full actual recall, including earlier
+protected deferrals. This response marginal does not supply the joint
+source-prefix law or the conditional source assessment at a native site.
+
+[SourceServiceBindingResponseFactorization](../Vegas/Game/SourceServiceBindingResponseFactorization.lean)
+reads the chosen typed value from the actual submitted candidate and couples
+it with that same response's complete traffic. Waiting retains the original
+and effective source states; transmission advances both carried states with
+the chosen commitment. The prior source-pair channel is the induction
+hypothesis. The actual compiler kernel, counted-slot freshness and geometric
+response law follow from aligned configurations and clear protected traces.
+The native configuration advances later, at acceptance.
+
+[SourceServiceResolutionResponseLaw](../Vegas/Game/SourceServiceResolutionResponseLaw.lean)
+derives the corresponding physical FALSE/TRUE packet marginal for effective
+profiles. [SourceServiceResolutionMemoryLaw](../Vegas/Game/SourceServiceResolutionMemoryLaw.lean)
+uses the source policy's actual disclosure normalizer to retain original
+intention memory jointly with the native response. Waiting preserves that
+memory; transmission carries the original intended successor through the
+normalizer's conditional memory law. Its native marginal is the actual
+protected geometric policy after earlier deferrals. The joint native
+information-site law and source-relative assessment still need transport.
+
+[SourceServiceSampleEnvironmentFactorization](../Vegas/Game/SourceServiceSampleEnvironmentFactorization.lean)
+proves the real public sampling command's joint law. The sampled value is read
+from the actual typed output and advances both carried source states. The
+traffic includes the appended scheduler observation and unchanged own recall.
+Its hypotheses are prior source-view factorization and supported readiness
+and store alignment, without a roster or independent-noise premise. Joining
+these kernels across delayed inclusion and stopping remains necessary before
+the source-state posterior can be transported to native decision sites.
+
 The auxiliary game carries actual native pending
 state and attempted-choice recall. Its no-risk source embedding, consistency
 and earlier incentive comparisons remain unproved; finite-game equilibrium
@@ -1587,19 +1650,14 @@ predecessors without an agreement assumption there. Agreement is an explicit
 premise; this does not construct a rational completion or establish a valid
 prescription at resolution sites.
 
-[AsyncServicePrescribedSites](../Vegas/Game/AsyncServicePrescribedSites.lean)
-refines that structural classifier relative to a fixed source reference.
-First turns and binding deferrals keep arbitrary-source witnesses, including
-source off-path continuations. Later protected resolution turns also remain
-prescribed. At a later unrecorded resolution whose current inclusion gate
-has closed, the actual recalled protected first silence must have positive
-likelihood under the reference. A false choice present only as a tremble at
-a pure-opening reference input therefore does not force silence at that
-closed opportunity. Exact reference first-turn play visits only these
-prescribed inputs; lawful false choices can still visit later turns whose
-inclusion gate has closed. Rationality and native full-support approximation
-remain open. Completion at the narrower set cannot use the broader
-clean-prefix equality without its original agreement premise.
+The source-compatible classifier retains actual own recall, including benign
+protected deferrals. Its initialized source witness has clear persistent risk
+for every owner and a clear current owner opportunity. Consequently, an
+unrecorded owned decision at such information has a protected inclusion
+window, for bindings and resolutions alike. Exact initialized first-turn play
+visits only source-compatible information. This structural containment does
+not establish rationality at those sites, their source-relative beliefs, or a
+fully mixed native approximation with the required conditional limits.
 
 [SourceServiceResidualSites](../Vegas/Game/SourceServiceResidualSites.lean)
 supplies aligned source residuals at every legal native history for every

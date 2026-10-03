@@ -7,9 +7,9 @@ import Interaction.ReactiveQuiescent
 
 /-! # Canonical revelation blocks in the existing reactive service
 
-A source revelation chooses a certified opening or silence. Reserved inclusion
-then consumes the sole opening packet; silence leaves expiry to resolve the
-event. The equations concern actual executions and retain network and recall
+A source revelation chooses an authenticated withholding packet or a certified
+opening. Reserved inclusion consumes either decision before the clock ticks.
+The equations concern actual executions and retain network and recall
 effects. They do not restrict the raw response menu or assume player optimality.
 -/
 
@@ -23,13 +23,13 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
 /-- The two source choices, using matching owned evidence on the opening branch.
-Withholding emits no packet and is completed by the existing expiry command. -/
+Withholding emits an evidence-free authenticated decision. -/
 def canonicalRevealResponse (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (event : graph.EventId) (candidate : Handle graph) (raw : Raw L) (disclose : Bool) :
     (runtime.reactiveApplication leaks).Action :=
-  ⟨if disclose then some (disclosureSubmission (.opening event candidate raw))
-    else none⟩
+  ⟨some (if disclose then disclosureSubmission (.opening event candidate raw)
+    else ⟨⟨.withhold event, none⟩, .none⟩)⟩
 
 theorem canonicalRevealResponse_application (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -75,82 +75,60 @@ theorem interaction_includeLatest_of_pending_published (runtime : EventGraphRunt
   simp only [ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
   exact PMF.bind_pure _
 
-/-- Empty-pool silence produces the actual service wait, including its command
-recall. Neither player nor network policy is consulted at this instruction. -/
-theorem canonical_silent_inclusion (runtime : EventGraphRuntime graph)
+/-- A fresh addressed submission is selected by reserved inclusion in the
+presence of earlier traffic. -/
+theorem submission_inclusion (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks)
     (execution : (runtime.reactiveApplication leaks).Execution) (owner : Player)
-    (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
-    (empty : execution.network.pending = []) :
-    let app := runtime.reactiveApplication leaks
-    let submitted := execution.respond app owner
-      (runtime.canonicalRevealResponse leaks event candidate raw false)
-    runtime.interactionStep leaks players network (.includeLatest event owner) submitted =
-      submitted.environmentStep app .wait := by
-  dsimp only
-  have pending : (execution.respond (runtime.reactiveApplication leaks) owner
-      (runtime.canonicalRevealResponse leaks event candidate raw false)).network.pending = [] :=
-    empty
-  simp only [interactionStep, interactionInstruction, reactiveLatest,
-    ReactiveApplication.Execution.observeEnvironment, MessageNetwork.publicView, pending,
-    List.reverse_nil, List.find?_nil, PMF.pure_bind, ReactiveApplication.dispatch,
-    ReactiveApplication.Command.actor?]
-  exact PMF.bind_pure _
-
-/-- A fresh opening is selected by immediate reserved inclusion, independently
-of how its evidence is requested and in the presence of earlier traffic. -/
-theorem opening_inclusion (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
-    (network : runtime.NetworkPolicy leaks)
-    (execution : (runtime.reactiveApplication leaks).Execution) (owner : Player)
-    (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
-    (evidence : EvidenceRequest graph)
+    (event : graph.EventId) (submission : WitnessedSubmission graph)
+    (addressed : submission.call.packet.event? graph = some event)
     (fresh : (owner, execution.network.nextSerial owner) ∉
       execution.network.ledger.map Message.id) :
     let app := runtime.reactiveApplication leaks
     let submitted := execution.respond app owner
-      ⟨some ⟨⟨.opening event candidate raw, none⟩, evidence⟩⟩
+      ⟨some submission⟩
     runtime.interactionStep leaks players network (.includeLatest event owner) submitted =
       submitted.environmentStep app (.include (owner, execution.network.nextSerial owner)) := by
   let app := runtime.reactiveApplication leaks
   let submitted := execution.respond app owner
-    ⟨some ⟨⟨.opening event candidate raw, none⟩, evidence⟩⟩
+    ⟨some submission⟩
   change runtime.interactionStep leaks players network (.includeLatest event owner) submitted =
     submitted.environmentStep app (.include (owner, execution.network.nextSerial owner))
-  let packet := app.packet execution.application owner (execution.network.known owner)
-    ⟨⟨.opening event candidate raw, none⟩, evidence⟩
+  let packet := app.packet (app.submit execution.application owner submission) owner
+    (execution.network.known owner) submission
   have selected : runtime.reactiveLatest leaks event owner (submitted.observeEnvironment app) =
       .include (owner, execution.network.nextSerial owner) := by
     exact runtime.reactiveLatest_last leaks owner event _ execution.network.pending
-      ⟨(owner, execution.network.nextSerial owner), packet⟩ rfl rfl rfl fresh
+      ⟨(owner, execution.network.nextSerial owner), packet⟩ rfl rfl addressed fresh
   unfold interactionStep
   rw [interactionInstruction, selected, PMF.pure_bind]
   simp only [ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
   exact PMF.bind_pure _
 
-/-- A fresh opening also preserves quiescence when earlier spent replays are
-still pending. Inclusion publishes the new identifier; remaining copies carry
-only already published information. Its exact packet and response recall retain
-the supplied evidence request, including normalized forwarding requests. -/
-theorem opening_published_checkpoint (runtime : EventGraphRuntime graph)
+/-- Reserved inclusion of an accepted fresh submission restores quiescence.
+The actual emitted packet, receipts and response recall are retained. -/
+theorem submission_published_checkpoint (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks)
     (execution : (runtime.reactiveApplication leaks).Execution) (owner : Player)
-    (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
-    (evidence : EvidenceRequest graph) (after : State graph)
+    (event : graph.EventId) (submission : WitnessedSubmission graph)
+    (addressed : submission.call.packet.event? graph = some event) (after : State graph)
     (published : ∀ message ∈ execution.network.pending,
       message.id ∈ execution.network.ledger.map Message.id)
     (fresh : (owner, execution.network.nextSerial owner) ∉
       execution.network.ledger.map Message.id)
-    (accepted : runtime.handle execution.application
-      ⟨(owner, execution.network.nextSerial owner), .opening event candidate raw⟩ = some after) :
+    (accepted : (runtime.reactiveApplication leaks).handle
+      ((runtime.reactiveApplication leaks).submit execution.application owner submission)
+      ⟨(owner, execution.network.nextSerial owner),
+        (runtime.reactiveApplication leaks).packet
+          ((runtime.reactiveApplication leaks).submit execution.application owner submission) owner
+          (execution.network.known owner) submission⟩ = some after) :
     let app := runtime.reactiveApplication leaks
     let submitted := execution.respond app owner
-      ⟨some ⟨⟨.opening event candidate raw, none⟩, evidence⟩⟩
+      ⟨some submission⟩
     ∃ next, runtime.interactionStep leaks players network (.includeLatest event owner)
         submitted = PMF.pure next ∧
       next.application = after ∧
@@ -162,9 +140,9 @@ theorem opening_published_checkpoint (runtime : EventGraphRuntime graph)
         (submitted.network.includePending (owner, execution.network.nextSerial owner)).2 := by
   let app := runtime.reactiveApplication leaks
   let submitted := execution.respond app owner
-    ⟨some ⟨⟨.opening event candidate raw, none⟩, evidence⟩⟩
-  let packet := app.packet execution.application owner (execution.network.known owner)
-    ⟨⟨.opening event candidate raw, none⟩, evidence⟩
+    ⟨some submission⟩
+  let packet := app.packet (app.submit execution.application owner submission) owner
+    (execution.network.known owner) submission
   let envelope : Message Player app.Payload :=
     ⟨(owner, execution.network.nextSerial owner), packet⟩
   have absent : execution.network.lookup envelope.id = none := by
@@ -185,18 +163,13 @@ theorem opening_published_checkpoint (runtime : EventGraphRuntime graph)
     change (execution.network.lookup envelope.id).or (some envelope) = some envelope
     rw [absent]
     rfl
-  have valid : envelope.payload.tokenValid = true := by
-    change (WitnessedPacket.mk _ _
-      (execution.application.publicView.tokenFor (.opening event candidate raw))).tokenValid = true
-    exact tokenFor_tokenValid_of_handle runtime execution.application after _ _ _ accepted
-  have handled : app.handle submitted.application envelope = some after :=
-    (reactiveApplication_handle_of_tokenValid runtime leaks _ envelope valid).trans accepted
+  have handled : app.handle submitted.application envelope = some after := accepted
   let next : app.Execution := { submitted.includePending app envelope.id with
     environmentRecall := submitted.environmentRecall ++
       [⟨submitted.observeEnvironment app, .include envelope.id⟩] }
   refine ⟨next, ?_, ?_, ?_, ?_, ?_, ?_⟩
-  · rw [runtime.opening_inclusion leaks players network execution owner event
-      candidate raw evidence fresh]
+  · rw [runtime.submission_inclusion leaks players network execution owner event
+      submission addressed fresh]
     simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
     rfl
   · change (submitted.includePending app envelope.id).application = after

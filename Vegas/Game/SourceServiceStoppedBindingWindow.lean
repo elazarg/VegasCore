@@ -43,7 +43,7 @@ theorem binding_window_stopped_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
@@ -107,7 +107,7 @@ theorem binding_window_stopped_coupling
         ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
             record.envelope = false) ∨
-        next.1.application.publicView.missedBinding event = true ∨
+        event ∈ next.1.application.missedEvents ∨
         BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
   classical
   intro app players strategy
@@ -125,7 +125,7 @@ theorem binding_window_stopped_coupling
           (∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
             (runtime setup).permittedServiceEnvelope record.observation record.ledger
               record.envelope = false) ∨
-          next.1.application.publicView.missedBinding event = true ∨
+          event ∈ next.1.application.missedEvents ∨
           BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 by
     obtain ⟨coupling, first, second, related⟩ := result
     let menu := sourceServiceMenu setup leaks bounds rosters
@@ -195,11 +195,11 @@ theorem binding_window_stopped_coupling
         have actor := congrArg EventCode.actor codeEq
         rw [EventCode.actor_cast outputEq ((graph setup).nodes event)] at actor
         exact actor
-      have optional : ¬ bindingRequired setup leaks rosters owner (repaired.recall owner)
+      have optional : ¬ decisionRequired setup leaks rosters owner (repaired.recall owner)
           (repaired.observe app owner) := by
-        rw [sourceService_bindingRequired_iff_no_later_owner setup leaks bounds values capacity
+        rw [sourceService_decisionRequired_iff_no_later_owner setup leaks bounds values capacity
           rosters opportunities network owner ⟨remaining, some owner, repaired⟩ trace rfl
-            event ready payload outputEq owned unsent visited visits roster
+            event ready owned unsent visited visits roster
             (by rw [← frame.service]; exact slot)]
         exact last
       obtain ⟨ready, timely, _, rightRecall, _, serials, firstResources⟩ :=
@@ -260,7 +260,7 @@ theorem binding_window_stopped_coupling
         (∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
             record.envelope = false) ∨
-        next.1.application.publicView.missedBinding event = true ∨
+        event ∈ next.1.application.missedEvents ∨
         BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1
       have responseLaw : strategy.respond memory (repaired.recall owner,
           repaired.observe app owner) = law.map adjusted := by
@@ -451,7 +451,7 @@ theorem binding_window_stopped_coupling
               .none⟩⟩
           have legal : (proposed action).1 ∈ menu.actions owner (repaired.recall owner)
               (repaired.observe app owner) := by
-            apply required_binding_sourceService
+            apply required_decision_sourceService
             apply BindingMemory.repairResponse_binding_available (runtime setup) leaks bounds
               owner memory (repaired.recall owner) (repaired.observe app owner) event payload
               outputEq codeEq node

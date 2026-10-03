@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.ServiceSettledEvidence
+import Vegas.Game.SourceServiceCompletionBoundary
 
 /-! # Source observations stay fixed while a sequential event is ready
 
@@ -67,16 +67,23 @@ theorem recalledReadyObservation_serviceInvariant
   environment execution next command valid _ reached := by
     let app := application setup leaks
     have recallEq := app.environmentStep_recall execution next command reached
-    have step := contractStep_environment (runtime setup) leaks execution next command reached
+    have step := environmentStep_configStep setup leaks execution next command reached
     intro who entry member
     rw [recallEq] at member
     obtain ⟨identity, stable⟩ := valid who entry member
     refine ⟨identity, ?_⟩
     intro event turn unfinished
-    have unfinishedBefore : event ∉ execution.application.config.cut.completed :=
-      fun completed => unfinished (step.completed_mono completed)
+    have unfinishedBefore : event ∉ execution.application.config.cut.completed := by
+      intro completed
+      apply unfinished
+      rcases step with configEq | ⟨other, ready, action, supported⟩
+      · rw [configEq]
+        exact completed
+      · rw [execution.application.config.step_cut other ready action next.application.config
+          supported]
+        exact (EventOrder.Cut.mem_complete _ _ _ _).mpr (Or.inr completed)
     obtain ⟨ready, observationEq⟩ := stable event turn unfinishedBefore
-    rcases step with ⟨configEq, _⟩ | ⟨completed, completedReady, action, supported⟩
+    rcases step with configEq | ⟨completed, completedReady, action, supported⟩
     · rw [configEq]
       exact ⟨ready, observationEq⟩
     · have same := setup.eventGraph.sequentialize_ready_unique execution.application.config.cut

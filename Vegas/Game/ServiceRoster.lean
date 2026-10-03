@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RevealServiceRosterPolicy
-import Vegas.Game.RevealServiceClock
+import Vegas.Game.ServiceRosterPolicy
 
 /-! # Finite activation rosters in the existing native service
 
@@ -23,6 +22,11 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
+def instructionActor {graph : Vegas.EventGraph Player L} : ServiceInstruction graph → Option Player
+  | .player who => some who
+  | _ => none
+
+/-- One complete service block for a source event. -/
 def rosterBlock (setup : Setup (Player := Player) (L := L))
     (rosters : (graph setup).EventId → List Player) (event : (graph setup).EventId) :
     List (ServiceInstruction (graph setup)) :=

@@ -220,7 +220,7 @@ private theorem recorded_binding_resources
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (owner : Player) (execution : (application setup leaks).Execution)
     (event : (graph setup).EventId) (payload : L.Ty)
@@ -309,7 +309,7 @@ theorem recorded_binding_history_response_block_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
@@ -390,9 +390,9 @@ theorem recorded_binding_history_response_block_coupling
       (execution.observe app owner) ⊆ menu.actions owner (execution.recall owner)
         (execution.observe app owner) := by
     intro response member
-    have optional : ¬ bindingRequired setup leaks rosters owner (execution.recall owner)
+    have optional : ¬ decisionRequired setup leaks rosters owner (execution.recall owner)
         (execution.observe app owner) := by
-      rintro ⟨other, _, otherTurn, _, _, _, unsent, _⟩
+      rintro ⟨other, otherTurn, _, _, unsent, _⟩
       cases Option.some.inj (otherTurn.symm.trans
         (ownTurn?_of_ready setup execution.application ready owned))
       simp only [recorded, Bool.true_eq_false] at unsent

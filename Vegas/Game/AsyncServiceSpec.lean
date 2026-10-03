@@ -1,7 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceServiceLocalComparison
-import Vegas.Game.ServiceRosterAsync
+import Vegas.Game.SourceServiceRuntime
+import Vegas.Pending.ReactiveAsyncContract
+import Vegas.Pending.ReactiveCompiledMenu
+import Vegas.Pending.ReactiveBoundedValues
 
 /-! # Full-source services under an asynchronous scheduler
 
@@ -12,10 +14,6 @@ them, a horizon, and a scheduler satisfying the asynchronous contract with
 per-event reaction bounds `delay` and inclusion bounds `bound` that leave room
 before every deadline. It has no rosters and no activation opportunities: the
 contract's opportunity clause replaces them.
-
-The fixed roster calendar is one instance (`Vegas.SourceServiceSpec.toAsync`),
-with the plan length as horizon, reaction bound `event.val` and inclusion
-bound zero (`Vegas.rosterScheduler_asyncContract`).
 -/
 
 noncomputable section
@@ -85,38 +83,6 @@ theorem completes : CompletesPlay (runtime service.setup) service.leaks
 
 end AsyncServiceSpec
 
-namespace SourceServiceSpec
-
-variable (service : SourceServiceSpec Player L)
-
-/-- **The calendar instance.** The fixed roster service is an asynchronous
-service with the plan length as horizon, reaction bound `event.val` and
-inclusion bound zero. -/
-def toAsync : AsyncServiceSpec Player L where
-  setup := service.setup
-  leaks := service.leaks
-  bounds := service.bounds
-  values := service.values
-  initialValues := service.initialValues
-  capacity := service.capacity
-  horizon := service.planLength
-  scheduler := service.scheduler
-  delay := fun event => event.val
-  bound := fun _ => 0
-  contract := rosterScheduler_asyncContract service.setup service.leaks service.rosters
-    service.network service.opportunities
-  timely := rosterScheduler_asyncTimely service.setup
-  initialFinite := service.initialFinite
-  leaksFinite := service.leaksFinite
-  schedulerFinite := ReactiveApplication.FiniteNature.scheduler_finite
-    (initial := initialLaw service.setup)
-
-@[simp] theorem toAsync_horizon : service.toAsync.horizon = service.planLength := rfl
-
-@[simp] theorem toAsync_scheduler : service.toAsync.scheduler = service.scheduler := rfl
-
-end SourceServiceSpec
-
 end Vegas
 
 -- OPEN OBLIGATION: Asynchronous sequential-equilibrium preservation
@@ -124,7 +90,7 @@ end Vegas
 -- equilibrium under any AsyncServiceSpec, preserving the joint source outcome
 -- and realized settlement law. Retained slot invariants, prescribed policy
 -- admission after misses and prescribed continuation bounds are checked.
--- The candidate owner-local risk menu, actual post-miss rationality and a
+-- The candidate owner-local risk menu, post-miss base-payoff rationality equivalence and a
 -- localized restriction-extension theorem are checked; their source embedding
 -- and runtime comparison premises remain open.
 -- Exact first-turn play keeps the owner's full service-risk flag clear against
@@ -152,13 +118,12 @@ end Vegas
 -- Exact first-turn execution preserves the joint typed outcome and actual
 -- sampled payoff vector for every source profile after disclosure normalization.
 -- This physical law does not establish a behavioral equilibrium embedding.
--- Silent sole-binding rounds preserve source-view traffic factorization under
--- every public scheduler command. Decision and disclosure kernels, joint beliefs
--- at every native information site, the auxiliary risk-menu source embedding,
--- local incentives and general continuation repair remain to be proved.
--- Resolution silence can hide a selected false source decision. Fast deferral
--- can give an irrational waiting prescription. Slow deferral supplies a checked
--- local decision limit but can dominate rare false outcomes and change their
--- downstream conditional beliefs. Current protection supplies earlier windows;
--- source likelihood transport and default-false treatment remain open.
+-- Actual binding and resolution decisions, public sampling and stopped silent
+-- continuations have source-conditioned full traffic kernels. Native input
+-- likelihoods after retained deferrals, relative escape bounds and original
+-- source belief transport remain open. The auxiliary risk-menu source embedding,
+-- conditional incentives and general continuation repair still require proofs.
+-- False source resolutions emit authenticated evidence-free withholding packets.
+-- Silence is retained waiting, whose local incentives and source likelihood
+-- transport remain separate proof obligations.
 -- The fixed-calendar SourceServiceSpec capstone does not discharge this edge.

@@ -1,0 +1,493 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.SourceServiceDecisionTimingPosterior
+import Vegas.Pending.ReactiveCleanPrefix
+import Interaction.ReactiveRecordedResponse
+import Interaction.ReactiveRecallEntries
+import Interaction.ReactiveResponseBudget
+
+/-! # Owned-decision timing posteriors from complete actual own recall
+
+At an unrecorded owned decision, earlier protected canonical turns were silent. Each
+such response removes its timing index. Intervening entries at other events
+leave that event's posterior unchanged, even when they contain transmissions.
+
+The physical result derives these earlier-turn facts from a legal risk-menu
+history whose persistent owner flags are all clear. It does not assume that
+the scheduler protects later opportunities. The current event must actually
+be unrecorded; a recorded commitment still pending inclusion is a different
+continuation. These are strategy-state and response-law results, without a
+source equilibrium or native belief-transport premise.
+-/
+
+noncomputable section
+
+namespace Vegas
+
+open SourceProgram GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
+  GameTheory.Math.Probability Interaction EventGraphRuntime
+
+variable {Player : Type} [DecidableEq Player]
+  {L : IExpr} [IExpr.ResultTypes L]
+  {setup : Setup (Player := Player) (L := L)}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+
+/-- If the actual earlier owned turns were protected silent decisions, the
+timing family posterior is the prior conditioned on not selecting those turns.
+The premise is a response likelihood fact at each actual recalled input, not
+an assumed posterior formula. -/
+theorem sourceServiceDecision_recalled_silences_posterior
+    {bound : (graph setup).EventId → Nat} {turns : Nat}
+    {profile : BehavioralProfile setup.program} {who : Player}
+    {event : (graph setup).EventId}
+    (timing : PMF (Fin (turns + 1))) (full : FullSupport timing)
+    (past : List (application setup leaks).PlayerEntry)
+    (inside : (past.countP fun entry =>
+      decide (entry.beforeView.application.publicView.ownTurn? who = some event)) ≤ turns)
+    (lawful : ∀ before entry after, past = before ++ entry :: after →
+      entry.beforeView.application.publicView.ownTurn? who = some event →
+      entry.action = ⟨none⟩ ∧ (⟨none⟩ : (application setup leaks).Action) ∉
+        (sourceServiceCanonicalOpportunity setup leaks bound profile who event before
+          entry.beforeView).support) :
+    ((application setup leaks).policyMixture timing
+      (sourceServiceTurnFamily setup leaks bound profile who event turns)).posterior past =
+      timing.filter {slot | (past.countP fun entry =>
+        decide (entry.beforeView.application.publicView.ownTurn? who = some event)) ≤ slot.val}
+        ⟨Fin.last turns, by simpa only [Set.mem_ofPred_eq, Fin.val_last] using inside,
+          full (Fin.last turns)⟩ := by
+  classical
+  let app := application setup leaks
+  let family := sourceServiceTurnFamily setup leaks bound profile who event turns
+  let count := fun entries : List app.PlayerEntry => entries.countP fun entry =>
+    decide (entry.beforeView.application.publicView.ownTurn? who = some event)
+  let tail := fun number : Nat => {slot : Fin (turns + 1) | number ≤ slot.val}
+  have meets (number : Nat) (bounded : number ≤ turns) :
+      ∃ slot ∈ tail number, slot ∈ timing.support :=
+    ⟨Fin.last turns, by simpa only [tail, Set.mem_ofPred_eq, Fin.val_last] using bounded,
+      full (Fin.last turns)⟩
+  change (app.policyMixture timing family).posterior past =
+    timing.filter (tail (count past)) (meets (count past) inside)
+  revert inside lawful
+  induction past using List.reverseRecOn with
+  | nil =>
+      intro inside _
+      change timing = timing.filter (tail 0) (meets 0 inside)
+      exact (filter_of_support_subset timing (tail 0) (meets 0 inside)
+        (fun slot _ => Nat.zero_le slot.val)).symm
+  | append_singleton past entry ih =>
+      intro inside lawful
+      change count (past ++ [entry]) ≤ turns at inside
+      have counted : count (past ++ [entry]) = count past +
+          if entry.beforeView.application.publicView.ownTurn? who = some event then 1 else 0 := by
+        simp only [count, List.countP_append, List.countP_cons, List.countP_nil, decide_eq_true_eq,
+          zero_add]
+      have priorInside : count past ≤ turns := by omega
+      have earlierLawful : ∀ before earlier after, past = before ++ earlier :: after →
+          earlier.beforeView.application.publicView.ownTurn? who = some event →
+          earlier.action = ⟨none⟩ ∧ (⟨none⟩ : app.Action) ∉
+            (sourceServiceCanonicalOpportunity setup leaks bound profile who event before
+              earlier.beforeView).support := by
+        intro before earlier after split turn
+        exact lawful before earlier (after ++ [entry]) (by simp [split, List.append_assoc]) turn
+      have old := ih priorInside earlierLawful
+      by_cases turn : entry.beforeView.application.publicView.ownTurn? who = some event
+      · obtain ⟨silent, notSilent⟩ := lawful past entry [] (by simp) turn
+        have added : count (past ++ [entry]) = count past + 1 := by
+          simpa only [turn, ↓reduceIte] using counted
+        have nextInside : count past + 1 ≤ turns := by omega
+        have nextMeets : ∃ slot ∈ tail (count past + 1),
+            slot ∈ ((app.policyMixture timing family).posterior past).support := by
+          rw [old]
+          refine ⟨Fin.last turns, ?_, ?_⟩
+          · simpa only [tail, Set.mem_ofPred_eq, Fin.val_last] using nextInside
+          · exact (PMF.mem_support_filter_iff _).mpr
+              ⟨by simpa only [tail, Set.mem_ofPred_eq, Fin.val_last] using priorInside,
+                full (Fin.last turns)⟩
+        have atCount : sourceServiceTurn setup leaks who event past entry.beforeView =
+            some (count past) := by
+          simp only [sourceServiceTurn, turn, ↓reduceIte]
+          rfl
+        have likelihood (slot : Fin (turns + 1))
+            (supported : slot ∈ ((app.policyMixture timing family).posterior past).support) :
+            ((family slot past entry.beforeView) entry.action).toReal =
+              if slot ∈ tail (count past + 1) then 1 else 0 := by
+          rw [old] at supported
+          have retained := ((PMF.mem_support_filter_iff _).mp supported).1
+          change count past ≤ slot.val at retained
+          by_cases later : count past + 1 ≤ slot.val
+          · have different : sourceServiceTurn setup leaks who event past entry.beforeView ≠
+                some slot.val := by
+              rw [atCount]
+              intro same
+              have indexEq := Option.some.inj same
+              omega
+            rw [show family slot past entry.beforeView = app.silentPolicy past entry.beforeView from
+              app.turnScheduledPolicy_unselected _ _ _ _ _ _ (fun _ same => by
+                cases Option.some.inj same
+                exact different)]
+            simp only [silent, ReactiveApplication.silentPolicy, PMF.pure_apply, ↓reduceIte,
+              ENNReal.toReal_one, tail, Set.mem_ofPred_eq, later]
+          · have selected : slot.val = count past := by omega
+            rw [show family slot past entry.beforeView =
+              sourceServiceCanonicalOpportunity setup leaks bound profile who event past
+                entry.beforeView from
+                  app.turnScheduledPolicy_selected _ _ _ _ _ _ (by rw [selected]; exact atCount)]
+            rw [silent, pmf_toReal_eq_zero_iff.mpr notSilent]
+            simp only [tail, Set.mem_ofPred_eq, later, ↓reduceIte]
+        have update := app.policyMixture_posterior_of_indicator timing family past entry
+          (tail (count past + 1)) nextMeets (by
+            intro slot supported
+            by_cases remains : count past + 1 ≤ slot.val <;>
+              simpa only [tail, Set.mem_ofPred_eq, remains, ↓reduceIte] using
+                likelihood slot supported)
+        rw [update]
+        have nested := filter_filter_of_subset timing (tail (count past))
+          (tail (count past + 1)) (meets (count past) priorInside)
+            (by simpa only [old] using nextMeets) (by
+              intro slot retained
+              change count past + 1 ≤ slot.val at retained
+              change count past ≤ slot.val
+              omega)
+        simpa only [old, added] using nested
+      · have unchanged : count (past ++ [entry]) = count past := by
+          simpa only [turn, ↓reduceIte, Nat.add_zero] using counted
+        have update := app.policyMixture_posterior_snoc timing family past entry
+          (app.silentPolicy past entry.beforeView) (fun slot =>
+            app.turnScheduledPolicy_of_none _ _ _ _ _ _
+              (sourceServiceTurn_of_not_turn setup leaks who event past entry.beforeView turn))
+        rw [update]
+        simpa only [unchanged] using old
+
+variable [Fintype Player]
+
+/-- An earlier turn of an actually unrecorded owned decision has a legal canonical
+history witness. Its response was silent and the actual opportunity scan
+proves its selected decision law could not have been silent. -/
+theorem sourceServiceDecision_clear_recalled_turn {horizon remaining : Nat}
+    {scheduler : (application setup leaks).Scheduler}
+    (bounds : MessageBounds (graph setup)) (bound : (graph setup).EventId → Nat)
+    (profile : BehavioralProfile setup.program) (who : Player)
+    (middle : (application setup leaks).Execution)
+    (trace : ((bounds.canonicalMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some ⟨remaining, some who, middle⟩))
+    (opportunityClear : (runtime setup).recalledOpportunityRisk leaks bound who
+      (middle.recall who) = false)
+    (event : (graph setup).EventId)
+    (unrecorded : (runtime setup).eventRecorded leaks (middle.recall who) event = false)
+    (before : List (application setup leaks).PlayerEntry)
+    (entry : (application setup leaks).PlayerEntry)
+    (after : List (application setup leaks).PlayerEntry)
+    (recalled : middle.recall who = before ++ entry :: after)
+    (turn : entry.beforeView.application.publicView.ownTurn? who = some event) :
+    entry.action = ⟨none⟩ ∧ (⟨none⟩ : (application setup leaks).Action) ∉
+      (sourceServiceCanonicalOpportunity setup leaks bound profile who event before
+        entry.beforeView).support := by
+  classical
+  let app := application setup leaks
+  let menu := bounds.canonicalMenu (runtime setup) leaks
+  let model := menu.information (initialLaw setup) horizon scheduler
+  let history : (menu.protocol (initialLaw setup) horizon scheduler).History := ⟨_, trace⟩
+  have observed : model.infoOf who trace = some (middle.recall who, middle.observe app who) := by
+    change (menu.signals (initialLaw setup) horizon scheduler).infoOf who trace = _
+    rw [menu.info]
+    simp only [ReactiveApplication.observe, ↓reduceIte]
+    rfl
+  have member : (some (before, entry.beforeView), entry.action) ∈ model.ownPlay who trace := by
+    rw [menu.ownPlay_of_info_some (initialLaw setup) horizon scheduler who history _ _ observed,
+      recalled]
+    unfold ReactiveApplication.recallOwnPlay
+    rw [app.ownPlayFrom_concat]
+    apply List.mem_append_left
+    simp only [List.nil_append, ReactiveApplication.ownPlayFrom, List.mem_append,
+      List.mem_singleton]
+    exact Or.inr trivial
+  obtain ⟨prior, joint, legal, _next, _reached, _fuel, input, chosen, _path⟩ :=
+    model.ownPlay_prefix who trace member
+  have nativeInput := (menu.info (initialLaw setup) horizon scheduler who prior.trace).symm.trans
+    input
+  have acting := (app.observe_isSome who prior.state).mp (by
+    rw [nativeInput]
+    exact Option.isSome_some)
+  cases state : prior.state with
+  | none => rw [state] at acting; cases acting
+  | some control =>
+      obtain ⟨earlierRemaining, earlierActor, earlier⟩ := control
+      rw [state] at acting
+      change earlierActor = some who at acting
+      subst earlierActor
+      rw [state] at nativeInput
+      simp only [ReactiveApplication.observe, ↓reduceIte] at nativeInput
+      have pastEq := congrArg Prod.fst (Option.some.inj nativeInput)
+      have viewEq := congrArg Prod.snd (Option.some.inj nativeInput)
+      change earlier.recall who = before at pastEq
+      change earlier.observe app who = entry.beforeView at viewEq
+      have earlierTrace : (menu.protocol (initialLaw setup) horizon scheduler).Trace
+          (some ⟨earlierRemaining, some who, earlier⟩) := state ▸ prior.trace
+      have admitted : entry.action ∈ bounds.canonicalActions (runtime setup) leaks who before
+          entry.beforeView := by
+        have permitted := legal.2 who
+        rw [chosen, state] at permitted
+        have atEarlier : entry.action ∈ bounds.canonicalActions (runtime setup) leaks who
+            (earlier.recall who) (earlier.observe app who) := permitted.2
+        simpa only [pastEq, viewEq] using atEarlier
+      have entryMember : entry ∈ middle.recall who := by
+        rw [recalled]
+        exact List.mem_append_right _ List.mem_cons_self
+      have neverNamed : (runtime setup).submittedEvent? leaks entry.action ≠ some event := by
+        intro named
+        have recorded : (runtime setup).eventRecorded leaks (middle.recall who) event = true :=
+          List.any_eq_true.mpr ⟨entry, entryMember, decide_eq_true named⟩
+        rw [unrecorded] at recorded
+        cases recorded
+      have silent : entry.action = ⟨none⟩ := by
+        rcases bounds.canonicalActions_cases (runtime setup) leaks who before entry.beforeView
+            entry.action admitted with silent | ⟨other, action, served, _, _, _, _, _, decided⟩
+        · exact silent
+        · have same : other = event := Option.some.inj (served.symm.trans turn)
+          subst other
+          rcases (runtime setup).canonicalServiceDecision_cases leaks who before entry.beforeView
+            event action with silent | named
+          · exact decided.trans silent
+          · exact (neverNamed (decided ▸ named)).elim
+      have unsentBefore : (runtime setup).eventRecorded leaks before event = false := by
+        have unsent := unrecorded
+        rw [recalled, (runtime setup).eventRecorded_append] at unsent
+        exact (Bool.or_eq_false_iff.mp unsent).1
+      have opportunityAt : (runtime setup).firstUnprotectedOpportunity leaks bound who
+          before entry.beforeView = false := by
+        have scanned := opportunityClear
+        rw [recalled, (runtime setup).recalledOpportunityRisk_append] at scanned
+        have suffixClear := (Bool.or_eq_false_iff.mp scanned).2
+        change ((runtime setup).firstUnprotectedOpportunity leaks bound who before
+          entry.beforeView || _) = false at suffixClear
+        exact (Bool.or_eq_false_iff.mp suffixClear).1
+      have earlierTurn : earlier.application.publicView.ownTurn? who = some event := by
+        change (earlier.observe app who).application.publicView.ownTurn? who = some event
+        rw [viewEq]
+        exact turn
+      have earlierUnrecorded : (runtime setup).eventRecorded leaks (earlier.recall who) event =
+          false := by rw [pastEq]; exact unsentBefore
+      have fits : earlier.application.publicView.InclusionFitsDeadline (runtime setup) bound
+          event := by
+        by_contra unprotected
+        have risky := ((runtime setup).firstUnprotectedOpportunity_iff leaks bound who
+          (earlier.recall who) (earlier.observe app who)).mpr
+            ⟨rfl, event, earlierTurn, earlierUnrecorded, unprotected⟩
+        rw [pastEq, viewEq, opportunityAt] at risky
+        cases risky
+      obtain ⟨atTurn, slots⟩ := retainedCanonicalSlots_history bounds
+        ⟨earlierRemaining, some who, earlier⟩ earlierTrace who
+      have notSilent := sourceServiceDecisionOpportunity_not_silent
+        (menu.toRawTrace (initialLaw setup) horizon scheduler earlierTrace) atTurn slots event
+          earlierTurn earlierUnrecorded fits (profile := profile)
+      change (⟨none⟩ : app.Action) ∉
+        (sourceServiceCanonicalOpportunity setup leaks bound profile who event (earlier.recall who)
+          (earlier.observe app who)).support at notSilent
+      exact ⟨silent, by simpa only [pastEq, viewEq] using notSilent⟩
+
+/-- At an actual unrecorded owned-decision prefix with every owner's persistent risk
+clear, the timing posterior is its tail at the actual number of earlier turns.
+All earlier protection and silence witnesses are derived from that history. -/
+theorem sourceServiceDecision_clear_recall_posterior {horizon remaining turns : Nat}
+    {scheduler : (application setup leaks).Scheduler}
+    (bounds : MessageBounds (graph setup)) (bound : (graph setup).EventId → Nat)
+    (profile : BehavioralProfile setup.program) (who : Player)
+    (middle : (application setup leaks).Execution)
+    (trace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup) horizon
+      scheduler).Trace (some ⟨remaining, some who, middle⟩))
+    (clear : ∀ player, (runtime setup).persistentServiceRisk leaks bound player
+      (middle.recall player) (middle.observe (application setup leaks) player) = false)
+    (event : (graph setup).EventId)
+    (unrecorded : (runtime setup).eventRecorded leaks (middle.recall who) event = false)
+    (timing : PMF (Fin (turns + 1))) (full : FullSupport timing)
+    (inside : ((middle.recall who).countP fun entry =>
+      decide (entry.beforeView.application.publicView.ownTurn? who = some event)) ≤ turns) :
+    ((application setup leaks).policyMixture timing
+      (sourceServiceTurnFamily setup leaks bound profile who event turns)).posterior
+        (middle.recall who) = timing.filter {slot | ((middle.recall who).countP fun entry =>
+          decide (entry.beforeView.application.publicView.ownTurn? who = some event)) ≤ slot.val}
+        ⟨Fin.last turns, by simpa only [Set.mem_ofPred_eq, Fin.val_last] using inside,
+          full (Fin.last turns)⟩ := by
+  obtain ⟨canonical, _same⟩ := bounds.riskTrace_canonical_of_persistentClear (runtime setup) leaks
+    bound (initialLaw setup) horizon scheduler trace (by
+      intro control same player
+      cases Option.some.inj same
+      exact clear player)
+  have opportunityClear := ((runtime setup).persistentServiceRisk_clear_iff leaks bound who
+    (middle.recall who) (middle.observe (application setup leaks) who)).mp (clear who) |>.2
+  apply sourceServiceDecision_recalled_silences_posterior timing full (middle.recall who) inside
+  intro before entry after recalled turn
+  exact sourceServiceDecision_clear_recalled_turn bounds bound profile who middle canonical
+    opportunityClear event unrecorded before entry after recalled turn
+
+/-- On an actual clear unrecorded owned turn, geometric timing gives the
+canonical opportunity with probability `1 - weight` and silence otherwise.
+The physical horizon bounds the earlier-turn count; no count premise is needed.
+Current protection is not inferred: the canonical opportunity retains its
+actual inclusion-window gate. -/
+theorem sourceServiceDecision_clear_geometric_response {horizon remaining : Nat}
+    {scheduler : (application setup leaks).Scheduler}
+    (bounds : MessageBounds (graph setup)) (bound : (graph setup).EventId → Nat)
+    (profile : BehavioralProfile setup.program) (who : Player)
+    (middle : (application setup leaks).Execution)
+    (trace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup) horizon
+      scheduler).Trace (some ⟨remaining, some who, middle⟩))
+    (clear : ∀ player, (runtime setup).persistentServiceRisk leaks bound player
+      (middle.recall player) (middle.observe (application setup leaks) player) = false)
+    (event : (graph setup).EventId)
+    (unrecorded : (runtime setup).eventRecorded leaks (middle.recall who) event = false)
+    (turn : middle.application.publicView.ownTurn? who = some event)
+    (weight : ℝ) (positive : 0 < weight) (below : weight < 1) :
+    sourceServiceTurnPolicy setup leaks bound horizon
+        (geometricTiming setup horizon weight positive.le below.le) profile who
+        (middle.recall who) (middle.observe (application setup leaks) who) =
+      mix weight positive.le below.le (PMF.pure ⟨none⟩)
+        (sourceServiceCanonicalOpportunity setup leaks bound profile who event (middle.recall who)
+          (middle.observe (application setup leaks) who)) := by
+  classical
+  let app := application setup leaks
+  let past := middle.recall who
+  let view := middle.observe app who
+  let count := past.countP fun entry =>
+    decide (entry.beforeView.application.publicView.ownTurn? who = some event)
+  have lengthBound := app.active_recall_lt_horizon (initialLaw setup) horizon scheduler
+    ⟨remaining, some who, middle⟩
+      ((bounds.riskMenu (runtime setup) leaks bound).toRawTrace _ _ _ trace) who rfl
+  have early : count < horizon := lt_of_le_of_lt List.countP_le_length lengthBound
+  let current : Fin (horizon + 1) := ⟨count, by omega⟩
+  let timing := geometricTurnLaw weight positive.le below.le horizon
+  let family := sourceServiceTurnFamily setup leaks bound profile who event horizon
+  have full := geometricTurnLaw_fullSupport weight positive.le below.le positive below horizon
+  have posterior := sourceServiceDecision_clear_recall_posterior bounds bound profile who middle
+    trace clear event unrecorded timing full early.le
+  change (app.policyMixture timing family).posterior past = _ at posterior
+  have hazard : (((app.policyMixture timing family).posterior past) current).toReal =
+      1 - weight := by
+    rw [posterior]
+    simpa only [current, early, ↓reduceIte] using
+      geometricTurnLaw_conditioned_hazard weight positive.le below.le positive below horizon current
+  have serving : view.application.publicView.ownTurn? who = some event := turn
+  have atIndex : sourceServiceTurn setup leaks who event past view = some current.val := by
+    simp only [sourceServiceTurn, serving, ↓reduceIte]
+    rfl
+  rw [sourceServiceTurnPolicy_turn setup leaks bound horizon _ profile who _ _ event
+    (PublicView.ownTurn?_spec _ who event serving).2 serving]
+  change (app.policyMixture timing family).policy past view = _
+  apply pmf_ext_toReal
+  intro response
+  have exactLaw := sourceServiceTurnFamily_response_probability timing current past view atIndex
+    response (bound := bound) (profile := profile)
+  change (((app.policyMixture timing family).policy past view) response).toReal = _ at exactLaw
+  rw [exactLaw, hazard, mix_apply_toReal]
+  simp only [ReactiveApplication.silentPolicy]
+  ring
+
+/-- The complete response law at an actual clear unrecorded owned decision is within
+`weight` of the current canonical law at every response, uniformly in the
+source profile and the number of earlier protected silent turns. -/
+theorem sourceServiceDecision_clear_geometric_response_error {horizon remaining : Nat}
+    {scheduler : (application setup leaks).Scheduler}
+    (bounds : MessageBounds (graph setup)) (bound : (graph setup).EventId → Nat)
+    (profile : BehavioralProfile setup.program) (who : Player)
+    (middle : (application setup leaks).Execution)
+    (trace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup) horizon
+      scheduler).Trace (some ⟨remaining, some who, middle⟩))
+    (clear : ∀ player, (runtime setup).persistentServiceRisk leaks bound player
+      (middle.recall player) (middle.observe (application setup leaks) player) = false)
+    (event : (graph setup).EventId)
+    (unrecorded : (runtime setup).eventRecorded leaks (middle.recall who) event = false)
+    (turn : middle.application.publicView.ownTurn? who = some event)
+    (weight : ℝ) (positive : 0 < weight) (below : weight < 1)
+    (response : (application setup leaks).Action) :
+    |((sourceServiceTurnPolicy setup leaks bound horizon
+        (geometricTiming setup horizon weight positive.le below.le) profile who
+        (middle.recall who) (middle.observe (application setup leaks) who)) response).toReal -
+      ((sourceServiceCanonicalOpportunity setup leaks bound profile who event (middle.recall who)
+        (middle.observe (application setup leaks) who)) response).toReal| ≤ weight := by
+  let deciding := sourceServiceCanonicalOpportunity setup leaks bound profile who event
+    (middle.recall who) (middle.observe (application setup leaks) who)
+  let waiting : PMF (application setup leaks).Action := PMF.pure ⟨none⟩
+  have decidNonnegative : 0 ≤ (deciding response).toReal := ENNReal.toReal_nonneg
+  have waitNonnegative : 0 ≤ (waiting response).toReal := ENNReal.toReal_nonneg
+  have decidBound := pmf_toReal_apply_le_one deciding response
+  have waitBound := pmf_toReal_apply_le_one waiting response
+  rw [sourceServiceDecision_clear_geometric_response bounds bound profile who middle trace clear
+    event unrecorded turn weight positive below, mix_apply_toReal]
+  change |weight * (waiting response).toReal + (1 - weight) * (deciding response).toReal -
+    (deciding response).toReal| ≤ weight
+  calc
+    _ = weight * |(waiting response).toReal - (deciding response).toReal| := by
+      rw [show weight * (waiting response).toReal + (1 - weight) * (deciding response).toReal -
+        (deciding response).toReal =
+          weight * ((waiting response).toReal - (deciding response).toReal) by ring,
+        abs_mul, abs_of_pos positive]
+    _ ≤ weight * 1 := by
+      apply mul_le_mul_of_nonneg_left _ positive.le
+      exact abs_le.mpr ⟨by linarith, by linarith⟩
+    _ = _ := mul_one _
+
+/-- The response discrepancy vanishes even when the source profile varies
+along the sequence. The physical clear-prefix witness need not have been
+generated by any of those source profiles. -/
+theorem sourceServiceDecision_clear_geometric_response_error_vanishes
+    {horizon remaining : Nat} {scheduler : (application setup leaks).Scheduler}
+    (bounds : MessageBounds (graph setup)) (bound : (graph setup).EventId → Nat)
+    (profile : Nat → BehavioralProfile setup.program) (who : Player)
+    (middle : (application setup leaks).Execution)
+    (trace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup) horizon
+      scheduler).Trace (some ⟨remaining, some who, middle⟩))
+    (clear : ∀ player, (runtime setup).persistentServiceRisk leaks bound player
+      (middle.recall player) (middle.observe (application setup leaks) player) = false)
+    (event : (graph setup).EventId)
+    (unrecorded : (runtime setup).eventRecorded leaks (middle.recall who) event = false)
+    (turn : middle.application.publicView.ownTurn? who = some event)
+    (weight : Nat → ℝ) (positive : ∀ n, 0 < weight n) (below : ∀ n, weight n < 1)
+    (vanishes : Filter.Tendsto weight Filter.atTop (nhds 0))
+    (response : (application setup leaks).Action) :
+    Filter.Tendsto (fun n => |((sourceServiceTurnPolicy setup leaks bound horizon
+        (geometricTiming setup horizon (weight n) (positive n).le (below n).le) (profile n) who
+        (middle.recall who) (middle.observe (application setup leaks) who)) response).toReal -
+      ((sourceServiceCanonicalOpportunity setup leaks bound (profile n) who event
+        (middle.recall who) (middle.observe (application setup leaks) who)) response).toReal|)
+      Filter.atTop (nhds 0) := by
+  exact squeeze_zero (fun _ => abs_nonneg _)
+    (fun n => sourceServiceDecision_clear_geometric_response_error bounds bound (profile n) who
+      middle trace clear event unrecorded turn (weight n)
+        (positive n) (below n) response) vanishes
+
+/-- One common geometric sequence converges at every such fixed actual owned
+input to the current canonical opportunity, including inputs with earlier
+protected silent turns. This limit need not equal pure first-turn timing. -/
+theorem sourceServiceDecision_clear_geometric_limit {horizon remaining : Nat}
+    {scheduler : (application setup leaks).Scheduler}
+    (bounds : MessageBounds (graph setup)) (bound : (graph setup).EventId → Nat)
+    (profile : BehavioralProfile setup.program) (who : Player)
+    (middle : (application setup leaks).Execution)
+    (trace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup) horizon
+      scheduler).Trace (some ⟨remaining, some who, middle⟩))
+    (clear : ∀ player, (runtime setup).persistentServiceRisk leaks bound player
+      (middle.recall player) (middle.observe (application setup leaks) player) = false)
+    (event : (graph setup).EventId)
+    (unrecorded : (runtime setup).eventRecorded leaks (middle.recall who) event = false)
+    (turn : middle.application.publicView.ownTurn? who = some event)
+    (weight : Nat → ℝ) (positive : ∀ n, 0 < weight n) (below : ∀ n, weight n < 1)
+    (vanishes : Filter.Tendsto weight Filter.atTop (nhds 0)) :
+    PMFConvergesPointwise (fun n => sourceServiceTurnPolicy setup leaks bound horizon
+        (geometricTiming setup horizon (weight n) (positive n).le (below n).le) profile who
+        (middle.recall who) (middle.observe (application setup leaks) who))
+      (sourceServiceCanonicalOpportunity setup leaks bound profile who event (middle.recall who)
+        (middle.observe (application setup leaks) who)) := by
+  have sequenceEq : (fun n => sourceServiceTurnPolicy setup leaks bound horizon
+        (geometricTiming setup horizon (weight n) (positive n).le (below n).le) profile who
+        (middle.recall who) (middle.observe (application setup leaks) who)) =
+      (fun n => mix (weight n) (positive n).le (below n).le (PMF.pure ⟨none⟩)
+        (sourceServiceCanonicalOpportunity setup leaks bound profile who event (middle.recall who)
+          (middle.observe (application setup leaks) who))) := by
+    funext n
+    exact sourceServiceDecision_clear_geometric_response bounds bound profile who middle trace clear
+      event unrecorded turn (weight n) (positive n) (below n)
+  rw [sequenceEq]
+  exact pmfConvergesPointwise_mix_zero weight (fun n => (positive n).le)
+    (fun n => (below n).le) vanishes _ _
+
+end Vegas

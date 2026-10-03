@@ -2,6 +2,7 @@
 
 import Vegas.Game.SourceServicePhaseLaw
 import Vegas.Game.SourceServiceCompiledExecution
+import Vegas.Game.SourceServiceReadout
 import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Initialized source laws of the full native service
@@ -57,9 +58,8 @@ theorem sourceService_prefix_state_law
   let readout := fun count (execution : app.Execution) =>
     sourceServicePrefix? setup count execution.application.config
   let kernel := setup.behavioralStateStep admission encoded
-  have bindingOpportunities := opportunities.binding
   have covered := sourceServiceLastPolicy_admissible setup leaks bounds values initialValues
-    capacity rosters bindingOpportunities network profile permitted
+    capacity rosters opportunities network profile permitted
   have step (rank : Nat) (inside : rank < (graph setup).order.eventCount)
       (execution : app.Execution) (supported : execution ∈ (physical rank).support) :
       ((runtime setup).runInteractionPlan leaks players network
@@ -71,7 +71,7 @@ theorem sourceService_prefix_state_law
       current, refs, embedding, refsBefore, aligned, _admitted, lift, stateEq, stepEq, decodeEq,
       inheritedEffective, _, boundary⟩ :=
       initialized_sourceService_prefix_support setup leaks bounds values capacity rosters
-        bindingOpportunities menu.uniformResponses
+        opportunities menu.uniformResponses
         (fun who past view response chosen =>
           (menu.uniformResponses_support who past view response).mp chosen)
         network profile rank inside.le execution uniform
@@ -214,9 +214,8 @@ theorem sourceServiceCompiledProfile_readout_law
         (fun final => sourceReadout setup leaks final.state) = (setup.run original).map some := by
   let normalized := normalizeDisclosureProfile setup.program []
     (Revelations.initial setup.context) original
-  have bindingOpportunities := opportunities.binding
   have physical := sourceServiceCompiledProfile_complete_state setup leaks bounds values
-    initialValues capacity rosters bindingOpportunities network original permitted
+    initialValues capacity rosters opportunities network original permitted
   have observed := congrArg (PMF.map (sourceReadout setup leaks)) physical
   simp only [PMF.map_comp, Function.comp_def] at observed
   have effective (who : Player) : (normalized who).EffectiveDisclosures setup.program []

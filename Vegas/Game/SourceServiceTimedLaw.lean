@@ -2,7 +2,7 @@
 
 import Vegas.Game.SourceServicePrefixFactorization
 import Vegas.Game.SourceServiceLaw
-import Vegas.Game.RevealServiceRosterInitialized
+import Vegas.Game.SourceServiceRestrictedEvaluation
 
 /-! # Initialized law of every full-source timing approximant
 
@@ -32,7 +32,7 @@ theorem sourceServiceTimedProfile_readout_law [Fintype Player]
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (timing : TimingLaw setup rosters)
     (full : ∀ event who owned, FullSupport (timing event who owned))
     (network : (runtime setup).NetworkPolicy leaks)
@@ -104,7 +104,7 @@ theorem sourceServiceTimedProfile_protocol_law [Fintype Player]
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (timing : TimingLaw setup rosters)
     (full : ∀ event who owned, FullSupport (timing event who owned))
     (network : (runtime setup).NetworkPolicy leaks)

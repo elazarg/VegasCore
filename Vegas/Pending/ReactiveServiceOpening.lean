@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveServiceConformance
+import Vegas.Pending.ReactiveCompiledResolution
 import Vegas.Pending.ReactiveGuardedResponse
 import Vegas.Pending.ReactiveEvidence
 
@@ -23,9 +24,59 @@ variable {Player : Type} [DecidableEq Player]
   (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
-/-- At an actual execution, a conforming guarded opening is accepted. Neither
+/-- An effective evidence-free withholding response has one canonical form. -/
+theorem service_withholding_response [Fintype Player] (bounds : MessageBounds graph)
+    (execution : (runtime.reactiveApplication leaks).Execution) (owner : Player)
+    (recalled : execution.InputRecall (runtime.reactiveApplication leaks))
+    (event : graph.EventId) (submission : WitnessedSubmission graph)
+    (available : (⟨some submission⟩ : (runtime.reactiveApplication leaks).Action) ∈
+      (bounds.menu runtime leaks).actions owner (execution.recall owner)
+        (execution.observe (runtime.reactiveApplication leaks) owner))
+    (emitted : submission.emit
+      ((runtime.reactiveApplication leaks).submit execution.application owner submission)
+        owner (execution.network.known owner) = ⟨.withhold event, none, some ⟨event⟩⟩) :
+    (⟨some submission⟩ : (runtime.reactiveApplication leaks).Action) =
+      ⟨some ⟨⟨.withhold event, none⟩, .none⟩⟩ := by
+  let app := runtime.reactiveApplication leaks
+  have known := app.known_from_recall execution owner recalled
+  change execution.network.known owner = ReactiveApplication.ResponseMenu.knownPackets
+    (execution.recall owner) (execution.observe app owner) at known
+  have normal := ((bounds.menu_mem runtime leaks owner _ _ _).mp available).2
+  change (⟨some (submission.normalizeReactive owner _ _)⟩ : app.Action) =
+    ⟨some submission⟩ at normal
+  have fixed := Option.some.inj (congrArg ReactiveApplication.Action.transmission normal)
+  rw [← known] at fixed
+  have called := congrArg WitnessedPacket.call emitted
+  change submission.call.packet = .withhold event at called
+  have unchanged : app.submit execution.application owner submission = execution.application := by
+    rcases submission with ⟨⟨packet, material⟩, request⟩
+    dsimp only at called
+    subst packet
+    cases material <;> rfl
+  have absent := congrArg WitnessedPacket.evidence emitted
+  rw [unchanged, WitnessedSubmission.emit_eq_resolve] at absent
+  have normalized : submission.normalizeReactive owner (app.observePlayer execution.application
+      owner) (execution.network.known owner) = ⟨⟨.withhold event, none⟩, .none⟩ := by
+    rcases submission with ⟨⟨packet, material⟩, request⟩
+    dsimp only at called
+    subst packet
+    dsimp only at absent
+    change request.resolve owner (fun slot => execution.application.candidates.lookup (owner, slot))
+      (execution.network.known owner) = none at absent
+    simp only [WitnessedSubmission.normalizeReactive, Submission.normalizeReactive,
+      openingEffective, ↓reduceIte, EvidenceRequest.normalize]
+    change WitnessedSubmission.mk ⟨.withhold event, none⟩
+      (EvidenceRequest.canonical (execution.network.known owner)
+        (request.resolve owner (fun slot => execution.application.candidates.lookup (owner, slot))
+          (execution.network.known owner))) = _
+    rw [absent]
+    rfl
+  exact congrArg (fun material => (⟨some material⟩ : app.Action))
+    (fixed.symm.trans normalized)
+
+/-- At an actual execution, a conforming resolution decision is accepted. Neither
 an unobservable validity promise nor a source strategy appears in the premise. -/
-theorem service_opening_accepted
+theorem service_resolution_accepted
     (execution : (runtime.reactiveApplication leaks).Execution) (owner : Player)
     (sound : (runtime.packetEvidence leaks).Sound execution)
     (invariant : execution.application.BindingInvariant)
@@ -49,9 +100,36 @@ theorem service_opening_accepted
         ((runtime.reactiveApplication leaks).submit execution.application owner submission)
           owner (execution.network.known owner)⟩ = some next := by
   let app := runtime.reactiveApplication leaks
-  obtain ⟨candidate, raw, _, owned, associated, _, emitted, guards⟩ :=
-    runtime.freshServiceEnvelope_resolution_shape execution.application.publicView owner event
-      payload binding checks outputEq codeEq node _ named permitted
+  rcases runtime.freshServiceEnvelope_resolution_shape execution.application.publicView owner
+      event payload binding checks outputEq codeEq node _ named permitted with withheld | opening
+  · obtain ⟨_, emitted⟩ := withheld
+    change submission.emit (app.submit execution.application owner submission) owner
+      (execution.network.known owner) = ⟨.withhold event, none, some ⟨event⟩⟩ at emitted
+    have called := congrArg WitnessedPacket.call emitted
+    change submission.call.packet = .withhold event at called
+    have unchanged : app.submit execution.application owner submission =
+        execution.application := by
+      rcases submission with ⟨⟨packet, material⟩, request⟩
+      dsimp only at called
+      subst packet
+      cases material <;> rfl
+    rw [emitted] at permitted
+    obtain ⟨ready, timely, _, _, _⟩ :=
+      (runtime.freshServiceEnvelope_withhold_iff execution.application.publicView
+        (owner, execution.network.nextSerial owner) event owner payload binding checks outputEq
+          codeEq node none (some ⟨event⟩)).mp permitted
+    change ∃ next, app.handle (app.submit execution.application owner submission)
+      ⟨(owner, execution.network.nextSerial owner), submission.emit
+        (app.submit execution.application owner submission) owner
+          (execution.network.known owner)⟩ = some next
+    rw [emitted, unchanged, reactiveApplication_handle_of_tokenValid runtime leaks _ _
+      (WitnessedPacket.tokenValid_withhold _ _)]
+    obtain ⟨disclose, _, accepted⟩ := runtime.handle_withhold_failure_eq execution.application
+      (owner, execution.network.nextSerial owner) event owner payload binding checks outputEq codeEq
+        node
+        ((execution.application.publicView_eventReady event).mp ready) timely rfl
+    exact ⟨_, accepted⟩
+  obtain ⟨candidate, raw, _, owned, associated, _, emitted, guards⟩ := opening
   change submission.emit (app.submit execution.application owner submission) owner
     (execution.network.known owner) =
       ⟨.opening event candidate raw, some ⟨candidate, raw⟩, some ⟨event⟩⟩ at emitted
@@ -102,10 +180,9 @@ theorem service_opening_accepted
     checks outputEq codeEq node ((execution.application.publicView_eventReady event).mp ready)
     timely rfl owned associated value valid stored (.success value) resolved⟩
 
-/-- A permitted effective raw submission is precisely a successful compiled
-disclosure. Guard failure and unusable private bindings are not silently
-identified with this branch. Their attempted certificates fail the checker. -/
-theorem service_opening_response [Fintype Player] (bounds : MessageBounds graph)
+/-- A permitted effective resolution submission is an explicit false decision
+or a successful compiled disclosure. -/
+theorem service_resolution_response [Fintype Player] (bounds : MessageBounds graph)
     (execution : (runtime.reactiveApplication leaks).Execution) (owner : Player)
     (sound : (runtime.packetEvidence leaks).Sound execution)
     (invariant : execution.application.BindingInvariant)
@@ -127,6 +204,10 @@ theorem service_opening_response [Fintype Player] (bounds : MessageBounds graph)
       ⟨(owner, execution.network.nextSerial owner), submission.emit
         ((runtime.reactiveApplication leaks).submit execution.application owner submission)
           owner (execution.network.known owner)⟩) :
+    (⟨some submission⟩ : (runtime.reactiveApplication leaks).Action) =
+      runtime.serviceDecision leaks owner (execution.recall owner)
+        (execution.observe (runtime.reactiveApplication leaks) owner) event
+          (cast (congrArg EventField.Action outputEq.symm) false) ∨
     ∃ value, binding.get? execution.application.config.store = some (.success value) ∧
       EventCode.resolveOutput? binding checks true execution.application.config.store =
         some (.success value) ∧
@@ -135,11 +216,18 @@ theorem service_opening_response [Fintype Player] (bounds : MessageBounds graph)
           (execution.observe (runtime.reactiveApplication leaks) owner) event
             (cast (congrArg EventField.Action outputEq.symm) true) := by
   let app := runtime.reactiveApplication leaks
-  obtain ⟨next, accepted⟩ := runtime.service_opening_accepted leaks execution owner sound
+  rcases runtime.freshServiceEnvelope_resolution_shape execution.application.publicView owner
+      event payload binding checks outputEq codeEq node _ named permitted with withheld | opening
+  · obtain ⟨_, emitted⟩ := withheld
+    left
+    rw [runtime.serviceDecision_resolution_false leaks owner (execution.recall owner)
+      (execution.observe app owner) event owner payload binding checks outputEq codeEq node]
+    exact runtime.service_withholding_response leaks bounds execution owner recalled event
+      submission available emitted
+  right
+  obtain ⟨next, accepted⟩ := runtime.service_resolution_accepted leaks execution owner sound
     invariant event payload binding checks outputEq codeEq node submission named permitted
-  obtain ⟨candidate, raw, _, owned, associated, _, emitted, guards⟩ :=
-    runtime.freshServiceEnvelope_resolution_shape execution.application.publicView owner event
-      payload binding checks outputEq codeEq node _ named permitted
+  obtain ⟨candidate, raw, _, owned, associated, _, emitted, guards⟩ := opening
   change submission.emit (app.submit execution.application owner submission) owner
     (execution.network.known owner) =
       ⟨.opening event candidate raw, some ⟨candidate, raw⟩, some ⟨event⟩⟩ at emitted
@@ -185,11 +273,9 @@ theorem service_opening_response [Fintype Player] (bounds : MessageBounds graph)
   exact congrArg (fun material => (⟨some material⟩ : app.Action))
     (normal.symm.trans normalized)
 
-/-- Once the original binding has failed, no effective fresh submission can
-pass the public checker while its disclosure event is the owner's only ready
-event, as a public resolution always is under the barrier order. Waiting and known-envelope
-replay are still available; the hidden failure itself is not charged. -/
-theorem failed_binding_submission_forbidden [Fintype Player] (bounds : MessageBounds graph)
+/-- A failed binding permits an explicit false decision. Every other effective
+submission fails the public checker; the hidden failure itself is not charged. -/
+theorem failed_binding_submission_cases [Fintype Player] (bounds : MessageBounds graph)
     (execution : (runtime.reactiveApplication leaks).Execution) (owner : Player)
     (sound : (runtime.packetEvidence leaks).Sound execution)
     (invariant : execution.application.BindingInvariant)
@@ -209,19 +295,28 @@ theorem failed_binding_submission_forbidden [Fintype Player] (bounds : MessageBo
     (available : (⟨some submission⟩ : (runtime.reactiveApplication leaks).Action) ∈
       (bounds.menu runtime leaks).actions owner (execution.recall owner)
         (execution.observe (runtime.reactiveApplication leaks) owner)) :
+    (⟨some submission⟩ : (runtime.reactiveApplication leaks).Action) =
+      runtime.serviceDecision leaks owner (execution.recall owner)
+        (execution.observe (runtime.reactiveApplication leaks) owner) event
+          (cast (congrArg EventField.Action outputEq.symm) false) ∨
     runtime.permittedServiceEnvelope execution.application.publicView execution.network.ledger
       ⟨(owner, execution.network.nextSerial owner), submission.emit
         ((runtime.reactiveApplication leaks).submit execution.application owner submission)
           owner (execution.network.known owner)⟩ = false := by
-  apply Bool.eq_false_iff.mpr
-  intro allowed
-  have permitted := (runtime.permittedServiceEnvelope_unpublished_iff _ _ _
-    (serials.next_unpublished owner)).mp allowed
-  obtain ⟨value, stored, _, _⟩ := runtime.service_opening_response leaks bounds execution owner
-    sound invariant recalled event payload binding checks outputEq codeEq node submission
-      (runtime.freshServiceEnvelope_event_of_owned_unique _ event _ unique permitted.2)
-      available permitted.2
-  rw [failed] at stored
-  cases stored
+  by_cases allowed : runtime.permittedServiceEnvelope execution.application.publicView
+      execution.network.ledger ⟨(owner, execution.network.nextSerial owner), submission.emit
+        ((runtime.reactiveApplication leaks).submit execution.application owner submission)
+          owner (execution.network.known owner)⟩ = true
+  · left
+    have permitted := (runtime.permittedServiceEnvelope_unpublished_iff _ _ _
+      (serials.next_unpublished owner)).mp allowed
+    rcases runtime.service_resolution_response leaks bounds execution owner sound invariant
+        recalled event payload binding checks outputEq codeEq node submission
+          (runtime.freshServiceEnvelope_event_of_owned_unique _ event _ unique permitted.2)
+          available permitted.2 with withheld | ⟨value, stored, _, _⟩
+    · exact withheld
+    · rw [failed] at stored
+      cases stored
+  · exact Or.inr (Bool.eq_false_iff.mpr allowed)
 
 end Vegas.EventGraphRuntime

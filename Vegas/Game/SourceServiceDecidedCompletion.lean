@@ -2,24 +2,22 @@
 
 import Vegas.Game.SourceServiceTurnSubmissions
 import Vegas.Pending.ReactiveBindingResources
+import Vegas.Pending.ReactiveDisclosureStability
 
 /-! # A fixed first-turn decision completes its event with that action
 
 From a completion boundary of the turn-counted policy, suppose the owner of
 the current event decides a fixed action at its first turn there and every
-other response replays. Under the asynchronous contract with
+other response is silent. Under the asynchronous contract with
 `delay + bound < deadline`, every stopped point has completed the event with
 exactly that action (`Vegas.decided_completion`).
 
 * The first turn comes before any expiry: an expiry needs the deadline to have
   passed, and by then the scheduler has activated the owner.
-* A binding decision submits a fresh, acceptable commitment to a fresh
-  candidate prepared with the decided value; a disclosure of `true` that the
-  source makes effective submits an acceptable certified opening. By the
-  timeliness lemma that packet is accepted, and the event completes only
-  through it, with the decided action.
-* A disclosure of `false` is silence; no packet addresses the event, so only
-  expiry completes it, with `false`.
+* Every owned decision submits a fresh, acceptable packet: a commitment for
+  a binding, an explicit withholding for `false`, or a certified opening for
+  an effective `true` disclosure. Protected inclusion accepts that packet
+  before expiry and completes the event with the decided action.
 
 The invariants are properties of play on the support of the turn-counted
 policy, trembles included, up to the boundary, and of the decided policy
@@ -43,27 +41,9 @@ section Actions
 
 variable {setup}
 
-/-- The decided action is realized by silence: a disclosure of `false`. -/
-def SilentAction (event : (graph setup).EventId) (action : (graph setup).Action event) : Prop :=
-  match nodeView (graph setup) event with
-  | .resolve _ _ _ _ outputEq _ =>
-      (cast (congrArg EventGraph.EventField.Action outputEq) action : Bool) = false
-  | _ => False
-
-/-- The action with which expiry completes an event: failure for a binding,
-`false` for a disclosure. -/
-def ExpiryAction (event : (graph setup).EventId) (action : (graph setup).Action event) : Prop :=
-  match nodeView (graph setup) event with
-  | .bind _ payload outputEq _ =>
-      (cast (congrArg EventGraph.EventField.Action outputEq) action :
-        PublicationResult (L.Val payload)) = .failure
-  | .resolve _ _ _ _ outputEq _ =>
-      (cast (congrArg EventGraph.EventField.Action outputEq) action : Bool) = false
-  | .sample .. => False
-
 /-- A packet emitted by `entry` realizes `action`: accepted at a state with the
-configuration `config` and the candidate meanings of `state`, the handler
-completes the event with `action`. -/
+configuration `config`, the candidate meanings of `state`, and an empty
+application intention table, the handler completes the event with `action`. -/
 def RealizesAt (config : (graph setup).Config) (state : EventGraphRuntime.State (graph setup))
     (event : (graph setup).EventId) (action : (graph setup).Action event)
     (entry : (application setup leaks).PlayerEntry)
@@ -75,14 +55,16 @@ def RealizesAt (config : (graph setup).Config) (state : EventGraphRuntime.State 
         state.bindingResult handle payload =
           cast (congrArg EventGraph.EventField.Action outputEq) action
   | .resolve owner payload binding checks outputEq _ =>
-      (cast (congrArg EventGraph.EventField.Action outputEq) action : Bool) = true ∧
+      ((cast (congrArg EventGraph.EventField.Action outputEq) action : Bool) = false ∧
+        message.payload.call = .withhold event) ∨
+      ((cast (congrArg EventGraph.EventField.Action outputEq) action : Bool) = true ∧
       ∃ handle value, message.payload.call = .opening event handle ⟨payload, value⟩ ∧
         handle.1 = owner ∧
         entry.beforeView.application.publicView.accepted binding.field = some handle ∧
         state.candidates.lookup handle = .openable ⟨payload, value⟩ ∧
         binding.get? config.store = some (.success value) ∧
         ∃ result, EventGraph.EventCode.resolveOutput? binding checks true config.store =
-          some result
+          some result)
   | .sample .. => False
 
 end Actions
@@ -112,9 +94,10 @@ theorem RealizesAt.round {scheduler : (application setup leaks).Scheduler}
       simp only [State.bindingResult, same] at result ⊢
       exact result
   | resolve owner payload binding checks outputEq codeEq =>
-      rintro ⟨isTrue, handle, value, call, owner', associated, fixed, rest⟩
-      have same := round_candidate_fixed setup leaks reached handle (by rw [fixed]; simp)
-      exact ⟨isTrue, handle, value, call, owner', associated, same.trans fixed, rest⟩
+      rintro (withheld | ⟨isTrue, handle, value, call, owner', associated, fixed, rest⟩)
+      · exact Or.inl withheld
+      · have same := round_candidate_fixed setup leaks reached handle (by rw [fixed]; simp)
+        exact Or.inr ⟨isTrue, handle, value, call, owner', associated, same.trans fixed, rest⟩
   | sample => exact id
 
 /-- The conditions under which the handler accepts a commitment. -/
@@ -166,6 +149,7 @@ theorem include_realized (execution : (application setup leaks).Execution)
     (stable : EntryStable (runtime setup) leaks execution)
     (config : (graph setup).Config) (same : execution.application.config = config)
     (event : (graph setup).EventId) (ready : config.cut.Ready event)
+    (unremembered : execution.application.remembered event = none)
     (owner : Player) (owned : (graph setup).actor? event = some owner)
     (action : (graph setup).Action event) (entry : (application setup leaks).PlayerEntry)
     (member : entry ∈ execution.recall owner)
@@ -195,41 +179,65 @@ theorem include_realized (execution : (application setup leaks).Execution)
       rw [actionEq, Vegas.commit_step _ _ ready outputEq codeEq]
       exact (PMF.mem_support_pure_iff _ _).mpr rfl
   | resolve actor payload binding checks outputEq codeEq =>
-      rintro ⟨isTrue, handle, value, call, handleOwner, associatedThen, verified, stored, result,
-        resolved⟩
-      have actorEq : actor = owner := by
-        have actorOf := nodeView_resolve_actor outputEq codeEq
-        exact Option.some.inj (actorOf.symm.trans owned)
-      subst actorEq
-      rw [call] at accepted
-      have timely := opening_accepted_timely _ _ _ _ _ _ ready accepted
-      have associated : execution.application.accepted binding.field = some handle := by
-        have current := (entry_view_current setup leaks execution stable actor entry member event
-          seen (fun completed => ready.1 completed)).2.1
-        rw [← current]
-        exact associatedThen
-      rw [handle_opening_eq (runtime setup) _ _ event handle actor payload binding checks outputEq
-        codeEq node ready timely authored handleOwner associated value verified stored result
-        resolved, Option.some.injEq] at accepted
-      subst accepted
-      have actionEq : action = cast (congrArg EventGraph.EventField.Action outputEq.symm) true := by
-        rw [← isTrue, cast_cast, cast_eq]
-      rw [actionEq, execution.application.config.step_eq_map_of_code event ready outputEq _ codeEq
-        true (PMF.pure result) (by rw [EventGraph.EventCode.resolve_eval?, resolved]; rfl),
-        PMF.pure_map]
-      exact (PMF.mem_support_pure_iff _ _).mpr rfl
+      rintro (⟨isFalse, call⟩ | ⟨isTrue, handle, value, call, handleOwner, associatedThen,
+        verified, stored, result, resolved⟩)
+      · have actorEq : actor = owner :=
+          Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
+        subst actorEq
+        rw [call] at accepted
+        have timely : execution.application.WithinDeadline (runtime setup) event := by
+          by_contra late
+          simp [EventGraphRuntime.handle, ready, late] at accepted
+        rw [handle_withhold_unremembered_eq (runtime setup) _ _ event actor payload binding
+          checks outputEq codeEq node ready timely authored unremembered,
+          Option.some.injEq] at accepted
+        subst accepted
+        have actionEq : action = cast (congrArg EventGraph.EventField.Action outputEq.symm)
+            false := by
+          rw [← isFalse, cast_cast, cast_eq]
+        have resolved : EventGraph.EventCode.resolveOutput? binding checks false
+            execution.application.config.store = some .failure := by
+          apply EventGraph.EventCode.resolveOutput?_false_eq_failure binding checks
+            execution.application.config.store
+          intro field member
+          apply execution.application.config.read_available ready
+          rw [resolution_readFields event actor payload binding checks outputEq codeEq]
+          exact member
+        rw [actionEq, execution.application.config.step_eq_map_of_code event ready outputEq _
+          codeEq false (PMF.pure .failure)
+          (by rw [EventGraph.EventCode.resolve_eval?, resolved]; rfl), PMF.pure_map]
+        exact (PMF.mem_support_pure_iff _ _).mpr rfl
+      · have actorEq : actor = owner := by
+          have actorOf := nodeView_resolve_actor outputEq codeEq
+          exact Option.some.inj (actorOf.symm.trans owned)
+        subst actorEq
+        rw [call] at accepted
+        have timely := opening_accepted_timely _ _ _ _ _ _ ready accepted
+        have associated : execution.application.accepted binding.field = some handle := by
+          have current := (entry_view_current setup leaks execution stable actor entry member event
+            seen (fun completed => ready.1 completed)).2.1
+          rw [← current]
+          exact associatedThen
+        rw [handle_opening_eq (runtime setup) _ _ event handle actor payload binding checks outputEq
+          codeEq node ready timely authored handleOwner associated value verified stored result
+          resolved, Option.some.injEq] at accepted
+        subst accepted
+        have actionEq : action =
+            cast (congrArg EventGraph.EventField.Action outputEq.symm) true := by
+          rw [← isTrue, cast_cast, cast_eq]
+        rw [actionEq, execution.application.config.step_eq_map_of_code event ready outputEq _ codeEq
+          true (PMF.pure result) (by rw [EventGraph.EventCode.resolve_eval?, resolved]; rfl),
+          PMF.pure_map]
+        exact (PMF.mem_support_pure_iff _ _).mpr rfl
   | sample => exact False.elim
 
-/-- **Completion by expiry.** An expiry that changes the configuration is due,
-and completes the event with the expiry action. -/
-theorem expire_completion (state next : EventGraphRuntime.State (graph setup))
+/-- A strategic expiry that changes the configuration is due. -/
+theorem expiry_due (state next : EventGraphRuntime.State (graph setup))
     (event : (graph setup).EventId) (ready : state.config.cut.Ready event)
     (moved : next ∈ (environmentStep (runtime setup) state (.expire event)).support)
     (changed : next.config ≠ state.config) :
-    (∃ entered, state.activatedAt event = some entered ∧
-      (runtime setup).deadline event ≤ state.clock - entered) ∧
-    ∀ action, ExpiryAction event action →
-      next.config ∈ (state.config.step event ready action).support := by
+    ∃ entered, state.activatedAt event = some entered ∧
+      (runtime setup).deadline event ≤ state.clock - entered := by
   have due : ∃ entered, state.activatedAt event = some entered ∧
       (runtime setup).deadline event ≤ state.clock - entered := by
     cases activated : state.activatedAt event with
@@ -243,41 +251,7 @@ theorem expire_completion (state next : EventGraphRuntime.State (graph setup))
         · rw [environmentStep_expire_of_not_due _ _ event ready entered activated late,
             PMF.mem_support_pure_iff] at moved
           exact (changed (by rw [moved])).elim
-  refine ⟨due, ?_⟩
-  obtain ⟨entered, activated, late⟩ := due
-  intro action expiring
-  revert expiring
-  unfold ExpiryAction
-  cases node : nodeView (graph setup) event with
-  | bind actor payload outputEq codeEq =>
-      intro failed
-      rw [environmentStep_expire_bind_eq _ _ event ready entered activated late actor payload
-        outputEq codeEq node, PMF.mem_support_pure_iff] at moved
-      subst moved
-      have actionEq : action = cast (congrArg EventGraph.EventField.Action outputEq.symm)
-          (PublicationResult.failure : PublicationResult (L.Val payload)) := by
-        rw [← failed, cast_cast, cast_eq]
-      rw [actionEq, Vegas.commit_step _ _ ready outputEq codeEq]
-      exact (PMF.mem_support_pure_iff _ _).mpr rfl
-  | resolve actor payload binding checks outputEq codeEq =>
-      intro withheld
-      rcases environmentStep_expire_config_eq_or_mem_step _ _ next event moved with
-        stutter | ⟨ready', recorded, stepped⟩
-      · exact (changed stutter).elim
-      · rw [environmentStep_expire_resolve_eq _ _ event ready entered activated late actor payload
-          binding checks outputEq codeEq node, PMF.mem_support_pure_iff] at moved
-        have actionEq : action = recorded := by
-          have history := state.config.step_history event ready' recorded next.config stepped
-          rw [moved] at history
-          change state.config.history ++ [⟨event, cast (congrArg EventGraph.EventField.Action
-            outputEq.symm) false⟩] = _ at history
-          have last := List.append_cancel_left history
-          simp only [List.cons.injEq, and_true] at last
-          injection last with _ recordedEq
-          rw [← recordedEq, ← withheld, cast_cast, cast_eq]
-        rw [actionEq]
-        exact stepped
-  | sample => exact False.elim
+  exact due
 
 end Completion
 
@@ -307,7 +281,7 @@ theorem respond_submit_recall (execution : (application setup leaks).Execution) 
 
 /-- **The first turn decides.** At a legal history where the owner of the
 ready `event` is active within `delay event` slots of readiness, the compiled
-decision for an effective, non-silent action transmits a fresh call that is
+decision for an effective action transmits a fresh call that is
 acceptable on the owner's view and realizes the action. -/
 theorem firstTurn_freshCall {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
     {delay bound : (graph setup).EventId → Nat}
@@ -320,8 +294,7 @@ theorem firstTurn_freshCall {horizon : Nat} {scheduler : (application setup leak
     (entered : Nat) (activated : middle.application.activatedAt event = some entered)
     (early : middle.application.clock ≤ entered + delay event)
     (action : (graph setup).Action event)
-    (effective : EffectiveAction middle.application.config event action)
-    (loud : ¬ SilentAction event action) :
+    (effective : EffectiveAction middle.application.config event action) :
     let app := application setup leaks
     let response := (runtime setup).canonicalServiceDecision leaks owner (middle.recall owner)
       (middle.observe app owner) event action
@@ -355,15 +328,15 @@ theorem firstTurn_freshCall {horizon : Nat} {scheduler : (application setup leak
     omega
   have readyView : (middle.observe app owner).application.publicView.EventReady event :=
     (middle.application.publicView_eventReady event).mpr ready
-  revert effective loud
-  unfold EffectiveAction SilentAction
+  revert effective
+  unfold EffectiveAction
   cases node : nodeView (graph setup) event with
   | sample payload law outputEq codeEq =>
       have none := nodeView_sample_actor outputEq codeEq
       rw [owned] at none
       cases none
   | bind actor payload outputEq codeEq =>
-      intro _ _
+      intro _
       have actorEq : actor = owner :=
         Option.some.inj ((nodeView_bind_actor outputEq codeEq).symm.trans owned)
       subst actorEq
@@ -417,78 +390,122 @@ theorem firstTurn_freshCall {horizon : Nat} {scheduler : (application setup leak
         · rw [reactiveBinding_result (runtime setup) leaks actor event payload choice serial middle
             fresh, cast_cast, cast_eq]
   | resolve actor payload binding checks outputEq codeEq =>
-      intro effective loud
+      intro effective
       have actorEq : actor = owner :=
         Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
       subst actorEq
-      have isTrue : (cast (congrArg EventGraph.EventField.Action outputEq) action : Bool) =
-          true := by
-        cases disclose : (cast (congrArg EventGraph.EventField.Action outputEq) action : Bool)
-        · exact (loud disclose).elim
-        · rfl
-      obtain ⟨value, resolved⟩ := effective isTrue
-      have stored := EventGraph.EventCode.binding_success_of_resolve_success binding checks true
-        middle.application.config.store value resolved
-      obtain ⟨handle, associated, handleOwner, fixed⟩ :=
-        facts.binding.success_provenance binding value stored
-      have actionEq : action = cast (congrArg EventGraph.EventField.Action outputEq.symm) true := by
-        rw [← isTrue, cast_cast, cast_eq]
-      subst actionEq
-      have decision := ((runtime setup).canonicalServiceDecision_eq_of_not_bind leaks actor
-        (middle.recall actor) (middle.observe app actor) event _
-        (fun _ _ _ _ bind => by rw [node] at bind; cases bind)).trans
-          ((runtime setup).serviceDecision_successful_opening leaks middle facts.inputs
-            actor event payload binding checks outputEq codeEq node handle value associated
-            handleOwner fixed resolved)
-      change response = _ at decision
-      let material : app.Submission :=
-        (disclosureSubmission (.opening event handle ⟨payload, value⟩)).normalizeReactive actor
-          (app.observePlayer middle.application actor) (middle.network.known actor)
-      have packetEq : app.packet (app.submit middle.application actor material) actor
-          (middle.network.known actor) material =
-            ⟨.opening event handle ⟨payload, value⟩, some ⟨handle, ⟨payload, value⟩⟩,
-              middle.application.publicView.tokenFor (.opening event handle ⟨payload, value⟩)⟩ := by
-        have emitted := WitnessedSubmission.normalizeReactive_emit (runtime setup) leaks
-          middle.application actor (middle.network.known actor)
-            (disclosureSubmission (.opening event handle ⟨payload, value⟩))
-        have packet := (runtime setup).windowOpening_packet leaks actor event handle
-          ⟨payload, value⟩ middle.application (middle.network.known actor) handleOwner fixed
-        exact emitted.trans packet
-      refine ⟨material, decision, ?_, ?_⟩
-      · refine ⟨⟨material, congrArg ReactiveApplication.Action.transmission decision⟩, rfl, rfl,
-          by rw [packetEq]; rfl, readyView, fitsView, ?_⟩
-        change (runtime setup).freshServiceAcceptable middle.application.publicView
-          ⟨(actor, middle.network.nextSerial actor), app.packet
-            (app.submit middle.application actor material) actor
-            (middle.network.known actor) material⟩
-        rw [packetEq]
-        apply ((runtime setup).freshServiceEnvelope_opening_iff middle.application.publicView
-          (actor, middle.network.nextSerial actor) event actor payload binding checks outputEq
-          codeEq node handle ⟨payload, value⟩ (some ⟨handle, ⟨payload, value⟩⟩) _).mpr
-        refine ⟨readyView, ?_, by simp only [certifiedOpening, decide_true], ?_, rfl, handleOwner,
-          associated, rfl, PublicView.tokenFor_of_eventReady _ _ event rfl readyView⟩
-        · change (match middle.application.activatedAt event with
+      by_cases isFalse : (cast (congrArg EventGraph.EventField.Action outputEq) action : Bool) =
+          false
+      · have actionEq : action = cast (congrArg EventGraph.EventField.Action outputEq.symm)
+            false := by
+          rw [← isFalse, cast_cast, cast_eq]
+        subst actionEq
+        have decision := (runtime setup).canonicalServiceDecision_resolution_false leaks actor
+          (middle.recall actor) (middle.observe app actor) event actor payload binding checks
+          outputEq codeEq node
+        change response = _ at decision
+        let material : app.Submission := ⟨⟨.withhold event, none⟩, .none⟩
+        have packetEq : app.packet (app.submit middle.application actor material) actor
+            (middle.network.known actor) material =
+              ⟨.withhold event, none,
+                middle.application.publicView.tokenFor (.withhold event)⟩ := by
+          rfl
+        refine ⟨material, decision, ?_, ?_⟩
+        · refine ⟨⟨material, congrArg ReactiveApplication.Action.transmission decision⟩, rfl, rfl,
+            by rw [packetEq]; rfl, readyView, fitsView, ?_⟩
+          change (runtime setup).freshServiceAcceptable middle.application.publicView
+            ⟨(actor, middle.network.nextSerial actor), app.packet
+              (app.submit middle.application actor material) actor
+              (middle.network.known actor) material⟩
+          rw [packetEq]
+          apply ((runtime setup).freshServiceEnvelope_withhold_iff middle.application.publicView
+            (actor, middle.network.nextSerial actor) event actor payload binding checks outputEq
+            codeEq node none _).mpr
+          refine ⟨readyView, ?_, rfl,
+            PublicView.tokenFor_of_eventReady _ _ event rfl readyView, rfl⟩
+          change (match middle.application.activatedAt event with
             | none => False
-            | some entered => middle.application.clock - entered <
-                (runtime setup).deadline event)
+            | some entered => middle.application.clock - entered < (runtime setup).deadline event)
           rw [activated]
           exact deadline
-        · apply (middle.application.publicView.openingGuardsAccepted_iff actor event payload
-            binding checks outputEq codeEq node handle ⟨payload, value⟩ _).mpr
-          refine ⟨value, rfl, ?_⟩
-          change EventGraph.GuardCheck.allAccepted? checks
-            ((graph setup).publicStore middle.application.config.store) (.success value) =
-              some true
-          rw [EventGraph.GuardCheck.allAccepted?_publicStore]
-          exact EventGraph.EventCode.guards_pass_of_resolve_success binding checks true
-            middle.application.config.store value resolved
-      · rw [decision]
-        unfold RealizesAt
-        rw [node]
-        refine ⟨isTrue, handle, value, by rw [packetEq], handleOwner, associated, ?_, stored,
-          ⟨_, resolved⟩⟩
-        rw [respond_candidate_fixed setup leaks middle actor _ handle (by rw [fixed]; simp)]
-        exact fixed
+        · rw [decision]
+          unfold RealizesAt
+          rw [node]
+          exact Or.inl ⟨by simp, by rw [packetEq]⟩
+      · have isTrue : (cast (congrArg EventGraph.EventField.Action outputEq) action : Bool) =
+            true := by
+          cases selected : (cast (congrArg EventGraph.EventField.Action outputEq) action : Bool)
+          · exact (isFalse selected).elim
+          · rfl
+        obtain ⟨value, resolved⟩ := effective isTrue
+        have stored := EventGraph.EventCode.binding_success_of_resolve_success binding checks true
+          middle.application.config.store value resolved
+        obtain ⟨handle, associated, handleOwner, fixed⟩ :=
+          facts.binding.success_provenance binding value stored
+        have actionEq : action =
+            cast (congrArg EventGraph.EventField.Action outputEq.symm) true := by
+          rw [← isTrue, cast_cast, cast_eq]
+        subst actionEq
+        have decision := ((runtime setup).canonicalServiceDecision_eq_of_not_bind leaks actor
+          (middle.recall actor) (middle.observe app actor) event _
+          (fun _ _ _ _ bind => by rw [node] at bind; cases bind)).trans
+            ((runtime setup).serviceDecision_successful_opening leaks middle facts.inputs
+              actor event payload binding checks outputEq codeEq node handle value associated
+              handleOwner fixed resolved)
+        change response = _ at decision
+        let material : app.Submission :=
+          (disclosureSubmission (.opening event handle ⟨payload, value⟩)).normalizeReactive actor
+            (app.observePlayer middle.application actor) (middle.network.known actor)
+        have packetEq : app.packet (app.submit middle.application actor material) actor
+            (middle.network.known actor) material =
+              ⟨.opening event handle ⟨payload, value⟩, some ⟨handle, ⟨payload, value⟩⟩,
+                middle.application.publicView.tokenFor
+                  (.opening event handle ⟨payload, value⟩)⟩ := by
+          have emitted := WitnessedSubmission.normalizeReactive_emit (runtime setup) leaks
+            middle.application actor (middle.network.known actor)
+              (disclosureSubmission (.opening event handle ⟨payload, value⟩))
+          have verified : middle.application.candidates.verify handle ⟨payload, value⟩ = true :=
+            (CommitmentCandidates.verify_eq_true_iff _ _ _).mpr fixed
+          apply emitted.trans
+          simp only [application, EventGraphRuntime.reactiveApplication,
+            disclosureSubmission, WitnessedSubmission.emit, Submission.register,
+            submitStep_opening, handleOwner, verified,
+            and_self, ↓reduceIte]
+        refine ⟨material, decision, ?_, ?_⟩
+        · refine ⟨⟨material, congrArg ReactiveApplication.Action.transmission decision⟩, rfl, rfl,
+            by rw [packetEq]; rfl, readyView, fitsView, ?_⟩
+          change (runtime setup).freshServiceAcceptable middle.application.publicView
+            ⟨(actor, middle.network.nextSerial actor), app.packet
+              (app.submit middle.application actor material) actor
+              (middle.network.known actor) material⟩
+          rw [packetEq]
+          apply ((runtime setup).freshServiceEnvelope_opening_iff middle.application.publicView
+            (actor, middle.network.nextSerial actor) event actor payload binding checks outputEq
+            codeEq node handle ⟨payload, value⟩ (some ⟨handle, ⟨payload, value⟩⟩) _).mpr
+          refine ⟨readyView, ?_, by simp only [certifiedOpening, decide_true], ?_, rfl, handleOwner,
+            associated, rfl, PublicView.tokenFor_of_eventReady _ _ event rfl readyView⟩
+          · change (match middle.application.activatedAt event with
+              | none => False
+              | some entered => middle.application.clock - entered <
+                  (runtime setup).deadline event)
+            rw [activated]
+            exact deadline
+          · apply (middle.application.publicView.openingGuardsAccepted_iff actor event payload
+              binding checks outputEq codeEq node handle ⟨payload, value⟩ _).mpr
+            refine ⟨value, rfl, ?_⟩
+            change EventGraph.GuardCheck.allAccepted? checks
+              ((graph setup).publicStore middle.application.config.store) (.success value) =
+                some true
+            rw [EventGraph.GuardCheck.allAccepted?_publicStore]
+            exact EventGraph.EventCode.guards_pass_of_resolve_success binding checks true
+              middle.application.config.store value resolved
+        · rw [decision]
+          unfold RealizesAt
+          rw [node]
+          refine Or.inr ⟨isTrue, handle, value, by rw [packetEq], handleOwner, associated, ?_,
+            stored, ⟨_, resolved⟩⟩
+          rw [respond_candidate_fixed setup leaks middle actor _ handle (by rw [fixed]; simp)]
+          exact fixed
 
 end FirstTurn
 
@@ -613,31 +630,6 @@ theorem decidedTurnPolicy_submission {bound : (graph setup).EventId → Nat} {ow
   · rw [replayed response chosen] at submitted
     cases submitted
 
-/-- A disclosure of `false` is compiled to silence. -/
-theorem canonicalServiceDecision_silent (who : Player)
-    (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView) (event : (graph setup).EventId)
-    (action : (graph setup).Action event) (silent : SilentAction event action) :
-    ((runtime setup).canonicalServiceDecision leaks who past view event action).transmission =
-      none := by
-  revert silent
-  unfold SilentAction
-  cases node : nodeView (graph setup) event with
-  | resolve actor payload binding checks outputEq codeEq =>
-      intro withheld
-      obtain ⟨disclose, rfl⟩ : ∃ disclose : Bool,
-          action = cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose :=
-        ⟨cast (congrArg EventGraph.EventField.Action outputEq) action, by simp⟩
-      simp only [cast_cast, cast_eq] at withheld
-      subst withheld
-      simp only [EventGraphRuntime.canonicalServiceDecision,
-        EventGraphRuntime.canonicalReactiveDecision, node,
-        reactiveResolutionPacket, cast_cast, cast_eq, Bool.false_eq_true, ↓reduceIte,
-        disclosureSubmission_normalize_withhold]
-      rfl
-  | bind => exact False.elim
-  | sample => exact False.elim
-
 end Turns
 
 section Phase
@@ -680,7 +672,7 @@ theorem decidedProfile_submitsAtTurn (bound : (graph setup).EventId → Nat) (ow
 since the completion boundary `start`: the owner's new responses are in the
 support of its decided policy; every response submitting for the event is an
 acceptable fresh call realizing the action; and every first turn at the event
-submits unless the action is silence. -/
+submits its decision packet. -/
 structure DecidedPhase (delay bound : (graph setup).EventId → Nat)
     (start : (application setup leaks).Execution) (owner : Player)
     (event : (graph setup).EventId) (action : (graph setup).Action event)
@@ -698,7 +690,6 @@ structure DecidedPhase (delay bound : (graph setup).EventId → Nat)
   firstTurn : ∀ before entry after, execution.recall owner = before ++ entry :: after →
     (start.recall owner).length ≤ before.length →
     sourceServiceTurn setup leaks owner event before entry.beforeView = some 0 →
-    ¬ SilentAction event action →
     (runtime setup).submittedEvent? leaks entry.action = some event
 
 /-- An entry of the recall at the boundary saw the event unready. -/
@@ -885,11 +876,11 @@ theorem DecidedPhase.round {horizon : Nat} {scheduler : (application setup leaks
     exact effective
   -- The first-turn decision, when the owner's input is its first turn.
   have firstDecision (first : sourceServiceTurn setup leaks who event (execution.recall who)
-      (middle.observe app who) = some 0) (loud : ¬ SilentAction event action) :=
+      (middle.observe app who) = some 0) :=
     let early := first_turn_early contract trace answered owned readyNow first
     firstTurn_freshCall timely middleTrace event owned readyMiddle early.choose
       (by rw [sameApp]; exact early.choose_spec.1) (by rw [sameApp]; exact early.choose_spec.2)
-      action effectiveMiddle loud
+      action effectiveMiddle
   have fitsFirst (first : sourceServiceTurn setup leaks who event (execution.recall who)
       (middle.observe app who) = some 0) :
       PublicView.InclusionFitsDeadline (runtime setup) bound
@@ -928,15 +919,7 @@ theorem DecidedPhase.round {horizon : Nat} {scheduler : (application setup leaks
     rcases split_snoc split.symm with ⟨beforeEq, entryEq, _⟩ | ⟨rest, _, oldSplit⟩
     · subst beforeEq entryEq
       obtain ⟨first, _, decided⟩ := decidedTurnPolicy_submission chosen submitted
-      have loud : ¬ SilentAction event action := by
-        intro silent
-        have quiet := canonicalServiceDecision_silent (leaks := leaks) who (execution.recall who)
-          (middle.observe app who) event action silent
-        rw [← decided] at quiet
-        change (runtime setup).submittedEvent? leaks ⟨response.transmission⟩ = _ at submitted
-        rw [quiet] at submitted
-        cases submitted
-      obtain ⟨material, decision, call, realized⟩ := firstDecision first loud
+      obtain ⟨material, decision, call, realized⟩ := firstDecision first
       rw [recallEq] at decision call realized
       have responseEq : response = ⟨some material⟩ := decided.trans decision
       subst responseEq
@@ -952,11 +935,11 @@ theorem DecidedPhase.round {horizon : Nat} {scheduler : (application setup leaks
     · obtain ⟨message, emittedOld, call, realized⟩ :=
         phase.submitted before entry rest oldSplit.symm submitted
       exact ⟨message, emittedOld, call, realized.round reached⟩
-  · intro before entry after split long first loud
+  · intro before entry after split long first
     rw [recalled] at split
     rcases split_snoc split.symm with ⟨beforeEq, entryEq, _⟩ | ⟨rest, _, oldSplit⟩
     · subst beforeEq entryEq
-      obtain ⟨material, decision, call, _⟩ := firstDecision first loud
+      obtain ⟨material, decision, call, _⟩ := firstDecision first
       rw [recallEq] at decision call
       have opening := (application setup leaks).turnScheduledPolicy_selected
         (sourceServiceTurn setup leaks who event) (0 : Fin 1)
@@ -972,7 +955,7 @@ theorem DecidedPhase.round {horizon : Nat} {scheduler : (application setup leaks
       simp only [reduceCtorEq, ↓reduceIte, PMF.mem_support_pure_iff] at chosen
       rw [chosen, submittedEvent_submit]
       exact call.addressed
-    · exact phase.firstTurn before entry rest oldSplit.symm long first loud
+    · exact phase.firstTurn before entry rest oldSplit.symm long first
 
 end Preservation
 
@@ -988,16 +971,6 @@ private theorem mem_step_of_eq {first second : (graph setup).Config} (same : fir
     next ∈ (second.step event secondReady action).support := by
   subst same
   exact member
-
-/-- Silence is completed by expiry. -/
-private theorem silent_expiry {event : (graph setup).EventId} {action : (graph setup).Action event}
-    (silent : SilentAction event action) : ExpiryAction event action := by
-  revert silent
-  unfold SilentAction ExpiryAction
-  cases nodeView (graph setup) event with
-  | resolve => exact id
-  | bind => exact False.elim
-  | sample => exact False.elim
 
 /-- A fresh submission's packet carries the submission's event. -/
 private theorem issued_submittedEvent {entry : (application setup leaks).PlayerEntry}
@@ -1140,8 +1113,8 @@ theorem DecidedPhase.complete_round {horizon : Nat}
               rw [emittedEq] at emittedP
               cases Option.some.inj emittedP
               exact include_realized execution facts.stable start.application.config same named
-                ready owner owned action entry member call.ready message senderEq realized state
-                accepted
+                ready (congrFun facts.remembered named) owner owned action entry member call.ready
+                message senderEq realized state accepted
   | application command =>
       obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ moved
       obtain ⟨state, stepped, rfl⟩ := PMF.support_map .. ▸ supported
@@ -1173,72 +1146,68 @@ theorem DecidedPhase.complete_round {horizon : Nat}
           by_cases otherReady : execution.application.config.cut.Ready other
           · have otherIs := soleOf other otherReady
             subst otherIs
-            obtain ⟨⟨entered, activated, late⟩, finish⟩ :=
-              expire_completion _ _ other readyNow stepped changed
-            by_cases expiring : ExpiryAction other action
-            · exact mem_step_of_eq same readyNow ready (finish action expiring)
-            · exfalso
-              have loud : ¬ SilentAction other action :=
-                fun silent => expiring (silent_expiry silent)
-              have bounded := timely other (by rw [owned]; rfl)
-              obtain ⟨turnEntry, turnMember, turn⟩ := opportunity_turn contract trace answered
-                owned readyNow entered activated (by omega)
-              obtain ⟨before, first, after, split, firstTurn⟩ :=
-                exists_first_turn (execution.recall owner) ⟨turnEntry, turnMember, turn⟩
-              have long : (start.recall owner).length ≤ before.length := by
-                by_contra short
-                exact start_entry_unready untouched
-                  (mem_start_of_short (phase.recallPrefix owner) split (by omega))
-                  (sourceServiceTurn_first firstTurn).1
-              have submittedFirst := phase.firstTurn before first after split long firstTurn loud
-              obtain ⟨packet, emittedFirst, call, _⟩ :=
-                phase.submitted before first after split submittedFirst
-              have firstMember : first ∈ execution.recall owner := by rw [split]; simp
-              have sole : ∀ other' ∈ before ++ after,
-                  ¬ EmitsOtherFor (runtime setup) leaks other' other packet.id := by
-                intro other' otherMember ⟨replayed, emittedOther, _, addressed, different⟩
-                have otherRecall : other' ∈ execution.recall owner := by
-                  rw [split]
-                  rcases List.mem_append.mp otherMember with left | right
-                  · exact List.mem_append_left _ left
-                  · exact List.mem_append_right _ (List.mem_cons_of_mem _ right)
-                have output : replayed ∈ app.outputs (execution.recall owner) :=
-                  List.mem_filterMap.mpr ⟨other', otherRecall, emittedOther⟩
-                rw [← facts.inputs owner] at output
-                have inputMember := (List.mem_filter.mp output).1
-                obtain ⟨issuer, issuerMember, material, transmission, issuerEmitted, _, _,
-                  issuerPacket⟩ := facts.provenance.inputs replayed inputMember
-                have issuerSubmitted : (runtime setup).submittedEvent? leaks issuer.action =
-                    some other := by
-                  rw [issued_submittedEvent transmission issuerPacket]
-                  exact addressed
-                have issuerTurn := submissions _ issuer issuerMember other issuerSubmitted
-                have issuerOwner : replayed.sender = owner :=
-                  Option.some.inj ((PublicView.ownTurn?_spec _ _ other issuerTurn).2.symm.trans
-                    owned)
-                rw [issuerOwner] at issuerMember
-                obtain ⟨issuerBefore, issuerAfter, issuerSplit⟩ :=
-                  List.mem_iff_append.mp issuerMember
-                have lengths := phase.fresh_unique submissions untouched issuerSplit split
-                  issuerSubmitted submittedFirst
-                obtain ⟨_, _, issuerAt⟩ := split_take issuerSplit
-                obtain ⟨_, _, firstAt⟩ := split_take split
-                have sameEntry : issuer = first := by
-                  rw [← issuerAt, ← firstAt]
-                  simp only [lengths]
-                rw [sameEntry, emittedFirst] at issuerEmitted
-                exact different (by rw [Option.some.inj issuerEmitted])
-              have settled := settlesFreshCalls_history setup leaks contract.inclusion owner other
-                owned trace before first after packet split call sole
-              obtain ⟨enteredThen, activatedThen, early⟩ := call.fits.exists
-              have activatedSame := (entry_view_current setup leaks execution facts.stable owner
-                first firstMember other call.ready unfinished).2.2
-              rw [activatedSame, activated, Option.some.injEq] at activatedThen
-              subst activatedThen
-              have receipt := (prescribed_packet_settles setup leaks contract.inclusion trace other
-                owner owned before after first packet split call sole).1
-                (by change _ < execution.application.clock; omega)
-              exact unfinished (settled.2.2 receipt)
+            obtain ⟨entered, activated, late⟩ :=
+              expiry_due _ _ other readyNow stepped changed
+            exfalso
+            have bounded := timely other (by rw [owned]; rfl)
+            obtain ⟨turnEntry, turnMember, turn⟩ := opportunity_turn contract trace answered
+              owned readyNow entered activated (by omega)
+            obtain ⟨before, first, after, split, firstTurn⟩ :=
+              exists_first_turn (execution.recall owner) ⟨turnEntry, turnMember, turn⟩
+            have long : (start.recall owner).length ≤ before.length := by
+              by_contra short
+              exact start_entry_unready untouched
+                (mem_start_of_short (phase.recallPrefix owner) split (by omega))
+                (sourceServiceTurn_first firstTurn).1
+            have submittedFirst := phase.firstTurn before first after split long firstTurn
+            obtain ⟨packet, emittedFirst, call, _⟩ :=
+              phase.submitted before first after split submittedFirst
+            have firstMember : first ∈ execution.recall owner := by rw [split]; simp
+            have sole : ∀ other' ∈ before ++ after,
+                ¬ EmitsOtherFor (runtime setup) leaks other' other packet.id := by
+              intro other' otherMember ⟨replayed, emittedOther, _, addressed, different⟩
+              have otherRecall : other' ∈ execution.recall owner := by
+                rw [split]
+                rcases List.mem_append.mp otherMember with left | right
+                · exact List.mem_append_left _ left
+                · exact List.mem_append_right _ (List.mem_cons_of_mem _ right)
+              have output : replayed ∈ app.outputs (execution.recall owner) :=
+                List.mem_filterMap.mpr ⟨other', otherRecall, emittedOther⟩
+              rw [← facts.inputs owner] at output
+              have inputMember := (List.mem_filter.mp output).1
+              obtain ⟨issuer, issuerMember, material, transmission, issuerEmitted, _, _,
+                issuerPacket⟩ := facts.provenance.inputs replayed inputMember
+              have issuerSubmitted : (runtime setup).submittedEvent? leaks issuer.action =
+                  some other := by
+                rw [issued_submittedEvent transmission issuerPacket]
+                exact addressed
+              have issuerTurn := submissions _ issuer issuerMember other issuerSubmitted
+              have issuerOwner : replayed.sender = owner :=
+                Option.some.inj ((PublicView.ownTurn?_spec _ _ other issuerTurn).2.symm.trans
+                  owned)
+              rw [issuerOwner] at issuerMember
+              obtain ⟨issuerBefore, issuerAfter, issuerSplit⟩ :=
+                List.mem_iff_append.mp issuerMember
+              have lengths := phase.fresh_unique submissions untouched issuerSplit split
+                issuerSubmitted submittedFirst
+              obtain ⟨_, _, issuerAt⟩ := split_take issuerSplit
+              obtain ⟨_, _, firstAt⟩ := split_take split
+              have sameEntry : issuer = first := by
+                rw [← issuerAt, ← firstAt]
+                simp only [lengths]
+              rw [sameEntry, emittedFirst] at issuerEmitted
+              exact different (by rw [Option.some.inj issuerEmitted])
+            have settled := settlesFreshCalls_history setup leaks contract.inclusion owner other
+              owned trace before first after packet split call sole
+            obtain ⟨enteredThen, activatedThen, early⟩ := call.fits.exists
+            have activatedSame := (entry_view_current setup leaks execution facts.stable owner
+              first firstMember other call.ready unfinished).2.2
+            rw [activatedSame, activated, Option.some.injEq] at activatedThen
+            subst activatedThen
+            have receipt := (prescribed_packet_settles setup leaks contract.inclusion trace other
+              owner owned before after first packet split call sole).1
+              (by change _ < execution.application.clock; omega)
+            exact unfinished (settled.2.2.1 receipt)
           · rw [environmentStep_expire_of_not_ready _ _ _ otherReady,
               PMF.mem_support_pure_iff] at stepped
             subst stepped

@@ -62,11 +62,12 @@ theorem sourceCompatibleInfo_clear (who : Player)
     (info : (application service.setup service.leaks).Info)
     (compatible : service.sourceCompatibleInfo who info) :
     ∃ past view, info = some (past, view) ∧
+      view.application.who = who ∧
       (runtime service.setup).serviceRisk service.leaks service.bound who past view = false := by
   obtain ⟨_profile, _turns, _timing, _permitted, _effective, history, remaining, execution,
     current, observed, _actual, _allClear, clear⟩ := compatible
   refine ⟨execution.recall who, execution.observe (application service.setup service.leaks) who,
-    observed.symm.trans ?_, clear⟩
+    observed.symm.trans ?_, rfl, clear⟩
   have atState :
       ((service.bounds.riskMenu (runtime service.setup) service.leaks service.bound).information
         (initialLaw service.setup) service.horizon service.scheduler).infoOf who history.trace =
@@ -76,6 +77,27 @@ theorem sourceCompatibleInfo_clear (who : Player)
   refine atState.trans ?_
   rw [current]
   simp only [ReactiveApplication.observe, ↓reduceIte]
+
+/-- At a source-compatible unrecorded owned turn, the actual inclusion
+window is protected, for either kind of strategic decision. -/
+theorem sourceCompatibleInfo_protected_opportunity (who : Player)
+    (past : List (application service.setup service.leaks).PlayerEntry)
+    (view : (application service.setup service.leaks).PlayerView)
+    (compatible : service.sourceCompatibleInfo who (some (past, view)))
+    (event : (graph service.setup).EventId)
+    (turn : view.application.publicView.ownTurn? who = some event)
+    (unrecorded : (runtime service.setup).eventRecorded service.leaks past event = false) :
+    view.application.publicView.InclusionFitsDeadline (runtime service.setup) service.bound
+      event := by
+  obtain ⟨seenPast, seenView, same, identity, clear⟩ :=
+    service.sourceCompatibleInfo_clear who _ compatible
+  have pairEq := Option.some.inj same
+  have pastEq := congrArg Prod.fst pairEq
+  have viewEq := congrArg Prod.snd pairEq
+  dsimp only at pastEq viewEq
+  subst seenPast seenView
+  exact (runtime service.setup).serviceRisk_clear_protected_opportunity service.leaks
+    service.bound who past view event identity turn unrecorded clear
 
 /-- A compatible information value has a legal canonical decision history.
 The conversion keeps its actual state and complete recalled input. -/

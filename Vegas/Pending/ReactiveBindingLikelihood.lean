@@ -192,34 +192,23 @@ theorem silent_window_focal_law (runtime : EventGraphRuntime graph)
       rw [firstState, secondState]
       exact Prod.ext views publics
 
-/-- Distinct private meanings of the same canonical submitted handle produce
-the same foreign communication law throughout subsequent replay visits.
-For the owner, equality of its observed private result suffices. -/
-theorem binding_silent_window_coupling (runtime : EventGraphRuntime graph)
+/-- The actual opaque binding response preserves full focal traffic. The
+private value may differ for foreign players; its owner sees the same choice.
+No future roster, inclusion or source-policy premise is needed. -/
+theorem bindingTraffic_binding_response (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (network : runtime.NetworkPolicy leaks) (roster : List Player)
     (left right : (runtime.reactiveApplication leaks).Execution)
-    (leftRecall : left.InputRecall (runtime.reactiveApplication leaks))
-    (rightRecall : right.InputRecall (runtime.reactiveApplication leaks))
     (owner focal : Player) (event : graph.EventId)
     (payload : L.Ty) (first second : PublicationResult (L.Val payload))
     (visible : focal = owner → first = second) (serial : Nat)
     (same : runtime.bindingTraffic leaks focal left = runtime.bindingTraffic leaks focal right) :
-    let app := runtime.reactiveApplication leaks
-    PMF.map (runtime.bindingTraffic leaks focal)
-      (runtime.runInteractionPlan leaks (fun _ => app.silentPolicy) network
-      (roster.map ServiceInstruction.player)
-        (left.respond app owner
-          (runtime.reactiveBinding leaks owner event payload first serial))) =
-    PMF.map (runtime.bindingTraffic leaks focal)
-      (runtime.runInteractionPlan leaks (fun _ => app.silentPolicy) network
-      (roster.map ServiceInstruction.player)
-        (right.respond app owner
-          (runtime.reactiveBinding leaks owner event payload second serial))) := by
-  intro app
-  apply runtime.silent_window_focal_law leaks network roster focal _ _
-    (app.respond_inputRecall left owner _ leftRecall)
-    (app.respond_inputRecall right owner _ rightRecall)
+    runtime.bindingTraffic leaks focal
+        (left.respond (runtime.reactiveApplication leaks) owner
+          (runtime.reactiveBinding leaks owner event payload first serial)) =
+      runtime.bindingTraffic leaks focal
+        (right.respond (runtime.reactiveApplication leaks) owner
+          (runtime.reactiveBinding leaks owner event payload second serial)) := by
+  let app := runtime.reactiveApplication leaks
   have networks : left.network = right.network := congrArg Prod.fst same
   have receipts : left.receipts = right.receipts := congrArg (fun value => value.2.1) same
   have environments : left.environmentRecall = right.environmentRecall :=
@@ -290,6 +279,37 @@ theorem binding_silent_window_coupling (runtime : EventGraphRuntime graph)
               (congrArg PlayerView.candidates submitted))
     exact Prod.ext afterNetworks (Prod.ext receipts (Prod.ext environments
       (Prod.ext afterRecall (Prod.ext afterViews (congrArg PlayerView.publicView afterViews)))))
+
+/-- Distinct private meanings of the same canonical submitted handle produce
+the same foreign communication law throughout subsequent replay visits.
+For the owner, equality of its observed private result suffices. -/
+theorem binding_silent_window_coupling (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (network : runtime.NetworkPolicy leaks) (roster : List Player)
+    (left right : (runtime.reactiveApplication leaks).Execution)
+    (leftRecall : left.InputRecall (runtime.reactiveApplication leaks))
+    (rightRecall : right.InputRecall (runtime.reactiveApplication leaks))
+    (owner focal : Player) (event : graph.EventId)
+    (payload : L.Ty) (first second : PublicationResult (L.Val payload))
+    (visible : focal = owner → first = second) (serial : Nat)
+    (same : runtime.bindingTraffic leaks focal left = runtime.bindingTraffic leaks focal right) :
+    let app := runtime.reactiveApplication leaks
+    PMF.map (runtime.bindingTraffic leaks focal)
+      (runtime.runInteractionPlan leaks (fun _ => app.silentPolicy) network
+      (roster.map ServiceInstruction.player)
+        (left.respond app owner
+          (runtime.reactiveBinding leaks owner event payload first serial))) =
+    PMF.map (runtime.bindingTraffic leaks focal)
+      (runtime.runInteractionPlan leaks (fun _ => app.silentPolicy) network
+      (roster.map ServiceInstruction.player)
+        (right.respond app owner
+          (runtime.reactiveBinding leaks owner event payload second serial))) := by
+  intro app
+  exact runtime.silent_window_focal_law leaks network roster focal _ _
+    (app.respond_inputRecall left owner _ leftRecall)
+    (app.respond_inputRecall right owner _ rightRecall)
+    (runtime.bindingTraffic_binding_response leaks left right owner focal event payload first
+      second visible serial same)
 
 private theorem binding_submitted_selection (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))

@@ -5,7 +5,7 @@ import Vegas.Game.SourceServiceTimedSample
 import Vegas.Game.SourceServiceTimedBindingCheckpoint
 import Vegas.Game.SourceServiceBoundary
 import Vegas.Game.SourceServicePrefix
-import Vegas.Pending.ReactiveOpeningExpiry
+import Vegas.Pending.ReactiveDecisionWindowExpiry
 import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Source successors in conditional timed executions
@@ -38,6 +38,7 @@ theorem guardedDisclosureWindow_config
     (execution : (application setup leaks).Execution)
     (agree : refs.Agrees source.state execution.application.config.store)
     (valid : execution.application.BindingInvariant)
+    (unremembered : execution.application.remembered = fun _ => none)
     (event : (graph setup).EventId)
     (outputEq : (graph setup).outputLayout event = .publication payload)
     (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
@@ -48,8 +49,7 @@ theorem guardedDisclosureWindow_config
       outputEq codeEq)
     (ready : execution.application.config.cut.Ready event)
     (timely : execution.application.WithinDeadline (runtime setup) event)
-    (entered ticks : Nat) (activated : execution.application.activatedAt event = some entered)
-    (due : (runtime setup).deadline event ≤ execution.application.clock + ticks - entered)
+    (ticks : Nat)
     (packets : execution.network.Satisfies fun message =>
       message.id ∈ execution.network.ledger.map Message.id)
     (serials : execution.network.SerialsBeforeNext)
@@ -59,12 +59,9 @@ theorem guardedDisclosureWindow_config
       disclose = true ∧ disclosureResult published binding source true = .success value)
     (final : (application setup leaks).Execution)
     (reached : final ∈ ((runtime setup).runInteractionPlan leaks
-      (match (if disclose then rosterOpening? setup leaks owner event
-        (execution.observe (application setup leaks) owner) else none) with
-      | none => fun _ => (application setup leaks).silentPolicy
-      | some (candidate, raw) =>
-          (runtime setup).openingWindowPlayers leaks owner event candidate raw
-            (execution.recall owner).length (some slot)) network
+      ((runtime setup).decisionWindowPlayers leaks owner event
+        (rosterOpening? setup leaks owner event (execution.observe (application setup leaks) owner))
+        (execution.recall owner).length (slot, disclose)) network
       ((roster.map ServiceInstruction.player ++ [.includeLatest event owner]) ++
         List.replicate ticks .tick ++ [.expire event]) execution).support) :
     final.application.config = execution.application.config.complete event ready
@@ -73,71 +70,65 @@ theorem guardedDisclosureWindow_config
         (disclosureResult published binding source disclose)) := by
   let app := application setup leaks
   rcases effective with rfl | ⟨value, rfl, success⟩
-  · simp only [Bool.false_eq_true, ↓reduceIte] at reached
-    simp only [List.append_assoc, List.singleton_append] at reached
-    rw [(runtime setup).runInteractionPlan_append] at reached
-    obtain ⟨current, prior, continued⟩ :=
-      Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-    have preserved := (runtime setup).silent_window_preserves leaks
-      (fun _ => app.silentPolicy) network owner execution
-      (fun state who response _ _ member => app.silentPolicy_cases _ _ response member)
-      _ packets roster current prior
-    have same := preserved.1
-    have currentReady : current.application.config.cut.Ready event := by rw [same]; exact ready
-    have pending : ∀ message ∈ current.network.pending,
-        message.id ∈ current.network.ledger.map Message.id := by
-      intro message member
-      rw [preserved.2.1]
-      exact preserved.2.2.2.2.1.pending message member
-    let waited : app.Execution := { current with
-      environmentRecall := current.environmentRecall ++
-        [⟨current.observeEnvironment app, .wait⟩] }
-    have included : (runtime setup).interactionStep leaks (fun _ => app.silentPolicy) network
-        (.includeLatest event owner) current = PMF.pure waited := by
-      rw [(runtime setup).interaction_includeLatest_of_pending_published leaks
-        (fun _ => app.silentPolicy) network current owner event pending]
-      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
-      rfl
-    obtain ⟨endpoint, law, state, _, _, _⟩ :=
-      (runtime setup).canonical_silent_expiry leaks (fun _ => app.silentPolicy) network waited
-        owner event payload (refs.get binding)
-        (compileChecks (published := published) refs source.registry source.revelations binding)
-        outputEq codeEq node currentReady entered ticks
-        (by change current.application.activatedAt event = _; rw [same]; exact activated)
-        (by change _ ≤ current.application.clock + ticks - entered; rw [same]; exact due)
-    simp only [List.cons_append, runInteractionPlan] at continued
-    dsimp only [app] at included law
-    rw [included, PMF.pure_bind, law] at continued
-    cases (PMF.mem_support_pure_iff _ _).mp continued
-    rw [state]
-    simp only [waited, same, disclosureResult_false, State.markMissed_config, State.complete]
+  · change final ∈ ((runtime setup).runInteractionPlan leaks
+      ((runtime setup).decisionWindowPlayers leaks owner event none
+        (execution.recall owner).length (slot, false)) network
+      ((roster.map ServiceInstruction.player ++ [.includeLatest event owner]) ++
+        List.replicate ticks .tick ++ [.expire event]) execution).support at reached
+    let after := execution.application.complete event ready
+      (cast (congrArg EventGraph.EventField.Action outputEq.symm) false)
+      (cast (congrArg EventGraph.EventField.Value outputEq.symm)
+        (PublicationResult.failure : PublicationResult (L.Val payload)))
+    have baseHandled := (runtime setup).handle_withhold_unremembered_eq execution.application
+      (owner, execution.network.nextSerial owner) event owner payload (refs.get binding)
+      (compileChecks (published := published) refs source.registry source.revelations binding)
+      outputEq codeEq node ready timely rfl (by rw [unremembered])
+    have accepted : app.handle execution.application
+        ((runtime setup).decisionEnvelope leaks owner event none false execution) = some after := by
+      rw [reactiveApplication_handle_of_current_token (runtime setup) leaks _ _ rfl]
+      exact baseHandled
+    have settled : ¬after.config.cut.Ready event := by
+      intro active
+      exact active.1 (by simp [after, State.complete, EventOrder.Cut.complete])
+    obtain ⟨completed, _⟩ := (runtime setup).decisionWindow_expiry leaks owner event none
+      execution serials packets (fun _ _ impossible => by cases impossible) roster (slot, false)
+      (by intro impossible; cases impossible) after accepted settled ticks network final
+      (by simpa only [List.append_assoc] using reached)
+    rw [completed]
+    simp only [after, State.complete, disclosureResult_false]
   · obtain ⟨candidate, associated, owned, fixed, opening⟩ := guarded_rosterOpening_success
       setup leaks published binding source refs execution agree valid event outputEq codeEq node
       value success
-    simp only [↓reduceIte, opening] at reached
+    rw [opening] at reached
     have resolved := compiled_disclosure_result published binding source refs
       execution.application.config.store agree true
     rw [success, EventGraph.EventCode.resolveOutput?_playerStore] at resolved
     have stored := EventGraph.EventCode.binding_success_of_resolve_success (refs.get binding)
       (compileChecks (published := published) refs source.registry source.revelations binding)
       true execution.application.config.store value resolved
+    let after := execution.application.complete event ready
+      (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
+      (cast (congrArg EventGraph.EventField.Value outputEq.symm) (.success value))
     have accepted : app.handle execution.application
-        ((runtime setup).windowEnvelope leaks owner event candidate ⟨payload, value⟩ execution) =
-          some (execution.application.complete event ready
-            (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
-            (cast (congrArg EventGraph.EventField.Value outputEq.symm)
-              (PublicationResult.success value))) :=
-      (reactiveApplication_handle_of_tokenValid (runtime setup) leaks _ _
+        ((runtime setup).decisionEnvelope leaks owner event (some (candidate, ⟨payload, value⟩))
+          true execution) = some after := by
+      exact (reactiveApplication_handle_of_tokenValid (runtime setup) leaks _ _
         ((runtime setup).windowEnvelope_tokenValid leaks owner event candidate _ execution
           ready)).trans
-      (handle_opening_eq (runtime setup) execution.application _ event candidate owner payload
-        (refs.get binding) _ outputEq codeEq node ready timely rfl owned associated value fixed
-        stored (.success value) resolved)
-    have completed := (runtime setup).openingWindow_expiry leaks owner event payload
-      (refs.get binding) _ outputEq codeEq node candidate value execution ready serials packets
-      owned fixed accepted entered ticks activated due roster (some slot) network final reached
-    rw [completed.1]
-    simp only [Option.isSome_some, ↓reduceIte, success, State.complete]
+        (handle_opening_eq (runtime setup) execution.application _ event candidate owner payload
+          (refs.get binding) _ outputEq codeEq node ready timely rfl owned associated value fixed
+          stored (.success value) resolved)
+    have settled : ¬after.config.cut.Ready event := by
+      intro active
+      exact active.1 (by simp [after, State.complete, EventOrder.Cut.complete])
+    obtain ⟨completed, _⟩ := (runtime setup).decisionWindow_expiry leaks owner event
+      (some (candidate, ⟨payload, value⟩)) execution serials packets
+      (by intro selected raw same; cases Option.some.inj same; exact owned) roster (slot, true)
+      (by intro _ selected raw same; cases Option.some.inj same; exact fixed)
+      after accepted settled ticks network final
+      (by simpa only [List.append_assoc] using reached)
+    rw [completed]
+    simp only [after, State.complete, success]
 
 /-- The native decoder's typed source checkpoint is the same successor that
 indexes the conditional traffic branch. -/
@@ -161,10 +152,10 @@ theorem SourceCheckpoint.guardedDisclosureWindow
     (before : ∀ {readName cell} (ref : HasVar Γ readName cell),
       FieldBefore event (refs.get ref).field)
     (valid : execution.application.BindingInvariant)
+    (unremembered : execution.application.remembered = fun _ => none)
     (ready : execution.application.config.cut.Ready event)
     (timely : execution.application.WithinDeadline (runtime setup) event)
-    (entered ticks : Nat) (activated : execution.application.activatedAt event = some entered)
-    (due : (runtime setup).deadline event ≤ execution.application.clock + ticks - entered)
+    (ticks : Nat)
     (packets : execution.network.Satisfies fun message =>
       message.id ∈ execution.network.ledger.map Message.id)
     (serials : execution.network.SerialsBeforeNext)
@@ -177,19 +168,16 @@ theorem SourceCheckpoint.guardedDisclosureWindow
         some (.reveal owner name disclose))
     (final : (application setup leaks).Execution)
     (reached : final ∈ ((runtime setup).runInteractionPlan leaks
-      (match (if disclose then rosterOpening? setup leaks owner event
-        (execution.observe (application setup leaks) owner) else none) with
-      | none => fun _ => (application setup leaks).silentPolicy
-      | some (candidate, raw) =>
-          (runtime setup).openingWindowPlayers leaks owner event candidate raw
-            (execution.recall owner).length (some slot)) network
+      ((runtime setup).decisionWindowPlayers leaks owner event
+        (rosterOpening? setup leaks owner event (execution.observe (application setup leaks) owner))
+        (execution.recall owner).length (slot, disclose)) network
       ((roster.map ServiceInstruction.player ++ [.includeLatest event owner]) ++
         List.replicate ticks .tick ++ [.expire event]) execution).support) :
     SourceCheckpoint setup (revealSuccessor published binding source disclose)
       (refs.cons (name := published) ⟨.inr event, outputEq⟩) (rank + 1)
       final.application.config := by
   rw [guardedDisclosureWindow_config setup leaks published binding source refs execution
-    checkpoint.agrees valid event outputEq codeEq node ready timely entered ticks activated due
+    checkpoint.agrees valid unremembered event outputEq codeEq node ready timely ticks
     packets serials network roster slot disclose effective final reached]
   exact checkpoint.reveal published binding event eventRank ready outputEq before disclose decoded
 
@@ -219,6 +207,7 @@ theorem sourceServiceTimedPolicy_reveal_joint_law
     (execution : (application setup leaks).Execution)
     (checkpoint : SourceCheckpoint setup source refs rank execution.application.config)
     (valid : execution.application.BindingInvariant)
+    (unremembered : execution.application.remembered = fun _ => none)
     (recalled : execution.InputRecall (application setup leaks))
     (origins : (runtime setup).ResolutionEvidenceOrigins leaks execution)
     (effective : (profile owner).EffectiveDisclosures
@@ -227,15 +216,13 @@ theorem sourceServiceTimedPolicy_reveal_joint_law
     (packets : execution.network.Satisfies fun message =>
       message.id ∈ execution.network.ledger.map Message.id)
     (serials : execution.network.SerialsBeforeNext)
-    (network : (runtime setup).NetworkPolicy leaks) (entered ticks : Nat) (focal : Player) :
+    (network : (runtime setup).NetworkPolicy leaks) (ticks : Nat) (focal : Player) :
     let index : Fin (eventCount (.reveal published owner name fresh binding unresolved next)) :=
       ⟨0, by simp [eventCount]⟩
     let event : (graph setup).EventId := embedding.event index
     ∀ (owned : (graph setup).actor? event = some owner)
       (ready : execution.application.config.cut.Ready event)
       (_timely : execution.application.WithinDeadline (runtime setup) event)
-      (_activated : execution.application.activatedAt event = some entered)
-      (_due : (runtime setup).deadline event ≤ execution.application.clock + ticks - entered)
       (_unsent : (runtime setup).eventRecorded leaks (execution.recall owner) event = false)
       (_counted : (execution.recall owner).length = rosterOffset setup rosters owner event),
     ((runtime setup).runInteractionPlan leaks
@@ -253,7 +240,7 @@ theorem sourceServiceTimedPolicy_reveal_joint_law
           (timing event owner owned) execution disclose).map fun traffic =>
             (some (Sum.inr (ProtocolState.entry next
               (revealSuccessor published binding source disclose))), traffic) := by
-  intro index event owned ready timely activated due unsent counted
+  intro index event owned ready timely unsent counted
   let app := application setup leaks
   let phase := (rosters event).map ServiceInstruction.player ++
     (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event])
@@ -293,12 +280,10 @@ theorem sourceServiceTimedPolicy_reveal_joint_law
   let target : Option
       (ProtocolState (.reveal published owner name fresh binding unresolved next)) :=
     some (Sum.inr (ProtocolState.entry next (revealSuccessor published binding source disclose)))
-  let selected := if disclose then rosterOpening? setup leaks owner event
-    (execution.observe app owner) else none
-  let players := fun slot : Fin ((rosters event).count owner) => match selected with
-    | none => fun _ => app.silentPolicy
-    | some (candidate, raw) => (runtime setup).openingWindowPlayers leaks owner event candidate raw
-        (execution.recall owner).length (some slot)
+  let players := fun slot : Fin ((rosters event).count owner) =>
+    (runtime setup).decisionWindowPlayers leaks owner event
+      (rosterOpening? setup leaks owner event (execution.observe app owner))
+      (execution.recall owner).length (slot, disclose)
   trans ((timing event owner owned).bind fun slot =>
     ((runtime setup).runInteractionPlan leaks (players slot) network phase execution).map
       ((runtime setup).bindingTraffic leaks focal)).map (fun traffic => (target, traffic))
@@ -309,14 +294,13 @@ theorem sourceServiceTimedPolicy_reveal_joint_law
     apply map_congr_on_support _
     intro final reached
     have completed := checkpoint.guardedDisclosureWindow published binding event eventRank
-      outputEq codeEq node (fun ref => refsBefore ref index) valid ready timely entered ticks
-      activated due packets serials network (rosters event) slot disclose
+      outputEq codeEq node (fun ref => refsBefore ref index) valid unremembered ready timely ticks
+      packets serials network (rosters event) slot disclose
       (effective_reveal_supported fresh binding unresolved next profile source effective
         disclose supported) (decoded disclose) final
       (by
         convert reached using 1
-        simp only [event, index, List.append_assoc, List.singleton_append]
-        rfl)
+        simp only [event, index, List.append_assoc, List.singleton_append])
     have recovered := completed.decode next (fun tail => embedding.ref tail.succ)
     apply Prod.ext
     · change read final = target
@@ -325,23 +309,9 @@ theorem sourceServiceTimedPolicy_reveal_joint_law
       exact congrArg (Option.map Sum.inr) recovered
     · rfl
   · apply congrArg (PMF.map (fun traffic => (target, traffic)))
-    cases disclose with
-    | false =>
-        simp only [players, selected, Bool.false_eq_true, ↓reduceIte, PMF.bind_const,
-          guardedDisclosureTranscript, phase, List.append_assoc, List.singleton_append]
-        rfl
-    | true =>
-        cases openingEq : rosterOpening? setup leaks owner event
-            (execution.observe (application setup leaks) owner) with
-        | none =>
-            simp only [players, selected, app, ↓reduceIte, openingEq, PMF.bind_const,
-              guardedDisclosureTranscript, phase, List.append_assoc, List.singleton_append]
-            rfl
-        | some packet =>
-            rcases packet with ⟨candidate, raw⟩
-            simp only [players, selected, app, ↓reduceIte, openingEq,
-              guardedDisclosureTranscript, phase, List.append_assoc, List.singleton_append]
-            rfl
+    simp only [guardedDisclosureTranscript, players, phase, List.append_assoc,
+      List.cons_append, List.nil_append]
+    rfl
 
 /-- The actual timed chance phase retains its source draw jointly with all
 native traffic. The public draw is followed by the existing settlement

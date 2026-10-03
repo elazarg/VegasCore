@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.AsyncServiceSpec
-import Vegas.Game.ServicePayoffBounds
+import GameTheoryExtensions.Analysis.FinitePayoffBounds
 
 /-! # Fixed deposits for every scheduler
 
@@ -11,8 +11,7 @@ history of the bounded native menu, up to a horizon and under a scheduler
 response and every off-path continuation, so the deposit covers the gain
 between any two histories (`Vegas.asyncAuditDeposit_covers_gain`), whatever
 policies or beliefs produced them. It needs only that the scheduler's nature
-branches finitely; no plan or roster enters. On the roster calendar it is the
-calendar's deposit (`Vegas.rosterAuditDeposit_eq_async`).
+branches finitely; no plan or roster enters.
 -/
 
 noncomputable section
@@ -75,18 +74,6 @@ theorem asyncAuditDeposit_covers_gain
   have second := FinitePayoffBounds.lower_le payoff repaired
   linarith
 
-omit [(application setup leaks).FiniteNature (initialLaw setup) scheduler] in
-/-- On the roster calendar the deposit is the calendar's deposit. -/
-theorem rosterAuditDeposit_eq_async [setup.FiniteInitialLaw] [leaks.FiniteSupport]
-    (rosters : (graph setup).EventId → List Player)
-    (network : (runtime setup).NetworkPolicy leaks) [network.FiniteSupport]
-    (base : (application setup leaks).ProtocolState → Player → ℝ)
-    (probability : Player → ℝ) (who : Player) :
-    rosterAuditDeposit setup leaks bounds rosters network base probability who =
-      asyncAuditDeposit setup leaks bounds (rosterPlan setup rosters).length
-        (rosterScheduler setup leaks rosters network) base probability who :=
-  rfl
-
 namespace AsyncServiceSpec
 
 variable (service : AsyncServiceSpec Player L)
@@ -109,14 +96,5 @@ theorem auditDeposit_covers_gain
     service.scheduler base probability who positive original repaired
 
 end AsyncServiceSpec
-
-/-- On the calendar instance the service's deposit is the roster deposit. -/
-theorem SourceServiceSpec.toAsync_auditDeposit (service : SourceServiceSpec Player L)
-    (base : (application service.setup service.leaks).ProtocolState → Player → ℝ)
-    (probability : Player → ℝ) (who : Player) :
-    service.toAsync.auditDeposit base probability who =
-      rosterAuditDeposit service.setup service.leaks service.bounds service.rosters
-        service.network base probability who :=
-  rfl
 
 end Vegas

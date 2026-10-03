@@ -7,13 +7,9 @@ This is the results map and reading guide for SE compilation. The
 [ideal-sanctions proof](research/se-ideal-sanctions.md) contains the generic
 mathematics; the [native pilot](research/se-native-pilot.md) contains the checked
 source-to-runtime instance. The general action-restriction theorem and scalar
-deposit inference are checked in Lean. The
-[revelation compiler with general rosters](../Vegas/Game/RevealServiceRosterCompilation.lean)
-instantiates the theorem end to end for arbitrary finite reveal sequences,
-with repeated activation opportunities, correlated valid initial bindings,
-partial pending observations and all source withholding choices.
+deposit inference are checked in Lean.
 For the full language, [execution preservation](../Vegas/Game/SourceServiceLaw.lean)
-and [actual settlement preservation](../Vegas/Game/SourceServiceAudit.lean) are
+and [actual settlement preservation](../Vegas/Game/SourceServiceCalendarAudit.lean) are
 checked for every admitted profile, and the
 [full-language SE compiler](../Vegas/Game/SourceServiceCompilation.lean)
 preserves every source SE in the audited bounded raw runtime, for programs
@@ -33,14 +29,7 @@ the theorem's assumptions and the remaining service and language boundaries.
 | Full-source permitted-to-raw SE | Every permitted-runtime SE extends to the full bounded raw runtime under the fixed audit and deposit assumptions, preserving the joint initial-type/public-result and realized payoff law. |
 | Native guessing compiler | Every SE of the stated source program has a native SE under the fixed bounded service, partial monitoring and collectible charge. Includes a fixed playerwise policy translation. |
 | Declared-payoff family | Every SE of the literal two-reveal source program, for any integer payoff table with zero watcher payoff, has a full bounded raw native SE with the exact joint initial-bit/result/net-payoff law. Both opening and withholding are retained. |
-| General revelation compiler | Every SE of an arbitrary finite reveal sequence has a full bounded raw native SE preserving the joint typed terminal-state/net-payoff law, under the explicit owner/watcher service and positive monitoring coverage. |
-| Terminal-audit compiler | A direct source → C → effective → raw theorem uses authentic partial traffic records and fixed deposits for all players, with no zero-utility reporter. The exact realized settlement law is preserved. Its calendar remains the specified revelation service. |
-| Signed-evidence compiler | Source → C → public-replay menu → effective → raw preserves the exact joint typed-state/realized-settlement law. The sampled evidence contains phase, prior ledger and signed envelope, with no broadcaster field. Coverage, authentic context and collectible account penalties remain assumptions. |
-| Concrete strategic stack | Source → C → W → N → raw is checked for arbitrary revelation sequences. All native games share the runtime and utility; deposits are fixed from actual finite watched-history payoff extrema before choosing the source equilibrium. |
 | Reusable monitoring step | A silent watcher uses ordinary pending observations; its observations persist under arbitrary later policies and settlement judges them against the settled record. A differently addressed packet is never accepted, so the settled record forbids it. |
-| Source correspondence | Service-block induction, replay recall, one common consistency sequence and conditional incentives establish the arbitrary-length revelation theorem. |
-| Harmless public replay extension | Every retained SE extends to a menu permitting auxiliary-player public replays, for arbitrary application-state utilities. Exact continuation laws and all-legal-history counterparts are checked; no fine or reporter indifference is needed for this edge. |
-| General-roster revelation SE | Every SE of a reveal-only program with openable initial bindings has a retained-runtime SE and an audited bounded raw-runtime SE with the original joint typed-outcome/settlement law. Every actor has a visit at its event; arbitrary additional finite roster visits are retained. |
 | Full-source execution and settlement | Every admitted profile has its exact typed terminal-state law under the actual compiler, including fresh bindings, chance and guards. Authentic partial traffic auditing plus public omission checks charge no permitted history, so the joint realized-settlement law is preserved. This is not a full-source SE theorem. |
 | Timed source phases | One physical policy family chooses an owner opportunity and runs the source choice there. Binding, guarded disclosure and public sampling retain the whole native execution. The full-language prefix theorem proves the joint source-state and native-traffic law at every event boundary. Actual owner Bayes posteriors and original-source assessment mixtures are checked, as are the physical local comparisons at every native visit. |
 | Common source perturbations | Existing value coverage implies finite legal source choices. Completing strategy coordinates outside actual decision sites preserves the original assessment limit and actual continuations. The actual timed compiler is fully mixed after normalization; one original source Bayes sequence induces native Bayes assessments with a common consistent limit. |
@@ -125,44 +114,17 @@ intermediate SE edge to the other. Concrete cryptographic or ledger execution
 would require its own refinement beyond this idealized target.
 
 The [strategic proof stack](se-compilation-stack.md#stack-one-runtime-several-strategic-games)
-uses genuine response-menu restrictions of this same runtime:
+uses source-representable responses, native continuation repair, authentic
+partial terminal auditing and the raw response lift in one runtime. Utilities
+depend on initial parameters and public results; repaired future private values
+are outside the payoff claim. Source-to-native execution, belief correspondence
+and incentives are separate obligations.
 
-```text
-Ordinary source
-  → source-representable native choices
-  → harmless public-replay choices
-  → all effective native choices, with terminal audit and fixed deposits
-  → full bounded raw native game
-```
-
-The terminal-audit theorem applies the enforcement edge to every player at once.
-Its auxiliary player can have any source utility; passive player observations
-need no coverage bound. Instead, the settlement oracle supplies authentic
-partial traffic records with the specified conditional coverage. The current
-signed checker needs authentic transmission phase, prior ledger and signed
-envelope. It permits harmless public replays and charges the signing account
-for forbidden fresh traffic; it needs no physical-broadcaster attribution.
-Signatures alone do not authenticate the reported phase or ledger context.
-Collection is an economic/backend assumption, not an implemented escrow.
-
-The final edge restores only proved private response aliases. All these games
-use the same runtime and enforcement configuration; they add no source syntax
-or emitted interpreter. Their composition is checked for arbitrary finite
-revelation sequences, with correlated valid initialization. The fixed real
-range-based deposits are sufficient, not claimed minimal or executable.
-
-The separate [strategic-reporting compiler](../Vegas/Game/RevealServiceCompilation.lean)
-uses an intermediate game with prescribed reporting. It restores ordinary
-players' choices first, then the reporter's choices under identically zero
-reporter utility. That implementation requires passive sampling coverage and
-protected report inclusion. Its assumptions must not be combined implicitly
-with those of the terminal-audit theorem.
-
-Both instances retain the specified owner and auxiliary-player activation
-calendar. Extending it needs a new correspondence proof: a pending message that
-a later player can read cannot be classified as harmless merely because
-inclusion ignores it. Fresh bindings also require native continuation repair
-for privately unusable commitments; public auditing alone cannot identify them.
+The fixed-calendar modules culminate in the
+[full-language capstone](../Vegas/Game/SourceServiceCompilation.lean).
+The [schedule generalization](se-schedule-generalization.md) has no end-to-end
+capstone yet. Its explicit decision-packet port is being verified through the
+calendar callers; checked local kernels do not establish the general theorem.
 
 Ambient communication is an alternative source interpretation when a capability
 must be retained. It is not automatically inserted to make an ordinary-source

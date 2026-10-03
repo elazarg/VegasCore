@@ -49,6 +49,10 @@ theorem resolution_audit_response_cases (bounds : MessageBounds graph)
       (execution.observe (runtime.reactiveApplication leaks) owner)) :
     let app := runtime.reactiveApplication leaks
     response ∈ (app.silentPolicy (execution.recall owner) (execution.observe app owner)).support ∨
+      (response = runtime.serviceDecision leaks owner (execution.recall owner)
+        (execution.observe app owner) event
+          (cast (congrArg EventField.Action outputEq.symm) false) ∧
+        runtime.firstSubmission leaks (execution.recall owner) response = true) ∨
       (∃ value, binding.get? execution.application.config.store = some (.success value) ∧
         EventCode.resolveOutput? binding checks true execution.application.config.store =
           some (.success value) ∧
@@ -80,14 +84,17 @@ theorem resolution_audit_response_cases (bounds : MessageBounds graph)
             (serials.next_unpublished owner)).mp permitted
         have named := runtime.freshServiceEnvelope_event_of_owned_unique
           execution.application.publicView event _ (by exact turn.2.2) admissible.2
-        obtain ⟨value, stored, resolved, canonical⟩ := runtime.service_opening_response leaks
-          bounds execution owner sound invariant recalled event payload binding checks outputEq
-            codeEq node submission named available admissible.2
-        refine Or.inr (Or.inl ⟨value, stored, resolved, canonical, ?_⟩)
         have addressed : runtime.submittedEvent? leaks ⟨some submission⟩ =
             some event := named
-        simp only [firstSubmission, addressed, first admissible.1, Bool.not_false]
-      · refine Or.inr (Or.inr ⟨record, ?_, rfl, Bool.eq_false_iff.mpr permitted⟩)
+        have firstResponse : runtime.firstSubmission leaks (execution.recall owner)
+            ⟨some submission⟩ = true := by
+          simp only [firstSubmission, addressed, first admissible.1, Bool.not_false]
+        rcases runtime.service_resolution_response leaks bounds execution owner sound invariant
+            recalled event payload binding checks outputEq codeEq node submission named available
+              admissible.2 with withheld | ⟨value, stored, resolved, canonical⟩
+        · exact Or.inr (Or.inl ⟨withheld, firstResponse⟩)
+        · exact Or.inr (Or.inr (Or.inl ⟨value, stored, resolved, canonical, firstResponse⟩))
+      · refine Or.inr (Or.inr (Or.inr ⟨record, ?_, rfl, Bool.eq_false_iff.mpr permitted⟩))
         exact app.trafficStep_submit execution remaining owner submission
 
 namespace BindingMemory.Frame
@@ -191,7 +198,8 @@ theorem resolution_stopped_response_coupling
     obtain ⟨response, selected, rfl⟩ := PMF.support_map .. ▸ supported
     rcases runtime.resolution_audit_response_cases leaks bounds original owner remaining sound
         leftBinding leftRecall serials event payload binding checks outputEq codeEq node turn
-          first response (available response selected) with replay | canonical | departure
+          first response (available response selected) with replay | withheld | canonical |
+          departure
     · have unchanged : memory.repairResponse runtime leaks owner
           (repaired.observe app owner) response = (response, memory.shadow) := by
         rcases app.silentPolicy_cases _ _ response replay with rfl
@@ -212,6 +220,32 @@ theorem resolution_stopped_response_coupling
       · intro material
         rcases app.silentPolicy_cases _ _ response replay with rfl
         simp
+      · rw [app.respond_recall_length]
+        omega
+    · obtain ⟨same, firstResponse⟩ := withheld
+      have actual : response = ⟨some ⟨⟨.withhold event, none⟩, .none⟩⟩ :=
+        same.trans (runtime.serviceDecision_resolution_false leaks owner (original.recall owner)
+          (original.observe app owner) event owner payload binding checks outputEq codeEq node)
+      have unchanged : memory.repairResponse runtime leaks owner
+          (repaired.observe app owner) response = (response, memory.shadow) := by
+        rw [actual]
+        rfl
+      have legal : (proposed response).1 ∈ menu.actions owner (repaired.recall owner)
+          (repaired.observe app owner) := by
+        apply coverage
+        dsimp only [proposed]
+        rw [unchanged, actual]
+        apply frame.withholding_response_retained bounds event payload binding checks outputEq
+          codeEq node turn owned
+        rwa [actual] at firstResponse
+      right
+      dsimp only [adjusted]
+      rw [ite_eq_left legal]
+      dsimp only [proposed]
+      rw [unchanged]
+      refine ⟨?_, ?_⟩
+      · rw [actual]
+        exact frame.withholding_response_frame event
       · rw [app.respond_recall_length]
         omega
     · obtain ⟨value, stored, resolved, same, firstResponse⟩ := canonical

@@ -8,6 +8,7 @@ import Vegas.Pending.ReactiveServiceSoundness
 import Vegas.Pending.ReactiveSampleLikelihood
 import Vegas.Pending.ReactiveServiceTraffic
 import Vegas.Pending.ReactiveServiceAudit
+import Vegas.Pending.ReactiveServiceMarkers
 import Vegas.Pending.ReactiveServiceAuditContinuation
 import Vegas.Pending.ReactiveSignedEvidence
 import Vegas.Pending.ReactiveSettledCollection
@@ -20,7 +21,9 @@ import Vegas.Pending.ReactiveOffTurnRepair
 import Vegas.Pending.ReactiveOffTurnWindow
 import Vegas.Pending.ReactiveServiceEvents
 import Vegas.Pending.ReactiveBindingAuditStep
-import Vegas.Pending.ReactiveBindingFinalOmission
+import Vegas.Pending.ReactiveDecisionFinalMiss
+import Vegas.Pending.ReactiveDecisionDeadline
+import Vegas.Pending.ReactiveResolutionFinalBlock
 import Vegas.Pending.ReactiveBindingFinalBlock
 import Vegas.Pending.ReactiveBindingRequiredStep
 import Vegas.Pending.ReactiveRepeatedSubmissionStep
@@ -230,6 +233,12 @@ import Vegas.Pending.ReactiveCanonicalDecision
 import Vegas.Pending.ReactiveCanonicalMenu
 import Vegas.Pending.ReactiveBindingContinuation
 import Vegas.Pending.ReactiveBindingOmission
+import Vegas.Pending.ReactiveDecisionMiss
+import Vegas.Pending.ReactiveDecisionOrigin
+import Vegas.Pending.ReactiveDecisionWindow
+import Vegas.Pending.ReactiveDecisionWindowSettlement
+import Vegas.Pending.ReactiveDecisionWindowLikelihood
+import Vegas.Pending.ReactiveDecisionWindowExpiry
 import Vegas.Pending.ReactiveBindingRecordedOmission
 import Vegas.Pending.ReactiveBindingReceipts
 import Vegas.Pending.ReactiveBindingFirstSubmission

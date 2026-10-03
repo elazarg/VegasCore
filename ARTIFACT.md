@@ -54,7 +54,7 @@ the subsequent kernel-checked build.
 | Full-source pending-message deviations and Nash correspondence | `Vegas/Game/EventMessageStrategic.lean` |
 | Full-source initialized compiler law, including fresh bindings, sampling and guarded disclosure | `Vegas/Game/SourceServiceLaw.lean` |
 | Authentic partial traffic audit and public binding omissions preserve the full-source joint typed-outcome/realized-settlement law on every admitted compiled profile | `Vegas/Pending/ReactiveServiceAudit.lean`, `Vegas/Game/SourceServiceAudit.lean` |
-| Every source SE of the full language, for finite commitment payload types, has a permitted native SE with the same typed source terminal law; each native decision site is compared with original source deviations by its kind | `Vegas/Game/SourceServiceEquilibrium.lean`, `Vegas/Game/SourceServiceSiteKind.lean`, `Vegas/Game/SourceServiceUnsentBinding.lean`, `Vegas/Game/SourceServiceAvailableOpening.lean` |
+| Every source SE of the full language, for finite commitment payload types, has a permitted native SE with the same typed source terminal law; each native decision site is compared with original source deviations by its kind | `Vegas/Game/SourceServiceEquilibrium.lean`, `Vegas/Game/SourceServiceSiteKind.lean`, `Vegas/Game/SourceServiceUnsentBinding.lean`, `Vegas/Game/SourceServiceUnsentResolution.lean` |
 | Every source SE of the full language, for finite commitment payload types, has an audited bounded raw-runtime SE with the source joint typed-terminal-state/payoff law, the payoff realized as settlement and no charge on its paths; a complete audit meets the audit hypotheses (`Vegas.Paper.source_audited_raw_sequential_equilibrium`, `SourceServiceSpec.completeAudit_raw_sequentialEquilibrium_preserved`) | `Vegas/Game/SourceServiceCompilation.lean`, `Paper.lean` |
 | Actual continuation-repair couplings imply settlement comparisons; a deposit fixed from all effective-history payoff extrema removes the separate gain-bound premise | `Vegas/Game/SourceServiceRepairSettlement.lean`, `Vegas/Game/ServicePayoffBounds.lean` |
 | Actual timed binding, guarded disclosure and public sampling with exact physical policy mixtures and full execution laws | `Vegas/Game/SourceServiceTimedPolicy.lean`, `Vegas/Game/SourceServiceTimedBinding.lean`, `Vegas/Game/SourceServiceTimedDisclosure.lean`, `Vegas/Game/SourceServiceTimedSample.lean` |
@@ -84,39 +84,17 @@ the subsequent kernel-checked build.
 | Current-address submissions are canonical after normalization, rejected, or publicly nonconforming, under explicit binding/node premises | `Vegas/Pending/ReactiveOpeningConformance.lean` |
 | Reveal-only source programs retain all withholding choices, count decisions by open obligations, and accept guards from an empty registry | `Vegas/Source/RevealSequence.lean`, `Vegas/Examples/RevealSequence.lean` |
 | Canonical opening and silence/expiry blocks use the existing reactive service and preserve full execution effects under explicit acceptance/deadline premises | `Vegas/Pending/ReactiveRevealBlock.lean` |
-| A fixed reveal service and restricted response menu are constructed inside the actual native backend; source choices admit finite action splitting with exact Boolean projection and full support | `Vegas/Game/RevealService.lean`, `Vegas/Game/RevealServiceActions.lean` |
-| The reveal-service policy adapter reuses the source event compiler and stays within C at every input; monitored settlement composes watcher observation, ticks and expiry for either source branch | `Vegas/Game/RevealServicePolicy.lean`, `Vegas/Pending/ReactiveRevealSettlement.lean` |
-| The supported initial values extend a finite raw message alphabet without removing responses, and cover authentic openings at checkpoints retaining the initial binding tables | `Vegas/Pending/ReactiveInitialValues.lean`, `Vegas/Game/RevealServiceBounds.lean` |
-| Actual source/native revelation preserves typed store and completion-history agreement; a native decision view recovers the exact source view, including correlated initial types | `Vegas/Game/RevealServiceState.lean`, `Vegas/Game/ServiceInformation.lean` |
 | Equal source views reconstruct the native graph observation and initial candidate catalogue; full before-view equality reduces to explicit public service/transcript invariants | `Vegas/Game/ServiceObservation.lean` |
-| Reveal-service decision clocks follow from existing observations at every raw history and every response menu, with a watcher distinct from source owners | `Vegas/Game/RevealServiceClock.lean` |
-| The actual compiled owner-choice law equals the residual source reveal kernel under the compiler's suffix, store and own-history invariants | `Vegas/Game/RevealServiceCorrespondence.lean` |
-| Every ordinary response executes a complete monitored reveal block with exact typed source-state and action-history agreement; published replays retain their actual network and recall effects | `Vegas/Pending/ReactiveRevealResponse.lean`, `Vegas/Game/RevealServiceBlock.lean` |
-| Every finite-menu behavioral profile settles the general reveal service within its horizon, including arbitrary malformed traffic | `Vegas/Game/RevealServiceCompletion.lean` |
-| Extra effective responses produce attributable rejection or format violations; reserved inclusion and reporting collect persistent evidence with the actual fresh-packet sampling probability | `Vegas/Game/RevealServiceEnforcement.lean` |
 | Earlier source observations are recoverable from later reveal-only observations along actual protocol histories; public result prefixes determine candidate ledger encodings | `Vegas/Source/ObservationRecall.lean`, `Vegas/Pending/RevealTranscript.lean` |
-| Every watched SE of the general reveal service extends to the full bounded raw game with the same joint observation/net-payoff law, assuming zero watcher utility at every history | `Vegas/Game/RevealServiceWatcher.lean` |
-| Induction over actual service blocks gives the initialized typed source-state law for arbitrary reveal sequences, all source policies, correlated valid bindings and every alias-splitting weight | `Vegas/Game/RevealServiceCheckpoint.lean`, `Vegas/Game/RevealServiceExecution.lean`, `Vegas/Game/RevealServiceLaw.lean` |
-| Exact public calendar and transcript encodings are preserved by actual normalized openings and published replay aliases | `Vegas/Game/RevealServiceCalendarState.lean`, `Vegas/Game/RevealServiceTranscript.lean`, `Vegas/Pending/ReactiveRevealTranscript.lean` |
-| Monitoring bounds apply to standard behavioral continuations; deposits compare every extra response with any clean legal continuation at operational checkpoints | `Vegas/Game/RevealServiceCollection.lean`, `Vegas/Game/RevealServiceOrdinaryComparison.lean`, `Vegas/Game/RevealServicePayoffs.lean` |
 | Finite rational payoff extrema bound all continuation gains; the existing scalar checker computes the sufficient range/rate deposit | `GameTheoryExtensions/Analysis/FinitePayoffBounds.lean` |
 | Source decision depths, finite reveal-only histories and observation-prefix recovery use the actual setup protocol, including correlated initialization | `Vegas/Game/SourceInformation.lean`, `Vegas/Game/SourceObservationRecall.lean` |
-| A focal selector preserves Boolean action laws; actual recorded-response prefixes and normalized emitted entries support its history-fiber proof | `Vegas/Game/RevealServiceSelector.lean`, `Interaction/ReactiveRecordedResponse.lean`, `Vegas/Pending/ReactiveResponseRecall.lean` |
-| Source-state prefix laws hold at actual native behavioral decision depths; source observations reconstruct the focal player's replay recall, including repeated owners | `Vegas/Game/RevealServicePrefixBehavioral.lean`, `Vegas/Game/RevealServiceOwnerPrefix.lean`, `Vegas/Game/RevealServiceFocalRecall.lean` |
 | General SE extension under a sound terminal audit preserves the actual joint randomized net-payoff law, with correlated partial verdicts and explicit conditional collection assumptions | `GameTheoryExtensions/Analysis/Protocol/TerminalAudit.lean` |
 | An audit readout records actual transmissions and public phases under arbitrary schedulers; evidence persists, and authentic partial records give no false accusations of compliant traffic | `Interaction/ReactiveTrafficAudit.lean` |
 | Per-record partial-audit coverage implies conditional collection after a detected first step, against arbitrary subsequent behavioral play | `Interaction/ReactiveAuditCollection.lean` |
 | Arbitrary finite activation/wait windows preserve application state and current observations when pending identifiers and retained replay responses are already public | `Interaction/ReactivePublishedResponses.lean` |
 | One native information-site law replacement is one actual response followed by the original profile's continuation, with sufficient remaining fuel | `Interaction/ReactiveLocalContinuation.lean` |
 | Source one-site continuation values factor through the original posterior state, current action law and unchanged baseline continuation | `Vegas/Game/SourceLocalContinuation.lean` |
-| Fully mixed source perturbations compile to fully mixed native profiles; one common native consistent assessment preserves source-state posteriors at every owner site | `Vegas/Game/RevealServiceMixing.lean`, `Vegas/Game/RevealServiceBayes.lean`, `Vegas/Game/RevealServiceConsistency.lean` |
-| Every original revelation-sequence source SE compiles to a restricted native SE, with whole-policy conditional optimality and exact joint typed state/payoff law | `Vegas/Game/RevealServiceOwnerValue.lean`, `Vegas/Game/RevealServiceOwnerIncentives.lean`, `Vegas/Game/RevealServiceEquilibrium.lean` |
-| Every retained terminal history is clean; concrete conditional sampling supplies collection against every extra ordinary response at every retained site | `Vegas/Game/RevealServiceClean.lean`, `Vegas/Game/RevealServicePrefixEnforcement.lean`, `Vegas/Game/RevealServiceOwnerCollection.lean` |
-| Every retained revelation-service SE extends to the full bounded raw game under sufficient range deposits and positive passive-observation coverage | `Vegas/Game/RevealServiceOrdinaryExtension.lean` |
-| Actual finite watched-history payoff extrema supply sufficient fixed deposits before choosing an equilibrium | `Vegas/Game/RevealServiceDeposits.lean` |
-| End-to-end SE preservation for arbitrary finite revelation sequences, repeated owners and correlated valid initial bindings, with exact joint typed terminal-state/net-payoff law | `Vegas/Game/RevealServiceCompilation.lean` |
 | The full history traffic audit is exactly reconstructible from existing service recall at every legal prefix and invariant under private normalization | `Interaction/ReactiveTrafficState.lean` |
-| Every retained revelation-calendar terminal history is clean under the settled record; a complete settlement forbids an extra effective packet signed by its author | `Vegas/Game/RevealServiceClean.lean`, `Vegas/Game/RevealServiceTrafficDeparture.lean`, `Vegas/Game/ServiceSettledEvidence.lean` |
 | Native terminal-audit enforcement for retained menus and services with a common decision clock; the full-source calendar instance has fixed deposits and preserves the joint typed outcome/realized settlement law | `Vegas/Pending/ReactiveAuditEquilibrium.lean`, `Vegas/Game/ServiceSettledAudit.lean`, `Vegas/Game/SourceServiceCompilation.lean` |
 | Authentic partial observation and conditional report inclusion within an explicit challenge window combine into actual collection coverage, without independence | `Interaction/ChallengeWindow.lean` |
 | Deferred binary hazards realize the exact choice law and admit full-support perturbations converging to a final-opportunity compiler | `GameTheoryExtensions/Math/Probability/DeferredChoice.lean` |
@@ -232,17 +210,6 @@ valid commitments, ideal evidence and collectible deductions remain explicit
 assumptions. The result covers neither fresh source commitments nor arbitrary
 reveal sequences, and it retains source withholding. See the
 [response and scope audit](docs/research/monitored-response-coverage.md).
-
-The [general revelation theorem](Vegas/Game/RevealServiceCompilation.lean)
-covers arbitrary finite reveal sequences, including repeated owners, correlated
-valid initialization, and arbitrary typed terminal utilities with zero watcher
-utility. A single game and deposit vector, computed mathematically from finite
-watched-history payoff extrema and positive coverage, preserve every original
-source SE and its joint typed terminal-state/net-payoff law. This is the full
-bounded raw response menu at the service's specified activations. Arbitrary
-intervening activations and fresh source commitments remain open. It is forward
-existence, with a noncomputable consistent completion; it does not assert
-reflection, unique target equilibria or a fixed playerwise completion algorithm.
 
 The [full-source terminal-audit capstone](Vegas/Game/SourceServiceCompilation.lean)
 uses the fixed service calendar and bounded raw menus. It derives fixed

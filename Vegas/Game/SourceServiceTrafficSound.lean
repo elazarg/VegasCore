@@ -31,7 +31,7 @@ inside a source event. Every prefix has an actual permitted completion. -/
 theorem initialized_sourceService_partial_conformance
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (players : Player → (application setup leaks).Policy)
     (lawful : ∀ who past view response, response ∈ (players who past view).support →
       response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who past view)
@@ -67,7 +67,7 @@ history, including off-path decisions and partially observed pending traffic. -/
 theorem sourceService_history_traffic
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (history : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).History) :

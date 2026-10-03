@@ -78,7 +78,7 @@ theorem binding_waiting_opportunity
     (response : (application setup leaks).Action)
     (transport : response ∈ ((application setup leaks).silentPolicy (original.recall owner)
       (original.observe (application setup leaks) owner)).support)
-    (optional : ¬ bindingRequired setup leaks rosters owner (repaired.recall owner)
+    (optional : ¬ decisionRequired setup leaks rosters owner (repaired.recall owner)
       (repaired.observe (application setup leaks) owner))
     (event : (graph setup).EventId)
     (ready : repaired.application.config.cut.Ready event)

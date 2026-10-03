@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceReachedDecoding
-import Vegas.Game.SourceServiceBindingSource
+import Vegas.Game.SourceServiceAlignedConstructors
 import Interaction.ReactiveMenuInvariant
 
 /-! # Source residuals at every legal native ready site

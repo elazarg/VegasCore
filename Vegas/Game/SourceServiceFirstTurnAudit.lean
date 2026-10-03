@@ -6,7 +6,7 @@ import Vegas.Game.SourceServiceAudit
 
 /-! # Actual audit soundness under exact first-turn play
 
-An owner following the exact first-turn source policy has no public binding
+An owner following the exact first-turn source policy has no public decision
 miss and every authored packet is permitted by the actual settled record.
 Authentic sampling therefore collects no charge from that owner, even with
 arbitrary foreign raw policies. Positive observation or report coverage is

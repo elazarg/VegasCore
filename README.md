@@ -139,16 +139,6 @@ executable inference of the least sufficient deposit for a finite rational
 comparison table. Exact finite-game checking is a separate proposed diagnostic;
 failure of a sufficient certificate is not an impossibility result.
 
-For reveal-only programs with openable initial bindings, the
-[audited roster theorem](Vegas/Game/RevealServiceRosterCompilation.lean)
-preserves every source SE in the full bounded raw runtime, with the same joint
-typed source outcome and realized settlement law. The native game, activation
-rosters and deposits are fixed before an equilibrium is chosen. Every actor has
-an activation at its event; additional roster visits, passive partial
-observation, replay and withholding remain available. Authentic partial audit
-evidence, positive conditional collection coverage and collectible deposits
-are explicit backend assumptions.
-
 For the full source language, including private inputs, fresh commitments,
 public chance and guarded disclosure, the
 [full-language compiler theorem](Vegas/Game/SourceServiceCompilation.lean)

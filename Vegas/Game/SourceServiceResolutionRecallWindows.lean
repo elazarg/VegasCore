@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RevealService
+import Vegas.Game.SourceServiceRuntime
 import Vegas.Pending.EventPublicState
 import Vegas.Pending.ReactiveCanonicalDecision
 import Vegas.Pending.ReactiveStateInvariant

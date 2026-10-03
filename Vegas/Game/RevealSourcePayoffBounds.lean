@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RevealSourceContinuation
-import Vegas.Game.RevealServiceMixing
+import Vegas.Game.SourceRevealChoices
 import GameTheoryExtensions.Analysis.FinitePayoffBounds
 
 /-! # A uniform payoff range over actual source continuations

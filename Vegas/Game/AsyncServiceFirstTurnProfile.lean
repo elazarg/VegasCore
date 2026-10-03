@@ -3,6 +3,7 @@
 import Vegas.Game.AsyncServiceFirstTurnLaw
 import Vegas.Game.SourceServiceFirstTurnSafe
 import Vegas.Game.SourceServiceRiskPolicy
+import Vegas.Source.DisclosureContinuation
 import Interaction.ReactiveSupportedMenuPolicy
 
 /-! # Initialized first-turn play in the finite risk-menu game
@@ -275,7 +276,9 @@ theorem normalizedFirstTurnProfile_joint_law (turns : Nat)
       (service.auditDeposit (baseUtility service.setup service.leaks utility) probability)
       final).map fun payoffs => (sourceReadout service.setup service.leaks final, payoffs))
         (service.firstTurnProfile_initialized_control_law turns normalized
-          (normalized_sourceService_admitted service.setup profile permitted))
+          (fun who => (profile who).normalizeDisclosureFrom_admitted service.setup.program
+            (CommitmentInterface.values service.setup.program) (permitted who) []
+            (Revelations.initial service.setup.context) (fun view => PMF.pure view.2)))
   simp only [PMF.bind_map] at states
   exact states.trans (service.normalizedFirstTurn_joint_law turns profile utility sample authentic
     probability)

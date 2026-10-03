@@ -158,7 +158,7 @@ theorem sourceService_inclusion_boundary
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (control : (application setup leaks).Control)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
@@ -307,7 +307,7 @@ theorem sourceService_inclusion_binding_candidate
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (control : (application setup leaks).Control)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
@@ -349,7 +349,7 @@ theorem sourceService_inclusion_binding_candidate
       (checkpoint.binding_capacity bounds capacity event rfl owner) (rosters event)
       boundary final (checkpoint.ready event rfl) slot fresh checkpoint.published
       checkpoint.serials (checkpoint.unsent owner event (Nat.le_refl _))
-      (opportunities event owner payload outputEq)
+      (opportunities event owner (binding_actor setup event owner payload outputEq))
       (by rw [checkpoint.response_offset event rfl owner]) whole
   have beforeFresh : before.application.candidates.lookup (owner, .prepared serial) = .fresh := by
     rw [beforeApp]

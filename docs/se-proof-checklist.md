@@ -20,6 +20,10 @@ target equilibria and a fixed playerwise strategy translation are separate claim
 This target uses the existing bounded runtime. Unbounded interaction and a
 cryptographic or EVM implementation are separate refinements.
 
+The service here is the fixed finite calendar of `SourceServiceSpec`. The
+[asynchronous plan](se-schedule-generalization.md) tracks the additional
+arbitrary-builder preservation theorem, which remains open.
+
 ## How boxes close
 
 Each box denotes the complete stated mathematical obligation, with its original
@@ -44,7 +48,7 @@ percentage estimate.
   [SourceServiceLaw.lean](../Vegas/Game/SourceServiceLaw.lean), and for
   settlement `sourceService_history_settlement` and
   `sourceService_history_audit_clear` in
-  [SourceServiceAudit.lean](../Vegas/Game/SourceServiceAudit.lean), which hold
+  [SourceServiceCalendarAudit.lean](../Vegas/Game/SourceServiceCalendarAudit.lean), which hold
   at every permitted history and are what the SE theorem uses.
 
 - [x] **S2. One common native consistency sequence.** From an original
@@ -74,7 +78,7 @@ percentage estimate.
   Foreign and implementation-only visits need no information law: every legal
   response at such a site has the same complete continuation law at every
   history of the site, so its comparison holds for every belief. Evidence: the
-  owner-site comparisons `TimedApproximant.owner_source_comparisons` in
+  owner-site comparisons `TimedApproximant.owner_comparisons_of_continuations` in
   [SourceServiceOwnerComparison.lean](../Vegas/Game/SourceServiceOwnerComparison.lean),
   used at every owner site by the S4 comparisons.
 
@@ -86,19 +90,17 @@ percentage estimate.
   box. The site-by-site interface is checked in
   [SourceServiceLocalComparison.lean](../Vegas/Game/SourceServiceLocalComparison.lean);
   public-sampling sites, foreign visits, and owner visits after a recorded
-  binding or opening have checked zero-gain comparisons, and unsent owner
-  bindings an exact simulation by original source deviations; owner visits to
-  a disclosure without an available opening have zero gain
+  binding or disclosure have zero-gain comparison proofs, and unsent owner
+  bindings and disclosures use exact simulation by original source deviations
   ([SourceServiceForeignComparison.lean](../Vegas/Game/SourceServiceForeignComparison.lean),
-  [SourceServiceForeignDisclosure.lean](../Vegas/Game/SourceServiceForeignDisclosure.lean)),
-  and with an available opening gain at most the source comparison error
-  divided by the remaining timing mass
-  ([SourceServiceAvailableOpening.lean](../Vegas/Game/SourceServiceAvailableOpening.lean)).
+  [SourceServiceForeignDisclosure.lean](../Vegas/Game/SourceServiceForeignDisclosure.lean),
+  [SourceServiceUnsentBinding.lean](../Vegas/Game/SourceServiceUnsentBinding.lean),
+  [SourceServiceUnsentResolution.lean](../Vegas/Game/SourceServiceUnsentResolution.lean)).
   Every native site has a kind (`SourceServiceSpec.exists_siteKind`). Evidence:
   the local comparisons of `SourceServiceSpec.exists_native_sequentialEquilibrium`
   in [SourceServiceEquilibrium.lean](../Vegas/Game/SourceServiceEquilibrium.lean),
-  with one vanishing error for all sites and players: twice the sum over
-  players of the uniform source gain bounds.
+  with exact local simulation for all sites and players. The complete calendar
+  comparison chain passes strict checking for the explicit decision-packet model.
 
 - [x] **S5. Full-language source-to-permitted-runtime SE theorem.** Combine
   S1–S4 into an actual compiler theorem: every original source SE has a permitted
@@ -118,7 +120,7 @@ percentage estimate.
   matched executions at an event boundary, couple the actual original suffix
   with one fixed legal repair implementation. Prove both marginal laws,
   retained-history reachability, and the alternatives of matching observations,
-  persistent forbidden-traffic evidence or public binding omission. Evidence:
+  persistent forbidden-traffic evidence or a public decision miss. Evidence:
   `remaining_events_stopped_coupling` in
   [SourceServiceRemainingRepair.lean](../Vegas/Game/SourceServiceRemainingRepair.lean).
   The arbitrary active-decision entry is the separate obligation R2.
@@ -170,26 +172,26 @@ percentage estimate.
   commitment payload types are finite; it gives the joint law of the typed
   terminal state and settlement, and no charge on the equilibrium's paths. One
   `SourceServiceSpec` supplies both edges: R4 takes its rosters, network,
-  bounds and the binding projection of its opportunities; the observed result
+  bounds and opportunities for every event actor; the observed result
   is the typed source readout, invariant under normalization
   (`sourceReadout_normalization`).
 
-- [ ] **E2. Validate and audit the delivered claim.** Integrate the proof into
+- [x] **E2. Validate and audit the delivered claim.** Integrate the proof into
   the build roots; pass the warning-strict build and repository proof/document
   gates; audit the final theorem's dependency closure for unproved obligations;
   and align the paper and artifact claims with its exact assumptions and scope.
   Document the justification and impact of the backend assumptions separately
   from their mathematical consequences. Commit and push the reviewable result.
-  Status: the warning-strict build and all gates pass; the dependency walk
-  from `Vegas.Paper.source_audited_raw_sequential_equilibrium` reaches 502
-  modules of `Vegas`, `Interaction`, `GameTheoryExtensions` and the pinned
-  `GameTheory` library, none of them test, example, experimental or prototype
-  modules, and its axioms are the three standard ones pinned in `Paper.lean`.
-  README, `ARTIFACT.md`, the [research map](se-preservation-roadmap.md) and
-  the paper (Theorem `thm:sequential`) state the result and its assumptions; the
-  [stack document](se-compilation-stack.md#assumptions-of-the-full-language-theorem)
-  separates each assumption's role from its justification. The box closes when
-  the reviewed result is pushed.
+  Status: the complete fixed-calendar composition, its explicit decision
+  packets and actual final-miss repair pass the warning-strict project build.
+  R1–R4 and E1 are checked, including the complete capstone and its standard-axiom
+  pins. The isolated checkpoint passes the strict build, load-bearing dependency
+  evidence, module boundaries, documentation references, central-option checks
+  and repository tooling tests. The arbitrary-builder theorem remains a separate
+  open obligation. The
+  [stack document](se-compilation-stack.md#assumptions-and-acceptance)
+  separates operational assumptions from the remaining proof obligations.
+
 
 The [stack document](se-compilation-stack.md) gives the detailed proof map and
 backend assumptions. [Review follow-ups](review-follow-ups.md) records the open

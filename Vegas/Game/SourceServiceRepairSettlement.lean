@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceServiceAudit
+import Vegas.Game.SourceServiceCalendarAudit
 import Vegas.Game.ServiceSettledEvidence
 import Vegas.Game.BindingRepairReadout
 import Vegas.Game.ServicePayoffBounds
@@ -10,7 +10,7 @@ import GameTheoryExtensions.Analysis.Protocol.TerminalAuditCoupling
 
 The operational coupling may preserve the initial types and public result,
 exhibit a transmission that breaks the send-time conformance rule, or certify
-a public binding omission. A send-time breach at a complete settlement leaves
+a public missed decision. A send-time breach at a complete settlement leaves
 its author with a packet the settled record forbids
 (`Vegas.settled_breach_of_sendTime_breach`). The repaired marginal must
 consist of actual retained traces. Authentic partial sampling then gives zero repaired
@@ -41,7 +41,7 @@ theorem sourceService_repair_settlement_le {Parameter : Type}
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
@@ -69,7 +69,7 @@ theorem sourceService_repair_settlement_le {Parameter : Type}
         record.envelope.sender = who ∧
         (runtime setup).permittedServiceEnvelope record.observation record.ledger
           record.envelope = false) ∨
-      pair.1.execution.application.publicView.missedBindingBy who = true ∨
+      pair.1.execution.application.publicView.missedDecisionBy who = true ∨
       pair.2.2.Frame (runtime setup) leaks who pair.1.execution pair.2.1.execution)
     (bounded : ∀ pair ∈ coupled.support,
       baseUtility setup leaks (fun state => utility (setup.parameterOutcome parameter state))
@@ -168,7 +168,7 @@ theorem sourceService_repair_range_settlement_le {Parameter : Type}
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks) [network.FiniteSupport]
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
@@ -195,7 +195,7 @@ theorem sourceService_repair_range_settlement_le {Parameter : Type}
         record.envelope.sender = who ∧
         (runtime setup).permittedServiceEnvelope record.observation record.ledger
           record.envelope = false) ∨
-      pair.1.execution.application.publicView.missedBindingBy who = true ∨
+      pair.1.execution.application.publicView.missedDecisionBy who = true ∨
       pair.2.2.Frame (runtime setup) leaks who pair.1.execution pair.2.1.execution) :
     let base := baseUtility setup leaks
       (fun state => utility (setup.parameterOutcome parameter state))

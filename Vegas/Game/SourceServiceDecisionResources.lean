@@ -28,7 +28,7 @@ theorem sourceService_decision_resources
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (who : Player) (control : (application setup leaks).Control)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)

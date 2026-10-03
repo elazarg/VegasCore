@@ -95,7 +95,6 @@ the cited result in `Paper.lean` or to retire it together with its citation.
 | `Vegas.Compile.EventGraphEvidence` | `ambient-communication.md`, `module-architecture.md` |
 | `Vegas.Game.BindingRepairOpening` | `research/se-hidden-binding.md` |
 | `Vegas.Game.ReactiveCompilation` | `module-architecture.md`, `network-and-compilation.md`, `spe-obstructions.md` |
-| `Vegas.Game.RevealServiceRosterWindowContinuation` | used by other modules |
 | `Vegas.Game.SetupSubgame` | `ARTIFACT.md`, `preservation-contracts.md`, `source-semantics.md`, `subgame-preservation.md` |
 | `Vegas.Game.SourceObservationRecall` | `ARTIFACT.md` |
 | `Vegas.Game.SourceServiceDisclosureMemory` | `research/se-runtime-assumptions.md` |

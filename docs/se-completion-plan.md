@@ -1,244 +1,133 @@
-# Completing the sequential-equilibrium preservation proof
+# Completing sequential-equilibrium preservation
 
-This plan maps the [checklist](se-proof-checklist.md) boxes S3–S5, E1 and E2
-to the proofs that close them. The [handoff](se-handoff.md) describes the fixed theorem,
-the semantic decisions and the checked interfaces. Work within a milestone is
-checked with targeted `lake --wfail build Module.Name` builds; each milestone
-ends with the full warning-strict build and the repository gates. No step
-introduces an admission, an axiom or a hypothesis that restates an unproved
-compiler fact.
+The [checklist](se-proof-checklist.md) is the validation ledger. The
+[stack](se-compilation-stack.md) states the games, utilities and backend
+assumptions. The [asynchronous plan](se-schedule-generalization.md) records the
+remaining general proof obligations. This plan orders the work needed to
+integrate the explicit decision-packet semantics and finish preservation.
 
-## Target
+## Target and scope
 
-The final theorem fixes a `SourceServiceSpec`, a parameter readout, a utility
-of initial parameters and public outcomes, and the audit backend of R4 (sample,
-authenticity, coverage probabilities). For every sequential equilibrium of the
-source information model it gives a sequential equilibrium of the bounded raw
-runtime whose joint law of initial parameters, public outcome and realized
-settlement equals the source law of initial parameters, public outcome and
-payoff.
+Fix the program, initial law, service, observation rule, bounded response
+interface, utilities and deposits before choosing a source equilibrium. Every
+source sequential equilibrium must have a bounded raw-runtime sequential
+equilibrium preserving the joint initial-parameter, public-result and realized
+settlement law. Utilities depend on initial parameters and public results.
 
-It composes two theorems:
+The fixed-calendar composition is
+[SourceServiceCompilation](../Vegas/Game/SourceServiceCompilation.lean).
+Its source-to-permitted edge is
+[SourceServiceEquilibrium](../Vegas/Game/SourceServiceEquilibrium.lean); its
+permitted-to-raw edge is
+[SourceServiceRawExtension](../Vegas/Game/SourceServiceRawExtension.lean).
+The explicit decision-packet composition passes the warning-strict project
+build, including the complete calendar capstone and its standard-axiom pins.
+Dependency evidence and repository validation are tracked by the checklist.
+The arbitrary-builder theorem remains open.
 
-- **S5** `SourceServiceSpec.exists_native_sequentialEquilibrium` (checked): every source
-  SE has a sequential equilibrium of the permitted native model with
-  `(runBehavioral target).map service.readout =
-   (runBehavioral source).map protocolReadout`.
-- **R4** `sourceService_audited_raw_equilibrium_extends` (checked), with
-  `observe` the typed source readout `sourceReadout`. Its `Vegas.baseUtility`
-  is by definition the S5 utility evaluated on `sourceReadout`, and its
-  invariance under raw normalization is `sourceReadout_normalization`.
+## Calendar comparison chain
 
-S5 instantiates
-`exists_sequentialEquilibrium_limit_of_local_comparisons`
-(`GameTheoryExtensions/Analysis/Protocol/LocalSimulationLimit.lean`) with:
+Every selected resolution sends a packet: evidence-free FALSE withholding or
+an authentic effective TRUE opening. Silence is waiting. The calendar requires
+an actual decision at the final owner visit for bindings and resolutions alike.
+Every actor therefore needs an opportunity in its roster.
 
-| Argument | Supplied by |
-|---|---|
-| source sequence | `sourceService_consistent_supported_sequence` (as in S2) |
-| target sequence | `(TimedApproximant.ofSource ...).assessment` at each stage, with `rosterTiming` at weight ½ |
-| target mixing and Bayes consistency | `TimedApproximant.mixed`, `ofSource_bayes` |
-| bounded horizon, decision recall, clock | `ResponseMenu.bounded`, `ResponseMenu.decisionRecall`, `roster_menu_common_depth` |
-| finite histories | native: `ResponseMenu.finite_history` instance; source: `IsFullyMixed.finite_history` of stage 0 with `Setup.protocol_bounded` |
-| initialized laws | `sourceServiceTimedProfile_readout_law` |
-| local comparisons | M1–M5 below |
+[SourceServiceSiteKind](../Vegas/Game/SourceServiceSiteKind.lean) classifies a
+native information site from its event, owner, recall and recorded bit:
 
-Instantiate the limit theorem's `DecidableEq` instances classically, because
-every local-comparison statement uses `open Classical` for `withLaw`.
+| Site | Comparison |
+| --- | --- |
+| Public sample | `sample_comparison_eq` |
+| Foreign binding | `foreign_binding_comparison_eq` |
+| Foreign disclosure | `foreign_disclosure_comparison_eq` |
+| Recorded own binding | `recorded_comparison_eq` |
+| Unsent own binding | `unsent_binding_comparisons` |
+| Recorded own disclosure | `recorded_disclosure_comparison_eq` |
+| Unsent own disclosure | `unsent_resolution_comparisons` |
 
-## Milestones
+The first four equality cases and recorded disclosure preserve the complete
+continuation law under every legal local alternative. Unsent bindings and
+resolutions simulate the alternative exactly through one common mixture of
+original source assessment comparisons. Missing opening material restricts
+which TRUE decisions are effective; FALSE remains an explicit decision.
 
-Sizes: S up to about 150 lines, M up to about 500, L beyond.
+[SourceServiceOwnerComparison](../Vegas/Game/SourceServiceOwnerComparison.lean)
+transports those continuation identities to the original source assessment.
+The source sequence is fully supported and Bayesian. Its disclosure
+normalization is an execution device; no equilibrium of the normalized source
+game is assumed. [SourceServicePrefixFactorization](../Vegas/Game/SourceServicePrefixFactorization.lean)
+and [SourceServiceBayes](../Vegas/Game/SourceServiceBayes.lean) retain the actual
+native input, including observations and own recall.
 
-### M1. Classification of native decision sites (checked)
+The source-to-permitted assembly uses the local simulation limit theorem with
+exact comparisons and zero simulation error. Original source regret is handled
+by that theorem's source-sequence argument. Initialized law preservation comes
+from [SourceServiceTimedLaw](../Vegas/Game/SourceServiceTimedLaw.lean).
+The complete calendar source-to-permitted statement and its comparison callers
+pass strict checking for this model. S2–S5 and the raw-runtime repair edge are
+checked; the complete calendar capstone passes the project build.
 
-`SourceServiceSpec.exists_siteKind`
-([SourceServiceSiteKind](../Vegas/Game/SourceServiceSiteKind.lean)) gives
-every native information site its recall, view and an event that view shows
-ready, together with a `DecisionSiteKind` computed from those three alone, so every history of
-a site has the same kind. The kinds and their comparisons:
+## Calendar continuation repair
 
-| Plan kind | `DecisionSiteKind` | Comparison |
-|---|---|---|
-| 1. actorless event | `chance` | `sample_comparison_eq` (checked) |
-| 2. foreign visit | `foreignBinding`, `foreignDisclosure` | `foreign_binding_comparison_eq`, `foreign_disclosure_comparison_eq` (checked) |
-| 3. own binding, recorded | `recordedBinding` | `recorded_comparison_eq` (checked) |
-| 4. own binding, unsent | `unsentBinding` | `unsent_binding_comparisons` (checked) |
-| 5. own disclosure, sent | `recordedDisclosure` | `recorded_disclosure_comparison_eq` (checked) |
-| 5. own disclosure, no opening | `absentOpening` | `absent_opening_comparison_eq` (checked) |
-| 6. own disclosure, opening available | `availableOpening` | `available_opening_gain_le` (checked) |
+Repair must supply one implementable continuation policy shared across all
+hidden histories of the deviator's information site. The actual evaluator
+coupling must preserve initial parameters and public outcomes or supply enough
+additional collection to dominate the base-payoff gain.
 
-Only coverage is used by M6. The kinds are mutually exclusive by construction:
-each is fixed by the event's node, the actor, the recorded bit and
-`rosterOpening?`.
+The final required visit needs an actual silence branch: silence followed by
+deadline expiry leaves a public decision-miss marker. Derive that marker from
+the real expiry transition. An arbitrary state's lack of an accepted packet
+does not imply a public miss. Optional-window coupling applies only where
+silence remains in the retained menu.
 
-### M2. Foreign visits (checked)
+The reactive service's application-side intention cache is empty along actual
+initialized traces. Internal repair helpers needing this fact receive it from
+their evaluator history. The nonreactive client runtime also uses explicit
+private remember commands; its intentions must be reconstructed from actual
+owner recall before that table can be removed. Do not add an oracle or a cache
+hypothesis to the public capstone.
+The send-time proof devices can be removed after the decision semantics and
+callers are verified.
 
-Foreign sites are discharged by belief-independent continuation equality: no
-foreign information law is needed. The gate holds:
+The concrete block kernels, program and active continuations, evaluator
+coupling, settlement dominance, restriction extension and raw-alias lift all
+pass strict checking for this model. R1–R4 and E1 are checked through their
+complete statements, rather than conditional helpers.
 
-> Different legal foreign responses induce the same next-boundary
-> configuration law under the actual timed owner policy, although they induce
-> different network observations.
+## Arbitrary-builder proof
 
-Foreign legal responses are transport-only (`foreign_response_transport`).
-They preserve the application and the owner's current recall
-(`silent_response_preserves`, `respond_recall_other`), so the owner's slot
-posterior under `runInteractionPlan_policyMixture` is the same after every
-foreign response. Each fixed slot then has an application-only law: a slot the
-owner still reaches completes the event with the source lottery
-(`binding_slot_config_law`, `reveal_slot_config_law`), and any other slot
-leaves only replays (`scheduled_window_waiting`, then
-`replay_phase_application_law`). After the owner's submission every remaining
-response is transport, and the pending submission alone settles the event
-(`recorded_phase_invariant`, `recorded_disclosure_phase_invariant`).
+The generic service is [AsyncServiceSpec](../Vegas/Game/AsyncServiceSpec.lean).
+The contract gives a timely owner opportunity, protected inclusion and complete
+play; readiness starts the timer. The general retained menu keeps deferrals.
+Late unrecorded opportunities and persistent owner risk open the bounded raw
+continuation menu.
 
-The checked comparisons are `TimedApproximant.foreign_binding_comparison_eq`
-([SourceServiceForeignComparison](../Vegas/Game/SourceServiceForeignComparison.lean))
-and `TimedApproximant.foreign_disclosure_comparison_eq`
-([SourceServiceForeignDisclosure](../Vegas/Game/SourceServiceForeignDisclosure.lean)).
-The disclosure case rests on `ResolutionWindowState`
-([ReactiveResolutionWindowState](../Vegas/Pending/ReactiveResolutionWindowState.lean)),
-the network state at every retained decision of a disclosure phase, supplied
-by `SourceServiceSpec.disclosure_decision_resources`. An unavailable opening
-needs no separate case: `EffectiveDisclosures`, inherited by the residual
-profile through `RevealSource.inherits`, makes the source withhold whenever
-the opening would fail.
+Continue in this order:
 
-### M3. Owner-site combinator (checked)
+1. Join actual decision, inclusion, sampling and stopped traffic kernels into
+   source-prefix/input likelihood laws, including earlier retained deferrals.
+2. Derive source-relative conditional beliefs and escape bounds at native
+   information sites. Clean-prefix probability equality alone is insufficient.
+3. Compare protected decisions, waiting, late first attempts and departures
+   under the actual audited utility.
+4. Supply consistent rational continuation at free sites, including after
+   collection of the one-time deposit has become certain.
+5. Complete the source-to-risk-menu equilibrium embedding, general continuation
+   repair, effective-menu extension and raw-alias lift.
+6. Compose the arbitrary-builder capstone and derive the calendar corollary.
 
-`TimedApproximant.owner_comparisons_of_continuations`
-([SourceServiceOwnerComparison](../Vegas/Game/SourceServiceOwnerComparison.lean))
-is shared by M4 and M5. It fixes an owner site of the `ofSource` approximant of
-a fully supported, Bayes-consistent source assessment, a local native lottery,
-and one admitted source alternative chosen for the whole site. Its hypotheses
-are the two per-history identities, stated at the source state decoded at the
-start of the event's phase (`TimedApproximant.decodedState`):
+The watcher samples authentic evidence partially; observation and report
+delivery may be correlated. Positive conditional coverage and a finite
+challenge window are backend obligations. A concrete pending-message reporting
+implementation must establish them. Public misses and packet collection are
+separate mechanisms.
 
-- the prescribed native continuation is the prescribed source continuation of
-  the normalized profile;
-- the native continuation under the local lottery is the continuation of the
-  normalized profile updated by the alternative.
+## Validation
 
-It concludes that the native prescribed and alternative laws are the
-prescribed and alternative laws of one mixture of original source assessment
-comparisons, via `sourceService_owner_assessment_comparisons`.
-`expect_sub_eq_of_eq_bind` turns this into the mixture branch of the
-limit theorem's local comparison.
-
-The caller supplies the alternative, from `exists_admitted_local_law` at the
-site's common source view (`SourcePrefixCheckpoint.source_view_eq_of_observe_eq`),
-before choosing any hidden history. Where the prescribed native law is not the
-prescribed source law (disclosure), the caller cannot establish the first
-identity and uses only the source half, `TimedApproximant.owner_source_comparisons`:
-the source continuations averaged under the native belief are the laws of one
-mixture of original source comparisons, so their gains are mixtures of source
-gains.
-
-### M4. Unsent binding (checked)
-
-`TimedApproximant.unsent_binding_comparisons`
-([SourceServiceUnsentBinding](../Vegas/Game/SourceServiceUnsentBinding.lean)) is
-the exact simulation (mixture branch, zero error). Per decision,
-`TimedApproximant.unsent_binding_decision` gives the native continuation of
-every legal owner response: a submission fixes its value
-(`BindingSource.submission_readout`); a transport response rules out only the
-current timing slot, so every remaining slot completes the binding with the
-source commitment lottery `q` (`TimedApproximant.unsent_binding_transport_config_law`).
-The prescribed native lottery therefore averages to `q`. On the source side,
-`SourceServiceSpec.exists_bindingSource_step` unfolds the source continuation
-one binding step. It also gives the source step of any owner action, and shows
-that the owner's source action law has value marginal `q`. The local native
-lottery `λ` is simulated by the source local law that plays the submitted value
-after a submission and the prescribed source law after a transport response;
-`owner_site_source_histories` supplies the source histories on which
-`exists_admitted_local_law` realizes it. M3 then gives the common mixture.
-
-### M5. Disclosure owner sites (checked)
-
-- **Kind 5 (checked):** zero gain by `comparison_eq_of_phase_invariant`. A sent
-  opening: `TimedApproximant.recorded_disclosure_comparison_eq`. No available
-  opening: `TimedApproximant.absent_opening_comparison_eq`
-  ([SourceServiceAbsentOpening](../Vegas/Game/SourceServiceAbsentOpening.lean)).
-  Without an authentic opening in view the resolution menu offers no
-  submission, and the timed compiler responds only by transport at every point
-  of the phase (`sourceServiceTimedPolicy_absent_transport`), so the application
-  stays fixed and all traffic published (`transport_phase_application_law`).
-- **Kind 6 (checked):** error branch,
-  `TimedApproximant.available_opening_gain_le`
-  ([SourceServiceAvailableOpening](../Vegas/Game/SourceServiceAvailableOpening.lean)).
-  Every local lottery gains at most `error / lower` when every original source
-  comparison gains at most `error` and the timing law leaves mass at least
-  `lower` after each of the owner's visits but its last. With `V_true` and
-  `V_false` the source continuation values after disclosing and withholding,
-  averaged under the native belief, and `c` the owner's earlier visits:
-
-  - the source prescribed value is `q·V_true + (1 − q)·V_false`, from the
-    boundary unfold of `exists_revealSource_step`;
-  - the native prescribed value is `p·V_true + (1 − p)·V_false` with
-    `p = deferredRemaining q timing c`, from the timing posterior at the
-    decision and `deferredRemaining_hazard_value`;
-  - a native lottery has value `r·V_true + (1 − r)·V_false`: the opening
-    completes the disclosure (`RevealSource.opening_config_law`), and a
-    transport response defers it with `deferredRemaining q timing (c + 1)`
-    (`TimedApproximant.available_transport_expect`).
-
-  Both disclosures are legal source choices at the common source view,
-  because an authentic opening makes both effective
-  (`RevealSource.disclosure_mem_support`, from `SupportsEffectiveChoices`).
-  So the source alternatives "disclose" and "withhold" exist
-  (`exists_admitted_local_law`), and `owner_source_comparisons` makes
-  `V_true − B` and `V_false − B` mixtures of original source gains, where `B`
-  is the source prescribed value. `deferredRemaining_regret_le` then bounds the
-  native gain. The per-decision laws are the record
-  `TimedApproximant.AvailableOpeningLaws` (`available_opening_decision`).
-
-### M6. S5 assembly (checked)
-
-`SourceServiceSpec.exists_native_sequentialEquilibrium`
-([SourceServiceEquilibrium](../Vegas/Game/SourceServiceEquilibrium.lean))
-combines M1–M5 into the local-comparison hypothesis for every stage, site and
-lottery and applies the limit theorem. The comparison error is twice the sum
-over players of the uniform source gain bounds of
-`exists_uniform_policy_gain_bound`. It is nonnegative, so zero-gain sites use
-the error branch and unsent bindings the mixture branch; a disclosure with an
-available opening gains at most twice its player's bound, because
-`rosterTiming_prefix_le` at weight ½ leaves remaining mass at least ½. Relative
-to GameTheory's current finite SE definition, finiteness is no new premise:
-finiteness of the source information histories is an explicit instance that
-the definition already requires to state the source SE, and finiteness of all
-source histories is derived from consistency and the bounded source horizon
-(`IsFullyMixed.finite_history` with `Setup.protocol_bounded`). This closes
-S3, S4 and S5 together.
-
-### M7. E1 composition (checked)
-
-`SourceServiceSpec.audited_raw_sequentialEquilibrium_preserved`
-([SourceServiceCompilation](../Vegas/Game/SourceServiceCompilation.lean))
-composes M6 with R4 for one `SourceServiceSpec`. R4 takes its rosters, network,
-bounds and `ActorOpportunities.binding` projection; the S5 utility is the
-parameter-and-public-outcome utility on `sourceReadout`, so it is R4's
-`Vegas.baseUtility`. `Paper.lean` restates it as
-`Vegas.Paper.source_audited_raw_sequential_equilibrium` with its axiom pin.
-
-### M8. E2 validation and claims (checked up to the push)
-
-- Full warning-strict build and every repository gate pass.
-- The dependency walk from `Vegas.Paper.source_audited_raw_sequential_equilibrium`
-  reaches no draft, test, example, experimental or prototype module; its axioms
-  are the standard three.
-- README, `ARTIFACT.md`, the research map, the stack document (with its
-  assumptions table) and the paper (Theorem `thm:sequential`) state the exact
-  assumptions: authentic partial audit, positive conditional coverage,
-  protected service, collectible fixed deposits, bounded interaction, a finite
-  response interface, and no cryptographic or EVM refinement.
-- What remains is to push after review.
-
-## Ordering
-
-M1–M8 are checked; what remains is the push after review.
-
-Parallel lanes must not run Lake builds concurrently. A build deletes the
-oleans it replaces, so a concurrent check fails on missing imports. A separate
-git worktree avoids this, but needs its own Mathlib cache and project build,
-which costs several gigabytes on C:.
+Run one artifact-writing Lake build at a time. Targeted builds isolate proof
+failures; the coherent checkpoint must pass `lake --wfail build`, the evidence
+checker, module and documentation checks, central Lean-option checks and
+repository tooling tests. The paper must pin the final capstone's standard
+axioms. Commit and push each verified checkpoint, preserving unfinished work
+outside its staged snapshot. No proof admission or compiler-fact hypothesis
+may replace a missing implementation argument.

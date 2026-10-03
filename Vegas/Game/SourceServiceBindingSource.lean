@@ -45,7 +45,7 @@ theorem exists_bindingSource (profile : BehavioralProfile service.setup.program)
   obtain ⟨event, _, _, _, _, Γ, names, remaining, remainingProfile, source, refs, embedding,
       refsBefore, aligned, _, _, _, _, _, _, turn, _, _, _, _, publicEq, checkpoint, _⟩ :=
     sourceService_decision_boundary service.setup service.leaks service.bounds service.values
-      service.capacity service.rosters service.opportunities.binding service.network profile
+      service.capacity service.rosters service.opportunities service.network profile
       who ⟨remaining, some who, execution⟩ trace rfl
   have same : event = phase.event := phase.sole.2 event turn.1
   subst same
@@ -96,7 +96,7 @@ theorem exists_revealSource (profile : BehavioralProfile service.setup.program)
       refsBefore, aligned, _, ⟨supported, inherits, _⟩, _, _, _, _, turn, _, _, _, _, publicEq,
       checkpoint, _⟩ :=
     sourceService_decision_boundary service.setup service.leaks service.bounds service.values
-      service.capacity service.rosters service.opportunities.binding service.network profile
+      service.capacity service.rosters service.opportunities service.network profile
       who ⟨remaining, some who, execution⟩ trace rfl
   have same : event = phase.event := phase.sole.2 event turn.1
   subst same

@@ -34,8 +34,8 @@ theorem off_turn_replay_sourceService
     (replay : response ∈ ((application setup leaks).silentPolicy past view).support) :
     response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who past view := by
   classical
-  have optional : ¬ bindingRequired setup leaks rosters who past view := by
-    rintro ⟨event, _, _, _, owned, ready, _⟩
+  have optional : ¬ decisionRequired setup leaks rosters who past view := by
+    rintro ⟨event, _, owned, ready, _⟩
     exact idle event ready owned
   change response ∈ sourceServiceActions setup leaks bounds rosters who past view
   rw [sourceServiceActions, ite_eq_right optional]

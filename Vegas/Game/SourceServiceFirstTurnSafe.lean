@@ -5,7 +5,7 @@ import Vegas.Game.SourceServiceFirstTurnNoMiss
 /-! # Clear full service risk under exact first-turn play
 
 The owner's submission recall and opportunity recall are clear, and its
-public bindings do not miss. A ready unrecorded binding must therefore be
+public decisions do not miss. A ready unrecorded decision must therefore be
 at its first own turn, which the asynchronous reaction budget protects.
 These facts clear both the persistent signal and the current opportunity.
 
@@ -26,8 +26,8 @@ variable {Player : Type} [DecidableEq Player]
   {setup : Setup (Player := Player) (L := L)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
-/-- At a supported scheduler boundary, an unrecorded ready binding has had no
-earlier own binding turn, so its current opportunity is still protected. -/
+/-- At a supported scheduler boundary, an unrecorded ready decision has had no
+earlier own ready turn, so its current opportunity is still protected. -/
 theorem sourceServiceFirstTurn_currentOpportunity_clear_roundsFrom {horizon : Nat}
     {scheduler : (application setup leaks).Scheduler}
     {delay bound : (graph setup).EventId → Nat}
@@ -41,13 +41,13 @@ theorem sourceServiceFirstTurn_currentOpportunity_clear_roundsFrom {horizon : Na
     (count : Nat) (within : count ≤ horizon) (execution : (application setup leaks).Execution)
     (reached : execution ∈ ((application setup leaks).roundsFrom (initialLaw setup) scheduler
       players count).support) :
-    (runtime setup).firstUnprotectedBindingOpportunity leaks bound who (execution.recall who)
+    (runtime setup).firstUnprotectedOpportunity leaks bound who (execution.recall who)
       (execution.observe (application setup leaks) who) = false := by
   let app := application setup leaks
   apply Bool.eq_false_of_not_eq_true
   intro risky
-  obtain ⟨_, event, owner, payload, turn, binding, unrecorded, unprotected⟩ :=
-    ((runtime setup).firstUnprotectedBindingOpportunity_iff leaks bound who _ _).mp risky
+  obtain ⟨_, event, turn, unrecorded, unprotected⟩ :=
+    ((runtime setup).firstUnprotectedOpportunity_iff leaks bound who _ _).mp risky
   have turnActual : execution.application.publicView.ownTurn? who = some event := turn
   have turned := (sourceServiceFirstTurn_recallFacts contract timely players who turns profile
     follows count within execution reached).1
@@ -61,7 +61,7 @@ theorem sourceServiceFirstTurn_currentOpportunity_clear_roundsFrom {horizon : Na
     apply congrArg some
     apply List.countP_eq_zero.mpr
     intro entry member seen
-    have recorded := turned entry member event owner payload (of_decide_eq_true seen) binding
+    have recorded := turned entry member event (of_decide_eq_true seen)
     rw [unrecorded] at recorded
     cases recorded
   obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler players count
@@ -87,7 +87,7 @@ theorem sourceServiceFirstTurn_currentOpportunity_clear_roundSupported {horizon 
     (control : (application setup leaks).Control)
     (reached : (application setup leaks).RoundSupported (initialLaw setup) horizon scheduler
       players (some control)) :
-    (runtime setup).firstUnprotectedBindingOpportunity leaks bound who
+    (runtime setup).firstUnprotectedOpportunity leaks bound who
       (control.execution.recall who)
       (control.execution.observe (application setup leaks) who) = false := by
   let app := application setup leaks
@@ -111,7 +111,7 @@ theorem sourceServiceFirstTurn_currentOpportunity_clear_roundSupported {horizon 
         timely players who turns profile follows count (by omega) prior priorMem
       have appEq := activation_application setup leaks prior execution responder moved
       have recallEq := app.environmentStep_recall prior execution (.activate responder) moved
-      have currentEq := (runtime setup).firstUnprotectedBindingOpportunity_congr leaks bound who
+      have currentEq := (runtime setup).firstUnprotectedOpportunity_congr leaks bound who
         (execution.recall who) (prior.recall who) (execution.observe app who)
         (prior.observe app who) rfl (congrArg State.publicView appEq)
         (congrArg (fun recalls => (runtime setup).submissionRecall leaks (recalls who)) recallEq)

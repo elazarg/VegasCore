@@ -11,27 +11,20 @@ attributable departures supply audit evidence. The raw native game continues
 to admit those additional responses. Source correspondence cannot be replaced
 by a packet-shape checker.
 
-The [roster compiler theorem](../../Vegas/Game/RevealServiceRosterCompilation.lean)
-closes this route for finite reveal-only programs with initially openable
-bindings. It permits repeated player visits, partial pending reads and pending
-replays, with no dedicated strategic watcher. Each owner needs one visit per
-event. Under protected final inclusion, authentic terminal sampling with a
-positive conditional coverage bound, and collectible deposits, it preserves
-standard SE and the joint typed-outcome/realized-settlement law. The retained
-strategy compiler is fixed before choosing a source equilibrium; the full raw
-game conclusion supplies an equilibrium extension. The finite roster remains
-an explicit scheduling restriction. See the [proof and scope](se-ambient-rosters.md).
+The [full-language calendar capstone](../../Vegas/Game/SourceServiceCompilation.lean)
+composes the source-to-retained and retained-to-raw proof chains for a fixed
+finite service. It covers fresh bindings, public chance, correlated private
+inputs and guarded disclosure, with finite commitment payload types and the
+stated payoff domain. Its service, authentic partial terminal audit, positive
+conditional coverage and collectible deposits remain explicit assumptions.
 
-Full-source SE preservation remains open. The actual finite compiler preserves
-the original typed terminal-state law for every admitted source profile,
-including fresh bindings, public chance and guarded disclosure. Operational
-source support and audit soundness hold for all retained histories. Two proof
-chains remain: the original source assessment's conditional beliefs and
-incentives; and the
-whole-program comparison of raw deviations with repaired continuations and
-their incremental settlement. The finite-message instance must cover every
-admitted fresh commitment value. This is a genuine restriction for an
-unbounded integer commitment; finite interaction alone does not imply it.
+Preservation for any builder satisfying the asynchronous service contract is
+open. The [schedule plan](../se-schedule-generalization.md) separates checked
+operational kernels from the missing stopped laws, belief transport, retained
+incentives and native repair. The explicit decision-packet port is not yet
+verified throughout the calendar proof chain. The finite-message instance must
+cover every admitted fresh commitment value; bounded interaction alone does not
+make an unbounded integer payload finite.
 Publication types need not be finite: the checked
 [candidate-value invariant](../../Vegas/Pending/ReactiveBoundedValues.lean)
 covers all actual initial values and preserves the declared alphabet through
@@ -460,7 +453,7 @@ objective. The remaining proof obligations are:
    the concrete repair frame or actual attributed traffic evidence. The
    [required final response](../../Vegas/Pending/ReactiveBindingRequiredStep.lean)
    additionally covers silence or replay at the last binding opportunity:
-   [actual omission](../../Vegas/Pending/ReactiveBindingFinalOmission.lean)
+   [actual omission](../../Vegas/Pending/ReactiveDecisionFinalMiss.lean)
    is proved after the complete foreign tail, reserved inclusion and expiry.
    The [good binding block](../../Vegas/Pending/ReactiveBindingForeignInclusion.lean)
    carries the repair frame through that same complete suffix for usable,

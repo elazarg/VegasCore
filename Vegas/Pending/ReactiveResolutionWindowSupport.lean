@@ -7,10 +7,10 @@ import Vegas.Pending.ReactiveServiceRecall
 
 /-! # Protected inclusion for every retained disclosure policy
 
-A retained resolution window contains at most one fresh opening. Later visits
-still permit passive observation while the opening remains pending. Protected inclusion
+A retained resolution window contains at most one fresh decision. Later visits
+still permit passive observation while the decision remains pending. Protected inclusion
 restores the published-network boundary for every
-retained policy, whether the player opens early or withholds throughout.
+retained policy, whether the player opens, withholds, or continues waiting.
 -/
 
 noncomputable section
@@ -24,7 +24,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
-/-- Once the current opening has been submitted, every retained response is
+/-- Once the current decision has been submitted, every retained response is
 transport. No assertion about successful guards or source play is required. -/
 theorem MessageBounds.compiled_resolution_recorded_transport (bounds : MessageBounds graph)
     (execution : (runtime.reactiveApplication leaks).Execution)
@@ -42,9 +42,20 @@ theorem MessageBounds.compiled_resolution_recorded_transport (bounds : MessageBo
       (execution.observe (runtime.reactiveApplication leaks) who)) :
     response = ⟨none⟩ := by
   rcases bounds.compiled_resolution_cases runtime leaks who _ _ event owner payload binding checks
-    outputEq codeEq node sole response member with rfl |
+    outputEq codeEq node sole response member with rfl | ⟨acting, _, first, shape⟩ |
       ⟨candidate, value, evidence, acting, _, _, _, _, first, shape⟩
   · rfl
+  · have owned : graph.actor? event = some owner := by
+      have actor := congrArg EventCode.actor codeEq
+      rw [EventCode.actor_cast outputEq (graph.nodes event)] at actor
+      exact actor
+    have equal : who = owner := Option.some.inj (acting.symm.trans owned)
+    have recordedWho : runtime.eventRecorded leaks (execution.recall who) event = true := by
+      rw [equal]
+      exact recorded
+    rw [shape] at first
+    simp only [firstSubmission, submittedEvent?, Payload.event?, recordedWho,
+      Bool.not_true, Bool.false_eq_true] at first
   · have owned : graph.actor? event = some owner := by
       have actor := congrArg EventCode.actor codeEq
       rw [EventCode.actor_cast outputEq (graph.nodes event)] at actor
@@ -143,8 +154,27 @@ theorem MessageBounds.compiled_resolution_inclusion_published (bounds : MessageB
             activated who response (serials.learn who sample)) tail
       rcases bounds.compiled_resolution_cases runtime leaks who _ _ event owner payload binding
         checks outputEq codeEq node sole response allowed with silent |
+          ⟨acting, _, _, shape⟩ |
           ⟨candidate, value, evidence, acting, _, _, _, candidateOwned, _, shape⟩
       · exact transportCase silent
+      · have owned : graph.actor? event = some owner := by
+          have actor := congrArg EventCode.actor codeEq
+          rw [EventCode.actor_cast outputEq (graph.nodes event)] at actor
+          exact actor
+        have equal : who = owner := Option.some.inj (acting.symm.trans owned)
+        subst who
+        subst response
+        let submission : WitnessedSubmission graph :=
+          ⟨⟨.withhold event, none⟩, .none⟩
+        let submitted := activated.respond app owner ⟨some submission⟩
+        have recorded : runtime.eventRecorded leaks (submitted.recall owner) event = true :=
+          runtime.eventRecorded_respond leaks activated owner _ event rfl
+        exact runtime.submission_silent_settled_published leaks players network owner activated
+          submission event rfl activePublished activeSerials
+          (fun current actor action same recalled supported =>
+            runtime.compiled_resolution_tail_transport leaks bounds players lawful submitted owner
+              event payload binding checks outputEq codeEq node sole recorded current same
+                recalled actor action supported) rest final tail
       · have owned : graph.actor? event = some owner := by
           have actor := congrArg EventCode.actor codeEq
           rw [EventCode.actor_cast outputEq (graph.nodes event)] at actor

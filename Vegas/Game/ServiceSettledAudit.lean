@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceAudit
+import Vegas.Game.ServiceSettledEvidence
 import Vegas.Pending.ReactiveAuditEquilibrium
 import GameTheoryExtensions.Analysis.Protocol.TerminalPayoffCongruence
 
@@ -157,7 +158,7 @@ theorem settled_audited_raw_sequential_equilibrium
     (conforming : ∀ (history : (retained.protocol (initialLaw setup) count scheduler).History)
       (control : (application setup leaks).Control), history.state = some control →
       (application setup leaks).terminal history.state →
-        (∀ who, control.execution.application.publicView.missedBindingBy who = false) ∧
+        (∀ who, control.execution.application.publicView.missedDecisionBy who = false) ∧
         ∀ record ∈ (application setup leaks).executionTraffic control.execution,
           ((runtime setup).settledRecord leaks control.execution).permits
             record.envelope = true)

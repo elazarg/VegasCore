@@ -10,20 +10,25 @@ pending-message observation rule.
 
 ## Reports and the challenge window
 
-The watcher's report is the list of signed packets it observed. It reaches the
-contract in the watcher's own transaction, which the contract includes within
-the challenge window: a report sent before the last deadline is included within
-`W` slots, and settlement waits `W`. That window is the only chain assumption
-the report adds. No builder duty is assumed: the service never has to include
-anyone else's packet on the watcher's behalf, and the watcher never rebroadcasts
-a packet to report it.
+The watcher reports only signed packets it actually observed. The
+[challenge-window interface](../../Interaction/ChallengeWindow.lean) separates
+the partial observation kernel from report delivery, which may depend on the
+entire observed list. Reports can be omitted or arrive too late; only evidence
+delivered before settlement enters the audit. The window leaves an explicit
+inclusion bound after the report cutoff. Observation and conditional delivery
+coverage combine without independence or certain observation.
 
-Settlement judges every packet in the report, and every packet on the contract's
-own ledger, against the settled record
+This is a backend contract, not a proof that an ordinary pending-message client
+has the stated coverage. Implementing the report kernel with the same pending
+mechanism needs its own service realization. The watcher may continue observing
+past player deadlines, but the theorem still needs the stated conditional
+probability of actual collection. A longer challenge window can support that
+bound; it does not derive it by itself.
+
+Settlement judges reported signed packets against the final contract record
 (`Vegas.EventGraphRuntime.SettledRecord.Permits`). No verdict reads when a
-packet was sent. `Vegas.departureEvidence` is the resulting charge: a packet
-signed by the owner, on the ledger or in the watcher's report, that the settled
-record forbids.
+packet was sent. Public missed-decision markers are checked separately from
+packet evidence; absent reports never certify a miss.
 
 ## Fixed policy and conditional evidence bound
 
@@ -39,13 +44,13 @@ sampling probability. The observation persists through arbitrary later raw
 policies and scheduler commands. The statement evaluates actual activation and
 sampling; it assumes no separate delivery kernel.
 
-`Vegas.reserved_observation_departure_lower` combines that bound with the
-actual reserved inclusion. A departing packet for the current event is included
-at once and lands on the ledger; any other packet stays pending for passive
-observation. Either way a condemned packet signed by the owner is marked
-(`Vegas.markedDeparture`), the mark persists (`Vegas.markedDeparture_persistent`),
-and at a settlement that completed every event it is a charge
-(`Vegas.markedDeparture_evidence`).
+[Settled collection](../../Vegas/Pending/ReactiveSettledCollection.lean)
+proves `settledPacket_collection`: an actual packet forbidden by the final
+record gives a bound on actual collection from observation and conditional
+report delivery. [Signed evidence](../../Vegas/Pending/ReactiveSignedEvidence.lean)
+separately proves that actual content breaches remain forbidden under complete
+play. Establishing the final verdict is an operational premise, not a
+consequence of having sampled a packet.
 
 The bounds are conditional on a concrete starting execution. An SE adapter must
 establish them at every compatible retained history, or prove a suitable
@@ -67,17 +72,10 @@ emitted, and the contract rejects a packet without one. A packet sent before its
 event is ready is therefore never accepted, and once the event settles the
 settled record forbids it.
 
-The constructed reveal service order is owner response, inclusion reserved for
-the current event, watcher observation, then ticks and expiry. A canonical
-opening is published before observation. An off-address extra is ignored by the
-reserved inclusion and stays pending for observation. This order has complete
-local source-step and deadline proofs. The fixed plan settles every event under
-arbitrary raw behavior.
-
-This service activates only the source owner for that event. With additional
-ambient activations, that owner could send a valid current opening before its
-canonical slot. Covering such a roster requires a separate phase argument, or a
-proved coalescing argument when no strategic decision intervenes.
+The [fixed roster](../../Vegas/Game/ServiceRoster.lean) may repeat owners and
+other players before protected event inclusion. More adaptive visits require
+the general service and stopped-law proofs. A pending packet ignored by
+inclusion may still affect other players' observations and incentives.
 
 Rejection is not automatically misconduct, and a settled verdict judges content,
 not timing. A sound enforcement adapter must prove that canonical current
@@ -93,7 +91,7 @@ format violation. Accepted-handle and fixed-value premises follow from the
 binding invariant. The settled verdict additionally requires that an accepted
 opening's value pass its event's checks on the settled public store.
 
-## Remaining general reveal-class obligations
+## Remaining integration obligations
 
 - A missed sample may still leak to other players; the utility comparison must
   tolerate every subsequent response.

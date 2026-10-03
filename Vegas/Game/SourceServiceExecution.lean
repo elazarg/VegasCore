@@ -93,8 +93,8 @@ theorem sourceServiceCompiledProfile_wait [Fintype Player]
   let policy := sourceServiceLastPolicy setup leaks rosters normalized who
   have law : policy past view = app.silentPolicy past view :=
     sourceServiceLastPolicy_wait setup leaks rosters normalized who past view waiting
-  have optional : ¬ bindingRequired setup leaks rosters who past view := by
-    rintro ⟨other, payload, otherTurn, _binding, _owned, _ready, unsent, last⟩
+  have optional : ¬ decisionRequired setup leaks rosters who past view := by
+    rintro ⟨other, otherTurn, _owned, _ready, unsent, last⟩
     rcases waiting other otherTurn with recorded | earlier
     · simp only [recorded, Bool.true_eq_false] at unsent
     · exact earlier last
@@ -220,7 +220,8 @@ theorem sourceServiceLastPolicy_reveal_roster_readout
     (execution : (application setup leaks).Execution)
     (checkpoint : SourceCheckpoint setup source refs offset execution.application.config)
     (valid : execution.application.BindingInvariant)
-    (entered ticks : Nat)
+    (unremembered : execution.application.remembered = fun _ => none)
+    (ticks : Nat)
     (packets : execution.network.Satisfies fun message =>
       message.id ∈ execution.network.ledger.map Message.id)
     (serials : execution.network.SerialsBeforeNext)
@@ -235,8 +236,6 @@ theorem sourceServiceLastPolicy_reveal_roster_readout
     ∀ (_position : rosters event = visited ++ owner :: remaining)
       (ready : execution.application.config.cut.Ready event)
       (_timely : execution.application.WithinDeadline (runtime setup) event)
-      (_activated : execution.application.activatedAt event = some entered)
-      (_due : (runtime setup).deadline event ≤ execution.application.clock + ticks - entered)
       (_unsent : (runtime setup).eventRecorded leaks (execution.recall owner) event = false)
       (_counted : (execution.recall owner).length = rosterOffset setup rosters owner event),
     ((runtime setup).runInteractionPlan leaks
@@ -253,11 +252,11 @@ theorem sourceServiceLastPolicy_reveal_roster_readout
         some (Sum.inr (ProtocolState.entry next
           (revealSuccessor published binding source
             (effectiveDisclosure published binding source disclose)))) := by
-  intro index event outputEq position ready timely activated due unsent counted
+  intro index event outputEq position ready timely unsent counted
   have law := sourceServiceLastPolicy_reveal_roster setup leaks rosters fresh binding unresolved
     next wholeProfile profile refs source embedding refsBefore offset aligned execution checkpoint
-      valid entered ticks packets serials network visited remaining absent position ready
-        timely activated due unsent counted
+      valid unremembered ticks packets serials network visited remaining absent position ready
+        timely unsent counted
   let readout (result : (graph setup).Config × List (MessageId Player × Bool)) :=
     decodeSourcePrefix? (.reveal published owner name fresh binding unresolved next)
       refs source.registry source.revelations embedding.ref 1 result.1.store

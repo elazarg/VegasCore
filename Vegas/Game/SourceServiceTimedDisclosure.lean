@@ -3,6 +3,8 @@
 import Vegas.Game.SourceServiceTimedBinding
 import Vegas.Game.SourceServiceEvidence
 import Vegas.Game.SourceServiceDisclosureFactorization
+import Vegas.Pending.ReactiveCompiledResolution
+import Vegas.Pending.ReactiveDecisionWindow
 
 /-! # Guarded source disclosures at arbitrary scheduled visits
 
@@ -129,7 +131,7 @@ private theorem successful_opening_of_origins
     _ = _ := normal
 
 /-- The scheduled opportunity draws the effective source Boolean and uses
-the exact authentic opening or the actual replay lottery. Dynamic candidate
+the exact authentic opening or evidence-free withholding. Dynamic candidate
 tables and failed deferred guards are covered by the source checkpoint and
 the derived certificate-origin invariant. -/
 theorem sourceServiceOpportunity_reveal
@@ -169,12 +171,9 @@ theorem sourceServiceOpportunity_reveal
     sourceServiceOpportunity setup leaks wholeProfile owner event
       (execution.recall owner) (execution.observe (application setup leaks) owner) =
       (revealKernel profile (source.view owner)).bind fun disclose =>
-        match (if disclose then rosterOpening? setup leaks owner event
-          (execution.observe (application setup leaks) owner) else none) with
-        | none => (application setup leaks).silentPolicy (execution.recall owner)
-            (execution.observe (application setup leaks) owner)
-        | some (candidate, raw) =>
-            PMF.pure ((runtime setup).windowOpening leaks event candidate raw) := by
+        PMF.pure ((runtime setup).windowDecision leaks event
+          (rosterOpening? setup leaks owner event
+            (execution.observe (application setup leaks) owner)) disclose) := by
   intro index event ready unsent
   let app := application setup leaks
   have outputEq : (graph setup).outputLayout event = .publication payload := by
@@ -198,15 +197,10 @@ theorem sourceServiceOpportunity_reveal
   intro disclose supported
   rcases effective_reveal_supported fresh binding unresolved next profile source effective
     disclose supported with rfl | ⟨value, rfl, success⟩
-  · have silent : (runtime setup).serviceDecision leaks owner (execution.recall owner)
-        (execution.observe app owner) event
-          (cast (congrArg EventField.Action outputEq.symm) false) =
-          ⟨none⟩ := by
-      simp only [serviceDecision, reactiveDecision, node, reactiveResolutionPacket,
-        cast_cast, cast_eq, Bool.false_eq_true, ↓reduceIte,
-        disclosureSubmission_normalize_withhold]
-      rfl
-    rw [Function.comp_apply, silent]
+  · rw [Function.comp_apply, (runtime setup).serviceDecision_resolution_false leaks owner
+      (execution.recall owner) (execution.observe app owner) event owner payload (refs.get binding)
+      (compileChecks (published := published) refs source.registry source.revelations binding)
+      outputEq codeEq node]
     rfl
   · obtain ⟨candidate, associated, _, _, opening⟩ := guarded_rosterOpening_success setup leaks
       published binding source refs execution agree valid event outputEq codeEq node value success
@@ -217,11 +211,12 @@ theorem sourceServiceOpportunity_reveal
       origins owner event payload (refs.get binding)
       (compileChecks (published := published) refs source.registry source.revelations binding)
       outputEq codeEq node candidate value associated resolved unsent]
-    simp only [↓reduceIte, opening, windowOpening, reduceCtorEq]
+    simp only [opening, windowOpening, windowDecision, windowDecisionMaterial,
+      reduceCtorEq, ↓reduceIte]
 
 /-- At a chosen visit the source lottery can be drawn before the real replay
 window. The equality keeps the complete execution, including all observations,
-response recall, and envelope copies. -/
+response recall and actual transmitted envelopes. -/
 theorem sourceServiceTimedFamily_reveal_law
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -271,11 +266,9 @@ theorem sourceServiceTimedFamily_reveal_law
           (Function.update (fun _ => (application setup leaks).silentPolicy) owner
             ((application setup leaks).scheduledPolicy
               (rosterOffset setup rosters owner event) (some slot)
-              (fun past view => match (if disclose then rosterOpening? setup leaks owner event
-                (execution.observe (application setup leaks) owner) else none) with
-                | none => (application setup leaks).silentPolicy past view
-                | some (candidate, raw) =>
-                    PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
+              (fun _ _ => PMF.pure ((runtime setup).windowDecision leaks event
+                (rosterOpening? setup leaks owner event
+                  (execution.observe (application setup leaks) owner)) disclose))
               (application setup leaks).silentPolicy)) network
           (visits.map ServiceInstruction.player ++ [.includeLatest event owner])
           execution := by
@@ -285,12 +278,9 @@ theorem sourceServiceTimedFamily_reveal_law
   let opening := sourceServiceOpportunity setup leaks wholeProfile owner event
   let sourcePlayers := Function.update (fun _ => app.silentPolicy) owner
     (app.scheduledPolicy offset (some slot) opening app.silentPolicy)
-  let branch : Bool → app.Policy := fun disclose past view =>
-    match (if disclose then rosterOpening? setup leaks owner event
-      (execution.observe app owner) else none) with
-    | none => app.silentPolicy past view
-    | some (candidate, raw) =>
-        PMF.pure ((runtime setup).windowOpening leaks event candidate raw)
+  let branch : Bool → app.Policy := fun disclose _ _ =>
+    PMF.pure ((runtime setup).windowDecision leaks event
+      (rosterOpening? setup leaks owner event (execution.observe app owner)) disclose)
   let branchPlayers := fun disclose => Function.update (fun _ => app.silentPolicy) owner
     (app.scheduledPolicy offset (some slot) (branch disclose) app.silentPolicy)
   let transport : Player → app.Policy := fun _ => app.silentPolicy
@@ -363,11 +353,8 @@ theorem sourceServiceTimedFamily_reveal_law
     refine sourceLaw.trans ?_
     apply bind_congr_on_support _
     intro disclose _
-    change (match (if disclose then rosterOpening? setup leaks owner event
-      (activated.observe app owner) else none) with
-      | none => app.silentPolicy (activated.recall owner) (activated.observe app owner)
-      | some (candidate, raw) =>
-          PMF.pure ((runtime setup).windowOpening leaks event candidate raw)) = _
+    change PMF.pure ((runtime setup).windowDecision leaks event
+      (rosterOpening? setup leaks owner event (activated.observe app owner)) disclose) = _
     rw [openingEq]
   have scheduled : (some slot).map (fun selected => offset + selected.val) =
       some (activated.recall owner).length := by
@@ -397,36 +384,22 @@ theorem sourceServiceTimedFamily_reveal_law
       (scheduled_tail_waiting setup leaks network owner event offset slot (branch disclose)
         remaining (activated.respond app owner response) after).symm
 
-private theorem scheduled_optional_opening
+private theorem scheduled_decision
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (owner : Player) (event : (graph setup).EventId) (offset : Nat)
-    {slots : Nat} (slot : Fin slots) (selected : Option (Handle (graph setup) × Raw L)) :
+    {slots : Nat} (slot : Fin slots) (opening : Option (Handle (graph setup) × Raw L))
+    (disclose : Bool) :
     Function.update (fun _ => (application setup leaks).silentPolicy) owner
       ((application setup leaks).scheduledPolicy offset (some slot)
-        (fun past view => match selected with
-          | none => (application setup leaks).silentPolicy past view
-          | some (candidate, raw) =>
-              PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
+        (fun _ _ => PMF.pure ((runtime setup).windowDecision leaks event opening disclose))
         (application setup leaks).silentPolicy) =
-      match selected with
-      | none => fun _ => (application setup leaks).silentPolicy
-      | some (candidate, raw) =>
-          (runtime setup).openingWindowPlayers leaks owner event candidate raw offset
-            (some slot) := by
+      (runtime setup).decisionWindowPlayers leaks owner event opening offset (slot, disclose) := by
   funext who past view
-  cases selected with
-  | none =>
-      by_cases same : who = owner
-      · subst who
-        simp only [Function.update_self, ReactiveApplication.scheduledPolicy, ite_self]
-      · rw [Function.update_of_ne same]
-  | some selected =>
-      rcases selected with ⟨candidate, raw⟩
-      by_cases same : who = owner
-      · subst who
-        simp only [Function.update_self, openingWindowPlayers, ↓reduceIte]
-      · simp only [Function.update_of_ne same, openingWindowPlayers, same, ↓reduceIte]
+  by_cases same : who = owner
+  · subst who
+    simp only [Function.update_self, decisionWindowPlayers, ↓reduceIte]
+  · simp only [Function.update_of_ne same, decisionWindowPlayers, same, ↓reduceIte]
 
 /-- The actual timed source compiler's complete disclosure phase is a joint
 source-choice and native-execution law. The source draw is independent of the
@@ -477,12 +450,10 @@ theorem sourceServiceTimedPolicy_reveal_phase_law
       (revealKernel profile (source.view owner)).bind fun disclose =>
         (timing event owner owned).bind fun slot =>
           (runtime setup).runInteractionPlan leaks
-            (match (if disclose then rosterOpening? setup leaks owner event
-              (execution.observe (application setup leaks) owner) else none) with
-            | none => fun _ => (application setup leaks).silentPolicy
-            | some (candidate, raw) =>
-                (runtime setup).openingWindowPlayers leaks owner event candidate raw
-                  (execution.recall owner).length (some slot)) network phase execution := by
+            ((runtime setup).decisionWindowPlayers leaks owner event
+              (rosterOpening? setup leaks owner event
+                (execution.observe (application setup leaks) owner))
+              (execution.recall owner).length (slot, disclose)) network phase execution := by
   intro index event owned ready unsent counted phase
   rw [sourceServiceTimedPolicy_phase_law setup leaks rosters timing wholeProfile event owner owned
     network ticks execution (soleReady_of_ready setup execution.application ready)
@@ -502,12 +473,9 @@ theorem sourceServiceTimedPolicy_reveal_phase_law
         (List.replicate ticks .tick ++ [.expire event]) := by
     simp only [phase, List.append_assoc, List.cons_append, List.nil_append]
   let app := application setup leaks
-  let branch : Bool → app.Policy := fun disclose past view =>
-    match (if disclose then rosterOpening? setup leaks owner event
-      (execution.observe app owner) else none) with
-    | none => app.silentPolicy past view
-    | some (candidate, raw) =>
-        PMF.pure ((runtime setup).windowOpening leaks event candidate raw)
+  let branch : Bool → app.Policy := fun disclose _ _ =>
+    PMF.pure ((runtime setup).windowDecision leaks event
+      (rosterOpening? setup leaks owner event (execution.observe app owner)) disclose)
   let leftPlayers := Function.update (fun _ => app.silentPolicy) owner
     (sourceServiceTimedFamily setup leaks rosters wholeProfile owner event slot)
   let rightPlayers := fun disclose => Function.update (fun _ => app.silentPolicy) owner
@@ -525,10 +493,9 @@ theorem sourceServiceTimedPolicy_reveal_phase_law
     exact servicePlan_players_eq setup leaks _ _ network _ (by simp) (by intro who; simp) current
   · apply bind_congr_on_support _
     intro disclose _
-    have players := scheduled_optional_opening setup leaks owner event
+    have players := scheduled_decision setup leaks owner event
       (rosterOffset setup rosters owner event) slot
-      (if disclose then rosterOpening? setup leaks owner event (execution.observe app owner)
-        else none)
+      (rosterOpening? setup leaks owner event (execution.observe app owner)) disclose
     change (runtime setup).runInteractionPlan leaks
       (Function.update (fun _ => app.silentPolicy) owner
         (app.scheduledPolicy (rosterOffset setup rosters owner event) (some slot)
@@ -591,22 +558,8 @@ theorem sourceServiceTimedPolicy_reveal_traffic
     PMF.map_bind]
   apply bind_congr_on_support _
   intro disclose _
-  cases disclose with
-  | false =>
-      simp only [Bool.false_eq_true, ↓reduceIte, PMF.bind_const,
-        guardedDisclosureTranscript, List.append_assoc, List.cons_append, List.nil_append]
-      rfl
-  | true =>
-      cases openingEq : rosterOpening? setup leaks owner event
-          (execution.observe (application setup leaks) owner) with
-      | none =>
-          simp only [↓reduceIte, openingEq, PMF.bind_const, guardedDisclosureTranscript,
-            List.append_assoc, List.cons_append, List.nil_append]
-          rfl
-      | some packet =>
-          rcases packet with ⟨candidate, raw⟩
-          simp only [↓reduceIte, openingEq, PMF.map_bind, guardedDisclosureTranscript,
-            List.append_assoc, List.cons_append, List.nil_append]
-          rfl
+  simp only [PMF.map_bind, guardedDisclosureTranscript, List.append_assoc,
+    List.cons_append, List.nil_append]
+  rfl
 
 end Vegas

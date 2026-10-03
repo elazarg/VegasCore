@@ -30,7 +30,7 @@ theorem resolution_block_stopped_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
@@ -53,6 +53,7 @@ theorem resolution_block_stopped_coupling
     (leftRecall : original.InputRecall (application setup leaks))
     (sound : ((runtime setup).packetEvidence leaks).Sound original)
     (leftBinding : original.application.BindingInvariant)
+    (leftRemembered : original.application.remembered = fun _ => none)
     (event : (graph setup).EventId) (actor : Player) (payload : L.Ty)
     (binding : FieldRef (graph setup).layout (.binding actor payload))
     (checks : List (GuardCheck (graph setup).layout payload))
@@ -62,6 +63,7 @@ theorem resolution_block_stopped_coupling
     (node : nodeView (graph setup) event = .resolve actor payload binding checks outputEq codeEq)
     (ready : repaired.application.config.cut.Ready event)
     (remaining : Nat) (visits : List Player) (ticks : Nat)
+    (dueTicks : (runtime setup).deadline event ≤ ticks)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         (some ⟨remaining + visits.length + (ticks + 2), none, repaired⟩))
@@ -90,6 +92,7 @@ theorem resolution_block_stopped_coupling
         ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
             record.envelope = false) ∨
+          next.1.application.publicView.missedDecisionBy owner = true ∨
           BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
   classical
   intro app players strategy ending
@@ -115,17 +118,30 @@ theorem resolution_block_stopped_coupling
         ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
             record.envelope = false) ∨
+          (∀ final ∈ ((runtime setup).runInteractionPlan leaks players network ending
+            next.1).support, final.application.publicView.missedDecisionBy owner = true) ∨
           BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
     by_cases same : actor = owner
     · subst actor
       obtain ⟨coupling, first, second, related⟩ := resolution_roster_stopped_coupling setup leaks
         bounds values capacity rosters opportunities network source target agrees owner
           policy available reference event payload binding checks outputEq codeEq node
-            (remaining + ending.length) visits memory original repaired frame started leftRecall
-              sound leftBinding ready windowTrace before (ending ++ after)
+            (remaining + ending.length) visits ticks dueTicks memory original repaired frame
+              started leftRecall
+              sound leftBinding ready windowTrace before after
                 (by simpa only [ending, List.append_assoc] using split) position
-      exact ⟨coupling, first, second, fun next member =>
-        ⟨(related next member).1, ((related next member).2).imp_right And.left⟩⟩
+      refine ⟨coupling, first, second, fun next member => ?_⟩
+      refine ⟨(related next member).1, ?_⟩
+      rcases (related next member).2 with bad | missed | framed
+      · exact Or.inl bad
+      · right
+        left
+        intro final reached
+        have owned : (graph setup).actor? event = some owner :=
+          (EventGraph.EventCode.actor_cast outputEq ((graph setup).nodes event)).symm.trans
+            (congrArg EventGraph.EventCode.actor codeEq)
+        exact PublicView.missedDecisionBy_of_event _ owner event owned (missed final reached)
+      · exact Or.inr (Or.inr framed.1)
     · have owned : (graph setup).actor? event = some actor := by
         have actual := congrArg EventCode.actor codeEq
         rw [EventCode.actor_cast outputEq ((graph setup).nodes event)] at actual
@@ -146,7 +162,8 @@ theorem resolution_block_stopped_coupling
           (remaining + ending.length) visits windowTrace before (ending ++ after)
           (by simpa only [ending, List.append_assoc] using split) position
       exact ⟨coupling, first, second, fun next member =>
-        ⟨(related next member).1, ((related next member).2).imp_right And.left⟩⟩
+        ⟨(related next member).1, ((related next member).2).imp_right
+          (fun good => Or.inr good.1)⟩⟩
   obtain ⟨window, first, second, related⟩ := existsWindow
   have existsTail next (member : next ∈ window.support) :
       ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
@@ -158,6 +175,7 @@ theorem resolution_block_stopped_coupling
           (∃ record ∈ app.executionTraffic final.1, record.envelope.sender = owner ∧
             (runtime setup).permittedServiceEnvelope record.observation record.ledger
               record.envelope = false) ∨
+            final.1.application.publicView.missedDecisionBy owner = true ∨
             BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1 := by
     by_cases bad : ∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
         (runtime setup).permittedServiceEnvelope record.observation record.ledger
@@ -173,44 +191,63 @@ theorem resolution_block_stopped_coupling
         exact ⟨final, supported, rfl⟩
       exact Or.inl ⟨record, ((runtime setup).executionTraffic_runInteractionPlan leaks players
         network ending next.1 final.1 reached).subset present, authored, rejected⟩
-    · have paired := ((related next member).2).resolve_left bad
-      obtain ⟨nextTrace⟩ := (related next member).1
-      have reached : next.1 ∈ ((runtime setup).runInteractionPlan leaks players network
-          (visits.map ServiceInstruction.player) original).support := by
-        rw [← first, PMF.support_map]
-        exact ⟨next, member, rfl⟩
-      have privateReached : next.2 ∈ (strategy.runJoint owner players scheduler visits.length
-          repaired memory).support := by
-        rw [← second, PMF.support_map]
-        exact ⟨next, member, rfl⟩
-      have memoryValid := BindingMemory.retainedImplementation_runJoint_ownBindings
-        (runtime setup) leaks menu owner reference (players owner) players scheduler visits.length
-          repaired memory onlyBindings next.2 privateReached
-      have preserved : app.PolicyInvariant players
-          (((runtime setup).packetEvidence leaks).Sound) := {
-        respond := fun execution who response valid _ =>
-          ((runtime setup).packetEvidence leaks).sound_respond execution who response valid
-        environment := ((runtime setup).packetEvidence leaks).sound_environment }
-      have certified := (runtime setup).runInteractionPlan_preserves leaks players network _
-        preserved (visits.map ServiceInstruction.player) original next.1 sound reached
-      have valid := (runtime setup).runInteractionPlan_preserves leaks players network _
-        (ReactiveApplication.Invariant.policyInvariant app
-          ((runtime setup).reactiveBindingInvariant leaks) players)
-        (visits.map ServiceInstruction.player) original next.1 leftBinding reached
-      have nextPosition : next.1.environmentRecall.length =
-          (before ++ visits.map ServiceInstruction.player).length := by
-        rw [(runtime setup).runInteractionPlan_recall leaks players network
-          (visits.map ServiceInstruction.player) original next.1 reached, position,
-          List.length_append]
-      obtain ⟨coupling, leftLaw, rightLaw, connected⟩ :=
-        resolution_history_tail_coupling setup leaks
-        bounds values capacity rosters opportunities network source target agrees owner
-          policy reference next.2.2 next.1 next.2.1 paired memoryValid certified valid event actor
-            payload binding checks outputEq codeEq node remaining ticks
-            (by rw [← length]; exact nextTrace)
-            (before ++ visits.map ServiceInstruction.player) after split nextPosition
-      exact ⟨coupling, leftLaw, rightLaw, fun final supported =>
-        Or.inr (connected final supported).2.1⟩
+    · by_cases missed : ∀ final ∈ ((runtime setup).runInteractionPlan leaks players network ending
+          next.1).support, final.application.publicView.missedDecisionBy owner = true
+      · let left := (runtime setup).runInteractionPlan leaks players network ending next.1
+        let right := strategy.runJoint owner players scheduler ending.length next.2.1 next.2.2
+        refine ⟨bindPairLaw left (fun _ => right), bindPairLaw_map_fst ..,
+          bindPairLaw_const_map_snd .., ?_⟩
+        intro final supported
+        right
+        left
+        apply missed final.1
+        change final.1 ∈ left.support
+        rw [← bindPairLaw_map_fst left (fun _ => right), PMF.support_map]
+        exact ⟨final, supported, rfl⟩
+      · have paired := (((related next member).2).resolve_left bad).resolve_left missed
+        obtain ⟨nextTrace⟩ := (related next member).1
+        have reached : next.1 ∈ ((runtime setup).runInteractionPlan leaks players network
+            (visits.map ServiceInstruction.player) original).support := by
+          rw [← first, PMF.support_map]
+          exact ⟨next, member, rfl⟩
+        have privateReached : next.2 ∈ (strategy.runJoint owner players scheduler visits.length
+            repaired memory).support := by
+          rw [← second, PMF.support_map]
+          exact ⟨next, member, rfl⟩
+        have memoryValid := BindingMemory.retainedImplementation_runJoint_ownBindings
+          (runtime setup) leaks menu owner reference (players owner) players scheduler visits.length
+            repaired memory onlyBindings next.2 privateReached
+        have preserved : app.PolicyInvariant players
+            (((runtime setup).packetEvidence leaks).Sound) := {
+          respond := fun execution who response valid _ =>
+            ((runtime setup).packetEvidence leaks).sound_respond execution who response valid
+          environment := ((runtime setup).packetEvidence leaks).sound_environment }
+        have certified := (runtime setup).runInteractionPlan_preserves leaks players network _
+          preserved (visits.map ServiceInstruction.player) original next.1 sound reached
+        have valid := (runtime setup).runInteractionPlan_preserves leaks players network _
+          (ReactiveApplication.Invariant.policyInvariant app
+            ((runtime setup).reactiveBindingInvariant leaks) players)
+          (visits.map ServiceInstruction.player) original next.1 leftBinding reached
+        have remembered := (runtime setup).runInteractionPlan_preserves leaks players network _
+          (ReactiveApplication.Invariant.policyInvariant app
+            ((runtime setup).reactiveRememberedInvariant leaks
+              (fun table => table = fun _ => none)) players)
+          (visits.map ServiceInstruction.player) original next.1 leftRemembered reached
+        have nextPosition : next.1.environmentRecall.length =
+            (before ++ visits.map ServiceInstruction.player).length := by
+          rw [(runtime setup).runInteractionPlan_recall leaks players network
+            (visits.map ServiceInstruction.player) original next.1 reached, position,
+            List.length_append]
+        obtain ⟨coupling, leftLaw, rightLaw, connected⟩ :=
+          resolution_history_tail_coupling setup leaks
+          bounds values capacity rosters opportunities network source target agrees owner
+            policy reference next.2.2 next.1 next.2.1 paired memoryValid certified valid remembered
+              event actor
+              payload binding checks outputEq codeEq node remaining ticks
+              (by rw [← length]; exact nextTrace)
+              (before ++ visits.map ServiceInstruction.player) after split nextPosition
+        exact ⟨coupling, leftLaw, rightLaw, fun final supported =>
+          Or.inr (Or.inr (connected final supported).2.1)⟩
   let tail := fun next member => (existsTail next member).choose
   let coupling := window.bindOnSupport tail
   have leftLaw : coupling.map Prod.fst = (runtime setup).runInteractionPlan leaks players network

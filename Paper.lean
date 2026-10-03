@@ -4,8 +4,6 @@ import Vegas.Game.EventScheduling
 import Vegas.Game.EventCompilation
 import Vegas.Game.EventMessages
 import Vegas.Game.EventMessageStrategic
-import Vegas.Game.RevealServiceCompilation
-import Vegas.Game.RevealServiceRosterCompilation
 import Vegas.Game.SourceServiceRawExtension
 import Vegas.Game.SourceServiceCompilation
 import Vegas.Game.BindingRepairBlock
@@ -1368,18 +1366,6 @@ axioms:
 open Vegas.Examples.MonitoredGuessing in
 #print axioms declared_sequential_equilibrium_preserved
 
-/-- info: 'Vegas.source_raw_sequential_equilibrium_preserved'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-open Vegas in
-#print axioms source_raw_sequential_equilibrium_preserved
-
-/-- info: 'Vegas.roster_audited_source_sequential_equilibrium_preserved'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-open Vegas in
-#print axioms roster_audited_source_sequential_equilibrium_preserved
-
 /-- info: 'Vegas.sourceService_audited_raw_equilibrium_extends'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
@@ -1391,18 +1377,6 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 open Vegas in
 #print axioms SourceServiceSpec.completeAudit_raw_sequentialEquilibrium_preserved
-
-/-- info: 'Vegas.EventGraphRuntime.MessageBounds.audited_raw_sequential_equilibrium'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-open Vegas.EventGraphRuntime.MessageBounds in
-#print axioms audited_raw_sequential_equilibrium
-
-/-- info: 'Vegas.settled_audited_raw_sequential_equilibrium'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-open Vegas in
-#print axioms settled_audited_raw_sequential_equilibrium
 
 /-- info: 'Vegas.EventGraphRuntime.openingWindow_settlement' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

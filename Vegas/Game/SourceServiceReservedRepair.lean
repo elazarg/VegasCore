@@ -30,7 +30,7 @@ theorem resolution_history_tail_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
@@ -49,6 +49,7 @@ theorem resolution_history_tail_coupling
     (onlyBindings : memory.shadow.OwnBindings owner)
     (sound : ((runtime setup).packetEvidence leaks).Sound original)
     (leftBinding : original.application.BindingInvariant)
+    (leftRemembered : original.application.remembered = fun _ => none)
     (event : (graph setup).EventId) (actor : Player) (payload : L.Ty)
     (binding : FieldRef (graph setup).layout (.binding actor payload))
     (checks : List (GuardCheck (graph setup).layout payload))
@@ -107,9 +108,16 @@ theorem resolution_history_tail_coupling
         original.network.ledger message = true := by
     rw [frame.network, frame.publicView]
     exact conforming.pending
+  have rightRemembered : repaired.application.remembered = fun _ => none :=
+    ((runtime setup).reactiveRememberedInvariant leaks (fun table => table = fun _ => none)).history
+      (initialLaw setup) (rosterPlan setup rosters).length scheduler (by
+        intro state supported
+        obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
+        rfl) (menu.toRawTrace (initialLaw setup) (rosterPlan setup rosters).length scheduler trace)
   obtain ⟨physical, first, second, related⟩ := frame.resolution_reserved_tail_coupling
     onlyBindings sound leftBinding rightBinding players network event actor payload binding checks
-      outputEq codeEq node originalSole permitted ticks
+      outputEq codeEq node originalSole (congrFun leftRemembered event)
+      (congrFun rightRemembered event) permitted ticks
   let coupling := physical.map fun pair => (pair.1, pair.2, memory)
   have leftLaw : coupling.map Prod.fst =
       (runtime setup).runInteractionPlan leaks players network ending original := by

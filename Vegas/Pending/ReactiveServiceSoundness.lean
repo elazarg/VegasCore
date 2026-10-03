@@ -9,8 +9,8 @@ import Interaction.ReactiveTrafficAudit
 
 /-! # Public audit soundness for retained service responses
 
-The checker accepts transport of permitted known envelopes and each first
-canonical service decision. The local hypotheses are operational phase facts:
+The checker accepts each first canonical service decision; waiting emits no
+traffic. The local hypotheses are operational phase facts:
 readiness, deadline, binding allocation and the public serial count. They do
 not select an equilibrium or require an auditor to inspect hidden material.
 -/
@@ -136,6 +136,41 @@ theorem service_binding_traffic
   exact ⟨(execution.application.publicView_eventReady event).mpr ready, timely,
     by trivial, by trivial, vacant, unused⟩
 
+/-- Evidence-free withholding is a lawful first resolution decision. -/
+theorem service_withholding_traffic
+    (execution : (runtime.reactiveApplication leaks).Execution)
+    (remaining : Nat) (owner : Player) (event : graph.EventId) (payload : L.Ty)
+    (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (GuardCheck graph.layout payload))
+    (outputEq : graph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .resolve owner payload binding checks)
+    (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
+    (ready : execution.application.config.cut.Ready event)
+    (timely : execution.application.WithinDeadline runtime event)
+    (counted : execution.network.nextSerial owner =
+      Message.distinctAuthoredCount execution.network.ledger owner) :
+    let app := runtime.reactiveApplication leaks
+    let response : app.Action := ⟨some ⟨⟨.withhold event, none⟩, .none⟩⟩
+    ∀ record ∈ app.trafficStep (some ⟨remaining, some owner, execution⟩)
+      (some ⟨remaining, none, execution.respond app owner response⟩),
+      runtime.permittedServiceEnvelope record.observation record.ledger
+        record.envelope = true := by
+  intro app response record member
+  rw [app.trafficStep_submit, List.mem_singleton] at member
+  subst record
+  change runtime.permittedServiceEnvelope execution.application.publicView execution.network.ledger
+    ⟨(owner, execution.network.nextSerial owner), app.packet
+      (app.submit execution.application owner _) owner (execution.network.known owner) _⟩ = true
+  rw [reactiveApplication_packet_none,
+    execution.application.publicView_tokenFor_of_ready _ event rfl ready,
+    runtime.permittedServiceEnvelope_iff]
+  refine Or.inr ⟨counted, ?_⟩
+  apply (runtime.freshServiceEnvelope_withhold_iff execution.application.publicView
+    (owner, execution.network.nextSerial owner) event owner payload binding checks outputEq codeEq
+      node none (some ⟨event⟩)).mpr
+  exact ⟨(execution.application.publicView_eventReady event).mpr ready, timely, rfl, rfl, rfl⟩
+
 /-- A successful guarded disclosure carries its matching certificate and
 passes the public guard test, including after evidence normalization. -/
 theorem service_opening_traffic
@@ -198,7 +233,7 @@ theorem service_opening_traffic
     execution.application.config.store value resolved
 
 /-- Both disclosure choices pass the checker. Failed validation and deliberate
-withholding produce silence, while successful disclosure is certified. -/
+withholding send an explicit false decision; successful disclosure is certified. -/
 theorem serviceDecision_resolution_traffic
     (execution : (runtime.reactiveApplication leaks).Execution)
     (recalled : execution.InputRecall (runtime.reactiveApplication leaks))
@@ -228,47 +263,50 @@ theorem serviceDecision_resolution_traffic
       runtime.permittedServiceEnvelope record.observation record.ledger
         record.envelope = true := by
   intro app response
-  cases choice with
-  | false =>
-      have quiet : response = ⟨none⟩ := by
-        simp only [response, serviceDecision, reactiveDecision, node, reactiveResolutionPacket,
-          cast_cast, cast_eq, Bool.false_eq_true, ↓reduceIte,
-          disclosureSubmission_normalize_withhold]
-        rfl
-      rw [quiet, app.trafficStep_silent]
-      exact fun _ member => (List.not_mem_nil member).elim
-  | true =>
-      rcases runtime.serviceDecision_resolution_cases leaks owner _ _ event owner payload binding
-        checks outputEq codeEq node true with quiet |
-          ⟨candidate, value, evidence, resolved, associated, owned, shape⟩
-      · change response = ⟨none⟩ at quiet
-        rw [quiet, app.trafficStep_silent]
-        exact fun _ member => (List.not_mem_nil member).elim
-      · change EventCode.resolveOutput? binding checks true
+  rcases runtime.serviceDecision_resolution_cases leaks owner _ _ event owner payload binding
+      checks outputEq codeEq node choice with withheld |
+        ⟨candidate, value, evidence, resolved, associated, owned, shape⟩
+  · have serial := counted (by
+      rw [withheld] at first
+      simpa only [firstSubmission, submittedEvent?, Payload.event?,
+        Bool.not_eq_true_eq_eq_false] using first)
+    change response = _ at withheld
+    rw [withheld]
+    exact runtime.service_withholding_traffic leaks execution remaining owner event payload
+      binding checks outputEq codeEq node ready timely serial
+  · have positive : choice = true := by
+      cases choice with
+      | true => rfl
+      | false =>
+          rw [runtime.serviceDecision_resolution_false leaks owner _ _ event owner payload
+            binding checks outputEq codeEq node] at shape
+          cases shape
+    subst choice
+    change EventCode.resolveOutput? binding checks true
           (graph.playerStore owner execution.application.config.store) = _ at resolved
-        rw [EventCode.resolveOutput?_playerStore] at resolved
-        have stored := EventCode.binding_success_of_resolve_success binding checks true
-          execution.application.config.store value resolved
-        obtain ⟨actual, accepted, _, fixed⟩ := invariant.success_provenance binding value stored
-        change execution.application.accepted binding.field = some candidate at associated
-        cases Option.some.inj (accepted.symm.trans associated)
-        have serial := counted (by
-          rw [shape] at first
-          simpa only [firstSubmission, submittedEvent?, Payload.event?,
-            Bool.not_eq_true_eq_eq_false] using first)
-        have action := runtime.serviceDecision_successful_opening leaks execution recalled owner
-          event payload binding checks outputEq codeEq node candidate value associated owned fixed
-            resolved
-        change response = _ at action
-        rw [action]
-        exact runtime.service_opening_traffic leaks execution remaining owner event payload binding
-          checks outputEq codeEq node ready timely candidate value associated owned fixed
-            resolved serial
+    rw [EventCode.resolveOutput?_playerStore] at resolved
+    have stored := EventCode.binding_success_of_resolve_success binding checks true
+      execution.application.config.store value resolved
+    obtain ⟨actual, accepted, _, fixed⟩ := invariant.success_provenance binding value stored
+    change execution.application.accepted binding.field = some candidate at associated
+    cases Option.some.inj (accepted.symm.trans associated)
+    have serial := counted (by
+      rw [shape] at first
+      simpa only [firstSubmission, submittedEvent?, Payload.event?,
+        Bool.not_eq_true_eq_eq_false] using first)
+    have action := runtime.serviceDecision_successful_opening leaks execution recalled owner
+      event payload binding checks outputEq codeEq node candidate value associated owned fixed
+        resolved
+    change response = _ at action
+    rw [action]
+    exact runtime.service_opening_traffic leaks execution remaining owner event payload binding
+      checks outputEq codeEq node ready timely candidate value associated owned fixed resolved
+        serial
 
 variable [Fintype Player]
 
 /-- All ordinary retained binding responses pass the checker, including
-arbitrarily many waits and known replays before or after first submission. -/
+arbitrarily many waits before or after first submission. -/
 theorem MessageBounds.compiled_binding_traffic (bounds : MessageBounds graph)
     (execution : (runtime.reactiveApplication leaks).Execution)
     (invariant : execution.application.BindingInvariant)

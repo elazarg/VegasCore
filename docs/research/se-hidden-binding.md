@@ -316,7 +316,7 @@ are explicit backend assumptions, not exclusions justified by an equilibrium.
 At a value-only binding, sending no commitment differs from submitting an opaque
 unusable handle. Silence and replay remain legal at earlier roster visits, but
 cannot replace the last unsent binding opportunity. The actual service menu
-uses `bindingRequired_iff_no_later_owner` to identify that opportunity from the
+uses `decisionRequired_iff_no_later_owner` to identify that opportunity from the
 public roster and existing own response count. Collection for omission requires
 public missed-deadline evidence under protected timely inclusion; absence of a
 watcher record is not evidence. After the first binding, all later visits permit
@@ -477,14 +477,15 @@ unsent response together with its foreign tail, protected inclusion and expiry;
 its alternatives include actual public missed-binding evidence. The full
 remaining-plan composition and payoff comparison are still open.
 
-For disclosures, `service_opening_response` derives the actual successful
-compiler response from public conformance, authentic emitted evidence, the
-runtime binding invariant and effective response normalization. The checker
-does not read the private candidate table. In particular,
-`failed_binding_submission_forbidden` proves that a failed original binding
-cannot subsequently emit a conforming fresh opening; silence and known replay
-remain legitimate responses. These facts are local transition cases, not the
-whole-service stopped induction.
+For disclosures, `service_resolution_response` derives an explicit false
+response or a successful typed opening from public conformance, authentic
+emitted evidence, the runtime binding invariant and effective response
+normalization. The checker does not read the private candidate table.
+`failed_binding_submission_cases` permits canonical evidence-free withholding
+at a failed binding and proves every other effective fresh submission fails
+the public checker. Silence and known replay remain legitimate deferrals.
+These facts classify local transitions; the whole-service stopped induction
+must still compose those cases.
 
 ## Missing required commitments
 
