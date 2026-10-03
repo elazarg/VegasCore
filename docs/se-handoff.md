@@ -136,9 +136,14 @@ future private values changed by repair are outside the claim.
   carries that coupling through the entire stopped sample run, retaining the
   same public sample value and full traffic.
   [SourceServiceStoppedSampleFactorization](../Vegas/Game/SourceServiceStoppedSampleFactorization.lean)
-  joins the actual public draw, both source successors and that same traffic
+  joins the actual public draw, both source successors, an unchanged parameter
+  and that same traffic
   channel from the prior source-view factorization. Whole prefix induction
   and native assessment transport remain separate.
+  [SourceServiceFirstTurnSampleFactorization](../Vegas/Game/SourceServiceFirstTurnSampleFactorization.lean)
+  lifts that actual sample law through one fixed aligned source slice,
+  preserving the same parameter and full traffic through the whole source
+  behavioral step. The whole endpoint decoder is derived from completion.
 - [SourceServiceBindingResponseCompletion](../Vegas/Game/SourceServiceBindingResponseCompletion.lean)
   joins the actual transmitting draw to its typed successor and full stopped
   traffic. Waiting remains separate; prescribed foreign continuations are
@@ -147,11 +152,16 @@ future private values changed by repair are outside the claim.
   identifies the whole source step, including the actual unfinished decoder
   result on waiting.
 - [SourceServiceReachedDecoding](../Vegas/Game/SourceServiceReachedDecoding.lean)
-  derives source residuals with partial view recovery from their actual
-  transport maps. [SourceServiceDecoderSlice](../Vegas/Game/SourceServiceDecoderSlice.lean)
+  derives source residuals with a forward view map and partial view recovery
+  from their actual transport maps.
+  [SourceServiceDecoderSlice](../Vegas/Game/SourceServiceDecoderSlice.lean)
   fixes a shared tail, lift and recovery from source syntax and rank, with
   decoder splitting for every store and history. Native Bayes transport
   still needs the actual source-prefix likelihood.
+- [SourceServiceInitialTraffic](../Vegas/Game/SourceServiceInitialTraffic.lean)
+  derives the actual initialized parameter/source/full-traffic factor through
+  the whole source view. Correlated initial private types are retained; the
+  initial candidate catalogue is determined by the same source view.
 - [AsyncServiceCounterfactualBeliefs](../Vegas/Game/AsyncServiceCounterfactualBeliefs.lean)
   cancels the entire focal owner's recalled-action likelihood from native
   Bayes normalization. Relative escape still needs a bound against the actual

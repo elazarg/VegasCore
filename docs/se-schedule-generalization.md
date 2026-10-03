@@ -1554,14 +1554,20 @@ also derives the actual forward source-view map alongside partial recovery.
 Both follow the same source syntax: the state lift's observation equals the
 view lift applied to the tail observation. A whole-view prior noise kernel
 can therefore be restricted to the fixed typed tail by composition, and a
-typed successor channel can be lifted back using recovery.
+typed successor channel can be lifted back using recovery. Actual aligned
+[source residuals](../Vegas/Game/SourceServiceReachedDecoding.lean) carry the
+same forward view map through initialization and every real graph step.
 
 The whole-prefix likelihood induction should carry the effective complete
 source state with actual traffic first. At each rank, choose the shared
 decoder slice before integrating the histories, apply the actual sample,
 binding or resolution phase law, and lift its typed-tail view channel to the
-whole source view. The existing initialized traffic factorization starts
-that induction. All owners' original histories can then be restored once at
+whole source view.
+[SourceServiceInitialTraffic](../Vegas/Game/SourceServiceInitialTraffic.lean)
+starts that induction from the actual setup law, retaining any parameter from
+the same initial draw beside the whole source entry and full traffic. The
+owned initial candidate catalogue is determined by the focal source view.
+All owners' original histories can then be restored once at
 the requested prefix through the same channel and memory lottery, retaining
 correlated initial parameters. This avoids identifying a selected owner's
 restoration with the common original carrier. Nonpure timing needs its own
@@ -1583,10 +1589,20 @@ remaining horizon from that traffic, without a supplied sample-time law.
 composes the actual stopped sample marginal with the prior source-view/full
 traffic factorization. It disintegrates the real public-value and traffic law
 using its own conditional kernel. Both carried source configurations advance
-by the same actual sampled value, and the complete stopped traffic factors
+by the same actual sampled value, retaining an unchanged parameter, and the
+complete stopped traffic factors
 through the effective successor view. The boundary and complete play derive
 the sample marginal; no sample-time or completed-endpoint premise is supplied.
 Whole-prefix induction and native information-site assembly remain separate.
+
+[SourceServiceFirstTurnSampleFactorization](../Vegas/Game/SourceServiceFirstTurnSampleFactorization.lean)
+lifts this actual law through a fixed compiler-aligned sample slice. The
+prior whole-source-view factor restricts to its typed tail by the forward
+view map. Actual completion and the checkpoint derive the whole next-prefix
+decoder; recovery lifts the successor traffic channel back to the whole
+source view. The same parameter is retained through the actual whole source
+behavioral step. The slice and prior checkpoint are induction resources,
+not supplied endpoint or source-marginal laws.
 
 [SourceServiceResolutionResponseCompletion](../Vegas/Game/SourceServiceResolutionResponseCompletion.lean)
 connects a supported original intention from that memory lottery to the actual

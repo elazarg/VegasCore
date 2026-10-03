@@ -72,7 +72,8 @@ theorem sourceServiceFirstResolution_prefix_probability
   obtain ⟨residual⟩ := boundary.sourceResidual (profile := profile)
   have beforeRead := residual.decode
   obtain ⟨Γ, names, program, residualProfile, source, refs, embedding, refsBefore, aligned,
-    _admitted, effectiveResidual, supports, lift, _recoverView, _viewRecovered, commutes,
+    _admitted, effectiveResidual, supports, lift, _liftView, _observeLift, _recoverView,
+    _viewRecovered, commutes,
     _steps, _injective, transport, checkpoint⟩ := residual
   cases program with
   | ret payoffs =>

@@ -10,8 +10,8 @@ A native configuration at a completed prefix has a *source residual*: the
 remaining source program and source configuration, aligned with the compiled
 policy suffix from that rank, agreeing with the native store and history, and
 through which the whole-program prefix decoder factors. Its residual source
-view is recovered from the whole source view by the actual source continuation.
-Residuals exist at
+view lifts to the whole source view and is recovered from it by the actual
+source continuation. Residuals exist at
 initialization and survive every configuration step, whatever action completes
 the ready event, so every configuration reached by any players under any
 scheduler has one (`Vegas.roundsFrom_sourceResidual`).
@@ -61,6 +61,10 @@ structure SourceResidual (rank : Nat) (config : (graph setup).Config) : Type whe
     ∀ who, (residualProfile who).SupportsEffectiveChoices program
       (CommitmentInterface.values program) source.registry source.revelations
   lift : ProtocolState program → ProtocolState setup.program
+  liftView : ∀ who, ProtocolView who program → ProtocolView who setup.program
+  observe_lift : ∀ who state,
+    ProtocolState.observe who setup.program (lift state) =
+      liftView who (ProtocolState.observe who program state)
   recoverView : ∀ who, ProtocolView who setup.program → Option (ProtocolView who program)
   recoverView_lift_observe : ∀ who state,
     recoverView who (ProtocolState.observe who setup.program (lift state)) =
@@ -112,6 +116,8 @@ def SourceResidual.initial (initial : State L setup.context) :
   effective := fun effective => effective
   supports := fun supported => supported
   lift := id
+  liftView := fun _ => id
+  observe_lift := fun _ _ => rfl
   recoverView := fun _ => some
   recoverView_lift_observe := fun _ _ => rfl
   commutes := fun state => by simp only [id_eq, PMF.map_id]
@@ -138,7 +144,8 @@ theorem SourceResidual.step {rank : Nat} {before : (graph setup).Config}
     (member : after ∈ (before.step event ready action).support) :
     Nonempty (SourceResidual setup profile (rank + 1) after) := by
   obtain ⟨Γ, names, program, residualProfile, source, refs, embedding, refsBefore, aligned,
-    admitted, effective, supports, lift, recoverView, recoverView_lift_observe,
+    admitted, effective, supports, lift, liftView, observe_lift, recoverView,
+    recoverView_lift_observe,
     commutes, steps, injective, transport, checkpoint⟩ := residual
   have atEvent := (ready_iff_rank setup before rank checkpoint.ordered event).mp ready
   have counted := aligned.graphSuffix.countEq
@@ -202,6 +209,8 @@ theorem SourceResidual.step {rank : Nat} {before : (graph setup).Config}
         effective := fun whole who => effective whole who,
         supports := fun whole who => supports whole who,
         lift := lift ∘ Sum.inr,
+        liftView := fun who => liftView who ∘ Sum.inr,
+        observe_lift := fun who state => observe_lift who (Sum.inr state),
         recoverView := fun who view => (recoverView who view).bind Sum.getRight?,
         recoverView_lift_observe := fun who state => ?_,
         commutes := fun state => ?_, steps := fun state joint => ?_,
@@ -275,6 +284,8 @@ theorem SourceResidual.step {rank : Nat} {before : (graph setup).Config}
         effective := fun whole who => effective whole who,
         supports := fun whole who => (supports whole who).2,
         lift := lift ∘ Sum.inr,
+        liftView := fun who => liftView who ∘ Sum.inr,
+        observe_lift := fun who state => observe_lift who (Sum.inr state),
         recoverView := fun who view => (recoverView who view).bind Sum.getRight?,
         recoverView_lift_observe := fun who state => ?_,
         commutes := fun state => ?_, steps := fun state joint => ?_,
@@ -357,6 +368,8 @@ theorem SourceResidual.step {rank : Nat} {before : (graph setup).Config}
         effective := fun whole who => (effective whole who).2,
         supports := fun whole who => (supports whole who).2,
         lift := lift ∘ Sum.inr,
+        liftView := fun who => liftView who ∘ Sum.inr,
+        observe_lift := fun who state => observe_lift who (Sum.inr state),
         recoverView := fun who view => (recoverView who view).bind Sum.getRight?,
         recoverView_lift_observe := fun who state => ?_,
         commutes := fun state => ?_, steps := fun state joint => ?_,

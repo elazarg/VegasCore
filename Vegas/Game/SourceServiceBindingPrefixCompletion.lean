@@ -83,7 +83,8 @@ theorem sourceServiceDecision_clear_binding_prefix_completion {horizon remaining
     ⟨remaining, some who, execution⟩ rfl event ready
   have beforeRead := residual.decode
   obtain ⟨Γ, names, program, residualProfile, source, refs, embedding, refsBefore, aligned,
-    admitted, effective, supports, lift, _recoverView, _viewRecovered, commutes, steps,
+    admitted, effective, supports, lift, _liftView, _observeLift, _recoverView, _viewRecovered,
+    commutes, steps,
     injective, transport,
     checkpoint⟩ := residual
   cases program with

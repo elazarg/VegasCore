@@ -504,7 +504,8 @@ theorem sourceServiceFirstBinding_prefix_probability [Fintype Player]
   obtain ⟨residual⟩ := boundary.sourceResidual (profile := profile)
   have beforeRead := residual.decode
   obtain ⟨Γ, names, program, residualProfile, source, refs, embedding, refsBefore, aligned,
-    _admitted, _effective, _supports, lift, _recoverView, _viewRecovered, commutes, _steps,
+    _admitted, _effective, _supports, lift, _liftView, _observeLift, _recoverView, _viewRecovered,
+    commutes, _steps,
     _injective, transport, checkpoint⟩ := residual
   cases program with
   | ret payoffs =>

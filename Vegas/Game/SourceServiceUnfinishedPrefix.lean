@@ -28,7 +28,8 @@ theorem SourceResidual.next_decode_none {rank : Nat} {config : (graph setup).Con
     (ready : config.cut.Ready event) :
     sourceServicePrefix? setup (rank + 1) config = none := by
   obtain ⟨Γ, names, program, residualProfile, source, refs, embedding, refsBefore, aligned,
-    _admitted, _effective, _supports, lift, _recover, _recovered, _commutes, _steps,
+    _admitted, _effective, _supports, lift, _liftView, _observeLift, _recover, _recovered,
+    _commutes, _steps,
     _injective, transport, _checkpoint⟩ := residual
   have absent (index : Fin (eventCount program))
       (ranked : (embedding.event index).val = rank) :

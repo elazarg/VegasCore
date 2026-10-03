@@ -6,7 +6,8 @@ import Vegas.Game.SourceServiceStoppedSampleTraffic
 
 The current public sample's distribution is derived from its actual completion
 boundary and complete-play contract. Disintegrating the real stopped value and
-traffic law then couples source successors with the same full traffic sample.
+traffic law then couples source successors and an unchanged parameter with the
+same full traffic sample.
 The selected source chance value is not supplied as a separate marginal, and
 no sample time, source posterior or native equilibrium is assumed.
 -/
@@ -21,11 +22,12 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
 /-- The whole completion-stopped prescribed chance phase advances both
-carried source states by its actual public draw and factors the full focal
+carried source states by its actual public draw, retains the same parameter,
+and factors the full focal
 traffic through the effective successor view. Initial factorization and typed
 store agreement are induction data; the stopped sample marginal is derived. -/
 theorem source_async_stopped_sample_factorization
-    {Seed : Type*} (setup : Setup (Player := Player) (L := L))
+    {Seed Parameter : Type*} (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
     {delay bound : (graph setup).EventId → Nat}
@@ -41,7 +43,7 @@ theorem source_async_stopped_sample_factorization
       ((graph setup).nodes event) = .sample payload (compilePublicDist refs law))
     (node : nodeView (graph setup) event =
       .sample payload (compilePublicDist refs law) outputEq codeEq)
-    (prior : PMF Seed) (source original : Seed → Config Player L Γ)
+    (prior : PMF Seed) (parameter : Seed → Parameter) (source original : Seed → Config Player L Γ)
     (execution : Seed → (application setup leaks).Execution)
     (boundary : ∀ seed ∈ prior.support,
       CompletionBoundary setup leaks scheduler
@@ -50,9 +52,9 @@ theorem source_async_stopped_sample_factorization
     (agree : ∀ seed ∈ prior.support,
       refs.Agrees (source seed).state (execution seed).application.config.store)
     (noise : DecisionView focal Γ → PMF _)
-    (factor : prior.map (fun seed => ((source seed, original seed),
+    (factor : prior.map (fun seed => ((source seed, original seed, parameter seed),
         (runtime setup).bindingTraffic leaks focal (execution seed))) =
-      (prior.map (fun seed => (source seed, original seed))).bind fun pair =>
+      (prior.map (fun seed => (source seed, original seed, parameter seed))).bind fun pair =>
         (noise (pair.1.view focal)).map fun extra => (pair, extra)) :
     ∃ nextNoise : DecisionView focal ((name, .publicData payload) :: Γ) → PMF _,
       (prior.bind fun seed =>
@@ -60,15 +62,17 @@ theorem source_async_stopped_sample_factorization
           (sourceServiceTurnPolicy setup leaks bound turns timing profile)
           (fun final => event ∈ final.application.config.cut.completed) horizon
             (execution seed)).map fun final =>
-              (((⟨.inr event, outputEq⟩ : EventGraph.FieldRef (graph setup).layout
+              ((parameter seed, ((⟨.inr event, outputEq⟩ : EventGraph.FieldRef (graph setup).layout
                   (.publicData payload)).get? final.application.config.store).map fun value =>
                 (sampleSuccessor name (source seed) value,
-                  sampleSuccessor name (original seed) value),
+                  sampleSuccessor name (original seed) value)),
                 (runtime setup).bindingTraffic leaks focal final)) =
-        ((prior.map (fun seed => (source seed, original seed))).bind fun pair =>
+        ((prior.map (fun seed => (source seed, original seed, parameter seed))).bind fun pair =>
           (L.evalDist law (sourcePublicEnv pair.1.state)).map fun value =>
-            (sampleSuccessor name pair.1 value, sampleSuccessor name pair.2 value)).bind fun pair =>
-              (nextNoise (pair.1.view focal)).map fun extra => (some pair, extra) := by
+            (sampleSuccessor name pair.1 value, sampleSuccessor name pair.2.1 value,
+              pair.2.2)).bind fun pair =>
+                (nextNoise (pair.1.view focal)).map fun extra =>
+                  ((pair.2.2, some (pair.1, pair.2.1)), extra) := by
   classical
   let app := application setup leaks
   let players := sourceServiceTurnPolicy setup leaks bound turns timing profile
@@ -91,28 +95,29 @@ theorem source_async_stopped_sample_factorization
     simpa only [joint, stopped, app, players, PMF.map_comp, Function.comp_def] using marginal
   have decomposed seed (supported : seed ∈ prior.support) :
       (stopped seed).map (fun final =>
-          ((output.get? final.application.config.store).map fun value =>
+          ((parameter seed, (output.get? final.application.config.store).map fun value =>
             (sampleSuccessor name (source seed) value,
-              sampleSuccessor name (original seed) value),
+              sampleSuccessor name (original seed) value)),
             (runtime setup).bindingTraffic leaks focal final)) =
         (L.evalDist law (sourcePublicEnv (source seed).state)).bind fun value =>
           (conditional seed value).map fun extra =>
-            (some (sampleSuccessor name (source seed) value,
-              sampleSuccessor name (original seed) value), extra) := by
+            ((parameter seed, some (sampleSuccessor name (source seed) value,
+              sampleSuccessor name (original seed) value)), extra) := by
     have disintegrated := eq_bind_fst_fiberPosterior_snd (joint seed)
     have mapped := congrArg
-      (PMF.map (fun selected => (selected.1.map fun value =>
+      (PMF.map (fun selected => ((parameter seed, selected.1.map fun value =>
         (sampleSuccessor name (source seed) value,
-          sampleSuccessor name (original seed) value), selected.2))) disintegrated
+          sampleSuccessor name (original seed) value)), selected.2))) disintegrated
     rw [samples seed supported] at mapped
     simpa only [joint, PMF.map_bind, PMF.map_comp, PMF.bind_map,
       Function.comp_def, Option.map_some, conditional] using mapped
   have updated := exists_updated_observation_kernel_of_readout prior
-    (fun seed => (source seed, original seed))
+    (fun seed => (source seed, original seed, parameter seed))
     (fun seed => (runtime setup).bindingTraffic leaks focal (execution seed))
     (fun pair => pair.1.view focal) noise factor
     (fun pair => L.evalDist law (sourcePublicEnv pair.1.state))
-    (fun pair value => (sampleSuccessor name pair.1 value, sampleSuccessor name pair.2 value))
+    (fun pair value => (sampleSuccessor name pair.1 value,
+      sampleSuccessor name pair.2.1 value, pair.2.2))
     (fun pair => pair.1.view focal) conditional
     (by
       intro left _ first _ right _ second _ same
@@ -124,7 +129,8 @@ theorem source_async_stopped_sample_factorization
         have cell := congrArg
           (fun view : DecisionView focal ((name, .publicData payload) :: Γ) =>
             view.1.cells.get .here) same
-        simpa only [Config.view, sampleSuccessor, sourceObserve, Env.get, Env.cons] using cell
+        change first = second at cell
+        exact cell
       subst second
       have completeTraffic := sourceServiceTurnPolicy_sample_value_traffic_congr setup leaks
         scheduler horizon bound turns timing profile
@@ -135,14 +141,15 @@ theorem source_async_stopped_sample_factorization
         (fiberPosterior actual Prod.fst (some first)).map Prod.snd) completeTraffic)
   obtain ⟨nextNoise, completed⟩ := updated
   refine ⟨nextNoise, ?_⟩
-  have tagged := congrArg (PMF.map fun selected => (some selected.1, selected.2)) completed
+  have tagged := congrArg (PMF.map fun selected =>
+    ((selected.1.2.2, some (selected.1.1, selected.1.2.1)), selected.2)) completed
   simp only [PMF.map_bind, PMF.map_comp, Function.comp_def] at tagged
   calc
     _ = prior.bind (fun seed =>
         (L.evalDist law (sourcePublicEnv (source seed).state)).bind fun value =>
           (conditional seed value).map fun extra =>
-            (some (sampleSuccessor name (source seed) value,
-              sampleSuccessor name (original seed) value), extra)) := by
+            ((parameter seed, some (sampleSuccessor name (source seed) value,
+              sampleSuccessor name (original seed) value)), extra)) := by
       apply bind_congr_on_support _
       intro seed supported
       exact decomposed seed supported

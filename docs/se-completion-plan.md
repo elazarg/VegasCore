@@ -168,9 +168,19 @@ coupling is checked separately.
 carries it through the whole stopped run, retaining the same public value
 and full traffic.
 [SourceServiceStoppedSampleFactorization](../Vegas/Game/SourceServiceStoppedSampleFactorization.lean)
-joins both carried source successors with the same actual draw and traffic,
+joins both carried source successors and an unchanged parameter with the same
+actual draw and traffic,
 deriving the sample marginal from the boundary and complete play. These
 local phase laws still need whole-prefix induction and native belief transport.
+[SourceServiceInitialTraffic](../Vegas/Game/SourceServiceInitialTraffic.lean)
+supplies the actual initialized parameter/source/full-traffic factor through
+the whole source view, without an independence assumption on private types.
+Actual source residuals also retain the forward view map needed to restrict
+whole-source traffic kernels to their typed tails.
+[SourceServiceFirstTurnSampleFactorization](../Vegas/Game/SourceServiceFirstTurnSampleFactorization.lean)
+propagates the prior whole-source-view factor through a fixed aligned sample
+slice and the real stopped sample run. It derives the whole next-prefix
+decoder and behavioral-step law, retaining the same parameter and traffic.
 
 The actual binding-response law now composes with protected completion,
 retaining the transmitting draw and full stopped traffic. The native Bayes
@@ -219,13 +229,13 @@ across all native information sets and account for its timing likelihoods.
 
 Continue in this order:
 
-1. Lift the checked sample, binding and resolution phase laws through one
-   decoder slice chosen
-   before integrating histories. Start from the actual initialized traffic
-   law and carry the effective source prefix jointly with full stopped
-   traffic. Restore original histories once at the requested prefix through
-   the same all-owner memory lottery, retaining the initial parameter.
-   Resolution still needs its first-owner-input channel. For nonpure timing,
+1. Complete the binding and resolution lifts through one compiler-aligned
+   decoder slice chosen before integrating histories. The initialized traffic
+   law, whole-view sample lift and both owned first-input channels are proved.
+   Compose the phase laws to carry the effective source prefix jointly with
+   full stopped traffic. Restore original histories once at the requested
+   prefix through the same all-owner memory lottery, retaining the initial
+   parameter. For nonpure timing,
    derive the actual missing-turn/public-miss decomposition and relative
    escape bounds; the pure first-turn rank law does not cover those branches.
 2. Derive source-relative conditional beliefs and escape bounds at native

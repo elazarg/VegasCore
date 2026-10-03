@@ -270,7 +270,8 @@ theorem SourceResidual.head_step {rank : Nat} {config : (graph setup).Config}
           (Revelations.initial setup.context)) →
         ∀ action ∈ law.support, EffectiveAction config event action) := by
   rcases residual with ⟨Γ, names, program, residualProfile, source, refs, embedding, refsBefore,
-    aligned, admitted, effective, supports, lift, _recoverView, _viewRecovered, commutes,
+    aligned, admitted, effective, supports, lift, _liftView, _observeLift, _recoverView,
+    _viewRecovered, commutes,
     steps, injective, transport,
     checkpoint⟩
   have counted := aligned.graphSuffix.countEq
