@@ -1894,6 +1894,13 @@ forwarded evidence cannot certify any later claimed opening of that handle.
 The emitted packet is therefore an existing signed-content breach, with the
 same final-record verdict and partial collection bounds. No payoff dominance
 or additional collection after an earlier charge is inferred.
+[ReactiveBindingAcceptedOpening](../Vegas/Pending/ReactiveBindingAcceptedOpening.lean)
+derives typed binding provenance and the actual guard result from handler
+acceptance. Original acceptance preserves the full repair frame, including
+publication failure. A matching authentic certificate also transfers repaired
+acceptance back to the original state. Acceptance created only by repair
+therefore identifies a signed-content breach in the actual pending envelope.
+The stopped whole-policy comparison remains to be proved.
 
 ### Deviation proof boundaries
 

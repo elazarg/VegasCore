@@ -438,6 +438,12 @@ can certify a later opening claim for that handle. Such a claim belongs to the
 existing signed-content breach class, so the same final-record verdict and
 partial collection bounds apply. This classification supplies no renewed
 fine or whole-policy dominance.
+[ReactiveBindingAcceptedOpening](../Vegas/Pending/ReactiveBindingAcceptedOpening.lean)
+preserves the full frame through actual original opening acceptance, including
+publication failure. A matching authentic certificate transfers repaired
+acceptance back to the original state; acceptance created by repair is an
+actual signed-content breach. The continuation must still be coupled up to
+that breach and compared under the one-time settlement law.
 
 ## Validation
 

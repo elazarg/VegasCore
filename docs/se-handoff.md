@@ -371,6 +371,12 @@ future private values changed by repair are outside the claim.
   authentic evidence, including forwarding, and is an existing signed-content
   breach. Its final verdict and partial collection laws apply without a new
   backend premise; whole-policy dominance remains separate.
+- [ReactiveBindingAcceptedOpening](../Vegas/Pending/ReactiveBindingAcceptedOpening.lean)
+  derives full inclusion-frame preservation from actual original opening
+  acceptance, including publication failure. A matching authentic certificate
+  transfers repaired acceptance to the original state; repaired-only
+  acceptance identifies an actual signed-content breach. Policy reconstruction
+  and the stopped terminal comparison remain open.
 - [SourceServiceAliasEquilibrium](../Vegas/Game/SourceServiceAliasEquilibrium.lean)
   supplies the final private raw-alias transport, retaining correlated
   collection and prior charges.
