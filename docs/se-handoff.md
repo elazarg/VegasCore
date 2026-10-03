@@ -210,7 +210,7 @@ future private values changed by repair are outside the claim.
   [AsyncServiceFirstInputPassage](../Vegas/Game/AsyncServiceFirstInputPassage.lean)
   identifies the normalized first-turn profile's initialized complete input law
   with the actual rank and first-activation stopped law. The joint ancestor
-  restoration and perturbed source transport remain open.
+  restoration is supplied by the terminal and native posterior laws below.
 - [SourceServiceInitialReadout](../Vegas/Game/SourceServiceInitialReadout.lean)
   decodes the same initial source environment from persistent graph inputs at
   arbitrary initialized descendants and legal native histories. The input
@@ -223,8 +223,7 @@ future private values changed by repair are outside the claim.
   derives its true source posterior on the recovered compressed view.
   [SourceServicePastPrefix](../Vegas/Game/SourceServicePastPrefix.lean) recovers
   that earlier prefix from persistent fields and lower-rank completions under
-  arbitrary legal continuations. Native ancestor assembly and perturbed waiting
-  transport remain open.
+  arbitrary legal continuations. Perturbed waiting transport remains open.
 - [SourceServiceFirstInputAncestor](../Vegas/Game/SourceServiceFirstInputAncestor.lean)
   derives the actual owned ancestor's prefix from readiness and sequential
   order, then preserves its readout through every legal native descendant.
@@ -232,8 +231,16 @@ future private values changed by repair are outside the claim.
 - [SourceServiceFirstInputTerminalLaw](../Vegas/Game/SourceServiceFirstInputTerminalLaw.lean)
   identifies the represented first-turn terminal source-restoration/input
   joint law with the genuine stopped law. Its same-draw restoration kernel is
-  preserved along actual continuations. Native ancestor Bayes assembly and
-  perturbed timing transport still need proof.
+  preserved along actual continuations.
+- [SourceServiceFirstInputNativePosterior](../Vegas/Game/SourceServiceFirstInputNativePosterior.lean)
+  derives the actual native ancestor belief's true original source-prefix and
+  initial-parameter posterior at every positive-mass first owned site. It uses
+  one common memory draw and one recovery function across sites and assessments;
+  the antichain is derived from native recall. No clean-history or likelihood
+  premise is assumed.
+  [AsyncServiceFirstTurnBeliefResources](../Vegas/Game/AsyncServiceFirstTurnBeliefResources.lean)
+  derives physical support and clear owner risk on each actual Bayes history.
+  Perturbed waiting beliefs and sequential rationality remain open.
 - [SourceServiceInitialTraffic](../Vegas/Game/SourceServiceInitialTraffic.lean)
   derives the actual initialized parameter/source/full-traffic factor through
   the whole source view. Correlated initial private types are retained; the

@@ -1643,8 +1643,8 @@ the site's actual information mass even at variable depths.
 [AsyncServiceFirstInputPassage](../Vegas/Game/AsyncServiceFirstInputPassage.lean)
 identifies the normalized first-turn profile's complete input law with actual
 initialization, rank stopping and first-activation stopping. This is the input
-marginal. Joint source-prefix restoration through the genuine ancestor belief
-and perturbed timing transport remain separate.
+marginal. The terminal and native posterior laws below supply joint restoration
+through the actual ancestor belief; perturbed timing remains separate.
 [SourceServiceInitialReadout](../Vegas/Game/SourceServiceInitialReadout.lean)
 recovers the same initial source state from persistent graph inputs, before
 completion and under arbitrary native policies and scheduler commands.
@@ -1660,8 +1660,8 @@ prefix/parameter posterior on the recovered compressed view.
 [SourceServicePastPrefix](../Vegas/Game/SourceServicePastPrefix.lean) reconstructs
 the earlier prefix from persistent fields and completions below its rank. It
 agrees with the prefix decoder at the rank seed and survives arbitrary legal
-native continuations. Composing these laws with actual ancestor beliefs and
-extending them to perturbed waiting remain separate obligations.
+native continuations. Extending the source posterior to perturbed waiting
+remains a separate obligation.
 [SourceServiceFirstInputAncestor](../Vegas/Game/SourceServiceFirstInputAncestor.lean)
 derives the before-event prefix directly from an actual owned information
 history's ready input and sequential graph order. Every native descendant
@@ -1671,8 +1671,19 @@ raw responses. No separate clean-prefix premise is needed.
 identifies the represented normalized first-turn terminal law jointly with
 the earlier prefix restoration, same initial parameter and chronological first
 input. Its restoration kernel is preserved along actual native descendants.
-This supplies the full terminal joint law for ancestor conditioning; the
-native Bayes assembly and perturbed waiting transport remain separate.
+This supplies the full terminal joint law for ancestor conditioning.
+[SourceServiceFirstInputNativePosterior](../Vegas/Game/SourceServiceFirstInputNativePosterior.lean)
+proves that the actual Bayes-consistent native ancestor belief, followed by its
+common original-memory draw, equals the true original source-prefix and
+same-initial-parameter posterior on the recovered compressed view. One recovery
+function serves every positive-mass first owned site and every such assessment.
+Native decision recall supplies the information antichain; actual passage gives
+input support. No stopping-likelihood, clean-history or common-depth premise is
+supplied.
+[AsyncServiceFirstTurnBeliefResources](../Vegas/Game/AsyncServiceFirstTurnBeliefResources.lean)
+derives actual initialized physical support and clear owner risk for each
+history in the first-turn Bayes belief. Both results concern pure first-turn
+play. Perturbed waiting beliefs and sequential rationality remain open.
 [SourceServiceWaitRiskConfounding](../Vegas/Game/SourceServiceWaitRiskConfounding.lean)
 checks that protected and unprotected timely binding responses can emit the
 same typed-success packet, receive acceptance at the same clock, and give a
