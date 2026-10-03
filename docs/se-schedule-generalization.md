@@ -941,6 +941,14 @@ Open obligations this creates:
   required on final equilibrium-supported play. A comparison at a deferral
   information set must account for both its conditional miss probability and
   any information it can receive.
+  [SourceServiceMissBranchComparison](../Vegas/Game/SourceServiceMissBranchComparison.lean)
+  splits the actual full effective continuation into its public owner-miss and
+  no-miss fibers under any focal continuation. Valid configured rates make
+  every positive-mass miss fiber worth at most the finite base-payoff minimum.
+  This uses the public record's certain one-time charge, without watcher
+  coverage. The no-miss fiber retains its actual value; the split alone gives
+  neither an accepted-action source law nor WAIT optimality. A current action
+  can succeed before a later different event causes the owner-miss flag.
 - **Rational continuation.** Public misses and native certificate observations
   create information absent from protected source execution. Simultaneous free
   agent completion can supply consistent rational play there, once the
@@ -2203,6 +2211,16 @@ an unusable private binding with its admitted typed default. The original
 response uses the full effective menu, without original risk support or global
 certificate-preservation assumptions. Charged and recorded responses remain
 separate exits; whole-future repair and payoff domination remain open.
+[SourceServiceUnclassifiedPending](../Vegas/Game/SourceServiceUnclassifiedPending.lean)
+proves that, while an actually recorded event remains ready, every owner
+response outside the public-packet and duplicate classifiers is silence.
+Actual emitted-token provenance and the sequential ready order supply this
+conclusion without a clear-risk, deadline or original risk-support premise.
+One original policy draw gives the exact original invocation and retained
+implementation resume marginals. The silent branch preserves the same repair
+frame and unchanged shadow; the other branch identifies an actual classified
+response. This one-step law neither completes the pending memory nor proves
+the remaining command closure or whole-continuation payoff comparison.
 
 [SourceServiceSiteKind](../Vegas/Game/SourceServiceSiteKind.lean) derives the
 actual local input and either a publicly completed cut or a ready event with

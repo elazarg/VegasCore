@@ -9,7 +9,8 @@ import Vegas.Pending.ReactiveServiceOpening
 A chosen response cannot supply an arbitrary readiness token: the emitter
 uses the token issued by the current public state.
 Outside the public packet and recalled-duplicate classifiers, that token names
-an unrecorded ready owned opportunity with protected deadline time. At a
+an unrecorded ready owned opportunity, independently of deadline time.
+Clear risk additionally protects its deadline gate. At a
 resolution node the public checks and actual evidence invariants reduce every
 effective response to a retained decision. Private binding material is separate.
 -/
@@ -26,16 +27,13 @@ variable {Player : Type} [DecidableEq Player]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 /-- The actual emitter, not a hypothetical signed envelope, supplies a ready
-owned opportunity outside the packet classifier. Clear risk and own recalled
-actions then establish the unrecorded protected deadline gate. -/
-theorem unclassifiedSubmission_opportunity
+owned unrecorded opportunity outside both charged classifiers. This does not
+require a deadline gate or any current risk-menu support. -/
+theorem unclassifiedSubmission_ready
     {horizon remaining : Nat} {scheduler : (application setup leaks).Scheduler}
-    (bound : (graph setup).EventId → Nat)
     (execution : (application setup leaks).Execution) (who : Player)
     (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨remaining, some who, execution⟩))
-    (clear : (runtime setup).serviceRisk leaks bound who (execution.recall who)
-      (execution.observe (application setup leaks) who) = false)
     (material : (application setup leaks).Submission)
     (notPacket : ¬ auditableServiceResponse setup leaks who (execution.recall who)
       (execution.observe (application setup leaks) who) ⟨some material⟩)
@@ -43,8 +41,7 @@ theorem unclassifiedSubmission_opportunity
     ∃ event, material.call.packet.event? (graph setup) = some event ∧
       (graph setup).actor? event = some who ∧ execution.application.config.cut.Ready event ∧
       execution.application.publicView.ownTurn? who = some event ∧
-      (runtime setup).eventRecorded leaks (execution.recall who) event = false ∧
-      execution.application.publicView.InclusionFitsDeadline (runtime setup) bound event := by
+      (runtime setup).eventRecorded leaks (execution.recall who) event = false := by
   classical
   let app := application setup leaks
   let message : Message Player (WitnessedPacket (graph setup)) :=
@@ -81,9 +78,32 @@ theorem unclassifiedSubmission_opportunity
     apply Bool.eq_false_iff.mpr
     intro recorded
     exact notRecorded ⟨event, recorded, named⟩
+  exact ⟨event, named, owned, ready, turn, unrecorded⟩
+
+/-- At a clear actual input, the unrecorded ready opportunity outside both
+charged classifiers also has the protected deadline gate. -/
+theorem unclassifiedSubmission_opportunity
+    {horizon remaining : Nat} {scheduler : (application setup leaks).Scheduler}
+    (bound : (graph setup).EventId → Nat)
+    (execution : (application setup leaks).Execution) (who : Player)
+    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨remaining, some who, execution⟩))
+    (clear : (runtime setup).serviceRisk leaks bound who (execution.recall who)
+      (execution.observe (application setup leaks) who) = false)
+    (material : (application setup leaks).Submission)
+    (notPacket : ¬ auditableServiceResponse setup leaks who (execution.recall who)
+      (execution.observe (application setup leaks) who) ⟨some material⟩)
+    (notRecorded : ¬ recordedServiceResponse setup leaks (execution.recall who) ⟨some material⟩) :
+    ∃ event, material.call.packet.event? (graph setup) = some event ∧
+      (graph setup).actor? event = some who ∧ execution.application.config.cut.Ready event ∧
+      execution.application.publicView.ownTurn? who = some event ∧
+      (runtime setup).eventRecorded leaks (execution.recall who) event = false ∧
+      execution.application.publicView.InclusionFitsDeadline (runtime setup) bound event := by
+  obtain ⟨event, named, owned, ready, turn, unrecorded⟩ :=
+    unclassifiedSubmission_ready execution who trace material notPacket notRecorded
   exact ⟨event, named, owned, ready, turn, unrecorded,
     (runtime setup).serviceRisk_clear_protected_opportunity leaks bound who (execution.recall who)
-      (execution.observe app who) event rfl turn unrecorded clear⟩
+      (execution.observe (application setup leaks) who) event rfl turn unrecorded clear⟩
 
 variable [Fintype Player]
 
