@@ -2063,8 +2063,10 @@ menu at whole inputs. Clear binding and resolution cases derive fresh typed slot
 protected windows and TRUE certificate/guard success; expanded inputs transport
 effective responses. Invocation and resume coupling use the same retained
 implementation for noncommitments, fresh copies and fixed reuses with matching
-meanings or actual public associations. The finite stopped coupling currently
-composes the fresh-copy slice; finite reused-candidate closure and terminal utility
+meanings or actual public associations. The finite stopped coupling composes
+fresh copies. For an actual missing-registration origin it also composes fixed
+reuses outside the initially changed slot or with a public association. Reuse of
+that slot without association, initial mistyped certificates and terminal utility
 domination remain open.
 Fresh copied bindings retain their actual handler outcome or expiry through
 candidate-only repair memory. The fixed-calendar repair induction carries
@@ -2087,12 +2089,25 @@ derives the actual acceptable protected call from a clear legal unusable-binding
 input, including absent or mistyped material. At a completed raw continuation,
 its sole identifier gives an accepting receipt and the actual used-handle
 association. Sole remains explicit because a later raw retry can void protection.
+[SourceServiceUnusableDuplicate](../Vegas/Game/SourceServiceUnusableDuplicate.lean)
+proves the actual sole-or-duplicate partition from recalled responses and real
+traffic records. At complete settlement this yields used association or the
+existing conditional one-time collection bound; it gives no renewed fine or
+whole-policy utility comparison.
 [ReactiveBindingUsedCommitment](../Vegas/Pending/ReactiveBindingUsedCommitment.lean)
 derives complete-frame rejection of any commitment reusing a publicly associated
 handle, regardless of private candidate meaning. The actual traffic relation
 retains completed events, permanent used associations or matching candidate meanings
-through arbitrary responses and scheduler commands. General finite reuse closure
+through arbitrary responses and scheduler commands. Full commitment support
 and the duplicate-packet strategic comparison remain open.
+
+[ReactiveBindingCandidateAgreement](../Vegas/Pending/ReactiveBindingCandidateAgreement.lean)
+derives candidate equality outside the one changed slot from two actual
+same-before registrations and their real preparation runs. Replacing absent
+material preserves every old owned certificate. The same finite continuation
+induction carries already equal slots through shared responses and actual
+scheduler steps, allowing the fixed-reuse consumer to derive its resources
+from those origins. It supplies no terminal utility comparison.
 
 [ReactiveBindingCopiedSubmission](../Vegas/Pending/ReactiveBindingCopiedSubmission.lean)
 preserves the full frame and actual raw candidate capability when a later fresh
@@ -2111,7 +2126,8 @@ proves full-frame inclusion closure for matching fixed owner candidates,
 including rejected and late calls. Actual fresh usable submission establishes
 these matching meanings and completed-boundary memory without assuming
 protected inclusion. Local matching-fixed response closure is also checked;
-finite reuse closure and changed unassociated candidates remain open.
+the actual missing-origin fixed-reuse slice is composed by the stopped coupling.
+Changed unassociated candidates and initial mistyped certificates remain separate.
 [ReactiveUsedBindingOpening](../Vegas/Pending/ReactiveUsedBindingOpening.lean)
 proves every opening of a used mistyped candidate is rejected. Its authentic
 certificate may fail the public association or typed guard check.

@@ -3,6 +3,7 @@
 import Vegas.Pending.ReactiveBindingCommitmentProvenance
 import Vegas.Pending.ReactiveBindingInertWindow
 import Vegas.Pending.ReactiveBindingCopiedSubmission
+import Vegas.Pending.ReactiveBindingCandidateAgreement
 
 /-! # Joint owner responses with actual binding meanings
 
@@ -252,8 +253,12 @@ theorem copied_effective_response_coupling
           OwnerCommitmentsInertOrMatching owner next.1 next.2.1 ∧
           reference.length ≤ (next.2.1.recall owner).length ∧
           next.1.InputRecall app ∧ next.2.1.InputRecall app ∧
-          ∀ slot raw, next.1.application.candidates.lookup (owner, slot) = .openable raw →
-            next.2.1.application.candidates.lookup (owner, slot) = .openable raw := by
+          (∀ slot raw, next.1.application.candidates.lookup (owner, slot) = .openable raw →
+            next.2.1.application.candidates.lookup (owner, slot) = .openable raw) ∧
+          ∀ slot, original.application.candidates.lookup (owner, slot) =
+              repaired.application.candidates.lookup (owner, slot) →
+            next.1.application.candidates.lookup (owner, slot) =
+              next.2.1.application.candidates.lookup (owner, slot) := by
   classical
   let app := runtime.reactiveApplication leaks
   let law := players owner (original.recall owner) (original.observe app owner)
@@ -317,9 +322,12 @@ theorem copied_effective_response_coupling
     rw [same] at frameAfter ledgerAfter openedAfter
     refine ⟨frameAfter, held.2.1, held.2.2.1, ledgerAfter, ?_,
       app.respond_inputRecall original owner response leftRecall,
-      app.respond_inputRecall repaired owner response rightRecall, openedAfter⟩
-    rw [app.respond_recall_length]
-    omega
+      app.respond_inputRecall repaired owner response rightRecall, openedAfter, ?_⟩
+    · rw [app.respond_recall_length]
+      omega
+    · intro slot matched
+      exact runtime.reactive_respond_owner_candidate_eq leaks owner original repaired slot matched
+        owner response
 
 end BindingMemory.Frame
 

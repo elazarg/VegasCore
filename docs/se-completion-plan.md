@@ -786,8 +786,9 @@ for every inclusion bound. Ordinary runtime invariants come from initialized raw
 the real evaluator. One common finite induction serves the complete bounded
 effective menu and the risk menu. Its risk consumer derives repaired admission
 from actual original risk support, current binding invariants and recalled
-records. Reused bindings and terminal utility domination
-remain open.
+records. Missing-registration origins additionally allow the fixed-reuse slice
+described below. Full commitment support and terminal utility domination remain
+open.
 [ReactiveBindingRiskRecall](../Vegas/Pending/ReactiveBindingRiskRecall.lean)
 derives the actual initial risk-record equality from both raw traces, their
 common scheduler history and submitted event names. Public response before-views
@@ -800,8 +801,10 @@ menu at whole inputs. Clear binding and resolution cases derive fresh typed slot
 protected windows and TRUE certificate/guard success; expanded inputs transport
 effective responses. Invocation and resume coupling use the same retained
 implementation for noncommitments, fresh copies and fixed reuses with matching
-meanings or actual public associations. The finite stopped coupling currently
-composes the fresh-copy slice; finite reused-candidate closure and terminal utility
+meanings or actual public associations. The finite stopped coupling composes
+fresh copies. For an actual missing-registration origin it also composes fixed
+reuses outside the initially changed slot or with a public association. Reuse of
+that slot without association, initial mistyped certificates and terminal utility
 domination remain open.
 Fresh copied bindings use candidate-only repair memory and preserve their
 actual handler outcome or expiry. The fixed-calendar repair induction carries
@@ -825,12 +828,26 @@ derives the actual acceptable protected call from a clear legal unusable-binding
 input, including absent or mistyped material. At a completed raw continuation,
 its sole identifier gives an accepting receipt and the actual used-handle
 association. Sole remains explicit because a later raw retry can void protection.
+[SourceServiceUnusableDuplicate](../Vegas/Game/SourceServiceUnusableDuplicate.lean)
+removes sole as a blanket continuation promise: every actual recall extension
+has either the sole identifier or two real same-event owner traffic records.
+At complete settlement, the first branch records the handle and the second
+gets the existing conditional one-time collection bound. This supplies no
+renewed fine or whole-policy utility comparison.
 [ReactiveBindingUsedCommitment](../Vegas/Pending/ReactiveBindingUsedCommitment.lean)
 derives complete-frame rejection of any commitment reusing a publicly associated
 handle, regardless of private candidate meaning. The actual traffic relation
 retains completed events, permanent used associations or matching candidate meanings
-through arbitrary responses and scheduler commands. General finite reuse closure
+through arbitrary responses and scheduler commands. Full commitment support
 and the duplicate-packet strategic comparison remain open.
+
+[ReactiveBindingCandidateAgreement](../Vegas/Pending/ReactiveBindingCandidateAgreement.lean)
+derives candidate equality outside the one changed slot from two actual
+same-before registrations and their real preparation runs. Replacing absent
+material preserves every old owned certificate. The same finite continuation
+induction carries already equal slots through shared responses and actual
+scheduler steps, allowing the fixed-reuse consumer to derive its resources
+from those origins. It supplies no terminal utility comparison.
 
 [ReactiveBindingCopiedSubmission](../Vegas/Pending/ReactiveBindingCopiedSubmission.lean)
 proves that copying a later fresh bare commitment with its original material
@@ -840,14 +857,16 @@ already admitted at the actual input, otherwise trying default repair and a
 legal fallback. Both transformations share one sampling and response-recording
 engine. Calendar callers derive agreement from the actual compiled menu.
 The stopped coupling composes fresh copies with arbitrary private material.
-Reused candidates and terminal utility comparisons remain open.
+Unassociated reuse of the changed slot, initial mistyped certificates and
+terminal utility comparisons remain open.
 
 [ReactiveBindingUsableStep](../Vegas/Pending/ReactiveBindingUsableStep.lean)
 proves full-frame inclusion closure for matching fixed owner candidates,
 including rejected and late calls. Actual fresh usable submission establishes
 these matching meanings and completed-boundary memory without assuming
 protected inclusion. Local matching-fixed response closure is also checked;
-finite reuse closure and changed unassociated candidates remain open.
+the actual missing-origin fixed-reuse slice is composed by the stopped coupling.
+Changed unassociated candidates and initial mistyped certificates remain separate.
 [ReactiveUsedBindingOpening](../Vegas/Pending/ReactiveUsedBindingOpening.lean)
 proves every opening of a used mistyped candidate is rejected. Its authentic
 certificate may fail the public association or typed guard check.

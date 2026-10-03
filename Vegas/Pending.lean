@@ -278,6 +278,7 @@ import Vegas.Pending.ReactiveBindingUsedCommitment
 import Vegas.Pending.ReactiveUsedBindingOpening
 import Vegas.Pending.ReactiveBindingCommitmentProvenance
 import Vegas.Pending.ReactiveCompletedConfig
+import Vegas.Pending.ReactiveBindingCandidateAgreement
 import Vegas.Pending.ReactiveBindingCopiedWindow
 import Vegas.Pending.ReactiveBindingCopiedResume
 

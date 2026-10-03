@@ -559,9 +559,10 @@ future private values changed by repair are outside the claim.
   derive fresh typed slots, protected windows and TRUE certificate/guard
   success; expanded inputs transport effective responses. The same retained
   implementation realizes invocation and resume coupling on the explicit
-  noncommitment/fresh-copy/fixed-reuse slice. The stopped coupling currently
-  composes fresh copies; finite reused-candidate closure and terminal utility
-  domination remain separate.
+  noncommitment/fresh-copy/fixed-reuse slice. The stopped coupling composes fresh
+  copies and, for actual missing-registration origins, fixed reuses outside the
+  changed slot or with public associations. Changed unassociated slots, initial
+  mistyped certificates and terminal utility domination remain separate.
 - [SourceServiceAliasEquilibrium](../Vegas/Game/SourceServiceAliasEquilibrium.lean)
   supplies the final private raw-alias transport, retaining correlated
   collection and prior charges.
@@ -755,12 +756,26 @@ derives the actual acceptable protected call from a clear legal unusable-binding
 input, including absent or mistyped material. At a completed raw continuation,
 its sole identifier gives an accepting receipt and the actual used-handle
 association. Sole remains explicit because a later raw retry can void protection.
+[SourceServiceUnusableDuplicate](../Vegas/Game/SourceServiceUnusableDuplicate.lean)
+proves the actual sole-or-duplicate partition from recalled responses and real
+traffic records. At complete settlement this yields used association or the
+existing conditional one-time collection bound; it gives no renewed fine or
+whole-policy utility comparison.
 [ReactiveBindingUsedCommitment](../Vegas/Pending/ReactiveBindingUsedCommitment.lean)
 derives complete-frame rejection of any commitment reusing a publicly associated
 handle, regardless of private candidate meaning. The actual traffic relation
 retains completed events, permanent used associations or matching candidate meanings
-through arbitrary responses and scheduler commands. General finite reuse closure
+through arbitrary responses and scheduler commands. Full commitment support
 and the duplicate-packet strategic comparison remain open.
+
+[ReactiveBindingCandidateAgreement](../Vegas/Pending/ReactiveBindingCandidateAgreement.lean)
+derives outside-slot equality and old-certificate preservation from genuine
+same-before missing/repair registrations and their actual preparations. The
+same finite continuation induction preserves already equal slots. Its fixed
+risk-menu consumer derives those resources from the real origins, admitting
+reuses outside the changed slot or with actual public associations. Full
+commitment support, initial mistyped certificates and terminal utility remain
+separate.
 
 [ReactiveBindingCopiedSubmission](../Vegas/Pending/ReactiveBindingCopiedSubmission.lean)
 preserves the full frame and actual raw candidate capability when a later fresh

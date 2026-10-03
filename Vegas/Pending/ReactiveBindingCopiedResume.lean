@@ -68,8 +68,12 @@ theorem copied_effective_resume_coupling
           OwnerCommitmentsInertOrMatching owner next.1 next.2.1 ∧
           reference.length ≤ (next.2.1.recall owner).length ∧
           next.1.InputRecall app ∧ next.2.1.InputRecall app ∧
-          ∀ slot raw, next.1.application.candidates.lookup (owner, slot) = .openable raw →
-            next.2.1.application.candidates.lookup (owner, slot) = .openable raw := by
+          (∀ slot raw, next.1.application.candidates.lookup (owner, slot) = .openable raw →
+            next.2.1.application.candidates.lookup (owner, slot) = .openable raw) ∧
+          ∀ slot, original.application.candidates.lookup (owner, slot) =
+              repaired.application.candidates.lookup (owner, slot) →
+            next.1.application.candidates.lookup (owner, slot) =
+              next.2.1.application.candidates.lookup (owner, slot) := by
   let app := runtime.reactiveApplication leaks
   let strategy := retainedImplementation runtime leaks (bounds.menu runtime leaks)
     owner reference (players owner)
@@ -79,7 +83,7 @@ theorem copied_effective_resume_coupling
         PMF.pure_map .., fun next member => by
           cases (PMF.mem_support_pure_iff _ _).mp member
           exact ⟨frame, onlyBindings, past, provenance, started, leftRecall, rightRecall,
-            preserved⟩⟩
+            preserved, fun _ matched => matched⟩⟩
   | some actor =>
       by_cases own : actor = owner
       · subst actor
@@ -118,7 +122,7 @@ theorem copied_effective_resume_coupling
             provenance.respond_noncommitment leftBinding actor response response
               (fun same => (own same).elim), ?_,
             app.respond_inputRecall original actor response leftRecall,
-            app.respond_inputRecall repaired actor response rightRecall, ?_⟩
+            app.respond_inputRecall repaired actor response rightRecall, ?_, ?_⟩
           · rw [(runtime.reactive_respond_application leaks original actor response).1]
             exact past
           · rw [app.respond_recall_other repaired actor owner (Ne.symm own) response]
@@ -127,5 +131,8 @@ theorem copied_effective_resume_coupling
             rw [fixed original slot] at opened
             rw [fixed repaired slot]
             exact preserved slot raw opened
+          · intro slot matched
+            exact runtime.reactive_respond_owner_candidate_eq leaks owner original repaired slot
+              matched actor response
 
 end Vegas.EventGraphRuntime.BindingMemory.Frame

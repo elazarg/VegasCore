@@ -129,6 +129,7 @@ import Vegas.Game.SourceServiceRecordedCollection
 import Vegas.Game.SourceServiceResolutionComplement
 import Vegas.Game.SourceServiceUnusableBinding
 import Vegas.Game.SourceServiceUnusableProtectedCall
+import Vegas.Game.SourceServiceUnusableDuplicate
 import Vegas.Game.SourceServiceRiskExtension
 import Vegas.Game.SourceServiceAliasEquilibrium
 import Vegas.Game.SourceServiceRiskRawExtension

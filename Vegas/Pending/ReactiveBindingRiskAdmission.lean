@@ -13,8 +13,8 @@ input. Clear binding and resolution inputs derive fresh typed slots, protected
 opportunities, and actual certificate and guard transport. Expanded inputs
 retain every bounded effective response using their equal risk records. The
 actual invocation and resume coupling permits noncommitments, fresh owned
-registrations and fixed reuses with matching meanings or public associations.
-Unassociated changed fixed candidates and whole-continuation utility remain
+registrations and fixed reuses with matching meanings or a public association.
+Unassociated changed candidates and whole-continuation utility remain
 separate.
 -/
 
@@ -219,8 +219,12 @@ private theorem copied_retained_invoke_coupling
           OwnerCommitmentsInertOrMatching owner next.1 next.2.1 ∧
           reference.length ≤ (next.2.1.recall owner).length ∧
           next.1.InputRecall app ∧ next.2.1.InputRecall app ∧
-          ∀ slot raw, next.1.application.candidates.lookup (owner, slot) = .openable raw →
-            next.2.1.application.candidates.lookup (owner, slot) = .openable raw := by
+          (∀ slot raw, next.1.application.candidates.lookup (owner, slot) = .openable raw →
+            next.2.1.application.candidates.lookup (owner, slot) = .openable raw) ∧
+          ∀ slot, original.application.candidates.lookup (owner, slot) =
+              repaired.application.candidates.lookup (owner, slot) →
+            next.1.application.candidates.lookup (owner, slot) =
+              next.2.1.application.candidates.lookup (owner, slot) := by
   let app := runtime.reactiveApplication leaks
   let effectiveMenu := bounds.menu runtime leaks
   have retainedLaw := retainedImplementation_respond_of_members runtime leaks menu owner
@@ -544,8 +548,12 @@ theorem risk_copied_invoke_coupling
           OwnerCommitmentsInertOrMatching owner next.1 next.2.1 ∧
           reference.length ≤ (next.2.1.recall owner).length ∧
           next.1.InputRecall app ∧ next.2.1.InputRecall app ∧
-          ∀ slot raw, next.1.application.candidates.lookup (owner, slot) = .openable raw →
-            next.2.1.application.candidates.lookup (owner, slot) = .openable raw := by
+          (∀ slot raw, next.1.application.candidates.lookup (owner, slot) = .openable raw →
+            next.2.1.application.candidates.lookup (owner, slot) = .openable raw) ∧
+          ∀ slot, original.application.candidates.lookup (owner, slot) =
+              repaired.application.candidates.lookup (owner, slot) →
+            next.1.application.candidates.lookup (owner, slot) =
+              next.2.1.application.candidates.lookup (owner, slot) := by
   apply copied_retained_invoke_coupling frame onlyBindings past provenance leftBinding bounds
     (bounds.riskMenu runtime leaks bound) leftRecall rightRecall preserved players reference started
   · intro response chosen
@@ -603,8 +611,12 @@ theorem risk_copied_resume_coupling
           OwnerCommitmentsInertOrMatching owner next.1 next.2.1 ∧
           reference.length ≤ (next.2.1.recall owner).length ∧
           next.1.InputRecall app ∧ next.2.1.InputRecall app ∧
-          ∀ slot raw, next.1.application.candidates.lookup (owner, slot) = .openable raw →
-            next.2.1.application.candidates.lookup (owner, slot) = .openable raw := by
+          (∀ slot raw, next.1.application.candidates.lookup (owner, slot) = .openable raw →
+            next.2.1.application.candidates.lookup (owner, slot) = .openable raw) ∧
+          ∀ slot, original.application.candidates.lookup (owner, slot) =
+              repaired.application.candidates.lookup (owner, slot) →
+            next.1.application.candidates.lookup (owner, slot) =
+              next.2.1.application.candidates.lookup (owner, slot) := by
   let app := runtime.reactiveApplication leaks
   by_cases own : actor = some owner
   · subst actor
