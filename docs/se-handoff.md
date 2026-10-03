@@ -68,6 +68,10 @@ future private values changed by repair are outside the claim.
   joins the actual transmitting draw to its typed successor and full stopped
   traffic. Waiting remains separate; prescribed foreign continuations are
   required for the probability factorization.
+- [SourceServiceReachedDecoding](../Vegas/Game/SourceServiceReachedDecoding.lean)
+  derives source residuals with partial view recovery from their actual
+  transport maps. Native Bayes transport still needs one recovery shared
+  across the source prior, rather than independently chosen witnesses.
 - [AsyncServiceCounterfactualBeliefs](../Vegas/Game/AsyncServiceCounterfactualBeliefs.lean)
   cancels the entire focal owner's recalled-action likelihood from native
   Bayes normalization. Relative escape still needs a bound against the actual
@@ -81,6 +85,12 @@ future private values changed by repair are outside the claim.
   normalizer and joins waiting and transmission to full traffic. Its native
   traffic marginal is the real protected policy; whole-source prefix and
   belief assembly remain separate.
+- [SourceServiceResolutionMemoryCompletion](../Vegas/Game/SourceServiceResolutionMemoryCompletion.lean)
+  carries that same response joint law through actual stopped execution.
+  The native marginal uses the same stopping kernel; transmission retains
+  effective and current-owner intended successors, while waiting stays at
+  its post-response boundary. Other owners' original histories and source
+  assessment transport remain separate.
 - [SourceServiceRiskExtension](../Vegas/Game/SourceServiceRiskExtension.lean)
   extends an audited risk-menu equilibrium after classified packet coverage
   and other-exclusion comparisons are supplied. It does not embed a source

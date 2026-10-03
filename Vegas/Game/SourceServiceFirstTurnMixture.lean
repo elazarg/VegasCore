@@ -273,7 +273,8 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
   let := Fintype.ofFinite Player
   have decoded := residual.decode
   rcases residual with ⟨Γ, names, program, residualProfile, source, refs, embedding, refsBefore,
-    aligned, admitted, effective, supports, lift, commutes, steps, injective, transport,
+    aligned, admitted, effective, supports, lift, _recoverView, _viewRecovered, commutes,
+    steps, injective, transport,
     checkpoint⟩
   dsimp only at decoded
   have counted := aligned.graphSuffix.countEq

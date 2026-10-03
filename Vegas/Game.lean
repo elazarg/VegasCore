@@ -201,6 +201,7 @@ import Vegas.Game.SourceServiceResolutionResponseLaw
 import Vegas.Game.SourceServiceResolutionMemoryLaw
 import Vegas.Game.SourceServiceResolutionMemoryFactorization
 import Vegas.Game.SourceServiceResolutionResponseCompletion
+import Vegas.Game.SourceServiceResolutionMemoryCompletion
 import Vegas.Game.SourceServiceAsyncFactorization
 import Vegas.Game.SourceServiceBindingDecisionFactorization
 import Vegas.Game.SourceServiceDisclosureFactorization

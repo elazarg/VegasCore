@@ -9,7 +9,9 @@ import Vegas.Source.DisclosureSupport
 A native configuration at a completed prefix has a *source residual*: the
 remaining source program and source configuration, aligned with the compiled
 policy suffix from that rank, agreeing with the native store and history, and
-through which the whole-program prefix decoder factors. Residuals exist at
+through which the whole-program prefix decoder factors. Its residual source
+view is recovered from the whole source view by the actual source continuation.
+Residuals exist at
 initialization and survive every configuration step, whatever action completes
 the ready event, so every configuration reached by any players under any
 scheduler has one (`Vegas.roundsFrom_sourceResidual`).
@@ -59,6 +61,10 @@ structure SourceResidual (rank : Nat) (config : (graph setup).Config) : Type whe
     ∀ who, (residualProfile who).SupportsEffectiveChoices program
       (CommitmentInterface.values program) source.registry source.revelations
   lift : ProtocolState program → ProtocolState setup.program
+  recoverView : ∀ who, ProtocolView who setup.program → Option (ProtocolView who program)
+  recoverView_lift_observe : ∀ who state,
+    recoverView who (ProtocolState.observe who setup.program (lift state)) =
+      some (ProtocolState.observe who program state)
   commutes : ∀ [Fintype Player] state,
     ProtocolState.behavioralStateStep setup.program profile (lift state) =
       (ProtocolState.behavioralStateStep program residualProfile state).map lift
@@ -106,6 +112,8 @@ def SourceResidual.initial (initial : State L setup.context) :
   effective := fun effective => effective
   supports := fun supported => supported
   lift := id
+  recoverView := fun _ => some
+  recoverView_lift_observe := fun _ _ => rfl
   commutes := fun state => by simp only [id_eq, PMF.map_id]
   steps := fun state joint => by simp only [id_eq, PMF.map_id]
   injective := Function.injective_id
@@ -130,8 +138,8 @@ theorem SourceResidual.step {rank : Nat} {before : (graph setup).Config}
     (member : after ∈ (before.step event ready action).support) :
     Nonempty (SourceResidual setup profile (rank + 1) after) := by
   obtain ⟨Γ, names, program, residualProfile, source, refs, embedding, refsBefore, aligned,
-    admitted, effective, supports, lift, commutes, steps, injective, transport,
-    checkpoint⟩ := residual
+    admitted, effective, supports, lift, recoverView, recoverView_lift_observe,
+    commutes, steps, injective, transport, checkpoint⟩ := residual
   have atEvent := (ready_iff_rank setup before rank checkpoint.ordered event).mp ready
   have counted := aligned.graphSuffix.countEq
   change rank + eventCount program = (graph setup).order.eventCount at counted
@@ -194,11 +202,17 @@ theorem SourceResidual.step {rank : Nat} {before : (graph setup).Config}
         effective := fun whole who => effective whole who,
         supports := fun whole who => supports whole who,
         lift := lift ∘ Sum.inr,
+        recoverView := fun who view => (recoverView who view).bind Sum.getRight?,
+        recoverView_lift_observe := fun who state => ?_,
         commutes := fun state => ?_, steps := fun state joint => ?_,
         injective := injective.comp Sum.inr_injective,
         transport := fun more store history => ?_,
         checkpoint := checkpoint.sample (native := configState before) name (embedding.event index)
           atRank ready outputEq (fun ref => refsBefore ref index) decoded value }⟩
+      · change (recoverView who (ProtocolState.observe who setup.program
+          (lift (Sum.inr state)))).bind Sum.getRight? = _
+        rw [recoverView_lift_observe]
+        rfl
       · rw [Function.comp_apply, commutes, ProtocolState.behavioralStateStep_sample_tail,
           PMF.map_comp]
       · rw [Function.comp_apply, steps]
@@ -261,12 +275,18 @@ theorem SourceResidual.step {rank : Nat} {before : (graph setup).Config}
         effective := fun whole who => effective whole who,
         supports := fun whole who => (supports whole who).2,
         lift := lift ∘ Sum.inr,
+        recoverView := fun who view => (recoverView who view).bind Sum.getRight?,
+        recoverView_lift_observe := fun who state => ?_,
         commutes := fun state => ?_, steps := fun state joint => ?_,
         injective := injective.comp Sum.inr_injective,
         transport := fun more store history => ?_,
         checkpoint := checkpoint.commit (native := configState before) name guard
           (embedding.event index) atRank ready outputEq (fun ref => refsBefore ref index)
           choice decoded }⟩
+      · change (recoverView who (ProtocolState.observe who setup.program
+          (lift (Sum.inr state)))).bind Sum.getRight? = _
+        rw [recoverView_lift_observe]
+        rfl
       · rw [Function.comp_apply, commutes, ProtocolState.behavioralStateStep_commit_tail,
           PMF.map_comp]
       · rw [Function.comp_apply, steps]
@@ -337,12 +357,18 @@ theorem SourceResidual.step {rank : Nat} {before : (graph setup).Config}
         effective := fun whole who => (effective whole who).2,
         supports := fun whole who => (supports whole who).2,
         lift := lift ∘ Sum.inr,
+        recoverView := fun who view => (recoverView who view).bind Sum.getRight?,
+        recoverView_lift_observe := fun who state => ?_,
         commutes := fun state => ?_, steps := fun state joint => ?_,
         injective := injective.comp Sum.inr_injective,
         transport := fun more store history => ?_,
         checkpoint := checkpoint.reveal (native := configState before) published selected
           (embedding.event index) atRank ready outputEq (fun ref => refsBefore ref index)
           disclose decoded }⟩
+      · change (recoverView who (ProtocolState.observe who setup.program
+          (lift (Sum.inr state)))).bind Sum.getRight? = _
+        rw [recoverView_lift_observe]
+        rfl
       · rw [Function.comp_apply, commutes, ProtocolState.behavioralStateStep_reveal_tail,
           PMF.map_comp]
       · rw [Function.comp_apply, steps]

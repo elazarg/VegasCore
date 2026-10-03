@@ -1370,6 +1370,12 @@ restore erased original disclosure intentions or supply a source prior.
 Its probability theorem keeps the same actual response and stopping draws
 joint with full traffic. The normalized transmitting prefix marginal equals
 that whole behavioral source step; waiting remains an unfinished branch.
+The residual also carries a partial recovery of each owner's source view,
+proved directly for its actual transport map. Recovery uses the source
+constructors rather than a default private value. This pointwise law does not
+yet give independently chosen residual witnesses one common recovery across
+a prior; that shared syntax-based construction remains necessary for Bayes
+transport.
 
 [SourceServiceResolutionResponseLaw](../Vegas/Game/SourceServiceResolutionResponseLaw.lean)
 derives the corresponding physical FALSE/TRUE packet marginal for effective
@@ -1390,6 +1396,16 @@ joint law has the actual protected native policy's traffic marginal. The prior
 channel is supplied only for the effective source configuration. This local
 memory lift does not assemble all owners' original histories or identify the
 source assessment at a native information site.
+
+[SourceServiceResolutionMemoryCompletion](../Vegas/Game/SourceServiceResolutionMemoryCompletion.lean)
+extends this same joint law through actual stopped execution. Waiting stays
+at its post-response native boundary; transmitting branches retain the
+effective successor, the current owner's restored intended successor and
+full stopped traffic. The native execution marginal is the actual response
+followed by the same own-record-dependent stopping kernel. Supported
+transmitting endpoints agree with both successors' typed states and decode
+the effective history. This proves neither a whole original-source history
+law nor a native source-assessment equation.
 
 [SourceServiceResolutionResponseCompletion](../Vegas/Game/SourceServiceResolutionResponseCompletion.lean)
 connects a supported original intention from that memory lottery to the actual

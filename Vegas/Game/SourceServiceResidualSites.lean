@@ -90,7 +90,8 @@ theorem SourceResidual.bindingSource {event : (graph setup).EventId}
     (isBinding : (graph setup).outputLayout event = .binding owner payload) :
     Nonempty (BindingSource setup profile event config) := by
   obtain ⟨Γ, names, program, residualProfile, source, refs, embedding, refsBefore, aligned,
-    _admitted, _effective, _supports, _lift, _commutes, _steps, _injective, _transport,
+    _admitted, _effective, _supports, _lift, _recoverView, _viewRecovered, _commutes, _steps,
+    _injective, _transport,
     checkpoint⟩ := residual
   cases program with
   | ret result =>
@@ -133,7 +134,8 @@ theorem SourceResidual.revealSource {event : (graph setup).EventId}
     (isPublication : (graph setup).outputLayout event = .publication payload) :
     Nonempty (RevealSource setup profile event config) := by
   obtain ⟨Γ, names, program, residualProfile, source, refs, embedding, refsBefore, aligned,
-    _admitted, effective, supports, _lift, _commutes, _steps, _injective, _transport,
+    _admitted, effective, supports, _lift, _recoverView, _viewRecovered, _commutes, _steps,
+    _injective, _transport,
     checkpoint⟩ := residual
   cases program with
   | ret result =>
