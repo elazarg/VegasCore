@@ -1448,13 +1448,15 @@ preserves that same input sample. Equal complete owner traffic gives equal
 activation-input laws.
 
 [SourceServiceFirstActivationFactorization](../Vegas/Game/SourceServiceFirstActivationFactorization.lean)
-factors the whole preceding public-scheduler binding wait to that actual
-first owner input. It replaces pre-hit rounds with the actual silent kernel
+factors the whole preceding public-scheduler wait at any owned binding or
+resolution to that actual first owner input. It replaces pre-hit rounds with
+the actual silent kernel
 inside the stopped-input continuation; the stopping response lottery
 integrates out. A legitimate prior source-view/full-traffic factorization
 therefore retains its complete source carrier and yields an input channel.
-Complete play gives total mass on real inputs. The prior source marginal is
-preserved; the initialized rank law below derives it separately. Post-response
+Complete play gives total mass on real inputs at every supported source view.
+The prior source marginal is preserved; the initialized rank law below derives
+it separately. Post-response
 full traffic is not identified with pre-response input noise.
 
 [SourceServiceFirstTurnCompletes](../Vegas/Game/SourceServiceFirstTurnCompletes.lean)

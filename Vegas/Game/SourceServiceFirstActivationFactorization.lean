@@ -2,8 +2,9 @@
 
 import Vegas.Game.SourceServiceFirstActivation
 import Vegas.Game.SourceServiceStoppedBindingTraffic
+import Vegas.Game.SourceServiceCanonicalConformance
 
-/-! # The actual first-owner-input channel during a binding
+/-! # The actual first-owner-input channel during an owned decision
 
 The actual initialized first-turn policy is used throughout the stopping law.
 Before the first ready owner response, foreign players have no ready turn.
@@ -208,18 +209,15 @@ private theorem firstTurn_ready_after_nonhit_round
 /-- Equal complete owner traffic determines the whole actual first-ready-owner
 input law through public scheduling. Both executions are actual initialized
 prefixes of the same exact first-turn profile. -/
-theorem sourceServiceFirstActivation_binding_input_runUntil_congr
+theorem sourceServiceFirstActivation_input_runUntil_congr
     {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
     {delay bound : (graph setup).EventId → Nat}
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
       delay bound)
     (timely : AsyncTimely (runtime setup) delay bound)
     (turns : Nat) (profile : BehavioralProfile setup.program)
-    (owner : Player) (event : (graph setup).EventId) (payload : L.Ty)
-    (outputEq : (graph setup).outputLayout event = .binding owner payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind owner payload)
-    (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
+    (owner : Player) (event : (graph setup).EventId)
+    (owned : (graph setup).actor? event = some owner)
     (count : Nat) (left right : (application setup leaks).Execution)
     (within : left.environmentRecall.length + count ≤ horizon)
     (leftInitialized : left ∈ ((application setup leaks).roundsFrom (initialLaw setup) scheduler
@@ -249,7 +247,6 @@ theorem sourceServiceFirstActivation_binding_input_runUntil_congr
     sourceServiceTurnInput? setup leaks owner event (final.recall owner) ≠ none
   let read := fun final : app.Execution =>
     sourceServiceTurnInput? setup leaks owner event (final.recall owner)
-  have owned := binding_actor setup event owner payload outputEq
   induction count generalizing left right with
   | zero =>
       have recalls := congrArg (fun traffic => traffic.2.2.2.1) same
@@ -276,8 +273,37 @@ theorem sourceServiceFirstActivation_binding_input_runUntil_congr
           event count left ready owned,
           prehit_round_continuation_silent setup leaks scheduler bound turns profile owner
             event count right rightReady owned]
-        have rounds := (runtime setup).bindingTraffic_silent_round leaks scheduler owner left
-          right same event owner payload outputEq codeEq node (soleReady_of_ready setup _ ready)
+        have rounds : (app.round scheduler (fun _ => app.silentPolicy) left).map
+            ((runtime setup).bindingTraffic leaks owner) =
+          (app.round scheduler (fun _ => app.silentPolicy) right).map
+            ((runtime setup).bindingTraffic leaks owner) := by
+          cases node : nodeView (graph setup) event with
+          | sample payload law outputEq codeEq =>
+              have none := nodeView_sample_actor outputEq codeEq
+              rw [owned] at none
+              cases none
+          | bind actor payload outputEq codeEq =>
+              have actorEq : actor = owner :=
+                Option.some.inj ((nodeView_bind_actor outputEq codeEq).symm.trans owned)
+              subst actorEq
+              exact (runtime setup).bindingTraffic_silent_round leaks scheduler actor left right
+                same event actor payload outputEq codeEq node (soleReady_of_ready setup _ ready)
+          | resolve actor payload binding checks outputEq codeEq =>
+              have actorEq : actor = owner :=
+                Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
+              subst actorEq
+              obtain ⟨leftTrace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler
+                players left.environmentRecall.length (by omega) left leftInitialized
+              obtain ⟨rightTrace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler
+                players right.environmentRecall.length (by rw [← environments]; omega) right
+                  rightInitialized
+              have conform : FreshCallsConform setup leaks left actor := by
+                intro entry member material message submits emitted
+                exact sourceServiceTurnPolicy_freshServiceEnvelope scheduler players actor
+                  (firstTurnTiming setup turns) profile rfl _ left leftInitialized entry member
+                  material submits message emitted
+              exact source_resolution_conforming_silent_round setup leaks leftTrace rightTrace
+                conform ready payload binding checks outputEq codeEq node actor same
         apply bind_eq_of_map_eq _ _ _ _ rounds
         intro nextLeft leftMove nextRight rightMove nextSame
         have nextRecalls := congrArg (fun traffic => traffic.2.2.2.1) nextSame
@@ -316,8 +342,10 @@ theorem sourceServiceFirstActivation_binding_input_runUntil_congr
 /-- A genuine prior source-view/full-traffic factorization survives the whole
 first-ready-owner input stop. The carrier can retain original and effective
 source configurations together. No source marginal or posterior is supplied;
-the existing carrier marginal is preserved by actual public scheduling. -/
-theorem sourceServiceFirstActivation_binding_input_factorization
+the existing carrier marginal is preserved by actual public scheduling.
+At every supported prior view the resulting channel has total mass on real
+before-response inputs, as derived from contract completeness. -/
+theorem sourceServiceFirstActivation_input_factorization
     {Seed Source View : Type}
     {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
     {delay bound : (graph setup).EventId → Nat}
@@ -325,11 +353,8 @@ theorem sourceServiceFirstActivation_binding_input_factorization
       delay bound)
     (timely : AsyncTimely (runtime setup) delay bound)
     (turns : Nat) (profile : BehavioralProfile setup.program)
-    (owner : Player) (event : (graph setup).EventId) (payload : L.Ty)
-    (outputEq : (graph setup).outputLayout event = .binding owner payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind owner payload)
-    (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
+    (owner : Player) (event : (graph setup).EventId)
+    (owned : (graph setup).actor? event = some owner)
     (prior : PMF Seed) (source : Seed → Source) (observe : Source → View)
     (execution : Seed → (application setup leaks).Execution)
     (boundary : ∀ seed ∈ prior.support,
@@ -350,8 +375,10 @@ theorem sourceServiceFirstActivation_binding_input_factorization
             none) horizon (execution seed)).map fun final =>
               (source seed, sourceServiceTurnInput? setup leaks owner event
                 (final.recall owner))) =
-      (prior.map source).bind fun config =>
-        (channel (observe config)).map fun input => (config, input) := by
+      ((prior.map source).bind fun config =>
+        (channel (observe config)).map fun input => (config, input)) ∧
+      ∀ config ∈ (prior.map source).support,
+        (channel (observe config)).map Option.isSome = PMF.pure true := by
   let app := application setup leaks
   let players := sourceServiceTurnPolicy setup leaks bound turns (firstTurnTiming setup turns)
     profile
@@ -372,18 +399,46 @@ theorem sourceServiceFirstActivation_binding_input_factorization
       rw [← environments]
       have ready : (execution left).application.config.cut.Ready event :=
         (ready_iff_rank setup _ event.val (boundary left leftSupport).ordered event).mpr rfl
-      exact sourceServiceFirstActivation_binding_input_runUntil_congr setup leaks contract
-        timely turns profile owner event payload outputEq codeEq node _ (execution left)
+      exact sourceServiceFirstActivation_input_runUntil_congr setup leaks contract
+        timely turns profile owner event owned _ (execution left)
         (execution right) (by have bounded := within left leftSupport; omega)
         (boundary left leftSupport).supported (boundary right rightSupport).supported ready same)
-  refine ⟨channel, ?_⟩
-  simpa only [PMF.pure_bind, PMF.pure_map, PMF.bind_pure, PMF.map_id,
-    PMF.map_comp, Function.comp_def] using law
+  have joint : (prior.bind fun seed =>
+        (app.runUntilHorizon scheduler players stop horizon (execution seed)).map fun final =>
+          (source seed, read final)) =
+      (prior.map source).bind fun config =>
+        (channel (observe config)).map fun input => (config, input) := by
+    simpa only [PMF.pure_bind, PMF.pure_map, PMF.bind_pure, PMF.map_id,
+      PMF.map_comp, Function.comp_def] using law
+  refine ⟨channel, joint, ?_⟩
+  intro config configSupport
+  rw [map_congr_on_support _ (g := fun _ => true) ?_]
+  · exact PMF.map_const _ _
+  · intro input inputSupport
+    have carried : (config, input) ∈ ((prior.map source).bind fun state =>
+        (channel (observe state)).map fun item => (state, item)).support := by
+      rw [PMF.support_bind]
+      refine Set.mem_iUnion₂.mpr ⟨config, configSupport, ?_⟩
+      rw [PMF.support_map]
+      exact ⟨input, inputSupport, rfl⟩
+    rw [← joint] at carried
+    obtain ⟨seed, seedSupport, endpoint⟩ :=
+      Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ carried)
+    obtain ⟨stopped, stoppedSupport, paired⟩ := PMF.support_map .. ▸ endpoint
+    have inputEq := congrArg Prod.snd paired
+    change read stopped = input at inputEq
+    rw [← inputEq]
+    have hit := (sourceServiceFirstActivation_stopped contract timely players owner turns profile
+      rfl (execution seed) (within seed seedSupport) (boundary seed seedSupport).supported event
+      owned stopped stoppedSupport).2
+    cases actual : read stopped with
+    | none => exact (hit actual).elim
+    | some pair => rfl
 
 /-- The actual whole stopping channel has total mass on real owner inputs.
 This is contract completeness applied to initialized prefixes, rather than a
 normalization of the input readout or a coverage assumption. -/
-theorem sourceServiceFirstActivation_binding_input_total
+theorem sourceServiceFirstActivation_input_total
     {Seed : Type}
     {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
     {delay bound : (graph setup).EventId → Nat}

@@ -109,7 +109,8 @@ configuration is unchanged, and the input has protected inclusion. Its recall
 readout integrates the actual response lottery after the same passive sample.
 [SourceServiceFirstActivationFactorization](../Vegas/Game/SourceServiceFirstActivationFactorization.lean)
 preserves a prior source-view/full-traffic factorization through the entire
-binding wait to that input. Whole-prefix source/traffic assembly remains a
+binding or resolution wait to that input, with total mass on real inputs at
+every supported prior view. Whole-prefix source/traffic assembly remains a
 separate obligation.
 
 [SourceServiceFirstTurnCompletes](../Vegas/Game/SourceServiceFirstTurnCompletes.lean)

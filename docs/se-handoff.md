@@ -71,7 +71,8 @@ future private values changed by repair are outside the claim.
   integrating the response lottery preserves that same passive sample.
 - [SourceServiceFirstActivationFactorization](../Vegas/Game/SourceServiceFirstActivationFactorization.lean)
   carries a prior source-view/full-traffic factorization through the whole
-  binding wait to the actual first owner input. The source carrier may retain
+  binding or resolution wait to the actual first owner input, with total mass
+  on real inputs at every supported prior view. The source carrier may retain
   original and effective states together. It preserves the given carrier
   marginal. The initialized rank law supplies the source marginal separately;
   assembling the whole source/traffic induction remains open.
