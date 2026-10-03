@@ -205,7 +205,8 @@ theorem charged_expected_utility_le_immediate
 
 open Classical in
 /-- Actual compatible pins and free-site comparisons turn the clean
-comparator bound into a no-gain comparison against the same assessment.
+comparator bound into a no-gain comparison against the same assessment,
+allowing an arbitrary whole focal continuation after the classified choice.
 The backend's collection coverage remains an explicit operational hypothesis. -/
 theorem charged_expected_utility_le_assessment
     (base : (app).ProtocolState → Player → ℝ)
@@ -230,7 +231,8 @@ theorem charged_expected_utility_le_assessment
     (classified : auditableServiceChoice service.setup service.leaks (menu) service.horizon
       service.scheduler who site.1 choice ∨
         recordedServiceChoice service.setup service.leaks (menu) service.horizon
-          service.scheduler who site.1 choice) :
+          service.scheduler who site.1 choice)
+    (alternative : (model).BehavioralPolicy who) :
     let certificate := ((menu).bounded (initialLaw service.setup) service.horizon
       service.scheduler).wellFoundedHistories
     let probability := fun player => observationRate player * deliveryRate player
@@ -248,7 +250,7 @@ theorem charged_expected_utility_le_assessment
         (assessment.continuationContext certificate current (payoff player)).value
           (assessment.strategy player)) →
     (assessment.continuationContext certificate site (payoff who)).value
-        ((assessment.strategy who).commit site.1 choice) ≤
+        (alternative.commit site.1 choice) ≤
       (assessment.continuationContext certificate site (payoff who)).value
         (assessment.strategy who) := by
   intro certificate probability deposit observe audit payoff freeOptimal
@@ -257,11 +259,13 @@ theorem charged_expected_utility_le_assessment
       (service.effectiveImmediateComparator reference who)
       (fun current compatible => (prescribed current compatible).symm)
   have charged := service.charged_expected_utility_le_immediate base backend observationRate
-    deliveryRate delivery_nonnegative coverage reference who permitted positive assessment.strategy
+    deliveryRate delivery_nonnegative coverage reference who permitted positive
+      (Profile.update (sig := (model).behavioralSignature) assessment.strategy who alternative)
       site compatible choice classified (assessment.belief who site)
+  simp only [Profile.update_same, Profile.update_idem] at charged
   have committedTower := assessment.continuationContextWith_value_tower
     ((model).runBehavioralTerminalFrom certificate) site (payoff who)
-    ((assessment.strategy who).commit site.1 choice) (payoffIntegrable_of_finite _ _)
+    (alternative.commit site.1 choice) (payoffIntegrable_of_finite _ _)
   have comparatorTower := assessment.continuationContextWith_value_tower
     ((model).runBehavioralTerminalFrom certificate) site (payoff who)
     (service.effectiveImmediateComparator reference who) (payoffIntegrable_of_finite _ _)

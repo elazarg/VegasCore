@@ -23,7 +23,9 @@ sampled settlement laws agree with exact first-turn source execution.
 Free information sites receive a consistent completion optimal against every
 whole owner continuation policy.
 Completed source-compatible sites are also rational when the owner's deposit
-is nonnegative. Comparisons at unfinished prescribed sites and compatibility
+is nonnegative. Actual backend coverage also bounds every focal continuation
+whose first choice is classified charged or recorded. Uncharged comparisons at
+unfinished prescribed sites and compatibility
 with a varying original source assessment sequence are not asserted. In
 particular, normalization at zero-mass private transcripts is not assumed
 continuous.
@@ -448,7 +450,8 @@ private theorem compatible_geometric_effective_limit
 open Classical in
 /-- A fixed admitted effective source profile has a consistent full effective
 native completion. Free sites are optimal against every whole continuation;
-completed compatible sites with nonnegative deposits are rational. Protected
+completed compatible sites with nonnegative deposits are rational. Backend
+coverage bounds arbitrary focal continuations after classified charged choices. Protected
 sites keep the source decision and the same initialized history and sampled
 settlement laws as exact first-turn play. -/
 theorem exists_consistent_source_completion
@@ -505,8 +508,9 @@ theorem exists_consistent_source_completion
               service.scheduler who site.1 choice ∨
               recordedServiceChoice service.setup service.leaks (effectiveMenu) service.horizon
                 service.scheduler who site.1 choice) →
+            ∀ alternative : (effectiveModel).BehavioralPolicy who,
             (assessment.continuationContext certificate site (payoff who)).value
-                ((assessment.strategy who).commit site.1 choice) ≤
+                (alternative.commit site.1 choice) ≤
               (assessment.continuationContext certificate site (payoff who)).value
                 (assessment.strategy who)) ∧
       (effectiveModel).runBehavioralTerminalFrom certificate assessment.strategy
@@ -652,13 +656,13 @@ theorem exists_consistent_source_completion
       exact freeOptimal player current (Finset.mem_filter.mpr
         ⟨Finset.mem_univ _, incompatible⟩) law
   · intro backend observationRate deliveryRate sampling rates deliveryNonnegative coverage
-      who site compatible positive choice classified
+      who site compatible positive choice classified alternative
     subst sample probability
     apply service.charged_expected_utility_le_assessment base backend observationRate deliveryRate
       deliveryNonnegative coverage profile who (permitted who) positive assessment consistent
       (fun current currentCompatible => agrees who current (by
         simpa only [free, Finset.mem_filter, Finset.mem_univ, true_and, not_not] using
-          currentCompatible)) site compatible choice classified
+          currentCompatible)) site compatible choice classified alternative
     intro player current incompatible law
     exact freeOptimal player current (Finset.mem_filter.mpr
       ⟨Finset.mem_univ _, incompatible⟩) law

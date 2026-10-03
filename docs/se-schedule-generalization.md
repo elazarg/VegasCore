@@ -2196,6 +2196,13 @@ at the repaired input and emits the same envelope with the same resulting
 network. Charged and recorded responses remain separate exits. This local
 transport supplies neither an unconditional future frame nor a whole-policy
 utility comparison.
+[SourceServiceUnclassifiedSelection](../Vegas/Game/SourceServiceUnclassifiedSelection.lean)
+identifies the same retained implementation's actual uncharged, unrecorded
+selection. It copies a response admitted by the repaired risk menu or replaces
+an unusable private binding with its admitted typed default. The original
+response uses the full effective menu, without original risk support or global
+certificate-preservation assumptions. Charged and recorded responses remain
+separate exits; whole-future repair and payoff domination remain open.
 
 [SourceServiceSiteKind](../Vegas/Game/SourceServiceSiteKind.lean) derives the
 actual local input and either a publicly completed cut or a ready event with
@@ -2758,7 +2765,8 @@ compatible effective site and arbitrary future policies. No risk-profile
 extension or future risk support is assumed. The fixed-profile completion's
 actual compatible pins and free-site comparisons bound the clean comparator
 by the same returned assessment, yielding no gain from classified forbidden
-packets or recorded repetitions. The producer retains authentic partial sampling;
+packets or recorded repetitions followed by any focal whole continuation.
+The producer retains authentic partial sampling;
 its new conclusion requires alignment with the actual backend and configured
 observation/delivery product, final-evidence coverage, nonnegative delivery rates
 and a positive focal collection bound. This uses the existing one-time deposit.
@@ -2771,8 +2779,9 @@ compatible sites and the actual free-site comparisons bound its value by the
 returned assessment. Actual authentic zero charge and continuation continuity
 give that assessment the finite base-payoff minimum. The shared collection
 bound places a classified forbidden packet or recorded repetition below the
-same minimum, so both actual completion producers rule out those pure choices
-under the explicit backend conditions. No global normalized source-policy
+same minimum, so both actual completion producers rule out each classified
+first choice followed by any focal whole continuation under the explicit
+backend conditions. No global normalized source-policy
 limit or source-posterior equation is supplied. Uncharged unusable choices,
 other unfinished prescribed comparisons and SE preservation remain open.
 

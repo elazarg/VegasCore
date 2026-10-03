@@ -86,6 +86,7 @@ import Vegas.Game.SourceServiceMissingSignedResponse
 import Vegas.Game.SourceServiceMissingResponseClassification
 import Vegas.Game.SourceServiceUnusableResponseFrame
 import Vegas.Game.SourceServiceUnclassifiedTransport
+import Vegas.Game.SourceServiceUnclassifiedSelection
 import Vegas.Game.SourceServiceCompatiblePinValue
 import Vegas.Game.AsyncServiceFirstTurnBeliefResources
 import Vegas.Game.SourceServiceFirstBindingTraffic
