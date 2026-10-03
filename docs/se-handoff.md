@@ -399,6 +399,11 @@ future private values changed by repair are outside the claim.
 - [SourceServiceAliasEquilibrium](../Vegas/Game/SourceServiceAliasEquilibrium.lean)
   supplies the final private raw-alias transport, retaining correlated
   collection and prior charges.
+- [ReactiveBindingPublicTraffic](../Vegas/Pending/ReactiveBindingPublicTraffic.lean)
+  retains public scheduler data and all foreign inputs jointly when private
+  binding meanings differ. Canonical binding transmission, arbitrary foreign
+  raw responses and arbitrary inclusion at a sole-ready binding preserve the
+  readout. The stopped scheduler law and miss probabilities remain separate.
 
 ## Proof and build discipline
 

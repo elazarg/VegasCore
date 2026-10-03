@@ -2361,6 +2361,13 @@ the final equilibrium's supported play.
   that is not a function of public data and the deviator's own choices, the
   mixture argument fails. Today's selector (`reactiveLatest`) picks the
   latest packet, so the fixed calendar avoids the question.
+  [ReactiveBindingPublicTraffic](../Vegas/Pending/ReactiveBindingPublicTraffic.lean)
+  proves joint equality of the public network, receipts, scheduler input and
+  recall, and all foreign inputs when private binding values differ. Canonical
+  transmission, foreign raw responses and every inclusion at a sole-ready
+  binding preserve it, including rejected and malformed packets. This is
+  transition closure; the complete stopped scheduler law and value-independent
+  miss probability remain separate.
 - **Stage B beliefs.** Probe C5 suggests that depth differences are no
   obstruction, but the concurrent-window information sets are new. If they
   break the extension, D2's contract-ordered service is the fallback.

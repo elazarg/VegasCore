@@ -366,6 +366,15 @@ Continue in this order:
    repair, effective-menu extension and raw-alias lift.
 6. Compose the arbitrary-builder capstone and derive the calendar corollary.
 
+[ReactiveBindingPublicTraffic](../Vegas/Pending/ReactiveBindingPublicTraffic.lean)
+proves joint equality of the network, receipts, public scheduler input and
+recall, and every foreign player's input and recall while private binding
+values differ. Canonical binding transmission, arbitrary foreign raw
+responses and every pending inclusion at a sole-ready binding preserve this
+joint readout. Its public coordinate is explicit even in a one-player game.
+The complete stopped scheduler law and value-independent miss probabilities
+still need their own proofs.
+
 The watcher samples authentic evidence partially; observation and report
 delivery may be correlated. Positive conditional coverage and a finite
 challenge window are backend obligations. A concrete pending-message reporting
