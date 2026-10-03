@@ -334,6 +334,7 @@ theorem sourceService_binding_selected_stop
       middle ∈ (before.environmentStep app (.activate owner)).support ∧
       sourceServiceTurn setup leaks owner event (middle.recall owner) (middle.observe app owner) =
         some slot.val ∧
+      sourceServiceSelectedInput? setup leaks owner event slot.val (middle.recall owner) = none ∧
       (runtime setup).eventRecorded leaks (middle.recall owner) event = false ∧
       response ∈ (sourceServiceCanonicalOpportunity setup leaks bound profile owner event
         (middle.recall owner) (middle.observe app owner)).support ∧
@@ -404,6 +405,8 @@ theorem sourceService_binding_selected_stop
             horizon - middle.environmentRecall.length + 1 := by omega
         rwa [count] at beforeTrace) chosen observed
     have recalls := app.environmentStep_recall before middle (.activate owner) observed
+    have middleAbsent : sourceServiceSelectedInput? setup leaks owner event slot.val
+        (middle.recall owner) = none := by rw [recalls]; exact noInput
     have beforeUnrecorded := invariant.runRounds scheduler used execution before
       (fun _ => initialUnrecorded) actual noInput
     have middleUnrecorded : (runtime setup).eventRecorded leaks (middle.recall owner) event =
@@ -418,7 +421,7 @@ theorem sourceService_binding_selected_stop
       rw [app.turnScheduledPolicy_selected _ slot _ _ _ _ current] at supported
       exact supported
     exact ⟨used, before, middle, response, within, actual, configEq, ⟨middleTrace⟩, chosen,
-      observed, current, middleUnrecorded, canonical, result, readout⟩
+      observed, current, middleAbsent, middleUnrecorded, canonical, result, readout⟩
   · right
     have absentFinal : sourceServiceSelectedInput? setup leaks owner event slot.val
         (stopped.recall owner) = none := not_ne_iff.mp hit

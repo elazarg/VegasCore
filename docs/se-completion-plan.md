@@ -326,6 +326,8 @@ law. The pure-first-turn original rank theorem identifies that channel with
 the actual native traffic; perturbed timing still needs its own law.
 A single timely canonical transmission followed by owner silence also has an
 actual accepted-action/public-miss dichotomy outside the protected window.
+[SourceServiceLateDecisionCompletion](../Vegas/Game/SourceServiceLateDecisionCompletion.lean)
+proves it on initialized raw histories, without a response-menu premise.
 Its acceptance law can depend on the builder and the public packet content;
 the dichotomy alone does not bound the value of waiting.
 [SourceServiceLateTurnCompletion](../Vegas/Game/SourceServiceLateTurnCompletion.lean)
@@ -394,7 +396,17 @@ exhaustively classifies all initialized native decision sites as first, late
 unrecorded, or late completed.
 [LateResolutionFirstPayoff](../Vegas/Examples/LateResolutionFirstPayoff.lean)
 derives the accepted first decision's full typed source readout and zero
-authentic partial-audit charge. Whole native equilibrium remains open.
+authentic partial-audit charge.
+[LateResolutionFirstOptimality](../Vegas/Examples/LateResolutionFirstOptimality.lean)
+proves TRUE optimal at the entire protected first fiber and forced silence
+optimal at both completed second fibers, under any beliefs.
+[LateResolutionFreeEquilibrium](../Vegas/Examples/LateResolutionFreeEquilibrium.lean)
+constructs a native risk-menu SE: TRUE first, FALSE late after WAIT, forced
+silence after completion. Its initialized joint full typed readout and actual
+realized settlement vector equal those of the source opening equilibrium,
+under any authentic partial sampler and nonnegative deposit. This proves the
+concrete risk-menu completion; full effective/raw extension and the general
+source-preservation theorem remain separate.
 The [late-decision signaling probe](../scripts/experiments/late_decision_signaling_probe.py)
 checks this distinction with exact Bayes limits and every whole-policy
 comparison. Equal waiting trembles make waiting profitable for one type;
@@ -484,7 +496,20 @@ and typed failure. No selected-slot visit or source admission is assumed.
 decomposes an actual protected geometric response and its full completion
 continuation into real waiting and receipt-driven source commitment selection.
 Earlier deferrals remain in the original input; waiting can later attempt or
-miss. Full selected-family assembly and strategic comparison remain open.
+miss. Selected-family source-choice factorization and strategic comparison remain open.
+
+[SourceServiceBindingSelectedAssembly](../Vegas/Game/SourceServiceBindingSelectedAssembly.lean)
+composes the original timing prior, actual selected-input stop and real
+completion into one joint law. Its physical marginal is the actual completed
+binding law, retaining the same parameter and all public/foreign traffic. The
+auxiliary input is the original chronological before-response recall; no
+selected-slot visit or acceptance mass is assumed.
+[ReactiveBindingUsableProvenance](../Vegas/Pending/ReactiveBindingUsableProvenance.lean)
+preserves actual owner commitments that either address completed events or
+have matching fixed candidate meanings, across foreign/noncommitment
+responses, shared fresh registration and all environment commands. This
+supplies the traffic resource needed to allow further owner commitments in
+continuation repair. Later usable whole-run repair remains open.
 
 The watcher samples authentic evidence partially; observation and report
 delivery may be correlated. Positive conditional coverage and a finite

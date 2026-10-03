@@ -81,7 +81,7 @@ theorem sourceServiceCanonicalDecision_turnPolicy_include_or_miss
     (fun final => event ∈ final.application.config.cut.completed) horizon start).support at reached
   rw [sourceServiceTurnPolicy_runUntilHorizon_of_recorded setup leaks scheduler bound turns
     timing profile horizon start owner event readyStart owned recorded] at reached
-  exact sourceServiceCanonicalDecision_include_or_miss bounds contract owner execution trace
+  exact sourceServiceCanonicalDecision_include_or_miss contract owner execution rawTrace
     event owned ready timely unrecorded action effective (fun _ => app.silentPolicy) rfl
       stopped reached
 

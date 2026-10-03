@@ -326,6 +326,7 @@ import Vegas.Game.BehavioralSubgame
 import Vegas.Game.SourceServiceBindingStoppedResponse
 import Vegas.Game.SourceServiceBindingSelectedInput
 import Vegas.Game.SourceServiceUsedBindingOpening
+import Vegas.Game.SourceServiceBindingSelectedAssembly
 
 /-! Strategic source-to-graph and graph-to-message correspondence. -/
 

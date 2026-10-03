@@ -276,5 +276,6 @@ import Vegas.Pending.ReactiveAssociationPersistence
 import Vegas.Pending.ReactiveServiceFiniteness
 import Vegas.Pending.ReactiveBindingUsableStep
 import Vegas.Pending.ReactiveUsedBindingOpening
+import Vegas.Pending.ReactiveBindingUsableProvenance
 
 /-! Graph execution and strategic refinement over public pending messages. -/

@@ -1762,7 +1762,17 @@ exhaustively classifies all initialized native decision sites as first, late
 unrecorded, or late completed.
 [LateResolutionFirstPayoff](../Vegas/Examples/LateResolutionFirstPayoff.lean)
 derives the accepted first decision's full typed source readout and zero
-authentic partial-audit charge. Whole native equilibrium remains open.
+authentic partial-audit charge.
+[LateResolutionFirstOptimality](../Vegas/Examples/LateResolutionFirstOptimality.lean)
+proves TRUE optimal at the entire protected first fiber and forced silence
+optimal at both completed second fibers, under any beliefs.
+[LateResolutionFreeEquilibrium](../Vegas/Examples/LateResolutionFreeEquilibrium.lean)
+constructs a native risk-menu SE: TRUE first, FALSE late after WAIT, forced
+silence after completion. Its initialized joint full typed readout and actual
+realized settlement vector equal those of the source opening equilibrium,
+under any authentic partial sampler and nonnegative deposit. This proves the
+concrete risk-menu completion; full effective/raw extension and the general
+source-preservation theorem remain separate.
 
 [SourceServiceSampleCompletion](../Vegas/Game/SourceServiceSampleCompletion.lean)
 derives actual silence, whole stopped-run equality with silent play, and the
@@ -2040,6 +2050,12 @@ before a later owned resolution, then places its mistyped opening in the
 existing auditable public-breach class. Partial collection applies without
 treating authentic certification as a signed-content breach. Whole-policy
 repair and payoff domination remain open.
+
+[ReactiveBindingUsableProvenance](../Vegas/Pending/ReactiveBindingUsableProvenance.lean)
+preserves actual owner commitments that either address completed events or
+have matching fixed candidate meanings, across foreign/noncommitment
+responses, shared fresh registration and all environment commands. Later
+usable whole-run repair remains open.
 
 ### Deviation proof boundaries
 
@@ -2541,8 +2557,14 @@ the final equilibrium's supported play.
   decomposes an actual protected geometric response and its full stopped
   continuation into real waiting and receipt-driven source commitment
   selection. Earlier deferrals remain in the original input; waiting can later
-  attempt or miss. Full selected-family assembly and strategic comparison
-  remain open.
+  attempt or miss. Selected-family source-choice factorization and strategic
+  comparison remain open.
+  [SourceServiceBindingSelectedAssembly](../Vegas/Game/SourceServiceBindingSelectedAssembly.lean)
+  composes the original timing prior, actual selected-input stop and real
+  completion into one joint law. Its physical marginal is the actual completed
+  binding law with the same parameter and all public/foreign traffic. The
+  auxiliary input is the original chronological before-response recall; no
+  selected-slot visit or acceptance mass is assumed.
 - **Stage B beliefs.** Probe C5 suggests that depth differences are no
   obstruction, but the concurrent-window information sets are new. If they
   break the extension, D2's contract-ordered service is the fallback.

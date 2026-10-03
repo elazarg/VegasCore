@@ -111,8 +111,8 @@ theorem sourceService_binding_attempt_completion
     exact sourceServiceTurnPolicy_runUntil_owner_silent setup leaks scheduler players bound turns
       timing profile owner follows _ start event afterReady site.owned recorded
   have silentReached := stoppedLaw ▸ reached
-  have dichotomy := sourceServiceCanonicalDecision_include_or_miss bounds contract owner execution
-    trace event site.owned ready timely unrecorded action effective
+  have dichotomy := sourceServiceCanonicalDecision_include_or_miss contract owner execution
+    rawTrace event site.owned ready timely unrecorded action effective
     (Function.update players owner app.silentPolicy) (Function.update_self ..) stopped
     (by
       dsimp only [action]

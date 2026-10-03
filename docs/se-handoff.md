@@ -323,7 +323,17 @@ future private values changed by repair are outside the claim.
   unrecorded, or late completed.
 - [LateResolutionFirstPayoff](../Vegas/Examples/LateResolutionFirstPayoff.lean)
   derives the accepted first decision's full typed source readout and zero
-  authentic partial-audit charge. Whole native equilibrium remains open.
+  authentic partial-audit charge.
+- [LateResolutionFirstOptimality](../Vegas/Examples/LateResolutionFirstOptimality.lean)
+  proves TRUE optimal at the entire protected first fiber and forced silence
+  optimal at both completed second fibers, under any beliefs.
+- [LateResolutionFreeEquilibrium](../Vegas/Examples/LateResolutionFreeEquilibrium.lean)
+  constructs a native risk-menu SE: TRUE first, FALSE late after WAIT, forced
+  silence after completion. It preserves the source opening equilibrium's
+  initialized joint full typed readout and realized settlement vector under
+  any authentic partial sampler and nonnegative deposit. This is a concrete
+  risk-menu result; full effective/raw extension and the general theorem
+  remain separate.
 - [SourceServiceResolutionIntentionFactorization](../Vegas/Game/SourceServiceResolutionIntentionFactorization.lean)
   carries original and effective disclosure histories through the actual
   response traffic law. FALSE packets can represent failed TRUE intentions;
@@ -554,7 +564,7 @@ future private values changed by repair are outside the claim.
   decomposes an actual protected geometric response and its full stopped
   continuation into real waiting and receipt-driven source commitment
   selection. Earlier waits remain in the original input. The full selected
-  family assembly and strategic comparison remain open.
+  family source-choice factorization and strategic comparison remain open.
 - [ReactiveBindingUsableStep](../Vegas/Pending/ReactiveBindingUsableStep.lean)
   derives full-frame inclusion closure for matching fixed owner candidates,
   including rejected and late calls. Fresh usable submission establishes
@@ -567,6 +577,17 @@ future private values changed by repair are outside the claim.
   commitment before a later owned resolution and classifies its mistyped
   opening under existing partial collection. Whole-policy repair and payoff
   domination remain open.
+
+- [SourceServiceBindingSelectedAssembly](../Vegas/Game/SourceServiceBindingSelectedAssembly.lean)
+  composes the original timing prior, actual selected-input stop and real
+  completion into one joint law, whose physical marginal is the actual
+  completed binding law. The auxiliary input is the original chronological
+  before-response recall. No selected visit or acceptance mass is assumed.
+- [ReactiveBindingUsableProvenance](../Vegas/Pending/ReactiveBindingUsableProvenance.lean)
+  preserves actual owner commitments that either address completed events or
+  have matching fixed candidate meanings, across foreign/noncommitment
+  responses, shared fresh registration and all environment commands. Later
+  usable whole-run repair remains open.
 
 ## Proof and build discipline
 

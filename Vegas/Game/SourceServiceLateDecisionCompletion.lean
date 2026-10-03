@@ -2,6 +2,7 @@
 
 import Vegas.Game.SourceServiceRecordedDecisionRealization
 import Vegas.Pending.ReactiveDecisionMiss
+import Interaction.ReactiveRawRoundTrace
 
 /-! # Actual completion after one timely canonical decision
 
@@ -297,8 +298,6 @@ private theorem realizingDecision_runUntil {horizon : Nat}
         cases (PMF.mem_support_pure_iff _ _).mp rest
         exact Or.inr changed
 
-variable [Fintype Player]
-
 /-- One actual canonical transmission, followed by owner silence, cannot be
 completed by an unrelated packet. At the real horizon it makes its chosen
 effective typed step or records a public miss. The transmission need only meet
@@ -306,12 +305,11 @@ the handler's actual deadline; it need not meet the protected inclusion gate. -/
 theorem sourceServiceCanonicalDecision_include_or_miss
     {horizon remaining : Nat} {scheduler : (application setup leaks).Scheduler}
     {delay bound : (graph setup).EventId → Nat}
-    (bounds : MessageBounds (graph setup))
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
       delay bound)
     (owner : Player) (execution : (application setup leaks).Execution)
-    (trace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup) horizon
-      scheduler).Trace (some ⟨remaining, some owner, execution⟩))
+    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨remaining, some owner, execution⟩))
     (event : (graph setup).EventId) (owned : (graph setup).actor? event = some owner)
     (ready : execution.application.config.cut.Ready event)
     (timely : execution.application.WithinDeadline (runtime setup) event)
@@ -332,13 +330,11 @@ theorem sourceServiceCanonicalDecision_include_or_miss
   let app := application setup leaks
   let response := (runtime setup).canonicalServiceDecision leaks owner (execution.recall owner)
     (execution.observe app owner) event action
-  have rawTrace := (bounds.riskMenu (runtime setup) leaks bound).toRawTrace _ _ _ trace
-  have facts := legalFacts setup leaks horizon scheduler _ rawTrace
-  have accounted := ((bounds.riskMenu (runtime setup) leaks bound).roundSupported_uniform
-    (initialLaw setup) horizon scheduler trace).1
+  have facts := legalFacts setup leaks horizon scheduler _ trace
+  have accounted := app.raw_trace_accounted (initialLaw setup) horizon scheduler trace
   change execution.environmentRecall.length + remaining = horizon at accounted
   obtain ⟨material, responseEq, authored, named, seen, realized⟩ :=
-    sourceServiceCanonicalDecision_timely_realizes rawTrace event owned ready timely action
+    sourceServiceCanonicalDecision_timely_realizes trace event owned ready timely action
       effective
   let message : Message Player (WitnessedPacket (graph setup)) :=
     ⟨(owner, execution.network.nextSerial owner), app.packet
@@ -382,7 +378,7 @@ theorem sourceServiceCanonicalDecision_include_or_miss
   have configEq : start.application.config = execution.application.config :=
     ((runtime setup).reactive_respond_application leaks execution owner response).1
   obtain ⟨startTrace⟩ := app.raw_trace_respond (initialLaw setup) horizon scheduler remaining
-    execution owner response rawTrace
+    execution owner response trace
   have budget : start.environmentRecall.length + remaining = horizon := by
     rw [app.respond_environmentRecall]
     exact accounted
