@@ -1692,6 +1692,25 @@ differs. A separate geometric two-branch calculation gives conditional risk
 one half at every positive waiting weight below one. This is a local runtime
 pair and a finite path law; certification as an initialized asynchronous
 service and identification with native Bayes likelihoods remain separate.
+[OpaqueBindingForkService](../Vegas/Examples/OpaqueBindingForkService.lean)
+certifies a compiled two-player builder against the service contract at every
+RAW history. After Alice waits, it fairly orders a tick and her second turn;
+the protected clock-zero call and unprotected clock-one call are both accepted
+at clock one.
+[OpaqueBindingForkSites](../Vegas/Examples/OpaqueBindingForkSites.lean) derives
+an initialized clear source witness and the same full Bob input on the privately
+risky branch.
+[OpaqueBindingForkImmediate](../Vegas/Examples/OpaqueBindingForkImmediate.lean)
+proves that immediate acceptance instead exposes activation time zero, so its
+Bob input differs from the delayed branches' activation time one.
+[OpaqueBindingForkVanishingWait](../Vegas/Examples/OpaqueBindingForkVanishingWait.lean)
+uses one globally admitted local policy with initial WAIT weight alpha. Its
+actual initialized four-branch law gives the delayed Bob input mass alpha and
+conditional private risk one half for every positive alpha. This certifies the
+rare-fiber limitation of an unconditional convergence estimate. It does not
+prove the behavior of rational free completion, source-payoff distortion or
+failure of SE preservation.
+
 [SourceServiceLateTurnCompletion](../Vegas/Game/SourceServiceLateTurnCompletion.lean)
 uses real recorded recall to transfer the timely call's chosen-step/public-miss
 dichotomy to the actual turn-counted continuation. Its law stops at the current

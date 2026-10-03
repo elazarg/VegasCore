@@ -28,6 +28,10 @@ import Vegas.Examples.LateResolutionFreeLate
 import Vegas.Examples.LateResolutionFirstActivation
 import Vegas.Examples.MonitoredGuessing
 import Vegas.Examples.OpeningTimingChannel
+import Vegas.Examples.OpaqueBindingForkService
+import Vegas.Examples.OpaqueBindingForkSites
+import Vegas.Examples.OpaqueBindingForkImmediate
+import Vegas.Examples.OpaqueBindingForkVanishingWait
 import Vegas.Examples.ParameterOutcomes
 import Vegas.Examples.PassiveDisclosureMonitoring
 import Vegas.Examples.PendingMenus

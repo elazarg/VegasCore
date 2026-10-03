@@ -294,6 +294,25 @@ law gives both late paths the same weight and conditional risk one half.
 This calculation does not identify an initialized native Bayes law or certify
 an all-history service contract. It shows why acceptance and private risk
 must be distinguished when choosing the probability event to control.
+[OpaqueBindingForkService](../Vegas/Examples/OpaqueBindingForkService.lean)
+certifies a compiled two-player builder against the service contract at every
+RAW history. After Alice waits, it fairly orders a tick and her second turn;
+the protected clock-zero call and unprotected clock-one call are both accepted
+at clock one.
+[OpaqueBindingForkSites](../Vegas/Examples/OpaqueBindingForkSites.lean) derives
+an initialized clear source witness and the same full Bob input on the privately
+risky branch.
+[OpaqueBindingForkImmediate](../Vegas/Examples/OpaqueBindingForkImmediate.lean)
+proves that immediate acceptance instead exposes activation time zero, so its
+Bob input differs from the delayed branches' activation time one.
+[OpaqueBindingForkVanishingWait](../Vegas/Examples/OpaqueBindingForkVanishingWait.lean)
+uses one globally admitted local policy with initial WAIT weight alpha. Its
+actual initialized four-branch law gives the delayed Bob input mass alpha and
+conditional private risk one half for every positive alpha. This certifies the
+rare-fiber limitation of an unconditional convergence estimate. It does not
+prove the behavior of rational free completion, source-payoff distortion or
+failure of SE preservation.
+
 For waiting comparisons, a late canonical packet can still be accepted before
 expiry without a charge, so the accepted branch needs source-continuation
 control as well as the miss branch's real collection bound.

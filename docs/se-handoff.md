@@ -309,6 +309,16 @@ future private values changed by repair are outside the claim.
   but different sender opportunity-risk recall. Its separate finite path law
   has conditional risk one half. Initialization, an all-history contract and
   actual native likelihood identification are not supplied by this calculation.
+- [OpaqueBindingForkService](../Vegas/Examples/OpaqueBindingForkService.lean)
+  certifies the actual all-RAW service contract.
+  [OpaqueBindingForkSites](../Vegas/Examples/OpaqueBindingForkSites.lean) supplies
+  an initialized clear source witness and privately risky history at the same
+  full Bob input. [OpaqueBindingForkImmediate](../Vegas/Examples/OpaqueBindingForkImmediate.lean)
+  excludes immediate acceptance from that input using the actual public
+  activation timestamp. [OpaqueBindingForkVanishingWait](../Vegas/Examples/OpaqueBindingForkVanishingWait.lean)
+  proves that one admitted policy's initialized delayed fiber has mass alpha
+  and conditional private risk one half for every alpha > 0. Rational free
+  completion, source-payoff distortion and SE impossibility are not claimed.
 - [SourceServiceLateTurnCompletion](../Vegas/Game/SourceServiceLateTurnCompletion.lean)
   transfers the timely canonical call's accepted-step/public-miss dichotomy to
   the actual turn-counted continuation. Real recorded recall suppresses calls
