@@ -154,6 +154,7 @@ import Vegas.Game.AsyncServiceCleanCompletionLaw
 import Vegas.Game.AsyncServiceCounterfactualBeliefs
 import Vegas.Game.AsyncServiceCompatibleRecall
 import Vegas.Game.AsyncServiceForeignEscape
+import Vegas.Game.SourceServiceClearAudit
 import Vegas.Game.SourceServiceBindingSource
 import Vegas.Game.SourceServiceResidualSites
 import Vegas.Game.SourceServiceReadyObservation

@@ -71,14 +71,20 @@ future private values changed by repair are outside the claim.
   Conditional rare-input beliefs and incentive-compatible waiting rates remain
   separate obligations.
 - [AsyncServiceCompatibleWait](../Vegas/Game/AsyncServiceCompatibleWait.lean)
-  derives exact WAIT likelihood at actual compatible inputs, including the
-  uniform native tremble. Real bounded traces rule out a truncated last turn.
+  derives exact WAIT likelihood at actual compatible inputs. The native pin
+  has mass `δ * uniformWait + (1 - δ) * w(who, info)`. Real bounded traces rule
+  out a truncated last turn.
   Foreign WAIT likelihoods still enter another player's posterior.
 - [AsyncServiceInformationWait](../Vegas/Game/AsyncServiceInformationWait.lean)
   constructs native pins whose WAIT rates depend on complete actual information.
   [AsyncServiceInformationWaitDomination](../Vegas/Game/AsyncServiceInformationWaitDomination.lean)
   derives initialized loss from a common upper bound at compatible sites using
   the shared finite induction. No incentive-compatible rate selection is proved.
+- [SourceServiceClearAudit](../Vegas/Game/SourceServiceClearAudit.lean)
+  derives no owner miss and zero current audit charge from focal persistent
+  clarity at a real risk-menu prefix. Every hidden history at a compatible
+  site has this property, despite possible foreign private risk. Only sample
+  authenticity is needed; future charges and unfinished verdicts may change.
 - [AsyncServiceCompatibleRecall](../Vegas/Game/AsyncServiceCompatibleRecall.lean)
   derives compatibility of every earlier own recalled decision and equality of
   the complete focal likelihood for profiles agreeing on compatible inputs.
@@ -92,7 +98,8 @@ future private values changed by repair are outside the claim.
   strategy's law. Local WAIT rates have a common vanishing upper bound at
   compatible sites. Actual normalized pin limits are retained. Source-relative
   conditional beliefs, prescribed-site rationality and suitable waiting rates
-  remain open.
+  remain open. Prescribed uniform trembles and free-agent reference trembles
+  have independent vanishing rates; initialized loss uses only the prescribed rate.
 - [SourceServiceRecordedDecisionCompletion](../Vegas/Game/SourceServiceRecordedDecisionCompletion.lean)
   gives acceptance of the exact original recorded packet and no public miss
   under the asynchronous contract. [SourceServiceRecordedBindingCompletion](../Vegas/Game/SourceServiceRecordedBindingCompletion.lean)
@@ -552,8 +559,9 @@ future private values changed by repair are outside the claim.
   derive fresh typed slots, protected windows and TRUE certificate/guard
   success; expanded inputs transport effective responses. The same retained
   implementation realizes invocation and resume coupling on the explicit
-  noncommitment/fresh-copy slice. The stopped coupling composes this slice;
-  reused bindings and terminal utility domination remain separate.
+  noncommitment/fresh-copy/matching-fixed slice. The stopped coupling currently
+  composes fresh copies; finite reused-candidate closure and terminal utility
+  domination remain separate.
 - [SourceServiceAliasEquilibrium](../Vegas/Game/SourceServiceAliasEquilibrium.lean)
   supplies the final private raw-alias transport, retaining correlated
   collection and prior charges.
@@ -669,8 +677,8 @@ future private values changed by repair are outside the claim.
   charges remain possible.
 - [ReactiveBindingCopiedWindow](../Vegas/Pending/ReactiveBindingCopiedWindow.lean)
   couples one actual effective owner response law to the same retained private
-  implementation, permitting noncommitments and fresh bare registrations with
-  arbitrary private material.
+  implementation, permitting noncommitments, fresh bare registrations with
+  arbitrary private material and actual matching fixed reuses.
   It preserves current memory, the full frame, completed-or-matching traffic
   and original opening capabilities.
 - [ReactiveBindingCopiedResume](../Vegas/Pending/ReactiveBindingCopiedResume.lean)
@@ -679,7 +687,7 @@ future private values changed by repair are outside the claim.
   [ReactiveBindingPacketStep](../Vegas/Pending/ReactiveBindingPacketStep.lean)
   also admits actual fixed matching owner candidates at inclusion. The complete
   fresh-copy suffix is composed by both effective and risk-menu stopped couplings;
-  utility comparison and reused-candidate closure remain open.
+  utility comparison and finite reused-candidate closure remain open.
 - [SourceServiceBindingSelectedResources](../Vegas/Game/SourceServiceBindingSelectedResources.lean)
   derives fresh counted candidates, actual owner turn/slot invariants and no
   earlier owner packet at the real selected raw input. Its aligned source

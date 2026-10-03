@@ -9,8 +9,10 @@ import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
 Normalized source policies may have different limits at transcripts of zero
 source probability. The completion retains their actual information-dependent
 WAIT and uniform pin sequence, selecting one common native assessment
-subsequence. Uniform initialized history domination preserves the original source joint law in
-that limit without assuming global continuity of disclosure normalization.
+subsequence. Prescribed uniform trembles and free-agent reference trembles
+have independent rates. Uniform initialized history domination preserves the
+original source joint law in that limit without assuming global continuity of
+disclosure normalization.
 
 The result gives consistency, rational free sites and the actual initialized
 typed outcome and sampled settlement law. Prescribed-site comparisons and
@@ -107,6 +109,9 @@ theorem exists_consistent_original_sequence_completion
     (delta : Nat → ℝ) (deltaPositive : ∀ n, 0 < delta n)
     (deltaSmall : ∀ n, delta n < 1)
     (deltaVanishes : Tendsto delta atTop (nhds 0))
+    (freeTremble : Nat → ℝ) (freePositive : ∀ n, 0 < freeTremble n)
+    (freeSmall : ∀ n, freeTremble n < 1)
+    (freeVanishes : Tendsto freeTremble atTop (nhds 0))
     (utility : State L service.setup.program.terminalCtx → Player → ℝ)
     (sample : List (SettledEvidence service.setup) → PMF (List (SettledEvidence service.setup)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
@@ -210,8 +215,8 @@ theorem exists_consistent_original_sequence_completion
   obtain ⟨_residual, nativeSequence, assessment, index, played, mixed, bayes, increasing,
     converges, consistent, freeOptimal⟩ := (model).exists_consistent_free_agent_completion
       ((menu).decisionRecall (initialLaw service.setup) service.horizon service.scheduler)
-      fallback certificate payoff free pinned reference pinnedFull referenceFull delta deltaPositive
-        deltaSmall deltaVanishes
+      fallback certificate payoff free pinned reference pinnedFull referenceFull freeTremble
+        freePositive freeSmall freeVanishes
   have kept (n : Nat) (who : Player) (site : (model).InformationSite who)
       (compatible : service.sourceCompatibleInfo who site.1) :
       (nativeSequence n).strategy who site.1 = pinned n ((model).agentAt site) := by

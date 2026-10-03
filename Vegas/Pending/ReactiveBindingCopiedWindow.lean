@@ -4,14 +4,14 @@ import Vegas.Pending.ReactiveBindingCommitmentProvenance
 import Vegas.Pending.ReactiveBindingInertWindow
 import Vegas.Pending.ReactiveBindingCopiedSubmission
 
-/-! # Joint owner responses with actual fresh binding material
+/-! # Joint owner responses with actual binding meanings
 
-One effective policy is sampled at reconstructed own input. Its noncommitment
-responses and fresh owned registrations preserve the actual frame, completed
-memory and commitment provenance. The private implementation has no fallback
-on this support. Fresh missing and mistyped openings are copied with their
-actual candidate meanings. This is the effective-menu response law; service risk
-admission and a whole-policy payoff comparison remain separate consumers.
+One effective policy is sampled at reconstructed own input. Its noncommitment responses,
+fresh owned registrations and matching fixed reuses preserve the actual frame, completed
+memory and commitment provenance. The private implementation has no fallback on this
+support. Fresh missing and mistyped openings are copied with their actual candidate
+meanings. This is the effective-menu response law; service risk admission and a whole-policy
+payoff comparison remain separate consumers.
 -/
 
 noncomputable section
@@ -94,7 +94,10 @@ theorem copied_response_resources
     (copied : (∀ material, response.transmission = some material →
         ∀ event candidate, material.call.packet ≠ .commitment event candidate) ∨
       FreshOwnedBindingResponse runtime leaks owner
-        (original.observe (runtime.reactiveApplication leaks) owner).application response) :
+        (original.observe (runtime.reactiveApplication leaks) owner).application response ∨
+      MatchingFixedOwnedBindingResponse runtime leaks owner
+        (original.observe (runtime.reactiveApplication leaks) owner).application
+        (repaired.observe (runtime.reactiveApplication leaks) owner).application response) :
     let app := runtime.reactiveApplication leaks
     let changed := memory.copyResponse runtime leaks owner (repaired.observe app owner) response
     let updated : BindingMemory runtime leaks :=
@@ -111,7 +114,7 @@ theorem copied_response_resources
   have transported := runtime.effectiveResponse_openable_transport leaks bounds owner
     original repaired leftRecall rightRecall frame.network frame.publicView frame.slots
       preserved response effective
-  rcases copied with noncommitment | freshOwned
+  rcases copied with noncommitment | freshOwned | matchedFixed
   · have changedEq := memory.copyResponse_noncommitment runtime leaks owner
       (repaired.observe app owner) response noncommitment
     have same : changed.1 = response := congrArg Prod.fst changedEq
@@ -177,9 +180,32 @@ theorem copied_response_resources
           .openable raw
       rw [same]
       exact frame.same_response_openable preserved _
+  · obtain ⟨event, slot, opening, fixed, matching, rfl⟩ := matchedFixed
+    have ownFixed : (memory.shadow.inputView runtime leaks
+        (repaired.observe app owner)).application.candidates slot ≠ .fresh := by
+      rw [frame.observed]
+      exact fixed
+    have changedEq := memory.copyResponse_fixed runtime leaks owner
+      (repaired.observe app owner) event slot opening .none ownFixed
+    have same := congrArg Prod.fst changedEq
+    have shadow : updated.shadow = memory.shadow := congrArg Prod.snd changedEq
+    refine ⟨same, ?_, shadow.symm ▸ onlyBindings, ?_, ?_, ?_⟩
+    · simpa only [updated, left, right, changed, changedEq, BindingMemory.record] using
+        frame.copied_fixed_binding_submission event slot opening fixed
+    · rw [shadow, (runtime.reactive_respond_application leaks original owner _).1]
+      exact past
+    · change OwnerCommitmentsSettledOrMatching owner left
+        (repaired.respond app owner changed.1)
+      rw [same]
+      exact provenance.respond_matching_binding event slot opening fixed matching
+    · change ∀ query raw, left.application.candidates.lookup (owner, query) = .openable raw →
+        (repaired.respond app owner changed.1).application.candidates.lookup (owner, query) =
+          .openable raw
+      rw [same]
+      exact frame.same_response_openable preserved _
 
 /-- A single effective owner law is used at the original reconstructed input
-on every hidden history. Supported fresh owned calls add only candidate memory;
+on every hidden history. Fresh calls add only candidate memory; matching fixed reuses preserve it;
 the exact joint law retains both evaluator marginals and the current resources. -/
 theorem copied_effective_response_coupling
     (frame : Frame runtime leaks memory owner original repaired)
@@ -204,7 +230,10 @@ theorem copied_effective_response_coupling
       (∀ material, response.transmission = some material →
           ∀ event candidate, material.call.packet ≠ .commitment event candidate) ∨
         FreshOwnedBindingResponse runtime leaks owner
-          (original.observe (runtime.reactiveApplication leaks) owner).application response) :
+          (original.observe (runtime.reactiveApplication leaks) owner).application response ∨
+        MatchingFixedOwnedBindingResponse runtime leaks owner
+          (original.observe (runtime.reactiveApplication leaks) owner).application
+          (repaired.observe (runtime.reactiveApplication leaks) owner).application response) :
     let app := runtime.reactiveApplication leaks
     let strategy := retainedImplementation runtime leaks (bounds.menu runtime leaks)
       owner reference (players owner)

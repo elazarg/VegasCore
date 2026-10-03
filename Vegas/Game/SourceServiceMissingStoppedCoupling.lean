@@ -711,8 +711,11 @@ theorem sourceService_missing_copied_stopped_coupling
   intro memory original repaired frame onlyBindings past provenance _records leftFacts rightFacts
     preserved started actor
   exact frame.copied_effective_resume_coupling onlyBindings past provenance bounds
-    leftFacts.2.2.2.2.2 rightFacts.2.2.2.2.2 preserved players reference started effective copied
-      actor
+    leftFacts.2.2.2.2.2 rightFacts.2.2.2.2.2 preserved players reference started (effective _ _) (by
+      intro response chosen
+      rcases copied _ _ response chosen with noncommitment | fresh
+      · exact Or.inl noncommitment
+      · exact Or.inr (Or.inl fresh)) actor
 
 /-- The same finite evaluator has an actual risk-menu implementation when
 the original owner law is risk-supported on its noncommitment/fresh-owned
@@ -793,6 +796,10 @@ theorem sourceService_missing_risk_stopped_coupling
     preserved started actor
   exact frame.risk_copied_resume_coupling onlyBindings past provenance bounds bound records
     leftFacts.2.2.2.2.2 rightFacts.2.2.2.2.2 leftFacts.2.1 rightFacts.2.1 preserved players
-      reference started supported copied actor
+      reference started (supported _ _) (by
+        intro response chosen
+        rcases copied _ _ response chosen with noncommitment | fresh
+        · exact Or.inl noncommitment
+        · exact Or.inr (Or.inl fresh)) actor
 
 end Vegas

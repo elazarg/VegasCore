@@ -2,7 +2,7 @@
 
 import Vegas.Pending.ReactiveBindingCopiedWindow
 
-/-! # Arbitrary foreign responses around fresh copied owner registrations
+/-! # Arbitrary foreign responses around copied owner commitments
 
 The same retained implementation handles the owner at reconstructed own input.
 All other raw response laws stay unchanged. Current completed memory and actual
@@ -25,7 +25,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 
 /-- One actual resumption has exact original and retained-implementation
 marginals, including arbitrary foreign responses. Its owner slice permits
-noncommitment calls and fresh owned private registrations. -/
+noncommitments, fresh owned registrations and matching fixed reuses. -/
 theorem copied_effective_resume_coupling
     (frame : Frame runtime leaks memory owner original repaired)
     (onlyBindings : memory.shadow.OwnBindings owner)
@@ -40,12 +40,19 @@ theorem copied_effective_resume_coupling
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
     (started : reference.length ≤ (repaired.recall owner).length)
-    (effective : ∀ earlier view response, response ∈ (players owner earlier view).support →
-      response ∈ (bounds.menu runtime leaks).actions owner earlier view)
-    (copied : ∀ earlier view response, response ∈ (players owner earlier view).support →
+    (effective : ∀ response ∈ (players owner (original.recall owner)
+      (original.observe (runtime.reactiveApplication leaks) owner)).support,
+      response ∈ (bounds.menu runtime leaks).actions owner (original.recall owner)
+        (original.observe (runtime.reactiveApplication leaks) owner))
+    (copied : ∀ response ∈ (players owner (original.recall owner)
+      (original.observe (runtime.reactiveApplication leaks) owner)).support,
       (∀ material, response.transmission = some material →
           ∀ event candidate, material.call.packet ≠ .commitment event candidate) ∨
-        FreshOwnedBindingResponse runtime leaks owner view.application response)
+        FreshOwnedBindingResponse runtime leaks owner
+          (original.observe (runtime.reactiveApplication leaks) owner).application response ∨
+        MatchingFixedOwnedBindingResponse runtime leaks owner
+          (original.observe (runtime.reactiveApplication leaks) owner).application
+          (repaired.observe (runtime.reactiveApplication leaks) owner).application response)
     (actor : Option Player) :
     let app := runtime.reactiveApplication leaks
     let strategy := retainedImplementation runtime leaks (bounds.menu runtime leaks)
@@ -76,7 +83,7 @@ theorem copied_effective_resume_coupling
       by_cases own : actor = owner
       · subst actor
         exact frame.copied_effective_response_coupling onlyBindings past provenance bounds
-          leftRecall rightRecall preserved players reference started (effective _ _) (copied _ _)
+          leftRecall rightRecall preserved players reference started effective copied
       · let law := players actor (original.recall actor) (original.observe app actor)
         let coupling := law.map fun response =>
           (original.respond app actor response, repaired.respond app actor response, memory)

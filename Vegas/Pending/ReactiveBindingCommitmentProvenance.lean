@@ -4,7 +4,7 @@ import Vegas.Pending.ReactiveBindingUsableStep
 import Vegas.Pending.ReactiveBindingInertClosure
 import Vegas.Pending.ReactiveBindingCopiedSubmission
 
-/-! # Commitment provenance through later fresh owned registrations
+/-! # Commitment provenance through fresh and reused owned handles
 
 Each actual owner-authored commitment has either completed its addressed event
 or names a fixed candidate with the same meaning on both coupled executions.
@@ -126,6 +126,39 @@ theorem respond_fresh_binding
     right
     have meaning := frame.copied_binding_fresh_meaning event serial opening fresh
     exact ⟨meaning.1, meaning.2.1⟩
+
+/-- A reused fixed owned handle emits a commitment with the same actual
+meaning on both executions. Neither new registration nor typed private data
+is needed; all old completed-or-matching commitment resources persist. -/
+theorem respond_matching_binding
+    (held : OwnerCommitmentsSettledOrMatching owner original repaired)
+    (event : graph.EventId) (slot : CandidateSlot graph) (opening : Option (Raw L))
+    (fixed : original.application.candidates.lookup (owner, slot) ≠ .fresh)
+    (same : original.application.candidates.lookup (owner, slot) =
+      repaired.application.candidates.lookup (owner, slot)) :
+    let app := runtime.reactiveApplication leaks
+    let response : app.Action := ⟨some ⟨⟨.commitment event (owner, slot), opening⟩, .none⟩⟩
+    OwnerCommitmentsSettledOrMatching owner (original.respond app owner response)
+      (repaired.respond app owner response) := by
+  intro app response message member authored named candidate committed valid
+  change message ∈ original.network.inputs ++ [_] at member
+  rcases List.mem_append.mp member with old | added
+  · exact respond_old held owner response response message old authored named candidate committed
+      valid
+  · cases List.mem_singleton.mp added
+    let material : WitnessedSubmission graph :=
+      ⟨⟨.commitment event (owner, slot), opening⟩, .none⟩
+    change (material.emit (app.submit original.application owner material) owner
+      (original.network.known owner)).call = .commitment named candidate at committed
+    have called : Payload.commitment event (owner, slot) = .commitment named candidate :=
+      (material.emit_call (app.submit original.application owner material) owner
+        (original.network.known owner)).symm.trans committed
+    cases called
+    right
+    rw [runtime.reactive_respond_candidate_fixed leaks original owner response (owner, slot) fixed,
+      runtime.reactive_respond_candidate_fixed leaks repaired owner response (owner, slot)
+        (same ▸ fixed)]
+    exact ⟨fixed, same⟩
 
 /-- Paired actual scheduler transitions preserve the traffic relation under
 all commands, including inclusion, rejected calls, chance draws and overdue expiry. -/

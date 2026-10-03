@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ReactiveBindingFrame
+import Vegas.Pending.ReactiveBindingFrameOpening
 import Vegas.Pending.ReactiveBindingCertificateRepair
 
 /-! # Copying a later bare commitment with its actual candidate meaning
@@ -35,6 +35,17 @@ def FreshOwnedBindingResponse (runtime : EventGraphRuntime graph)
   ∃ (event : graph.EventId) (serial : Nat) (opening : Option (Raw L)),
     view.candidates (.prepared serial) = .fresh ∧
       response = ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩
+
+/-- A bare reused owned commitment has an actual fixed meaning shared by the
+two views. This is an operational relation of the coupled inputs, not an extra
+observation available to a runtime player. -/
+def MatchingFixedOwnedBindingResponse (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (owner : Player) (left right : ReactivePlayerView graph)
+    (response : (runtime.reactiveApplication leaks).Action) : Prop :=
+  ∃ (event : graph.EventId) (slot : CandidateSlot graph) (opening : Option (Raw L)),
+    left.candidates slot ≠ .fresh ∧ left.candidates slot = right.candidates slot ∧
+      response = ⟨some ⟨⟨.commitment event (owner, slot), opening⟩, .none⟩⟩
 
 namespace BindingMemory.Frame
 
@@ -118,6 +129,57 @@ theorem copied_binding_submission
   · change (memory.shadow.rememberCandidate _ _).CompletedAt left.application.config
     rw [(runtime.reactive_respond_application leaks original owner response).1]
     exact past.rememberCandidate _ _
+
+private theorem fixed_commitment_submit
+    (state : State graph) (event : graph.EventId) (slot : CandidateSlot graph)
+    (opening : Option (Raw L)) (fixed : state.candidates.lookup (owner, slot) ≠ .fresh) :
+    (runtime.reactiveApplication leaks).submit state owner
+      ⟨⟨.commitment event (owner, slot), opening⟩, .none⟩ = state := by
+  change submitStep
+    ((⟨.commitment event (owner, slot), opening⟩ : Submission graph).register state owner)
+      owner (.commitment event (owner, slot)) = state
+  have frozen := state.candidates.freeze_eq_self_of_not_fresh (owner, slot) fixed
+  cases slot with
+  | initial field =>
+      cases opening <;> simp only [Submission.register, submitStep, ↓reduceIte, frozen]
+  | prepared serial =>
+      cases opening with
+      | none => simp only [Submission.register, submitStep, ↓reduceIte, frozen]
+      | some raw =>
+          simp only [Submission.register, ↓reduceIte,
+            state.candidates.prepare_eq_self_of_not_fresh owner (.prepared serial) raw fixed,
+            submitStep, frozen]
+
+/-- Reusing a fixed owned handle leaves the actual private catalogue and
+shadow unchanged. The full response frame holds even if its fixed meanings
+differ; a matching-meaning premise is needed later for inclusion provenance. -/
+theorem copied_fixed_binding_submission
+    (frame : Frame runtime leaks memory owner original repaired)
+    (event : graph.EventId) (slot : CandidateSlot graph) (opening : Option (Raw L))
+    (fixed : original.application.candidates.lookup (owner, slot) ≠ .fresh) :
+    let app := runtime.reactiveApplication leaks
+    let response : app.Action := ⟨some ⟨⟨.commitment event (owner, slot), opening⟩, .none⟩⟩
+    let remembered := memory.record runtime leaks
+      (memory.shadow.inputView runtime leaks (repaired.observe app owner)) response
+    Frame runtime leaks remembered owner (original.respond app owner response)
+      (repaired.respond app owner response) := by
+  intro app response remembered
+  let material : WitnessedSubmission graph :=
+    ⟨⟨.commitment event (owner, slot), opening⟩, .none⟩
+  have rightFixed : repaired.application.candidates.lookup (owner, slot) ≠ .fresh :=
+    fun fresh => fixed ((frame.slots slot).mpr fresh)
+  have leftInert := fixed_commitment_submit (runtime := runtime) (leaks := leaks)
+    original.application event slot opening fixed
+  have rightInert := fixed_commitment_submit (runtime := runtime) (leaks := leaks)
+    repaired.application event slot opening rightFixed
+  have packet : material.emit original.application owner (original.network.known owner) =
+      material.emit repaired.application owner (repaired.network.known owner) := by
+    change WitnessedPacket.mk material.call.packet none
+        (original.application.publicView.tokenFor material.call.packet) =
+      WitnessedPacket.mk material.call.packet none
+        (repaired.application.publicView.tokenFor material.call.packet)
+    rw [frame.publicView]
+  exact frame.inert_submission material material leftInert rightInert packet
 
 /-- Fresh copied material acquires the same fixed meaning on both executions,
 including mistyped and missing material. The addressed payload is irrelevant. -/
