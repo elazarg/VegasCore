@@ -532,13 +532,15 @@ theorem sourceServiceFirstResolution_intention_factorization
     (execution : Seed → (application setup leaks).Execution)
     (agree : ∀ seed ∈ prior.support,
       refs.Agrees (source seed).state (execution seed).application.config.store)
-    (codeEq : ∀ seed, cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+    (codeEq : ∀ seed ∈ prior.support,
+      cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .resolve owner payload (refs.get binding)
         (compileChecks (published := published) refs (source seed).registry
           (source seed).revelations binding))
-    (node : ∀ seed, nodeView (graph setup) event = .resolve owner payload (refs.get binding)
+    (node : ∀ seed (supported : seed ∈ prior.support),
+      nodeView (graph setup) event = .resolve owner payload (refs.get binding)
       (compileChecks (published := published) refs (source seed).registry
-        (source seed).revelations binding) outputEq (codeEq seed))
+        (source seed).revelations binding) outputEq (codeEq seed supported))
     (boundary : ∀ seed ∈ prior.support,
       CompletionBoundary setup leaks scheduler
         (sourceServiceTurnPolicy setup leaks bound turns (firstTurnTiming setup turns) profile)
@@ -603,7 +605,8 @@ theorem sourceServiceFirstResolution_intention_factorization
       intro left leftSupport first _ right rightSupport second _ same traffic
       exact sourceServiceFirstResolution_decided_traffic setup leaks published binding refs
         (source left) (source right) contract timely turns profile focal event outputEq
-        (codeEq left) (codeEq right) (node left) (node right)
+        (codeEq left leftSupport) (codeEq right rightSupport)
+        (node left leftSupport) (node right rightSupport)
         (effectiveDisclosure published binding (source left) first)
         (effectiveDisclosure published binding (source right) second)
         (emittable (source left) first) (emittable (source right) second) same

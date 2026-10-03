@@ -131,8 +131,13 @@ future private values changed by repair are outside the claim.
   resources from initialized play. From the prior pair-view/traffic law it
   retains original and effective successors and an unchanged parameter with
   the same stopped traffic.
-  This latent phase factorization still needs joining to actual global source
-  selection and whole-prefix induction.
+  The whole-view consumer below identifies actual global effective choices;
+  common original-memory and whole-prefix assembly remain separate.
+- [SourceServiceFirstTurnResolutionFactorization](../Vegas/Game/SourceServiceFirstTurnResolutionFactorization.lean)
+  lifts the actual global resolution phase through the shared source slice.
+  Tail effectiveness supplies supported normalization and realizability;
+  actual completion derives the whole successor decoder. The same parameter
+  and full traffic are retained through the whole effective source step.
 - [SourceServiceSampleCompletion](../Vegas/Game/SourceServiceSampleCompletion.lean)
   derives silence and exact stopped sample/configuration laws for any turn
   timing from an actual boundary and complete play.
@@ -171,6 +176,12 @@ future private values changed by repair are outside the claim.
   initialized first-turn rank endpoint. Typed states and action histories
   are read from the real store and completion history, without an endpoint
   or source-likelihood premise.
+- [SourceServiceFirstTurnRankFactorization](../Vegas/Game/SourceServiceFirstTurnRankFactorization.lean)
+  derives the actual initialized whole source-prefix/full-traffic law at every
+  pure-first-turn rank, preserving the same initial parameter. The marginal
+  is the true source behavioral iteration; traffic factors through the whole
+  effective source observation. Original-memory, native Bayes and retained
+  waiting remain separate.
 - [SourceServiceInitialTraffic](../Vegas/Game/SourceServiceInitialTraffic.lean)
   derives the actual initialized parameter/source/full-traffic factor through
   the whole source view. Correlated initial private types are retained; the

@@ -57,12 +57,14 @@ import Vegas.Game.SourceServiceFirstTurnRanks
 import Vegas.Game.SourceServiceInitialTraffic
 import Vegas.Game.SourceServiceFirstTurnInformation
 import Vegas.Game.SourceServiceFirstTurnSharedCheckpoint
+import Vegas.Game.SourceServiceFirstTurnRankFactorization
 import Vegas.Game.SourceServiceOriginalPrefix
 import Vegas.Game.SourceServiceOriginalPrefixRetraction
 import Vegas.Game.SourceServiceFirstBindingTraffic
 import Vegas.Game.SourceServiceFirstTurnBindingFactorization
 import Vegas.Game.SourceServiceFirstResolutionTraffic
 import Vegas.Game.SourceServiceFirstResolutionCoupling
+import Vegas.Game.SourceServiceFirstTurnResolutionFactorization
 import Vegas.Game.SourceServiceCanonicalSlots
 import Vegas.Game.SourceServiceRetainedSlots
 import Vegas.Game.SourceServiceRetainedPolicy

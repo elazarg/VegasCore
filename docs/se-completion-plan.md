@@ -188,6 +188,19 @@ factor. [SourceServiceFirstTurnSharedCheckpoint](../Vegas/Game/SourceServiceFirs
 derives typed checkpoints in one fixed aligned slice at every initialized
 rank endpoint. Its state and action history come from the actual store and
 completion history; no endpoint or likelihood promise is supplied.
+[SourceServiceFirstTurnResolutionFactorization](../Vegas/Game/SourceServiceFirstTurnResolutionFactorization.lean)
+supplies the whole-view resolution step. Static tail effectiveness derives
+the supported normalization identity and realizable opening; actual canonical
+choices, protected completion and checkpoint decoding supply the whole source
+successor. The same parameter and traffic are retained through the existing
+resolution factor.
+[SourceServiceFirstTurnRankFactorization](../Vegas/Game/SourceServiceFirstTurnRankFactorization.lean)
+composes these actual phases at every initialized pure-first-turn rank. Its
+joint law is the true whole source behavioral iteration with the same initial
+parameter and full stopped traffic. The channel reads only the whole effective
+source observation. Neither a source marginal nor an endpoint or likelihood
+equation is a premise. Original-memory and native belief transport remain
+separate.
 
 The actual binding-response law now composes with protected completion,
 retaining the transmitting draw and full stopped traffic. The native Bayes
@@ -240,12 +253,8 @@ across all native information sets and account for its timing likelihoods.
 
 Continue in this order:
 
-1. Complete the resolution lift through one compiler-aligned
-   decoder slice chosen before integrating histories. The initialized traffic
-   law, whole-view sample and binding lifts, shared typed checkpoints and both
-   owned first-input channels are proved.
-   Compose the phase laws to carry the effective source prefix jointly with
-   full stopped traffic. Restore original histories once at the requested
+1. Use the proved initialized pure-first-turn source-prefix/full-traffic law
+   to restore original histories once at the requested
    prefix through the same all-owner memory lottery, retaining the initial
    parameter. For nonpure timing,
    derive the actual missing-turn/public-miss decomposition and relative

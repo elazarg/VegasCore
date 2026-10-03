@@ -76,7 +76,9 @@ private theorem runUntil_rank_eq_event (scheduler : (application setup leaks).Sc
           (rankCompleted_of_prefix advanced),
           app.runUntil_of_stop scheduler players _ _ next done]
 
-private theorem rankRun_eq_eventRun {scheduler : (application setup leaks).Scheduler}
+/-- At an actual untouched rank boundary, stopping at the next completed prefix is
+exactly stopping at its current event. -/
+theorem sourceServiceRank_runUntil_eq_event {scheduler : (application setup leaks).Scheduler}
     {players : Player → (application setup leaks).Policy} {horizon : Nat}
     (event : (graph setup).EventId) (execution : (application setup leaks).Execution)
     (boundary : CompletionBoundary setup leaks scheduler players event.val execution) :
@@ -193,7 +195,7 @@ theorem sourceServiceFirstTurn_rank_law [Fintype Player]
               horizon execution =
             app.runUntilHorizon scheduler players
               (fun final => event ∈ final.application.config.cut.completed) horizon execution :=
-        rankRun_eq_eventRun event execution (supported execution reached).2
+        sourceServiceRank_runUntil_eq_event event execution (supported execution reached).2
       refine ⟨?_, ?_⟩
       · intro stopped reached
         rw [composed, PMF.mem_support_bind_iff] at reached

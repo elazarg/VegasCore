@@ -1548,8 +1548,18 @@ decision and an unchanged parameter through the same typed successor pair
 and stopped traffic; the
 only probability premise is the preceding pair-view/traffic induction
 hypothesis. Actual compiler code and typed store agreement connect the pair
-to the event. This is a latent phase law: joining it to actual global source
-selection and whole-prefix induction remains open.
+to the event. This is a latent original/effective pair law. The whole-view
+consumer below identifies the actual global effective choice; common original
+memory and whole-prefix composition remain separate.
+
+[SourceServiceFirstTurnResolutionFactorization](../Vegas/Game/SourceServiceFirstTurnResolutionFactorization.lean)
+joins that coupling to the actual global source choice in one fixed aligned
+slice. Tail effectiveness derives supported normalization and realizability;
+canonical policy alignment and protected completion derive the whole successor
+decoder. The existing coupled factor retains the same parameter and full
+traffic through the whole effective source step. Compiler code and node
+agreement are required only on actual prior support; off-support source states
+do not supply proof resources. Whole-prefix composition remains separate.
 
 [SourceServiceFirstActivationResources](../Vegas/Game/SourceServiceFirstActivationResources.lean)
 derives first-input turn zero, actual trace, protected inclusion, unused
@@ -1585,6 +1595,13 @@ source state with actual traffic first. At each rank, choose the shared
 decoder slice before integrating the histories, apply the actual sample,
 binding or resolution phase law, and lift its typed-tail view channel to the
 whole source view.
+[SourceServiceFirstTurnRankFactorization](../Vegas/Game/SourceServiceFirstTurnRankFactorization.lean)
+proves this actual initialized pure-first-turn composition at every rank.
+Ordered stopping composes the real executions at the same horizon; shared
+typed checkpoints supply the three constructor cases. The resulting joint
+law equals the true whole source behavioral iteration with the same initial
+parameter and full stopped traffic. Its channel reads only the whole effective
+source view; no phase, source-marginal, endpoint or likelihood law is supplied.
 [SourceServiceInitialTraffic](../Vegas/Game/SourceServiceInitialTraffic.lean)
 starts that induction from the actual setup law, retaining any parameter from
 the same initial draw beside the whole source entry and full traffic. The
