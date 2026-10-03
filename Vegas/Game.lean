@@ -46,6 +46,7 @@ import Vegas.Game.SourceServiceTurnPolicy
 import Vegas.Game.SourceServiceAsyncTimeliness
 import Vegas.Game.SourceServiceAsyncStep
 import Vegas.Game.SourceServiceReachedDecoding
+import Vegas.Game.SourceServiceDecoderSlice
 import Vegas.Game.SourceServiceFirstTurnMixture
 import Vegas.Game.SourceServiceTurnSubmissions
 import Vegas.Game.SourceServiceDecidedCompletion
@@ -245,6 +246,7 @@ import Vegas.Game.ServiceRosterCounts
 import Vegas.Game.ServiceRosterClock
 import Vegas.Game.ServiceRosterPosition
 import Vegas.Game.DisclosurePrefix
+import Vegas.Game.DisclosureProfilePrefix
 import Vegas.Game.DisclosureRetraction
 import Vegas.Game.DisclosureBeliefs
 import Vegas.Game.DisclosureContinuation

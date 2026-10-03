@@ -1372,10 +1372,14 @@ joint with full traffic. The normalized transmitting prefix marginal equals
 that whole behavioral source step; waiting remains an unfinished branch.
 The residual also carries a partial recovery of each owner's source view,
 proved directly for its actual transport map. Recovery uses the source
-constructors rather than a default private value. This pointwise law does not
-yet give independently chosen residual witnesses one common recovery across
-a prior; that shared syntax-based construction remains necessary for Bayes
-transport.
+constructors rather than a default private value.
+[SourceServiceDecoderSlice](../Vegas/Game/SourceServiceDecoderSlice.lean)
+fixes one typed tail, behavioral profile, decoder lift and partial view
+recovery from the source syntax and rank. Its decoder splitting holds for
+every store, history and additional count, and its behavioral step commutes
+with that same lift. These witnesses are therefore shared across a prior;
+they are not selected from each hidden execution independently. An actual
+source-prefix likelihood is still needed before Bayes transport.
 
 [SourceServiceResolutionResponseLaw](../Vegas/Game/SourceServiceResolutionResponseLaw.lean)
 derives the corresponding physical FALSE/TRUE packet marginal for effective
@@ -1406,6 +1410,15 @@ followed by the same own-record-dependent stopping kernel. Supported
 transmitting endpoints agree with both successors' typed states and decode
 the effective history. This proves neither a whole original-source history
 law nor a native source-assessment equation.
+
+[DisclosureProfilePrefix](../Vegas/Game/DisclosureProfilePrefix.lean)
+supplies a common original-source carrier at every finite normalized source
+prefix. It composes the actual owner memory lotteries, retaining histories
+restored earlier, and recovers the complete original protocol-state law.
+The joint version preserves correlated initial parameters. The proof
+telescopes one-owner prefix realization against arbitrary opponents and
+assumes no independence of the restored memories. Applying it to native
+information still requires the effective-source conditional-prefix bridge.
 
 [SourceServiceResolutionResponseCompletion](../Vegas/Game/SourceServiceResolutionResponseCompletion.lean)
 connects a supported original intention from that memory lottery to the actual

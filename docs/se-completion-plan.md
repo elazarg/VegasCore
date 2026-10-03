@@ -121,9 +121,12 @@ Supported original resolution intentions now have exact protected packet
 completion and typed-state agreement, with effective history kept distinct.
 Their joint response law also composes with the actual stopping kernel,
 retaining full traffic and the current owner's restored intention. Residual
-source-view recovery is derived from the actual source constructors. A common
-recovery across the prior and all owners' original-history law still need
-assembly before native beliefs can be transported.
+source-view recovery is derived from the actual source constructors, and one
+static decoder slice supplies a lift and recovery shared across the prior.
+[DisclosureProfilePrefix](../Vegas/Game/DisclosureProfilePrefix.lean) composes
+all owners' real memory kernels to recover the complete original source law
+at every normalized source prefix. The actual effective-source likelihood
+and conditional-prefix bridge to native information still need assembly.
 A single timely canonical transmission followed by owner silence also has an
 actual accepted-action/public-miss dichotomy outside the protected window.
 Its acceptance law can depend on the builder and the public packet content;
