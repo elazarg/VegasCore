@@ -938,9 +938,14 @@ completion. [SourceServiceCompletedContinuation](../Vegas/Game/SourceServiceComp
 proves that the full typed readout is fixed under arbitrary raw continuation.
 At every compatible completed input, silent whole continuation has zero charge
 and is optimal in the full effective game under every belief and arbitrary
-foreign policies. Rationality of the returned assessment's actual continuation
-still needs a consumer of its prescribed silence and free-site optimality;
-the comparator alone does not establish that assessment property.
+foreign policies. [SourceServiceCompletedRationality](../Vegas/Game/SourceServiceCompletedRationality.lean)
+uses actual decision recall and consistent single-site optimality to prove
+rationality without requiring future free policies to be silent. The same
+assessments returned by `exists_consistent_original_sequence_completion` and
+`exists_consistent_source_completion` are rational at completed compatible
+risk-menu sites under nonnegative focal deposits. Its literal pin sequence supplies silence, even for varying original
+source approximants and without a waiting-rate bound at these sites.
+Unfinished compatible-site comparisons and the general SE theorem remain open.
 
 The risk-menu continuation consumers still require original risk-supported
 future responses. An excluded initial response can reach information states

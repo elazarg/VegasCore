@@ -3,6 +3,7 @@
 import Vegas.Game.AsyncServiceSourceSites
 import Vegas.Game.SourceServiceImmediatePolicy
 import Vegas.Game.SourceServiceProtectedDecisionLaw
+import Vegas.Game.SourceServiceCompletedRationality
 import GameTheoryExtensions.Analysis.Protocol.PrescribedCompletion
 import GameTheoryExtensions.Protocol.ContinuationHorizon
 
@@ -14,9 +15,11 @@ Geometric timing and uniform native trembles derive its prescribed limits.
 The initialized whole history law agrees with exact first-turn execution.
 
 Free information sites receive a jointly rational consistent completion.
-Rationality at prescribed sites and compatibility with a varying original
-source assessment sequence are not asserted. In particular, normalization at
-zero-mass private transcripts is not assumed continuous.
+Completed source-compatible sites are also rational when the owner's deposit
+is nonnegative. Comparisons at unfinished prescribed sites and compatibility
+with a varying original source assessment sequence are not asserted. In
+particular, normalization at zero-mass private transcripts is not assumed
+continuous.
 -/
 
 noncomputable section
@@ -260,9 +263,10 @@ private theorem compatible_geometric_immediate_limit
 
 open Classical in
 /-- A fixed admitted effective source profile has a consistent native
-completion. Only the free sites are proved rational. Protected sites keep
-the actual current source decision, and the same initialized history and
-sampled settlement laws as exact first-turn play. -/
+completion. Free sites and completed compatible sites with nonnegative
+deposits are rational. Protected sites keep the actual current source
+decision, and the same initialized history and sampled settlement laws as
+exact first-turn play. -/
 theorem exists_consistent_source_completion
     (profile : BehavioralProfile service.setup.program)
     (permitted : ∀ who, (profile who).Admitted service.setup.program
@@ -292,6 +296,13 @@ theorem exists_consistent_source_completion
               ((assessment.strategy who).withLaw site.1 law) ≤
             (assessment.continuationContext certificate site (payoff who)).value
               (assessment.strategy who)) ∧
+      (∀ who (site : (model).InformationSite who),
+        0 ≤ service.auditDeposit base probability who →
+        service.sourceCompatibleInfo who site.1 →
+        ∀ past view, site.1 = some (past, view) →
+          (∀ event, event ∈ view.application.publicView.observation.completionOrder) →
+          (assessment.continuationContext certificate site (payoff who)).IsLocallyOptimal
+            Set.univ (assessment.strategy who)) ∧
       (model).runBehavioralTerminalFrom certificate assessment.strategy
           ((menu).protocol (initialLaw service.setup) service.horizon
             service.scheduler).initHistory =
@@ -400,13 +411,33 @@ theorem exists_consistent_source_completion
           (service.firstTurnProfile service.horizon profile)
           ((menu).bounded (initialLaw service.setup) service.horizon service.scheduler)]
       exact service.immediateProfile_initialized_history service.horizon profile permitted _)
-  refine ⟨assessment, consistent, ?_, ?_, firstTurnHistories, ?_⟩
+  refine ⟨assessment, consistent, ?_, ?_, ?_, firstTurnHistories, ?_⟩
   · intro who site compatible
     apply agrees who site
     simpa only [free, Finset.mem_filter, Finset.mem_univ, true_and, not_not] using compatible
   · intro who site incompatible law
     apply freeOptimal who site _ law
     exact Finset.mem_filter.mpr ⟨Finset.mem_univ _, incompatible⟩
+  · intro who site nonnegative compatible past view observed completed
+    have silence player earlier atView :
+        (⟨none⟩ : (app).Action) ∈ (menu).actions player earlier atView :=
+      service.bounds.canonicalActions_subset_risk (runtime service.setup) service.leaks
+        service.bound player earlier atView
+        (service.bounds.silence_canonical (runtime service.setup) service.leaks player
+          earlier atView)
+    apply service.sourceCompatibleInfo_completed_optimal (menu) silence assessment consistent
+      utility sample authentic (service.auditDeposit base probability) _ _ who site nonnegative
+        compatible past view observed completed
+    · intro player current currentCompatible currentPast currentView currentObserved currentComplete
+      have agreement := agrees player current (by
+        simpa only [free, Finset.mem_filter, Finset.mem_univ, true_and, not_not] using
+          currentCompatible)
+      rw [agreement, currentObserved]
+      exact service.sourceServiceImmediatePolicy_completed_profile (menu) silence profile player
+        currentPast currentView currentComplete
+    · intro player current incompatible law
+      exact freeOptimal player current (Finset.mem_filter.mpr
+        ⟨Finset.mem_univ _, incompatible⟩) law
   · rw [firstTurnHistories]
     exact service.firstTurnProfile_joint_law service.horizon profile permitted effective utility
       sample authentic probability

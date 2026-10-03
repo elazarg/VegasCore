@@ -166,6 +166,7 @@ import Vegas.Game.AsyncServiceCompatibleRecall
 import Vegas.Game.AsyncServiceForeignEscape
 import Vegas.Game.SourceServiceClearAudit
 import Vegas.Game.SourceServiceCompletedContinuation
+import Vegas.Game.SourceServiceCompletedRationality
 import Vegas.Game.SourceServiceBindingSource
 import Vegas.Game.SourceServiceResidualSites
 import Vegas.Game.SourceServiceReadyObservation

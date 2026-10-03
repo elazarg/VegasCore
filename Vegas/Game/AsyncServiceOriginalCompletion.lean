@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.AsyncServiceInformationWaitDomination
+import Vegas.Game.SourceServiceCompletedRationality
 import Vegas.Game.SourceContinuation
 import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
 
@@ -14,7 +15,8 @@ have independent rates. Uniform initialized history domination preserves the
 original source joint law in that limit without assuming global continuity of
 disclosure normalization.
 
-The result gives consistency, rational free sites and the actual initialized
+The result gives consistency, rational free sites, rational completed compatible
+sites with nonnegative deposits, and the actual initialized
 typed outcome and sampled settlement law. Prescribed-site comparisons and
 conditional escape relative to rare observations remain separate obligations.
 The uniform maximum bound controls only initialized loss; it does not assert
@@ -92,8 +94,9 @@ private theorem original_run_converges [Finite Player]
 
 open Classical in
 /-- Actual original source assessments admit one consistent native completion
-with their real normalized pin limits. Only the free information sites are
-proved rational; initialized typed outcomes and sampled payoffs agree exactly. -/
+with their real normalized pin limits. Free information sites and completed
+compatible sites under nonnegative deposits are rational; initialized typed
+outcomes and sampled payoffs agree exactly. -/
 theorem exists_consistent_original_sequence_completion
     (source : (sourceModel).BehavioralAssessment)
     (sourceSequence : Nat → (sourceModel).BehavioralAssessment)
@@ -155,6 +158,14 @@ theorem exists_consistent_original_sequence_completion
               ((assessment.strategy who).withLaw site.1 law) ≤
             (assessment.continuationContext certificate site (payoff who)).value
               (assessment.strategy who)) ∧
+      (∀ who (site : (model).InformationSite who),
+        0 ≤ service.auditDeposit base probability who →
+        service.sourceCompatibleInfo who site.1 →
+        ∀ (past : List (app).PlayerEntry) (view : (app).PlayerView),
+          site.1 = some (past, view) →
+          (∀ event, event ∈ view.application.publicView.observation.completionOrder) →
+          (assessment.continuationContext certificate site (payoff who)).IsLocallyOptimal
+            Set.univ (assessment.strategy who)) ∧
       (∀ fuel history, history ∈ ((model).runBehavioral assessment.strategy fuel).support →
         ∀ who, ((menu).protocol (initialLaw service.setup) service.horizon service.scheduler).active
           history.state who → service.sourceCompatibleInfo who ((model).infoOf who history.trace)) ∧
@@ -348,11 +359,31 @@ theorem exists_consistent_original_sequence_completion
       (Option.some_injective (State L service.setup.program.terminalCtx))] using limit
   have sourceTarget := sourceRuns.map (fun state => (some state, utility state))
   refine ⟨nativeSequence, assessment, index, mixed, bayes, increasing, converges, consistent,
-    ?_, ?_, compatiblePlay, ?_⟩
+    ?_, ?_, ?_, compatiblePlay, ?_⟩
   · intro n who site compatible
     exact kept n who site compatible
   · intro who site incompatible law
     exact freeOptimal who site (Finset.mem_filter.mpr ⟨Finset.mem_univ _, incompatible⟩) law
+  · intro who site nonnegative compatible past view observed completed
+    have silence player earlier atView :
+        (⟨none⟩ : (app).Action) ∈ (menu).actions player earlier atView :=
+      service.bounds.canonicalActions_subset_risk (runtime service.setup) service.leaks
+        service.bound player earlier atView
+        (service.bounds.silence_canonical (runtime service.setup) service.leaks player
+          earlier atView)
+    apply service.sourceCompatibleInfo_completed_optimal (menu) silence assessment consistent
+      utility sample authentic (service.auditDeposit base probability) _ _ who site nonnegative
+        compatible past view observed completed
+    · intro player current currentCompatible currentPast currentView currentObserved currentComplete
+      exact service.sourceCompatibleInfo_completed_pin_limit (menu) silence normalized weight
+        weightNonnegative weightSmall delta (fun n => (deltaPositive n).le)
+        (fun n => (deltaSmall n).le) deltaVanishes nativeSequence assessment index increasing
+        converges (fun n player current currentCompatible => kept n player current
+          currentCompatible)
+        player current currentCompatible currentPast currentView currentObserved currentComplete
+    · intro player current incompatible law
+      exact freeOptimal player current (Finset.mem_filter.mpr
+        ⟨Finset.mem_univ _, incompatible⟩) law
   · have sourceAlong := sourceTarget.subseq increasing
     have aligned := nativeJoint
     simp only [firstTurnJoint] at aligned

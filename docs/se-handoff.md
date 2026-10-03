@@ -57,7 +57,8 @@ future private values changed by repair are outside the claim.
 - [AsyncServicePrescribedCompletion](../Vegas/Game/AsyncServicePrescribedCompletion.lean)
   constructs a consistent assessment for each fixed admitted effective source
   profile, with immediate decisions at source-compatible sites and optimal
-  continuation at every free site under the actual audited utility. Its complete
+  continuation at every free site under the actual audited utility. Completed
+  compatible sites are rational under nonnegative owner deposits. Its complete
   initialized history law and joint typed readout/realized settlement law equal
   first-turn play. Prescribed-site rationality remains open; the varying-source
   construction below handles actual approximants without assuming off-path
@@ -118,8 +119,9 @@ future private values changed by repair are outside the claim.
 - [AsyncServiceOriginalCompletion](../Vegas/Game/AsyncServiceOriginalCompletion.lean)
   constructs a fully mixed native Bayes sequence from actual original source
   approximants, with one common strategy/belief subsequence and consistent limit.
-  Free sites are rational; initialized support is source-compatible; the full
-  typed outcome and realized sampled settlement law equal the original source
+  Free sites and completed compatible sites under nonnegative deposits are
+  rational; initialized support is source-compatible; the full typed outcome
+  and realized sampled settlement law equal the original source
   strategy's law. Local WAIT rates have a common vanishing upper bound at
   compatible sites. Actual normalized pin limits are retained. Source-relative
   conditional beliefs, prescribed-site rationality and suitable waiting rates
@@ -852,9 +854,14 @@ completion. [SourceServiceCompletedContinuation](../Vegas/Game/SourceServiceComp
 proves that the full typed readout is fixed under arbitrary raw continuation.
 At every compatible completed input, silent whole continuation has zero charge
 and is optimal in the full effective game under every belief and arbitrary
-foreign policies. Rationality of the returned assessment's actual continuation
-still needs a consumer of its prescribed silence and free-site optimality;
-the comparator alone does not establish that assessment property.
+foreign policies. [SourceServiceCompletedRationality](../Vegas/Game/SourceServiceCompletedRationality.lean)
+uses actual decision recall and consistent single-site optimality to prove
+rationality without requiring future free policies to be silent. The same
+assessments returned by `exists_consistent_original_sequence_completion` and
+`exists_consistent_source_completion` are rational at completed compatible
+risk-menu sites under nonnegative focal deposits. Its literal pin sequence supplies silence, even for varying original
+source approximants and without a waiting-rate bound at these sites.
+Unfinished compatible-site comparisons and the general SE theorem remain open.
 
 The risk-menu continuation consumers still require original risk-supported
 future responses. An excluded initial response can reach information states
