@@ -437,7 +437,8 @@ future private values changed by repair are outside the claim.
   ready sequential prefix. A policy sending no new owner commitments preserves
   the bound under arbitrary foreign responses and scheduler commands. Once
   this event completes, all old token-valid owner commitments name completed
-  events. The first-breach evaluator and terminal comparison remain open.
+  events. The noncommitment stopped evaluator below uses this resource;
+  later commitments and terminal comparison remain separate.
 - [ReactiveBindingCommitmentStep](../Vegas/Pending/ReactiveBindingCommitmentStep.lean)
   preserves the full inclusion frame for old owner commitments addressed to
   completed events and foreign commitments using their actual fixed candidate
@@ -482,7 +483,8 @@ future private values changed by repair are outside the claim.
   Its complete stopped law preserves public selection, misses and all foreign
   inputs under changes to the canonical binding's private value, jointly with
   the same correlated prefix parameter. Finite-budget exhaustion is allowed.
-  Unique-call acceptance/miss classification and waiting incentives are separate.
+  The actual unique-call acceptance/miss classification is composed below;
+  waiting incentives remain separate.
 - [SourceServiceBindingChoiceSelection](../Vegas/Game/SourceServiceBindingChoiceSelection.lean)
   joins the actual source commitment draw with this private-value-independent
   selection law at the same physical prefix and initial parameter. The failure
@@ -496,8 +498,15 @@ future private values changed by repair are outside the claim.
 - [ReactiveBindingAcceptanceReceipts](../Vegas/Pending/ReactiveBindingAcceptanceReceipts.lean)
   derives an actual owner-authored ledger commitment and accepting receipt
   for each accepted binding association on every initialized raw history.
-  This closes receipt origin; the typed acceptance-of-this-attempt/public-miss
-  decomposition still needs composition with the completion law.
+  This closes receipt origin.
+- [SourceServiceBindingAttemptCompletion](../Vegas/Game/SourceServiceBindingAttemptCompletion.lean)
+  derives the exact typed dichotomy for a manual timely first binding call at
+  an actual clear prefix: this identifier accepted, unmarked and exact chosen
+  successor, or actual public miss, no accepting receipt and typed failure.
+  Initialization and complete play derive all endpoint resources. The owner
+  subsequently follows any recorded timing policy, against arbitrary foreign
+  raw policies. The current call need not be protected or policy-supported;
+  joining the source draw to this outcome remains separate.
 
 ## Proof and build discipline
 

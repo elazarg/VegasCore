@@ -413,8 +413,8 @@ derives that replacement from actual recorded turn policy for any timing and
 proves the full completion-stopped joint law. Changing the canonical binding's
 private value preserves public selection, misses and all foreign inputs with
 the same correlated prefix parameter. Horizon exhaustion is retained. A
-binary acceptance-of-this-packet/public-miss decomposition still needs actual
-unique-call prefix resources; the strategic waiting comparison remains open.
+manual first-call acceptance/public-miss decomposition uses the actual
+unique-call prefix resources below; the strategic waiting comparison remains open.
 [SourceServiceBindingChoiceSelection](../Vegas/Game/SourceServiceBindingChoiceSelection.lean)
 joins the actual sampled source commitment value to this selection law,
 conditionally on the same physical prefix and correlated initial parameter.
@@ -428,8 +428,16 @@ envelope, including identifier and readiness token. Foreign raw policies are
 arbitrary. [ReactiveBindingAcceptanceReceipts](../Vegas/Pending/ReactiveBindingAcceptanceReceipts.lean)
 derives the reverse receipt resource on every initialized raw history: each
 accepted event handle has an actual owner-authored ledger commitment with
-its accepting receipt. Combining these with typed completion to classify
-this attempt's acceptance or public miss remains separate.
+its accepting receipt.
+[SourceServiceBindingAttemptCompletion](../Vegas/Game/SourceServiceBindingAttemptCompletion.lean)
+composes these resources at an actual clear risk-menu binding prefix. Every
+endpoint of a manual timely canonical attempt completes with either this
+identifier's accepting receipt, no miss and the exact chosen typed successor,
+or its actual public miss, no accepting receipt for this identifier and typed
+failure. Complete play, freshness and uniqueness are derived. The subsequent
+owner follows any recorded timing policy; foreign raw policies are arbitrary.
+The call need not be protected or supported by that timing policy. Sampling
+this dichotomy jointly with the source choice remains separate.
 
 The watcher samples authentic evidence partially; observation and report
 delivery may be correlated. Positive conditional coverage and a finite

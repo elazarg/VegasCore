@@ -2454,8 +2454,8 @@ the final equilibrium's supported play.
   and proves its full completion-stopped joint law. The same correlated prefix
   parameter, public selection and all foreign inputs are retained when the
   canonical binding's private value changes. Horizon exhaustion is allowed;
-  a binary acceptance-of-this-packet/miss split needs actual unique-call prefix
-  resources, and the waiting incentive comparison remains open.
+  the actual first-call resources and typed split below handle a manual timely
+  attempt, while the waiting incentive comparison remains open.
   [SourceServiceBindingChoiceSelection](../Vegas/Game/SourceServiceBindingChoiceSelection.lean)
   joins the actual source commitment draw to this public selection kernel,
   conditionally on the same physical prefix and correlated initial parameter.
@@ -2468,9 +2468,17 @@ the final equilibrium's supported play.
   recorded-policy continuation, against arbitrary foreign raw policies.
   [ReactiveBindingAcceptanceReceipts](../Vegas/Pending/ReactiveBindingAcceptanceReceipts.lean)
   derives an owner-authored ledger commitment and accepting receipt for each
-  actual accepted binding association. Receipt origin and unique-call resources
-  are checked; their typed acceptance-of-this-attempt/public-miss composition
-  and the waiting comparison remain separate.
+  actual accepted binding association.
+  [SourceServiceBindingAttemptCompletion](../Vegas/Game/SourceServiceBindingAttemptCompletion.lean)
+  derives the typed binary outcome at an actual clear binding prefix: this
+  manual timely call's identifier is accepted, the event is unmarked and its
+  successor is exactly the chosen value, or actual expiry marks a public miss,
+  leaves no accepting receipt for this identifier and records typed failure.
+  Complete play, packet uniqueness and counted-slot freshness are derived.
+  Its subsequent owner follows any recorded timing policy, with foreign raw
+  policies arbitrary. The current call need not be protected or supported
+  by that timing policy. Source-draw composition and waiting incentives remain
+  separate obligations.
 - **Stage B beliefs.** Probe C5 suggests that depth differences are no
   obstruction, but the concurrent-window information sets are new. If they
   break the extension, D2's contract-ordered service is the fallback.
