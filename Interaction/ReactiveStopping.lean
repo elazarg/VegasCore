@@ -13,6 +13,8 @@ from the environment recall
 stopping point and then on to the horizon
 (`runToHorizon_eq_runUntilHorizon_bind`): the round evaluator has the Markov
 property at every stopping time, for arbitrary schedulers and player policies.
+Ordered stopping predicates also compose within the same horizon
+(`runUntilHorizon_eq_runUntilHorizon_bind`).
 -/
 
 noncomputable section
@@ -171,6 +173,38 @@ theorem runToHorizon_eq_runUntilHorizon_bind (stop : app.Execution → Prop) [De
         have step := ih middle remaining
         rw [runToHorizon, remaining] at step
         exact step
+
+/-- Stopping at a later predicate is stopping at an earlier one and then
+continuing to the later predicate with the same horizon. The predicates need
+only be ordered; policies and public scheduler histories are unchanged. -/
+theorem runUntilHorizon_eq_runUntilHorizon_bind
+    (earlier later : app.Execution → Prop) [DecidablePred earlier] [DecidablePred later]
+    (ordered : ∀ execution, later execution → earlier execution)
+    (horizon : Nat) (execution : app.Execution) :
+    app.runUntilHorizon scheduler players later horizon execution =
+      (app.runUntilHorizon scheduler players earlier horizon execution).bind
+        (app.runUntilHorizon scheduler players later horizon) := by
+  change app.runUntil scheduler players later
+      (horizon - execution.environmentRecall.length) execution =
+    (app.runUntil scheduler players earlier
+      (horizon - execution.environmentRecall.length) execution).bind
+        (app.runUntilHorizon scheduler players later horizon)
+  generalize remaining : horizon - execution.environmentRecall.length = count
+  induction count generalizing execution with
+  | zero =>
+      simp only [runUntil, PMF.pure_bind, runUntilHorizon, remaining]
+  | succ count ih =>
+      by_cases halt : earlier execution
+      · rw [app.runUntil_of_stop scheduler players earlier _ execution halt, PMF.pure_bind]
+        exact congrArg (fun budget => app.runUntil scheduler players later budget execution)
+          remaining.symm
+      · have running : ¬ later execution := fun stopped => halt (ordered execution stopped)
+        simp only [runUntil, halt, running, ↓reduceIte, PMF.bind_bind]
+        apply bind_congr_on_support _
+        intro middle moved
+        have length := app.round_environmentRecall_length scheduler players execution middle moved
+        have left : horizon - middle.environmentRecall.length = count := by omega
+        exact ih middle left
 
 /-- The remaining protocol play from an idle control state is the run to the
 horizon. -/

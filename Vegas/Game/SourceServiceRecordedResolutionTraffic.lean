@@ -121,25 +121,28 @@ theorem sourceServiceTurnPolicy_round_of_recorded
         ready owned recorded command moved who actor
       simp only [ReactiveApplication.resume, ReactiveApplication.invoke, policy]
 
-/-- The prescribed policy and all-silent policy have the same whole execution
-law stopped at this recorded event's completion, including horizon exhaustion.
-Actual configuration progress and recall persistence supply the invariant. -/
-theorem sourceServiceTurnPolicy_runUntilHorizon_of_recorded
+/-- A policy silent at every input while this ready decision is recorded has
+the exact all-silent completion-stopped execution law. Actual configuration
+progress and persistence of the owner's recorded call supply the invariant. -/
+theorem sourceServicePolicy_runUntil_of_recorded
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (scheduler : (application setup leaks).Scheduler)
-    (bound : (graph setup).EventId → Nat) (turns : Nat) (timing : TurnTiming setup turns)
-    (profile : BehavioralProfile setup.program) (horizon : Nat)
+    (players : Player → (application setup leaks).Policy) (count : Nat)
     (execution : (application setup leaks).Execution) (owner : Player)
     (event : (graph setup).EventId) (ready : execution.application.config.cut.Ready event)
-    (owned : (graph setup).actor? event = some owner)
-    (recorded : (runtime setup).eventRecorded leaks (execution.recall owner) event = true) :
-    (application setup leaks).runUntilHorizon scheduler
-        (sourceServiceTurnPolicy setup leaks bound turns timing profile)
-        (fun final => event ∈ final.application.config.cut.completed) horizon execution =
-      (application setup leaks).runUntilHorizon scheduler
+    (recorded : (runtime setup).eventRecorded leaks (execution.recall owner) event = true)
+    (silent : ∀ current : (application setup leaks).Execution,
+      current.application.config.cut.Ready event →
+      (runtime setup).eventRecorded leaks (current.recall owner) event = true →
+      ∀ who, players who (current.recall who) (current.observe (application setup leaks) who) =
+        (application setup leaks).silentPolicy (current.recall who)
+          (current.observe (application setup leaks) who)) :
+    (application setup leaks).runUntil scheduler players
+        (fun final => event ∈ final.application.config.cut.completed) count execution =
+      (application setup leaks).runUntil scheduler
         (fun _ => (application setup leaks).silentPolicy)
-        (fun final => event ∈ final.application.config.cut.completed) horizon execution := by
+        (fun final => event ∈ final.application.config.cut.completed) count execution := by
   let app := application setup leaks
   let invariant := fun current : app.Execution =>
     (current.application.config.cut.Ready event ∨
@@ -148,11 +151,15 @@ theorem sourceServiceTurnPolicy_runUntilHorizon_of_recorded
   have readyOf (current : app.Execution) (holds : invariant current)
       (running : event ∉ current.application.config.cut.completed) :
       current.application.config.cut.Ready event := holds.1.resolve_right running
-  unfold ReactiveApplication.runUntilHorizon
   apply app.runUntil_congr_of_agree scheduler _ _ _ invariant
   · intro current holds running command _ middle moved who active
-    exact recorded_activation_input_silent setup leaks bound turns timing profile
-      (readyOf current holds running) owned holds.2 command moved who active
+    cases command with
+    | activate actor =>
+        have applicationEq := activation_application setup leaks current middle actor moved
+        have recallEq := app.environmentStep_recall current middle (.activate actor) moved
+        exact silent middle (by rw [applicationEq]; exact readyOf current holds running)
+          (by rw [recallEq]; exact holds.2) who
+    | «include» _ | application _ | wait => cases active
   · intro current holds running next reached
     have currentReady := readyOf current holds running
     refine ⟨?_, ?_⟩
@@ -175,6 +182,30 @@ theorem sourceServiceTurnPolicy_runUntilHorizon_of_recorded
       · exact (runtime setup).eventRecorded_respond_of_recorded leaks middle responder owner
           response event middleRecorded
   · exact ⟨Or.inl ready, recorded⟩
+
+/-- The prescribed policy and all-silent policy have the same whole execution
+law stopped at this recorded event's completion, including horizon exhaustion. -/
+theorem sourceServiceTurnPolicy_runUntilHorizon_of_recorded
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (scheduler : (application setup leaks).Scheduler)
+    (bound : (graph setup).EventId → Nat) (turns : Nat) (timing : TurnTiming setup turns)
+    (profile : BehavioralProfile setup.program) (horizon : Nat)
+    (execution : (application setup leaks).Execution) (owner : Player)
+    (event : (graph setup).EventId) (ready : execution.application.config.cut.Ready event)
+    (owned : (graph setup).actor? event = some owner)
+    (recorded : (runtime setup).eventRecorded leaks (execution.recall owner) event = true) :
+    (application setup leaks).runUntilHorizon scheduler
+        (sourceServiceTurnPolicy setup leaks bound turns timing profile)
+        (fun final => event ∈ final.application.config.cut.completed) horizon execution =
+      (application setup leaks).runUntilHorizon scheduler
+        (fun _ => (application setup leaks).silentPolicy)
+        (fun final => event ∈ final.application.config.cut.completed) horizon execution := by
+  unfold ReactiveApplication.runUntilHorizon
+  exact sourceServicePolicy_runUntil_of_recorded setup leaks scheduler _ _ execution owner
+    event ready recorded (fun current currentReady currentRecorded who =>
+      recorded_turn_input_silent setup leaks bound turns timing profile current owner event
+        currentReady owned currentRecorded who)
 
 /-- The actual prescribed turn policy preserves an existing source-conditioned
 full traffic channel after its current resolution has been recorded, for any

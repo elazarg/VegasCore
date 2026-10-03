@@ -73,13 +73,33 @@ future private values changed by repair are outside the claim.
   carries a prior source-view/full-traffic factorization through the whole
   binding wait to the actual first owner input. The source carrier may retain
   original and effective states together. It preserves the given carrier
-  marginal; establishing that marginal and joining post-response traffic
-  remain separate.
+  marginal. The initialized rank law supplies the source marginal separately;
+  assembling the whole source/traffic induction remains open.
 - [SourceServiceFirstTurnCompletes](../Vegas/Game/SourceServiceFirstTurnCompletes.lean)
   identifies the actual next-prefix decoder law of the local first-turn
   completion phase with the whole source behavioral step. This includes
   samples, commitments and explicit withholding, before applying a source
   continuation. It does not transport original disclosure intentions.
+- [SourceServiceFirstTurnPrefix](../Vegas/Game/SourceServiceFirstTurnPrefix.lean)
+  derives that local law for the actual global first-turn policy.
+  [SourceServiceFirstTurnRanks](../Vegas/Game/SourceServiceFirstTurnRanks.lean)
+  composes actual rank stops and identifies the initialized effective source
+  prefix at every rank, jointly with any reading of the same initial draw.
+  The ordered stopping identity in
+  [ReactiveStopping](../Interaction/ReactiveStopping.lean) supplies the actual
+  evaluator composition; no source marginal is assumed.
+- [SourceServiceOriginalPrefix](../Vegas/Game/SourceServiceOriginalPrefix.lean)
+  binds the same all-owner memory restoration to the actual normalized rank
+  decoder. The resulting auxiliary carrier has the complete original source
+  prefix law, with correlated initial parameters retained. Effectiveness is
+  derived internally. This does not identify physical own recall or native
+  information posteriors with restored intentions.
+- [SourceServiceFirstBindingTraffic](../Vegas/Game/SourceServiceFirstBindingTraffic.lean)
+  joins the actual first-turn source draw, whole next-prefix decoder and full
+  stopped traffic. Fixed-draw traffic coupling preserves original/effective
+  successor pairs from a prior source-view/traffic factorization. The law
+  applies to initialized exact first-turn phases; whole-prefix traffic
+  induction and retained-waiting incentives remain separate.
 - [SourceServiceSampleCompletion](../Vegas/Game/SourceServiceSampleCompletion.lean)
   derives silence and exact stopped sample/configuration laws for any turn
   timing from an actual boundary and complete play.
@@ -147,8 +167,21 @@ future private values changed by repair are outside the claim.
 - [SourceServiceNodeKindBreach](../Vegas/Game/SourceServiceNodeKindBreach.lean)
   derives final rejection of commitments at non-binding nodes and opening or
   withholding at non-resolution nodes. The same auditable classifier uses
-  it with the existing collection bound. Private material, guard-passing
-  capability and other unclassified packets retain their own obligations.
+  it with the existing collection bound. Other unclassified packets retain
+  their own obligations.
+- [SourceServiceCompletedPacket](../Vegas/Game/SourceServiceCompletedPacket.lean)
+  derives final rejection of a fresh identifier allocated after its named
+  event completed. The actual committed response supplies that identifier,
+  and the auditable classifier uses the same collection bound. An original
+  accepted envelope remains permitted. Repeated calls before completion need
+  a separate proof selecting at least one forbidden packet from the pair;
+  the newer packet can be accepted.
+- [SourceServicePublicRejection](../Vegas/Game/SourceServicePublicRejection.lean)
+  proves persistent rejection from actual public handler conditions. The
+  auditable classifier uses it for openings with wrong candidate ownership
+  or public binding association at the owner's ready resolution. These
+  collection comparisons use the existing partial-evidence backend; private
+  binding capability repair remains separate.
 - [SourceServiceRiskExtension](../Vegas/Game/SourceServiceRiskExtension.lean)
   extends an audited risk-menu equilibrium after classified packet coverage
   and other-exclusion comparisons are supplied. It does not embed a source

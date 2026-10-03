@@ -109,12 +109,30 @@ configuration is unchanged, and the input has protected inclusion. Its recall
 readout integrates the actual response lottery after the same passive sample.
 [SourceServiceFirstActivationFactorization](../Vegas/Game/SourceServiceFirstActivationFactorization.lean)
 preserves a prior source-view/full-traffic factorization through the entire
-binding wait to that input. The prior source marginal and post-response
-source-successor/traffic assembly remain separate obligations.
+binding wait to that input. Whole-prefix source/traffic assembly remains a
+separate obligation.
 
 [SourceServiceFirstTurnCompletes](../Vegas/Game/SourceServiceFirstTurnCompletes.lean)
 identifies the whole next-prefix law of the local first-turn completion phase
 with the source behavioral step, before applying the source continuation.
+[SourceServiceFirstTurnPrefix](../Vegas/Game/SourceServiceFirstTurnPrefix.lean)
+derives this law for the actual global first-turn policy.
+[SourceServiceFirstTurnRanks](../Vegas/Game/SourceServiceFirstTurnRanks.lean)
+composes actual rank stops and derives the initialized effective source
+prefix law at every rank, including correlated initial parameters. Its
+evaluator composition uses ordered stopping predicates within the same
+actual horizon.
+[SourceServiceOriginalPrefix](../Vegas/Game/SourceServiceOriginalPrefix.lean)
+restores all owners' original private histories through one common memory
+lottery after that actual decoder. It derives the complete original source
+prefix law, jointly retaining the initial parameter, without another
+effectiveness premise. This auxiliary carrier does not supply physical
+native recall or a conditional information posterior.
+[SourceServiceFirstBindingTraffic](../Vegas/Game/SourceServiceFirstBindingTraffic.lean)
+joins the actual first-turn binding draw and whole source successor with the
+same stopped full traffic. Its fixed-draw coupling carries an
+original/effective successor pair from the prior source-view/traffic law.
+Whole-prefix traffic induction remains open.
 [SourceServiceSampleCompletion](../Vegas/Game/SourceServiceSampleCompletion.lean)
 derives the actual stopped sample/configuration law for any timing from its
 initialized boundary and complete play. The real one-round sample traffic
@@ -150,8 +168,9 @@ source-view recovery is derived from the actual source constructors, and one
 static decoder slice supplies a lift and recovery shared across the prior.
 [DisclosureProfilePrefix](../Vegas/Game/DisclosureProfilePrefix.lean) composes
 all owners' real memory kernels to recover the complete original source law
-at every normalized source prefix. The actual effective-source likelihood
-and conditional-prefix bridge to native information still need assembly.
+at every normalized source prefix. The initialized native rank carrier has
+that original law; its joint traffic likelihood and conditional-prefix bridge
+to native information still need assembly.
 The actual restoration also retracts to the same effective state on support,
 and its view compression transports an effective source-view channel through
 the common original-memory lottery. Waiting in the binding prefix law uses
@@ -199,8 +218,17 @@ another checked deviation class without changing backend coverage; wrong
 node kinds are covered separately by
 [SourceServiceNodeKindBreach](../Vegas/Game/SourceServiceNodeKindBreach.lean)
 through accepting-receipt constructor compatibility. Valid-token off-turn
-calls are not automatically forbidden, and private capabilities retain their
-own proof obligations.
+calls are not automatically forbidden.
+[SourceServiceCompletedPacket](../Vegas/Game/SourceServiceCompletedPacket.lean)
+covers newly allocated packets addressed to already completed events and is
+integrated into the same auditable collection comparison. Earlier accepted
+envelopes remain permitted. Two submissions before completion require a
+separate pair argument, since the builder may accept the newer packet.
+[SourceServicePublicRejection](../Vegas/Game/SourceServicePublicRejection.lean)
+shares the actual public rejection argument and derives forbiddenness for
+wrong opening ownership or public binding association at a ready resolution.
+Those classes are integrated into the same information-local collection bound.
+Private binding capabilities retain their own repair obligations.
 
 ## Validation
 
