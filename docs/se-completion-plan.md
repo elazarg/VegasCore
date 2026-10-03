@@ -841,6 +841,22 @@ retains completed events, permanent used associations or matching candidate mean
 through arbitrary responses and scheduler commands. Full commitment support
 and the duplicate-packet strategic comparison remain open.
 
+[SourceServiceMissingAssociatedCoupling](../Vegas/Game/SourceServiceMissingAssociatedCoupling.lean)
+derives the changed handle's public association from an actual protected sole
+missing-opening call at completion. A policy gate on that persistent public
+association has exactly the original ungated continuation law. The same finite
+repair coupling then permits every later bare owned fixed reuse, without a
+changed-slot avoidance premise. Initial mistyped material and the signed-breach
+exception remain separate.
+
+[SourceServiceMissingSignedResponse](../Vegas/Game/SourceServiceMissingSignedResponse.lean)
+locates an actual signed opening before emission while the repaired history is
+still clear and legal. The shared frame derives absence of any earlier owner
+signed breach; effective normal form transports the proposed envelope and
+derives repaired risk-menu exclusion. The existing retained implementation
+selects its legal fallback with unchanged shadow. This is a local replacement
+point, not a whole-policy utility comparison after risk expansion.
+
 [ReactiveBindingCandidateAgreement](../Vegas/Pending/ReactiveBindingCandidateAgreement.lean)
 derives candidate equality outside the one changed slot from two actual
 same-before registrations and their real preparation runs. Replacing absent

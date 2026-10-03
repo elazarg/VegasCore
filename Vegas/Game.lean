@@ -81,6 +81,8 @@ import Vegas.Game.SourceServiceBindingAcceptancePosterior
 import Vegas.Game.SourceServiceBindingNoAttempt
 import Vegas.Game.SourceServiceTimingMixture
 import Vegas.Game.SourceServiceMissingStoppedCoupling
+import Vegas.Game.SourceServiceMissingAssociatedCoupling
+import Vegas.Game.SourceServiceMissingSignedResponse
 import Vegas.Game.AsyncServiceFirstTurnBeliefResources
 import Vegas.Game.SourceServiceFirstBindingTraffic
 import Vegas.Game.SourceServiceFirstTurnBindingFactorization
