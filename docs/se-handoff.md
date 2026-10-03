@@ -59,9 +59,9 @@ future private values changed by repair are outside the claim.
   profile, with immediate decisions at source-compatible sites and optimal
   continuation at every free site under the actual audited utility. Its complete
   initialized history law and joint typed readout/realized settlement law equal
-  first-turn play. Prescribed-site rationality and transport of the original
-  varying source assessment sequence remain open; off-path normalization
-  continuity is not assumed.
+  first-turn play. Prescribed-site rationality remains open; the varying-source
+  construction below handles actual approximants without assuming off-path
+  normalization continuity.
 - [AsyncServiceInitializedDomination](../Vegas/Game/AsyncServiceInitializedDomination.lean)
   bounds the whole initialized history law of uniformly perturbed geometric
   pins with arbitrary free continuation. Every first-turn history retains
@@ -70,6 +70,14 @@ future private values changed by repair are outside the claim.
   varying original source approximants without off-path normalization continuity.
   Conditional rare-input beliefs and incentive-compatible waiting rates remain
   separate obligations.
+- [AsyncServiceOriginalCompletion](../Vegas/Game/AsyncServiceOriginalCompletion.lean)
+  constructs a fully mixed native Bayes sequence from actual original source
+  approximants, with one common strategy/belief subsequence and consistent limit.
+  Free sites are rational; initialized support is source-compatible; the full
+  typed outcome and realized sampled settlement law equal the original source
+  strategy's law. Actual normalized pin limits are retained. Source-relative
+  conditional beliefs, prescribed-site rationality and suitable waiting rates
+  remain open.
 - [SourceServiceRecordedDecisionCompletion](../Vegas/Game/SourceServiceRecordedDecisionCompletion.lean)
   gives acceptance of the exact original recorded packet and no public miss
   under the asynchronous contract. [SourceServiceRecordedBindingCompletion](../Vegas/Game/SourceServiceRecordedBindingCompletion.lean)

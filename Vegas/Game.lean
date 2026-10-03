@@ -343,6 +343,7 @@ import Vegas.Game.SourceServiceBindingSelectedReference
 import Vegas.Game.SourceServiceBindingSelectedCompletionLaw
 import Vegas.Game.AsyncServicePrescribedCompletion
 import Vegas.Game.AsyncServiceInitializedDomination
+import Vegas.Game.AsyncServiceOriginalCompletion
 
 /-! Strategic source-to-graph and graph-to-message correspondence. -/
 

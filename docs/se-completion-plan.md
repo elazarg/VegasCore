@@ -443,8 +443,8 @@ Continue in this order:
    yield rational signaling beliefs; clean-prefix equality alone is insufficient.
 3. Compare protected decisions, waiting, late first attempts and departures
    under the actual audited utility.
-4. Transport the free-site completion through the original source assessment
-   sequence, including after collection of the one-time deposit has become certain.
+4. Use the original-sequence free-site completion in those comparisons,
+   including after collection of the one-time deposit has become certain.
 5. Complete the source-to-risk-menu equilibrium embedding, general continuation
    repair, effective-menu extension and raw-alias lift.
 6. Compose the arbitrary-builder capstone and derive the calendar corollary.
@@ -455,8 +455,8 @@ source profile. It agrees with immediate decisions at source-compatible sites
 and is rational at every free site under the actual audited utility. Its whole
 initialized history law equals first-turn play, including the joint full typed
 readout and sampled settlement vector. This is not yet an equilibrium: rationality
-at prescribed sites and transport from the original varying source assessment
-sequence remain open. Off-path normalization need not commute with taking limits.
+at prescribed sites remains open. Off-path normalization need not commute with
+taking limits; the varying-source construction below retains its actual pin limits.
 
 [AsyncServiceInitializedDomination](../Vegas/Game/AsyncServiceInitializedDomination.lean)
 compares the actual uniformly perturbed geometric pins, with arbitrary free
@@ -466,6 +466,16 @@ mass. The corresponding total variation loss vanishes uniformly in the source
 profile and free continuation. This permits varying original source approximants
 without assuming convergence of off-path normalization. It does not control
 beliefs conditioned on rare inputs or select incentive-compatible waiting rates.
+
+[AsyncServiceOriginalCompletion](../Vegas/Game/AsyncServiceOriginalCompletion.lean)
+uses the actual original source assessment sequence to construct a fully mixed
+native Bayes sequence and one common convergent strategy/belief subsequence.
+Its consistent limit is rational at all free sites, initialized play visits only
+source-compatible sites, and the joint full typed outcome and realized sampled
+settlement law equal the original source strategy's law. The pins retain the
+actual normalized approximants, including their off-path limits. This does not
+identify native conditional beliefs with source beliefs or prove prescribed-site
+rationality. Choosing waiting rates that support those comparisons remains open.
 
 [ReactiveBindingPublicTraffic](../Vegas/Pending/ReactiveBindingPublicTraffic.lean)
 proves joint equality of the network, receipts, public scheduler input and

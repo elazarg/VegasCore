@@ -2484,8 +2484,7 @@ it produces a consistent native assessment with immediate decisions at
 source-compatible sites and rational continuation at every free site under the
 actual audited utility. Its complete initialized history law equals first-turn
 play, including the joint full typed readout and realized sampled settlement
-vector. Rationality at prescribed sites and transport through the original
-varying source assessment sequence remain open. In particular, this result does
+vector. Rationality at prescribed sites remains open. In particular, this result does
 not assume normalization is continuous at zero-probability source transcripts.
 
 [AsyncServiceInitializedDomination](../Vegas/Game/AsyncServiceInitializedDomination.lean)
@@ -2498,6 +2497,15 @@ supports varying original source approximants without assuming normalization
 continuity at unreachable source transcripts. It does not control rare-input
 posteriors. In particular, a common waiting probability can cancel from Bayes'
 rule, so its vanishing alone does not settle signaling or choose rational rates.
+
+[AsyncServiceOriginalCompletion](../Vegas/Game/AsyncServiceOriginalCompletion.lean)
+constructs a fully mixed native Bayes sequence from the actual original source
+assessment sequence, with one common strategy/belief subsequence and consistent
+limit. Free sites are rational, initialized support visits only source-compatible
+sites, and its joint full typed outcome and realized sampled settlement law equal
+the original source strategy's law. The actual normalized pin limits are retained
+at off-path inputs. Source-relative conditional beliefs, rationality at prescribed
+sites and selection of suitable waiting rates remain open.
 
 [SourceServiceAliasEquilibrium](../Vegas/Game/SourceServiceAliasEquilibrium.lean)
 supplies the final normalization stage: an audited SE of the complete
