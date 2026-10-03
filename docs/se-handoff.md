@@ -484,12 +484,14 @@ future private values changed by repair are outside the claim.
   joint evaluator.
 - [SourceServiceMissingStoppedCoupling](../Vegas/Game/SourceServiceMissingStoppedCoupling.lean)
   couples the actual whole continuation and the same implementation's joint
-  memory law when the owner sends no further commitments. Endpoints preserve
-  the full frame or the same owner-authored signed breach in both inputs.
-  Actual initialized traces discharge ordinary service invariants. The
-  completed preparation frame and opening-capability relation are resources;
-  this uses the complete bounded effective menu. Later owner bindings,
-  risk-menu admission and terminal utility domination remain open.
+  memory law when the owner sends noncommitment responses or registers later
+  fresh typed bindings. The completed preparation still excludes additional
+  owner commitments. Endpoints preserve the current frame, memory, actual
+  candidate provenance, opening capabilities and actual risk records, or the
+  same owner-authored signed breach in both inputs. Clean branches have equal
+  service risk for every inclusion bound. Initialized traces discharge ordinary service
+  invariants. This uses the complete bounded effective menu; reused or unusable
+  later bindings, risk-menu admission and terminal utility domination remain open.
   Fresh usable bindings use candidate-only memory, preserving actual
   acceptance or expiry. The fixed-calendar repair induction carries
   `BindingShadow.CompletedAt` from empty initial memory through actual
@@ -497,6 +499,12 @@ future private values changed by repair are outside the claim.
   capstone assumption. Reused handles use fixed material; arbitrary later
   mistyped registrations can add a capability usable at another payload type
   without an immediate signed breach.
+- [ReactiveBindingRiskRecall](../Vegas/Pending/ReactiveBindingRiskRecall.lean)
+  derives equal complete risk records from both actual raw traces and their
+  common public activation history. It accounts for a pending activation whose
+  response is not recorded yet. Paired owner responses preserve these records
+  when they name the same event. Risk equality alone does not admit arbitrary
+  effective responses at clear canonical-menu sites.
 - [SourceServiceAliasEquilibrium](../Vegas/Game/SourceServiceAliasEquilibrium.lean)
   supplies the final private raw-alias transport, retaining correlated
   collection and prior charges.
@@ -589,7 +597,7 @@ future private values changed by repair are outside the claim.
   preserves actual owner commitments that either address completed events or
   have matching fixed candidate meanings, across foreign/noncommitment
   responses, shared fresh registration and all environment commands. Later
-  usable whole-run repair remains open.
+  Fresh usable whole-run repair is proved by the stopped coupling below.
 
 - [LateResolutionPreservation](../Vegas/Examples/LateResolutionPreservation.lean)
   preserves EVERY source SE of the concrete fixture in the native risk menu,
@@ -610,7 +618,8 @@ future private values changed by repair are outside the claim.
   and inactive resumptions.
   [ReactiveBindingPacketStep](../Vegas/Pending/ReactiveBindingPacketStep.lean)
   also admits actual fixed matching owner candidates at inclusion. The complete
-  usable suffix, risk-menu admission and utility comparison remain open.
+  usable suffix is composed by the stopped coupling; risk-menu admission and
+  utility comparison remain open.
 - [SourceServiceBindingSelectedResources](../Vegas/Game/SourceServiceBindingSelectedResources.lean)
   derives fresh counted candidates, actual owner turn/slot invariants and no
   earlier owner packet at the real selected raw input. Its aligned source
@@ -620,6 +629,17 @@ future private values changed by repair are outside the claim.
   proves the full selected-family stopped continuation equals actual owner
   silence after its selected response, including closed-gate silence. This
   literal timing-policy law does not supply rational free late completion.
+  [SourceServiceBindingProtectedAttempt](../Vegas/Game/SourceServiceBindingProtectedAttempt.lean)
+  derives acceptance of the actual canonical packet and its exact typed successor
+  at a protected raw input. Fresh-call settlement and packet provenance exclude
+  the miss branch; no acceptance probability is assumed.
+  [SourceServiceBindingSelectedAttemptLaw](../Vegas/Game/SourceServiceBindingSelectedAttemptLaw.lean)
+  composes the selected family's actual source draw and stopped continuation,
+  retaining typed output, the prefix parameter and all public/foreign traffic.
+  [SourceServiceBindingSelectedClosedCompletion](../Vegas/Game/SourceServiceBindingSelectedClosedCompletion.lean)
+  derives the real public miss, typed failure and absence of owner packets after
+  the literal family's selected closed-gate silence. These physical laws do not
+  supply the rational free continuation or its conditional incentive comparisons.
 
 ## Proof and build discipline
 

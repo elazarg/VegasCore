@@ -63,20 +63,21 @@ theorem late_rounds_policy_independent (players : Player → app.Policy) (count 
 /-- Actual native terminal play from the late input first draws its available
 response, then executes the same passive physical suffix. Arbitrary other
 information-site policies remain in the native profile. -/
-theorem late_native_run_state (bounds : MessageBounds nativeGraph)
-    (profile : ∀ who, (nativeModel bounds).BehavioralPolicy who)
-    (history : ((nativeMenu bounds).protocol (initialLaw setup) horizon scheduler).History)
+theorem late_native_run_state (menu : app.ResponseMenu)
+    (profile : ∀ who, (menu.information (initialLaw setup) horizon scheduler).BehavioralPolicy who)
+    (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
     (execution : app.Execution) (current : history.state = some ⟨4, some owner, execution⟩)
     (position : execution.environmentRecall.length = 6) :
-    ((nativeModel bounds).runBehavioralFrom profile 21 history).map
+    ((menu.information (initialLaw setup) horizon scheduler).runBehavioralFrom
+      profile 21 history).map
       GameTheory.Protocol.ExecutionProtocol.History.state =
     ((profile owner (some (execution.recall owner, execution.observe app owner))).map
       Subtype.val).bind (fun action =>
         (app.runRounds scheduler (fun _ => app.silentPolicy) 4
           (execution.respond app owner (action.getD ⟨none⟩))).map app.finished) := by
-  rw [(nativeMenu bounds).run_eq_finish (initialLaw setup) horizon scheduler profile 21 history
+  rw [menu.run_eq_finish (initialLaw setup) horizon scheduler profile 21 history
     (by rw [current]; change (2 * 4 + 1 : Nat) ≤ 21; decide), current]
-  let players := (nativeMenu bounds).decodeProfile (initialLaw setup) horizon scheduler profile
+  let players := menu.decodeProfile (initialLaw setup) horizon scheduler profile
   change ((app.invoke players owner execution).bind
     (app.runRounds scheduler players 4)).map app.finished = _
   have response : players owner (execution.recall owner) (execution.observe app owner) =
@@ -94,26 +95,28 @@ theorem late_native_run_state (bounds : MessageBounds nativeGraph)
     (execution.respond app owner (action.val.getD ⟨none⟩))
     (by rw [app.respond_environmentRecall, position])]
 
-theorem late_native_response_value (bounds : MessageBounds nativeGraph)
-    (profile : ∀ who, (nativeModel bounds).BehavioralPolicy who)
-    (history : ((nativeMenu bounds).protocol (initialLaw setup) horizon scheduler).History)
+theorem late_native_response_value (menu : app.ResponseMenu)
+    (profile : ∀ who, (menu.information (initialLaw setup) horizon scheduler).BehavioralPolicy who)
+    (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
     (execution : app.Execution) (current : history.state = some ⟨4, some owner, execution⟩)
     (position : execution.environmentRecall.length = 6) (response : app.Action)
     (chosen : (profile owner (some (execution.recall owner, execution.observe app owner))).map
       Subtype.val = PMF.pure (some response))
     (payoff : app.ProtocolState → ℝ) :
-    expect ((nativeModel bounds).runBehavioralFrom profile 21 history)
+    expect ((menu.information (initialLaw setup) horizon scheduler).runBehavioralFrom
+      profile 21 history)
       (fun final => payoff final.state) =
     expect ((app.runRounds scheduler (fun _ => app.silentPolicy) 4
       (execution.respond app owner response)).map app.finished) payoff := by
   calc
-    _ = expect (((nativeModel bounds).runBehavioralFrom profile 21 history).map
+    _ = expect (((menu.information (initialLaw setup) horizon scheduler).runBehavioralFrom
+        profile 21 history).map
         GameTheory.Protocol.ExecutionProtocol.History.state) payoff :=
       (expect_map (fun final :
-        ((nativeMenu bounds).protocol (initialLaw setup) horizon scheduler).History => final.state)
+        (menu.protocol (initialLaw setup) horizon scheduler).History => final.state)
         _ payoff).symm
     _ = _ := by
-      rw [late_native_run_state bounds profile history execution current position,
+      rw [late_native_run_state menu profile history execution current position,
         chosen, PMF.pure_bind, Option.getD_some]
 
 instance : leaks.FiniteSupport where

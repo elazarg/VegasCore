@@ -63,7 +63,7 @@ theorem late_native_choice_value (bounds : MessageBounds nativeGraph)
         ((nativeMenu bounds).protocol (initialLaw setup) horizon scheduler).History => final.state)
         _ _).symm
     _ = _ := by
-      rw [late_native_run_state bounds profile history execution current position,
+      rw [late_native_run_state (nativeMenu bounds) profile history execution current position,
         PMF.bind_map]
       exact expect_bind_tower _ _ _ (auditedUtility_integrable _ sample deposit nonnegative owner)
 

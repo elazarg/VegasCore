@@ -250,9 +250,9 @@ theorem second_decision_locally_optimal (bounds : MessageBounds nativeGraph)
         Subtype.val = PMF.pure (some (⟨none⟩ : app.Action)) := by
     rw [observed]
     exact second_decision_choice_law bounds disclose _
-  rw [late_native_response_value bounds _ history.1 execution current position ⟨none⟩
+  rw [late_native_response_value (nativeMenu bounds) _ history.1 execution current position ⟨none⟩
       (chosen _) payoff,
-    late_native_response_value bounds _ history.1 execution current position ⟨none⟩
+    late_native_response_value (nativeMenu bounds) _ history.1 execution current position ⟨none⟩
       (chosen _) payoff]
 
 end Vegas.LateResolutionService

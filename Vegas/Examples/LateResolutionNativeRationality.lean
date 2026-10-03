@@ -62,7 +62,8 @@ theorem late_context_wait_value
       intro history _
       obtain ⟨execution, current, position, actualClock, actualReady, actualEntered, actualEmpty⟩ :=
         late_information_resources bounds witness trace ready entered clock empty history
-      rw [late_native_response_value bounds assessment.strategy history.1 execution current
+      rw [late_native_response_value (nativeMenu bounds) assessment.strategy history.1
+        execution current
         position ⟨none⟩ (by
           rw [late_history_info bounds witness trace history execution current]
           exact waits) (fun state => auditedUtility sample deposit state owner)]
@@ -85,7 +86,7 @@ theorem late_context_false_value (candidate : Handle nativeGraph)
       intro history _
       obtain ⟨execution, current, position, actualClock, actualReady, actualEntered, actualEmpty⟩ :=
         late_information_resources bounds witness trace ready entered clock empty history
-      rw [late_native_response_value bounds _ history.1 execution current position
+      rw [late_native_response_value (nativeMenu bounds) _ history.1 execution current position
         (lateResponse candidate false) (by
           rw [late_history_info bounds witness trace history execution current,
             Profile.update_same]

@@ -281,4 +281,6 @@ import Vegas.Pending.ReactiveCompletedConfig
 import Vegas.Pending.ReactiveBindingUsableWindow
 import Vegas.Pending.ReactiveBindingUsableResume
 
+import Vegas.Pending.ReactiveBindingRiskRecall
+
 /-! Graph execution and strategic refinement over public pending messages. -/

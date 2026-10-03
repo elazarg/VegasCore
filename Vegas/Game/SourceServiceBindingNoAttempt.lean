@@ -89,7 +89,7 @@ theorem sourceServiceTurnPolicy_input_of_closed
   dsimp only [app] at family
   simp only [family, PMF.bind_const]
 
-private theorem closed_runUntil_owner_silent
+theorem sourceServiceTurnPolicy_runUntil_owner_closed
     {inputs : (graph setup).Inputs}
     (scheduler : (application setup leaks).Scheduler)
     (players : Player → (application setup leaks).Policy)
@@ -178,29 +178,15 @@ theorem sourceService_binding_no_attempt
       stopped.network.Satisfies (fun message => message.sender = owner →
         message.payload.call.event? (graph setup) ≠ some event) := by
   let app := application setup leaks
-  have valid : ∃ inputs, execution.application.Invariant inputs := by
-    let preserved : app.ServiceInvariant scheduler (fun current =>
-        ∃ inputs, current.application.Invariant inputs) := {
-      respond := fun current who response holds => by
-        obtain ⟨inputs, valid⟩ := holds
-        exact ⟨inputs, ((runtime setup).reactive_respond_progress leaks inputs current who
-          response valid).invariant⟩
-      environment := fun current next command holds _ reached => by
-        obtain ⟨inputs, valid⟩ := holds
-        exact ⟨inputs, ((runtime setup).reactive_environment_progress leaks inputs current next
-          command valid reached).invariant⟩ }
-    exact preserved.history (initialLaw setup) horizon (by
-      intro state supported
-      obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
-      exact ⟨setup.eventInputs initial, State.initial_invariant _⟩) trace
+  have valid := (roster_trace_facts setup leaks horizon scheduler trace).1
   obtain ⟨inputs, valid⟩ := valid
   have stoppedLaw : app.runUntilHorizon scheduler players
       (fun final => event ∈ final.application.config.cut.completed) horizon execution =
       app.runUntilHorizon scheduler (Function.update players owner app.silentPolicy)
         (fun final => event ∈ final.application.config.cut.completed) horizon execution := by
     unfold ReactiveApplication.runUntilHorizon
-    exact closed_runUntil_owner_silent scheduler players bound turns timing profile owner follows
-      _ execution valid event ready owned closed
+    exact sourceServiceTurnPolicy_runUntil_owner_closed scheduler players bound turns timing profile
+      owner follows _ execution valid event ready owned closed
   have silentReached := stoppedLaw ▸ reached
   have retained : app.PolicyInvariant (Function.update players owner app.silentPolicy)
       (fun current => (runtime setup).eventRecorded leaks (current.recall owner) event = false) := {

@@ -522,7 +522,7 @@ preserves actual owner commitments that either address completed events or
 have matching fixed candidate meanings, across foreign/noncommitment
 responses, shared fresh registration and all environment commands. This
 supplies the traffic resource needed to allow further owner commitments in
-continuation repair. Later usable whole-run repair remains open.
+continuation repair. The stopped coupling composes later fresh usable bindings.
 [SourceServiceBindingSelectedResources](../Vegas/Game/SourceServiceBindingSelectedResources.lean)
 derives fresh counted candidates, actual owner turn/slot invariants and no
 earlier owner packet at the real selected raw input. Its aligned source
@@ -532,6 +532,17 @@ kernel, and a closed gate gives silence. Other owners may use raw actions.
 proves the full selected-family stopped continuation equals actual owner
 silence after its selected response, including closed-gate silence. This
 literal timing-policy law does not supply rational free late completion.
+[SourceServiceBindingProtectedAttempt](../Vegas/Game/SourceServiceBindingProtectedAttempt.lean)
+derives acceptance of the actual canonical packet and its exact typed successor
+at a protected raw input. Fresh-call settlement and packet provenance exclude
+the miss branch; no acceptance probability is assumed.
+[SourceServiceBindingSelectedAttemptLaw](../Vegas/Game/SourceServiceBindingSelectedAttemptLaw.lean)
+composes the selected family's actual source draw and stopped continuation,
+retaining typed output, the prefix parameter and all public/foreign traffic.
+[SourceServiceBindingSelectedClosedCompletion](../Vegas/Game/SourceServiceBindingSelectedClosedCompletion.lean)
+derives the real public miss, typed failure and absence of owner packets after
+the literal family's selected closed-gate silence. These physical laws do not
+supply the rational free continuation or its conditional incentive comparisons.
 
 The watcher samples authentic evidence partially; observation and report
 delivery may be correlated. Positive conditional coverage and a finite
@@ -659,13 +670,21 @@ carries ordinary unrestricted service invariants through the same private
 implementation's real joint evaluator.
 [SourceServiceMissingStoppedCoupling](../Vegas/Game/SourceServiceMissingStoppedCoupling.lean)
 couples the full actual run and the same retained implementation's joint
-execution and memory law on the noncommitment owner slice. Every endpoint
-preserves the full frame or carries the same actual owner-authored signed
-breach in both inputs. Ordinary runtime invariants come from initialized raw
-traces and the real evaluator. A completed preparation frame and capability
-preservation remain explicit resources. This uses the complete bounded
-effective menu; later owner bindings, a legal risk-menu comparator and
-terminal utility domination remain open.
+execution and memory law for noncommitment responses or later fresh typed
+bindings. The completed preparation still excludes additional owner commitments.
+Every endpoint preserves the evolving frame, memory, actual candidate provenance
+and opening capabilities, or carries the same actual owner-authored signed breach
+in both inputs. Clean branches carry equal actual risk records and service risk
+for every inclusion bound. Ordinary runtime invariants come from initialized raw traces and
+the real evaluator. This uses the complete bounded effective menu; later unusable
+or reused bindings, a legal risk-menu comparator and terminal utility domination
+remain open.
+[ReactiveBindingRiskRecall](../Vegas/Pending/ReactiveBindingRiskRecall.lean)
+derives the actual initial risk-record equality from both raw traces, their
+common scheduler history and submitted event names. Public response before-views
+are the corresponding real activation views, with a pending activation handled
+explicitly. Paired owner responses preserve these records when they name the
+same event. Clear-site canonical response admission remains separate.
 Fresh usable bindings use candidate-only repair memory and preserve their
 actual success or expiry. The fixed-calendar repair induction carries
 `BindingShadow.CompletedAt` from empty initial memory through actual completed
@@ -698,7 +717,8 @@ capabilities. [ReactiveBindingUsableResume](../Vegas/Pending/ReactiveBindingUsab
 extends that law to arbitrary foreign raw actions and inactive resumptions.
 [ReactiveBindingPacketStep](../Vegas/Pending/ReactiveBindingPacketStep.lean)
 also admits actual fixed matching owner candidates at inclusion. The full
-usable suffix, risk-menu admission and utility comparison remain open.
+usable suffix is composed by the stopped coupling; risk-menu admission and
+utility comparison remain open.
 
 ## Validation
 
