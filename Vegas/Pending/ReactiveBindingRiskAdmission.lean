@@ -4,14 +4,17 @@ import Vegas.Pending.ReactiveBindingUsableWindow
 import Vegas.Pending.ReactiveBindingRiskRecall
 import Vegas.Pending.ReactiveBindingGuardedStep
 import Vegas.Pending.ReactiveCompiledResolution
+import Vegas.Pending.ReactiveBindingUsableResume
 
 /-! # Retained decision admission through private binding repair
 
-At a clear actual owner input, risk-menu membership derives the first canonical
-slot, typed value and protected opportunity. The same response is retained in
-the repaired risk menu. Arbitrary effective responses are outside this result.
-Successful resolution admission derives actual certificate and guard transport.
-Whole-continuation utility remains separate.
+Original risk-menu membership derives repaired admission at the same actual
+input. Clear binding and resolution inputs derive fresh typed slots, protected
+opportunities, and actual certificate and guard transport. Expanded inputs
+retain every bounded effective response using their equal risk records. The
+actual invocation and resume coupling permits noncommitments and fresh usable
+bindings; reused or unusable bindings and whole-continuation utility remain
+separate.
 -/
 
 noncomputable section
@@ -258,70 +261,6 @@ private theorem usable_retained_invoke_coupling
       started effective usable
   exact ⟨coupling, left, right.trans resumeEq.symm, related⟩
 
-/-- A locally risk-supported owner law at this clear binding input has the
-existing usable-response coupling with the actual risk-menu implementation.
-The law is sampled at reconstructed own input, and its fallback is unused.
-This transports one invocation, not an arbitrary full effective policy. -/
-theorem clear_binding_risk_invoke_coupling
-    (frame : Frame runtime leaks memory owner original repaired)
-    (onlyBindings : memory.shadow.OwnBindings owner)
-    (past : memory.shadow.CompletedAt original.application.config)
-    (provenance : OwnerCommitmentsSettledOrMatching owner original repaired)
-    (bounds : MessageBounds graph) (bound : graph.EventId → Nat)
-    (riskRecords : (original.recall owner).map (runtime.submissionRiskRecord leaks) =
-      (repaired.recall owner).map (runtime.submissionRiskRecord leaks))
-    (leftRecall : original.InputRecall (runtime.reactiveApplication leaks))
-    (rightRecall : repaired.InputRecall (runtime.reactiveApplication leaks))
-    (preserved : ∀ slot raw,
-      original.application.candidates.lookup (owner, slot) = .openable raw →
-        repaired.application.candidates.lookup (owner, slot) = .openable raw)
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
-    (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (started : reference.length ≤ (repaired.recall owner).length)
-    (event : graph.EventId) (payload : L.Ty)
-    (outputEq : graph.outputLayout event = .binding owner payload)
-    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
-      (graph.nodes event) = .bind owner payload)
-    (node : nodeView graph event = .bind owner payload outputEq codeEq)
-    (turn : original.application.publicView.ownTurn? owner = some event)
-    (clear : runtime.serviceRisk leaks bound owner (original.recall owner)
-      (original.observe (runtime.reactiveApplication leaks) owner) = false)
-    (supported : ∀ response ∈ (players owner (original.recall owner)
-      (original.observe (runtime.reactiveApplication leaks) owner)).support,
-      response ∈ bounds.riskActions runtime leaks bound owner (original.recall owner)
-        (original.observe (runtime.reactiveApplication leaks) owner)) :
-    let app := runtime.reactiveApplication leaks
-    let strategy := retainedImplementation runtime leaks (bounds.riskMenu runtime leaks bound)
-      owner reference (players owner)
-    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory runtime leaks),
-      coupling.map Prod.fst = app.invoke players owner original ∧
-      coupling.map Prod.snd = strategy.resume owner players (some owner) repaired memory ∧
-      ∀ next ∈ coupling.support,
-        Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
-          next.2.2.shadow.OwnBindings owner ∧
-          next.2.2.shadow.CompletedAt next.1.application.config ∧
-          OwnerCommitmentsSettledOrMatching owner next.1 next.2.1 ∧
-          reference.length ≤ (next.2.1.recall owner).length ∧
-          next.1.InputRecall app ∧ next.2.1.InputRecall app ∧
-          ∀ slot raw, next.1.application.candidates.lookup (owner, slot) = .openable raw →
-            next.2.1.application.candidates.lookup (owner, slot) = .openable raw := by
-  have admission (response : (runtime.reactiveApplication leaks).Action)
-      (chosen : response ∈ (players owner (original.recall owner)
-        (original.observe (runtime.reactiveApplication leaks) owner)).support) :=
-    frame.clear_binding_response_retained bounds bound riskRecords leftRecall rightRecall
-      preserved event payload outputEq codeEq node turn clear response (supported response chosen)
-  apply usable_retained_invoke_coupling frame onlyBindings past provenance bounds
-    (bounds.riskMenu runtime leaks bound) leftRecall rightRecall preserved players reference started
-  · intro response chosen
-    exact bounds.riskActions_effective runtime leaks bound owner _ _ (supported response chosen)
-  · intro response chosen
-    rcases (admission response chosen).2.2 with silent | fresh
-    · rw [silent]
-      exact Or.inl (by intro material emitted; cases emitted)
-    · exact Or.inr fresh.2
-  · intro response chosen
-    exact (admission response chosen).2.1
-
 /-- A clear retained resolution response remains the same physical action in
 the repaired menu. TRUE's value, certificate and guard success are recovered
 from its actual original selection and the two binding invariants. A selected
@@ -494,11 +433,85 @@ theorem clear_resolution_response_retained
     intro impossible
     cases impossible
 
-/-- The same private implementation realizes a locally risk-supported
-resolution law at reconstructed own input. The actual TRUE certificate and
-deferred guards are justified by the response classifier above; the joint
-coupling reuses the existing usable scalar law. -/
-theorem clear_resolution_risk_invoke_coupling
+/-- An actual original risk-supported response remains available at the
+repaired whole input. Expanded inputs use effective transport; clear inputs
+derive silence or the retained binding/resolution constructors above. -/
+theorem risk_response_retained
+    (frame : Frame runtime leaks memory owner original repaired)
+    (bounds : MessageBounds graph) (bound : graph.EventId → Nat)
+    (riskRecords : (original.recall owner).map (runtime.submissionRiskRecord leaks) =
+      (repaired.recall owner).map (runtime.submissionRiskRecord leaks))
+    (leftRecall : original.InputRecall (runtime.reactiveApplication leaks))
+    (rightRecall : repaired.InputRecall (runtime.reactiveApplication leaks))
+    (leftBinding : original.application.BindingInvariant)
+    (rightBinding : repaired.application.BindingInvariant)
+    (preserved : ∀ slot raw,
+      original.application.candidates.lookup (owner, slot) = .openable raw →
+        repaired.application.candidates.lookup (owner, slot) = .openable raw)
+    (response : (runtime.reactiveApplication leaks).Action)
+    (member : response ∈ bounds.riskActions runtime leaks bound owner (original.recall owner)
+      (original.observe (runtime.reactiveApplication leaks) owner)) :
+    response ∈ bounds.riskActions runtime leaks bound owner (repaired.recall owner)
+      (repaired.observe (runtime.reactiveApplication leaks) owner) := by
+  let app := runtime.reactiveApplication leaks
+  have riskEq := runtime.serviceRisk_congr leaks bound owner (original.recall owner)
+    (repaired.recall owner) (original.observe app owner) (repaired.observe app owner) rfl
+      frame.publicView riskRecords
+  cases risky : runtime.serviceRisk leaks bound owner (original.recall owner)
+      (original.observe app owner) with
+  | true =>
+      have rightRisk := riskEq.symm.trans risky
+      rw [bounds.riskActions_of_risk runtime leaks bound owner _ _ rightRisk]
+      exact (runtime.effectiveResponse_openable_transport leaks bounds owner original repaired
+        leftRecall rightRecall frame.network frame.publicView frame.slots preserved response
+          (bounds.riskActions_effective runtime leaks bound owner _ _ member)).1
+  | false =>
+      cases turn : original.application.publicView.ownTurn? owner with
+      | none =>
+          have canonical := member
+          rw [bounds.riskActions_of_clear runtime leaks bound owner _ _ risky] at canonical
+          rcases bounds.canonicalActions_cases runtime leaks owner _ _ response canonical with
+            silent | ⟨event, choice, selected, _⟩
+          · rw [silent]
+            exact bounds.canonicalActions_subset_risk runtime leaks bound owner _ _
+              (bounds.silence_canonical runtime leaks owner _ _)
+          · change original.application.publicView.ownTurn? owner = some event at selected
+            rw [turn] at selected
+            cases selected
+      | some event =>
+          have actor := (original.application.publicView.ownTurn?_spec owner event turn).2
+          cases node : nodeView graph event with
+          | sample payload law outputEq codeEq =>
+              have foreign : graph.actor? event = none :=
+                (EventCode.actor_cast outputEq (graph.nodes event)).symm.trans
+                  (congrArg EventCode.actor codeEq)
+              rw [foreign] at actor
+              cases actor
+          | bind who payload outputEq codeEq =>
+              have codeActor : graph.actor? event = some who :=
+                (EventCode.actor_cast outputEq (graph.nodes event)).symm.trans
+                  (congrArg EventCode.actor codeEq)
+              have equal : who = owner :=
+                Option.some.inj (codeActor.symm.trans actor)
+              subst who
+              exact (frame.clear_binding_response_retained bounds bound riskRecords leftRecall
+                rightRecall preserved event payload outputEq codeEq node turn risky response
+                  member).2.1
+          | resolve who payload binding checks outputEq codeEq =>
+              have codeActor : graph.actor? event = some who :=
+                (EventCode.actor_cast outputEq (graph.nodes event)).symm.trans
+                  (congrArg EventCode.actor codeEq)
+              have equal : who = owner :=
+                Option.some.inj (codeActor.symm.trans actor)
+              subst who
+              exact (frame.clear_resolution_response_retained bounds bound riskRecords leftRecall
+                rightRecall leftBinding rightBinding event payload binding checks outputEq codeEq
+                  node turn risky response member).2.1
+
+/-- A whole-input risk-supported owner law has an actual risk-menu invocation
+coupling on its explicit noncommitment/fresh-usable response slice. Repaired
+menu membership is derived, including at already expanded inputs. -/
+theorem risk_usable_invoke_coupling
     (frame : Frame runtime leaks memory owner original repaired)
     (onlyBindings : memory.shadow.OwnBindings owner)
     (past : memory.shadow.CompletedAt original.application.config)
@@ -516,20 +529,16 @@ theorem clear_resolution_risk_invoke_coupling
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
     (started : reference.length ≤ (repaired.recall owner).length)
-    (event : graph.EventId) (payload : L.Ty)
-    (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (GuardCheck graph.layout payload))
-    (outputEq : graph.outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
-      (graph.nodes event) = .resolve owner payload binding checks)
-    (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
-    (turn : original.application.publicView.ownTurn? owner = some event)
-    (clear : runtime.serviceRisk leaks bound owner (original.recall owner)
-      (original.observe (runtime.reactiveApplication leaks) owner) = false)
     (supported : ∀ response ∈ (players owner (original.recall owner)
       (original.observe (runtime.reactiveApplication leaks) owner)).support,
       response ∈ bounds.riskActions runtime leaks bound owner (original.recall owner)
-        (original.observe (runtime.reactiveApplication leaks) owner)) :
+        (original.observe (runtime.reactiveApplication leaks) owner))
+    (usable : ∀ response ∈ (players owner (original.recall owner)
+      (original.observe (runtime.reactiveApplication leaks) owner)).support,
+      (∀ material, response.transmission = some material →
+          ∀ addressed candidate, material.call.packet ≠ .commitment addressed candidate) ∨
+        FreshUsableBindingResponse runtime leaks owner
+          (original.observe (runtime.reactiveApplication leaks) owner).application response) :
     let app := runtime.reactiveApplication leaks
     let strategy := retainedImplementation runtime leaks (bounds.riskMenu runtime leaks bound)
       owner reference (players owner)
@@ -545,19 +554,78 @@ theorem clear_resolution_risk_invoke_coupling
           next.1.InputRecall app ∧ next.2.1.InputRecall app ∧
           ∀ slot raw, next.1.application.candidates.lookup (owner, slot) = .openable raw →
             next.2.1.application.candidates.lookup (owner, slot) = .openable raw := by
-  have admission (response : (runtime.reactiveApplication leaks).Action)
-      (chosen : response ∈ (players owner (original.recall owner)
-        (original.observe (runtime.reactiveApplication leaks) owner)).support) :=
-    frame.clear_resolution_response_retained bounds bound riskRecords leftRecall rightRecall
-      leftBinding rightBinding event payload binding checks outputEq codeEq node turn clear
-        response (supported response chosen)
   apply usable_retained_invoke_coupling frame onlyBindings past provenance bounds
     (bounds.riskMenu runtime leaks bound) leftRecall rightRecall preserved players reference started
   · intro response chosen
     exact bounds.riskActions_effective runtime leaks bound owner _ _ (supported response chosen)
+  · exact usable
   · intro response chosen
-    exact Or.inl (admission response chosen).2.2.1
-  · intro response chosen
-    exact (admission response chosen).2.1
+    exact frame.risk_response_retained bounds bound riskRecords leftRecall rightRecall
+      leftBinding rightBinding preserved response (supported response chosen)
+
+/-- Arbitrary foreign raw responses use their unchanged law and the existing
+scalar coupling. Only the owner's locally reconstructed response is restricted
+by the risk menu; its future unusable or reused bindings remain outside scope. -/
+theorem risk_usable_resume_coupling
+    (frame : Frame runtime leaks memory owner original repaired)
+    (onlyBindings : memory.shadow.OwnBindings owner)
+    (past : memory.shadow.CompletedAt original.application.config)
+    (provenance : OwnerCommitmentsSettledOrMatching owner original repaired)
+    (bounds : MessageBounds graph) (bound : graph.EventId → Nat)
+    (riskRecords : (original.recall owner).map (runtime.submissionRiskRecord leaks) =
+      (repaired.recall owner).map (runtime.submissionRiskRecord leaks))
+    (leftRecall : original.InputRecall (runtime.reactiveApplication leaks))
+    (rightRecall : repaired.InputRecall (runtime.reactiveApplication leaks))
+    (leftBinding : original.application.BindingInvariant)
+    (rightBinding : repaired.application.BindingInvariant)
+    (preserved : ∀ slot raw,
+      original.application.candidates.lookup (owner, slot) = .openable raw →
+        repaired.application.candidates.lookup (owner, slot) = .openable raw)
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (started : reference.length ≤ (repaired.recall owner).length)
+    (supported : ∀ earlier view response, response ∈ (players owner earlier view).support →
+      response ∈ bounds.riskActions runtime leaks bound owner earlier view)
+    (usable : ∀ earlier view response, response ∈ (players owner earlier view).support →
+      (∀ material, response.transmission = some material →
+          ∀ addressed candidate, material.call.packet ≠ .commitment addressed candidate) ∨
+        FreshUsableBindingResponse runtime leaks owner view.application response)
+    (actor : Option Player) :
+    let app := runtime.reactiveApplication leaks
+    let strategy := retainedImplementation runtime leaks (bounds.riskMenu runtime leaks bound)
+      owner reference (players owner)
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory runtime leaks),
+      coupling.map Prod.fst = app.resume players actor original ∧
+      coupling.map Prod.snd = strategy.resume owner players actor repaired memory ∧
+      ∀ next ∈ coupling.support,
+        Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
+          next.2.2.shadow.OwnBindings owner ∧
+          next.2.2.shadow.CompletedAt next.1.application.config ∧
+          OwnerCommitmentsSettledOrMatching owner next.1 next.2.1 ∧
+          reference.length ≤ (next.2.1.recall owner).length ∧
+          next.1.InputRecall app ∧ next.2.1.InputRecall app ∧
+          ∀ slot raw, next.1.application.candidates.lookup (owner, slot) = .openable raw →
+            next.2.1.application.candidates.lookup (owner, slot) = .openable raw := by
+  let app := runtime.reactiveApplication leaks
+  by_cases own : actor = some owner
+  · subst actor
+    exact frame.risk_usable_invoke_coupling onlyBindings past provenance bounds bound riskRecords
+      leftRecall rightRecall leftBinding rightBinding preserved players reference started
+        (supported _ _) (usable _ _)
+  · obtain ⟨coupling, left, right, related⟩ := frame.usable_effective_resume_coupling onlyBindings
+      past provenance bounds leftRecall rightRecall preserved players reference started
+        (fun earlier view response chosen => bounds.riskActions_effective runtime leaks bound
+          owner earlier view (supported earlier view response chosen)) usable actor
+    have resumeEq :
+        (retainedImplementation runtime leaks (bounds.menu runtime leaks) owner reference
+          (players owner)).resume owner players actor repaired memory =
+        (retainedImplementation runtime leaks (bounds.riskMenu runtime leaks bound) owner reference
+          (players owner)).resume owner players actor repaired memory := by
+      cases actor with
+      | none => rfl
+      | some actor =>
+          have foreign : actor ≠ owner := fun equal => own (congrArg some equal)
+          simp only [ReactiveApplication.Implementation.resume, foreign, ↓reduceIte]
+    exact ⟨coupling, left, right.trans resumeEq, related⟩
 
 end Vegas.EventGraphRuntime.BindingMemory.Frame

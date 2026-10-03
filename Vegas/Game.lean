@@ -334,6 +334,8 @@ import Vegas.Game.SourceServiceBindingProtectedAttempt
 import Vegas.Game.SourceServiceBindingSelectedAttemptLaw
 import Vegas.Game.SourceServiceBindingSelectedClosedCompletion
 import Vegas.Game.SourceServiceBindingSelectedResponse
+import Vegas.Game.SourceServiceBindingSelectedReference
+import Vegas.Game.SourceServiceBindingSelectedCompletionLaw
 
 /-! Strategic source-to-graph and graph-to-message correspondence. -/
 

@@ -519,7 +519,8 @@ and typed failure. No selected-slot visit or source admission is assumed.
 decomposes an actual protected geometric response and its full completion
 continuation into real waiting and receipt-driven source commitment selection.
 Earlier deferrals remain in the original input; waiting can later attempt or
-miss. Selected-family source-choice factorization and strategic comparison remain open.
+miss. The selected-family laws below supply actual source-choice factorization;
+the strategic waiting comparison remains open.
 
 [SourceServiceBindingSelectedAssembly](../Vegas/Game/SourceServiceBindingSelectedAssembly.lean)
 composes the original timing prior, actual selected-input stop and real
@@ -538,6 +539,11 @@ derives fresh counted candidates, actual owner turn/slot invariants and no
 earlier owner packet at the real selected raw input. Its aligned source
 configuration is unchanged; protection gives the actual source commitment
 kernel, and a closed gate gives silence. Other owners may use raw actions.
+[SourceServiceBindingSelectedReference](../Vegas/Game/SourceServiceBindingSelectedReference.lean)
+derives the silent reference's actual selected before-response input, initialized
+raw trace, unchanged source configuration, fresh slot and original commitment
+lottery. It needs an actual completion boundary and horizon bound, without an
+assumed selected visit or global risk clarity.
 [SourceServiceBindingSelectedResponse](../Vegas/Game/SourceServiceBindingSelectedResponse.lean)
 proves the exact stopped execution law by replacing the actual silent reference
 response with the original selected input's canonical lottery. Its last recall
@@ -554,6 +560,13 @@ the miss branch; no acceptance probability is assumed.
 [SourceServiceBindingSelectedAttemptLaw](../Vegas/Game/SourceServiceBindingSelectedAttemptLaw.lean)
 composes the selected family's actual source draw and stopped continuation,
 retaining typed output, the prefix parameter and all public/foreign traffic.
+[SourceServiceBindingSelectedCompletionLaw](../Vegas/Game/SourceServiceBindingSelectedCompletionLaw.lean)
+joins the original timing prior to that same actual reference prefix. Protected
+hits use the original source lottery and actual accepted typed outcome; closed
+hits and completion before selection use real misses and typed failure. The
+joint law retains the selected input, prefix parameter and all public/foreign
+traffic. This is the literal policy's operational decomposition; its closed
+silence does not establish rational free continuation.
 [SourceServiceBindingSelectedClosedCompletion](../Vegas/Game/SourceServiceBindingSelectedClosedCompletion.lean)
 derives the real public miss, typed failure and absence of owner packets after
 the literal family's selected closed-gate silence. These physical laws do not
@@ -691,8 +704,10 @@ Every endpoint preserves the evolving frame, memory, actual candidate provenance
 and opening capabilities, or carries the same actual owner-authored signed breach
 in both inputs. Clean branches carry equal actual risk records and service risk
 for every inclusion bound. Ordinary runtime invariants come from initialized raw traces and
-the real evaluator. This uses the complete bounded effective menu; later unusable
-or reused bindings, a legal risk-menu comparator and terminal utility domination
+the real evaluator. One common finite induction serves the complete bounded
+effective menu and the risk menu. Its risk consumer derives repaired admission
+from actual original risk support, current binding invariants and recalled
+records. Later unusable or reused bindings and terminal utility domination
 remain open.
 [ReactiveBindingRiskRecall](../Vegas/Pending/ReactiveBindingRiskRecall.lean)
 derives the actual initial risk-record equality from both raw traces, their
@@ -701,11 +716,13 @@ are the corresponding real activation views, with a pending activation handled
 explicitly. Paired owner responses preserve these records when they name the
 same event. Clear-site admission requires actual canonical response membership.
 [ReactiveBindingRiskAdmission](../Vegas/Pending/ReactiveBindingRiskAdmission.lean)
-transports actual risk-supported responses at clear binding and resolution inputs
-to the same repaired risk menu. Fresh typed slots, protected windows and TRUE
-certificate/guard success are derived from the selected response and actual
-invariants. Its local invocation couplings use the same retained implementation;
-whole-run risk-menu admission and terminal utility domination remain separate.
+transports actual original risk-supported responses to the same repaired risk
+menu at whole inputs. Clear binding and resolution cases derive fresh typed slots,
+protected windows and TRUE certificate/guard success; expanded inputs transport
+effective responses. Invocation and resume coupling use the same retained
+implementation on the noncommitment/fresh-usable slice. The finite stopped
+coupling composes that slice; reused or unusable bindings and terminal utility
+domination remain separate.
 Fresh usable bindings use candidate-only repair memory and preserve their
 actual success or expiry. The fixed-calendar repair induction carries
 `BindingShadow.CompletedAt` from empty initial memory through actual completed
@@ -738,8 +755,8 @@ capabilities. [ReactiveBindingUsableResume](../Vegas/Pending/ReactiveBindingUsab
 extends that law to arbitrary foreign raw actions and inactive resumptions.
 [ReactiveBindingPacketStep](../Vegas/Pending/ReactiveBindingPacketStep.lean)
 also admits actual fixed matching owner candidates at inclusion. The full
-usable suffix is composed by the stopped coupling; risk-menu admission and
-utility comparison remain open.
+usable suffix is composed by both effective and risk-menu stopped couplings;
+utility comparison and general later-binding admission remain open.
 
 ## Validation
 

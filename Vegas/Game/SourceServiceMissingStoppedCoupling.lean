@@ -3,7 +3,7 @@
 import Vegas.Game.SourceServicePastCommitmentTraffic
 import Vegas.Pending.ReactiveBindingPacketStep
 import Vegas.Pending.ReactiveBindingInertClosure
-import Vegas.Pending.ReactiveBindingUsableResume
+import Vegas.Pending.ReactiveBindingRiskAdmission
 import Vegas.Pending.ReactiveBindingRiskRecall
 import Interaction.ReactiveImplementationInvariant
 
@@ -19,8 +19,9 @@ This is a finite continuation coupling, not terminal utility domination or
 admission of unusable or reused future owner binding responses.
 The owner's actual public response-risk records agree on clean support;
 their equality is seeded from the two legal raw traces and preserved by real
-response and environment steps. The implementation still uses the complete
-effective menu: equal risk records do not assert canonical-menu admission.
+response and environment steps. The same private induction supports the
+complete effective menu and risk menu. In the latter case repaired admission is derived from the
+original risk-supported law and actual continuation invariants.
 -/
 
 noncomputable section
@@ -128,9 +129,6 @@ private theorem input_service
     rw [(application setup leaks).environmentStep_inputs execution next command reached]
     exact member
 
-variable [Fintype Player]
-
-omit [Fintype Player] in
 private theorem resume_submissionRiskRecords
     {memory nextMemory : BindingMemory (runtime setup) leaks} {owner : Player}
     {original repaired left right : (application setup leaks).Execution}
@@ -185,6 +183,39 @@ private theorem resume_submissionRiskRecords
           app.respond_recall_other repaired actor owner (Ne.symm own)]
         exact same
 
+private def resumeCouplings
+    (menu : (application setup leaks).ResponseMenu) (owner : Player)
+    (players : Player → (application setup leaks).Policy)
+    (reference : List (application setup leaks).PlayerEntry) : Prop :=
+  ∀ {memory : BindingMemory (runtime setup) leaks}
+    {original repaired : (application setup leaks).Execution},
+    BindingMemory.Frame (runtime setup) leaks memory owner original repaired →
+    memory.shadow.OwnBindings owner →
+    memory.shadow.CompletedAt original.application.config →
+    OwnerCommitmentsSettledOrMatching owner original repaired →
+    (original.recall owner).map ((runtime setup).submissionRiskRecord leaks) =
+      (repaired.recall owner).map ((runtime setup).submissionRiskRecord leaks) →
+    continuationFacts original → continuationFacts repaired →
+    (∀ slot raw, original.application.candidates.lookup (owner, slot) = .openable raw →
+      repaired.application.candidates.lookup (owner, slot) = .openable raw) →
+    reference.length ≤ (repaired.recall owner).length →
+    ∀ actor : Option Player,
+    let app := application setup leaks
+    let strategy := BindingMemory.retainedImplementation (runtime setup) leaks menu owner
+      reference (players owner)
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+      coupling.map Prod.fst = app.resume players actor original ∧
+      coupling.map Prod.snd = strategy.resume owner players actor repaired memory ∧
+      ∀ next ∈ coupling.support,
+        BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
+          next.2.2.shadow.OwnBindings owner ∧
+          next.2.2.shadow.CompletedAt next.1.application.config ∧
+          OwnerCommitmentsSettledOrMatching owner next.1 next.2.1 ∧
+          reference.length ≤ (next.2.1.recall owner).length ∧
+          next.1.InputRecall app ∧ next.2.1.InputRecall app ∧
+          ∀ slot raw, next.1.application.candidates.lookup (owner, slot) = .openable raw →
+            next.2.1.application.candidates.lookup (owner, slot) = .openable raw
+
 private theorem clean_dispatch_coupling
     {memory : BindingMemory (runtime setup) leaks} {owner : Player}
     {original repaired : (application setup leaks).Execution}
@@ -196,23 +227,18 @@ private theorem clean_dispatch_coupling
       (repaired.recall owner).map ((runtime setup).submissionRiskRecord leaks))
     (leftFacts : continuationFacts original) (rightFacts : continuationFacts repaired)
     (clean : ¬ ownerBreachInInputs owner original)
-    (bounds : MessageBounds (graph setup))
+    (menu : (application setup leaks).ResponseMenu)
     (preserved : ∀ slot raw,
       original.application.candidates.lookup (owner, slot) = .openable raw →
         repaired.application.candidates.lookup (owner, slot) = .openable raw)
     (players : Player → (application setup leaks).Policy)
     (reference : List (application setup leaks).PlayerEntry)
+    (resumes : resumeCouplings menu owner players reference)
     (started : reference.length ≤ (repaired.recall owner).length)
-    (effective : ∀ earlier view response, response ∈ (players owner earlier view).support →
-      response ∈ (bounds.menu (runtime setup) leaks).actions owner earlier view)
-    (usable : ∀ earlier view response, response ∈ (players owner earlier view).support →
-      (∀ material, response.transmission = some material →
-          ∀ event candidate, material.call.packet ≠ .commitment event candidate) ∨
-        FreshUsableBindingResponse (runtime setup) leaks owner view.application response)
     (command : (application setup leaks).Command) :
     let app := application setup leaks
-    let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
-      (bounds.menu (runtime setup) leaks) owner reference (players owner)
+    let strategy := BindingMemory.retainedImplementation (runtime setup) leaks menu owner
+      reference (players owner)
     ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = app.dispatch players command original ∧
       coupling.map Prod.snd = (repaired.environmentStep app command).bind
@@ -230,8 +256,8 @@ private theorem clean_dispatch_coupling
             next.2.1.application.candidates.lookup (owner, slot) = .openable raw := by
   classical
   let app := application setup leaks
-  let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
-    (bounds.menu (runtime setup) leaks) owner reference (players owner)
+  let strategy := BindingMemory.retainedImplementation (runtime setup) leaks menu owner
+    reference (players owner)
   have ownerCommitment (id event candidate evidence token)
       (found : original.network.lookup id =
         some ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩)
@@ -283,14 +309,11 @@ private theorem clean_dispatch_coupling
       app.environmentStep_recall repaired pair.2 command (rightSupport pair member)]
     exact riskRecords
   have existsResume (pair) (member : pair ∈ environment.support) :=
-    (paired pair member).usable_effective_resume_coupling onlyBindings (pastAfter pair member)
-      (provenanceAfter pair member) bounds
-      (app.environment_inputRecall original pair.1 command leftFacts.2.2.2.2.2
-        (leftSupport pair member))
-      (app.environment_inputRecall repaired pair.2 command rightFacts.2.2.2.2.2
-        (rightSupport pair member))
-      (capability pair member) players reference (startedAfter pair member) effective usable
-        (command.actor? app)
+    resumes (paired pair member) onlyBindings (pastAfter pair member)
+      (provenanceAfter pair member) (recordsAfter pair member)
+      (continuationFacts_environment original pair.1 command leftFacts (leftSupport pair member))
+      (continuationFacts_environment repaired pair.2 command rightFacts (rightSupport pair member))
+      (capability pair member) (startedAfter pair member) (command.actor? app)
   let resume := fun pair member => (existsResume pair member).choose
   refine ⟨environment.bindOnSupport resume, ?_, ?_, ?_⟩
   · rw [map_bindOnSupport]
@@ -342,23 +365,18 @@ private theorem clean_round_coupling
       (repaired.recall owner).map ((runtime setup).submissionRiskRecord leaks))
     (leftFacts : continuationFacts original) (rightFacts : continuationFacts repaired)
     (clean : ¬ ownerBreachInInputs owner original)
-    (bounds : MessageBounds (graph setup))
+    (menu : (application setup leaks).ResponseMenu)
     (preserved : ∀ slot raw,
       original.application.candidates.lookup (owner, slot) = .openable raw →
         repaired.application.candidates.lookup (owner, slot) = .openable raw)
     (players : Player → (application setup leaks).Policy)
     (scheduler : (application setup leaks).Scheduler)
     (reference : List (application setup leaks).PlayerEntry)
-    (started : reference.length ≤ (repaired.recall owner).length)
-    (effective : ∀ earlier view response, response ∈ (players owner earlier view).support →
-      response ∈ (bounds.menu (runtime setup) leaks).actions owner earlier view)
-    (usable : ∀ earlier view response, response ∈ (players owner earlier view).support →
-      (∀ material, response.transmission = some material →
-          ∀ event candidate, material.call.packet ≠ .commitment event candidate) ∨
-        FreshUsableBindingResponse (runtime setup) leaks owner view.application response) :
+    (resumes : resumeCouplings menu owner players reference)
+    (started : reference.length ≤ (repaired.recall owner).length) :
     let app := application setup leaks
-    let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
-      (bounds.menu (runtime setup) leaks) owner reference (players owner)
+    let strategy := BindingMemory.retainedImplementation (runtime setup) leaks menu owner
+      reference (players owner)
     ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = app.round scheduler players original ∧
       coupling.map Prod.snd = strategy.round owner players scheduler repaired memory ∧
@@ -375,13 +393,12 @@ private theorem clean_round_coupling
             next.2.1.application.candidates.lookup (owner, slot) = .openable raw := by
   classical
   let app := application setup leaks
-  let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
-    (bounds.menu (runtime setup) leaks) owner reference (players owner)
+  let strategy := BindingMemory.retainedImplementation (runtime setup) leaks menu owner
+    reference (players owner)
   let law := scheduler original.environmentRecall (original.observeEnvironment app)
   have existsDispatch (command) (member : command ∈ law.support) :=
     clean_dispatch_coupling frame onlyBindings past provenance riskRecords leftFacts rightFacts
-      clean bounds
-      preserved players reference started effective usable command
+      clean menu preserved players reference resumes started command
   let dispatch := fun command member => (existsDispatch command member).choose
   refine ⟨law.bindOnSupport dispatch, ?_, ?_, ?_⟩
   · rw [map_bindOnSupport]
@@ -401,23 +418,12 @@ private theorem clean_round_coupling
       Set.mem_iUnion₂.mp (PMF.support_bindOnSupport .. ▸ member)
     exact (existsDispatch command chosen).choose_spec.2.2 next reached
 
-/-- From actual initialized prefixes and a completed private repair, one
-fixed owner implementation couples the full finite evaluator. Before the
-prepared event completes, the actual prefix policy sends no further owner
-commitments. Thereafter the owner may also register fresh typed values. The
-current memory and traffic resources evolve through those registrations.
-Foreign responses and all scheduler commands are arbitrary. The exceptional
-branch carries the SAME actual owner breach, without a renewed fine claim. -/
-theorem sourceService_missing_usable_stopped_coupling
-    (bounds : MessageBounds (graph setup)) (owner : Player)
+private theorem missing_usable_stopped_coupling
+    (menu : (application setup leaks).ResponseMenu) (owner : Player)
     (players : Player → (application setup leaks).Policy)
     (scheduler : (application setup leaks).Scheduler) (horizon : Nat)
-    (effective : ∀ earlier view response, response ∈ (players owner earlier view).support →
-      response ∈ (bounds.menu (runtime setup) leaks).actions owner earlier view)
-    (usable : ∀ earlier view response, response ∈ (players owner earlier view).support →
-      (∀ material, response.transmission = some material →
-          ∀ event candidate, material.call.packet ≠ .commitment event candidate) ∨
-        FreshUsableBindingResponse (runtime setup) leaks owner view.application response)
+    (reference : List (application setup leaks).PlayerEntry)
+    (resumes : resumeCouplings menu owner players reference)
     (prefixPlayers : Player → (application setup leaks).Policy)
     (prefixNoncommitment : ∀ earlier view response,
       response ∈ (prefixPlayers owner earlier view).support →
@@ -444,12 +450,11 @@ theorem sourceService_missing_usable_stopped_coupling
     (preserved : ∀ slot raw,
       original.execution.application.candidates.lookup (owner, slot) = .openable raw →
         repaired.execution.application.candidates.lookup (owner, slot) = .openable raw)
-    (reference : List (application setup leaks).PlayerEntry)
     (started : reference.length ≤ (repaired.execution.recall owner).length)
     (count : Nat) :
     let app := application setup leaks
-    let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
-      (bounds.menu (runtime setup) leaks) owner reference (players owner)
+    let strategy := BindingMemory.retainedImplementation (runtime setup) leaks menu owner
+      reference (players owner)
     ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = app.runRounds scheduler players count original.execution ∧
       coupling.map Prod.snd = strategy.runJoint owner players scheduler count repaired.execution
@@ -473,8 +478,8 @@ theorem sourceService_missing_usable_stopped_coupling
             message ∈ next.1.network.inputs ∧ message ∈ next.2.1.network.inputs := by
   classical
   let app := application setup leaks
-  let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
-    (bounds.menu (runtime setup) leaks) owner reference (players owner)
+  let strategy := BindingMemory.retainedImplementation (runtime setup) leaks menu owner
+    reference (players owner)
   let good (next : app.Execution × app.Execution × BindingMemory (runtime setup) leaks) :=
     BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
       next.2.2.shadow.OwnBindings owner ∧
@@ -581,8 +586,7 @@ theorem sourceService_missing_usable_stopped_coupling
             currentRecords, _currentLeftRecall, _currentRightRecall, currentCapability⟩ := matched
           obtain ⟨step, left, right, continued⟩ := clean_round_coupling currentFrame currentOwn
             currentPast currentLedger currentRecords leftCurrentFacts rightCurrentFacts
-              breached bounds
-              currentCapability players scheduler reference currentStarted effective usable
+              breached menu currentCapability players scheduler reference resumes currentStarted
           refine ⟨step, left, right, fun after afterMember => ?_⟩
           exact Or.inl (continued after afterMember)
         let step := fun next member => (existsStep next member).choose
@@ -626,5 +630,169 @@ theorem sourceService_missing_usable_stopped_coupling
     exact (runtime setup).serviceRisk_congr leaks bound owner _ _ _ _ rfl
       currentFrame.publicView currentRecords
   · exact Or.inr breach
+
+variable [Fintype Player]
+
+/-- From actual initialized prefixes and a completed private repair, one
+fixed owner implementation couples the full finite evaluator. Before the
+prepared event completes, the actual prefix policy sends no further owner
+commitments. Thereafter the owner may also register fresh typed values. The
+current memory and traffic resources evolve through those registrations.
+Foreign responses and all scheduler commands are arbitrary. The exceptional
+branch carries the SAME actual owner breach, without a renewed fine claim. -/
+theorem sourceService_missing_usable_stopped_coupling
+    (bounds : MessageBounds (graph setup)) (owner : Player)
+    (players : Player → (application setup leaks).Policy)
+    (scheduler : (application setup leaks).Scheduler) (horizon : Nat)
+    (effective : ∀ earlier view response, response ∈ (players owner earlier view).support →
+      response ∈ (bounds.menu (runtime setup) leaks).actions owner earlier view)
+    (usable : ∀ earlier view response, response ∈ (players owner earlier view).support →
+      (∀ material, response.transmission = some material →
+          ∀ event candidate, material.call.packet ≠ .commitment event candidate) ∨
+        FreshUsableBindingResponse (runtime setup) leaks owner view.application response)
+    (prefixPlayers : Player → (application setup leaks).Policy)
+    (prefixNoncommitment : ∀ earlier view response,
+      response ∈ (prefixPlayers owner earlier view).support →
+        ∀ material, response.transmission = some material →
+          ∀ event candidate, material.call.packet ≠ .commitment event candidate)
+    (before original repaired : (application setup leaks).Control)
+    (beforeTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some before))
+    (leftTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some original))
+    (rightTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some repaired))
+    (current : (graph setup).EventId)
+    (ready : before.execution.application.config.cut.Ready current)
+    (response : (application setup leaks).Action) (preparation : Nat)
+    (arrival : original.execution ∈ ((application setup leaks).runRounds scheduler prefixPlayers
+      preparation (before.execution.respond (application setup leaks) owner response)).support)
+    (completed : current ∈ original.execution.application.config.cut.completed)
+    (memory : BindingMemory (runtime setup) leaks)
+    (frame : BindingMemory.Frame (runtime setup) leaks memory owner original.execution
+      repaired.execution)
+    (onlyBindings : memory.shadow.OwnBindings owner)
+    (past : memory.shadow.CompletedAt original.execution.application.config)
+    (preserved : ∀ slot raw,
+      original.execution.application.candidates.lookup (owner, slot) = .openable raw →
+        repaired.execution.application.candidates.lookup (owner, slot) = .openable raw)
+    (reference : List (application setup leaks).PlayerEntry)
+    (started : reference.length ≤ (repaired.execution.recall owner).length)
+    (count : Nat) :
+    let app := application setup leaks
+    let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
+      (bounds.menu (runtime setup) leaks) owner reference (players owner)
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+      coupling.map Prod.fst = app.runRounds scheduler players count original.execution ∧
+      coupling.map Prod.snd = strategy.runJoint owner players scheduler count repaired.execution
+        memory ∧
+      ∀ next ∈ coupling.support,
+        (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
+          next.2.2.shadow.OwnBindings owner ∧
+          next.2.2.shadow.CompletedAt next.1.application.config ∧
+          OwnerCommitmentsSettledOrMatching owner next.1 next.2.1 ∧
+          reference.length ≤ (next.2.1.recall owner).length ∧
+          (next.1.recall owner).map ((runtime setup).submissionRiskRecord leaks) =
+            (next.2.1.recall owner).map ((runtime setup).submissionRiskRecord leaks) ∧
+          next.1.InputRecall app ∧ next.2.1.InputRecall app ∧
+          (∀ slot raw, next.1.application.candidates.lookup (owner, slot) = .openable raw →
+            next.2.1.application.candidates.lookup (owner, slot) = .openable raw) ∧
+          ∀ bound, (runtime setup).serviceRisk leaks bound owner (next.1.recall owner)
+              (next.1.observe app owner) =
+            (runtime setup).serviceRisk leaks bound owner (next.2.1.recall owner)
+              (next.2.1.observe app owner)) ∨
+          ∃ message, message.sender = owner ∧ SignedContentBreach message ∧
+            message ∈ next.1.network.inputs ∧ message ∈ next.2.1.network.inputs := by
+  apply missing_usable_stopped_coupling (bounds.menu (runtime setup) leaks) owner players scheduler
+    horizon reference ?_
+    prefixPlayers prefixNoncommitment before original repaired beforeTrace leftTrace rightTrace
+      current ready response preparation arrival completed memory frame onlyBindings past preserved
+      started count
+  intro memory original repaired frame onlyBindings past provenance _records leftFacts rightFacts
+    preserved started actor
+  exact frame.usable_effective_resume_coupling onlyBindings past provenance bounds
+    leftFacts.2.2.2.2.2 rightFacts.2.2.2.2.2 preserved players reference started effective usable
+      actor
+
+/-- The same finite evaluator has an actual risk-menu implementation when
+the original owner law is risk-supported on its noncommitment/fresh-usable
+slice. Repaired admission follows from the current actual recall records,
+input recall and binding invariants; no repaired-support premise is supplied.
+The exceptional branch is the same persisted owner breach. This operational
+law does not assert utility domination or closure for unusable/reused bindings. -/
+theorem sourceService_missing_risk_stopped_coupling
+    (bounds : MessageBounds (graph setup))
+    (bound : (graph setup).EventId → Nat) (owner : Player)
+    (players : Player → (application setup leaks).Policy)
+    (scheduler : (application setup leaks).Scheduler) (horizon : Nat)
+    (supported : ∀ earlier view response, response ∈ (players owner earlier view).support →
+      response ∈ bounds.riskActions (runtime setup) leaks bound owner earlier view)
+    (usable : ∀ earlier view response, response ∈ (players owner earlier view).support →
+      (∀ material, response.transmission = some material →
+          ∀ event candidate, material.call.packet ≠ .commitment event candidate) ∨
+        FreshUsableBindingResponse (runtime setup) leaks owner view.application response)
+    (prefixPlayers : Player → (application setup leaks).Policy)
+    (prefixNoncommitment : ∀ earlier view response,
+      response ∈ (prefixPlayers owner earlier view).support →
+        ∀ material, response.transmission = some material →
+          ∀ event candidate, material.call.packet ≠ .commitment event candidate)
+    (before original repaired : (application setup leaks).Control)
+    (beforeTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some before))
+    (leftTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some original))
+    (rightTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some repaired))
+    (current : (graph setup).EventId)
+    (ready : before.execution.application.config.cut.Ready current)
+    (response : (application setup leaks).Action) (preparation : Nat)
+    (arrival : original.execution ∈ ((application setup leaks).runRounds scheduler prefixPlayers
+      preparation (before.execution.respond (application setup leaks) owner response)).support)
+    (completed : current ∈ original.execution.application.config.cut.completed)
+    (memory : BindingMemory (runtime setup) leaks)
+    (frame : BindingMemory.Frame (runtime setup) leaks memory owner original.execution
+      repaired.execution)
+    (onlyBindings : memory.shadow.OwnBindings owner)
+    (past : memory.shadow.CompletedAt original.execution.application.config)
+    (preserved : ∀ slot raw,
+      original.execution.application.candidates.lookup (owner, slot) = .openable raw →
+        repaired.execution.application.candidates.lookup (owner, slot) = .openable raw)
+    (reference : List (application setup leaks).PlayerEntry)
+    (started : reference.length ≤ (repaired.execution.recall owner).length)
+    (count : Nat) :
+    let app := application setup leaks
+    let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
+      (bounds.riskMenu (runtime setup) leaks bound) owner reference (players owner)
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+      coupling.map Prod.fst = app.runRounds scheduler players count original.execution ∧
+      coupling.map Prod.snd = strategy.runJoint owner players scheduler count repaired.execution
+        memory ∧
+      ∀ next ∈ coupling.support,
+        (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
+          next.2.2.shadow.OwnBindings owner ∧
+          next.2.2.shadow.CompletedAt next.1.application.config ∧
+          OwnerCommitmentsSettledOrMatching owner next.1 next.2.1 ∧
+          reference.length ≤ (next.2.1.recall owner).length ∧
+          (next.1.recall owner).map ((runtime setup).submissionRiskRecord leaks) =
+            (next.2.1.recall owner).map ((runtime setup).submissionRiskRecord leaks) ∧
+          next.1.InputRecall app ∧ next.2.1.InputRecall app ∧
+          (∀ slot raw, next.1.application.candidates.lookup (owner, slot) = .openable raw →
+            next.2.1.application.candidates.lookup (owner, slot) = .openable raw) ∧
+          ∀ bound, (runtime setup).serviceRisk leaks bound owner (next.1.recall owner)
+              (next.1.observe app owner) =
+            (runtime setup).serviceRisk leaks bound owner (next.2.1.recall owner)
+              (next.2.1.observe app owner)) ∨
+          ∃ message, message.sender = owner ∧ SignedContentBreach message ∧
+            message ∈ next.1.network.inputs ∧ message ∈ next.2.1.network.inputs := by
+  apply missing_usable_stopped_coupling (bounds.riskMenu (runtime setup) leaks bound) owner players
+    scheduler horizon reference ?_
+    prefixPlayers prefixNoncommitment before original repaired beforeTrace leftTrace rightTrace
+      current ready response preparation arrival completed memory frame onlyBindings past preserved
+      started count
+  intro memory original repaired frame onlyBindings past provenance records leftFacts rightFacts
+    preserved started actor
+  exact frame.risk_usable_resume_coupling onlyBindings past provenance bounds bound records
+    leftFacts.2.2.2.2.2 rightFacts.2.2.2.2.2 leftFacts.2.1 rightFacts.2.1 preserved players
+      reference started supported usable actor
 
 end Vegas
