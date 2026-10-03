@@ -1709,8 +1709,13 @@ accepted FALSE withholding yields `0`, for every authentic partial audit.
 The current policy is silent at that input for every timing lottery because
 its protected inclusion gate is closed. A proposed prescription of TRUE at
 every merely timely resolution would fail there too. Rational free completion
-is necessary; source SE and the native information-site comparison remain
-separate. This does not disprove equilibrium preservation.
+is necessary.
+[LateResolutionSourceEquilibrium](../Vegas/Examples/LateResolutionSourceEquilibrium.lean)
+constructs an actual consistent source SE that surely opens, for the declared
+source payoff. Every source strategic history reaches the same resolution
+after two deterministic samples; its payoff one dominates all alternatives.
+The native information-site comparison remains separate. These results do
+not disprove equilibrium preservation.
 
 [SourceServiceSampleCompletion](../Vegas/Game/SourceServiceSampleCompletion.lean)
 derives actual silence, whole stopped-run equality with silent play, and the

@@ -273,9 +273,12 @@ future private values changed by repair are outside the claim.
   reaches an initialized legal late turn and computes the actual terminal
   typed payoff and collected audit. TRUE and silence yield `−D`; accepted
   FALSE yields `0` for every authentic partial audit. Every current timing
-  policy is silent at this input because protection has ended. Source SE and
-  a native information-site comparison remain separate; preservation itself
-  is not disproved.
+  policy is silent at this input because protection has ended. A native
+  information-site comparison remains separate; preservation is not disproved.
+- [LateResolutionSourceEquilibrium](../Vegas/Examples/LateResolutionSourceEquilibrium.lean)
+  constructs a consistent source assessment with TRUE as its strategy and
+  proves SE for the declared source payoff. Actual source histories supply the
+  single strategic resolution, finiteness and full-mixing resources.
 - [SourceServiceResolutionIntentionFactorization](../Vegas/Game/SourceServiceResolutionIntentionFactorization.lean)
   carries original and effective disclosure histories through the actual
   response traffic law. FALSE packets can represent failed TRUE intentions;

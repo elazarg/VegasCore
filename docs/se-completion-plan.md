@@ -343,8 +343,11 @@ actual audited payoff comparison is proved in
 At a reachable initialized late turn, TRUE and silence incur the public miss
 and payoff `−D`, while accepted FALSE yields `0` under every authentic partial
 audit. The current turn policy is silent there for every timing lottery
-because its protected gate is closed. This requires rational free completion;
-source equilibrium and a native information-site comparison remain separate.
+because its protected gate is closed. This requires rational free completion.
+[LateResolutionSourceEquilibrium](../Vegas/Examples/LateResolutionSourceEquilibrium.lean)
+constructs a genuine consistent source SE with strategy TRUE for the declared
+payoff, classifying actual source histories and deriving source finiteness and
+full mixing. The native information-site comparison remains separate.
 The [late-decision signaling probe](../scripts/experiments/late_decision_signaling_probe.py)
 checks this distinction with exact Bayes limits and every whole-policy
 comparison. Equal waiting trembles make waiting profitable for one type;
