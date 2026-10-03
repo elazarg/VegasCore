@@ -399,6 +399,8 @@ future private values changed by repair are outside the claim.
   normalized bounded responses without new commitments; foreign raw policies
   and public scheduler choices retain their joint law. Inclusion, the first
   breach stopping argument and terminal dominance remain open.
+  The implementation uses the complete bounded effective menu; membership in
+  the narrower service risk menu is a separate obligation.
 - [ReactiveBindingOpeningStep](../Vegas/Pending/ReactiveBindingOpeningStep.lean)
   classifies actual opening inclusion as full-frame preservation or a concrete
   owner-authored signed breach in the same pending envelope. Invalid tokens
@@ -414,6 +416,17 @@ future private values changed by repair are outside the claim.
   preserves the full inclusion frame for old owner commitments addressed to
   completed events and foreign commitments using their actual fixed candidate
   meaning. Invalid tokens and public rejections retain matching false receipts.
+- [ReactiveBindingPacketStep](../Vegas/Pending/ReactiveBindingPacketStep.lean)
+  combines all packet constructors and every actual scheduler command into
+  an exact frame-or-owner-breach environment coupling. It preserves the same
+  pending envelope and common partial observation draw.
+- [ReactiveBindingInertClosure](../Vegas/Pending/ReactiveBindingInertClosure.lean)
+  derives environment preservation of opening capabilities and fixed actual
+  implementation shadow under the noncommitment owner slice.
+- [ReactiveImplementationInvariant](../Interaction/ReactiveImplementationInvariant.lean)
+  preserves unrestricted service invariants in the actual private-memory
+  joint evaluator. Full stopped induction, later owner bindings and a legal
+  risk-menu comparator remain separate.
 - [SourceServiceAliasEquilibrium](../Vegas/Game/SourceServiceAliasEquilibrium.lean)
   supplies the final private raw-alias transport, retaining correlated
   collection and prior charges.

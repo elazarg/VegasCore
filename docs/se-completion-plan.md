@@ -483,6 +483,8 @@ emit no new commitment, while foreign raw responses and public scheduler
 choices retain their joint law. The coupling carries the full repair frame,
 input recall and old opening capabilities. Inclusion and terminal dominance
 are separate obligations; this restricted window is not a whole-policy repair.
+Its implementation uses the complete bounded effective menu, so this coupling
+does not establish admission to the narrower service risk menu.
 [ReactiveBindingOpeningStep](../Vegas/Pending/ReactiveBindingOpeningStep.lean)
 classifies the actual pending opening transition: the full frame is preserved,
 including invalid-token and rejected inclusions, or the same envelope is an
@@ -499,6 +501,17 @@ uses this completed-event resource to preserve the full frame through actual
 owner commitment inclusions. Foreign commitments retain their actual immutable
 candidate meaning; invalid tokens and public rejections are consumed with
 matching false receipts. The whole stopped evaluator remains open.
+[ReactiveBindingPacketStep](../Vegas/Pending/ReactiveBindingPacketStep.lean)
+combines every actual packet constructor and scheduler command, preserving
+the full frame or identifying the same pending owner-authored signed breach.
+The environment coupling has exact marginals and a common partial observation
+draw. [ReactiveBindingInertClosure](../Vegas/Pending/ReactiveBindingInertClosure.lean)
+keeps the actual implementation shadow fixed on the noncommitment owner slice
+and derives preservation of opening capabilities under every environment
+transition. [ReactiveImplementationInvariant](../Interaction/ReactiveImplementationInvariant.lean)
+carries ordinary unrestricted service invariants through the same private
+implementation's real joint evaluator. The full stopped induction, later
+owner bindings and risk-menu comparator remain separate obligations.
 
 ## Validation
 

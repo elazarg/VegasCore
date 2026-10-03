@@ -1933,6 +1933,8 @@ commitment; foreign raw responses and the adaptive public scheduler keep
 their joint law. These operational restrictions define the proved window,
 not a general repair theorem. Inclusion, first-breach stopping and the
 terminal payoff comparison remain separate.
+This implementation uses the complete bounded effective menu; its response
+coupling does not establish admission to the narrower service risk menu.
 [ReactiveBindingOpeningStep](../Vegas/Pending/ReactiveBindingOpeningStep.lean)
 classifies actual pending opening inclusion, covering invalid tokens and
 paired rejections. It preserves the full frame or identifies an owner-authored
@@ -1949,6 +1951,18 @@ comparison remain open.
 uses completed addressed events to couple old owner commitment inclusions.
 Foreign commitments use their actual immutable candidate meaning; invalid
 tokens and public rejections retain the same false receipt and full frame.
+[ReactiveBindingPacketStep](../Vegas/Pending/ReactiveBindingPacketStep.lean)
+combines all actual packet constructors and every scheduler command into a
+coupling with exact environment marginals. It preserves the full frame or
+identifies a signed breach in the same actual owner envelope, with a common
+partial observation draw on activation.
+[ReactiveBindingInertClosure](../Vegas/Pending/ReactiveBindingInertClosure.lean)
+derives preservation of opening capability under every environment transition
+and keeps the actual implementation shadow fixed on the noncommitment owner
+slice. [ReactiveImplementationInvariant](../Interaction/ReactiveImplementationInvariant.lean)
+carries ordinary unrestricted service invariants through that same joint
+private-memory evaluator. The full stopped induction, later owner bindings
+and a legal risk-menu whole-policy comparator remain separate.
 
 ### Deviation proof boundaries
 

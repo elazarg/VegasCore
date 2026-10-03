@@ -1,0 +1,142 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Pending.ReactiveBindingInertWindow
+import Vegas.Pending.ReactiveCommitmentProtection
+import Vegas.Pending.ReactiveAuthorizationProgress
+import Vegas.Pending.ReactiveObservedState
+
+/-! # Closure resources for inert private binding continuations
+
+Noncommitment effective owner responses leave the private binding shadow fixed.
+Raw scheduler commands cannot create an openable candidate. These are the
+actual memory and capability resources needed to compose response windows
+with packet inclusion until the owner's first signed-content breach.
+-/
+
+noncomputable section
+
+namespace Vegas.EventGraphRuntime
+
+open Interaction EventGraph GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player]
+  {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
+  {runtime : EventGraphRuntime graph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)}
+
+/-- An actual core call can only freeze a fresh handle or retain its prior
+meaning. It cannot introduce an opening capability during inclusion. -/
+theorem handle_openable_iff (state next : State graph)
+    (message : Message Player (Payload graph))
+    (accepted : handle runtime state message = some next)
+    (candidate : Handle graph) (raw : Raw L) :
+    next.candidates.lookup candidate = .openable raw ↔
+      state.candidates.lookup candidate = .openable raw := by
+  rcases message with ⟨id, packet⟩
+  cases packet with
+  | malformed raw => cases accepted
+  | commitment event selected =>
+      rw [(handle_commitment_tables runtime state next id event selected accepted).1]
+      exact CommitmentCandidates.lookup_freeze_openable_iff ..
+  | opening event selected opened =>
+      rw [(handle_resolution_tables runtime state next _ (by intros; simp) accepted).2]
+  | withhold event =>
+      rw [(handle_resolution_tables runtime state next _ (by intros; simp) accepted).2]
+
+/-- Every actual raw environment transition preserves opening capability
+exactly, including accepted/rejected inclusion and passive observation. -/
+theorem reactive_environment_openable_iff
+    (execution next : (runtime.reactiveApplication leaks).Execution)
+    (command : (runtime.reactiveApplication leaks).Command)
+    (reached : next ∈ (execution.environmentStep (runtime.reactiveApplication leaks)
+      command).support) (candidate : Handle graph) (raw : Raw L) :
+    next.application.candidates.lookup candidate = .openable raw ↔
+      execution.application.candidates.lookup candidate = .openable raw := by
+  cases command with
+  | wait =>
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      rfl
+  | activate who =>
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
+      rfl
+  | application command =>
+      simp only [ReactiveApplication.Execution.environmentStep] at reached
+      obtain ⟨updated, updatedMember, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, stateMember, rfl⟩ := PMF.support_map .. ▸ updatedMember
+      rw [(environmentStep_tables runtime execution.application state command stateMember).2]
+  | «include» id =>
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
+      cases found : execution.network.lookup id with
+      | none => rfl
+      | some message =>
+          change (((runtime.reactiveApplication leaks).handle execution.application message).getD
+            execution.application).candidates.lookup candidate = .openable raw ↔ _
+          cases accepted : (runtime.reactiveApplication leaks).handle execution.application
+              message with
+          | none => rfl
+          | some state =>
+              exact handle_openable_iff execution.application state
+                ⟨message.id, message.payload.call⟩ (reactiveHandle_call accepted) candidate raw
+
+namespace BindingMemory
+
+/-- The same retained implementation carries the original shadow through
+every noncommitment owner response. Its internal response recall still grows;
+fallback availability never changes the separately carried binding shadow. -/
+theorem retainedImplementation_resume_shadow
+    (menu : (runtime.reactiveApplication leaks).ResponseMenu)
+    (who : Player) (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (noncommitment : ∀ past view response, response ∈ (players who past view).support →
+      ∀ material, response.transmission = some material →
+        ∀ event candidate, material.call.packet ≠ .commitment event candidate)
+    (actor : Option Player) (execution : (runtime.reactiveApplication leaks).Execution)
+    (memory : BindingMemory runtime leaks)
+    (started : reference.length ≤ (execution.recall who).length)
+    (next : (runtime.reactiveApplication leaks).Execution × BindingMemory runtime leaks)
+    (reached : next ∈
+      ((retainedImplementation runtime leaks menu who reference (players who)).resume who players
+        actor execution memory).support) : next.2.shadow = memory.shadow := by
+  classical
+  cases actor with
+  | none =>
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      rfl
+  | some actor =>
+      by_cases own : actor = who
+      swap
+      · simp only [ReactiveApplication.Implementation.resume, own, ↓reduceIte] at reached
+        obtain ⟨after, _, rfl⟩ := PMF.support_map .. ▸ reached
+        rfl
+      subst actor
+      simp only [ReactiveApplication.Implementation.resume, ↓reduceIte] at reached
+      obtain ⟨chosen, chosenMember, rfl⟩ := PMF.support_map .. ▸ reached
+      change chosen ∈
+        (((implementation runtime leaks who reference (players who)).respond memory
+          (execution.recall who, execution.observe (runtime.reactiveApplication leaks) who)).map
+            _).support at chosenMember
+      obtain ⟨original, originalMember, chosenEq⟩ := PMF.support_map .. ▸ chosenMember
+      change chosen.2.shadow = memory.shadow
+      rw [← chosenEq]
+      change original.2.shadow = memory.shadow
+      rw [implementation_respond runtime leaks who reference (players who) memory
+        (execution.recall who) (execution.observe (runtime.reactiveApplication leaks) who)
+          started] at originalMember
+      obtain ⟨response, supported, rfl⟩ := PMF.support_map .. ▸ originalMember
+      have inert := noncommitment _ _ response supported
+      rcases response with ⟨transmission⟩
+      cases transmission with
+      | none => rfl
+      | some material =>
+          rcases material with ⟨⟨call, opening⟩, evidence⟩
+          cases call with
+          | commitment event candidate => exact (inert _ rfl event candidate rfl).elim
+          | opening | withhold | malformed => rfl
+
+end BindingMemory
+
+end Vegas.EventGraphRuntime
