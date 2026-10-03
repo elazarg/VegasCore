@@ -122,6 +122,11 @@ composes actual rank stops and derives the initialized effective source
 prefix law at every rank, including correlated initial parameters. Its
 evaluator composition uses ordered stopping predicates within the same
 actual horizon.
+[SourceServiceFirstTurnInformation](../Vegas/Game/SourceServiceFirstTurnInformation.lean)
+derives whole effective source-view equality from equal current physical
+observations at two actual first-turn rank endpoints. Initial draws may
+differ; successful decoders and source checkpoints are derived from their
+actual initialized support. Original erased intentions remain separate.
 [SourceServiceOriginalPrefix](../Vegas/Game/SourceServiceOriginalPrefix.lean)
 restores all owners' original private histories through one common memory
 lottery after that actual decoder. It derives the complete original source
@@ -142,6 +147,12 @@ joins the global first-turn resolution draw, whole next-prefix decoder and
 same full stopped traffic. Effective disclosures derive supported TRUE
 realizability, and actual accepted completion supplies endpoint decoding.
 Coupling traffic through the untouched pre-first-owner wait remains open.
+[SourceServiceFirstActivationResources](../Vegas/Game/SourceServiceFirstActivationResources.lean)
+derives first-input trace, protection, fresh-slot and conformance facts for
+both owned decision kinds. The binding proof consumes them, and the actual
+resolution dispatch coupling is separated from its scheduler lottery in
+[SourceServiceResolutionPhaseTraffic](../Vegas/Game/SourceServiceResolutionPhaseTraffic.lean).
+These provide the resources for the missing preceding resolution channel.
 [SourceServiceSampleCompletion](../Vegas/Game/SourceServiceSampleCompletion.lean)
 derives the actual stopped sample/configuration law for any timing from its
 initialized boundary and complete play. The real one-round sample traffic
@@ -252,8 +263,12 @@ at complete settlement. Existing partial coverage bounds total charge in
 every arbitrary behavioral continuation, selecting a forbidden packet
 pointwise at the final history. An actual clear recorded prefix and a second
 same-event response reconstruct the real pair. Connecting that committed
-local choice to the extension remains open. The bound does not give an
-incremental fine after an earlier charge.
+local choice to the actual terminal evaluator is proved in
+[SourceServiceRecordedCollection](../Vegas/Game/SourceServiceRecordedCollection.lean).
+The risk extension classifies it directly from own recall and combines its
+collection bound with the fixed clean comparator. The class therefore needs
+no separate other-exclusion comparison hypothesis. The bound does not give
+an incremental fine after an earlier charge.
 
 ## Validation
 

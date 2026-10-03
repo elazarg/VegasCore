@@ -217,10 +217,10 @@ private theorem conforming_resolution_include_traffic
             simp only [handle, dite_eq_right currentReady, dite_eq_right rightNotReady,
               Option.map_none]
 
-/-- The actual public scheduler's next command preserves focal traffic at a
-resolution when all responses are silent. Actual owner conformance identifies
-relevant openings; trace evidence authenticates their private values on both sides. -/
-theorem source_resolution_conforming_silent_round
+/-- A single actual scheduler command preserves complete focal traffic under
+silent responses. Trace premises stay tied to the actual scheduler, including
+when its command is considered separately from the scheduling lottery. -/
+theorem source_resolution_conforming_silent_dispatch
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     {horizon leftRemaining rightRemaining : Nat}
@@ -243,12 +243,13 @@ theorem source_resolution_conforming_silent_round
       .resolve owner payload binding checks outputEq codeEq)
     (focal : Player)
     (same : (runtime setup).bindingTraffic leaks focal left =
-      (runtime setup).bindingTraffic leaks focal right) :
-    ((application setup leaks).round scheduler
-        (fun _ => (application setup leaks).silentPolicy) left).map
+      (runtime setup).bindingTraffic leaks focal right)
+    (command : (application setup leaks).Command) :
+    ((application setup leaks).dispatch
+        (fun _ => (application setup leaks).silentPolicy) command left).map
           ((runtime setup).bindingTraffic leaks focal) =
-      ((application setup leaks).round scheduler
-        (fun _ => (application setup leaks).silentPolicy) right).map
+      ((application setup leaks).dispatch
+        (fun _ => (application setup leaks).silentPolicy) command right).map
           ((runtime setup).bindingTraffic leaks focal) := by
   let app := application setup leaks
   have networks := congrArg Prod.fst same
@@ -278,10 +279,6 @@ theorem source_resolution_conforming_silent_round
     · exact environmentStep_executeSample_of_not_ready (runtime setup) state target sampleReady
   have waiting : app.resume (fun _ => app.silentPolicy) none = PMF.pure := rfl
   dsimp only [app] at waiting
-  simp only [ReactiveApplication.round, PMF.map_bind, environments]
-  rw [environment]
-  apply bind_congr_on_support _
-  intro command _
   cases command with
   | activate actor =>
       exact (runtime setup).bindingTraffic_silent_activation leaks focal actor left right same
@@ -329,6 +326,57 @@ theorem source_resolution_conforming_silent_round
               right.environmentRecall ++ [⟨right.observeEnvironment app,
                 .application (.executeSample target)⟩], traffic.2.2.2)) same
 
+/-- The actual public scheduler's next command preserves focal traffic at a
+resolution when all responses are silent. Actual owner conformance identifies
+relevant openings; trace evidence authenticates their private values on both sides. -/
+theorem source_resolution_conforming_silent_round
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    {horizon leftRemaining rightRemaining : Nat}
+    {scheduler : (application setup leaks).Scheduler}
+    {left right : (application setup leaks).Execution}
+    {owner : Player} {event : (graph setup).EventId}
+    (leftTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨leftRemaining, none, left⟩))
+    (rightTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨rightRemaining, none, right⟩))
+    (conform : FreshCallsConform setup leaks left owner)
+    (ready : left.application.config.cut.Ready event)
+    (payload : L.Ty)
+    (binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload))
+    (checks : List (EventGraph.GuardCheck (graph setup).layout payload))
+    (outputEq : (graph setup).outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .resolve owner payload binding checks)
+    (node : nodeView (graph setup) event =
+      .resolve owner payload binding checks outputEq codeEq)
+    (focal : Player)
+    (same : (runtime setup).bindingTraffic leaks focal left =
+      (runtime setup).bindingTraffic leaks focal right) :
+    ((application setup leaks).round scheduler
+        (fun _ => (application setup leaks).silentPolicy) left).map
+          ((runtime setup).bindingTraffic leaks focal) =
+      ((application setup leaks).round scheduler
+        (fun _ => (application setup leaks).silentPolicy) right).map
+          ((runtime setup).bindingTraffic leaks focal) := by
+  let app := application setup leaks
+  have networks := congrArg Prod.fst same
+  have receipts := congrArg (fun read => read.2.1) same
+  have environments := congrArg (fun read => read.2.2.1) same
+  have publics := congrArg (fun read => read.2.2.2.2.2) same
+  dsimp only [bindingTraffic] at networks receipts environments publics
+  have environment : left.observeEnvironment app = right.observeEnvironment app := by
+    change ReactiveApplication.EnvironmentView.mk left.network.publicView
+      left.application.publicView left.receipts =
+        ReactiveApplication.EnvironmentView.mk right.network.publicView
+          right.application.publicView right.receipts
+    rw [networks, publics, receipts]
+  simp only [ReactiveApplication.round, PMF.map_bind, environments]
+  rw [environment]
+  apply bind_congr_on_support _
+  intro command _
+  exact source_resolution_conforming_silent_dispatch setup leaks leftTrace rightTrace conform
+    ready payload binding checks outputEq codeEq node focal same command
 /-- Silent rounds preserve the actual owner's prior packet conformance,
 including any earlier deferral entries. -/
 theorem freshCallsConform_silent_round

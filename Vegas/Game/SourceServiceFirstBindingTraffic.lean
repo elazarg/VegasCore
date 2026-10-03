@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceFirstActivationFactorization
+import Vegas.Game.SourceServiceFirstActivationResources
 import Vegas.Game.SourceServiceFirstTurnCompletes
 import Vegas.Game.SourceServiceFirstTurnPrefix
 import Vegas.Game.SourceServiceResidualSites
@@ -61,21 +62,6 @@ private theorem decided_recorded_runUntil
     event ready recorded (fun current _ currentRecorded who =>
       decided_recorded_silent setup leaks bound owner event action current currentRecorded who)
 
-private theorem first_input_zero
-    (owner : Player) (event : (graph setup).EventId)
-    (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView)
-    (absent : sourceServiceTurnInput? setup leaks owner event past = none)
-    (turn : view.application.publicView.ownTurn? owner = some event) :
-    sourceServiceTurn setup leaks owner event past view = some 0 := by
-  unfold sourceServiceTurn
-  simp only [turn, ↓reduceIte]
-  apply congrArg some
-  apply List.countP_eq_zero.mpr
-  intro entry member selected
-  exact (sourceServiceTurnInput?_eq_none_iff owner event past).mp absent entry member
-    (of_decide_eq_true selected)
-
 private theorem decided_first_binding_activation
     {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
     {delay bound : (graph setup).EventId → Nat}
@@ -109,40 +95,16 @@ private theorem decided_first_binding_activation
   let players := sourceServiceTurnPolicy setup leaks bound turns (firstTurnTiming setup turns)
     profile
   have owned := binding_actor setup event owner payload outputEq
-  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler players
-    execution.environmentRecall.length within.le execution initialized
-  obtain ⟨middleTrace⟩ := app.raw_trace_environment (initialLaw setup) horizon scheduler
-    (horizon - execution.environmentRecall.length - 1) execution middle (.activate owner)
-    (by convert trace using 1; congr 2; omega) selected observed
-  have applicationEq := activation_application setup leaks execution middle owner observed
-  have recallEq := app.environmentStep_recall execution middle (.activate owner) observed
-  have middleReady : middle.application.config.cut.Ready event := by
-    rw [applicationEq]
-    exact ready
-  have turn := ownTurn?_of_ready setup middle.application middleReady owned
-  have first := first_input_zero setup leaks owner event (middle.recall owner)
-    (middle.observe app owner) (by rw [recallEq]; exact absent) turn
-  have firstBefore : sourceServiceTurn setup leaks owner event (execution.recall owner)
-      (middle.observe app owner) = some 0 := by rw [← recallEq]; exact first
-  have fits := firstTurn_inclusionFits contract timely trace
-    (roundsFrom_activationsAnswered _ execution initialized) owned ready firstBefore
-  have middleFits : middle.application.publicView.InclusionFitsDeadline (runtime setup) bound
-      event := by rw [applicationEq]; exact fits
-  obtain ⟨atTurn, slots⟩ := canonicalSlots_roundsFrom scheduler players owner
-    (firstTurnTiming setup turns) profile rfl _ execution initialized
-  have middleAtTurn : OwnSubmissionsAtTurn setup leaks middle owner := by
-    unfold OwnSubmissionsAtTurn
-    rw [recallEq]
-    exact atTurn
-  have middleSlots := canonicalSlotsUsed_environment observed owner slots
-  have unrecorded := sourceServiceFirstTurn_unrecorded middleAtTurn first
-  have fresh := canonicalSlot_fresh_of_used middleTrace owner middleAtTurn middleSlots event
-    turn unrecorded
+  obtain ⟨⟨middleTrace⟩, turn, first, middleFits, middleAtTurn, middleSlots, unrecorded,
+    fresh, _conform⟩ := sourceServiceFirstActivation_resources setup leaks contract timely
+      turns profile owner event owned execution middle within initialized ready absent selected
+        observed
   have slot := canonicalFreshSlot_canonical owner (middle.observe app owner).application fresh
   have responseEq := (runtime setup).canonicalServiceDecision_binding leaks owner
     (middle.recall owner) (middle.observe app owner) event payload outputEq codeEq node _ slot value
   have fitsView : (middle.observe app owner).application.publicView.InclusionFitsDeadline
       (runtime setup) bound event := middleFits
+  dsimp only [app] at first responseEq fitsView
   simp only [decidedProfile, Function.update_self, decidedTurnPolicy]
   rw [app.turnScheduledPolicy_selected _ (0 : Fin 1) _ _ _ _ first]
   simp only [decidedOpportunity, unrecorded, Bool.false_eq_true, ↓reduceIte, fitsView,
@@ -154,87 +116,6 @@ private theorem decided_first_binding_activation
     cases value <;> exact Option.some_ne_none _
   rw [ite_eq_right transmitted]
   rfl
-
-private theorem nonowner_dispatch_silent
-    (bound : (graph setup).EventId → Nat) (turns : Nat)
-    (profile : BehavioralProfile setup.program) (owner : Player)
-    (event : (graph setup).EventId) (action : (graph setup).Action event)
-    (execution : (application setup leaks).Execution)
-    (ready : execution.application.config.cut.Ready event)
-    (owned : (graph setup).actor? event = some owner)
-    (command : (application setup leaks).Command) (foreign : command ≠ .activate owner) :
-    (application setup leaks).dispatch
-        (decidedProfile (leaks := leaks) bound owner event action) command execution =
-      (application setup leaks).dispatch
-        (sourceServiceTurnPolicy setup leaks bound turns (firstTurnTiming setup turns) profile)
-        command execution ∧
-    (application setup leaks).dispatch
-        (decidedProfile (leaks := leaks) bound owner event action) command execution =
-      (application setup leaks).dispatch
-        (fun _ => (application setup leaks).silentPolicy) command execution := by
-  let app := application setup leaks
-  cases command with
-  | activate actor =>
-      have different : actor ≠ owner := fun same => foreign (by rw [same])
-      have each (middle : app.Execution)
-          (observed : middle ∈ (execution.environmentStep app (.activate actor)).support) :
-          sourceServiceTurnPolicy setup leaks bound turns (firstTurnTiming setup turns) profile
-              actor (middle.recall actor) (middle.observe app actor) =
-            app.silentPolicy (middle.recall actor) (middle.observe app actor) := by
-        apply sourceServiceTurnPolicy_idle setup leaks bound turns _ profile actor _ _
-        apply (soleReady_of_ready setup middle.application (by
-          rw [activation_application setup leaks execution middle actor observed]
-          exact ready)).idle
-        rw [owned]
-        intro same
-        exact different (Option.some.inj same).symm
-      dsimp only [app] at each
-      constructor
-      · simp only [ReactiveApplication.dispatch]
-        apply bind_congr_on_support _
-        intro middle observed
-        simp only [ReactiveApplication.Command.actor?, ReactiveApplication.resume,
-          ReactiveApplication.invoke, decidedProfile, Function.update_of_ne different,
-          each middle observed]
-      · simp only [ReactiveApplication.dispatch]
-        apply bind_congr_on_support _
-        intro middle _
-        simp only [ReactiveApplication.Command.actor?, ReactiveApplication.resume,
-          ReactiveApplication.invoke, decidedProfile, Function.update_of_ne different]
-  | «include» _ | application _ | wait => exact ⟨rfl, rfl⟩
-
-private theorem nonowner_dispatch_input_absent
-    (players : Player → (application setup leaks).Policy) (owner : Player)
-    (event : (graph setup).EventId) (execution next : (application setup leaks).Execution)
-    (command : (application setup leaks).Command) (foreign : command ≠ .activate owner)
-    (absent : sourceServiceTurnInput? setup leaks owner event (execution.recall owner) = none)
-    (moved : next ∈ ((application setup leaks).dispatch players command execution).support) :
-    sourceServiceTurnInput? setup leaks owner event (next.recall owner) = none := by
-  let app := application setup leaks
-  obtain ⟨middle, observed, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ moved)
-  have recallEq := app.environmentStep_recall execution middle command observed
-  cases actor : command.actor? app with
-  | none =>
-      change next ∈ (app.resume players (command.actor? app) middle).support at resumed
-      rw [actor, ReactiveApplication.resume, PMF.mem_support_pure_iff] at resumed
-      subst next
-      rw [recallEq]
-      exact absent
-  | some who =>
-      have different : owner ≠ who := by
-        intro same
-        subst who
-        apply foreign
-        cases command with
-        | activate actor =>
-            exact congrArg ReactiveApplication.Command.activate
-              (Option.some.inj actor)
-        | «include» _ | application _ | wait => cases actor
-      change next ∈ (app.resume players (command.actor? app) middle).support at resumed
-      rw [actor, ReactiveApplication.resume, ReactiveApplication.invoke, PMF.support_map] at resumed
-      obtain ⟨response, _, rfl⟩ := resumed
-      rw [app.respond_recall_other middle who owner different response, recallEq]
-      exact absent
 
 /-- A fixed latent binding value has the same whole asynchronous phase traffic
 at equal initial traffic. An owner observes the same value on both sides;
@@ -376,10 +257,12 @@ theorem sourceServiceFirstBinding_decided_traffic_runUntil
             owner focal event payload first second visible _ middleTraffic
         exact source_binding_silent_runUntil setup leaks scheduler firstReady owner payload
           outputEq codeEq node focal submittedTraffic count
-      · have leftSilent := nonowner_dispatch_silent setup leaks bound turns profile owner event
+      · have leftSilent := sourceServiceFirstTurn_nonowner_dispatch setup leaks bound turns
+          profile owner event
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) first) left ready owned
           command current
-        have rightSilent := nonowner_dispatch_silent setup leaks bound turns profile owner event
+        have rightSilent := sourceServiceFirstTurn_nonowner_dispatch setup leaks bound turns
+          profile owner event
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) second) right rightReady
             owned command current
         rw [leftSilent.2, rightSilent.2]
@@ -417,9 +300,11 @@ theorem sourceServiceFirstBinding_decided_traffic_runUntil
             nextRight.environmentRecall.length).support := by
           rw [rightLength, app.roundsFrom_succ, PMF.support_bind]
           exact Set.mem_iUnion₂.mpr ⟨right, rightInitialized, rightActual⟩
-        have leftNextAbsent := nonowner_dispatch_input_absent setup leaks players owner event
+        have leftNextAbsent := sourceServiceTurnInput_nonowner_dispatch setup leaks players
+          owner event
           left nextLeft command current leftAbsent leftDispatch
-        have rightNextAbsent := nonowner_dispatch_input_absent setup leaks players owner event
+        have rightNextAbsent := sourceServiceTurnInput_nonowner_dispatch setup leaks players
+          owner event
           right nextRight command current rightAbsent rightDispatch
         have nextReady : nextLeft.application.config.cut.Ready event := by
           rcases round_configStep setup leaks scheduler players left nextLeft leftActual with

@@ -3,6 +3,7 @@
 import Vegas.Game.SourceServiceImmediateComparator
 import Vegas.Game.AsyncServiceDeposit
 import Vegas.Game.SourceServiceAuditableCollection
+import Vegas.Game.SourceServiceRecordedCollection
 import Vegas.Pending.ReactiveSignedEvidence
 import Interaction.ReactiveFiniteAssessment
 import GameTheoryExtensions.Analysis.Protocol.LocalizedEnforcement
@@ -97,9 +98,10 @@ local instance effectiveHistory_nonempty :
     (initialLaw service.setup) service.horizon service.scheduler).initHistory⟩
 
 /-- A charged excluded response is classified directly from the information
-state and chosen material. Constructor breaches, noncanonical current-event
-handles and current-event guard failures are auditable. No hidden-history
-quantification, new runtime observation or gate is introduced. -/
+state and chosen material. Final-forbidden packet classes and a further response
+naming an event already submitted in own recall are auditable. The latter class
+uses a pair of packets rather than promising that the newer packet is forbidden.
+No hidden-history quantification, new runtime observation or gate is introduced. -/
 def auditableBreachAtSite
     (who : Player)
     (site : ((service.bounds.riskMenu (runtime service.setup) service.leaks
@@ -110,7 +112,10 @@ def auditableBreachAtSite
         ((service.riskRestriction.site who site).1)) : Prop :=
   auditableServiceChoice service.setup service.leaks
     (service.bounds.menu (runtime service.setup) service.leaks) service.horizon service.scheduler
-    who (service.riskRestriction.site who site).1 action
+    who (service.riskRestriction.site who site).1 action ∨
+    recordedServiceChoice service.setup service.leaks
+      (service.bounds.menu (runtime service.setup) service.leaks) service.horizon service.scheduler
+      who (service.riskRestriction.site who site).1 action
 
 open Classical in
 /-- Every excluded effective response outside the auditable packet classes has a
@@ -169,7 +174,7 @@ fixed clean comparator are derived for this service.
 Coverage concerns actual signed evidence forbidden by the final settled
 record. Delivery is conditional on the full observation and includes delivery
 before the challenge-window bound. This contract implies collection after
-each classified excluded packet without independence or a continuation-fuel
+each classified excluded response without independence or a continuation-fuel
 premise. The other comparison requires one legal continuation shared across
 the belief's hidden histories. Both remain hypotheses. -/
 theorem risk_sequentialEquilibrium_extends
@@ -253,11 +258,10 @@ theorem risk_sequentialEquilibrium_extends
         rw [mul_div_cancel₀ _ (positive who).ne']
         exact le_of_eq (by ring))
       (fun _ who _ _ _ _ _ final _ => (effectiveBounds who final).2)
-      (fun targetProfile who site action _ breach history => by
+      (fun targetProfile who site action extra breach history => by
         let app := application service.setup service.leaks
-        have classified : auditableServiceChoice service.setup service.leaks effective count
-            scheduler who (restriction.site who site).1 action := breach
-        obtain ⟨past, view, _response, input, _⟩ := classified
+        obtain ⟨past, view, _response, input, _, _, _, clear⟩ :=
+          service.riskRestriction_extra_clear who site action extra
         have observed : (effective.information initial count scheduler).infoOf who
             (restriction.history history.1).trace = (restriction.site who site).1 :=
           (restriction.observed who history.1).trans history.2
@@ -275,11 +279,26 @@ theorem risk_sequentialEquilibrium_extends
             rw [current] at active
             change actor = some who at active
             subst actor
-            exact auditableServiceChoice_collection_committed service.setup service.leaks
-              effective count scheduler service.completes backend targetProfile
-              (restriction.history history.1) who remaining execution current
-              (restriction.site who site).1 action observed breach observationRate deliveryRate
-              delivery_nonnegative coverage)
+            rcases breach with packet | recorded
+            · exact auditableServiceChoice_collection_committed service.setup service.leaks
+                effective count scheduler service.completes backend targetProfile
+                (restriction.history history.1) who remaining execution current
+                (restriction.site who site).1 action observed packet observationRate deliveryRate
+                delivery_nonnegative coverage
+            · have actualInput : (execution.recall who, execution.observe app who) =
+                  (past, view) := by
+                apply Option.some.inj
+                simpa only [current, ReactiveApplication.observe, ↓reduceIte] using observedState
+              have actualClear := (congrArg (fun data =>
+                (runtime service.setup).serviceRisk service.leaks service.bound who data.1 data.2)
+                  actualInput).trans clear
+              have riskTrace : (menu.protocol initial count scheduler).Trace
+                  (restriction.history history.1).state := history.1.trace
+              exact recordedServiceChoice_collection_committed service.bounds service.bound
+                effective count scheduler service.contract service.completes backend targetProfile
+                (restriction.history history.1) riskTrace who remaining execution current
+                actualClear (restriction.site who site).1 action observed recorded observationRate
+                deliveryRate delivery_nonnegative coverage)
       (fun sourceProfile _ _ who site action extra _ belief => by
         obtain ⟨past, view, _response, observed, _, _, _, clear⟩ :=
           service.riskRestriction_extra_clear who site action extra

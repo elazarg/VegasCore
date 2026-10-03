@@ -115,6 +115,7 @@ theorem auditableBreachAtSite_of_signed_witness
       service.scheduler).Trace (some ⟨remaining, some who, execution⟩) :=
     current ▸ menu.toRawTrace (initialLaw service.setup) service.horizon service.scheduler
       witness.1.trace
+  apply Or.inl
   refine ⟨execution.recall who, execution.observe app who, ⟨some material⟩, input, selected,
     material, rfl, Or.inl ?_⟩
   rw [localServiceEnvelope_actual service.setup service.leaks rawTrace who material]

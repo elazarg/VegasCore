@@ -88,6 +88,11 @@ future private values changed by repair are outside the claim.
   The ordered stopping identity in
   [ReactiveStopping](../Interaction/ReactiveStopping.lean) supplies the actual
   evaluator composition; no source marginal is assumed.
+- [SourceServiceFirstTurnInformation](../Vegas/Game/SourceServiceFirstTurnInformation.lean)
+  proves equal current physical observations at two actual first-turn rank
+  endpoints determine equal whole effective source views, including across
+  different supported initial draws. Successful decoders and checkpoints are
+  derived internally. It does not recover erased original intentions.
 - [SourceServiceOriginalPrefix](../Vegas/Game/SourceServiceOriginalPrefix.lean)
   binds the same all-owner memory restoration to the actual normalized rank
   decoder. The resulting auxiliary carrier has the complete original source
@@ -98,6 +103,12 @@ future private values changed by repair are outside the claim.
   proves every supported restored carrier compresses to that exact native
   decoder. Its joint retraction retains the same full traffic and physical
   own recall/input. It assumes no traffic factorization or posterior law.
+- [SourceServiceFirstActivationResources](../Vegas/Game/SourceServiceFirstActivationResources.lean)
+  derives actual first-input trace, protection, fresh slot and earlier-call
+  conformance for either owned decision kind. Binding traffic consumes these
+  shared facts. [SourceServiceResolutionPhaseTraffic](../Vegas/Game/SourceServiceResolutionPhaseTraffic.lean)
+  supplies command-level silent traffic coupling tied to the actual scheduler's
+  traces; its round theorem consumes that same proof.
 - [SourceServiceFirstBindingTraffic](../Vegas/Game/SourceServiceFirstBindingTraffic.lean)
   joins the actual first-turn source draw, whole next-prefix decoder and full
   stopped traffic. Fixed-draw traffic coupling preserves original/effective
@@ -190,9 +201,13 @@ future private values changed by repair are outside the claim.
   same-event envelopes. Partial coverage gives the total collection bound
   across arbitrary behavioral continuations, choosing the forbidden packet
   at each final history. A clear recorded risk-menu prefix plus another
-  transmission reconstructs that actual pair. The committed information-local
-  comparison and extension integration remain open; this is no renewed-charge
-  claim after an earlier fine.
+  transmission reconstructs that actual pair.
+- [SourceServiceRecordedCollection](../Vegas/Game/SourceServiceRecordedCollection.lean)
+  classifies that extra response from own recall and derives collection after
+  its actual information-site commitment. The risk extension includes it with
+  the fixed clean comparator and deposit. This removes the class from the
+  other-exclusion comparison hypothesis; it gives no renewed-charge claim
+  after an earlier fine.
 - [SourceServicePublicRejection](../Vegas/Game/SourceServicePublicRejection.lean)
   proves persistent rejection from actual public handler conditions. The
   auditable classifier uses it for openings with wrong candidate ownership

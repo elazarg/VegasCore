@@ -1476,6 +1476,15 @@ budget. The composition uses the ordered stopping identity in
 [ReactiveStopping](../Interaction/ReactiveStopping.lean); neither a stopping
 oracle nor a source marginal is supplied.
 
+[SourceServiceFirstTurnInformation](../Vegas/Game/SourceServiceFirstTurnInformation.lean)
+proves that equal current physical observations at two actual first-turn
+completion-rank endpoints give equal whole effective source views. The
+initial draws may differ. Actual support supplies successful decoding and
+completed-prefix checkpoints; current observation already contains the
+focal graph observation and own completed-action history, so a separate
+native recall equality is unnecessary. This is effective-view refinement,
+without recovering original erased intentions or supplying a posterior law.
+
 [SourceServiceOriginalPrefix](../Vegas/Game/SourceServiceOriginalPrefix.lean)
 binds all owners' actual memory kernels to that same normalized native rank
 decoder. One common restoration draw has the complete original source-prefix
@@ -1513,6 +1522,17 @@ private recall before any projection. The missing resolution traffic coupling
 is the untouched wait to the first owner input, which must retain actual
 trace and conforming-call resources. The post-response recorded silent
 suffix alone does not establish this preceding channel.
+
+[SourceServiceFirstActivationResources](../Vegas/Game/SourceServiceFirstActivationResources.lean)
+derives first-input turn zero, actual trace, protected inclusion, unused
+canonical slot and prior-call conformance for either owned decision kind.
+Binding traffic consumes these shared resources.
+[SourceServiceResolutionPhaseTraffic](../Vegas/Game/SourceServiceResolutionPhaseTraffic.lean)
+proves silent coupling per actual scheduler command and then integrates the
+scheduler lottery in its round theorem. Its traces remain tied to the actual
+scheduler when splitting off an owner activation; substituting a constant
+scheduler would not establish those trace premises. The pre-first-owner
+resolution induction still needs assembly from these resources.
 
 The whole-prefix likelihood induction should carry the effective complete
 source state with actual traffic first. At each rank, choose the shared
@@ -1696,7 +1716,7 @@ their own rationality proof; an exclusion theorem cannot supply it.
 | Normalization-equivalent responses | Preserve the actual response transition and emitted packet. | Reactive normalization supplies the exact local equality. This does not erase a distinct fresh identifier or authentic extra evidence. |
 | Canonical binding with unusable private opening | Repair private candidate capability while preserving the full typed source readout and actual settlement. | Candidate-only frames preserve the full typed payoff. Actual accepted canonical bindings whose private material decodes to failure have a constructed frame and exact common completion. Later raw closure, certificate exposure and the equilibrium comparison remain open. |
 | Forbidden signed packets at a clear protected history | Bound base gain and actual collection, and exhibit one clean legal continuation under the same belief. | Constructor breaches, invalid-token or foreign-actor packets, wrong node kinds, fresh packets addressed to completed events, wrong current-event handles, public guard failures and wrong opening ownership or public binding association have derived conditional collection. The information-local classifier supplies the actual risk-to-effective-to-raw extension with the fixed deposit and comparator. Other exclusions and the source equilibrium embedding remain open. |
-| Two packets for one event before completion | Select a forbidden actual envelope from the pair and derive its collection bound. | Actual initialized settlement accepts at most one identifier for the event. The pair verdict and total conditional collection bound across arbitrary behavioral continuations are checked, and a clear recorded prefix plus another same-event response reconstructs the pair. The builder may accept the newer packet. Committed-choice and extension integration remain open. |
+| Two packets for one event before completion | Select a forbidden actual envelope from the pair and derive its collection bound. | Actual initialized settlement accepts at most one identifier for the event. A clear recorded prefix plus another same-event response reconstructs the pair; at least one packet is forbidden, even if the builder accepts the newer one. The actual committed-choice collection and risk-extension comparison are checked. This is a total-charge bound at a clear site, without renewed deterrence after a fine. |
 | Late unrecorded first binding opportunity | Admit rational native continuation before a content-dependent acceptance/miss lottery. | Probe C7 demonstrates why excluding the evidence packet can fail for every positive deposit. The auxiliary source/native embedding and its earlier incentive comparisons remain open. |
 | Public binding miss | Admit rational continuation with the deposit already certain. | Actual post-miss whole-policy rationality equals base-payoff rationality. Joint beliefs and equilibrium completion of the auxiliary game remain open. |
 | Earlier packet offense with uncertain collection | Use the change in conditional expected collection, or admit rational raw continuation. | The exact incremental-charge identity is checked. Coverage of another packet alone supplies no positive increment; no independence premise is implicit. |
@@ -1830,7 +1850,8 @@ including its serial, evidence and readiness token. Committing a classified
 choice derives traffic persistence and the final forbidden verdict under
 arbitrary later policies, then supplies its expected collection bound.
 `auditableBreachAtSite` uses this predicate directly in the enforcement
-extension. Wrong current-event handles and public guard failures therefore
+extension, together with recalled same-event responses as a separate pair
+class. Wrong current-event handles and public guard failures therefore
 need no separate comparison hypothesis. Neither do the invalid-token and
 foreign-actor classes in
 [SourceServiceAuthorizationBreach](../Vegas/Game/SourceServiceAuthorizationBreach.lean).
@@ -1869,9 +1890,18 @@ packet is selected separately at each final history, so the builder may
 accept the newer packet without invalidating the argument. At a clear legal
 risk-menu prefix, own recorded-event recall and another same-event response
 derive the earlier actual record and the fresh second record directly;
-serial bounds distinguish their identifiers. The committed local-choice and
-extension connection remains open. This is a bound on total one-time charge,
-not a positive incremental collection probability after an earlier offense.
+serial bounds distinguish their identifiers.
+
+[SourceServiceRecordedCollection](../Vegas/Game/SourceServiceRecordedCollection.lean)
+classifies a response naming an event already submitted in own recall. At a
+clear input it is excluded by the risk menu. Committing that information-local
+choice reconstructs the actual packet pair, and one-step terminal evaluation
+composes with its arbitrary-continuation collection law. The risk extension
+derives the clear legal prefix from the restriction history and combines
+this collection with the same clean comparator and deposit. The class is
+removed from `riskOtherExclusionComparisons` without a stronger backend
+coverage premise. This is a bound on total one-time charge, not a positive
+incremental collection probability after an earlier offense.
 
 [SourceServicePublicRejection](../Vegas/Game/SourceServicePublicRejection.lean)
 derives persistent nonacceptance from an event's prior completion or failing

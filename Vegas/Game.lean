@@ -54,6 +54,7 @@ import Vegas.Game.SourceServiceDecidedCompletion
 import Vegas.Game.SourceServiceFirstTurnCompletes
 import Vegas.Game.SourceServiceFirstTurnPrefix
 import Vegas.Game.SourceServiceFirstTurnRanks
+import Vegas.Game.SourceServiceFirstTurnInformation
 import Vegas.Game.SourceServiceOriginalPrefix
 import Vegas.Game.SourceServiceOriginalPrefixRetraction
 import Vegas.Game.SourceServiceFirstBindingTraffic
@@ -81,6 +82,7 @@ import Vegas.Game.SourceServiceImmediatePolicy
 import Vegas.Game.SourceServiceImmediateRecall
 import Vegas.Game.SourceServiceFirstActivation
 import Vegas.Game.SourceServiceFirstActivationFactorization
+import Vegas.Game.SourceServiceFirstActivationResources
 import Vegas.Game.SourceServiceImmediateRisk
 import Vegas.Game.SourceServiceCleanContinuation
 import Vegas.Game.SourceServiceImmediateAudit
@@ -95,6 +97,7 @@ import Vegas.Game.SourceServiceNodeKindBreach
 import Vegas.Game.SourceServiceCompletedPacket
 import Vegas.Game.SourceServicePublicRejection
 import Vegas.Game.SourceServiceDuplicatePackets
+import Vegas.Game.SourceServiceRecordedCollection
 import Vegas.Game.SourceServiceRiskExtension
 import Vegas.Game.SourceServiceAliasEquilibrium
 import Vegas.Game.SourceServiceRiskRawExtension
