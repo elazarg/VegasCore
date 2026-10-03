@@ -128,11 +128,20 @@ lottery after that actual decoder. It derives the complete original source
 prefix law, jointly retaining the initial parameter, without another
 effectiveness premise. This auxiliary carrier does not supply physical
 native recall or a conditional information posterior.
+[SourceServiceOriginalPrefixRetraction](../Vegas/Game/SourceServiceOriginalPrefixRetraction.lean)
+derives actual source support and proves every restoration draw compresses
+back to the same native decoder. The joint law retains the unchanged full
+traffic and physical own input; no factorization is assumed.
 [SourceServiceFirstBindingTraffic](../Vegas/Game/SourceServiceFirstBindingTraffic.lean)
 joins the actual first-turn binding draw and whole source successor with the
 same stopped full traffic. Its fixed-draw coupling carries an
 original/effective successor pair from the prior source-view/traffic law.
 Whole-prefix traffic induction remains open.
+[SourceServiceFirstResolutionTraffic](../Vegas/Game/SourceServiceFirstResolutionTraffic.lean)
+joins the global first-turn resolution draw, whole next-prefix decoder and
+same full stopped traffic. Effective disclosures derive supported TRUE
+realizability, and actual accepted completion supplies endpoint decoding.
+Coupling traffic through the untouched pre-first-owner wait remains open.
 [SourceServiceSampleCompletion](../Vegas/Game/SourceServiceSampleCompletion.lean)
 derives the actual stopped sample/configuration law for any timing from its
 initialized boundary and complete play. The real one-round sample traffic
@@ -192,8 +201,15 @@ across all native information sets and account for its timing likelihoods.
 
 Continue in this order:
 
-1. Join actual decision, inclusion, sampling and stopped traffic kernels into
-   source-prefix/input likelihood laws, including earlier retained deferrals.
+1. Complete the resolution phase traffic coupling, then lift the checked
+   sample, binding and resolution branches through one decoder slice chosen
+   before integrating histories. Start from the actual initialized traffic
+   law and carry the effective source prefix jointly with full stopped
+   traffic. Restore original histories once at the requested prefix through
+   the same all-owner memory lottery, retaining the initial parameter.
+   Resolution still needs its first-owner-input channel. For nonpure timing,
+   derive the actual missing-turn/public-miss decomposition and relative
+   escape bounds; the pure first-turn rank law does not cover those branches.
 2. Derive source-relative conditional beliefs and escape bounds at native
    information sites. Clean-prefix probability equality alone is insufficient.
 3. Compare protected decisions, waiting, late first attempts and departures
@@ -229,6 +245,15 @@ shares the actual public rejection argument and derives forbiddenness for
 wrong opening ownership or public binding association at a ready resolution.
 Those classes are integrated into the same information-local collection bound.
 Private binding capabilities retain their own repair obligations.
+
+[SourceServiceDuplicatePackets](../Vegas/Game/SourceServiceDuplicatePackets.lean)
+proves at least one of two distinct actual same-event envelopes is forbidden
+at complete settlement. Existing partial coverage bounds total charge in
+every arbitrary behavioral continuation, selecting a forbidden packet
+pointwise at the final history. An actual clear recorded prefix and a second
+same-event response reconstruct the real pair. Connecting that committed
+local choice to the extension remains open. The bound does not give an
+incremental fine after an earlier charge.
 
 ## Validation
 

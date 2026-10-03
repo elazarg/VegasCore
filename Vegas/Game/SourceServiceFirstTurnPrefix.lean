@@ -46,6 +46,30 @@ private theorem firstTurn_phaseProfile (bound : (graph setup).EventId → Nat)
       simp only [List.nil_append] at fixed
       rw [app.policyMixture_policy, fixed, PMF.pure_bind]
 
+/-- The actual global first-turn policy has exactly the event-local stopped
+execution law at every initialized completion boundary. This preserves the
+whole execution, including private recall and network traffic. -/
+theorem sourceServiceTurnPolicy_firstTurn_phase
+    {scheduler : (application setup leaks).Scheduler} {horizon turns : Nat}
+    {bound : (graph setup).EventId → Nat} {profile : BehavioralProfile setup.program}
+    (event : (graph setup).EventId) (start : (application setup leaks).Execution)
+    (boundary : CompletionBoundary setup leaks scheduler
+      (sourceServiceTurnPolicy setup leaks bound turns (firstTurnTiming setup turns) profile)
+      event.val start) :
+    (application setup leaks).runUntilHorizon scheduler
+        (sourceServiceTurnPolicy setup leaks bound turns (firstTurnTiming setup turns) profile)
+        (fun final => event ∈ final.application.config.cut.completed) horizon start =
+      (application setup leaks).runUntilHorizon scheduler
+        (firstTurnProfile setup leaks bound turns profile event)
+        (fun final => event ∈ final.application.config.cut.completed) horizon start := by
+  obtain ⟨rank, ranked, seen⟩ := roundsFrom_ranked setup leaks scheduler _ _ start
+    boundary.supported
+  have rankEq := isPrefix_unique ranked boundary.ordered
+  subst rankEq
+  unfold ReactiveApplication.runUntilHorizon
+  rw [runUntil_turnPolicy_eq_phase scheduler bound turns (firstTurnTiming setup turns)
+    profile event _ start boundary.ordered seen, firstTurn_phaseProfile]
+
 /-- From an actual untouched completion boundary, the whole first-turn policy
 advances the decoded source prefix by the source behavioral step. -/
 theorem sourceServiceTurnPolicy_firstTurn_prefix_law [Fintype Player]
@@ -70,16 +94,10 @@ theorem sourceServiceTurnPolicy_firstTurn_prefix_law [Fintype Player]
           (fun stopped => sourceServicePrefix? setup (event.val + 1)
             stopped.application.config) =
         (ProtocolState.behavioralStateStep setup.program profile before).map some := by
-  obtain ⟨rank, ranked, seen⟩ := roundsFrom_ranked setup leaks scheduler _ _ start
-    boundary.supported
-  have rankEq := isPrefix_unique ranked boundary.ordered
-  subst rankEq
   obtain ⟨before, decoded, law⟩ := sourceServiceFirstTurn_prefix_law contract timely
     (firstTurnTiming setup turns) profile effective event start boundary bounded
   refine ⟨before, decoded, ?_⟩
-  unfold ReactiveApplication.runUntilHorizon
-  rw [runUntil_turnPolicy_eq_phase scheduler bound turns (firstTurnTiming setup turns)
-    profile event _ start boundary.ordered seen, firstTurn_phaseProfile]
+  rw [sourceServiceTurnPolicy_firstTurn_phase event start boundary]
   exact law
 
 end Vegas

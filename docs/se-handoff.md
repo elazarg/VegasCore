@@ -94,12 +94,22 @@ future private values changed by repair are outside the claim.
   prefix law, with correlated initial parameters retained. Effectiveness is
   derived internally. This does not identify physical own recall or native
   information posteriors with restored intentions.
+- [SourceServiceOriginalPrefixRetraction](../Vegas/Game/SourceServiceOriginalPrefixRetraction.lean)
+  proves every supported restored carrier compresses to that exact native
+  decoder. Its joint retraction retains the same full traffic and physical
+  own recall/input. It assumes no traffic factorization or posterior law.
 - [SourceServiceFirstBindingTraffic](../Vegas/Game/SourceServiceFirstBindingTraffic.lean)
   joins the actual first-turn source draw, whole next-prefix decoder and full
   stopped traffic. Fixed-draw traffic coupling preserves original/effective
   successor pairs from a prior source-view/traffic factorization. The law
   applies to initialized exact first-turn phases; whole-prefix traffic
   induction and retained-waiting incentives remain separate.
+- [SourceServiceFirstResolutionTraffic](../Vegas/Game/SourceServiceFirstResolutionTraffic.lean)
+  joins the actual global first-turn resolution kernel with the whole next
+  prefix and the same full stopped traffic. Effective source disclosures
+  supply supported TRUE realizability; FALSE is an explicit packet. The
+  untouched pre-first-owner traffic coupling and whole-prefix induction
+  remain separate from this joint phase identity.
 - [SourceServiceSampleCompletion](../Vegas/Game/SourceServiceSampleCompletion.lean)
   derives silence and exact stopped sample/configuration laws for any turn
   timing from an actual boundary and complete play.
@@ -174,8 +184,15 @@ future private values changed by repair are outside the claim.
   event completed. The actual committed response supplies that identifier,
   and the auditable classifier uses the same collection bound. An original
   accepted envelope remains permitted. Repeated calls before completion need
-  a separate proof selecting at least one forbidden packet from the pair;
-  the newer packet can be accepted.
+  the distinct pair argument below; the newer packet can be accepted.
+- [SourceServiceDuplicatePackets](../Vegas/Game/SourceServiceDuplicatePackets.lean)
+  derives at least one final forbidden verdict from two actual distinct
+  same-event envelopes. Partial coverage gives the total collection bound
+  across arbitrary behavioral continuations, choosing the forbidden packet
+  at each final history. A clear recorded risk-menu prefix plus another
+  transmission reconstructs that actual pair. The committed information-local
+  comparison and extension integration remain open; this is no renewed-charge
+  claim after an earlier fine.
 - [SourceServicePublicRejection](../Vegas/Game/SourceServicePublicRejection.lean)
   proves persistent rejection from actual public handler conditions. The
   auditable classifier uses it for openings with wrong candidate ownership

@@ -2,6 +2,7 @@
 
 import Vegas.Game.SourceServiceFirstActivationFactorization
 import Vegas.Game.SourceServiceFirstTurnCompletes
+import Vegas.Game.SourceServiceFirstTurnPrefix
 import Vegas.Game.SourceServiceResidualSites
 import Vegas.Game.SourceServiceRecordedBindingCompletion
 import Vegas.Pending.ReactiveBindingSchedule
@@ -600,7 +601,7 @@ theorem sourceServiceFirstBinding_prefix_probability [Fintype Player]
         (commitKernel site.residual (site.source.view site.owner)).map
           (fun value => embed (commitSuccessor site.name site.guard site.source value)) ∧
       ((application setup leaks).runUntilHorizon scheduler
-          (firstTurnProfile setup leaks bound turns profile event)
+          (sourceServiceTurnPolicy setup leaks bound turns (firstTurnTiming setup turns) profile)
           (fun final => event ∈ final.application.config.cut.completed) horizon start).map
             (fun final => (sourceServicePrefix? setup (event.val + 1) final.application.config,
               (runtime setup).bindingTraffic leaks focal final)) =
@@ -729,6 +730,7 @@ theorem sourceServiceFirstBinding_prefix_probability [Fintype Player]
         rfl
       refine ⟨lift (ProtocolState.entry (.commit name owner fresh guard next) source), site,
         embed, beforeRead, step, ?_⟩
+      rw [sourceServiceTurnPolicy_firstTurn_phase event start boundary]
       unfold ReactiveApplication.runUntilHorizon
       rw [firstTurn_runUntil_mixture event start boundary owner site.owned bound turns profile
         _ policy _, PMF.map_bind, PMF.bind_map]
