@@ -191,6 +191,18 @@ future private values changed by repair are outside the claim.
   ready owner input for bindings and resolutions. The source-view channel is
   total on actual inputs, read before the response. These pure-first-turn laws
   do not replace physical recall or supply native Bayes/retained-waiting proofs.
+- [SourceServiceOriginalFirstInputPosterior](../Vegas/Game/SourceServiceOriginalFirstInputPosterior.lean)
+  derives the compressed source observation from each actual supported input.
+  Its conditional full original-source/initial-parameter law equals the true
+  source posterior on that compressed observation. Uncompressed intentions,
+  native assessment history identification and perturbed beliefs remain distinct.
+- [PassageBayes](../GameTheoryExtensions/Analysis/Protocol/PassageBayes.lean)
+  derives actual terminal ancestor weights and conditional Bayes beliefs at
+  information antichains with variable depths.
+  [ReactivePassageBayes](../Interaction/ReactivePassageBayes.lean) projects the
+  earlier observed control to the native state posterior; it does not use the
+  final control or assume a stopping likelihood. First-input passage
+  identification and perturbed source transport remain open.
 - [SourceServiceInitialTraffic](../Vegas/Game/SourceServiceInitialTraffic.lean)
   derives the actual initialized parameter/source/full-traffic factor through
   the whole source view. Correlated initial private types are retained; the
@@ -199,6 +211,12 @@ future private values changed by repair are outside the claim.
   cancels the entire focal owner's recalled-action likelihood from native
   Bayes normalization. Relative escape still needs a bound against the actual
   opponent-and-nature denominator, including foreign waiting probabilities.
+- [AsyncServiceForeignEscape](../Vegas/Game/AsyncServiceForeignEscape.lean)
+  proves focal clarity at every compatible hidden history and identifies
+  escape exactly with foreign private recalled submission or opportunity risk.
+  The actual clean witness has positive counterfactual mass under full mixing;
+  conditional escape is bounded by summed foreign private-risk mass divided
+  by that clean mass. The required vanishing ratio is still unproved.
 - [SourceServiceResolutionIntentionFactorization](../Vegas/Game/SourceServiceResolutionIntentionFactorization.lean)
   carries original and effective disclosure histories through the actual
   response traffic law. FALSE packets can represent failed TRUE intentions;
@@ -282,6 +300,12 @@ future private values changed by repair are outside the claim.
   executions complete with the remembered original failure and retain the
   public miss, service recall, traffic and reconstructed owner input. It
   supplies no whole-policy settlement comparison or additional fine.
+- [ReactiveBindingRiskResolve](../Vegas/Pending/ReactiveBindingRiskResolve.lean)
+  admits a first timely FALSE decision in the actual repaired risk menu and
+  couples a supported waiting/FALSE mixture through the retained implementation.
+  It preserves the full frame and private memory without fallback, protection
+  or a blanket menu-coverage premise. Later inclusion, certificate-dependent
+  raw responses and the whole-policy comparison remain separate.
 - [ReactiveBindingCertificateRepair](../Vegas/Pending/ReactiveBindingCertificateRepair.lean)
   proves that the actual mistyped bare commitment installs an owned certificate
   capability its typed-default replacement cannot reproduce, despite equal
@@ -289,6 +313,12 @@ future private values changed by repair are outside the claim.
   public misses can occur without another owner turn, their deposit is sunk,
   and late canonical acceptance can remain uncharged. A stopped repair needs
   the genuine shared waiting and continuation comparisons.
+- [ReactiveMissingBindingTransport](../Vegas/Pending/ReactiveMissingBindingTransport.lean)
+  derives one-step packet transport after an actual absent opening is replaced.
+  Original effective responses remain available; bounded raw responses can be
+  copied after original-input normalization. The blocked candidate loses no
+  original owned capability. Later handler acceptance can still differ for
+  an uncertified opening, so whole-policy frame closure remains open.
 - [SourceServiceAliasEquilibrium](../Vegas/Game/SourceServiceAliasEquilibrium.lean)
   supplies the final private raw-alias transport, retaining correlated
   collection and prior charges.

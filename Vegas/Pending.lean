@@ -250,6 +250,7 @@ import Vegas.Pending.ReactiveBindingDeadline
 import Vegas.Pending.ReactiveUnusableBinding
 import Vegas.Pending.ReactiveBindingRestoration
 import Vegas.Pending.ReactiveBindingPendingExpiry
+import Vegas.Pending.ReactiveBindingRiskResolve
 import Vegas.Pending.ReactiveBindingShadowInvariant
 import Vegas.Pending.ReactiveBindingCoupling
 import Vegas.Pending.ReactiveBindingAllocation
@@ -258,6 +259,7 @@ import Vegas.Pending.ReactiveBindingPrefix
 import Vegas.Pending.ReactiveBindingServiceRepair
 import Vegas.Pending.ReactiveRawBindingFrame
 import Vegas.Pending.ReactiveBindingCertificateRepair
+import Vegas.Pending.ReactiveMissingBindingTransport
 import Vegas.Pending.ReactiveSelectionObservation
 import Vegas.Pending.ReactiveServiceFootprint
 import Vegas.Pending.ReactiveAssociationPersistence

@@ -1616,9 +1616,24 @@ is supplied.
 carries that joint law to the actual first binding or resolution owner input,
 before the response draw. The channel has total mass on real inputs at every
 supported original source prefix. These are pure-first-turn laws; conditional
-native beliefs and nonpure timing still need actual miss decompositions and
-conditional passage/escape bounds. Restored histories remain auxiliary source
-data and do not replace physical private recall.
+assessment beliefs and nonpure timing remain separate.
+[SourceServiceOriginalFirstInputPosterior](../Vegas/Game/SourceServiceOriginalFirstInputPosterior.lean)
+derives actual supported-input recovery from the shared typed checkpoint,
+unchanged configuration at the first activation, and common-memory retraction.
+The conditional whole original source-prefix/initial-parameter law equals the
+true source posterior on the compressed observation. This does not recover
+uncompressed original intentions or identify the stopped readout with native
+assessment history beliefs. Nonpure timing still needs actual miss decompositions
+and conditional passage/escape bounds.
+[PassageBayes](../GameTheoryExtensions/Analysis/Protocol/PassageBayes.lean) derives
+the actual terminal-history ancestor law at any information antichain. Each
+ancestor has its true reach weight; conditioning on passage gives the standard
+Bayes belief even at variable depths.
+[ReactivePassageBayes](../Interaction/ReactivePassageBayes.lean) projects this law
+to native state beliefs, retaining the earlier observed control instead of
+the final control. Its positive-mass and Bayes-consistency hypotheses are the
+ordinary assessment conditions. Actual first-input passage identification and
+perturbed source transport remain separate.
 
 [SourceServiceSampleCompletion](../Vegas/Game/SourceServiceSampleCompletion.lean)
 derives actual silence, whole stopped-run equality with silent play, and the
@@ -1775,6 +1790,13 @@ same failure and public miss marker. The frame retains service recall, traffic,
 receipts and reconstructed owner input. This supplies no additional fine or
 whole-policy settlement comparison; generic continuation closure, retained
 admission and consistent beliefs remain open.
+[ReactiveBindingRiskResolve](../Vegas/Pending/ReactiveBindingRiskResolve.lean)
+derives first timely FALSE admission in the actual repaired risk menu, without
+a protected-delivery or full-menu-coverage premise. Any actual waiting/FALSE
+response mixture has a joint law through the retained implementation, with
+full frame and private memory preserved and no fallback on support. This
+closes that response step; later inclusion and raw certificate responses remain
+separate continuation obligations.
 
 [BindingFrameSettlement](../Vegas/Game/BindingFrameSettlement.lean) proves
 that every preserved frame gives exactly the same actual traffic, final
@@ -1795,6 +1817,17 @@ packet's total collection bound supplies no incremental fine. An environment
 expiry can occur without an owner turn, so repair cannot insert a decision
 there. A late canonical call can also be accepted without a miss or charge;
 stopping earlier at a protected wait needs the actual waiting comparison.
+[ReactiveMissingBindingTransport](../Vegas/Pending/ReactiveMissingBindingTransport.lean)
+isolates the absent-opening case. Its actual candidate is blocked, so a
+replacement removes no original owned certificate capability. Every subsequent
+effective owner response remains available and emits the same packet; an
+arbitrary bounded raw response must first be normalized at the original input
+to avoid acquiring newly available evidence. The proof derives actual candidate
+tables, known-envelope equality and normalization from the real transitions.
+It does not preserve later handler acceptance: an uncertified opening claim
+may fail against the original candidate and succeed against the replacement.
+Those static packet breaches retain their collection comparison, with no new
+fine after an earlier public miss. Whole-policy repair remains open.
 
 ### Deviation proof boundaries
 
@@ -2081,6 +2114,21 @@ The same module proves that every hidden history at source-compatible
 information has no owner's public miss, and that the counterfactual mass of
 such misses is exactly zero. The public record excludes this branch even
 when private foreign opportunity or submission risk is hidden.
+[AsyncServiceForeignEscape](../Vegas/Game/AsyncServiceForeignEscape.lean)
+derives that the focal owner's full risk is clear at every hidden compatible
+history. Escape is exactly some foreign owner's private recalled submission or
+opportunity risk. Its finite union bound and the actual clean witness yield
+
+\[
+\Pr(\text{escaped}\mid I) \le
+\frac{\sum_{j\ne i}\mathrm{CF}_I(\text{private risk}_j)}
+     {\mathrm{CF}_I(\text{clean})}.
+\]
+
+Full mixing makes the actual clean denominator positive. It does not supply a
+rate or identify the numerical timing budgets with these counterfactual masses.
+That ratio must vanish for one consistent native family, retaining foreign
+waiting likelihoods and the same free continuation at all information sites.
 
 [ReactiveCleanPrefix](../Vegas/Pending/ReactiveCleanPrefix.lean) proves that a
 risk-menu prefix with every owner's persistent flag clear has a canonical

@@ -8,6 +8,7 @@ import Interaction.MessageNetworkIdentity
 import Interaction.ReactiveMessageIdentity
 import Interaction.ReactiveScheduleEvaluation
 import Interaction.ReactiveBayes
+import Interaction.ReactivePassageBayes
 import Interaction.MessagePoolFreshness
 import Interaction.MessageInvariant
 import Interaction.MessagePoolCounters

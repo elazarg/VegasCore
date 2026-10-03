@@ -44,6 +44,7 @@ import GameTheoryExtensions.Analysis.Protocol.InducedInformation
 import GameTheoryExtensions.Analysis.Protocol.LastDecision
 import GameTheoryExtensions.Analysis.Protocol.DisclosureObstruction
 import GameTheoryExtensions.Analysis.Protocol.Bayes
+import GameTheoryExtensions.Analysis.Protocol.PassageBayes
 import GameTheoryExtensions.Analysis.Protocol.ReadoutBayesProjection
 import GameTheoryExtensions.Analysis.Protocol.PassageRestrictionExtension
 import GameTheoryExtensions.Analysis.Protocol.ProportionalBeliefTransport

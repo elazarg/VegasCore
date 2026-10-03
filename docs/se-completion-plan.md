@@ -209,8 +209,20 @@ only the compressed original focal observation.
 propagates this law to the actual first ready binding or resolution owner
 input, before the response. The channel is total on real inputs at every
 supported original source prefix. Physical private recall is retained; the
-restored histories remain auxiliary source data. Conditional native beliefs
-and nonpure timing are still separate obligations.
+restored histories remain auxiliary source data.
+[SourceServiceOriginalFirstInputPosterior](../Vegas/Game/SourceServiceOriginalFirstInputPosterior.lean)
+derives recovery of the compressed source observation from actual typed cells
+and completion history. Conditioning a supported input yields the true original
+source-prefix/initial-parameter posterior on that compressed observation.
+Uncompressed original intentions are not physically recovered. Identification
+with native assessment history beliefs and nonpure timing remain separate.
+[ReactivePassageBayes](../Interaction/ReactivePassageBayes.lean) expresses the
+actual native state belief as terminal-history passage conditioned on reaching
+the information site, using the unique earlier control rather than the final
+control. [PassageBayes](../GameTheoryExtensions/Analysis/Protocol/PassageBayes.lean)
+derives ancestor weights from real continuation cones and their true reach
+probabilities. No common decision depth or stopped-history likelihood is a
+premise. Connecting this passage law to the first-input readout remains open.
 
 The actual binding-response law now composes with protected completion,
 retaining the transmitting draw and full stopped traffic. The native Bayes
@@ -220,6 +232,13 @@ reach. A conditional escape estimate must compare against that actual
 denominator; a small unconditional escape probability alone is insufficient.
 Public misses are excluded from every history at source-compatible native
 information by the shared public record. Hidden private risk remains distinct.
+[AsyncServiceForeignEscape](../Vegas/Game/AsyncServiceForeignEscape.lean)
+proves that hidden escape is exactly foreign recalled submission or opportunity
+risk. Full mixing reaches the classifier's actual clean witness, so its clean
+counterfactual mass is positive. The conditional escape bound divides the sum
+of foreign private-risk masses by that actual clean mass. Making this ratio
+vanish under one coherent perturbation family remains open; positivity is not
+an asymptotic lower bound.
 For waiting comparisons, a late canonical packet can still be accepted before
 expiry without a charge, so the accepted branch needs source-continuation
 control as well as the miss branch's real collection bound.
@@ -263,9 +282,9 @@ across all native information sets and account for its timing likelihoods.
 
 Continue in this order:
 
-1. Condition the proved original-source/first-owner-input joint law using
-   recovery of the compressed source observation from the actual input.
-   For nonpure timing, derive the actual missing-turn/public-miss decomposition
+1. Identify the proved stopped first-input posterior with the represented
+   native history belief, allowing variable decision depths. For nonpure
+   timing, derive the actual missing-turn/public-miss decomposition
    and relative escape bounds; pure first-turn laws do not cover those branches.
 2. Derive source-relative conditional beliefs and escape bounds at native
    information sites. Clean-prefix probability equality alone is insufficient.
@@ -339,6 +358,20 @@ This is a continuation-coupling gap, not a profitable-deviation theorem. A
 stopped comparison must act at a real owner input, handle uncharged late
 acceptance, and supply rational continuation after a public miss with the
 one-time deposit already sunk.
+[ReactiveBindingRiskResolve](../Vegas/Pending/ReactiveBindingRiskResolve.lean)
+derives actual risk-menu admission of a first timely FALSE decision after
+private repair, even without protected delivery. Any supported waiting/FALSE
+mixture has a joint response law with the full frame and actual implementation
+memory; its retained-policy fallback is unused. Certificate-dependent responses,
+subsequent inclusion and whole-policy rationality remain separate.
+[ReactiveMissingBindingTransport](../Vegas/Pending/ReactiveMissingBindingTransport.lean)
+separates absent opening material from mistyped certifiable material. The
+actual absent-opening response blocks the fresh candidate; replacing it adds
+owned capabilities without removing any original one. Every subsequent
+effective response has the same emitted packet, and bounded raw responses can
+be copied after original-input normalization. This is one response step:
+later handling of uncertified opening claims can differ, and full frame closure
+and settlement dominance remain unproved.
 
 ## Validation
 
