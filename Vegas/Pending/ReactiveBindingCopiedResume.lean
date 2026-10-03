@@ -53,7 +53,8 @@ theorem copied_effective_resume_coupling
           (original.observe (runtime.reactiveApplication leaks) owner).application response ∨
         InertFixedOwnedBindingResponse runtime leaks owner
           (original.observe (runtime.reactiveApplication leaks) owner).application
-          (repaired.observe (runtime.reactiveApplication leaks) owner).application response)
+          (repaired.observe (runtime.reactiveApplication leaks) owner).application response ∨
+        ForeignHandleCommitmentResponse runtime leaks owner response)
     (actor : Option Player) :
     let app := runtime.reactiveApplication leaks
     let strategy := retainedImplementation runtime leaks (bounds.menu runtime leaks)

@@ -276,6 +276,7 @@ import Vegas.Pending.ReactiveServiceFiniteness
 import Vegas.Pending.ReactiveBindingUsableStep
 import Vegas.Pending.ReactiveBindingUsedCommitment
 import Vegas.Pending.ReactiveUsedBindingOpening
+import Vegas.Pending.ReactiveBindingForeignCommitment
 import Vegas.Pending.ReactiveBindingCommitmentProvenance
 import Vegas.Pending.ReactiveCompletedConfig
 import Vegas.Pending.ReactiveBindingCandidateAgreement

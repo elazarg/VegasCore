@@ -99,7 +99,8 @@ theorem copied_response_resources
         (original.observe (runtime.reactiveApplication leaks) owner).application response ∨
       InertFixedOwnedBindingResponse runtime leaks owner
         (original.observe (runtime.reactiveApplication leaks) owner).application
-        (repaired.observe (runtime.reactiveApplication leaks) owner).application response) :
+        (repaired.observe (runtime.reactiveApplication leaks) owner).application response ∨
+        ForeignHandleCommitmentResponse runtime leaks owner response) :
     let app := runtime.reactiveApplication leaks
     let changed := memory.copyResponse runtime leaks owner (repaired.observe app owner) response
     let updated : BindingMemory runtime leaks :=
@@ -116,7 +117,7 @@ theorem copied_response_resources
   have transported := runtime.effectiveResponse_openable_transport leaks bounds owner
     original repaired leftRecall rightRecall frame.network frame.publicView frame.slots
       preserved response effective
-  rcases copied with noncommitment | freshOwned | matchedFixed
+  rcases copied with noncommitment | freshOwned | matchedFixed | foreignHandle
   · have changedEq := memory.copyResponse_noncommitment runtime leaks owner
       (repaired.observe app owner) response noncommitment
     have same : changed.1 = response := congrArg Prod.fst changedEq
@@ -208,6 +209,38 @@ theorem copied_response_resources
           .openable raw
       rw [same]
       exact frame.same_response_openable preserved _
+  · obtain ⟨event, candidate, opening, foreign, rfl⟩ := foreignHandle
+    have changedEq := memory.copyResponse_foreign runtime leaks owner
+      (repaired.observe app owner) event candidate opening .none foreign
+    have same := congrArg Prod.fst changedEq
+    have shadow : updated.shadow = memory.shadow := congrArg Prod.snd changedEq
+    have inert (execution : app.Execution) :
+        (execution.respond app owner
+          ⟨some ⟨⟨.commitment event candidate, opening⟩, .none⟩⟩).application =
+          execution.application :=
+      runtime.reactiveApplication_submit_foreign_commitment leaks execution.application owner
+        event candidate opening .none foreign
+    have leftInert := runtime.reactiveApplication_submit_foreign_commitment leaks
+      original.application owner event candidate opening .none foreign
+    have rightInert := runtime.reactiveApplication_submit_foreign_commitment leaks
+      repaired.application owner event candidate opening .none foreign
+    have packet := transported.2.2
+      (⟨⟨.commitment event candidate, opening⟩, .none⟩ : WitnessedSubmission graph) rfl
+    rw [leftInert, rightInert] at packet
+    refine ⟨same, ?_, shadow.symm ▸ onlyBindings, ?_, ?_, ?_⟩
+    · simpa only [updated, left, right, changed, changedEq, BindingMemory.record] using
+        frame.inert_submission _ _ leftInert rightInert packet
+    · rw [shadow, inert original]
+      exact past
+    · change OwnerCommitmentsInertOrMatching owner left
+        (repaired.respond app owner changed.1)
+      rw [same]
+      exact provenance.respond_foreign_commitment leftBinding event candidate opening foreign
+    · change ∀ slot raw, left.application.candidates.lookup (owner, slot) = .openable raw →
+        (repaired.respond app owner changed.1).application.candidates.lookup (owner, slot) =
+          .openable raw
+      rw [same]
+      exact frame.same_response_openable preserved _
 
 /-- A single effective owner law is used at the original reconstructed input
 on every hidden history. Fresh calls add only candidate memory; inert fixed reuses preserve it;
@@ -239,7 +272,8 @@ theorem copied_effective_response_coupling
           (original.observe (runtime.reactiveApplication leaks) owner).application response ∨
         InertFixedOwnedBindingResponse runtime leaks owner
           (original.observe (runtime.reactiveApplication leaks) owner).application
-          (repaired.observe (runtime.reactiveApplication leaks) owner).application response) :
+          (repaired.observe (runtime.reactiveApplication leaks) owner).application response ∨
+        ForeignHandleCommitmentResponse runtime leaks owner response) :
     let app := runtime.reactiveApplication leaks
     let strategy := retainedImplementation runtime leaks (bounds.menu runtime leaks)
       owner reference (players owner)

@@ -2,14 +2,15 @@
 
 import Vegas.Pending.ReactiveBindingUsedCommitment
 import Vegas.Pending.ReactiveBindingInertClosure
-import Vegas.Pending.ReactiveBindingCopiedSubmission
+import Vegas.Pending.ReactiveBindingForeignCommitment
 
 /-! # Commitment provenance through fresh and reused owned handles
 
 Each actual owner-authored commitment has completed its addressed event,
 uses an already associated handle, or names a fixed candidate with the same
-meaning on both coupled executions. Associated handles reject every later
-commitment; new matching candidates can complete with their actual value or expire.
+meaning on both coupled executions, or names a foreign handle. Associated handles
+reject every later commitment; foreign handles fail authenticated ownership.
+New matching candidates can complete with their actual value or expire.
 This is an operational relation on real traffic, not a runtime observation,
 retained risk-menu claim or utility bound.
 -/
@@ -25,8 +26,8 @@ variable {Player : Type} [DecidableEq Player]
   {runtime : EventGraphRuntime graph}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)}
 
-/-- Every emitted valid owner commitment is inert by completion or a
-publicly accepted association, or has an actual fixed matching meaning. -/
+/-- Every emitted valid owner commitment is inert by completion, public
+association or foreign handle ownership, or has an actual fixed matching meaning. -/
 def OwnerCommitmentsInertOrMatching (owner : Player)
     (original repaired : (runtime.reactiveApplication leaks).Execution) : Prop :=
   ∀ message ∈ original.network.inputs, message.sender = owner → ∀ event candidate,
@@ -35,7 +36,8 @@ def OwnerCommitmentsInertOrMatching (owner : Player)
         (∃ field, original.application.accepted field = some candidate) ∨
         (original.application.candidates.lookup candidate ≠ .fresh ∧
           original.application.candidates.lookup candidate =
-            repaired.application.candidates.lookup candidate)
+            repaired.application.candidates.lookup candidate) ∨
+        candidate.1 ≠ owner
 
 namespace OwnerCommitmentsInertOrMatching
 
@@ -58,10 +60,11 @@ private theorem respond_old
       (∃ field, nextLeft.application.accepted field = some candidate) ∨
       (nextLeft.application.candidates.lookup candidate ≠ .fresh ∧
         nextLeft.application.candidates.lookup candidate =
-          nextRight.application.candidates.lookup candidate) := by
+          nextRight.application.candidates.lookup candidate) ∨
+      candidate.1 ≠ owner := by
   intro nextLeft nextRight
   rcases held message member authored event candidate committed valid with
-    completed | used | matching
+    completed | used | matching | foreign
   · left
     rw [(runtime.reactive_respond_application leaks original actor left).1]
     exact completed
@@ -69,13 +72,14 @@ private theorem respond_old
     obtain ⟨field, associated⟩ := used
     exact ⟨field, ((runtime.reactiveAssociationInvariant leaks field candidate).respond
       original actor left ⟨leftBinding, associated⟩).2⟩
-  · right; right
+  · right; right; left
     have leftEq := runtime.reactive_respond_candidate_fixed leaks original actor left candidate
       matching.1
     have rightEq := runtime.reactive_respond_candidate_fixed leaks repaired actor right candidate
       (matching.2 ▸ matching.1)
     rw [leftEq, rightEq]
     exact matching
+  · exact Or.inr (Or.inr (Or.inr foreign))
 
 /-- Arbitrary foreign responses and owner noncommitment responses preserve
 provenance. An owner may still send openings, explicit FALSE, silence or malformed data. -/
@@ -134,7 +138,7 @@ theorem respond_fresh_binding
       (material.emit_call (app.submit original.application owner material) owner
         (original.network.known owner)).symm.trans committed
     cases called
-    right; right
+    right; right; left
     have meaning := frame.copied_binding_fresh_meaning event serial opening fresh
     exact ⟨meaning.1, meaning.2.1⟩
 
@@ -166,7 +170,7 @@ theorem respond_matching_binding
       (material.emit_call (app.submit original.application owner material) owner
         (original.network.known owner)).symm.trans committed
     cases called
-    right; right
+    right; right; left
     rw [runtime.reactive_respond_candidate_fixed leaks original owner response (owner, slot) fixed,
       runtime.reactive_respond_candidate_fixed leaks repaired owner response (owner, slot)
         (same ▸ fixed)]
@@ -201,6 +205,33 @@ theorem respond_associated_binding
     exact ⟨field, ((runtime.reactiveAssociationInvariant leaks field (owner, slot)).respond
       original owner response ⟨leftBinding, associated⟩).2⟩
 
+/-- A bare commitment naming another player's handle needs no fixed or
+matching candidate meaning. Its immutable ownership mismatch persists forever. -/
+theorem respond_foreign_commitment
+    (held : OwnerCommitmentsInertOrMatching owner original repaired)
+    (leftBinding : original.application.BindingInvariant)
+    (event : graph.EventId) (candidate : Handle graph) (opening : Option (Raw L))
+    (foreign : candidate.1 ≠ owner) :
+    let app := runtime.reactiveApplication leaks
+    let response : app.Action := ⟨some ⟨⟨.commitment event candidate, opening⟩, .none⟩⟩
+    OwnerCommitmentsInertOrMatching owner (original.respond app owner response)
+      (repaired.respond app owner response) := by
+  intro app response message member authored named selected committed valid
+  change message ∈ original.network.inputs ++ [_] at member
+  rcases List.mem_append.mp member with old | added
+  · exact respond_old held leftBinding owner response response message old authored named selected
+      committed valid
+  · cases List.mem_singleton.mp added
+    let material : WitnessedSubmission graph :=
+      ⟨⟨.commitment event candidate, opening⟩, .none⟩
+    change (material.emit (app.submit original.application owner material) owner
+      (original.network.known owner)).call = .commitment named selected at committed
+    have called : Payload.commitment event candidate = .commitment named selected :=
+      (material.emit_call (app.submit original.application owner material) owner
+        (original.network.known owner)).symm.trans committed
+    cases called
+    exact Or.inr (Or.inr (Or.inr foreign))
+
 /-- Paired actual scheduler transitions preserve the traffic relation under
 all commands, including inclusion, rejected calls, chance draws and overdue expiry. -/
 theorem environment
@@ -216,7 +247,7 @@ theorem environment
   rw [(runtime.reactiveApplication leaks).environmentStep_inputs original left command leftMoved]
     at member
   rcases held message member authored event candidate committed valid with
-    completed | used | matching
+    completed | used | matching | foreign
   · left
     have retained := (runtime.reactiveCompletedInvariant leaks
       original.application.config.cut.completed).environmentStep original left command
@@ -226,13 +257,14 @@ theorem environment
     obtain ⟨field, associated⟩ := used
     exact ⟨field, ((runtime.reactiveAssociationInvariant leaks field candidate).environmentStep
       original left command ⟨leftBinding, associated⟩ leftMoved).2⟩
-  · right; right
+  · right; right; left
     have leftEq := runtime.reactive_environment_candidate_fixed leaks original left command
       candidate matching.1 leftMoved
     have rightEq := runtime.reactive_environment_candidate_fixed leaks repaired right command
       candidate (matching.2 ▸ matching.1) rightMoved
     rw [leftEq, rightEq]
     exact matching
+  · exact Or.inr (Or.inr (Or.inr foreign))
 
 end OwnerCommitmentsInertOrMatching
 

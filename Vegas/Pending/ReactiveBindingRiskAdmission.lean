@@ -201,7 +201,8 @@ private theorem copied_retained_invoke_coupling
           (original.observe (runtime.reactiveApplication leaks) owner).application response ∨
         InertFixedOwnedBindingResponse runtime leaks owner
           (original.observe (runtime.reactiveApplication leaks) owner).application
-          (repaired.observe (runtime.reactiveApplication leaks) owner).application response)
+          (repaired.observe (runtime.reactiveApplication leaks) owner).application response ∨
+        ForeignHandleCommitmentResponse runtime leaks owner response)
     (retained : ∀ response ∈ (players owner (original.recall owner)
       (original.observe (runtime.reactiveApplication leaks) owner)).support,
       response ∈ menu.actions owner (repaired.recall owner)
@@ -534,7 +535,8 @@ theorem risk_copied_invoke_coupling
           (original.observe (runtime.reactiveApplication leaks) owner).application response ∨
         InertFixedOwnedBindingResponse runtime leaks owner
           (original.observe (runtime.reactiveApplication leaks) owner).application
-          (repaired.observe (runtime.reactiveApplication leaks) owner).application response) :
+          (repaired.observe (runtime.reactiveApplication leaks) owner).application response ∨
+        ForeignHandleCommitmentResponse runtime leaks owner response) :
     let app := runtime.reactiveApplication leaks
     let strategy := retainedImplementation runtime leaks (bounds.riskMenu runtime leaks bound)
       owner reference (players owner)
@@ -596,7 +598,8 @@ theorem risk_copied_resume_coupling
           (original.observe (runtime.reactiveApplication leaks) owner).application response ∨
         InertFixedOwnedBindingResponse runtime leaks owner
           (original.observe (runtime.reactiveApplication leaks) owner).application
-          (repaired.observe (runtime.reactiveApplication leaks) owner).application response)
+          (repaired.observe (runtime.reactiveApplication leaks) owner).application response ∨
+        ForeignHandleCommitmentResponse runtime leaks owner response)
     (actor : Option Player) :
     let app := runtime.reactiveApplication leaks
     let strategy := retainedImplementation runtime leaks (bounds.riskMenu runtime leaks bound)

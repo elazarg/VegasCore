@@ -896,10 +896,11 @@ theorem sourceService_missing_risk_fixed_stopped_coupling
       (∀ material, response.transmission = some material →
           ∀ event candidate, material.call.packet ≠ .commitment event candidate) ∨
         FreshOwnedBindingResponse (runtime setup) leaks owner view.application response ∨
-        ∃ event slot opening, view.application.candidates slot ≠ .fresh ∧
+        (∃ event slot opening, view.application.candidates slot ≠ .fresh ∧
           (slot ≠ changedSlot ∨
             ∃ field, view.application.publicView.accepted field = some (owner, slot)) ∧
-          response = ⟨some ⟨⟨.commitment event (owner, slot), opening⟩, .none⟩⟩)
+          response = ⟨some ⟨⟨.commitment event (owner, slot), opening⟩, .none⟩⟩) ∨
+        ForeignHandleCommitmentResponse (runtime setup) leaks owner response)
     (prefixPlayers : Player → (application setup leaks).Policy)
     (prefixNoncommitment : ∀ earlier view response,
       response ∈ (prefixPlayers owner earlier view).support →
@@ -983,13 +984,14 @@ theorem sourceService_missing_risk_fixed_stopped_coupling
     leftFacts.2.2.2.2.2 rightFacts.2.2.2.2.2 leftFacts.2.1 rightFacts.2.1 preserved players
       reference started (supported _ _) (by
         intro response chosen
-        rcases copied _ _ response chosen with noncommitment | fresh | fixed
+        rcases copied _ _ response chosen with noncommitment | fresh | fixed | foreign
         · exact Or.inl noncommitment
         · exact Or.inr (Or.inl fresh)
         · obtain ⟨event, slot, opening, fixed, reusable, actual⟩ := fixed
-          refine Or.inr (Or.inr ⟨event, slot, opening, fixed, ?_, actual⟩)
+          refine Or.inr (Or.inr (Or.inl ⟨event, slot, opening, fixed, ?_, actual⟩))
           rcases reusable with different | associated
           · exact Or.inl (currentSlots slot (seed slot different))
-          · exact Or.inr associated) actor
+          · exact Or.inr associated
+        · exact Or.inr (Or.inr (Or.inr foreign))) actor
 
 end Vegas

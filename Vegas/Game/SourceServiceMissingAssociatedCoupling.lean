@@ -104,29 +104,32 @@ private theorem associatedPlayers_copied
       (∀ material, response.transmission = some material →
           ∀ event candidate, material.call.packet ≠ .commitment event candidate) ∨
         FreshOwnedBindingResponse (runtime setup) leaks owner view.application response ∨
-        ∃ event slot opening, view.application.candidates slot ≠ .fresh ∧
-          response = ⟨some ⟨⟨.commitment event (owner, slot), opening⟩, .none⟩⟩) :
+        (∃ event slot opening, view.application.candidates slot ≠ .fresh ∧
+          response = ⟨some ⟨⟨.commitment event (owner, slot), opening⟩, .none⟩⟩) ∨
+        ForeignHandleCommitmentResponse (runtime setup) leaks owner response) :
     ∀ past view response,
       response ∈ (associatedPlayers owner field changedSlot players owner past view).support →
         (∀ material, response.transmission = some material →
             ∀ event candidate, material.call.packet ≠ .commitment event candidate) ∨
           FreshOwnedBindingResponse (runtime setup) leaks owner view.application response ∨
-          ∃ event slot opening, view.application.candidates slot ≠ .fresh ∧
+          (∃ event slot opening, view.application.candidates slot ≠ .fresh ∧
             (slot ≠ changedSlot ∨
               ∃ field, view.application.publicView.accepted field = some (owner, slot)) ∧
-            response = ⟨some ⟨⟨.commitment event (owner, slot), opening⟩, .none⟩⟩ := by
+            response = ⟨some ⟨⟨.commitment event (owner, slot), opening⟩, .none⟩⟩) ∨
+          ForeignHandleCommitmentResponse (runtime setup) leaks owner response := by
   intro past view response chosen
   rcases associatedPlayers_owner_support owner field changedSlot players past view response
       chosen with ⟨chosen, associated⟩ | rfl
-  · rcases copied past view response chosen with noncommitment | fresh | fixed
+  · rcases copied past view response chosen with noncommitment | fresh | fixed | foreign
     · exact Or.inl noncommitment
     · exact Or.inr (Or.inl fresh)
     · obtain ⟨event, slot, opening, fixed, actual⟩ := fixed
-      refine Or.inr (Or.inr ⟨event, slot, opening, fixed, ?_, actual⟩)
+      refine Or.inr (Or.inr (Or.inl ⟨event, slot, opening, fixed, ?_, actual⟩))
       by_cases same : slot = changedSlot
       · subst slot
         exact Or.inr ⟨field, associated⟩
       · exact Or.inl same
+    · exact Or.inr (Or.inr (Or.inr foreign))
   · exact Or.inl (by simp)
 
 variable [Fintype Player]
@@ -160,8 +163,9 @@ theorem sourceService_missing_risk_associated_stopped_coupling
       (∀ material, response.transmission = some material →
           ∀ event candidate, material.call.packet ≠ .commitment event candidate) ∨
         FreshOwnedBindingResponse (runtime setup) leaks owner view.application response ∨
-        ∃ event slot opening, view.application.candidates slot ≠ .fresh ∧
-          response = ⟨some ⟨⟨.commitment event (owner, slot), opening⟩, .none⟩⟩)
+        (∃ event slot opening, view.application.candidates slot ≠ .fresh ∧
+          response = ⟨some ⟨⟨.commitment event (owner, slot), opening⟩, .none⟩⟩) ∨
+        ForeignHandleCommitmentResponse (runtime setup) leaks owner response)
     (prefixPlayers : Player → (application setup leaks).Policy)
     (prefixNoncommitment : ∀ past view response,
       response ∈ (prefixPlayers owner past view).support →

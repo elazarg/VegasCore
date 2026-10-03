@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ReactiveBindingUsedCommitment
+import Vegas.Pending.ReactiveBindingForeignCommitment
 import Vegas.Pending.ReactiveBindingFrameCommands
 
 /-! # Actual packet inclusion up to an owner's signed breach
@@ -132,7 +132,8 @@ theorem packet_step_or_owner_breach
             (∃ field, original.application.accepted field = some candidate) ∨
             (original.application.candidates.lookup candidate ≠ .fresh ∧
               original.application.candidates.lookup candidate =
-                repaired.application.candidates.lookup candidate))
+                repaired.application.candidates.lookup candidate) ∨
+              candidate.1 ≠ owner)
     (id : MessageId Player) (packet : WitnessedPacket graph)
     (found : original.network.lookup id = some ⟨id, packet⟩) :
     let app := runtime.reactiveApplication leaks
@@ -158,7 +159,7 @@ theorem packet_step_or_owner_breach
       · exact Or.inl (frame.commitment_step_completed_owner onlyBindings fixed id event candidate
           evidence token found (fun _ tokened => (valid tokened).elim))
       rcases ownerCommitment id event candidate evidence token found authored valid with
-        completed | used | matching
+        completed | used | matching | foreign
       · exact Or.inl (frame.commitment_step_completed_owner onlyBindings fixed id event candidate
           evidence token found (fun _ _ => completed))
       · obtain ⟨field, associated⟩ := used
@@ -166,6 +167,9 @@ theorem packet_step_or_owner_breach
           field associated)
       · exact Or.inl (frame.commitment_step_matching_owner past id authored event candidate
           evidence token found matching.1 matching.2).1
+      · exact Or.inl (frame.commitment_step_not_includable id event candidate evidence token found
+          (original.application.bindingIncludable_false_of_foreign_handle runtime id event
+            candidate (by simpa only [authored] using foreign)))
   | withhold event =>
       exact Or.inl (frame.withholding_step_unremembered onlyBindings leftRemembered rightRemembered
         id event evidence token found)
@@ -205,7 +209,8 @@ theorem include_coupling_or_owner_breach
             (∃ field, original.application.accepted field = some candidate) ∨
             (original.application.candidates.lookup candidate ≠ .fresh ∧
               original.application.candidates.lookup candidate =
-                repaired.application.candidates.lookup candidate))
+                repaired.application.candidates.lookup candidate) ∨
+              candidate.1 ≠ owner)
     (id : MessageId Player) :
     let app := runtime.reactiveApplication leaks
     ∃ coupling : PMF (app.Execution × app.Execution),
@@ -270,7 +275,8 @@ theorem environment_coupling_or_owner_breach
             (∃ field, original.application.accepted field = some candidate) ∨
             (original.application.candidates.lookup candidate ≠ .fresh ∧
               original.application.candidates.lookup candidate =
-                repaired.application.candidates.lookup candidate))
+                repaired.application.candidates.lookup candidate) ∨
+              candidate.1 ≠ owner)
     (command : (runtime.reactiveApplication leaks).Command) :
     let app := runtime.reactiveApplication leaks
     ∃ coupling : PMF (app.Execution × app.Execution),

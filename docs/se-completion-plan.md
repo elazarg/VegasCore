@@ -857,6 +857,20 @@ derives repaired risk-menu exclusion. The existing retained implementation
 selects its legal fallback with unchanged shadow. This is a local replacement
 point, not a whole-policy utility comparison after risk expansion.
 
+[ReactiveBindingForeignCommitment](../Vegas/Pending/ReactiveBindingForeignCommitment.lean)
+derives permanent public rejection for a bare commitment naming another
+player's handle. Submission and private copying leave the application and
+shadow unchanged, including for fresh foreign handles. The commitment ledger
+and the same finite fixed/associated continuation consumers carry this class
+using the real ownership test. Evidence-bearing commitments remain a separate
+signed-breach case; terminal payoff domination is not inferred.
+
+The risk-menu continuation consumers still require original risk-supported
+future responses. An excluded initial response can reach information states
+absent from the retained game, so profile extension does not imply that
+condition there. Full effective-menu continuations need a separate repair and
+comparison argument, including subsequent exclusions and risk-open inputs.
+
 [ReactiveBindingCandidateAgreement](../Vegas/Pending/ReactiveBindingCandidateAgreement.lean)
 derives candidate equality outside the one changed slot from two actual
 same-before registrations and their real preparation runs. Replacing absent
