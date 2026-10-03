@@ -947,6 +947,12 @@ Open obligations this creates:
   A builder may condition inclusion on public packet content, so the lottery
   need not equal sending no packet and paying a public-miss charge. Packets
   forbidden by the final record remain auditable.
+  For example, with deadline 2 and inclusion bound 1, an owner turn at clock
+  0 is protected. After waiting, a turn at clock 1 is still timely but loses
+  protection: `1 + 1 < 2` fails. An immediately included canonical decision
+  can succeed without a charge. The contract also permits a builder to accept
+  late FALSE while leaving late TRUE pending until expiry, so accepted and
+  missed branches need separate continuation comparisons.
 - **Source embedding and beliefs.** The current candidate prescribed site set
   includes benign earlier deferrals. A clean-prefix law stops at the first
   risk; arbitrary deferral timing is not closed through termination. This
@@ -1353,6 +1359,15 @@ weight `1 - w`, including the same response's full stopped traffic. Packet
 completion allows arbitrary foreign policies; traffic factorization uses
 prescribed foreign continuations. It does not identify a native posterior.
 
+[SourceServiceBindingPrefixCompletion](../Vegas/Game/SourceServiceBindingPrefixCompletion.lean)
+derives the whole-program source residual from the actual legal ready history.
+Its current `sourceServicePrefix?` readout has the residual commitment kernel
+as its whole behavioral source step. Every supported protected transmitting
+completion decodes to that same drawn successor through the residual's real
+transport map. Only the owner follows the prescribed policy. This identifies
+the compiler profile's source prefix; for a normalized profile it does not
+restore erased original disclosure intentions or supply a source prior.
+
 [SourceServiceResolutionResponseLaw](../Vegas/Game/SourceServiceResolutionResponseLaw.lean)
 derives the corresponding physical FALSE/TRUE packet marginal for effective
 profiles. [SourceServiceResolutionMemoryLaw](../Vegas/Game/SourceServiceResolutionMemoryLaw.lean)
@@ -1653,6 +1668,10 @@ normalization, leaving opponent-and-nature reach mass. Clean and escaped
 conditional probabilities are their respective counterfactual masses divided
 by the sum. This identity does not bound their ratio or remove foreign
 deferral probabilities from the clean denominator.
+The same module proves that every hidden history at source-compatible
+information has no owner's public miss, and that the counterfactual mass of
+such misses is exactly zero. The public record excludes this branch even
+when private foreign opportunity or submission risk is hidden.
 
 [ReactiveCleanPrefix](../Vegas/Pending/ReactiveCleanPrefix.lean) proves that a
 risk-menu prefix with every owner's persistent flag clear has a canonical

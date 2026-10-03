@@ -78,6 +78,35 @@ theorem sourceCompatibleInfo_clear (who : Player)
   rw [current]
   simp only [ReactiveApplication.observe, ↓reduceIte]
 
+/-- Public misses cannot be hidden by the source-compatible classifier.
+Every owner has an unmarked public record at this information value, even
+though another owner's recalled opportunity or submission risk may be hidden. -/
+theorem sourceCompatibleInfo_no_public_miss (who : Player)
+    (past : List (application service.setup service.leaks).PlayerEntry)
+    (view : (application service.setup service.leaks).PlayerView)
+    (compatible : service.sourceCompatibleInfo who (some (past, view))) (player : Player) :
+    view.application.publicView.missedDecisionBy player = false := by
+  obtain ⟨_profile, _turns, _timing, _permitted, _effective, history, remaining, execution,
+    current, observed, _actual, allClear, _clear⟩ := compatible
+  have atState :
+      ((service.bounds.riskMenu (runtime service.setup) service.leaks service.bound).information
+        (initialLaw service.setup) service.horizon service.scheduler).infoOf who history.trace =
+      (application service.setup service.leaks).observe who history.state :=
+    (service.bounds.riskMenu (runtime service.setup) service.leaks service.bound).info
+      (initialLaw service.setup) service.horizon service.scheduler who history.trace
+  have input :
+      some (execution.recall who, execution.observe (application service.setup service.leaks) who) =
+        some (past, view) := by
+    rw [atState, current] at observed
+    simpa only [ReactiveApplication.observe, ↓reduceIte] using observed
+  have sameView := congrArg Prod.snd (Option.some.inj input)
+  dsimp only at sameView
+  rw [← sameView]
+  exact ((runtime service.setup).persistentServiceRisk_clear_iff service.leaks service.bound
+    player (execution.recall player)
+      (execution.observe (application service.setup service.leaks) player)).mp (allClear player)
+    |>.1.1
+
 /-- At a source-compatible unrecorded owned turn, the actual inclusion
 window is protected, for either kind of strategic decision. -/
 theorem sourceCompatibleInfo_protected_opportunity (who : Player)

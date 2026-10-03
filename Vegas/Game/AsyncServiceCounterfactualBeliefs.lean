@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.AsyncServiceSpec
+import Vegas.Game.AsyncServiceSourceSites
 import Vegas.Pending.ReactiveCleanPrefixProbability
 import Interaction.ReactiveFiniteAssessment
 import Interaction.ReactiveOwnPlay
@@ -168,6 +168,51 @@ theorem bayesBelief_event_counterfactual
   · rw [Set.indicator_of_mem member, Set.indicator_of_mem member]
     exact service.bayesBelief_apply_counterfactual profile who site positive history
   · simp only [Set.indicator_of_notMem member, ENNReal.toReal_zero, zero_div]
+
+/-- An actual hidden history at compatible native information cannot contain
+any owner's public miss. Only private recalled risk can escape unseen. -/
+theorem sourceCompatibleInfo_history_no_public_miss (who : Player)
+    (site : (model).InformationSite who)
+    (compatible : service.sourceCompatibleInfo who site.1)
+    (history : (model).InformationHistory who site.1) (player : Player)
+    (control : (app).Control) (current : history.1.state = some control) :
+    control.execution.application.publicView.missedDecisionBy player = false := by
+  obtain ⟨past, view, seen, _identity, _clear⟩ :=
+    service.sourceCompatibleInfo_clear who site.1 compatible
+  have atState : (model).infoOf who history.1.trace = (app).observe who history.1.state :=
+    (menu).info (initialLaw service.setup) service.horizon service.scheduler who history.1.trace
+  have observed : (app).observe who (some control) = some (past, view) :=
+    (congrArg ((app).observe who) current).symm.trans
+      (atState.symm.trans (history.2.trans seen))
+  have actor : control.actor = some who := by
+    by_contra inactive
+    simp only [ReactiveApplication.observe, inactive, ↓reduceIte] at observed
+    contradiction
+  have input : site.1 = some (control.execution.recall who,
+      control.execution.observe (app) who) := by
+    rw [seen]
+    simpa only [ReactiveApplication.observe, actor, ↓reduceIte] using observed.symm
+  exact service.sourceCompatibleInfo_no_public_miss who _ _ (input ▸ compatible) player
+
+/-- At compatible information the counterfactual public-miss event has
+exactly zero mass, without a probability estimate or first-turn restriction. -/
+theorem counterfactualInformationMass_public_miss_zero
+    (profile : ∀ who, (model).BehavioralPolicy who) (who : Player)
+    (site : (model).InformationSite who)
+    (compatible : service.sourceCompatibleInfo who site.1) (player : Player) :
+    service.counterfactualInformationMass profile who site
+      {history | ∃ control, history.1.state = some control ∧
+        control.execution.application.publicView.missedDecisionBy player = true} = 0 := by
+  classical
+  unfold counterfactualInformationMass
+  apply Finset.sum_eq_zero
+  intro history _
+  apply Set.indicator_of_notMem
+  rintro ⟨control, current, missed⟩
+  have clear := service.sourceCompatibleInfo_history_no_public_miss who site compatible history
+    player control current
+  rw [clear] at missed
+  contradiction
 
 /-- The information histories whose actual endpoint has no persistent risk
 for any owner. Current transient opportunities are not removed from the event. -/

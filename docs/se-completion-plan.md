@@ -108,6 +108,15 @@ law cancels the complete focal owner's recalled-action likelihood, including
 earlier waiting. Foreign deferral probabilities remain in counterfactual
 reach. A conditional escape estimate must compare against that actual
 denominator; a small unconditional escape probability alone is insufficient.
+Public misses are excluded from every history at source-compatible native
+information by the shared public record. Hidden private risk remains distinct.
+For waiting comparisons, a late canonical packet can still be accepted before
+expiry without a charge, so the accepted branch needs source-continuation
+control as well as the miss branch's real collection bound.
+Protected binding completion also identifies the actual whole-program source
+prefix and behavioral step through its derived residual. Original disclosure
+memory, joint native-input likelihoods and source assessment transport remain
+separate obligations.
 
 Continue in this order:
 
