@@ -223,6 +223,11 @@ future private values changed by repair are outside the claim.
   extends an audited risk-menu equilibrium after classified packet coverage
   and other-exclusion comparisons are supplied. It does not embed a source
   equilibrium into that auxiliary game.
+- [SourceServiceResolutionComplement](../Vegas/Game/SourceServiceResolutionComplement.lean)
+  proves effective responses outside both charged classifiers are retained
+  at a clear actual resolution prefix. Tokens, public checks and trace
+  invariants derive conformance; no fresh-envelope premise is supplied.
+  Private binding-material repair remains separate.
 - [SourceServiceAliasEquilibrium](../Vegas/Game/SourceServiceAliasEquilibrium.lean)
   supplies the final private raw-alias transport, retaining correlated
   collection and prior charges.

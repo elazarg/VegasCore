@@ -1547,6 +1547,13 @@ scheduler when splitting off an owner activation; substituting a constant
 scheduler would not establish those trace premises. The first-resolution
 coupling consumes these resources in its actual pre-first-owner induction.
 
+The shared [decoder slice](../Vegas/Game/SourceServiceDecoderSlice.lean)
+also derives the actual forward source-view map alongside partial recovery.
+Both follow the same source syntax: the state lift's observation equals the
+view lift applied to the tail observation. A whole-view prior noise kernel
+can therefore be restricted to the fixed typed tail by composition, and a
+typed successor channel can be lifted back using recovery.
+
 The whole-prefix likelihood induction should carry the effective complete
 source state with actual traffic first. At each rank, choose the shared
 decoder slice before integrating the histories, apply the actual sample,
@@ -1915,6 +1922,17 @@ this collection with the same clean comparator and deposit. The class is
 removed from `riskOtherExclusionComparisons` without a stronger backend
 coverage premise. This is a bound on total one-time charge, not a positive
 incremental collection probability after an earlier offense.
+
+[SourceServiceResolutionComplement](../Vegas/Game/SourceServiceResolutionComplement.lean)
+proves that, at a clear actual legal resolution prefix, a bounded effective
+response outside the packet and recorded-response classifiers is retained.
+The actual minted token and public completion record locate its ready owned
+event. Classifier complements derive the public guard, ownership, association
+and content checks; actual soundness, binding and input-recall invariants then
+derive the fresh envelope and retained TRUE or FALSE response. Silence is
+retained directly. No fresh-envelope, source-policy or backend premise is
+added. This isolates private binding-material repair as a separate case;
+the complete exclusion partition and upper integration remain open.
 
 [SourceServicePublicRejection](../Vegas/Game/SourceServicePublicRejection.lean)
 derives persistent nonacceptance from an event's prior completion or failing

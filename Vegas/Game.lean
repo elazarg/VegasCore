@@ -99,6 +99,7 @@ import Vegas.Game.SourceServiceCompletedPacket
 import Vegas.Game.SourceServicePublicRejection
 import Vegas.Game.SourceServiceDuplicatePackets
 import Vegas.Game.SourceServiceRecordedCollection
+import Vegas.Game.SourceServiceResolutionComplement
 import Vegas.Game.SourceServiceRiskExtension
 import Vegas.Game.SourceServiceAliasEquilibrium
 import Vegas.Game.SourceServiceRiskRawExtension

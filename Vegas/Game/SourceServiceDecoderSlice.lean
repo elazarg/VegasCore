@@ -6,9 +6,9 @@ import Vegas.Game.SourceStateKernel
 /-! # One source decoder slice shared by every native store
 
 The source syntax and rank fix the typed tail, policy slice, references,
-registry and publication bookkeeping. They also fix the state lift and partial
-view recovery. None of these witnesses is selected using a native store,
-history, private draw or scheduler.
+registry and publication bookkeeping. They also fix the state lift, its whole
+observation map, and partial view recovery. The witnesses do not depend on a
+native store, history, private draw or scheduler.
 
 The decoder identity holds for every additional count, including counts past
 the terminal instruction. It is a symbolic compiler identity; identifying an
@@ -40,9 +40,12 @@ theorem exists_decoder_slice {Γ : SourceCtx Player L} {names : Finset VarId}
       (tailRevelations : Revelations Δ)
       (tailOutputs : ∀ event, EventGraph.FieldRef layout (outputLayout tail event))
       (lift : ProtocolState tail → ProtocolState program)
+      (liftView : ∀ who, ProtocolView who tail → ProtocolView who program)
       (recover : ∀ who, ProtocolView who program → Option (ProtocolView who tail)),
       rank + eventCount tail = eventCount program ∧
       Function.Injective lift ∧
+      (∀ who state, ProtocolState.observe who program (lift state) =
+        liftView who (ProtocolState.observe who tail state)) ∧
       (∀ who state, recover who (ProtocolState.observe who program (lift state)) =
         some (ProtocolState.observe who tail state)) ∧
       (∀ [Fintype Player] state, ProtocolState.behavioralStateStep program profile (lift state) =
@@ -54,7 +57,8 @@ theorem exists_decoder_slice {Γ : SourceCtx Player L} {names : Finset VarId}
   induction rank generalizing Γ names with
   | zero =>
       refine ⟨Γ, names, program, profile, refs, registry, revelations, outputs, id,
-        (fun _ => some), by omega, Function.injective_id, (fun _ _ => rfl), ?_, ?_⟩
+        (fun _ => id), (fun _ => some), by omega, Function.injective_id,
+        (fun _ _ => rfl), (fun _ _ => rfl), ?_, ?_⟩
       · intro _inst state
         simp only [id_eq, PMF.map_id]
       · intro more store history
@@ -71,15 +75,18 @@ theorem exists_decoder_slice {Γ : SourceCtx Player L} {names : Finset VarId}
             simp only [eventCount] at within
             omega
           obtain ⟨Δ, tailNames, tail, tailProfile, tailRefs, tailRegistry, tailRevelations,
-            tailOutputs, lift, recover, counted, injective, recovered, commutes, transport⟩ :=
+            tailOutputs, lift, liftView, recover, counted, injective, viewed, recovered,
+            commutes, transport⟩ :=
             ih next (afterSample profile) (refs.cons headRef) (registry.weaken) (revelations.weaken)
               (fun event => outputs event.succ) tailBound
           refine ⟨Δ, tailNames, tail, tailProfile, tailRefs, tailRegistry, tailRevelations,
-            tailOutputs, Sum.inr ∘ lift,
+            tailOutputs, Sum.inr ∘ lift, (fun who => Sum.inr ∘ liftView who),
             (fun who view => view.getRight?.bind (recover who)), ?_,
-            Sum.inr_injective.comp injective, ?_, ?_, ?_⟩
+            Sum.inr_injective.comp injective, ?_, ?_, ?_, ?_⟩
           · simp only [eventCount]
             omega
+          · intro who state
+            exact congrArg Sum.inr (viewed who state)
           · intro who state
             exact recovered who state
           · intro _inst state
@@ -98,15 +105,18 @@ theorem exists_decoder_slice {Γ : SourceCtx Player L} {names : Finset VarId}
             simp only [eventCount] at within
             omega
           obtain ⟨Δ, tailNames, tail, tailProfile, tailRefs, tailRegistry, tailRevelations,
-            tailOutputs, lift, recover, counted, injective, recovered, commutes, transport⟩ :=
+            tailOutputs, lift, liftView, recover, counted, injective, viewed, recovered,
+            commutes, transport⟩ :=
             ih next (afterCommit profile) (refs.cons headRef) (nextRegistry) (revelations.weaken)
               (fun event => outputs event.succ) tailBound
           refine ⟨Δ, tailNames, tail, tailProfile, tailRefs, tailRegistry, tailRevelations,
-            tailOutputs, Sum.inr ∘ lift,
+            tailOutputs, Sum.inr ∘ lift, (fun who => Sum.inr ∘ liftView who),
             (fun who view => view.getRight?.bind (recover who)), ?_,
-            Sum.inr_injective.comp injective, ?_, ?_, ?_⟩
+            Sum.inr_injective.comp injective, ?_, ?_, ?_, ?_⟩
           · simp only [eventCount]
             omega
+          · intro who state
+            exact congrArg Sum.inr (viewed who state)
           · intro who state
             exact recovered who state
           · intro _inst state
@@ -122,15 +132,18 @@ theorem exists_decoder_slice {Γ : SourceCtx Player L} {names : Finset VarId}
             simp only [eventCount] at within
             omega
           obtain ⟨Δ, tailNames, tail, tailProfile, tailRefs, tailRegistry, tailRevelations,
-            tailOutputs, lift, recover, counted, injective, recovered, commutes, transport⟩ :=
+            tailOutputs, lift, liftView, recover, counted, injective, viewed, recovered,
+            commutes, transport⟩ :=
             ih next (afterReveal profile) (refs.cons headRef) registry.weaken
               (revelations.reveal selected) (fun event => outputs event.succ) tailBound
           refine ⟨Δ, tailNames, tail, tailProfile, tailRefs, tailRegistry, tailRevelations,
-            tailOutputs, Sum.inr ∘ lift,
+            tailOutputs, Sum.inr ∘ lift, (fun who => Sum.inr ∘ liftView who),
             (fun who view => view.getRight?.bind (recover who)), ?_,
-            Sum.inr_injective.comp injective, ?_, ?_, ?_⟩
+            Sum.inr_injective.comp injective, ?_, ?_, ?_, ?_⟩
           · simp only [eventCount]
             omega
+          · intro who state
+            exact congrArg Sum.inr (viewed who state)
           · intro who state
             exact recovered who state
           · intro _inst state

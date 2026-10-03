@@ -276,6 +276,14 @@ collection bound with the fixed clean comparator. The class therefore needs
 no separate other-exclusion comparison hypothesis. The bound does not give
 an incremental fine after an earlier charge.
 
+[SourceServiceResolutionComplement](../Vegas/Game/SourceServiceResolutionComplement.lean)
+derives the actual ready owned opportunity, unrecorded status and protection
+from a minted token, clear risk and both classifier complements. At an owned
+resolution, public checks and actual trace invariants then prove the bounded
+effective response is retained. A fresh-envelope or acceptance promise is
+not a premise. The remaining private binding-material case is separate;
+the complete exclusion partition and its upper integration still need assembly.
+
 ## Validation
 
 Run one artifact-writing Lake build at a time. Targeted builds isolate proof
