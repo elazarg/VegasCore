@@ -2159,8 +2159,13 @@ change the future capability relation.
 actual local input and either a publicly completed cut or a ready event with
 one of the seven source constructor kinds at every actual response-menu site.
 This applies to arbitrary builders, including activations after graph
-completion. The completed-cut branch needs its own payoff comparison; the
-fixed-calendar ready-phase exhaustion alone does not cover it.
+completion. [SourceServiceCompletedContinuation](../Vegas/Game/SourceServiceCompletedContinuation.lean)
+proves that the full typed readout is fixed under arbitrary raw continuation.
+At every compatible completed input, silent whole continuation has zero charge
+and is optimal in the full effective game under every belief and arbitrary
+foreign policies. Rationality of the returned assessment's actual continuation
+still needs a consumer of its prescribed silence and free-site optimality;
+the comparator alone does not establish that assessment property.
 
 The risk-menu continuation consumers still require original risk-supported
 future responses. An excluded initial response can reach information states
@@ -2410,10 +2415,11 @@ exact envelope is forbidden. Actual traffic persistence and bounded terminal
 evaluation give the existing partial-observation/conditional-delivery
 collection bound under arbitrary later behavioral policies. The forbidden
 packet is selected separately at each final history, so the builder may
-accept the newer packet without invalidating the argument. At a clear legal
-risk-menu prefix, own recorded-event recall and another same-event response
-derive the earlier actual record and the fresh second record directly;
-serial bounds distinguish their identifiers.
+accept the newer packet without invalidating the argument. At an actual raw
+prefix with authentic own calls, recorded-event recall and another same-event
+response derive the earlier record and fresh second record directly; serial
+bounds distinguish their identifiers. Source compatibility supplies those
+resources in the full effective game.
 
 [SourceServiceRecordedCollection](../Vegas/Game/SourceServiceRecordedCollection.lean)
 classifies a response naming an event already submitted in own recall. At a
@@ -2628,6 +2634,21 @@ with that input. Its information-fiber consumer applies to any actual response
 menu, including the full effective game, without requiring original risk-menu
 support or restricting foreign deviations. This gives no future zero-charge
 claim; unfinished current verdicts can change.
+
+[SourceServiceCompatibleImmediateAudit](../Vegas/Game/SourceServiceCompatibleImmediateAudit.lean)
+derives the actual owner's packet and slot resources from compatible information
+at every initialized raw prefix. After its immediate response, arbitrary foreign
+raw policies preserve owner clarity and zero terminal collection under authentic
+partial sampling. The physical policy uses one whole continuation across hidden
+histories; its finite effective-menu realization and source payoff comparison
+remain separate.
+[SourceServiceCompatibleCollection](../Vegas/Game/SourceServiceCompatibleCollection.lean)
+derives the backend's collection bound for a classified forbidden packet or
+repeated submission at compatible information in any response menu. The
+recorded-response kernel uses actual raw trace and authentic own-call resources;
+compatibility supplies those resources without an original risk-menu trace.
+Later behavioral policies are arbitrary. This bounds the existing one-time
+charge, without assuming certain evidence observation or renewed punishment.
 
 [AsyncServiceCompatibleRecall](../Vegas/Game/AsyncServiceCompatibleRecall.lean)
 derives source compatibility of every earlier own recalled decision at a

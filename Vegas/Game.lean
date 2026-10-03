@@ -117,6 +117,7 @@ import Vegas.Game.SourceServiceFirstActivationResources
 import Vegas.Game.SourceServiceImmediateRisk
 import Vegas.Game.SourceServiceCleanContinuation
 import Vegas.Game.SourceServiceImmediateAudit
+import Vegas.Game.SourceServiceCompatibleImmediateAudit
 import Vegas.Game.SourceServiceImmediateComparator
 import Vegas.Game.SourceServiceSignedExclusion
 import Vegas.Game.SourceServiceSignedCollection
@@ -129,6 +130,7 @@ import Vegas.Game.SourceServiceCompletedPacket
 import Vegas.Game.SourceServicePublicRejection
 import Vegas.Game.SourceServiceDuplicatePackets
 import Vegas.Game.SourceServiceRecordedCollection
+import Vegas.Game.SourceServiceCompatibleCollection
 import Vegas.Game.SourceServiceResolutionComplement
 import Vegas.Game.SourceServiceUnusableBinding
 import Vegas.Game.SourceServiceUnusableProtectedCall
@@ -161,6 +163,7 @@ import Vegas.Game.AsyncServiceCounterfactualBeliefs
 import Vegas.Game.AsyncServiceCompatibleRecall
 import Vegas.Game.AsyncServiceForeignEscape
 import Vegas.Game.SourceServiceClearAudit
+import Vegas.Game.SourceServiceCompletedContinuation
 import Vegas.Game.SourceServiceBindingSource
 import Vegas.Game.SourceServiceResidualSites
 import Vegas.Game.SourceServiceReadyObservation

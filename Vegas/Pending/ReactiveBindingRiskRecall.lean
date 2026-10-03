@@ -129,6 +129,33 @@ private theorem activationRecall_history
       activationRecall_transition runtime leaks initial horizon scheduler _ _ joint
         (activationRecall_history initial horizon scheduler prior) reached
 
+/-- At a completed scheduler boundary every actual activation has a response
+in the named player's recall at that same public application view. This holds
+for every legal RAW history, without any response-menu or policy restriction. -/
+theorem activations_answered_history
+    (initial : PMF (runtime.reactiveApplication leaks).State) (horizon : Nat)
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    (execution : (runtime.reactiveApplication leaks).Execution) (remaining : Nat)
+    (trace : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
+      (some ⟨remaining, none, execution⟩)) :
+    ∀ entry ∈ execution.environmentRecall, ∀ who, entry.command = .activate who →
+      ∃ answer ∈ execution.recall who,
+        answer.beforeView.application.publicView = entry.beforeView.application := by
+  intro entry member who activated
+  have actual := activationRecall_history runtime leaks initial horizon scheduler trace who
+  change publicActivations runtime leaks who execution.environmentRecall =
+    responsePublicViews runtime leaks (execution.recall who) ++
+      (if (none : Option Player) = some who then _ else []) at actual
+  simp only [reduceCtorEq, ↓reduceIte, List.append_nil] at actual
+  have present : (who, entry.beforeView.application) ∈
+      publicActivations runtime leaks who execution.environmentRecall := by
+    apply List.mem_filterMap.mpr
+    refine ⟨entry, member, ?_⟩
+    simp only [activated, ↓reduceIte]
+  rw [actual] at present
+  obtain ⟨answer, recalled, same⟩ := List.mem_map.mp present
+  exact ⟨answer, recalled, congrArg Prod.snd same⟩
+
 private theorem responsePublicViews_history
     (initial : PMF (runtime.reactiveApplication leaks).State) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)

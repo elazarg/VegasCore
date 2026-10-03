@@ -353,11 +353,14 @@ theorem risk_sequentialEquilibrium_extends
                   actualInput).trans clear
               have riskTrace : (menu.protocol initial count scheduler).Trace
                   (restriction.history history.1).state := history.1.trace
-              exact recordedServiceChoice_collection_committed service.bounds service.bound
-                effective count scheduler service.contract service.completes backend targetProfile
-                (restriction.history history.1) riskTrace who remaining execution current
-                actualClear (restriction.site who site).1 action observed recorded observationRate
-                deliveryRate delivery_nonnegative coverage)
+              have persistentClear := ((runtime service.setup).serviceRisk_clear_iff
+                service.leaks service.bound who _ _).mp actualClear |>.1
+              have calls := (riskPacketFacts_history service.bounds service.bound service.contract
+                _ (current ▸ riskTrace) who persistentClear).1
+              exact recordedServiceChoice_collection_committed effective count scheduler
+                service.completes backend targetProfile (restriction.history history.1) who
+                remaining execution current calls (restriction.site who site).1 action observed
+                recorded observationRate deliveryRate delivery_nonnegative coverage)
       (fun sourceProfile _ _ who site action extra _ belief => by
         obtain ⟨past, view, _response, observed, _, _, _, clear⟩ :=
           service.riskRestriction_extra_clear who site action extra

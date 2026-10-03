@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceSignedCollection
-import Vegas.Game.SourceServiceRiskPrefix
+import Vegas.Game.SourceServiceCanonicalSerial
 
 /-! # Final collection for two packets of one owner and event
 
@@ -168,20 +168,17 @@ theorem duplicateTraffic_collection_continuation
             (completes control trace (current ▸ terminal)) backend observationRate deliveryRate
             delivery_nonnegative coverage
 
-/-- An actual clear risk-menu prefix reconstructs its earlier recorded packet
-from own recall. A further response naming that event emits a different allocated
-identifier and leaves both real traffic records present, regardless of its content. -/
+omit [Fintype Player] in
+/-- An actual raw prefix with authentic fresh own calls reconstructs its
+earlier recorded packet from recall. A further response naming that event emits
+a different identifier and leaves both real records present, regardless of content. -/
 theorem recordedResponse_duplicateTraffic
-    (bounds : MessageBounds (graph setup)) (bound : (graph setup).EventId → Nat)
+    {bound : (graph setup).EventId → Nat}
     {horizon remaining : Nat} {scheduler : (application setup leaks).Scheduler}
-    {delay : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
-      delay bound)
     (execution : (application setup leaks).Execution) (who : Player)
-    (trace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup) horizon
-      scheduler).Trace (some ⟨remaining, some who, execution⟩))
-    (clear : (runtime setup).persistentServiceRisk leaks bound who (execution.recall who)
-      (execution.observe (application setup leaks) who) = false)
+    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨remaining, some who, execution⟩))
+    (calls : OwnFreshCalls setup leaks bound execution who)
     (event : (graph setup).EventId)
     (recorded : (runtime setup).eventRecorded leaks (execution.recall who) event = true)
     (material : (application setup leaks).Submission)
@@ -199,11 +196,8 @@ theorem recordedResponse_duplicateTraffic
         first.envelope.payload.call.event? (graph setup) = some event ∧
         second.envelope.payload.call.event? (graph setup) = some event := by
   intro app second
-  let menu := bounds.riskMenu (runtime setup) leaks bound
-  have rawTrace := menu.toRawTrace (initialLaw setup) horizon scheduler trace
-  have facts := legalFacts setup leaks horizon scheduler _ rawTrace
-  have settledFacts := settledFacts_history (initialLaw setup) horizon scheduler rawTrace
-  have calls := (riskPacketFacts_history bounds bound contract _ trace who clear).1
+  have facts := legalFacts setup leaks horizon scheduler _ trace
+  have settledFacts := settledFacts_history (initialLaw setup) horizon scheduler trace
   obtain ⟨entry, recalled, namedEntry⟩ :=
     ((runtime setup).eventRecorded_iff leaks _ event).mp recorded
   obtain ⟨priorMaterial, transmission⟩ :
@@ -221,7 +215,7 @@ theorem recordedResponse_duplicateTraffic
     List.mem_filterMap.mpr ⟨entry, recalled, emitted⟩
   rw [← facts.inputs who] at output
   have priorEmitted : Emitted setup leaks execution message := (List.mem_filter.mp output).1
-  have inputs := app.stateTraffic_inputs (initialLaw setup) horizon scheduler rawTrace
+  have inputs := app.stateTraffic_inputs (initialLaw setup) horizon scheduler trace
   change (app.executionTraffic execution).map ReactiveApplication.TrafficRecord.envelope =
     execution.network.inputs at inputs
   have inTraffic : message ∈ (app.executionTraffic execution).map
@@ -230,7 +224,7 @@ theorem recordedResponse_duplicateTraffic
     exact priorEmitted
   obtain ⟨first, firstPresent, envelope⟩ := List.mem_map.mp inTraffic
   let history : (app.protocol (initialLaw setup) horizon scheduler).History :=
-    ⟨some ⟨remaining, some who, execution⟩, rawTrace⟩
+    ⟨some ⟨remaining, some who, execution⟩, trace⟩
   let joint : Player → Option app.Action := fun player =>
     if player = who then some ⟨some material⟩ else none
   have stepped : some ⟨remaining, none, execution.respond app who ⟨some material⟩⟩ ∈
@@ -245,7 +239,7 @@ theorem recordedResponse_duplicateTraffic
     rw [traffic]
     exact List.mem_append_left _ firstPresent
   refine ⟨first, firstKept,
-    (runtime setup).signed_response_traffic leaks execution who material rawTrace,
+    (runtime setup).signed_response_traffic leaks execution who material trace,
     envelope ▸ authored, ?_, envelope ▸ named, ?_⟩
   · rw [envelope]
     have lower := settledFacts.emitted_serial priorEmitted

@@ -1,14 +1,16 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceDuplicatePackets
+import Vegas.Pending.ReactiveRiskMenu
 
 /-! # Collection after a locally recorded extra response
 
 The player's own recall identifies an earlier submission for the named event.
 Committing a further response creates a different actual identifier. Both traffic
 records persist, and authentic final-record coverage applies to whichever one
-the final settlement forbids. The bound concerns total one-time charge from a
-clear risk-menu prefix, not renewed collection after an already collected fine.
+the final settlement forbids. The bound concerns total one-time charge from an
+actual raw prefix with authentic own calls, not renewed collection after an
+already collected fine.
 -/
 
 noncomputable section
@@ -61,26 +63,20 @@ variable {setup leaks} [Fintype Player]
 
 open Classical in
 /-- A committed locally recorded extra response has the backend's collection
-bound under every later behavioral policy. The prefix is actually legal in the
-risk menu and has clear owner risk; prior packet soundness is derived from it. -/
+bound under every later behavioral policy. Actual raw history and fresh own
+call provenance supply the earlier packet; no risk-menu trace is required. -/
 theorem recordedServiceChoice_collection_committed
-    (bounds : MessageBounds (graph setup)) (bound : (graph setup).EventId → Nat)
+    {bound : (graph setup).EventId → Nat}
     (menu : (application setup leaks).ResponseMenu)
     (horizon : Nat) (scheduler : (application setup leaks).Scheduler)
-    {delay : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
-      delay bound)
     (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
     (backend : EvidenceReportService (SettledEvidence setup))
     (profile : ∀ player,
       (menu.information (initialLaw setup) horizon scheduler).BehavioralPolicy player)
     (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
-    (riskTrace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup)
-      horizon scheduler).Trace history.state)
     (who : Player) (remaining : Nat) (execution : (application setup leaks).Execution)
     (current : history.state = some ⟨remaining, some who, execution⟩)
-    (clear : (runtime setup).serviceRisk leaks bound who (execution.recall who)
-      (execution.observe (application setup leaks) who) = false)
+    (calls : OwnFreshCalls setup leaks bound execution who)
     (info : (menu.information (initialLaw setup) horizon scheduler).InfoState who)
     (choice : (menu.information (initialLaw setup) horizon scheduler).Choice who info)
     (observed : (menu.information (initialLaw setup) horizon scheduler).infoOf who
@@ -127,16 +123,15 @@ theorem recordedServiceChoice_collection_committed
         | none => cases submitted
         | some material => exact ⟨material, rfl⟩
   subst response
-  have persistentClear := ((runtime setup).serviceRisk_clear_iff leaks bound who
-    (execution.recall who) (execution.observe app who)).mp clear |>.1
+  have rawTrace := current ▸ menu.toRawTrace (initialLaw setup) horizon scheduler history.trace
   let second : app.TrafficRecord :=
     ⟨execution.application.publicView, execution.network.ledger,
       ⟨(who, execution.network.nextSerial who), app.packet
         (app.submit execution.application who material) who
           (execution.network.known who) material⟩⟩
   obtain ⟨first, firstPresent, secondPresent, firstOwner, different, firstNamed, secondNamed⟩ :=
-    recordedResponse_duplicateTraffic bounds bound contract execution who (current ▸ riskTrace)
-      persistentClear event earlierRecorded material submitted
+    recordedResponse_duplicateTraffic execution who rawTrace calls event earlierRecorded material
+      submitted
   have committed := menu.run_commit_response (initialLaw setup) horizon scheduler profile history
     who remaining execution current choice ⟨some material⟩ selected
   change (model.runBehavioralFrom updated 1 history).map History.state = _ at committed

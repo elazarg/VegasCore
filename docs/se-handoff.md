@@ -88,6 +88,17 @@ future private values changed by repair are outside the claim.
   the full effective game, without original risk support or restrictions on
   foreign deviations. Only sample authenticity is needed; future charges and
   unfinished verdicts may change.
+- [SourceServiceCompatibleImmediateAudit](../Vegas/Game/SourceServiceCompatibleImmediateAudit.lean)
+  transfers actual owner packet and slot resources from compatible information
+  to every initialized raw prefix. The same physical immediate-owner policy
+  then has zero terminal charge against arbitrary foreign raw policies under
+  authentic partial sampling. Its effective-menu realization and source payoff
+  comparison remain separate.
+- [SourceServiceCompatibleCollection](../Vegas/Game/SourceServiceCompatibleCollection.lean)
+  derives actual collection for both classified forbidden packets and repeated
+  submissions at compatible information in any response menu. The replay kernel
+  needs actual raw trace and authentic own calls, derived from compatibility;
+  it imposes no original risk support on the prefix or future policies.
 - [AsyncServiceCompatibleRecall](../Vegas/Game/AsyncServiceCompatibleRecall.lean)
   derives compatibility of every earlier own recalled decision and equality of
   the complete focal likelihood for profiles agreeing on compatible inputs.
@@ -444,8 +455,9 @@ future private values changed by repair are outside the claim.
   derives at least one final forbidden verdict from two actual distinct
   same-event envelopes. Partial coverage gives the total collection bound
   across arbitrary behavioral continuations, choosing the forbidden packet
-  at each final history. A clear recorded risk-menu prefix plus another
-  transmission reconstructs that actual pair.
+  at each final history. An actual raw prefix with authentic own calls plus
+  another transmission reconstructs that pair; compatibility supplies the
+  own-call resources in the full effective game.
 - [SourceServiceRecordedCollection](../Vegas/Game/SourceServiceRecordedCollection.lean)
   classifies that extra response from own recall and derives collection after
   its actual information-site commitment. The risk extension includes it with
@@ -820,8 +832,13 @@ change the future capability relation.
 actual local input and either a publicly completed cut or a ready event with
 one of the seven source constructor kinds at every actual response-menu site.
 This applies to arbitrary builders, including activations after graph
-completion. The completed-cut branch needs its own payoff comparison; the
-fixed-calendar ready-phase exhaustion alone does not cover it.
+completion. [SourceServiceCompletedContinuation](../Vegas/Game/SourceServiceCompletedContinuation.lean)
+proves that the full typed readout is fixed under arbitrary raw continuation.
+At every compatible completed input, silent whole continuation has zero charge
+and is optimal in the full effective game under every belief and arbitrary
+foreign policies. Rationality of the returned assessment's actual continuation
+still needs a consumer of its prescribed silence and free-site optimality;
+the comparator alone does not establish that assessment property.
 
 The risk-menu continuation consumers still require original risk-supported
 future responses. An excluded initial response can reach information states
