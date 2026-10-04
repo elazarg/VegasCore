@@ -374,6 +374,7 @@ theorem sourceServiceFirstTurn_prefix_law [Fintype Player]
             have completed := decided_completion contract timely event start boundary
               submissions bounded ready owned action (effectiveLaw effective action chosen)
               stopped reached
+            have completed := completed.1
             rw [pure, PMF.mem_support_pure_iff] at completed
             exact completed
           _ = _ := PMF.map_const _ _

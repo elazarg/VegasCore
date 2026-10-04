@@ -6,6 +6,7 @@ import Vegas.Game.SourceServiceFreeRationality
 import Vegas.Game.SourceServiceCompatiblePinValue
 import Vegas.Game.SourceServiceCompatibleChargedComparison
 import Vegas.Game.SourceServiceMissBranchComparison
+import Vegas.Game.SourceServiceCompatibleBindingResponse
 import Vegas.Game.SourceContinuation
 import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
 
@@ -27,6 +28,10 @@ conditional escape relative to rare observations remain separate obligations.
 Valid configured rate bounds also compare each positive-mass terminal
 public-miss fiber with the same assessment's pin-derived value floor.
 This leaves its actual no-miss continuation fiber unbounded here.
+The returned native sequence also has an actual binding response law at
+compatible initialized inputs, keeping the normalized compiler draw and WAIT
+tag beside the same full post-response execution. Original source restoration
+and conditional belief transport are separate from this local draw law.
 The uniform maximum bound controls only initialized loss; it does not assert
 that the information-dependent waiting rates enforce those comparisons.
 -/
@@ -163,6 +168,38 @@ theorem exists_consistent_original_sequence_completion
                 (Revelations.initial service.setup.context) (service.setup.decodeBehavioralProfile
                   (CommitmentInterface.values service.setup.program) (sourceSequence n).strategy))
                     who site.1))) ∧
+      (∀ n,
+        let currentProfile := normalizeDisclosureProfile service.setup.program []
+          (Revelations.initial service.setup.context)
+          (service.setup.decodeBehavioralProfile (CommitmentInterface.values service.setup.program)
+            (sourceSequence n).strategy)
+        ∀ event (execution : (app).Execution)
+          (binding : BindingSource service.setup currentProfile event execution.application.config)
+          remaining,
+          ((menu).protocol (initialLaw service.setup) service.horizon service.scheduler).Trace
+            (some ⟨remaining, some binding.owner, execution⟩) →
+          service.sourceCompatibleInfo binding.owner
+            (some (execution.recall binding.owner, execution.observe (app) binding.owner)) →
+          execution.application.publicView.ownTurn? binding.owner = some event →
+          (runtime service.setup).eventRecorded service.leaks (execution.recall binding.owner)
+            event = false →
+          let info := some (execution.recall binding.owner, execution.observe (app) binding.owner)
+          let read := fun choice : (model).Choice binding.owner info =>
+            let response := choice.1.getD (⟨none⟩ : (app).Action)
+            (bindingResponseResult? binding.owner binding.payload execution response,
+              execution.respond (app) binding.owner response)
+          ((nativeSequence n).strategy binding.owner info).map read =
+            mix (delta n) (deltaPositive n).le (deltaSmall n).le
+              (((menu).uniformPolicy (initialLaw service.setup) service.horizon service.scheduler
+                binding.owner info).map read)
+              (mix (weight n binding.owner info) (weightNonnegative n binding.owner info)
+                (weightSmall n binding.owner info)
+                (PMF.pure (none, execution.respond (app) binding.owner ⟨none⟩))
+                ((commitKernel binding.residual (binding.source.view binding.owner)).map
+                  fun value => (some value, execution.respond (app) binding.owner
+                    ((runtime service.setup).reactiveBinding service.leaks binding.owner event
+                      binding.payload value
+                      (execution.application.publicView.bindingCount binding.owner)))))) ∧
       (∀ who (site : (model).InformationSite who), ¬ service.sourceCompatibleInfo who site.1 →
         ∀ law : PMF ((model).Choice who site.1),
           (assessment.continuationContext certificate site (payoff who)).value
@@ -410,9 +447,32 @@ theorem exists_consistent_original_sequence_completion
       (Option.some_injective (State L service.setup.program.terminalCtx))] using limit
   have sourceTarget := sourceRuns.map (fun state => (some state, utility state))
   refine ⟨nativeSequence, assessment, index, mixed, bayes, increasing, converges, consistent,
-    ?_, ?_, ?_, ?_, ?_, ?_, compatiblePlay, ?_⟩
+    ?_, ?_, ?_, ?_, ?_, ?_, ?_, compatiblePlay, ?_⟩
   · intro n who site compatible
     exact kept n who site compatible
+  · intro n currentProfile event execution binding remaining trace compatible turn unrecorded
+      info read
+    let history : ((menu).protocol (initialLaw service.setup) service.horizon
+      service.scheduler).History := ⟨some ⟨remaining, some binding.owner, execution⟩, trace⟩
+    have running : ¬ ((menu).protocol (initialLaw service.setup) service.horizon
+        service.scheduler).terminal history.state := by
+      change ¬ (app).terminal (some ⟨remaining, some binding.owner, execution⟩)
+      simp only [ReactiveApplication.terminal, reduceCtorEq, and_false, not_false_eq_true]
+    have acting : ((menu).protocol (initialLaw service.setup) service.horizon
+        service.scheduler).active history.state binding.owner := rfl
+    obtain ⟨current, observed⟩ := (model).exists_informationSite_of_active binding.owner history
+      running acting
+    have siteInfo : current.1 = info := by
+      have atState := observed.trans ((menu).info (initialLaw service.setup) service.horizon
+        service.scheduler binding.owner history.trace)
+      simpa only [history, info, ReactiveApplication.observe, ↓reduceIte] using atState
+    have actualPinned := constructed n binding.owner current
+    rw [siteInfo] at actualPinned
+    rw [actualPinned]
+    exact service.completedInformationWaitProfile_binding_joint_response currentProfile event
+      execution binding (permitted n binding.owner) remaining trace compatible turn unrecorded
+      (weight n) (weightNonnegative n) (weightSmall n) (delta n) (deltaPositive n).le
+      (deltaSmall n).le (nativeSequence n).strategy
   · intro who site incompatible law
     exact freeOptimal who site (Finset.mem_filter.mpr ⟨Finset.mem_univ _, incompatible⟩) law
   · intro who site incompatible

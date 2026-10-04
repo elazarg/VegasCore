@@ -140,6 +140,7 @@ import Vegas.Game.SourceServiceCompletedPacket
 import Vegas.Game.SourceServicePublicRejection
 import Vegas.Game.SourceServiceDuplicatePackets
 import Vegas.Game.SourceServiceRecordedCollection
+import Vegas.Game.SourceServiceCompatibleBindingResponse
 import Vegas.Game.SourceServiceCompatibleCollection
 import Vegas.Game.SourceServiceCompatibleChargedComparison
 import Vegas.Game.SourceServiceMissBranchComparison

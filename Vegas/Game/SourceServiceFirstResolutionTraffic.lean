@@ -182,6 +182,7 @@ theorem sourceServiceFirstResolution_prefix_probability
             _ start boundary.supported).1 within ready
           site.owned (cast (congrArg EventGraph.EventField.Action site.outputEq.symm) disclose)
           realized stopped supported
+        have native := native.1
         rw [start.application.config.step_eq_map_of_code event ready site.outputEq _ codeEq disclose
           (PMF.pure (disclosureResult published selected source disclose))
           (compileResolve_eval? refs source.registry source.revelations source.state

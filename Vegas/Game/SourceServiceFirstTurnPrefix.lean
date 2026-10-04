@@ -2,6 +2,8 @@
 
 import Vegas.Game.SourceServiceFirstTurnCompletes
 import Interaction.ScheduledOpening
+import Interaction.ReactivePolicyInvariant
+import Vegas.Pending.ReactiveCompletedDecision
 
 /-! # Source-prefix law of the global first-turn policy
 
@@ -98,5 +100,80 @@ theorem sourceServiceTurnPolicy_firstTurn_prefix_law [Fintype Player]
   refine ⟨before, decoded, ?_⟩
   rw [sourceServiceTurnPolicy_firstTurn_phase event start boundary]
   exact law
+
+
+/-- A future first-turn phase creates no owner public miss at an actual
+completion boundary, including a boundary reached after late canonical calls.
+Earlier completed decisions need not have satisfied a protected inclusion bound. -/
+theorem sourceServiceTurnPolicy_firstTurn_no_public_miss [Finite Player]
+    {scheduler : (application setup leaks).Scheduler} {horizon turns : Nat}
+    {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
+      delay bound)
+    (timely : AsyncTimely (runtime setup) delay bound)
+    (profile : BehavioralProfile setup.program)
+    (effective : ∀ who, (profile who).EffectiveDisclosures setup.program []
+      (Revelations.initial setup.context))
+    {players : Player → (application setup leaks).Policy}
+    (event : (graph setup).EventId) (start : (application setup leaks).Execution)
+    (boundary : CompletionBoundary setup leaks scheduler players event.val start)
+    (submissions : SubmissionsAtTurn setup leaks start)
+    (bounded : start.environmentRecall.length ≤ horizon)
+    (who : Player) (noMiss : start.application.publicView.missedDecisionBy who = false)
+    (stopped : (application setup leaks).Execution)
+    (reached : stopped ∈ ((application setup leaks).runUntilHorizon scheduler
+      (sourceServiceTurnPolicy setup leaks bound turns (firstTurnTiming setup turns) profile)
+      (fun final => event ∈ final.application.config.cut.completed) horizon start).support) :
+    stopped.application.publicView.missedDecisionBy who = false := by
+  let := Fintype.ofFinite Player
+  let app := application setup leaks
+  let future := sourceServiceTurnPolicy setup leaks bound turns (firstTurnTiming setup turns)
+    profile
+  have ready : start.application.config.cut.Ready event :=
+    (ready_iff_rank setup _ event.val boundary.ordered event).mpr rfl
+  obtain ⟨startTrace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler
+    players _ bounded start boundary.supported
+  have initialFacts := legalFacts setup leaks horizon scheduler _ startTrace
+  obtain ⟨used, _within, rounds, _length⟩ := app.runUntil_runRounds scheduler future
+    (fun final => event ∈ final.application.config.cut.completed) _ start stopped reached
+  have finalMisses := ((runtime setup).reactiveMissedEventsWellFormed leaks).policyInvariant
+    app future |>.runRounds scheduler used start stopped initialFacts.misses rounds
+  obtain ⟨oldRank, oldOrdered, seen⟩ := roundsFrom_ranked setup leaks scheduler players
+    _ start boundary.supported
+  have rankEq := isPrefix_unique oldOrdered boundary.ordered
+  rw [rankEq] at seen
+  have completed := runUntilHorizon_completes contract.completes bounded startTrace stopped reached
+  obtain ⟨_nextSeen, progressed⟩ := runUntil_completion_prefix setup leaks scheduler future
+    event _ start stopped boundary.ordered seen reached
+  have ordered : stopped.application.config.cut.IsPrefix (event.val + 1) := by
+    rcases progressed with same | advanced
+    · exact (Nat.lt_irrefl _ ((same.2 event).mp completed)).elim
+    · exact advanced
+  have clearCurrent (owner : Player) (owned : (graph setup).actor? event = some owner) :
+      event ∉ stopped.application.missedEvents := by
+    obtain ⟨residual⟩ := boundary.sourceResidual (profile := profile)
+    obtain ⟨law, _sourceStep, policy, effectiveLaw⟩ :=
+      SourceResidual.head_step leaks residual event rfl ready
+    have phaseReached := reached
+    rw [sourceServiceTurnPolicy_firstTurn_phase event start boundary] at phaseReached
+    unfold ReactiveApplication.runUntilHorizon at phaseReached
+    rw [firstTurn_runUntil_mixture event start boundary owner owned bound turns profile law
+      (policy owner owned) _] at phaseReached
+    obtain ⟨action, chosen, actual⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ phaseReached)
+    exact (decided_completion contract timely event start boundary submissions bounded ready owned
+      action (effectiveLaw effective action chosen) stopped actual).2
+  rw [PublicView.missedDecisionBy_eq_false_iff] at noMiss ⊢
+  intro other owned marked
+  rcases lt_trichotomy other.val event.val with earlier | current | later
+  · have finished := (boundary.ordered.2 other).mpr earlier
+    have invariant := (runtime setup).reactiveCompletedDecisionInvariant leaks other
+    have preserved := (invariant.policyInvariant app future).runRounds scheduler used start stopped
+      ⟨finished, noMiss other owned⟩ rounds
+    exact preserved.2 marked
+  · have equal : other = event := Fin.ext current
+    subst other
+    exact clearCurrent who owned marked
+  · have lower := (ordered.2 other).mp (finalMisses other marked).1
+    omega
 
 end Vegas

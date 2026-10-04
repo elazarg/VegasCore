@@ -206,6 +206,7 @@ theorem sourceServiceFirstTurn_binding_prefix_factorization [Fintype Player]
       (bounded seed supported) (ready seed supported) owned
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) value)
       (by unfold EffectiveAction; rw [node]; trivial) final reached
+    have completed := completed.1
     rw [commit_step (execution seed).application.config event (ready seed supported) outputEq
       codeEq value, PMF.mem_support_pure_iff] at completed
     rw [completed]

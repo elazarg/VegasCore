@@ -2,6 +2,7 @@
 
 import Vegas.Game.SourceServiceFirstTurnPrefix
 import Vegas.Game.SourceServiceRetainedPolicy
+import Vegas.Game.SourceServiceCanonicalSettlement
 import Interaction.ReactiveStopping
 import Vegas.Source.InitialState
 
@@ -18,7 +19,7 @@ noncomputable section
 
 namespace Vegas
 
-open SourceProgram Interaction EventGraphRuntime GameTheory.Math.Probability
+open SourceProgram Interaction EventGraphRuntime GameTheory.Math.Probability GameTheory.Enforcement
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -52,7 +53,8 @@ private theorem canonicalHistory_boundary
 an accepted delayed decision, the existing first-turn runner has the decoded
 source continuation law. Persistent private opportunity risk need not be clear.
 The admitted profile supplies future canonical packet choices on legal traces;
-no initialized support under that future profile is required. -/
+no initialized support under that future profile is required. Every owner with
+no public miss at the boundary retains that property throughout the restart. -/
 theorem sourceServiceCanonicalHistory_firstTurn_continuation
     (bounds : MessageBounds (graph setup)) (covered : bounds.CoversBindingValues)
     (initialCovered : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
@@ -76,7 +78,12 @@ theorem sourceServiceCanonicalHistory_firstTurn_continuation
       (sourceServiceTurnPolicy setup leaks bound turns (firstTurnTiming setup turns) profile)
       horizon execution).map
         (fun final => sourceReadout setup leaks ((application setup leaks).finished final)) =
-      sourceContinuation setup profile rank execution.application.config := by
+      sourceContinuation setup profile rank execution.application.config ∧
+      ∀ who, execution.application.publicView.missedDecisionBy who = false →
+        ∀ final ∈ ((application setup leaks).runToHorizon scheduler
+          (sourceServiceTurnPolicy setup leaks bound turns (firstTurnTiming setup turns) profile)
+          horizon execution).support,
+          final.application.publicView.missedDecisionBy who = false := by
   classical
   let app := application setup leaks
   let menu := bounds.canonicalMenu (runtime setup) leaks
@@ -96,7 +103,10 @@ theorem sourceServiceCanonicalHistory_firstTurn_continuation
       (∀ event : (graph setup).EventId, event.val = rank →
         Untouched setup leaks event execution) →
       (app.runToHorizon scheduler players horizon execution).map readout =
-        sourceContinuation setup profile rank execution.application.config by
+        sourceContinuation setup profile rank execution.application.config ∧
+        ∀ who, execution.application.publicView.missedDecisionBy who = false →
+          ∀ final ∈ (app.runToHorizon scheduler players horizon execution).support,
+            final.application.publicView.missedDecisionBy who = false by
     exact continuation _ rank remaining execution rfl trace ordered untouched
   intro gap
   induction gap with
@@ -108,14 +118,25 @@ theorem sourceServiceCanonicalHistory_firstTurn_continuation
         have within := ordered.1
         omega
       subst rankEq
-      rw [boundary.terminal_continuation (profile := profile)]
-      unfold ReactiveApplication.runToHorizon
-      rw [map_congr_on_support _ (g := fun _ => readout execution) (fun next reached => by
-        have same := runRounds_config_terminal scheduler players _ execution next ordered reached
-        change sourceReadout setup leaks (some ⟨0, none, next⟩) =
-          sourceReadout setup leaks (some ⟨0, none, execution⟩)
-        simp only [sourceReadout, Option.bind_some, same])]
-      exact PMF.map_const _ _
+      constructor
+      · rw [boundary.terminal_continuation (profile := profile)]
+        unfold ReactiveApplication.runToHorizon
+        rw [map_congr_on_support _ (g := fun _ => readout execution) (fun next reached => by
+          have same := runRounds_config_terminal scheduler players _ execution next ordered reached
+          change sourceReadout setup leaks (some ⟨0, none, next⟩) =
+            sourceReadout setup leaks (some ⟨0, none, execution⟩)
+          simp only [sourceReadout, Option.bind_some, same])]
+        exact PMF.map_const _ _
+      · intro who noMiss next reached
+        change next ∈ (app.runRounds scheduler players
+          (horizon - execution.environmentRecall.length) execution).support at reached
+        rw [PublicView.missedDecisionBy_eq_false_iff] at noMiss ⊢
+        intro event owned marked
+        have completed := (ordered.2 event).mpr event.isLt
+        have invariant := (runtime setup).reactiveCompletedDecisionInvariant leaks event
+        have preserved := (invariant.policyInvariant app players).runRounds scheduler _ execution
+          next ⟨completed, noMiss event owned⟩ reached
+        exact preserved.2 marked
   | succ gap ih =>
       intro rank remaining execution gapEq trace ordered untouched
       obtain ⟨bounded, boundary, submissions⟩ :=
@@ -157,32 +178,43 @@ theorem sourceServiceCanonicalHistory_firstTurn_continuation
           have lower := nextSeen observer entry member next readyView
           change next.val ≤ rank at lower
           omega
-      rw [app.runToHorizon_eq_runUntilHorizon_bind scheduler players stop horizon execution,
-        PMF.map_bind]
-      calc
-        _ = (app.runUntilHorizon scheduler players stop horizon execution).bind
-            (fun stopped => sourceContinuation setup profile (rank + 1)
-              stopped.application.config) := by
-          apply bind_congr_on_support _
-          intro stopped reached
-          obtain ⟨⟨nextTrace⟩, nextOrdered, nextUntouched⟩ := nextResources stopped reached
-          exact ih (rank + 1) _ stopped (by omega) nextTrace nextOrdered nextUntouched
-        _ = sourceContinuation setup profile rank execution.application.config := by
-          obtain ⟨before, decoded, law⟩ := sourceServiceTurnPolicy_firstTurn_prefix_law
-            (turns := turns) contract timely profile effective event execution boundary
-            submissions bounded
-          change sourceServicePrefix? setup rank execution.application.config = some before
-            at decoded
-          let continuation := fun state : Option (ProtocolState setup.program) =>
-            (setup.continuationLaw profile state).map some
-          have composed := congrArg (fun distribution => distribution.bind continuation) law
-          rw [PMF.bind_map, PMF.bind_map] at composed
-          change _ = (ProtocolState.behavioralStateStep setup.program profile before).bind
-            (fun state => (ProtocolState.continuationLaw setup.program profile state).map some)
-            at composed
-          rw [← PMF.map_bind, sourceStep_continuation] at composed
-          simpa only [stop, sourceContinuation, decoded, Setup.continuationLaw, continuation,
-            Function.comp_def] using composed
+      constructor
+      · rw [app.runToHorizon_eq_runUntilHorizon_bind scheduler players stop horizon execution,
+          PMF.map_bind]
+        calc
+          _ = (app.runUntilHorizon scheduler players stop horizon execution).bind
+              (fun stopped => sourceContinuation setup profile (rank + 1)
+                stopped.application.config) := by
+            apply bind_congr_on_support _
+            intro stopped reached
+            obtain ⟨⟨nextTrace⟩, nextOrdered, nextUntouched⟩ := nextResources stopped reached
+            exact (ih (rank + 1) _ stopped (by omega) nextTrace nextOrdered nextUntouched).1
+          _ = sourceContinuation setup profile rank execution.application.config := by
+            obtain ⟨before, decoded, law⟩ := sourceServiceTurnPolicy_firstTurn_prefix_law
+              (turns := turns) contract timely profile effective event execution boundary
+              submissions bounded
+            change sourceServicePrefix? setup rank execution.application.config = some before
+              at decoded
+            let continuation := fun state : Option (ProtocolState setup.program) =>
+              (setup.continuationLaw profile state).map some
+            have composed := congrArg (fun distribution => distribution.bind continuation) law
+            rw [PMF.bind_map, PMF.bind_map] at composed
+            change _ = (ProtocolState.behavioralStateStep setup.program profile before).bind
+              (fun state => (ProtocolState.continuationLaw setup.program profile state).map some)
+              at composed
+            rw [← PMF.map_bind, sourceStep_continuation] at composed
+            simpa only [stop, sourceContinuation, decoded, Setup.continuationLaw, continuation,
+              Function.comp_def] using composed
+      · intro who noMiss final reached
+        rw [app.runToHorizon_eq_runUntilHorizon_bind scheduler players stop horizon execution]
+          at reached
+        obtain ⟨stopped, moved, continued⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+        obtain ⟨⟨nextTrace⟩, nextOrdered, nextUntouched⟩ := nextResources stopped moved
+        have clear := sourceServiceTurnPolicy_firstTurn_no_public_miss contract timely profile
+          effective event execution boundary submissions bounded who noMiss stopped moved
+        exact (ih (rank + 1) _ stopped (by omega) nextTrace nextOrdered nextUntouched).2
+          who clear final continued
+
 
 
 /-- A real stopped completion supplies the untouched next boundary. The earlier
@@ -244,9 +276,9 @@ theorem sourceServiceCanonicalHistory_stopped_firstTurn_continuation
     intro next rankNext who entry member readyView
     have lower := stoppedSeen who entry member next readyView
     omega
-  exact sourceServiceCanonicalHistory_firstTurn_continuation bounds covered initialCovered
+  exact (sourceServiceCanonicalHistory_firstTurn_continuation bounds covered initialCovered
     capacity contract timely profile permitted effective (event.val + 1) _ stopped stoppedTrace
-    stoppedOrdered untouched
+    stoppedOrdered untouched).1
 
 /-- Initial parameters and public outcomes are read from the same terminal
 source state. Their continuation payoff law is therefore preserved jointly,
@@ -282,13 +314,68 @@ theorem sourceServiceCanonicalHistory_firstTurn_public_payoff {Parameter : Type}
       (setup.continuationLaw profile
         (sourceServicePrefix? setup rank execution.application.config)).map
           (fun state => utility (setup.parameterOutcome parameter state)) := by
-  have law := sourceServiceCanonicalHistory_firstTurn_continuation bounds covered initialCovered
+  have law := (sourceServiceCanonicalHistory_firstTurn_continuation bounds covered initialCovered
     capacity (turns := turns) contract timely profile permitted effective rank remaining execution
-    trace ordered untouched
+    trace ordered untouched).1
   have mapped := congrArg (PMF.map fun source : Option (State L setup.program.terminalCtx) =>
     fun who => source.elim 0 (fun state => utility (setup.parameterOutcome parameter state) who))
     law
   rw [sourceContinuation, PMF.map_comp, PMF.map_comp] at mapped
   exact mapped
+
+
+/-- The same source restart also has zero authentic owner charge when that
+owner has no public miss in the actual canonical prefix. Past delayed packets
+are checked through their original receipts; private opportunity risk is allowed. -/
+theorem sourceServiceCanonicalHistory_firstTurn_audit_clear
+    (bounds : MessageBounds (graph setup)) (covered : bounds.CoversBindingValues)
+    (initialCovered : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
+    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
+    {scheduler : (application setup leaks).Scheduler} {horizon turns : Nat}
+    {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
+      delay bound)
+    (timely : AsyncTimely (runtime setup) delay bound)
+    (profile : BehavioralProfile setup.program)
+    (permitted : ∀ who, (profile who).Admitted setup.program (CommitmentInterface.values _))
+    (effective : ∀ who, (profile who).EffectiveDisclosures setup.program []
+      (Revelations.initial setup.context))
+    (rank remaining : Nat) (execution : (application setup leaks).Execution)
+    (trace : ((bounds.canonicalMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some ⟨remaining, none, execution⟩))
+    (ordered : execution.application.config.cut.IsPrefix rank)
+    (untouched : ∀ event : (graph setup).EventId, event.val = rank →
+      Untouched setup leaks event execution)
+    (who : Player) (noMiss : execution.application.publicView.missedDecisionBy who = false)
+    (sample : List (SettledEvidence setup) → PMF (List (SettledEvidence setup)))
+    (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
+    (final : (application setup leaks).Execution)
+    (reached : final ∈ ((application setup leaks).runToHorizon scheduler
+      (sourceServiceTurnPolicy setup leaks bound turns (firstTurnTiming setup turns) profile)
+      horizon execution).support) :
+    TerminalAudit.charge ((runtime setup).serviceAuditObservation leaks)
+      (sourceServiceAudit setup leaks sample) ((application setup leaks).finished final) who =
+        0 := by
+  let app := application setup leaks
+  let menu := bounds.canonicalMenu (runtime setup) leaks
+  let future := sourceServiceTurnPolicy setup leaks bound turns (firstTurnTiming setup turns)
+    profile
+  have admitted : ∀ actor, menu.Admissible (initialLaw setup) horizon scheduler actor
+      (future actor) := by
+    intro actor control current _ response chosen
+    exact sourceServiceTurnPolicy_retained bounds covered initialCovered capacity bound turns
+      (firstTurnTiming setup turns) profile actor (permitted actor) control current response chosen
+  have clear := (sourceServiceCanonicalHistory_firstTurn_continuation bounds covered
+    initialCovered capacity contract timely profile permitted effective rank remaining execution
+      trace ordered untouched).2 who noMiss final reached
+  have accounted := app.raw_trace_accounted (initialLaw setup) horizon scheduler
+    (menu.toRawTrace (initialLaw setup) horizon scheduler trace)
+  change execution.environmentRecall.length + remaining = horizon at accounted
+  have same : remaining = 0 + (horizon - execution.environmentRecall.length) := by omega
+  obtain ⟨finalTrace⟩ := menu.trace_runRounds_of_admissible (initialLaw setup) horizon scheduler
+    future admitted 0 (horizon - execution.environmentRecall.length) execution final
+      (same ▸ trace) reached
+  exact sourceServiceCanonicalHistory_audit_clear bounds ⟨0, none, final⟩ finalTrace who clear
+    sample authentic
 
 end Vegas

@@ -247,6 +247,7 @@ theorem sourceServiceFirstTurn_resolution_prefix_factorization [Fintype Player]
         _ _ (actualBoundary seed supported).supported).1
       (bounded seed supported) (ready seed supported) owned
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) value) realized final reached
+    have completed := completed.1
     rw [(execution seed).application.config.step_eq_map_of_code event (ready seed supported)
       outputEq _ actualCode value
       (PMF.pure (disclosureResult published binding (source seed) value))

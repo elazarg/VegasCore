@@ -1032,7 +1032,7 @@ theorem DecidedPhase.fresh_unique {delay bound : (graph setup).EventId → Nat}
   · exact (earlier split' split submitted' submitted greater).elim
 
 /-- **The completing round.** A round of the decided phase that changes the
-configuration completes the event with the decided action. -/
+configuration completes the event with the decided action and no public miss. -/
 theorem DecidedPhase.complete_round {horizon : Nat}
     {scheduler : (application setup leaks).Scheduler}
     {delay bound : (graph setup).EventId → Nat}
@@ -1053,7 +1053,8 @@ theorem DecidedPhase.complete_round {horizon : Nat}
     (reached : next ∈ ((application setup leaks).round scheduler
       (decidedProfile (leaks := leaks) bound owner event action) execution).support)
     (changed : next.application.config ≠ start.application.config) :
-    next.application.config ∈ (start.application.config.step event ready action).support := by
+    next.application.config ∈ (start.application.config.step event ready action).support ∧
+      event ∉ next.application.missedEvents := by
   let app := application setup leaks
   have facts := legalFacts setup leaks horizon scheduler _ trace
   have readyNow : execution.application.config.cut.Ready event := by rw [same]; exact ready
@@ -1067,7 +1068,15 @@ theorem DecidedPhase.complete_round {horizon : Nat}
     rcases cases with ⟨_, rfl⟩ | ⟨who, _, response, _, rfl⟩
     · rfl
     · exact ((runtime setup).reactive_respond_application leaks middle who response).1
+  have markerNext : next.application.missedEvents = middle.application.missedEvents := by
+    rcases cases with ⟨_, rfl⟩ | ⟨who, _, response, _, rfl⟩
+    · rfl
+    · exact congrArg PublicView.missedEvents
+        ((runtime setup).reactive_respond_application leaks middle who response).2
+  have unmarked : event ∉ execution.application.missedEvents :=
+    fun missed => readyNow.1 (facts.misses event missed).1
   rw [configNext] at changed ⊢
+  rw [markerNext]
   rw [← same] at changed
   cases command with
   | activate who =>
@@ -1094,7 +1103,7 @@ theorem DecidedPhase.complete_round {horizon : Nat}
               exact (changed rfl).elim
           | some state =>
               have accepted := reactiveHandle_call reactiveAccepted
-              change state.config ∈ _
+              change state.config ∈ _ ∧ event ∉ state.missedEvents
               obtain ⟨named, namedEq, namedReady, _, _⟩ :=
                 handle_config_mem_step (runtime setup) _ _ _ accepted
               have namedIs := soleOf named namedReady
@@ -1113,14 +1122,17 @@ theorem DecidedPhase.complete_round {horizon : Nat}
                 phase.submitted before entry after split submitted
               rw [emittedEq] at emittedP
               cases Option.some.inj emittedP
-              exact include_realized execution facts.stable start.application.config same named
+              refine ⟨include_realized execution facts.stable start.application.config same named
                 ready (congrFun facts.remembered named) owner owned action entry member call.ready
-                message senderEq realized state accepted
+                message senderEq realized state accepted, ?_⟩
+              rw [handle_missedEvents (runtime setup) execution.application state
+                ⟨message.id, message.payload.call⟩ accepted]
+              exact unmarked
   | application command =>
       obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ moved
       obtain ⟨state, stepped, rfl⟩ := PMF.support_map .. ▸ supported
       change state.config ≠ _ at changed
-      change state.config ∈ _
+      change state.config ∈ _ ∧ event ∉ state.missedEvents
       change state ∈ (environmentStep (runtime setup) execution.application command).support
         at stepped
       cases command with
@@ -1243,7 +1255,8 @@ theorem DecidedPhase.runUntil {horizon : Nat} {scheduler : (application setup le
           (decidedProfile (leaks := leaks) bound owner event action)
           (fun final => event ∈ final.application.config.cut.completed) count execution).support,
         stopped.application.config = start.application.config ∨
-          stopped.application.config ∈ (start.application.config.step event ready action).support
+          (stopped.application.config ∈ (start.application.config.step event ready action).support ∧
+            event ∉ stopped.application.missedEvents)
   := by
   let app := application setup leaks
   intro count
@@ -1274,7 +1287,7 @@ theorem DecidedPhase.runUntil {horizon : Nat} {scheduler : (application setup le
         · have completed := phase.complete_round (remaining := remaining + count) contract timely
             trace submissions answered untouched same ready owned moved unchanged
           have finished : event ∈ middle.application.config.cut.completed := by
-            rw [start.application.config.step_cut event ready action _ completed,
+            rw [start.application.config.step_cut event ready action _ completed.1,
               EventOrder.Cut.mem_complete]
             exact Or.inl rfl
           rw [ReactiveApplication.runUntil_of_stop _ _ _ _ _ middle finished] at rest
@@ -1319,7 +1332,7 @@ theorem runUntilHorizon_completes {horizon : Nat}
 submissions at their owners' turns, under the asynchronous contract with
 `delay + bound < deadline`, if the
 owner decides an effective action at its first turn and every other response
-is silent, every stopped point has completed the event with that action. -/
+is silent, every stopped point has completed the event with that action and no public miss. -/
 theorem decided_completion {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
     {delay bound : (graph setup).EventId → Nat}
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
@@ -1338,7 +1351,8 @@ theorem decided_completion {horizon : Nat} {scheduler : (application setup leaks
     (reached : stopped ∈ ((application setup leaks).runUntilHorizon scheduler
       (decidedProfile (leaks := leaks) bound owner event action)
       (fun final => event ∈ final.application.config.cut.completed) horizon start).support) :
-    stopped.application.config ∈ (start.application.config.step event ready action).support := by
+    stopped.application.config ∈ (start.application.config.step event ready action).support ∧
+      event ∉ stopped.application.missedEvents := by
   let app := application setup leaks
   obtain ⟨startTrace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler
     players _ bounded start boundary.supported

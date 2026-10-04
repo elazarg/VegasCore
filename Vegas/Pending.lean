@@ -242,6 +242,7 @@ import Vegas.Pending.ReactiveCanonicalDecision
 import Vegas.Pending.ReactiveCanonicalMenu
 import Vegas.Pending.ReactiveBindingContinuation
 import Vegas.Pending.ReactiveBindingOmission
+import Vegas.Pending.ReactiveCompletedDecision
 import Vegas.Pending.ReactiveDecisionMiss
 import Vegas.Pending.ReactiveDecisionOrigin
 import Vegas.Pending.ReactiveDecisionWindow

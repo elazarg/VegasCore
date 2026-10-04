@@ -2806,8 +2806,14 @@ its future-profile support from initialization is not a premise. Actual prior
 submission and answered-activation resources supply the generalized decided
 completion kernel. A real earlier event-completion stop supplies the untouched
 next boundary. Mapping the terminal law preserves the initial-parameter/public-
-outcome base-payoff vector before audit deductions. This execution law does not
-identify native beliefs, select the returned assessment's free continuation,
+outcome base-payoff vector before audit deductions. The same continuation
+induction also preserves absence of each owner's public miss from the actual
+boundary. The first-turn phase supplies an actual accepting completion without
+a miss; completed unmarked decisions remain unmarked under every later raw
+operation. The resulting final canonical trace gives zero owner charge under
+authentic partial sampling whenever that owner had no public miss at the
+boundary, even if private opportunity risk persists. This execution law does
+not identify native beliefs, select the returned assessment's free continuation,
 or establish an accepted-late-action incentive comparison.
 [SourceServiceCanonicalSettlement](../Vegas/Game/SourceServiceCanonicalSettlement.lean)
 proves that packets on an actual canonical history with no owned public miss
@@ -2817,7 +2823,8 @@ with the emitted packet, whose content is preserved through real transitions.
 The resulting owner charge is zero under authentic partial sampling. Earlier
 calls may have been outside protected inclusion and private opportunity risk
 may persist. No protected-delivery premise is needed for this settlement law;
-future absence of owned misses and the strategic waiting comparison remain
+the first-turn restart supplies future absence of owned misses separately.
+Arbitrary free continuations and the strategic waiting comparison remain
 separate obligations.
 [SourceServiceCompatibleCollection](../Vegas/Game/SourceServiceCompatibleCollection.lean)
 derives the backend's collection bound for a classified forbidden packet or
@@ -2876,6 +2883,16 @@ rationality at unfinished prescribed sites and selection of suitable waiting
 rates remain open.
 Prescribed uniform trembles and free-agent reference trembles have independent
 vanishing rates. Only the prescribed rate enters the initialized loss bound.
+Its same returned native sequence has a joint binding response law at actual
+compatible full-menu prefixes. A compiler-aligned binding checkpoint supplies
+the typed source commitment kernel; current protection, slot freshness and menu
+coverage are derived from the actual prefix. The source draw and WAIT tag stay
+paired with the entire actual post-response execution, and the uniform branch
+retains the full effective menu. This law is checked in
+[SourceServiceCompatibleBindingResponse](../Vegas/Game/SourceServiceCompatibleBindingResponse.lean)
+and consumed by the original completion producer without new source-posterior
+or rate-selection premises. It does not remove foreign waiting likelihoods or
+control uniform and free excursions in rare conditional fibers.
 
 [SourceServiceAliasEquilibrium](../Vegas/Game/SourceServiceAliasEquilibrium.lean)
 supplies the final normalization stage: an audited SE of the complete

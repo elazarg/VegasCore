@@ -580,6 +580,7 @@ theorem sourceServiceFirstBinding_prefix_probability [Fintype Player]
           site.owned (cast (congrArg EventGraph.EventField.Action site.outputEq.symm) value)
           (by unfold EffectiveAction; rw [nodeView_eq_bind site.outputEq site.code]; trivial)
           stopped supported
+        have native := native.1
         rw [commit_step start.application.config event ready site.outputEq site.code value,
           PMF.mem_support_pure_iff] at native
         rw [native]
