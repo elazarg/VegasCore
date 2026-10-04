@@ -3,6 +3,7 @@
 import Vegas.Pending.SourceSession
 import Vegas.EventGraph.ResolutionProvenance
 import Interaction.ReactiveAuthorization
+import Vegas.Pending.ReactivePolicy
 
 /-! # Frozen resolution submissions and original private recall
 
@@ -10,8 +11,10 @@ Admission evaluates the source resolution from the owner's projected store and
 freezes its effective value. Opening reads the immutable helper candidate, never
 resamples the source policy. The original intention is recovered from the actual
 admission submission identified by its receipt; it is absent from wire packets.
-These local compiler operations do not establish the full policy, observation,
-service or sequential-equilibrium transport.
+The client restores the chronological own-action list before sampling a source
+policy, sends at most once per phase, and opens without another source choice.
+Whole-service observation correspondence and sequential-equilibrium transport
+remain separate obligations.
 -/
 
 noncomputable section
@@ -69,15 +72,22 @@ def frozenResolutionOpening (owner : Player) (event : graph.EventId) (payload : 
       resolutionOpening owner event payload binding accepted (R.valueEquiv payload encoded)
   | .fresh | .unopenable => none
 
-/-- Only an admission for the requested event supplies its original intention.
-Opening material and unrelated submissions cannot replace that recall. -/
-def Submission.resolutionIntent? (submission : Submission graph) (event : graph.EventId) :
-    Option Bool :=
-  match submission with
-  | .gameplay material => match material.call with
-      | .admission selected _ => if selected = event then material.resolutionIntent else none
-      | _ => none
-  | .report _ => none
+/-- Recover an intention only from a canonical admission computed from the
+original owner's view. A raw private claim, absent source value, or already
+fixed helper cannot replace the source action recorded by its opening. -/
+def checkedResolutionIntent? (runtime : Runtime graph)
+    (leaks : MessageNetwork.ObservationRule (Principal Player) (Packet graph))
+    (entry : (application runtime leaks).PlayerEntry) (event : graph.EventId) : Option Bool :=
+  match entry.beforeView.application, entry.action.transmission, nodeView graph event with
+  | .player who _ observation _ helpers, some (.gameplay material),
+      .resolve owner payload binding checks _ _ => do
+      let intention ← material.resolutionIntent
+      if owner = who ∧ material.call = .admission event (owner, event) ∧
+          helpers event = .fresh then
+        let decision ← EventCode.resolveOutput? binding checks intention observation.store
+        if material.material = some (encodeDecision payload decision) then some intention else none
+      else none
+  | _, _, _ => none
 
 /-- Use the existing submission-origin predicate on the owner's actual recall.
 The receipt selects an emitted identifier, rather than an intention guessed
@@ -87,8 +97,7 @@ def recalledResolutionIntent (runtime : Runtime graph)
     (past : List (application runtime leaks).PlayerEntry) (event : graph.EventId)
     (id : MessageId (Principal Player)) : Option Bool := do
   let entry ← past.find? fun entry => entry.submitsId (application runtime leaks) id
-  let submission ← entry.action.transmission
-  submission.resolutionIntent? event
+  checkedResolutionIntent? runtime leaks entry event
 
 /-- Restore only owned resolution actions whose admission has an actual private
 submission origin. Source observations continue to use the original own-action
@@ -111,6 +120,199 @@ def restoreResolutionCompletion (runtime : Runtime graph)
         | none => completion
       else completion
   | .bind .. | .sample .. => completion
+
+/-- Restore the complete own-action list without reconstructing intentions
+from public results or exposing foreign private recall. -/
+def restoreObservation (runtime : Runtime graph)
+    (leaks : MessageNetwork.ObservationRule (Principal Player) (Packet graph))
+    (who : Player) (past : List (application runtime leaks).PlayerEntry)
+    (receipts : PhaseKey graph → Option (MessageId (Principal Player)))
+    (observation : graph.PlayerObservation who) : graph.PlayerObservation who :=
+  { observation with
+    ownActions := observation.ownActions.map
+      (restoreResolutionCompletion runtime leaks who past receipts) }
+
+/-- One source event may require admission and opening, with a distinct
+authored identifier for each. Only actual emitted envelopes count. -/
+def alreadySubmitted (runtime : Runtime graph)
+    (leaks : MessageNetwork.ObservationRule (Principal Player) (Packet graph))
+    (past : List (application runtime leaks).PlayerEntry) (phase : PhaseKey graph) : Bool :=
+  past.any fun entry => entry.emitted.any fun message => match message.payload with
+    | .gameplay packet => packet.call.phase? = some phase
+    | .report _ _ => false
+
+/-- Compile a source choice at binding or admission. The existing fresh-slot
+selector is shared with the graph runtime; resolution evaluates the owner's
+projected source store and records the original Boolean privately. -/
+def sourceDecision (who : Player) (event : graph.EventId) (action : graph.Action event)
+    (publicView : PublicView graph) (observation : graph.PlayerObservation who)
+    (candidates : EventGraphRuntime.CandidateSlot graph → CommitmentCandidate (Raw L)) :
+    Option (GameSubmission graph) :=
+  match nodeView graph event with
+  | .sample .. => none
+  | .bind _ payload outputEq _ =>
+      (EventGraphRuntime.reactiveFreshSlot ⟨who, publicView.source, observation, candidates⟩).map
+        fun serial => {
+          call := .binding event (who, .prepared serial)
+          material := match (cast (congrArg EventField.Action outputEq) action :
+              PublicationResult (L.Val payload)) with
+            | .failure => none
+            | .success value => some ⟨payload, value⟩
+          certificates := [] }
+  | .resolve owner payload binding checks outputEq _ =>
+      if owned : owner = who then
+        some (resolutionAdmission owner event payload binding checks
+          (cast (congrArg EventField.Action outputEq) action) (owned.symm ▸ observation))
+      else none
+
+/-- A ready owner's first response samples its source choice at binding or
+admission. Opening uses only the admitted fixed helper. Deadline checks and
+submission suppression are scoped to the current phase. -/
+def prescribedResponse (runtime : Runtime graph)
+    (leaks : MessageNetwork.ObservationRule (Principal Player) (Packet graph))
+    (who : Player) (policy : graph.BehavioralPolicy who)
+    (past : List (application runtime leaks).PlayerEntry)
+    (publicView : PublicView graph) (observation : graph.PlayerObservation who)
+    (candidates : EventGraphRuntime.CandidateSlot graph → CommitmentCandidate (Raw L))
+    (helpers : graph.EventId → CommitmentCandidate (Raw L)) :
+    PMF (application runtime leaks).Action :=
+  if publicView.status = .running then
+    match publicView.source.ownTurn? who with
+    | none => PMF.pure ⟨none⟩
+    | some event =>
+        if actor : graph.actor? event = some who then
+          let recalled := restoreObservation runtime leaks who past publicView.receipts observation
+          let decideAt (phase : PhaseKey graph) : PMF (application runtime leaks).Action :=
+            if alreadySubmitted runtime leaks past phase || !publicView.timely runtime phase then
+              PMF.pure ⟨none⟩
+            else (graph.normalizePolicy who policy event actor recalled).map fun action =>
+              ⟨(sourceDecision who event action publicView recalled candidates).map
+                Submission.gameplay⟩
+          match nodeView graph event with
+          | .sample .. => PMF.pure ⟨none⟩
+          | .bind .. => decideAt (.source event .binding)
+          | .resolve owner payload binding _ _ _ =>
+              match publicView.admissions event with
+              | none => decideAt (.source event .admission)
+              | some accepted =>
+                  if owner = who then
+                    if alreadySubmitted runtime leaks past (.source event .opening) ||
+                        !publicView.timely runtime (.source event .opening) ||
+                        decide (accepted.handle ≠ (owner, event)) then PMF.pure ⟨none⟩
+                    else PMF.pure ⟨(frozenResolutionOpening owner event payload binding
+                      publicView.source.accepted helpers).map Submission.gameplay⟩
+                  else PMF.pure ⟨none⟩
+        else PMF.pure ⟨none⟩
+  else PMF.pure ⟨none⟩
+
+/-- The native source policy reads only the activated player's actual view
+and private recall. Watcher and mismatched observations cannot drive gameplay. -/
+def prescribedPolicy (runtime : Runtime graph)
+    (leaks : MessageNetwork.ObservationRule (Principal Player) (Packet graph))
+    (who : Player) (policy : graph.BehavioralPolicy who) :
+    (application runtime leaks).Policy := fun past view =>
+  match view.application with
+  | .watcher _ => PMF.pure ⟨none⟩
+  | .player owner publicView observation candidates helpers =>
+      if owned : owner = who then
+        prescribedResponse runtime leaks who policy past publicView (owned ▸ observation)
+          candidates helpers
+      else PMF.pure ⟨none⟩
+
+/-- Whole observation restoration uses precisely the same projected store and
+completion order. Equality of all restored own actions supplies the last field. -/
+theorem restoreObservation_eq (runtime : Runtime graph)
+    (leaks : MessageNetwork.ObservationRule (Principal Player) (Packet graph))
+    (who : Player) (past : List (application runtime leaks).PlayerEntry)
+    (receipts : PhaseKey graph → Option (MessageId (Principal Player)))
+    (observation expected : graph.PlayerObservation who)
+    (order : observation.completionOrder = expected.completionOrder)
+    (store : observation.store = expected.store)
+    (actions : observation.ownActions.map
+      (restoreResolutionCompletion runtime leaks who past receipts) = expected.ownActions) :
+    restoreObservation runtime leaks who past receipts observation = expected :=
+  PlayerObservation.ext graph order store actions
+
+/-- On a genuine activation, the compiler receives the actual private recall
+and owner-local catalogues supplied by the pending runner. -/
+theorem prescribedPolicy_observe (runtime : Runtime graph)
+    (leaks : MessageNetwork.ObservationRule (Principal Player) (Packet graph))
+    (who : Player) (policy : graph.BehavioralPolicy who)
+    (execution : (application runtime leaks).Execution) :
+    prescribedPolicy runtime leaks who policy (execution.recall (.player who))
+        (execution.observe (application runtime leaks) (.player who)) =
+      prescribedResponse runtime leaks who policy (execution.recall (.player who))
+        execution.application.publicView
+        (graph.playerObserve who execution.application.source.config)
+        (fun slot => execution.application.source.candidates.lookup (who, slot))
+        (fun event => execution.application.decisions.lookup (who, event)) := by
+  simp [prescribedPolicy, ReactiveApplication.Execution.observe, application]
+
+/-- Admission samples the source law using the whole restored observation. -/
+theorem prescribedResponse_admission (runtime : Runtime graph)
+    (leaks : MessageNetwork.ObservationRule (Principal Player) (Packet graph))
+    (who : Player) (policy : graph.BehavioralPolicy who)
+    (past : List (application runtime leaks).PlayerEntry)
+    (view : PublicView graph) (observation : graph.PlayerObservation who)
+    (candidates : EventGraphRuntime.CandidateSlot graph → CommitmentCandidate (Raw L))
+    (helpers : graph.EventId → CommitmentCandidate (Raw L))
+    (event : graph.EventId) (actor : graph.actor? event = some who) (payload : L.Ty)
+    (binding : FieldRef graph.layout (.binding who payload))
+    (checks : List (GuardCheck graph.layout payload))
+    (outputEq : graph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .resolve who payload binding checks)
+    (running : view.status = .running) (turn : view.source.ownTurn? who = some event)
+    (missing : view.admissions event = none)
+    (unsent : alreadySubmitted runtime leaks past (.source event .admission) = false)
+    (timely : view.timely runtime (.source event .admission) = true) :
+    prescribedResponse runtime leaks who policy past view observation candidates helpers =
+      (graph.normalizePolicy who policy event actor
+        (restoreObservation runtime leaks who past view.receipts observation)).map fun action =>
+          ⟨(sourceDecision who event action view
+            (restoreObservation runtime leaks who past view.receipts observation)
+            candidates).map Submission.gameplay⟩ := by
+  simp [prescribedResponse, running, turn, actor,
+    EventGraphRuntime.nodeView_eq_resolve outputEq codeEq, missing, unsent, timely]
+
+/-- Opening does not sample a source law, even one whose future decisions
+depend on private recall. Its only possible payload reads the fixed helper. -/
+theorem prescribedResponse_opening (runtime : Runtime graph)
+    (leaks : MessageNetwork.ObservationRule (Principal Player) (Packet graph))
+    (who : Player) (policy : graph.BehavioralPolicy who)
+    (past : List (application runtime leaks).PlayerEntry)
+    (view : PublicView graph) (observation : graph.PlayerObservation who)
+    (candidates : EventGraphRuntime.CandidateSlot graph → CommitmentCandidate (Raw L))
+    (helpers : graph.EventId → CommitmentCandidate (Raw L))
+    (event : graph.EventId) (actor : graph.actor? event = some who) (payload : L.Ty)
+    (binding : FieldRef graph.layout (.binding who payload))
+    (checks : List (GuardCheck graph.layout payload))
+    (outputEq : graph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .resolve who payload binding checks)
+    (entered : Nat) (running : view.status = .running)
+    (turn : view.source.ownTurn? who = some event)
+    (admitted : view.admissions event = some ⟨(who, event), entered⟩)
+    (unsent : alreadySubmitted runtime leaks past (.source event .opening) = false)
+    (timely : view.timely runtime (.source event .opening) = true) :
+    prescribedResponse runtime leaks who policy past view observation candidates helpers =
+      PMF.pure ⟨(frozenResolutionOpening who event payload binding view.source.accepted
+        helpers).map Submission.gameplay⟩ := by
+  simp [prescribedResponse, running, turn, actor,
+    EventGraphRuntime.nodeView_eq_resolve outputEq codeEq, admitted, unsent, timely]
+
+/-- A transmitted gameplay envelope suppresses another submission for that
+phase through the runner's actual private recall, regardless of inclusion. -/
+theorem alreadySubmitted_respond (runtime : Runtime graph)
+    (leaks : MessageNetwork.ObservationRule (Principal Player) (Packet graph))
+    (execution : (application runtime leaks).Execution) (who : Player)
+    (material : GameSubmission graph) (phase : PhaseKey graph)
+    (addressed : material.call.phase? = some phase) :
+    alreadySubmitted runtime leaks
+      ((execution.respond (application runtime leaks) (.player who)
+        ⟨some (.gameplay material)⟩).recall (.player who)) phase = true := by
+  simp [alreadySubmitted, ReactiveApplication.Execution.respond, application, emit, addressed,
+    MessageNetwork.submit]
 
 theorem resolutionAdmission_fresh (state : State graph) (owner : Player)
     (event : graph.EventId) (payload : L.Ty)
@@ -183,22 +385,44 @@ theorem recalledResolutionIntent_respond (runtime : Runtime graph)
     (event : graph.EventId) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
     (checks : List (GuardCheck graph.layout payload)) (intention : Bool)
-    (observation : graph.PlayerObservation owner)
+    (outputEq : graph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .resolve owner payload binding checks)
+    (decision : PublicationResult (L.Val payload))
+    (resolved : EventCode.resolveOutput? binding checks intention
+      execution.application.source.config.store = some decision)
+    (helperFresh : execution.application.decisions.lookup (owner, event) = .fresh)
     (fresh : execution.submissionOrigin? (application runtime leaks)
       (.player owner, execution.network.nextSerial (.player owner)) = none) :
     recalledResolutionIntent runtime leaks
       ((execution.respond (application runtime leaks) (.player owner) ⟨some (.gameplay
-        (resolutionAdmission owner event payload binding checks intention observation))⟩).recall
+        (resolutionAdmission owner event payload binding checks intention
+          (graph.playerObserve owner execution.application.source.config)))⟩).recall
         (.player owner)) event
       (.player owner, execution.network.nextSerial (.player owner)) = some intention := by
+  let observation := graph.playerObserve owner execution.application.source.config
+  have localResolved : EventCode.resolveOutput? binding checks intention observation.store =
+      some decision := by
+    simpa only [observation, playerObserve, EventCode.resolveOutput?_playerStore] using resolved
   let material := resolutionAdmission owner event payload binding checks intention observation
   change ((execution.respond (application runtime leaks) (.player owner)
     ⟨some (.gameplay material)⟩).submissionOrigin? (application runtime leaks)
       (.player owner, execution.network.nextSerial (.player owner))).bind
-        (fun entry => entry.action.transmission.bind (fun submission =>
-          submission.resolutionIntent? event)) = _
+        (fun entry => checkedResolutionIntent? runtime leaks entry event) = _
   rw [(application runtime leaks).submissionOrigin_submit execution (.player owner) _ fresh]
-  simp [Submission.resolutionIntent?, material, resolutionAdmission]
+  suffices normalized : ((EventCode.resolveOutput? binding checks intention
+      (graph.playerObserve owner execution.application.source.config).store).bind fun result =>
+      if encodeDecision payload decision = encodeDecision payload result then some intention
+        else none) = some intention by
+    simpa [checkedResolutionIntent?, material, resolutionAdmission,
+      ReactiveApplication.Execution.observe, application,
+      EventGraphRuntime.nodeView_eq_resolve outputEq codeEq, helperFresh, localResolved]
+      using normalized
+  change ((EventCode.resolveOutput? binding checks intention observation.store).bind fun result =>
+    if encodeDecision payload decision = encodeDecision payload result then some intention
+      else none) = some intention
+  rw [localResolved]
+  simp
 
 theorem restoreResolutionCompletion_original (runtime : Runtime graph)
     (leaks : MessageNetwork.ObservationRule (Principal Player) (Packet graph))

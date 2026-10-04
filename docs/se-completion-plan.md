@@ -118,14 +118,19 @@ passive leaks, rejected calls and scheduler commands. Binding and resolution
 acceptance follow legal source transitions; cancellation retains a partial prefix
 with valid readiness timestamps. The compiler's private-recall simulation,
 phase service contract and conditional source/traffic law remain unproved.
-[SourceSessionPolicy](../Vegas/Pending/SourceSessionPolicy.lean) supplies local
-resolution compilation: owner-local prevalidation freezes the effective result,
-the mandatory opening reads that fixed helper, and the private intention is
-recovered through the existing submission-origin lookup. Its acceptance theorem
+[SourceSessionPolicy](../Vegas/Pending/SourceSessionPolicy.lean) supplies the native
+source policy selector. It restores the whole own-action list before invoking the
+rank-normalized graph policy, uses the existing binding fresh-slot selector, and
+checks public deadlines with submission suppression scoped to each phase.
+Owner-local prevalidation freezes the effective resolution result; the mandatory
+opening reads that helper without another source draw. Private-intention recovery
+uses the existing submission-origin lookup and checks the admission against its
+actual owner view and fresh helper, rather than trusting arbitrary metadata.
+Its local acceptance theorem
 uses explicit phase authorization, timing, admitted-handle and fixed-value
 premises. The native regression covers an original TRUE with a failed binding:
 helper FALSE opens successfully while actual private recall restores TRUE.
-The full policy selector and its source-information relation remain open.
+The whole-service source-information relation remains open.
 Its two-charge candidate keeps the existing bounded
 deadline audit and separates a one-time verifiable-misconduct fine, so the
 silence comparison can include previously pending lawful packets. Pair
@@ -165,10 +170,12 @@ for the native application:
    and valid activation metadata at all initialized histories. Reuse these
    adapters instead of repeating their raw-history induction. Source-step
    correctness alone does not establish the compiler's information or strategy
-   relation. `SourceSessionPolicy` supplies resolution submission, frozen opening
-   and actual private-intention decoding. Prove that the full policy invokes
-   these operations at the right phases, restores exactly the source own-action
-   history, and supplies their acceptance premises through protected service.
+   relation. `SourceSession.prescribedPolicy` selects the source decision
+   or fixed opening from the genuine activation view, restores the chronological
+   own-action list, and checks each phase separately. Its branch theorems identify
+   the sampled admission law and deterministic opening. Prove exact restoration
+   against the sampled source history, phase uniqueness at all prescribed
+   histories, and protected-service discharge of the acceptance premises.
 4. Connect actual watcher observation and delivery to the static misconduct
    audit. Reuse `EvidenceReportService.sample_coverage` for a genuine
    conditional observation/delivery law and the terminal-audit settlement

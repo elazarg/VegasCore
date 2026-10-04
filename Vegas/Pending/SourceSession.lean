@@ -79,6 +79,34 @@ structure State (graph : Vegas.EventGraph Player L) where
   sealedAt : Nat
   report : Option (List (MessageId (Principal Player)))
 
+structure PublicView (graph : Vegas.EventGraph Player L) where
+  source : EventGraphRuntime.PublicView graph
+  admissions : graph.EventId → Option (Admission graph)
+  receipts : PhaseKey graph → Option (MessageId (Principal Player))
+  status : Status graph
+  sealedAt : Nat
+  report : Option (List (MessageId (Principal Player)))
+
+def State.publicView (state : State graph) : PublicView graph :=
+  ⟨state.source.publicView, state.admissions, state.receipts,
+    state.status, state.sealedAt, state.report⟩
+
+namespace PublicView
+
+/-- Phase clocks are public metadata; client timing needs no private state. -/
+def enteredAt? (view : PublicView graph) : PhaseKey graph → Option Nat
+  | .source event .opening => (view.admissions event).map Admission.enteredAt
+  | .source event .binding | .source event .admission => view.source.activatedAt event
+  | .reporting => if view.status ≠ .running ∧ view.report.isNone then
+      some view.sealedAt else none
+
+def timely (runtime : Runtime graph) (view : PublicView graph) (phase : PhaseKey graph) : Bool :=
+  match view.enteredAt? phase with
+  | none => false
+  | some entered => decide (view.source.clock - entered < runtime.deadline phase)
+
+end PublicView
+
 structure DecisionOpening (graph : Vegas.EventGraph Player L) where
   handle : DecisionHandle graph
   raw : Raw L
@@ -175,12 +203,6 @@ def activePhase? (state : State graph) (event : graph.EventId) : Option PhaseKin
     | .sample .. => none
   else none
 
-def enteredAt? (state : State graph) : PhaseKey graph → Option Nat
-  | .source event .opening => (state.admissions event).map Admission.enteredAt
-  | .source event .binding | .source event .admission => state.source.activatedAt event
-  | .reporting => if state.status ≠ .running ∧ state.report.isNone then
-      some state.sealedAt else none
-
 def tokenFor (state : State graph) : PhaseKey graph → Option (PhaseKey graph)
   | .source event kind =>
       if state.activePhase? event = some kind then some (.source event kind) else none
@@ -188,9 +210,7 @@ def tokenFor (state : State graph) : PhaseKey graph → Option (PhaseKey graph)
       some .reporting else none
 
 def timely (runtime : Runtime graph) (state : State graph) (phase : PhaseKey graph) : Bool :=
-  match state.enteredAt? phase with
-  | none => false
-  | some entered => decide (state.source.clock - entered < runtime.deadline phase)
+  state.publicView.timely runtime phase
 
 def record (state : State graph) (phase : PhaseKey graph) (id : MessageId (Principal Player)) :
     State graph :=
@@ -326,9 +346,9 @@ def acceptDecision (state : State graph) (event : graph.EventId) (handle : Decis
 
 @[simp] theorem acceptDecision_enteredAt (state : State graph) (event : graph.EventId)
     (handle : DecisionHandle graph) (id : MessageId (Principal Player)) :
-    (acceptDecision state event handle id).enteredAt? (.source event .opening) =
+    (acceptDecision state event handle id).publicView.enteredAt? (.source event .opening) =
       some state.source.clock := by
-  simp [acceptDecision, State.enteredAt?, Function.update]
+  simp [acceptDecision, State.publicView, PublicView.enteredAt?, Function.update]
 
 /-- Private original intentions cannot change either certificate issuance or
 the public packet. The reactive runner still records the full private action. -/
@@ -549,18 +569,6 @@ def environment (runtime : Runtime graph) (state : State graph) :
         | .source _ _ => state.cancel phase
         | .reporting => { state with report := some [] }
       else state
-
-structure PublicView (graph : Vegas.EventGraph Player L) where
-  source : EventGraphRuntime.PublicView graph
-  admissions : graph.EventId → Option (Admission graph)
-  receipts : PhaseKey graph → Option (MessageId (Principal Player))
-  status : Status graph
-  sealedAt : Nat
-  report : Option (List (MessageId (Principal Player)))
-
-def State.publicView (state : State graph) : PublicView graph :=
-  ⟨state.source.publicView, state.admissions, state.receipts,
-    state.status, state.sealedAt, state.report⟩
 
 inductive LocalView (graph : Vegas.EventGraph Player L) where
   | player (who : Player) (publicView : PublicView graph) (source : graph.PlayerObservation who)

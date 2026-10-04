@@ -2772,14 +2772,20 @@ simulation remain proof obligations.
 
 [SourceSessionPolicy](../Vegas/Pending/SourceSessionPolicy.lean) computes admission
 material using the existing owner-local source evaluator, retaining the original
-Boolean only in private submission recall. The later opening reads the fixed
+Boolean only in private submission recall. The native `Vegas.SourceSession.prescribedPolicy` selects
+binding, admission or opening from the actual owner activation view, restores the
+whole own-action list before the rank-normalized source draw, and checks public
+deadlines with separate submission tracking for each phase. The later opening reads the fixed
 helper candidate and materializes exactly the required authentic certificates.
 `Vegas.SourceSession.frozenResolutionOpening_accepted` proves acceptance and the
 exact source completion under explicit authorization, timing, admitted-handle,
 source-result and fixed-helper premises. The private recall decoder reuses actual
 submission origins keyed by the admission receipt; it does not infer the original
-Boolean from public FALSE. The full policy selector, restoration of the entire
-source own-action history and service discharge of these premises remain open.
+Boolean from public FALSE. It checks the claimed intention against the actual
+owner view and fresh helper at submission, excluding mismatched material and
+already exposed helpers. Exact restoration against the sampled source history,
+phase uniqueness at prescribed histories and protected-service discharge of the
+acceptance premises remain open.
 
 The service contract must address phase keys, with packet uniqueness scoped to
 one phase. Admission and opening require different authenticated envelopes for

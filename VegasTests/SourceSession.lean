@@ -28,6 +28,19 @@ private abbrev sample0 := Vegas.LateResolutionService.sample0
 private abbrev sample1 := Vegas.LateResolutionService.sample1
 private abbrev resolution := Vegas.LateResolutionService.resolution
 
+private def binding : EventGraph.FieldRef graph.layout (.binding owner .bool) :=
+  ⟨.inl ⟨0, by decide⟩, rfl⟩
+
+private theorem resolutionOutput : graph.outputLayout resolution = .publication .bool := rfl
+
+private theorem resolutionCode :
+    cast (congrArg (EventGraph.EventCode (L := simpleExpr) graph.layout) resolutionOutput)
+      (graph.nodes resolution) = EventGraph.EventCode.resolve (L := simpleExpr)
+        (layout := graph.layout) owner BaseTy.bool binding [] := rfl
+
+private def intendedAction : graph.Action resolution :=
+  cast (congrArg EventGraph.EventField.Action resolutionOutput.symm) true
+
 private def runtime : Vegas.SourceSession.Runtime graph where
   deadline _ := 3
 
@@ -70,6 +83,30 @@ private def readyState (initial : PublicationResult Bool) : Vegas.SourceSession.
 private def start (initial : PublicationResult Bool) : app.Execution :=
   ReactiveApplication.Execution.initial app (readyState initial)
 
+private theorem resolutionReady : (source2 .failure).config.cut.Ready resolution := by
+  change resolution ∉ ({sample1, sample0} : Finset graph.EventId) ∧
+    ∀ predecessor ∈ graph.order.predecessors resolution,
+      predecessor ∈ ({sample1, sample0} : Finset graph.EventId)
+  decide
+
+private def intendedCompleted : graph.Config :=
+  (source2 .failure).config.complete resolution resolutionReady intendedAction
+    PublicationResult.failure
+
+/-- The reference retains the genuine source TRUE action and its failed
+binding result, rather than inventing an action from the public output. -/
+example : intendedCompleted ∈
+    ((source2 .failure).config.step resolution resolutionReady intendedAction).support := by
+  unfold intendedAction
+  rw [EventGraph.Config.step_eq_map_of_code (L := simpleExpr) (graph := graph)
+    (source2 .failure).config resolution resolutionReady resolutionOutput
+    (EventGraph.EventCode.resolve (L := simpleExpr) (layout := graph.layout)
+      owner BaseTy.bool binding []) resolutionCode
+    true
+    (PMF.pure PublicationResult.failure)]
+  · simp [intendedCompleted, intendedAction]
+  · rfl
+
 private abbrev admissionPhase : Vegas.SourceSession.PhaseKey graph :=
   .source resolution .admission
 
@@ -107,9 +144,6 @@ private def admitted (initial result : PublicationResult Bool) : app.Execution :
 private def opened (initial result : PublicationResult Bool) : app.Execution :=
   ((admitted initial result).respond app player (opening result)).includePending app (player, 1)
 
-private def binding : EventGraph.FieldRef graph.layout (.binding owner .bool) :=
-  ⟨.inl ⟨0, by decide⟩, rfl⟩
-
 private def compiledAdmission (initial : PublicationResult Bool) (intention : Bool) : app.Action :=
   ⟨some (.gameplay (Vegas.SourceSession.resolutionAdmission owner resolution .bool binding []
     intention (graph.playerObserve owner (readyState initial).source.config)))⟩
@@ -128,6 +162,116 @@ private def compiledOpening (initial : PublicationResult Bool) (intention : Bool
 private def compiledOpened (initial : PublicationResult Bool) (intention : Bool) : app.Execution :=
   ((compiledAdmitted initial intention).respond app player
     (compiledOpening initial intention)).includePending app (player, 1)
+
+private def wrongIntentAdmitted : app.Execution :=
+  ((start (.success true)).respond app player
+    (admission .failure (some true))).includePending app (player, 0)
+
+private def reusedHelperAdmitted : app.Execution :=
+  (((start (.success true)).respond app player (admission .failure)).respond app player
+    (admission (.success true) (some true))).includePending app (player, 1)
+
+/-- A raw FALSE with a private TRUE claim cannot manufacture an original
+source TRUE when that original decision would have succeeded. -/
+example : Vegas.SourceSession.recalledResolutionIntent runtime leaks
+    (wrongIntentAdmitted.recall player) resolution (player, 0) = none := by
+  rfl
+
+example : Vegas.SourceSession.restoreResolutionCompletion runtime leaks owner
+    (wrongIntentAdmitted.recall player) wrongIntentAdmitted.application.receipts
+    ⟨resolution, false⟩ = ⟨resolution, false⟩ := by
+  rfl
+
+/-- A second admission cannot replace an exposed helper. The decoder refuses
+its claimed TRUE even when its new material matches the local source value. -/
+example : reusedHelperAdmitted.application.decisions.lookup decisionHandle =
+    .openable (decisionRaw .failure) := by
+  rfl
+
+example : Vegas.SourceSession.recalledResolutionIntent runtime leaks
+    (reusedHelperAdmitted.recall player) resolution (player, 1) = none := by
+  rfl
+
+private def sourcePolicy (intention : Bool) : graph.BehavioralPolicy owner :=
+  fun event _ _ => match EventGraphRuntime.nodeView graph event with
+  | .bind _ _ outputEq _ =>
+      PMF.pure (cast (congrArg EventGraph.EventField.Action outputEq.symm)
+        PublicationResult.failure)
+  | .resolve _ _ _ _ outputEq _ =>
+      PMF.pure (cast (congrArg EventGraph.EventField.Action outputEq.symm) intention)
+  | .sample _ _ outputEq _ =>
+      PMF.pure (cast (congrArg EventGraph.EventField.Action outputEq.symm) PUnit.unit)
+
+private def nativePolicy (intention : Bool) : app.Policy :=
+  Vegas.SourceSession.prescribedPolicy runtime leaks owner (sourcePolicy intention)
+
+private theorem readyTurn (initial : PublicationResult Bool) :
+    (start initial).application.publicView.source.ownTurn? owner = some resolution := by
+  apply EventGraphRuntime.PublicView.ownTurn?_of_ownTurn
+  change (start .failure).application.publicView.source.OwnTurn owner resolution
+  unfold EventGraphRuntime.PublicView.OwnTurn
+  decide
+
+/-- The actual policy selects admission from the source choice, using only
+the genuine activation view and private recall. -/
+example (initial : PublicationResult Bool) (intention : Bool) :
+    nativePolicy intention ((start initial).recall player)
+        ((start initial).observe app player) =
+      PMF.pure (compiledAdmission initial intention) := by
+  have running : (start initial).application.publicView.status = .running := rfl
+  have actor : graph.actor? resolution = some owner := rfl
+  have missing : (start initial).application.publicView.admissions resolution = none := rfl
+  have unsent : Vegas.SourceSession.alreadySubmitted runtime leaks
+      ((start initial).recall player) admissionPhase = false := rfl
+  have timely : (start initial).application.publicView.timely runtime admissionPhase = true := rfl
+  rw [nativePolicy, Vegas.SourceSession.prescribedPolicy_observe]
+  rw [Vegas.SourceSession.prescribedResponse_admission runtime leaks owner (sourcePolicy intention)
+    ((start initial).recall player) (start initial).application.publicView
+    (graph.playerObserve owner (start initial).application.source.config)
+    (fun slot => (start initial).application.source.candidates.lookup (owner, slot))
+    (fun event => (start initial).application.decisions.lookup (owner, event))
+    resolution actor .bool binding [] rfl rfl running (readyTurn initial) missing unsent timely]
+  simp only [EventGraph.normalizePolicy, sourcePolicy,
+    EventGraphRuntime.nodeView_eq_resolve (graph := graph) (event := resolution)
+      (binding := binding) rfl rfl, PMF.pure_map]
+  rfl
+
+/-- An actual pending admission suppresses another admission before inclusion,
+but it does not mark the separate opening phase as submitted. -/
+example : Vegas.SourceSession.alreadySubmitted runtime leaks
+    (((start .failure).respond app player (compiledAdmission .failure true)).recall player)
+    admissionPhase = true := by
+  rfl
+
+example : Vegas.SourceSession.alreadySubmitted runtime leaks
+    (((start .failure).respond app player (compiledAdmission .failure true)).recall player)
+    openingPhase = false := by
+  rfl
+
+private theorem admittedTurn (initial : PublicationResult Bool) (intention : Bool) :
+    (compiledAdmitted initial intention).application.publicView.source.ownTurn? owner =
+      some resolution := by
+  apply EventGraphRuntime.PublicView.ownTurn?_of_ownTurn
+  change (compiledAdmitted .failure true).application.publicView.source.OwnTurn owner resolution
+  unfold EventGraphRuntime.PublicView.OwnTurn
+  decide
+
+/-- Opening continues the admitted TRUE even if a different source policy
+would now choose FALSE. The opening phase remains independently eligible. -/
+example :
+    nativePolicy false ((compiledAdmitted (.success true) true).recall player)
+        ((compiledAdmitted (.success true) true).observe app player) =
+      PMF.pure (compiledOpening (.success true) true) := by
+  rw [nativePolicy, Vegas.SourceSession.prescribedPolicy_observe]
+  exact Vegas.SourceSession.prescribedResponse_opening runtime leaks owner (sourcePolicy false)
+    ((compiledAdmitted (.success true) true).recall player)
+    (compiledAdmitted (.success true) true).application.publicView
+    (graph.playerObserve owner (compiledAdmitted (.success true) true).application.source.config)
+    (fun slot => (compiledAdmitted (.success true) true).application.source.candidates.lookup
+      (owner, slot))
+    (fun event => (compiledAdmitted (.success true) true).application.decisions.lookup
+      (owner, event))
+    resolution rfl .bool binding [] rfl rfl 0 rfl (admittedTurn _ _) rfl rfl rfl
 
 /-- The production constructors normalize a failed original TRUE to helper
 FALSE and accept its opening through the actual pending-message runner. -/
@@ -153,6 +297,21 @@ example :
       ((compiledOpened .failure true).recall player)
       (compiledOpened .failure true).application.receipts ⟨resolution, false⟩) =
         ⟨resolution, true⟩ := by
+  rfl
+
+example : (Vegas.SourceSession.restoreObservation runtime leaks owner
+    ((compiledOpened .failure true).recall player)
+    (compiledOpened .failure true).application.receipts
+    (graph.playerObserve owner
+      (compiledOpened .failure true).application.source.config)).ownActions =
+      [⟨resolution, true⟩] := by
+  rfl
+
+example : Vegas.SourceSession.restoreObservation runtime leaks owner
+    ((compiledOpened .failure true).recall player)
+    (compiledOpened .failure true).application.receipts
+    (graph.playerObserve owner (compiledOpened .failure true).application.source.config) =
+      graph.playerObserve owner intendedCompleted := by
   rfl
 
 example : (compiledOpened (.success true) true).application.source.config.outputs resolution =
@@ -266,7 +425,7 @@ private def lateAdmitted : app.Execution :=
   (lateStart.respond app player (admission .failure)).includePending app (player, 0)
 
 /-- Admission at the last admissible clock starts a new full opening budget. -/
-example : lateAdmitted.application.enteredAt? openingPhase = some 2 := by
+example : lateAdmitted.application.publicView.enteredAt? openingPhase = some 2 := by
   rfl
 
 example :
