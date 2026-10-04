@@ -2222,9 +2222,11 @@ Actual emitted-token provenance and the sequential ready order supply this
 conclusion without a clear-risk, deadline or original risk-support premise.
 One original policy draw gives the exact original invocation and retained
 implementation resume marginals. The silent branch preserves the same repair
-frame and unchanged shadow; the other branch identifies an actual classified
-response. This one-step law neither completes the pending memory nor proves
-the remaining command closure or whole-continuation payoff comparison.
+frame and unchanged shadow, with both actual silent response transitions;
+the other branch identifies an actual classified response. The actual owner,
+foreign or inactive resumption preserves the recorded anchor's silent recall
+tail on its good branch. These one-step laws neither complete the pending
+memory nor prove the whole-continuation payoff comparison.
 [ReactiveBindingPendingCommands](../Vegas/Pending/ReactiveBindingPendingCommands.lean)
 tracks one uncompleted override with `BindingShadow.CompletedExcept`, using the
 same frame and shadow. The actual fresh unusable repair seeds the exception.
@@ -2234,7 +2236,21 @@ recovers `CompletedAt`.
 [SourceServiceUnclassifiedPendingCommands](../Vegas/Game/SourceServiceUnclassifiedPendingCommands.lean)
 derives the exception from the same retained typed-default selection and
 discharges sole readiness from the source graph's actual order. Packet
-inclusion, invocation closure and whole-policy payoff comparison remain open.
+inclusion uses the actual packet provenance and handler checks below; finite
+pending-segment composition and whole-policy payoff comparison remain open.
+[SourceServicePendingPacketOrigin](../Vegas/Game/SourceServicePendingPacketOrigin.lean)
+uses the actual owner recall split, initial unrecorded event and later silent
+responses to identify every owner packet naming the pending event with the
+entire original anchored envelope and identifier. The source ready order and
+actual ownership checks reject every different identifier in both executions.
+This derives packet uniqueness from provenance, without assuming that the
+anchor is the network's sole relevant packet.
+[ReactiveBindingPendingInclusion](../Vegas/Pending/ReactiveBindingPendingInclusion.lean)
+splits the anchored packet's actual public inclusion checks. Rejection preserves
+the pending frame; acceptance supplies actual completion and restores completed
+memory. Both environment-step marginals and the exceptional memory invariant
+are preserved. No timely acceptance or completion-before-inclusion premise is
+added, and this local law supplies no terminal utility comparison.
 
 [SourceServiceSiteKind](../Vegas/Game/SourceServiceSiteKind.lean) derives the
 actual local input and either a publicly completed cut or a ready event with
@@ -2793,6 +2809,16 @@ next boundary. Mapping the terminal law preserves the initial-parameter/public-
 outcome base-payoff vector before audit deductions. This execution law does not
 identify native beliefs, select the returned assessment's free continuation,
 or establish an accepted-late-action incentive comparison.
+[SourceServiceCanonicalSettlement](../Vegas/Game/SourceServiceCanonicalSettlement.lean)
+proves that packets on an actual canonical history with no owned public miss
+are permitted by its final record. Completed owned unmarked decisions supply
+an actual accepting receipt; canonical identifier uniqueness identifies it
+with the emitted packet, whose content is preserved through real transitions.
+The resulting owner charge is zero under authentic partial sampling. Earlier
+calls may have been outside protected inclusion and private opportunity risk
+may persist. No protected-delivery premise is needed for this settlement law;
+future absence of owned misses and the strategic waiting comparison remain
+separate obligations.
 [SourceServiceCompatibleCollection](../Vegas/Game/SourceServiceCompatibleCollection.lean)
 derives the backend's collection bound for a classified forbidden packet or
 repeated submission at compatible information in any response menu. The

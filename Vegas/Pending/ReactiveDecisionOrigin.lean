@@ -2,12 +2,14 @@
 
 import Vegas.Pending.ReactiveDecisionMiss
 import Vegas.Pending.EventOpponentFrame
+import Interaction.ReactiveReceipts
 
 /-! # Completed unmarked decisions have an actual owner packet
 
 On initialized raw histories, a completed strategic event either has a public
-miss marker or an authenticated packet in its owner's recall. Samples cannot
-complete strategic events, and expiry creates the marker. Accepted inclusion
+miss marker or an authenticated packet in its owner's recall with a TRUE
+accepting receipt. Samples cannot complete strategic events, and expiry creates
+the marker. Accepted inclusion
 uses actual network provenance. Earlier silent turns are therefore preserved
 without manufacturing a source decision or assuming an earlier policy.
 -/
@@ -28,7 +30,8 @@ def CompletedDecisionRecall (execution : (runtime.reactiveApplication leaks).Exe
     event ∈ execution.application.config.cut.completed →
       event ∉ execution.application.missedEvents →
         ∃ message ∈ (runtime.reactiveApplication leaks).outputs (execution.recall who),
-          message.sender = who ∧ message.payload.call.event? graph = some event
+          message.sender = who ∧ message.payload.call.event? graph = some event ∧
+            (message.id, true) ∈ execution.receipts
 
 theorem completedDecisionRecall_respond
     (execution : (runtime.reactiveApplication leaks).Execution) (actor : Player)
@@ -43,12 +46,14 @@ theorem completedDecisionRecall_respond
     (execution.respond app actor response).application.missedEvents =
       execution.application.missedEvents at marked
   intro event who owned completed clear
-  obtain ⟨message, output, authored, named⟩ := valid event who owned (same.1 ▸ completed)
+  obtain ⟨message, output, authored, named, receipt⟩ := valid event who owned (same.1 ▸ completed)
     (marked ▸ clear)
   obtain ⟨entry, member, emitted⟩ := List.mem_filterMap.mp output
   exact ⟨message, List.mem_filterMap.mpr ⟨entry,
     (runtime.reactiveApplication leaks).respond_recall_mono execution actor who response member,
-      emitted⟩, authored, named⟩
+      emitted⟩, authored, named, by
+        rw [ReactiveApplication.respond_receipts]
+        exact receipt⟩
 
 private theorem completedDecisionRecall_handle
     (execution : (runtime.reactiveApplication leaks).Execution) (next : State graph)
@@ -57,12 +62,17 @@ private theorem completedDecisionRecall_handle
     (issued : execution.Issued (runtime.reactiveApplication leaks) message)
     (handled : handle runtime execution.application
       ⟨message.id, message.payload.call⟩ = some next) :
-    runtime.CompletedDecisionRecall leaks { execution with application := next } := by
+    runtime.CompletedDecisionRecall leaks {
+      execution with
+      application := next
+      receipts := execution.receipts ++ [(message.id, true)] } := by
   intro event who owned completed clear
   have markerEq := handle_missedEvents runtime execution.application next
     ⟨message.id, message.payload.call⟩ handled
   by_cases prior : event ∈ execution.application.config.cut.completed
-  · exact valid event who owned prior (markerEq ▸ clear)
+  · obtain ⟨old, output, authored, named, receipt⟩ :=
+      valid event who owned prior (markerEq ▸ clear)
+    exact ⟨old, output, authored, named, List.mem_append_left _ receipt⟩
   · obtain ⟨addressed, named, ready, action, stepped⟩ := handle_config_mem_step runtime
       execution.application next ⟨message.id, message.payload.call⟩ handled
     rw [execution.application.config.step_cut addressed ready action next.config stepped,
@@ -76,7 +86,8 @@ private theorem completedDecisionRecall_handle
     have sender : message.sender = who := Option.some.inj (actor.symm.trans owned)
     obtain ⟨entry, member, _, _, emitted, _⟩ := issued
     rw [sender] at member
-    exact ⟨message, List.mem_filterMap.mpr ⟨entry, member, emitted⟩, sender, named⟩
+    exact ⟨message, List.mem_filterMap.mpr ⟨entry, member, emitted⟩, sender, named,
+      List.mem_append_right _ (List.mem_singleton_self _)⟩
 
 private theorem completedDecisionRecall_application
     (execution : (runtime.reactiveApplication leaks).Execution) (next : State graph)
@@ -162,13 +173,25 @@ theorem completedDecisionRecall_environment
       cases found : execution.network.lookup id with
       | none => exact valid
       | some message =>
+          have identified : message.id = id := by
+            have selected := (List.find?_eq_some_iff_append.mp found).1
+            simpa only [decide_eq_true_eq] using selected
           change runtime.CompletedDecisionRecall leaks { execution with
             application := ((runtime.reactiveApplication leaks).handle execution.application
-              message).getD execution.application }
+              message).getD execution.application
+            receipts := execution.receipts ++ [(id,
+              ((runtime.reactiveApplication leaks).handle execution.application message).isSome)] }
           cases accepted : (runtime.reactiveApplication leaks).handle execution.application
               message with
-          | none => exact valid
+          | none =>
+              simp only [Option.getD_none]
+              intro event who owned completed clear
+              obtain ⟨old, output, authored, named, receipt⟩ :=
+                valid event who owned completed clear
+              exact ⟨old, output, authored, named, List.mem_append_left _ receipt⟩
           | some state =>
+              simp only [Option.getD_some, Option.isSome_some]
+              rw [← identified]
               exact completedDecisionRecall_handle runtime leaks execution state message valid
                 (origins.lookup id message found) (reactiveHandle_call accepted)
   | application command =>
@@ -177,7 +200,8 @@ theorem completedDecisionRecall_environment
       exact completedDecisionRecall_application runtime leaks execution state command valid changed
 
 /-- Arbitrary player policies and authentic partial observation preserve the
-completed-unmarked owner packet origin on every initialized raw history. -/
+completed-unmarked owner packet and accepting receipt on every initialized raw
+history. -/
 theorem completedDecisionRecall_history (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler) :
     ∀ {state} (_trace : ((runtime.reactiveApplication leaks).protocol

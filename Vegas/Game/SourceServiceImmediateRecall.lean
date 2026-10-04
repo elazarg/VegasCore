@@ -45,7 +45,8 @@ theorem completed_owned_decision_recorded {horizon : Nat}
   rw [initialLaw_eq_inputs] at initialized
   have origins := (runtime setup).completedDecisionRecall_history leaks
     (setup.initialLaw.map setup.eventInputs) horizon scheduler initialized
-  obtain ⟨message, output, sender, addressed⟩ := origins event who owned completed unmarked
+  obtain ⟨message, output, sender, addressed, _receipt⟩ :=
+    origins event who owned completed unmarked
   rw [← facts.inputs who] at output
   obtain ⟨entry, member, material, transmitted, emitted, state, known, packet⟩ :=
     facts.provenance.inputs message (List.mem_filter.mp output).1

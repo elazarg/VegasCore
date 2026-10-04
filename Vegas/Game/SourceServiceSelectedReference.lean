@@ -255,7 +255,7 @@ theorem sourceService_selected_reference_no_input
     rw [initialLaw_eq_inputs] at inputTrace
     have origin := completedDecisionRecall_history (runtime setup) leaks
       (setup.initialLaw.map setup.eventInputs) horizon scheduler inputTrace
-    obtain ⟨message, output, authored, named⟩ := origin event owner owned completed clear
+    obtain ⟨message, output, authored, named, _receipt⟩ := origin event owner owned completed clear
     rw [← facts.inputs owner] at output
     exact noPacket.inputs message (List.mem_filter.mp output).1 authored named
   exact ⟨completed, marked, resources.2.2, noPacket⟩
