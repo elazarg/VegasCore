@@ -103,9 +103,13 @@ import Vegas.Game.SourceServicePendingCommitmentLedger
 import Vegas.Game.SourceServicePendingSegment
 import Vegas.Game.SourceServiceUnusablePendingSegment
 import Vegas.Game.SourceServiceRepeatedRepair
+import Vegas.Game.SourceServiceRepeatedSettlement
 import Vegas.Game.SourceServiceWithholdingGuessBound
 import Vegas.Game.SourceServiceWithholdingCommittedBound
 import Vegas.Game.AsyncServiceWithholdingBayesBound
+import Vegas.Game.SourceServiceCommittedImmediateComparator
+import Vegas.Game.SourceServiceImmediateTrueComparator
+import Vegas.Game.AsyncServiceTrueGuessBayes
 import Vegas.Game.SourceServiceCompatiblePinValue
 import Vegas.Game.AsyncServiceFirstTurnBeliefResources
 import Vegas.Game.SourceServiceFirstBindingTraffic

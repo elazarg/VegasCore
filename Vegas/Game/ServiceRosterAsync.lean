@@ -8,6 +8,7 @@ import Vegas.Pending.EventSequentialTiming
 import Interaction.ReactiveOwnerSelection
 import Interaction.ReactiveRecallInvariant
 import Interaction.ReactiveReceipts
+import Interaction.MessageNetworkIdentity
 
 /-! # The fixed roster calendar satisfies the asynchronous contract
 
@@ -409,6 +410,86 @@ theorem GraphStep.prefix (setup : Setup (Player := Player) (L := L))
     have rank := (ready_iff_rank setup before.config event.val ordered completed).mp ready
     rw [before.config.step_cut completed ready action after.config member]
     exact ordered.complete_at completed ready rank
+
+/-- Selecting a packet for a completed event preserves the whole application state. -/
+theorem reactiveLatest_completed (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (execution next : (application setup leaks).Execution) (event : (graph setup).EventId)
+    (owner : Player) (unique : execution.network.UniqueIds)
+    (completed : event ∈ execution.application.config.cut.completed)
+    (moved : next ∈ (execution.environmentStep (application setup leaks)
+      ((runtime setup).reactiveLatest leaks event owner
+        (execution.observeEnvironment (application setup leaks)))).support) :
+    next.application = execution.application := by
+  unfold reactiveLatest at moved
+  split at moved
+  · simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+      PMF.mem_support_pure_iff _ _] at moved
+    cases moved
+    rfl
+  · rename_i selected found
+    have matching := List.find?_some found
+    simp only [decide_eq_true_eq] at matching
+    have present := List.mem_reverse.mp (List.mem_of_find?_eq_some found)
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+      PMF.mem_support_pure_iff _ _] at moved
+    cases moved
+    cases looked : execution.network.lookup selected.id with
+    | none => simp [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
+        looked]
+    | some actual =>
+        dsimp only [MessageNetwork.lookup] at looked
+        have actualPresent := List.mem_of_find?_eq_some looked
+        have actualId := List.find?_some looked
+        simp only [decide_eq_true_eq] at actualId
+        have same := (unique.pending selected present).pending actual actualPresent actualId
+        subst actual
+        change execution.network.lookup selected.id = some selected at looked
+        have rejected := (runtime setup).handle_eq_none_of_completed execution.application
+          ⟨selected.id, selected.payload.call⟩ event matching.2.1 completed
+        have reactiveRejected :
+            (application setup leaks).handle execution.application selected = none := by
+          simp only [reactiveApplication_handle, rejected, ite_self]
+        simp [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
+          looked, reactiveRejected]
+
+/-- Selecting the owner's latest packet either preserves the current completed
+prefix or completes that same event. -/
+theorem reactiveLatest_prefix (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (execution next : (application setup leaks).Execution) (event : (graph setup).EventId)
+    (owner : Player) (unique : execution.network.UniqueIds)
+    (ordered : execution.application.config.cut.IsPrefix event.val ∨
+      execution.application.config.cut.IsPrefix (event.val + 1))
+    (moved : next ∈ (execution.environmentStep (application setup leaks)
+      ((runtime setup).reactiveLatest leaks event owner
+        (execution.observeEnvironment (application setup leaks)))).support) :
+    (next.application.config.cut.IsPrefix event.val ∨
+      next.application.config.cut.IsPrefix (event.val + 1)) ∧
+      next.application.clock = execution.application.clock ∧
+      (next.application.config.cut.IsPrefix event.val →
+        next.application.activatedAt = execution.application.activatedAt) := by
+  rcases ordered with before | after
+  · have step : GraphStep execution.application next.application := by
+      unfold reactiveLatest at moved
+      split at moved
+      · simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+          PMF.mem_support_pure_iff _ _] at moved
+        cases moved
+        exact GraphStep.refl _
+      · simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+          PMF.mem_support_pure_iff _ _] at moved
+        cases moved
+        exact graphStep_includePending (runtime setup) leaks execution _
+    rcases step.prefix setup event before with same | advanced
+    · rw [same.1]
+      exact ⟨Or.inl before, same.2.1, fun _ => same.2.2⟩
+    · exact ⟨Or.inr advanced.1, advanced.2.1, fun earlier =>
+        (isPrefix_succ_false event earlier advanced.1).elim⟩
+  · have same := reactiveLatest_completed setup leaks execution next event owner unique
+      ((after.2 event).mpr (by omega)) moved
+    rw [same]
+    exact ⟨Or.inr after, rfl, fun _ => rfl⟩
 
 /-- Completing the current event starts its successor's clock now. -/
 theorem refreshActivated_successor (setup : Setup (Player := Player) (L := L))

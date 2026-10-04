@@ -68,7 +68,9 @@ theorem native_bob_public_utility_eq
       rfl
 
 open Classical in
-private theorem bob_public_continuation_value_eq
+/-- The whole actual continuation retains the same initialized type and reads
+its actual terminal public output, under every later native profile. -/
+theorem native_bob_public_continuation_value_eq
     (menu : (application setup leaks).ResponseMenu) (horizon : Nat)
     (scheduler : (application setup leaks).Scheduler)
     (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
@@ -165,7 +167,7 @@ theorem withhold_bob_public_continuation_le
         (sourceServiceAudit setup leaks backend.sample) deposit final.state bob) ≤
       if high then 0 else 1 := by
   intro high
-  rw [bob_public_continuation_value_eq leaks menu horizon scheduler completes profile history
+  rw [native_bob_public_continuation_value_eq leaks menu horizon scheduler completes profile history
     control current backend deposit]
   have bound := sourceService_withhold_guess_continuation_le setup leaks menu horizon scheduler
     completes profile history backend observationRate deliveryRate delivery_nonnegative coverage
@@ -208,7 +210,7 @@ theorem withhold_bob_public_committed_le
         (sourceServiceAudit setup leaks backend.sample) deposit final.state bob) ≤
       if high then 0 else 1 := by
   intro high
-  rw [bob_public_continuation_value_eq leaks menu horizon scheduler completes _ history
+  rw [native_bob_public_continuation_value_eq leaks menu horizon scheduler completes _ history
     ⟨remaining, some bob, execution⟩ current backend deposit]
   exact sourceService_withhold_guess_committed_le setup leaks menu horizon scheduler completes
     profile history bob remaining execution current info choice observed material selected

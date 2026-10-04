@@ -109,6 +109,12 @@ one retained implementation and fixed reference, and retains actual checkpoint
 and subsequent tail laws at classified or signed-content exits. The next
 comparison must use the same target assessment and actual settlement, including
 earlier collection; per-offense coverage supplies no renewed deposit.
+[SourceServiceRepeatedSettlement](../Vegas/Game/SourceServiceRepeatedSettlement.lean)
+identifies the immutable parameter, public result and entire sampled payoff
+vector on the final surviving-frame fiber. Its exact complementary laws retain
+actual exit checkpoints and independent tails. Derive any complementary payoff
+order using actual conditional collection and the same target continuation;
+total per-offense coverage alone does not supply that order.
 
 The concrete private-resolution audit uses
 [PrivateResolutionForkService](../Vegas/Examples/PrivateResolutionForkService.lean),
@@ -119,6 +125,17 @@ proved. Certify the builder contract on every raw history, derive actual
 accepting-receipt provenance and complete native Bayes likelihoods, then compare
 whole native continuations. These obligations precede any timing counterexample
 or conclusion about the general contract's sufficiency.
+
+[AsyncServiceTrueGuessBayes](../Vegas/Game/AsyncServiceTrueGuessBayes.lean)
+and [AsyncServiceWithholdingBayesBound](../Vegas/Game/AsyncServiceWithholdingBayesBound.lean)
+give actual HIGH and LOW whole-continuation comparisons at native information
+sites. TRUE support is derived from normalized source support and physical
+guard success; its comparator has protected completion and zero authentic
+charge. [PrivateResolutionForkTrueResource](../Vegas/Examples/PrivateResolutionForkTrueResource.lean)
+derives that success for Bob from every initialized raw history. The values
+retain actual counterfactual likelihoods. Relate the target's actual choice and
+whole continuation to these bounds, then derive its necessary rationality or
+vanishing-regret inequalities; do not insert a source posterior as a premise.
 
 [SourceServiceFirstActivation](../Vegas/Game/SourceServiceFirstActivation.lean)
 derives the first ready owner input from an actual untouched completion

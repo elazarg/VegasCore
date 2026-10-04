@@ -13,10 +13,9 @@ The [full-language calendar capstone](../Vegas/Game/SourceServiceCompilation.lea
 composes the source-to-permitted and permitted-to-raw proof chains for one fixed
 finite roster service. The [proof checklist](se-proof-checklist.md) records the
 evidence used by that capstone. The [asynchronous plan](se-schedule-generalization.md)
-tracks preservation for any builder satisfying the service contract. That
-end-to-end theorem remains open. The explicit decision-packet port is being
-checked through the calendar proof chain; the whole semantic change is not yet
-globally verified.
+tracks preservation for any builder satisfying the service contract. The
+calendar capstone passes warning-strict project verification. The arbitrary-builder
+end-to-end theorem remains open.
 
 ## Runtime and service boundary
 

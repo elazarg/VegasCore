@@ -1803,8 +1803,24 @@ averages the committed-choice bound under the actual native Bayes belief. Its
 upper bound is the actual LOW-type counterfactual mass divided by total native
 counterfactual mass, retaining foreign waiting and free-menu likelihoods. No
 source posterior or illustrative scheduler-branch probability is substituted.
-The incoming native type likelihood and the protected HIGH comparison remain
-separate obligations.
+[SourceServiceCommittedImmediateComparator](../Vegas/Game/SourceServiceCommittedImmediateComparator.lean)
+fixes one actual supported immediate response and follows the same implementable
+whole comparator. Decision recall supplies the exact physical terminal law
+against arbitrary effective opponents.
+[SourceServiceImmediateTrueComparator](../Vegas/Game/SourceServiceImmediateTrueComparator.lean)
+derives canonical TRUE support from genuine normalized source support and the
+actual successful guard evaluation. Protected inclusion and stored-output
+persistence give the HIGH result through the whole continuation; authentic
+partial sampling gives zero owner charge.
+[PrivateResolutionForkTrueResource](../Vegas/Examples/PrivateResolutionForkTrueResource.lean)
+derives Bob's actual TRUE binding and guard success from every initialized raw
+history, without supplying a source witness or assuming receipt success.
+[AsyncServiceTrueGuessBayes](../Vegas/Game/AsyncServiceTrueGuessBayes.lean)
+derives the same committed whole comparator's value as the actual HIGH-type
+counterfactual mass divided by total native mass. Both HIGH and LOW comparisons
+retain foreign waiting and free-menu likelihoods. The incoming native type
+likelihood, actual target continuation and their necessary rationality
+inequalities remain separate obligations; no source posterior is substituted.
 [OpaqueBindingForkSourcePosterior](../Vegas/Examples/OpaqueBindingForkSourcePosterior.lean)
 proves that the actual conditional typed configuration is the clean witness's
 configuration. Both physical decoders succeed, and the common original-memory
@@ -2440,6 +2456,16 @@ tail laws without asserting that those tails remain related. Comparing their
 whole-continuation utilities under the same target assessment remains open.
 No future risk-policy support, shared postsettlement path or terminal utility
 comparison is assumed.
+[SourceServiceRepeatedSettlement](../Vegas/Game/SourceServiceRepeatedSettlement.lean)
+consumes the actual initial unusable-response coupling and decomposes its
+terminal laws by the final repair relation. On a positive-mass fiber with a
+surviving frame and owned binding shadow, the immutable parameter and public
+result agree jointly with the entire correlated sampled payoff vector. Earlier
+charges remain in that law. The complementary fiber keeps both actual
+settlement laws and the real exit checkpoints and tails. A recovered final
+frame may survive an earlier labeled exit, so this tag does not claim absence
+of past exits. No incremental collection bound or whole-policy payoff order is
+inferred on the complementary fiber.
 
 [SourceServiceSiteKind](../Vegas/Game/SourceServiceSiteKind.lean) derives the
 actual local input and either a publicly completed cut or a ready event with

@@ -133,6 +133,18 @@ future private values changed by repair are outside the claim.
   conditional beliefs, prescribed-site rationality and suitable waiting rates
   remain open. Prescribed uniform trembles and free-agent reference trembles
   have independent vanishing rates; initialized loss uses only the prescribed rate.
+- [SourceServiceCommittedImmediateComparator](../Vegas/Game/SourceServiceCommittedImmediateComparator.lean)
+  represents an actual supported local response followed by the same whole
+  immediate policy in the full effective game.
+  [SourceServiceImmediateTrueComparator](../Vegas/Game/SourceServiceImmediateTrueComparator.lean)
+  derives TRUE support from the actual normalized source residual and successful
+  physical guard. Its complete protected continuation has the HIGH result and
+  zero authentic audit charge.
+  [AsyncServiceTrueGuessBayes](../Vegas/Game/AsyncServiceTrueGuessBayes.lean)
+  averages that same comparator under actual native Bayes beliefs, obtaining the
+  exact HIGH counterfactual mass divided by total native mass. The existing LOW
+  bound uses the same native weights. Incoming likelihoods and the necessary
+  target rationality inequalities remain open.
 - [SourceServiceRecordedDecisionCompletion](../Vegas/Game/SourceServiceRecordedDecisionCompletion.lean)
   gives acceptance of the exact original recorded packet and no public miss
   under the asynchronous contract. [SourceServiceRecordedBindingCompletion](../Vegas/Game/SourceServiceRecordedBindingCompletion.lean)
@@ -894,8 +906,6 @@ derive full copy/repair agreement from their actual compiled menu. The stopped
 coupling composes fresh copies with arbitrary private material. Initially
 changed candidate reuse and whole-policy utility domination remain open.
 
-## Proof and build discipline
-
 [SourceServiceRepeatedRepair](../Vegas/Game/SourceServiceRepeatedRepair.lean)
 couples the actual full remaining execution laws through repeated completed
 copies, pending typed defaults and their settlement. One retained implementation
@@ -906,6 +916,13 @@ responses and signed-content inclusions retain actual checkpoint and tail
 supports; no repair relation or utility order is asserted after those exits.
 The whole-continuation payoff comparison remains open, including previous
 collection and the one-time deposit.
+[SourceServiceRepeatedSettlement](../Vegas/Game/SourceServiceRepeatedSettlement.lean)
+decomposes the actual initial coupling's settlement law by final surviving frame
+and owned shadow. Its positive surviving fiber preserves the immutable parameter
+and public result jointly with the entire correlated sampled payoff vector,
+including previous charges. Complementary laws keep actual exit checkpoints and
+true tails. No incremental collection inequality is inferred; final frame
+survival does not assert absence of earlier exits.
 
 [PrivateResolutionForkService](../Vegas/Examples/PrivateResolutionForkService.lean),
 [PrivateResolutionForkNativeInputs](../Vegas/Examples/PrivateResolutionForkNativeInputs.lean)
@@ -914,6 +931,8 @@ provide a concrete public-order schedule, initial private-type hiding and timing
 resources for every initialized raw trace. The schedule's all-history service
 contract, accepting-receipt provenance, full conditional likelihoods and native
 incentive comparison remain separate obligations.
+
+## Proof and build discipline
 
 Read `AGENTS.md` and inspect the actual Git state before editing. Generic
 mathematics belongs in `GameTheoryExtensions`, generic execution in

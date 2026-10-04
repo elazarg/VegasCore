@@ -179,7 +179,8 @@ local notation "app" => application service.setup service.leaks
 local notation "menu" => service.bounds.menu (runtime service.setup) service.leaks
 
 omit [Fintype Player] in
-private theorem immediate_input_of_recorded
+/-- Once its current event is recorded, the actual immediate owner is silent. -/
+theorem sourceServiceImmediatePolicy_input_of_recorded
     (profile : BehavioralProfile service.setup.program)
     (execution : (app).Execution) (who : Player) (event : (graph service.setup).EventId)
     (ready : execution.application.config.cut.Ready event)
@@ -274,7 +275,8 @@ theorem sourceCompatibleInfo_immediate_protected_completion
       players who _ start event afterReady recorded
     intro current currentReady currentRecorded
     rw [follows]
-    exact service.immediate_input_of_recorded profile current who event currentReady owned
+    exact service.sourceServiceImmediatePolicy_input_of_recorded profile current who event
+      currentReady owned
       currentRecorded
   have actual := sourceServiceCanonicalDecision_protected_completion service.contract who
     execution rawTrace event owned ready unrecorded fits action effectiveAction
@@ -388,8 +390,8 @@ theorem sourceCompatibleInfo_immediate_protected_law
         players who _ _ event afterReady recorded
       intro current currentReady currentRecorded
       rw [follows]
-      exact service.immediate_input_of_recorded profile current who event currentReady owned
-        currentRecorded
+      exact service.sourceServiceImmediatePolicy_input_of_recorded profile current who event
+        currentReady owned currentRecorded
     exact sourceServiceCanonicalDecision_protected_completion service.contract who execution
       rawTrace event owned ready unrecorded fits action (operational effective action selected)
       (Function.update players who (app).silentPolicy) (Function.update_self ..) final

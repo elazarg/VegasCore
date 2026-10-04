@@ -172,70 +172,6 @@ private theorem environment_effect (execution next : app.Execution) (command : a
       | expire event =>
           exact Or.inr (graphStep_expire (runtime setup) _ _ event supported)
 
-private theorem latest_completed (execution next : app.Execution) (event : nativeGraph.EventId)
-    (owner : Player) (unique : execution.network.UniqueIds)
-    (completed : event ∈ execution.application.config.cut.completed)
-    (moved : next ∈ (execution.environmentStep app ((runtime setup).reactiveLatest leaks event
-      owner (execution.observeEnvironment app))).support) :
-    next.application = execution.application := by
-  unfold reactiveLatest at moved
-  split at moved
-  · simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
-      PMF.mem_support_pure_iff _ _] at moved
-    cases moved
-    rfl
-  · rename_i selected found
-    have matching := List.find?_some found
-    simp only [decide_eq_true_eq] at matching
-    have present := List.mem_reverse.mp (List.mem_of_find?_eq_some found)
-    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
-      PMF.mem_support_pure_iff _ _] at moved
-    cases moved
-    cases looked : execution.network.lookup selected.id with
-    | none => simp [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
-        looked]
-    | some actual =>
-        dsimp only [MessageNetwork.lookup] at looked
-        have actualPresent := List.mem_of_find?_eq_some looked
-        have actualId := List.find?_some looked
-        simp only [decide_eq_true_eq] at actualId
-        have same := (unique.pending selected present).pending actual actualPresent actualId
-        subst actual
-        change execution.network.lookup selected.id = some selected at looked
-        have rejected := (runtime setup).handle_eq_none_of_completed execution.application
-          ⟨selected.id, selected.payload.call⟩ event matching.2.1 completed
-        have reactiveRejected : app.handle execution.application selected = none := by
-          simp only [reactiveApplication_handle, rejected, ite_self]
-        simp [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
-          looked, reactiveRejected]
-
-private theorem latest_prefix (execution next : app.Execution) (event : nativeGraph.EventId)
-    (owner : Player) (unique : execution.network.UniqueIds)
-    (ordered : execution.application.config.cut.IsPrefix event.val ∨
-      execution.application.config.cut.IsPrefix (event.val + 1))
-    (moved : next ∈ (execution.environmentStep app ((runtime setup).reactiveLatest leaks event
-      owner (execution.observeEnvironment app))).support) :
-    (next.application.config.cut.IsPrefix event.val ∨
-      next.application.config.cut.IsPrefix (event.val + 1)) ∧
-      next.application.clock = execution.application.clock ∧
-      (next.application.config.cut.IsPrefix event.val →
-        next.application.activatedAt = execution.application.activatedAt) := by
-  rcases ordered with before | after
-  · have step : GraphStep execution.application next.application := by
-      rcases environment_effect execution next _ moved with ⟨tick, _⟩ | step
-      · unfold reactiveLatest at tick
-        split at tick <;> cases tick
-      · exact step
-    rcases step.prefix setup event before with same | advanced
-    · rw [same.1]
-      exact ⟨Or.inl before, same.2.1, fun _ => same.2.2⟩
-    · exact ⟨Or.inr advanced.1, advanced.2.1, fun earlier =>
-        (isPrefix_succ_false event earlier advanced.1).elim⟩
-  · have same := latest_completed execution next event owner unique
-      ((after.2 event).mpr (by omega)) moved
-    rw [same]
-    exact ⟨Or.inr after, rfl, fun _ => rfl⟩
-
 private def tickCount : app.Command → Nat
   | .application .advanceClock => 1
   | _ => 0
@@ -665,7 +601,7 @@ private theorem phase_environment_ordered (control : app.Control) (phase : Phase
     rw [completed]
     exact ordered.complete_at sample1 ready rfl
   case «3» | «6» =>
-    have outcome := latest_prefix control.execution next binding alice unique
+    have outcome := reactiveLatest_prefix setup leaks control.execution next binding alice unique
       (Phase.window control phase binding (by simp [stageEq, lowerRank])
         (by simp [stageEq, upperRank])) moved
     rcases outcome.1 with current | completed
@@ -674,7 +610,8 @@ private theorem phase_environment_ordered (control : app.Control) (phase : Phase
     · exact ⟨_, by simp [length, stageEq, lowerRank],
         by simp [length, stageEq, upperRank], completed⟩
   case «11» =>
-    have outcome := latest_prefix control.execution next bobResolution bob unique
+    have outcome := reactiveLatest_prefix setup leaks control.execution next
+      bobResolution bob unique
       (Phase.window control phase bobResolution (by simp [stageEq, lowerRank])
         (by simp [stageEq, upperRank])) moved
     rcases outcome.1 with current | completed
@@ -683,7 +620,8 @@ private theorem phase_environment_ordered (control : app.Control) (phase : Phase
     · exact ⟨_, by simp [length, stageEq, lowerRank],
         by simp [length, stageEq, upperRank], completed⟩
   case «18» =>
-    have outcome := latest_prefix control.execution next aliceResolution alice unique
+    have outcome := reactiveLatest_prefix setup leaks control.execution next
+      aliceResolution alice unique
       (Phase.window control phase aliceResolution (by simp [stageEq, lowerRank])
         (by simp [stageEq, upperRank])) moved
     rcases outcome.1 with current | completed
