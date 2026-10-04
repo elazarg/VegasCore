@@ -9,6 +9,7 @@ import Vegas.Game.SourceServiceMissBranchComparison
 import Vegas.Game.SourceServiceCompatibleBindingResponse
 import Vegas.Game.SourceContinuation
 import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
+import GameTheoryExtensions.Analysis.Protocol.AgentPayoffCompletion
 
 /-! # Full effective completion along actual original source assessments
 
@@ -19,6 +20,10 @@ assessment subsequence. Prescribed uniform trembles and free-agent reference tre
 have independent rates. Uniform initialized history domination preserves the
 original source joint law in that limit without assuming global continuity of
 disclosure normalization.
+
+Finite residual selection may use uniformly vanishing auxiliary terminal
+bonuses. Bayes beliefs, limiting free rationality and every displayed sampled
+payoff use the original audited utility.
 
 The result gives consistency, whole-policy rational free sites, rational
 completed compatible sites with nonnegative deposits, classified charged first-choice
@@ -133,7 +138,14 @@ theorem exists_consistent_original_sequence_completion
     (utility : State L service.setup.program.terminalCtx → Player → ℝ)
     (sample : List (SettledEvidence service.setup) → PMF (List (SettledEvidence service.setup)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
-    (probability : Player → ℝ) :
+    (probability : Player → ℝ)
+    (selectionBonus : Nat → Player →
+      ((menu).protocol (initialLaw service.setup) service.horizon service.scheduler).History → ℝ)
+    (selectionError : Nat → ℝ)
+    (selectionVanishes : Tendsto selectionError atTop (nhds 0))
+    (selectionBounded : ∀ n who final,
+      ((menu).protocol (initialLaw service.setup) service.horizon service.scheduler).terminal
+        final.state → |selectionBonus n who final| ≤ selectionError n) :
     let certificate := (menu).bounded (initialLaw service.setup) service.horizon service.scheduler
       |>.wellFoundedHistories
     let base := baseUtility service.setup service.leaks utility
@@ -306,11 +318,21 @@ theorem exists_consistent_original_sequence_completion
       (_kept : agent ∉ free) : FullSupport (pinned n agent) := by
     intro choice
     exact mem_support_mix_left _ _ _ (deltaPositive n) (referenceFull agent choice)
+  let selectionPayoff (n : Nat) (who : Player) (final :
+      ((menu).protocol (initialLaw service.setup) service.horizon service.scheduler).History) :=
+    payoff who final + selectionBonus n who final
+  have payoffClose (n : Nat) (who : Player) (final :
+      ((menu).protocol (initialLaw service.setup) service.horizon service.scheduler).History)
+      (terminal : ((menu).protocol (initialLaw service.setup) service.horizon
+        service.scheduler).terminal final.state) :
+      |selectionPayoff n who final - payoff who final| ≤ selectionError n := by
+    simpa only [selectionPayoff, add_sub_cancel_left] using selectionBounded n who final terminal
   obtain ⟨_residual, nativeSequence, assessment, index, played, mixed, bayes, increasing,
-    converges, consistent, freeOptimal⟩ := (model).exists_consistent_free_agent_completion
+    converges, consistent, freeOptimal⟩ := (model).exists_consistent_free_agent_payoff_completion
       ((menu).decisionRecall (initialLaw service.setup) service.horizon service.scheduler)
-      fallback certificate payoff free pinned reference pinnedFull referenceFull freeTremble
-        freePositive freeSmall freeVanishes
+      fallback certificate payoff selectionPayoff selectionError selectionVanishes payoffClose
+        free pinned reference pinnedFull referenceFull freeTremble freePositive freeSmall
+          freeVanishes
   have kept (n : Nat) (who : Player) (site : (model).InformationSite who)
       (compatible : service.sourceCompatibleInfo who site.1) :
       (nativeSequence n).strategy who site.1 = pinned n ((model).agentAt site) := by

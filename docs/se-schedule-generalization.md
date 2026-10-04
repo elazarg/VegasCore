@@ -2711,6 +2711,15 @@ identical across these inputs for every source profile. Network observations
 and private candidate meanings are not equated. This discharges source-choice
 stability during the event, while the joint source posterior remains open.
 
+[AgentPayoffCompletion](../GameTheoryExtensions/Analysis/Protocol/AgentPayoffCompletion.lean)
+constructs consistent free completion using finite residual best responses to
+auxiliary terminal payoffs uniformly within `τ_n` of the actual payoff, with
+`τ_n → 0`. Conditional continuation values differ by at most `τ_n`, so exact
+auxiliary comparisons transfer to actual residual comparisons with error at
+most `2τ_n`, independently of how rare the information site is. The same Bayes
+sequence and common subsequence give limiting free-site optimality for the
+original payoff. Prescribed-site rationality and selection of particular weakly
+optimal free continuations are not supplied. No runtime payoff is changed.
 [PrescribedCompletion](../GameTheoryExtensions/Analysis/Protocol/PrescribedCompletion.lean)
 proves that simultaneous consistent rational completion at free sites retains
 the specified strategy limit at prescribed sites. It preserves the complete
@@ -2904,7 +2913,12 @@ coverage and matching observation/delivery deposit parameters. WAIT rates may de
 and have a common vanishing upper bound at compatible sites. Actual normalized
 pin limits are retained at off-path inputs. Source-relative conditional beliefs,
 rationality at unfinished prescribed sites and selection of suitable waiting
-rates remain open.
+rates remain open. Its finite residual chooser accepts auxiliary bonuses on
+actual terminal native histories, with a uniform vanishing absolute bound. All
+returned rationality, charged comparisons and realized settlement laws still
+use the original audited utility. Constant-payoff completion sets these bonuses
+to zero. The bonus freedom does not itself prove that suitable continuation
+choices and foreign waiting likelihoods can be selected simultaneously.
 Prescribed uniform trembles and free-agent reference trembles have independent
 vanishing rates. Only the prescribed rate enters the initialized loss bound.
 Its same returned native sequence has a joint binding response law at actual

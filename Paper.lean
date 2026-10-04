@@ -46,7 +46,7 @@ import GameTheoryExtensions.Analysis.ZeroSumRegularization
 import GameTheoryExtensions.Analysis.CorrelationPayoff
 import GameTheoryExtensions.Analysis.Enforcement
 import GameTheoryExtensions.Analysis.EnforcementLimits
-import GameTheory.Analysis.Protocol.AgentCompletion
+import GameTheoryExtensions.Analysis.Protocol.AgentPayoffCompletion
 import GameTheory.Analysis.Protocol.SequentialExistence
 import GameTheoryExtensions.Analysis.Protocol.RestrictionExtension
 import GameTheoryExtensions.Analysis.EnforcementSynthesis
@@ -1279,12 +1279,13 @@ open Vegas.Examples.MonitoredGuessing in
 open GameTheory.Enforcement in
 #print axioms exists_uniform_sanction_iff
 
-/-- info: 'GameTheory.Protocol.InformationModel.exists_consistent_free_agent_completion' depends on
-axioms:
+/-- info:
+'GameTheory.Protocol.InformationModel.exists_consistent_free_agent_payoff_completion'
+depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 open GameTheory.Protocol.InformationModel in
-#print axioms exists_consistent_free_agent_completion
+#print axioms exists_consistent_free_agent_payoff_completion
 
 /-- info: 'GameTheory.Protocol.InformationModel.exists_sequentialEquilibrium' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
