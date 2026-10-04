@@ -128,25 +128,7 @@ theorem sourceServiceMissing_unusable_repeated_settlement_decomposition {Paramet
         input.2, response)]⟩
     let left := original.respond app who response
     let right := repaired.respond app who selected.1
-    let exited := fun next : app.Execution × app.Execution ×
-      BindingMemory (runtime setup) leaks =>
-      (∃ budget before response,
-        Nonempty (((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-          (some ⟨budget, some who, before⟩)) ∧
-        response ∈ (players who (before.recall who)
-          (before.observe (application setup leaks) who)).support ∧
-        next.1 = before.respond (application setup leaks) who response ∧
-        (auditableServiceResponse setup leaks who (before.recall who)
-          (before.observe (application setup leaks) who) response ∨
-          recordedServiceResponse setup leaks (before.recall who) response)) ∨
-        ∃ budget before command id packet,
-          Nonempty (((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-            (some ⟨budget + 1, none, before⟩)) ∧
-          command ∈ (scheduler before.environmentRecall
-            (before.observeEnvironment (application setup leaks))).support ∧
-          command = .include id ∧ before.network.lookup id = some ⟨id, packet⟩ ∧ id.1 = who ∧
-          SignedContentBreach ⟨id, packet⟩ ∧
-          next.1 ∈ ((application setup leaks).dispatch players command before).support
+    let exited := BindingRepairExit horizon scheduler players who
     ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = app.runRounds scheduler players leftRemaining left ∧
       coupling.map Prod.snd =

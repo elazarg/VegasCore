@@ -35,7 +35,9 @@ local instance pin_history_nonempty : Nonempty (((menu).protocol (initialLaw ser
     service.horizon service.scheduler).History) :=
   ⟨((menu).protocol (initialLaw service.setup) service.horizon service.scheduler).initHistory⟩
 
-private theorem immediate_limit_from_pins
+/-- Vanishing prescribed WAIT and uniform trembles retain the actual varying
+immediate law along the same native assessment subsequence. -/
+theorem sourceCompatibleInfo_immediate_limit_from_pins
     (profiles : Nat → BehavioralProfile service.setup.program)
     (weight : Nat → Player → (app).Info → ℝ)
     (weightNonnegative : ∀ n who info, 0 ≤ weight n who info)
@@ -172,7 +174,8 @@ theorem sourceCompatibleInfo_pin_value_lower
     have waitVanishes : Tendsto (fun n => weight n who current.1) atTop (nhds 0) :=
       squeeze_zero (fun n => weightNonnegative n who current.1)
         (fun n => bounded n who current.1 currentCompatible) boundVanishes
-    have actualLimit := service.immediate_limit_from_pins profiles weight weightNonnegative
+    have actualLimit := service.sourceCompatibleInfo_immediate_limit_from_pins profiles weight
+      weightNonnegative
       weightSmall delta deltaNonnegative deltaSmall deltaVanishes sequence assessment index
         increasing converges pinned who current currentCompatible waitVanishes
     exact (policyLimits current).unique (actualLimit.subseq furtherIncreasing)

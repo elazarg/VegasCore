@@ -159,7 +159,20 @@ future private values changed by repair are outside the claim.
   supplies the fixed actual terminal payoff;
   [PrivateResolutionForkGuessPayoff](../Vegas/Examples/PrivateResolutionForkGuessPayoff.lean)
   identifies it and ordinary rationality with Bob's real public utility.
-  The incoming likelihoods and actual LOW-limit input remain open.
+  [PrivateResolutionForkNormalizedBob](../Vegas/Examples/PrivateResolutionForkNormalizedBob.lean)
+  derives Bob's real normalized source law and its LOW limit.
+  [PrivateResolutionForkBobCompiler](../Vegas/Examples/PrivateResolutionForkBobCompiler.lean)
+  identifies the literal compiled lottery;
+  [PrivateResolutionForkBobObservation](../Vegas/Examples/PrivateResolutionForkBobObservation.lean)
+  derives its decoder and empty own source history from actual raw reachability
+  and Alice's successful publication.
+  [PrivateResolutionForkBobPinLimit](../Vegas/Examples/PrivateResolutionForkBobPinLimit.lean)
+  consumes the same original source sequence and native pins, giving a LOW
+  target law without a posterior or rationality premise.
+  [PrivateResolutionForkConcreteBobLimit](../Vegas/Examples/PrivateResolutionForkConcreteBobLimit.lean)
+  supplies the real admitted service and derives all decoder, recall, turn and
+  legal LOW-choice resources from its actual trace. Incoming native likelihoods
+  and ordinary target rationality remain separate obligations.
 - [SourceServiceRecordedDecisionCompletion](../Vegas/Game/SourceServiceRecordedDecisionCompletion.lean)
   gives acceptance of the exact original recorded packet and no public miss
   under the asynchronous contract. [SourceServiceRecordedBindingCompletion](../Vegas/Game/SourceServiceRecordedBindingCompletion.lean)
@@ -938,6 +951,12 @@ and public result jointly with the entire correlated sampled payoff vector,
 including previous charges. Complementary laws keep actual exit checkpoints and
 true tails. No incremental collection inequality is inferred; final frame
 survival does not assert absence of earlier exits.
+[SourceServiceRepeatedExitBound](../Vegas/Game/SourceServiceRepeatedExitBound.lean)
+derives total collection from persisted actual exit evidence and averages the
+real verdicts. Its initial-unusable consumer calls the same repeated coupling,
+keeps both true evaluator marginals, and bounds the original value on the final
+complementary fiber by the base-payoff minimum. The retained-side value and
+paired payoff comparison remain open, including previous collection.
 
 [PrivateResolutionForkService](../Vegas/Examples/PrivateResolutionForkService.lean),
 [PrivateResolutionForkNativeInputs](../Vegas/Examples/PrivateResolutionForkNativeInputs.lean)
@@ -948,9 +967,19 @@ resources for every initialized raw trace.
 derives the actual completed-prefix and activation bounds, Bob readiness and
 complete play. [PrivateResolutionForkOpportunity](../Vegas/Examples/PrivateResolutionForkOpportunity.lean)
 derives readiness-episode owner activation witnesses from real scheduler command
-support, proving the owner-delay clause on all raw histories. Protected
-inclusion, accepting-receipt provenance, full conditional likelihoods and native
-incentive comparison remain separate obligations.
+support, proving the owner-delay clause on all raw histories.
+[PrivateResolutionForkPacketBounds](../Vegas/Examples/PrivateResolutionForkPacketBounds.lean)
+derives actual emission clocks and first receipts;
+[PrivateResolutionForkProtectedInclusion](../Vegas/Examples/PrivateResolutionForkProtectedInclusion.lean)
+proves protected sole inclusion and the complete all-raw contract.
+[PrivateResolutionForkSpec](../Vegas/Examples/PrivateResolutionForkSpec.lean)
+constructs the actual service, including bounded values, initial candidate
+coverage and finite nature. [PrivateResolutionForkReceiptOrigin](../Vegas/Examples/PrivateResolutionForkReceiptOrigin.lean)
+identifies the actual ledger envelope and recorded submission behind Alice's
+serial-zero accepting receipt. At Bob's turn this is the first response or the
+second response with literal prior WAIT. Excluding the first origin at the
+delayed input, full conditional likelihoods and native incentive comparison
+remain separate obligations.
 
 ## Proof and build discipline
 

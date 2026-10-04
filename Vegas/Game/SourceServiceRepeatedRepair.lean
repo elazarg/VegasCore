@@ -56,7 +56,8 @@ private def unfinishedRepairPhase
         (runtime setup).submittedEvent? leaks entry.action = some event →
           event ∈ next.1.application.config.cut.completed
 
-private def repairExit
+/-- An actual classified owner draw or signed owner inclusion in the repair evaluator. -/
+def BindingRepairExit
     (horizon : Nat) (scheduler : (application setup leaks).Scheduler)
     (players : Player → (application setup leaks).Policy) (who : Player)
     (next : (application setup leaks).Execution × (application setup leaks).Execution ×
@@ -126,7 +127,7 @@ private theorem repair_phase_round_coupling
       coupling.map Prod.snd = strategy.round who players scheduler repaired memory ∧
       ∀ next ∈ coupling.support,
         (completedRepairPhase who reference next ∨ unfinishedRepairPhase who reference next) ∨
-          repairExit horizon scheduler players who next := by
+          BindingRepairExit horizon scheduler players who next := by
   classical
   let app := application setup leaks
   let effectiveMenu := bounds.menu (runtime setup) leaks
@@ -264,25 +265,7 @@ private theorem repair_phases_coupling
       (app.decodePolicy (effectiveMenu.embedPolicy (initialLaw setup) horizon scheduler who owner))
     let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
       (bounds.riskMenu (runtime setup) leaks bound) who reference (players who)
-    let exited := fun next : app.Execution × app.Execution ×
-      BindingMemory (runtime setup) leaks =>
-      (∃ budget before response,
-        Nonempty (((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-          (some ⟨budget, some who, before⟩)) ∧
-        response ∈ (players who (before.recall who)
-          (before.observe (application setup leaks) who)).support ∧
-        next.1 = before.respond (application setup leaks) who response ∧
-        (auditableServiceResponse setup leaks who (before.recall who)
-          (before.observe (application setup leaks) who) response ∨
-          recordedServiceResponse setup leaks (before.recall who) response)) ∨
-        ∃ budget before command id packet,
-          Nonempty (((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-            (some ⟨budget + 1, none, before⟩)) ∧
-          command ∈ (scheduler before.environmentRecall
-            (before.observeEnvironment (application setup leaks))).support ∧
-          command = .include id ∧ before.network.lookup id = some ⟨id, packet⟩ ∧ id.1 = who ∧
-          SignedContentBreach ⟨id, packet⟩ ∧
-          next.1 ∈ ((application setup leaks).dispatch players command before).support
+    let exited := BindingRepairExit horizon scheduler players who
     ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = app.runRounds scheduler players remaining original ∧
       coupling.map Prod.snd = strategy.runJoint who players scheduler remaining repaired memory ∧
@@ -311,7 +294,7 @@ private theorem repair_phases_coupling
     (bounds.riskMenu (runtime setup) leaks bound) who reference (players who)
   let good := fun next : app.Execution × app.Execution × BindingMemory (runtime setup) leaks =>
     completedRepairPhase who reference next ∨ unfinishedRepairPhase who reference next
-  let exited := repairExit horizon scheduler players who
+  let exited := BindingRepairExit horizon scheduler players who
   let closed (index : Nat) (next : app.Execution × app.Execution × BindingMemory
       (runtime setup) leaks) :=
     ∃ stopped ≤ index,
@@ -461,25 +444,7 @@ theorem sourceService_repeated_repair_coupling
       (app.decodePolicy (effectiveMenu.embedPolicy (initialLaw setup) horizon scheduler who owner))
     let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
       (bounds.riskMenu (runtime setup) leaks bound) who reference (players who)
-    let exited := fun next : app.Execution × app.Execution ×
-      BindingMemory (runtime setup) leaks =>
-      (∃ budget before response,
-        Nonempty (((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-          (some ⟨budget, some who, before⟩)) ∧
-        response ∈ (players who (before.recall who)
-          (before.observe (application setup leaks) who)).support ∧
-        next.1 = before.respond (application setup leaks) who response ∧
-        (auditableServiceResponse setup leaks who (before.recall who)
-          (before.observe (application setup leaks) who) response ∨
-          recordedServiceResponse setup leaks (before.recall who) response)) ∨
-        ∃ budget before command id packet,
-          Nonempty (((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-            (some ⟨budget + 1, none, before⟩)) ∧
-          command ∈ (scheduler before.environmentRecall
-            (before.observeEnvironment (application setup leaks))).support ∧
-          command = .include id ∧ before.network.lookup id = some ⟨id, packet⟩ ∧ id.1 = who ∧
-          SignedContentBreach ⟨id, packet⟩ ∧
-          next.1 ∈ ((application setup leaks).dispatch players command before).support
+    let exited := BindingRepairExit horizon scheduler players who
     ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = app.runRounds scheduler players remaining original ∧
       coupling.map Prod.snd = strategy.runJoint who players scheduler remaining repaired memory ∧
@@ -551,25 +516,7 @@ theorem sourceServiceMissing_unusable_repeated_repair_coupling
         input.2, response)]⟩
     let left := original.respond app who response
     let right := repaired.respond app who selected.1
-    let exited := fun next : app.Execution × app.Execution ×
-      BindingMemory (runtime setup) leaks =>
-      (∃ budget before response,
-        Nonempty (((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-          (some ⟨budget, some who, before⟩)) ∧
-        response ∈ (players who (before.recall who)
-          (before.observe (application setup leaks) who)).support ∧
-        next.1 = before.respond (application setup leaks) who response ∧
-        (auditableServiceResponse setup leaks who (before.recall who)
-          (before.observe (application setup leaks) who) response ∨
-          recordedServiceResponse setup leaks (before.recall who) response)) ∨
-        ∃ budget before command id packet,
-          Nonempty (((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-            (some ⟨budget + 1, none, before⟩)) ∧
-          command ∈ (scheduler before.environmentRecall
-            (before.observeEnvironment (application setup leaks))).support ∧
-          command = .include id ∧ before.network.lookup id = some ⟨id, packet⟩ ∧ id.1 = who ∧
-          SignedContentBreach ⟨id, packet⟩ ∧
-          next.1 ∈ ((application setup leaks).dispatch players command before).support
+    let exited := BindingRepairExit horizon scheduler players who
     ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = app.runRounds scheduler players leftRemaining left ∧
       coupling.map Prod.snd =

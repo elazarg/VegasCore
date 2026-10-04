@@ -1783,10 +1783,21 @@ tracks actual completed prefixes and activation times through every raw command
 and response. It derives Bob readiness and proves complete play.
 [PrivateResolutionForkOpportunity](../Vegas/Examples/PrivateResolutionForkOpportunity.lean)
 derives actual public owner activation witnesses in each readiness episode and
-proves the owner-delay clause on all initialized raw histories. The protected
-inclusion clause, accepting-receipt provenance and complete conditional
-likelihoods remain open; no native incentive counterexample follows from these
-invariants.
+proves the owner-delay clause on all initialized raw histories.
+[PrivateResolutionForkPacketBounds](../Vegas/Examples/PrivateResolutionForkPacketBounds.lean)
+derives actual packet clocks and first receipts.
+[PrivateResolutionForkProtectedInclusion](../Vegas/Examples/PrivateResolutionForkProtectedInclusion.lean)
+proves protected sole-envelope inclusion on every raw history and assembles
+the full asynchronous contract. Risky late censorship remains allowed.
+[PrivateResolutionForkSpec](../Vegas/Examples/PrivateResolutionForkSpec.lean)
+constructs the actual bounded service with initial candidate coverage and
+finite nature. [PrivateResolutionForkReceiptOrigin](../Vegas/Examples/PrivateResolutionForkReceiptOrigin.lean)
+identifies the exact ledger envelope and recorded fresh submission behind
+Alice's serial-zero accepting receipt. At Bob's turn it is Alice's first
+response or her second response after literal prior WAIT. Exclusion of the
+first origin at the delayed input, complete conditional likelihoods and native
+incentive comparison remain open; the contract itself supplies no equilibrium
+comparison.
 [ReactiveWithholdingReceipts](../Vegas/Pending/ReactiveWithholdingReceipts.lean)
 proves that an accepting receipt for an actual withholding envelope fixes its
 publication output to failure on every later initialized raw history.
@@ -1845,8 +1856,27 @@ rare-site mass.
 [PrivateResolutionForkGuessPayoff](../Vegas/Examples/PrivateResolutionForkGuessPayoff.lean)
 identifies this fixed terminal payoff and ordinary rationality with Bob's actual
 initial-parameter/public-outcome utility under complete play. The full incoming
-fiber likelihoods, actual LOW-limit input and any preservation contradiction
-remain separate obligations.
+fiber likelihoods and any preservation contradiction remain separate
+obligations.
+[PrivateResolutionForkNormalizedBob](../Vegas/Examples/PrivateResolutionForkNormalizedBob.lean)
+derives the real source normalizer's identity on Bob's original lottery and its
+LOW limit along every genuinely converging source sequence.
+[PrivateResolutionForkBobCompiler](../Vegas/Examples/PrivateResolutionForkBobCompiler.lean)
+identifies the actual compiled lottery at that decoded source input.
+[SampleProvenance](../Vegas/EventGraph/SampleProvenance.lean) derives persistent
+constant-sample support from semantic graph reachability.
+[PrivateResolutionForkBobObservation](../Vegas/Examples/PrivateResolutionForkBobObservation.lean)
+uses it and the actual initialized inputs, ready cut and successful Alice
+publication to derive Bob's typed decoder and empty own source-action history
+on raw traces. [PrivateResolutionForkBobPinLimit](../Vegas/Examples/PrivateResolutionForkBobPinLimit.lean)
+consumes those deterministic resources and the same original source sequence
+and native pin fields to force a LOW target lottery. It supplies neither a
+native posterior nor a rationality hypothesis.
+[PrivateResolutionForkConcreteBobLimit](../Vegas/Examples/PrivateResolutionForkConcreteBobLimit.lean)
+applies it to the actual admitted service. Its real active trace and successful
+Alice output supply Bob's decoder, empty recall, ready turn and legal LOW
+choice internally. Incoming Bayes masses and ordinary target rationality remain
+separate obligations.
 [OpaqueBindingForkSourcePosterior](../Vegas/Examples/OpaqueBindingForkSourcePosterior.lean)
 proves that the actual conditional typed configuration is the clean witness's
 configuration. Both physical decoders succeed, and the common original-memory
@@ -2492,6 +2522,14 @@ settlement laws and the real exit checkpoints and tails. A recovered final
 frame may survive an earlier labeled exit, so this tag does not claim absence
 of past exits. No incremental collection bound or whole-policy payoff order is
 inferred on the complementary fiber.
+[SourceServiceRepeatedExitBound](../Vegas/Game/SourceServiceRepeatedExitBound.lean)
+uses persisted classified packets, duplicate pairs or signed breaches at actual
+exit checkpoints to bound total collection at every true complete original
+endpoint. Averaging the actual sampled audit with the configured deposit bounds
+that original value by the base-payoff minimum. Its initial-unusable consumer
+calls the same repeated coupling and lifts this bound to the final complementary
+fiber while preserving both full evaluator marginals. It does not declare the
+retained tail clean, supply its conditional value, or compare net charges.
 
 [SourceServiceSiteKind](../Vegas/Game/SourceServiceSiteKind.lean) derives the
 actual local input and either a publicly completed cut or a ready event with

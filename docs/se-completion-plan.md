@@ -115,6 +115,11 @@ vector on the final surviving-frame fiber. Its exact complementary laws retain
 actual exit checkpoints and independent tails. Derive any complementary payoff
 order using actual conditional collection and the same target continuation;
 total per-offense coverage alone does not supply that order.
+[SourceServiceRepeatedExitBound](../Vegas/Game/SourceServiceRepeatedExitBound.lean)
+consumes the same initial-unusable coupling and bounds the original averaged
+audited value on its final complementary fiber by the base-payoff minimum.
+Actual persisted evidence supplies total collection; the sampled verdict need
+not be certain. The retained-side value and net-charge comparison remain open.
 
 The concrete private-resolution audit uses
 [PrivateResolutionForkService](../Vegas/Examples/PrivateResolutionForkService.lean),
@@ -125,8 +130,15 @@ proved. [PrivateResolutionForkCompletionBounds](../Vegas/Examples/PrivateResolut
 proves raw readiness, activation bounds and complete play;
 [PrivateResolutionForkOpportunity](../Vegas/Examples/PrivateResolutionForkOpportunity.lean)
 proves the owner-delay clause using actual public activation witnesses.
-Certify protected inclusion on every raw history, derive actual
-accepting-receipt provenance and complete native Bayes likelihoods, then compare
+[PrivateResolutionForkProtectedInclusion](../Vegas/Examples/PrivateResolutionForkProtectedInclusion.lean)
+proves protected sole-envelope receipts on every raw history and assembles the
+full contract. [PrivateResolutionForkSpec](../Vegas/Examples/PrivateResolutionForkSpec.lean)
+constructs the actual bounded service with finite nature and real initial
+candidate coverage. [PrivateResolutionForkReceiptOrigin](../Vegas/Examples/PrivateResolutionForkReceiptOrigin.lean)
+derives the exact ledger envelope and recorded submission behind Alice's
+serial-zero accepting receipt. At Bob's turn it is Alice's first response or
+her second response after literal WAIT. Exclude the first origin at the
+delayed input and derive complete native Bayes likelihoods, then compare
 whole native continuations. These obligations precede any timing counterexample
 or conclusion about the general contract's sufficiency.
 
@@ -145,9 +157,19 @@ with a rational pure LOW limit has a vanishing HIGH-versus-LOW mass gap, from
 actual choice convergence and uniform whole-policy regret.
 [PrivateResolutionForkGuessPayoff](../Vegas/Examples/PrivateResolutionForkGuessPayoff.lean)
 identifies its fixed terminal payoff and rationality with Bob's real public
-utility. Derive the actual LOW-limit input and incoming native fiber likelihoods
-before drawing a rate or preservation conclusion; no source posterior is a
-premise.
+utility. Derive incoming native fiber likelihoods before drawing a rate or
+preservation conclusion; no source posterior is a
+premise. [PrivateResolutionForkNormalizedBob](../Vegas/Examples/PrivateResolutionForkNormalizedBob.lean)
+derives the original normalized Bob lottery and its LOW source limit.
+[PrivateResolutionForkBobObservation](../Vegas/Examples/PrivateResolutionForkBobObservation.lean)
+derives its actual decoder and empty own source history from initialized raw
+reachability, Bob readiness and Alice's real successful output.
+[PrivateResolutionForkBobPinLimit](../Vegas/Examples/PrivateResolutionForkBobPinLimit.lean)
+uses the same source sequence and native pin fields to force the prescribed
+native LOW limit. [PrivateResolutionForkConcreteBobLimit](../Vegas/Examples/PrivateResolutionForkConcreteBobLimit.lean)
+applies it to the actual admitted service, deriving all local decoder, recall,
+turn and LOW-choice availability resources internally from the real trace.
+Incoming likelihoods and ordinary target rationality remain separate.
 
 [SourceServiceFirstActivation](../Vegas/Game/SourceServiceFirstActivation.lean)
 derives the first ready owner input from an actual untouched completion
