@@ -1,14 +1,15 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceUnclassifiedSelection
+import Vegas.Game.SourceServiceUnclassifiedSlots
 import Vegas.Pending.ReactiveBindingCopiedWindow
 
 /-! # Actual copied responses at a completed repair boundary
 
 The full effective original policy need not follow the risk menu. Outside the
 two charged response classes, an actually retained copy preserves the whole
-frame and completed memory. Only current focal slot resources are used, so
-foreign responses need not belong to the risk menu.
+frame and completed memory. Actual counted-registration resources apply even
+after opportunity risk latches; this expansion does not assert a charge.
 -/
 
 noncomputable section
@@ -22,72 +23,10 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {setup : Setup (Player := Player) (L := L)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
-private theorem canonical_copy_shape
-    (bounds : MessageBounds (graph setup))
-    (original repaired : (application setup leaks).Execution) (who : Player)
-    (memory : BindingMemory (runtime setup) leaks)
-    (frame : memory.Frame (runtime setup) leaks who original repaired)
-    (response : (application setup leaks).Action)
-    (member : response ∈ bounds.canonicalActions (runtime setup) leaks who
-      (repaired.recall who) (repaired.observe (application setup leaks) who)) :
-    (∀ material, response.transmission = some material →
-      ∀ event candidate, material.call.packet ≠ .commitment event candidate) ∨
-      FreshOwnedBindingResponse (runtime setup) leaks who
-        (original.observe (application setup leaks) who).application response := by
-  classical
-  let app := application setup leaks
-  rcases bounds.canonicalActions_cases (runtime setup) leaks who _ _ response member with silent |
-    ⟨event, choice, _turn, owned, _ready, _timely, represented, _first, same⟩
-  · rw [silent]
-    exact Or.inl (by intros material impossible; cases impossible)
-  cases node : nodeView (graph setup) event with
-  | sample payload law outputEq codeEq =>
-      simp only [MessageBounds.canonicalChoices, node, Finset.notMem_empty] at represented
-  | bind actor payload outputEq codeEq =>
-      have actorEq := nodeView_bind_actor outputEq codeEq
-      rw [owned] at actorEq
-      cases Option.some.inj actorEq
-      simp only [MessageBounds.canonicalChoices, node] at represented
-      obtain ⟨value, _included, rfl⟩ := Finset.mem_image.mp represented
-      cases selected : canonicalFreshSlot who (repaired.observe app who).application with
-      | none =>
-          dsimp only [app] at selected
-          have silent : response = ⟨none⟩ := by
-            simpa only [canonicalServiceDecision, canonicalReactiveDecision, node, selected,
-              Option.map_none, ReactiveApplication.SubmissionNormalization.action,
-              reactiveNormalization] using same
-          rw [silent]
-          exact Or.inl (by intros material impossible; cases impossible)
-      | some serial =>
-          have actual := same.trans ((runtime setup).canonicalServiceDecision_binding leaks who
-            _ _ event payload outputEq codeEq node serial selected (.success value))
-          have rightFresh := canonicalFreshSlot_spec who _ serial selected
-          exact Or.inr ⟨event, serial, some ⟨payload, value⟩,
-            (frame.slots (.prepared serial)).mpr rightFresh, actual⟩
-  | resolve actor payload binding checks outputEq codeEq =>
-      have decision := (runtime setup).canonicalServiceDecision_eq_of_not_bind leaks who
-        (repaired.recall who) (repaired.observe app who) event choice (by
-          intros actor payload outputEq codeEq impossible
-          rw [node] at impossible
-          cases impossible)
-      have casesResolution := (runtime setup).serviceDecision_resolution_cases leaks who
-        (repaired.recall who) (repaired.observe app who) event actor payload binding checks
-          outputEq codeEq node (cast (congrArg EventField.Action outputEq) choice)
-      simp only [cast_cast, cast_eq] at casesResolution
-      have shape := same.trans decision
-      left
-      intro material emitted addressed candidate called
-      rcases casesResolution with withheld | ⟨handle, value, evidence, _, _, _, opening⟩
-      · rw [shape.trans withheld] at emitted
-        cases Option.some.inj emitted
-        cases called
-      · rw [shape.trans opening] at emitted
-        cases Option.some.inj emitted
-        cases called
-
 /-- A real copied uncharged response preserves completed memory and the full
-private frame. Packet equality is derived for the selected response, rather
-than postulated for every private certificate capability. -/
+private frame, including at an uncharged expanded input. The real RAW trace,
+uncharged constructor shape and counted slots derive freshness and packet
+equality; no global private certificate capability equality is postulated. -/
 theorem sourceServiceUnclassified_copied_response_frame
     (bounds : MessageBounds (graph setup)) (bound : (graph setup).EventId → Nat)
     {horizon leftRemaining rightRemaining : Nat}
@@ -101,8 +40,8 @@ theorem sourceServiceUnclassified_copied_response_frame
       (some ⟨leftRemaining, some who, original⟩))
     (rightTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨rightRemaining, some who, repaired⟩))
-    (clear : (runtime setup).serviceRisk leaks bound who (repaired.recall who)
-      (repaired.observe (application setup leaks) who) = false)
+    (rightAtTurn : OwnSubmissionsAtTurn setup leaks repaired who)
+    (rightSlots : CanonicalSlotsUsed setup leaks repaired who)
     (response : (application setup leaks).Action)
     (effective : response ∈ (bounds.menu (runtime setup) leaks).actions who
       (original.recall who) (original.observe (application setup leaks) who))
@@ -122,7 +61,9 @@ theorem sourceServiceUnclassified_copied_response_frame
       remembered.Frame (runtime setup) leaks who (original.respond app who response)
         (repaired.respond app who selected.1) ∧
       remembered.shadow.OwnBindings who ∧
-      remembered.shadow.CompletedAt (original.respond app who response).application.config := by
+      remembered.shadow.CompletedAt (original.respond app who response).application.config ∧
+      OwnSubmissionsAtTurn setup leaks (repaired.respond app who selected.1) who ∧
+      CanonicalSlotsUsed setup leaks (repaired.respond app who selected.1) who := by
   classical
   let app := application setup leaks
   let view := repaired.observe app who
@@ -132,8 +73,36 @@ theorem sourceServiceUnclassified_copied_response_frame
       [(memory.shadow.inputView (runtime setup) leaks view, response)]⟩
   have physical := sourceServiceUnclassified_response_transport bounds original repaired
     who memory frame leftTrace rightTrace response effective notPacket notRecorded
-  have canonical := retained
-  rw [bounds.riskActions_of_clear (runtime setup) leaks bound who _ _ clear] at canonical
+  have rightNotPacket : ¬ auditableServiceResponse setup leaks who (repaired.recall who)
+      (repaired.observe app who) response := by
+    rintro ⟨material, transmission, classified⟩
+    apply notPacket
+    refine ⟨material, transmission, ?_⟩
+    rw [localServiceEnvelope_actual setup leaks leftTrace who material]
+    rw [localServiceEnvelope_actual setup leaks rightTrace who material] at classified
+    change AuditableServicePacket setup repaired.application.publicView who _ at classified
+    change AuditableServicePacket setup original.application.publicView who _
+    rwa [← frame.publicView,
+      ← show original.network.nextSerial who = repaired.network.nextSerial who from
+        congrArg (fun network => network.nextSerial who) frame.network,
+      ← physical.2.2 material transmission] at classified
+  have rightNotRecorded : ¬ recordedServiceResponse setup leaks (repaired.recall who)
+      response := by
+    rintro ⟨event, recorded, named⟩
+    apply notRecorded
+    exact ⟨event, ((runtime setup).eventRecorded_congr leaks _ _ frame.submissions event).symm
+      ▸ recorded, named⟩
+  have shape :
+      (∀ material, response.transmission = some material →
+        ∀ event candidate, material.call.packet ≠ .commitment event candidate) ∨
+      FreshOwnedBindingResponse (runtime setup) leaks who
+        (original.observe app who).application response := by
+    rcases unclassifiedResponse_registration bounds repaired who rightTrace rightAtTurn
+        rightSlots response physical.1 rightNotPacket rightNotRecorded with noncommitment |
+      ⟨event, payload, _layout, _turn, fresh, opening, actual⟩
+    · exact Or.inl noncommitment
+    · exact Or.inr ⟨event, repaired.application.publicView.bindingCount who, opening,
+        (frame.slots (.prepared _)).mpr fresh, actual⟩
   have selectedEq : BindingMemory.retainedResponse (runtime setup) leaks
       (bounds.riskMenu (runtime setup) leaks bound) who memory
         (repaired.recall who, view) response = changed := by
@@ -145,57 +114,59 @@ theorem sourceServiceUnclassified_copied_response_frame
   rw [selectedEq]
   have same : changed.1 = response := memory.copyResponse_action (runtime setup) leaks who view
     response
-  refine ⟨same, ?_⟩
-  rcases canonical_copy_shape bounds original repaired who memory frame response canonical with
-    noncommitment | fresh
-  · have changedEq := memory.copyResponse_noncommitment (runtime setup) leaks who view response
-      noncommitment
-    have shadow : updated.shadow = memory.shadow := congrArg Prod.snd changedEq
-    have inert (execution : app.Execution) :
-        (execution.respond app who response).application = execution.application := by
-      rcases response with ⟨transmission⟩
-      cases transmission with
-      | none => rfl
-      | some material =>
-          exact reactiveApplication_submit_noncommitment (runtime setup) leaks
-            execution.application who material (noncommitment material rfl)
-    refine ⟨?_, ?_, ?_⟩
-    · change updated.Frame (runtime setup) leaks who (original.respond app who response)
-        (repaired.respond app who changed.1)
-      rw [same]
-      rcases response with ⟨transmission⟩
-      cases transmission with
-      | none =>
-          simpa only [updated, changed, changedEq, BindingMemory.record] using
-            frame.transport_response (⟨none⟩ : app.Action) (by simp)
-      | some material =>
-          have leftInert := reactiveApplication_submit_noncommitment (runtime setup) leaks
-            original.application who material (noncommitment material rfl)
-          have rightInert := reactiveApplication_submit_noncommitment (runtime setup) leaks
-            repaired.application who material (noncommitment material rfl)
-          have packet := physical.2.2 material rfl
-          rw [leftInert, rightInert] at packet
-          simpa only [updated, changed, changedEq, BindingMemory.record] using
-            frame.inert_submission material material leftInert rightInert packet
-    · change updated.shadow.OwnBindings who
-      rw [shadow]
-      exact onlyBindings
-    · change updated.shadow.CompletedAt (original.respond app who response).application.config
-      rw [shadow, inert original]
-      exact past
-  · obtain ⟨event, serial, opening, fresh, actual⟩ := fresh
-    rw [actual]
-    have rightFresh := (frame.slots (.prepared serial)).mp fresh
-    have ownFresh : (memory.shadow.inputView (runtime setup) leaks view).application.candidates
-        (.prepared serial) = .fresh := by
-      rw [frame.observed]
-      exact fresh
-    have changedEq := memory.copyResponse_fresh (runtime setup) leaks who view event
-      (.prepared serial) opening .none ownFresh rightFresh
-    have resources := frame.copied_binding_submission onlyBindings past event serial opening
-    refine ⟨?_, ?_, ?_⟩
-    · simpa only [updated, changed, actual, changedEq] using resources.1
-    · simpa only [updated, changed, actual, changedEq] using resources.2.1
-    · simpa only [updated, changed, actual, changedEq] using resources.2.2
+  have actualSlots := sourceServiceUnclassified_response_slots bounds repaired who
+    rightTrace rightAtTurn rightSlots response physical.1 rightNotPacket rightNotRecorded
+  have resources : updated.Frame (runtime setup) leaks who (original.respond app who response)
+      (repaired.respond app who changed.1) ∧ updated.shadow.OwnBindings who ∧
+      updated.shadow.CompletedAt (original.respond app who response).application.config := by
+    rcases shape with
+      noncommitment | fresh
+    · have changedEq := memory.copyResponse_noncommitment (runtime setup) leaks who view response
+        noncommitment
+      have shadow : updated.shadow = memory.shadow := congrArg Prod.snd changedEq
+      have inert (execution : app.Execution) :
+          (execution.respond app who response).application = execution.application := by
+        rcases response with ⟨transmission⟩
+        cases transmission with
+        | none => rfl
+        | some material =>
+            exact reactiveApplication_submit_noncommitment (runtime setup) leaks
+              execution.application who material (noncommitment material rfl)
+      refine ⟨?_, ?_, ?_⟩
+      · rw [same]
+        rcases response with ⟨transmission⟩
+        cases transmission with
+        | none =>
+            simpa only [updated, changed, changedEq, BindingMemory.record] using
+              frame.transport_response (⟨none⟩ : app.Action) (by simp)
+        | some material =>
+            have leftInert := reactiveApplication_submit_noncommitment (runtime setup) leaks
+              original.application who material (noncommitment material rfl)
+            have rightInert := reactiveApplication_submit_noncommitment (runtime setup) leaks
+              repaired.application who material (noncommitment material rfl)
+            have packet := physical.2.2 material rfl
+            rw [leftInert, rightInert] at packet
+            simpa only [updated, changed, changedEq, BindingMemory.record] using
+              frame.inert_submission material material leftInert rightInert packet
+      · rw [shadow]
+        exact onlyBindings
+      · rw [shadow, inert original]
+        exact past
+    · obtain ⟨event, serial, opening, fresh, actual⟩ := fresh
+      rw [actual]
+      have rightFresh := (frame.slots (.prepared serial)).mp fresh
+      have ownFresh : (memory.shadow.inputView (runtime setup) leaks view).application.candidates
+          (.prepared serial) = .fresh := by
+        rw [frame.observed]
+        exact fresh
+      have changedEq := memory.copyResponse_fresh (runtime setup) leaks who view event
+        (.prepared serial) opening .none ownFresh rightFresh
+      have resources := frame.copied_binding_submission onlyBindings past event serial opening
+      refine ⟨?_, ?_, ?_⟩
+      · simpa only [updated, changed, actual, changedEq] using resources.1
+      · simpa only [updated, changed, actual, changedEq] using resources.2.1
+      · simpa only [updated, changed, actual, changedEq] using resources.2.2
+  refine ⟨same, resources.1, resources.2.1, resources.2.2, ?_⟩
+  simpa only [same] using actualSlots
 
 end Vegas

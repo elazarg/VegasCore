@@ -51,19 +51,18 @@ def unusableServiceBindingChoice (menu : (application setup leaks).ResponseMenu)
 
 variable {setup leaks} [Fintype Player]
 
-/-- Outside the actual charged classes, a first effective binding has its
-canonical public packet. Its private material is either a retained represented
-value or exactly the unusable private-material residual. -/
-theorem unclassifiedBinding_cases
-    (bounds : MessageBounds (graph setup)) (bound : (graph setup).EventId → Nat)
+/-- At an actual ready binding, complements of the charged classes force a
+fresh canonical counted bare commitment. This shape does not require a deadline
+gate, risk-menu support or usable private material; actual owner slot resources
+are consumed explicitly. -/
+theorem unclassifiedBinding_shape
+    (bounds : MessageBounds (graph setup))
     {horizon remaining : Nat} {scheduler : (application setup leaks).Scheduler}
     (execution : (application setup leaks).Execution) (who : Player)
     (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨remaining, some who, execution⟩))
     (atTurn : OwnSubmissionsAtTurn setup leaks execution who)
     (slots : CanonicalSlotsUsed setup leaks execution who)
-    (clear : (runtime setup).serviceRisk leaks bound who (execution.recall who)
-      (execution.observe (application setup leaks) who) = false)
     (event : (graph setup).EventId) (payload : L.Ty)
     (outputEq : (graph setup).outputLayout event = .binding who payload)
     (codeEq : cast (congrArg (EventCode (graph setup).layout) outputEq)
@@ -77,18 +76,17 @@ theorem unclassifiedBinding_cases
     (notPacket : ¬ auditableServiceResponse setup leaks who (execution.recall who)
       (execution.observe (application setup leaks) who) ⟨some material⟩)
     (notRecorded : ¬ recordedServiceResponse setup leaks (execution.recall who) ⟨some material⟩) :
-    (⟨some material⟩ : (application setup leaks).Action) ∈ bounds.riskActions (runtime setup) leaks
-        bound who (execution.recall who) (execution.observe (application setup leaks) who) ∨
-      unusableServiceBindingResponse setup leaks who (execution.recall who)
-        (execution.observe (application setup leaks) who) ⟨some material⟩ := by
+    material = ⟨⟨.commitment event (who, .prepared
+        (execution.application.publicView.bindingCount who)), material.call.opening⟩, .none⟩ ∧
+      execution.application.candidates.lookup
+        (who, .prepared (execution.application.publicView.bindingCount who)) = .fresh ∧
+      (runtime setup).eventRecorded leaks (execution.recall who) event = false := by
   classical
   let app := application setup leaks
-  let view := execution.observe app who
   let serial := execution.application.publicView.bindingCount who
   have rawTrace := trace
-  obtain ⟨other, named, owned, ready, selected, unrecorded, fits⟩ :=
-    unclassifiedSubmission_opportunity bound execution who rawTrace clear material notPacket
-      notRecorded
+  obtain ⟨other, named, _owned, ready, selected, unrecorded⟩ :=
+    unclassifiedSubmission_ready execution who rawTrace material notPacket notRecorded
   have same : other = event := Option.some.inj (selected.symm.trans turn)
   subst other
   let message : Message Player (WitnessedPacket (graph setup)) :=
@@ -137,8 +135,6 @@ theorem unclassifiedBinding_cases
     rw [called, empty, token] at eta
     exact eta
   have fresh := canonicalSlot_fresh_of_used trace who atTurn slots event turn unrecorded
-  have selectedSlot : canonicalFreshSlot who view.application = some serial :=
-    canonicalFreshSlot_canonical who view.application fresh
   have member := (bounds.menu_mem (runtime setup) leaks who _ _ _).mp available
   have normal : material.normalizeReactive who (app.observePlayer execution.application who)
       (execution.network.known who) = material := by
@@ -154,6 +150,55 @@ theorem unclassifiedBinding_cases
       exact same)
   have shape := (runtime setup).normal_binding_of_canonical_packet leaks execution.application who
     (execution.network.known who) material event serial fresh normal emitted
+  exact ⟨shape, fresh, unrecorded⟩
+
+/-- Outside the actual charged classes, a first effective binding has its
+canonical public packet. Its private material is either a retained represented
+value or exactly the unusable private-material residual. -/
+theorem unclassifiedBinding_cases
+    (bounds : MessageBounds (graph setup)) (bound : (graph setup).EventId → Nat)
+    {horizon remaining : Nat} {scheduler : (application setup leaks).Scheduler}
+    (execution : (application setup leaks).Execution) (who : Player)
+    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨remaining, some who, execution⟩))
+    (atTurn : OwnSubmissionsAtTurn setup leaks execution who)
+    (slots : CanonicalSlotsUsed setup leaks execution who)
+    (clear : (runtime setup).serviceRisk leaks bound who (execution.recall who)
+      (execution.observe (application setup leaks) who) = false)
+    (event : (graph setup).EventId) (payload : L.Ty)
+    (outputEq : (graph setup).outputLayout event = .binding who payload)
+    (codeEq : cast (congrArg (EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .bind who payload)
+    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
+    (turn : execution.application.publicView.ownTurn? who = some event)
+    (material : (application setup leaks).Submission)
+    (available : (⟨some material⟩ : (application setup leaks).Action) ∈
+      (bounds.menu (runtime setup) leaks).actions who (execution.recall who)
+        (execution.observe (application setup leaks) who))
+    (notPacket : ¬ auditableServiceResponse setup leaks who (execution.recall who)
+      (execution.observe (application setup leaks) who) ⟨some material⟩)
+    (notRecorded : ¬ recordedServiceResponse setup leaks (execution.recall who) ⟨some material⟩) :
+    (⟨some material⟩ : (application setup leaks).Action) ∈ bounds.riskActions (runtime setup) leaks
+        bound who (execution.recall who) (execution.observe (application setup leaks) who) ∨
+      unusableServiceBindingResponse setup leaks who (execution.recall who)
+        (execution.observe (application setup leaks) who) ⟨some material⟩ := by
+  classical
+  let app := application setup leaks
+  let view := execution.observe app who
+  let serial := execution.application.publicView.bindingCount who
+  have rawTrace := trace
+  obtain ⟨other, _named, owned, ready, selected, unrecorded, fits⟩ :=
+    unclassifiedSubmission_opportunity bound execution who rawTrace clear material notPacket
+      notRecorded
+  have same : other = event := Option.some.inj (selected.symm.trans turn)
+  subst other
+  have shapeFacts := unclassifiedBinding_shape bounds execution who trace atTurn slots event
+    payload outputEq codeEq node turn material available notPacket notRecorded
+  have shape := shapeFacts.1
+  have fresh := shapeFacts.2.1
+  have selectedSlot : canonicalFreshSlot who view.application = some serial :=
+    canonicalFreshSlot_canonical who view.application fresh
+  have member := (bounds.menu_mem (runtime setup) leaks who _ _ _).mp available
   have bounded : bounds.AllowsOpening material.call.opening := member.1.1.2
   have unusable (missing : material.call.opening.bind (fun raw => raw.as? payload) = none) :
       unusableServiceBindingResponse setup leaks who (execution.recall who) view

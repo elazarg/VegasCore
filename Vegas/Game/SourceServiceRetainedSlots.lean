@@ -30,23 +30,23 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   (bounds : MessageBounds (graph setup))
 
-/-- A retained response keeps every used prepared slot below the public
-count, except the count slot of a submitted unfinished binding. -/
-theorem retainedCanonicalSlots_respond {horizon remaining : Nat}
-    {scheduler : (application setup leaks).Scheduler}
-    {middle : (application setup leaks).Execution} {who : Player}
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-      (some ⟨remaining, some who, middle⟩))
-    {response : (application setup leaks).Action}
-    (member : response ∈ bounds.canonicalActions (runtime setup) leaks who
-      (middle.recall who) (middle.observe (application setup leaks) who))
-    (atTurn : OwnSubmissionsAtTurn setup leaks middle who)
-    (valid : CanonicalSlotsUsed setup leaks middle who) :
-    CanonicalSlotsUsed setup leaks (middle.respond (application setup leaks) who response)
-      who := by
+omit [Fintype Player] in
+/-- Recording a response preserves counted slots when each named slot is the
+current count and belongs to an actually unfinished owned binding. Protection
+and policy support are separate from this actual allocation fact. -/
+theorem canonicalSlotsUsed_respond_counted
+    (middle : (application setup leaks).Execution) (who : Player)
+    (response : (application setup leaks).Action)
+    (valid : CanonicalSlotsUsed setup leaks middle who)
+    (counted : ∀ serial, (runtime setup).responseCandidateSlot leaks response = some serial →
+      ∃ event payload, (graph setup).outputLayout event = .binding who payload ∧
+        serial = middle.application.publicView.bindingCount who ∧
+        event ∉ middle.application.config.cut.completed ∧
+        (runtime setup).submittedEvent? leaks response = some event) :
+    CanonicalSlotsUsed setup leaks (middle.respond (application setup leaks) who response) who := by
   let app := application setup leaks
   have appEq := (runtime setup).reactive_respond_application leaks middle who response
-  obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks middle who response
+  obtain ⟨_emitted, recalled, _⟩ := respond_recall_self setup leaks middle who response
   have recordedMono : ∀ event,
       (runtime setup).eventRecorded leaks (middle.recall who) event = true →
         (runtime setup).eventRecorded leaks ((middle.respond app who response).recall who)
@@ -66,31 +66,71 @@ theorem retainedCanonicalSlots_respond {horizon remaining : Nat}
       exact unfinished
   · have slot : (runtime setup).responseCandidateSlot leaks response = some serial :=
       Option.mem_toList.mp new
-    obtain ⟨material, submits⟩ : ∃ material, response.transmission = some material := by
-      unfold EventGraphRuntime.responseCandidateSlot at slot
-      split at slot
-      · exact ⟨_, ‹_›⟩
-      · cases slot
-    obtain ⟨event, action, turn, owned, _, _, unrecorded, _, rfl⟩ :=
-      bounds.canonicalActions_submission (runtime setup) leaks who _ _ response member
-        material submits
-    have fresh := canonicalSlot_fresh_of_used trace who atTurn valid event turn unrecorded
-    have canonical := canonicalFreshSlot_canonical who (middle.observe app who).application fresh
-    obtain ⟨selected, ⟨payload, layout⟩, named⟩ := canonicalServiceDecision_candidateSlot who
-      (middle.recall who) (middle.observe app who) event owned action serial slot
-    rw [canonical] at selected
-    cases Option.some.inj selected
-    have ready := (middle.application.publicView_eventReady event).mp
-      (PublicView.ownTurn?_spec _ who event turn).1
-    refine Or.inr ⟨rfl, event, payload, layout, ?_, ?_⟩
+    obtain ⟨event, payload, layout, same, unfinished, named⟩ := counted serial slot
+    refine Or.inr ⟨same, event, payload, layout, ?_, ?_⟩
     · rw [appEq.1]
-      exact ready.1
+      exact unfinished
     · rw [recalled]
       unfold EventGraphRuntime.eventRecorded
       rw [List.any_append]
       simp only [List.any_cons, List.any_nil, Bool.or_false]
       rw [named]
       simp
+
+omit [Fintype Player] in
+/-- The actual new before-view is the current view. A response that names only
+the owner's actual turn therefore retains all earlier at-turn submissions. -/
+theorem ownSubmissionsAtTurn_respond_current
+    (middle : (application setup leaks).Execution) (who : Player)
+    (response : (application setup leaks).Action)
+    (atTurn : OwnSubmissionsAtTurn setup leaks middle who)
+    (current : ∀ event, (runtime setup).submittedEvent? leaks response = some event →
+      middle.application.publicView.ownTurn? who = some event) :
+    OwnSubmissionsAtTurn setup leaks
+      (middle.respond (application setup leaks) who response) who := by
+  obtain ⟨_, recalled, _⟩ := respond_recall_self setup leaks middle who response
+  intro entry present event submitted
+  rw [recalled] at present
+  rcases List.mem_append.mp present with old | new
+  · exact atTurn entry old event submitted
+  · rw [List.mem_singleton] at new
+    subst new
+    exact current event submitted
+
+/-- A retained response keeps every used prepared slot below the public
+count, except the count slot of a submitted unfinished binding. -/
+theorem retainedCanonicalSlots_respond {horizon remaining : Nat}
+    {scheduler : (application setup leaks).Scheduler}
+    {middle : (application setup leaks).Execution} {who : Player}
+    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨remaining, some who, middle⟩))
+    {response : (application setup leaks).Action}
+    (member : response ∈ bounds.canonicalActions (runtime setup) leaks who
+      (middle.recall who) (middle.observe (application setup leaks) who))
+    (atTurn : OwnSubmissionsAtTurn setup leaks middle who)
+    (valid : CanonicalSlotsUsed setup leaks middle who) :
+    CanonicalSlotsUsed setup leaks (middle.respond (application setup leaks) who response)
+      who := by
+  let app := application setup leaks
+  apply canonicalSlotsUsed_respond_counted middle who response valid
+  intro serial slot
+  obtain ⟨material, submits⟩ : ∃ material, response.transmission = some material := by
+    unfold EventGraphRuntime.responseCandidateSlot at slot
+    split at slot
+    · exact ⟨_, ‹_›⟩
+    · cases slot
+  obtain ⟨event, action, turn, owned, _, _, unrecorded, _, rfl⟩ :=
+    bounds.canonicalActions_submission (runtime setup) leaks who _ _ response member
+      material submits
+  have fresh := canonicalSlot_fresh_of_used trace who atTurn valid event turn unrecorded
+  have canonical := canonicalFreshSlot_canonical who (middle.observe app who).application fresh
+  obtain ⟨selected, ⟨payload, layout⟩, named⟩ := canonicalServiceDecision_candidateSlot who
+    (middle.recall who) (middle.observe app who) event owned action serial slot
+  rw [canonical] at selected
+  cases Option.some.inj selected
+  have ready := (middle.application.publicView_eventReady event).mp
+    (PublicView.ownTurn?_spec _ who event turn).1
+  exact ⟨event, payload, layout, rfl, ready.1, named⟩
 
 /-- Recording a retained response preserves the fact that each submission was
 made at its owner's own ready turn. -/
@@ -102,15 +142,10 @@ theorem retainedOwnSubmissionsAtTurn_respond
     (atTurn : OwnSubmissionsAtTurn setup leaks middle who) :
     OwnSubmissionsAtTurn setup leaks
       (middle.respond (application setup leaks) who response) who := by
-  obtain ⟨_, recalled, _⟩ := respond_recall_self setup leaks middle who response
-  intro entry present event submitted
-  rw [recalled] at present
-  rcases List.mem_append.mp present with old | new
-  · exact atTurn entry old event submitted
-  · rw [List.mem_singleton] at new
-    subst new
-    exact (bounds.canonical_submitted_event (runtime setup) leaks who _ _ response member event
-      submitted).1
+  apply ownSubmissionsAtTurn_respond_current middle who response atTurn
+  intro event submitted
+  exact (bounds.canonical_submitted_event (runtime setup) leaks who _ _ response member event
+    submitted).1
 
 /-- One arbitrary scheduler round preserves the owner's canonical-slot and
 submission-turn invariants whenever its response policy uses retained actions. -/

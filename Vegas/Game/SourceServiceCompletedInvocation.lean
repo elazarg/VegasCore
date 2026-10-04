@@ -10,7 +10,9 @@ import Interaction.ReactiveRawRoundTrace
 The original native full-effective policy is sampled once. The same draw
 drives the retained implementation, with real RAW successors and local owner
 slots. Every draw is either actually charged-classified, a completed frame
-copy, or a typed default with its derived one-event pending exception. Foreign
+copy, or a typed default with its derived one-event pending exception. A risk
+expansion copies unclassified full-effective responses without calling it
+a charge; their actual unconditional owner slots persist. Foreign
 policies are arbitrary physical policies; there is no global risk trace.
 -/
 
@@ -44,8 +46,6 @@ theorem sourceService_completed_invoke_coupling
       (some ⟨rightRemaining, some who, repaired⟩))
     (rightAtTurn : OwnSubmissionsAtTurn setup leaks repaired who)
     (rightSlots : CanonicalSlotsUsed setup leaks repaired who)
-    (clear : (runtime setup).serviceRisk leaks bound who (repaired.recall who)
-      (repaired.observe (application setup leaks) who) = false)
     (owner : ((bounds.menu (runtime setup) leaks).information (initialLaw setup) horizon
       scheduler).BehavioralPolicy who)
     (foreign : Player → (application setup leaks).Policy)
@@ -83,6 +83,8 @@ theorem sourceService_completed_invoke_coupling
                 recordedServiceResponse setup leaks (original.recall who) response) ∨
             (next.2.2.Frame (runtime setup) leaks who next.1 next.2.1 ∧
               next.2.2.shadow.OwnBindings who ∧
+              OwnSubmissionsAtTurn setup leaks next.2.1 who ∧
+              CanonicalSlotsUsed setup leaks next.2.1 who ∧
               (next.2.2.shadow.CompletedAt next.1.application.config ∨
                 ∃ event,
                   unusableServiceBindingResponse setup leaks who input.1 input.2 response ∧
@@ -160,27 +162,53 @@ theorem sourceService_completed_invoke_coupling
       by_cases recorded : recordedServiceResponse setup leaks (original.recall who) response
       · exact Or.inl (Or.inr recorded)
       have available := effective response chosen
-      have split := sourceServiceUnclassified_response_selection bounds bound values original
-        repaired who memory frame leftTrace rightTrace rightAtTurn rightSlots clear response
-          available packet recorded
-      rcases split with copied | defaulted
-      · have resources := sourceServiceUnclassified_copied_response_frame bounds bound original
-          repaired who memory frame onlyBindings past leftTrace rightTrace clear response available
-            packet recorded copied.1
-        exact Or.inr ⟨resources.2.1, resources.2.2.1, Or.inl resources.2.2.2⟩
-      · have resources := sourceServiceMissing_unusable_default_frame bounds bound values original
+      by_cases clear : (runtime setup).serviceRisk leaks bound who (repaired.recall who)
+          (repaired.observe app who) = false
+      · have canonical := admitted
+        change (selected response).1 ∈ bounds.riskActions (runtime setup) leaks bound who
+          (repaired.recall who) (repaired.observe app who) at canonical
+        rw [bounds.riskActions_of_clear (runtime setup) leaks bound who _ _ clear] at canonical
+        have targetSlots :=
+          And.intro (retainedOwnSubmissionsAtTurn_respond bounds repaired who
+            (selected response).1 canonical rightAtTurn)
+            (retainedCanonicalSlots_respond bounds rightTrace canonical rightAtTurn rightSlots)
+        have split := sourceServiceUnclassified_response_selection bounds bound values original
+          repaired who memory frame leftTrace rightTrace rightAtTurn rightSlots clear response
+            available packet recorded
+        rcases split with copied | defaulted
+        · have resources := sourceServiceUnclassified_copied_response_frame bounds bound original
+            repaired who memory frame onlyBindings past leftTrace rightTrace rightAtTurn
+              rightSlots response available
+              packet recorded copied.1
+          exact Or.inr ⟨resources.2.1, resources.2.2.1, targetSlots.1, targetSlots.2,
+            Or.inl resources.2.2.2.1⟩
+        · have resources := sourceServiceMissing_unusable_default_frame bounds bound values original
+            repaired who memory frame onlyBindings past leftTrace rightTrace rightAtTurn rightSlots
+              clear response available defaulted.1
+          obtain ⟨event, payload, outputEq, codeEq, node, turn, unrecorded, opening, responseEq,
+            missing⟩ := defaulted.1
+          have named : (runtime setup).submittedEvent? leaks response = some event := by
+            rw [responseEq]
+            rfl
+          have unusable : unusableServiceBindingResponse setup leaks who input.1 input.2 response :=
+            ⟨event, payload, outputEq, codeEq, node, turn, unrecorded, opening, responseEq, missing⟩
+          have pending := sourceServiceMissing_unusable_default_completedExcept bounds bound values
+            original repaired who memory frame past rightTrace rightAtTurn rightSlots clear response
+              available unusable event named
+          exact Or.inr ⟨resources.1, resources.2.1, targetSlots.1, targetSlots.2,
+            Or.inr ⟨event, unusable, named, pending⟩⟩
+      · have expanded : (runtime setup).serviceRisk leaks bound who (repaired.recall who)
+            (repaired.observe app who) = true := Bool.eq_true_of_not_eq_false clear
+        have physical := sourceServiceUnclassified_response_transport bounds original repaired
+          who memory frame leftTrace rightTrace response available packet recorded
+        have member : response ∈ bounds.riskActions (runtime setup) leaks bound who
+            (repaired.recall who) (repaired.observe app who) := by
+          rw [bounds.riskActions_of_risk (runtime setup) leaks bound who _ _ expanded]
+          exact physical.1
+        have resources := sourceServiceUnclassified_copied_response_frame bounds bound original
           repaired who memory frame onlyBindings past leftTrace rightTrace rightAtTurn rightSlots
-            clear response available defaulted.1
-        obtain ⟨event, payload, outputEq, codeEq, node, turn, unrecorded, opening, responseEq,
-          missing⟩ := defaulted.1
-        have named : (runtime setup).submittedEvent? leaks response = some event := by
-          rw [responseEq]
-          rfl
-        have unusable : unusableServiceBindingResponse setup leaks who input.1 input.2 response :=
-          ⟨event, payload, outputEq, codeEq, node, turn, unrecorded, opening, responseEq, missing⟩
-        have pending := sourceServiceMissing_unusable_default_completedExcept bounds bound values
-          original repaired who memory frame past rightTrace rightAtTurn rightSlots clear response
-            available unusable event named
-        exact Or.inr ⟨resources.1, resources.2.1, Or.inr ⟨event, unusable, named, pending⟩⟩
+            response available packet recorded member
+        exact Or.inr ⟨resources.2.1, resources.2.2.1, resources.2.2.2.2.1,
+          resources.2.2.2.2.2, Or.inl resources.2.2.2.1⟩
 
 end Vegas

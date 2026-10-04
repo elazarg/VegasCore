@@ -269,11 +269,15 @@ private def pendingExit
     (horizon : Nat) (scheduler : (application setup leaks).Scheduler)
     (players : Player → (application setup leaks).Policy) (who : Player)
     (pending : (graph setup).EventId)
+    (anchor : (application setup leaks).PlayerEntry)
+    (earlier : List (application setup leaks).PlayerEntry)
     (next : (application setup leaks).Execution × (application setup leaks).Execution ×
       BindingMemory (runtime setup) leaks) : Prop :=
   (next.2.2.Frame (runtime setup) leaks who next.1 next.2.1 ∧
     next.2.2.shadow.OwnBindings who ∧ next.2.2.shadow.CompletedAt next.1.application.config ∧
-      pending ∈ next.1.application.config.cut.completed) ∨
+      pending ∈ next.1.application.config.cut.completed ∧
+      ∃ later, next.1.recall who = earlier ++ anchor :: later ∧
+        ∀ entry ∈ later, entry.action.transmission = none) ∨
     ∃ remaining original response,
       Nonempty (((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
         (some ⟨remaining, some who, original⟩)) ∧
@@ -319,7 +323,7 @@ private theorem pending_dispatch_coupling
         (fun next => strategy.resume who players (command.actor? app) next memory) ∧
       ∀ next ∈ coupling.support,
         pendingPhase who pending payload outputEq candidate anchor earlier reference next ∨
-          pendingExit horizon scheduler players who pending next := by
+          pendingExit horizon scheduler players who pending anchor earlier next := by
   classical
   let app := application setup leaks
   let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
@@ -344,7 +348,7 @@ private theorem pending_dispatch_coupling
         coupling.map Prod.snd = strategy.resume who players (command.actor? app) pair.2 memory ∧
         ∀ next ∈ coupling.support,
           pendingPhase who pending payload outputEq candidate anchor earlier reference next ∨
-            pendingExit horizon scheduler players who pending next := by
+            pendingExit horizon scheduler players who pending anchor earlier next := by
     obtain ⟨currentFrame, currentPast, completeMemory⟩ := related pair member
     by_cases completed : pending ∈ pair.1.application.config.cut.completed
     · have inactive : command.actor? app = none := by
@@ -361,7 +365,10 @@ private theorem pending_dispatch_coupling
       · simp only [PMF.pure_map, inactive, ReactiveApplication.Implementation.resume]
       · intro next chosen
         cases (PMF.mem_support_pure_iff _ _).mp chosen
-        exact Or.inr (Or.inl ⟨currentFrame, onlyBindings, completeMemory completed, completed⟩)
+        refine Or.inr (Or.inl ⟨currentFrame, onlyBindings, completeMemory completed,
+          completed, later, ?_, silent⟩)
+        rw [app.environmentStep_recall original pair.1 command (leftSupport pair member)]
+        exact split
     · have retained := ((runtime setup).reactiveCompletedInvariant leaks
         original.application.config.cut.completed).environmentStep original pair.1 command
           (Finset.Subset.refl _) (leftSupport pair member)
@@ -474,7 +481,7 @@ private theorem pending_round_coupling
       coupling.map Prod.snd = strategy.round who players scheduler repaired memory ∧
       ∀ next ∈ coupling.support,
         pendingPhase who pending payload outputEq candidate anchor earlier reference next ∨
-          pendingExit horizon scheduler players who pending next := by
+          pendingExit horizon scheduler players who pending anchor earlier next := by
   classical
   let app := application setup leaks
   let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
@@ -551,7 +558,9 @@ theorem sourceService_pending_stopped_coupling
         BindingMemory (runtime setup) leaks =>
       (next.2.2.Frame (runtime setup) leaks who next.1 next.2.1 ∧
         next.2.2.shadow.OwnBindings who ∧ next.2.2.shadow.CompletedAt next.1.application.config ∧
-          pending ∈ next.1.application.config.cut.completed) ∨
+          pending ∈ next.1.application.config.cut.completed ∧
+          ∃ laterNext, next.1.recall who = earlier ++ anchor :: laterNext ∧
+            ∀ entry ∈ laterNext, entry.action.transmission = none) ∨
         ∃ budget before response,
           Nonempty ((app.protocol (initialLaw setup) horizon scheduler).Trace
             (some ⟨budget, some who, before⟩)) ∧
@@ -584,7 +593,7 @@ theorem sourceService_pending_stopped_coupling
   let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
     (bounds.riskMenu (runtime setup) leaks bound) who reference (players who)
   let good := pendingPhase who pending payload outputEq candidate anchor earlier reference
-  let exited := pendingExit horizon scheduler players who pending
+  let exited := pendingExit horizon scheduler players who pending anchor earlier
   let closed (index : Nat) (next : app.Execution × app.Execution × BindingMemory
       (runtime setup) leaks) :=
     ∃ stopped ≤ index,

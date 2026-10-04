@@ -1751,6 +1751,18 @@ denominator adds the corresponding LOW mass. No posterior equation is supplied
 as a premise. Source equilibrium, a native service contract and the full native
 information-fiber likelihoods remain separate obligations; these source facts
 do not establish a timing counterexample.
+[ReactiveWithholdingReceipts](../Vegas/Pending/ReactiveWithholdingReceipts.lean)
+proves that an accepting receipt for an actual withholding envelope fixes its
+publication output to failure on every later initialized raw history.
+[SourceServiceWithholdingGuessBound](../Vegas/Game/SourceServiceWithholdingGuessBound.lean)
+uses that receipt invariant and actual final-record collection to bound the
+whole future audited guessing score after withholding by the LOW-correct
+indicator. An accepted packet fixes LOW; an unaccepted packet is forbidden at
+completion, and observation-times-delivery collection with a deposit covering
+the score range makes its expected net score nonpositive. The bound uses the existing
+terminal evaluator, arbitrary later player policies, actual traffic persistence
+and the same fixed initial type. It does not identify that score with a concrete
+source utility or supply an incoming type posterior.
 [OpaqueBindingForkSourcePosterior](../Vegas/Examples/OpaqueBindingForkSourcePosterior.lean)
 proves that the actual conditional typed configuration is the clean witness's
 configuration. Both physical decoders succeed, and the common original-memory
@@ -2242,11 +2254,14 @@ certificate-preservation assumptions. Charged and recorded responses remain
 separate exits; whole-future repair and payoff domination remain open.
 [SourceServiceCompletedResponse](../Vegas/Game/SourceServiceCompletedResponse.lean)
 proves that an actually retained, uncharged response preserves the full repair
-frame, owned-binding memory and completed memory. Canonical membership derives
-its noncommitment or fresh-registration shape, and the selected response's
-actual emitted envelope is equal in both executions. This uses actual RAW
-histories, without requiring foreign responses to belong to the risk menu or
-equating every private certificate capability.
+frame, owned-binding memory, completed memory and unconditional owner slot
+resources, including at an expanded risk input. The actual RAW trace, packet
+classifier complement and counted slots derive its noncommitment or fresh
+registration shape; the selected emitted envelope is equal in both executions.
+[SourceServiceUnclassifiedSlots](../Vegas/Game/SourceServiceUnclassifiedSlots.lean)
+derives this first bare counted-registration shape and its slot preservation
+without deadline protection or a clear risk flag. Foreign responses need not
+belong to the risk menu, and private certificate capabilities are not equated.
 [SourceServiceRetainedLocalSlots](../Vegas/Game/SourceServiceRetainedLocalSlots.lean)
 tracks the retained implementation's actual resumption. Each sampled focal
 response supplies its own local admission; every foreign response is arbitrary.
@@ -2266,9 +2281,19 @@ its actual invocation and the retained implementation's actual resumption
 marginals. Each sampled response either supplies a real auditable or recorded
 exit, preserves the completed repair frame through a copied response, or
 supplies the typed-default frame with one named pending exception. Both
-successor RAW traces and the repaired owner's conditional slot resources are
-derived from that same draw. Foreign policies are arbitrary physical policies.
-Completed scheduler composition and whole-policy utility comparison remain open.
+successor RAW traces are derived from that same draw. Every unclassified branch
+also preserves unconditional owner submission and slot resources. At a clear
+input the actual selection is copy or typed default; at an expanded risk input
+physical transport admits the same effective response and derives its actual
+copy. No clear-risk premise is imposed on this invocation. Foreign policies
+are arbitrary physical policies.
+[SourceServiceCompletedCommands](../Vegas/Game/SourceServiceCompletedCommands.lean)
+couples the next actual scheduler command using completed memory and the owner
+commitment ledger. Both marginals have actual RAW successor controls and retain
+completed memory, the ledger and unconditional owner slots. The frame persists
+or an actual inclusion names a signed owner-content breach. A clock opening an
+unsafe opportunity is not classified as a charge. Whole-phase composition and
+whole-policy utility comparison remain open.
 [SourceServiceUnclassifiedPending](../Vegas/Game/SourceServiceUnclassifiedPending.lean)
 proves that, while an actually recorded event remains ready, every owner
 response outside the public-packet and duplicate classifiers is silence.
@@ -2310,7 +2335,8 @@ added, and this local law supplies no terminal utility comparison.
 couples every actual scheduler command and owner, foreign or inactive response
 through the real remaining RAW budget. While pending, the full frame, single
 unfinished override and actual anchored silent recall tail persist. The segment
-exits at actual settlement with completed memory, or at a sampled classified
+exits at actual settlement with completed memory and the actual anchored silent
+recall tail, or at a sampled classified
 owner response with its real active RAW trace and response transition. Both
 checkpoint marginals and subsequent actual tail supports are retained. After an
 exit, the tails need not remain related; this supplies no terminal payoff
@@ -2327,8 +2353,17 @@ a still-ready pending event. Every coupled endpoint therefore retains an actual
 settlement or classified-response checkpoint and both subsequent tail supports.
 The actual checkpoint supports and accounted remaining budgets derive RAW
 traces on both sides and the repaired owner's conditional submission and slot
-resources. A clear settled checkpoint can therefore reuse the completed
-invocation's current resources without a global repaired risk history.
+resources.
+[SourceServicePendingCommitmentLedger](../Vegas/Game/SourceServicePendingCommitmentLedger.lean)
+derives the settled checkpoint's owner commitment ledger from that actual tail.
+Before the unrecorded current opportunity, every earlier at-turn submission
+addresses an already completed event; the original run preserves those
+completions, and settlement completes the anchored event. Initialized packet
+provenance therefore makes every owner commitment inert by completion. No
+separate ledger or equality of private candidate meanings is assumed.
+The checkpoint's remaining slot resource is conditional on clear persistent
+risk; extending that resource through the same pending induction and composing
+the next completed phase remain separate obligations.
 No future risk-policy support, shared postsettlement path or terminal utility
 comparison is assumed.
 

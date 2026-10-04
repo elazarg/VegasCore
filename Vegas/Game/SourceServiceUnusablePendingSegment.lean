@@ -4,6 +4,7 @@ import Vegas.Game.SourceServicePendingSegment
 import Vegas.Pending.ReactiveUnusableBinding
 import Vegas.Pending.ReactiveAsyncContract
 import Vegas.Game.SourceServiceRetainedLocalSlots
+import Vegas.Game.SourceServicePendingCommitmentLedger
 
 /-! # The actual unusable response seeds its pending segment
 
@@ -76,7 +77,8 @@ theorem sourceServiceMissing_unusable_pending_stopped_coupling
           BindingMemory (runtime setup) leaks =>
         (next.2.2.Frame (runtime setup) leaks who next.1 next.2.1 ∧
           next.2.2.shadow.OwnBindings who ∧ next.2.2.shadow.CompletedAt
-            next.1.application.config ∧ event ∈ next.1.application.config.cut.completed) ∨
+            next.1.application.config ∧ event ∈ next.1.application.config.cut.completed ∧
+          OwnerCommitmentsInertOrMatching who next.1 next.2.1) ∨
           ∃ budget before chosen,
             Nonempty ((app.protocol (initialLaw setup) horizon scheduler).Trace
               (some ⟨budget, some who, before⟩)) ∧
@@ -266,7 +268,37 @@ theorem sourceServiceMissing_unusable_pending_stopped_coupling
       (horizon := horizon) (remaining := leftRemaining - stopped) stopped right who remembered
         (by simpa only [accounted, sameBudget] using rightAfterTrace) rightAfterSlots players
           (repaired.recall who) checkpoint.2 rightReached
-    exact ⟨stopped, bounded, checkpoint, leftReached, rightReached, boundary, checkpointLeft,
-      checkpointRight.1, checkpointRight.2, leftTail, rightTail⟩
+    have boundaryWithLedger :
+        (checkpoint.2.2.Frame (runtime setup) leaks who checkpoint.1 checkpoint.2.1 ∧
+          checkpoint.2.2.shadow.OwnBindings who ∧ checkpoint.2.2.shadow.CompletedAt
+            checkpoint.1.application.config ∧
+          event ∈ checkpoint.1.application.config.cut.completed ∧
+          OwnerCommitmentsInertOrMatching who checkpoint.1 checkpoint.2.1) ∨
+        ∃ budget before chosen,
+          Nonempty ((app.protocol (initialLaw setup) horizon scheduler).Trace
+            (some ⟨budget, some who, before⟩)) ∧
+          chosen ∈ (players who (before.recall who) (before.observe app who)).support ∧
+          checkpoint.1 = before.respond app who chosen ∧
+          (auditableServiceResponse setup leaks who (before.recall who)
+            (before.observe app who) chosen ∨
+              recordedServiceResponse setup leaks (before.recall who) chosen) := by
+      rcases boundary with settled | classified
+      · obtain ⟨settledFrame, settledOwn, settledPast, completed, laterNext, recallEq,
+          laterSilent⟩ := settled
+        obtain ⟨actualTrace⟩ := checkpointLeft
+        have originalAtTurn := sourceServiceFrame_ownSubmissionsAtTurn
+          ⟨leftRemaining, some who, original⟩ ⟨rightRemaining, some who, repaired⟩ who memory frame
+            leftTrace rightTrace rightAtTurn
+        have originalTurn : original.application.publicView.ownTurn? who = some event := by
+          rw [frame.publicView]
+          exact turn
+        have ledger := sourceService_pending_completed_commitment_ledger original checkpoint.1
+          checkpoint.2.1 who leftTrace actualTrace originalAtTurn event originalTurn
+            earlierUnrecorded response players stopped leftReached anchor named laterNext recallEq
+              laterSilent completed
+        exact Or.inl ⟨settledFrame, settledOwn, settledPast, completed, ledger⟩
+      · exact Or.inr classified
+    exact ⟨stopped, bounded, checkpoint, leftReached, rightReached, boundaryWithLedger,
+      checkpointLeft, checkpointRight.1, checkpointRight.2, leftTail, rightTail⟩
 
 end Vegas
