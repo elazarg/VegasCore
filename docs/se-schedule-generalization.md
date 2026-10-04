@@ -2768,9 +2768,8 @@ for ordinary source decisions or every runtime step. This is one proposed
 enforcement design, not a proof that separate reserves are necessary in every
 protocol. A previously consumed whole-owner OR fine cannot supply these units.
 Uncertain collection of that OR fine can still deter a later offense if it
-increases the chance of
-collection, but a positive bound on each offense's collection probability
-does not establish such an increase.
+increases the chance of collection, but a positive bound on each offense's
+collection probability does not establish such an increase.
 
 For partially collected packet fines, earlier expected charges must be
 preserved in the actual conditional comparison. Authentic per-packet coverage
@@ -2791,32 +2790,109 @@ bound. Public misses exclude source-compatible information by
 free completion. Extending these actual owner resources through the decision
 commitment and mandatory opening is an operational proof obligation.
 
-A smaller accounting candidate separates a once-per-owner public-miss fee
-`DM` from a once-per-owner collected-packet fine `DP`, funded by one escrow
-`DM + DP`. Take nonnegative fines, base utility on actual final states in
-`[m, M]`, and a positive conditional collection lower bound `q` for a first
-forbidden packet. Then `q * DP >= M - m + DM` bounds that offending
-continuation by `m - DM`. From a prefix whose earlier owner packets are
-accepted and settled-good, literal owner silence produces no new packets and
-pays at most `DM`, giving the same lower bound against arbitrary foreign RAW
-play. Accepted receipts and their settled content persist. This avoids a
-renewed fine at every future step, but does not supply the conditional source
-simulation or a complete equilibrium construction.
+A two-charge candidate retains the existing acceptance/deadline/public-miss
+audit `A`, capped by a once-per-owner fine `DA`, and adds a separate
+once-per-owner fine `DP` for verifiable packet misconduct `P`. One escrow
+`DA + DP` funds both. `P` checks signed content and immutable phase relations:
+wrong author, missing readiness provenance, invalid or extra evidence,
+noncanonical handles, and two authenticated distinct IDs from one author for
+one event and phase. Rejection, expiry and absence of an accepting receipt
+remain in `A`. A gap between a packet's serial and the current public ledger
+count is not misconduct: a prior lawful packet may still be pending.
 
-Neither opacity nor this floor forces canonical admission at every unsafe
-turn. With canonical admission probability `1/4`, TRUE utility `2`, miss
-utility `0` and public-miss fee `4`, canonical TRUE is worth at most `-5/2`.
-A certainly admitted offending packet with collection probability `1/2` and
-packet fine `4` is worth `0`. The accepted extra evidence is visible in the
-whole ledger packet, so it enters a different receiver information fiber.
-Moreover, the current settled verdict also forbids a well-formed packet not
-accepted before expiry. Silence cannot erase an already-issued unprotected
-packet. Apply first-offense comparisons before that issue; its later histories
-need actual free completion or a stronger comparison.
+Take nonnegative fines, base utility on actual final states in `[m, M]`, and
+a positive conditional collection lower bound `q` for a first `P` witness.
+At a prefix with no owner `P` witness, literal owner silence has value at
+least `m - DA`, provided foreign continuation cannot turn its earlier lawful
+packets into `P` witnesses. This includes an already-issued lawful packet
+that later expires: its `A` charge is bounded by `DA`. A first `P` offense
+has value at most `M - q * DP`. Thus `q * DP > M - m + DA` strictly deters
+that offense even if it avoids every earlier or later `A` charge. No
+independence between audits, renewed fine, or zero-total-charge comparator
+is needed for this financial bound. Operational witness stability and the
+full equilibrium construction remain unproved.
 
-A concrete partial-watcher candidate can remove detection-rate drift. After
-gameplay, at a fresh report activation, deduplicate already known packets and
-the public ledger by authenticated ID, and retain each with probability `p`.
+A bare commitment with missing or mistyped private material cannot be judged
+`P` from its public packet. The immutable catalogue and compulsory opening
+must instead force a valid frozen decision or a public nonreveal fault.
+The decision/original-binding relation still needs the explicit two-phase
+handler. Authentic duplicate witnesses also require both packet bodies:
+single-envelope coverage does not imply pair coverage. Independent per-ID
+observation with rate `p` and conditional batch delivery with rate `r` gives
+the conservative pair rate `p^2 * r`. Correlated sampling may expose exactly
+one of two pending packets and never establish their duplication.
+
+These two once-per-owner charges need lower witness coverage, not preservation
+of an earlier expected fine. A reporter may retain every authentic known
+packet and every public ledger packet, then independently sample previously
+unknown pending IDs with probability `p`. Earlier knowledge only improves
+unary and pair coverage. There is no need to thin known evidence for this
+bound. Derive coverage with the actual native reporting policy and its joint
+delivery law: a strategic watcher that chooses silence supplies no positive
+delivery rate merely because a protected window exists.
+
+Neither opacity nor this first-misconduct bound forces valid opening at every
+unsafe turn. Consider one frozen TRUE, opening success probability `1/10`,
+and `DA = 4`. HIGH receives `2` on execution and `0` on fault. LOW receives
+`1/2` on execution; on fault it receives `0` if Bob chooses HIGH and `1` if
+Bob chooses LOW. If Bob observes different inputs after an attempted opening
+fails and after silence, a separating fault continuation makes HIGH attempt
+and LOW remain silent. HIGH compares `-17/5` with `-4`; LOW compares
+`-71/20` with `-3`. No invalid evidence or duplicate is needed. The actual
+fault continuation still matters even when a large separate fine removes
+every first packet-misconduct rescue.
+
+Frozen decisions do not by themselves force the same source posterior at
+every valid delayed input. For one frozen TRUE and the same first opening
+WAIT, suppose two final clock/ledger fibers have clean/risky proportions
+`1/2` and `3/4`. Clean opening is certain. On a risky turn let opening
+succeed with probability `1/10`, and let different postfault continuations
+make HIGH attempt while LOW stays silent. The valid-input multipliers are
+then `(11/20, 1/2)` and `(31/40, 3/4)` for HIGH and LOW. One first-WAIT
+rate ratio would have to converge to both `10/11` and `30/31` to restore
+the same source posterior. Making that shared WAIT arbitrarily rare does
+not change the conflict. These are nonproportional conditional channels;
+they obstruct this exact transport argument, not every possible native SE
+with the initialized source outcome law.
+
+One candidate closeout makes the first public phase miss or nonreveal fault
+seal gameplay with a declared cancellation payoff. It freezes economic
+outcome before later source calls, samples or reporting. The watcher does
+not trigger this seal; its partial evidence is processed afterward. An
+explicit aborted state could project to the existing optional source-readout
+carrier with a fixed cancellation payoff, without filling future typed
+private values. This requires an actual runtime abort state and completion
+rule: the current unfinished `none` is not a proved cancellation mechanism.
+Ordinary source guard failure and a valid encoded FALSE remain normal
+source outcomes. Include the cancellation value in the payoff extrema when
+choosing both fines; a source-only payoff span may be too small.
+
+For an isolated pending phase, suppose failure has the fixed payoff
+`Mtheta`, success has the source-suffix payoff `Vtheta,a`, and a compliant
+timing policy `pi` succeeds with probability `s_pi(a)`. Its value is
+`Mtheta - DA + s_pi(a) * (DA + Vtheta,a - Mtheta)`. If `DA` exceeds the
+base-payoff span, every hidden type prefers the policy maximizing success
+probability. A common policy can therefore be selected within each effective
+source-public action class; at a protected first turn choose prompt submission
+among the maximizers. If success is impossible, choose a common tie-break.
+The full valid-input law then factors as `mu(theta,a) * C_z(a)` when the
+actual operational channel is type-independent. Products and sums of these
+common factors cover repeated WAITs and multiple fibers simultaneously.
+
+Sealing establishes only the fixed failure payoff. The common success channel
+still needs a compiler-specific source suffix and backward induction. The
+timing optimizer must use the owner's genuine erased local recall and view;
+the builder's complete environment history is not available to that owner.
+Private original intentions must remain in source recall even when their
+effective public result is FALSE. The cancellation policy also changes fault
+semantics: one public timeout ends gameplay for everyone, while reporting
+continues. This candidate, its information-local simulation and its consistent
+perturbation family have not been implemented or proved.
+
+A balanced partial-watcher candidate for additive fines can remove
+detection-rate drift. After gameplay, at a fresh report activation, deduplicate
+already known packets and the public ledger by authenticated ID, and retain
+each with probability `p`.
 The activation rule samples all pending IDs with the same marginal probability;
 keep newly learned packets without thinning again. Own outputs, if any,
 come from recall. The existing `MessageNetwork.learn` suppression of known

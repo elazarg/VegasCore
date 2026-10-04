@@ -105,11 +105,15 @@ continuation menu.
 The [decision-commitment analysis](se-schedule-generalization.md#a-commitment-based-decision-protocol)
 examines a compiler that freezes effective resolutions before mandatory
 opening. Its admission/execution simulation and conditional source/traffic
-law remain unproved. First-offense total-charge comparisons and reserved
-per-fault accounting are alternative enforcement routes; replenishment is not
-established as necessary. A native partial reporter also needs its actual
-report/settlement joint law, rather than terminal resampling of an already
-emitted batch.
+law remain unproved. Its two-charge candidate keeps the existing bounded
+deadline audit and separates a one-time verifiable-misconduct fine, so the
+silence comparison can include previously pending lawful packets. Pair
+offenses require joint witness coverage. A public-timeout cancellation candidate
+fixes the failure payoff before later gameplay or watcher reports; the actual
+abort semantics, source-suffix induction and information-local timing channel
+remain open. Replenishment is not established as necessary. A native partial
+reporter also needs its actual report/settlement joint law, rather than terminal
+resampling of an already emitted batch.
 
 [SourceServiceRepeatedRepair](../Vegas/Game/SourceServiceRepeatedRepair.lean)
 provides the full remaining execution coupling through repeated completed and
