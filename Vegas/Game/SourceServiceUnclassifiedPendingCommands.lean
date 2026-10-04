@@ -33,8 +33,10 @@ theorem sourceServiceMissing_unusable_default_completedExcept
     (memory : BindingMemory (runtime setup) leaks)
     (frame : memory.Frame (runtime setup) leaks who original repaired)
     (past : memory.shadow.CompletedAt original.application.config)
-    (rightTrace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup)
-      horizon scheduler).Trace (some ⟨remaining, some who, repaired⟩))
+    (rightTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨remaining, some who, repaired⟩))
+    (rightAtTurn : OwnSubmissionsAtTurn setup leaks repaired who)
+    (rightSlots : CanonicalSlotsUsed setup leaks repaired who)
     (clear : (runtime setup).serviceRisk leaks bound who (repaired.recall who)
       (repaired.observe (application setup leaks) who) = false)
     (response : (application setup leaks).Action)
@@ -52,7 +54,7 @@ theorem sourceServiceMissing_unusable_default_completedExcept
   let app := application setup leaks
   let view := repaired.observe app who
   have selected := sourceServiceMissing_unusable_default_retained bounds bound values original
-    repaired who memory frame rightTrace clear response effective unusable
+    repaired who memory frame rightTrace rightAtTurn rightSlots clear response effective unusable
   obtain ⟨actual, payload, outputEq, codeEq, node, turn, unrecorded, opening, responseEq,
     missing⟩ := unusable
   have addressed : (runtime setup).submittedEvent? leaks response = some actual := by
@@ -61,9 +63,8 @@ theorem sourceServiceMissing_unusable_default_completedExcept
   have same : actual = event := Option.some.inj (addressed.symm.trans named)
   subst actual
   let serial := repaired.application.publicView.bindingCount who
-  have persistent := ((runtime setup).serviceRisk_clear_iff leaks bound who _ _).mp clear |>.1
-  have rightFresh := riskCanonicalSlot_fresh_at_turn bounds bound _ rightTrace who persistent
-    event turn unrecorded
+  have rightFresh := canonicalSlot_fresh_of_used rightTrace who rightAtTurn rightSlots event turn
+    unrecorded
   have fresh := (frame.slots (.prepared serial)).mpr rightFresh
   have ownFresh : (memory.shadow.inputView (runtime setup) leaks view).application.candidates
       (.prepared serial) = .fresh := by

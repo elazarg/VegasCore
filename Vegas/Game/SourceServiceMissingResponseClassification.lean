@@ -33,7 +33,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 and recalled-event classifier at the paired repaired input. The original
 history is RAW and is not required to follow the risk menu. -/
 theorem sourceServiceMissing_response_classifiers
-    (bounds : MessageBounds (graph setup)) (bound : (graph setup).EventId → Nat)
+    (bounds : MessageBounds (graph setup))
     {horizon leftRemaining rightRemaining : Nat}
     {scheduler : (application setup leaks).Scheduler}
     (original repaired : (application setup leaks).Execution) (who : Player)
@@ -41,8 +41,8 @@ theorem sourceServiceMissing_response_classifiers
     (frame : memory.Frame (runtime setup) leaks who original repaired)
     (leftTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨leftRemaining, some who, original⟩))
-    (rightTrace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup)
-      horizon scheduler).Trace (some ⟨rightRemaining, some who, repaired⟩))
+    (rightTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨rightRemaining, some who, repaired⟩))
     (preserved : ∀ slot raw, original.application.candidates.lookup (who, slot) = .openable raw →
       repaired.application.candidates.lookup (who, slot) = .openable raw)
     (response : (application setup leaks).Action)
@@ -57,8 +57,7 @@ theorem sourceServiceMissing_response_classifiers
       (recordedServiceResponse setup leaks (original.recall who) response ↔
        recordedServiceResponse setup leaks (repaired.recall who) response) := by
   let app := application setup leaks
-  have rawRight := (bounds.riskMenu (runtime setup) leaks bound).toRawTrace
-    (initialLaw setup) horizon scheduler rightTrace
+  have rawRight := rightTrace
   have transported := (runtime setup).effectiveResponse_openable_transport leaks bounds who
     original repaired (app.history_inputRecall (initialLaw setup) horizon scheduler leftTrace)
     (app.history_inputRecall (initialLaw setup) horizon scheduler rawRight) frame.network
@@ -108,8 +107,10 @@ theorem sourceServiceMissing_response_cases
     (frame : memory.Frame (runtime setup) leaks who original repaired)
     (leftTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨leftRemaining, some who, original⟩))
-    (rightTrace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup)
-      horizon scheduler).Trace (some ⟨rightRemaining, some who, repaired⟩))
+    (rightTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨rightRemaining, some who, repaired⟩))
+    (rightAtTurn : OwnSubmissionsAtTurn setup leaks repaired who)
+    (rightSlots : CanonicalSlotsUsed setup leaks repaired who)
     (clear : (runtime setup).serviceRisk leaks bound who (repaired.recall who)
       (repaired.observe (application setup leaks) who) = false)
     (preserved : ∀ slot raw, original.application.candidates.lookup (who, slot) = .openable raw →
@@ -137,7 +138,7 @@ theorem sourceServiceMissing_response_cases
           (memory.repairResponse (runtime setup) leaks who input.2 response).2)) := by
   classical
   obtain ⟨available, packetIff, recordedIff⟩ := sourceServiceMissing_response_classifiers bounds
-    bound original repaired who memory frame leftTrace rightTrace preserved response effective
+    original repaired who memory frame leftTrace rightTrace preserved response effective
   dsimp only
   by_cases admitted : response ∈ bounds.riskActions (runtime setup) leaks bound who
       (repaired.recall who) (repaired.observe (application setup leaks) who)
@@ -154,7 +155,7 @@ theorem sourceServiceMissing_response_cases
       · by_cases recorded : recordedServiceResponse setup leaks (original.recall who) response
         · exact Or.inr (Or.inl recorded)
         · exact Or.inr (Or.inr ((unclassifiedResponse_cases bounds bound repaired who rightTrace
-            clear response available (fun h => packet (packetIff.mpr h))
+            rightAtTurn rightSlots clear response available (fun h => packet (packetIff.mpr h))
             (fun h => recorded (recordedIff.mpr h))).resolve_left admitted))
     · simp only [BindingMemory.retainedResponse, MessageBounds.riskMenu, admitted, ↓reduceIte]
 
@@ -169,8 +170,10 @@ theorem sourceServiceMissing_unusable_default_retained
     (original repaired : (application setup leaks).Execution) (who : Player)
     (memory : BindingMemory (runtime setup) leaks)
     (frame : memory.Frame (runtime setup) leaks who original repaired)
-    (rightTrace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup)
-      horizon scheduler).Trace (some ⟨rightRemaining, some who, repaired⟩))
+    (rightTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨rightRemaining, some who, repaired⟩))
+    (rightAtTurn : OwnSubmissionsAtTurn setup leaks repaired who)
+    (rightSlots : CanonicalSlotsUsed setup leaks repaired who)
     (clear : (runtime setup).serviceRisk leaks bound who (repaired.recall who)
       (repaired.observe (application setup leaks) who) = false)
     (response : (application setup leaks).Action)
@@ -196,10 +199,8 @@ theorem sourceServiceMissing_unusable_default_retained
   let serial := repaired.application.publicView.bindingCount who
   obtain ⟨event, payload, outputEq, codeEq, node, turn, unrecorded, opening, responseEq,
     missing⟩ := unusable
-  have persistent := ((runtime setup).serviceRisk_clear_iff leaks bound who past view).mp clear
-    |>.1
-  have actualFresh := riskCanonicalSlot_fresh_at_turn bounds bound _ rightTrace who persistent
-    event turn unrecorded
+  have actualFresh := canonicalSlot_fresh_of_used rightTrace who rightAtTurn rightSlots event turn
+    unrecorded
   have selectedSlot : canonicalFreshSlot who view.application = some serial :=
     canonicalFreshSlot_canonical who view.application actualFresh
   have originalFresh : (memory.shadow.inputView (runtime setup) leaks view).application.candidates

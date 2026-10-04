@@ -37,8 +37,10 @@ theorem sourceServiceUnclassified_response_selection
     (frame : memory.Frame (runtime setup) leaks who original repaired)
     (leftTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨leftRemaining, some who, original⟩))
-    (rightTrace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup)
-      horizon scheduler).Trace (some ⟨rightRemaining, some who, repaired⟩))
+    (rightTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨rightRemaining, some who, repaired⟩))
+    (rightAtTurn : OwnSubmissionsAtTurn setup leaks repaired who)
+    (rightSlots : CanonicalSlotsUsed setup leaks repaired who)
     (clear : (runtime setup).serviceRisk leaks bound who (repaired.recall who)
       (repaired.observe (application setup leaks) who) = false)
     (response : (application setup leaks).Action)
@@ -61,7 +63,7 @@ theorem sourceServiceUnclassified_response_selection
   let app := application setup leaks
   let menu := bounds.riskMenu (runtime setup) leaks bound
   let input := (repaired.recall who, repaired.observe app who)
-  have rawRight := menu.toRawTrace (initialLaw setup) horizon scheduler rightTrace
+  have rawRight := rightTrace
   have physical := sourceServiceUnclassified_response_transport bounds bound original repaired
     who memory frame leftTrace rightTrace clear response effective notPacket notRecorded
   have sameEnvelope (material : app.Submission)
@@ -87,7 +89,8 @@ theorem sourceServiceUnclassified_response_selection
     apply notRecorded
     exact ⟨event, ((runtime setup).eventRecorded_congr leaks _ _ frame.submissions event).symm
       ▸ recorded, named⟩
-  rcases unclassifiedResponse_cases bounds bound repaired who rightTrace clear response physical.1
+  rcases unclassifiedResponse_cases bounds bound repaired who rightTrace rightAtTurn rightSlots
+      clear response physical.1
       rightNotPacket rightNotRecorded with retained | unusable
   · left
     refine ⟨retained, ?_, ?_⟩
@@ -96,7 +99,7 @@ theorem sourceServiceUnclassified_response_selection
         BindingMemory.copyResponse_action]
   · right
     have selected := sourceServiceMissing_unusable_default_retained bounds bound values original
-      repaired who memory frame rightTrace clear response effective unusable
+      repaired who memory frame rightTrace rightAtTurn rightSlots clear response effective unusable
     exact ⟨unusable, selected.1, selected.1 ▸ selected.2.1⟩
 
 end Vegas

@@ -37,8 +37,8 @@ theorem sourceServiceUnclassified_response_transport
     (frame : memory.Frame (runtime setup) leaks who original repaired)
     (leftTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨leftRemaining, some who, original⟩))
-    (rightTrace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup)
-      horizon scheduler).Trace (some ⟨rightRemaining, some who, repaired⟩))
+    (rightTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨rightRemaining, some who, repaired⟩))
     (clear : (runtime setup).serviceRisk leaks bound who (repaired.recall who)
       (repaired.observe (application setup leaks) who) = false)
     (response : (application setup leaks).Action)
@@ -58,8 +58,7 @@ theorem sourceServiceUnclassified_response_transport
           (repaired.network.known who) material := by
   classical
   let app := application setup leaks
-  have rawRight := (bounds.riskMenu (runtime setup) leaks bound).toRawTrace
-    (initialLaw setup) horizon scheduler rightTrace
+  have rawRight := rightTrace
   have leftFacts := legalFacts setup leaks horizon scheduler _ leftTrace
   have rightFacts := legalFacts setup leaks horizon scheduler _ rawRight
   have records := frame.submissionRiskRecords (runtime setup) leaks leftTrace rawRight

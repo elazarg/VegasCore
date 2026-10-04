@@ -2219,6 +2219,24 @@ an unusable private binding with its admitted typed default. The original
 response uses the full effective menu, without original risk support or global
 certificate-preservation assumptions. Charged and recorded responses remain
 separate exits; whole-future repair and payoff domination remain open.
+[SourceServiceCompletedResponse](../Vegas/Game/SourceServiceCompletedResponse.lean)
+proves that an actually retained, uncharged response preserves the full repair
+frame, owned-binding memory and completed memory. Canonical membership derives
+its noncommitment or fresh-registration shape, and the selected response's
+actual emitted envelope is equal in both executions. This uses actual RAW
+histories, without requiring foreign responses to belong to the risk menu or
+equating every private certificate capability.
+[SourceServiceRetainedLocalSlots](../Vegas/Game/SourceServiceRetainedLocalSlots.lean)
+tracks the retained implementation's actual resumption. Each sampled focal
+response supplies its own local admission; every foreign response is arbitrary.
+The successor has a genuine RAW trace and preserves the focal owner's
+submission and canonical-slot resources whenever its persistent risk remains
+clear. The environment and response kernels in
+[SourceServiceRiskSlots](../Vegas/Game/SourceServiceRiskSlots.lean) supply these
+conditional resources one real transition at a time. Unclassified selection,
+typed-default registration and pending-segment seeding consume only the actual
+repaired RAW trace and current focal resources. They do not require a globally
+retained repaired history or future risk-policy coverage.
 [SourceServiceUnclassifiedPending](../Vegas/Game/SourceServiceUnclassifiedPending.lean)
 proves that, while an actually recorded event remains ready, every owner
 response outside the public-packet and duplicate classifiers is silence.
@@ -2268,7 +2286,8 @@ comparison. A shorter run may still end pending, so the lemma does not assume
 settlement before the chosen budget.
 [SourceServiceUnusablePendingSegment](../Vegas/Game/SourceServiceUnusablePendingSegment.lean)
 derives that segment's entire seed from an actual full-effective unusable
-response at a RAW owner prefix and the same clear legal repaired risk prefix.
+response at a RAW owner prefix and a clear repaired RAW prefix with current
+focal submission and canonical-slot resources.
 Typed-default selection supplies the real allocated anchor, both registered
 candidates, original typed failure and remembered exception. Running the real
 original remaining budget gives a terminal RAW trace; `CompletesPlay` excludes
@@ -2294,11 +2313,13 @@ risk-menu sites under nonnegative focal deposits. Its literal pin sequence suppl
 source approximants and without a waiting-rate bound at these sites.
 Unfinished compatible-site comparisons and the general SE theorem remain open.
 
-The risk-menu continuation consumers still require original risk-supported
-future responses. An excluded initial response can reach information states
-absent from the retained game, so profile extension does not imply that
-condition there. Full effective-menu continuations need a separate repair and
-comparison argument, including subsequent exclusions and risk-open inputs.
+The stopped-coupling consumers for risk-supported policies still require
+original risk-supported future responses. An excluded initial response can
+reach information states absent from the retained game, so profile extension does not imply that
+condition there. The unclassified-response and unusable-pending route above
+uses actual RAW histories and focal resources instead. Its full effective-menu
+whole-policy comparison, including subsequent exclusions, postsettlement tails
+and risk-open inputs, remains open.
 
 [ReactiveBindingCandidateAgreement](../Vegas/Pending/ReactiveBindingCandidateAgreement.lean)
 derives candidate equality outside the one changed slot from two actual

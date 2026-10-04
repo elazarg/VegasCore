@@ -168,8 +168,13 @@ theorem riskRestriction_other_unusableBinding
       subst view
       have actualTrace : (menu.protocol initial count scheduler).Trace
           (some ⟨remaining, some who, execution⟩) := current ▸ history.1.trace
-      rcases unclassifiedResponse_cases service.bounds service.bound execution who actualTrace
-          clear response available notPacket notRecorded with retained | unusable
+      have rawTrace := menu.toRawTrace initial count scheduler actualTrace
+      have persistent := ((runtime service.setup).serviceRisk_clear_iff service.leaks
+        service.bound who _ _).mp clear |>.1
+      obtain ⟨atTurn, slots⟩ := riskCanonicalSlots_history service.bounds service.bound _
+        actualTrace who persistent
+      rcases unclassifiedResponse_cases service.bounds service.bound execution who rawTrace
+          atTurn slots clear response available notPacket notRecorded with retained | unusable
       · exact (absent retained).elim
       · exact ⟨_, _, response, input, value, unusable⟩
 

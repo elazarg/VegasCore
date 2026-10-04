@@ -90,6 +90,7 @@ import Vegas.Game.SourceServiceMissingResponseClassification
 import Vegas.Game.SourceServiceUnusableResponseFrame
 import Vegas.Game.SourceServiceUnclassifiedTransport
 import Vegas.Game.SourceServiceUnclassifiedSelection
+import Vegas.Game.SourceServiceCompletedResponse
 import Vegas.Game.SourceServiceUnclassifiedPending
 import Vegas.Game.SourceServiceUnclassifiedPendingCommands
 import Vegas.Game.SourceServicePendingPacketOrigin
@@ -106,6 +107,7 @@ import Vegas.Game.SourceServiceCanonicalSlots
 import Vegas.Game.SourceServiceRetainedSlots
 import Vegas.Game.SourceServiceRetainedPolicy
 import Vegas.Game.SourceServiceRiskSlots
+import Vegas.Game.SourceServiceRetainedLocalSlots
 import Vegas.Game.SourceServiceDecisionTimingPosterior
 import Vegas.Game.SourceServiceDecisionRecallPosterior
 import Vegas.Game.SourceServiceResolutionLikelihood

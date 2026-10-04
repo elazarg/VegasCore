@@ -47,8 +47,10 @@ theorem sourceServiceMissing_unusable_pending_stopped_coupling
     (past : memory.shadow.CompletedAt original.application.config)
     (leftTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨leftRemaining, some who, original⟩))
-    (rightTrace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup)
-      horizon scheduler).Trace (some ⟨rightRemaining, some who, repaired⟩))
+    (rightTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨rightRemaining, some who, repaired⟩))
+    (rightAtTurn : OwnSubmissionsAtTurn setup leaks repaired who)
+    (rightSlots : CanonicalSlotsUsed setup leaks repaired who)
     (clear : (runtime setup).serviceRisk leaks bound who (repaired.recall who)
       (repaired.observe (application setup leaks) who) = false)
     (response : (application setup leaks).Action)
@@ -109,9 +111,10 @@ theorem sourceServiceMissing_unusable_pending_stopped_coupling
   let left := original.respond app who response
   let right := repaired.respond app who selected.1
   have chosen := sourceServiceMissing_unusable_default_retained bounds bound values original
-    repaired who memory frame rightTrace clear response effective unusable
+    repaired who memory frame rightTrace rightAtTurn rightSlots clear response effective unusable
   have submitted := sourceServiceMissing_unusable_default_frame bounds bound values original
-    repaired who memory frame onlyBindings past leftTrace rightTrace clear response effective
+    repaired who memory frame onlyBindings past leftTrace rightTrace rightAtTurn rightSlots clear
+      response effective
       unusable
   obtain ⟨event, payload, outputEq, codeEq, node, turn, unrecorded, opening, responseEq,
     missing⟩ := unusable
@@ -130,13 +133,13 @@ theorem sourceServiceMissing_unusable_pending_stopped_coupling
       (repaired.observe app who) response :=
     ⟨event, payload, outputEq, codeEq, node, turn, unrecorded, opening, responseEq, missing⟩
   have pending := sourceServiceMissing_unusable_default_completedExcept bounds bound values
-    original repaired who memory frame past rightTrace clear response effective residual event named
+    original repaired who memory frame past rightTrace rightAtTurn rightSlots clear response
+      effective residual event named
   have afterFrame : remembered.Frame (runtime setup) leaks who left right := submitted.1
   have afterOwn : remembered.shadow.OwnBindings who := submitted.2.1
   have afterPast : remembered.shadow.CompletedExcept left.application.config event := pending
-  have persistent := ((runtime setup).serviceRisk_clear_iff leaks bound who _ _).mp clear |>.1
-  have rightFresh := riskCanonicalSlot_fresh_at_turn bounds bound _ rightTrace who persistent
-    event turn unrecorded
+  have rightFresh := canonicalSlot_fresh_of_used rightTrace who rightAtTurn rightSlots event turn
+    unrecorded
   have fresh : original.application.candidates.lookup candidate = .fresh :=
     (frame.slots (.prepared serial)).mpr rightFresh
   have ownFresh : (memory.shadow.inputView (runtime setup) leaks view).application.candidates

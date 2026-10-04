@@ -231,8 +231,8 @@ theorem unclassifiedResolution_retained
     (bounds : MessageBounds (graph setup)) (bound : (graph setup).EventId → Nat)
     {horizon remaining : Nat} {scheduler : (application setup leaks).Scheduler}
     (execution : (application setup leaks).Execution) (who : Player)
-    (trace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup) horizon
-      scheduler).Trace (some ⟨remaining, some who, execution⟩))
+    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨remaining, some who, execution⟩))
     (clear : (runtime setup).serviceRisk leaks bound who (execution.recall who)
       (execution.observe (application setup leaks) who) = false)
     (event : (graph setup).EventId) (payload : L.Ty)
@@ -254,8 +254,7 @@ theorem unclassifiedResolution_retained
   classical
   let app := application setup leaks
   let view := execution.observe app who
-  let menu := bounds.riskMenu (runtime setup) leaks bound
-  have rawTrace := menu.toRawTrace (initialLaw setup) horizon scheduler trace
+  have rawTrace := trace
   have facts := legalFacts setup leaks horizon scheduler _ rawTrace
   rw [bounds.riskActions_of_clear (runtime setup) leaks bound who _ _ clear]
   cases response with

@@ -159,6 +159,67 @@ theorem sourceServiceTurnPolicy_recalledSubmissionRisk_roundSupported
 variable [Fintype Player]
   (bounds : MessageBounds (graph setup)) (bound : (graph setup).EventId → Nat)
 
+omit [Fintype Player] in
+/-- A real environment transition preserves the owner's conditional slot
+resources. Foreign actions and current transient opportunity changes do not
+require a globally retained history. -/
+theorem riskCanonicalSlots_environment
+    (execution next : (application setup leaks).Execution) (who : Player)
+    (command : (application setup leaks).Command)
+    (prior : (runtime setup).persistentServiceRisk leaks bound who (execution.recall who)
+        (execution.observe (application setup leaks) who) = false →
+      OwnSubmissionsAtTurn setup leaks execution who ∧ CanonicalSlotsUsed setup leaks execution who)
+    (clear : (runtime setup).persistentServiceRisk leaks bound who (next.recall who)
+      (next.observe (application setup leaks) who) = false)
+    (moved : next ∈ (execution.environmentStep (application setup leaks) command).support) :
+    OwnSubmissionsAtTurn setup leaks next who ∧ CanonicalSlotsUsed setup leaks next who := by
+  obtain ⟨atTurn, slots⟩ := prior
+    ((runtime setup).persistentServiceRisk_clear_before_environment leaks bound who clear moved)
+  have recallEq := (application setup leaks).environmentStep_recall execution next command moved
+  refine ⟨?_, canonicalSlotsUsed_environment moved who slots⟩
+  unfold OwnSubmissionsAtTurn
+  rwa [recallEq]
+
+/-- A real response preserves the owner's conditional slot resources when its
+actual focal response belongs to the risk menu. Foreign responses are arbitrary.
+The local membership is consumed at this transition, not assumed for a future
+policy or inferred from a frame. -/
+theorem riskCanonicalSlots_respond
+    {horizon remaining : Nat} {scheduler : (application setup leaks).Scheduler}
+    (execution : (application setup leaks).Execution) (who responder : Player)
+    (response : (application setup leaks).Action)
+    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨remaining, some responder, execution⟩))
+    (prior : (runtime setup).persistentServiceRisk leaks bound who (execution.recall who)
+        (execution.observe (application setup leaks) who) = false →
+      OwnSubmissionsAtTurn setup leaks execution who ∧ CanonicalSlotsUsed setup leaks execution who)
+    (member : responder = who → response ∈ bounds.riskActions (runtime setup) leaks bound who
+      (execution.recall who) (execution.observe (application setup leaks) who))
+    (clear : (runtime setup).persistentServiceRisk leaks bound who
+      ((execution.respond (application setup leaks) responder response).recall who)
+      ((execution.respond (application setup leaks) responder response).observe
+        (application setup leaks) who) = false) :
+    OwnSubmissionsAtTurn setup leaks
+        (execution.respond (application setup leaks) responder response) who ∧
+      CanonicalSlotsUsed setup leaks
+        (execution.respond (application setup leaks) responder response) who := by
+  let app := application setup leaks
+  obtain ⟨atTurn, slots⟩ := prior
+    ((runtime setup).persistentServiceRisk_clear_before_respond leaks bound execution responder who
+      response clear)
+  by_cases same : responder = who
+  · subst responder
+    have retained := member rfl
+    have menuClear := (runtime setup).serviceRisk_clear_before_respond leaks bound execution who
+      response clear
+    rw [bounds.riskActions_of_clear (runtime setup) leaks bound who _ _ menuClear] at retained
+    exact ⟨retainedOwnSubmissionsAtTurn_respond bounds execution who response retained atTurn,
+      retainedCanonicalSlots_respond bounds trace retained atTurn slots⟩
+  · have different : who ≠ responder := fun equal => same equal.symm
+    refine ⟨?_, canonicalSlotsUsed_respond_other execution different response slots⟩
+    unfold OwnSubmissionsAtTurn
+    rwa [app.respond_recall_other execution responder who different response]
+
 private theorem riskSlots_round {horizon remaining : Nat}
     {scheduler : (application setup leaks).Scheduler}
     {players : Player → (application setup leaks).Policy} {who : Player}
@@ -175,38 +236,18 @@ private theorem riskSlots_round {horizon remaining : Nat}
     OwnSubmissionsAtTurn setup leaks next who ∧ CanonicalSlotsUsed setup leaks next who := by
   let app := application setup leaks
   obtain ⟨command, selected, middle, moved, cases⟩ := round_cases setup leaks reached
-  have recallEq := app.environmentStep_recall execution middle command moved
-  have clearMiddle : ownerPersistentRisk bound middle who = false := by
-    rcases cases with ⟨_, rfl⟩ | ⟨responder, _, response, _, rfl⟩
-    · exact clear
-    · exact (runtime setup).persistentServiceRisk_clear_before_respond leaks bound middle responder
-        who response clear
-  obtain ⟨atTurn, valid⟩ :=
-    prior ((runtime setup).persistentServiceRisk_clear_before_environment leaks bound who
-      clearMiddle moved)
-  have atMiddle : OwnSubmissionsAtTurn setup leaks middle who := by
-    unfold OwnSubmissionsAtTurn
-    rw [recallEq]
-    exact atTurn
-  have validMiddle := canonicalSlotsUsed_environment moved who valid
+  have conditional : ownerPersistentRisk bound middle who = false →
+      OwnSubmissionsAtTurn setup leaks middle who ∧ CanonicalSlotsUsed setup leaks middle who := by
+    intro clearMiddle
+    exact riskCanonicalSlots_environment bound execution middle who command prior clearMiddle
+      moved
   rcases cases with ⟨_, rfl⟩ | ⟨responder, active, response, chosen, rfl⟩
-  · exact ⟨atMiddle, validMiddle⟩
+  · exact conditional clear
   · obtain ⟨middleTrace⟩ := app.raw_trace_environment (initialLaw setup) horizon scheduler
       remaining execution middle command trace selected moved
     rw [active] at middleTrace
-    by_cases same : responder = who
-    · subst responder
-      have member := covered _ _ response chosen
-      have menuClear := (runtime setup).serviceRisk_clear_before_respond leaks bound middle who
-        response clear
-      rw [bounds.riskActions_of_clear (runtime setup) leaks bound who _ _ menuClear] at member
-      exact ⟨retainedOwnSubmissionsAtTurn_respond bounds middle who response member atMiddle,
-        retainedCanonicalSlots_respond bounds middleTrace member atMiddle validMiddle⟩
-    · have different : who ≠ responder := fun equal => same equal.symm
-      refine ⟨?_, canonicalSlotsUsed_respond_other middle different response validMiddle⟩
-      unfold OwnSubmissionsAtTurn
-      rw [app.respond_recall_other middle responder who different response]
-      exact atMiddle
+    exact riskCanonicalSlots_respond bounds bound middle who responder response middleTrace
+      conditional (fun same => by subst responder; exact covered _ _ response chosen) clear
 
 /-- Only this owner's menu coverage is needed. All foreign policies are
 arbitrary, and may send raw responses after their own risk signals trigger. -/

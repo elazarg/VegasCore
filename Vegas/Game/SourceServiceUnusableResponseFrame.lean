@@ -44,8 +44,10 @@ theorem sourceServiceMissing_unusable_default_frame
     (completedMemory : memory.shadow.CompletedAt original.application.config)
     (leftTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨leftRemaining, some who, original⟩))
-    (rightTrace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup)
-      horizon scheduler).Trace (some ⟨rightRemaining, some who, repaired⟩))
+    (rightTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨rightRemaining, some who, repaired⟩))
+    (rightAtTurn : OwnSubmissionsAtTurn setup leaks repaired who)
+    (rightSlots : CanonicalSlotsUsed setup leaks repaired who)
     (clear : (runtime setup).serviceRisk leaks bound who (repaired.recall who)
       (repaired.observe (application setup leaks) who) = false)
     (response : (application setup leaks).Action)
@@ -75,13 +77,12 @@ theorem sourceServiceMissing_unusable_default_frame
   let app := application setup leaks
   let view := repaired.observe app who
   have chosen := sourceServiceMissing_unusable_default_retained bounds bound values original
-    repaired who memory frame rightTrace clear response effective unusable
+    repaired who memory frame rightTrace rightAtTurn rightSlots clear response effective unusable
   obtain ⟨event, payload, outputEq, codeEq, node, turn, unrecorded, opening, responseEq,
     missing⟩ := unusable
   let serial := repaired.application.publicView.bindingCount who
-  have persistent := ((runtime setup).serviceRisk_clear_iff leaks bound who _ _).mp clear |>.1
-  have rightFresh := riskCanonicalSlot_fresh_at_turn bounds bound _ rightTrace who persistent
-    event turn unrecorded
+  have rightFresh := canonicalSlot_fresh_of_used rightTrace who rightAtTurn rightSlots event turn
+    unrecorded
   have fresh := (frame.slots (.prepared serial)).mpr rightFresh
   have rightReady := (repaired.application.publicView_eventReady event).mp
     (PublicView.ownTurn?_spec repaired.application.publicView who event turn).1

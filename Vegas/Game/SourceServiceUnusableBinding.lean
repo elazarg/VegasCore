@@ -58,8 +58,10 @@ theorem unclassifiedBinding_cases
     (bounds : MessageBounds (graph setup)) (bound : (graph setup).EventId → Nat)
     {horizon remaining : Nat} {scheduler : (application setup leaks).Scheduler}
     (execution : (application setup leaks).Execution) (who : Player)
-    (trace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup) horizon
-      scheduler).Trace (some ⟨remaining, some who, execution⟩))
+    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨remaining, some who, execution⟩))
+    (atTurn : OwnSubmissionsAtTurn setup leaks execution who)
+    (slots : CanonicalSlotsUsed setup leaks execution who)
     (clear : (runtime setup).serviceRisk leaks bound who (execution.recall who)
       (execution.observe (application setup leaks) who) = false)
     (event : (graph setup).EventId) (payload : L.Ty)
@@ -83,8 +85,7 @@ theorem unclassifiedBinding_cases
   let app := application setup leaks
   let view := execution.observe app who
   let serial := execution.application.publicView.bindingCount who
-  have rawTrace := (bounds.riskMenu (runtime setup) leaks bound).toRawTrace (initialLaw setup)
-    horizon scheduler trace
+  have rawTrace := trace
   obtain ⟨other, named, owned, ready, selected, unrecorded, fits⟩ :=
     unclassifiedSubmission_opportunity bound execution who rawTrace clear material notPacket
       notRecorded
@@ -135,9 +136,7 @@ theorem unclassifiedBinding_cases
         ⟨message.payload.call, message.payload.evidence, message.payload.token⟩ := rfl
     rw [called, empty, token] at eta
     exact eta
-  have persistent := ((runtime setup).serviceRisk_clear_iff leaks bound who _ _).mp clear |>.1
-  have fresh := riskCanonicalSlot_fresh_at_turn bounds bound _ trace who persistent event turn
-    unrecorded
+  have fresh := canonicalSlot_fresh_of_used trace who atTurn slots event turn unrecorded
   have selectedSlot : canonicalFreshSlot who view.application = some serial :=
     canonicalFreshSlot_canonical who view.application fresh
   have member := (bounds.menu_mem (runtime setup) leaks who _ _ _).mp available
@@ -207,8 +206,10 @@ theorem unclassifiedResponse_cases
     (bounds : MessageBounds (graph setup)) (bound : (graph setup).EventId → Nat)
     {horizon remaining : Nat} {scheduler : (application setup leaks).Scheduler}
     (execution : (application setup leaks).Execution) (who : Player)
-    (trace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup) horizon
-      scheduler).Trace (some ⟨remaining, some who, execution⟩))
+    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨remaining, some who, execution⟩))
+    (atTurn : OwnSubmissionsAtTurn setup leaks execution who)
+    (slots : CanonicalSlotsUsed setup leaks execution who)
     (clear : (runtime setup).serviceRisk leaks bound who (execution.recall who)
       (execution.observe (application setup leaks) who) = false)
     (response : (application setup leaks).Action)
@@ -229,8 +230,7 @@ theorem unclassifiedResponse_cases
           rw [bounds.riskActions_of_clear (runtime setup) leaks bound who _ _ clear]
           exact bounds.silence_canonical (runtime setup) leaks who _ _
       | some material =>
-          have rawTrace := (bounds.riskMenu (runtime setup) leaks bound).toRawTrace
-            (initialLaw setup) horizon scheduler trace
+          have rawTrace := trace
           obtain ⟨event, _, owned, _, turn, _, _⟩ := unclassifiedSubmission_opportunity bound
             execution who rawTrace clear material notPacket notRecorded
           cases node : nodeView (graph setup) event with
@@ -242,8 +242,8 @@ theorem unclassifiedResponse_cases
               have actor := nodeView_bind_actor outputEq codeEq
               rw [owned] at actor
               cases Option.some.inj actor
-              exact unclassifiedBinding_cases bounds bound execution who trace clear event payload
-                outputEq codeEq node turn material available notPacket notRecorded
+              exact unclassifiedBinding_cases bounds bound execution who trace atTurn slots clear
+                event payload outputEq codeEq node turn material available notPacket notRecorded
           | resolve owner payload binding checks outputEq codeEq =>
               have actor := nodeView_resolve_actor outputEq codeEq
               rw [owned] at actor
