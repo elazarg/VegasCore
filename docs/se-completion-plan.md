@@ -139,11 +139,22 @@ and a separate first-misconduct fine from one upfront escrow. Applying it to
 the native runtime requires checking its raw-response classification, canonical
 traffic and private recall, fresh protected phases, and actual conditional
 watcher collection. It is a mathematical route, not a checked native capstone.
-Its two-charge candidate keeps the existing bounded
-deadline audit and separates a one-time verifiable-misconduct fine, so the
-silence comparison can include previously pending lawful packets. Pair
-offenses require joint witness coverage. A public-timeout cancellation candidate
-fixes the failure payoff before later gameplay or watcher reports. The native
+Its timing policy can depend on the builder at unprotected later opportunities;
+the current policy's prompt behavior is preserved at protected first
+opportunities, but its entire off-path policy is not proved optimal.
+The serial route uses the public cancellation record for its timeout deduction
+and immutable packet content or distinct-identifier pairs for misconduct;
+the existing acceptance-based deadline audit cannot be reused wholesale.
+The [raw-response audit](se-schedule-generalization.md#raw-response-audit-for-the-serial-argument)
+classifies source actions, unexecutable decisions, private representation data
+and signed departures against the actual interface. Lawful private
+representations must have prescribed continuations, including representations
+absent from the deterministic compiler's image. Watcher coverage is needed for
+first witnesses created while gameplay runs, uniformly over later player
+continuations; after sealing, a witness-free owner's fixed-payoff silence
+comparison suffices. Pair offenses require joint witness coverage.
+Public-timeout cancellation fixes the failure payoff before later gameplay or
+watcher reports. The native
 runtime proves that later source calls and samples cannot advance sealed
 gameplay; source-suffix induction and the information-local timing channel
 remain open. Replenishment is not established as necessary. The distinct native

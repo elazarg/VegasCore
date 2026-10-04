@@ -3016,6 +3016,9 @@ following serial phase interface:
    phase. Scheduler and passive-observation kernels use public data only.
    A valid submission at the phase's first owner opportunity executes certainly.
    After execution, every subsequent phase starts with this same guarantee.
+   Source chance nodes execute their original kernel certainly, before the
+   next source phase. Native play has a bounded horizon, and an unfinished
+   source phase records its fault before settlement.
 4. The first public miss or nonreveal ends all gameplay. Player `i` receives
    cancellation utility `C_i`. If `i` owns the failed phase, a public deduction
    `A_i` is made. This deduction uses the public cancellation record and does
@@ -3028,11 +3031,13 @@ following serial phase interface:
    representations supply no new information about other source histories and
    no additional economic transition outside this classification.
 6. Earlier lawful owner packets cannot become misconduct witnesses through
-   foreign behavior. After a first owner witness, under every continuation,
-   actual watcher observation and accepted reporting collect a separate fine
-   `P_i` with conditional probability at least `q_i > 0`. Duplicate witnesses
-   require coverage of both distinct authenticated bodies. The watcher has
-   zero utility and may use its prescribed reporting policy at every history.
+   foreign behavior. If an owner creates its first witness while gameplay is
+   running, actual watcher observation and accepted reporting collect a
+   separate fine `P_i` with conditional probability at least `q_i > 0`, under
+   every later player continuation. Duplicate witnesses require coverage of
+   both distinct authenticated bodies. No such coverage is required for a
+   first witness created after sealing. The watcher has zero utility and may
+   use its prescribed reporting policy at every history.
 
 These are operational and observation requirements. They do not assert a
 desired payoff comparison or a desired belief. In particular, a late opening
@@ -3062,6 +3067,13 @@ histories in `z`, so those factors cancel in Bayes' rule. At a protected first
 opportunity, prompt submission attains completion probability one. Choose it
 among the maximizing actions. At a history where completion is impossible,
 choose a common tie-break rather than one based on a source secret.
+
+The selected policy can depend on the fixed builder. At an unprotected later
+opportunity, waiting may have a higher completion probability than sending
+immediately. The construction preserves the prescribed prompt behavior at
+every protected first opportunity and repairs timing after deferrals. It does
+not prove that `Vegas.SourceSession.prescribedPolicy`, which submits whenever
+timely and unsent, is sequentially rational at every off-path input.
 
 **Why maximizing completion maximizes utility.** Choose
 `A_i > max(0, C_i - m_i)` and write `c_i = C_i - A_i`. Then every successful
@@ -3113,6 +3125,27 @@ hidden histories within the corresponding source information. The same
 reasoning applies to equivalent private representations after erasing
 irrelevant private randomness and retaining actual source action recall.
 
+Erasure here concerns the projected source state, not the owner's actual
+memory. Include every lawful private representation in the clean reference
+process. Given a source action, draw its representation using a fully supported
+kernel that may depend on the owner's source information and ancillary record.
+Let `W` record these choices. Perfect recall fixes every earlier own source
+information and action within the current source information class. Canonical
+ancillary observations add no source secret there. Consequently the likelihood
+of the owner's `W` is common across the hidden source histories in that class
+and cancels in Bayes' rule. Other players' invisible representation choices
+sum to one. Prescribe the source and maximizing timing policies to ignore this
+extra data, at every such augmented information input.
+
+This construction matters at representations absent from the deterministic
+compiler's image: leaving their continuations unrestricted could reward a
+harmless change of representation. It also distinguishes private self-generated
+data from an actual extra observation of another source secret, for which the
+cancellation argument would fail. A canonical opening learned before inclusion
+reveals the current public result early; serial execution makes that result
+public before the next economic source decision, or cancels gameplay without
+such a decision.
+
 Consequently the native posterior equals the appropriate source posterior
 for every positive clean timing fiber. Its mass may approach zero arbitrarily
 fast. No lower bound on that limiting mass, type-dependent correction of WAIT
@@ -3127,8 +3160,8 @@ that delayed successful continuations already have the source value.
 `b_i = min(m_i, C_i)` and `B_i = max(M_i, C_i)`. From an owner prefix with no
 misconduct witness, literal future owner silence cannot create one. Its value
 is at least `b_i - A_i`, including any earlier lawful packet still pending.
-A first misconduct response followed by any continuation has value at most
-`B_i - q_i * P_i`. Therefore choose
+A first misconduct response while gameplay is running, followed by any
+continuation, has value at most `B_i - q_i * P_i`. Therefore choose
 
 `q_i * P_i > B_i - b_i + A_i`.
 
@@ -3140,19 +3173,31 @@ relevant because that fault ends gameplay. The misconduct argument is used
 only before the first owner witness; it does not claim an additional incentive
 from `P_i` after that fine is already inevitable.
 
+After sealing, the source payoff and public cancellation deduction are fixed.
+For an owner with no previous witness, future silence receives this fixed
+amount with zero misconduct charge. Any other response has the same base
+amount and a nonnegative misconduct charge, so silence is weakly optimal.
+This argument needs no observation or delivery guarantee for new postseal
+packets. Owners with earlier witnesses belong to the rational free continuation
+below; silence need not be optimal for them.
+
 One concrete collection mechanism uses the network's conservation of signed
 packets: an included packet moves to the public ledger, while an unincluded
 one remains pending. At a postseal watcher activation, retain the public
 ledger and all previously known evidence, and sample each still-unknown
 pending packet independently with probability `p > 0`. Report the authentic
-known batch in the fresh protected reporting window. A unary witness is
+known batch in the fresh protected reporting window. A witness created while
+gameplay was running has all of its bodies present before this snapshot.
+A unary witness is
 present with probability at least `p`; both bodies of a duplicate witness
 are present with probability at least `p * p`. Thus `q_i = p * p` suffices
 when this bounded batch is guaranteed accepted. The watcher need not know
 which packets it missed. If batch delivery has only a conditional lower
-bound `r`, uniformly over observed batches, use `q_i = p * p * r`.
-This is a joint observation/report calculation. Settlement judges the actual
-emitted batch; it does not independently resample evidence at termination.
+bound `r`, uniformly over observed batches and every later player
+continuation, use `q_i = p * p * r`. The snapshot cannot cover bodies authored
+afterward; the postseal comparison makes that unnecessary. This is a joint
+observation/report calculation. Settlement judges the actual emitted batch;
+it does not independently resample evidence at termination.
 
 **Rational completion after misconduct.** Arbitrary continuations are still
 needed at every remaining information set. For each `n`, pin the clean
@@ -3176,7 +3221,8 @@ than unconditional convergence alone, also covers rare timing inputs.
 
 At clean source decisions the limiting comparisons are the source SE
 comparisons. At clean timing decisions they are the completion comparisons.
-First misconduct is separated by the strict fine bound. Equivalent private
+First misconduct before sealing is separated by the strict fine bound;
+P-clear postseal choices use the fixed-payoff comparison. Equivalent private
 representations and intentional faults are handled by the interface
 classification. At free information sets the perturbed best-response
 conditions pass to the limit. Compactness gives one subsequence of strategies
@@ -3199,6 +3245,108 @@ plaintext source decisions before admission, postfault source continuation,
 time-dependent economic payoffs, or correlated side information about a source
 secret supplied by the scheduler. It does not prove that the existing
 `AsyncServiceSpec` contract alone is sufficient.
+
+### Raw-response audit for the serial argument
+
+The concrete candidate below concerns the bounded ideal-capability interface
+of [SourceSession](../Vegas/Pending/SourceSession.lean). It specifies the
+misconduct predicate needed by the mathematical argument; the complete checker
+and source-information simulation are not implemented. Acceptance alone is
+insufficient: the handler accepts some noncanonical binding handles, and a
+rejected packet can still communicate through the pending network.
+This audit assumes the stage-A sequentialized graph, with at most one ready
+source event. The runtime also permits graphs with concurrent ready events;
+its readiness tokens alone do not supply the serial premise for those graphs.
+
+Judge authenticated source-player envelopes, including source-player reports.
+A unary witness is a packet outside the following canonical wire forms. Check
+the fixed graph, authenticated author, phase token, exact certificate list and
+immutable predecessor public record. Do not infer misconduct from rejection,
+missing inclusion, or elapsed time. A pair witness consists of two distinct
+signed identifiers by one source player for the same source phase. Reobserving
+or forwarding one identifier is not a second transmission. Admission and
+opening are different phases.
+
+| Response before sealing | Mathematical classification |
+| --- | --- |
+| Silence | A retained timing action. It changes no private catalogue. |
+| First canonical binding | A source binding action: correct typed material gives its value; absent or mistyped material gives legal source failure. |
+| First canonical decision admission | An irrevocable source resolution choice if its helper is executable; otherwise an irreversible nonreveal fault. |
+| First canonical opening | Execution of the previously fixed result; it cannot select a new source action. |
+| First canonical give-up | Public cancellation of the owned active phase. |
+| Extra private fields with unchanged canonical wire effect | Private representation data, subject to the information argument below. |
+| Malformed call, wrong author or phase, noncanonical handle, extra or missing wire certificate, source-player report, or a second identifier for one phase | Signed misconduct. |
+
+For a binding, the canonical handle is the owner's next prepared slot, and
+the certificate list is empty. Reuse
+`Vegas.EventGraphRuntime.PublicView.bindingCount` and
+`Vegas.EventGraphRuntime.PublicView.bindingCountBefore`: before the first
+submission, the number of completed owned bindings determines that slot;
+the sealed completion list reconstructs it. In serial play, later bindings
+cannot complete before the current one. An unsuccessful current binding ends
+gameplay rather than creating a later mismatch. Both successful and failed
+source bindings consume a slot.
+
+The existing `Vegas.EventGraphRuntime.State.PreparedPrefix` and fresh-slot
+lemma describe the unsent boundary. They do not describe the entire pending
+phase: submitting slot `k` freezes it immediately, while the public completion
+count remains `k` until inclusion. Submission suppression must use actual own
+emitted identifiers, as the current policy does. There is no silent catalogue
+preparation command in this interface. Preparing or freezing another slot
+requires an emitted binding or admission, whose wrong handle, phase or repeated
+identifier already supplies a misconduct witness. Source and decision
+catalogues are separate.
+
+Admission uses the fixed decision handle `(owner,event)` with no certificates.
+At the first lawful submission its helper is fresh, then permanently fixed.
+A failure result is executable as source FALSE. It may instead retain an
+original TRUE whose owner-local source evaluation failed; this distinction is
+private source action recall, not public traffic. A success result is executable
+only when the authentic source binding and public guards justify that same
+value. Any other helper is unexecutable: earlier source values and guard inputs
+remain fixed, the helper cannot be replaced, and later source events are
+unavailable. The owner can only incur cancellation, possibly with additional
+misconduct charges. This establishes its upper value as the current owner's
+fault payoff.
+
+An opening's failure wire form has exactly its authentic decision certificate.
+Its success form has that certificate followed by the authentic certificate
+for the previously accepted source binding and the same typed value; the
+public guards must pass. These are the exact lists required by the handler.
+Additional authentic facts, alternate certificate orders and missing facts
+are outside the canonical form. They cannot supply an undeterred signalling
+channel. Give-up names the owned active phase and has no certificates; after
+an earlier transmission in that phase it would be a pair offense.
+
+Private submission material and intention fields do not appear on the wire.
+Unused fields and mistyped binding material can still be remembered or grant
+extra own certificate capabilities. They are not necessarily literal runtime
+aliases. On lawful continuation, they are self-generated data `W`: material
+comes from the owner's previous information and choices, and revealing an
+extra capability outside a canonical opening creates misconduct. Copying a
+remembered value into a later lawful binding is an ordinary source alternative.
+The lifted source policy ignores `W`, and the representation likelihood
+argument above gives the same source posterior at those augmented inputs.
+
+Original TRUE-with-failure requires separate handling. The existing
+`Vegas.SourceSession.checkedResolutionIntent?` validates it against the
+actual pre-admission owner view, fresh helper and locally evaluated material;
+`Vegas.SourceSession.restoreObservation` restores own action recall. An
+unvalidated private TRUE label on an effective FALSE is just extra private
+data; it must not fabricate an impossible source history. The mathematical
+projection retains a validated original action and otherwise the executable
+effective action. Equal public stores are insufficient by themselves:
+the whole projected history must preserve the original own information and
+actions. This is the remaining global simulation obligation.
+
+Finally, lawful witness status must remain stable under later foreign activity.
+The canonical handle count, accepted source association and guard inputs are
+fixed predecessor facts. Exact body shape and duplicate identifiers are
+immutable. Source-player report misuse is classified by its authenticated
+author, so exempting legitimate watcher reports does not exempt that format
+for players. The proposed misconduct fine uses these content and pair checks;
+it does not reuse the existing acceptance-based deadline audit wholesale.
+The public cancellation deduction supplies timeout enforcement separately.
 
 The initialized-play audit theorem does not supply a clean comparator from
 every clear prefix. A false risk flag alone says nothing about an earlier
