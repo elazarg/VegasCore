@@ -3418,6 +3418,137 @@ the native history induction relating these APIs to actual admission receipts
 and all lawful representation choices; an all-history reachability theorem for
 the physical effective-action history alone does not prove this relation.
 
+### Concurrent alternative: one fixed cancellation payoff per player
+
+Owner-specific timeout charges do not give the serial completion formula when
+several owners are still deciding. For a timing policy, let `s` be the chance
+that the whole binding stage completes and $f_i$ the chance that player `i` is
+the recorded fault owner. Its value becomes
+
+`C_i + s * (V_i - C_i) - A_i * f_i`.
+
+The last term can vary independently of completion. For example, at an
+unprotected turn let sending give stage completion with probability `1/2`,
+own cancellation with probability `1/10`, and foreign cancellation with
+probability `2/5`. Let waiting cause foreign cancellation certainly. With
+`C_i = 0` and `A_i = 4`, a type valuing success at `2` prefers sending
+(`3/5` versus `0`), while a type valuing it at `1/2` prefers waiting
+(`-3/20` versus `0`). The builder can implement these branches using public
+submission history and inclusion/expiry choices, with binding values opaque.
+Protected initial opportunities do not protect this delayed turn. This refutes
+the common-completion derivation for owner-only charges, not every possible
+preservation theorem using them.
+
+A simpler alternative declares the same cancellation payoff for player `i`
+regardless of which player missed. Let the base cancellation payoff be `C_i`
+and charge every player its fixed public cancellation deduction `A_i` once if
+gameplay cancels. Choose `c_i = C_i - A_i < m_i`. Then all cancellation paths
+give player `i` the same $c_i$; all successful source continuations are better.
+One upfront escrow funds this deduction and the separate personal misconduct
+fine. The substantive cost is that cancellation penalizes innocent players too.
+It changes no utility on successful, misconduct-free play.
+
+**Separate source choices from a binding-stage timing game.** Under barrier
+order, only bindings belonging to different owners can be concurrently ready.
+Each owner's bindings retain their order. Bindings reveal no source values,
+and their canonical wire forms and public handles are value-independent.
+The next public event waits for the whole stage. Consequently a successful
+stage has the same source-action law whichever admissible order the builder
+uses. Adjacent independent bindings can be exchanged: they write different
+fields, do not change each other's actor-visible store or own-action history,
+and do not change the other owner's normalized source policy. Iterate these
+exchanges to source rank. The repository already proves this local statement
+in `Vegas.EventGraph.BarrierOrdered.policyStepThen_map_storeRecall_comm`.
+
+Equivalently, fix the initial parameters and independent source behavioral
+coins, then calculate the stage's bindings in source order. A player's next
+binding depends only on public data and its own earlier information and
+actions. It can therefore make that same draw when physically activated out
+of order. The latent earlier foreign bindings are supplied by this coupling,
+not exposed to the player or inserted into its visible store. This also covers
+native source decisions occurring before their source-earlier foreign binding
+has physically executed.
+
+Erase binding values from the auxiliary timing game. Keep actual owner timing
+recall, public completions, clock and network observations. A player may wait,
+send its canonical binding once, or abandon. The common auxiliary payoff is
+one if the entire binding stage completes and zero if gameplay cancels. Its
+transition law depends on those auxiliary observations, not on source secrets.
+This is a finite game with perfect recall. Different owners can have different
+observations and beliefs about the builder; identical beliefs are not needed.
+
+Choose a sequential equilibrium of this auxiliary game whose play from every
+fresh stage entry completes certainly. Such a selection needs more than an
+arbitrary auxiliary equilibrium: cancellation equilibria can also exist. The
+protected-opportunity contract gives the required selection as follows.
+
+At an unsent owner's protected first opportunity, pin prompt submission if
+the input is compatible with all earlier current-stage owners submitting at
+their protected first opportunity. Pin prescribed silence at the remaining
+inputs of this same clean process. Start this definition afresh at every
+possible stage entry, including entries following previous delays. Pure prompt
+play completes the stage certainly from every such entry. Give these pinned
+actions a fully supported timing tremble. At other timing inputs, maximize the
+common stage-completion probability over the finite product of action-floor
+simplexes. A maximum exists by compactness. Changing one free information
+agent's strategy cannot improve that maximum, so it is a constrained agent
+equilibrium and supplies conditional one-shot optimality at every free input.
+
+Let the tremble be small relative to the minimum clean pinned-input reach in
+the stage's reference process. A hidden current-stage departure then has
+vanishing conditional probability at every pinned input: it requires a first
+pinned tremble, and there are only finitely many decisions. In the limit,
+prompt submission at a pinned input completes the stage with probability one,
+so no alternative improves the common payoff. At free inputs, constrained
+best responses pass to the limit. Thus the selected assessment is consistent
+and sequentially rational, and has certain completion from fresh entries.
+
+Construct this family in stage order. A stage's entry distribution is induced
+by earlier stages; choose its tremble after that distribution and its clean
+reach masses are fixed. Its objective stops at stage completion and therefore
+does not require choosing later stage policies first. Finite many stages allow
+one subsequence for the whole family. Public resolutions remain serial and
+use the earlier single-owner completion argument. These resolutions and all
+later fresh binding stages complete certainly in the limiting continuation.
+
+**Lift the timing equilibrium to source utilities.** At source information
+`I`, with an unsent source action `a` or an already fixed binding action, a
+lawful timing continuation has value
+
+`c_i + s * (V_i(I,a) - c_i)`.
+
+The success coefficient is positive. Canonical opaque traffic makes the
+completion probability independent of `a` and of additional source-private
+data, while the source continuation law on success is the commuted source
+law. Therefore an auxiliary timing best response is also a native timing best
+response for every source type. At a source decision, optimizing jointly over
+the source action and timing preserves the source equilibrium's optimal
+action distribution. The common team payoff removes the need for a separate
+type-dependent waiting policy.
+
+Use fully mixed source consistency sequences and auxiliary timing sequences.
+For a full latent source action history and compatible traffic record, reach
+again factors into the source weight and a traffic weight depending only on
+public source results. Marginalizing latent unexecuted foreign bindings gives
+the appropriate source posterior; it does not add a public source observation.
+Own private representation likelihoods cancel as in the serial argument.
+Choose the raw-action contamination last, below every clean conditional reach.
+Free native agent completion then handles first misconduct and its descendants
+without imposing source play after a sunk misconduct fine.
+
+Since `c_i < m_i`, literal owner silence from a witness-free prefix has value
+at least $c_i$, and a first preseal misconduct response has value at most
+`M_i - q_i * P_i`. The sufficient personal fine is simply
+
+`q_i * P_i > M_i - c_i`.
+
+Actual partial-watcher collection and postseal silence use the same causal
+argument as before. No fresh deposit or certain detection is required. This
+is an alternative mathematical route for barrier concurrency, conditional on
+the stated opaque phase service and complete raw-response classification.
+The global cancellation deduction, auxiliary timing selection and native
+instantiation are not implemented or formally proved.
+
 The initialized-play audit theorem does not supply a clean comparator from
 every clear prefix. A false risk flag alone says nothing about an earlier
 packet's extra evidence. At a legal risk-menu prefix, however,

@@ -168,6 +168,15 @@ runner, including source-player misuse of the report format. Its partial
 collection bound, two-charge audit and actual report/settlement joint law remain
 open; terminal resampling cannot replace an already emitted batch.
 
+The [concurrent alternative](se-schedule-generalization.md#concurrent-alternative-one-fixed-cancellation-payoff-per-player)
+uses a fixed cancellation deduction from every player, rather than only the
+fault owner. This makes timing a common-interest binding-stage game: all
+source types maximize stage completion probability. The mathematical selection
+pins protected prompt play and maximizes completion over free timing agents;
+barrier commutation supplies the successful source law. Its cost is charging
+innocent players when another player causes cancellation. This alternative and
+its native instantiation remain outside the checked theorem.
+
 Use the [existing API map](module-architecture.md) for this proof. General
 history induction, belief normalization, consistent subsequence extraction,
 local-comparison limits and depth-free restriction extension already have
