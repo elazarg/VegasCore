@@ -2710,6 +2710,83 @@ mediator literature also separates deviation simulation from consistent-belief
 construction and assumes a scheduler unable to read message contents
 ([Geffner and Halpern, Section 6](https://arxiv.org/html/2309.14618v3)).
 
+### A commitment-based decision protocol
+
+An alternative candidate keeps plaintext builders and uses the runtime's
+existing opaque commitment primitive. This is a protocol change, not a
+conclusion that the current contract suffices. It requires the following
+admission and execution boundary for each source resolution:
+
+1. Commit the complete effective public decision behind a canonical bare
+   handle. The emitted packet and public candidate view must reveal neither
+   that decision nor the original private intention. No opening evidence is
+   attached at admission.
+2. Irrevocably accept the decision commitment, then start a fresh opening
+   phase. Even admission at its last permitted tick must receive the full
+   owner-delay and protected-inclusion budget from that admission. The owner
+   opens only after admission is final.
+3. A valid opening executes the committed source decision. Encoded FALSE is
+   an openable value, not absence of opening material: a successful helper
+   opening may contain the failure code while completing the source FALSE
+   outcome. TRUE must additionally authenticate the original accepted binding
+   and its opening capability. Ordinary source guard failure remains a source
+   outcome, not a protocol offense.
+4. Withholding, invalid execution or expiry of the mandatory phase closes it
+   with a public nonreveal fault. The handler must derive the source action
+   from the frozen decision; accepting a fresh phase-two Boolean would restore
+   the uncharged TRUE-to-FALSE switch.
+
+[CommitmentCandidates](../Interaction/CommitmentCandidates.lean) already
+provides write-once private meanings, and
+[OpeningEvidence](../Vegas/Pending/OpeningEvidence.lean) emits a bare commitment
+without its private opening. Result-valued payloads can represent effective
+FALSE without exposing the original value. Opening the original intended
+action when it normalizes to FALSE would expose extra source-private
+information; retain that intention in the owner's private carrier instead.
+The current single-certificate packet does not by itself prove both the
+decision opening and the original binding opening. Their relation needs an
+explicit handler and evidence check.
+
+Admission then selects an opaque decision or a miss. At a late mandatory
+opening, the owner can execute that fixed decision or incur a fault; it cannot
+replace committed TRUE with a legitimate source FALSE. Protected first
+openings are essential: if prescribed opening is itself subject to selective
+expiry, its bias propagates back to the commitment choice. A fixed admission
+deadline followed by one bounded opening phase retains finite closeout; no
+unlimited renewal is required. Concrete hiding and binding still require a
+cryptographic refinement of the ideal handles, including fresh randomness and
+matching public packet formats. A plain hash of a Boolean is insufficient.
+Ordinary commit/reveal alone also retains the sender's abort choice
+([F3B, Section 3.1](https://arxiv.org/html/2205.08529)).
+
+For this candidate, fault accounting reserves a separate unit for each phase
+and closes that phase when its fault is charged. Packet offenses remain
+separate, deduplicated by authenticated envelope ID. The bounded horizon allows
+one upfront escrow covering all phase reserves and possible packet fines; no
+stepwise top-up is needed. These are reserves for distinct faults, not charges for ordinary source
+decisions or every runtime step. This is one proposed enforcement design, not
+a proof that separate reserves are necessary in every protocol. A previously
+consumed whole-owner OR fine cannot supply these units. Uncertain collection
+of that OR fine can still deter a later offense if it increases the chance of
+collection, but a positive bound on each offense's collection probability
+does not establish such an increase.
+
+For partially collected packet fines, earlier expected charges must be
+preserved in the actual conditional comparison. Authentic per-packet coverage
+alone is insufficient: an observer may catch an old packet surely when alone,
+but catch old and new together with probability `1/10`, reducing expected
+counted fines from one to `1/5`. Prefix-stable collection or a concrete
+irrevocable collection argument is therefore an additional backend obligation,
+not an independence or certain-observation assumption.
+
+Before a general assembly, establish the actual compiler-specific phase
+simulation: equal admission traffic, zero-charge protected opening, exactly
+the source-public observation, and the fault comparison with earlier escrow
+intact. Then derive conditional source/traffic likelihoods and select one
+consistent perturbation family. The protocol does not make arbitrary
+type-dependent WAIT rates harmless. Neither this design nor its end-to-end
+SE preservation has been implemented or proved.
+
 The initialized-play audit theorem does not supply a clean comparator from
 every clear prefix. A false risk flag alone says nothing about an earlier
 packet's extra evidence. At a legal risk-menu prefix, however,
