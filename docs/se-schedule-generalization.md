@@ -3393,6 +3393,35 @@ does not help: this expanded interface creates no classified offense. This
 is an attack on unrestricted sender-written tokens, not a trace permitted by
 the current ideal emitter.
 
+Restricting only premature openings would also be insufficient. An early
+opaque binding can give its owner commitment power before the source turn.
+Consider Bob choosing `L` or `R`, then Alice choosing zero, one or failure.
+The payoffs `(Bob,Alice)` are:
+
+| Bob's choice | Alice zero | Alice one | Alice failure |
+| --- | --- | --- | --- |
+| `L` | `(10,0)` | `(-10,-1)` | `(-20,-2)` |
+| `R` | `(11,1)` | `(-9,2)` | `(-19,0)` |
+
+Alice's source best replies are zero after `L` and one after `R`. Thus the
+source equilibrium chooses `L` and zero, giving Alice zero. If Alice's future
+binding is publicly known to be already fixed, Bob instead strictly prefers
+`R` for every possible fixed value: each entry in its row is one higher.
+This conclusion needs no belief about the hidden value. Alice can profit by
+binding zero early: an observing Bob chooses `R`, giving her one; an
+unobserving Bob follows `L`, giving her zero. Her gain is the positive
+probability of observation.
+
+For a source realization with a later disclosure, give failure the table's
+failure payoff. After either successful fixed binding, Alice strictly prefers
+revealing it to withholding at either Bob choice. Its public payoff result is
+therefore fixed too; optional FALSE does not undo this commitment argument.
+Source failure of Bob's own choice can be assigned a payoff below both rows,
+and cancellation below every source payoff. A friendly public builder accepts
+the old canonical binding when its source phase becomes ready. Without causal
+readiness evidence its contents and identifier create no offense. Consequently
+the evidence requirement applies to bindings and admissions as well as openings.
+
 An implementation therefore needs publicly checkable evidence of phase
 activation, such as a causally issued attestation or a proof against an
 authenticated finalized ledger checkpoint. It must bind the session, event
