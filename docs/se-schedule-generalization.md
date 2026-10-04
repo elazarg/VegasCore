@@ -3368,6 +3368,24 @@ this fact to classify a premature packet as misconduct. The field's Lean
 carrier is only a phase key; its provenance comes from the restricted emitter,
 not from the value of that key.
 
+The existing event-runtime proof chain enforces this requirement.
+`Vegas.packet_token_issued` proves that an emitted token's prerequisites have
+completed. `Vegas.ServiceAuthorizationBreach.forbidden_history` proves that
+an actual packet with an invalid or missing token is forbidden at every
+reachable complete settlement. Its classification feeds
+`Vegas.auditableServiceChoice_collection_committed`, which bounds actual
+collection under the observation and report-delivery coverage hypotheses.
+Punishment is conditional on authentic watcher collection, rather than certain.
+
+`Vegas.SourceSession.emit` and `Vegas.SourceSession.handleGame` enforce the
+corresponding phase-token minting and acceptance gate. Its settled-record
+verdict and actual watcher-report collection still need integration, including
+verdicts when cancellation leaves addressed events incomplete. The arguments
+below concern an expanded interface allowing sender-written tokens; they do
+not exhibit a premature valid-token action in the current Lean runtime.
+Concrete authentication of these ideal capabilities is a backend refinement
+obligation, separate from preservation within this runtime.
+
 Without that causal restriction, even opaque admissions permit an early
 verifiable-information attack. Let Alice own an initial hidden binding to a
 uniform bit, and let Bob choose a guess before Alice's source resolution.
