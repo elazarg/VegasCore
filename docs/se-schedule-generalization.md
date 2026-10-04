@@ -2407,8 +2407,10 @@ completions, and settlement completes the anchored event. Initialized packet
 provenance therefore makes every owner commitment inert by completion. No
 separate ledger or equality of private candidate meanings is assumed.
 The settled checkpoint's ledger and unconditional slots supply the completed
-round's local resource premises. Composing repeated completed and pending
-phases under one fixed implementation reference remains a separate obligation.
+round's local resource premises. The actual pending seed and its checkpoint
+and continuation laws preserve one fixed implementation reference, supplied
+with its current recall-length bound. Composing repeated completed and pending
+phases remains a separate obligation.
 No future risk-policy support, shared postsettlement path or terminal utility
 comparison is assumed.
 
@@ -2953,7 +2955,9 @@ partial sampling. The physical policy uses one whole continuation across hidden
 histories. [SourceServiceEffectiveImmediateComparator](../Vegas/Game/SourceServiceEffectiveImmediateComparator.lean)
 represents that same whole policy in the complete effective game. Actual local
 owner slots and bounded records derive admission along its supported suffix;
-one shared generic restriction induction gives the exact physical terminal law.
+one shared generic restriction induction gives the exact physical terminal law
+from any actual control with these owner resources, including an idle control
+after a committed response.
 Every hidden history at a compatible effective input has zero owner collection
 against arbitrary effective opponents. Source payoff comparisons remain open.
 [SourceServiceProtectedDecisionCompletion](../Vegas/Game/SourceServiceProtectedDecisionCompletion.lean)
@@ -3049,9 +3053,15 @@ counterfactual Bayes cancellation applies even to arbitrarily rare own WAITs;
 foreign WAIT likelihoods and conditional escape remain separate obligations.
 
 [AsyncServiceOriginalCompletion](../Vegas/Game/AsyncServiceOriginalCompletion.lean)
-constructs a fully mixed full effective native Bayes sequence from the actual original source
-assessment sequence, with one common strategy/belief subsequence and consistent
-limit. Free sites are optimal against every whole continuation, initialized
+constructs the actual complete supported source Bayes sequence from the
+original assessment's consistency proof. It retains that sequence's full
+abstract-choice support, Bayes consistency, convergence and normalized
+effective-choice support. The source sequence is selected before waiting,
+uniform, free-reference and selection-bonus rates, so these may depend on its
+actual atoms. Every admissible rate family then supplies a fully mixed full
+effective native Bayes sequence with one common strategy/belief subsequence and
+consistent limit. Free sites are optimal against every whole continuation,
+initialized
 support visits only source-compatible sites, and its joint full typed outcome
 and realized sampled settlement law equal
 the original source strategy's law. The same returned assessment bounds

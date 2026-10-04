@@ -97,7 +97,9 @@ future private values changed by repair are outside the claim.
 - [SourceServiceEffectiveImmediateComparator](../Vegas/Game/SourceServiceEffectiveImmediateComparator.lean)
   represents the same whole policy in the complete effective game. Actual local
   owner slots and bounded records admit its supported responses, and the generic
-  restriction induction preserves the exact physical terminal law. Every hidden
+  restriction induction preserves the exact physical terminal law from any
+  actual control with those owner resources, including a post-response idle
+  control. Every hidden
   compatible history has zero owner collection against arbitrary effective
   opponents. Source payoff comparisons remain open.
 - [SourceServiceCompatibleCollection](../Vegas/Game/SourceServiceCompatibleCollection.lean)
@@ -117,8 +119,12 @@ future private values changed by repair are outside the claim.
   Own WAITs cancel by the existing counterfactual Bayes law even when rare;
   foreign WAIT likelihoods and conditional escape remain separate obligations.
 - [AsyncServiceOriginalCompletion](../Vegas/Game/AsyncServiceOriginalCompletion.lean)
-  constructs a fully mixed native Bayes sequence from actual original source
-  approximants, with one common strategy/belief subsequence and consistent limit.
+  constructs complete supported source Bayes approximants from the original
+  assessment's consistency proof, with full abstract-choice and normalized
+  effective-choice support. The sequence precedes rate selection. Every
+  admissible waiting, uniform, free-reference and bonus family supplies a fully
+  mixed native Bayes sequence, one common strategy/belief subsequence and a
+  consistent limit.
   Free sites and completed compatible sites under nonnegative deposits are
   rational; initialized support is source-compatible; the full typed outcome
   and realized sampled settlement law equal the original source

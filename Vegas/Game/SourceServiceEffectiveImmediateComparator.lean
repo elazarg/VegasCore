@@ -163,9 +163,9 @@ def effectiveImmediateComparator
   (menu).restrictPolicy (initialLaw service.setup) service.horizon service.scheduler who
     (sourceServiceImmediatePolicy service.setup service.leaks service.bound profile who)
 
-/-- At compatible actual information, whole-policy replacement has the full
-physical immediate continuation law against arbitrary effective opponents.
-The local owner invariants make finite restriction's fallback unreachable. -/
+/-- Actual owner submission and slot resources give the full physical immediate
+continuation law from any current control, against arbitrary effective opponents.
+Finite restriction has no fallback on this continuation. -/
 theorem effectiveImmediateComparator_terminal_law
     (profile : BehavioralProfile service.setup.program) (who : Player)
     (permitted : (profile who).Admitted service.setup.program (CommitmentInterface.values _))
@@ -175,10 +175,10 @@ theorem effectiveImmediateComparator_terminal_law
       service.scheduler).BehavioralPolicy player)
     (history : ((menu).protocol (initialLaw service.setup) service.horizon
       service.scheduler).History)
-    (remaining : Nat) (execution : (app).Execution)
-    (current : history.state = some ⟨remaining, some who, execution⟩)
-    (compatible : service.sourceCompatibleInfo who
-      (some (execution.recall who, execution.observe (app) who))) :
+    (control : (app).Control)
+    (current : history.state = some control)
+    (atTurn : OwnSubmissionsAtTurn service.setup service.leaks control.execution who)
+    (slots : CanonicalSlotsUsed service.setup service.leaks control.execution who) :
     (((menu).information (initialLaw service.setup) service.horizon
       service.scheduler).runBehavioralTerminalFrom certificate
         (GameTheory.Profile.update (sig := ((menu).information (initialLaw service.setup)
@@ -227,8 +227,6 @@ theorem effectiveImmediateComparator_terminal_law
         service.scheduler responder (baseline responder) _ _ response chosen
   have rawTrace := (menu).toRawTrace (initialLaw service.setup) service.horizon service.scheduler
     history.trace
-  obtain ⟨_, atTurn, slots, _⟩ := service.sourceCompatibleInfo_raw_prefixFacts
-    ⟨remaining, some who, execution⟩ (current ▸ rawTrace) who compatible
   have holds : service.ownerSlots who history.state := by
     rw [current]
     exact ⟨atTurn, slots⟩
@@ -282,8 +280,12 @@ theorem effectiveImmediateComparator_terminal_charge_zero
             (service.effectiveImmediateComparator profile who)) history).map
             History.state).support :=
     PMF.support_map .. ▸ ⟨final, reached, rfl⟩
+  have rawTrace := (menu).toRawTrace (initialLaw service.setup) service.horizon service.scheduler
+    history.trace
+  obtain ⟨_, atTurn, slots, _⟩ := service.sourceCompatibleInfo_raw_prefixFacts
+    ⟨remaining, some who, execution⟩ (current ▸ rawTrace) who compatible
   rw [service.effectiveImmediateComparator_terminal_law profile who permitted certificate baseline
-    history remaining execution current compatible, current] at stateReached
+    history ⟨remaining, some who, execution⟩ current atTurn slots, current] at stateReached
   exact service.sourceCompatibleInfo_immediate_finish_charge_zero execution who
     (current ▸ (menu).toRawTrace (initialLaw service.setup) service.horizon service.scheduler
       history.trace) compatible

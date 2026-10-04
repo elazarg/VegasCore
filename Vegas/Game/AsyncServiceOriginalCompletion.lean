@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.AsyncServiceInformationWaitDomination
+import Vegas.Game.SourceServiceChoiceSupport
+import Vegas.Game.SourceInformation
 import Vegas.Game.SourceServiceCompletedRationality
 import Vegas.Game.SourceServiceFreeRationality
 import Vegas.Game.SourceServiceCompatiblePinValue
@@ -15,8 +17,11 @@ import GameTheoryExtensions.Analysis.Protocol.AgentPayoffCompletion
 
 /-! # Full effective completion along actual original source assessments
 
-Normalized source policies may have different limits at transcripts of zero
-source probability. The completion retains their actual information-dependent
+The original consistent source assessment supplies a complete supported Bayes
+sequence through the actual source-choice producer before the waiting and
+error rates are selected. Normalized source policies
+may have different limits at transcripts of zero source probability.
+The completion retains their actual information-dependent
 WAIT and full effective uniform pin sequence, selecting one common native
 assessment subsequence. Prescribed uniform trembles and free-agent reference trembles
 have independent rates. Uniform initialized history domination preserves the
@@ -119,41 +124,53 @@ private theorem original_run_converges [Finite Player]
   simpa only [laws] using actual
 
 open Classical in
-/-- Actual original source assessments admit one consistent native completion
-in the full effective game with their real normalized pin limits.
+/-- A consistent original source assessment supplies its complete supported
+source sequence and one consistent native completion in the full effective
+game, with the real normalized pin limits of that same source sequence.
 Free information sites are optimal against whole-policy deviations; completed
 compatible sites under nonnegative deposits are rational; actual backend coverage
 bounds arbitrary continuations after classified charged choices; typed outcomes and sampled
 payoffs agree exactly. -/
 theorem exists_consistent_original_sequence_completion
     (source : (sourceModel).BehavioralAssessment)
-    (sourceSequence : Nat → (sourceModel).BehavioralAssessment)
-    (sourceConverges : InformationModel.BehavioralAssessmentConvergesPointwise
-      sourceSequence source)
-    (weight : Nat → Player → (app).Info → ℝ)
+    (sourceConsistent : source.IsSequentiallyConsistent
+      (service.setup.decision_antichain (CommitmentInterface.values service.setup.program))) :
+    ∃ sourceSequence : Nat → (sourceModel).BehavioralAssessment,
+      (∀ n who info, FullSupport ((sourceSequence n).strategy who info)) ∧
+      (∀ n, InformationModel.BehavioralAssessment.IsBayesConsistent (sourceModel)
+        (sourceSequence n) (service.setup.decision_antichain
+          (CommitmentInterface.values service.setup.program))) ∧
+      InformationModel.BehavioralAssessmentConvergesPointwise sourceSequence source ∧
+      (∀ n who, (normalizeDisclosureProfile service.setup.program []
+        (Revelations.initial service.setup.context)
+        (service.setup.decodeBehavioralProfile (CommitmentInterface.values service.setup.program)
+          (sourceSequence n).strategy) who).SupportsEffectiveChoices service.setup.program
+            (CommitmentInterface.values service.setup.program) []
+              (Revelations.initial service.setup.context)) ∧
+    ∀ (weight : Nat → Player → (app).Info → ℝ)
     (weightNonnegative : ∀ n who info, 0 ≤ weight n who info)
     (weightSmall : ∀ n who info, weight n who info ≤ 1)
-    (bound : Nat → ℝ) (boundNonnegative : ∀ n, 0 ≤ bound n)
-    (boundSmall : ∀ n, bound n ≤ 1)
-    (bounded : ∀ n who info, service.sourceCompatibleInfo who info → weight n who info ≤ bound n)
-    (boundVanishes : Tendsto bound atTop (nhds 0))
+    (bound : Nat → ℝ) (_boundNonnegative : ∀ n, 0 ≤ bound n)
+    (_boundSmall : ∀ n, bound n ≤ 1)
+    (_bounded : ∀ n who info, service.sourceCompatibleInfo who info → weight n who info ≤ bound n)
+    (_boundVanishes : Tendsto bound atTop (nhds 0))
     (delta : Nat → ℝ) (deltaPositive : ∀ n, 0 < delta n)
     (deltaSmall : ∀ n, delta n < 1)
-    (deltaVanishes : Tendsto delta atTop (nhds 0))
-    (freeTremble : Nat → ℝ) (freePositive : ∀ n, 0 < freeTremble n)
-    (freeSmall : ∀ n, freeTremble n < 1)
-    (freeVanishes : Tendsto freeTremble atTop (nhds 0))
+    (_deltaVanishes : Tendsto delta atTop (nhds 0))
+    (freeTremble : Nat → ℝ) (_freePositive : ∀ n, 0 < freeTremble n)
+    (_freeSmall : ∀ n, freeTremble n < 1)
+    (_freeVanishes : Tendsto freeTremble atTop (nhds 0))
     (utility : State L service.setup.program.terminalCtx → Player → ℝ)
     (sample : List (SettledEvidence service.setup) → PMF (List (SettledEvidence service.setup)))
-    (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
+    (_authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (probability : Player → ℝ)
     (selectionBonus : Nat → Player →
       ((menu).protocol (initialLaw service.setup) service.horizon service.scheduler).History → ℝ)
     (selectionError : Nat → ℝ)
-    (selectionVanishes : Tendsto selectionError atTop (nhds 0))
-    (selectionBounded : ∀ n who final,
+    (_selectionVanishes : Tendsto selectionError atTop (nhds 0))
+    (_selectionBounded : ∀ n who final,
       ((menu).protocol (initialLaw service.setup) service.horizon service.scheduler).terminal
-        final.state → |selectionBonus n who final| ≤ selectionError n) :
+        final.state → |selectionBonus n who final| ≤ selectionError n),
     let certificate := (menu).bounded (initialLaw service.setup) service.horizon service.scheduler
       |>.wellFoundedHistories
     let base := baseUtility service.setup service.leaks utility
@@ -314,7 +331,25 @@ theorem exists_consistent_original_sequence_completion
           (CommitmentInterface.values service.setup.program) source.strategy)).map
             (fun state => (some state, utility state)) := by
   classical
-  intro certificate base payoff
+  let admission := CommitmentInterface.values service.setup.program
+  have approximation := sourceConsistent
+  obtain ⟨_witness, approximates, _⟩ := approximation
+  let _ : Finite (service.setup.executionProtocol admission).History :=
+    (approximates 0).1.finite_history (service.setup.protocol_bounded admission)
+      (fun who info =>
+        have := service.setup.finite_choice
+          (sourceService_finiteBindingTypes service.setup service.bounds service.values)
+          admission who info
+        Set.toFinite _)
+      (fun draw => service.setup.protocolStep_support_finite _ draw.1)
+  obtain ⟨sourceSequence, sourceFull, sourceBayes, sourceConverges, sourceChoices⟩ :=
+    sourceService_consistent_supported_sequence service.setup service.bounds service.values
+      source (service.setup.decision_antichain admission) sourceConsistent
+  refine ⟨sourceSequence, sourceFull, sourceBayes, sourceConverges, sourceChoices, ?_⟩
+  intro weight weightNonnegative weightSmall bound boundNonnegative boundSmall bounded
+    boundVanishes delta deltaPositive deltaSmall deltaVanishes freeTremble freePositive freeSmall
+    freeVanishes utility sample authentic probability selectionBonus selectionError
+    selectionVanishes selectionBounded certificate base payoff
   let original n := service.setup.decodeBehavioralProfile
     (CommitmentInterface.values service.setup.program) (sourceSequence n).strategy
   have originalAdmitted (n : Nat) (who : Player) : (original n who).Admitted service.setup.program

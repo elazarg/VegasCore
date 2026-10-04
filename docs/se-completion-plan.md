@@ -526,7 +526,9 @@ partial sampling. The physical policy uses one whole continuation across hidden
 histories. [SourceServiceEffectiveImmediateComparator](../Vegas/Game/SourceServiceEffectiveImmediateComparator.lean)
 represents that same whole policy in the complete effective game. Actual local
 owner slots and bounded records derive admission along its supported suffix;
-one shared generic restriction induction gives the exact physical terminal law.
+one shared generic restriction induction gives the exact physical terminal law
+from any actual control with these owner resources, including an idle control
+after a committed response.
 Every hidden history at a compatible effective input has zero owner collection
 against arbitrary effective opponents. Source payoff comparisons remain open.
 [SourceServiceCompatibleCollection](../Vegas/Game/SourceServiceCompatibleCollection.lean)
@@ -552,8 +554,12 @@ counterfactual Bayes cancellation applies even to arbitrarily rare own WAITs;
 foreign WAIT likelihoods and conditional escape remain separate obligations.
 
 [AsyncServiceOriginalCompletion](../Vegas/Game/AsyncServiceOriginalCompletion.lean)
-uses the actual original source assessment sequence to construct a fully mixed
-native Bayes sequence and one common convergent strategy/belief subsequence.
+derives a complete supported source Bayes sequence from the original
+assessment's consistency proof. Full abstract-choice support and normalized
+effective-choice support are retained. That source sequence precedes the
+choice of waiting and tremble rates; every admissible rate and selection-bonus
+family supplies a fully mixed native Bayes sequence and one common convergent
+strategy/belief subsequence.
 Its consistent limit is rational at all free sites, initialized play visits only
 source-compatible sites, and the joint full typed outcome and realized sampled
 settlement law equal the original source strategy's law. Its WAIT rates depend

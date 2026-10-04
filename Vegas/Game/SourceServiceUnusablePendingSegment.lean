@@ -35,7 +35,8 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 The number of subsequent rounds is the original RAW control's real remaining
 budget. The first shared boundary is actual settlement or a classified owner
 response, after which the theorem retains actual checkpoint and tail support
-rather than asserting a common future continuation. -/
+rather than asserting a common future continuation. The actual implementation
+reference stays fixed across this segment and its later tails. -/
 theorem sourceServiceMissing_unusable_pending_stopped_coupling
     (bounds : MessageBounds (graph setup)) (bound : (graph setup).EventId → Nat)
     (values : bounds.CoversBindingValues)
@@ -60,7 +61,9 @@ theorem sourceServiceMissing_unusable_pending_stopped_coupling
       (original.recall who) (original.observe (application setup leaks) who))
     (unusable : unusableServiceBindingResponse setup leaks who (repaired.recall who)
       (repaired.observe (application setup leaks) who) response)
-    (players : Player → (application setup leaks).Policy) :
+    (players : Player → (application setup leaks).Policy)
+    (reference : List (application setup leaks).PlayerEntry)
+    (referenceStarted : reference.length ≤ (repaired.recall who).length) :
     let app := application setup leaks
     let input := (repaired.recall who, repaired.observe app who)
     let selected := BindingMemory.retainedResponse (runtime setup) leaks
@@ -71,7 +74,7 @@ theorem sourceServiceMissing_unusable_pending_stopped_coupling
     let left := original.respond app who response
     let right := repaired.respond app who selected.1
     let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
-      (bounds.riskMenu (runtime setup) leaks bound) who (repaired.recall who) (players who)
+      (bounds.riskMenu (runtime setup) leaks bound) who reference (players who)
     ∃ event, (runtime setup).submittedEvent? leaks response = some event ∧
       let boundary := fun next : app.Execution × app.Execution ×
           BindingMemory (runtime setup) leaks =>
@@ -210,10 +213,10 @@ theorem sourceServiceMissing_unusable_pending_stopped_coupling
   have earlierUnrecorded : (runtime setup).eventRecorded leaks (original.recall who) event =
       false := ((runtime setup).eventRecorded_congr leaks _ _ frame.submissions event).trans
         unrecorded
-  have started : (repaired.recall who).length ≤ (right.recall who).length := by
+  have started : reference.length ≤ (right.recall who).length := by
     rw [app.respond_recall_length]
     simp only [ite_true]
-    exact Nat.le_add_right _ _
+    exact referenceStarted.trans (Nat.le_add_right _ _)
   obtain ⟨afterTrace⟩ := app.raw_trace_respond (initialLaw setup) horizon scheduler leftRemaining
     original who response leftTrace
   have leftAccounted := app.raw_trace_accounted (initialLaw setup) horizon scheduler leftTrace
@@ -252,7 +255,7 @@ theorem sourceServiceMissing_unusable_pending_stopped_coupling
     afterFrame afterTrace afterOwn event afterPast payload outputEq codeEq node afterReady id
       candidate leftFixed rightFixed failed rememberedAction rememberedValue anchor
         (original.recall who) [] split named earlierUnrecorded (by simp) rfl players
-          (repaired.recall who) started afterAtTurn afterSlots leftRemaining (Nat.le_refl _)
+          reference started afterAtTurn afterSlots leftRemaining (Nat.le_refl _)
   dsimp only
   obtain ⟨coupling, first, second, related⟩ := coupled
   refine ⟨event, named, coupling, first, second, ?_⟩
@@ -282,7 +285,7 @@ theorem sourceServiceMissing_unusable_pending_stopped_coupling
     have checkpointRight := sourceServiceRetained_runJoint_slots bounds bound
       (horizon := horizon) (remaining := leftRemaining - stopped) stopped right who remembered
         (by simpa only [accounted, sameBudget] using rightAfterTrace) rightAfterSlots players
-          (repaired.recall who) checkpoint.2 rightReached
+          reference checkpoint.2 rightReached
     have boundaryWithLedger :
         (checkpoint.2.2.Frame (runtime setup) leaks who checkpoint.1 checkpoint.2.1 ∧
           checkpoint.2.2.shadow.OwnBindings who ∧ checkpoint.2.2.shadow.CompletedAt
