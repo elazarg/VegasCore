@@ -2986,6 +2986,220 @@ intention retention and authentic reports through the actual pending runner.
 The two-charge audit, phase service contract, compiler simulation and end-to-end
 SE preservation remain unproved.
 
+### A finite-game argument for serial phases
+
+The following is a mathematical preservation argument for a specified phase
+interface, not a Lean theorem about every response in `SourceSession`. It
+addresses timing incentives and consistent beliefs together. The interface
+requirements below must be verified against the runtime before formalizing the
+argument. Concurrent bindings require an additional argument about their order
+and observations.
+
+Let the source game be finite and have perfect recall. Each player's source
+information determines the public source history. Fix a source sequential
+equilibrium `(sigma, mu)`. Player `i` has source terminal utility in
+`[m_i, M_i]`; utility has no separate dependence on runtime time. Use the
+following serial phase interface:
+
+1. Before irrevocable admission, the only legitimate strategic source choice
+   is the current owner's. Its canonical packet hides the choice and has a
+   handle determined by public phase data. Private preparation and private
+   intention metadata are absent from the wire. Admission ends this timing
+   problem without allowing the builder to reconsider the admitted choice.
+2. A private binding executes at admission. A public resolution commits its
+   effective result at admission, then receives a new, fully protected first
+   opening opportunity. Opening executes the fixed result. Its public contents
+   reveal exactly the corresponding source-public result. Effective FALSE
+   reveals neither an original private TRUE intention nor the binding value.
+3. Until the current phase executes, later source decisions and source chance
+   moves are unavailable. The owner can wait, submit once, or abandon the
+   phase. Scheduler and passive-observation kernels use public data only.
+   A valid submission at the phase's first owner opportunity executes certainly.
+   After execution, every subsequent phase starts with this same guarantee.
+4. The first public miss or nonreveal ends all gameplay. Player `i` receives
+   cancellation utility `C_i`. If `i` owns the failed phase, a public deduction
+   `A_i` is made. This deduction uses the public cancellation record and does
+   not depend on a watcher. Ordinary source FALSE and guard failure do not
+   count as phase failures. Reports occur after the economic outcome is fixed.
+5. Raw responses admit a concrete classification: a legitimate source choice,
+   timing or abandonment; an equivalent private representation of such a
+   response; or a first immutable signed-misconduct witness. A decision that
+   cannot execute can only produce the same game-ending fault. Equivalent
+   representations supply no new information about other source histories and
+   no additional economic transition outside this classification.
+6. Earlier lawful owner packets cannot become misconduct witnesses through
+   foreign behavior. After a first owner witness, under every continuation,
+   actual watcher observation and accepted reporting collect a separate fine
+   `P_i` with conditional probability at least `q_i > 0`. Duplicate witnesses
+   require coverage of both distinct authenticated bodies. The watcher has
+   zero utility and may use its prescribed reporting policy at every history.
+
+These are operational and observation requirements. They do not assert a
+desired payoff comparison or a desired belief. In particular, a late opening
+may still be censored selectively according to its public contents.
+
+**Timing optimization from the owner's information.** An auxiliary timing
+history `z` consists of the owner's actual clock, receipts, observations and
+previous timing actions, with source-private data separated out. While waiting,
+the source state does not advance. For admission, its chance kernel is
+independent of the prospective source choice. For opening, its kernel may
+depend on the fixed source-public result `y`, but not on additional source
+secrets or on which original intention produced that same `y`.
+
+This gives a finite single-player decision problem. Set the completion value
+to one on execution and zero on cancellation. At every owner information
+history, maximize the conditional probability of completion, including the
+possibility of waiting for another observation before submitting. Backward
+induction produces one policy `tau` for admission and one policy $\tau_y$ for
+opening. It maximizes completion at every possible owner information history,
+not only those reached by its initial choice.
+
+This optimization does not expose the builder's full history to the owner.
+Hidden scheduler states are averaged using their conditional law at `z`.
+That law can be computed using any fully supported timing reference: perfect
+recall makes the owner's previous action probabilities identical across the
+histories in `z`, so those factors cancel in Bayes' rule. At a protected first
+opportunity, prompt submission attains completion probability one. Choose it
+among the maximizing actions. At a history where completion is impossible,
+choose a common tie-break rather than one based on a source secret.
+
+**Why maximizing completion maximizes utility.** Choose
+`A_i > max(0, C_i - m_i)` and write `c_i = C_i - A_i`. Then every successful
+source continuation is strictly preferable to the current owner's fault.
+Let `V_i(I,a)` be the source continuation value of action `a` at source
+information `I`, with subsequent source play following `sigma`. A timing
+policy completing with probability `s` has value
+
+`c_i + s * (V_i(I,a) - c_i)`.
+
+The coefficient is positive for every source type and action. At admission,
+`s` is independent of `a`: the packet is opaque, and every accepted decision
+gets its protected opening. Thus the joint optimum is a completion-maximizing
+timing policy together with a source-optimal action. The source equilibrium's
+choice distribution is optimal even at delayed admission inputs. At opening,
+`a` is already fixed, and every type producing the same `y` optimizes the same
+completion probability. Their continuation values may differ; positivity
+makes the maximizing timing policy common nonetheless.
+
+An unexecutable decision yields $c_i$ and cannot improve this comparison.
+Changing the committed decision during opening is outside the legitimate
+timing problem. Without these two boundaries, the formula does not apply.
+
+**Why the source posterior survives rare timing histories.** Choose a fully
+mixed source consistency sequence $\sigma_n$ whose Bayes beliefs converge to
+`mu`. Perturb every timing policy with a positive weight $\eta_n$ of a fully
+supported timing reference, where $\eta_n$ tends to zero. The reference and
+the maximizing policy must both respect the same information separation:
+admission timing ignores the private choice, and opening timing depends on
+the fixed public result `y`, not on additional source-private information.
+
+At a completed source prefix `h` and an ancillary record `z`, clean reach
+weights factor as
+
+`Pr_n(h,z) = Pr_source,n(h) * K_n(z, public(h))`.
+
+This follows by multiplying the transition probabilities in chronological
+order. Source-action and source-chance factors give `Pr_source,n(h)`.
+Scheduling, waiting and packet-observation factors give `K_n`. Opaque
+admission prevents a private action from entering `K_n`; a revealed opening
+can enter it only through the public result already present in `public(h)`.
+Preserving original private action recall is necessary here.
+
+At an admission input projecting to source information `I`, the ancillary
+factor is constant across the hidden source histories in `I`, so it cancels
+in the conditional distribution. At an opening input, the owner also recalls
+its fixed action; its likelihood and its fixed `y` likewise do not distinguish
+hidden histories within the corresponding source information. The same
+reasoning applies to equivalent private representations after erasing
+irrelevant private randomness and retaining actual source action recall.
+
+Consequently the native posterior equals the appropriate source posterior
+for every positive clean timing fiber. Its mass may approach zero arbitrarily
+fast. No lower bound on that limiting mass, type-dependent correction of WAIT
+rates, or total-variation argument is needed. Different fibers may have
+different `K_n`; each cancels within its own source information class.
+
+The displayed continuation-value formula is justified by this factorization
+and by the protected prompt play in all later phases. It is not an assumption
+that delayed successful continuations already have the source value.
+
+**First misconduct and one upfront escrow.** Set
+`b_i = min(m_i, C_i)` and `B_i = max(M_i, C_i)`. From an owner prefix with no
+misconduct witness, literal future owner silence cannot create one. Its value
+is at least `b_i - A_i`, including any earlier lawful packet still pending.
+A first misconduct response followed by any continuation has value at most
+`B_i - q_i * P_i`. Therefore choose
+
+`q_i * P_i > B_i - b_i + A_i`.
+
+This strictly separates first misconduct from the silence comparator. It
+does not assume independent audits or preservation of an earlier expected
+charge. Both fines are finite and fixed before selecting the source SE. One
+escrow `A_i + P_i` funds them. At most one public phase fault is economically
+relevant because that fault ends gameplay. The misconduct argument is used
+only before the first owner witness; it does not claim an additional incentive
+from `P_i` after that fine is already inevitable.
+
+One concrete collection mechanism uses the network's conservation of signed
+packets: an included packet moves to the public ledger, while an unincluded
+one remains pending. At a postseal watcher activation, retain the public
+ledger and all previously known evidence, and sample each still-unknown
+pending packet independently with probability `p > 0`. Report the authentic
+known batch in the fresh protected reporting window. A unary witness is
+present with probability at least `p`; both bodies of a duplicate witness
+are present with probability at least `p * p`. Thus `q_i = p * p` suffices
+when this bounded batch is guaranteed accepted. The watcher need not know
+which packets it missed. If batch delivery has only a conditional lower
+bound `r`, uniformly over observed batches, use `q_i = p * p * r`.
+This is a joint observation/report calculation. Settlement judges the actual
+emitted batch; it does not independently resample evidence at termination.
+
+**Rational completion after misconduct.** Arbitrary continuations are still
+needed at every remaining information set. For each `n`, pin the clean
+source and timing strategies described above and pin the zero-utility
+watcher's reporting policy. At other information sets, take a Nash equilibrium
+of the finite agent normal form with positive action floors. Such an
+equilibrium exists because each free information agent has a nonempty compact
+simplex of choices and expected terminal utility is multilinear. Full support
+gives every feasible information set positive reach. An agent's action cannot
+alter its own reach probability, so its best response is a conditional
+one-shot best response at that information set.
+
+Add a small fully supported raw-action component at each pinned input. Let
+`r_n > 0` be the minimum reach mass of a clean information input in the finite
+clean reference process, and let `N` bound the number of native decisions.
+Choose its weight $\delta_n$ so `N * delta_n / r_n` tends to zero. Any history
+outside the clean process needs a first such exceptional draw; its probability
+is at most `N * delta_n`, regardless of subsequent free play. Thus contamination
+of every clean conditional belief vanishes. This relative estimate, rather
+than unconditional convergence alone, also covers rare timing inputs.
+
+At clean source decisions the limiting comparisons are the source SE
+comparisons. At clean timing decisions they are the completion comparisons.
+First misconduct is separated by the strict fine bound. Equivalent private
+representations and intentional faults are handled by the interface
+classification. At free information sets the perturbed best-response
+conditions pass to the limit. Compactness gives one subsequence of strategies
+and Bayes beliefs covering all information sets simultaneously. Its assessment
+is consistent and locally rational everywhere; finite perfect recall turns
+local rationality into sequential rationality for every continuation deviation.
+
+The limiting initial play always uses protected prompt submission, so no
+public fault or misconduct occurs. Source chance and source choices have their
+original laws. Authentic partial reports charge nobody on that play. Hence
+the joint initial-parameter, source-outcome and realized-settlement law is
+exactly the source law, not merely an equality of expected utilities.
+
+The critical runtime checks are the complete raw-response classification,
+the absence of additional source-private data in canonical traffic, a fresh
+protected opening after every accepted admission, and actual conditional
+watcher collection of first immutable witnesses. These checks remain open
+for the complete native interface. The argument does not apply unchanged to
+plaintext source decisions before admission, postfault source continuation,
+time-dependent economic payoffs, or correlated side information about a source
+secret supplied by the scheduler. It does not prove that the existing
+`AsyncServiceSpec` contract alone is sufficient.
+
 The initialized-play audit theorem does not supply a clean comparator from
 every clear prefix. A false risk flag alone says nothing about an earlier
 packet's extra evidence. At a legal risk-menu prefix, however,

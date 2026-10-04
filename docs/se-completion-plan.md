@@ -131,6 +131,14 @@ uses explicit phase authorization, timing, admitted-handle and fixed-value
 premises. The native regression covers an original TRUE with a failed binding:
 helper FALSE opens successfully while actual private recall restores TRUE.
 The whole-service source-information relation remains open.
+The [serial finite-game argument](se-schedule-generalization.md#a-finite-game-argument-for-serial-phases)
+derives a common completion-maximizing timing policy, source-posterior
+factorization and rational free completion for an explicit opaque phase
+interface with absorbing cancellation. It uses a public cancellation deduction
+and a separate first-misconduct fine from one upfront escrow. Applying it to
+the native runtime requires checking its raw-response classification, canonical
+traffic and private recall, fresh protected phases, and actual conditional
+watcher collection. It is a mathematical route, not a checked native capstone.
 Its two-charge candidate keeps the existing bounded
 deadline audit and separates a one-time verifiable-misconduct fine, so the
 silence comparison can include previously pending lawful packets. Pair
