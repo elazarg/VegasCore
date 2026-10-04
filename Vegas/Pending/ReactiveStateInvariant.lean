@@ -27,11 +27,14 @@ theorem reactive_respond_application (runtime : EventGraphRuntime graph)
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact ⟨rfl, rfl⟩
-  | some material =>
-      exact ⟨(submitStep_config _ who material.call.packet).trans
-        (material.call.register_facts who execution.application).1,
-        (submitStep_publicView _ who material.call.packet).trans
-          (material.call.register_facts who execution.application).2.2⟩
+  | some transmission =>
+      cases transmission with
+      | replay id => exact ⟨rfl, rfl⟩
+      | submit material =>
+          exact ⟨(submitStep_config _ who material.call.packet).trans
+            (material.call.register_facts who execution.application).1,
+            (submitStep_publicView _ who material.call.packet).trans
+              (material.call.register_facts who execution.application).2.2⟩
 
 theorem reactiveStateInvariant (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))

@@ -34,7 +34,7 @@ private abbrev app : ReactiveApplication (Fin 3) where
     else PMF.pure (pending.map Message.id).toFinset
 
 private def sent : app.Execution :=
-  (ReactiveApplication.Execution.initial app false).respond app 0 ⟨some 7⟩
+  (ReactiveApplication.Execution.initial app false).respond app 0 ⟨some (.submit 7)⟩
 
 private def message : Message (Fin 3) Nat := ⟨(0, 0), 7⟩
 

@@ -1,0 +1,520 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.SourceServiceAsyncStep
+import Vegas.Game.SourceStateKernel
+import Vegas.Source.DisclosureSupport
+
+/-! # Decoding every reached configuration to a source checkpoint
+
+A native configuration at a completed prefix has a *source residual*: the
+remaining source program and source configuration, aligned with the compiled
+policy suffix from that rank, agreeing with the native store and history, and
+through which the whole-program prefix decoder factors. Its residual source
+view lifts to the whole source view and is recovered from it by the actual
+source continuation. Residuals exist at
+initialization and survive every configuration step, whatever action completes
+the ready event, so every configuration reached by any players under any
+scheduler has one (`Vegas.roundsFrom_sourceResidual`).
+
+At the terminal rank the decoded source state is terminal, so the source
+continuation of a terminal completion boundary is the point mass at its readout
+(`Vegas.CompletionBoundary.terminal_continuation`).
+-/
+
+noncomputable section
+
+namespace Vegas
+
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
+
+variable {Player : Type} [DecidableEq Player]
+  {L : IExpr} [IExpr.ResultTypes L]
+  (setup : Setup (Player := Player) (L := L))
+  (profile : BehavioralProfile setup.program)
+
+/-- A source reading of a native configuration at rank `rank`: a residual
+source program and configuration whose compiled policy suffix starts at
+`rank`, whose typed cells and history agree with the configuration, and
+through which the whole-program prefix decoder factors. -/
+structure SourceResidual (rank : Nat) (config : (graph setup).Config) : Type where
+  Γ : SourceCtx Player L
+  names : Finset VarId
+  program : SourceProgram Player L Γ names
+  residualProfile : BehavioralProfile program
+  source : Config Player L Γ
+  refs : ContextRefs (graph setup).layout Γ
+  embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program) program
+  refsBefore : ContextRefsBefore refs embedding
+  aligned : CompiledPolicySuffix setup.program profile program residualProfile refs
+    source.revelations source.registry embedding refsBefore rank
+  admitted : (∀ who, (profile who).Admitted setup.program
+      (CommitmentInterface.values setup.program)) →
+    ∀ who, (residualProfile who).Admitted program (CommitmentInterface.values program)
+  effective : (∀ who, (profile who).EffectiveDisclosures setup.program []
+      (Revelations.initial setup.context)) →
+    ∀ who, (residualProfile who).EffectiveDisclosures program source.registry
+      source.revelations
+  supports : (∀ who, (profile who).SupportsEffectiveChoices setup.program
+      (CommitmentInterface.values setup.program) [] (Revelations.initial setup.context)) →
+    ∀ who, (residualProfile who).SupportsEffectiveChoices program
+      (CommitmentInterface.values program) source.registry source.revelations
+  lift : ProtocolState program → ProtocolState setup.program
+  liftView : ∀ who, ProtocolView who program → ProtocolView who setup.program
+  observe_lift : ∀ who state,
+    ProtocolState.observe who setup.program (lift state) =
+      liftView who (ProtocolState.observe who program state)
+  recoverView : ∀ who, ProtocolView who setup.program → Option (ProtocolView who program)
+  recoverView_lift_observe : ∀ who state,
+    recoverView who (ProtocolState.observe who setup.program (lift state)) =
+      some (ProtocolState.observe who program state)
+  commutes : ∀ [Fintype Player] state,
+    ProtocolState.behavioralStateStep setup.program profile (lift state) =
+      (ProtocolState.behavioralStateStep program residualProfile state).map lift
+  steps : ∀ state joint, ProtocolState.step setup.program (lift state) joint =
+    (ProtocolState.step program state joint).map lift
+  injective : Function.Injective lift
+  transport : ∀ more store history,
+    decodeSourcePrefix? setup.program
+      (ContextRefs.initial setup.context (outputLayout setup.program)) []
+      (Revelations.initial setup.context) (outputRef setup.program) (rank + more) store history =
+    (decodeSourcePrefix? program refs source.registry source.revelations embedding.ref
+      more store history).map lift
+  checkpoint : SourceCheckpoint setup source refs rank config
+
+variable {setup profile}
+
+/-- The residual decodes the configuration. -/
+theorem SourceResidual.decode {rank : Nat} {config : (graph setup).Config}
+    (residual : SourceResidual setup profile rank config) :
+    sourceServicePrefix? setup rank config =
+      some (residual.lift (ProtocolState.entry residual.program residual.source)) := by
+  unfold sourceServicePrefix?
+  have read := residual.transport 0
+  simp only [Nat.add_zero] at read
+  rw [read, residual.checkpoint.decode residual.program residual.embedding.ref]
+  rfl
+
+variable (setup profile)
+
+/-- Every initial configuration has the whole program as its residual. -/
+def SourceResidual.initial (initial : State L setup.context) :
+    SourceResidual setup profile 0
+      (EventGraphRuntime.State.initial (graph := graph setup)
+        (setup.eventInputs initial)).config where
+  Γ := setup.context
+  names := setup.obligations
+  program := setup.program
+  residualProfile := profile
+  source := setup.initialConfig initial
+  refs := ContextRefs.initial setup.context (outputLayout setup.program)
+  embedding := outputEmbedding setup.program
+  refsBefore := initialRefsBefore setup.program
+  aligned := CompiledPolicySuffix.whole setup.program profile
+  admitted := fun admitted => admitted
+  effective := fun effective => effective
+  supports := fun supported => supported
+  lift := id
+  liftView := fun _ => id
+  observe_lift := fun _ _ => rfl
+  recoverView := fun _ => some
+  recoverView_lift_observe := fun _ _ => rfl
+  commutes := fun state => by simp only [id_eq, PMF.map_id]
+  steps := fun state joint => by simp only [id_eq, PMF.map_id]
+  injective := Function.injective_id
+  transport := fun more store history => by
+    simp only [Nat.zero_add, Option.map_id_fun]
+    rfl
+  checkpoint := SourceCheckpoint.initial setup initial
+
+variable {setup profile}
+
+/-- A native state carrying a given configuration, used to apply the checkpoint
+successor lemmas, which read only the configuration. -/
+def configState (config : (graph setup).Config) : EventGraphRuntime.State (graph setup) :=
+  { EventGraphRuntime.State.initial (graph := graph setup) config.inputs with config := config }
+
+/-- Completing the ready event with any action keeps a residual, one rank
+later. -/
+theorem SourceResidual.step {rank : Nat} {before : (graph setup).Config}
+    (residual : SourceResidual setup profile rank before)
+    (event : (graph setup).EventId) (ready : before.cut.Ready event)
+    (action : (graph setup).Action event) (after : (graph setup).Config)
+    (member : after ∈ (before.step event ready action).support) :
+    Nonempty (SourceResidual setup profile (rank + 1) after) := by
+  obtain ⟨Γ, names, program, residualProfile, source, refs, embedding, refsBefore, aligned,
+    admitted, effective, supports, lift, liftView, observe_lift, recoverView,
+    recoverView_lift_observe,
+    commutes, steps, injective, transport, checkpoint⟩ := residual
+  have atEvent := (ready_iff_rank setup before rank checkpoint.ordered event).mp ready
+  have counted := aligned.graphSuffix.countEq
+  change rank + eventCount program = (graph setup).order.eventCount at counted
+  cases program with
+  | ret payoffs =>
+      have := event.isLt
+      simp only [eventCount] at counted
+      omega
+  | @sample Γ openNames name payload fresh distribution next =>
+      let index : Fin (eventCount (.sample name fresh distribution next)) :=
+        ⟨0, by simp [eventCount]⟩
+      have atRank : (embedding.event index).val = rank := by
+        simpa only [index, Nat.add_zero] using aligned.graphSuffix.rankEq index
+      have same : event = embedding.event index := Fin.ext (atEvent.trans atRank.symm)
+      subst same
+      have outputEq : (graph setup).outputLayout (embedding.event index) =
+          .publicData payload := by
+        change outputLayout setup.program (embedding.event index) = _
+        simpa [index, outputLayout, eventCount] using embedding.layout_eq index
+      have codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+          ((graph setup).nodes (embedding.event index)) =
+            .sample payload (compilePublicDist refs distribution) := by
+        change cast (congrArg (EventGraph.EventCode (graphLayout setup.program)) outputEq)
+          ((toEventGraph setup.program).nodes (embedding.event index)) = _
+        simpa [index, compileRankedNodes] using aligned.graphSuffix.nodeEq index
+      have decoded : decodeEventAction setup.program (embedding.event index)
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) PUnit.unit) = none := by
+        have lookup := aligned.actionEq index
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) PUnit.unit)
+        simpa [index, outputEq, decodeEventAction] using lookup
+      obtain ⟨marker, rfl⟩ : ∃ marker : PUnit,
+          action = cast (congrArg EventGraph.EventField.Action outputEq.symm) marker :=
+        ⟨cast (congrArg EventGraph.EventField.Action outputEq) action, by simp⟩
+      cases marker
+      rw [sample_step before _ ready outputEq refs distribution codeEq source.state
+        checkpoint.agrees, PMF.support_map] at member
+      obtain ⟨value, _, rfl⟩ := member
+      let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
+      let tailRefs : ContextRefs (graphLayout setup.program)
+          ((name, .publicData payload) :: Γ) := refs.cons ⟨.inr (embedding.event index), outputEq⟩
+      have tailBefore : ContextRefsBefore tailRefs tailEmbedding := by
+        intro readName cell ref remaining
+        cases ref with
+        | here =>
+            change (embedding.event index).val < (embedding.event remaining.succ).val
+            exact embedding.strictMono (Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _))
+        | there ref => exact refsBefore ref remaining.succ
+      have tailAligned : CompiledPolicySuffix setup.program profile next
+          (afterSample residualProfile) tailRefs (sampleSuccessor name source value).revelations
+          (sampleSuccessor name source value).registry tailEmbedding tailBefore (rank + 1) := by
+        simpa only [sampleSuccessor, tailRefs, tailEmbedding, OutputEmbedding.ref] using
+          aligned.sampleTail setup.program profile (_openNames := names)
+            fresh distribution next residualProfile refs
+            source.revelations source.registry embedding refsBefore rank
+      refine ⟨{
+        Γ := _, names := _, program := next, residualProfile := afterSample residualProfile,
+        source := sampleSuccessor name source value, refs := tailRefs,
+        embedding := tailEmbedding, refsBefore := tailBefore, aligned := tailAligned,
+        admitted := fun whole who => admitted whole who,
+        effective := fun whole who => effective whole who,
+        supports := fun whole who => supports whole who,
+        lift := lift ∘ Sum.inr,
+        liftView := fun who => liftView who ∘ Sum.inr,
+        observe_lift := fun who state => observe_lift who (Sum.inr state),
+        recoverView := fun who view => (recoverView who view).bind Sum.getRight?,
+        recoverView_lift_observe := fun who state => ?_,
+        commutes := fun state => ?_, steps := fun state joint => ?_,
+        injective := injective.comp Sum.inr_injective,
+        transport := fun more store history => ?_,
+        checkpoint := checkpoint.sample (native := configState before) name (embedding.event index)
+          atRank ready outputEq (fun ref => refsBefore ref index) decoded value }⟩
+      · change (recoverView who (ProtocolState.observe who setup.program
+          (lift (Sum.inr state)))).bind Sum.getRight? = _
+        rw [recoverView_lift_observe]
+        rfl
+      · rw [Function.comp_apply, commutes, ProtocolState.behavioralStateStep_sample_tail,
+          PMF.map_comp]
+      · rw [Function.comp_apply, steps]
+        change PMF.map lift ((ProtocolState.step next state joint).map Sum.inr) = _
+        rw [PMF.map_comp]
+      · rw [show rank + 1 + more = rank + (more + 1) by omega, transport,
+          decodeSourcePrefix?_sample, Option.map_map]
+        rfl
+  | @commit Γ openNames name owner payload fresh guard next =>
+      let index : Fin (eventCount (.commit name owner fresh guard next)) :=
+        ⟨0, by simp [eventCount]⟩
+      have atRank : (embedding.event index).val = rank := by
+        simpa only [index, Nat.add_zero] using aligned.graphSuffix.rankEq index
+      have same : event = embedding.event index := Fin.ext (atEvent.trans atRank.symm)
+      subst same
+      have outputEq : (graph setup).outputLayout (embedding.event index) =
+          .binding owner payload := by
+        change outputLayout setup.program (embedding.event index) = _
+        simpa [index, outputLayout, eventCount] using embedding.layout_eq index
+      have codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+          ((graph setup).nodes (embedding.event index)) = .bind owner payload := by
+        change cast (congrArg (EventGraph.EventCode (graphLayout setup.program)) outputEq)
+          ((toEventGraph setup.program).nodes (embedding.event index)) = _
+        simpa [index, compileRankedNodes] using aligned.graphSuffix.nodeEq index
+      obtain ⟨choice, rfl⟩ : ∃ choice : PublicationResult (L.Val payload),
+          action = cast (congrArg EventGraph.EventField.Action outputEq.symm) choice :=
+        ⟨cast (congrArg EventGraph.EventField.Action outputEq) action, by simp⟩
+      have decoded : decodeEventAction setup.program (embedding.event index)
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice) =
+            some (.commit owner name payload choice) := by
+        have lookup := aligned.actionEq index
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice)
+        simpa [index, outputEq, decodeEventAction] using lookup
+      rw [commit_step before _ ready outputEq codeEq choice, PMF.mem_support_pure_iff] at member
+      subst member
+      let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
+      let tailRefs : ContextRefs (graphLayout setup.program)
+          ((name, .commitment owner payload) :: Γ) :=
+        refs.cons ⟨.inr (embedding.event index), outputEq⟩
+      have tailBefore : ContextRefsBefore tailRefs tailEmbedding := by
+        intro readName cell ref remaining
+        cases ref with
+        | here =>
+            change (embedding.event index).val < (embedding.event remaining.succ).val
+            exact embedding.strictMono (Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _))
+        | there ref => exact refsBefore ref remaining.succ
+      have tailAligned : CompiledPolicySuffix setup.program profile next
+          (afterCommit residualProfile) tailRefs
+          (commitSuccessor name guard source choice).revelations
+          (commitSuccessor name guard source choice).registry
+          tailEmbedding tailBefore (rank + 1) := by
+        simpa only [commitSuccessor, tailRefs, tailEmbedding, OutputEmbedding.ref] using
+          aligned.commitTail setup.program profile fresh guard next residualProfile refs
+            source.revelations source.registry embedding refsBefore rank
+      refine ⟨{
+        Γ := _, names := _, program := next, residualProfile := afterCommit residualProfile,
+        source := commitSuccessor name guard source choice, refs := tailRefs,
+        embedding := tailEmbedding, refsBefore := tailBefore, aligned := tailAligned,
+        admitted := fun whole who => (admitted whole who).2,
+        effective := fun whole who => effective whole who,
+        supports := fun whole who => (supports whole who).2,
+        lift := lift ∘ Sum.inr,
+        liftView := fun who => liftView who ∘ Sum.inr,
+        observe_lift := fun who state => observe_lift who (Sum.inr state),
+        recoverView := fun who view => (recoverView who view).bind Sum.getRight?,
+        recoverView_lift_observe := fun who state => ?_,
+        commutes := fun state => ?_, steps := fun state joint => ?_,
+        injective := injective.comp Sum.inr_injective,
+        transport := fun more store history => ?_,
+        checkpoint := checkpoint.commit (native := configState before) name guard
+          (embedding.event index) atRank ready outputEq (fun ref => refsBefore ref index)
+          choice decoded }⟩
+      · change (recoverView who (ProtocolState.observe who setup.program
+          (lift (Sum.inr state)))).bind Sum.getRight? = _
+        rw [recoverView_lift_observe]
+        rfl
+      · rw [Function.comp_apply, commutes, ProtocolState.behavioralStateStep_commit_tail,
+          PMF.map_comp]
+      · rw [Function.comp_apply, steps]
+        change PMF.map lift ((ProtocolState.step next state joint).map Sum.inr) = _
+        rw [PMF.map_comp]
+      · rw [show rank + 1 + more = rank + (more + 1) by omega, transport,
+          decodeSourcePrefix?_commit, Option.map_map]
+        rfl
+  | @reveal Γ openNames published owner name payload fresh selected unresolved next =>
+      let index : Fin (eventCount
+          (.reveal published owner name fresh selected unresolved next)) :=
+        ⟨0, by simp [eventCount]⟩
+      have atRank : (embedding.event index).val = rank := by
+        simpa only [index, Nat.add_zero] using aligned.graphSuffix.rankEq index
+      have same : event = embedding.event index := Fin.ext (atEvent.trans atRank.symm)
+      subst same
+      have outputEq : (graph setup).outputLayout (embedding.event index) =
+          .publication payload := by
+        change outputLayout setup.program (embedding.event index) = _
+        simpa [index, outputLayout, eventCount] using embedding.layout_eq index
+      let checks := compileChecks (published := published) refs
+        source.registry source.revelations selected
+      have codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+          ((graph setup).nodes (embedding.event index)) =
+            .resolve owner payload (refs.get selected) checks := by
+        change cast (congrArg (EventGraph.EventCode (graphLayout setup.program)) outputEq)
+          ((toEventGraph setup.program).nodes (embedding.event index)) = _
+        simpa [index, compileRankedNodes, checks] using aligned.graphSuffix.nodeEq index
+      obtain ⟨disclose, rfl⟩ : ∃ disclose : Bool,
+          action = cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose :=
+        ⟨cast (congrArg EventGraph.EventField.Action outputEq) action, by simp⟩
+      have decoded : decodeEventAction setup.program (embedding.event index)
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose) =
+            some (.reveal owner name disclose) := by
+        have lookup := aligned.actionEq index
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose)
+        simpa [index, outputEq, decodeEventAction] using lookup
+      rw [before.step_eq_map_of_code _ ready outputEq _ codeEq disclose
+        (PMF.pure (disclosureResult published selected source disclose))
+        (compileResolve_eval? refs source.registry source.revelations source.state
+          before.store checkpoint.agrees selected disclose),
+        PMF.pure_map, PMF.mem_support_pure_iff] at member
+      subst member
+      let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
+      let tailRefs : ContextRefs (graphLayout setup.program)
+          ((published, .publication payload) :: Γ) :=
+        refs.cons ⟨.inr (embedding.event index), outputEq⟩
+      have tailBefore : ContextRefsBefore tailRefs tailEmbedding := by
+        intro readName cell ref remaining
+        cases ref with
+        | here =>
+            change (embedding.event index).val < (embedding.event remaining.succ).val
+            exact embedding.strictMono (Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _))
+        | there ref => exact refsBefore ref remaining.succ
+      have tailAligned : CompiledPolicySuffix setup.program profile next
+          (afterReveal residualProfile) tailRefs
+          (revealSuccessor published selected source disclose).revelations
+          (revealSuccessor published selected source disclose).registry
+          tailEmbedding tailBefore (rank + 1) := by
+        simpa only [revealSuccessor, tailRefs, tailEmbedding, OutputEmbedding.ref] using
+          aligned.revealTail setup.program profile fresh selected unresolved next
+            residualProfile refs source.revelations source.registry embedding refsBefore rank
+      refine ⟨{
+        Γ := _, names := _, program := next, residualProfile := afterReveal residualProfile,
+        source := revealSuccessor published selected source disclose, refs := tailRefs,
+        embedding := tailEmbedding, refsBefore := tailBefore, aligned := tailAligned,
+        admitted := fun whole who => admitted whole who,
+        effective := fun whole who => (effective whole who).2,
+        supports := fun whole who => (supports whole who).2,
+        lift := lift ∘ Sum.inr,
+        liftView := fun who => liftView who ∘ Sum.inr,
+        observe_lift := fun who state => observe_lift who (Sum.inr state),
+        recoverView := fun who view => (recoverView who view).bind Sum.getRight?,
+        recoverView_lift_observe := fun who state => ?_,
+        commutes := fun state => ?_, steps := fun state joint => ?_,
+        injective := injective.comp Sum.inr_injective,
+        transport := fun more store history => ?_,
+        checkpoint := checkpoint.reveal (native := configState before) published selected
+          (embedding.event index) atRank ready outputEq (fun ref => refsBefore ref index)
+          disclose decoded }⟩
+      · change (recoverView who (ProtocolState.observe who setup.program
+          (lift (Sum.inr state)))).bind Sum.getRight? = _
+        rw [recoverView_lift_observe]
+        rfl
+      · rw [Function.comp_apply, commutes, ProtocolState.behavioralStateStep_reveal_tail,
+          PMF.map_comp]
+      · rw [Function.comp_apply, steps]
+        change PMF.map lift ((ProtocolState.step next state joint).map Sum.inr) = _
+        rw [PMF.map_comp]
+      · rw [show rank + 1 + more = rank + (more + 1) by omega, transport,
+          decodeSourcePrefix?_reveal, Option.map_map]
+        rfl
+
+/-- A configuration step keeps a residual, at whichever prefix the step
+reaches. -/
+theorem SourceResidual.configStep {rank : Nat} {before after : (graph setup).Config}
+    (residual : SourceResidual setup profile rank before)
+    (step : ConfigStep setup before after) (next : Nat) (ordered : after.cut.IsPrefix next) :
+    Nonempty (SourceResidual setup profile next after) := by
+  rcases step with same | ⟨event, ready, action, member⟩
+  · subst same
+    rw [isPrefix_unique ordered residual.checkpoint.ordered]
+    exact ⟨residual⟩
+  · have advanced : after.cut.IsPrefix (rank + 1) := by
+      rw [before.step_cut event ready action after member]
+      exact residual.checkpoint.ordered.complete_at event ready
+        ((ready_iff_rank setup before rank residual.checkpoint.ordered event).mp ready)
+    rw [isPrefix_unique ordered advanced]
+    exact residual.step event ready action after member
+
+variable (setup)
+
+/-- One scheduler round changes the configuration by one configuration step:
+the scheduler's command steps the graph and a response keeps the
+configuration. -/
+theorem round_configStep
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (scheduler : (application setup leaks).Scheduler)
+    (players : Player → (application setup leaks).Policy)
+    (execution next : (application setup leaks).Execution)
+    (reached : next ∈ ((application setup leaks).round scheduler players execution).support) :
+    ConfigStep setup execution.application.config next.application.config := by
+  let app := application setup leaks
+  obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+  obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
+  have step := environmentStep_configStep setup leaks execution middle command moved
+  change next ∈ (app.resume players (command.actor? app) middle).support at resumed
+  have kept : next.application.config = middle.application.config := by
+    cases actor : command.actor? app with
+    | none =>
+        rw [actor] at resumed
+        simp only [ReactiveApplication.resume, PMF.mem_support_pure_iff] at resumed
+        subst resumed
+        rfl
+    | some who =>
+        rw [actor] at resumed
+        change next ∈ (app.invoke players who middle).support at resumed
+        rw [ReactiveApplication.invoke, PMF.support_map] at resumed
+        obtain ⟨response, _, rfl⟩ := resumed
+        exact ((runtime setup).reactive_respond_application leaks middle who response).1
+  rw [kept]
+  exact step
+
+/-- **Scheduler-generic decoding.** Every execution reached by rounds of any
+players under any scheduler from the initial law has a source residual at its
+completed prefix. -/
+theorem roundsFrom_sourceResidual
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (scheduler : (application setup leaks).Scheduler)
+    (players : Player → (application setup leaks).Policy) (count rank : Nat)
+    (execution : (application setup leaks).Execution)
+    (supported : execution ∈ ((application setup leaks).roundsFrom (initialLaw setup) scheduler
+      players count).support)
+    (ordered : execution.application.config.cut.IsPrefix rank) :
+    Nonempty (SourceResidual setup profile rank execution.application.config) := by
+  suffices reached : ∀ (count : Nat) (execution : (application setup leaks).Execution),
+      execution ∈ ((application setup leaks).roundsFrom (initialLaw setup) scheduler
+        players count).support →
+      ∃ current, Nonempty (SourceResidual setup profile current execution.application.config) by
+    obtain ⟨current, ⟨residual⟩⟩ := reached count execution supported
+    rw [isPrefix_unique ordered residual.checkpoint.ordered]
+    exact ⟨residual⟩
+  intro count
+  induction count with
+  | zero =>
+      intro execution supported
+      obtain ⟨state, stateMem, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ stateMem
+      exact ⟨0, ⟨SourceResidual.initial setup profile initial⟩⟩
+  | succ count ih =>
+      intro execution supported
+      rw [ReactiveApplication.roundsFrom_succ] at supported
+      obtain ⟨prior, priorMem, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+      obtain ⟨current, ⟨residual⟩⟩ := ih prior priorMem
+      have step := round_configStep setup leaks scheduler players prior execution moved
+      rcases step.prefix current residual.checkpoint.ordered with same | advanced
+      · exact ⟨current, residual.configStep step current (by
+          rw [same]
+          exact residual.checkpoint.ordered)⟩
+      · exact ⟨current + 1, residual.configStep step (current + 1) advanced⟩
+
+variable {setup}
+
+/-- Every completion boundary, of any players under any scheduler, has a
+source residual at its rank. -/
+theorem CompletionBoundary.sourceResidual
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+    {scheduler : (application setup leaks).Scheduler}
+    {players : Player → (application setup leaks).Policy} {rank : Nat}
+    {execution : (application setup leaks).Execution}
+    (boundary : CompletionBoundary setup leaks scheduler players rank execution) :
+    Nonempty (SourceResidual setup profile rank execution.application.config) :=
+  roundsFrom_sourceResidual setup leaks scheduler players _ rank execution
+    boundary.supported boundary.ordered
+
+/-- **Terminal continuation.** At a terminal completion boundary of any
+players, the source continuation is the point mass at the readout. -/
+theorem CompletionBoundary.terminal_continuation
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+    {scheduler : (application setup leaks).Scheduler}
+    {players : Player → (application setup leaks).Policy}
+    {execution : (application setup leaks).Execution}
+    (boundary : CompletionBoundary setup leaks scheduler players
+      (graph setup).order.eventCount execution) :
+    sourceContinuation setup profile (graph setup).order.eventCount
+        execution.application.config =
+      PMF.pure (sourceReadout setup leaks ((application setup leaks).finished execution)) := by
+  obtain ⟨residual⟩ := boundary.sourceResidual (profile := profile)
+  have decoded := residual.decode
+  have stopped := decodeSourcePrefix?_terminal setup.program _ _ _ _ _ _ _ decoded
+  have readout := sourceServicePrefix?_terminal_readout setup execution.application.config
+  unfold sourceContinuation
+  rw [Setup.continuationLaw_terminal setup profile _ (by rw [decoded]; exact stopped)]
+  change PMF.pure (setup.protocolReadout (sourceServicePrefix? setup
+    (eventCount setup.program) execution.application.config)) = _
+  rw [readout]
+  exact congrArg PMF.pure (sourceReadout_eq_decode setup leaks ⟨0, none, execution⟩).symm
+
+end Vegas

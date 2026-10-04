@@ -218,7 +218,7 @@ theorem serviceControlStep_prescribed_resolution_completion
               exact (privateStep_facts before.execution.native.application who privateCommand).1
             rw [config] at completed
             exact (ready.1 completed).elim
-        | submit packet | wait =>
+        | submit packet | replay id | wait =>
             simp only [MessageApplication.PlayerCommand.toAction,
               MessageApplication.step, PMF.mem_support_pure_iff _ _] at nativeMem
             have config := congrArg

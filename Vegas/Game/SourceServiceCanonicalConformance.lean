@@ -81,7 +81,7 @@ theorem canonicalServiceDecision_freshServiceEnvelope {horizon remaining : Nat}
     (action : (graph setup).Action event) (material : (application setup leaks).Submission)
     (submits : ((runtime setup).canonicalServiceDecision leaks who (middle.recall who)
       (middle.observe (application setup leaks) who) event action).transmission =
-        some material) :
+        some (.submit material)) :
     (runtime setup).freshServiceEnvelope middle.application.publicView
       ⟨(who, middle.network.nextSerial who), (application setup leaks).packet
         ((application setup leaks).submit middle.application who material) who
@@ -191,12 +191,9 @@ theorem canonicalServiceDecision_freshServiceEnvelope {horizon remaining : Nat}
           have emitted := WitnessedSubmission.normalizeReactive_emit (runtime setup) leaks
             middle.application actor (middle.network.known actor)
               (disclosureSubmission (.opening event handle ⟨payload, value⟩))
-          have verified : middle.application.candidates.verify handle ⟨payload, value⟩ = true :=
-            (CommitmentCandidates.verify_eq_true_iff _ _ _).mpr fixed
-          apply emitted.trans
-          simp only [application, EventGraphRuntime.reactiveApplication,
-            disclosureSubmission, WitnessedSubmission.emit, Submission.register,
-            submitStep_opening, handleOwner, verified, and_self, ↓reduceIte]
+          have packet := (runtime setup).windowOpening_packet leaks actor event handle
+            ⟨payload, value⟩ middle.application (middle.network.known actor) handleOwner fixed
+          exact emitted.trans packet
         rw [packetEq, middle.application.publicView_tokenFor_of_ready _ event rfl ready]
         apply ((runtime setup).freshServiceEnvelope_opening_iff middle.application.publicView
           (actor, middle.network.nextSerial actor) event actor payload binding checks outputEq
@@ -212,19 +209,8 @@ theorem canonicalServiceDecision_freshServiceEnvelope {horizon remaining : Nat}
         rw [EventGraph.GuardCheck.allAccepted?_publicStore]
         exact EventGraph.EventCode.guards_pass_of_resolve_success binding checks true
           middle.application.config.store value resolved
-      · simp only [packet,
-          ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
-          disclosureSubmission, WitnessedSubmission.normalizeReactive,
-          Submission.normalizeReactive_none, EvidenceRequest.normalize_none] at submits
-        have materialEq : material = ⟨⟨.withhold event, none⟩, .none⟩ := by
-          exact (Option.some.inj submits).symm
-        subst materialEq
-        rw [reactiveApplication_packet_none,
-          middle.application.publicView_tokenFor_of_ready _ event rfl ready]
-        apply ((runtime setup).freshServiceEnvelope_withhold_iff middle.application.publicView
-          (actor, middle.network.nextSerial actor) event actor payload binding checks outputEq
-          codeEq node none (some ⟨event⟩)).mpr
-        exact ⟨readyView, deadline, rfl, rfl, rfl⟩
+      · rw [packet] at submits
+        cases submits
 
 end Decision
 
@@ -235,7 +221,7 @@ from. -/
 def FreshCallsConform (execution : (application setup leaks).Execution) (who : Player) :
     Prop :=
   ∀ entry ∈ execution.recall who, ∀ material message,
-    entry.action.transmission = some material → entry.emitted = some message →
+    entry.action.transmission = some (.submit material) → entry.emitted = some message →
       (runtime setup).freshServiceEnvelope entry.beforeView.application.publicView message
 
 variable {setup leaks}
@@ -283,10 +269,10 @@ theorem freshCallsConform_round {horizon remaining : Nat}
       · exact conformMiddle entry old material message submitted emitted
       · rw [List.mem_singleton] at new
         subst new
-        change response.transmission = some material at submitted
+        change response.transmission = some (.submit material) at submitted
         obtain ⟨event, action, turn, unrecorded, fits, decided⟩ :=
           sourceServiceTurnPolicy_submission chosen submitted
-        have responseEq : response = ⟨some material⟩ := by
+        have responseEq : response = ⟨some (.submit material)⟩ := by
           rcases response with ⟨transmission⟩
           change transmission = _ at submitted
           rw [submitted]
@@ -324,7 +310,7 @@ theorem sourceServiceTurnPolicy_freshServiceEnvelope
       players count).support)
     (entry : (application setup leaks).PlayerEntry) (member : entry ∈ execution.recall who)
     (material : (application setup leaks).Submission)
-    (fresh : entry.action.transmission = some material)
+    (fresh : entry.action.transmission = some (.submit material))
     (message : Message Player (WitnessedPacket (graph setup)))
     (emitted : entry.emitted = some message) :
     (runtime setup).freshServiceEnvelope entry.beforeView.application.publicView message := by

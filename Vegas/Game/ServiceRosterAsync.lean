@@ -1,14 +1,13 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ServiceRoster
-import Vegas.Game.SourceServiceCalendarClock
+import Vegas.Game.RevealServiceCalendarState
 import Vegas.Pending.ReactiveAsyncContract
 import Vegas.Pending.ReactiveStateInvariant
 import Vegas.Pending.EventSequentialTiming
 import Interaction.ReactiveOwnerSelection
 import Interaction.ReactiveRecallInvariant
 import Interaction.ReactiveReceipts
-import Interaction.MessageNetworkIdentity
 
 /-! # The fixed roster calendar satisfies the asynchronous contract
 
@@ -410,86 +409,6 @@ theorem GraphStep.prefix (setup : Setup (Player := Player) (L := L))
     have rank := (ready_iff_rank setup before.config event.val ordered completed).mp ready
     rw [before.config.step_cut completed ready action after.config member]
     exact ordered.complete_at completed ready rank
-
-/-- Selecting a packet for a completed event preserves the whole application state. -/
-theorem reactiveLatest_completed (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (execution next : (application setup leaks).Execution) (event : (graph setup).EventId)
-    (owner : Player) (unique : execution.network.UniqueIds)
-    (completed : event ∈ execution.application.config.cut.completed)
-    (moved : next ∈ (execution.environmentStep (application setup leaks)
-      ((runtime setup).reactiveLatest leaks event owner
-        (execution.observeEnvironment (application setup leaks)))).support) :
-    next.application = execution.application := by
-  unfold reactiveLatest at moved
-  split at moved
-  · simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
-      PMF.mem_support_pure_iff _ _] at moved
-    cases moved
-    rfl
-  · rename_i selected found
-    have matching := List.find?_some found
-    simp only [decide_eq_true_eq] at matching
-    have present := List.mem_reverse.mp (List.mem_of_find?_eq_some found)
-    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
-      PMF.mem_support_pure_iff _ _] at moved
-    cases moved
-    cases looked : execution.network.lookup selected.id with
-    | none => simp [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
-        looked]
-    | some actual =>
-        dsimp only [MessageNetwork.lookup] at looked
-        have actualPresent := List.mem_of_find?_eq_some looked
-        have actualId := List.find?_some looked
-        simp only [decide_eq_true_eq] at actualId
-        have same := (unique.pending selected present).pending actual actualPresent actualId
-        subst actual
-        change execution.network.lookup selected.id = some selected at looked
-        have rejected := (runtime setup).handle_eq_none_of_completed execution.application
-          ⟨selected.id, selected.payload.call⟩ event matching.2.1 completed
-        have reactiveRejected :
-            (application setup leaks).handle execution.application selected = none := by
-          simp only [reactiveApplication_handle, rejected, ite_self]
-        simp [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
-          looked, reactiveRejected]
-
-/-- Selecting the owner's latest packet either preserves the current completed
-prefix or completes that same event. -/
-theorem reactiveLatest_prefix (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (execution next : (application setup leaks).Execution) (event : (graph setup).EventId)
-    (owner : Player) (unique : execution.network.UniqueIds)
-    (ordered : execution.application.config.cut.IsPrefix event.val ∨
-      execution.application.config.cut.IsPrefix (event.val + 1))
-    (moved : next ∈ (execution.environmentStep (application setup leaks)
-      ((runtime setup).reactiveLatest leaks event owner
-        (execution.observeEnvironment (application setup leaks)))).support) :
-    (next.application.config.cut.IsPrefix event.val ∨
-      next.application.config.cut.IsPrefix (event.val + 1)) ∧
-      next.application.clock = execution.application.clock ∧
-      (next.application.config.cut.IsPrefix event.val →
-        next.application.activatedAt = execution.application.activatedAt) := by
-  rcases ordered with before | after
-  · have step : GraphStep execution.application next.application := by
-      unfold reactiveLatest at moved
-      split at moved
-      · simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
-          PMF.mem_support_pure_iff _ _] at moved
-        cases moved
-        exact GraphStep.refl _
-      · simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
-          PMF.mem_support_pure_iff _ _] at moved
-        cases moved
-        exact graphStep_includePending (runtime setup) leaks execution _
-    rcases step.prefix setup event before with same | advanced
-    · rw [same.1]
-      exact ⟨Or.inl before, same.2.1, fun _ => same.2.2⟩
-    · exact ⟨Or.inr advanced.1, advanced.2.1, fun earlier =>
-        (isPrefix_succ_false event earlier advanced.1).elim⟩
-  · have same := reactiveLatest_completed setup leaks execution next event owner unique
-      ((after.2 event).mpr (by omega)) moved
-    rw [same]
-    exact ⟨Or.inr after, rfl, fun _ => rfl⟩
 
 /-- Completing the current event starts its successor's clock now. -/
 theorem refreshActivated_successor (setup : Setup (Player := Player) (L := L))
@@ -1530,66 +1449,5 @@ theorem rosterScheduler_asyncTimely (setup : Setup (Player := Player) (L := L)) 
   intro event _
   change event.val + 0 < event.val + 1
   omega
-
-/-- At expiry, the real invariant and activation-time bound complete the current
-event, while an already completed current event remains completed. -/
-theorem expire_prefix_next (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (execution next : (application setup leaks).Execution) (event : (graph setup).EventId)
-    (owner : Player) (owned : (graph setup).actor? event = some owner)
-    {inputs : (graph setup).Inputs}
-    (invariant : EventGraphRuntime.State.Invariant (graph := graph setup) inputs
-      execution.application)
-    (ordered : execution.application.config.cut.IsPrefix event.val ∨
-      execution.application.config.cut.IsPrefix (event.val + 1))
-    (maximum : Nat)
-    (enteredBound : ∀ entered, execution.application.activatedAt event = some entered →
-      entered ≤ maximum)
-    (clock : maximum + (runtime setup).deadline event ≤ execution.application.clock)
-    (moved : next ∈ (execution.environmentStep (application setup leaks)
-      (.application (.expire event))).support) :
-    next.application.config.cut.IsPrefix (event.val + 1) := by
-  have physical := (applicationStep_facts execution next _ moved).1
-  rcases ordered with current | completed
-  · have ready := (ready_iff_rank setup _ event.val current event).mpr rfl
-    obtain ⟨entered, activated⟩ := invariant.activatedAt_eq_some_of_ready_actor event ready
-      (by rw [owned]; rfl)
-    have before := enteredBound entered activated
-    have due : (runtime setup).deadline event ≤ execution.application.clock - entered := by omega
-    have completed := (expire_completes (runtime setup) _ _ event owner owned ready entered
-      activated due physical).1
-    rw [completed]
-    exact current.complete_at event ready rfl
-  · have notReady : ¬ execution.application.config.cut.Ready event := by
-      intro ready
-      exact ready.1 ((completed.2 event).mpr (by omega))
-    rw [environmentStep_expire_of_not_ready (runtime setup) _ event notReady,
-      PMF.mem_support_pure_iff _ _] at physical
-    rw [physical]
-    exact completed
-
-/-- Activation, waiting and clock advances preserve the semantic configuration
-and its actual activation table. -/
-theorem environmentStep_config_activated_stutter (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (execution next : (application setup leaks).Execution)
-    (command : (application setup leaks).Command)
-    (ordinary : (∃ who, command = .activate who) ∨ command = .wait ∨
-      command = .application .advanceClock)
-    (moved : next ∈ (execution.environmentStep (application setup leaks) command).support) :
-    next.application.config = execution.application.config ∧
-      next.application.activatedAt = execution.application.activatedAt := by
-  rcases ordinary with ⟨who, rfl⟩ | rfl | rfl
-  · obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ moved
-    obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
-    exact ⟨rfl, rfl⟩
-  · simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
-      PMF.mem_support_pure_iff _ _] at moved
-    cases moved
-    exact ⟨rfl, rfl⟩
-  · have physical := (applicationStep_facts execution next _ moved).1
-    simp only [environmentStep, PMF.mem_support_pure_iff _ _] at physical
-    rw [physical]
-    exact ⟨rfl, rfl⟩
 
 end Vegas

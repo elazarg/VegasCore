@@ -1,0 +1,200 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.DisclosureForeign
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheoryExtensions.Math.Probability.Support
+
+/-! # Simultaneous private-disclosure comparison for every player
+
+Each coordinate of the fixed behavioral normalizer depends on that player's
+policy alone. Finite composition transports both laws of every conditional
+continuation comparison back to the original profile. Intermediate profiles
+need neither equilibrium nor full mixing in the original source action menu.
+-/
+
+noncomputable section
+
+namespace Vegas.SourceProgram
+
+open GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] [Fintype Player]
+  {L : IExpr} [IExpr.ResultTypes L]
+  {Γ : SourceCtx Player L} {O : Finset VarId}
+
+private def PrefixComparison (program : SourceProgram Player L Γ O)
+    (admission : CommitmentInterface program) (initial : PMF (Config Player L Γ))
+    (count : Nat) (source target : BehavioralProfile program) : Prop :=
+  let prefixLaw := fun profile => initial.bind fun config =>
+    (fun distribution => distribution.bind (ProtocolState.behavioralStateStep program profile))
+      ^[count] (PMF.pure (ProtocolState.entry program config))
+  ∀ who (alternative : BehavioralPolicy who program), alternative.Admitted program admission →
+    ∀ view ∈ ((prefixLaw target).map (ProtocolState.observe who program)).support,
+      ∃ alternatives : PMF (ProtocolView who program ×
+          {lifted : BehavioralPolicy who program // lifted.Admitted program admission}),
+        (∀ selected ∈ alternatives.support,
+          selected.1 ∈ ((prefixLaw source).map (ProtocolState.observe who program)).support ∧
+          ProtocolView.actor who program selected.1 = ProtocolView.actor who program view ∧
+          ProtocolView.position who program selected.1 = ProtocolView.position who program view) ∧
+        ((fiberPosterior (prefixLaw target) (ProtocolState.observe who program) view).bind
+          (ProtocolState.continuationLaw program target)) =
+          alternatives.bind (fun selected =>
+            (fiberPosterior (prefixLaw source)
+                (ProtocolState.observe who program) selected.1).bind
+              (ProtocolState.continuationLaw program source)) ∧
+        ((fiberPosterior (prefixLaw target) (ProtocolState.observe who program) view).bind
+          (ProtocolState.continuationLaw program (Function.update target who alternative))) =
+          alternatives.bind (fun selected =>
+            (fiberPosterior (prefixLaw source)
+                (ProtocolState.observe who program) selected.1).bind
+              (ProtocolState.continuationLaw program (Function.update source who selected.2.1)))
+
+private theorem prefixComparison_refl (program : SourceProgram Player L Γ O)
+    (admission : CommitmentInterface program) (initial : PMF (Config Player L Γ))
+    (count : Nat) (profile : BehavioralProfile program) :
+    PrefixComparison program admission initial count profile profile := by
+  intro who alternative admitted view present
+  refine ⟨PMF.pure (view, ⟨alternative, admitted⟩), ?_, ?_, ?_⟩
+  · intro selected member
+    have same := (PMF.mem_support_pure_iff _ _).mp member
+    subst selected
+    exact ⟨present, rfl, rfl⟩
+  · simp only [PMF.pure_bind]
+  · simp only [PMF.pure_bind]
+
+private theorem prefixComparison_trans (program : SourceProgram Player L Γ O)
+    (admission : CommitmentInterface program) (initial : PMF (Config Player L Γ))
+    (count : Nat) (source middle target : BehavioralProfile program)
+    (first : PrefixComparison program admission initial count source middle)
+    (second : PrefixComparison program admission initial count middle target) :
+    PrefixComparison program admission initial count source target := by
+  intro who alternative admitted view present
+  obtain ⟨weights, supported, prescribed, deviating⟩ :=
+    second who alternative admitted view present
+  have originals (selected) (member : selected ∈ weights.support) :=
+    first who selected.2.1 selected.2.2 selected.1 (supported selected member).1
+  let law := weights.bindOnSupport fun selected member => (originals selected member).choose
+  refine ⟨law, ?_, ?_, ?_⟩
+  · intro selected member
+    obtain ⟨intermediate, chosen, reached⟩ := Set.mem_iUnion₂.mp
+      (PMF.support_bindOnSupport .. ▸ member)
+    obtain ⟨positive, actor, position⟩ :=
+      (originals intermediate chosen).choose_spec.1 selected reached
+    exact ⟨positive, actor.trans (supported intermediate chosen).2.1,
+      position.trans (supported intermediate chosen).2.2⟩
+  · rw [prescribed]
+    symm
+    change (weights.bindOnSupport _).bind _ = _
+    rw [bindOnSupport_bind]
+    exact bindOnSupport_eq_bind_of_eq_on_support _ fun selected member =>
+      (originals selected member).choose_spec.2.1.symm
+  · rw [deviating]
+    symm
+    change (weights.bindOnSupport _).bind _ = _
+    rw [bindOnSupport_bind]
+    exact bindOnSupport_eq_bind_of_eq_on_support _ fun selected member =>
+      (originals selected member).choose_spec.2.2.symm
+
+private theorem prefixComparison_normalize (program : SourceProgram Player L Γ O)
+    (admission : CommitmentInterface program) (initial : PMF (Config Player L Γ))
+    (registry : Registry Γ) (revelations : Revelations Γ)
+    (registryEq : ∀ config ∈ initial.support, config.registry = registry)
+    (revelationsEq : ∀ config ∈ initial.support, @config.revelations = @revelations)
+    (count : Nat) (profile : BehavioralProfile program) (owner : Player) :
+    PrefixComparison program admission initial count profile
+      (Function.update profile owner
+        ((profile owner).normalizeDisclosures program registry revelations)) := by
+  intro who alternative admitted view present
+  by_cases same : who = owner
+  · subst owner
+    obtain ⟨weights, supported, prescribed, deviating⟩ :=
+      normalized_disclosure_prefix_comparison program admission profile (profile who) alternative
+        admitted registry revelations initial registryEq revelationsEq count view present
+    refine ⟨weights, ?_, ?_, ?_⟩
+    · intro selected member
+      obtain ⟨positive, same⟩ := supported selected member
+      refine ⟨by simpa only [Function.update_eq_self] using positive, ?_, ?_⟩
+      · exact (ProtocolView.normalizeDisclosureRecall_actor program (fun v => v.2)
+          selected.1).symm.trans (congrArg (ProtocolView.actor who program) same)
+      · exact (ProtocolView.normalizeDisclosureRecall_position program (fun v => v.2)
+          selected.1).symm.trans (congrArg (ProtocolView.position who program) same)
+    · simpa only [Function.update_eq_self] using prescribed
+    · simpa only [Function.update_idem, Function.update_eq_self] using deviating
+  · obtain ⟨positive, prescribed, deviating⟩ := normalized_disclosure_foreign_comparison program
+      same profile (profile owner) alternative registry revelations initial registryEq
+        revelationsEq count view present
+    refine ⟨PMF.pure (view, ⟨alternative, admitted⟩), ?_, ?_, ?_⟩
+    · intro selected member
+      have same := (PMF.mem_support_pure_iff _ _).mp member
+      subst selected
+      exact ⟨by simpa only [Function.update_eq_self] using positive, rfl, rfl⟩
+    · simpa only [PMF.pure_bind, Function.update_eq_self] using prescribed
+    · simpa only [PMF.pure_bind, Function.update_eq_self] using deviating
+
+/-- Simultaneous playerwise normalization preserves every positive-prefix
+conditional continuation comparison as a finite mixture of actual original
+comparisons. Both laws use the same mixture of admitted whole-policy lifts.
+No equilibrium or consistency of an intermediate normalized profile is assumed. -/
+theorem normalizeDisclosureProfile_prefix_comparison
+    (program : SourceProgram Player L Γ O) (admission : CommitmentInterface program)
+    (profile : BehavioralProfile program) (registry : Registry Γ)
+    (revelations : Revelations Γ) (initial : PMF (Config Player L Γ))
+    (registryEq : ∀ config ∈ initial.support, config.registry = registry)
+    (revelationsEq : ∀ config ∈ initial.support, @config.revelations = @revelations)
+    (count : Nat) :
+    let normalized := normalizeDisclosureProfile program registry revelations profile
+    let prefixLaw := fun selected => initial.bind fun config =>
+      (fun distribution => distribution.bind (ProtocolState.behavioralStateStep program selected))
+        ^[count] (PMF.pure (ProtocolState.entry program config))
+    ∀ who (alternative : BehavioralPolicy who program), alternative.Admitted program admission →
+      ∀ view ∈ ((prefixLaw normalized).map (ProtocolState.observe who program)).support,
+        ∃ alternatives : PMF (ProtocolView who program ×
+            {lifted : BehavioralPolicy who program // lifted.Admitted program admission}),
+          (∀ selected ∈ alternatives.support,
+            selected.1 ∈ ((prefixLaw profile).map (ProtocolState.observe who program)).support ∧
+            ProtocolView.actor who program selected.1 = ProtocolView.actor who program view ∧
+            ProtocolView.position who program selected.1 = ProtocolView.position who program view) ∧
+          ((fiberPosterior (prefixLaw normalized) (ProtocolState.observe who program) view).bind
+            (ProtocolState.continuationLaw program normalized)) =
+            alternatives.bind (fun selected =>
+              (fiberPosterior (prefixLaw profile)
+                  (ProtocolState.observe who program) selected.1).bind
+                (ProtocolState.continuationLaw program profile)) ∧
+          ((fiberPosterior (prefixLaw normalized) (ProtocolState.observe who program) view).bind
+            (ProtocolState.continuationLaw program (Function.update normalized who alternative))) =
+            alternatives.bind (fun selected =>
+              (fiberPosterior (prefixLaw profile)
+                  (ProtocolState.observe who program) selected.1).bind
+                (ProtocolState.continuationLaw program
+                  (Function.update profile who selected.2.1))) := by
+  classical
+  let normalized := normalizeDisclosureProfile program registry revelations profile
+  let selected (players : Finset Player) : BehavioralProfile program := fun who =>
+    if who ∈ players then normalized who else profile who
+  have comparison (players : Finset Player) :
+      PrefixComparison program admission initial count profile (selected players) := by
+    induction players using Finset.induction_on with
+    | empty =>
+        simpa only [selected, Finset.notMem_empty, ite_false] using
+          prefixComparison_refl program admission initial count profile
+    | @insert player players absent ih =>
+        have more : selected (insert player players) =
+            Function.update (selected players) player (normalized player) := by
+          funext who
+          by_cases same : who = player
+          · subst who
+            simp only [selected, Finset.mem_insert_self, ite_true, Function.update_self]
+          · simp only [selected, Finset.mem_insert, same, false_or, Function.update_of_ne same]
+        have previous : selected players player = profile player := by
+          simp only [selected, absent, ite_false]
+        have step := prefixComparison_normalize program admission initial registry revelations
+          registryEq revelationsEq count (selected players) player
+        rw [previous] at step
+        rw [more]
+        exact prefixComparison_trans program admission initial count profile (selected players)
+          _ ih step
+  have total := comparison Finset.univ
+  simpa only [selected, Finset.mem_univ, ite_true, PrefixComparison, normalized] using total
+
+end Vegas.SourceProgram

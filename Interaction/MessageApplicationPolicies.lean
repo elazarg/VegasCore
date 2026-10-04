@@ -26,18 +26,20 @@ universe uPrincipal uPrivate uPayload
 
 variable {Principal : Type uPrincipal}
 
-inductive PlayerCommand (PrivateCommand : Type uPrivate) (Payload : Type uPayload) where
+inductive PlayerCommand (Principal : Type uPrincipal)
+    (PrivateCommand : Type uPrivate) (Payload : Type uPayload) where
   | privateCommand (command : PrivateCommand)
   | submit (payload : Payload)
+  | replay (id : MessageId Principal)
   | wait
 
 structure PlayerEntry (interface : MessageInterface Principal) where
   beforeView : View interface
-  command : PlayerCommand interface.PrivateCommand interface.Payload
+  command : PlayerCommand Principal interface.PrivateCommand interface.Payload
 
 abbrev PlayerPolicy (interface : MessageInterface Principal) :=
   List (PlayerEntry interface) → View interface →
-    PMF (PlayerCommand interface.PrivateCommand interface.Payload)
+    PMF (PlayerCommand Principal interface.PrivateCommand interface.Payload)
 
 /-- Environment-controlled wire and application triggers. The application
 command selects a fixed kernel, not one of its stochastic outcomes. -/
@@ -74,7 +76,7 @@ universe uPrincipal
 variable {Principal : Type uPrincipal}
 
 abbrev PlayerCommand (app : MessageApplication Principal) :=
-  MessageInterface.PlayerCommand app.PrivateCommand app.Payload
+  MessageInterface.PlayerCommand Principal app.PrivateCommand app.Payload
 
 abbrev PlayerEntry (app : MessageApplication Principal) :=
   MessageInterface.PlayerEntry app.toMessageInterface
@@ -136,6 +138,7 @@ def afterSubmit [DecidableEq Principal] (execution : app.PolicyExecution) (who :
 def PlayerCommand.toAction (who : Principal) : app.PlayerCommand → Option app.Action
   | .privateCommand command => some (.privateCommand who command)
   | .submit payload => some (.submit who payload)
+  | .replay id => some (.replay who id)
   | .wait => none
 
 def EnvironmentPolicyCommand.toAction :

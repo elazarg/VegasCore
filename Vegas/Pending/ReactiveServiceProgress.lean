@@ -2,8 +2,6 @@
 
 import Vegas.Pending.ReactiveServiceEvaluation
 import Vegas.Pending.EventProgress
-import Vegas.Pending.ReactiveServiceRecall
-import Vegas.Pending.ReactiveAuthorizationProgress
 
 /-! # Progress under arbitrary reactive player and network policies
 
@@ -21,20 +19,6 @@ open GameTheory.Math.Probability Interaction
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-/-- Actual service execution retains every event already completed at its start,
-for arbitrary player responses and scheduler choices. -/
-theorem runInteractionPlan_completed_subset (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
-    (network : runtime.NetworkPolicy leaks) (plan : List (ServiceInstruction graph))
-    (before after : (runtime.reactiveApplication leaks).Execution)
-    (supported : after ∈ (runtime.runInteractionPlan leaks players network plan before).support) :
-    before.application.config.cut.completed ⊆ after.application.config.cut.completed :=
-  runtime.runInteractionPlan_preserves leaks players network _
-    (ReactiveApplication.Invariant.policyInvariant (runtime.reactiveApplication leaks)
-      (runtime.reactiveCompletedInvariant leaks before.application.config.cut.completed)
-      players) plan before after (fun _ member => member) supported
-
 theorem reactive_respond_progress (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : graph.Inputs)
@@ -46,28 +30,31 @@ theorem reactive_respond_progress (runtime : EventGraphRuntime graph)
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact .refl invariant
-  | some submission =>
-      change State.ServiceProgress inputs 0 execution.application
-        (submitStep (submission.call.register execution.application who) who
-          submission.call.packet)
-      have facts := submission.call.register_facts who execution.application
-      have publicEq : State.publicView
-          (submitStep (submission.call.register execution.application who) who
-            submission.call.packet) =
-            execution.application.publicView := by
-        rw [submitStep_publicView, facts.2.2]
-      have configEq := (submitStep_config
-        (submission.call.register execution.application who) who submission.call.packet).trans
-          facts.1
-      have clockEq := congrArg PublicView.clock publicEq
-      have activationEq := congrArg PublicView.activatedAt publicEq
-      dsimp only [State.publicView] at clockEq activationEq
-      refine ⟨invariant.copy configEq clockEq activationEq, ?_, ?_, ?_⟩
-      · rw [configEq]
-      · simpa only [Nat.add_zero] using clockEq
-      · intro event entered activated _
-        rw [activationEq]
-        exact activated
+  | some transmission =>
+      cases transmission with
+      | replay id => exact .refl invariant
+      | submit submission =>
+          change State.ServiceProgress inputs 0 execution.application
+            (submitStep (submission.call.register execution.application who) who
+              submission.call.packet)
+          have facts := submission.call.register_facts who execution.application
+          have publicEq : State.publicView
+              (submitStep (submission.call.register execution.application who) who
+                submission.call.packet) =
+                execution.application.publicView := by
+            rw [submitStep_publicView, facts.2.2]
+          have configEq := (submitStep_config
+            (submission.call.register execution.application who) who submission.call.packet).trans
+              facts.1
+          have clockEq := congrArg PublicView.clock publicEq
+          have activationEq := congrArg PublicView.activatedAt publicEq
+          dsimp only [State.publicView] at clockEq activationEq
+          refine ⟨invariant.copy configEq clockEq activationEq, ?_, ?_, ?_⟩
+          · rw [configEq]
+          · simpa only [Nat.add_zero] using clockEq
+          · intro event entered activated _
+            rw [activationEq]
+            exact activated
 
 theorem reactive_resume_progress (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))

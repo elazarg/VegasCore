@@ -1,0 +1,163 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.SourceServiceRetainedPolicy
+import Vegas.Game.SourceServiceRiskSlots
+
+/-! # Prescribed policy admission at clear risk-menu histories
+
+A clear owner has canonical slot resources even when other owners have used
+expanded raw responses. Bounded record invariants then admit its protected
+source decisions, together with every prescribed deferral.
+
+These are local support statements for arbitrary turn timing. They do not
+prescribe source policies at risky sites, identify source continuations after
+misses, or assert sequential rationality or zero audit charge.
+-/
+
+noncomputable section
+
+namespace Vegas
+
+open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime
+
+variable {Player : Type} [DecidableEq Player] [Fintype Player]
+  {L : IExpr} [IExpr.ResultTypes L]
+  {setup : Setup (Player := Player) (L := L)}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+
+/-- At a clear legal risk-menu history, the actual record and the owner's
+canonical slot admit every timely unsent source decision. -/
+theorem sourceServiceCanonicalPolicy_risk_retained
+    (bounds : MessageBounds (graph setup)) (covered : bounds.CoversBindingValues)
+    (initialCovered : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
+    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
+    (bound : (graph setup).EventId → Nat) (profile : BehavioralProfile setup.program)
+    (who : Player)
+    (permitted : (profile who).Admitted setup.program (CommitmentInterface.values _))
+    {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
+    (control : (application setup leaks).Control)
+    (trace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control))
+    (clear : (runtime setup).serviceRisk leaks bound who (control.execution.recall who)
+      (control.execution.observe (application setup leaks) who) = false)
+    (event : (graph setup).EventId)
+    (turn : control.execution.application.publicView.ownTurn? who = some event)
+    (timely : control.execution.application.publicView.WithinDeadline (runtime setup) event)
+    (unsent : (runtime setup).eventRecorded leaks (control.execution.recall who) event = false)
+    (response : (application setup leaks).Action)
+    (supported : response ∈ (sourceServiceCanonicalPolicy setup leaks profile who
+      (control.execution.recall who)
+      (control.execution.observe (application setup leaks) who)).support) :
+    response ∈ bounds.canonicalActions (runtime setup) leaks who (control.execution.recall who)
+      (control.execution.observe (application setup leaks) who) := by
+  have persistentClear := ((runtime setup).serviceRisk_clear_iff leaks bound who _ _).mp clear |>.1
+  obtain ⟨counted, _, selected⟩ := riskCanonicalSlot_resources bounds bound capacity control trace
+    who persistentClear event turn unsent
+  have rawTrace := (bounds.riskMenu (runtime setup) leaks bound).toRawTrace (initialLaw setup)
+    horizon scheduler trace
+  have facts := legalFacts setup leaks horizon scheduler control rawTrace
+  have boundedTrace := (bounds.riskMenu_in_raw (runtime setup) leaks bound).trace
+    (initialLaw setup) horizon scheduler trace
+  have values := bounds.candidateValues_raw_history (runtime setup) leaks (initialLaw setup)
+    horizon scheduler initialCovered boundedTrace
+  rw [initialLaw_eq_inputs] at boundedTrace
+  have handles := bounds.executionHandles_raw_history (runtime setup) leaks
+    (setup.initialLaw.map setup.eventInputs) horizon scheduler boundedTrace
+  exact sourceServiceCanonicalPolicy_retained_of_resources bounds covered profile who permitted
+    control.execution facts.binding values handles.1 event turn timely unsent counted selected
+    response supported
+
+/-- A guarded source opportunity at a clear risk-menu history is silence or
+an admitted canonical decision. Its protection gate implies the deadline gate. -/
+theorem sourceServiceCanonicalOpportunity_risk_retained
+    (bounds : MessageBounds (graph setup)) (covered : bounds.CoversBindingValues)
+    (initialCovered : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
+    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
+    (bound : (graph setup).EventId → Nat) (profile : BehavioralProfile setup.program)
+    (who : Player)
+    (permitted : (profile who).Admitted setup.program (CommitmentInterface.values _))
+    {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
+    (control : (application setup leaks).Control)
+    (trace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control))
+    (clear : (runtime setup).serviceRisk leaks bound who (control.execution.recall who)
+      (control.execution.observe (application setup leaks) who) = false)
+    (event : (graph setup).EventId)
+    (turn : control.execution.application.publicView.ownTurn? who = some event)
+    (response : (application setup leaks).Action)
+    (supported : response ∈ (sourceServiceCanonicalOpportunity setup leaks bound profile who
+      event (control.execution.recall who)
+      (control.execution.observe (application setup leaks) who)).support) :
+    response ∈ bounds.canonicalActions (runtime setup) leaks who (control.execution.recall who)
+      (control.execution.observe (application setup leaks) who) := by
+  have silent : ∀ action ∈ ((application setup leaks).silentPolicy
+      (control.execution.recall who)
+      (control.execution.observe (application setup leaks) who)).support,
+      action ∈ bounds.canonicalActions (runtime setup) leaks who (control.execution.recall who)
+        (control.execution.observe (application setup leaks) who) := by
+    intro action chosen
+    cases (PMF.mem_support_pure_iff _ _).mp chosen
+    exact bounds.silence_canonical (runtime setup) leaks who _ _
+  unfold sourceServiceCanonicalOpportunity at supported
+  split at supported
+  · exact silent response supported
+  · rename_i unrecorded
+    split at supported
+    · rename_i fits
+      rw [PMF.support_bind] at supported
+      obtain ⟨decided, decisionSupported, member⟩ := Set.mem_iUnion₂.mp supported
+      split at member
+      · exact silent response member
+      · have same : response = decided := (PMF.mem_support_pure_iff _ _).mp member
+        rw [same]
+        exact sourceServiceCanonicalPolicy_risk_retained bounds covered initialCovered capacity
+          bound profile who permitted control trace clear event turn fits.withinDeadline
+          (by simpa using unrecorded) decided decisionSupported
+    · exact silent response supported
+
+/-- Every prescribed deferral timing is locally admitted while this owner's
+full risk flag is clear, regardless of other owners' legal raw branches. -/
+theorem sourceServiceTurnPolicy_risk_retained
+    (bounds : MessageBounds (graph setup)) (covered : bounds.CoversBindingValues)
+    (initialCovered : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
+    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
+    (bound : (graph setup).EventId → Nat) (turns : Nat) (timing : TurnTiming setup turns)
+    (profile : BehavioralProfile setup.program) (who : Player)
+    (permitted : (profile who).Admitted setup.program (CommitmentInterface.values _))
+    {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
+    (control : (application setup leaks).Control)
+    (trace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control))
+    (clear : (runtime setup).serviceRisk leaks bound who (control.execution.recall who)
+      (control.execution.observe (application setup leaks) who) = false)
+    (response : (application setup leaks).Action)
+    (supported : response ∈ (sourceServiceTurnPolicy setup leaks bound turns timing profile who
+      (control.execution.recall who)
+      (control.execution.observe (application setup leaks) who)).support) :
+    response ∈ bounds.riskActions (runtime setup) leaks bound who (control.execution.recall who)
+      (control.execution.observe (application setup leaks) who) := by
+  rw [bounds.riskActions_of_clear (runtime setup) leaks bound who _ _ clear]
+  have silent : ∀ action ∈ ((application setup leaks).silentPolicy
+      (control.execution.recall who)
+      (control.execution.observe (application setup leaks) who)).support,
+      action ∈ bounds.canonicalActions (runtime setup) leaks who (control.execution.recall who)
+        (control.execution.observe (application setup leaks) who) := by
+    intro action chosen
+    cases (PMF.mem_support_pure_iff _ _).mp chosen
+    exact bounds.silence_canonical (runtime setup) leaks who _ _
+  unfold sourceServiceTurnPolicy at supported
+  split at supported
+  · exact silent response supported
+  · rename_i event turn
+    split at supported
+    · rw [ReactiveApplication.policyMixture_policy, PMF.support_bind] at supported
+      obtain ⟨slot, _, member⟩ := Set.mem_iUnion₂.mp supported
+      unfold sourceServiceTurnFamily ReactiveApplication.turnScheduledPolicy at member
+      dsimp only at member
+      split at member
+      · exact sourceServiceCanonicalOpportunity_risk_retained bounds covered initialCovered
+          capacity bound profile who permitted control trace clear event turn response member
+      · exact silent response member
+    · exact silent response supported
+
+end Vegas

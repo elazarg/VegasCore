@@ -29,9 +29,10 @@ variable {Player : Type} [DecidableEq Player]
   {memory : BindingMemory runtime leaks} {owner : Player}
   {original repaired : (runtime.reactiveApplication leaks).Execution}
 
-/-- Actual conforming resolution traffic completes with matching public output.
-The empty application caches make withholding record the same false action. -/
-theorem conforming_resolution_inclusion
+/-- The actual pending certificate and public checker discharge every handler
+precondition. This includes the focal player's previously repaired bindings:
+only an authentic original successful opening can enter this branch. -/
+theorem conforming_opening_inclusion
     (frame : Frame runtime leaks memory owner original repaired)
     (onlyBindings : memory.shadow.OwnBindings owner)
     (sound : (runtime.packetEvidence leaks).Sound original)
@@ -45,8 +46,6 @@ theorem conforming_resolution_inclusion
       (graph.nodes event) = .resolve actor payload binding checks)
     (node : nodeView graph event = .resolve actor payload binding checks outputEq codeEq)
     (sole : original.application.publicView.SoleReady event)
-    (leftRemembered : original.application.remembered event = none)
-    (rightRemembered : repaired.application.remembered event = none)
     (packet : WitnessedPacket graph)
     (found : original.network.lookup id = some ⟨id, packet⟩)
     (permitted : runtime.freshServiceEnvelope original.application.publicView ⟨id, packet⟩) :
@@ -56,41 +55,10 @@ theorem conforming_resolution_inclusion
         [⟨original.observeEnvironment app, .include id⟩] }
       { repaired.includePending app id with environmentRecall := repaired.environmentRecall ++
         [⟨repaired.observeEnvironment app, .include id⟩] } := by
-  rcases runtime.freshServiceEnvelope_resolution_shape original.application.publicView actor event
+  obtain ⟨candidate, raw, authored, owned, associated, _, shaped, guards⟩ :=
+    runtime.freshServiceEnvelope_resolution_shape original.application.publicView actor event
       payload binding checks outputEq codeEq node ⟨id, packet⟩
-      (runtime.freshServiceEnvelope_event_of_sole _ event sole _ permitted) permitted with
-      withheld | opening
-  · obtain ⟨authored, shaped⟩ := withheld
-    change packet = _ at shaped
-    subst packet
-    obtain ⟨ready, timely, _, _, _⟩ :=
-      (runtime.freshServiceEnvelope_withhold_iff original.application.publicView id event actor
-        payload binding checks outputEq codeEq node none (some ⟨event⟩)).mp permitted
-    have leftReady := (original.application.publicView_eventReady event).mp ready
-    have rightReady : repaired.application.config.cut.Ready event := by
-      apply (repaired.application.publicView_eventReady event).mp
-      rw [← frame.publicView]
-      exact ready
-    have rightTimely : repaired.application.WithinDeadline runtime event := by
-      change (match repaired.application.publicView.activatedAt event with
-        | none => False
-        | some activated => repaired.application.publicView.clock - activated <
-            runtime.deadline event)
-      rw [← frame.publicView]
-      exact timely
-    have visible : (graph.outputLayout event).IsPublic := by rw [outputEq]; trivial
-    have completed := frame.complete_unmodified event leftReady rightReady
-      (onlyBindings.public_value_none (.inr event) visible)
-      (onlyBindings.public_action_none event visible)
-      (cast (congrArg EventField.Action outputEq.symm) false)
-      (cast (congrArg EventField.Value outputEq.symm)
-        (PublicationResult.failure : PublicationResult (L.Val payload)))
-    exact frame.include_accepted id _ found (WitnessedPacket.tokenValid_withhold _ _) _ _ completed
-      (runtime.handle_withhold_unremembered_eq original.application id event actor payload binding
-        checks outputEq codeEq node leftReady timely authored leftRemembered)
-      (runtime.handle_withhold_unremembered_eq repaired.application id event actor payload binding
-        checks outputEq codeEq node rightReady rightTimely authored rightRemembered)
-  obtain ⟨candidate, raw, authored, owned, associated, _, shaped, guards⟩ := opening
+      (runtime.freshServiceEnvelope_event_of_sole _ event sole _ permitted) permitted
   change packet = _ at shaped
   subst packet
   obtain ⟨ready, timely, _, _, _, _, _, _, _⟩ :=
@@ -237,8 +205,6 @@ theorem resolution_reserved_step
       (graph.nodes event) = .resolve actor payload binding checks)
     (node : nodeView graph event = .resolve actor payload binding checks outputEq codeEq)
     (sole : original.application.publicView.SoleReady event)
-    (leftRemembered : original.application.remembered event = none)
-    (rightRemembered : repaired.application.remembered event = none)
     (permitted : ∀ message ∈ original.network.pending,
       runtime.permittedServiceEnvelope original.application.publicView original.network.ledger
         message = true)
@@ -250,9 +216,8 @@ theorem resolution_reserved_step
     Frame runtime leaks memory owner left right := by
   apply frame.latest_step_frame players network event actor _ left right leftSupport rightSupport
   intro id packet found unpublished
-  exact frame.conforming_resolution_inclusion onlyBindings sound leftBinding rightBinding id event
-    actor payload binding checks outputEq codeEq node sole leftRemembered rightRemembered packet
-      found
+  exact frame.conforming_opening_inclusion onlyBindings sound leftBinding rightBinding id event
+    actor payload binding checks outputEq codeEq node sole packet found
       ((runtime.permittedServiceEnvelope_unpublished_iff _ _ _ unpublished).mp
         (permitted _ (List.mem_of_find?_eq_some found))).2
 
@@ -306,8 +271,6 @@ theorem resolution_reserved_tail_coupling
       (graph.nodes event) = .resolve actor payload binding checks)
     (node : nodeView graph event = .resolve actor payload binding checks outputEq codeEq)
     (sole : original.application.publicView.SoleReady event)
-    (leftRemembered : original.application.remembered event = none)
-    (rightRemembered : repaired.application.remembered event = none)
     (permitted : ∀ message ∈ original.network.pending,
       runtime.permittedServiceEnvelope original.application.publicView original.network.ledger
         message = true) (ticks : Nat) :
@@ -334,8 +297,7 @@ theorem resolution_reserved_tail_coupling
   obtain ⟨rightIncluded, rightStep, rightTail⟩ :=
     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ second)
   have paired := frame.resolution_reserved_step onlyBindings sound leftBinding rightBinding
-    players network event actor payload binding checks outputEq codeEq node sole leftRemembered
-      rightRemembered permitted
+    players network event actor payload binding checks outputEq codeEq node sole permitted
       leftIncluded rightIncluded leftStep rightStep
   have visible : (graph.outputLayout event).IsPublic := by rw [outputEq]; trivial
   exact paired.clock_tail_unmodified players network event

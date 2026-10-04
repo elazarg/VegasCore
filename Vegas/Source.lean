@@ -6,7 +6,6 @@ Authors: VegasCore contributors
 
 import Vegas.Source.Basic
 import Vegas.Source.Semantics
-import Vegas.Source.PublicMiss
 import Vegas.Source.Setup
 import Vegas.Source.FiniteSupport
 import Vegas.Source.InitialState

@@ -30,13 +30,14 @@ theorem MessageBounds.compiled_current_response (bounds : MessageBounds graph)
     (view : (runtime.reactiveApplication leaks).PlayerView)
     (response : (runtime.reactiveApplication leaks).Action)
     (member : response ∈ bounds.compiledActions runtime leaks who past view) :
-    response ∈ ((runtime.reactiveApplication leaks).silentPolicy past view).support ∨
+    response ∈ ((runtime.reactiveApplication leaks).replayPolicy past view).support ∨
       ∃ event, view.application.publicView.ownTurn? who = some event ∧
         graph.actor? event = some who ∧ runtime.submittedEvent? leaks response = some event := by
   classical
   have silent : (⟨none⟩ : (runtime.reactiveApplication leaks).Action) ∈
-      ((runtime.reactiveApplication leaks).silentPolicy past view).support :=
-    (runtime.reactiveApplication leaks).silentPolicy_support past view
+      ((runtime.reactiveApplication leaks).replayPolicy past view).support :=
+    (runtime.reactiveApplication leaks).replayPolicy_support past view none
+      (Finset.mem_insert_self _ _)
   rcases Finset.mem_union.mp (Finset.mem_inter.mp member).1 with decision | replay
   · have chosen := (Finset.mem_filter.mp decision).1
     cases selected : view.application.publicView.ownTurn? who with
@@ -77,14 +78,13 @@ theorem MessageBounds.compiled_current_response (bounds : MessageBounds graph)
               rw [node] at chosen
               obtain ⟨choice, _, rfl⟩ := Finset.mem_image.mp chosen
               rcases runtime.serviceDecision_resolution_cases leaks who past view event owner
-                  payload binding checks outputEq codeEq node choice with withheld |
+                  payload binding checks outputEq codeEq node choice with zero |
                   ⟨candidate, value, evidence, _, _, _, physical⟩
-              · exact Or.inr ⟨active.1, by rw [withheld]; rfl⟩
+              · exact Or.inl (zero ▸ silent)
               · exact Or.inr ⟨active.1, by rw [physical]; rfl⟩
         · cases Finset.mem_singleton.mp chosen
           exact Or.inl silent
-  · exact Or.inl ((runtime.reactiveApplication leaks).mem_silentPolicy_support.mpr
-      (Finset.mem_singleton.mp replay))
+  · exact Or.inl (((runtime.reactiveApplication leaks).mem_replayActions_iff _ _ _).mp replay)
 
 /-- An actual retained prefix with no owner submission is an actual replay
 window. This retains the exact execution, including all local observations. -/
@@ -102,7 +102,7 @@ theorem compiled_unsubmitted_window (runtime : EventGraphRuntime graph)
       (visits.map ServiceInstruction.player) initial).support)
     (unsent : runtime.eventRecorded leaks (final.recall owner) event = false) :
     final ∈ (runtime.runInteractionPlan leaks
-      (fun _ => (runtime.reactiveApplication leaks).silentPolicy) network
+      (fun _ => (runtime.reactiveApplication leaks).replayPolicy) network
         (visits.map ServiceInstruction.player) initial).support := by
   let app := runtime.reactiveApplication leaks
   induction visits generalizing initial with
@@ -116,7 +116,7 @@ theorem compiled_unsubmitted_window (runtime : EventGraphRuntime graph)
       obtain ⟨sample, sampled, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨response, chosen, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       let activated := initial.sampledActivation app actor sample
-      have transport : response ∈ (app.silentPolicy (activated.recall actor)
+      have transport : response ∈ (app.replayPolicy (activated.recall actor)
           (activated.observe app actor)).support := by
         rcases bounds.compiled_current_response runtime leaks actor _ _ response
             (lawful actor _ _ response chosen) with replay | ⟨named, selected, acting, submitted⟩

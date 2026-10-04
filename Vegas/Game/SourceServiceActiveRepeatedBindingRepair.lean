@@ -44,7 +44,7 @@ private theorem recorded_response_tail
     (reference : List (application setup leaks).PlayerEntry)
     (started : reference.length ≤ (right.recall owner).length)
     (response : (application setup leaks).Action)
-    (replay : response ∈ ((application setup leaks).silentPolicy (execution.recall owner)
+    (replay : response ∈ ((application setup leaks).replayPolicy (execution.recall owner)
       (execution.observe (application setup leaks) owner)).support)
     (rightEq : right = execution.respond (application setup leaks) owner response)
     (recalled : execution.InputRecall (application setup leaks))
@@ -83,16 +83,15 @@ private theorem recorded_response_tail
       joint.map Prod.snd = strategy.runJoint owner players
         (rosterScheduler setup leaks rosters network) tail.length right memory ∧
       ∀ final ∈ joint.support,
-        (∃ record ∈ app.executionTraffic final.1, record.envelope.sender = owner ∧
+        (∃ record ∈ app.executionTraffic final.1, record.input.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.envelope = false) ∨
-        (BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1 ∧
-          final.2.2.shadow.CompletedAt final.1.application.config) := by
+            record.input.envelope = false) ∨
+        BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1 := by
   intro app strategy tail
   let message : Message Player (WitnessedPacket (graph setup)) :=
     ⟨(owner, nonce), ⟨.commitment event (owner, .prepared serial), none, some ⟨event⟩⟩⟩
-  have data := (runtime setup).silent_response_preserves leaks _ execution packets owner
-    response (app.silentPolicy_cases _ _ response replay)
+  have data := (runtime setup).replay_response_preserves leaks _ execution packets owner
+    response (app.replayPolicy_cases _ _ response replay)
   have rightApp : right.application = execution.application := rightEq ▸ data.1
   have rightLedger : right.network.ledger = execution.network.ledger :=
     rightEq ▸ data.2.1
@@ -139,10 +138,6 @@ private theorem recorded_response_tail
     exact data.2.2.2.2.1.mono (fun _ valid _ => valid)
   exact repeated_binding_block_coupling setup leaks bounds rosters network players owner event
     payload outputEq codeEq node (.prepared serial) nonce memory left right frame
-    (by
-      intro other _ present
-      rw [shadow] at present
-      rcases present with present | present <;> cases present)
     reference started leftRecall rightRecall serialsNow
     (by rw [frame.network, rightCounter, rightLedger]; exact repeated)
     (by
@@ -193,7 +188,7 @@ private theorem recorded_resume_transport
         (sourceServiceMenu setup leaks bounds rosters) owner reference (players owner)).resume
           owner players (some owner) execution
             (BindingMemory.atRecall (runtime setup) leaks reference)).support) :
-    ∃ response ∈ ((application setup leaks).silentPolicy (execution.recall owner)
+    ∃ response ∈ ((application setup leaks).replayPolicy (execution.recall owner)
       (execution.observe (application setup leaks) owner)).support,
       right = execution.respond (application setup leaks) owner response := by
   classical
@@ -225,7 +220,7 @@ private theorem recorded_binding_resources
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (owner : Player) (execution : (application setup leaks).Execution)
     (event : (graph setup).EventId) (payload : L.Ty)
@@ -314,7 +309,7 @@ theorem recorded_binding_history_response_block_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
@@ -371,11 +366,10 @@ theorem recorded_binding_history_response_block_coupling
         Nonempty (((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
           (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
             (some ⟨remaining - tail.length, none, next.2.1⟩)) ∧
-        ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
+        ((∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.envelope = false) ∨
-        (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
-          next.2.2.shadow.CompletedAt next.1.application.config)) := by
+            record.input.envelope = false) ∨
+        BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
   classical
   intro app players reference memory strategy tail
   let menu := sourceServiceMenu setup leaks bounds rosters
@@ -396,9 +390,9 @@ theorem recorded_binding_history_response_block_coupling
       (execution.observe app owner) ⊆ menu.actions owner (execution.recall owner)
         (execution.observe app owner) := by
     intro response member
-    have optional : ¬ decisionRequired setup leaks rosters owner (execution.recall owner)
+    have optional : ¬ bindingRequired setup leaks rosters owner (execution.recall owner)
         (execution.observe app owner) := by
-      rintro ⟨other, otherTurn, _, _, unsent, _⟩
+      rintro ⟨other, _, otherTurn, _, _, _, unsent, _⟩
       cases Option.some.inj (otherTurn.symm.trans
         (ownTurn?_of_ready setup execution.application ready owned))
       simp only [recorded, Bool.true_eq_false] at unsent
@@ -409,7 +403,7 @@ theorem recorded_binding_history_response_block_coupling
   obtain ⟨first, firstLeft, firstRight, firstRelated⟩ :=
     frame.repeated_submission_stopped_response_coupling bounds menu players reference
       (Nat.le_refl _)
-      recalled remaining serials repeated coverage
+      recalled recalled remaining serials repeated coverage
       (by simpa only [players, Function.update_self] using available _ _)
   have firstTrace (next) (member : next ∈ first.support) :
       Nonempty ((menu.protocol (initialLaw setup) (rosterPlan setup rosters).length scheduler).Trace
@@ -453,11 +447,10 @@ theorem recorded_binding_history_response_block_coupling
         joint.map Prod.snd =
           strategy.runJoint owner players scheduler tail.length next.2.1 next.2.2 ∧
         ∀ final ∈ joint.support,
-          (∃ record ∈ app.executionTraffic final.1, record.envelope.sender = owner ∧
+          (∃ record ∈ app.executionTraffic final.1, record.input.envelope.sender = owner ∧
             (runtime setup).permittedServiceEnvelope record.observation record.ledger
-              record.envelope = false) ∨
-          (BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1 ∧
-          final.2.2.shadow.CompletedAt final.1.application.config) := by
+              record.input.envelope = false) ∨
+          BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1 := by
     rcases firstRelated next member with ⟨record, step, authored, rejected⟩ | good
     · let left := (runtime setup).runInteractionPlan leaks players network tail next.1
       let right := strategy.runJoint owner players scheduler tail.length next.2.1 next.2.2

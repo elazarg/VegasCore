@@ -30,7 +30,10 @@ theorem Invariant.respond (invariant : app.Invariant predicate)
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact valid
-  | some material => exact invariant.submit execution.application who material valid
+  | some transmission =>
+      cases transmission with
+      | replay id => exact valid
+      | submit material => exact invariant.submit execution.application who material valid
 
 theorem Invariant.includePending (invariant : app.Invariant predicate)
     (execution : app.Execution) (id : MessageId Principal)

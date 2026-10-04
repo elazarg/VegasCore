@@ -1,12 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceFactorization
-import Vegas.Pending.ReactiveDecisionWindowLikelihood
 import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Conditional traffic laws for guarded disclosure
 
-The conditional branch below runs the actual decision window, protected
+The conditional branch below runs the actual opening window, protected
 inclusion and deadline settlement. The evidence comes from the current
 candidate catalogue, including bindings created during this execution.
 Only effective source choices are used; their original private intentions
@@ -36,12 +35,17 @@ def guardedDisclosureTranscript
   let app := application setup leaks
   let phase := (roster.map ServiceInstruction.player ++ [.includeLatest event owner]) ++
     (List.replicate ticks .tick ++ [.expire event])
-  timing.bind fun slot =>
-    ((runtime setup).runInteractionPlan leaks
-      ((runtime setup).decisionWindowPlayers leaks owner event
-        (rosterOpening? setup leaks owner event (execution.observe app owner))
-        (execution.recall owner).length (slot, disclose)) network phase execution).map
-          ((runtime setup).bindingTraffic leaks focal)
+  let withheld := ((runtime setup).runInteractionPlan leaks (fun _ => app.replayPolicy)
+    network phase execution).map ((runtime setup).bindingTraffic leaks focal)
+  if disclose then
+    match rosterOpening? setup leaks owner event (execution.observe app owner) with
+    | none => withheld
+    | some (candidate, raw) => timing.bind fun slot =>
+        ((runtime setup).runInteractionPlan leaks
+          ((runtime setup).openingWindowPlayers leaks owner event candidate raw
+            (execution.recall owner).length (some slot)) network phase execution).map
+              ((runtime setup).bindingTraffic leaks focal)
+  else withheld
 
 /-- Equal effective source successor views induce equal actual traffic laws.
 The guard may inspect private bindings: success is checked in each state,
@@ -77,8 +81,6 @@ theorem guarded_disclosure_transcript_congr
     (rightReady : right.application.config.cut.Ready event)
     (leftTimely : left.application.WithinDeadline (runtime setup) event)
     (rightTimely : right.application.WithinDeadline (runtime setup) event)
-    (leftUnremembered : left.application.remembered event = none)
-    (rightUnremembered : right.application.remembered event = none)
     (leftRecall : left.InputRecall (application setup leaks))
     (rightRecall : right.InputRecall (application setup leaks))
     (leftSerials : left.network.SerialsBeforeNext)
@@ -110,65 +112,10 @@ theorem guarded_disclosure_transcript_congr
     disclosureResult published binding rightSource rightChoice at result
   rcases leftEffective with rfl | ⟨value, rfl, leftSuccess⟩
   · rcases rightEffective with rfl | ⟨other, rfl, rightSuccess⟩
-    · have publics : left.application.publicView = right.application.publicView :=
-        congrArg (fun read => read.2.2.2.2.2) traffic
-      have views : left.application.playerView focal = right.application.playerView focal :=
-        congrArg (fun read => read.2.2.2.2.1) traffic
-      have first := handle_withhold_unremembered_eq (runtime setup) left.application
-        (owner, left.network.nextSerial owner) event owner payload (refs.get binding)
-        _ outputEq leftCode leftNode leftReady leftTimely rfl leftUnremembered
-      have second := handle_withhold_unremembered_eq (runtime setup) right.application
-        (owner, left.network.nextSerial owner) event owner payload (refs.get binding)
-        _ outputEq rightCode rightNode rightReady rightTimely rfl rightUnremembered
-      have handled : ((application setup leaks).handle left.application
-          ((runtime setup).decisionEnvelope leaks owner event none false left)).map
-            (fun state => state.playerView focal) =
-          ((application setup leaks).handle right.application
-            ((runtime setup).decisionEnvelope leaks owner event none false left)).map
-              (fun state => state.playerView focal) := by
-        rw [reactiveApplication_handle_of_current_token (runtime setup) leaks _ _ rfl,
-          reactiveApplication_handle_of_current_token (runtime setup) leaks _ _ (by
-            change left.application.publicView.tokenFor (.withhold event) =
-              right.application.publicView.tokenFor (.withhold event)
-            rw [publics])]
-        change (handle (runtime setup) left.application
-          ⟨(owner, left.network.nextSerial owner), .withhold event⟩).map _ =
-          (handle (runtime setup) right.application
-            ⟨(owner, left.network.nextSerial owner), .withhold event⟩).map _
-        rw [first, second, Option.map_some, Option.map_some]
-        apply congrArg some
-        exact EventGraphRuntime.State.complete_playerView_congr left.application right.application
-          focal publics (left.application.playerView_observation_eq right.application focal views)
-          (congrArg EventGraphRuntime.PlayerView.remembered views)
-          (congrArg EventGraphRuntime.PlayerView.candidates views) event leftReady rightReady
-          _ _ _ _ (fun _ => rfl) (fun _ => rfl)
-      change timing.bind (fun slot =>
-        ((runtime setup).runInteractionPlan leaks
-          ((runtime setup).decisionWindowPlayers leaks owner event none
-            (left.recall owner).length (slot, false)) network
-          ((roster.map ServiceInstruction.player ++ [.includeLatest event owner]) ++
-            (List.replicate ticks .tick ++ [.expire event])) left).map
-              ((runtime setup).bindingTraffic leaks focal)) =
-        timing.bind (fun slot =>
-          ((runtime setup).runInteractionPlan leaks
-            ((runtime setup).decisionWindowPlayers leaks owner event none
-              (right.recall owner).length (slot, false)) network
-            ((roster.map ServiceInstruction.player ++ [.includeLatest event owner]) ++
-              (List.replicate ticks .tick ++ [.expire event])) right).map
-                ((runtime setup).bindingTraffic leaks focal))
-      rw [← counts]
-      apply bind_congr_on_support _
-      intro slot _
-      have included := (runtime setup).decisionWindow_inclusion_focal_coupling leaks network
-        roster left right leftRecall rightRecall leftSerials rightSerials leftPublished
-        rightPublished owner focal event none (by intro candidate raw absent; cases absent)
-          (slot, false) (by simp) (by simp) traffic counts handled
-      conv_lhs => rw [runInteractionPlan_append, PMF.map_bind]
-      conv_rhs => rw [runInteractionPlan_append, PMF.map_bind]
-      apply bind_eq_of_map_eq _ _ _ _ included
-      intro before _ after _ equal
-      exact (runtime setup).settlement_focal_law leaks _ network event ticks before after
-        focal equal
+    · simpa only [guardedDisclosureTranscript, Bool.false_eq_true, ↓reduceIte,
+        List.append_assoc, List.singleton_append] using
+        (runtime setup).withholdingWindow_focal_coupling leaks network roster left right
+          leftRecall rightRecall leftPublished rightPublished owner focal event ticks traffic
     · simp only [disclosureResult_false, rightSuccess] at result
       cases result
   · rcases rightEffective with rfl | ⟨other, rfl, rightSuccess⟩
@@ -182,17 +129,15 @@ theorem guarded_disclosure_transcript_congr
           left right leftAgrees rightAgrees leftBinding rightBinding event outputEq leftCode
           rightCode leftNode rightNode leftReady rightReady leftTimely rightTimely value
           leftSuccess rightSuccess focal traffic
-      simp only [guardedDisclosureTranscript, leftOpening, rightOpening]
+      simp only [guardedDisclosureTranscript, ↓reduceIte,
+        leftOpening, rightOpening]
       rw [← counts]
       apply bind_congr_on_support _
       intro slot _supported
-      have included := (runtime setup).decisionWindow_inclusion_focal_coupling leaks network
+      have included := (runtime setup).openingWindow_inclusion_focal_coupling leaks network
         roster left right leftRecall rightRecall leftSerials rightSerials leftPublished
-        rightPublished owner focal event (some (candidate, ⟨payload, value⟩))
-          (by intro other raw same; cases Option.some.inj same; exact owned) (slot, true)
-          (by intro _ other raw same; cases Option.some.inj same; exact leftValid)
-          (by intro _ other raw same; cases Option.some.inj same; exact rightValid)
-          traffic counts handled
+        rightPublished owner focal event candidate ⟨payload, value⟩ owned (some slot)
+          (fun _ => leftValid) (fun _ => rightValid) traffic counts (fun _ => handled)
       conv_lhs => rw [runInteractionPlan_append, PMF.map_bind]
       conv_rhs => rw [runInteractionPlan_append, PMF.map_bind]
       apply bind_eq_of_map_eq _ _ _ _ included
@@ -225,8 +170,6 @@ theorem guarded_disclosure_successor_factorization
     (ready : ∀ seed ∈ prior.support, (execution seed).application.config.cut.Ready event)
     (timely : ∀ seed ∈ prior.support,
       (execution seed).application.WithinDeadline (runtime setup) event)
-    (unremembered : ∀ seed ∈ prior.support,
-      (execution seed).application.remembered event = none)
     (recalled : ∀ seed ∈ prior.support, (execution seed).InputRecall (application setup leaks))
     (serials : ∀ seed ∈ prior.support, (execution seed).network.SerialsBeforeNext)
     (publishedTraffic : ∀ seed ∈ prior.support, (execution seed).network.Satisfies fun message =>
@@ -264,8 +207,7 @@ theorem guarded_disclosure_successor_factorization
       (agree left leftSupport) (agree right rightSupport) (valid left leftSupport)
       (valid right rightSupport) event outputEq (codeEq left) (codeEq right) (node left)
       (node right) (ready left leftSupport) (ready right rightSupport) (timely left leftSupport)
-      (timely right rightSupport) (unremembered left leftSupport)
-      (unremembered right rightSupport) (recalled left leftSupport) (recalled right rightSupport)
+      (timely right rightSupport) (recalled left leftSupport) (recalled right rightSupport)
       (serials left leftSupport) (serials right rightSupport) (publishedTraffic left leftSupport)
       (publishedTraffic right rightSupport) network roster focal ticks timing first second
       (effective left leftSupport first firstSupport)

@@ -1,13 +1,12 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveBindingGuardedStep
-import Vegas.Pending.ReactiveCompiledResolution
 import Vegas.Pending.ReactiveBindingFrameRounds
 import GameTheoryExtensions.Math.Probability.Support
 
 /-! # The actual mixed disclosure response under binding repair
 
-Silence, first withholding decisions and successful guarded openings use
+Silence, all known-envelope replays, and first successful guarded openings use
 the unchanged response on the repaired execution. This identifies the real
 legal implementation transition, including private-memory update and the
 complete joint observations. Inclusion may still occur later.
@@ -25,66 +24,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)}
   {memory : BindingMemory runtime leaks} {owner : Player}
   {original repaired : (runtime.reactiveApplication leaks).Execution}
-
-omit [Fintype Player] in
-/-- Evidence-free withholding has the same actual packet and private response
-record on the two executions, independently of hidden binding material. -/
-theorem withholding_response_frame
-    (frame : Frame runtime leaks memory owner original repaired) (event : graph.EventId) :
-    let app := runtime.reactiveApplication leaks
-    let response : app.Action := ⟨some ⟨⟨.withhold event, none⟩, .none⟩⟩
-    Frame runtime leaks
-      (memory.record runtime leaks
-        (memory.shadow.inputView runtime leaks (repaired.observe app owner)) response)
-      owner (original.respond app owner response) (repaired.respond app owner response) := by
-  dsimp only
-  apply frame.inert_submission _ _ rfl rfl
-  simp only [WitnessedSubmission.emit_eq_resolve, EvidenceRequest.resolve, frame.publicView]
-
-/-- A first evidence-free withholding decision remains in the compiled menu
-after binding repair, with its actual own-history submission test. -/
-theorem withholding_response_retained
-    (frame : Frame runtime leaks memory owner original repaired) (bounds : MessageBounds graph)
-    (event : graph.EventId) (payload : L.Ty)
-    (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (GuardCheck graph.layout payload))
-    (outputEq : graph.outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
-      (graph.nodes event) = .resolve owner payload binding checks)
-    (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
-    (turn : original.application.publicView.OwnTurn owner event)
-    (actor : graph.actor? event = some owner)
-    (first : runtime.firstSubmission leaks (original.recall owner)
-      ⟨some ⟨⟨.withhold event, none⟩, .none⟩⟩ = true) :
-    (⟨some ⟨⟨.withhold event, none⟩, .none⟩⟩ : (runtime.reactiveApplication leaks).Action) ∈
-      bounds.compiledActions runtime leaks owner (repaired.recall owner)
-        (repaired.observe (runtime.reactiveApplication leaks) owner) := by
-  classical
-  let app := runtime.reactiveApplication leaks
-  have turnSome := original.application.publicView.ownTurn?_of_ownTurn owner event turn
-  have rightTurn : (repaired.observe app owner).application.publicView.ownTurn? owner =
-      some event := by
-    change repaired.application.publicView.ownTurn? owner = some event
-    rw [← frame.publicView]
-    exact turnSome
-  have rightReady : (repaired.observe app owner).application.publicView.EventReady event := by
-    change repaired.application.publicView.EventReady event
-    rw [← frame.publicView]
-    exact turn.1
-  have canonical := runtime.serviceDecision_resolution_false leaks owner (repaired.recall owner)
-    (repaired.observe app owner) event owner payload binding checks outputEq codeEq node
-  apply bounds.decision_compiled runtime leaks owner (repaired.recall owner)
-    (repaired.observe app owner) _
-  · simp only [MessageBounds.decisionActions, rightTurn, actor, rightReady,
-      and_self, ↓reduceIte, node]
-    exact Finset.mem_image.mpr ⟨false, Finset.mem_univ _, canonical⟩
-  · rw [← frame.firstSubmission]
-    exact first
-  · rw [bounds.menu_mem]
-    refine ⟨⟨⟨trivial, trivial⟩, trivial⟩, ?_⟩
-    simp only [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
-      WitnessedSubmission.normalizeReactive, Submission.normalizeReactive_none,
-      EvidenceRequest.normalize_none]
 
 omit [Fintype Player] in
 /-- The exact canonical physical response preserves the repaired frame; the
@@ -186,7 +125,7 @@ theorem resolve_response_coupling
           (original.observe (runtime.reactiveApplication leaks) owner))
     (clean : ∀ response ∈ (players owner (original.recall owner)
       (original.observe (runtime.reactiveApplication leaks) owner)).support,
-        response ∈ ((runtime.reactiveApplication leaks).silentPolicy (original.recall owner)
+        response ∈ ((runtime.reactiveApplication leaks).replayPolicy (original.recall owner)
           (original.observe (runtime.reactiveApplication leaks) owner)).support ∨
         ∃ value, binding.get? original.application.config.store = some (.success value) ∧
           EventCode.resolveOutput? binding checks true original.application.config.store =
@@ -209,15 +148,13 @@ theorem resolve_response_coupling
   let law := players owner (original.recall owner) (original.observe app owner)
   let updated (response : app.Action) := memory.record runtime leaks
     (memory.shadow.inputView runtime leaks (repaired.observe app owner)) response
-  have replayLaw :
-      app.silentPolicy (original.recall owner) (original.observe app owner) =
-        app.silentPolicy (repaired.recall owner) (repaired.observe app owner) := rfl
+  have replayLaw := app.replayPolicy_eq_of_network_eq original repaired owner leftRecall
+    rightRecall frame.network
   have unchanged (response : app.Action) (supported : response ∈ law.support) :
       memory.repairResponse runtime leaks owner (repaired.observe app owner) response =
         (response, memory.shadow) := by
     rcases clean response supported with replay | ⟨value, stored, resolved, same, _⟩
-    · rcases app.silentPolicy_cases _ _ response replay with rfl
-      rfl
+    · rcases app.replayPolicy_cases _ _ response replay with rfl | ⟨id, rfl⟩ <;> rfl
     · obtain ⟨_, candidate, associated, _, owned, fixed, _⟩ :=
         frame.successful_opening leftBinding rightBinding binding value stored
       have actual := runtime.serviceDecision_successful_opening leaks original leftRecall owner
@@ -231,7 +168,7 @@ theorem resolve_response_coupling
         (repaired.observe app owner) := by
     rcases clean response supported with replay | ⟨value, stored, resolved, same, first⟩
     · rw [replayLaw] at replay
-      exact bounds.silent_compiled runtime leaks owner _ _ response replay
+      exact bounds.replay_compiled runtime leaks owner _ _ response replay
     · exact frame.successful_serviceDecision_retained bounds leftRecall rightRecall leftBinding
         rightBinding event payload binding checks outputEq codeEq node turn actor ready timely
           value stored resolved response same (available response supported) first
@@ -249,25 +186,15 @@ theorem resolve_response_coupling
       (retainedImplementation runtime leaks menu owner reference (players owner)).respond memory
         (repaired.recall owner, repaired.observe app owner) =
           law.map (fun response => (response, updated response)) := by
-    rw [retainedImplementation_respond_eq runtime leaks menu owner reference (players owner)
-      memory (repaired.recall owner, repaired.observe app owner) (by
-        rw [responseLaw]
-        intro result supported
-        obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ supported
-        exact coverage (retained response chosen)) (by
-        intro response chosen _
-        rw [frame.past, frame.observed] at chosen
-        rcases clean response chosen with replay | ⟨value, stored, resolved, same, _⟩
-        · rcases app.silentPolicy_cases _ _ response replay with rfl
-          rfl
-        · obtain ⟨_, candidate, associated, _, owned, fixed, _⟩ :=
-            frame.successful_opening leftBinding rightBinding binding value stored
-          have actual := runtime.serviceDecision_successful_opening leaks original leftRecall owner
-            event payload binding checks outputEq codeEq node candidate value associated owned fixed
-              resolved
-          rw [same, actual]
-          simp only [copyResponse, repairResponse, disclosureSubmission,
-            WitnessedSubmission.normalizeReactive, Submission.normalizeReactive_none]), responseLaw]
+    change ((implementation runtime leaks owner reference (players owner)).respond memory
+      (repaired.recall owner, repaired.observe app owner)).map _ = _
+    rw [responseLaw, PMF.map_comp]
+    apply map_congr_on_support _
+    intro response supported
+    simp only [Function.comp_def]
+    have member : response ∈ menu.actions owner (repaired.recall owner)
+        (repaired.observe app owner) := coverage (retained response supported)
+    rw [ite_eq_left member]
   let coupling := law.map fun response =>
     (original.respond app owner response, repaired.respond app owner response, updated response)
   refine ⟨coupling, ?_, ?_, ?_⟩
@@ -285,8 +212,7 @@ theorem resolve_response_coupling
     · rcases clean response member with replay | ⟨value, stored, resolved, same, _⟩
       · apply frame.transport_response response
         intro material
-        rcases app.silentPolicy_cases _ _ response replay with rfl
-        simp
+        rcases app.replayPolicy_cases _ _ response replay with rfl | ⟨id, rfl⟩ <;> simp
       · rw [same]
         exact frame.successful_response_frame leftRecall leftBinding rightBinding event payload
           binding checks outputEq codeEq node value stored resolved

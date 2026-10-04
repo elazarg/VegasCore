@@ -7,7 +7,7 @@ import Interaction.MessageNetworkCounters
 
 /-! # Envelope serials count fresh own submissions
 
-The network counter is determined by existing player recall. Silence,
+The network counter is determined by existing player recall. Silence, replays,
 passive reads and inclusion do not allocate a serial. This holds for arbitrary
 raw responses and schedulers, independently of packet conformance.
 -/
@@ -22,8 +22,8 @@ variable {Principal : Type} (app : ReactiveApplication Principal)
 
 def Action.isSubmission (action : app.Action) : Bool :=
   match action.transmission with
-  | some _ => true
-  | none => false
+  | some (.submit _) => true
+  | none | some (.replay _) => false
 
 def submissionCount (past : List app.PlayerEntry) : Nat :=
   past.countP fun entry => entry.action.isSubmission app
@@ -53,12 +53,22 @@ theorem respond_serialRecall (execution : app.Execution) (who : Principal)
       · subst observer
         simpa [Execution.respond, submissionCount, Action.isSubmission] using earlier
       · simpa [Execution.respond, same] using earlier
-  | some submission =>
-      by_cases same : observer = who
-      · subst observer
-        simpa [Execution.respond, MessageNetwork.submit, submissionCount,
-          Action.isSubmission] using earlier
-      · simpa [Execution.respond, MessageNetwork.submit, same] using earlier
+  | some transmission =>
+      cases transmission with
+      | submit submission =>
+          by_cases same : observer = who
+          · subst observer
+            simpa [Execution.respond, MessageNetwork.submit, submissionCount,
+              Action.isSubmission] using earlier
+          · simpa [Execution.respond, MessageNetwork.submit, same] using earlier
+      | replay id =>
+          cases known : (execution.network.known who).find? (fun message => message.id = id)
+          all_goals by_cases same : observer = who
+          all_goals first
+            | subst observer
+              simpa [Execution.respond, MessageNetwork.replay, known, submissionCount,
+                Action.isSubmission] using earlier
+            | simpa [Execution.respond, MessageNetwork.replay, known, same] using earlier
 
 theorem environment_serialRecall (execution next : app.Execution) (command : app.Command)
     (valid : execution.SerialRecall app)
@@ -99,7 +109,7 @@ theorem serialRecall_history (scheduler : app.Scheduler) (initial : PMF app.Stat
 
 /-- During a phase with no inclusion, the serial equals the settled baseline
 exactly when no new own submission has occurred. The suffix may include any
-number of waits. -/
+number of waits and replays. -/
 theorem serial_eq_ledger_iff_no_submission
     (before after : app.Execution) (who : Principal)
     (beforeRecall : before.SerialRecall app) (afterRecall : after.SerialRecall app)
@@ -123,7 +133,7 @@ theorem submit_include_serials_match_ledger (execution : app.Execution)
     (settled : ∀ observer, execution.network.nextSerial observer =
       Message.distinctAuthoredCount execution.network.ledger observer)
     (who : Principal) (submission : app.Submission) (observer : Principal) :
-    let next := (execution.respond app who ⟨some submission⟩).includePending app
+    let next := (execution.respond app who ⟨some (.submit submission)⟩).includePending app
       (who, execution.network.nextSerial who)
     next.network.nextSerial observer =
       Message.distinctAuthoredCount next.network.ledger observer := by
@@ -148,11 +158,16 @@ theorem respond_nextSerial (execution : app.Execution) (who observer : Principal
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => simp [Execution.respond, Action.isSubmission]
-  | some submission =>
-      by_cases same : observer = who
-      · subst observer
-        simp [Execution.respond, MessageNetwork.submit, Action.isSubmission]
-      · simp [Execution.respond, MessageNetwork.submit, Action.isSubmission, same]
+  | some transmission =>
+      cases transmission with
+      | submit submission =>
+          by_cases same : observer = who
+          · subst observer
+            simp [Execution.respond, MessageNetwork.submit, Action.isSubmission]
+          · simp [Execution.respond, MessageNetwork.submit, Action.isSubmission, same]
+      | replay id =>
+          cases known : (execution.network.known who).find? (fun message => message.id = id) <;>
+            simp [Execution.respond, MessageNetwork.replay, known, Action.isSubmission]
 
 theorem environmentStep_nextSerial (execution next : app.Execution) (command : app.Command)
     (reached : next ∈ (execution.environmentStep app command).support) :
@@ -185,13 +200,14 @@ theorem respond_serialsIssued (execution : app.Execution) (who : Principal)
       serial = execution.network.nextSerial who
   · obtain ⟨rfl, submits, rfl⟩ := fresh
     rcases action with ⟨transmission⟩
-    rcases transmission with _ | submission
+    rcases transmission with _ | (submission | id)
     · cases submits
-    · refine ⟨⟨execution.observe app observer, ⟨some submission⟩,
+    · refine ⟨⟨execution.observe app observer, ⟨some (.submit submission)⟩,
         some (execution.network.submit observer (app.packet (app.submit execution.application
           observer submission) observer (execution.network.known observer) submission)).1⟩,
         ?_, rfl, _, rfl, rfl⟩
       simp [Execution.respond]
+    · cases submits
   · have old : serial < execution.network.nextSerial observer := by
       by_cases counted : observer = who ∧ action.isSubmission app = true
       · obtain ⟨same, submits⟩ := counted

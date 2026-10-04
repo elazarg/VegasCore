@@ -60,11 +60,36 @@ theorem priorityPending_none_not_supported
     none ∉ (priorityPending priorities eligible pending).support :=
   PriorityChoice.law_none_not_supported priorities _ nonempty
 
+/-- An already pending broadcast retains its priority and candidate identity. -/
+theorem priorityPending_replay (priorities : PMF (LinearOrder (MessageId Principal)))
+    (eligible : Message Principal Payload → Bool)
+    (network next : MessageNetwork Principal Payload) (who : Principal)
+    (id : MessageId Principal) (packet : Message Principal Payload)
+    (replayed : network.replay who id = (some packet, next))
+    (pending : packet ∈ network.pending) :
+    priorityPending priorities eligible next.pending =
+      priorityPending priorities eligible network.pending := by
+  unfold replay at replayed
+  split at replayed
+  · cases replayed
+  · cases replayed
+    unfold priorityPending
+    rw [eligibleIds_append_existing eligible network.pending packet pending]
+
 theorem priorityPending_learn (priorities : PMF (LinearOrder (MessageId Principal)))
     (eligible : Message Principal Payload → Bool) (network : MessageNetwork Principal Payload)
     (who : Principal) (selected : Finset (MessageId Principal)) :
     priorityPending priorities eligible (network.learn who selected).pending =
       priorityPending priorities eligible network.pending := rfl
+
+theorem priorityPending_replay_of_retained
+    (priorities : PMF (LinearOrder (MessageId Principal)))
+    (eligible : Message Principal Payload → Bool) (network : MessageNetwork Principal Payload)
+    (retained : network.RetainsEligible eligible) (who : Principal) (id : MessageId Principal) :
+    priorityPending priorities eligible (network.replay who id).2.pending =
+      priorityPending priorities eligible network.pending := by
+  unfold priorityPending
+  rw [retained.replay_ids]
 
 /-- Decode candidate identities only after selection. The decoder is total;
 the nonempty old menu excludes an invented source action for no selection. -/

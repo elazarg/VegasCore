@@ -116,8 +116,7 @@ private theorem respond_action_names (execution : app.Execution) (who : Principa
   cases transmission with
   | none => simp only [Execution.respond, ↓reduceIte, List.map_append]; rfl
   | some transmission =>
-      simp only [Execution.respond, ↓reduceIte, List.map_append]
-      rfl
+      cases transmission <;> simp only [Execution.respond, ↓reduceIte, List.map_append] <;> rfl
 
 /-- Opponents use their normalized recall; the focal player can use any raw
 policy, including one that remembers its private response names. -/

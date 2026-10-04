@@ -1,0 +1,155 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Pending.ReactiveBindingRestoration
+
+/-! # The domain of private binding reconstruction
+
+Only the repaired player's private binding outputs and original binding actions
+are overridden. Public samples and publication results continue to be read from
+the actual execution. These are invariants of the existing private strategy,
+not additional fields in the game state.
+-/
+
+noncomputable section
+
+namespace Vegas.EventGraphRuntime
+
+open Interaction EventGraph GameTheory.Math.Probability
+
+variable {Player : Type} {L : IExpr} [IExpr.ResultTypes L]
+  {graph : Vegas.EventGraph Player L}
+
+namespace BindingShadow
+
+def OwnBindings (memory : BindingShadow graph) (who : Player) : Prop :=
+  (∀ field, (memory.values field).isSome →
+    ∃ event payload, field = .inr event ∧ graph.outputLayout event = .binding who payload) ∧
+  (∀ event, (memory.actions event).isSome →
+    ∃ payload, graph.outputLayout event = .binding who payload)
+
+theorem ownBindings_empty (who : Player) : (empty : BindingShadow graph).OwnBindings who := by
+  constructor <;> intro field present <;> cases present
+
+theorem OwnBindings.rememberCandidate {memory : BindingShadow graph} {who : Player}
+    (onlyBindings : memory.OwnBindings who) (slot : CandidateSlot graph)
+    (candidate : CommitmentCandidate (Raw L)) :
+    (memory.rememberCandidate slot candidate).OwnBindings who := onlyBindings
+
+theorem OwnBindings.rememberCompletion {memory : BindingShadow graph} {who : Player}
+    (onlyBindings : memory.OwnBindings who) (event : graph.EventId) (payload : L.Ty)
+    (binding : graph.outputLayout event = .binding who payload)
+    (action : graph.Action event) (value : (graph.outputLayout event).Value) :
+    (memory.rememberCompletion event action value).OwnBindings who := by
+  classical
+  constructor
+  · intro field present
+    by_cases selected : field = .inr event
+    · exact ⟨event, payload, selected, binding⟩
+    · apply onlyBindings.1 field
+      simpa only [BindingShadow.rememberCompletion, Function.update_of_ne selected] using present
+  · intro query present
+    by_cases selected : query = event
+    · subst query
+      exact ⟨payload, binding⟩
+    · apply onlyBindings.2 query
+      simpa only [BindingShadow.rememberCompletion, Function.update_of_ne selected] using present
+
+theorem OwnBindings.public_value_none {memory : BindingShadow graph} {who : Player}
+    (onlyBindings : memory.OwnBindings who) (field : graph.Field)
+    (visible : (graph.layout field).IsPublic) : memory.values field = none := by
+  cases stored : memory.values field with
+  | none => rfl
+  | some value =>
+      obtain ⟨event, payload, rfl, binding⟩ := onlyBindings.1 field (by simp only [stored]; rfl)
+      change (graph.outputLayout event).IsPublic at visible
+      rw [binding] at visible
+      exact visible.elim
+
+theorem OwnBindings.public_action_none {memory : BindingShadow graph} {who : Player}
+    (onlyBindings : memory.OwnBindings who) (event : graph.EventId)
+    (visible : (graph.outputLayout event).IsPublic) : memory.actions event = none := by
+  cases stored : memory.actions event with
+  | none => rfl
+  | some action =>
+      obtain ⟨payload, binding⟩ := onlyBindings.2 event (by simp only [stored]; rfl)
+      rw [binding] at visible
+      exact visible.elim
+
+variable [DecidableEq Player]
+
+
+end BindingShadow
+
+variable [DecidableEq Player]
+  (runtime : EventGraphRuntime graph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+
+namespace BindingMemory
+
+/-- Copying records candidates only, even when an arbitrary raw packet
+addresses a foreign or nonbinding event. It installs no completion override. -/
+theorem copyResponse_ownBindings (who : Player) (memory : BindingMemory runtime leaks)
+    (onlyBindings : memory.shadow.OwnBindings who)
+    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (response : (runtime.reactiveApplication leaks).Action) :
+    (memory.copyResponse runtime leaks who view response).2.OwnBindings who := by
+  rcases response with ⟨transmission⟩
+  cases transmission with
+  | none => exact onlyBindings
+  | some material =>
+      rcases material with ⟨⟨packet, opening⟩, request⟩
+      cases packet with
+      | commitment event candidate =>
+          rcases candidate with ⟨author, slot⟩
+          simp only [copyResponse]
+          split
+          · exact onlyBindings.rememberCandidate _ _
+          · exact onlyBindings
+      | opening | withhold | malformed => exact onlyBindings
+
+/-- Copying creates no completion override. Any actual completed-boundary
+invariant therefore survives even raw node-kind and candidate-alias responses. -/
+theorem copyResponse_completedAt (who : Player) (memory : BindingMemory runtime leaks)
+    (config : graph.Config) (past : memory.shadow.CompletedAt config)
+    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (response : (runtime.reactiveApplication leaks).Action) :
+    (memory.copyResponse runtime leaks who view response).2.CompletedAt config := by
+  rcases response with ⟨transmission⟩
+  cases transmission with
+  | none => exact past
+  | some material =>
+      rcases material with ⟨⟨packet, opening⟩, request⟩
+      cases packet with
+      | commitment event candidate =>
+          rcases candidate with ⟨author, slot⟩
+          simp only [copyResponse]
+          split
+          · exact past.rememberCandidate _ _
+          · exact past
+      | opening | withhold | malformed => exact past
+
+theorem repairResponse_ownBindings (who : Player) (memory : BindingMemory runtime leaks)
+    (onlyBindings : memory.shadow.OwnBindings who)
+    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (response : (runtime.reactiveApplication leaks).Action) :
+    (memory.repairResponse runtime leaks who view response).2.OwnBindings who := by
+  unfold repairResponse
+  split
+  · split
+    · rename_i owner payload outputEq codeEq node
+      dsimp only
+      split
+      · rename_i selected
+        have owned := selected.2.1
+        subst owner
+        split
+        · exact (onlyBindings.rememberCandidate _ _).rememberCompletion _ payload outputEq _ _
+        · exact onlyBindings.rememberCandidate _ _
+      · exact onlyBindings
+    · exact onlyBindings
+    · exact onlyBindings
+  · exact onlyBindings
+
+end BindingMemory
+
+end Vegas.EventGraphRuntime

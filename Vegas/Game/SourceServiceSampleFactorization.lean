@@ -38,7 +38,7 @@ def samplePhaseTranscript (setup : Setup (Player := Player) (L := L))
     (payload : L.Ty) (outputEq : (graph setup).outputLayout event = .publicData payload)
     (value : L.Val payload) :=
   let app := application setup leaks
-  let replay := fun _ : Player => app.silentPolicy
+  let replay := fun _ : Player => app.replayPolicy
   ((runtime setup).runInteractionPlan leaks replay network
     (roster.map ServiceInstruction.player) execution).bind fun current =>
       ((runtime setup).runInteractionPlan leaks replay network
@@ -57,16 +57,16 @@ private theorem sample_replays_application
     (network : (runtime setup).NetworkPolicy leaks) (roster : List Player)
     (initial final : (application setup leaks).Execution)
     (reached : final ∈ ((runtime setup).runInteractionPlan leaks
-      (fun _ => (application setup leaks).silentPolicy) network
+      (fun _ => (application setup leaks).replayPolicy) network
         (roster.map ServiceInstruction.player) initial).support) :
     final.application = initial.application := by
   cases roster with
   | nil => cases (PMF.mem_support_pure_iff _ _).mp reached; rfl
   | cons first rest =>
-      exact ((runtime setup).silent_window_preserves leaks
-        (fun _ => (application setup leaks).silentPolicy) network first initial
+      exact ((runtime setup).replay_window_preserves leaks
+        (fun _ => (application setup leaks).replayPolicy) network first initial
         (fun current who response _ _ supported =>
-          (application setup leaks).silentPolicy_cases _ _ response supported)
+          (application setup leaks).replayPolicy_cases _ _ response supported)
         (fun _ => True) ⟨by simp, by simp, by simp, by simp⟩ (first :: rest) final reached).1
 
 /-- Integrating the conditional readout gives exactly the actual native
@@ -87,7 +87,7 @@ theorem source_sample_traffic
       .sample payload (compilePublicDist refs law) outputEq codeEq)
     (network : (runtime setup).NetworkPolicy leaks) (roster : List Player) (ticks : Nat)
     (focal : Player) :
-    (((runtime setup).runInteractionPlan leaks (fun _ => (application setup leaks).silentPolicy)
+    (((runtime setup).runInteractionPlan leaks (fun _ => (application setup leaks).replayPolicy)
       network (roster.map ServiceInstruction.player ++
         (.sample event :: List.replicate ticks .tick ++ [.expire event])) execution).map
           ((runtime setup).bindingTraffic leaks focal)) =
@@ -95,7 +95,7 @@ theorem source_sample_traffic
         (samplePhaseTranscript setup leaks network roster ticks focal execution event ready
           payload outputEq) := by
   let app := application setup leaks
-  let replay := fun _ : Player => app.silentPolicy
+  let replay := fun _ : Player => app.replayPolicy
   unfold samplePhaseTranscript
   rw [PMF.bind_comm]
   rw [runInteractionPlan_append, PMF.map_bind]
@@ -166,7 +166,7 @@ theorem sample_successor_memory_factorization
     subst second
     simp only [samplePhaseTranscript]
     apply bind_eq_of_map_eq _ _ _ _
-      ((runtime setup).silent_window_focal_law leaks network roster focal
+      ((runtime setup).replay_window_focal_law leaks network roster focal
         (execution left) (execution right) (recalled left leftSupport)
         (recalled right rightSupport) traffic)
     intro before beforeSupport after afterSupport equal

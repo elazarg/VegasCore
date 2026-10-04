@@ -7,7 +7,7 @@ import Vegas.Pending.ReactiveServiceTraffic
 
 Every policy supported by the retained menu preserves the public serial test
 and emits conforming traffic through any finite response roster. Pending
-openings may be observed before inclusion. The proof records the
+openings may be observed and replayed before inclusion. The proof records the
 actual activation and response, so terminal traffic uses the correct phase.
 -/
 
@@ -46,16 +46,10 @@ theorem MessageBounds.compiled_resolution_accounted (bounds : MessageBounds grap
         Message.distinctAuthoredCount next.network.ledger owner := by
   apply runtime.event_accounted_response leaks execution who owner event response counted
   rcases bounds.compiled_resolution_cases runtime leaks who _ _ event owner payload binding checks
-    outputEq codeEq node sole response member with rfl | ⟨acting, _, _, shape⟩ |
+    outputEq codeEq node sole response member with rfl | replay |
       ⟨candidate, value, evidence, acting, _, _, _, _, _, shape⟩
-  · exact Or.inl rfl
-  · have owned : graph.actor? event = some owner := by
-      have actor := congrArg EventCode.actor codeEq
-      rw [EventCode.actor_cast outputEq (graph.nodes event)] at actor
-      exact actor
-    refine Or.inr ⟨Option.some.inj (acting.symm.trans owned), ?_⟩
-    rw [shape]
-    rfl
+  · exact Or.inl (Or.inl rfl)
+  · exact Or.inl ((runtime.reactiveApplication leaks).replayPolicy_cases _ _ response replay)
   · have owned : graph.actor? event = some owner := by
       have actor := congrArg EventCode.actor codeEq
       rw [EventCode.actor_cast outputEq (graph.nodes event)] at actor
@@ -64,7 +58,7 @@ theorem MessageBounds.compiled_resolution_accounted (bounds : MessageBounds grap
     rw [shape]
     rfl
 
-/-- All pending packets and all actual audit records remain conforming during
+/-- All pending copies and all actual audit records remain conforming during
 an arbitrary retained disclosure roster. This quantifies over every retained
 policy and every supported passive observation, including zero-probability
 choices of a particular source equilibrium. -/
@@ -93,14 +87,14 @@ theorem MessageBounds.compiled_resolution_window_conformance (bounds : MessageBo
       initial.application.publicView initial.network.ledger message = true)
     (traffic : ∀ record ∈ (runtime.reactiveApplication leaks).executionTraffic initial,
       runtime.permittedServiceEnvelope record.observation record.ledger
-        record.envelope = true)
+        record.input.envelope = true)
     (reached : final ∈ (runtime.runInteractionPlan leaks players network
       (visits.map ServiceInstruction.player) initial).support) :
     final.network.Satisfies (fun message => runtime.permittedServiceEnvelope
       final.application.publicView final.network.ledger message = true) ∧
     (∀ record ∈ (runtime.reactiveApplication leaks).executionTraffic final,
       runtime.permittedServiceEnvelope record.observation record.ledger
-        record.envelope = true) ∧
+        record.input.envelope = true) ∧
     (runtime.eventRecorded leaks (final.recall owner) event = false →
       final.network.nextSerial owner =
         Message.distinctAuthoredCount final.network.ledger owner) := by
@@ -134,22 +128,22 @@ theorem MessageBounds.compiled_resolution_window_conformance (bounds : MessageBo
       have issued : ∀ record ∈ app.trafficStep (some ⟨0, some who, activated⟩)
           (some ⟨0, none, activated.respond app who response⟩),
           runtime.permittedServiceEnvelope record.observation record.ledger
-            record.envelope = true := by
+            record.input.envelope = true := by
         by_cases acting : who = owner
         · subst who
           exact bounds.compiled_resolution_traffic runtime leaks activated activeRecall invariant 0
             owner event payload binding checks outputEq codeEq node (sole.ownTurn owned) ready
-              timely counted response allowed
+              timely counted (activePackets.known owner) response allowed
         · exact bounds.compiled_foreign_traffic runtime leaks activated 0 who
             (sole.idle (fun equal => acting (Option.some.inj (equal.symm.trans owned))))
-            response allowed
+            (activePackets.known who) response allowed
       have nextPackets := runtime.service_response_conformance leaks activated 0 who response
         activePackets issued
       have nextCounted := bounds.compiled_resolution_accounted runtime leaks activated who owner
         event payload binding checks outputEq codeEq node sole counted response allowed
       have nextTraffic : ∀ record ∈ app.executionTraffic (activated.respond app who response),
           runtime.permittedServiceEnvelope record.observation record.ledger
-            record.envelope = true := by
+            record.input.envelope = true := by
         intro record member
         rw [app.executionTraffic_activated_response initial activated who response 0 activation,
           List.mem_append] at member

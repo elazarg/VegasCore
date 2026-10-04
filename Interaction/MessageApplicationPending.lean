@@ -27,6 +27,20 @@ theorem lookup_submit_of_some (pool : MessagePool Principal Payload)
   unfold lookup at hlookup
   simp only [submit, lookup, List.find?_append, hlookup, Option.or]
 
+/-- Replay either leaves pending messages unchanged or appends one. -/
+theorem lookup_replay_of_some (pool : MessagePool Principal Payload)
+    (id : MessageId Principal) (message : Message Principal Payload)
+    (hlookup : pool.lookup id = some message) (broadcaster : Principal)
+    (replayed : MessageId Principal) :
+    (pool.replay broadcaster replayed).state.lookup id = some message := by
+  unfold lookup at hlookup
+  unfold replay
+  split
+  · unfold lookup
+    rw [List.find?_append, hlookup]
+    rfl
+  · exact hlookup
+
 end Interaction.MessagePool
 
 namespace Interaction.MessageApplication
@@ -57,6 +71,11 @@ theorem playerStep_pending_lookup
         PMF.mem_support_pure_iff _ _] at hnext
       subst next
       exact execution.native.pool.lookup_submit_of_some id message hlookup who payload
+  | replay replayed =>
+      simp only [playerStep, PlayerCommand.toAction, advance, step, PMF.pure_bind,
+        PMF.mem_support_pure_iff _ _] at hnext
+      subst next
+      exact execution.native.pool.lookup_replay_of_some id message hlookup who replayed
   | wait =>
       simp only [playerStep, PlayerCommand.toAction, advance, PMF.pure_bind,
         PMF.mem_support_pure_iff _ _] at hnext
@@ -80,6 +99,12 @@ theorem playerStep_inbox
         PMF.mem_support_pure_iff _ _] at hnext
       subst next
       rfl
+  | replay replayed =>
+      simp only [playerStep, PlayerCommand.toAction, advance, step, PMF.pure_bind,
+        PMF.mem_support_pure_iff _ _] at hnext
+      subst next
+      unfold MessagePool.replay
+      split <;> rfl
   | wait =>
       simp only [playerStep, PlayerCommand.toAction, advance, PMF.pure_bind,
         PMF.mem_support_pure_iff _ _] at hnext

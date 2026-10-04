@@ -1,0 +1,94 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.DisclosureRetraction
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Uniform
+
+/-! # Actual prefix posteriors after private disclosure aggregation
+
+Conditioning an original private intention and then compressing its history
+gives the posterior at the corresponding effective-disclosure observation.
+The statement follows from actual source prefix execution, including an
+arbitrary correlated initial distribution. No posterior compatibility is
+assumed, and no positive limiting reach is required.
+-/
+
+noncomputable section
+
+namespace Vegas.SourceProgram
+
+open GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] [Fintype Player]
+  {L : IExpr} [IExpr.ResultTypes L] {who : Player}
+
+/-- At every positive original observation, private disclosure intentions
+provide no additional information about the compressed state. This is an
+exact prefix posterior equation, including all hidden cells and opponents'
+private histories. It applies separately at each positive perturbation. -/
+theorem normalized_disclosure_prefix_posterior {Γ : SourceCtx Player L} {O : Finset VarId}
+    (program : SourceProgram Player L Γ O) (profile : BehavioralProfile program)
+    (policy : BehavioralPolicy who program) (registry : Registry Γ)
+    (revelations : Revelations Γ) (initial : PMF (Config Player L Γ))
+    (registryEq : ∀ config ∈ initial.support, config.registry = registry)
+    (revelationsEq : ∀ config ∈ initial.support, @config.revelations = @revelations)
+    (count : Nat) :
+    let original := initial.bind fun config =>
+      (fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
+        (Function.update profile who policy)))^[count]
+          (PMF.pure (ProtocolState.entry program config))
+    let normalized := initial.bind fun config =>
+      (fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
+        (Function.update profile who (policy.normalizeDisclosures program registry revelations))))
+          ^[count] (PMF.pure (ProtocolState.entry program config))
+    ∀ observed ∈ (original.map (ProtocolState.observe who program)).support,
+      (fiberPosterior original (ProtocolState.observe who program) observed).map
+          (ProtocolState.normalizeDisclosureRecall (who := who) program (fun view => view.2)) =
+        fiberPosterior normalized (ProtocolState.observe who program)
+          (ProtocolView.normalizeDisclosureRecall program (fun view => view.2) observed) := by
+  dsimp only
+  intro observed present
+  let original := initial.bind fun config =>
+    (fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
+      (Function.update profile who policy)))^[count]
+        (PMF.pure (ProtocolState.entry program config))
+  let normalized := initial.bind fun config =>
+    (fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
+      (Function.update profile who (policy.normalizeDisclosures program registry revelations))))
+        ^[count] (PMF.pure (ProtocolState.entry program config))
+  let kernel := policy.disclosureMemory program registry revelations
+    (fun view => PMF.pure view.2)
+  have expanded : original = normalized.bind kernel := by
+    rw [PMF.bind_bind]
+    apply bind_congr_on_support _
+    intro config supported
+    have equation := normalized_disclosure_prefix program profile policy config count
+    rw [registryEq config supported, revelationsEq config supported] at equation
+    exact equation
+  have restores : ∀ state ∈ normalized.support, ∀ original ∈ (kernel state).support,
+      ProtocolState.normalizeDisclosureRecall (who := who) program
+        (fun view => view.2) original = state := by
+    intro state supported original member
+    obtain ⟨config, supportedConfig, reached⟩ :=
+      Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+    have retained := disclosure_prefix_retracts program profile policy
+      (fun view => PMF.pure view.2) (fun view => view.2) config
+      (fun past chosen => (PMF.mem_support_pure_iff _ _).mp chosen) count
+    rw [registryEq config supportedConfig, revelationsEq config supportedConfig] at retained
+    exact retained state reached original member
+  have result := conditional_retraction normalized kernel
+    (ProtocolState.normalizeDisclosureRecall (who := who) program (fun view => view.2))
+    (ProtocolState.observe who program) (ProtocolState.observe who program)
+    (ProtocolView.normalizeDisclosureRecall program (fun view => view.2))
+    (ProtocolState.observe_normalizeDisclosureRecall program (fun view => view.2))
+    restores
+    (fun left _ right _ same => policy.disclosureMemory_observation_congr program
+      registry revelations (fun view => PMF.pure view.2) left right same)
+    observed (by rwa [← expanded])
+  rw [← expanded] at result
+  exact result
+
+end Vegas.SourceProgram

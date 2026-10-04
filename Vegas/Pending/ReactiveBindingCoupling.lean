@@ -33,17 +33,23 @@ private theorem response_other_observation
     rcases response with ⟨transmission⟩
     cases transmission with
     | none => rfl
-    | some material =>
-        exact (submitStep_playerView_other (material.call.register execution.application actor)
-          actor who different material.call.packet).trans
-            (material.call.register_other execution.application actor who different)
+    | some transmission =>
+        cases transmission with
+        | submit material =>
+            exact (submitStep_playerView_other (material.call.register execution.application actor)
+              actor who different material.call.packet).trans
+                (material.call.register_other execution.application actor who different)
+        | replay id =>
+            cases (execution.network.known actor).find? (fun packet => packet.id = id) <;> rfl
   exact congrArg (fun view : PlayerView graph =>
     (⟨view.who, view.publicView, view.observation, view.candidates⟩ :
       ReactivePlayerView graph)) strong
 
 namespace BindingMemory
 
-/-- Silence keeps the reconstructed own history exactly. -/
+/-- Silence and replay keep the reconstructed own history exactly. Replay
+here means the existing network operation on an already known envelope; whether
+that envelope is conforming remains the separate audit question. -/
 theorem transport_response (memory : BindingMemory runtime leaks)
     (left right : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (lengths : (right.recall who).length = memory.responses.length)
@@ -51,8 +57,9 @@ theorem transport_response (memory : BindingMemory runtime leaks)
     (observed : memory.shadow.inputView runtime leaks
       (right.observe (runtime.reactiveApplication leaks) who) =
         left.observe (runtime.reactiveApplication leaks) who)
+    (network : left.network = right.network)
     (response : (runtime.reactiveApplication leaks).Action)
-    (notSubmitted : ∀ submission, response.transmission ≠ some submission) :
+    (notSubmitted : ∀ submission, response.transmission ≠ some (.submit submission)) :
     let app := runtime.reactiveApplication leaks
     let remembered := memory.record runtime leaks
       (memory.shadow.inputView runtime leaks (right.observe app who)) response
@@ -73,7 +80,23 @@ theorem transport_response (memory : BindingMemory runtime leaks)
         rw [restoreRecall_record runtime leaks memory _ lengths, past, observed]
       · simp only [ReactiveApplication.Execution.respond, ↓reduceIte, record,
           List.length_append, List.length_singleton, lengths]
-  | some submission => exact (notSubmitted submission rfl).elim
+  | some transmission =>
+      cases transmission with
+      | submit submission => exact (notSubmitted submission rfl).elim
+      | replay id =>
+          refine ⟨?_, ?_, ?_⟩
+          · simp only [ReactiveApplication.Execution.respond, ↓reduceIte]
+            rw [restoreRecall_record runtime leaks memory _ lengths, past, observed, network]
+          · change (⟨(right.network.replay who id).2.observe who,
+              memory.shadow.view (app.observePlayer right.application who), right.receipts⟩ :
+                app.PlayerView) =
+              ⟨(left.network.replay who id).2.observe who,
+                app.observePlayer left.application who, left.receipts⟩
+            exact congr (congr (congrArg (ReactiveApplication.PlayerView.mk (app := app))
+              (congrArg (fun net => (net.replay who id).2.observe who) network.symm))
+                application) receipts.symm
+          · simp only [ReactiveApplication.Execution.respond, ↓reduceIte, record,
+              List.length_append, List.length_singleton, lengths]
 
 /-- One arbitrary nonowner response preserves the whole reconstructed input
 frame. This includes the private catalog and complete response recall; it does

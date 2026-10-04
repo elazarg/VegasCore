@@ -14,7 +14,7 @@ structure Satisfies (safe : Message Principal Payload → Prop)
   pending : ∀ message ∈ network.pending, safe message
   ledger : ∀ message ∈ network.ledger, safe message
   leaked : ∀ who message, message ∈ network.leaked who → safe message
-  inputs : ∀ input ∈ network.inputs, safe input
+  inputs : ∀ input ∈ network.inputs, safe input.envelope
 
 variable {safe weaker : Message Principal Payload → Prop}
   {network : MessageNetwork Principal Payload}
@@ -28,7 +28,7 @@ theorem Satisfies.mono (valid : network.Satisfies safe)
   ⟨fun message member => implies message (valid.pending message member),
     fun message member => implies message (valid.ledger message member),
     fun who message member => implies message (valid.leaked who message member),
-    fun input member => implies input (valid.inputs input member)⟩
+    fun input member => implies input.envelope (valid.inputs input member)⟩
 
 theorem Satisfies.and (left : network.Satisfies safe) (right : network.Satisfies weaker) :
     network.Satisfies (fun message => safe message ∧ weaker message) :=
@@ -49,7 +49,10 @@ theorem Satisfies.known (valid : network.Satisfies safe) (who : Principal)
     safe message := by
   simp only [MessageNetwork.known, List.mem_append] at member
   rcases member with (fromInputs | received) | included
-  · exact valid.inputs message (List.mem_filter.mp fromInputs).1
+  · obtain ⟨record, retained, selected⟩ := List.mem_filterMap.mp fromInputs
+    split at selected
+    · exact Option.some.inj selected ▸ valid.inputs record retained
+    · cases selected
   · exact valid.leaked who message received
   · exact valid.ledger message included
 
@@ -67,6 +70,25 @@ theorem Satisfies.submit (valid : network.Satisfies safe) (who : Principal) (pay
     · exact valid.inputs input prior
     · cases List.mem_singleton.mp fresh
       exact issued
+
+theorem Satisfies.replay (valid : network.Satisfies safe) (who : Principal)
+    (id : MessageId Principal) : (network.replay who id).2.Satisfies safe := by
+  unfold MessageNetwork.replay
+  split
+  · exact valid
+  · rename_i message found
+    have safeMessage := valid.known who message (List.mem_of_find?_eq_some found)
+    refine ⟨?_, valid.ledger, valid.leaked, ?_⟩
+    · intro candidate member
+      rcases List.mem_append.mp member with prior | replayed
+      · exact valid.pending candidate prior
+      · cases List.mem_singleton.mp replayed
+        exact safeMessage
+    · intro input member
+      rcases List.mem_append.mp member with prior | replayed
+      · exact valid.inputs input prior
+      · cases List.mem_singleton.mp replayed
+        exact safeMessage
 
 theorem Satisfies.learn (valid : network.Satisfies safe) (who : Principal)
     (selected : Finset (MessageId Principal)) : (network.learn who selected).Satisfies safe := by

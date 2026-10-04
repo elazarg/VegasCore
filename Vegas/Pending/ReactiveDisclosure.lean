@@ -156,7 +156,7 @@ theorem reactiveDecision_opening_law (runtime : EventGraphRuntime graph)
       some (.success value)) :
     ∃ candidate, (runtime.reactiveDecision leaks owner event action
         ((runtime.reactiveApplication leaks).observePlayer state owner)).transmission =
-        some (disclosureSubmission (.opening event candidate ⟨payload, value⟩)) ∧
+        some (.submit (disclosureSubmission (.opening event candidate ⟨payload, value⟩))) ∧
       handle runtime state ⟨id, .opening event candidate ⟨payload, value⟩⟩ =
         some (state.complete event ready
           (cast (congrArg EventField.Action outputEq.symm) true)

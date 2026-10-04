@@ -309,6 +309,16 @@ theorem playerStep_other_bindingPolicyCoherentAll
       apply (coherent event payload outputEq actor unfinished).copy runtime execution _ owner event
         payload outputEq frame.1 frame.2.1
       exact frame.2.2.1
+  | replay id =>
+      simp only [MessageApplication.playerStep, MessageApplication.PlayerCommand.toAction,
+        MessageApplication.advance, MessageApplication.step, PMF.pure_bind,
+        PMF.mem_support_pure_iff _ _] at supported
+      subst next
+      apply (coherent event payload outputEq actor unfinished).copy runtime execution _ owner event
+        payload outputEq
+      · simp [different]
+      · rfl
+      · rfl
   | wait =>
       rw [runtime.application.playerStep_wait] at supported
       simp only [PMF.mem_support_pure_iff _ _] at supported
@@ -454,6 +464,8 @@ theorem compilePlayerPolicy_playerStep_bindingPolicyCoherentAll
       intro query payload outputEq actor unfinished
       exact (coherent query payload outputEq actor unfinished).afterWait runtime execution owner
         query payload outputEq
+  | replay id =>
+      simp [CommandAt, stagesEvent] at atEvent
   | privateCommand privateCommand =>
       rw [runtime.application.playerStep_private_eq] at stepMem
       simp only [PMF.mem_support_pure_iff _ _] at stepMem

@@ -1,9 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceServiceRuntime
-import Vegas.Pending.ReactiveAsyncContract
-import Vegas.Pending.ReactiveCompiledMenu
-import Vegas.Pending.ReactiveBoundedValues
+import Vegas.Game.SourceServiceLocalComparison
+import Vegas.Game.ServiceRosterAsync
 
 /-! # Full-source services under an asynchronous scheduler
 
@@ -14,6 +12,10 @@ them, a horizon, and a scheduler satisfying the asynchronous contract with
 per-event reaction bounds `delay` and inclusion bounds `bound` that leave room
 before every deadline. It has no rosters and no activation opportunities: the
 contract's opportunity clause replaces them.
+
+The fixed roster calendar is one instance (`Vegas.SourceServiceSpec.toAsync`),
+with the plan length as horizon, reaction bound `event.val` and inclusion
+bound zero (`Vegas.rosterScheduler_asyncContract`).
 -/
 
 noncomputable section
@@ -83,47 +85,36 @@ theorem completes : CompletesPlay (runtime service.setup) service.leaks
 
 end AsyncServiceSpec
 
-end Vegas
+namespace SourceServiceSpec
 
--- OPEN OBLIGATION: Asynchronous sequential-equilibrium preservation
--- Prove every source sequential equilibrium has a bounded raw-runtime
--- equilibrium under any AsyncServiceSpec, preserving the joint source outcome
--- and realized settlement law. Retained slot invariants, prescribed policy
--- admission after misses and prescribed continuation bounds are checked.
--- The candidate owner-local risk menu, post-miss base-payoff rationality equivalence and a
--- localized restriction-extension theorem are checked; their source embedding
--- and runtime comparison premises remain open.
--- Exact first-turn play keeps the owner's full service-risk flag clear against
--- arbitrary foreign raw policies. Prescribed authored packets pass the actual
--- settled record for any turn timing; authentic sampling and first-turn absence
--- of public misses give zero owner charge. These results do not establish the
--- strategic source embedding or the local clean-continuation comparisons.
--- Prescribed responses are locally admitted at clear risk-menu histories, even
--- after foreign raw branches. Actual supported responses supply completion
--- boundaries and the generic continuation-error bridge within the raw horizon.
--- At every legal clear active owner prefix, one immediate policy preserves actual
--- recall through earlier deferrals and has zero owner audit charge throughout its
--- supported raw suffix within the horizon. The prefix packet and opportunity
--- premises are derived from that legal history. Whole-policy replacement in the
--- risk-menu game has that actual continuation law. One fixed comparator has zero
--- owner collection across every hidden history of a clear information site;
--- terminal base bounds give its clean lower bound under any belief. The source
--- equilibrium embedding remains open. Constructor breaches, wrong current-event
--- handles and public guard failures have actual terminal collection bounds
--- from authentic final-record challenge coverage. Their information-local
--- classifier reconstructs the actual envelope from own recall and view. The
--- risk-menu-to-effective SE extension derives the clean comparator, collection
--- and fixed-deposit bound; other excluded-action comparisons remain hypotheses.
--- Exact private-alias transport supplies the final bounded raw-runtime stage.
--- Exact first-turn execution preserves the joint typed outcome and actual
--- sampled payoff vector for every source profile after disclosure normalization.
--- This physical law does not establish a behavioral equilibrium embedding.
--- Actual binding and resolution decisions, public sampling and stopped silent
--- continuations have source-conditioned full traffic kernels. Native input
--- likelihoods after retained deferrals, relative escape bounds and original
--- source belief transport remain open. The auxiliary risk-menu source embedding,
--- conditional incentives and general continuation repair still require proofs.
--- False source resolutions emit authenticated evidence-free withholding packets.
--- Silence is retained waiting, whose local incentives and source likelihood
--- transport remain separate proof obligations.
--- The fixed-calendar SourceServiceSpec capstone does not discharge this edge.
+variable (service : SourceServiceSpec Player L)
+
+/-- **The calendar instance.** The fixed roster service is an asynchronous
+service with the plan length as horizon, reaction bound `event.val` and
+inclusion bound zero. -/
+def toAsync : AsyncServiceSpec Player L where
+  setup := service.setup
+  leaks := service.leaks
+  bounds := service.bounds
+  values := service.values
+  initialValues := service.initialValues
+  capacity := service.capacity
+  horizon := service.planLength
+  scheduler := service.scheduler
+  delay := fun event => event.val
+  bound := fun _ => 0
+  contract := rosterScheduler_asyncContract service.setup service.leaks service.rosters
+    service.network service.opportunities
+  timely := rosterScheduler_asyncTimely service.setup
+  initialFinite := service.initialFinite
+  leaksFinite := service.leaksFinite
+  schedulerFinite := ReactiveApplication.FiniteNature.scheduler_finite
+    (initial := initialLaw service.setup)
+
+@[simp] theorem toAsync_horizon : service.toAsync.horizon = service.planLength := rfl
+
+@[simp] theorem toAsync_scheduler : service.toAsync.scheduler = service.scheduler := rfl
+
+end SourceServiceSpec
+
+end Vegas

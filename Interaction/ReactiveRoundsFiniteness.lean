@@ -2,14 +2,14 @@
 
 import Interaction.ReactiveRounds
 import Interaction.ReactiveProtocol
-import Interaction.ReactiveMessageReadout
+import Interaction.ReactiveReplayPolicy
 import Interaction.ReactivePolicyMixture
 
 /-! # Finitely branching reactive rounds
 
 When every player response law and the application's own nature branch
 finitely, so does every dispatched command. The standard policies are finitely
-branching: silence is a point mass, a scheduled policy is one of
+branching: replay draws from finitely many options, a scheduled policy is one of
 two policies, and a mixture over finitely many indices mixes finitely branching
 policies.
 -/
@@ -45,10 +45,10 @@ theorem dispatch_support_finite [app.FiniteEnvironment] {players : Principal →
   bind_support_finite (app.environmentStep_support_finite execution command)
     fun next _ => app.resume_support_finite finite _ next
 
-omit [DecidableEq Principal] in
-theorem silentPolicy_finiteSupport : Policy.FiniteSupport app app.silentPolicy := by
+theorem replayPolicy_finiteSupport : Policy.FiniteSupport app app.replayPolicy := by
   intro past view
-  simp [silentPolicy]
+  rw [replayPolicy, PMF.support_map, PMF.support_uniformOfFinset]
+  exact (Finset.finite_toSet _).image _
 
 omit [DecidableEq Principal] in
 theorem turnScheduledPolicy_finiteSupport

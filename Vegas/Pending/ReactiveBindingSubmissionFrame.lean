@@ -39,7 +39,7 @@ theorem binding_submission
     let app := runtime.reactiveApplication leaks
     let view := repaired.observe app owner
     let response : app.Action :=
-      ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩
+      ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩
     let change := memory.repairResponse runtime leaks owner view response
     let remembered : BindingMemory runtime leaks :=
       ⟨change.2, memory.responses ++ [(memory.shadow.inputView runtime leaks view, response)]⟩
@@ -51,7 +51,7 @@ theorem binding_submission
     | none => some (⟨payload, L.someValue payload⟩ : Raw L)
     | some _ => opening
   let response : app.Action :=
-    ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩
+    ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩
   let change := memory.repairResponse runtime leaks owner view response
   let remembered : BindingMemory runtime leaks :=
     ⟨change.2, memory.responses ++ [(memory.shadow.inputView runtime leaks view, response)]⟩
@@ -66,7 +66,8 @@ theorem binding_submission
     rw [← State.publicView_eventReady, ← frame.publicView, State.publicView_eventReady]
     exact ready
   have changed : change.1 =
-      ⟨some ⟨⟨.commitment event (owner, .prepared serial), replacementOpening⟩, .none⟩⟩ := by
+      ⟨some (.submit
+        ⟨⟨.commitment event (owner, .prepared serial), replacementOpening⟩, .none⟩)⟩ := by
     cases decoded : opening.bind (fun raw => raw.as? payload) with
     | none =>
         rw [memory.repairResponse_unusable runtime leaks owner view event payload outputEq codeEq
@@ -74,8 +75,8 @@ theorem binding_submission
         simp only [replacementOpening, decoded]
         rfl
     | some value =>
-        rw [congrArg Prod.fst (memory.repairResponse_usable runtime leaks owner view event payload
-          outputEq codeEq node serial opening ownFresh actualFresh value decoded)]
+        rw [memory.repairResponse_usable runtime leaks owner view event payload outputEq codeEq
+          node serial opening ownFresh actualFresh value decoded]
         simp only [replacementOpening, decoded]
   have restored := memory.repairResponse_submit_input runtime leaks owner original repaired
     frame.lengths frame.past frame.observed frame.network event payload outputEq codeEq node
@@ -87,7 +88,8 @@ theorem binding_submission
     frame.network frame.receipts frame.publicView frame.views frame.recall event serial
       opening replacementOpening
   have physical : right = repaired.respond app owner
-      ⟨some ⟨⟨.commitment event (owner, .prepared serial), replacementOpening⟩, .none⟩⟩ := by
+      ⟨some (.submit
+        ⟨⟨.commitment event (owner, .prepared serial), replacementOpening⟩, .none⟩)⟩ := by
     dsimp only [right]
     rw [changed]
   change left.network = _ ∧ left.receipts = _ ∧ left.application.publicView = _ ∧
@@ -156,8 +158,7 @@ theorem pending_binding_inclusion
       none found
   have own := memory.shadow.include_binding_input runtime leaks original repaired owner
     frame.observed frame.network event payload outputEq codeEq node id candidate sender owned
-      found ready timely vacant unused leftFixed rightFixed
-        (Or.inl ⟨rememberedAction, rememberedValue⟩)
+      found ready timely vacant unused leftFixed rightFixed rememberedAction rememberedValue
   have recall (execution : app.Execution) :
       (execution.includePending app id).recall = execution.recall := by
     simp only [ReactiveApplication.Execution.includePending]

@@ -43,7 +43,7 @@ theorem binding_window_stopped_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
@@ -68,7 +68,6 @@ theorem binding_window_stopped_coupling
       (prior.environmentStep (application setup leaks) (.activate owner)).support)
     (memory : BindingMemory (runtime setup) leaks)
     (frame : BindingMemory.Frame (runtime setup) leaks memory owner original repaired)
-    (completedMemory : memory.shadow.CompletedAt original.application.config)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         (some ⟨remaining, some owner, repaired⟩))
@@ -105,12 +104,11 @@ theorem binding_window_stopped_coupling
           (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
             (some ⟨remaining - (visits.length + 1 + (runtime setup).deadline event + 1),
               none, next.2.1⟩)) ∧
-        ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
+        ((∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.envelope = false) ∨
-        event ∈ next.1.application.missedEvents ∨
-        (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
-          next.2.2.shadow.CompletedAt next.1.application.config)) := by
+            record.input.envelope = false) ∨
+        next.1.application.publicView.missedBinding event = true ∨
+        BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
   classical
   intro app players strategy
   suffices result :
@@ -124,12 +122,11 @@ theorem binding_window_stopped_coupling
             strategy.runJoint owner players (rosterScheduler setup leaks rosters network)
               (visits.length + 1 + (runtime setup).deadline event + 1) next.1 next.2) ∧
         ∀ next ∈ coupling.support,
-          (∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
+          (∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
             (runtime setup).permittedServiceEnvelope record.observation record.ledger
-              record.envelope = false) ∨
-          event ∈ next.1.application.missedEvents ∨
-          (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
-            next.2.2.shadow.CompletedAt next.1.application.config) by
+              record.input.envelope = false) ∨
+          next.1.application.publicView.missedBinding event = true ∨
+          BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 by
     obtain ⟨coupling, first, second, related⟩ := result
     let menu := sourceServiceMenu setup leaks bounds rosters
     let scheduler := rosterScheduler setup leaks rosters network
@@ -182,8 +179,7 @@ theorem binding_window_stopped_coupling
     by_cases last : owner ∉ visits
     · obtain ⟨coupling, first, second, related⟩ := final_binding_history_coupling setup leaks
         bounds values capacity rosters opportunities network players owner remaining
-          prior original repaired sampled memory frame completedMemory trace reference started
-          recalled event
+          prior original repaired sampled memory frame trace reference started recalled event
           payload outputEq codeEq node ready unsent (covered _ _) before after visits last
           (by simpa only [List.append_assoc, List.singleton_append, List.cons_append,
             List.nil_append] using split)
@@ -199,11 +195,11 @@ theorem binding_window_stopped_coupling
         have actor := congrArg EventCode.actor codeEq
         rw [EventCode.actor_cast outputEq ((graph setup).nodes event)] at actor
         exact actor
-      have optional : ¬ decisionRequired setup leaks rosters owner (repaired.recall owner)
+      have optional : ¬ bindingRequired setup leaks rosters owner (repaired.recall owner)
           (repaired.observe app owner) := by
-        rw [sourceService_decisionRequired_iff_no_later_owner setup leaks bounds values capacity
+        rw [sourceService_bindingRequired_iff_no_later_owner setup leaks bounds values capacity
           rosters opportunities network owner ⟨remaining, some owner, repaired⟩ trace rfl
-            event ready owned unsent visited visits roster
+            event ready payload outputEq owned unsent visited visits roster
             (by rw [← frame.service]; exact slot)]
         exact last
       obtain ⟨ready, timely, _, rightRecall, _, serials, firstResources⟩ :=
@@ -252,30 +248,29 @@ theorem binding_window_stopped_coupling
             (repaired.observe app owner), response)]⟩ :
             BindingMemory (runtime setup) leaks))
       let adjusted (response : app.Action) :=
-        let changed := BindingMemory.retainedResponse (runtime setup) leaks menu owner memory
-          (repaired.recall owner, repaired.observe app owner) response
-        (changed.1, (⟨changed.2, memory.responses ++
-          [(memory.shadow.inputView (runtime setup) leaks
-            (repaired.observe app owner), response)]⟩ : BindingMemory (runtime setup) leaks))
+        (if (proposed response).1 ∈ menu.actions owner (repaired.recall owner)
+            (repaired.observe app owner) then (proposed response).1
+          else (menu.nonempty owner (repaired.recall owner) (repaired.observe app owner)).choose,
+          (proposed response).2)
       let leftRun (response : app.Action) := (runtime setup).runInteractionPlan leaks players
         network plan (original.respond app owner response)
       let rightRun (response : app.Action) := strategy.runJoint owner players scheduler plan.length
         (repaired.respond app owner (adjusted response).1) (adjusted response).2
       let good (next : app.Execution × app.Execution × BindingMemory (runtime setup) leaks) :=
-        (∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
+        (∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.envelope = false) ∨
-        event ∈ next.1.application.missedEvents ∨
-        (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
-          next.2.2.shadow.CompletedAt next.1.application.config)
+            record.input.envelope = false) ∨
+        next.1.application.publicView.missedBinding event = true ∨
+        BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1
       have responseLaw : strategy.respond memory (repaired.recall owner,
           repaired.observe app owner) = law.map adjusted := by
-        rw [BindingMemory.retainedImplementation_respond (runtime setup) leaks menu owner
-          reference (players owner) memory (repaired.recall owner) (repaired.observe app owner)
-          started, frame.past, frame.observed]
-        simp only [law, adjusted]
-        rw [show memory.shadow.inputView (runtime setup) leaks (repaired.observe app owner) =
-          original.observe app owner from frame.observed]
+        change ((BindingMemory.implementation (runtime setup) leaks owner reference
+          (players owner)).respond memory
+            (repaired.recall owner, repaired.observe app owner)).map _ = _
+        rw [BindingMemory.implementation_respond (runtime setup) leaks owner reference
+          (players owner) memory (repaired.recall owner) (repaired.observe app owner) started,
+          frame.past, frame.observed, PMF.map_comp]
+        simp only [law, adjusted, proposed, frame.observed, app, menu, Function.comp_def]
       have existsBranch (response : app.Action) (member : response ∈ law.support) :
           ∃ coupling : PMF (app.Execution × app.Execution ×
             BindingMemory (runtime setup) leaks),
@@ -288,22 +283,20 @@ theorem binding_window_stopped_coupling
               response (covered _ _ response member) with replay | canonical | departure
         · have unchanged : memory.repairResponse (runtime setup) leaks owner
               (repaired.observe app owner) response = (response, memory.shadow) := by
-            rcases app.silentPolicy_cases _ _ response replay with rfl; rfl
+            rcases app.replayPolicy_cases _ _ response replay with rfl | ⟨id, rfl⟩ <;> rfl
           have legal : (proposed response).1 ∈ menu.actions owner (repaired.recall owner)
               (repaired.observe app owner) := by
             dsimp only [proposed]
             rw [unchanged]
             change response ∈ sourceServiceActions setup leaks bounds rosters owner _ _
             rw [sourceServiceActions, ite_eq_right optional]
-            apply bounds.silent_compiled
-            exact app.mem_silentPolicy_support.mpr (app.silentPolicy_cases _ _ response replay)
+            apply bounds.replay_compiled
+            rw [← app.replayPolicy_eq_of_network_eq original repaired owner recalled rightRecall
+              frame.network]
+            exact replay
           have adjustedEq : adjusted response = proposed response := by
-            dsimp only [adjusted, proposed]
-            rw [BindingMemory.retainedResponse_eq_repairResponse (runtime setup) leaks menu owner
-              memory (repaired.recall owner, repaired.observe app owner) response legal (by
-                intro _
-                rcases app.silentPolicy_cases _ _ response replay with rfl
-                rfl)]
+            dsimp only [adjusted]
+            rw [ite_eq_left legal]
           have nextEnough : foreign.length + 1 ≤ remaining := by
             simp only [visitsEq, List.length_append, List.length_cons] at enough
             omega
@@ -378,22 +371,9 @@ theorem binding_window_stopped_coupling
             have shorter : rest.length < size := by
               rw [visitsEq, List.length_append, List.length_cons] at count
               omega
-            have nextCompleted : next.2.2.shadow.CompletedAt next.1.application.config := by
-              rw [memoryEq]
-              change memory.shadow.CompletedAt next.1.application.config
-              apply completedMemory.mono
-              have priorCompleted := (runtime setup).runInteractionPlan_completed_subset leaks
-                players network (foreign.map ServiceInstruction.player)
-                  (original.respond app owner response) predecessor reached
-              rw [((runtime setup).reactive_respond_application leaks original owner response).1]
-                at priorCompleted
-              exact ((runtime setup).reactiveCompletedInvariant leaks
-                original.application.config.cut.completed).environmentStep predecessor next.1
-                  (.activate owner) priorCompleted activated
             obtain ⟨coupling, left, right, good⟩ := ih rest.length shorter
               (remaining - (foreign.length + 1)) predecessor next.1 next.2.1 activated next.2.2
-              paired nextCompleted nextTrace nextStarted nextRecall nextReady nextUnsent nextVisited
-              rest
+              paired nextTrace nextStarted nextRecall nextReady nextUnsent nextVisited rest
               newRoster newSlot nextBefore newSplit newPosition newEnough rfl
             refine ⟨coupling, left, ?_, good⟩
             rw [restLength]
@@ -468,12 +448,12 @@ theorem binding_window_stopped_coupling
               Set.mem_iUnion₂.mp (PMF.support_bindOnSupport .. ▸ supported)
             exact (existsTail next chosen).choose_spec.2.2 final reached
         · obtain ⟨opening, bounded, countedSerial, rfl⟩ := canonical
-          let action : app.Action := ⟨some ⟨⟨.commitment event
+          let action : app.Action := ⟨some (.submit ⟨⟨.commitment event
             (owner, .prepared (original.application.publicView.bindingCount owner)), opening⟩,
-              .none⟩⟩
+              .none⟩)⟩
           have legal : (proposed action).1 ∈ menu.actions owner (repaired.recall owner)
               (repaired.observe app owner) := by
-            apply required_decision_sourceService
+            apply required_binding_sourceService
             apply BindingMemory.repairResponse_binding_available (runtime setup) leaks bounds
               owner memory (repaired.recall owner) (repaired.observe app owner) event payload
               outputEq codeEq node
@@ -491,27 +471,12 @@ theorem binding_window_stopped_coupling
             · rw [frame.observed]
               exact originalFresh
           have adjustedEq : adjusted action = proposed action := by
-            dsimp only [adjusted, proposed]
-            rw [BindingMemory.retainedResponse_eq_repairResponse (runtime setup) leaks menu owner
-              memory (repaired.recall owner, repaired.observe app owner) action legal (by
-                intro admitted
-                apply BindingMemory.copyResponse_binding_eq_of_compiled (runtime setup) leaks
-                  bounds owner memory (repaired.recall owner) (repaired.observe app owner)
-                  event payload outputEq codeEq node
-                  ((soleReady_of_ready setup repaired.application ready).ownTurn owned) owned
-                  ((repaired.application.publicView_eventReady event).mpr ready)
-                  (original.application.publicView.bindingCount owner)
-                · rw [counted]
-                  exact selected
-                · rw [frame.observed]
-                  exact originalFresh
-                · exact sourceServiceMenu_in_compiled setup leaks bounds rosters
-                    owner _ _ admitted)]
+            dsimp only [adjusted]
+            rw [ite_eq_left legal]
           obtain ⟨coupling, first, second, related⟩ := first_binding_block_coupling setup leaks
             bounds rosters network players owner event payload outputEq codeEq node
               (original.application.publicView.bindingCount owner) opening memory original repaired
-              frame completedMemory reference started recalled rightRecall originalSerials
-              countedSerial
+              frame reference started recalled rightRecall originalSerials countedSerial
               originalFresh originalReady originalTimely originalVacant originalUnused
               originalPublished covered before after visits ((runtime setup).deadline event)
               split position

@@ -361,11 +361,11 @@ theorem restoreRecall_submit (memory : BindingMemory runtime leaks)
     (memory.record runtime leaks
       (memory.shadow.inputView runtime leaks
         (right.observe (runtime.reactiveApplication leaks) who))
-      ⟨some original⟩).restoreRecall runtime leaks
+      ⟨some (.submit original)⟩).restoreRecall runtime leaks
         ((right.respond (runtime.reactiveApplication leaks) who
-          ⟨some repaired⟩).recall who) =
+          ⟨some (.submit repaired)⟩).recall who) =
       (left.respond (runtime.reactiveApplication leaks) who
-        ⟨some original⟩).recall who := by
+        ⟨some (.submit original)⟩).recall who := by
   simp only [ReactiveApplication.Execution.respond, ↓reduceIte]
   rw [restoreRecall_record runtime leaks memory _ lengths, past, observed]
   congr 3
@@ -377,17 +377,17 @@ theorem restoreRecall_submit (memory : BindingMemory runtime leaks)
     Message Player (WitnessedPacket graph))) packet.symm
 
 open Classical in
-/-- Record each newly fixed owned candidate and replace unusable private
-material. Usable material changes no completion memory: actual acceptance and
-expiry remain distinct runtime outcomes. Every test uses the current own input.
-Other responses are left intact. -/
+/-- Record each newly fixed owned binding and replace only unusable private
+material. Every test and memory update uses the current own input. Recording
+usable bindings keeps their response unchanged and gives one reconstruction
+rule for subsequent inclusion. Other responses are left intact. -/
 def repairResponse (who : Player) (memory : BindingMemory runtime leaks)
     (actual : (runtime.reactiveApplication leaks).PlayerView)
     (response : (runtime.reactiveApplication leaks).Action) :
     (runtime.reactiveApplication leaks).Action × BindingShadow graph :=
   let original := memory.shadow.inputView runtime leaks actual
   match response.transmission with
-  | some ⟨⟨.commitment event (author, .prepared serial), opening⟩, .none⟩ =>
+  | some (.submit ⟨⟨.commitment event (author, .prepared serial), opening⟩, .none⟩) =>
       match nodeView graph event with
       | .bind owner payload outputEq _ =>
           if author = who ∧ owner = who ∧
@@ -397,16 +397,15 @@ def repairResponse (who : Player) (memory : BindingMemory runtime leaks)
             let remembered := memory.shadow.rememberCandidate (.prepared serial)
               (call.candidateAfter who original.application.candidates (.prepared serial))
             let decoded := opening.bind (fun raw => raw.as? payload)
-            match decoded with
-            | none =>
-                (runtime.reactiveBinding leaks who event payload
-                  (.success (L.someValue payload)) serial,
-                  remembered.rememberCompletion event
-                    (cast (congrArg EventGraph.EventField.Action outputEq.symm)
-                      PublicationResult.failure)
-                    (cast (congrArg EventGraph.EventField.Value outputEq.symm)
-                      PublicationResult.failure))
-            | some _ => (response, remembered)
+            let result := decoded.elim PublicationResult.failure PublicationResult.success
+            let replacement := match decoded with
+              | none => runtime.reactiveBinding leaks who event payload
+                  (.success (L.someValue payload)) serial
+              | some _ => response
+            (replacement,
+              remembered.rememberCompletion event
+                (cast (congrArg EventGraph.EventField.Action outputEq.symm) result)
+                (cast (congrArg EventGraph.EventField.Value outputEq.symm) result))
           else (response, memory.shadow)
       | .sample .. | .resolve .. => (response, memory.shadow)
   | _ => (response, memory.shadow)
@@ -426,12 +425,11 @@ theorem repairResponse_unusable (who : Player) (memory : BindingMemory runtime l
     (actualFresh : actual.application.candidates (.prepared serial) = .fresh)
     (unusable : opening.bind (fun raw => raw.as? payload) = none) :
     (memory.repairResponse runtime leaks who actual
-      ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩).1 =
+      ⟨some (.submit ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩)⟩).1 =
       runtime.reactiveBinding leaks who event payload (.success (L.someValue payload)) serial := by
   simp only [repairResponse, node, originalFresh, actualFresh, unusable, and_self, ↓reduceIte]
 
-/-- Usable private material is submitted unchanged. Only its actual fixed
-candidate meaning is remembered; no intended completion is installed. -/
+/-- Uniform private recording does not change a usable binding response. -/
 theorem repairResponse_usable (who : Player) (memory : BindingMemory runtime leaks)
     (actual : (runtime.reactiveApplication leaks).PlayerView)
     (event : graph.EventId) (payload : L.Ty)
@@ -444,158 +442,27 @@ theorem repairResponse_usable (who : Player) (memory : BindingMemory runtime lea
       (.prepared serial) = .fresh)
     (actualFresh : actual.application.candidates (.prepared serial) = .fresh)
     (value : L.Val payload) (usable : opening.bind (fun raw => raw.as? payload) = some value) :
-    memory.repairResponse runtime leaks who actual
-      ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩ =
-      (⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩,
-        memory.shadow.rememberCandidate (.prepared serial)
-          ((⟨.commitment event (who, .prepared serial), opening⟩ : Submission graph).candidateAfter
-            who (memory.shadow.inputView runtime leaks actual).application.candidates
-              (.prepared serial))) := by
+    (memory.repairResponse runtime leaks who actual
+      ⟨some (.submit ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩)⟩).1 =
+      ⟨some (.submit ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩)⟩ := by
   simp only [repairResponse, node, originalFresh, actualFresh, usable, and_self, ↓reduceIte]
 
 open Classical in
-/-- Copy a real response while recording any newly fixed owned slot. The
-candidate update uses its actual registration semantics, without interpreting
-the addressed node's payload. Fixed reuse leaves the existing shadow unchanged. -/
-def copyResponse (who : Player) (memory : BindingMemory runtime leaks)
-    (actual : (runtime.reactiveApplication leaks).PlayerView)
-    (response : (runtime.reactiveApplication leaks).Action) :
-    (runtime.reactiveApplication leaks).Action × BindingShadow graph :=
-  let original := memory.shadow.inputView runtime leaks actual
-  match response.transmission with
-  | some material =>
-      match material.call.packet with
-      | .commitment _ (author, slot) =>
-          if author = who ∧ original.application.candidates slot = .fresh ∧
-              actual.application.candidates slot = .fresh then
-            (response, memory.shadow.rememberCandidate slot
-              (material.call.candidateAfter who original.application.candidates slot))
-          else (response, memory.shadow)
-      | .opening .. | .withhold .. | .malformed .. => (response, memory.shadow)
-  | none => (response, memory.shadow)
-
-/-- Copying always transmits the original response; only its private shadow
-may record a newly fixed candidate. -/
-theorem copyResponse_action
-    (who : Player) (memory : BindingMemory runtime leaks)
-    (actual : (runtime.reactiveApplication leaks).PlayerView)
-    (response : (runtime.reactiveApplication leaks).Action) :
-    (memory.copyResponse runtime leaks who actual response).1 = response := by
-  rcases response with ⟨transmission⟩
-  cases transmission with
-  | none => rfl
-  | some material =>
-      rcases material with ⟨⟨packet, opening⟩, request⟩
-      cases packet with
-      | commitment event candidate =>
-          rcases candidate with ⟨author, slot⟩
-          simp only [copyResponse]
-          split <;> rfl
-      | opening | withhold | malformed => rfl
-
-/-- Noncommitment responses change no candidate or completion memory. -/
-theorem copyResponse_noncommitment
-    (who : Player) (memory : BindingMemory runtime leaks)
-    (actual : (runtime.reactiveApplication leaks).PlayerView)
-    (response : (runtime.reactiveApplication leaks).Action)
-    (noncommitment : ∀ material, response.transmission = some material →
-      ∀ event candidate, material.call.packet ≠ .commitment event candidate) :
-    memory.copyResponse runtime leaks who actual response = (response, memory.shadow) := by
-  rcases response with ⟨transmission⟩
-  cases transmission with
-  | none => rfl
-  | some material =>
-      rcases material with ⟨⟨packet, opening⟩, request⟩
-      cases packet with
-      | commitment event candidate => exact (noncommitment _ rfl event candidate rfl).elim
-      | opening | withhold | malformed => rfl
-
-/-- An actual fresh owned registration records the full original meaning,
-including missing or mistyped raw material and nonbinding addressed nodes. -/
-theorem copyResponse_fresh
-    (who : Player) (memory : BindingMemory runtime leaks)
-    (actual : (runtime.reactiveApplication leaks).PlayerView)
-    (event : graph.EventId) (slot : CandidateSlot graph) (opening : Option (Raw L))
-    (request : EvidenceRequest graph)
-    (originalFresh : (memory.shadow.inputView runtime leaks actual).application.candidates
-      slot = .fresh)
-    (actualFresh : actual.application.candidates slot = .fresh) :
-    memory.copyResponse runtime leaks who actual
-      ⟨some ⟨⟨.commitment event (who, slot), opening⟩, request⟩⟩ =
-      (⟨some ⟨⟨.commitment event (who, slot), opening⟩, request⟩⟩,
-        memory.shadow.rememberCandidate slot
-          ((⟨.commitment event (who, slot), opening⟩ : Submission graph).candidateAfter who
-            (memory.shadow.inputView runtime leaks actual).application.candidates slot)) := by
-  simp only [copyResponse, originalFresh, actualFresh, and_self, ↓reduceIte]
-
-/-- A previously fixed owned slot is not registered or remembered again. -/
-theorem copyResponse_fixed
-    (who : Player) (memory : BindingMemory runtime leaks)
-    (actual : (runtime.reactiveApplication leaks).PlayerView)
-    (event : graph.EventId) (slot : CandidateSlot graph) (opening : Option (Raw L))
-    (request : EvidenceRequest graph)
-    (fixed : (memory.shadow.inputView runtime leaks actual).application.candidates slot ≠ .fresh) :
-    memory.copyResponse runtime leaks who actual
-      ⟨some ⟨⟨.commitment event (who, slot), opening⟩, request⟩⟩ =
-      (⟨some ⟨⟨.commitment event (who, slot), opening⟩, request⟩⟩, memory.shadow) := by
-  simp only [copyResponse, fixed, and_false, false_and, ↓reduceIte]
-
-/-- On a usable fresh binding, copying and default repair have the same full
-action and candidate-only shadow update. -/
-theorem copyResponse_usable_eq_repairResponse
-    (who : Player) (memory : BindingMemory runtime leaks)
-    (actual : (runtime.reactiveApplication leaks).PlayerView)
-    (event : graph.EventId) (payload : L.Ty)
-    (outputEq : graph.outputLayout event = .binding who payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode graph.layout) outputEq)
-      (graph.nodes event) = .bind who payload)
-    (node : nodeView graph event = .bind who payload outputEq codeEq)
-    (serial : Nat) (opening : Option (Raw L))
-    (originalFresh : (memory.shadow.inputView runtime leaks actual).application.candidates
-      (.prepared serial) = .fresh)
-    (actualFresh : actual.application.candidates (.prepared serial) = .fresh)
-    (value : L.Val payload) (usable : opening.bind (fun raw => raw.as? payload) = some value) :
-    memory.copyResponse runtime leaks who actual
-      ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩ =
-      memory.repairResponse runtime leaks who actual
-        ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩ := by
-  rw [copyResponse_fresh runtime leaks who memory actual event (.prepared serial) opening .none
-    originalFresh actualFresh,
-    repairResponse_usable runtime leaks who memory actual event payload outputEq codeEq node
-      serial opening originalFresh actualFresh value usable]
-
-open Classical in
-/-- One owner-local sampling engine reconstructs input, samples the original
-policy once, and records its original response. Its pure local transform may
-copy or repair that response; it never reads a hidden execution. -/
-def responseImplementation
+/-- Shadowing is an ordinary private implementation. Its argument is an own
+input, not a global execution. The reference recall fixes the continuation's
+initial memory uniformly across all histories in that information set. -/
+def implementation (who : Player)
     (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (policy : (runtime.reactiveApplication leaks).Policy)
-    (change : BindingMemory runtime leaks →
-      (List (runtime.reactiveApplication leaks).PlayerEntry ×
-        (runtime.reactiveApplication leaks).PlayerView) →
-      (runtime.reactiveApplication leaks).Action →
-        (runtime.reactiveApplication leaks).Action × BindingShadow graph) :
+    (policy : (runtime.reactiveApplication leaks).Policy) :
     (runtime.reactiveApplication leaks).Implementation (BindingMemory runtime leaks) where
   initial := PMF.pure (atRecall runtime leaks reference)
   respond memory input :=
     let past := memory.restoreRecall runtime leaks input.1
     let view := memory.shadow.inputView runtime leaks input.2
     (policy past view).map fun original =>
-      let changed := change memory input original
-      (changed.1, if input.1.length < reference.length then memory else
-        { shadow := changed.2, responses := memory.responses ++ [(view, original)] })
-
-/-- The defaulting experiment replaces fresh unusable private material and
-records its original failed meaning. Calendar normalization uses this law;
-the legal continuation separately decides whether an admitted response can
-instead be copied with its actual capabilities intact. -/
-def implementation (who : Player)
-    (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (policy : (runtime.reactiveApplication leaks).Policy) :
-    (runtime.reactiveApplication leaks).Implementation (BindingMemory runtime leaks) :=
-  responseImplementation runtime leaks reference policy
-    (fun memory input => memory.repairResponse runtime leaks who input.2)
+      let repaired := memory.repairResponse runtime leaks who input.2 original
+      (repaired.1, if input.1.length < reference.length then memory else
+        { shadow := repaired.2, responses := memory.responses ++ [(view, original)] })
 
 theorem implementation_respond (who : Player)
     (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -610,7 +477,7 @@ theorem implementation_respond (who : Player)
           let repaired := memory.repairResponse runtime leaks who view original
           (repaired.1, ⟨repaired.2, memory.responses ++
             [(memory.shadow.inputView runtime leaks view, original)]⟩)) := by
-  simp only [implementation, responseImplementation, Nat.not_lt.mpr started, ↓reduceIte]
+  simp only [implementation, Nat.not_lt.mpr started, ↓reduceIte]
 
 theorem implementation_posterior_prefix (who : Player)
     (reference past : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -638,8 +505,7 @@ theorem implementation_posterior_prefix (who : Player)
         split at supported
         · exact ((PMF.mem_support_filter_iff _).mp supported).2
         · exact supported
-      simp only [implementation, responseImplementation, shorter, ↓reduceIte, PMF.support_map]
-        at original
+      simp only [implementation, shorter, ↓reduceIte, PMF.support_map] at original
       obtain ⟨chosen, _, rfl⟩ := original
       rfl
 

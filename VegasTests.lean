@@ -1,17 +1,16 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import VegasTests.Disclosure
+import VegasTests.EventCompilation
 import VegasTests.EventGraph
 import VegasTests.EventGraphReadout
-import VegasTests.EventCompilation
-import VegasTests.EventStrategies
 import VegasTests.EventMessages
 import VegasTests.EventSequential
-import VegasTests.Language
-import VegasTests.ResultExpressions
-import VegasTests.ValueBinding
-import VegasTests.Disclosure
+import VegasTests.EventStrategies
 import VegasTests.Honest
+import VegasTests.Language
+import VegasTests.PrivateInputs
+import VegasTests.ResultExpressions
 import VegasTests.SourceSemantics
 import VegasTests.SourceSetup
-import VegasTests.PrivateInputs
-import VegasTests.SourceSession
-
-/-! Regression tests for the source, typed graph, and message runtime. -/
+import VegasTests.ValueBinding

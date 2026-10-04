@@ -94,15 +94,21 @@ theorem respond_recall_eq_of_input_eq (runtime : EventGraphRuntime graph)
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => simp only [ReactiveApplication.Execution.respond, ↓reduceIte, past, view]
-  | some submission =>
-      have packet := response_packet_eq_of_input_eq runtime leaks left right who submission
-        view remembered known
-      simp only [ReactiveApplication.Execution.respond, MessageNetwork.submit, ↓reduceIte]
-      change left.recall who ++ [⟨left.observe _ who, _,
-        some ⟨(who, left.network.nextSerial who),
-          submission.emit ((runtime.reactiveApplication leaks).submit left.application who
-            submission) who (left.network.known who)⟩⟩] = _
-      rw [past, view, serial, packet]
-      rfl
+  | some transmission =>
+      cases transmission with
+      | submit submission =>
+          have packet := response_packet_eq_of_input_eq runtime leaks left right who submission
+            view remembered known
+          simp only [ReactiveApplication.Execution.respond, MessageNetwork.submit, ↓reduceIte]
+          change left.recall who ++ [⟨left.observe _ who, _,
+            some ⟨(who, left.network.nextSerial who),
+              submission.emit ((runtime.reactiveApplication leaks).submit left.application who
+                submission) who (left.network.known who)⟩⟩] = _
+          rw [past, view, serial, packet]
+          rfl
+      | replay id =>
+          simp only [ReactiveApplication.Execution.respond, MessageNetwork.replay, known,
+            ↓reduceIte, past, view]
+          cases (right.network.known who).find? (fun envelope => envelope.id = id) <;> rfl
 
 end Vegas.EventGraphRuntime

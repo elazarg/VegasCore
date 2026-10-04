@@ -270,7 +270,7 @@ theorem serviceStep_activationOrigin (runtime : EventGraphRuntime graph)
           (fun state : runtime.application.State => state.application.activatedAt) native
         exact nextEq.trans
           (privateStep_facts execution.native.application who command).2.2
-      | submit payload | wait =>
+      | submit payload | replay id | wait =>
         simp only [MessageApplication.PlayerCommand.toAction, MessageApplication.step,
           PMF.mem_support_pure_iff _ _] at native
         apply State.activationOrigin_of_activatedEq

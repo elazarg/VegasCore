@@ -1,0 +1,254 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.SourceServiceSignedCollection
+import Vegas.Game.SourceServiceAsyncTimeliness
+import Vegas.Pending.ReactiveRecalledEmission
+
+/-! # Final collection for two packets of one owner and event
+
+An actual record accepts at most one identifier per event. Two distinct emitted
+envelopes addressing that event therefore contain a forbidden packet at every
+complete settlement. Which packet is forbidden may depend on the continuation.
+Authentic final-record coverage applies to that packet pointwise, allowing
+correlated observation and report delivery and a one-time collected charge.
+-/
+
+noncomputable section
+
+namespace Vegas
+
+open SourceProgram Interaction EventGraphRuntime GameTheory GameTheory.Protocol
+  GameTheory.Math.Probability GameTheory.Enforcement
+
+variable {Player : Type} [DecidableEq Player]
+  {L : IExpr} [IExpr.ResultTypes L]
+  {setup : Setup (Player := Player) (L := L)}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+
+/-- Two actual distinct identifiers for the same event cannot both obtain an
+accepting receipt. At complete settlement at least one exact packet is forbidden;
+no choice of which one is made before the final record is known. -/
+theorem duplicatePackets_forbidden_history
+    {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
+    (control : (application setup leaks).Control)
+    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some control)) (event : (graph setup).EventId)
+    (first second : Message Player (WitnessedPacket (graph setup)))
+    (firstEmitted : Emitted setup leaks control.execution first)
+    (secondEmitted : Emitted setup leaks control.execution second)
+    (different : first.id ≠ second.id)
+    (firstNamed : first.payload.call.event? (graph setup) = some event)
+    (secondNamed : second.payload.call.event? (graph setup) = some event)
+    (complete : control.execution.application.config.cut.Terminal) :
+    ((runtime setup).settledRecord leaks control.execution).permits first = false ∨
+      ((runtime setup).settledRecord leaks control.execution).permits second = false := by
+  classical
+  have facts := settledFacts_history (initialLaw setup) horizon scheduler trace
+  have settled : event ∈ control.execution.application.publicView.observation.completionOrder := by
+    apply (control.execution.application.config.history_exact event).mpr
+    rw [complete]
+    exact Finset.mem_univ event
+  by_cases firstAccepted : (first.id, true) ∈ control.execution.receipts
+  · right
+    apply SettledRecord.permits_eq_false_of_settled
+      ((runtime setup).settledRecord leaks control.execution) second event secondNamed settled
+    rintro ⟨secondAccepted, _⟩
+    exact different (facts.single first (facts.accepted_emitted firstEmitted firstAccepted).1
+      second (facts.accepted_emitted secondEmitted secondAccepted).1 firstAccepted secondAccepted
+        event firstNamed secondNamed)
+  · left
+    exact SettledRecord.permits_eq_false_of_settled
+      ((runtime setup).settledRecord leaks control.execution) first event firstNamed settled
+        (fun accepted => firstAccepted accepted.1)
+
+/-- The authentic backend collects with its stated lower bound for one of the
+two actual traffic records, selected only after seeing the final verdict. The
+bound is on total collected charge, not renewed collection after an earlier fine. -/
+theorem duplicateTraffic_collection
+    {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
+    (control : (application setup leaks).Control)
+    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some control)) (event : (graph setup).EventId) (who : Player)
+    (first second : (application setup leaks).TrafficRecord)
+    (firstPresent : first ∈ (application setup leaks).executionTraffic control.execution)
+    (secondPresent : second ∈ (application setup leaks).executionTraffic control.execution)
+    (firstOwner : first.envelope.sender = who) (secondOwner : second.envelope.sender = who)
+    (different : first.envelope.id ≠ second.envelope.id)
+    (firstNamed : first.envelope.payload.call.event? (graph setup) = some event)
+    (secondNamed : second.envelope.payload.call.event? (graph setup) = some event)
+    (complete : control.execution.application.config.cut.Terminal)
+    (backend : EvidenceReportService (SettledEvidence setup))
+    (observationRate deliveryRate : Player → ℝ)
+    (delivery_nonnegative : ∀ player, 0 ≤ deliveryRate player)
+    (coverage : FinalForbiddenEvidenceCoverage backend observationRate deliveryRate) :
+    observationRate who * deliveryRate who ≤
+      TerminalAudit.charge ((runtime setup).serviceAuditObservation leaks)
+        (sourceServiceAudit setup leaks backend.sample) (some control) who := by
+  let app := application setup leaks
+  have inputs := app.stateTraffic_inputs (initialLaw setup) horizon scheduler trace
+  change (app.executionTraffic control.execution).map ReactiveApplication.TrafficRecord.envelope =
+    control.execution.network.inputs at inputs
+  have emitted (record : app.TrafficRecord)
+      (present : record ∈ app.executionTraffic control.execution) :
+      Emitted setup leaks control.execution record.envelope := by
+    unfold Emitted
+    rw [← inputs]
+    exact List.mem_map.mpr ⟨record, present, rfl⟩
+  rcases duplicatePackets_forbidden_history control trace event first.envelope second.envelope
+      (emitted first firstPresent) (emitted second secondPresent) different firstNamed secondNamed
+        complete with firstBad | secondBad
+  · have collected := (runtime setup).settledPacket_collection leaks backend observationRate
+      deliveryRate delivery_nonnegative coverage control first firstPresent firstBad
+    simpa only [firstOwner, sourceServiceAudit, application] using collected
+  · have collected := (runtime setup).settledPacket_collection leaks backend observationRate
+      deliveryRate delivery_nonnegative coverage control second secondPresent secondBad
+    simpa only [secondOwner, sourceServiceAudit, application] using collected
+
+variable [Fintype Player]
+
+/-- Both actual records persist under every later behavioral policy. Complete
+play supplies the settled record, and bounded native terminal evaluation supplies
+the continuation length. The forbidden packet may differ between final histories. -/
+theorem duplicateTraffic_collection_continuation
+    (menu : (application setup leaks).ResponseMenu) (horizon : Nat)
+    (scheduler : (application setup leaks).Scheduler)
+    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
+    (backend : EvidenceReportService (SettledEvidence setup))
+    (observationRate deliveryRate : Player → ℝ)
+    (delivery_nonnegative : ∀ player, 0 ≤ deliveryRate player)
+    (coverage : FinalForbiddenEvidenceCoverage backend observationRate deliveryRate)
+    (profile : ∀ player,
+      (menu.information (initialLaw setup) horizon scheduler).BehavioralPolicy player)
+    (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
+    (event : (graph setup).EventId) (who : Player)
+    (first second : (application setup leaks).TrafficRecord)
+    (firstPresent : first ∈ (application setup leaks).stateTraffic history.state)
+    (secondPresent : second ∈ (application setup leaks).stateTraffic history.state)
+    (firstOwner : first.envelope.sender = who) (secondOwner : second.envelope.sender = who)
+    (different : first.envelope.id ≠ second.envelope.id)
+    (firstNamed : first.envelope.payload.call.event? (graph setup) = some event)
+    (secondNamed : second.envelope.payload.call.event? (graph setup) = some event) :
+    observationRate who * deliveryRate who ≤
+      expect ((menu.information (initialLaw setup) horizon scheduler).runBehavioralTerminalFrom
+        (menu.bounded (initialLaw setup) horizon scheduler).wellFoundedHistories profile history)
+        (fun final => TerminalAudit.charge ((runtime setup).serviceAuditObservation leaks)
+          (sourceServiceAudit setup leaks backend.sample) final.state who) := by
+  let app := application setup leaks
+  let model := menu.information (initialLaw setup) horizon scheduler
+  let protocol := menu.protocol (initialLaw setup) horizon scheduler
+  let certificate := (menu.bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
+  let fuel := 2 * horizon + 1 - history.trace.length
+  have runner := model.runBehavioralTerminalFrom_eq_remaining certificate profile
+    (menu.bounded (initialLaw setup) horizon scheduler) history
+  rw [runner]
+  calc
+    observationRate who * deliveryRate who = expect
+        (model.runBehavioralFrom profile fuel history)
+        (fun _ => observationRate who * deliveryRate who) := (expect_constant _ _).symm
+    _ ≤ _ := by
+      refine expect_mono ?_ (payoffIntegrable_constant _ _)
+        (TerminalAudit.payoffIntegrable_charge _ _ _ _)
+      intro final supported
+      have terminal : app.terminal final.state :=
+        model.runBehavioralTerminalFrom_support_terminal certificate profile history final
+          (by rw [runner]; exact supported)
+      have path := protocol.runRandomizedFor_reachesWithin (model.randomizedChooser profile)
+        fuel history final supported
+      have kept := (menu.trafficAudit_reaches (initialLaw setup) horizon scheduler path).subset
+      rw [menu.trafficAudit_eq_stateTraffic, menu.trafficAudit_eq_stateTraffic] at kept
+      have keptFirst := kept firstPresent
+      have keptSecond := kept secondPresent
+      cases current : final.state with
+      | none => rw [current] at keptFirst; exact (List.not_mem_nil keptFirst).elim
+      | some control =>
+          have trace := current ▸ menu.toRawTrace (initialLaw setup) horizon scheduler final.trace
+          exact duplicateTraffic_collection control trace event who first second
+            (by simpa only [current, ReactiveApplication.stateTraffic] using keptFirst)
+            (by simpa only [current, ReactiveApplication.stateTraffic] using keptSecond)
+            firstOwner secondOwner different firstNamed secondNamed
+            (completes control trace (current ▸ terminal)) backend observationRate deliveryRate
+            delivery_nonnegative coverage
+
+omit [Fintype Player] in
+/-- An actual raw prefix reconstructs its authored emission and
+earlier recorded packet from recall. A further response naming that event emits
+a different identifier and leaves both real records present, regardless of content. -/
+theorem recordedResponse_duplicateTraffic
+    {horizon remaining : Nat} {scheduler : (application setup leaks).Scheduler}
+    (execution : (application setup leaks).Execution) (who : Player)
+    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨remaining, some who, execution⟩))
+    (event : (graph setup).EventId)
+    (recorded : (runtime setup).eventRecorded leaks (execution.recall who) event = true)
+    (material : (application setup leaks).Submission)
+    (submitted : (runtime setup).submittedEvent? leaks ⟨some material⟩ = some event) :
+    let app := application setup leaks
+    let second : app.TrafficRecord :=
+      ⟨execution.application.publicView, execution.network.ledger,
+        ⟨(who, execution.network.nextSerial who), app.packet
+          (app.submit execution.application who material) who
+            (execution.network.known who) material⟩⟩
+    ∃ first : app.TrafficRecord,
+      first ∈ app.executionTraffic (execution.respond app who ⟨some material⟩) ∧
+        second ∈ app.executionTraffic (execution.respond app who ⟨some material⟩) ∧
+        first.envelope.sender = who ∧ first.envelope.id ≠ second.envelope.id ∧
+        first.envelope.payload.call.event? (graph setup) = some event ∧
+        second.envelope.payload.call.event? (graph setup) = some event := by
+  intro app second
+  have facts := legalFacts setup leaks horizon scheduler _ trace
+  have settledFacts := settledFacts_history (initialLaw setup) horizon scheduler trace
+  obtain ⟨entry, recalled, namedEntry⟩ :=
+    ((runtime setup).eventRecorded_iff leaks _ event).mp recorded
+  obtain ⟨priorMaterial, transmission⟩ :
+      ∃ priorMaterial, entry.action.transmission = some priorMaterial := by
+    cases current : entry.action.transmission with
+    | none =>
+        simp only [EventGraphRuntime.submittedEvent?, current] at namedEntry
+        cases namedEntry
+    | some priorMaterial => exact ⟨priorMaterial, rfl⟩
+  obtain ⟨message, emitted, authored, callEq⟩ :=
+    (runtime setup).recalled_submission_emission leaks (initialLaw setup) horizon scheduler
+      ⟨remaining, some who, execution⟩ trace who entry recalled priorMaterial transmission
+  have named : message.payload.call.event? (graph setup) = some event := by
+    rw [callEq]
+    simpa only [EventGraphRuntime.submittedEvent?, transmission] using namedEntry
+  have output : message ∈ app.outputs (execution.recall who) :=
+    List.mem_filterMap.mpr ⟨entry, recalled, emitted⟩
+  rw [← facts.inputs who] at output
+  have priorEmitted : Emitted setup leaks execution message := (List.mem_filter.mp output).1
+  have inputs := app.stateTraffic_inputs (initialLaw setup) horizon scheduler trace
+  change (app.executionTraffic execution).map ReactiveApplication.TrafficRecord.envelope =
+    execution.network.inputs at inputs
+  have inTraffic : message ∈ (app.executionTraffic execution).map
+      ReactiveApplication.TrafficRecord.envelope := by
+    rw [inputs]
+    exact priorEmitted
+  obtain ⟨first, firstPresent, envelope⟩ := List.mem_map.mp inTraffic
+  let history : (app.protocol (initialLaw setup) horizon scheduler).History :=
+    ⟨some ⟨remaining, some who, execution⟩, trace⟩
+  let joint : Player → Option app.Action := fun player =>
+    if player = who then some ⟨some material⟩ else none
+  have stepped : some ⟨remaining, none, execution.respond app who ⟨some material⟩⟩ ∈
+      (app.transition (initialLaw setup) horizon scheduler history.state joint).support := by
+    change _ ∈ (PMF.pure _).support
+    simp only [joint, ↓reduceIte, Option.getD_some, PMF.mem_support_pure_iff _ _]
+  have traffic := app.stateTraffic_transition (initialLaw setup) horizon scheduler history joint
+    _ stepped
+  have firstKept : first ∈ app.executionTraffic (execution.respond app who ⟨some material⟩) := by
+    change first ∈ app.stateTraffic
+      (some ⟨remaining, none, execution.respond app who ⟨some material⟩⟩)
+    rw [traffic]
+    exact List.mem_append_left _ firstPresent
+  refine ⟨first, firstKept,
+    (runtime setup).signed_response_traffic leaks execution who material trace,
+    envelope ▸ authored, ?_, envelope ▸ named, ?_⟩
+  · rw [envelope]
+    have lower := settledFacts.emitted_serial priorEmitted
+    change message.id.2 < execution.network.nextSerial message.sender at lower
+    rw [authored] at lower
+    intro same
+    have serialEq := congrArg Prod.snd same
+    exact (Nat.ne_of_lt lower) serialEq
+  · exact submitted
+
+end Vegas

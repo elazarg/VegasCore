@@ -36,7 +36,6 @@ theorem first_binding_block_coupling
     (memory : BindingMemory (runtime setup) leaks)
     (original repaired : (application setup leaks).Execution)
     (frame : BindingMemory.Frame (runtime setup) leaks memory owner original repaired)
-    (completedMemory : memory.shadow.CompletedAt original.application.config)
     (reference : List (application setup leaks).PlayerEntry)
     (started : reference.length ≤ (repaired.recall owner).length)
     (leftRecall : original.InputRecall (application setup leaks))
@@ -63,7 +62,7 @@ theorem first_binding_block_coupling
       (sourceServiceMenu setup leaks bounds rosters) owner reference (players owner)
     let view := repaired.observe app owner
     let response : app.Action :=
-      ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩
+      ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩
     let changed := memory.repairResponse (runtime setup) leaks owner view response
     let remembered : BindingMemory (runtime setup) leaks :=
       ⟨changed.2, memory.responses ++
@@ -77,11 +76,10 @@ theorem first_binding_block_coupling
         (rosterScheduler setup leaks rosters network) plan.length
           (repaired.respond app owner changed.1) remembered ∧
       ∀ next ∈ coupling.support,
-        (∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
+        (∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.envelope = false) ∨
-        (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
-          next.2.2.shadow.CompletedAt next.1.application.config) := by
+            record.input.envelope = false) ∨
+        BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 := by
   intro app strategy view response changed remembered plan
   let left := original.respond app owner response
   let right := repaired.respond app owner changed.1
@@ -92,7 +90,7 @@ theorem first_binding_block_coupling
   have paired := frame.binding_submission event payload outputEq codeEq node serial opening
     fresh ready
   have data := frame.binding_submission_pending event payload outputEq codeEq node serial opening
-    fresh (fun _ _ => completedMemory.ready_none event ready)
+    fresh
   have unchanged := (runtime setup).reactive_respond_application leaks original owner response
   have leftReady : left.application.config.cut.Ready event := by
     rw [unchanged.1]
@@ -140,36 +138,13 @@ theorem first_binding_block_coupling
   have nextStarted : reference.length ≤ (right.recall owner).length := by
     rw [app.respond_recall_length]
     omega
-  have ownFresh : (memory.shadow.inputView (runtime setup) leaks view).application.candidates
-      (.prepared serial) = .fresh := by
-    rw [frame.observed]
-    exact fresh
-  have localFresh : view.application.candidates (.prepared serial) = .fresh :=
-    (frame.slots (.prepared serial)).mp fresh
-  have otherCompleted : ∀ other, other ≠ event →
-      (remembered.shadow.actions other).isSome ∨
-        (remembered.shadow.values (.inr other)).isSome →
-          other ∈ left.application.config.cut.completed := by
-    intro other different present
-    rw [unchanged.1]
-    apply completedMemory other
-    cases decoded : opening.bind (fun raw => raw.as? payload) with
-    | none =>
-        simpa only [remembered, changed, BindingMemory.repairResponse, response, node,
-          ownFresh, localFresh, and_self, ↓reduceIte, decoded, BindingShadow.rememberCompletion,
-          BindingShadow.rememberCandidate, Function.update_of_ne different,
-          Function.update_of_ne (Sum.inr_injective.ne different)] using present
-    | some value =>
-        simpa only [remembered, changed, BindingMemory.repairResponse, response, node,
-          ownFresh, localFresh, and_self, ↓reduceIte, decoded, BindingShadow.rememberCandidate]
-          using present
   exact repeated_binding_block_coupling setup leaks bounds rosters network players owner event
     payload outputEq codeEq node (.prepared serial) (original.network.nextSerial owner) remembered
-      left right paired otherCompleted reference nextStarted
+      left right paired reference nextStarted
       (app.respond_inputRecall original owner response leftRecall)
       (app.respond_inputRecall repaired owner changed.1 rightRecall)
       (networkEq ▸ serials.submit owner packet) repeated recorded leftReady leftTimely leftVacant
-      leftUnused data.1 data.2.1 data.2.2 pending
+      leftUnused data.1 data.2.1 (Or.inl ⟨data.2.2.1, data.2.2.2.1, data.2.2.2.2⟩) pending
       (serials.next_unpublished owner) packets available before after visits ticks split
       (by rw [app.respond_environmentRecall]; exact position)
 

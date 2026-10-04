@@ -5,9 +5,9 @@ import Interaction.ReactiveQuiescent
 /-! # Observation while an owner's message awaits inclusion
 
 Unpublished own envelopes cannot add passive knowledge to their author. Other
-players may still learn those envelopes. Including the only unpublished
-pending identifier leaves every pending identifier published. These facts
-retain delayed inclusion, passive leaks and recall.
+players may still learn those envelopes. Inclusion of one pending identifier
+also makes every remaining replay of that identifier already published. These
+facts retain delayed inclusion, passive leaks, pending multiplicity and recall.
 -/
 
 namespace Interaction
@@ -67,8 +67,8 @@ theorem ReactiveApplication.Execution.activate_of_foreign_pending_published
     Function.comp_def]
   exact PMF.map_const _ _
 
-/-- Including the only unpublished pending identifier leaves every pending
-identifier published. -/
+/-- A single inclusion publishes the identifier of every remaining replay.
+No pending-copy erasure or restriction on who rebroadcast it is assumed. -/
 theorem MessageNetwork.include_pending_published_or_selected
     (network : MessageNetwork Principal Payload) (id : MessageId Principal)
     (packet : Message Principal Payload) (found : network.lookup id = some packet)

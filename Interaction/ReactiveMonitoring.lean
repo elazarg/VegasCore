@@ -2,7 +2,7 @@
 
 import Interaction.ReactiveLedgerConformance
 import Interaction.ReactiveReceipts
-import Interaction.ReactiveMessageReadout
+import Interaction.ReactiveReplayPolicy
 import Interaction.MessageMonitoringProbability
 import Interaction.ReactiveQuiescent
 
@@ -25,6 +25,13 @@ namespace Interaction.ReactiveApplication
 open GameTheory.Math.Probability
 
 variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication Principal)
+
+/-- The watcher's prescribed response: it transmits nothing. -/
+def silentPolicy : app.Policy := fun _ _ => PMF.pure ⟨none⟩
+
+omit [DecidableEq Principal] in
+@[simp] theorem silentPolicy_apply (past : List app.PlayerEntry) (view : app.PlayerView) :
+    app.silentPolicy past view = PMF.pure ⟨none⟩ := rfl
 
 /-- One observation round: the watcher is activated and responds, then the
 round's network slot idles. -/
@@ -57,7 +64,15 @@ theorem leaked_policyInvariant (players : Principal → app.Policy) (watcher : P
     rcases action with ⟨transmission⟩
     cases transmission with
     | none => exact observed
-    | some material => exact observed
+    | some transmission =>
+        cases transmission with
+        | submit material => exact observed
+        | replay id =>
+            have same := execution.network.replay_observe who watcher id
+            change message ∈ (execution.network.replay who id).2.leaked watcher
+            rw [show (execution.network.replay who id).2.leaked watcher =
+              execution.network.leaked watcher from congrArg MessageNetwork.PlayerView.leaked same]
+            exact observed
   environment execution next command observed reached := by
     cases command with
     | wait =>

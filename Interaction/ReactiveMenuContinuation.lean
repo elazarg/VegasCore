@@ -43,46 +43,6 @@ theorem restrictPolicy_law (who : Principal) (policy : app.Policy)
       rw [PMF.pure_map]
       rfl
 
-/-- Legal-history admission makes restriction to nested menus agree at every
-actual smaller decision site. No coverage is required at nonexistent inputs. -/
-theorem restrictProfile_extends_of_admissible
-    (players : Principal → app.Policy)
-    (covered : ∀ who, smaller.Admissible initial horizon scheduler who (players who)) :
-    (included.actionRestriction initial horizon scheduler).ExtendsProfile
-      (fun who => smaller.restrictPolicy initial horizon scheduler who (players who))
-      (fun who => larger.restrictPolicy initial horizon scheduler who (players who)) := by
-  intro who site
-  obtain ⟨history, _, _⟩ := site.2
-  have active := InformationModel.InformationSite.active _ site history
-  have observed := (smaller.info initial horizon scheduler who history.1.trace).symm.trans
-    history.2
-  cases current : history.1.state with
-  | none =>
-      rw [current] at active
-      cases active
-  | some control =>
-      rw [current] at active observed
-      have acting : control.actor = some who := active
-      have trace : (smaller.protocol initial horizon scheduler).Trace (some control) :=
-        current ▸ history.1.trace
-      change (if control.actor = some who then
-        some (control.execution.recall who, control.execution.observe app who) else none) =
-          site.1 at observed
-      rw [ite_eq_left acting] at observed
-      have localCovered := covered who control trace acting
-      change larger.restrictPolicy initial horizon scheduler who (players who) site.1 =
-        (smaller.restrictPolicy initial horizon scheduler who (players who) site.1).map
-          (included.choice initial horizon scheduler who site.1)
-      rw [← observed]
-      apply pmf_map_injective (f := Subtype.val) Subtype.val_injective
-      rw [larger.restrictPolicy_map_val initial horizon scheduler who (players who) _ _
-        (fun response supported => included who _ _ (localCovered response supported)),
-        PMF.map_comp]
-      change _ = (smaller.restrictPolicy initial horizon scheduler who (players who)
-        (some (control.execution.recall who, control.execution.observe app who))).map Subtype.val
-      exact (smaller.restrictPolicy_map_val initial horizon scheduler who (players who) _ _
-        localCovered).symm
-
 /-- A globally legal replacement preserves the original target opponents. -/
 theorem extends_restrictPolicy
     (source : ∀ who, (smaller.information initial horizon scheduler).BehavioralPolicy who)

@@ -94,8 +94,8 @@ theorem Policy.recover_invariant (prescribed recovery : app.Policy) (who : Princ
             Policy.Consistent.snoc (policy := prescribed)
               ⟨execution.observe app who, ⟨none⟩, none⟩ valid supported
       | some transmission =>
-          simp only [Execution.respond, ↓reduceIte]
-          exact .snoc _ valid supported
+          cases transmission <;> simp only [Execution.respond, ↓reduceIte] <;>
+            exact .snoc _ valid supported
     · rw [app.respond_recall_other execution actor who same action]
       exact valid
   environment execution next command valid reached := by

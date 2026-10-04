@@ -1,0 +1,202 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.DisclosurePrefix
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheoryExtensions.Math.Probability.Support
+
+/-! # Whole prescribed continuations at normalized source prefixes
+
+The private-intention posterior reconstructs the original continuation at
+every supported normalized source state. This pointwise statement retains
+the actual program point and all hidden data; initialized outcome equality
+alone would not establish it.
+-/
+
+noncomputable section
+
+namespace Vegas.SourceProgram
+
+open GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] [Fintype Player]
+  {L : IExpr} [IExpr.ResultTypes L] {who : Player}
+
+omit [Fintype Player] in
+private theorem disclosure_continuation_entry {Γ : SourceCtx Player L} {O : Finset VarId}
+    (program : SourceProgram Player L Γ O) (profile : BehavioralProfile program)
+    (policy : BehavioralPolicy who program)
+    (remember : DecisionView who Γ → PMF (List (OwnAction Player L)))
+    (config : Config Player L Γ) :
+    (policy.disclosureMemory program config.registry config.revelations remember
+        (ProtocolState.entry program config)).bind
+          (ProtocolState.continuationLaw program (Function.update profile who policy)) =
+      ProtocolState.continuationLaw program
+        (Function.update profile who
+          (policy.normalizeDisclosureFrom program config.registry config.revelations remember))
+        (ProtocolState.entry program config) := by
+  rw [BehavioralPolicy.disclosureMemory_entry, PMF.bind_map]
+  simp only [ProtocolState.continuationLaw_entry, Config.restoreMemory, PMF.bind_map,
+      Function.comp_def]
+  exact normalizeDisclosureFrom_realize program profile policy config.registry
+    config.revelations remember config.state config.history
+
+private def DisclosurePrefixRealizes {Γ : SourceCtx Player L} {O : Finset VarId}
+    (program : SourceProgram Player L Γ O) : Prop :=
+  ∀ (profile continuation : BehavioralProfile program) (policy : BehavioralPolicy who program)
+    (remember : DecisionView who Γ → PMF (List (OwnAction Player L)))
+    (config : Config Player L Γ) (count : Nat) (state : ProtocolState program),
+    state ∈ ((fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
+      (Function.update profile who (policy.normalizeDisclosureFrom program config.registry
+        config.revelations remember))))^[count]
+        (PMF.pure (ProtocolState.entry program config))).support →
+    (policy.disclosureMemory program config.registry config.revelations remember state).bind
+      (ProtocolState.continuationLaw program (Function.update continuation who policy)) =
+      ProtocolState.continuationLaw program (Function.update continuation who
+        (policy.normalizeDisclosureFrom program config.registry config.revelations remember)) state
+
+private theorem disclosurePrefixRealizes_sample {Γ : SourceCtx Player L} {O : Finset VarId}
+    (name : VarId) {payload : L.Ty} (fresh : name ∉ Γ.map Prod.fst)
+    (law : L.DistExpr (SourcePublicCtx L Γ) payload)
+    (next : SourceProgram Player L ((name, .publicData payload) :: Γ) O)
+    (ih : DisclosurePrefixRealizes (who := who) next) :
+    DisclosurePrefixRealizes (who := who) (.sample name fresh law next) := by
+  intro profile continuation policy remember config count state supported
+  cases count with
+  | zero =>
+      have equal := (PMF.mem_support_pure_iff _ _).mp supported
+      subst state
+      exact disclosure_continuation_entry _ continuation policy remember config
+  | succ count =>
+      rw [ProtocolState.behavioralStatePrefix_sample] at supported
+      obtain ⟨value, _, later⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+      obtain ⟨state, reached, rfl⟩ := PMF.support_map .. ▸ later
+      have result := ih profile continuation policy (fun view => remember (view.back false))
+        (sampleSuccessor name config value) count state reached
+      simpa only [BehavioralPolicy.disclosureMemory, Sum.elim_inr, PMF.bind_map,
+        BehavioralPolicy.normalizeDisclosureFrom, ProtocolState.continuationLaw,
+        sampleSuccessor, afterSample, Function.comp_def] using result
+
+private theorem disclosurePrefixRealizes_commit {Γ : SourceCtx Player L} {O : Finset VarId}
+    (name : VarId) (owner : Player) {payload : L.Ty} (fresh : name ∉ Γ.map Prod.fst)
+    (guard : SourceGuard L Γ owner name payload)
+    (next : SourceProgram Player L ((name, .commitment owner payload) :: Γ) (insert name O))
+    (ih : DisclosurePrefixRealizes (who := who) next) :
+    DisclosurePrefixRealizes (who := who) (.commit name owner fresh guard next) := by
+  intro profile continuation policy remember config count state supported
+  cases count with
+  | zero =>
+      have equal := (PMF.mem_support_pure_iff _ _).mp supported
+      subst state
+      exact disclosure_continuation_entry _ continuation policy remember config
+  | succ count =>
+      rw [ProtocolState.behavioralStatePrefix_commit] at supported
+      obtain ⟨binding, _, later⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+      obtain ⟨state, reached, rfl⟩ := PMF.support_map .. ▸ later
+      let posterior : DecisionView who ((name, .commitment owner payload) :: Γ) →
+          PMF (List (OwnAction Player L)) := fun view =>
+        if own : owner = who then
+          (fiberPosterior (bindingMemoryLaw name payload remember (policy.1 own)
+              (view.back true)) Prod.fst
+                ((view.1.cells.get .here).getD .failure)).map Prod.snd
+        else remember (view.back false)
+      have result := ih (afterCommit profile) (afterCommit continuation) policy.2 posterior
+        (commitSuccessor name guard config binding) count state (by
+          simpa only [afterCommit_update, BehavioralPolicy.normalizeDisclosureFrom,
+            commitSuccessor, posterior] using reached)
+      change ((policy.2.disclosureMemory next _ _ posterior state).map Sum.inr).bind
+        (ProtocolState.continuationLaw _ (Function.update continuation who policy)) = _
+      rw [PMF.bind_map]
+      change (policy.2.disclosureMemory next _ _ posterior state).bind
+        (ProtocolState.continuationLaw next
+          (afterCommit (Function.update continuation who policy))) =
+          ProtocolState.continuationLaw next
+            (afterCommit (Function.update continuation who
+              (policy.normalizeDisclosureFrom _ config.registry config.revelations remember))) state
+      rw [afterCommit_update, afterCommit_update]
+      exact result
+
+private theorem disclosurePrefixRealizes_reveal {Γ : SourceCtx Player L} {O : Finset VarId}
+    (published : VarId) (owner : Player) (name : VarId) {payload : L.Ty}
+    (fresh : published ∉ Γ.map Prod.fst)
+    (selected : HasVar Γ name (.commitment owner payload)) (unresolved : name ∈ O)
+    (next : SourceProgram Player L ((published, .publication payload) :: Γ) (O.erase name))
+    (ih : DisclosurePrefixRealizes (who := who) next) :
+    DisclosurePrefixRealizes (who := who)
+      (.reveal published owner name fresh selected unresolved next) := by
+  intro profile continuation policy remember config count state supported
+  cases count with
+  | zero =>
+      have equal := (PMF.mem_support_pure_iff _ _).mp supported
+      subst state
+      exact disclosure_continuation_entry _ continuation policy remember config
+  | succ count =>
+      rw [ProtocolState.behavioralStatePrefix_reveal] at supported
+      obtain ⟨disclose, _, later⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+      obtain ⟨state, reached, rfl⟩ := PMF.support_map .. ▸ later
+      let posterior : DecisionView who ((published, .publication payload) :: Γ) →
+          PMF (List (OwnAction Player L)) := fun view =>
+        if own : owner = who then
+          (fiberPosterior (disclosureMemoryLaw published (own ▸ selected) config.registry
+              config.revelations
+              remember (policy.1 own) (view.back true)) Prod.fst
+                (OwnAction.disclosure view.2.getLast?)).map Prod.snd
+        else remember (view.back false)
+      have result := ih (afterReveal profile) (afterReveal continuation) policy.2 posterior
+        (revealSuccessor published selected config disclose) count state (by
+          simpa only [afterReveal_update, BehavioralPolicy.normalizeDisclosureFrom,
+            revealSuccessor, posterior] using reached)
+      change ((policy.2.disclosureMemory next _ _ posterior state).map Sum.inr).bind
+        (ProtocolState.continuationLaw _ (Function.update continuation who policy)) = _
+      rw [PMF.bind_map]
+      change (policy.2.disclosureMemory next _ _ posterior state).bind
+        (ProtocolState.continuationLaw next
+          (afterReveal (Function.update continuation who policy))) =
+          ProtocolState.continuationLaw next
+            (afterReveal (Function.update continuation who
+              (policy.normalizeDisclosureFrom _ config.registry config.revelations remember))) state
+      rw [afterReveal_update, afterReveal_update]
+      exact result
+
+/-- The actual prefix's private-memory posterior reproduces its whole source
+continuation against arbitrary opponent continuation policies. The prefix
+uses the original profile; opponents may deviate throughout the suffix. -/
+theorem disclosure_prefix_continuation_realizes {who : Player} :
+    {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) →
+    (profile continuation : BehavioralProfile program) →
+    (policy : BehavioralPolicy who program) →
+    (remember : DecisionView who Γ → PMF (List (OwnAction Player L))) →
+    (config : Config Player L Γ) → (count : Nat) → (state : ProtocolState program) →
+    state ∈ ((fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
+      (Function.update profile who (policy.normalizeDisclosureFrom program config.registry
+        config.revelations remember))))^[count]
+        (PMF.pure (ProtocolState.entry program config))).support →
+    (policy.disclosureMemory program config.registry config.revelations remember state).bind
+      (ProtocolState.continuationLaw program (Function.update continuation who policy)) =
+      ProtocolState.continuationLaw program (Function.update continuation who
+        (policy.normalizeDisclosureFrom program config.registry config.revelations remember)) state
+  | _, _, .ret result, profile, continuation, policy, remember, config,
+      count, state, supported => by
+      have equal : state = config := by
+        simpa only [ProtocolState.entry, ProtocolState.behavioralStatePrefix_ret,
+          PMF.mem_support_pure_iff _ _] using supported
+      subst state
+      exact disclosure_continuation_entry (.ret result) continuation policy remember config
+  | _, _, .sample name fresh law next, profile, continuation, policy, remember, config,
+      count, state, supported =>
+      disclosurePrefixRealizes_sample name fresh law next
+        (disclosure_prefix_continuation_realizes next)
+        profile continuation policy remember config count state supported
+  | _, _, .commit name owner fresh guard next, profile, continuation, policy, remember, config,
+      count, state, supported =>
+      disclosurePrefixRealizes_commit name owner fresh guard next
+        (disclosure_prefix_continuation_realizes next) profile continuation policy remember config
+          count state supported
+  | _, _, .reveal published owner name fresh selected unresolved next, profile, continuation,
+      policy, remember, config, count, state, supported =>
+      disclosurePrefixRealizes_reveal published owner name fresh selected unresolved next
+        (disclosure_prefix_continuation_realizes next) profile continuation policy remember config
+          count state supported
+
+end Vegas.SourceProgram

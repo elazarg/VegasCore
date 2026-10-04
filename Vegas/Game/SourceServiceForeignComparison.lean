@@ -49,7 +49,7 @@ theorem transport_phase_application_law (setup : Setup (Player := Player) (L := 
       execution.recall owner ⊆ current.recall owner →
       response ∈ (players who (current.recall who)
         (current.observe (application setup leaks) who)).support →
-      response = ⟨none⟩)
+      response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩)
     (published : execution.network.Satisfies fun message =>
       message.id ∈ execution.network.ledger.map Message.id) :
     ((runtime setup).runInteractionPlan leaks players network
@@ -65,7 +65,7 @@ theorem transport_phase_application_law (setup : Setup (Player := Player) (L := 
             execution).map ReactiveApplication.Execution.application) := by
       apply bind_congr_on_support _
       intro current reached
-      obtain ⟨sameApp, ledger, _, _, valid, _⟩ := (runtime setup).silent_window_preserves leaks
+      obtain ⟨sameApp, ledger, _, _, valid, _⟩ := (runtime setup).replay_window_preserves leaks
         players network owner execution responses _ published visits current reached
       have waiting : (runtime setup).reactiveLatest leaks event owner
           (current.observeEnvironment ((runtime setup).reactiveApplication leaks)) = .wait := by
@@ -95,14 +95,14 @@ theorem replay_phase_application_law (setup : Setup (Player := Player) (L := L))
     (execution : (application setup leaks).Execution)
     (published : execution.network.Satisfies fun message =>
       message.id ∈ execution.network.ledger.map Message.id) :
-    ((runtime setup).runInteractionPlan leaks (fun _ => (application setup leaks).silentPolicy)
+    ((runtime setup).runInteractionPlan leaks (fun _ => (application setup leaks).replayPolicy)
       network (visits.map ServiceInstruction.player ++ .includeLatest event owner :: rest)
         execution).map ReactiveApplication.Execution.application =
-      ((runtime setup).runInteractionPlan leaks (fun _ => (application setup leaks).silentPolicy)
+      ((runtime setup).runInteractionPlan leaks (fun _ => (application setup leaks).replayPolicy)
         network rest execution).map ReactiveApplication.Execution.application :=
   transport_phase_application_law setup leaks _ network event owner visits rest passive execution
     (fun _ _ response _ _ supported =>
-      (application setup leaks).silentPolicy_cases _ _ response supported) published
+      (application setup leaks).replayPolicy_cases _ _ response supported) published
 
 section
 
@@ -139,7 +139,7 @@ theorem binding_slot_config_law (setup : Setup (Player := Player) (L := L))
       (execution.recall site.owner).length + visits.count site.owner)
     (ticks : Nat) :
     ((runtime setup).runInteractionPlan leaks
-      (Function.update (fun _ => (application setup leaks).silentPolicy) site.owner
+      (Function.update (fun _ => (application setup leaks).replayPolicy) site.owner
         (sourceServiceTimedFamily setup leaks rosters wholeProfile site.owner event slot))
       network (visits.map ServiceInstruction.player ++
         (.includeLatest event site.owner :: List.replicate ticks .tick ++ [.expire event]))
@@ -176,12 +176,12 @@ theorem binding_slot_config_law (setup : Setup (Player := Player) (L := L))
   rw [splitPlan, runInteractionPlan_append, law, PMF.bind_bind, PMF.map_bind]
   apply bind_congr_on_support _
   intro choice _
-  let raw := Function.update (fun _ => (application setup leaks).silentPolicy) owner
+  let raw := Function.update (fun _ => (application setup leaks).replayPolicy) owner
     ((application setup leaks).scheduledPolicy
       (rosterOffset setup rosters owner (embedding.event ⟨0, by simp [eventCount]⟩))
       (some slot) (fun _ _ => PMF.pure ((runtime setup).reactiveBinding leaks owner
         (embedding.event ⟨0, by simp [eventCount]⟩) payload choice serial))
-      (application setup leaks).silentPolicy)
+      (application setup leaks).replayPolicy)
   refine (map_congr_on_support _ (g := fun _ => _) ?_).trans (PMF.map_const _ _)
   intro final reached
   obtain ⟨current, prior, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
@@ -214,7 +214,7 @@ theorem foreign_response_transport {who : Player} {remaining : Nat}
     (response : (application service.setup service.leaks).Action)
     (allowed : response ∈ service.menu.actions who (execution.recall who)
       (execution.observe (application service.setup service.leaks) who)) :
-    response = ⟨none⟩ := by
+    response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩ := by
   have present := service.menu.fullyMixed_response_support (initialLaw service.setup)
     service.planLength service.scheduler approx.players approx.covered approx.assessment
     approx.strategy approx.mixed who remaining execution trace response allowed
@@ -223,7 +223,7 @@ theorem foreign_response_transport {who : Player} {remaining : Nat}
   simp only [players, sourceServiceTimedPolicy_idle _ _ _ _ _ who _
     (execution.observe (application service.setup service.leaks) who) (sole.idle notActor)]
     at present
-  exact (application service.setup service.leaks).silentPolicy_cases _ _ response present
+  exact (application service.setup service.leaks).replayPolicy_cases _ _ response present
 
 /-- At a binding phase, every legal response of a player other than the owner
 leaves the same configuration law at the next event boundary, whether or not the
@@ -251,7 +251,7 @@ theorem foreign_binding_phase_invariant {who : Player} {remaining : Nat}
   obtain ⟨codeEq, node⟩ := binding_nodeView service.setup phase.event owner payload outputEq
   obtain ⟨ready, timely, _, _, _, serials, resources⟩ := sourceService_binding_decision_resources
     service.setup service.leaks service.bounds service.values service.capacity service.rosters
-    service.opportunities service.network who ⟨remaining, some who, execution⟩ trace rfl
+    service.opportunities.binding service.network who ⟨remaining, some who, execution⟩ trace rfl
     phase.event phase.ready owner payload outputEq codeEq node owned
   obtain ⟨_, freshSlot, fresh, unused, vacant, _, published⟩ := resources unsent
   obtain ⟨site⟩ := service.exists_bindingSource approx.profile trace phase outputEq
@@ -277,7 +277,7 @@ theorem foreign_binding_phase_invariant {who : Player} {remaining : Nat}
         (cast (congrArg EventGraph.EventField.Action site.outputEq.symm) choice)
         (cast (congrArg EventGraph.EventField.Value site.outputEq.symm) choice))
     else ((runtime service.setup).runInteractionPlan service.leaks
-      (fun _ => (application service.setup service.leaks).silentPolicy) service.network rest
+      (fun _ => (application service.setup service.leaks).replayPolicy) service.network rest
         execution).map (fun final => final.application.config)
   let posterior := ((application service.setup service.leaks).policyMixture
     (approx.timing phase.event site.owner owned)
@@ -289,9 +289,9 @@ theorem foreign_binding_phase_invariant {who : Player} {remaining : Nat}
       approx.phaseConfigLaw phase response = posterior.bind target := by
     have transport := approx.foreign_response_transport trace owned foreign phase.sole
       response allowed
-    have preserved := (runtime service.setup).silent_response_preserves service.leaks _
+    have preserved := (runtime service.setup).replay_response_preserves service.leaks _
       execution published who response transport
-    have counters := (runtime service.setup).silent_response_preserves service.leaks _
+    have counters := (runtime service.setup).replay_response_preserves service.leaks _
       execution serials who response transport
     have sameRecall := (application service.setup service.leaks).respond_recall_other execution
       who site.owner (Ne.symm foreign) response
@@ -313,7 +313,7 @@ theorem foreign_binding_phase_invariant {who : Player} {remaining : Nat}
         service.network (phase.visits.map ServiceInstruction.player ++
           .includeLatest phase.event site.owner :: rest) after =
         (runtime service.setup).runInteractionPlan service.leaks
-          (Function.update (fun _ => (application service.setup service.leaks).silentPolicy)
+          (Function.update (fun _ => (application service.setup service.leaks).replayPolicy)
             site.owner ((application service.setup service.leaks).policyMixture
               (approx.timing phase.event site.owner owned)
               (sourceServiceTimedFamily service.setup service.leaks service.rosters
@@ -332,7 +332,7 @@ theorem foreign_binding_phase_invariant {who : Player} {remaining : Nat}
       (approx.timing phase.event site.owner owned)
       (sourceServiceTimedFamily service.setup service.leaks service.rosters approx.profile
         site.owner phase.event) site.owner
-      (fun _ => (application service.setup service.leaks).silentPolicy) service.network
+      (fun _ => (application service.setup service.leaks).replayPolicy) service.network
       (phase.visits.map ServiceInstruction.player ++
         .includeLatest phase.event site.owner :: rest) after
     dsimp only at mixture
@@ -363,13 +363,13 @@ theorem foreign_binding_phase_invariant {who : Player} {remaining : Nat}
         rw [sameRecall]
         omega
       have replayed : (runtime service.setup).runInteractionPlan service.leaks
-          (Function.update (fun _ => (application service.setup service.leaks).silentPolicy)
+          (Function.update (fun _ => (application service.setup service.leaks).replayPolicy)
             site.owner (sourceServiceTimedFamily service.setup service.leaks service.rosters
               approx.profile site.owner phase.event slot)) service.network
           (phase.visits.map ServiceInstruction.player ++
             .includeLatest phase.event site.owner :: rest) after =
           (runtime service.setup).runInteractionPlan service.leaks
-            (fun _ => (application service.setup service.leaks).silentPolicy) service.network
+            (fun _ => (application service.setup service.leaks).replayPolicy) service.network
             (phase.visits.map ServiceInstruction.player ++
               .includeLatest phase.event site.owner :: rest) after := by
         rw [runInteractionPlan_append, runInteractionPlan_append]

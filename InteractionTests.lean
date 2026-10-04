@@ -1,11 +1,13 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
 import InteractionTests.CoalitionChannel
 import InteractionTests.Commitment
 import InteractionTests.CommitmentCandidates
 import InteractionTests.MessageApplication
 import InteractionTests.Pending
 import InteractionTests.PendingPriority
-import InteractionTests.ReactiveProtocol
-import InteractionTests.ReactiveMenuRestriction
 import InteractionTests.ReactiveImplementation
-import InteractionTests.ReactivePublication
+import InteractionTests.ReactiveMenuRestriction
 import InteractionTests.ReactiveMonitoring
+import InteractionTests.ReactiveProtocol
+import InteractionTests.ReactivePublication

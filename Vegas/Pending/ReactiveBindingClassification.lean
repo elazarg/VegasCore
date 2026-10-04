@@ -10,7 +10,7 @@ import Interaction.ReactivePublishedResponses
 A public canonical commitment packet determines the normalized submission
 except for its private opening material. That material is either a represented
 source value or unusable; the latter is repaired rather than audited. Silence
-at the required response instead produces
+and previously published replay at the required response instead produce
 public omission evidence at the actual deadline.
 -/
 
@@ -100,21 +100,24 @@ theorem binding_response_cases [Fintype Player] (bounds : MessageBounds graph)
     (prefixFresh : execution.application.PreparedPrefix who)
     (capacity : execution.application.publicView.bindingCount who < bounds.candidateCount)
     (recalled : execution.InputRecall (runtime.reactiveApplication leaks))
+    (knownPublished : ∀ message ∈ execution.network.known who,
+      message.id ∈ execution.network.ledger.map Message.id)
     (response : (runtime.reactiveApplication leaks).Action)
     (available : response ∈ (bounds.menu runtime leaks).actions who
       (execution.recall who) (execution.observe (runtime.reactiveApplication leaks) who)) :
     let app := runtime.reactiveApplication leaks
     let serial := execution.application.publicView.bindingCount who
-    response ∈ bounds.requiredDecisionActions runtime leaks who
+    response ∈ bounds.requiredBindingActions runtime leaks who
         (execution.recall who) (execution.observe app who) ∨
       (∃ opening, response =
-        ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩ ∧
+        ⟨some (.submit ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩)⟩ ∧
         opening.bind (fun raw => raw.as? payload) = none) ∨
-      (∃ submission, response = ⟨some submission⟩ ∧
+      (∃ submission, response = ⟨some (.submit submission)⟩ ∧
         submission.emit (app.submit execution.application who submission) who
           (execution.network.known who) ≠
             ⟨.commitment event (who, .prepared serial), none, some ⟨event⟩⟩) ∨
-      response = ⟨none⟩ := by
+      (response = ⟨none⟩ ∨ ∃ id ∈ execution.network.ledger.map Message.id,
+        response = ⟨some (.replay id)⟩) := by
   have turnSome := execution.application.publicView.ownTurn?_of_ownTurn who event turn
   let app := runtime.reactiveApplication leaks
   let serial := execution.application.publicView.bindingCount who
@@ -129,36 +132,45 @@ theorem binding_response_cases [Fintype Player] (bounds : MessageBounds graph)
     (execution.observe app who) response).mp available
   rcases response with ⟨transmission⟩
   cases transmission with
-  | none => exact Or.inr (Or.inr (Or.inr rfl))
-  | some submission =>
-      by_cases emitted : submission.emit (app.submit execution.application who submission)
-          who (execution.network.known who) =
-            ⟨.commitment event (who, .prepared serial), none, some ⟨event⟩⟩
-      · have normal : submission.normalizeReactive who
-            ((runtime.reactiveApplication leaks).observePlayer execution.application who)
-              (execution.network.known who) = submission := by
-          have fixed := member.2
-          change (⟨some (submission.normalizeReactive who _ _)⟩ : app.Action) =
-            ⟨some submission⟩ at fixed
-          have packets := congrArg ReactiveApplication.Action.transmission fixed
-          have same := Option.some.inj packets
-          rw [← known] at same
-          exact same
-        have shape := runtime.normal_binding_of_canonical_packet leaks execution.application
-          who (execution.network.known who) submission event serial fresh normal emitted
-        have rawBound : bounds.AllowsOpening submission.call.opening := member.1.1.2
-        have classified := bounds.canonical_binding_response_cases runtime leaks who
-          (execution.recall who) (execution.observe app who) event payload outputEq codeEq node
-          turn owned publicReady unsent serial allocator capacity
-          submission.call.opening rawBound
-        rcases classified with legal | unusable
-        · exact Or.inl (shape ▸ legal)
-        · exact Or.inr (Or.inl ⟨submission.call.opening,
-            congrArg (fun material => (⟨some material⟩ : app.Action)) shape,
-              unusable⟩)
-      · exact Or.inr (Or.inr (Or.inl ⟨submission, rfl, emitted⟩))
+  | none => exact Or.inr (Or.inr (Or.inr (Or.inl rfl)))
+  | some transmission =>
+      cases transmission with
+      | replay id =>
+          have remembered : ∃ message ∈ execution.network.known who, message.id = id :=
+            (ReactiveApplication.SubmissionNormalization.replayKnown_iff execution who
+              recalled id).mp member.1
+          obtain ⟨message, inKnown, same⟩ := remembered
+          exact Or.inr (Or.inr (Or.inr (Or.inr
+            ⟨id, same ▸ knownPublished message inKnown, rfl⟩)))
+      | submit submission =>
+          by_cases emitted : submission.emit (app.submit execution.application who submission)
+              who (execution.network.known who) =
+                ⟨.commitment event (who, .prepared serial), none, some ⟨event⟩⟩
+          · have normal : submission.normalizeReactive who
+                ((runtime.reactiveApplication leaks).observePlayer execution.application who)
+                  (execution.network.known who) = submission := by
+              have fixed := member.2
+              change (⟨some (.submit (submission.normalizeReactive who _ _))⟩ : app.Action) =
+                ⟨some (.submit submission)⟩ at fixed
+              have packets := congrArg ReactiveApplication.Action.transmission fixed
+              have same := ReactiveApplication.Transmission.submit.inj (Option.some.inj packets)
+              rw [← known] at same
+              exact same
+            have shape := runtime.normal_binding_of_canonical_packet leaks execution.application
+              who (execution.network.known who) submission event serial fresh normal emitted
+            have rawBound : bounds.AllowsOpening submission.call.opening := member.1.1.2
+            have classified := bounds.canonical_binding_response_cases runtime leaks who
+              (execution.recall who) (execution.observe app who) event payload outputEq codeEq node
+              turn owned publicReady unsent serial allocator capacity
+              submission.call.opening rawBound
+            rcases classified with legal | unusable
+            · exact Or.inl (shape ▸ legal)
+            · exact Or.inr (Or.inl ⟨submission.call.opening,
+                congrArg (fun material => (⟨some (.submit material)⟩ : app.Action)) shape,
+                  unusable⟩)
+          · exact Or.inr (Or.inr (Or.inl ⟨submission, rfl, emitted⟩))
 
-/-- Actual reserved inclusion and expiry detect silence at the
+/-- Actual reserved inclusion and expiry detect silence or spent replay at the
 one required binding response. No assumption is made about later policies. -/
 theorem silent_or_spent_binding_omission
     (players : Player → (runtime.reactiveApplication leaks).Policy)
@@ -177,15 +189,25 @@ theorem silent_or_spent_binding_omission
     (activated : execution.application.activatedAt event = some entered)
     (due : runtime.deadline event ≤ execution.application.clock + ticks - entered)
     (response : (runtime.reactiveApplication leaks).Action)
-    (quiet : response = ⟨none⟩) :
+    (quiet : response = ⟨none⟩ ∨ ∃ id ∈ execution.network.ledger.map Message.id,
+      response = ⟨some (.replay id)⟩) :
     ∃ next, runtime.runInteractionPlan leaks players scheduler
         (.includeLatest event who :: List.replicate ticks .tick ++ [.expire event])
           (execution.respond (runtime.reactiveApplication leaks) who response) =
             PMF.pure next ∧
       next.application.publicView.missedBinding event = true := by
-  subst response
-  exact runtime.protected_binding_omission leaks players scheduler
-    (execution.respond (runtime.reactiveApplication leaks) who ⟨none⟩) who event payload
-    outputEq codeEq node ready absent published entered ticks activated due
+  have same := (runtime.reactiveApplication leaks).respond_published execution who response
+    published quiet
+  apply runtime.protected_binding_omission leaks players scheduler _ who event payload
+    outputEq codeEq node
+  · rw [same.1]
+    exact ready
+  · rw [same.1]
+    exact absent
+  · exact same.2.2.2
+  · rw [same.1]
+    exact activated
+  · rw [same.1]
+    exact due
 
 end Vegas.EventGraphRuntime

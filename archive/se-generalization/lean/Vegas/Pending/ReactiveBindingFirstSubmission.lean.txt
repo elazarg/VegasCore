@@ -1,0 +1,148 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Pending.ReactiveBindingWindowSupport
+
+/-! # First-submission witnesses inside retained binding windows
+
+At every retained prefix whose owner has submitted, an actual first typed
+binding can be isolated. Its pre-state is the clean boundary application and
+the remaining real response roster starts from that exact submission.
+-/
+
+noncomputable section
+
+namespace Vegas.EventGraphRuntime
+
+open GameTheory.Math.Probability Interaction EventGraph
+
+variable {Player : Type} [DecidableEq Player] [Fintype Player]
+  {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
+
+/-- A recorded retained binding has concrete first-submission provenance.
+The extracted tail retains every passive sample and response alias. -/
+theorem compiled_binding_first_submission (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (bounds : MessageBounds graph)
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (lawful : ∀ who past view response, response ∈ (players who past view).support →
+      response ∈ bounds.compiledActions runtime leaks who past view)
+    (network : runtime.NetworkPolicy leaks)
+    (owner : Player) (event : graph.EventId) (payload : L.Ty)
+    (outputEq : graph.outputLayout event = .binding owner payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .bind owner payload)
+    (node : nodeView graph event = .bind owner payload outputEq codeEq)
+    (owned : graph.actor? event = some owner)
+    (serial : Nat) (visits : List Player)
+    (initial final : (runtime.reactiveApplication leaks).Execution)
+    (sole : initial.application.publicView.SoleReady event)
+    (ready : initial.application.config.cut.Ready event)
+    (selected : reactiveFreshSlot
+      (initial.observe (runtime.reactiveApplication leaks) owner).application = some serial)
+    (fresh : initial.application.candidates.lookup (owner, .prepared serial) = .fresh)
+    (published : initial.network.Satisfies fun message =>
+      message.id ∈ initial.network.ledger.map Message.id)
+    (serials : initial.network.SerialsBeforeNext)
+    (unsent : runtime.eventRecorded leaks (initial.recall owner) event = false)
+    (reached : final ∈ (runtime.runInteractionPlan leaks players network
+      (visits.map ServiceInstruction.player) initial).support)
+    (recorded : runtime.eventRecorded leaks (final.recall owner) event = true) :
+    ∃ before : (runtime.reactiveApplication leaks).Execution, ∃ value ∈ bounds.typedValues payload,
+      ∃ remaining : List Player,
+        before.application = initial.application ∧ before.network.ledger = initial.network.ledger ∧
+        before.receipts = initial.receipts ∧
+        before.network.nextSerial = initial.network.nextSerial ∧
+        before.network.SerialsBeforeNext ∧
+        before.network.Satisfies (fun message =>
+          message.id ∈ before.network.ledger.map Message.id) ∧
+        final ∈ (runtime.runInteractionPlan leaks players network
+          (remaining.map ServiceInstruction.player)
+          (before.respond (runtime.reactiveApplication leaks) owner
+            (runtime.reactiveBinding leaks owner event payload
+              (.success value) serial))).support := by
+  let app := runtime.reactiveApplication leaks
+  induction visits using List.reverseRecOn generalizing final with
+  | nil =>
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      rw [unsent] at recorded
+      cases recorded
+  | append_singleton visits actor ih =>
+      rw [List.map_append, runtime.runInteractionPlan_append] at reached
+      obtain ⟨middle, leading, last⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      cases priorRecorded : runtime.eventRecorded leaks (middle.recall owner) event with
+      | true =>
+          obtain ⟨before, value, admitted, remaining, application, ledger, receipts, counters,
+              priorSerials, packets, tail⟩ := ih middle leading priorRecorded
+          refine ⟨before, value, admitted, remaining ++ [actor], application, ledger, receipts,
+            counters, priorSerials, packets, ?_⟩
+          rw [List.map_append, runtime.runInteractionPlan_append, PMF.support_bind]
+          exact Set.mem_iUnion₂.mpr ⟨middle, tail, last⟩
+      | false =>
+          obtain ⟨application, ledger, receipts, counters, packets⟩ :=
+            runtime.compiled_binding_unsubmitted_prefix leaks bounds players lawful network
+              owner event payload outputEq codeEq node owned serial visits initial middle
+                sole ready selected fresh published leading priorRecorded
+          have currentSerials := runtime.runInteractionPlan_serials leaks players network
+            (visits.map ServiceInstruction.player) initial middle serials leading
+          simp only [List.map_cons, List.map_nil, runInteractionPlan, PMF.bind_pure,
+            interactionStep, interactionInstruction, PMF.pure_bind] at last
+          change final ∈ ((middle.environmentStep app (.activate actor)).bind
+            (app.invoke players actor)).support at last
+          rw [ReactiveApplication.Execution.activation_samples, PMF.bind_map] at last
+          obtain ⟨sample, _, last⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ last)
+          obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ last
+          let activated := middle.sampledActivation app actor sample
+          have currentSole : activated.application.publicView.SoleReady event := by
+            change middle.application.publicView.SoleReady event
+            rw [application]
+            exact sole
+          have shape : response ∈ (app.silentPolicy (activated.recall actor)
+              (activated.observe app actor)).support ∨
+              actor = owner ∧ ∃ value ∈ bounds.typedValues payload,
+                response = runtime.reactiveBinding leaks owner event payload (.success value)
+                  serial := by
+            by_cases own : actor = owner
+            · subst actor
+              have currentSelected : reactiveFreshSlot
+                  (activated.observe app owner).application = some serial := by
+                change reactiveFreshSlot (app.observePlayer middle.application owner) = _
+                rw [application]
+                exact selected
+              have currentReady : activated.application.publicView.EventReady event := by
+                change middle.application.publicView.EventReady event
+                rw [application]
+                exact (initial.application.publicView_eventReady event).mpr ready
+              rcases bounds.ordinary_binding_cases runtime leaks owner _ _ event payload outputEq
+                  codeEq node (currentSole.ownTurn owned) owned currentReady serial currentSelected
+                  response
+                    (lawful owner _ _ response chosen) with replay | ⟨value, admitted, _, physical⟩
+              · exact Or.inl replay
+              · refine Or.inr ⟨rfl, value, admitted, physical.trans ?_⟩
+                have currentFresh : activated.application.candidates.lookup
+                    (owner, .prepared serial) = .fresh := by
+                  change middle.application.candidates.lookup _ = _
+                  rw [application]
+                  exact fresh
+                exact runtime.reactiveBinding_normal_of_fresh leaks owner _ _ event payload
+                  (.success value) serial currentFresh
+            · exact Or.inl (bounds.compiled_foreign_transport runtime leaks actor _ _
+                (currentSole.ownTurn?_foreign
+                  (fun equal => own (Option.some.inj (owned.symm.trans equal)).symm))
+                  response (lawful actor _ _ response chosen))
+          rcases shape with replay | ⟨own, value, admitted, physical⟩
+          · have unchanged := runtime.eventRecorded_respond_other leaks activated actor owner
+              response event (fun _ => by
+                rcases app.silentPolicy_cases _ _ response replay with rfl
+                intro impossible
+                cases impossible)
+            rw [unchanged] at recorded
+            change runtime.eventRecorded leaks (middle.recall owner) event = true at recorded
+            rw [priorRecorded] at recorded
+            cases recorded
+          · subst actor
+            refine ⟨activated, value, admitted, [], application, ledger, receipts, counters,
+              currentSerials.learn owner sample, packets.learn owner sample, ?_⟩
+            rw [physical]
+            exact (PMF.mem_support_pure_iff _ _).mpr rfl
+
+end Vegas.EventGraphRuntime

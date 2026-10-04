@@ -74,11 +74,11 @@ theorem binding_waiting_opportunity
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         (some ⟨remaining + 1 + visits.length, some owner, repaired⟩))
     (leftRecall : original.InputRecall (application setup leaks))
-    (_rightRecall : repaired.InputRecall (application setup leaks))
+    (rightRecall : repaired.InputRecall (application setup leaks))
     (response : (application setup leaks).Action)
-    (transport : response ∈ ((application setup leaks).silentPolicy (original.recall owner)
+    (transport : response ∈ ((application setup leaks).replayPolicy (original.recall owner)
       (original.observe (application setup leaks) owner)).support)
-    (optional : ¬ decisionRequired setup leaks rosters owner (repaired.recall owner)
+    (optional : ¬ bindingRequired setup leaks rosters owner (repaired.recall owner)
       (repaired.observe (application setup leaks) owner))
     (event : (graph setup).EventId)
     (ready : repaired.application.config.cut.Ready event)
@@ -118,17 +118,19 @@ theorem binding_waiting_opportunity
   classical
   intro app players strategy remembered
   let menu := sourceServiceMenu setup leaks bounds rosters
-  have nonSubmit : ∀ submission, response.transmission ≠ some submission := by
+  have nonSubmit : ∀ submission, response.transmission ≠ some (.submit submission) := by
     intro submission
-    rcases app.silentPolicy_cases _ _ response transport with rfl; simp
+    rcases app.replayPolicy_cases _ _ response transport with rfl | ⟨id, rfl⟩ <;> simp
   have unchanged : (runtime setup).submittedEvent? leaks response = none := by
-    rcases app.silentPolicy_cases _ _ response transport with rfl; rfl
+    rcases app.replayPolicy_cases _ _ response transport with rfl | ⟨id, rfl⟩ <;> rfl
   have legal : response ∈ menu.actions owner (repaired.recall owner)
       (repaired.observe app owner) := by
     change response ∈ sourceServiceActions setup leaks bounds rosters owner _ _
     rw [sourceServiceActions, ite_eq_right optional]
-    apply bounds.silent_compiled
-    exact app.mem_silentPolicy_support.mpr (app.silentPolicy_cases _ _ response transport)
+    apply bounds.replay_compiled
+    rw [← app.replayPolicy_eq_of_network_eq original repaired owner leftRecall rightRecall
+      frame.network]
+    exact transport
   obtain ⟨responded⟩ := menu.trace_respond (initialLaw setup) (rosterPlan setup rosters).length
     (rosterScheduler setup leaks rosters network) (remaining + 1 + visits.length) repaired owner
       response trace legal

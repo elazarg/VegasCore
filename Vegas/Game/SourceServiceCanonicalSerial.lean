@@ -41,7 +41,7 @@ submitted for, early enough to be included before the deadline within
 def OwnFreshCalls (bound : (graph setup).EventId → Nat)
     (execution : (application setup leaks).Execution) (who : Player) : Prop :=
   ∀ entry ∈ execution.recall who, ∀ material,
-    entry.action.transmission = some material →
+    entry.action.transmission = some (.submit material) →
     ∃ event message, entry.emitted = some message ∧ message.sender = who ∧
       message.payload.call.event? (graph setup) = some event ∧
       (runtime setup).submittedEvent? leaks entry.action = some event ∧
@@ -61,7 +61,7 @@ distinct identifiers of `who` on the ledger it saw. -/
 def FreshCallsCounted (execution : (application setup leaks).Execution) (who : Player) :
     Prop :=
   ∀ entry ∈ execution.recall who, ∀ material message,
-    entry.action.transmission = some material → entry.emitted = some message →
+    entry.action.transmission = some (.submit material) → entry.emitted = some message →
       message.id.2 = Message.distinctAuthoredCount entry.beforeView.messages.ledger
         message.sender
 
@@ -87,7 +87,7 @@ private theorem receipt_published {execution : (application setup leaks).Executi
 /-- A submission names the event its emitted packet addresses. -/
 private theorem issued_submittedEvent {entry : (application setup leaks).PlayerEntry}
     {material : (application setup leaks).Submission}
-    (transmission : entry.action.transmission = some material)
+    (transmission : entry.action.transmission = some (.submit material))
     {state : EventGraphRuntime.State (graph setup)} {who : Player}
     {known : List (Message Player (WitnessedPacket (graph setup)))}
     {message : Message Player (WitnessedPacket (graph setup))}
@@ -130,11 +130,12 @@ theorem nextSerial_eq_distinctAuthoredCount {horizon remaining : Nat}
   · intro serial lower
     obtain ⟨entry, member, submitted, message, emitted, identified⟩ := issuedAll who serial lower
     obtain ⟨material, transmission⟩ :
-        ∃ material, entry.action.transmission = some material := by
+        ∃ material, entry.action.transmission = some (.submit material) := by
       rcases entry with ⟨view, ⟨transmission⟩, emittedOption⟩
-      rcases transmission with _ | material
+      rcases transmission with _ | (material | id)
       · cases submitted
       · exact ⟨material, rfl⟩
+      · cases submitted
     obtain ⟨other, packet, emittedPacket, authored, addressed, submittedOther, fits⟩ :=
       calls entry member material transmission
     rw [emitted] at emittedPacket
@@ -182,17 +183,20 @@ theorem nextSerial_eq_distinctAuthoredCount {horizon remaining : Nat}
       have output : replayed ∈ app.outputs (middle.recall who) :=
         List.mem_filterMap.mpr ⟨other', otherRecall, emittedOther⟩
       rw [← facts.inputs who] at output
-      have inputMember := (List.mem_filter.mp output).1
-      obtain ⟨issuer, issuerMember, issuerMaterial, issuerTransmission, issuerEmitted, _, _,
-        issuerPacket⟩ := facts.provenance.inputs replayed inputMember
-      have senderWho : replayed.sender = who := by
-        rw [replayedAuthor, identified]
-      rw [senderWho] at issuerMember
-      have issuerEvent : (runtime setup).submittedEvent? leaks issuer.action = some other := by
-        rw [issued_submittedEvent issuerTransmission issuerPacket]
-        exact replayedAddressed
-      exact differentId (once issuer issuerMember entry member other _ _ issuerEvent
-        submittedOther issuerEmitted emitted)
+      obtain ⟨input, inputMember, inputEq⟩ := List.mem_filterMap.mp output
+      split at inputEq
+      · cases Option.some.inj inputEq
+        obtain ⟨issuer, issuerMember, issuerMaterial, issuerTransmission, issuerEmitted, _, _,
+          issuerPacket⟩ := facts.provenance.inputs input inputMember
+        have senderWho : input.envelope.sender = who := by
+          rw [replayedAuthor, identified]
+        rw [senderWho] at issuerMember
+        have issuerEvent : (runtime setup).submittedEvent? leaks issuer.action = some other := by
+          rw [issued_submittedEvent issuerTransmission issuerPacket]
+          exact replayedAddressed
+        exact differentId (once issuer issuerMember entry member other _ _ issuerEvent
+          submittedOther issuerEmitted emitted)
+      · cases inputEq
     have settles : SettlesFreshCalls setup leaks who other bound middle :=
       settlesFreshCalls_history setup leaks contract.inclusion who other owned trace
     have receipt := (settles earlier entry later message split call sole).1 completed
@@ -254,7 +258,7 @@ theorem serialFacts_round {horizon remaining : Nat}
     · subst responder
       rw [follows] at chosen
       rcases response with ⟨transmission⟩
-      rcases transmission with _ | material
+      rcases transmission with _ | (material | id)
       · -- Silence appends an entry that is not a submission.
         obtain ⟨emittedOption, recalled, _⟩ := respond_recall_self setup leaks middle who ⟨none⟩
         refine ⟨?_, ?_, ?_⟩
@@ -294,9 +298,9 @@ theorem serialFacts_round {horizon remaining : Nat}
             (app.submit middle.application who material) who (middle.network.known who)
             material⟩
         let entry : app.PlayerEntry :=
-          ⟨middle.observe app who, ⟨some material⟩, some message⟩
+          ⟨middle.observe app who, ⟨some (.submit material)⟩, some message⟩
         have entryMember :
-            entry ∈ (middle.respond app who ⟨some material⟩).recall who := by
+            entry ∈ (middle.respond app who ⟨some (.submit material)⟩).recall who := by
           rw [recalled]
           exact List.mem_append_right _ (List.mem_singleton_self _)
         have entryConform := conformNext entry entryMember material message rfl rfl
@@ -354,6 +358,37 @@ theorem serialFacts_round {horizon remaining : Nat}
             cases Option.some.inj currentEmitted
             exact nextSerial_eq_distinctAuthoredCount contract middleTrace atMiddle callsMiddle
               onceMiddle conformMiddle named turn unrecorded
+      · -- A replay appends an entry that is not a submission.
+        obtain ⟨emittedOption, recalled, _⟩ :=
+          respond_recall_self setup leaks middle who ⟨some (.replay id)⟩
+        refine ⟨?_, ?_, ?_⟩
+        · intro entry member material submits
+          rw [recalled] at member
+          rcases List.mem_append.mp member with old | new
+          · exact callsMiddle entry old material submits
+          · rw [List.mem_singleton] at new
+            subst new
+            cases submits
+        · intro first firstMember second secondMember event firstMessage secondMessage
+            firstEvent secondEvent firstEmitted secondEmitted
+          rw [recalled] at firstMember secondMember
+          rcases List.mem_append.mp firstMember with firstOld | firstNew
+          · rcases List.mem_append.mp secondMember with secondOld | secondNew
+            · exact onceMiddle first firstOld second secondOld event _ _ firstEvent secondEvent
+                firstEmitted secondEmitted
+            · rw [List.mem_singleton] at secondNew
+              subst secondNew
+              cases secondEvent
+          · rw [List.mem_singleton] at firstNew
+            subst firstNew
+            cases firstEvent
+        · intro entry member material message submits
+          rw [recalled] at member
+          rcases List.mem_append.mp member with old | new
+          · exact countedMiddle entry old material message submits
+          · rw [List.mem_singleton] at new
+            subst new
+            cases submits
     · have different : who ≠ responder := fun equal => same equal.symm
       have recallSame := app.respond_recall_other middle responder who different response
       refine ⟨?_, ?_, ?_⟩
@@ -427,7 +462,7 @@ theorem sourceServiceTurnPolicy_serial {horizon : Nat}
       players count).support)
     (entry : (application setup leaks).PlayerEntry) (member : entry ∈ execution.recall who)
     (material : (application setup leaks).Submission)
-    (fresh : entry.action.transmission = some material)
+    (fresh : entry.action.transmission = some (.submit material))
     (message : Message Player (WitnessedPacket (graph setup)))
     (emitted : entry.emitted = some message) :
     message.id.2 = Message.distinctAuthoredCount entry.beforeView.messages.ledger
@@ -452,7 +487,7 @@ theorem sourceServiceTurnPolicy_permittedServiceEnvelope {horizon : Nat}
       players count).support)
     (entry : (application setup leaks).PlayerEntry) (member : entry ∈ execution.recall who)
     (material : (application setup leaks).Submission)
-    (fresh : entry.action.transmission = some material)
+    (fresh : entry.action.transmission = some (.submit material))
     (message : Message Player (WitnessedPacket (graph setup)))
     (emitted : entry.emitted = some message) :
     (runtime setup).permittedServiceEnvelope entry.beforeView.application.publicView

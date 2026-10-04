@@ -19,7 +19,7 @@ theorem respond_environmentRecall (execution : app.Execution) (who : Principal)
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some transmission => rfl
+  | some transmission => cases transmission <;> rfl
 
 theorem respond_actions (execution : app.Execution) (who : Principal) (action : app.Action) :
     ((execution.respond app who action).recall who).map PlayerEntry.action =
@@ -28,7 +28,8 @@ theorem respond_actions (execution : app.Execution) (who : Principal) (action : 
   cases transmission with
   | none => simp only [Execution.respond, ↓reduceIte, List.map_append, List.map_cons, List.map_nil]
   | some transmission =>
-      simp only [Execution.respond, ↓reduceIte, List.map_append, List.map_cons, List.map_nil]
+      cases transmission <;>
+        simp only [Execution.respond, ↓reduceIte, List.map_append, List.map_cons, List.map_nil]
 
 theorem respond_recall_length (execution : app.Execution) (who observer : Principal)
     (action : app.Action) :
@@ -74,8 +75,7 @@ theorem respond_recall_prefix (execution : app.Execution) (who observer : Princi
     cases transmission with
     | none => simp only [Execution.respond, ↓reduceIte]; exact ⟨_, rfl⟩
     | some transmission =>
-        simp only [Execution.respond, ↓reduceIte]
-        exact ⟨_, rfl⟩
+        cases transmission <;> simp only [Execution.respond, ↓reduceIte] <;> exact ⟨_, rfl⟩
   · rw [app.respond_recall_other execution who observer same action]
 
 theorem transition_recall_prefix (initial : PMF app.State) (horizon : Nat)

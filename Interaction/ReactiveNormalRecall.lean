@@ -27,11 +27,21 @@ theorem action_eq_of_outputs (who : Principal) (first second : List app.PlayerEn
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some submission =>
+  | some transmission =>
       have known : ResponseMenu.knownPackets (app := app) first view =
           ResponseMenu.knownPackets (app := app) second view := by
         simp only [ResponseMenu.knownPackets, same]
-      simp only [action, known]
+      cases transmission with
+      | submit submission => simp only [action, known]
+      | replay id =>
+          have replay : ReplayKnown (app := app) first view id ↔
+              ReplayKnown (app := app) second view id := by
+            unfold ReplayKnown
+            rw [known]
+          by_cases available : ReplayKnown (app := app) first view id
+          · simp only [action, available, replay.mp available, ↓reduceIte]
+          · have absent := mt replay.mpr available
+            simp only [action, available, absent, ↓reduceIte]
 
 def recall (who : Principal) (past : List app.PlayerEntry) : List app.PlayerEntry :=
   past.foldl (fun normalized entry => normalized ++
@@ -139,24 +149,55 @@ theorem execution_respond (original : app.Execution) (who : Principal) (response
       · subst observer
         simp only [↓reduceIte, recall_append_action, action]
       · simp only [same, ↓reduceIte]
-  | some submission =>
-      have submitted := normal.submit original.application who
-        (original.network.known who) submission
-      have packet := normal.packet original.application who
-        (original.network.known who) submission
-      simp only [action]
-      rw [known]
-      change normal.execution (original.respond app who ⟨some submission⟩) =
-        (normal.execution original).respond app who
-          ⟨some (normal.normalize who (app.observePlayer original.application who)
-            (original.network.known who) submission)⟩
-      simp only [Execution.respond, execution, submitted, packet]
-      congr 1
-      funext observer
-      by_cases same : observer = who
-      · subst observer
-        simp only [↓reduceIte, recall_append_action, action, known]
-        rfl
-      · simp only [same, ↓reduceIte]
+  | some transmission =>
+      cases transmission with
+      | submit submission =>
+          have submitted := normal.submit original.application who
+            (original.network.known who) submission
+          have packet := normal.packet original.application who
+            (original.network.known who) submission
+          simp only [action]
+          rw [known]
+          change normal.execution (original.respond app who ⟨some (.submit submission)⟩) =
+            (normal.execution original).respond app who
+              ⟨some (.submit (normal.normalize who (app.observePlayer original.application who)
+                (original.network.known who) submission))⟩
+          simp only [Execution.respond, execution, submitted, packet]
+          congr 1
+          funext observer
+          by_cases same : observer = who
+          · subst observer
+            simp only [↓reduceIte, recall_append_action, action, known]
+            rfl
+          · simp only [same, ↓reduceIte]
+      | replay id =>
+          by_cases available : ReplayKnown (app := app)
+              (original.recall who) (original.observe app who) id
+          · simp only [action]
+            rw [ite_eq_left available]
+            simp only [Execution.respond, execution]
+            congr 1
+            funext observer
+            by_cases same : observer = who
+            · subst observer
+              simp only [↓reduceIte, recall_append_action, action, available]
+              rfl
+            · simp only [same, ↓reduceIte]
+          · have absent : (original.network.known who).find?
+                  (fun envelope => envelope.id = id) = none := by
+              apply List.find?_eq_none.mpr
+              intro message member identified
+              exact available ((replayKnown_iff original who valid id).mpr
+                ⟨message, member, of_decide_eq_true identified⟩)
+            simp only [action]
+            rw [ite_eq_right available]
+            simp only [Execution.respond, execution, MessageNetwork.replay, absent]
+            congr 1
+            funext observer
+            by_cases same : observer = who
+            · subst observer
+              simp only [↓reduceIte, recall_append_action, action, available]
+              rfl
+            · simp only [same, ↓reduceIte]
 
 end Interaction.ReactiveApplication.SubmissionNormalization

@@ -52,8 +52,8 @@ theorem respond_records_view (execution : (application setup leaks).Execution) (
       simp only [ReactiveApplication.Execution.respond, ↓reduceIte]
       exact ⟨_, List.mem_append_right _ (List.mem_singleton_self _), rfl⟩
   | some transmission =>
-      simp only [ReactiveApplication.Execution.respond, ↓reduceIte]
-      exact ⟨_, List.mem_append_right _ (List.mem_singleton_self _), rfl⟩
+      cases transmission <;> simp only [ReactiveApplication.Execution.respond, ↓reduceIte] <;>
+        exact ⟨_, List.mem_append_right _ (List.mem_singleton_self _), rfl⟩
 
 /-- Recorded responses persist through a scheduler round. -/
 theorem round_recall_mono (scheduler : (application setup leaks).Scheduler)
@@ -255,7 +255,7 @@ theorem blockStart_ordered (event : (graph service.setup).EventId)
     service.planLength service.scheduler approx.players approx.covered _ bounded execution
     supported
   obtain ⟨_, _, _, _, _, boundary⟩ := sourceService_phase_boundary service.setup service.leaks
-    service.bounds service.values service.capacity service.rosters service.opportunities
+    service.bounds service.values service.capacity service.rosters service.opportunities.binding
     service.network ⟨_, none, execution⟩ trace rfl event
     (by change (rosterPlan service.setup service.rosters).take
           execution.environmentRecall.length = _
@@ -298,7 +298,7 @@ theorem blockStart_continuation (focal : Player) (rank : Nat)
   unfold ReactiveApplication.runToHorizon
   rw [count, rounds]
   exact sourceServiceTimedPolicy_continuation_law service.setup service.leaks service.bounds
-    service.values service.capacity service.rosters service.opportunities approx.timing
+    service.values service.capacity service.rosters service.opportunities.binding approx.timing
     service.network approx.profile approx.covered approx.effective focal rank within execution
     prefixLaw
 

@@ -77,7 +77,6 @@ theorem environmentStep_expire_playerView_congr
                 PMF.mem_support_pure_iff _ _] at rightSupported
               subst leftNext
               subst rightNext
-              apply State.markMissed_playerView_congr _ _ focal
               exact State.complete_playerView_congr left right focal publicEq observationEq
                 rememberedEq candidatesEq event leftReady rightReady _ _ _ _
                 (fun _ => rfl) (fun _ => rfl)
@@ -90,7 +89,6 @@ theorem environmentStep_expire_playerView_congr
                 PMF.mem_support_pure_iff _ _] at rightSupported
               subst leftNext
               subst rightNext
-              apply State.markMissed_playerView_congr _ _ focal
               exact State.complete_playerView_congr left right focal publicEq observationEq
                 rememberedEq candidatesEq event leftReady rightReady _ _ _ _
                 (fun _ => rfl) (fun _ => rfl)
@@ -130,8 +128,7 @@ theorem NativeReplay.environmentExpire
         (environmentStep runtime before.native.application (.expire event)).support := by
     have native : after.native ∈
         ((runtime.application.environmentPolicyStep before
-          (.application (.expire event))).map
-            MessageInterface.PolicyExecution.native).support := by
+          (.application (.expire event))).map MessageInterface.PolicyExecution.native).support := by
       rw [PMF.support_map]
       exact ⟨after, supported, rfl⟩
     rw [runtime.application.environmentStep_native] at native

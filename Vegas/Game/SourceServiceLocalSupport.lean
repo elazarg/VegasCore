@@ -32,7 +32,7 @@ theorem sourceService_decision_supported
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (profile : BehavioralProfile setup.program)
     (full : ∀ player, (profile player).SupportsEffectiveChoices setup.program
@@ -181,7 +181,7 @@ theorem sourceService_response_supported
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (profile : BehavioralProfile setup.program)
     (full : ∀ player, (profile player).SupportsEffectiveChoices setup.program
@@ -193,7 +193,7 @@ theorem sourceService_response_supported
     (response : (application setup leaks).Action)
     (member : response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who
       (control.execution.recall who) (control.execution.observe (application setup leaks) who)) :
-    response ∈ ((application setup leaks).silentPolicy (control.execution.recall who)
+    response ∈ ((application setup leaks).replayPolicy (control.execution.recall who)
       (control.execution.observe (application setup leaks) who)).support ∨
     response ∈ (sourceServicePolicy setup leaks profile who (control.execution.recall who)
       (control.execution.observe (application setup leaks) who)).support := by
@@ -211,8 +211,7 @@ theorem sourceService_response_supported
     · exact Or.inr (sourceService_decision_supported setup leaks bounds values capacity rosters
         opportunities network profile full who control trace active event ready owned response
         (Finset.mem_filter.mp decision).1)
-    · exact Or.inl ((application setup leaks).mem_silentPolicy_support.mpr
-        (Finset.mem_singleton.mp replay))
+    · exact Or.inl (((application setup leaks).mem_replayActions_iff _ _ _).mp replay)
   · exact Or.inl (bounds.compiled_foreign_transport (runtime setup) leaks who
       (control.execution.recall who) (control.execution.observe app who)
       ((soleReady_of_ready setup control.execution.application ready).ownTurn?_foreign owned)

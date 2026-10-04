@@ -39,59 +39,6 @@ theorem rememberCompletion_eq_self (memory : BindingShadow graph)
       rw [← rememberedValue, ← rememberedAction]
       simp only [Function.update_eq_self, and_self]
 
-
-/-- A completion with no private override is read from the real runtime.
-This includes public results and other owners' private bindings. -/
-theorem complete_unmodified_observation (memory : BindingShadow graph) (who : Player)
-    (left right : graph.Config)
-    (stores : memory.store (graph.playerObserve who right).store =
-      (graph.playerObserve who left).store)
-    (actions : (graph.playerObserve who right).ownActions.map memory.completion =
-      (graph.playerObserve who left).ownActions)
-    (event : graph.EventId) (leftReady : left.cut.Ready event)
-    (rightReady : right.cut.Ready event)
-    (noValue : memory.values (.inr event) = none)
-    (noAction : memory.actions event = none)
-    (action : graph.Action event) (value : (graph.outputLayout event).Value) :
-    memory.store (graph.playerObserve who
-      (right.complete event rightReady action value)).store =
-        (graph.playerObserve who (left.complete event leftReady action value)).store ∧
-    ((graph.playerObserve who
-      (right.complete event rightReady action value)).ownActions.map memory.completion) =
-        (graph.playerObserve who (left.complete event leftReady action value)).ownActions := by
-  classical
-  constructor
-  · funext field
-    by_cases selected : field = .inr event
-    · subst field
-      by_cases visible : graph.fieldVisibleTo who (.inr event)
-      · simp only [store, EventGraph.playerObserve, EventGraph.playerStore_of_visible,
-          visible, EventGraph.Config.store_output, EventGraph.Config.complete_output_same,
-          noValue, Option.map_some, Option.getD_none]
-      · simp only [store, EventGraph.playerObserve,
-          EventGraph.playerStore, visible, ↓reduceIte, Option.map_none]
-    · change memory.store (graph.playerStore who
-        (right.complete event rightReady action value).store) field =
-          graph.playerStore who (left.complete event leftReady action value).store field
-      rw [EventGraph.store_complete, EventGraph.store_complete]
-      have prior := congrFun stores field
-      simpa only [store, EventGraph.playerObserve, EventGraph.playerStore,
-        Function.update_of_ne selected] using prior
-  · change List.map memory.completion
-      (graph.ownCompletions who (right.history ++ [⟨event, action⟩])) =
-        graph.ownCompletions who (left.history ++ [⟨event, action⟩])
-    by_cases owned : graph.actor? event = some who
-    · simp only [EventGraph.ownCompletions, List.filter_append, List.filter_cons, owned,
-        decide_true, ↓reduceIte, List.filter_nil, List.map_append, List.map_cons, List.map_nil]
-      change (graph.playerObserve who right).ownActions.map memory.completion ++
-        [memory.completion ⟨event, action⟩] =
-          (graph.playerObserve who left).ownActions ++ [⟨event, action⟩]
-      rw [actions]
-      simp only [completion, noAction, Option.getD_none]
-    · simp only [EventGraph.ownCompletions, List.filter_append, List.filter_cons, owned,
-        decide_false, Bool.false_eq_true, ↓reduceIte, List.filter_nil, List.append_nil]
-      exact actions
-
 /-- The owner sees its original typed binding result and action after actual
 inclusion. The same public receipt and network observation remain visible. -/
 theorem include_binding_input (memory : BindingShadow graph)
@@ -114,16 +61,12 @@ theorem include_binding_input (memory : BindingShadow graph)
     (unused : left.application.HandleUnused candidate)
     (leftFixed : left.application.candidates.lookup candidate ≠ .fresh)
     (rightFixed : right.application.candidates.lookup candidate ≠ .fresh)
-    (completion :
-      (memory.actions event = some
-          (cast (congrArg EventField.Action outputEq.symm)
-            (left.application.bindingResult candidate payload)) ∧
-        memory.values (.inr event) = some
-          (cast (congrArg EventField.Value outputEq.symm)
-            (left.application.bindingResult candidate payload))) ∨
-      (memory.actions event = none ∧ memory.values (.inr event) = none ∧
-        right.application.bindingResult candidate payload =
-          left.application.bindingResult candidate payload)) :
+    (rememberedAction : memory.actions event = some
+      (cast (congrArg EventField.Action outputEq.symm)
+        (left.application.bindingResult candidate payload)))
+    (rememberedValue : memory.values (.inr event) = some
+      (cast (congrArg EventField.Value outputEq.symm)
+        (left.application.bindingResult candidate payload))) :
     memory.inputView runtime leaks
       ((right.includePending (runtime.reactiveApplication leaks) id).observe
         (runtime.reactiveApplication leaks) who) =
@@ -164,63 +107,26 @@ theorem include_binding_input (memory : BindingShadow graph)
     event candidate none found leftFixed
   have rightCandidates := runtime.reactive_include_fixed_binding_candidates leaks right id
     event candidate none found' rightFixed
-  have restores :
-      memory.store (graph.playerObserve who
-        (right.application.config.complete event ready'
-          (cast (congrArg EventField.Action outputEq.symm)
-            (right.application.bindingResult candidate payload))
-          (cast (congrArg EventField.Value outputEq.symm)
-            (right.application.bindingResult candidate payload)))).store =
-        (graph.playerObserve who
-          (left.application.config.complete event ready
-            (cast (congrArg EventField.Action outputEq.symm)
-              (left.application.bindingResult candidate payload))
-            (cast (congrArg EventField.Value outputEq.symm)
-              (left.application.bindingResult candidate payload)))).store ∧
-      ((graph.playerObserve who
-        (right.application.config.complete event ready'
-          (cast (congrArg EventField.Action outputEq.symm)
-            (right.application.bindingResult candidate payload))
-          (cast (congrArg EventField.Value outputEq.symm)
-            (right.application.bindingResult candidate payload)))).ownActions.map
-          memory.completion) =
-        (graph.playerObserve who
-          (left.application.config.complete event ready
-            (cast (congrArg EventField.Action outputEq.symm)
-              (left.application.bindingResult candidate payload))
-            (cast (congrArg EventField.Value outputEq.symm)
-              (left.application.bindingResult candidate payload)))).ownActions := by
-    rcases completion with stored | ⟨noAction, noValue, same⟩
-    · have rewritten := memory.rememberCompletion_observation who left.application.config
-        right.application.config
-        (congrArg (fun view : ReactivePlayerView graph => view.observation.store) application)
-        (congrArg (fun view : ReactivePlayerView graph => view.observation.ownActions) application)
-        event ready ready' (by
-          change (graph.nodes event).actor = some who
-          rw [← EventCode.actor_cast outputEq (graph.nodes event), codeEq]
-          rfl) (by
-          change (graph.outputLayout event).VisibleTo who
-          rw [outputEq]
-          rfl)
-        (cast (congrArg EventField.Action outputEq.symm)
-          (left.application.bindingResult candidate payload))
-        (cast (congrArg EventField.Action outputEq.symm)
-          (right.application.bindingResult candidate payload))
-        (cast (congrArg EventField.Value outputEq.symm)
-          (left.application.bindingResult candidate payload))
-        (cast (congrArg EventField.Value outputEq.symm)
-          (right.application.bindingResult candidate payload))
-      rw [memory.rememberCompletion_eq_self event _ _ stored.1 stored.2] at rewritten
-      exact rewritten
-    · simpa only [same] using memory.complete_unmodified_observation who
-        left.application.config right.application.config
-        (congrArg (fun view : ReactivePlayerView graph => view.observation.store) application)
-        (congrArg (fun view : ReactivePlayerView graph => view.observation.ownActions) application)
-        event ready ready' noValue noAction
-        (cast (congrArg EventField.Action outputEq.symm)
-          (left.application.bindingResult candidate payload))
-        (cast (congrArg EventField.Value outputEq.symm)
-          (left.application.bindingResult candidate payload))
+  have restores := memory.rememberCompletion_observation who left.application.config
+    right.application.config
+    (congrArg (fun view : ReactivePlayerView graph => view.observation.store) application)
+    (congrArg (fun view : ReactivePlayerView graph => view.observation.ownActions) application)
+    event ready ready' (by
+      change (graph.nodes event).actor = some who
+      rw [← EventCode.actor_cast outputEq (graph.nodes event), codeEq]
+      rfl) (by
+      change (graph.outputLayout event).VisibleTo who
+      rw [outputEq]
+      rfl)
+    (cast (congrArg EventField.Action outputEq.symm)
+      (left.application.bindingResult candidate payload))
+    (cast (congrArg EventField.Action outputEq.symm)
+      (right.application.bindingResult candidate payload))
+    (cast (congrArg EventField.Value outputEq.symm)
+      (left.application.bindingResult candidate payload))
+    (cast (congrArg EventField.Value outputEq.symm)
+      (right.application.bindingResult candidate payload))
+  rw [memory.rememberCompletion_eq_self event _ _ rememberedAction rememberedValue] at restores
   have leftConfig : (left.includePending app id).application.config =
       left.application.config.complete event ready
         (cast (congrArg EventField.Action outputEq.symm)
@@ -305,8 +211,6 @@ theorem repairResponse_include_input (who : Player) (memory : BindingMemory runt
     (serial : Nat) (opening : Option (Raw L))
     (originalFresh : left.application.candidates.lookup (who, .prepared serial) = .fresh)
     (actualFresh : right.application.candidates.lookup (who, .prepared serial) = .fresh)
-    (clearUsable : ∀ value, opening.bind (fun raw => raw.as? payload) = some value →
-      memory.shadow.actions event = none ∧ memory.shadow.values (.inr event) = none)
     (ready : left.application.config.cut.Ready event)
     (timely : left.application.WithinDeadline runtime event)
     (vacant : left.application.accepted (.inr event) = none)
@@ -315,7 +219,7 @@ theorem repairResponse_include_input (who : Player) (memory : BindingMemory runt
     let app := runtime.reactiveApplication leaks
     let view := right.observe app who
     let original : app.Action :=
-      ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩
+      ⟨some (.submit ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩)⟩
     let repaired := memory.repairResponse runtime leaks who view original
     let remembered : BindingMemory runtime leaks :=
       ⟨repaired.2, memory.responses ++ [(memory.shadow.inputView runtime leaks view, original)]⟩
@@ -334,7 +238,7 @@ theorem repairResponse_include_input (who : Player) (memory : BindingMemory runt
     | some _ => opening
   let repairedCall : Submission graph :=
     ⟨.commitment event (who, .prepared serial), replacementOpening⟩
-  let original : app.Action := ⟨some ⟨originalCall, .none⟩⟩
+  let original : app.Action := ⟨some (.submit ⟨originalCall, .none⟩)⟩
   let repaired := memory.repairResponse runtime leaks who view original
   let remembered : BindingMemory runtime leaks :=
     ⟨repaired.2, memory.responses ++ [(memory.shadow.inputView runtime leaks view, original)]⟩
@@ -357,7 +261,7 @@ theorem repairResponse_include_input (who : Player) (memory : BindingMemory runt
     rw [observed]
     exact originalFresh
   have localFresh : view.application.candidates (.prepared serial) = .fresh := actualFresh
-  have afterAction : repaired.1 = ⟨some ⟨repairedCall, .none⟩⟩ := by
+  have afterAction : repaired.1 = ⟨some (.submit ⟨repairedCall, .none⟩)⟩ := by
     cases decoded : opening.bind (fun raw => raw.as? payload) with
     | none =>
         rw [memory.repairResponse_unusable runtime leaks who view event payload outputEq codeEq
@@ -365,8 +269,8 @@ theorem repairResponse_include_input (who : Player) (memory : BindingMemory runt
         simp only [repairedCall, replacementOpening, decoded]
         rfl
     | some value =>
-        rw [congrArg Prod.fst (memory.repairResponse_usable runtime leaks who view event payload
-          outputEq codeEq node serial opening ownFresh actualFresh value decoded)]
+        rw [memory.repairResponse_usable runtime leaks who view event payload outputEq codeEq
+          node serial opening ownFresh actualFresh value decoded]
         simp only [repairedCall, replacementOpening, decoded]
   have networkEq : before.network = after.network := by
     dsimp only [before, after]
@@ -408,41 +312,22 @@ theorem repairResponse_include_input (who : Player) (memory : BindingMemory runt
   have result : before.application.bindingResult (who, .prepared serial) payload =
       (opening.bind fun raw => raw.as? payload).elim .failure PublicationResult.success :=
     runtime.submitted_bindingResult leaks left who event payload serial opening originalFresh
-  have completion :
-      (remembered.shadow.actions event = some
-          (cast (congrArg EventField.Action outputEq.symm)
-            (before.application.bindingResult (who, .prepared serial) payload)) ∧
-        remembered.shadow.values (.inr event) = some
-          (cast (congrArg EventField.Value outputEq.symm)
-            (before.application.bindingResult (who, .prepared serial) payload))) ∨
-      (remembered.shadow.actions event = none ∧
-        remembered.shadow.values (.inr event) = none ∧
-        after.application.bindingResult (who, .prepared serial) payload =
-          before.application.bindingResult (who, .prepared serial) payload) := by
-    cases decoded : opening.bind (fun raw => raw.as? payload) with
-    | none =>
-        left
-        simp only [remembered, repaired, repairResponse, original, originalCall, node, ownFresh,
-          localFresh, and_self, ↓reduceIte, decoded, result, Option.elim_none,
-          BindingShadow.rememberCompletion, Function.update_self]
-    | some value =>
-        right
-        obtain ⟨noAction, noValue⟩ := clearUsable value decoded
-        refine ⟨?_, ?_, ?_⟩
-        · simpa only [remembered, repaired, repairResponse, original, originalCall, node,
-            ownFresh, localFresh, and_self, ↓reduceIte, decoded,
-            BindingShadow.rememberCandidate] using noAction
-        · simpa only [remembered, repaired, repairResponse, original, originalCall, node,
-            ownFresh, localFresh, and_self, ↓reduceIte, decoded,
-            BindingShadow.rememberCandidate] using noValue
-        · dsimp only [after]
-          rw [congrArg Prod.fst (memory.repairResponse_usable runtime leaks who view event payload
-            outputEq codeEq node serial opening ownFresh actualFresh value decoded)]
-          rw [runtime.submitted_bindingResult leaks right who event payload serial opening
-            actualFresh, result]
+  have actionMemory : remembered.shadow.actions event = some
+      (cast (congrArg EventField.Action outputEq.symm)
+        (before.application.bindingResult (who, .prepared serial) payload)) := by
+    simp only [remembered, repaired, repairResponse, original, originalCall, node, ownFresh,
+      localFresh, and_self, ↓reduceIte, result, BindingShadow.rememberCompletion,
+      Function.update_self]
+  have valueMemory : remembered.shadow.values (.inr event) = some
+      (cast (congrArg EventField.Value outputEq.symm)
+        (before.application.bindingResult (who, .prepared serial) payload)) := by
+    simp only [remembered, repaired, repairResponse, original, originalCall, node, ownFresh,
+      localFresh, and_self, ↓reduceIte, result, BindingShadow.rememberCompletion,
+      Function.update_self]
   have included := remembered.shadow.include_binding_input runtime leaks before after who
     input.2.1 networkEq event payload outputEq codeEq node id (who, .prepared serial) rfl rfl
-      found beforeReady beforeTimely beforeVacant beforeUnused beforeFixed afterFixed completion
+      found beforeReady beforeTimely beforeVacant beforeUnused beforeFixed afterFixed
+        actionMemory valueMemory
   change remembered.restoreRecall runtime leaks ((after.includePending app id).recall who) =
       (before.includePending app id).recall who ∧
     remembered.shadow.inputView runtime leaks ((after.includePending app id).observe app who) =

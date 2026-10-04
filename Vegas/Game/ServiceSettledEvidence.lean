@@ -6,7 +6,6 @@ import Vegas.Pending.ReactiveServiceAudit
 import Vegas.Pending.ReactiveFreshCallAcceptance
 import Vegas.Pending.ReactivePacketEvidence
 import Vegas.Pending.ReactiveAssociationEvidence
-import Vegas.Pending.ReactiveSignedEvidence
 import Interaction.ReactiveMessageIdentity
 import Interaction.ReactiveTrafficContinuation
 
@@ -25,7 +24,7 @@ packet that the settled record forbids
 Each breach at transmission leaves a mark that later steps cannot remove:
 
 * content that no settlement accepts: a missing or foreign readiness token, no
-  event, withholding carrying evidence, opening evidence on a commitment, an opening
+  event, a withholding packet, opening evidence on a commitment, an opening
   without its exact certificate, or a sender who is not the event's actor;
 * a packet never accepted whose event has completed;
 * a packet not yet accepted whose event is ready, and which the handler cannot
@@ -245,7 +244,7 @@ variable (setup : Setup (Player := Player) (L := L))
 /-- An envelope the network has carried as an input. -/
 def Emitted (execution : (application setup leaks).Execution)
     (message : Message Player (WitnessedPacket (graph setup))) : Prop :=
-  message ∈ execution.network.inputs
+  message ∈ execution.network.inputs.map NetworkInput.envelope
 
 /-- One scheduler command keeps the inputs and the next serials. It either keeps
 the ledger and receipts and lets the network only learn, or includes one pending
@@ -362,7 +361,9 @@ theorem SettledFacts.emitted_unique {execution : (application setup leaks).Execu
     (firstEmitted : Emitted setup leaks execution first)
     (secondEmitted : Emitted setup leaks execution second) (same : first.id = second.id) :
     first = second := by
-  exact ((facts.unique.inputs first firstEmitted).inputs second secondEmitted
+  obtain ⟨firstInput, firstMember, rfl⟩ := List.mem_map.mp firstEmitted
+  obtain ⟨secondInput, secondMember, rfl⟩ := List.mem_map.mp secondEmitted
+  exact ((facts.unique.inputs firstInput firstMember).inputs secondInput secondMember
     same.symm).symm
 
 /-- An emitted envelope's serial is below its author's next serial. -/
@@ -371,7 +372,8 @@ theorem SettledFacts.emitted_serial {execution : (application setup leaks).Execu
     {message : Message Player (WitnessedPacket (graph setup))}
     (emitted : Emitted setup leaks execution message) :
     message.id.2 < execution.network.nextSerial message.id.1 := by
-  exact facts.serials.inputs message emitted
+  obtain ⟨input, member, rfl⟩ := List.mem_map.mp emitted
+  exact facts.serials.inputs input member
 
 theorem settledFacts_initial (state : (application setup leaks).State) :
     SettledFacts setup leaks (ReactiveApplication.Execution.initial (application setup leaks)
@@ -405,35 +407,61 @@ theorem respond_emitted_mono (execution : (application setup leaks).Execution) (
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact emitted
-  | some material =>
-      unfold Emitted at emitted ⊢
-      simp only [ReactiveApplication.Execution.respond, MessageNetwork.submit,
-        List.mem_append]
-      exact Or.inl emitted
+  | some transmission =>
+      cases transmission with
+      | submit material =>
+          unfold Emitted at emitted ⊢
+          simp only [ReactiveApplication.Execution.respond, MessageNetwork.submit, List.map_append,
+            List.mem_append]
+          exact Or.inl emitted
+      | replay id =>
+          unfold Emitted at emitted ⊢
+          change message ∈ ((execution.network.replay who id).2.inputs).map _
+          unfold MessageNetwork.replay
+          split
+          · exact emitted
+          · simp only [List.map_append, List.mem_append]
+            exact Or.inl emitted
 
 /-- A response emits fresh at most the responder's next identifier; any other new
 input is an envelope the network already carried. -/
 theorem respond_emitted {execution : (application setup leaks).Execution}
-    (_facts : SettledFacts setup leaks execution) (who : Player)
+    (facts : SettledFacts setup leaks execution) (who : Player)
     (action : (application setup leaks).Action)
     (message : Message Player (WitnessedPacket (graph setup)))
     (emitted : Emitted setup leaks (execution.respond (application setup leaks) who action)
       message) :
     Emitted setup leaks execution message ∨
-      ∃ material, action.transmission = some material ∧
+      ∃ material, action.transmission = some (.submit material) ∧
         message = ⟨(who, execution.network.nextSerial who),
           (application setup leaks).packet ((application setup leaks).submit
             execution.application who material) who (execution.network.known who) material⟩ := by
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact Or.inl emitted
-  | some material =>
-      unfold Emitted at emitted
-      simp only [ReactiveApplication.Execution.respond, MessageNetwork.submit,
-        List.mem_append, List.mem_singleton] at emitted
-      rcases emitted with prior | fresh
-      · exact Or.inl prior
-      · exact Or.inr ⟨material, rfl, fresh⟩
+  | some transmission =>
+      cases transmission with
+      | submit material =>
+          unfold Emitted at emitted
+          simp only [ReactiveApplication.Execution.respond, MessageNetwork.submit, List.map_append,
+            List.mem_append, List.map_cons, List.map_nil, List.mem_singleton] at emitted
+          rcases emitted with prior | fresh
+          · exact Or.inl prior
+          · exact Or.inr ⟨material, rfl, fresh⟩
+      | replay id =>
+          left
+          unfold Emitted at emitted
+          change message ∈ ((execution.network.replay who id).2.inputs).map _ at emitted
+          unfold MessageNetwork.replay at emitted
+          split at emitted
+          · exact emitted
+          · rename_i envelope found
+            simp only [List.map_append, List.mem_append, List.map_cons, List.map_nil,
+              List.mem_singleton] at emitted
+            rcases emitted with prior | replayed
+            · exact prior
+            · subst replayed
+              exact facts.carried.known who _ (List.mem_of_find?_eq_some found)
 
 /-- A response advances only the responder's next serial, and only by a fresh
 submission. -/
@@ -441,20 +469,27 @@ theorem respond_nextSerial (execution : (application setup leaks).Execution) (wh
     (action : (application setup leaks).Action) (observer : Player) :
     (execution.respond (application setup leaks) who action).network.nextSerial observer =
         execution.network.nextSerial observer ∨
-      ((∃ material, action.transmission = some material) ∧ observer = who ∧
+      ((∃ material, action.transmission = some (.submit material)) ∧ observer = who ∧
         (execution.respond (application setup leaks) who action).network.nextSerial observer =
           execution.network.nextSerial who + 1) := by
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact Or.inl rfl
-  | some material =>
-      by_cases same : observer = who
-      · subst observer
-        right
-        refine ⟨⟨material, rfl⟩, rfl, ?_⟩
-        simp [ReactiveApplication.Execution.respond, MessageNetwork.submit]
-      · left
-        simp [ReactiveApplication.Execution.respond, MessageNetwork.submit, same]
+  | some transmission =>
+      cases transmission with
+      | submit material =>
+          by_cases same : observer = who
+          · subst observer
+            right
+            refine ⟨⟨material, rfl⟩, rfl, ?_⟩
+            simp [ReactiveApplication.Execution.respond, MessageNetwork.submit]
+          · left
+            simp [ReactiveApplication.Execution.respond, MessageNetwork.submit, same]
+      | replay id =>
+          left
+          change (execution.network.replay who id).2.nextSerial observer = _
+          unfold MessageNetwork.replay
+          split <;> rfl
 
 /-- The token a submission's emission carries names an event whose
 prerequisites have completed. -/
@@ -502,11 +537,16 @@ theorem settledFacts_respond (execution : (application setup leaks).Execution)
   · rcases action with ⟨transmission⟩
     cases transmission with
     | none => exact facts.carried
-    | some material =>
-        apply (facts.carried.mono fun message emitted =>
-          respond_emitted_mono execution who _ emitted).submit
-        unfold Emitted
-        simp [ReactiveApplication.Execution.respond, MessageNetwork.submit]
+    | some transmission =>
+        cases transmission with
+        | submit material =>
+            apply (facts.carried.mono fun message emitted =>
+              respond_emitted_mono execution who _ emitted).submit
+            unfold Emitted
+            simp [ReactiveApplication.Execution.respond, MessageNetwork.submit]
+        | replay id =>
+            exact (facts.carried.mono fun message emitted =>
+              respond_emitted_mono execution who _ emitted).replay who id
   · intro observer serial lower
     rcases respond_nextSerial execution who action observer with same | ⟨⟨material, submitted⟩,
         rfl, advanced⟩
@@ -523,7 +563,8 @@ theorem settledFacts_respond (execution : (application setup leaks).Execution)
             (execution.network.known observer) material⟩, ?_, rfl⟩
         rcases action with ⟨transmission⟩
         cases submitted
-        exact List.mem_append_right _ (List.mem_singleton.mpr rfl)
+        exact List.mem_map.mpr ⟨⟨observer, _⟩, List.mem_append_right _
+          (List.mem_singleton.mpr rfl), rfl⟩
   · intro message emitted token carried
     rw [configEq]
     rcases respond_emitted facts who action message emitted with prior | ⟨material, _, rfl⟩
@@ -776,7 +817,12 @@ variable (setup : Setup (Player := Player) (L := L))
 /-- The packet's content alone rules it out at every settlement. -/
 def ContentForbidden (message : Message Player (WitnessedPacket (graph setup))) : Prop :=
   message.payload.tokenValid = false ∨
-    SignedContentBreach message ∨
+    message.payload.call.event? (graph setup) = none ∨
+    (∃ event, message.payload.call = .withhold event) ∨
+    (∃ event candidate, message.payload.call = .commitment event candidate ∧
+      message.payload.evidence ≠ none) ∨
+    (∃ event candidate raw, message.payload.call = .opening event candidate raw ∧
+      certifiedOpening message.payload = false) ∨
     (∃ event, message.payload.call.event? (graph setup) = some event ∧
       (graph setup).actor? event ≠ some message.sender)
 
@@ -797,12 +843,7 @@ def PublicConditions (state : EventGraphRuntime.State (graph setup))
         | .resolve owner payload binding _ _ _ => candidate.1 = owner ∧
             state.accepted binding.field = some candidate ∧ raw.ty = payload
         | .bind .. | .sample .. => False
-  | .withhold event =>
-      state.WithinDeadline (runtime setup) event ∧
-        match nodeView (graph setup) event with
-        | .resolve .. => True
-        | .bind .. | .sample .. => False
-  | .malformed _ => True
+  | .withhold _ | .malformed _ => True
 
 /-- Accepting the packet at this state would settle content the record
 rejects: a commitment to another handle than the author's next prepared one, or
@@ -853,18 +894,7 @@ theorem handle_publicConditions (state next : EventGraphRuntime.State (graph set
   classical
   cases call with
   | malformed raw => trivial
-  | withhold event =>
-      by_cases ready : state.config.cut.Ready event
-      · by_cases timely : state.WithinDeadline (runtime setup) event
-        · refine ⟨timely, ?_⟩
-          cases node : nodeView (graph setup) event with
-          | resolve owner payload binding checks outputEq codeEq => trivial
-          | bind owner payload outputEq codeEq =>
-              simp [handle, ready, timely, node] at accepted
-          | sample payload law outputEq codeEq =>
-              simp [handle, ready, timely, node] at accepted
-        · simp [handle, ready, timely] at accepted
-      · simp [handle, ready] at accepted
+  | withhold event => trivial
   | commitment event candidate =>
       by_cases ready : state.config.cut.Ready event
       · by_cases timely : state.WithinDeadline (runtime setup) event
@@ -930,7 +960,7 @@ theorem fresh_of_conditions (state : EventGraphRuntime.State (graph setup))
     exact allowed (Or.inl (Bool.eq_false_iff.mpr invalid))
   have owned : (graph setup).actor? event = some message.sender := by
     by_contra foreign
-    exact allowed (Or.inr (Or.inr ⟨event, named, foreign⟩))
+    exact allowed (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr ⟨event, named, foreign⟩)))))
   obtain ⟨tokenEvent, tokenNamed, tokenEq⟩ :=
     (WitnessedPacket.tokenValid_iff message.payload).mp valid
   rw [named] at tokenNamed
@@ -942,30 +972,13 @@ theorem fresh_of_conditions (state : EventGraphRuntime.State (graph setup))
   cases call with
   | malformed raw => cases named
   | withhold actual =>
-      change some actual = some event at named
-      cases Option.some.inj named
-      have empty : evidence = none := by
-        by_contra present
-        exact allowed (Or.inr (Or.inl (Or.inr (Or.inl ⟨event, rfl, present⟩))))
-      obtain ⟨timely, resolving⟩ := conditions
-      cases node : nodeView (graph setup) event with
-      | resolve owner payload binding checks outputEq codeEq =>
-          have authored : id.1 = owner := by
-            have actor := nodeView_resolve_actor outputEq codeEq
-            rw [owned] at actor
-            exact Option.some.inj actor
-          exact ((runtime setup).freshServiceEnvelope_withhold_iff state.publicView id event
-            owner payload binding checks outputEq codeEq node evidence (some ⟨event⟩)).mpr
-              ⟨readyView, timely, empty, rfl, authored⟩
-      | bind owner payload outputEq codeEq => simp only [node] at resolving
-      | sample payload law outputEq codeEq => simp only [node] at resolving
+      exact (allowed (Or.inr (Or.inr (Or.inl ⟨actual, rfl⟩)))).elim
   | commitment actual candidate =>
       change some actual = some event at named
       cases Option.some.inj named
       have empty : evidence = none := by
         by_contra present
-        exact allowed (Or.inr (Or.inl
-          (Or.inr (Or.inr (Or.inl ⟨event, candidate, rfl, present⟩)))))
+        exact allowed (Or.inr (Or.inr (Or.inr (Or.inl ⟨event, candidate, rfl, present⟩))))
       have canonical : candidate = (id.1, .prepared (state.publicView.bindingCount id.1)) := by
         by_contra other
         exact content other
@@ -993,7 +1006,7 @@ theorem fresh_of_conditions (state : EventGraphRuntime.State (graph setup))
           (⟨.opening event candidate raw, evidence, some ⟨event⟩⟩ :
             WitnessedPacket (graph setup)) = true := by
         by_contra uncertified
-        exact allowed (Or.inr (Or.inl (Or.inr (Or.inr (Or.inr ⟨event, candidate, raw, rfl,
+        exact allowed (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl ⟨event, candidate, raw, rfl,
           Bool.eq_false_iff.mpr uncertified⟩)))))
       have guarded : state.publicView.openingGuardsAccepted
           ⟨.opening event candidate raw, evidence, some ⟨event⟩⟩ = true := by
@@ -1200,8 +1213,7 @@ theorem publicConditions_of_later (first second : EventGraphRuntime.State (graph
         exact lt_of_le_of_lt (Nat.sub_le_sub_right clockLe entered) within
   cases call with
   | malformed raw => trivial
-  | withhold event =>
-      exact ⟨timely event holds.1, holds.2⟩
+  | withhold event => trivial
   | commitment event candidate =>
       obtain ⟨within, rest⟩ := holds
       refine ⟨timely event within, ?_⟩
@@ -1246,7 +1258,7 @@ theorem settledContent_of_step {before after : EventGraphRuntime.State (graph se
   rcases message with ⟨id, ⟨call, evidence, token⟩⟩
   cases call with
   | malformed raw => exact content.elim
-  | withhold actual => exact content
+  | withhold actual => exact content.elim
   | commitment actual candidate =>
       change some actual = some event at named
       cases Option.some.inj named
@@ -1395,7 +1407,7 @@ theorem Condemned.environment {execution next : (application setup leaks).Execut
         rcases message with ⟨id, ⟨call, evidence, token⟩⟩
         cases call with
         | malformed raw => exact content.elim
-        | withhold actual => exact fails.elim
+        | withhold actual => exact content.elim
         | commitment actual candidate =>
             change some actual = some event at named
             cases Option.some.inj named
@@ -1534,10 +1546,25 @@ theorem Condemned.forbidden {execution : (application setup leaks).Execution}
           rw [call] at acceptedNamed
           cases Option.some.inj acceptedNamed
           apply misformed message event call
-          rcases forbidden with invalid | signed | ⟨foreignEvent, foreignNamed, foreign⟩
+          rcases forbidden with invalid | unnamed | ⟨actual, withheld⟩ |
+              ⟨actual, candidate, committed, evidence⟩ |
+              ⟨actual, candidate, raw, opened, uncertified⟩ |
+              ⟨foreignEvent, foreignNamed, foreign⟩
           · rw [valid] at invalid
             cases invalid
-          · exact signed.not_settledContent _
+          · rw [call] at unnamed
+            cases unnamed
+          · unfold SettledRecord.SettledContent
+            rw [withheld]
+            exact id
+          · unfold SettledRecord.SettledContent
+            rw [committed]
+            exact fun content => evidence content.1
+          · unfold SettledRecord.SettledContent
+            rw [opened]
+            intro content
+            rw [uncertified] at content
+            cases content.1
           · rw [call] at foreignNamed
             cases Option.some.inj foreignNamed
             exact (foreign owned).elim
@@ -1590,8 +1617,8 @@ def BreachesDoomed : (application setup leaks).ProtocolState → Prop
   | none => True
   | some control => ∀ record ∈ (application setup leaks).executionTraffic control.execution,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
-        record.envelope = false →
-      Doomed setup leaks control.execution record.envelope.sender
+        record.input.envelope = false →
+      Doomed setup leaks control.execution record.input.envelope.sender
 
 /-- Every send-time breach in the traffic of a legal history dooms its author,
 for every scheduler and arbitrary responses. -/
@@ -1624,8 +1651,8 @@ theorem breachesDoomed_history (initial : PMF (application setup leaks).State) (
               · exact (valid record prior' breach).respond who _
               · simp only [ReactiveApplication.trafficStep, List.mem_map] at fresh
                 obtain ⟨input, inside, rfl⟩ := fresh
-                refine doomed_of_breach execution facts who _ input ?_ breach
-                exact List.mem_of_mem_drop inside
+                refine doomed_of_breach execution facts who _ input.envelope ?_ breach
+                exact List.mem_map.mpr ⟨input, List.mem_of_mem_drop inside, rfl⟩
           | none =>
               cases remaining with
               | zero =>
@@ -1654,29 +1681,33 @@ theorem settled_breach_of_sendTime_breach (initial : PMF (application setup leak
     (record : (application setup leaks).TrafficRecord)
     (present : record ∈ (application setup leaks).executionTraffic control.execution)
     (breach : (runtime setup).permittedServiceEnvelope record.observation record.ledger
-      record.envelope = false) :
+      record.input.envelope = false) :
     ∃ other ∈ (application setup leaks).executionTraffic control.execution,
-      other.envelope.sender = record.envelope.sender ∧
-      ((runtime setup).settledRecord leaks control.execution).permits other.envelope =
+      other.input.envelope.sender = record.input.envelope.sender ∧
+      ((runtime setup).settledRecord leaks control.execution).permits other.input.envelope =
         false := by
   have facts := settledFacts_history initial horizon scheduler trace
   obtain ⟨message, emitted, authored, forbidden⟩ := (breachesDoomed_history initial horizon
     scheduler trace record present breach).forbidden facts terminal
   have inputs := (application setup leaks).stateTraffic_inputs initial horizon scheduler trace
-  have inputMember : message ∈ control.execution.network.inputs := emitted
+  obtain ⟨input, inputMember, rfl⟩ := List.mem_map.mp emitted
   change ((application setup leaks).executionTraffic control.execution).map
-    ReactiveApplication.TrafficRecord.envelope = control.execution.network.inputs at inputs
+    ReactiveApplication.TrafficRecord.input = control.execution.network.inputs at inputs
   rw [← inputs] at inputMember
   obtain ⟨other, otherMember, rfl⟩ := List.mem_map.mp inputMember
   exact ⟨other, otherMember, authored, forbidden⟩
 
-/-- A response that submits a packet which the handler rejects at its emission
-state, or whose signed content cannot settle, condemns that packet. Evidence
-soundness and binding provenance hold at every legal history. -/
+/-- **An unacceptable fresh packet is condemned.** A response that submits a
+packet which the handler rejects at the state it is emitted in, or an opening
+without its exact certificate, condemns that packet, in a graph without binding
+events. Evidence soundness and binding provenance hold at every legal
+history. -/
 theorem condemned_of_unacceptable (execution : (application setup leaks).Execution)
     (facts : SettledFacts setup leaks execution)
     (sound : ((runtime setup).packetEvidence leaks).Sound execution)
     (binding : execution.application.BindingInvariant)
+    (publications : ∀ event owner payload,
+      (graph setup).outputLayout event ≠ .binding owner payload)
     (who : Player) (material : (application setup leaks).Submission)
     (departure :
       let state := (application setup leaks).submit execution.application who material
@@ -1684,28 +1715,27 @@ theorem condemned_of_unacceptable (execution : (application setup leaks).Executi
         material
       (application setup leaks).handle state
           ⟨(who, execution.network.nextSerial who), packet⟩ = none ∨
-        SignedContentBreach (⟨(who, execution.network.nextSerial who), packet⟩ :
-          Message Player (WitnessedPacket (graph setup)))) :
+        certifiedOpening packet = false) :
     Condemned setup leaks (execution.respond (application setup leaks) who
-      ⟨some material⟩)
+      ⟨some (.submit material)⟩)
       ⟨(who, execution.network.nextSerial who),
         (application setup leaks).packet ((application setup leaks).submit
           execution.application who material) who (execution.network.known who) material⟩ := by
   let app := application setup leaks
-  let next := execution.respond app who ⟨some material⟩
+  let next := execution.respond app who ⟨some (.submit material)⟩
   let message : Message Player (WitnessedPacket (graph setup)) :=
     ⟨(who, execution.network.nextSerial who),
       app.packet (app.submit execution.application who material) who
         (execution.network.known who) material⟩
-  have after := settledFacts_respond execution facts who ⟨some material⟩
+  have after := settledFacts_respond execution facts who ⟨some (.submit material)⟩
   have soundNext := ((runtime setup).packetEvidence leaks).sound_respond execution who
-    ⟨some material⟩ sound
+    ⟨some (.submit material)⟩ sound
   have bindingNext : next.application.BindingInvariant :=
     ((runtime setup).reactiveBindingInvariant leaks).respond execution who _ binding
   have pendingNext : message ∈ next.network.pending :=
     List.mem_append_right execution.network.pending (List.mem_singleton_self _)
   have emitted : Emitted setup leaks next message :=
-    List.mem_append_right _ (List.mem_singleton_self _)
+    List.mem_map.mpr ⟨⟨who, message⟩, List.mem_append_right _ (List.mem_singleton_self _), rfl⟩
   have unaccepted : (message.id, true) ∉ next.receipts := by
     intro accepted
     obtain ⟨other, otherMember, same⟩ := List.mem_map.mp (after.receipt_published accepted)
@@ -1749,10 +1779,7 @@ theorem condemned_of_unacceptable (execution : (application setup leaks).Executi
         change some actual = some event at named
         cases Option.some.inj named
         exact conditions.1
-    | withhold actual =>
-        change some actual = some event at named
-        cases Option.some.inj named
-        exact conditions.1
+    | withhold actual => exact (forbidden (Or.inr (Or.inr (Or.inl ⟨actual, rfl⟩)))).elim
     | malformed raw => cases named
   rcases departure with rejected | uncertified
   · obtain ⟨accepted, handled⟩ := (runtime setup).freshServiceAcceptable_accepted
@@ -1766,7 +1793,23 @@ theorem condemned_of_unacceptable (execution : (application setup leaks).Executi
     change app.handle next.application message = none at rejected
     rw [rejected] at reactive
     cases reactive
-  · exact forbidden (Or.inr (Or.inl uncertified))
+  · change certifiedOpening message.payload = false at uncertified
+    rcases message with ⟨id, ⟨call, evidence, token⟩⟩
+    cases call with
+    | opening actual candidate raw =>
+        exact forbidden (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl ⟨actual, candidate, raw, rfl,
+          uncertified⟩)))))
+    | commitment actual candidate =>
+        change some actual = some event at named
+        cases Option.some.inj named
+        obtain ⟨_, rest⟩ := conditions
+        cases node : nodeView (graph setup) event with
+        | bind owner payload outputEq codeEq =>
+            exact publications event owner payload outputEq
+        | resolve _ _ _ _ _ _ => simp only [node] at rest
+        | sample _ _ _ _ => simp only [node] at rest
+    | withhold actual => exact forbidden (Or.inr (Or.inr (Or.inl ⟨actual, rfl⟩)))
+    | malformed raw => cases named
 
 variable (setup leaks) in
 /-- A packet stays condemned along with the settled facts. -/

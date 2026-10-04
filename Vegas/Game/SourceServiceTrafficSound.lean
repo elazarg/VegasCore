@@ -31,7 +31,7 @@ inside a source event. Every prefix has an actual permitted completion. -/
 theorem initialized_sourceService_partial_conformance
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (players : Player → (application setup leaks).Policy)
     (lawful : ∀ who past view response, response ∈ (players who past view).support →
       response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who past view)
@@ -43,7 +43,7 @@ theorem initialized_sourceService_partial_conformance
         (ReactiveApplication.Execution.initial (application setup leaks) state)).support) :
     ∀ record ∈ (application setup leaks).executionTraffic execution,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
-        record.envelope = true := by
+        record.input.envelope = true := by
   obtain ⟨initial, supported, reachedPrefix⟩ :=
     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   obtain ⟨final, continued⟩ := ((runtime setup).runInteractionPlan leaks players network
@@ -67,13 +67,13 @@ history, including off-path decisions and partially observed pending traffic. -/
 theorem sourceService_history_traffic
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (history : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).History) :
     ∀ record ∈ (application setup leaks).stateTraffic history.state,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
-        record.envelope = true := by
+        record.input.envelope = true := by
   let app := application setup leaks
   let menu := sourceServiceMenu setup leaks bounds rosters
   have lawful : ∀ who past view response, response ∈ (menu.uniformResponses who past view).support →

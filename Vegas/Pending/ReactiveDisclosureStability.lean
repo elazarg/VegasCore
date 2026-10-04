@@ -53,7 +53,7 @@ theorem reactiveReadFrameInvariant (runtime : EventGraphRuntime graph)
         state.accepted field = original.accepted field) where
   submit state who material agrees := by
     have same := runtime.reactive_respond_application leaks
-      (.initial (runtime.reactiveApplication leaks) state) who ⟨some material⟩
+      (.initial (runtime.reactiveApplication leaks) state) who ⟨some (.submit material)⟩
     have associated := congrArg PublicView.accepted same.2
     intro field member
     exact ⟨(congrArg (fun config : graph.Config => config.store field) same.1).trans

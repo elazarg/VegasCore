@@ -23,9 +23,7 @@ variable {Player : Type} [DecidableEq Player]
   {memory : BindingMemory runtime leaks} {owner : Player}
   {original repaired : (runtime.reactiveApplication leaks).Execution}
 
-/-- Equal full foreign inputs share the actual arbitrary raw response draw,
-including when the owner has an unfinished completion override. -/
-theorem foreign_invoke_coupling
+private theorem foreign_invoke_coupling
     (frame : Frame runtime leaks memory owner original repaired)
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (actor : Player) (different : actor ≠ owner) :

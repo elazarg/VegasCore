@@ -6,7 +6,7 @@ import Interaction.MessageNetwork
 
 A packet checker can inspect leaked packets and the ledger using the same view
 available to a player. Reports retain the offending envelopes; they do not add
-access to the input log or delivery timestamps.
+access to the input log, delivery timestamps, or rebroadcaster identities.
 Sampling probability, report delivery, and the soundness of an application's
 violation predicate are separate obligations.
 -/

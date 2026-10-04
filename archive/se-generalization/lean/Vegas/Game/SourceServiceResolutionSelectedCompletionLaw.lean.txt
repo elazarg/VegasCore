@@ -1,0 +1,342 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.SourceServiceSelectedReference
+import Vegas.Game.SourceServiceSelectedContinuation
+import Vegas.Game.SourceServiceResolutionProtectedCompletion
+import Vegas.Game.SourceServiceResolutionResponseLaw
+import Vegas.Game.SourceServiceSilentDecisionCompletion
+import Vegas.Game.SourceServiceTimingMixture
+import Vegas.Pending.ReactiveResolutionMiss
+
+/-! # The literal resolution timing family through actual completion
+
+The actual selected before-response input is read from the silent reference.
+A protected source disclosure joins its own actual completed traffic kernel;
+FALSE and TRUE are not assigned a common selection channel. Closed-gate
+waiting and completion before the chosen input produce actual public misses
+and publication failure. The original input and same prefix parameter remain
+in the joint law. Closed waiting is not asserted to be rational.
+-/
+
+noncomputable section
+
+namespace Vegas
+
+open SourceProgram Interaction EventGraphRuntime GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player]
+  {L : IExpr} [IExpr.ResultTypes L]
+  {setup : Setup (Player := Player) (L := L)}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+
+private theorem selected_input_retained
+    (players : Player → (application setup leaks).Policy)
+    (owner : Player) (event : (graph setup).EventId) (selected : Nat)
+    (input : (application setup leaks).Info) (present : input ≠ none) :
+    (application setup leaks).PolicyInvariant players (fun current =>
+      sourceServiceSelectedInput? setup leaks owner event selected (current.recall owner) =
+        input) := by
+  let app := application setup leaks
+  constructor
+  · intro current actor response recalled _chosen
+    exact sourceServiceSelectedInput?_prefix owner event selected _ _
+      (app.respond_recall_prefix current actor owner response) input recalled present
+  · intro current next command recalled moved
+    rw [app.environmentStep_recall current next command moved]
+    exact recalled
+
+private theorem marked_resolution_stopped_failure
+    {horizon remaining : Nat} {scheduler : (application setup leaks).Scheduler}
+    (players : Player → (application setup leaks).Policy)
+    (execution : (application setup leaks).Execution)
+    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨remaining, none, execution⟩))
+    (stop : (application setup leaks).Execution → Prop) [DecidablePred stop]
+    (event : (graph setup).EventId) (payload : L.Ty)
+    (outputEq : (graph setup).outputLayout event = .publication payload)
+    (stopped : (application setup leaks).Execution)
+    (reached : stopped ∈ ((application setup leaks).runUntilHorizon scheduler players stop
+      horizon execution).support)
+    (marked : event ∈ stopped.application.missedEvents) :
+    (⟨.inr event, outputEq⟩ : EventGraph.FieldRef (graph setup).layout
+      (.publication payload)).get? stopped.application.config.store = some .failure := by
+  let app := application setup leaks
+  have accounted := app.raw_trace_accounted (initialLaw setup) horizon scheduler trace
+  change execution.environmentRecall.length + remaining = horizon at accounted
+  obtain ⟨used, budget, rounds, _length⟩ := app.runUntil_runRounds scheduler players stop
+    (horizon - execution.environmentRecall.length) execution stopped reached
+  have within : used ≤ remaining := by omega
+  obtain ⟨finalTrace⟩ := app.raw_trace_runRounds (initialLaw setup) horizon scheduler players
+    (remaining - used) used execution stopped
+    (by simpa only [Nat.sub_add_cancel within] using trace) rounds
+  rw [initialLaw_eq_inputs] at finalTrace
+  exact resolutionMissesFail_history (runtime setup) leaks (setup.initialLaw.map setup.eventInputs)
+    horizon scheduler finalTrace event payload outputEq marked
+
+/-- The actual selected-family completion law preserves the original input,
+prefix parameter, publication result and joint public/foreign traffic. Every
+protected source draw uses its own real continuation; missed branches are
+derived from actual initialized packet origins and expiry semantics. -/
+theorem RevealSource.selected_family_completion_law
+    {Parameter : Type} (parameter : Parameter)
+    {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
+    {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
+      delay bound)
+    (players : Player → (application setup leaks).Policy)
+    (turns : Nat) (timing : TurnTiming setup turns) (profile : BehavioralProfile setup.program)
+    (effective : ∀ who, (profile who).EffectiveDisclosures setup.program []
+      (Revelations.initial setup.context))
+    (event : (graph setup).EventId) (execution : (application setup leaks).Execution)
+    (site : RevealSource setup profile event execution.application.config)
+    (follows : players site.owner =
+      sourceServiceTurnPolicy setup leaks bound turns timing profile site.owner)
+    (slot : Fin (turns + 1))
+    (boundary : CompletionBoundary setup leaks scheduler players event.val execution)
+    (bounded : execution.environmentRecall.length ≤ horizon) :
+    let app := application setup leaks
+    let familyPlayers := Function.update players site.owner
+      (sourceServiceTurnFamily setup leaks bound profile site.owner event turns slot)
+    let silentPlayers := Function.update players site.owner app.silentPolicy
+    let completed := fun final : app.Execution => event ∈ final.application.config.cut.completed
+    let earlier := fun final : app.Execution => completed final ∨
+      sourceServiceSelectedInput? setup leaks site.owner event slot.val (final.recall site.owner) ≠
+        none
+    let output : EventGraph.FieldRef (graph setup).layout (.publication site.payload) :=
+      ⟨.inr event, site.outputEq⟩
+    let traffic := (runtime setup).bindingPublicTraffic leaks site.owner
+    ((app.runUntilHorizon scheduler familyPlayers completed horizon execution).map fun final =>
+      (sourceServiceSelectedInput? setup leaks site.owner event slot.val (final.recall site.owner),
+        parameter, output.get? final.application.config.store, traffic final)) =
+    (app.runUntilHorizon scheduler silentPlayers earlier horizon execution).bind fun next =>
+      if sourceServiceSelectedInput? setup leaks site.owner event slot.val
+          (next.recall site.owner) = none then
+        PMF.pure (none, parameter, some .failure, traffic next)
+      else
+        let before := { next with
+          «recall» := Function.update next.recall site.owner (next.recall site.owner).dropLast }
+        let input : app.Info := some (before.recall site.owner, before.observe app site.owner)
+        if before.application.publicView.InclusionFitsDeadline (runtime setup) bound event then
+          (revealKernel site.residual (site.source.view site.owner)).bind fun disclose =>
+            (app.runUntilHorizon scheduler silentPlayers completed horizon
+              (before.respond app site.owner
+                ((runtime setup).canonicalServiceDecision leaks site.owner
+                  (before.recall site.owner) (before.observe app site.owner) event
+                  (cast (congrArg EventGraph.EventField.Action site.outputEq.symm)
+                    disclose)))).map fun final =>
+              (input, parameter, some (disclosureResult site.published site.binding site.source
+                disclose), traffic final)
+        else
+          (app.runUntilHorizon scheduler silentPlayers completed horizon
+            (before.respond app site.owner ⟨none⟩)).map fun final =>
+              (input, parameter, some .failure, traffic final) := by
+  classical
+  dsimp only
+  let app := application setup leaks
+  let familyPlayers := Function.update players site.owner
+    (sourceServiceTurnFamily setup leaks bound profile site.owner event turns slot)
+  let silentPlayers := Function.update players site.owner app.silentPolicy
+  let completed := fun final : app.Execution => event ∈ final.application.config.cut.completed
+  let earlier := fun final : app.Execution => completed final ∨
+    sourceServiceSelectedInput? setup leaks site.owner event slot.val
+      (final.recall site.owner) ≠ none
+  let output : EventGraph.FieldRef (graph setup).layout (.publication site.payload) :=
+    ⟨.inr event, site.outputEq⟩
+  let traffic := (runtime setup).bindingPublicTraffic leaks site.owner
+  obtain ⟨startTrace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler players
+    _ bounded execution boundary.supported
+  have absent := sourceServiceSelectedInput?_of_untouched site.owner event slot.val execution
+    (boundary.untouched event rfl)
+  have stopLaw := sourceService_selected_response_law scheduler players bound profile site.owner
+    event turns slot (horizon - execution.environmentRecall.length) execution absent
+  have ordered := app.runUntilHorizon_eq_runUntilHorizon_bind scheduler familyPlayers earlier
+    completed (fun _ done => Or.inl done) horizon execution
+  rw [ordered, PMF.map_bind]
+  change (app.runUntil scheduler familyPlayers earlier
+    (horizon - execution.environmentRecall.length) execution).bind _ = _
+  rw [stopLaw, PMF.bind_bind]
+  apply bind_congr_on_support
+    (app.runUntilHorizon scheduler silentPlayers earlier horizon execution)
+  intro next reached
+  by_cases missing : sourceServiceSelectedInput? setup leaks site.owner event slot.val
+      (next.recall site.owner) = none
+  · simp only [missing, ↓reduceIte, PMF.pure_bind]
+    have missed := sourceService_selected_reference_no_input contract players turns timing profile
+      site.owner follows event site.owned execution slot boundary bounded next reached missing
+    have failure := marked_resolution_stopped_failure silentPlayers execution startTrace earlier
+      event site.payload site.outputEq next reached missed.2.1
+    rw [ReactiveApplication.runUntilHorizon,
+      app.runUntil_of_stop scheduler familyPlayers completed _ next missed.1, PMF.pure_map]
+    simp only [missing]
+    change PMF.pure (none, parameter, output.get? next.application.config.store, traffic next) = _
+    rw [failure]
+  · simp only [missing, ↓reduceIte, PMF.bind_map, Function.comp_def]
+    let before : app.Execution := { next with
+      «recall» := Function.update next.recall site.owner (next.recall site.owner).dropLast }
+    obtain ⟨middle, recovered, ⟨raw⟩, same, _after, turn, selected, beforeAbsent, _atTurn, _slots,
+      unrecorded, _noPacket, _input⟩ := sourceService_selected_reference_resources players turns
+        timing profile site.owner follows event execution slot boundary bounded next reached missing
+    change before = middle at recovered
+    cases recovered
+    let input : app.Info := some (before.recall site.owner, before.observe app site.owner)
+    let currentSite : RevealSource setup profile event before.application.config :=
+      ⟨site.Γ, site.names, site.published, site.owner, site.name, site.payload, site.fresh,
+        site.binding, site.unresolved, site.next, site.residual, site.refs, site.source,
+        site.embedding, site.refsBefore, site.aligned, (by rw [same]; exact site.agree),
+        (by rw [same]; exact site.history), site.head, site.inherits, site.supported⟩
+    have ready := (before.application.publicView_eventReady event).mp
+      (PublicView.ownTurn?_spec _ site.owner event turn).1
+    have recalled (response : app.Action) : sourceServiceSelectedInput? setup leaks site.owner
+        event slot.val ((before.respond app site.owner response).recall site.owner) = input := by
+      rw [sourceServiceSelectedInput?_respond site.owner event slot.val before beforeAbsent
+        response, ite_eq_left selected]
+    have retained (response : app.Action) (final : app.Execution)
+        (supported : final ∈ (app.runUntilHorizon scheduler familyPlayers completed horizon
+          (before.respond app site.owner response)).support) :
+        sourceServiceSelectedInput? setup leaks site.owner event slot.val
+          (final.recall site.owner) = input := by
+      obtain ⟨used, _within, actual, _length⟩ := app.runUntil_runRounds scheduler familyPlayers
+        completed _ (before.respond app site.owner response) final supported
+      exact (selected_input_retained familyPlayers site.owner event slot.val input
+        (Option.some_ne_none _)).runRounds scheduler used _ final (recalled response) actual
+    by_cases fits : before.application.publicView.InclusionFitsDeadline (runtime setup) bound event
+    · rw [ite_eq_left fits, sourceServiceCanonicalOpportunity_protected bound profile site.owner
+        event (before.recall site.owner) (before.observe app site.owner) unrecorded fits,
+        RevealSource.canonical_response_law before currentSite ready, PMF.bind_map]
+      apply bind_congr_on_support _
+      intro disclose drawn
+      dsimp only [Function.comp_def]
+      let response := (runtime setup).canonicalServiceDecision leaks site.owner
+        (before.recall site.owner) (before.observe app site.owner) event
+          (cast (congrArg EventGraph.EventField.Action site.outputEq.symm) disclose)
+      rw [sourceService_selected_continuation_silent scheduler players bound profile site.owner
+        event turns slot before selected response]
+      apply map_congr_on_support _
+      intro final finalSupported
+      have familySupported : final ∈ (app.runUntilHorizon scheduler familyPlayers completed
+          horizon (before.respond app site.owner response)).support := by
+        rw [sourceService_selected_continuation_silent scheduler players bound profile site.owner
+          event turns slot before selected response]
+        exact finalSupported
+      have actual := currentSite.protected_completion contract profile effective players before
+        event raw ready unrecorded fits disclose drawn final finalSupported
+      have result : output.get? final.application.config.store =
+          some (disclosureResult site.published site.binding site.source disclose) := by
+        rw [actual.2.2.2]
+        simp only [output, EventGraph.FieldRef.get?, EventGraph.Config.store,
+          EventGraph.Config.complete_output_same]
+        have cancel {α β : Type} (equal : α = β) (value : β) :
+            cast (congrArg Option equal) (some (cast equal.symm value)) = some value := by
+          cases equal
+          rfl
+        exact cancel (congrArg EventGraph.EventField.Value site.outputEq) _
+      rw [retained response final familySupported, result]
+    · rw [ite_eq_right fits]
+      have silence : sourceServiceCanonicalOpportunity setup leaks bound profile site.owner event
+          (before.recall site.owner) (before.observe app site.owner) = PMF.pure ⟨none⟩ := by
+        unfold sourceServiceCanonicalOpportunity
+        simp only [unrecorded, Bool.false_eq_true, ↓reduceIte]
+        split
+        · exact (fits ‹_›).elim
+        · rfl
+      rw [silence, PMF.pure_bind, sourceService_selected_continuation_silent scheduler players
+        bound profile site.owner event turns slot before selected]
+      apply map_congr_on_support _
+      intro final finalSupported
+      obtain ⟨responseTrace⟩ := app.raw_trace_respond (initialLaw setup) horizon scheduler
+        (horizon - before.environmentRecall.length) before site.owner ⟨none⟩ raw
+      have unsent : (runtime setup).eventRecorded leaks
+          ((before.respond app site.owner ⟨none⟩).recall site.owner) event = false :=
+        ((runtime setup).eventRecorded_respond_other leaks before site.owner site.owner ⟨none⟩
+          event (fun _ impossible => by cases impossible)).trans unrecorded
+      have missed := sourceService_silent_unrecorded_completion contract players site.owner
+        (before.respond app site.owner ⟨none⟩) responseTrace event site.owned unsent final
+          finalSupported
+      have failure := marked_resolution_stopped_failure silentPlayers
+        (before.respond app site.owner ⟨none⟩) responseTrace completed event site.payload
+          site.outputEq final finalSupported missed.2.1
+      have familySupported : final ∈ (app.runUntilHorizon scheduler familyPlayers completed
+          horizon (before.respond app site.owner ⟨none⟩)).support := by
+        rw [sourceService_selected_continuation_silent scheduler players bound profile site.owner
+          event turns slot before selected]
+        exact finalSupported
+      rw [retained ⟨none⟩ final familySupported, failure]
+
+/-- At the untouched decision boundary, the actual timing prior is joined to
+the completed resolution law. The common carrier retains the selected timing
+slot, original input, parameter and actual disclose-dependent traffic. -/
+theorem RevealSource.timing_completion_law
+    {Parameter : Type} (parameter : Parameter)
+    {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
+    {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
+      delay bound)
+    (players : Player → (application setup leaks).Policy)
+    (turns : Nat) (timing : TurnTiming setup turns) (profile : BehavioralProfile setup.program)
+    (effective : ∀ who, (profile who).EffectiveDisclosures setup.program []
+      (Revelations.initial setup.context))
+    (event : (graph setup).EventId) (execution : (application setup leaks).Execution)
+    (site : RevealSource setup profile event execution.application.config)
+    (follows : players site.owner =
+      sourceServiceTurnPolicy setup leaks bound turns timing profile site.owner)
+    (boundary : CompletionBoundary setup leaks scheduler players event.val execution)
+    (bounded : execution.environmentRecall.length ≤ horizon) :
+    let app := application setup leaks
+    let completed := fun final : app.Execution => event ∈ final.application.config.cut.completed
+    let output : EventGraph.FieldRef (graph setup).layout (.publication site.payload) :=
+      ⟨.inr event, site.outputEq⟩
+    let traffic := (runtime setup).bindingPublicTraffic leaks site.owner
+    let joint := (timing event site.owner site.owned).bind fun slot =>
+      let silentPlayers := Function.update players site.owner app.silentPolicy
+      (app.runUntilHorizon scheduler silentPlayers
+        (fun final => completed final ∨ sourceServiceSelectedInput? setup leaks site.owner event
+          slot.val (final.recall site.owner) ≠ none) horizon execution).bind fun next =>
+        if sourceServiceSelectedInput? setup leaks site.owner event slot.val
+            (next.recall site.owner) = none then
+          PMF.pure (slot, none, parameter, some .failure, traffic next)
+        else
+          let before := { next with
+            «recall» := Function.update next.recall site.owner (next.recall site.owner).dropLast }
+          let input : app.Info := some (before.recall site.owner, before.observe app site.owner)
+          if before.application.publicView.InclusionFitsDeadline (runtime setup) bound event then
+            (revealKernel site.residual (site.source.view site.owner)).bind fun disclose =>
+              (app.runUntilHorizon scheduler silentPlayers completed horizon
+                (before.respond app site.owner
+                  ((runtime setup).canonicalServiceDecision leaks site.owner
+                    (before.recall site.owner) (before.observe app site.owner) event
+                    (cast (congrArg EventGraph.EventField.Action site.outputEq.symm)
+                      disclose)))).map fun final =>
+                (slot, input, parameter, some (disclosureResult site.published site.binding
+                  site.source disclose), traffic final)
+          else
+            (app.runUntilHorizon scheduler silentPlayers completed horizon
+              (before.respond app site.owner ⟨none⟩)).map fun final =>
+                (slot, input, parameter, some .failure, traffic final)
+    ((app.runUntilHorizon scheduler players completed horizon execution).map fun final =>
+      (parameter, output.get? final.application.config.store, traffic final)) =
+      joint.map (fun chosen => (chosen.2.2.1, chosen.2.2.2.1, chosen.2.2.2.2)) := by
+  classical
+  dsimp only
+  rw [sourceService_timing_mixture scheduler players bound turns timing profile
+    site.owner follows event site.owned execution boundary horizon]
+  simp only [PMF.map_bind]
+  apply bind_congr_on_support (timing event site.owner site.owned)
+  intro slot _chosen
+  have actual := site.selected_family_completion_law parameter contract players turns timing
+    profile effective event execution follows slot boundary bounded
+  have marginal := congrArg (fun law => law.map fun chosen =>
+    (chosen.2.1, chosen.2.2.1, chosen.2.2.2)) actual
+  simp only [PMF.map_comp, Function.comp_def] at marginal
+  rw [marginal]
+  simp only [PMF.map_bind]
+  apply bind_congr_on_support _
+  intro next _reached
+  by_cases missing : sourceServiceSelectedInput? setup leaks site.owner event slot.val
+      (next.recall site.owner) = none
+  · simp only [ite_eq_left missing, PMF.pure_map]
+  · simp only [ite_eq_right missing]
+    by_cases fits : next.application.publicView.InclusionFitsDeadline (runtime setup) bound event
+    · simp only [ite_eq_left fits, PMF.map_bind, PMF.map_comp, Function.comp_def]
+    · simp only [ite_eq_right fits, PMF.map_comp, Function.comp_def]
+
+end Vegas

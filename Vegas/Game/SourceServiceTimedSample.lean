@@ -2,7 +2,7 @@
 
 import Vegas.Game.SourceServiceTimedPolicy
 import Vegas.Game.SourceServiceSampleFactorization
-import Vegas.Pending.ReactiveSilentSettlement
+import Vegas.Pending.ReactiveReplaySettlement
 import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Actual public sampling under the timed source policy
@@ -36,7 +36,7 @@ theorem sourceServiceTimedPolicy_sample_window
     (runtime setup).runInteractionPlan leaks
       (sourceServiceTimedPolicy setup leaks rosters timing profile) network
       (visits.map ServiceInstruction.player) execution =
-      (runtime setup).runInteractionPlan leaks (fun _ => (application setup leaks).silentPolicy)
+      (runtime setup).runInteractionPlan leaks (fun _ => (application setup leaks).replayPolicy)
         network (visits.map ServiceInstruction.player) execution := by
   let app := application setup leaks
   induction visits generalizing execution with
@@ -52,7 +52,7 @@ theorem sourceServiceTimedPolicy_sample_window
       let activated := execution.sampledActivation app actor sample
       have law : sourceServiceTimedPolicy setup leaks rosters timing profile actor
           (activated.recall actor) (activated.observe app actor) =
-            app.silentPolicy (activated.recall actor) (activated.observe app actor) := by
+            app.replayPolicy (activated.recall actor) (activated.observe app actor) := by
         have idle : (activated.observe app actor).application.publicView.ownTurn? actor = none :=
           sole.ownTurn?_foreign (by rw [chance]; simp)
         simp only [sourceServiceTimedPolicy, idle]
@@ -67,22 +67,22 @@ theorem sourceServiceTimedPolicy_sample_window
       rw [unchanged.2]
       exact sole
 
-private theorem silent_window_application
+private theorem replay_window_application
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (network : (runtime setup).NetworkPolicy leaks) (visits : List Player)
     (initial final : (application setup leaks).Execution)
     (reached : final ∈ ((runtime setup).runInteractionPlan leaks
-      (fun _ => (application setup leaks).silentPolicy) network
+      (fun _ => (application setup leaks).replayPolicy) network
         (visits.map ServiceInstruction.player) initial).support) :
     final.application = initial.application := by
   cases visits with
   | nil => cases (PMF.mem_support_pure_iff _ _).mp reached; rfl
   | cons first rest =>
-      exact ((runtime setup).silent_window_preserves leaks
-        (fun _ => (application setup leaks).silentPolicy) network first initial
+      exact ((runtime setup).replay_window_preserves leaks
+        (fun _ => (application setup leaks).replayPolicy) network first initial
         (fun current who response _ _ supported =>
-          (application setup leaks).silentPolicy_cases _ _ response supported)
+          (application setup leaks).replayPolicy_cases _ _ response supported)
         (fun _ => True) ⟨by simp, by simp, by simp, by simp⟩ (first :: rest) final reached).1
 
 /-- The source draw and actual replay window disintegrate the full timed
@@ -108,7 +108,7 @@ theorem sourceServiceTimedPolicy_sample_phase_law
     (chance : (graph setup).actor? event = none)
     (network : (runtime setup).NetworkPolicy leaks) (ticks : Nat) :
     let app := application setup leaks
-    let replay := fun _ => app.silentPolicy
+    let replay := fun _ => app.replayPolicy
     let completed := fun (current : app.Execution) value =>
       { current with
         application := execution.application.complete event ready
@@ -131,7 +131,7 @@ theorem sourceServiceTimedPolicy_sample_phase_law
       (rosters event) execution (soleReady_of_ready setup execution.application ready)]
   apply bind_congr_on_support _
   intro current reached
-  have same := silent_window_application setup leaks network (rosters event) execution current
+  have same := replay_window_application setup leaks network (rosters event) execution current
     reached
   rw [servicePlan_players_eq setup leaks _ replay network _ (by simp) (by intro who; simp)]
   change ((runtime setup).interactionStep leaks replay network (.sample event) current).bind _ = _

@@ -1,0 +1,149 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Examples.MonitoredGuessing.RestrictedInformation
+import Vegas.Examples.MonitoredGuessing.NativeHistory
+import GameTheoryExtensions.Math.Probability.Uniform
+
+/-! # Exhaustive restricted receiver checkpoints
+
+The full-support reference policy reaches every legal restricted history.
+Its actual calendar evaluation therefore classifies every receiver decision,
+without adding a second execution semantics or assuming conformance of a run.
+-/
+
+noncomputable section
+
+namespace Vegas.Examples.MonitoredGuessing.Restricted
+
+open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Protocol
+open GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
+
+theorem reference_early_alice (bit : Bool) :
+    restrictedMenu.uniformResponses alice ((aliceActivated bit).recall alice)
+      ((aliceActivated bit).observe nativeApp alice) = PMF.pure nativeSilent := by
+  apply pmf_eq_pure_of_support_subset_singleton
+  intro response member
+  have available := (restrictedMenu.uniformResponses_support alice _ _ response).mp member
+  have permitted : restrictedMenu.actions alice ((aliceActivated bit).recall alice)
+      ((aliceActivated bit).observe nativeApp alice) = {nativeSilent} := by
+    classical
+    have notWatcher : alice ≠ watcher := by decide
+    have notBob : alice ≠ bob := by decide
+    simp only [restrictedMenu, notWatcher, ↓reduceIte]
+    rw [ordinaryActions, ite_eq_right (fun matching => notBob matching.1),
+      ite_eq_right (fun matching => initial_alice_no_turn bit matching.2)]
+  rw [permitted, Finset.mem_singleton] at available
+  exact available
+
+theorem reference_quiet_watcher (bit : Bool) :
+    restrictedMenu.uniformResponses watcher ((watcherActivated bit nativeSilent ∅).recall watcher)
+      ((watcherActivated bit nativeSilent ∅).observe nativeApp watcher) =
+        PMF.pure nativeSilent := by
+  apply pmf_eq_pure_of_support_subset_singleton
+  intro response member
+  have available := (restrictedMenu.uniformResponses_support watcher _ _ response).mp member
+  have permitted : restrictedMenu.actions watcher
+      ((watcherActivated bit nativeSilent ∅).recall watcher)
+      ((watcherActivated bit nativeSilent ∅).observe nativeApp watcher) = {nativeSilent} := by
+    classical
+    simp only [restrictedMenu, ↓reduceIte]
+    rfl
+  rw [permitted, Finset.mem_singleton] at available
+  exact available
+
+theorem reference_quiet_prefix (bit : Bool) :
+    nativeRuntime.runInteractionPlan nativeLeaks restrictedMenu.uniformResponses nativeNetwork
+      [.player alice, .player watcher, .wire] (nativeStart bit) =
+        PMF.pure (quietAfterWire bit) := by
+  have wire : nativeRuntime.interactionInstruction nativeLeaks nativeNetwork
+      (watcherRespond bit nativeSilent ∅ nativeSilent).environmentRecall
+      ((watcherRespond bit nativeSilent ∅ nativeSilent).observeEnvironment nativeApp) .wire =
+      PMF.pure .wait := by
+    simp only [interactionInstruction, nativeNetwork, PMF.pure_map]
+    rfl
+  have aliceStep : nativeRuntime.interactionStep nativeLeaks restrictedMenu.uniformResponses
+      nativeNetwork (.player alice) (nativeStart bit) =
+        PMF.pure (ambientRespond bit nativeSilent) := by
+    simp only [interactionStep, interactionInstruction, PMF.pure_bind,
+      ReactiveApplication.dispatch, initial_activation]
+    change (restrictedMenu.uniformResponses alice ((aliceActivated bit).recall alice)
+      ((aliceActivated bit).observe nativeApp alice)).map _ = _
+    rw [reference_early_alice, PMF.pure_map]
+    rfl
+  have watcherStep : nativeRuntime.interactionStep nativeLeaks restrictedMenu.uniformResponses
+      nativeNetwork (.player watcher) (ambientRespond bit nativeSilent) =
+        PMF.pure (watcherRespond bit nativeSilent ∅ nativeSilent) := by
+    simp only [interactionStep, interactionInstruction, PMF.pure_bind,
+      ReactiveApplication.dispatch, quiet_watcher_activation]
+    change (restrictedMenu.uniformResponses watcher
+      ((watcherActivated bit nativeSilent ∅).recall watcher)
+      ((watcherActivated bit nativeSilent ∅).observe nativeApp watcher)).map _ = _
+    rw [reference_quiet_watcher, PMF.pure_map]
+    rfl
+  rw [runInteractionPlan, aliceStep, PMF.pure_bind,
+    runInteractionPlan, watcherStep, PMF.pure_bind]
+  rw [runInteractionPlan]
+  change ((nativeRuntime.interactionInstruction nativeLeaks nativeNetwork _ _ .wire).bind _).bind
+    _ = _
+  rw [wire]
+  simp only [PMF.pure_bind, ReactiveApplication.dispatch, quiet_wire]
+  rw [show (ReactiveApplication.Command.wait : nativeApp.Command).actor? nativeApp = none
+    from rfl, ReactiveApplication.resume, PMF.pure_bind]
+  rfl
+
+theorem reference_rounds_three :
+    nativeApp.roundsFrom nativeInitialLaw nativeScheduler restrictedMenu.uniformResponses 3 =
+      (PMF.uniformOfFintype Bool).map quietAfterWire := by
+  rw [ReactiveApplication.roundsFrom, nativeInitialLaw, PMF.bind_map]
+  rw [← PMF.bind_pure_comp, Function.comp_def]
+  apply bind_congr_on_support _
+  intro bit _
+  have rounds := native_segment_rounds restrictedMenu.uniformResponses []
+    [.player alice, .player watcher, .wire] (nativePlan.drop 3)
+    rfl (nativeStart bit) rfl
+  exact rounds.trans (reference_quiet_prefix bit)
+
+/-- This covers every legal C history with Bob active, not just the source
+compiler's chosen behavioral profile. -/
+theorem bob_control (control : nativeApp.Control)
+    (trace : restrictedArena.Trace (some control)) (active : control.actor = some bob) :
+    ∃ bit, control = ⟨8, some bob, quietBob bit⟩ := by
+  have supported := restrictedMenu.roundSupported_uniform nativeInitialLaw nativeHorizon
+    nativeScheduler trace
+  rcases control with ⟨remaining, actor, execution⟩
+  change actor = some bob at active
+  subst actor
+  obtain ⟨accounted, count, prior, command, position, priorMem, selected, acting, moved⟩ :=
+    supported
+  have countEq : count = 3 :=
+    (nativeApp.roundsFrom_recall nativeInitialLaw nativeScheduler restrictedMenu.uniformResponses
+      count prior priorMem).symm.trans
+      (native_unique_bob_activation prior.environmentRecall
+        (prior.observeEnvironment nativeApp) command selected acting)
+  subst count
+  rw [reference_rounds_three, PMF.support_map] at priorMem
+  obtain ⟨bit, _, rfl⟩ := priorMem
+  have commandEq : command = .activate bob := (PMF.mem_support_pure_iff _ _).mp selected
+  subst command
+  rw [quiet_bob_activation, PMF.mem_support_pure_iff _ _] at moved
+  change execution = quietBob bit at moved
+  subst execution
+  have remainingEq : remaining = 8 := by
+    change 4 + remaining = 12 at accounted
+    omega
+  subst remaining
+  exact ⟨bit, rfl⟩
+
+theorem bob_site_input (site : restrictedModel.InformationSite bob) : site.1 = quietBobInfo := by
+  obtain ⟨history, _, _⟩ := site.2
+  have active := InformationModel.InformationSite.active restrictedModel site history
+  rcases history with ⟨⟨state, trace⟩, observed⟩
+  cases state with
+  | none => cases active
+  | some control =>
+      obtain ⟨bit, same⟩ := bob_control control trace active
+      subst control
+      exact observed.symm.trans ((restrictedMenu.info nativeInitialLaw nativeHorizon
+        nativeScheduler bob trace).trans (bob_input bit))
+
+end Vegas.Examples.MonitoredGuessing.Restricted

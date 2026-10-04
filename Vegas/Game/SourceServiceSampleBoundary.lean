@@ -3,7 +3,7 @@
 import Vegas.Game.SourceServiceBoundary
 import Vegas.Game.SourceServiceSettlement
 import Vegas.Pending.ReactiveServiceEvents
-import Vegas.Pending.ReactiveSilentSettlement
+import Vegas.Pending.ReactiveReplaySettlement
 
 /-! # Public chance boundaries under every permitted roster
 
@@ -55,7 +55,7 @@ theorem sourceService_sample_window
       have transport : ∀ (current : app.Execution) who response,
           current.application = initial.application → initial.recall first ⊆ current.recall first →
           response ∈ (players who (current.recall who) (current.observe app who)).support →
-          response = ⟨none⟩ := by
+          response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩ := by
         intro current who response same _ chosen
         have replay := bounds.compiled_foreign_transport (runtime setup) leaks who
           (current.recall who) (current.observe app who)
@@ -66,9 +66,9 @@ theorem sourceService_sample_window
           response
           (sourceServiceMenu_in_compiled setup leaks bounds rosters who _ _
             (lawful who _ _ response chosen))
-        exact app.silentPolicy_cases _ _ response replay
+        exact app.replayPolicy_cases _ _ response replay
       obtain ⟨application, ledger, receipts, counters, safe, _⟩ :=
-        (runtime setup).silent_window_preserves leaks players network first initial transport _
+        (runtime setup).replay_window_preserves leaks players network first initial transport _
           published (first :: rest) final reached
       exact ⟨application, ledger, receipts, counters, by rw [ledger]; exact safe⟩
 
@@ -161,13 +161,6 @@ theorem ServiceBoundary.sample_block
     toSourceCheckpoint := finalCheckpoint
     invariant := invariant
     binding := binding
-    remembered := boundary.run_remembered players network
-      (rosterBlock setup rosters event) after reached
-    missed := by
-      rw [afterApp, sampledApp]
-      change visited.application.missedEvents = ∅
-      rw [sameApp]
-      exact boundary.missed
     prepared := ?_
     represented := ?_
     acceptedRecorded := ?_

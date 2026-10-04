@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServicePrefixSupport
-import Vegas.Game.ServiceRosterDecisionSupport
+import Vegas.Game.RevealServiceRosterDecisionSupport
 import Vegas.Pending.ReactiveResolutionEvidence
 
 /-! # Actual full-source decision histories start at typed boundaries
@@ -31,7 +31,7 @@ theorem sourceService_decision_boundary
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (profile : BehavioralProfile setup.program)
     (who : Player) (control : (application setup leaks).Control)
@@ -141,7 +141,7 @@ theorem sourceService_decision_sole
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (who : Player) (control : (application setup leaks).Control)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
@@ -164,7 +164,7 @@ theorem sourceService_binding_decision_resources
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (who : Player) (control : (application setup leaks).Control)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
@@ -248,15 +248,15 @@ theorem sourceService_binding_decision_resources
     · rw [sampled]
       exact published.learn who sample
 
-/-- At an actual unsent owned opportunity, the information-local required
+/-- At an actual unsent binding opportunity, the information-local required
 menu is selected exactly when the fixed roster has no later owner visit. -/
-theorem sourceService_decisionRequired_iff_no_later_owner
+theorem sourceService_bindingRequired_iff_no_later_owner
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (owner : Player) (control : (application setup leaks).Control)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
@@ -264,13 +264,15 @@ theorem sourceService_decisionRequired_iff_no_later_owner
         (some control)) (active : control.actor = some owner)
     (event : (graph setup).EventId)
     (ready : control.execution.application.config.cut.Ready event)
+    (payload : L.Ty)
+    (binding : (graph setup).outputLayout event = .binding owner payload)
     (owned : (graph setup).actor? event = some owner)
     (unsent : (runtime setup).eventRecorded leaks (control.execution.recall owner) event = false)
     (visited remaining : List Player)
     (split : rosters event = visited ++ owner :: remaining)
     (position : control.execution.environmentRecall.length =
       (rosterPlanPrefix setup rosters event.val).length + visited.length + 1) :
-    decisionRequired setup leaks rosters owner (control.execution.recall owner)
+    bindingRequired setup leaks rosters owner (control.execution.recall owner)
       (control.execution.observe (application setup leaks) owner) ↔ owner ∉ remaining := by
   let app := application setup leaks
   let menu := sourceServiceMenu setup leaks bounds rosters
@@ -304,8 +306,8 @@ theorem sourceService_decisionRequired_iff_no_later_owner
     change control.execution.application.publicView.ownTurn? owner = some event
     rw [publicEq]
     exact ownTurn?_of_ready setup boundary.application (checkpoint.ready event rfl) owned
-  rw [decisionRequired_iff_no_later_owner setup leaks rosters owner _ _ event serving
-    owned ready unsent visited remaining split counted]
+  rw [bindingRequired_iff_no_later_owner setup leaks rosters owner _ _ event payload serving
+    binding owned ready unsent visited remaining split counted]
   exact List.count_eq_zero
 
 end Vegas

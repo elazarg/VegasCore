@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ReactiveDecisionWindowLikelihood
+import Vegas.Pending.ReactiveBindingSchedule
 import Vegas.Pending.ReactiveOpeningSettlement
 import Vegas.Pending.ReactiveRevealBlock
 import GameTheoryExtensions.Math.Probability.Support
@@ -10,7 +10,7 @@ import GameTheoryExtensions.Math.Probability.Support
 These couplings retain the real network, service recall, focal input and focal
 private recall. They do not equate other players' earlier private submissions.
 The opening response still uses authentic candidate evidence and every passive
-sample remains in the actual execution.
+sample and known-envelope replay remains in the actual execution.
 -/
 
 noncomputable section
@@ -67,7 +67,7 @@ theorem bindingTraffic_opening (runtime : EventGraphRuntime graph)
     (runtime.windowOpening leaks event candidate raw) networks observed recalled (by
       intro submission transmitted
       have selected : disclosureSubmission (.opening event candidate raw) = submission :=
-        Option.some.inj transmitted
+        ReactiveApplication.Transmission.submit.inj (Option.some.inj transmitted)
       subst submission
       exact emitted)
   refine Prod.ext ?_ (Prod.ext receipts (Prod.ext environments
@@ -119,14 +119,13 @@ theorem openingWindow_focal_coupling (runtime : EventGraphRuntime graph)
       have afterRecall : after.InputRecall app := rightRecall
       have activationCounts : (before.recall owner).length = (after.recall owner).length := counts
       have matched := runtime.bindingTraffic_activation leaks left right focal actor same sample
-      have replay :
-          app.silentPolicy (before.recall actor) (before.observe app actor) =
-            app.silentPolicy (after.recall actor) (after.observe app actor) := rfl
+      have replay := app.replayPolicy_eq_of_network_eq before after actor beforeRecall
+        afterRecall (congrArg Prod.fst matched)
       have waiting
           (firstEq : players actor (before.recall actor) (before.observe app actor) =
-            app.silentPolicy (before.recall actor) (before.observe app actor))
+            app.replayPolicy (before.recall actor) (before.observe app actor))
           (secondEq : players actor (after.recall actor) (after.observe app actor) =
-            app.silentPolicy (after.recall actor) (after.observe app actor)) :
+            app.replayPolicy (after.recall actor) (after.observe app actor)) :
           (players actor (before.recall actor) (before.observe app actor)).bind
             (fun response => (runtime.runInteractionPlan leaks players network
               (rest.map ServiceInstruction.player) (before.respond app actor response)).map
@@ -138,18 +137,16 @@ theorem openingWindow_focal_coupling (runtime : EventGraphRuntime graph)
         rw [firstEq, secondEq, replay]
         apply bind_congr_on_support _
         intro response supported
-        have transport := app.silentPolicy_cases _ _ response supported
+        have transport := app.replayPolicy_cases _ _ response supported
         have firstState : (before.respond app actor response).application = before.application := by
-          rcases transport with rfl
-          rfl
+          rcases transport with rfl | ⟨id, rfl⟩ <;> rfl
         have secondState : (after.respond app actor response).application = after.application := by
-          rcases transport with rfl
-          rfl
+          rcases transport with rfl | ⟨id, rfl⟩ <;> rfl
         apply ih _ _ (app.respond_inputRecall before actor response beforeRecall)
           (app.respond_inputRecall after actor response afterRecall)
         · rwa [firstState]
         · rwa [secondState]
-        · exact runtime.bindingTraffic_silent leaks before after focal actor matched
+        · exact runtime.bindingTraffic_replay leaks before after focal actor matched
             response transport
         · simpa only [app.respond_recall_length] using
             congrArg (fun length => length + if actor = owner then 1 else 0) activationCounts
@@ -188,6 +185,57 @@ theorem openingWindow_focal_coupling (runtime : EventGraphRuntime graph)
           · simp only [players, app, openingWindowPlayers, ite_true,
               ReactiveApplication.scheduledPolicy, ite_eq_right nextNot]
       · apply waiting <;> simp only [players, app, openingWindowPlayers, ite_eq_right acts]
+
+private theorem bindingTraffic_include_of_handler (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (left right : (runtime.reactiveApplication leaks).Execution) (focal : Player)
+    (same : runtime.bindingTraffic leaks focal left = runtime.bindingTraffic leaks focal right)
+    (id : MessageId Player) (message : Message Player (WitnessedPacket graph))
+    (found : left.network.lookup id = some message)
+    (handled : ((runtime.reactiveApplication leaks).handle left.application message).map
+        (fun state => state.playerView focal) =
+      ((runtime.reactiveApplication leaks).handle right.application message).map
+        (fun state => state.playerView focal)) :
+    runtime.bindingTraffic leaks focal
+        (left.includePending (runtime.reactiveApplication leaks) id) =
+      runtime.bindingTraffic leaks focal
+        (right.includePending (runtime.reactiveApplication leaks) id) := by
+  let app := runtime.reactiveApplication leaks
+  have networks : left.network = right.network := congrArg Prod.fst same
+  have receipts : left.receipts = right.receipts := congrArg (fun value => value.2.1) same
+  have environments : left.environmentRecall = right.environmentRecall :=
+    congrArg (fun value => value.2.2.1) same
+  have recalled : left.recall focal = right.recall focal :=
+    congrArg (fun value => value.2.2.2.1) same
+  have views : left.application.playerView focal = right.application.playerView focal :=
+    congrArg (fun value => value.2.2.2.2.1) same
+  have publics : left.application.publicView = right.application.publicView :=
+    congrArg (fun value => value.2.2.2.2.2) same
+  have rightFound : right.network.lookup id = some message := networks ▸ found
+  simp only [bindingTraffic, ReactiveApplication.Execution.includePending,
+    MessageNetwork.includePending, found, rightFound]
+  cases first : (runtime.reactiveApplication leaks).handle left.application message with
+  | none =>
+      cases second : (runtime.reactiveApplication leaks).handle right.application message with
+      | none =>
+          simp only [Option.getD_none, Option.isSome_none]
+          exact Prod.ext (by rw [networks]) (Prod.ext (by rw [receipts])
+            (Prod.ext environments (Prod.ext recalled (Prod.ext views publics))))
+      | some state =>
+          simp only [first, second, Option.map_none, Option.map_some] at handled
+          cases handled
+  | some before =>
+      cases second : (runtime.reactiveApplication leaks).handle right.application message with
+      | none =>
+          simp only [first, second, Option.map_none, Option.map_some] at handled
+          cases handled
+      | some after =>
+          have nextViews : before.playerView focal = after.playerView focal := by
+            simpa only [first, second, Option.map_some, Option.some.injEq] using handled
+          simp only [Option.getD_some, Option.isSome_some]
+          exact Prod.ext (by rw [networks]) (Prod.ext (by rw [receipts])
+            (Prod.ext environments (Prod.ext recalled
+              (Prod.ext nextViews (congrArg PlayerView.publicView nextViews)))))
 
 /-- Protected inclusion preserves focal likelihood once the actual canonical
 handler results agree. This operational premise concerns the concrete packet;
@@ -394,22 +442,22 @@ theorem withholdingWindow_focal_coupling (runtime : EventGraphRuntime graph)
     let app := runtime.reactiveApplication leaks
     let phase := roster.map ServiceInstruction.player ++
       (.includeLatest event owner :: (List.replicate ticks .tick ++ [.expire event]))
-    (runtime.runInteractionPlan leaks (fun _ => app.silentPolicy) network phase left).map
+    (runtime.runInteractionPlan leaks (fun _ => app.replayPolicy) network phase left).map
         (runtime.bindingTraffic leaks focal) =
-      (runtime.runInteractionPlan leaks (fun _ => app.silentPolicy) network phase right).map
+      (runtime.runInteractionPlan leaks (fun _ => app.replayPolicy) network phase right).map
         (runtime.bindingTraffic leaks focal) := by
   intro app phase
-  have windows := runtime.silent_window_focal_law leaks network roster focal left right
+  have windows := runtime.replay_window_focal_law leaks network roster focal left right
     leftRecall rightRecall same
   have stillPublished (initial final : app.Execution)
       (clean : initial.network.Satisfies fun message =>
         message.id ∈ initial.network.ledger.map Message.id)
-      (reached : final ∈ (runtime.runInteractionPlan leaks (fun _ => app.silentPolicy) network
+      (reached : final ∈ (runtime.runInteractionPlan leaks (fun _ => app.replayPolicy) network
         (roster.map ServiceInstruction.player) initial).support) :
       final.network.Satisfies fun message => message.id ∈ final.network.ledger.map Message.id := by
-    obtain ⟨_, ledger, _, _, packets, _⟩ := runtime.silent_window_preserves leaks
-      (fun _ => app.silentPolicy) network owner initial
-      (fun current who response _ _ supported => app.silentPolicy_cases
+    obtain ⟨_, ledger, _, _, packets, _⟩ := runtime.replay_window_preserves leaks
+      (fun _ => app.replayPolicy) network owner initial
+      (fun current who response _ _ supported => app.replayPolicy_cases
         (current.recall who) (current.observe app who) response supported)
         _ clean roster final reached
     rw [ledger]
@@ -419,10 +467,10 @@ theorem withholdingWindow_focal_coupling (runtime : EventGraphRuntime graph)
   apply bind_eq_of_map_eq _ _ _ _ windows
   intro before beforeSupport after afterSupport equal
   have first := runtime.interaction_includeLatest_of_pending_published leaks
-    (fun _ => app.silentPolicy) network before owner event
+    (fun _ => app.replayPolicy) network before owner event
       (stillPublished left before leftPublished beforeSupport).pending
   have second := runtime.interaction_includeLatest_of_pending_published leaks
-    (fun _ => app.silentPolicy) network after owner event
+    (fun _ => app.replayPolicy) network after owner event
       (stillPublished right after rightPublished afterSupport).pending
   simp only [runInteractionPlan, first, second, PMF.map_bind]
   have networks : before.network = after.network := congrArg Prod.fst equal

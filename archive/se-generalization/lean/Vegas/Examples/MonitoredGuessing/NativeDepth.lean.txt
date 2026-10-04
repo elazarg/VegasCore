@@ -1,0 +1,42 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Examples.MonitoredGuessing.NativeHistory
+import Vegas.Examples.MonitoredGuessing.NativeInitial
+
+/-! # The receiver's native decision depth
+
+The service makes two player responses before activating Bob. The fixed
+activation schedule fixes his depth over all legal transitions, including
+arbitrary raw responses and passive reads.
+-/
+
+noncomputable section
+
+namespace Vegas.Examples.MonitoredGuessing
+
+open Vegas Vegas.EventGraphRuntime Interaction GameTheory
+open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
+
+theorem native_bob_depth (control : nativeApp.Control)
+    (trace : nativeArena.Trace (some control)) (active : control.actor = some bob) :
+    trace.length = 7 := by
+  obtain ⟨position, atPosition, _, _, depth⟩ := nativeApp.scheduled_decision_counts
+    nativeInitialLaw nativeHorizon nativeScheduler (nativePlan.map instructionPlayer)
+    native_scheduled_actor bob control (nativeMenu.toRawTrace _ _ _ trace) active
+  have three : position = 3 := by
+    have := (native_bob_remaining control trace active).1
+    omega
+  subst position
+  rw [nativeMenu.toRawTrace_length] at depth
+  rw [depth]
+  decide
+
+theorem native_bob_information_depth (site : nativeModel.InformationSite bob)
+    (history : nativeModel.InformationHistory bob site.1) : history.1.trace.length = 7 := by
+  have active := InformationModel.InformationSite.active nativeModel site history
+  rcases history with ⟨⟨state, trace⟩, observed⟩
+  cases state with
+  | none => cases active
+  | some control => exact native_bob_depth control trace active
+
+end Vegas.Examples.MonitoredGuessing

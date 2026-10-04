@@ -34,8 +34,8 @@ theorem recorded_compiled_sourceService
     bounds.compiledActions (runtime setup) leaks who past view ⊆
       (sourceServiceMenu setup leaks bounds rosters).actions who past view := by
   classical
-  have optional : ¬ decisionRequired setup leaks rosters who past view := by
-    rintro ⟨selected, sameTurn, _, _, unsent, _⟩
+  have optional : ¬ bindingRequired setup leaks rosters who past view := by
+    rintro ⟨selected, _, sameTurn, _, _, _, unsent, _⟩
     cases Option.some.inj (sameTurn.symm.trans serving)
     rw [recorded] at unsent
     cases unsent
@@ -104,9 +104,9 @@ theorem repeated_roster_stopped_coupling
       coupling.map Prod.snd = strategy.runJoint owner players
         (rosterScheduler setup leaks rosters network) visits.length repaired memory ∧
       ∀ next ∈ coupling.support,
-        (∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
+        (∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.envelope = false) ∨
+            record.input.envelope = false) ∨
         BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
           next.2.2.shadow = memory.shadow ∧
           next.2.1.application.playerView owner = repaired.application.playerView owner := by

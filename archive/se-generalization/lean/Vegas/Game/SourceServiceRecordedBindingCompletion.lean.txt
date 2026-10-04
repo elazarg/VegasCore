@@ -1,0 +1,327 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.SourceServiceRecordedSourceChoice
+import Vegas.Game.SourceServiceRecordedDecisionRealization
+import Vegas.Pending.ReactiveSafety
+import Vegas.Game.BindingRepairBlock
+
+/-! # The typed source meaning of an actually recorded binding
+
+The original recalled canonical packet fixes its fresh private candidate to a
+supported residual source commitment. That meaning survives arbitrary foreign
+responses and scheduler steps. Protected completion consequently retains the
+exact original typed choice, source store and source history, for any owner
+timing. No first-turn or endpoint-alignment assumption is used.
+-/
+
+noncomputable section
+
+namespace Vegas
+
+open SourceProgram Interaction EventGraphRuntime GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player]
+  {L : IExpr} [IExpr.ResultTypes L]
+  {setup : Setup (Player := Player) (L := L)}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+
+private def RecalledBindingMeanings (execution : (application setup leaks).Execution) : Prop :=
+  ∀ owner entry, entry ∈ execution.recall owner →
+    ∀ event payload value serial,
+      entry.action = (runtime setup).reactiveBinding leaks owner event payload value serial →
+      entry.beforeView.application.candidates (.prepared serial) = .fresh →
+      execution.application.candidates.lookup (owner, .prepared serial) ≠ .fresh ∧
+        execution.application.bindingResult (owner, .prepared serial) payload = value
+
+private theorem recalledBindingMeanings_invariant
+    (scheduler : (application setup leaks).Scheduler) :
+    (application setup leaks).ServiceInvariant scheduler (RecalledBindingMeanings) where
+  respond := by
+    intro execution actor response invariant owner entry member event payload value serial
+      action fresh
+    by_cases same : owner = actor
+    · subst owner
+      obtain ⟨emitted, recallEq, _⟩ := respond_recall_self setup leaks execution actor response
+      rw [recallEq, List.mem_append] at member
+      rcases member with old | new
+      · obtain ⟨fixed, result⟩ := invariant actor entry old event payload value serial action fresh
+        have lookup := (runtime setup).reactive_respond_candidate_fixed leaks execution actor
+          response (actor, .prepared serial) fixed
+        refine ⟨lookup ▸ fixed, ?_⟩
+        simpa only [State.bindingResult, lookup] using result
+      · obtain rfl := List.mem_singleton.mp new
+        dsimp only at action fresh
+        rw [action]
+        have original : execution.application.candidates.lookup (actor, .prepared serial) =
+            .fresh := fresh
+        refine ⟨?_, (runtime setup).reactiveBinding_result leaks actor event payload value serial
+          execution original⟩
+        change (submitStep _ actor (.commitment event (actor, .prepared serial))).candidates.lookup
+          (actor, .prepared serial) ≠ .fresh
+        exact submitStep_commitment_fixed _ actor event (.prepared serial)
+    · rw [ReactiveApplication.respond_recall_other (application setup leaks) execution actor owner
+        same response] at member
+      obtain ⟨fixed, result⟩ := invariant owner entry member event payload value serial action fresh
+      have lookup := (runtime setup).reactive_respond_candidate_fixed leaks execution actor
+        response (owner, .prepared serial) fixed
+      refine ⟨lookup ▸ fixed, ?_⟩
+      simpa only [State.bindingResult, lookup] using result
+  environment := by
+    intro execution next command invariant _ moved owner entry member event payload value serial
+      action fresh
+    rw [ReactiveApplication.environmentStep_recall (application setup leaks) execution next command
+      moved] at member
+    obtain ⟨fixed, result⟩ := invariant owner entry member event payload value serial action fresh
+    have lookup := (runtime setup).reactive_environment_candidate_fixed leaks execution next
+      command (owner, .prepared serial) fixed moved
+    refine ⟨lookup ▸ fixed, ?_⟩
+    simpa only [State.bindingResult, lookup] using result
+
+private theorem recalledBindingMeanings_history (horizon : Nat)
+    (scheduler : (application setup leaks).Scheduler)
+    {control : (application setup leaks).Control}
+    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some control)) : RecalledBindingMeanings control.execution :=
+  (recalledBindingMeanings_invariant scheduler).history (initialLaw setup) horizon (by
+    intro state _ owner entry member
+    exact (List.not_mem_nil member).elim) trace
+
+/-- The aligned residual commitment has the actual typed compiler choice law. -/
+theorem BindingSource.compiled_choice
+    {profile : BehavioralProfile setup.program} {event : (graph setup).EventId}
+    (execution : (application setup leaks).Execution)
+    (site : BindingSource setup profile event execution.application.config) :
+    ((compileEventProfile setup.program profile) site.owner event site.owned
+        (setup.eventGraph.fromModeObservation .sequential site.owner
+          ((graph setup).playerObserve site.owner execution.application.config))) =
+      (commitKernel site.residual (site.source.view site.owner)).map
+        (fun value => cast (congrArg EventGraph.EventField.Action site.outputEq.symm) value) := by
+  have outputEq := site.outputEq
+  obtain ⟨Γ, names, name, owner, payload, fresh, guard, next, residual, refs, source, embedding,
+    refsBefore, aligned, agree, history, head⟩ := site
+  dsimp only at *
+  subst head
+  let index : Fin (eventCount (.commit name owner fresh guard next)) :=
+    ⟨0, by simp [eventCount]⟩
+  let observation := setup.eventGraph.fromModeObservation .sequential owner
+    ((graph setup).playerObserve owner execution.application.config)
+  have actor : (graph setup).actor? (embedding.event index) = some owner := by
+    change (toEventGraph setup.program).actor? (embedding.event index) = some owner
+    simpa [index, eventOwner?, eventCount] using aligned.actorEq index
+  have law := aligned.policyEq owner index actor observation
+  have ownHistory : decodeCompletions setup.program observation.ownActions =
+      source.history owner := by
+    change decodeCompletions setup.program
+      (((graph setup).ownCompletions owner execution.application.config.history).map
+        (setup.eventGraph.fromModeCompletion .sequential)) = _
+    rw [ownCompletions_from_sequential]
+    exact congrFun history owner
+  rw [ownHistory] at law
+  have decoded := decodeObservation?_playerStore_eq_some (graph := graph setup)
+    refs owner source.state execution.application.config.store agree
+  change _ = compilePolicyTable (.commit name owner fresh guard next)
+    refs embedding.ref owner (residual owner) index
+      ((graph setup).playerStore owner execution.application.config.store)
+      (source.history owner) at law
+  rw [compilePolicyTable_commit_of_decode refs embedding.ref
+    (residual owner) rfl _ _ (sourceObserve owner source.state) decoded] at law
+  have actionLaw := eq_map_cast_of_cast_eq
+    (congrArg EventGraph.EventField.Action (embedding.layout_eq index)) _ _ law
+  simpa [index, eventCount, outputLayout, commitKernel, Config.view, observation] using actionLaw
+
+/-- The current node is the binding identified by the aligned source constructor. -/
+theorem BindingSource.code
+    {profile : BehavioralProfile setup.program} {event : (graph setup).EventId}
+    {config : (graph setup).Config} (site : BindingSource setup profile event config) :
+    cast (congrArg (EventGraph.EventCode (graph setup).layout) site.outputEq)
+      ((graph setup).nodes event) = .bind site.owner site.payload := by
+  have outputEq := site.outputEq
+  obtain ⟨Γ, names, name, owner, payload, fresh, guard, next, residual, refs, source, embedding,
+    refsBefore, aligned, agree, history, head⟩ := site
+  dsimp only at *
+  subst head
+  change cast (congrArg (EventGraph.EventCode (graphLayout setup.program)) outputEq)
+    ((toEventGraph setup.program).nodes _) = _
+  simpa [eventCount, compileRankedNodes] using
+    aligned.graphSuffix.nodeEq ⟨0, by simp [eventCount]⟩
+
+/-- The aligned typed choice decodes to its source commitment action. -/
+theorem BindingSource.action
+    {profile : BehavioralProfile setup.program} {event : (graph setup).EventId}
+    {config : (graph setup).Config} (site : BindingSource setup profile event config)
+    (value : PublicationResult (L.Val site.payload)) :
+    decodeEventAction setup.program event
+        (cast (congrArg EventGraph.EventField.Action site.outputEq.symm) value) =
+      some (.commit site.owner site.name site.payload value) := by
+  have outputEq := site.outputEq
+  obtain ⟨Γ, names, name, owner, payload, fresh, guard, next, residual, refs, source, embedding,
+    refsBefore, aligned, agree, history, head⟩ := site
+  dsimp only at *
+  subst head
+  have decoded := aligned.actionEq ⟨0, by simp [eventCount]⟩
+    (cast (congrArg EventGraph.EventField.Action outputEq.symm) value)
+  change decodeEventAction setup.program _ _ =
+    some (.commit owner name payload
+      (cast (congrArg EventGraph.EventField.Action outputEq)
+        (cast (congrArg EventGraph.EventField.Action outputEq.symm) value))) at decoded
+  simpa only [cast_cast, cast_eq] using decoded
+
+/-- The exact original packet of a recorded binding realizes a supported
+source commitment in the current aligned configuration. Earlier silent turns
+and arbitrary foreign policies are retained. -/
+theorem sourceServiceTurnPolicy_recorded_binding_realizes {horizon : Nat}
+    {scheduler : (application setup leaks).Scheduler}
+    {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
+      delay bound)
+    (players : Player → (application setup leaks).Policy)
+    {turns : Nat} (timing : TurnTiming setup turns) (profile : BehavioralProfile setup.program)
+    (count : Nat) (within : count ≤ horizon) (start : (application setup leaks).Execution)
+    (reached : start ∈ ((application setup leaks).roundsFrom (initialLaw setup) scheduler
+      players count).support)
+    (event : (graph setup).EventId)
+    (site : BindingSource setup profile event start.application.config)
+    (follows : players site.owner =
+      sourceServiceTurnPolicy setup leaks bound turns timing profile site.owner)
+    (ready : start.application.config.cut.Ready event)
+    (recorded : (runtime setup).eventRecorded leaks (start.recall site.owner) event = true) :
+    ∃ value ∈ (commitKernel site.residual (site.source.view site.owner)).support,
+      ∃ entry ∈ start.recall site.owner, ∃ message,
+        (runtime setup).submittedEvent? leaks entry.action = some event ∧
+        FreshCall setup leaks site.owner event bound entry message ∧
+        RealizesAt leaks start.application.config start.application event
+          (cast (congrArg EventGraph.EventField.Action site.outputEq.symm) value) entry message ∧
+        ∀ stopped ∈ ((application setup leaks).runUntilHorizon scheduler players
+            (fun final => event ∈ final.application.config.cut.completed) horizon start).support,
+          entry ∈ stopped.recall site.owner ∧
+          event ∈ stopped.application.config.cut.completed ∧
+          (message.id, true) ∈ stopped.receipts ∧ event ∉ stopped.application.missedEvents := by
+  let app := application setup leaks
+  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler players
+    count within start reached
+  have facts := legalFacts setup leaks horizon scheduler _ trace
+  obtain ⟨entry, member, message, named, call, completion⟩ :=
+    sourceServiceTurnPolicy_recorded_decision_completion contract players site.owner timing
+      profile follows count within start reached event site.owned recorded
+  have input : message ∈ start.network.inputs := by
+    have output : message ∈ app.outputs (start.recall site.owner) :=
+      List.mem_filterMap.mpr ⟨entry, member, call.emitted⟩
+    rw [← facts.inputs site.owner] at output
+    exact (List.mem_filter.mp output).1
+  obtain ⟨issuer, issuerMember, material, transmission, emitted, state, known, issued⟩ :=
+    facts.provenance.inputs message input
+  rw [call.authored] at issuerMember
+  have issuerNamed : (runtime setup).submittedEvent? leaks issuer.action = some event := by
+    unfold EventGraphRuntime.submittedEvent?
+    rw [transmission]
+    change (app.packet state message.sender known material).call.event? (graph setup) = some event
+    rw [issued]
+    exact call.addressed
+  obtain ⟨action, sampled, before, after, split, response⟩ :=
+    sourceServiceTurnPolicy_recalled_compiled_choice timing profile players site.owner follows
+      count within start reached event site.owned ready issuer issuerMember issuerNamed material
+      transmission
+  rw [BindingSource.compiled_choice start site, PMF.support_map] at sampled
+  obtain ⟨value, supported, rfl⟩ := sampled
+  refine ⟨value, supported, entry, member, message, named, call, ?_, completion⟩
+  have codeEq := site.code
+  have node := nodeView_eq_bind site.outputEq codeEq
+  cases selected : canonicalFreshSlot site.owner issuer.beforeView.application with
+  | none =>
+      rw [response] at transmission
+      simp only [canonicalServiceDecision, canonicalReactiveDecision, node, selected,
+        Option.map_none, ReactiveApplication.SubmissionNormalization.action] at transmission
+      cases transmission
+  | some serial =>
+      have bindingResponse := (runtime setup).canonicalServiceDecision_binding leaks site.owner
+        before issuer.beforeView event site.payload site.outputEq codeEq node serial selected value
+      have exactResponse := response.trans bindingResponse
+      have originalFresh := canonicalFreshSlot_spec site.owner issuer.beforeView.application
+        serial selected
+      obtain ⟨fixed, result⟩ := recalledBindingMeanings_history horizon scheduler trace site.owner
+        issuer issuerMember event site.payload value serial exactResponse originalFresh
+      have materialCall : material.call.packet =
+          .commitment event (site.owner, .prepared serial) := by
+        rw [exactResponse] at transmission
+        cases Option.some.inj transmission
+        rfl
+      have messageCall : message.payload.call = material.call.packet := by
+        rw [← issued]
+        rfl
+      unfold RealizesAt
+      rw [node]
+      exact ⟨(site.owner, .prepared serial), messageCall.trans materialCall, fixed,
+        by simpa only [cast_cast, cast_eq] using result⟩
+
+/-- Every supported stopped endpoint is the exact typed source successor of
+the original recalled binding, with its accepting receipt and decoded source
+history. Source support and store agreement are derived from actual play. -/
+theorem sourceServiceTurnPolicy_recorded_binding_completion {horizon : Nat}
+    {scheduler : (application setup leaks).Scheduler}
+    {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
+      delay bound)
+    (players : Player → (application setup leaks).Policy)
+    {turns : Nat} (timing : TurnTiming setup turns) (profile : BehavioralProfile setup.program)
+    (count : Nat) (within : count ≤ horizon) (start : (application setup leaks).Execution)
+    (reached : start ∈ ((application setup leaks).roundsFrom (initialLaw setup) scheduler
+      players count).support)
+    (event : (graph setup).EventId)
+    (site : BindingSource setup profile event start.application.config)
+    (follows : players site.owner =
+      sourceServiceTurnPolicy setup leaks bound turns timing profile site.owner)
+    (ready : start.application.config.cut.Ready event)
+    (recorded : (runtime setup).eventRecorded leaks (start.recall site.owner) event = true) :
+    ∃ value ∈ (commitKernel site.residual (site.source.view site.owner)).support,
+      ∃ entry ∈ start.recall site.owner, ∃ message,
+        (runtime setup).submittedEvent? leaks entry.action = some event ∧
+        FreshCall setup leaks site.owner event bound entry message ∧
+        ∀ stopped ∈ ((application setup leaks).runUntilHorizon scheduler players
+            (fun final => event ∈ final.application.config.cut.completed) horizon start).support,
+          entry ∈ stopped.recall site.owner ∧ (message.id, true) ∈ stopped.receipts ∧
+          event ∉ stopped.application.missedEvents ∧
+          stopped.application.config = start.application.config.complete event ready
+            (cast (congrArg EventGraph.EventField.Action site.outputEq.symm) value)
+            (cast (congrArg EventGraph.EventField.Value site.outputEq.symm) value) ∧
+          (site.refs.cons (name := site.name) ⟨.inr event, site.outputEq⟩).Agrees
+            (commitSuccessor site.name site.guard site.source value).state
+            stopped.application.config.store ∧
+          decodeHistory setup.program (stopped.application.config.history.map
+            (setup.eventGraph.fromModeCompletion .sequential)) =
+              (commitSuccessor site.name site.guard site.source value).history := by
+  obtain ⟨value, supported, entry, member, message, named, call, realized, completion⟩ :=
+    sourceServiceTurnPolicy_recorded_binding_realizes contract players timing profile count within
+      start reached event site follows ready recorded
+  refine ⟨value, supported, entry, member, message, named, call, ?_⟩
+  intro stopped stoppedSupported
+  obtain ⟨retained, _, accepted, clear⟩ := completion stopped stoppedSupported
+  have native := sourceServiceTurnPolicy_recorded_realization_completion contract players
+    site.owner timing profile follows count within start reached event site.owned ready
+    (cast (congrArg EventGraph.EventField.Action site.outputEq.symm) value) entry member message
+    named call realized stopped stoppedSupported
+  rw [commit_step start.application.config event ready site.outputEq (site.code)
+    value, PMF.mem_support_pure_iff] at native
+  refine ⟨retained, accepted, clear, native, ?_, ?_⟩
+  · have before : ∀ {name cell} (ref : HasVar site.Γ name cell),
+        FieldBefore event (site.refs.get ref).field := by
+      intro name cell ref
+      have ordered := site.refsBefore ref ⟨0, by simp [eventCount]⟩
+      rw [site.head] at ordered
+      exact ordered
+    rw [native]
+    intro name cell ref
+    exact complete_commit_agrees (graph := graph setup) site.name site.guard site.source site.refs
+      start.application.config site.agree event ready site.outputEq before value ref
+  · rw [native]
+    change decodeHistory setup.program ((start.application.config.history ++
+      [(⟨event, cast (congrArg EventGraph.EventField.Action site.outputEq.symm) value⟩ :
+        EventGraph.Completion (graph setup))]).map
+        (setup.eventGraph.fromModeCompletion .sequential)) = _
+    rw [List.map_append, List.map_singleton]
+    have decoded := decodeHistory_append_completion setup.program
+      (start.application.config.history.map (setup.eventGraph.fromModeCompletion .sequential))
+      event (cast (congrArg EventGraph.EventField.Action site.outputEq.symm) value)
+    rw [site.action value, site.history] at decoded
+    exact decoded
+
+end Vegas

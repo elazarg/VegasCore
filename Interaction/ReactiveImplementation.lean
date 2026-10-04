@@ -85,7 +85,7 @@ theorem posterior_respond (execution : app.Execution) (who : Principal) (action 
   cases transmission with
   | none => simp only [Execution.respond, ↓reduceIte, posterior_snoc]
   | some transmission =>
-      simp only [Execution.respond, ↓reduceIte, posterior_snoc]
+      cases transmission <;> simp only [Execution.respond, ↓reduceIte, posterior_snoc]
 
 /-- Disintegrate one real response using only the focal player's recall. The
 continuation may inspect the complete external execution and private state. -/

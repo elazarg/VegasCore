@@ -1,0 +1,155 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Examples.LateResolutionNativeSite
+
+/-! # Actual resources throughout the late native information fiber
+
+The player's actual recall and current public observation identify the second
+resolution input. Authentic response provenance forces the entire network
+empty at every history sharing this input; no hidden-history belief or native
+likelihood equation is assumed.
+-/
+
+noncomputable section
+
+namespace Vegas.LateResolutionService
+
+open SourceProgram EventGraph EventGraphRuntime Interaction GameTheory.Protocol
+open GameTheory.Math.Probability
+
+/-- In this one-player fixture, an actual silent recall rules out every
+network envelope, including private input history and allocated serials. -/
+theorem network_empty_of_silent_recall (control : app.Control)
+    (trace : (app.protocol (initialLaw setup) horizon scheduler).Trace (some control))
+    (silent : ∀ entry ∈ control.execution.recall owner, entry.action.transmission = none) :
+    control.execution.network = .empty := by
+  have facts := legalFacts setup leaks horizon scheduler control trace
+  have impossible (message : Message Player (WitnessedPacket nativeGraph))
+      (issued : control.execution.Issued app message) : False := by
+    obtain ⟨entry, member, material, transmitted, _, _⟩ := issued
+    have sender : message.sender = owner := Subsingleton.elim _ _
+    rw [sender] at member
+    rw [silent entry member] at transmitted
+    cases transmitted
+  have noneRetained : control.execution.network.Satisfies (fun _ => False) :=
+    facts.provenance.mono impossible
+  have pending : control.execution.network.pending = [] :=
+    List.eq_nil_iff_forall_not_mem.mpr noneRetained.pending
+  have ledger : control.execution.network.ledger = [] :=
+    List.eq_nil_iff_forall_not_mem.mpr noneRetained.ledger
+  have leaked : control.execution.network.leaked = fun _ => [] := by
+    funext who
+    exact List.eq_nil_iff_forall_not_mem.mpr (noneRetained.leaked who)
+  have inputs : control.execution.network.inputs = [] :=
+    List.eq_nil_iff_forall_not_mem.mpr noneRetained.inputs
+  have serials : control.execution.network.nextSerial = fun _ => 0 := by
+    funext who
+    have same : who = owner := Subsingleton.elim _ _
+    subst who
+    have serialRecallBound : control.execution.SerialRecall app :=
+      app.serialRecall_history scheduler (initialLaw setup) horizon trace
+    rw [serialRecallBound owner]
+    apply List.countP_eq_zero.mpr
+    intro entry member
+    simp [ReactiveApplication.Action.isSubmission, silent entry member]
+  cases actual : control.execution.network with
+  | mk pendingPool ledgerPool learned inputPool next =>
+      simp only [actual] at pending ledger leaked inputs serials
+      simp only [pending, ledger, leaked, inputs, serials, MessageNetwork.empty]
+
+theorem empty_network_silent_recall (control : app.Control)
+    (trace : (app.protocol (initialLaw setup) horizon scheduler).Trace (some control))
+    (empty : control.execution.network = .empty) :
+    ∀ entry ∈ control.execution.recall owner, entry.action.transmission = none := by
+  have serials : control.execution.SerialRecall app :=
+    app.serialRecall_history scheduler (initialLaw setup) horizon trace
+  have count := serials owner
+  rw [empty] at count
+  change 0 = (control.execution.recall owner).countP
+    (fun entry => entry.action.isSubmission app) at count
+  intro entry member
+  have noSubmission := List.countP_eq_zero.mp count.symm entry member
+  cases transmitted : entry.action.transmission with
+  | none => rfl
+  | some material =>
+      simp [ReactiveApplication.Action.isSubmission, transmitted] at noSubmission
+
+/-- Every genuine history in this native information fiber has the operational
+premises of the checked audited suffix, irrespective of its probability. -/
+theorem late_information_resources (bounds : MessageBounds nativeGraph)
+    (witness : app.Execution)
+    (witnessTrace : ((nativeMenu bounds).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨4, some owner, witness⟩))
+    (witnessReady : witness.application.config.cut.Ready resolution)
+    (witnessEntered : witness.application.activatedAt resolution = some 0)
+    (witnessClock : witness.application.clock = 1)
+    (witnessEmpty : witness.network = .empty)
+    (history : (nativeModel bounds).InformationHistory owner
+      (some (witness.recall owner, witness.observe app owner))) :
+    ∃ execution : app.Execution,
+      history.1.state = some ⟨4, some owner, execution⟩ ∧
+      execution.environmentRecall.length = 6 ∧ execution.application.clock = 1 ∧
+      execution.application.config.cut.Ready resolution ∧
+      execution.application.activatedAt resolution = some 0 ∧ execution.network = .empty := by
+  have observed : app.observe owner history.1.state =
+      some (witness.recall owner, witness.observe app owner) :=
+    ((nativeMenu bounds).info (initialLaw setup) horizon scheduler owner history.1.trace).symm.trans
+      history.2
+  cases current : history.1.state with
+  | none => simp [current, ReactiveApplication.observe] at observed
+  | some control =>
+      rw [current] at observed
+      change (if control.actor = some owner then
+        some (control.execution.recall owner, control.execution.observe app owner) else none) = _
+        at observed
+      split at observed
+      · rename_i active
+        have same := Option.some.inj observed
+        have recallEq := congrArg Prod.fst same
+        change control.execution.recall owner = witness.recall owner at recallEq
+        have viewEq := congrArg Prod.snd same
+        have publicEq := congrArg (fun view : app.PlayerView => view.application.publicView) viewEq
+        change control.execution.application.publicView = witness.application.publicView
+          at publicEq
+        have clockEq := congrArg PublicView.clock publicEq
+        change control.execution.application.clock = witness.application.clock at clockEq
+        have clock := clockEq.trans witnessClock
+        have enteredEq := congrArg (fun view : PublicView nativeGraph =>
+          view.activatedAt resolution) publicEq
+        have entered := enteredEq.trans witnessEntered
+        have ready : control.execution.application.config.cut.Ready resolution := by
+          apply (control.execution.application.publicView_eventReady resolution).mp
+          rw [publicEq]
+          exact (witness.application.publicView_eventReady resolution).mpr witnessReady
+        have traced : ((nativeMenu bounds).protocol (initialLaw setup) horizon scheduler).Trace
+            (some control) := current ▸ history.1.trace
+        have rawTrace := (nativeMenu bounds).toRawTrace (initialLaw setup) horizon scheduler traced
+        have phase := phase_history rawTrace
+        have position : control.execution.environmentRecall.length = 6 := by
+          rcases phase.activation (by rw [active]; rfl) with first | second
+          · have zero := phase.clock
+            rw [first] at zero
+            change control.execution.application.clock = 0 at zero
+            omega
+          · exact second
+        have remaining : control.remaining = 4 := by
+          have budget := phase.budget
+          rw [position] at budget
+          change control.remaining + 6 = 10 at budget
+          omega
+        have silent := empty_network_silent_recall _
+          ((nativeMenu bounds).toRawTrace (initialLaw setup) horizon scheduler witnessTrace)
+          witnessEmpty
+        have empty := network_empty_of_silent_recall control rawTrace
+          (fun entry member => silent entry (recallEq ▸ member))
+        refine ⟨control.execution, ?_, position, clock, ready, entered, empty⟩
+        congr 1
+        cases control with
+        | mk remainingCount actor execution =>
+            dsimp only at remaining active
+            cases remaining
+            cases active
+            rfl
+      · cases observed
+
+end Vegas.LateResolutionService

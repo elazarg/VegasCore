@@ -22,7 +22,7 @@ theorem reactiveAssociationInvariant (runtime : EventGraphRuntime graph)
   submit state who material valid := by
     refine ⟨(runtime.reactiveBindingInvariant leaks).submit state who material valid.1, ?_⟩
     have same := runtime.reactive_respond_application leaks
-      (.initial (runtime.reactiveApplication leaks) state) who ⟨some material⟩
+      (.initial (runtime.reactiveApplication leaks) state) who ⟨some (.submit material)⟩
     exact (congrFun (congrArg PublicView.accepted same.2) field).trans valid.2
   handle state message next valid accepted := by
     refine ⟨(runtime.reactiveBindingInvariant leaks).handle

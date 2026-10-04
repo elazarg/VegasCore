@@ -24,10 +24,10 @@ opening data stays private and is registered as part of submission. -/
 def bindingAction (who : Player) (event : graph.EventId) (payload : L.Ty)
     (result : PublicationResult (L.Val payload)) (serial : Nat) : PlayerAction graph where
   memory := []
-  transmission := some
+  transmission := some (.submit
     ⟨.commitment event (who, .prepared serial), match result with
       | .failure => none
-      | .success value => some ⟨payload, value⟩⟩
+      | .success value => some ⟨payload, value⟩⟩)
 
 /-- The candidate has exactly the requested typed meaning before any delivery
 or inclusion. No remembered-action or history premise is needed. -/

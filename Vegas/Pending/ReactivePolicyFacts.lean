@@ -38,7 +38,7 @@ theorem reactiveDecision_transmission (runtime : EventGraphRuntime graph)
     (event : graph.EventId) (action : graph.Action event) (view : ReactivePlayerView graph) :
     (runtime.reactiveDecision leaks who event action view).transmission = none ∨
       ∃ material, (runtime.reactiveDecision leaks who event action view).transmission =
-        some material ∧ material.call.packet.event? graph = some event := by
+        some (.submit material) ∧ material.call.packet.event? graph = some event := by
   unfold reactiveDecision
   split
   · exact Or.inl rfl
@@ -61,7 +61,7 @@ theorem prescribedReactivePolicy_transmission (runtime : EventGraphRuntime graph
     (supported : action ∈
       (runtime.prescribedReactivePolicy leaks who policy history view).support) :
     action.transmission = none ∨ ∃ event material,
-      action.transmission = some material ∧ material.call.packet.event? graph = some
+      action.transmission = some (.submit material) ∧ material.call.packet.event? graph = some
         event ∧
         runtime.reactiveAlreadySubmitted leaks history event = false := by
   rw [prescribedReactivePolicy_apply] at supported

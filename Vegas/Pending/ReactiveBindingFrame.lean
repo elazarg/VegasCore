@@ -131,10 +131,14 @@ private theorem foreign_catalog (execution : (runtime.reactiveApplication leaks)
     rcases response with ⟨transmission⟩
     cases transmission with
     | none => rfl
-    | some material =>
-        exact (submitStep_playerView_other (material.call.register execution.application actor)
-          actor owner different material.call.packet).trans
-            (material.call.register_other execution.application actor owner different)
+    | some transmission =>
+        cases transmission with
+        | submit material =>
+            exact (submitStep_playerView_other (material.call.register execution.application actor)
+              actor owner different material.call.packet).trans
+                (material.call.register_other execution.application actor owner different)
+        | replay id =>
+            cases (execution.network.known actor).find? (fun packet => packet.id = id) <;> rfl
   exact congrArg PlayerView.candidates same
 
 /-- Arbitrary foreign raw responses, including forwarding and local evidence
@@ -168,7 +172,7 @@ theorem foreign_response (frame : Frame runtime leaks memory owner original repa
 original response in private memory. No pending observation is discarded. -/
 theorem transport_response (frame : Frame runtime leaks memory owner original repaired)
     (response : (runtime.reactiveApplication leaks).Action)
-    (notSubmitted : ∀ submission, response.transmission ≠ some submission) :
+    (notSubmitted : ∀ submission, response.transmission ≠ some (.submit submission)) :
     let app := runtime.reactiveApplication leaks
     let remembered := memory.record runtime leaks
       (memory.shadow.inputView runtime leaks (repaired.observe app owner)) response
@@ -176,18 +180,26 @@ theorem transport_response (frame : Frame runtime leaks memory owner original re
       (repaired.respond app owner response) := by
   let app := runtime.reactiveApplication leaks
   have paired := memory.transport_response runtime leaks original repaired owner frame.lengths
-    frame.past frame.observed response notSubmitted
+    frame.past frame.observed frame.network response notSubmitted
   have unchanged (execution : app.Execution) :
       (execution.respond app owner response).application = execution.application := by
     rcases response with ⟨transmission⟩
     cases transmission with
     | none => rfl
-    | some submission => exact (notSubmitted submission rfl).elim
+    | some transmission =>
+        cases transmission with
+        | submit submission => exact (notSubmitted submission rfl).elim
+        | replay id => rfl
   refine ⟨paired.1, paired.2.1, paired.2.2, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · rcases response with ⟨transmission⟩
     cases transmission with
     | none => exact frame.network
-    | some submission => exact (notSubmitted submission rfl).elim
+    | some transmission =>
+        cases transmission with
+        | submit submission => exact (notSubmitted submission rfl).elim
+        | replay id =>
+            change (original.network.replay owner id).2 = (repaired.network.replay owner id).2
+            rw [frame.network]
   · rw [app.respond_environmentRecall, app.respond_environmentRecall]
     exact frame.service
   · intro who different
@@ -214,8 +226,6 @@ theorem binding (frame : Frame runtime leaks memory owner original repaired)
       (graph.nodes event) = .bind owner payload)
     (node : nodeView graph event = .bind owner payload outputEq codeEq)
     (serial : Nat) (opening : Option (Raw L))
-    (clearUsable : ∀ value, opening.bind (fun raw => raw.as? payload) = some value →
-      memory.shadow.actions event = none ∧ memory.shadow.values (.inr event) = none)
     (fresh : original.application.candidates.lookup (owner, .prepared serial) = .fresh)
     (ready : original.application.config.cut.Ready event)
     (timely : original.application.WithinDeadline runtime event)
@@ -225,7 +235,7 @@ theorem binding (frame : Frame runtime leaks memory owner original repaired)
     let app := runtime.reactiveApplication leaks
     let view := repaired.observe app owner
     let response : app.Action :=
-      ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩
+      ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩
     let change := memory.repairResponse runtime leaks owner view response
     let remembered : BindingMemory runtime leaks :=
       ⟨change.2, memory.responses ++ [(memory.shadow.inputView runtime leaks view, response)]⟩
@@ -243,7 +253,7 @@ theorem binding (frame : Frame runtime leaks memory owner original repaired)
     | none => some (⟨payload, L.someValue payload⟩ : Raw L)
     | some _ => opening
   let response : app.Action :=
-    ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩
+    ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩
   let change := memory.repairResponse runtime leaks owner view response
   let remembered : BindingMemory runtime leaks :=
     ⟨change.2, memory.responses ++ [(memory.shadow.inputView runtime leaks view, response)]⟩
@@ -260,7 +270,8 @@ theorem binding (frame : Frame runtime leaks memory owner original repaired)
     rw [frame.observed]
     exact fresh
   have changed : change.1 =
-      ⟨some ⟨⟨.commitment event (owner, .prepared serial), replacementOpening⟩, .none⟩⟩ := by
+      ⟨some (.submit
+        ⟨⟨.commitment event (owner, .prepared serial), replacementOpening⟩, .none⟩)⟩ := by
     cases decoded : opening.bind (fun raw => raw.as? payload) with
     | none =>
         rw [memory.repairResponse_unusable runtime leaks owner view event payload outputEq codeEq
@@ -268,12 +279,12 @@ theorem binding (frame : Frame runtime leaks memory owner original repaired)
         simp only [replacementOpening, decoded]
         rfl
     | some value =>
-        rw [congrArg Prod.fst (memory.repairResponse_usable runtime leaks owner view event payload
-          outputEq codeEq node serial opening ownFresh actualFresh value decoded)]
+        rw [memory.repairResponse_usable runtime leaks owner view event payload outputEq codeEq
+          node serial opening ownFresh actualFresh value decoded]
         simp only [replacementOpening, decoded]
   have restored := memory.repairResponse_include_input runtime leaks owner original repaired
     frame.lengths frame.past frame.observed frame.network event payload outputEq codeEq node
-      serial opening fresh actualFresh clearUsable ready timely vacant unused serials
+      serial opening fresh actualFresh ready timely vacant unused serials
   change remembered.restoreRecall runtime leaks (rightNext.recall owner) =
       leftNext.recall owner ∧
     remembered.shadow.inputView runtime leaks (rightNext.observe app owner) =
@@ -304,8 +315,8 @@ theorem binding (frame : Frame runtime leaks memory owner original repaired)
     rfl
   change (runtime.interactionStep leaks players scheduler (.includeLatest event owner) left).map
       _ = (runtime.interactionStep leaks players scheduler (.includeLatest event owner)
-        (repaired.respond app owner
-          ⟨some ⟨⟨.commitment event (owner, .prepared serial), replacementOpening⟩, .none⟩⟩)).map _
+        (repaired.respond app owner ⟨some (.submit
+          ⟨⟨.commitment event (owner, .prepared serial), replacementOpening⟩, .none⟩)⟩)).map _
             at coupled
   rw [← changed, firstStep, secondStep, PMF.pure_map, PMF.pure_map] at coupled
   let readout (next : app.Execution) :=

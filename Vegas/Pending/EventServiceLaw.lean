@@ -241,9 +241,9 @@ theorem playerStep_progress (runtime : EventGraphRuntime graph)
         MessageApplication.step, PMF.mem_support_pure_iff _ _] at native
       rw [native]
       exact ⟨invariant.copy rfl rfl rfl, Finset.Subset.rfl, rfl, fun _ _ same _ => same⟩
-  | wait =>
+  | replay id | wait =>
       simp only [MessageApplication.PlayerCommand.toAction,
-        PMF.mem_support_pure_iff _ _] at native
+        MessageApplication.step, PMF.mem_support_pure_iff _ _] at native
       rw [native]
       exact .refl invariant
 

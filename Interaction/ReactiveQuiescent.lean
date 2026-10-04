@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveApplication
-import Interaction.MessagePublishedObservation
+import Interaction.MessageReplayObservation
 
 /-! # Passive observation without new pending information
 

@@ -89,7 +89,7 @@ theorem sourceServiceLastPolicy_commit_opportunity
   intro ready timely vacant unsent last
   let app := application setup leaks
   let players := sourceServiceLastPolicy setup leaks rosters wholeProfile
-  let transport : Player → app.Policy := fun _ => app.silentPolicy
+  let transport : Player → app.Policy := fun _ => app.replayPolicy
   let result (final : app.Execution) := (final.application.config, final.receipts)
   let index : Fin (eventCount (.commit name owner fresh guard next)) :=
     ⟨0, by simp [eventCount]⟩
@@ -157,7 +157,7 @@ theorem sourceServiceLastPolicy_commit_opportunity
       wholeProfile profile refs source embedding refsBefore offset aligned activated agree history
         serial selected candidate unused (serials.learn owner sample) (published.learn owner sample)
         bounds transport (fun who past view response supported =>
-          bounds.silent_compiled (runtime setup) leaks who past view response supported)
+          bounds.replay_compiled (runtime setup) leaks who past view response supported)
         network remaining ready timely vacant
     rw [PMF.map_bind] at delayed
     apply Eq.trans ?_ delayed
@@ -293,7 +293,7 @@ theorem sourceServiceLastPolicy_commit_roster
     rw [sourceServiceLastPolicy_waiting_law setup leaks rosters wholeProfile network event owner
       owned visited execution (soleReady_of_ready setup execution.application ready) before]
       at pureReplay
-    have currentUnsent := (silent_window_eventRecorded setup leaks network visited execution current
+    have currentUnsent := (replay_window_eventRecorded setup leaks network visited execution current
       pureReplay owner event).trans unsent
     have fixed : (ServiceInstruction.wire : ServiceInstruction (graph setup)) ∉
         visited.map ServiceInstruction.player := by simp
@@ -352,7 +352,7 @@ private theorem binding_opportunity_provenance
       immediate ∈ ((sourceServicePolicy setup leaks profile owner (before.recall owner)
         (before.observe (application setup leaks) owner)).bind fun response =>
           (runtime setup).interactionStep leaks
-            (fun _ => (application setup leaks).silentPolicy) network (.includeLatest event owner)
+            (fun _ => (application setup leaks).replayPolicy) network (.includeLatest event owner)
             (before.respond (application setup leaks) owner response)).support ∧
       final.application = immediate.application ∧ final.network.ledger = immediate.network.ledger ∧
       final.receipts = immediate.receipts ∧
@@ -362,7 +362,7 @@ private theorem binding_opportunity_provenance
   let := Fintype.ofFinite Player
   let app := application setup leaks
   let players := sourceServiceLastPolicy setup leaks rosters profile
-  let transport : Player → app.Policy := fun _ => app.silentPolicy
+  let transport : Player → app.Policy := fun _ => app.replayPolicy
   change final ∈ ((runtime setup).runInteractionPlan leaks players network
     (.player owner :: remaining.map ServiceInstruction.player ++ [.includeLatest event owner])
       current).support at reached
@@ -413,7 +413,7 @@ private theorem binding_opportunity_provenance
             readout).support := PMF.support_map .. ▸ ⟨final, tail, rfl⟩
   have delayed (opening : Option (Raw L)) := (runtime setup).rawBinding_delayed_inclusion leaks
     bounds transport (fun who past view response supported =>
-      bounds.silent_compiled (runtime setup) leaks who past view response supported) network
+      bounds.replay_compiled (runtime setup) leaks who past view response supported) network
     activated owner event payload outputEq codeEq node
     (soleReady_of_ready setup current.application currentReady) owned currentReady
       (currentPublished.learn owner sample) (currentSerials.learn owner sample) serial opening
@@ -437,11 +437,11 @@ private theorem binding_opportunity_provenance
         (addressed : submission.call.packet.event? (graph setup) = some event)
         (supported : final ∈ ((runtime setup).runInteractionPlan leaks transport network
           (remaining.map ServiceInstruction.player ++ [.includeLatest event owner])
-            (activated.respond app owner ⟨some submission⟩)).support) :=
-      (runtime setup).submission_silent_settled_published leaks transport network owner activated
+            (activated.respond app owner ⟨some (.submit submission)⟩)).support) :=
+      (runtime setup).submission_replay_settled_published leaks transport network owner activated
         submission event addressed (currentPublished.learn owner sample)
         (currentSerials.learn owner sample)
-        (fun current who response _ _ chosen => app.silentPolicy_cases _ _ response chosen)
+        (fun current who response _ _ chosen => app.replayPolicy_cases _ _ response chosen)
         remaining final supported
     cases choice with
     | failure => exact publish _ rfl tail
@@ -500,7 +500,7 @@ theorem sourceServiceLastPolicy_binding_provenance
       immediate ∈ ((sourceServicePolicy setup leaks profile owner (before.recall owner)
         (before.observe (application setup leaks) owner)).bind fun response =>
           (runtime setup).interactionStep leaks
-            (fun _ => (application setup leaks).silentPolicy) network (.includeLatest event owner)
+            (fun _ => (application setup leaks).replayPolicy) network (.includeLatest event owner)
             (before.respond (application setup leaks) owner response)).support ∧
       final.application = immediate.application ∧ final.network.ledger = immediate.network.ledger ∧
       final.receipts = immediate.receipts ∧
@@ -537,7 +537,7 @@ theorem sourceServiceLastPolicy_binding_provenance
   have pureReplay := priorSupport
   rw [sourceServiceLastPolicy_waiting_law setup leaks rosters profile network event owner owned
     visited initial (soleReady_of_ready setup initial.application ready) waiting] at pureReplay
-  have currentUnsent := (silent_window_eventRecorded setup leaks network visited initial current
+  have currentUnsent := (replay_window_eventRecorded setup leaks network visited initial current
     pureReplay owner event).trans unsent
   have fixed : (ServiceInstruction.wire : ServiceInstruction (graph setup)) ∉
       visited.map ServiceInstruction.player := by simp

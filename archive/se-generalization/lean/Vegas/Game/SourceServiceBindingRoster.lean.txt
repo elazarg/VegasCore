@@ -1,0 +1,133 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.SourceServiceBinding
+import Vegas.Pending.ReactiveBindingWaiting
+
+/-! # The original binding lottery through a delayed native roster
+
+The source compiler chooses its original typed commitment, then arbitrary
+retained owner and foreign activations may occur before protected inclusion.
+The resulting source configuration and successful receipt have exactly the
+original commitment kernel. No singleton binding calendar or selected
+equilibrium is assumed. Earlier deferral of the first submission is separate.
+-/
+
+noncomputable section
+
+namespace Vegas
+
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
+
+variable {Player : Type} [DecidableEq Player] [Fintype Player]
+  {L : IExpr} [IExpr.ResultTypes L]
+  (setup : Setup (Player := Player) (L := L))
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+
+/-- Repeated later owner visits and arbitrary retained foreign visits preserve
+the actual source commitment lottery through its protected inclusion. -/
+theorem sourceServicePolicy_commit_delayed_service
+    {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    {name : VarId} {owner : Player} {payload : L.Ty}
+    (fresh : name ∉ Γ.map Prod.fst) (guard : SourceGuard L Γ owner name payload)
+    (next : SourceProgram Player L ((name, .commitment owner payload) :: Γ)
+      (insert name openNames))
+    (wholeProfile : BehavioralProfile setup.program)
+    (profile : BehavioralProfile (.commit name owner fresh guard next))
+    (refs : ContextRefs (graphLayout setup.program) Γ) (source : Config Player L Γ)
+    (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
+      (.commit name owner fresh guard next))
+    (refsBefore : ContextRefsBefore refs embedding) (offset : Nat)
+    (aligned : CompiledPolicySuffix setup.program wholeProfile
+      (.commit name owner fresh guard next) profile
+      refs source.revelations source.registry embedding refsBefore offset)
+    (execution : (application setup leaks).Execution)
+    (agree : refs.Agrees source.state execution.application.config.store)
+    (history : decodeHistory setup.program
+      (execution.application.config.history.map
+        (setup.eventGraph.fromModeCompletion .sequential)) = source.history)
+    (serial : Nat)
+    (selected : reactiveFreshSlot (execution.observe
+      (application setup leaks) owner).application = some serial)
+    (candidate : execution.application.candidates.lookup (owner, .prepared serial) = .fresh)
+    (unused : execution.application.HandleUnused (owner, .prepared serial))
+    (serials : execution.network.SerialsBeforeNext)
+    (published : execution.network.Satisfies fun message =>
+      message.id ∈ execution.network.ledger.map Message.id)
+    (bounds : MessageBounds (graph setup))
+    (players : Player → (application setup leaks).Policy)
+    (lawful : ∀ who past view response, response ∈ (players who past view).support →
+      response ∈ bounds.compiledActions (runtime setup) leaks who past view)
+    (network : (runtime setup).NetworkPolicy leaks) (roster : List Player) :
+    let headIndex : Fin (eventCount (.commit name owner fresh guard next)) :=
+      ⟨0, by simp [eventCount]⟩
+    let event := embedding.event headIndex
+    let outputEq : (graph setup).outputLayout event = .binding owner payload := by
+      change outputLayout setup.program (embedding.event headIndex) = _
+      simpa [headIndex, outputLayout, eventCount] using embedding.layout_eq headIndex
+    ∀ (ready : execution.application.config.cut.Ready event)
+      (_timely : execution.application.WithinDeadline (runtime setup) event)
+      (_vacant : execution.application.accepted (.inr event) = none),
+    ((sourceServicePolicy setup leaks wholeProfile owner (execution.recall owner)
+        (execution.observe (application setup leaks) owner)).bind
+      (fun response => (runtime setup).runInteractionPlan leaks players network
+        (roster.map ServiceInstruction.player ++ [.includeLatest event owner])
+        (execution.respond (application setup leaks) owner response))).map
+      (fun final => (final.application.config, final.receipts)) =
+      (commitKernel profile (source.view owner)).map fun choice =>
+        (execution.application.config.complete event ready
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice)
+          (cast (congrArg EventGraph.EventField.Value outputEq.symm) choice),
+          execution.receipts ++ [((owner, execution.network.nextSerial owner), true)]) := by
+  dsimp only
+  intro ready timely vacant
+  let headIndex : Fin (eventCount (.commit name owner fresh guard next)) :=
+    ⟨0, by simp [eventCount]⟩
+  let event := embedding.event headIndex
+  have outputEq : (graph setup).outputLayout event = .binding owner payload := by
+    change outputLayout setup.program (embedding.event headIndex) = _
+    simpa [headIndex, outputLayout, eventCount] using embedding.layout_eq headIndex
+  have codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .bind owner payload := by
+    change cast (congrArg (EventGraph.EventCode (graphLayout setup.program)) outputEq)
+      ((toEventGraph setup.program).nodes event) = _
+    simpa [event, headIndex, compileRankedNodes] using aligned.graphSuffix.nodeEq headIndex
+  have node : nodeView (graph setup) event = .bind owner payload outputEq codeEq :=
+    EventGraphRuntime.nodeView_eq_bind _ _
+  have owned : (graph setup).actor? event = some owner := by
+    change (toEventGraph setup.program).actor? event = some owner
+    simpa [event, headIndex, eventOwner?, eventCount] using aligned.actorEq headIndex
+  have immediate := sourceServicePolicy_commit_service setup leaks fresh guard next wholeProfile
+    profile refs source embedding refsBefore offset aligned execution agree history serial selected
+      candidate unused serials players network ready timely vacant
+  apply Eq.trans ?_ immediate
+  rw [PMF.map_bind, PMF.map_bind]
+  apply bind_congr_on_support _
+  intro response supported
+  rw [sourceServicePolicy_commit setup leaks fresh guard next wholeProfile profile refs source
+    embedding refsBefore offset aligned execution agree history ready,
+    PMF.support_map] at supported
+  obtain ⟨choice, _, responseEq⟩ := supported
+  have physical := serviceDecision_binding_fresh (runtime setup) leaks execution owner event
+    payload outputEq codeEq node serial selected candidate choice
+  have responseSame : response = (runtime setup).reactiveBinding leaks owner event payload
+      choice serial := responseEq.symm.trans physical
+  rw [responseSame]
+  have delayed (opening : Option (Raw L)) := (runtime setup).rawBinding_delayed_inclusion leaks
+    bounds players lawful network execution owner event payload outputEq codeEq node
+      (soleReady_of_ready setup execution.application ready) owned ready
+      published serials serial opening roster
+  have projected (opening : Option (Raw L)) := congrArg
+    (PMF.map (fun value : EventGraphRuntime.State (graph setup) ×
+        List (Message Player (WitnessedPacket (graph setup))) ×
+        List (MessageId Player × Bool) × (Player → Nat) => (value.1.config, value.2.2.1)))
+      (delayed opening)
+  cases choice with
+  | failure =>
+      simpa only [PMF.map_comp, Function.comp_def, reactiveBinding] using projected none
+  | success value =>
+      simpa only [PMF.map_comp, Function.comp_def, reactiveBinding] using
+        projected (some ⟨payload, value⟩)
+
+end Vegas

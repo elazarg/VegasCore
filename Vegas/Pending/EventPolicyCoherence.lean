@@ -745,6 +745,8 @@ theorem compilePlayerPolicy_playerStep_policyCoherentAll
       subst next
       intro query actor
       exact (coherent query actor).afterWait runtime execution owner query
+  | replay id =>
+      simp [CommandAt, stagesEvent] at atEvent
   | privateCommand privateCommand =>
       rw [runtime.application.playerStep_private_eq] at stepMem
       simp only [PMF.mem_support_pure_iff _ _] at stepMem

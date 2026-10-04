@@ -66,7 +66,7 @@ theorem reactiveBinding_continuation_result (runtime : EventGraphRuntime graph)
     constructor
     · intro state actor material same
       exact (runtime.reactive_respond_candidate_fixed leaks (.initial app state) actor
-        ⟨some material⟩ candidate (by
+        ⟨some (.submit material)⟩ candidate (by
           change state.candidates.lookup candidate ≠ .fresh
           rwa [same])).trans same
     · intro state message target same accepted

@@ -1,0 +1,111 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Pending.ReactiveSilentSettlement
+
+/-! # Application laws after silent response opportunities
+
+Silent responses retain actual passive observations and private recall.
+Application commands and public sampling depend only on application state.
+Their terminal application law is unchanged by an earlier silent response
+window.
+-/
+
+noncomputable section
+
+namespace Vegas.EventGraphRuntime
+
+open GameTheory.Math.Probability Interaction
+
+variable {Player : Type} [DecidableEq Player]
+  {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
+
+/-- A service suffix containing only application commands has the same
+application law from executions with the same application state. -/
+theorem application_service_law (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (network : runtime.NetworkPolicy leaks) (plan : List (ServiceInstruction graph))
+    (passive : ∀ instruction ∈ plan, instruction ≠ .wire ∧
+      (∀ who, instruction ≠ .player who) ∧
+      ∀ event who, instruction ≠ .includeLatest event who)
+    (first second : (runtime.reactiveApplication leaks).Execution)
+    (same : first.application = second.application) :
+    ((runtime.runInteractionPlan leaks players network plan first).map
+      ReactiveApplication.Execution.application) =
+      ((runtime.runInteractionPlan leaks players network plan second).map
+        ReactiveApplication.Execution.application) := by
+  let app := runtime.reactiveApplication leaks
+  induction plan generalizing first second with
+  | nil => simp only [runInteractionPlan, PMF.pure_map, same]
+  | cons instruction rest ih =>
+      have head := passive instruction (List.mem_cons_self ..)
+      have tail := fun member present => passive member (List.mem_cons_of_mem _ present)
+      have step (command : app.EnvironmentCommand) :
+          ((first.environmentStep app (.application command)).bind fun next =>
+            (runtime.runInteractionPlan leaks players network rest next).map
+              ReactiveApplication.Execution.application) =
+          ((second.environmentStep app (.application command)).bind fun next =>
+            (runtime.runInteractionPlan leaks players network rest next).map
+              ReactiveApplication.Execution.application) := by
+        simp only [ReactiveApplication.Execution.environmentStep, PMF.bind_map]
+        rw [same]
+        apply bind_congr_on_support _
+        intro state _
+        exact ih tail _ _ rfl
+      have idle : (runtime.reactiveApplication leaks).resume players none = PMF.pure := rfl
+      cases instruction with
+      | player who => exact False.elim (head.2.1 who rfl)
+      | wire => exact False.elim (head.1 rfl)
+      | includeLatest event who => exact False.elim (head.2.2 event who rfl)
+      | sample event =>
+          simpa only [runInteractionPlan, PMF.map_bind, interactionStep,
+            interactionInstruction, PMF.pure_bind, ReactiveApplication.dispatch,
+            ReactiveApplication.Command.actor?, ReactiveApplication.resume,
+            idle, PMF.bind_pure] using step (.executeSample event)
+      | tick =>
+          simpa only [runInteractionPlan, PMF.map_bind, interactionStep,
+            interactionInstruction, PMF.pure_bind, ReactiveApplication.dispatch,
+            ReactiveApplication.Command.actor?, ReactiveApplication.resume,
+            idle, PMF.bind_pure] using step .advanceClock
+      | expire event =>
+          simpa only [runInteractionPlan, PMF.map_bind, interactionStep,
+            interactionInstruction, PMF.pure_bind, ReactiveApplication.dispatch,
+            ReactiveApplication.Command.actor?, ReactiveApplication.resume,
+            idle, PMF.bind_pure] using step (.expire event)
+
+/-- Silent player rounds before application commands have no effect on
+the terminal application law, including public sample results. -/
+theorem silent_application_service_law (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (network : runtime.NetworkPolicy leaks) (owner : Player)
+    (initial : (runtime.reactiveApplication leaks).Execution)
+    (responses : ∀ (current : (runtime.reactiveApplication leaks).Execution) who response,
+      current.application = initial.application →
+      initial.recall owner ⊆ current.recall owner →
+      response ∈ (players who (current.recall who)
+        (current.observe (runtime.reactiveApplication leaks) who)).support →
+      response = ⟨none⟩)
+    (visits : List Player) (plan : List (ServiceInstruction graph))
+    (passive : ∀ instruction ∈ plan, instruction ≠ .wire ∧
+      (∀ who, instruction ≠ .player who) ∧
+      ∀ event who, instruction ≠ .includeLatest event who) :
+    ((runtime.runInteractionPlan leaks players network
+      (visits.map ServiceInstruction.player ++ plan) initial).map
+        ReactiveApplication.Execution.application) =
+      ((runtime.runInteractionPlan leaks players network plan initial).map
+        ReactiveApplication.Execution.application) := by
+  rw [runInteractionPlan_append, PMF.map_bind]
+  calc
+    _ = (runtime.runInteractionPlan leaks players network
+        (visits.map ServiceInstruction.player) initial).bind (fun _ =>
+          (runtime.runInteractionPlan leaks players network plan initial).map
+            ReactiveApplication.Execution.application) := by
+      apply bind_congr_on_support _
+      intro current reached
+      have same := (runtime.silent_window_preserves leaks players network owner initial responses
+        (fun _ => True) ⟨by simp, by simp, by simp, by simp⟩ visits current reached).1
+      exact runtime.application_service_law leaks players network plan passive _ _ same
+    _ = _ := PMF.bind_const _ _
+
+end Vegas.EventGraphRuntime

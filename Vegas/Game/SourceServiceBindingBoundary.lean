@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceBoundary
-import Vegas.Pending.ReactiveServiceMarkers
 import Vegas.Game.SourceServiceBindingSupport
 import Vegas.Pending.ReactiveBindingWindowSupport
 import Vegas.Pending.ReactiveServiceSoundness
@@ -255,7 +254,7 @@ theorem ServiceBoundary.binding_prefix_conformance
     (owned : (graph setup).actor? event = some owner)
     (traffic : ∀ record ∈ (application setup leaks).executionTraffic execution,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
-        record.envelope = true)
+        record.input.envelope = true)
     (visits : List Player) (current : (application setup leaks).Execution)
     (reached : current ∈ ((runtime setup).runInteractionPlan leaks players network
       (visits.map ServiceInstruction.player) execution).support) :
@@ -263,7 +262,7 @@ theorem ServiceBoundary.binding_prefix_conformance
       current.application.publicView current.network.ledger message = true) ∧
     (∀ record ∈ (application setup leaks).executionTraffic current,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
-        record.envelope = true) := by
+        record.input.envelope = true) := by
   let app := application setup leaks
   induction visits using List.reverseRecOn generalizing current with
   | nil =>
@@ -295,17 +294,17 @@ theorem ServiceBoundary.binding_prefix_conformance
       have issued : ∀ record ∈ app.trafficStep (some ⟨0, some actor, activated⟩)
           (some ⟨0, none, activated.respond app actor response⟩),
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.envelope = true := by
+            record.input.envelope = true := by
         by_cases acting : actor = owner
         · subst actor
           exact bounds.compiled_binding_traffic (runtime setup) leaks activated binding 0
             owner event payload outputEq codeEq node (sole.ownTurn owned) ready timely
             (fun absent => (unsent absent).2.1)
             (fun absent => (unsent absent).2.2.1 owner)
-            response member
+            (sampled.known owner) response member
         · exact bounds.compiled_foreign_traffic (runtime setup) leaks activated 0 actor
             (sole.idle (by rw [owned]; exact fun equal => acting (Option.some.inj equal).symm))
-            response member
+            (sampled.known actor) response member
       refine ⟨(runtime setup).service_response_conformance leaks activated 0 actor response
         sampled issued, ?_⟩
       intro record included
@@ -360,11 +359,6 @@ theorem ServiceBoundary.binding_block
     value, admitted, checkpoint⟩ := boundary.binding_inclusion bounds covered players lawful
       network event atRank name owner payload guard outputEq codeEq node owned
         beforeRefs decoded opportunity capacity included inclusion
-  have includedMarkers : included.application.missedEvents = ∅ := by
-    rw [(runtime setup).runInteractionPlan_missedEvents_eq leaks players network
-      ((rosters event).map ServiceInstruction.player ++ [.includeLatest event owner])
-      (by simp) (by intro other; simp) execution included inclusion]
-    exact boundary.missed
   have settled : ¬included.application.config.cut.Ready event := by
     intro ready
     have next := (ready_iff_rank setup _ (rank + 1) checkpoint.ordered event).mp ready
@@ -387,9 +381,6 @@ theorem ServiceBoundary.binding_block
     toSourceCheckpoint := finalCheckpoint
     invariant := invariant
     binding := binding
-    remembered := boundary.run_remembered players network
-      (rosterBlock setup rosters event) after reached
-    missed := by rw [afterApp]; exact includedMarkers
     prepared := ?_
     represented := ?_
     acceptedRecorded := ?_

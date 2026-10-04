@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceTimedSample
-import Vegas.Pending.ReactiveSilentApplication
+import Vegas.Pending.ReactiveReplayApplication
 
 /-! # Transport-only responses before public sampling
 
@@ -35,7 +35,7 @@ theorem sourceService_sample_response_application_law
     (who : Player) (execution : (application setup leaks).Execution)
     (sole : execution.application.publicView.SoleReady event)
     (response : (application setup leaks).Action)
-    (transport : response = ⟨none⟩)
+    (transport : response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩)
     (visits : List Player) (ticks : Nat) :
     let players := sourceServiceTimedPolicy setup leaks rosters timing profile
     let ending := .sample event :: List.replicate ticks .tick ++ [.expire event]
@@ -48,7 +48,7 @@ theorem sourceService_sample_response_application_law
   intro players ending
   let app := application setup leaks
   let after := execution.respond app who response
-  have same := ((runtime setup).silent_response_preserves leaks (fun _ => True) execution
+  have same := ((runtime setup).replay_response_preserves leaks (fun _ => True) execution
     ⟨by simp, by simp, by simp, by simp⟩ who response transport).1
   have afterSole : after.application.publicView.SoleReady event := by rw [same]; exact sole
   have passive : ∀ instruction ∈ ending, instruction ≠ .wire ∧
@@ -61,15 +61,15 @@ theorem sourceService_sample_response_application_law
   rw [runInteractionPlan_append, sourceServiceTimedPolicy_sample_window setup leaks rosters
     timing profile event chance network visits after afterSole, PMF.map_bind]
   calc
-    _ = ((runtime setup).runInteractionPlan leaks (fun _ => app.silentPolicy) network
+    _ = ((runtime setup).runInteractionPlan leaks (fun _ => app.replayPolicy) network
         (visits.map ServiceInstruction.player) after).bind (fun _ =>
           ((runtime setup).runInteractionPlan leaks players network ending execution).map
             ReactiveApplication.Execution.application) := by
       apply bind_congr_on_support _
       intro current reached
-      have unchanged := ((runtime setup).silent_window_preserves leaks
-        (fun _ => app.silentPolicy) network who after
-        (fun next actor action _ _ supported => app.silentPolicy_cases _ _ action supported)
+      have unchanged := ((runtime setup).replay_window_preserves leaks
+        (fun _ => app.replayPolicy) network who after
+        (fun next actor action _ _ supported => app.replayPolicy_cases _ _ action supported)
         (fun _ => True) ⟨by simp, by simp, by simp, by simp⟩ visits current reached).1
       exact (runtime setup).application_service_law leaks players network ending passive
         current execution (unchanged.trans same)

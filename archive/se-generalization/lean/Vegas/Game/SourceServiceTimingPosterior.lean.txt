@@ -1,0 +1,292 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Interaction.ScheduledOpeningPosterior
+import Vegas.Game.SourceServiceTimedDisclosure
+import Vegas.Pending.ReactiveResolutionWindowState
+
+/-! # The actual unsent disclosure timing posterior
+
+A selected source decision always emits a packet, for either Boolean value.
+Actual silent responses therefore exclude passed timing slots. The remaining
+posterior is the original timing law conditioned on the still available slots,
+independently of the source's false probability.
+-/
+
+noncomputable section
+
+namespace Vegas
+
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
+
+variable {Player : Type} [DecidableEq Player]
+  {L : IExpr} [IExpr.ResultTypes L]
+
+/-- Actual silent visits remove their timing indices. The input posterior may
+already be conditioned on earlier silent visits; a supported later timing index
+makes every conditioning operation defined. -/
+theorem sourceServiceTimedMixture_silent_window_posterior
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (rosters : (graph setup).EventId → List Player)
+    {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    {published name : VarId} {owner : Player} {payload : L.Ty}
+    (fresh : published ∉ Γ.map Prod.fst)
+    (binding : HasVar Γ name (.commitment owner payload)) (unresolved : name ∈ openNames)
+    (next : SourceProgram Player L ((published, .publication payload) :: Γ)
+      (openNames.erase name))
+    (wholeProfile : BehavioralProfile setup.program)
+    (profile : BehavioralProfile (.reveal published owner name fresh binding unresolved next))
+    (refs : ContextRefs (graphLayout setup.program) Γ) (source : Config Player L Γ)
+    (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
+      (.reveal published owner name fresh binding unresolved next))
+    (refsBefore : ContextRefsBefore refs embedding) (rank : Nat)
+    (aligned : CompiledPolicySuffix setup.program wholeProfile
+      (.reveal published owner name fresh binding unresolved next) profile
+      refs source.revelations source.registry embedding refsBefore rank)
+    (execution : (application setup leaks).Execution)
+    (agree : refs.Agrees source.state execution.application.config.store)
+    (history : decodeHistory setup.program
+      (execution.application.config.history.map
+        (setup.eventGraph.fromModeCompletion .sequential)) = source.history)
+    (valid : execution.application.BindingInvariant)
+    (recalled : execution.InputRecall (application setup leaks))
+    (origins : (runtime setup).ResolutionEvidenceOrigins leaks execution)
+    (effective : (profile owner).EffectiveDisclosures
+      (.reveal published owner name fresh binding unresolved next)
+        source.registry source.revelations)
+    (network : (runtime setup).NetworkPolicy leaks) (visits : List Player)
+    (final : (application setup leaks).Execution) :
+    let index : Fin (eventCount (.reveal published owner name fresh binding unresolved next)) :=
+      ⟨0, by simp [eventCount]⟩
+    let event : (graph setup).EventId := embedding.event index
+    ∀ (timing : PMF (Fin ((rosters event).count owner))) (count : Nat)
+      (witness : Fin ((rosters event).count owner)) (positive : witness ∈ timing.support)
+      (_ready : execution.application.config.cut.Ready event)
+      (_unsent : (runtime setup).eventRecorded leaks (execution.recall owner) event = false)
+      (_counted : (execution.recall owner).length =
+        rosterOffset setup rosters owner event + count)
+      (future : count + visits.count owner ≤ witness.val)
+      (_old : (((application setup leaks).policyMixture timing
+        (sourceServiceTimedFamily setup leaks rosters wholeProfile owner event)).posterior
+          (execution.recall owner)) = timing.filter {slot | count ≤ slot.val}
+            ⟨witness, by change count ≤ witness.val; omega, positive⟩)
+      (_reached : final ∈ ((runtime setup).runInteractionPlan leaks
+        (fun _ => (application setup leaks).silentPolicy) network
+          (visits.map ServiceInstruction.player) execution).support),
+    (((application setup leaks).policyMixture timing
+      (sourceServiceTimedFamily setup leaks rosters wholeProfile owner event)).posterior
+        (final.recall owner)) = timing.filter {slot | count + visits.count owner ≤ slot.val}
+          ⟨witness, future, positive⟩ := by
+  intro index event timing count witness positive ready unsent counted future old reached
+  classical
+  let app := application setup leaks
+  let family := sourceServiceTimedFamily setup leaks rosters wholeProfile owner event
+  let offset := rosterOffset setup rosters owner event
+  let tail := fun number : Nat => {slot : Fin ((rosters event).count owner) | number ≤ slot.val}
+  change (app.policyMixture timing family).posterior (execution.recall owner) =
+    timing.filter (tail count) _ at old
+  induction visits generalizing execution count with
+  | nil =>
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      simpa only [List.count_nil, Nat.add_zero] using old
+  | cons actor rest ih =>
+      simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
+        PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+        ReactiveApplication.resume, ReactiveApplication.invoke,
+        ReactiveApplication.Execution.activation_samples, PMF.bind_map, PMF.bind_bind,
+        Function.comp_def] at reached
+      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      obtain ⟨response, supported, reached⟩ :=
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      let activated := execution.sampledActivation app actor sample
+      let current := activated.respond app actor response
+      have silent := app.silentPolicy_cases (activated.recall actor)
+        (activated.observe app actor) response supported
+      have same : current.application = execution.application :=
+        ((runtime setup).silent_response_preserves leaks (fun _ => True) activated
+          ⟨by simp, by simp, by simp, by simp⟩ actor response silent).1
+      have currentAgree : refs.Agrees source.state current.application.config.store := by
+        rw [same]; exact agree
+      have currentHistory : decodeHistory setup.program (current.application.config.history.map
+          (setup.eventGraph.fromModeCompletion .sequential)) = source.history := by
+        rw [same]; exact history
+      have currentValid : current.application.BindingInvariant := by rw [same]; exact valid
+      have currentRecall := app.respond_inputRecall activated actor response recalled
+      have currentOrigins := origins_silent setup leaks activated (origins.learn actor sample)
+        actor response silent
+      have currentReady : current.application.config.cut.Ready event := by rw [same]; exact ready
+      have currentUnsent : (runtime setup).eventRecorded leaks (current.recall owner) event =
+          false := by
+        by_cases equal : actor = owner
+        · subst actor
+          exact ((runtime setup).eventRecorded_respond_transport leaks activated owner owner
+            response silent event).trans unsent
+        · rw [app.respond_recall_other activated actor owner (Ne.symm equal) response]
+          exact unsent
+      by_cases sameOwner : actor = owner
+      · subst actor
+        have nextFuture : count + 1 + rest.count owner ≤ witness.val := by
+          simpa only [List.count_cons_self, Nat.add_assoc, Nat.add_comm 1] using future
+        have priorBound : count ≤ witness.val := by omega
+        have nextBound : count + 1 ≤ witness.val := by omega
+        obtain ⟨entry, entryRecall, entryView, entryAction⟩ :=
+          (runtime setup).response_recall_entry leaks activated owner response
+        have selectedLaw := sourceServiceOpportunity_reveal setup leaks fresh binding unresolved
+          next wholeProfile profile refs source embedding refsBefore rank aligned activated agree
+          history valid recalled (origins.learn owner sample) effective ready unsent
+        change sourceServiceOpportunity setup leaks wholeProfile owner event
+          (execution.recall owner) (activated.observe app owner) = _ at selectedLaw
+        have notSilent : (⟨none⟩ : app.Action) ∉
+            (sourceServiceOpportunity setup leaks wholeProfile owner event
+              (execution.recall owner) entry.beforeView).support := by
+          rw [entryView, selectedLaw, PMF.support_bind]
+          intro member
+          obtain ⟨disclose, _, chosen⟩ := Set.mem_iUnion₂.mp member
+          have impossible := (PMF.mem_support_pure_iff _ _).mp chosen
+          have submitted := congrArg ReactiveApplication.Action.transmission impossible
+          cases submitted
+        have entrySilent : entry.action = ⟨none⟩ := entryAction.trans silent
+        have nextMeets : ∃ slot ∈ tail (count + 1),
+            slot ∈ ((app.policyMixture timing family).posterior (execution.recall owner)).support :=
+          ⟨witness, nextBound, by
+            rw [old]
+            exact (PMF.mem_support_filter_iff _).mpr ⟨priorBound, positive⟩⟩
+        have likelihood (slot : Fin ((rosters event).count owner))
+            (supported : slot ∈ ((app.policyMixture timing family).posterior
+              (execution.recall owner)).support) :
+            ((family slot (execution.recall owner) entry.beforeView) entry.action).toReal =
+              if slot ∈ tail (count + 1) then 1 else 0 := by
+          rw [old] at supported
+          have retained := ((PMF.mem_support_filter_iff _).mp supported).1
+          change count ≤ slot.val at retained
+          by_cases later : count + 1 ≤ slot.val
+          · have unequal : some (offset + slot.val) ≠ some (execution.recall owner).length := by
+              rw [counted]
+              intro equal
+              have indexEq := Option.some.inj equal
+              omega
+            change (((if some (offset + slot.val) = some (execution.recall owner).length then
+              sourceServiceOpportunity setup leaks wholeProfile owner event
+                (execution.recall owner) entry.beforeView else
+                  app.silentPolicy (execution.recall owner) entry.beforeView))
+                      entry.action).toReal = _
+            simp only [ite_eq_right unequal, entrySilent, ReactiveApplication.silentPolicy,
+              PMF.pure_apply, ↓reduceIte, ENNReal.toReal_one, tail, Set.mem_ofPred_eq, later]
+          · have selected : slot.val = count := by omega
+            have fires : family slot (execution.recall owner) entry.beforeView =
+                sourceServiceOpportunity setup leaks wholeProfile owner event
+                  (execution.recall owner) entry.beforeView := by
+              simp only [family, sourceServiceTimedFamily, ReactiveApplication.scheduledPolicy,
+                Option.map_some, selected, counted, ↓reduceIte]
+            rw [fires, entrySilent, pmf_toReal_eq_zero_iff.mpr notSilent]
+            simp only [tail, Set.mem_ofPred_eq, later, ↓reduceIte]
+        have update := app.policyMixture_posterior_of_indicator timing family
+          (execution.recall owner) entry (tail (count + 1)) nextMeets (by
+            intro slot supported
+            by_cases remains : slot ∈ tail (count + 1) <;>
+              simpa only [remains, ↓reduceIte] using likelihood slot supported)
+        have nested := filter_filter_of_subset timing (tail count) (tail (count + 1))
+          ⟨witness, priorBound, positive⟩ (by simpa only [old] using nextMeets) (by
+            intro slot remaining
+            change count + 1 ≤ slot.val at remaining
+            change count ≤ slot.val
+            omega)
+        have updated : ((app.policyMixture timing family).posterior (current.recall owner)) =
+            timing.filter (tail (count + 1)) ⟨witness, nextBound, positive⟩ := by
+          rw [entryRecall]
+          change (app.policyMixture timing family).posterior (execution.recall owner ++ [entry]) = _
+          rw [update]
+          simpa only [old] using nested
+        have currentCount : (current.recall owner).length = offset + (count + 1) := by
+          rw [app.respond_recall_length]
+          simp only [↓reduceIte]
+          change (execution.recall owner).length + 1 = _
+          rw [counted]
+          omega
+        have result := ih current currentAgree currentHistory currentValid currentRecall
+          currentOrigins (count + 1) currentReady currentUnsent currentCount nextFuture
+          reached updated
+        simpa only [List.count_cons_self, Nat.add_assoc, Nat.add_comm 1] using result
+      · have unchanged : current.recall owner = execution.recall owner :=
+          app.respond_recall_other activated actor owner (Ne.symm sameOwner) response
+        have result := ih current currentAgree currentHistory currentValid currentRecall
+          currentOrigins count currentReady currentUnsent
+          ((congrArg List.length unchanged).trans counted) (by
+            simpa only [List.count_cons_of_ne sameOwner] using future)
+          reached (by simpa only [unchanged] using old)
+        simpa only [List.count_cons_of_ne sameOwner] using result
+
+/-- At a real phase boundary, the complete supported silent prefix derives the
+timing posterior from its original timing law. The source disclosure lottery
+never contributes a silence factor. -/
+theorem sourceServiceTimedMixture_silent_window_posterior_initial
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (rosters : (graph setup).EventId → List Player)
+    {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    {published name : VarId} {owner : Player} {payload : L.Ty}
+    (fresh : published ∉ Γ.map Prod.fst)
+    (binding : HasVar Γ name (.commitment owner payload)) (unresolved : name ∈ openNames)
+    (next : SourceProgram Player L ((published, .publication payload) :: Γ)
+      (openNames.erase name))
+    (wholeProfile : BehavioralProfile setup.program)
+    (profile : BehavioralProfile (.reveal published owner name fresh binding unresolved next))
+    (refs : ContextRefs (graphLayout setup.program) Γ) (source : Config Player L Γ)
+    (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
+      (.reveal published owner name fresh binding unresolved next))
+    (refsBefore : ContextRefsBefore refs embedding) (rank : Nat)
+    (aligned : CompiledPolicySuffix setup.program wholeProfile
+      (.reveal published owner name fresh binding unresolved next) profile
+      refs source.revelations source.registry embedding refsBefore rank)
+    (execution : (application setup leaks).Execution)
+    (agree : refs.Agrees source.state execution.application.config.store)
+    (history : decodeHistory setup.program
+      (execution.application.config.history.map
+        (setup.eventGraph.fromModeCompletion .sequential)) = source.history)
+    (valid : execution.application.BindingInvariant)
+    (recalled : execution.InputRecall (application setup leaks))
+    (origins : (runtime setup).ResolutionEvidenceOrigins leaks execution)
+    (effective : (profile owner).EffectiveDisclosures
+      (.reveal published owner name fresh binding unresolved next)
+        source.registry source.revelations)
+    (network : (runtime setup).NetworkPolicy leaks) (visits : List Player)
+    (final : (application setup leaks).Execution) :
+    let index : Fin (eventCount (.reveal published owner name fresh binding unresolved next)) :=
+      ⟨0, by simp [eventCount]⟩
+    let event : (graph setup).EventId := embedding.event index
+    ∀ (timing : PMF (Fin ((rosters event).count owner)))
+      (witness : Fin ((rosters event).count owner)) (positive : witness ∈ timing.support)
+      (_ready : execution.application.config.cut.Ready event)
+      (_unsent : (runtime setup).eventRecorded leaks (execution.recall owner) event = false)
+      (_counted : (execution.recall owner).length = rosterOffset setup rosters owner event)
+      (future : visits.count owner ≤ witness.val)
+      (_reached : final ∈ ((runtime setup).runInteractionPlan leaks
+        (fun _ => (application setup leaks).silentPolicy) network
+          (visits.map ServiceInstruction.player) execution).support),
+    (((application setup leaks).policyMixture timing
+      (sourceServiceTimedFamily setup leaks rosters wholeProfile owner event)).posterior
+        (final.recall owner)) = timing.filter {slot | visits.count owner ≤ slot.val}
+          ⟨witness, future, positive⟩ := by
+  intro index event timing witness positive ready unsent counted future reached
+  classical
+  let app := application setup leaks
+  let family := sourceServiceTimedFamily setup leaks rosters wholeProfile owner event
+  have dormant := app.policyMixture_posterior_dormant timing family app.silentPolicy
+    (rosterOffset setup rosters owner event)
+    (fun slot past view earlier => app.scheduledPolicy_before _ _ _ _ past view earlier)
+    (execution.recall owner) counted.le
+  have old : ((app.policyMixture timing family).posterior (execution.recall owner)) =
+      timing.filter {slot | 0 ≤ slot.val} ⟨witness, Nat.zero_le _, positive⟩ := by
+    rw [dormant]
+    exact (filter_of_support_subset timing {slot | 0 ≤ slot.val}
+      ⟨witness, Nat.zero_le _, positive⟩ (fun slot _ => Nat.zero_le slot.val)).symm
+  have result := sourceServiceTimedMixture_silent_window_posterior setup leaks rosters fresh
+    binding unresolved next wholeProfile profile refs source embedding refsBefore rank aligned
+    execution agree history valid recalled origins effective network visits final timing 0 witness
+    positive ready unsent (by simpa only [Nat.add_zero] using counted)
+    (by simpa only [Nat.zero_add] using future) old reached
+  simpa only [Nat.zero_add] using result
+
+end Vegas

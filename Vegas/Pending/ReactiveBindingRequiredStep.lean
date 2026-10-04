@@ -1,13 +1,13 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveBindingAuditStep
-import Vegas.Pending.ReactiveDecisionFinalMiss
+import Vegas.Pending.ReactiveBindingFinalOmission
 
 /-! # The final required binding response with both evidence sources
 
 Every effective mixed response has one coupling to the fixed legal repair.
 Canonical opaque bindings preserve the joint frame, nonconforming emitted
-traffic gives an audit record, and silence entails a public missed
+traffic gives an audit record, and silence or replay entails a public missed
 binding after the actual foreign tail and deadline. Later policies are arbitrary.
 -/
 
@@ -50,6 +50,7 @@ theorem required_binding_stopped_response_coupling
     (turn : original.application.publicView.OwnTurn owner event)
     (ready : original.application.config.cut.Ready event)
     (unsent : runtime.eventRecorded leaks (repaired.recall owner) event = false)
+    (unbound : original.application.accepted (.inr event) = none)
     (published : original.network.Satisfies fun message => message.sender = owner →
       message.id ∈ original.network.ledger.map Message.id)
     (entered ticks : Nat)
@@ -57,13 +58,9 @@ theorem required_binding_stopped_response_coupling
     (due : runtime.deadline event ≤ original.application.clock + ticks - entered)
     (visits : List Player) (absent : owner ∉ visits)
     (serials : original.network.SerialsBeforeNext)
-    (coverage : bounds.requiredDecisionActions runtime leaks owner (repaired.recall owner)
+    (coverage : bounds.requiredBindingActions runtime leaks owner (repaired.recall owner)
       (repaired.observe (runtime.reactiveApplication leaks) owner) ⊆
         menu.actions owner (repaired.recall owner)
-          (repaired.observe (runtime.reactiveApplication leaks) owner))
-    (upper : menu.actions owner (repaired.recall owner)
-      (repaired.observe (runtime.reactiveApplication leaks) owner) ⊆
-        bounds.compiledActions runtime leaks owner (repaired.recall owner)
           (repaired.observe (runtime.reactiveApplication leaks) owner))
     (available : ∀ response ∈ (players owner (original.recall owner)
       (original.observe (runtime.reactiveApplication leaks) owner)).support,
@@ -77,14 +74,14 @@ theorem required_binding_stopped_response_coupling
       ∀ next ∈ coupling.support,
         (∃ record, app.trafficStep (some ⟨remaining, some owner, original⟩)
             (some ⟨remaining, none, next.1⟩) = [record] ∧
-          record.envelope.sender = owner ∧
+          record.input.envelope.sender = owner ∧
           runtime.permittedServiceEnvelope record.observation record.ledger
-            record.envelope = false) ∨
+            record.input.envelope = false) ∨
         (∀ (later : Player → app.Policy) (network : runtime.NetworkPolicy leaks)
           (final : app.Execution), final ∈ (runtime.runInteractionPlan leaks later network
             (visits.map ServiceInstruction.player ++
               (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event]))
-                next.1).support → event ∈ final.application.missedEvents) ∨
+                next.1).support → final.application.publicView.missedBinding event = true) ∨
         (Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
           reference.length ≤ (next.2.1.recall owner).length) := by
   classical
@@ -98,33 +95,22 @@ theorem required_binding_stopped_response_coupling
       [(memory.shadow.inputView runtime leaks (repaired.observe app owner), response)]⟩ :
         BindingMemory runtime leaks))
   let adjusted (response : app.Action) :=
-    let changed := retainedResponse runtime leaks menu owner memory
-      (repaired.recall owner, repaired.observe app owner) response
-    (changed.1, (⟨changed.2, memory.responses ++
-      [(memory.shadow.inputView runtime leaks (repaired.observe app owner), response)]⟩ :
-        BindingMemory runtime leaks))
+    (if (proposed response).1 ∈ menu.actions owner (repaired.recall owner)
+        (repaired.observe app owner) then (proposed response).1
+      else (menu.nonempty owner (repaired.recall owner) (repaired.observe app owner)).choose,
+      (proposed response).2)
   let coupling := law.map fun response =>
     (original.respond app owner response, repaired.respond app owner (adjusted response).1,
       (adjusted response).2)
   have responseLaw :
       (retainedImplementation runtime leaks menu owner reference (players owner)).respond memory
         (repaired.recall owner, repaired.observe app owner) = law.map adjusted := by
-    rw [retainedImplementation_respond runtime leaks menu owner reference (players owner) memory
-      (repaired.recall owner) (repaired.observe app owner) started, frame.past, frame.observed]
-    simp only [law, adjusted]
-    rw [show memory.shadow.inputView runtime leaks (repaired.observe app owner) =
-      original.observe app owner from frame.observed]
-  have adjustedEq (response : app.Action)
-      (legal : (proposed response).1 ∈ menu.actions owner (repaired.recall owner)
-        (repaired.observe app owner))
-      (copyEq : response ∈ menu.actions owner (repaired.recall owner)
-          (repaired.observe app owner) →
-        memory.copyResponse runtime leaks owner (repaired.observe app owner) response =
-          memory.repairResponse runtime leaks owner (repaired.observe app owner) response) :
-      adjusted response = proposed response := by
-    dsimp only [adjusted, proposed]
-    rw [retainedResponse_eq_repairResponse runtime leaks menu owner memory
-      (repaired.recall owner, repaired.observe app owner) response legal copyEq]
+    change ((implementation runtime leaks owner reference (players owner)).respond memory
+      (repaired.recall owner, repaired.observe app owner)).map _ = _
+    rw [implementation_respond runtime leaks owner reference (players owner) memory
+      (repaired.recall owner) (repaired.observe app owner) started, frame.past, frame.observed,
+        PMF.map_comp]
+    simp only [law, adjusted, proposed, frame.observed, app, Function.comp_def]
   have owned : graph.actor? event = some owner := by
     have actor := congrArg EventCode.actor codeEq
     rw [EventCode.actor_cast outputEq (graph.nodes event)] at actor
@@ -156,15 +142,14 @@ theorem required_binding_stopped_response_coupling
     · right
       left
       intro later network final reached
-      apply runtime.last_decision_transport_miss leaks later network original owner event owned
-        ready published entered ticks activated due visits absent
+      apply runtime.last_binding_transport_omission leaks later network original owner event payload
+        outputEq codeEq node ready unbound published entered ticks activated due visits absent
         response _ final reached
       intro material
-      rcases app.silentPolicy_cases _ _ response replay with rfl
-      simp
+      rcases app.replayPolicy_cases _ _ response replay with rfl | ⟨id, rfl⟩ <;> simp
     · obtain ⟨opening, bounded, _, rfl⟩ := canonical
       have legal : (proposed
-          ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩).1 ∈
+          ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩).1 ∈
             menu.actions owner (repaired.recall owner) (repaired.observe app owner) := by
         apply coverage
         exact repairResponse_binding_available runtime leaks bounds owner memory
@@ -173,12 +158,8 @@ theorem required_binding_stopped_response_coupling
           bounded originalFresh
       right
       right
-      dsimp only
-      rw [adjustedEq _ legal (by
-        intro admitted
-        exact copyResponse_binding_eq_of_compiled runtime leaks bounds owner memory
-          (repaired.recall owner) (repaired.observe app owner) event payload outputEq codeEq node
-          rightTurn owned rightReady serial actualSlot opening originalFresh (upper admitted))]
+      dsimp only [adjusted]
+      rw [ite_eq_left legal]
       refine ⟨frame.binding_submission event payload outputEq codeEq node serial opening fresh
         ready, ?_⟩
       rw [app.respond_recall_length]
@@ -210,6 +191,7 @@ theorem required_binding_stopped_activation_coupling
     (turn : original.application.publicView.OwnTurn owner event)
     (ready : original.application.config.cut.Ready event)
     (unsent : runtime.eventRecorded leaks (repaired.recall owner) event = false)
+    (unbound : original.application.accepted (.inr event) = none)
     (published : original.network.Satisfies fun message => message.sender = owner →
       message.id ∈ original.network.ledger.map Message.id)
     (entered ticks : Nat)
@@ -220,16 +202,9 @@ theorem required_binding_stopped_activation_coupling
     (coverage : ∀ selected ∈ (leaks owner original.network.pending).support,
       let activated := repaired.sampledActivation (runtime.reactiveApplication leaks)
         owner selected
-      bounds.requiredDecisionActions runtime leaks owner (activated.recall owner)
+      bounds.requiredBindingActions runtime leaks owner (activated.recall owner)
         (activated.observe (runtime.reactiveApplication leaks) owner) ⊆
           menu.actions owner (activated.recall owner)
-            (activated.observe (runtime.reactiveApplication leaks) owner))
-    (upper : ∀ selected ∈ (leaks owner original.network.pending).support,
-      let activated := repaired.sampledActivation (runtime.reactiveApplication leaks)
-        owner selected
-      menu.actions owner (activated.recall owner)
-        (activated.observe (runtime.reactiveApplication leaks) owner) ⊆
-          bounds.compiledActions runtime leaks owner (activated.recall owner)
             (activated.observe (runtime.reactiveApplication leaks) owner))
     (available : ∀ selected ∈ (leaks owner original.network.pending).support,
       let activated := original.sampledActivation (runtime.reactiveApplication leaks)
@@ -247,14 +222,14 @@ theorem required_binding_stopped_activation_coupling
       ∀ next ∈ coupling.support,
         (∃ record, app.trafficStep (some ⟨remaining + 1, none, original⟩)
             (some ⟨remaining, none, next.1⟩) = [record] ∧
-          record.envelope.sender = owner ∧
+          record.input.envelope.sender = owner ∧
           runtime.permittedServiceEnvelope record.observation record.ledger
-            record.envelope = false) ∨
+            record.input.envelope = false) ∨
         (∀ (later : Player → app.Policy) (network : runtime.NetworkPolicy leaks)
           (final : app.Execution), final ∈ (runtime.runInteractionPlan leaks later network
             (visits.map ServiceInstruction.player ++
               (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event]))
-                next.1).support → event ∈ final.application.missedEvents) ∨
+                next.1).support → final.application.publicView.missedBinding event = true) ∨
         (Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
           reference.length ≤ (next.2.1.recall owner).length) := by
   classical
@@ -265,10 +240,10 @@ theorem required_binding_stopped_activation_coupling
   have existsStep (selected) (supported : selected ∈ sample.support) :=
     (frame.activate owner selected).required_binding_stopped_response_coupling bounds menu players
       reference started leftRecall remaining event payload outputEq codeEq node
-      fresh actualSlot capacity default turn ready unsent
+      fresh actualSlot capacity default turn ready unsent unbound
       (published.learn owner selected) entered ticks activated due visits absent
       (serials.learn owner selected)
-      (coverage selected supported) (upper selected supported) (available selected supported)
+      (coverage selected supported) (available selected supported)
   let step := fun selected supported => (existsStep selected supported).choose
   refine ⟨sample.bindOnSupport step, ?_, ?_, ?_⟩
   · rw [map_bindOnSupport]

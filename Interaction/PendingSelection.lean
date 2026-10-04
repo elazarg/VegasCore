@@ -12,7 +12,8 @@ import GameTheoryExtensions.Math.Probability.Support
 
 The eligibility predicate identifies the application event and author whose
 proposals compete. Selection consults only the current pending packets.
-Adding an eligible fresh identifier scales every retained candidate equally.
+Rebroadcasting an already pending envelope does not change its probability;
+adding an eligible fresh identifier scales every retained candidate equally.
 
 This is an inclusion rule for investigating continuation preservation. It is
 not installed in the reserved service, and supplies neither service liveness
@@ -113,6 +114,79 @@ theorem eligibleIds_append (eligible : Message Principal Payload → Bool)
   by_cases accepted : eligible packet = true
   · simp [eligibleIds, List.filter_append, accepted, Finset.union_comm]
   · simp [eligibleIds, List.filter_append, accepted]
+
+theorem eligibleIds_append_existing (eligible : Message Principal Payload → Bool)
+    (pending : List (Message Principal Payload)) (packet : Message Principal Payload)
+    (member : packet ∈ pending) :
+    eligibleIds eligible (pending ++ [packet]) = eligibleIds eligible pending := by
+  rw [eligibleIds_append]
+  split
+  · rename_i accepted
+    apply Finset.insert_eq_of_mem
+    simp only [eligibleIds, List.mem_toFinset, List.mem_map]
+    exact ⟨packet, List.mem_filter.mpr ⟨member, accepted⟩, rfl⟩
+  · rfl
+
+/-- Every eligible envelope a player can rebroadcast already has a pending
+candidate. A service must establish this at the point of comparison. -/
+def RetainsEligible (network : MessageNetwork Principal Payload)
+    (eligible : Message Principal Payload → Bool) : Prop :=
+  ∀ who packet, packet ∈ network.known who → eligible packet = true →
+    packet.id ∈ eligibleIds eligible network.pending
+
+theorem RetainsEligible.empty (eligible : Message Principal Payload → Bool) :
+    (MessageNetwork.empty : MessageNetwork Principal Payload).RetainsEligible eligible := by
+  intro who packet member
+  simp [known, MessageNetwork.empty] at member
+
+/-- With candidate retention, every raw replay preserves the eligible menu,
+including failed lookups and ineligible broadcasts. -/
+theorem RetainsEligible.replay_ids
+    (network : MessageNetwork Principal Payload) (eligible : Message Principal Payload → Bool)
+    (retained : network.RetainsEligible eligible) (who : Principal) (id : MessageId Principal) :
+    eligibleIds eligible (network.replay who id).2.pending =
+      eligibleIds eligible network.pending := by
+  unfold replay
+  split
+  · rfl
+  · rename_i packet found
+    change eligibleIds eligible (network.pending ++ [packet]) = _
+    rw [eligibleIds_append]
+    split
+    · rename_i accepted
+      exact Finset.insert_eq_of_mem
+        (retained who packet (List.mem_of_find?_eq_some found) accepted)
+    · rfl
+
+/-- Duplicate transport copies remain legal, but do not buy extra weight. -/
+theorem uniformPending_append_existing (eligible : Message Principal Payload → Bool)
+    (pending : List (Message Principal Payload)) (packet : Message Principal Payload)
+    (member : packet ∈ pending) :
+    uniformPending eligible (pending ++ [packet]) = uniformPending eligible pending := by
+  unfold uniformPending
+  rw [eligibleIds_append_existing eligible pending packet member]
+
+/-- This applies to the actual network replay operation whenever the replayed
+envelope is already pending. Reintroducing an absent envelope is different. -/
+theorem uniformPending_replay (eligible : Message Principal Payload → Bool)
+    (network next : MessageNetwork Principal Payload) (who : Principal)
+    (id : MessageId Principal) (packet : Message Principal Payload)
+    (replayed : network.replay who id = (some packet, next))
+    (pending : packet ∈ network.pending) :
+    uniformPending eligible next.pending = uniformPending eligible network.pending := by
+  unfold replay at replayed
+  split at replayed
+  · cases replayed
+  · cases replayed
+    exact uniformPending_append_existing eligible network.pending packet pending
+
+theorem uniformPending_replay_of_retained (eligible : Message Principal Payload → Bool)
+    (network : MessageNetwork Principal Payload) (retained : network.RetainsEligible eligible)
+    (who : Principal) (id : MessageId Principal) :
+    uniformPending eligible (network.replay who id).2.pending =
+      uniformPending eligible network.pending := by
+  unfold uniformPending
+  rw [retained.replay_ids]
 
 theorem uniformPending_learn (eligible : Message Principal Payload → Bool)
     (network : MessageNetwork Principal Payload) (who : Principal)

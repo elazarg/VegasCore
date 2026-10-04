@@ -9,8 +9,8 @@ import Interaction.ReactiveTrafficAudit
 
 /-! # Public audit soundness for retained service responses
 
-The checker accepts each first canonical service decision; waiting emits no
-traffic. The local hypotheses are operational phase facts:
+The checker accepts transport of permitted known envelopes and each first
+canonical service decision. The local hypotheses are operational phase facts:
 readiness, deadline, binding allocation and the public serial count. They do
 not select an equilibrium or require an auditor to inspect hidden material.
 -/
@@ -61,7 +61,7 @@ theorem service_response_conformance
       (some ⟨remaining, some who, execution⟩)
       (some ⟨remaining, none, execution.respond (runtime.reactiveApplication leaks) who response⟩),
       runtime.permittedServiceEnvelope record.observation record.ledger
-        record.envelope = true) :
+        record.input.envelope = true) :
     let next := execution.respond (runtime.reactiveApplication leaks) who response
     next.network.Satisfies fun message => runtime.permittedServiceEnvelope
       next.application.publicView next.network.ledger message = true := by
@@ -72,7 +72,13 @@ theorem service_response_conformance
     rcases response with ⟨transmission⟩
     cases transmission with
     | none => rfl
-    | some submission => rfl
+    | some transmission =>
+        cases transmission with
+        | submit submission => rfl
+        | replay id =>
+            change (execution.network.replay who id).2.ledger = execution.network.ledger
+            unfold MessageNetwork.replay
+            split <;> rfl
   change next.application.publicView = execution.application.publicView at observed
   rw [observed, ledger]
   apply app.trafficStep_network execution remaining who response _ prior
@@ -82,20 +88,26 @@ theorem service_response_conformance
   obtain ⟨input, _, rfl⟩ := List.mem_map.mp member
   exact permitted
 
-/-- Silent responses produce no traffic record. -/
+/-- Replaying a conforming pending envelope preserves its permission; ledger
+publication is not needed. Silence and unknown replay ids produce no record. -/
 theorem service_transport_traffic
     (execution : (runtime.reactiveApplication leaks).Execution)
     (remaining : Nat) (who : Player) (response : (runtime.reactiveApplication leaks).Action)
-    (transport : response = ⟨none⟩) :
+    (transport : response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩)
+    (known : ∀ message ∈ execution.network.known who,
+      runtime.permittedServiceEnvelope execution.application.publicView
+        execution.network.ledger message = true) :
     ∀ record ∈ (runtime.reactiveApplication leaks).trafficStep
       (some ⟨remaining, some who, execution⟩)
       (some ⟨remaining, none, execution.respond (runtime.reactiveApplication leaks) who response⟩),
       runtime.permittedServiceEnvelope record.observation record.ledger
-        record.envelope = true := by
-  subst response
+        record.input.envelope = true := by
   intro record member
-  rw [(runtime.reactiveApplication leaks).trafficStep_silent] at member
-  cases member
+  obtain ⟨observation, ledger, present⟩ :=
+    (runtime.reactiveApplication leaks).trafficStep_transport execution remaining who response
+      transport record member
+  rw [observation, ledger]
+  exact known record.input.envelope present
 
 /-- Canonical binding traffic passes public conformance for arbitrary private
 opening material. The public checker does not promise later openability. -/
@@ -115,13 +127,14 @@ theorem service_binding_traffic
       Message.distinctAuthoredCount execution.network.ledger owner)
     (opening : Option (Raw L)) :
     let app := runtime.reactiveApplication leaks
-    let response : app.Action := ⟨some ⟨⟨.commitment event
+    let response : app.Action := ⟨some (.submit
+      ⟨⟨.commitment event
         (owner, .prepared (execution.application.publicView.bindingCount owner)), opening⟩,
-        .none⟩⟩
+        .none⟩)⟩
     ∀ record ∈ app.trafficStep (some ⟨remaining, some owner, execution⟩)
       (some ⟨remaining, none, execution.respond app owner response⟩),
       runtime.permittedServiceEnvelope record.observation record.ledger
-        record.envelope = true := by
+        record.input.envelope = true := by
   intro app response record member
   rw [app.trafficStep_submit, List.mem_singleton] at member
   subst record
@@ -135,41 +148,6 @@ theorem service_binding_traffic
   simp only [PublicView.BindingIncludable, node]
   exact ⟨(execution.application.publicView_eventReady event).mpr ready, timely,
     by trivial, by trivial, vacant, unused⟩
-
-/-- Evidence-free withholding is a lawful first resolution decision. -/
-theorem service_withholding_traffic
-    (execution : (runtime.reactiveApplication leaks).Execution)
-    (remaining : Nat) (owner : Player) (event : graph.EventId) (payload : L.Ty)
-    (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (GuardCheck graph.layout payload))
-    (outputEq : graph.outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
-      (graph.nodes event) = .resolve owner payload binding checks)
-    (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
-    (ready : execution.application.config.cut.Ready event)
-    (timely : execution.application.WithinDeadline runtime event)
-    (counted : execution.network.nextSerial owner =
-      Message.distinctAuthoredCount execution.network.ledger owner) :
-    let app := runtime.reactiveApplication leaks
-    let response : app.Action := ⟨some ⟨⟨.withhold event, none⟩, .none⟩⟩
-    ∀ record ∈ app.trafficStep (some ⟨remaining, some owner, execution⟩)
-      (some ⟨remaining, none, execution.respond app owner response⟩),
-      runtime.permittedServiceEnvelope record.observation record.ledger
-        record.envelope = true := by
-  intro app response record member
-  rw [app.trafficStep_submit, List.mem_singleton] at member
-  subst record
-  change runtime.permittedServiceEnvelope execution.application.publicView execution.network.ledger
-    ⟨(owner, execution.network.nextSerial owner), app.packet
-      (app.submit execution.application owner _) owner (execution.network.known owner) _⟩ = true
-  rw [reactiveApplication_packet_none,
-    execution.application.publicView_tokenFor_of_ready _ event rfl ready,
-    runtime.permittedServiceEnvelope_iff]
-  refine Or.inr ⟨counted, ?_⟩
-  apply (runtime.freshServiceEnvelope_withhold_iff execution.application.publicView
-    (owner, execution.network.nextSerial owner) event owner payload binding checks outputEq codeEq
-      node none (some ⟨event⟩)).mpr
-  exact ⟨(execution.application.publicView_eventReady event).mpr ready, timely, rfl, rfl, rfl⟩
 
 /-- A successful guarded disclosure carries its matching certificate and
 passes the public guard test, including after evidence normalization. -/
@@ -197,9 +175,9 @@ theorem service_opening_traffic
       (app.observePlayer execution.application owner) (execution.network.known owner)
         (disclosureSubmission (.opening event candidate ⟨payload, value⟩))
     ∀ record ∈ app.trafficStep (some ⟨remaining, some owner, execution⟩)
-      (some ⟨remaining, none, execution.respond app owner ⟨some submission⟩⟩),
+      (some ⟨remaining, none, execution.respond app owner ⟨some (.submit submission)⟩⟩),
       runtime.permittedServiceEnvelope record.observation record.ledger
-        record.envelope = true := by
+        record.input.envelope = true := by
   intro app submission record member
   have emitted := WitnessedSubmission.normalizeReactive_emit runtime leaks execution.application
     owner (execution.network.known owner)
@@ -233,7 +211,7 @@ theorem service_opening_traffic
     execution.application.config.store value resolved
 
 /-- Both disclosure choices pass the checker. Failed validation and deliberate
-withholding send an explicit false decision; successful disclosure is certified. -/
+withholding produce silence, while successful disclosure is certified. -/
 theorem serviceDecision_resolution_traffic
     (execution : (runtime.reactiveApplication leaks).Execution)
     (recalled : execution.InputRecall (runtime.reactiveApplication leaks))
@@ -261,52 +239,49 @@ theorem serviceDecision_resolution_traffic
     ∀ record ∈ app.trafficStep (some ⟨remaining, some owner, execution⟩)
       (some ⟨remaining, none, execution.respond app owner response⟩),
       runtime.permittedServiceEnvelope record.observation record.ledger
-        record.envelope = true := by
+        record.input.envelope = true := by
   intro app response
-  rcases runtime.serviceDecision_resolution_cases leaks owner _ _ event owner payload binding
-      checks outputEq codeEq node choice with withheld |
-        ⟨candidate, value, evidence, resolved, associated, owned, shape⟩
-  · have serial := counted (by
-      rw [withheld] at first
-      simpa only [firstSubmission, submittedEvent?, Payload.event?,
-        Bool.not_eq_true_eq_eq_false] using first)
-    change response = _ at withheld
-    rw [withheld]
-    exact runtime.service_withholding_traffic leaks execution remaining owner event payload
-      binding checks outputEq codeEq node ready timely serial
-  · have positive : choice = true := by
-      cases choice with
-      | true => rfl
-      | false =>
-          rw [runtime.serviceDecision_resolution_false leaks owner _ _ event owner payload
-            binding checks outputEq codeEq node] at shape
-          cases shape
-    subst choice
-    change EventCode.resolveOutput? binding checks true
+  cases choice with
+  | false =>
+      have quiet : response = ⟨none⟩ := by
+        simp only [response, serviceDecision, reactiveDecision, node, reactiveResolutionPacket,
+          cast_cast, cast_eq, Bool.false_eq_true, ↓reduceIte,
+          disclosureSubmission_normalize_withhold]
+        rfl
+      rw [quiet, app.trafficStep_silent]
+      exact fun _ member => (List.not_mem_nil member).elim
+  | true =>
+      rcases runtime.serviceDecision_resolution_cases leaks owner _ _ event owner payload binding
+        checks outputEq codeEq node true with quiet |
+          ⟨candidate, value, evidence, resolved, associated, owned, shape⟩
+      · change response = ⟨none⟩ at quiet
+        rw [quiet, app.trafficStep_silent]
+        exact fun _ member => (List.not_mem_nil member).elim
+      · change EventCode.resolveOutput? binding checks true
           (graph.playerStore owner execution.application.config.store) = _ at resolved
-    rw [EventCode.resolveOutput?_playerStore] at resolved
-    have stored := EventCode.binding_success_of_resolve_success binding checks true
-      execution.application.config.store value resolved
-    obtain ⟨actual, accepted, _, fixed⟩ := invariant.success_provenance binding value stored
-    change execution.application.accepted binding.field = some candidate at associated
-    cases Option.some.inj (accepted.symm.trans associated)
-    have serial := counted (by
-      rw [shape] at first
-      simpa only [firstSubmission, submittedEvent?, Payload.event?,
-        Bool.not_eq_true_eq_eq_false] using first)
-    have action := runtime.serviceDecision_successful_opening leaks execution recalled owner
-      event payload binding checks outputEq codeEq node candidate value associated owned fixed
-        resolved
-    change response = _ at action
-    rw [action]
-    exact runtime.service_opening_traffic leaks execution remaining owner event payload binding
-      checks outputEq codeEq node ready timely candidate value associated owned fixed resolved
-        serial
+        rw [EventCode.resolveOutput?_playerStore] at resolved
+        have stored := EventCode.binding_success_of_resolve_success binding checks true
+          execution.application.config.store value resolved
+        obtain ⟨actual, accepted, _, fixed⟩ := invariant.success_provenance binding value stored
+        change execution.application.accepted binding.field = some candidate at associated
+        cases Option.some.inj (accepted.symm.trans associated)
+        have serial := counted (by
+          rw [shape] at first
+          simpa only [firstSubmission, submittedEvent?, Payload.event?,
+            Bool.not_eq_true_eq_eq_false] using first)
+        have action := runtime.serviceDecision_successful_opening leaks execution recalled owner
+          event payload binding checks outputEq codeEq node candidate value associated owned fixed
+            resolved
+        change response = _ at action
+        rw [action]
+        exact runtime.service_opening_traffic leaks execution remaining owner event payload binding
+          checks outputEq codeEq node ready timely candidate value associated owned fixed
+            resolved serial
 
 variable [Fintype Player]
 
 /-- All ordinary retained binding responses pass the checker, including
-arbitrarily many waits before or after first submission. -/
+arbitrarily many waits and known replays before or after first submission. -/
 theorem MessageBounds.compiled_binding_traffic (bounds : MessageBounds graph)
     (execution : (runtime.reactiveApplication leaks).Execution)
     (invariant : execution.application.BindingInvariant)
@@ -324,6 +299,9 @@ theorem MessageBounds.compiled_binding_traffic (bounds : MessageBounds graph)
     (counted : runtime.eventRecorded leaks (execution.recall owner) event = false →
       execution.network.nextSerial owner =
         Message.distinctAuthoredCount execution.network.ledger owner)
+    (known : ∀ message ∈ execution.network.known owner,
+      runtime.permittedServiceEnvelope execution.application.publicView
+        execution.network.ledger message = true)
     (response : (runtime.reactiveApplication leaks).Action)
     (member : response ∈ bounds.compiledActions runtime leaks owner (execution.recall owner)
       (execution.observe (runtime.reactiveApplication leaks) owner)) :
@@ -332,7 +310,7 @@ theorem MessageBounds.compiled_binding_traffic (bounds : MessageBounds graph)
       (some ⟨remaining, none,
         execution.respond (runtime.reactiveApplication leaks) owner response⟩),
       runtime.permittedServiceEnvelope record.observation record.ledger
-        record.envelope = true := by
+        record.input.envelope = true := by
   have turnSome := execution.application.publicView.ownTurn?_of_ownTurn owner event turn
   let app := runtime.reactiveApplication leaks
   have owned : graph.actor? event = some owner := by
@@ -345,13 +323,13 @@ theorem MessageBounds.compiled_binding_traffic (bounds : MessageBounds graph)
       have replay := bounds.ordinary_binding_recorded runtime leaks owner _ _ event payload
         outputEq codeEq node turn owned publicReady recorded response member
       exact runtime.service_transport_traffic leaks execution remaining owner response
-        (app.silentPolicy_cases _ _ response replay)
+        (app.replayPolicy_cases _ _ response replay) known
   | false =>
       have slot := freshSlot recorded
       rcases bounds.ordinary_binding_cases runtime leaks owner _ _ event payload outputEq codeEq
         node turn owned publicReady _ slot response member with replay | ⟨value, _, _, rfl⟩
       · exact runtime.service_transport_traffic leaks execution remaining owner _
-          (app.silentPolicy_cases _ _ _ replay)
+          (app.replayPolicy_cases _ _ _ replay) known
       · have fresh := reactiveFreshSlot_spec
           (execution.observe app owner).application _ slot
         rw [runtime.reactiveBinding_normal_of_fresh leaks owner _ _ event payload
@@ -386,6 +364,9 @@ theorem MessageBounds.compiled_resolution_traffic (bounds : MessageBounds graph)
     (counted : runtime.eventRecorded leaks (execution.recall owner) event = false →
       execution.network.nextSerial owner =
         Message.distinctAuthoredCount execution.network.ledger owner)
+    (known : ∀ message ∈ execution.network.known owner,
+      runtime.permittedServiceEnvelope execution.application.publicView
+        execution.network.ledger message = true)
     (response : (runtime.reactiveApplication leaks).Action)
     (member : response ∈ bounds.compiledActions runtime leaks owner (execution.recall owner)
       (execution.observe (runtime.reactiveApplication leaks) owner)) :
@@ -394,7 +375,7 @@ theorem MessageBounds.compiled_resolution_traffic (bounds : MessageBounds graph)
       (some ⟨remaining, none,
         execution.respond (runtime.reactiveApplication leaks) owner response⟩),
       runtime.permittedServiceEnvelope record.observation record.ledger
-        record.envelope = true := by
+        record.input.envelope = true := by
   classical
   have turnSome := execution.application.publicView.ownTurn?_of_ownTurn owner event turn
   let app := runtime.reactiveApplication leaks
@@ -417,12 +398,16 @@ theorem MessageBounds.compiled_resolution_traffic (bounds : MessageBounds graph)
       owner event payload binding checks outputEq codeEq node ready timely counted choice
         first
   · exact runtime.service_transport_traffic leaks execution remaining owner response
-      (Finset.mem_singleton.mp replay)
+      (app.replayPolicy_cases _ _ response (((runtime.reactiveApplication
+          leaks).mem_replayActions_iff _ _ _).mp replay)) known
 
-/-- A participant without a ready event of its own responds silently. -/
+/-- A participant without a ready event of its own can wait or replay. -/
 theorem MessageBounds.compiled_foreign_traffic (bounds : MessageBounds graph)
     (execution : (runtime.reactiveApplication leaks).Execution)
     (remaining : Nat) (who : Player) (idle : execution.application.publicView.Idle who)
+    (known : ∀ message ∈ execution.network.known who,
+      runtime.permittedServiceEnvelope execution.application.publicView
+        execution.network.ledger message = true)
     (response : (runtime.reactiveApplication leaks).Action)
     (member : response ∈ bounds.compiledActions runtime leaks who (execution.recall who)
       (execution.observe (runtime.reactiveApplication leaks) who)) :
@@ -430,10 +415,10 @@ theorem MessageBounds.compiled_foreign_traffic (bounds : MessageBounds graph)
       (some ⟨remaining, some who, execution⟩)
       (some ⟨remaining, none, execution.respond (runtime.reactiveApplication leaks) who response⟩),
       runtime.permittedServiceEnvelope record.observation record.ledger
-        record.envelope = true := by
+        record.input.envelope = true := by
   have replay := bounds.compiled_foreign_transport runtime leaks who _ _
     (execution.application.publicView.ownTurn?_eq_none who idle) response member
   exact runtime.service_transport_traffic leaks execution remaining who response
-    ((runtime.reactiveApplication leaks).silentPolicy_cases _ _ response replay)
+    ((runtime.reactiveApplication leaks).replayPolicy_cases _ _ response replay) known
 
 end Vegas.EventGraphRuntime

@@ -141,7 +141,7 @@ theorem step_application_invariant (invariant : app.Application → Prop)
       simp only [step, PMF.mem_support_pure_iff _ _] at hnext
       subst next
       exact hsubmit _ _ _ hstate
-  | deliver who id =>
+  | replay who id | deliver who id =>
       simp only [step, PMF.mem_support_pure_iff _ _] at hnext
       subst next
       exact hstate

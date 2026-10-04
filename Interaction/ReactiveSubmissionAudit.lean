@@ -119,13 +119,16 @@ theorem submissionAudit_respond (project : app.LocalObservation → app.PublicOb
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact prior
-  | some material =>
-      apply prior.submit who
-        (app.packet (app.submit execution.application who material) who
-          (execution.network.known who) material)
-      refine ⟨_, app.submissionOrigin_submit execution who material fresh, rfl, ?_⟩
-      rw [app.respond_environmentRecall]
-      simpa only [Execution.observe, agrees] using activated
+  | some transmission =>
+      cases transmission with
+      | replay id => exact prior.replay who id
+      | submit material =>
+          apply prior.submit who
+            (app.packet (app.submit execution.application who material) who
+              (execution.network.known who) material)
+          refine ⟨_, app.submissionOrigin_submit execution who material fresh, rfl, ?_⟩
+          rw [app.respond_environmentRecall]
+          simpa only [Execution.observe, agrees] using activated
 
 theorem submissionObservation_environment (execution next : app.Execution)
     (command : app.Command) (reached : next ∈ (execution.environmentStep app command).support)

@@ -1,0 +1,154 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.SourceServiceRepairForeignWindow
+
+/-! # The next real response opportunity in a repaired continuation
+
+Foreign visits retain their actual responses and passive observations. The
+next owner activation shares the actual pending sample and supplies an active
+retained trace and its original sampled predecessor. This is the induction
+step needed when a binding is legally deferred to a later owner visit.
+-/
+
+noncomputable section
+
+namespace Vegas
+
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
+
+variable {Player : Type} [DecidableEq Player] [Fintype Player]
+  {L : IExpr} [IExpr.ResultTypes L]
+
+theorem repair_next_owner_opportunity
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
+    (network : (runtime setup).NetworkPolicy leaks)
+    (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
+      (initialLaw setup) (rosterPlan setup rosters).length
+        (rosterScheduler setup leaks rosters network)).BehavioralPolicy who)
+    (target : ∀ who, ((bounds.menu (runtime setup) leaks).information
+      (initialLaw setup) (rosterPlan setup rosters).length
+        (rosterScheduler setup leaks rosters network)).BehavioralPolicy who)
+    (agrees : ((sourceServiceMenu_in_effective setup leaks bounds rosters).actionRestriction
+      (initialLaw setup) (rosterPlan setup rosters).length
+        (rosterScheduler setup leaks rosters network)).ExtendsProfile source target)
+    (owner : Player) (policy : (application setup leaks).Policy)
+    (reference : List (application setup leaks).PlayerEntry)
+    (memory : BindingMemory (runtime setup) leaks)
+    (original repaired : (application setup leaks).Execution)
+    (frame : BindingMemory.Frame (runtime setup) leaks memory owner original repaired)
+    (remaining : Nat) (visits : List Player) (absent : owner ∉ visits)
+    (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
+      (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
+        (some ⟨remaining + 1 + visits.length, none, repaired⟩))
+    (before after : List (ServiceInstruction (graph setup)))
+    (split : rosterPlan setup rosters = before ++ visits.map ServiceInstruction.player ++
+      .player owner :: after)
+    (position : original.environmentRecall.length = before.length) :
+    let app := application setup leaks
+    let players := Function.update ((bounds.menu (runtime setup) leaks).decodeProfile
+      (initialLaw setup) (rosterPlan setup rosters).length
+        (rosterScheduler setup leaks rosters network) target) owner policy
+    let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
+      (sourceServiceMenu setup leaks bounds rosters) owner reference (players owner)
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+      coupling.map Prod.fst = ((runtime setup).runInteractionPlan leaks players network
+        (visits.map ServiceInstruction.player) original).bind
+          (fun next => next.environmentStep app (.activate owner)) ∧
+      coupling.map Prod.snd = (strategy.runJoint owner players
+        (rosterScheduler setup leaks rosters network) visits.length repaired memory).bind
+          (fun next => (next.1.environmentStep app (.activate owner)).map
+            (fun execution => (execution, next.2))) ∧
+      ∀ next ∈ coupling.support,
+        BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
+          next.2.2 = memory ∧
+          Nonempty (((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
+            (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
+              (some ⟨remaining, some owner, next.2.1⟩)) ∧
+          ∃ prior ∈ ((runtime setup).runInteractionPlan leaks players network
+              (visits.map ServiceInstruction.player) original).support,
+            next.1 ∈ (prior.environmentStep app (.activate owner)).support := by
+  classical
+  intro app players strategy
+  let menu := sourceServiceMenu setup leaks bounds rosters
+  let scheduler := rosterScheduler setup leaks rosters network
+  obtain ⟨segmentLaw, first, second, related⟩ := repair_foreign_roster_coupling setup leaks bounds
+    rosters network source target agrees owner policy reference memory original repaired frame
+      (remaining + 1) visits absent trace before (.player owner :: after) split position
+  let sampled (pair : app.Execution × app.Execution × BindingMemory (runtime setup) leaks) :=
+    (leaks owner pair.1.network.pending).map fun selected =>
+      (pair.1.sampledActivation app owner selected,
+        pair.2.1.sampledActivation app owner selected, pair.2.2)
+  have leftSample pair : (sampled pair).map Prod.fst =
+      pair.1.environmentStep app (.activate owner) := by
+    rw [PMF.map_comp, ReactiveApplication.Execution.activation_samples]
+    rfl
+  have rightSample pair (supported : pair ∈ segmentLaw.support) :
+      (sampled pair).map Prod.snd =
+        (pair.2.1.environmentStep app (.activate owner)).map
+          (fun execution => (execution, pair.2.2)) := by
+    rw [PMF.map_comp, ReactiveApplication.Execution.activation_samples, PMF.map_comp]
+    change (leaks owner pair.1.network.pending).map _ =
+      (leaks owner pair.2.1.network.pending).map _
+    rw [(related pair supported).1.network]
+    rfl
+  refine ⟨segmentLaw.bind sampled, ?_, ?_, ?_⟩
+  · rw [PMF.map_bind]
+    calc
+      _ = segmentLaw.bind (fun pair => pair.1.environmentStep app (.activate owner)) := by
+        apply bind_congr_on_support _
+        exact fun pair _ => leftSample pair
+      _ = (segmentLaw.map Prod.fst).bind
+          (fun execution => execution.environmentStep app (.activate owner)) := by
+        rw [PMF.bind_map]; rfl
+      _ = _ := by rw [first]
+  · rw [PMF.map_bind]
+    calc
+      _ = segmentLaw.bind (fun pair => (pair.2.1.environmentStep app (.activate owner)).map
+          (fun execution => (execution, pair.2.2))) := by
+        apply bind_congr_on_support _
+        exact rightSample
+      _ = (segmentLaw.map Prod.snd).bind
+          (fun pair => (pair.1.environmentStep app (.activate owner)).map
+            (fun execution => (execution, pair.2))) := by rw [PMF.bind_map]; rfl
+      _ = _ := by rw [second]
+  · intro next supported
+    obtain ⟨pair, chosen, reached⟩ :=
+      Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+    obtain ⟨selected, selectedSupport, rfl⟩ := PMF.support_map .. ▸ reached
+    obtain ⟨paired, memoryEq, ⟨prefixTrace⟩⟩ := related pair chosen
+    have leftSupport : pair.1 ∈ ((runtime setup).runInteractionPlan leaks players network
+        (visits.map ServiceInstruction.player) original).support := by
+      rw [← first, PMF.support_map]
+      exact ⟨pair, chosen, rfl⟩
+    have leftMoved : pair.1.sampledActivation app owner selected ∈
+        (pair.1.environmentStep app (.activate owner)).support := by
+      rw [ReactiveApplication.Execution.activation_samples, PMF.support_map]
+      exact ⟨selected, selectedSupport, rfl⟩
+    refine ⟨paired.activate owner selected, memoryEq, ?_, pair.1, leftSupport, leftMoved⟩
+    apply menu.trace_environment (initialLaw setup) (rosterPlan setup rosters).length scheduler
+      remaining pair.2.1 (pair.2.1.sampledActivation app owner selected) (.activate owner)
+        prefixTrace
+    · have currentPosition : pair.2.1.environmentRecall.length =
+          before.length + visits.length := by
+        rw [← paired.service]
+        have advanced := (runtime setup).runInteractionPlan_recall leaks players network
+          (visits.map ServiceInstruction.player) original pair.1 leftSupport
+        simpa only [position, List.length_map] using advanced
+      have command : (rosterPlan setup rosters)[before.length + visits.length]? =
+          some (.player owner) := by
+        have length : (before ++ visits.map ServiceInstruction.player).length =
+            before.length + visits.length := by simp only [List.length_append, List.length_map]
+        rw [← length, split, List.getElem?_append_right (Nat.le_refl _), Nat.sub_self]
+        rfl
+      simp only [scheduler, rosterScheduler, currentPosition, command, interactionInstruction,
+        PMF.mem_support_pure_iff _ _]
+    · rw [ReactiveApplication.Execution.activation_samples, PMF.support_map]
+      refine ⟨selected, ?_, rfl⟩
+      rw [← paired.network]
+      exact selectedSupport
+
+end Vegas

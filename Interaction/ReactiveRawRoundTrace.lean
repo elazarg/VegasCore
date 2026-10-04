@@ -18,46 +18,6 @@ open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.P
 variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication Principal)
   (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
-/-- Every actual raw history accounts for its remaining scheduler budget by
-the environment commands already recalled. Player responses consume no slot. -/
-theorem raw_trace_accounted :
-    ∀ {state} (_trace : (app.protocol initial horizon scheduler).Trace state),
-      state.elim True (fun control =>
-        control.execution.environmentRecall.length + control.remaining = horizon) := by
-  intro state trace
-  induction trace with
-  | start => trivial
-  | @extend before after prior joint _legal reached ih =>
-      change after ∈ (app.transition initial horizon scheduler before joint).support at reached
-      cases before with
-      | none =>
-          obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ reached
-          change 0 + horizon = horizon
-          exact Nat.zero_add horizon
-      | some control =>
-          rcases control with ⟨remaining, actor, execution⟩
-          change execution.environmentRecall.length + remaining = horizon at ih
-          cases actor with
-          | some who =>
-              cases (PMF.mem_support_pure_iff _ _).mp reached
-              change (execution.respond app who ((joint who).getD ⟨none⟩)).environmentRecall.length
-                + remaining = horizon
-              rw [app.respond_environmentRecall]
-              exact ih
-          | none =>
-              cases remaining with
-              | zero =>
-                  cases (PMF.mem_support_pure_iff _ _).mp reached
-                  exact ih
-              | succ remaining =>
-                  obtain ⟨command, _, supported⟩ :=
-                    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-                  obtain ⟨next, moved, rfl⟩ := PMF.support_map .. ▸ supported
-                  obtain ⟨updated, _, rfl⟩ := PMF.support_map .. ▸ moved
-                  change (execution.environmentRecall ++ [_]).length + remaining = horizon
-                  simp only [List.length_append, List.length_singleton]
-                  omega
-
 theorem raw_trace_respond (remaining : Nat) (execution : app.Execution) (who : Principal)
     (response : app.Action)
     (trace : (app.protocol initial horizon scheduler).Trace

@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveBindingForeignWindow
-import Vegas.Pending.ReactiveDecisionFinalMiss
+import Vegas.Pending.ReactiveBindingFinalOmission
 
 /-! # A pending owner envelope through arbitrary foreign responses
 
@@ -36,12 +36,24 @@ private theorem foreign_response_data
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => exact ⟨rfl, rfl, rfl, packets, List.Subset.refl _⟩
-  | some material =>
-      refine ⟨?_, rfl, rfl, packets.submit actor _ (foreign _ different), ?_⟩
-      · exact (submitStep_playerView_other (material.call.register execution.application actor)
-          actor owner different.symm material.call.packet).trans
-            (material.call.register_other execution.application actor owner different.symm)
-      · exact fun _ member => List.mem_append_left _ member
+  | some transmission =>
+      cases transmission with
+      | submit material =>
+          refine ⟨?_, rfl, rfl, packets.submit actor _ (foreign _ different), ?_⟩
+          · exact (submitStep_playerView_other (material.call.register execution.application actor)
+              actor owner different.symm material.call.packet).trans
+                (material.call.register_other execution.application actor owner different.symm)
+          · exact fun _ member => List.mem_append_left _ member
+      | replay id =>
+          refine ⟨rfl, ?_, rfl, packets.replay actor id, ?_⟩
+          · change (execution.network.replay actor id).2.ledger = execution.network.ledger
+            unfold MessageNetwork.replay
+            split <;> rfl
+          · change execution.network.pending ⊆ (execution.network.replay actor id).2.pending
+            unfold MessageNetwork.replay
+            split
+            · exact List.Subset.refl _
+            · exact fun _ member => List.mem_append_left _ member
 
 /-- A foreign response window preserves the complete owner candidate view,
 pending owner-envelope constraints, and all prior pending packets. Every

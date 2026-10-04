@@ -96,7 +96,7 @@ theorem successful_serviceDecision_eq
   have right := runtime.serviceDecision_successful_opening leaks repaired rightRecall owner event
     payload binding checks outputEq codeEq node candidate value rightAssociated owned rightFixed
       rightResolved
-  exact left.trans ((congrArg (fun submission => (⟨some submission⟩ :
+  exact left.trans ((congrArg (fun submission => (⟨some (.submit submission)⟩ :
     (runtime.reactiveApplication leaks).Action))
       (frame.normalized_opening_eq event candidate ⟨payload, value⟩
         owned leftFixed rightFixed)).trans
@@ -112,15 +112,16 @@ theorem normalized_opening_available [Fintype Player]
     (owned : candidate.1 = owner)
     (leftFixed : original.application.candidates.lookup candidate = .openable raw)
     (rightFixed : repaired.application.candidates.lookup candidate = .openable raw)
-    (available : (⟨some ((disclosureSubmission (.opening event candidate raw)).normalizeReactive
-      owner
+    (available : (⟨some (.submit
+      ((disclosureSubmission (.opening event candidate raw)).normalizeReactive owner
         ((runtime.reactiveApplication leaks).observePlayer original.application owner)
-        (original.network.known owner))⟩ : (runtime.reactiveApplication leaks).Action) ∈
+        (original.network.known owner)))⟩ : (runtime.reactiveApplication leaks).Action) ∈
           (bounds.menu runtime leaks).actions owner (original.recall owner)
             (original.observe (runtime.reactiveApplication leaks) owner)) :
-    (⟨some ((disclosureSubmission (.opening event candidate raw)).normalizeReactive owner
+    (⟨some (.submit
+      ((disclosureSubmission (.opening event candidate raw)).normalizeReactive owner
         ((runtime.reactiveApplication leaks).observePlayer repaired.application owner)
-        (repaired.network.known owner))⟩ : (runtime.reactiveApplication leaks).Action) ∈
+        (repaired.network.known owner)))⟩ : (runtime.reactiveApplication leaks).Action) ∈
           (bounds.menu runtime leaks).actions owner (repaired.recall owner)
             (repaired.observe (runtime.reactiveApplication leaks) owner) := by
   let app := runtime.reactiveApplication leaks
@@ -140,12 +141,13 @@ theorem normalized_opening_available [Fintype Player]
     sameKnown] at allowed
   apply (bounds.menu_mem runtime leaks owner _ _ _).mpr
   refine ⟨allowed, ?_⟩
-  change (⟨some (((disclosureSubmission (.opening event candidate raw)).normalizeReactive owner
+  change (⟨some (.submit
+    (((disclosureSubmission (.opening event candidate raw)).normalizeReactive owner
       (app.observePlayer repaired.application owner)
       (repaired.network.known owner)).normalizeReactive
         owner (app.observePlayer repaired.application owner)
         (ReactiveApplication.ResponseMenu.knownPackets
-          (repaired.recall owner) (repaired.observe app owner)))⟩ : app.Action) = _
+          (repaired.recall owner) (repaired.observe app owner))))⟩ : app.Action) = _
   rw [← rightKnown, WitnessedSubmission.normalizeReactive_idempotent]
 
 /-- A successful clean opening remains a legal full-source response after

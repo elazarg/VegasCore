@@ -31,6 +31,59 @@ theorem OwnBindings.input_value_none {memory : BindingShadow graph} {owner : Pla
         (by simp only [stored]; rfl)
       cases impossible
 
+/-- At a completed service boundary, remembered completions refer only to
+past events. The temporary shadow created by submission becomes such a past
+completion at the immediately following protected inclusion. -/
+def CompletedAt (memory : BindingShadow graph) (config : graph.Config) : Prop :=
+  ∀ event, (memory.actions event).isSome ∨ (memory.values (.inr event)).isSome →
+    event ∈ config.cut.completed
+
+theorem completedAt_empty (config : graph.Config) :
+    (empty : BindingShadow graph).CompletedAt config := by
+  intro event present
+  rcases present with present | present <;> cases present
+
+theorem CompletedAt.rememberCandidate {memory : BindingShadow graph} {config : graph.Config}
+    (past : memory.CompletedAt config) (slot : CandidateSlot graph)
+    (value : CommitmentCandidate (Raw L)) :
+    (memory.rememberCandidate slot value).CompletedAt config := past
+
+theorem CompletedAt.complete {memory : BindingShadow graph} {config : graph.Config}
+    (past : memory.CompletedAt config) (event : graph.EventId) (ready : config.cut.Ready event)
+    (action : graph.Action event) (value : (graph.outputLayout event).Value) :
+    memory.CompletedAt (config.complete event ready action value) := by
+  intro query present
+  rw [Config.complete_cut, EventOrder.Cut.mem_complete]
+  exact Or.inr (past query present)
+
+theorem CompletedAt.rememberCompletion {memory : BindingShadow graph} {config : graph.Config}
+    (past : memory.CompletedAt config) (event : graph.EventId) (ready : config.cut.Ready event)
+    (originalAction actualAction : graph.Action event)
+    (originalValue actualValue : (graph.outputLayout event).Value) :
+    (memory.rememberCompletion event originalAction originalValue).CompletedAt
+      (config.complete event ready actualAction actualValue) := by
+  classical
+  intro query present
+  rw [Config.complete_cut, EventOrder.Cut.mem_complete]
+  by_cases same : query = event
+  · exact Or.inl same
+  · apply Or.inr
+    apply past query
+    simpa only [BindingShadow.rememberCompletion, Function.update_of_ne same,
+      Function.update_of_ne (Sum.inr_injective.ne same)] using present
+
+theorem CompletedAt.ready_none {memory : BindingShadow graph} {config : graph.Config}
+    (past : memory.CompletedAt config) (event : graph.EventId) (ready : config.cut.Ready event) :
+    memory.actions event = none ∧ memory.values (.inr event) = none := by
+  constructor
+  · cases stored : memory.actions event with
+    | none => rfl
+    | some action =>
+        exact False.elim (ready.1 (past event (Or.inl (by simp only [stored]; rfl))))
+  · cases stored : memory.values (.inr event) with
+    | none => rfl
+    | some value =>
+        exact False.elim (ready.1 (past event (Or.inr (by simp only [stored]; rfl))))
 
 end BindingShadow
 
@@ -84,23 +137,6 @@ theorem inputs (frame : Frame runtime leaks memory owner original repaired)
   obtain ⟨observer, visible⟩ := observes
   exact seen observer visible
 
-/-- The public expiry marker is installed on both actual executions. Private
-repair memory, recalls and packet data are preserved. -/
-theorem markMissed (frame : Frame runtime leaks memory owner original repaired)
-    (event : graph.EventId) :
-    Frame runtime leaks memory owner
-      { original with application := original.application.markMissed event }
-      { repaired with application := repaired.application.markMissed event } := by
-  refine ⟨frame.past, ?_, frame.lengths, frame.network, frame.service, ?_, frame.recall,
-    frame.slots, frame.successful, frame.submissions⟩
-  · exact congrArg (fun view : (runtime.reactiveApplication leaks).PlayerView =>
-      { view with application := { view.application with publicView :=
-        { view.application.publicView with
-          missedEvents := insert event view.application.publicView.missedEvents } } })
-          frame.observed
-  · intro who different
-    exact State.markMissed_playerView_congr _ _ who (frame.views who different) event
-
 theorem advanceClock (frame : Frame runtime leaks memory owner original repaired) :
     let app := runtime.reactiveApplication leaks
     Frame runtime leaks memory owner
@@ -124,6 +160,48 @@ theorem advanceClock (frame : Frame runtime leaks memory owner original repaired
       { view with publicView := { view.publicView with clock := view.publicView.clock + 1 } })
         (frame.views who different)
 
+omit [DecidableEq Player] in
+private theorem complete_publicView (left right : State graph)
+    (publicEq : left.publicView = right.publicView)
+    (event : graph.EventId) (leftReady : left.config.cut.Ready event)
+    (rightReady : right.config.cut.Ready event) (action : graph.Action event)
+    (value : (graph.outputLayout event).Value) :
+    (left.complete event leftReady action value).publicView =
+      (right.complete event rightReady action value).publicView := by
+  classical
+  have observations := congrArg PublicView.observation publicEq
+  have orders := congrArg PublicObservation.completionOrder observations
+  have cuts := cut_eq_of_completionOrder_eq left.config right.config orders
+  have observed : graph.publicObserve (left.config.complete event leftReady action value) =
+      graph.publicObserve (right.config.complete event rightReady action value) := by
+    apply PublicObservation.ext graph
+    · simpa only [State.publicView, publicObserve, Config.complete,
+        List.map_append, List.map_cons, List.map_nil] using
+        congrArg (fun order => order ++ [event]) orders
+    · apply graph.publicStore_congr
+      intro field visible
+      rw [store_complete, store_complete]
+      by_cases selected : field = .inr event
+      · subst field
+        rw [Function.update_self, Function.update_self]
+      · rw [Function.update_of_ne selected, Function.update_of_ne selected]
+        have prior := congrFun (congrArg PublicObservation.store observations) field
+        simpa only [State.publicView, publicObserve, publicStore_of_public, visible] using prior
+  have clockEq := congrArg PublicView.clock publicEq
+  have activatedEq := congrArg PublicView.activatedAt publicEq
+  have acceptedEq := congrArg PublicView.accepted publicEq
+  have nextActivated :
+      State.refreshActivated (left.config.complete event leftReady action value)
+          left.clock left.activatedAt =
+        State.refreshActivated (right.config.complete event rightReady action value)
+          right.clock right.activatedAt := by
+    funext query
+    simp only [State.refreshActivated, Config.complete_cut, cuts]
+    rw [show left.clock = right.clock from clockEq,
+      show left.activatedAt = right.activatedAt from activatedEq]
+  unfold State.publicView State.complete
+  congr 1
+
 /-- A completion outside the shadow is read from the real runtime on both
 sides. This covers public results and other players' private bindings. -/
 theorem complete_unmodified (frame : Frame runtime leaks memory owner original repaired)
@@ -143,8 +221,7 @@ theorem complete_unmodified (frame : Frame runtime leaks memory owner original r
     (congrArg (fun view : ReactivePlayerView graph => view.observation.store) application)
     (congrArg (fun view : ReactivePlayerView graph => view.observation.ownActions) application)
     event leftReady rightReady noValue noAction action value
-  have nextPublic := State.complete_publicView_congr original.application repaired.application
-    frame.publicView
+  have nextPublic := complete_publicView original.application repaired.application frame.publicView
     event leftReady rightReady action value
   have nextObservation :
       (memory.shadow.view (app.observePlayer

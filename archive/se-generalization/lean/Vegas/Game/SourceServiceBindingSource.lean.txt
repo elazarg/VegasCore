@@ -1,0 +1,137 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.SourceServiceContinuationBridge
+import Vegas.Game.SourceServiceAlignedConstructors
+
+/-! # The residual source constructor at an actual decision
+
+At every retained decision during an event's phase, whoever acts, the residual
+source program at that event is aligned with the compiled profile, and the
+native configuration agrees with its typed source configuration. For a binding
+event the residual is a commitment (`BindingSource`); for a publication event it
+is a disclosure (`RevealSource`). Recording that data once spares every local
+comparison the case analysis of the residual program.
+-/
+
+noncomputable section
+
+namespace Vegas
+
+open SourceProgram
+
+open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
+open GameTheory.Math.Probability Interaction EventGraphRuntime
+
+variable {Player : Type} [DecidableEq Player]
+  {L : IExpr} [IExpr.ResultTypes L]
+
+variable [Fintype Player]
+
+namespace SourceServiceSpec
+
+variable (service : SourceServiceSpec Player L)
+
+/-- At every retained decision during a binding event's phase, the residual
+source program at that event is a commitment aligned with the given profile. -/
+theorem exists_bindingSource (profile : BehavioralProfile service.setup.program)
+    {who : Player} {remaining : Nat}
+    {execution : (application service.setup service.leaks).Execution}
+    (trace : (service.menu.protocol (initialLaw service.setup) service.planLength
+      service.scheduler).Trace (some ⟨remaining, some who, execution⟩))
+    (phase : DecisionPhase service.setup service.leaks service.rosters who execution)
+    {owner : Player} {payload : L.Ty}
+    (isBinding : (graph service.setup).outputLayout phase.event = .binding owner payload) :
+    Nonempty (BindingSource service.setup profile phase.event execution.application.config) := by
+  obtain ⟨event, _, _, _, _, Γ, names, remaining, remainingProfile, source, refs, embedding,
+      refsBefore, aligned, _, _, _, _, _, _, turn, _, _, _, _, publicEq, checkpoint, _⟩ :=
+    sourceService_decision_boundary service.setup service.leaks service.bounds service.values
+      service.capacity service.rosters service.opportunities service.network profile
+      who ⟨remaining, some who, execution⟩ trace rfl
+  have same : event = phase.event := phase.sole.2 event turn.1
+  subst same
+  cases remaining with
+  | ret result =>
+      have count := aligned.graphSuffix.countEq
+      simp only [eventCount, Nat.add_zero] at count
+      have inside := phase.event.isLt
+      change phase.event.val < eventCount service.setup.program at inside
+      omega
+  | sample name fresh law next =>
+      have headEq : embedding.event ⟨0, by simp [eventCount]⟩ = phase.event := by
+        apply Fin.ext
+        simpa only [Nat.add_zero] using aligned.graphSuffix.rankEq ⟨0, by simp [eventCount]⟩
+      have actor := aligned.actorEq ⟨0, by simp [eventCount]⟩
+      rw [headEq] at actor
+      change (graph service.setup).actor? phase.event = none at actor
+      rw [binding_actor service.setup phase.event owner payload isBinding] at actor
+      cases actor
+  | @commit Γ names name owner payload fresh guard next =>
+      have headEq : embedding.event ⟨0, by simp [eventCount]⟩ = phase.event := by
+        apply Fin.ext
+        simpa only [Nat.add_zero] using aligned.graphSuffix.rankEq ⟨0, by simp [eventCount]⟩
+      exact ⟨⟨Γ, names, name, owner, payload, fresh, guard, next, remainingProfile, refs, source,
+        embedding, refsBefore, aligned, checkpoint.agrees, checkpoint.history, headEq⟩⟩
+  | @reveal Γ names published owner name payload fresh binding unresolved next =>
+      have headEq : embedding.event ⟨0, by simp [eventCount]⟩ = phase.event := by
+        apply Fin.ext
+        simpa only [Nat.add_zero] using aligned.graphSuffix.rankEq ⟨0, by simp [eventCount]⟩
+      have output : (graph service.setup).outputLayout phase.event = .publication payload := by
+        rw [← headEq]
+        change outputLayout service.setup.program (embedding.event _) = _
+        simpa [outputLayout, eventCount] using embedding.layout_eq ⟨0, by simp [eventCount]⟩
+      cases output.symm.trans isBinding
+
+/-- At every retained decision during a disclosure event's phase, the residual
+source program at that event is a disclosure aligned with the given profile. -/
+theorem exists_revealSource (profile : BehavioralProfile service.setup.program)
+    {who : Player} {remaining : Nat}
+    {execution : (application service.setup service.leaks).Execution}
+    (trace : (service.menu.protocol (initialLaw service.setup) service.planLength
+      service.scheduler).Trace (some ⟨remaining, some who, execution⟩))
+    (phase : DecisionPhase service.setup service.leaks service.rosters who execution)
+    {payload : L.Ty}
+    (isPublication : (graph service.setup).outputLayout phase.event = .publication payload) :
+    Nonempty (RevealSource service.setup profile phase.event execution.application.config) := by
+  obtain ⟨event, _, _, _, _, Γ, names, remaining, remainingProfile, source, refs, embedding,
+      refsBefore, aligned, _, ⟨supported, inherits, _⟩, _, _, _, _, turn, _, _, _, _, publicEq,
+      checkpoint, _⟩ :=
+    sourceService_decision_boundary service.setup service.leaks service.bounds service.values
+      service.capacity service.rosters service.opportunities service.network profile
+      who ⟨remaining, some who, execution⟩ trace rfl
+  have same : event = phase.event := phase.sole.2 event turn.1
+  subst same
+  cases remaining with
+  | ret result =>
+      have count := aligned.graphSuffix.countEq
+      simp only [eventCount, Nat.add_zero] at count
+      have inside := phase.event.isLt
+      change phase.event.val < eventCount service.setup.program at inside
+      omega
+  | sample name fresh law next =>
+      have head : embedding.event ⟨0, by simp [eventCount]⟩ = phase.event := by
+        apply Fin.ext
+        simpa only [Nat.add_zero] using aligned.graphSuffix.rankEq ⟨0, by simp [eventCount]⟩
+      have layout := embedding.layout_eq ⟨0, by simp [eventCount]⟩
+      simp only [outputLayout, eventCount] at layout
+      rw [head] at layout
+      cases layout.symm.trans isPublication
+  | @commit Γ names name owner payload fresh guard next =>
+      have head : embedding.event ⟨0, by simp [eventCount]⟩ = phase.event := by
+        apply Fin.ext
+        simpa only [Nat.add_zero] using aligned.graphSuffix.rankEq ⟨0, by simp [eventCount]⟩
+      have output : (graph service.setup).outputLayout phase.event = .binding owner payload := by
+        rw [← head]
+        change outputLayout service.setup.program (embedding.event _) = _
+        simpa [outputLayout, eventCount] using embedding.layout_eq ⟨0, by simp [eventCount]⟩
+      cases output.symm.trans isPublication
+  | @reveal Γ names published owner name payload fresh binding unresolved next =>
+      have head : embedding.event ⟨0, by simp [eventCount]⟩ = phase.event := by
+        apply Fin.ext
+        simpa only [Nat.add_zero] using aligned.graphSuffix.rankEq ⟨0, by simp [eventCount]⟩
+      exact ⟨⟨Γ, names, published, owner, name, payload, fresh, binding, unresolved, next,
+        remainingProfile, refs, source, embedding, refsBefore, aligned, checkpoint.agrees,
+        checkpoint.history, head, inherits, supported⟩⟩
+
+end SourceServiceSpec
+
+end Vegas

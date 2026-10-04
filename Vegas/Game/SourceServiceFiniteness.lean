@@ -49,12 +49,12 @@ theorem sourceServiceOpportunity_finiteSupport (setup : Setup (Player := Player)
   intro past view
   unfold sourceServiceOpportunity
   split
-  · exact (application setup leaks).silentPolicy_finiteSupport past view
+  · exact (application setup leaks).replayPolicy_finiteSupport past view
   · refine bind_support_finite
       (sourceServicePolicy_finiteSupport setup leaks finite profile who past view)
       fun response _ => ?_
     split
-    · exact (application setup leaks).silentPolicy_finiteSupport past view
+    · exact (application setup leaks).replayPolicy_finiteSupport past view
     · simp
 
 theorem sourceServiceTimedFamily_finiteSupport (setup : Setup (Player := Player) (L := L))
@@ -66,7 +66,7 @@ theorem sourceServiceTimedFamily_finiteSupport (setup : Setup (Player := Player)
       (sourceServiceTimedFamily setup leaks rosters profile who event slot) :=
   (application setup leaks).scheduledPolicy_finiteSupport _ _
     (sourceServiceOpportunity_finiteSupport setup leaks finite profile who event)
-    (application setup leaks).silentPolicy_finiteSupport
+    (application setup leaks).replayPolicy_finiteSupport
 
 theorem sourceServiceTimedPolicy_finiteSupport (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -78,12 +78,12 @@ theorem sourceServiceTimedPolicy_finiteSupport (setup : Setup (Player := Player)
   intro past view
   unfold sourceServiceTimedPolicy
   split
-  · exact (application setup leaks).silentPolicy_finiteSupport past view
+  · exact (application setup leaks).replayPolicy_finiteSupport past view
   · split
     · exact (application setup leaks).policyMixture_finiteSupport _
         (sourceServiceTimedFamily_finiteSupport setup leaks rosters finite profile who _)
         past view
-    · exact (application setup leaks).silentPolicy_finiteSupport past view
+    · exact (application setup leaks).replayPolicy_finiteSupport past view
 
 variable [Fintype Player]
 

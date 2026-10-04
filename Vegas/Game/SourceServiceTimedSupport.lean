@@ -32,11 +32,11 @@ private theorem replay_recall
     (initial final : (application setup leaks).Execution)
     (ready : initial.application.publicView.EventReady event)
     (reached : final ∈ ((runtime setup).runInteractionPlan leaks
-      (fun _ => (application setup leaks).silentPolicy) network
+      (fun _ => (application setup leaks).replayPolicy) network
         (visits.map ServiceInstruction.player) initial).support) :
     ∃ suffix, final.recall owner = initial.recall owner ++ suffix ∧
       ∀ before entry after, suffix = before ++ entry :: after →
-        entry.action ∈ ((application setup leaks).silentPolicy
+        entry.action ∈ ((application setup leaks).replayPolicy
           (initial.recall owner ++ before) entry.beforeView).support ∧
         entry.beforeView.application.publicView.EventReady event := by
   let app := application setup leaks
@@ -48,7 +48,7 @@ private theorem replay_recall
       obtain ⟨middle, step, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       simp only [interactionStep, interactionInstruction, PMF.pure_bind] at step
       change middle ∈ ((initial.environmentStep app (.activate actor)).bind
-        (app.invoke (fun _ => app.silentPolicy) actor)).support at step
+        (app.invoke (fun _ => app.replayPolicy) actor)).support at step
       rw [ReactiveApplication.Execution.activation_samples, PMF.bind_map] at step
       obtain ⟨sample, _, step⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ step)
       obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ step
@@ -92,7 +92,7 @@ theorem sourceService_unsubmitted_recall
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (owner : Player) (control : (application setup leaks).Control)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
@@ -105,7 +105,7 @@ theorem sourceService_unsubmitted_recall
     : ∃ past suffix, control.execution.recall owner = past ++ suffix ∧
       past.length = rosterOffset setup rosters owner event ∧
       ∀ before entry after, suffix = before ++ entry :: after →
-        entry.action ∈ ((application setup leaks).silentPolicy
+        entry.action ∈ ((application setup leaks).replayPolicy
           (past ++ before) entry.beforeView).support ∧
         entry.beforeView.application.publicView.EventReady event := by
   let app := application setup leaks
@@ -143,7 +143,7 @@ theorem sourceServiceTimedPolicy_future_supported
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (profile : BehavioralProfile setup.program)
     (owner : Player) (control : (application setup leaks).Control)
@@ -166,7 +166,7 @@ theorem sourceServiceTimedPolicy_future_supported
   obtain ⟨past, suffix, recalled, offset, legal⟩ := sourceService_unsubmitted_recall setup leaks
     bounds values capacity rosters opportunities network owner control trace active
     event ready owned unsent
-  have dormant := app.policyMixture_posterior_dormant timing family app.silentPolicy
+  have dormant := app.policyMixture_posterior_dormant timing family app.replayPolicy
     (rosterOffset setup rosters owner event)
     (fun slot past view earlier => app.scheduledPolicy_before _ _ _ _ past view earlier)
     past offset.le

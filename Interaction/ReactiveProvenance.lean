@@ -5,9 +5,9 @@ import Interaction.ReactiveRecall
 
 /-! # Every retained envelope has an actual author submission
 
-Origins are actual submission entries in the author's private recall, with the
-fresh emitted envelope and payload. Passive observation retains the same signed
-envelope without creating a new submission or changing its author.
+Replay retains the original author's envelope. The broadcaster's input record
+does not make that broadcaster its author. Origins are actual submission
+entries in the author's private recall, with the emitted envelope and payload.
 -/
 
 noncomputable section
@@ -20,7 +20,7 @@ variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication P
 
 def Execution.Issued (execution : app.Execution) (message : Message Principal app.Payload) : Prop :=
   ∃ entry ∈ execution.recall message.sender, ∃ material,
-    entry.action.transmission = some material ∧ entry.emitted = some message ∧
+    entry.action.transmission = some (.submit material) ∧ entry.emitted = some message ∧
       ∃ state known, app.packet state message.sender known material = message.payload
 
 def Execution.Provenance (execution : app.Execution) : Prop :=
@@ -42,17 +42,20 @@ theorem respond_provenance (execution : app.Execution) (who : Principal) (action
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact prior
-  | some material =>
-      apply prior.submit who
-        (app.packet (app.submit execution.application who material) who
-          (execution.network.known who) material)
-      refine ⟨⟨execution.observe app who, ⟨some material⟩,
-        some ⟨(who, execution.network.nextSerial who),
-          app.packet (app.submit execution.application who material) who
-            (execution.network.known who) material⟩⟩, ?_,
-        material, rfl, rfl, _, _, rfl⟩
-      simp only [Execution.respond, Message.sender, MessageNetwork.submit, ↓reduceIte]
-      exact List.mem_append_right _ (List.mem_singleton_self _)
+  | some transmission =>
+      cases transmission with
+      | replay id => exact prior.replay who id
+      | submit material =>
+          apply prior.submit who
+            (app.packet (app.submit execution.application who material) who
+              (execution.network.known who) material)
+          refine ⟨⟨execution.observe app who, ⟨some (.submit material)⟩,
+            some ⟨(who, execution.network.nextSerial who),
+              app.packet (app.submit execution.application who material) who
+                (execution.network.known who) material⟩⟩, ?_,
+            material, rfl, rfl, _, _, rfl⟩
+          simp only [Execution.respond, Message.sender, MessageNetwork.submit, ↓reduceIte]
+          exact List.mem_append_right _ (List.mem_singleton_self _)
 
 theorem environment_provenance (execution next : app.Execution) (command : app.Command)
     (valid : execution.Provenance app)

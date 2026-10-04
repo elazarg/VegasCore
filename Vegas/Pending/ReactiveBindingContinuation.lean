@@ -8,9 +8,9 @@ import GameTheoryExtensions.Math.Probability.Support
 
 /-! # A legal retained continuation from private binding repair
 
-One owner-local sampling engine first copies an original response already
-admitted at the actual input, preserving its real candidate capabilities.
-Unavailable originals use the defaulting repair and then a legal fallback. Its behavioral
+The repaired implementation is made legal at every input by choosing a fixed
+retained response whenever its proposed response is unavailable. Before that
+case, it is exactly the owner-local shadow implementation. Its behavioral
 realization is one legal continuation for all hidden histories sharing the
 starting own recall. The payoff comparison still requires the stopped-run
 coupling and collection proof; availability is not a deterrence premise.
@@ -29,94 +29,18 @@ variable {Player : Type} [DecidableEq Player]
   (menu : (runtime.reactiveApplication leaks).ResponseMenu)
 
 open Classical in
-/-- Prefer a response already admitted at the actual own input. Otherwise
-repair its unusable private binding material, using the menu's total fallback
-only when that repaired response is also unavailable. -/
-def retainedResponse (who : Player) (memory : BindingMemory runtime leaks)
-    (input : List (runtime.reactiveApplication leaks).PlayerEntry ×
-      (runtime.reactiveApplication leaks).PlayerView)
-    (response : (runtime.reactiveApplication leaks).Action) :
-    (runtime.reactiveApplication leaks).Action × BindingShadow graph :=
-  if response ∈ menu.actions who input.1 input.2 then
-    memory.copyResponse runtime leaks who input.2 response
-  else
-    let repaired := memory.repairResponse runtime leaks who input.2 response
-    (if repaired.1 ∈ menu.actions who input.1 input.2 then repaired.1
-      else (menu.nonempty who input.1 input.2).choose, repaired.2)
-
-/-- An admitted default remains the actual response when copying an admitted
-original would give the same complete action and shadow update. -/
-theorem retainedResponse_eq_repairResponse (who : Player)
-    (memory : BindingMemory runtime leaks)
-    (input : List (runtime.reactiveApplication leaks).PlayerEntry ×
-      (runtime.reactiveApplication leaks).PlayerView)
-    (response : (runtime.reactiveApplication leaks).Action)
-    (covered : (memory.repairResponse runtime leaks who input.2 response).1 ∈
-      menu.actions who input.1 input.2)
-    (copyEq : response ∈ menu.actions who input.1 input.2 →
-      memory.copyResponse runtime leaks who input.2 response =
-        memory.repairResponse runtime leaks who input.2 response) :
-    retainedResponse runtime leaks menu who memory input response =
-      memory.repairResponse runtime leaks who input.2 response := by
-  by_cases admitted : response ∈ menu.actions who input.1 input.2
-  · simpa only [retainedResponse, admitted, ↓reduceIte] using copyEq admitted
-  · simp only [retainedResponse, admitted, covered, ↓reduceIte, Prod.mk.eta]
-
 def retainedImplementation (who : Player)
     (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
     (policy : (runtime.reactiveApplication leaks).Policy) :
-    (runtime.reactiveApplication leaks).Implementation (BindingMemory runtime leaks) :=
-  responseImplementation runtime leaks reference policy
-    (fun memory input => retainedResponse runtime leaks menu who memory input)
+    (runtime.reactiveApplication leaks).Implementation (BindingMemory runtime leaks) where
+  initial := PMF.pure (atRecall runtime leaks reference)
+  respond memory input :=
+    ((implementation runtime leaks who reference policy).respond memory input).map fun result =>
+      (if result.1 ∈ menu.actions who input.1 input.2 then result.1
+       else (menu.nonempty who input.1 input.2).choose, result.2)
 
-/-- At a started input, one original policy draw determines the actual
-admitted response and the saved original input/action. -/
-theorem retainedImplementation_respond (who : Player)
-    (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (policy : (runtime.reactiveApplication leaks).Policy)
-    (memory : BindingMemory runtime leaks)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
-    (started : reference.length ≤ past.length) :
-    (retainedImplementation runtime leaks menu who reference policy).respond memory (past, view) =
-      (policy (memory.restoreRecall runtime leaks past)
-        (memory.shadow.inputView runtime leaks view)).map (fun response =>
-          let changed := retainedResponse runtime leaks menu who memory (past, view) response
-          (changed.1, (⟨changed.2, memory.responses ++
-            [(memory.shadow.inputView runtime leaks view, response)]⟩ :
-              BindingMemory runtime leaks))) := by
-  simp only [retainedImplementation, responseImplementation, not_lt.mpr started, ↓reduceIte]
-
-/-- When the original sampled responses are admitted at the actual input,
-the single policy draw copies their actual candidate registration without
-using default repair or fallback. -/
-theorem retainedImplementation_respond_of_members (who : Player)
-    (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (policy : (runtime.reactiveApplication leaks).Policy)
-    (memory : BindingMemory runtime leaks)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
-    (started : reference.length ≤ past.length)
-    (members : ∀ response ∈ (policy (memory.restoreRecall runtime leaks past)
-      (memory.shadow.inputView runtime leaks view)).support,
-      response ∈ menu.actions who past view) :
-    (retainedImplementation runtime leaks menu who reference policy).respond memory (past, view) =
-      (policy (memory.restoreRecall runtime leaks past)
-        (memory.shadow.inputView runtime leaks view)).map (fun response =>
-          let changed := memory.copyResponse runtime leaks who view response
-          (changed.1, (⟨changed.2, memory.responses ++
-            [(memory.shadow.inputView runtime leaks view, response)]⟩ :
-              BindingMemory runtime leaks))) := by
-  rw [retainedImplementation_respond runtime leaks menu who reference policy memory past view
-    started]
-  apply map_congr_on_support _
-  intro response selected
-  have admitted := members response selected
-  simp only [retainedResponse, admitted, ↓reduceIte]
-
-/-- The membership-aware and defaulting experiments agree when every
-proposed default is admitted and each admitted original has the same full
-copy and repair update. Action equality alone does not identify the shadow. -/
+/-- Before the first excluded response, restriction changes no implementation
+transition, including its private memory update. -/
 theorem retainedImplementation_respond_eq (who : Player)
     (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
     (policy : (runtime.reactiveApplication leaks).Policy)
@@ -125,39 +49,16 @@ theorem retainedImplementation_respond_eq (who : Player)
       (runtime.reactiveApplication leaks).PlayerView)
     (covered : ∀ result ∈ ((implementation runtime leaks who reference policy).respond
       memory input).support,
-        result.1 ∈ menu.actions who input.1 input.2)
-    (copyEq : ∀ response ∈ (policy (memory.restoreRecall runtime leaks input.1)
-      (memory.shadow.inputView runtime leaks input.2)).support,
-      response ∈ menu.actions who input.1 input.2 →
-        memory.copyResponse runtime leaks who input.2 response =
-          memory.repairResponse runtime leaks who input.2 response) :
+        result.1 ∈ menu.actions who input.1 input.2) :
     (retainedImplementation runtime leaks menu who reference policy).respond memory input =
       (implementation runtime leaks who reference policy).respond memory input := by
-  have changeEq (response : (runtime.reactiveApplication leaks).Action)
-      (chosen : response ∈ (policy (memory.restoreRecall runtime leaks input.1)
-        (memory.shadow.inputView runtime leaks input.2)).support) :
-      retainedResponse runtime leaks menu who memory input response =
-        memory.repairResponse runtime leaks who input.2 response := by
-    by_cases admitted : response ∈ menu.actions who input.1 input.2
-    · simpa only [retainedResponse, admitted, ↓reduceIte] using
-        copyEq response chosen admitted
-    · have repairedAdmitted : (memory.repairResponse runtime leaks who input.2 response).1 ∈
-          menu.actions who input.1 input.2 := by
-        refine covered ((memory.repairResponse runtime leaks who input.2 response).1,
-          if input.1.length < reference.length then memory else
-            ⟨(memory.repairResponse runtime leaks who input.2 response).2,
-              memory.responses ++
-                [(memory.shadow.inputView runtime leaks input.2, response)]⟩) ?_
-        change _ ∈ ((policy (memory.restoreRecall runtime leaks input.1)
-          (memory.shadow.inputView runtime leaks input.2)).map _).support
-        rw [PMF.support_map]
-        exact ⟨response, chosen, rfl⟩
-      simp only [retainedResponse, admitted, repairedAdmitted, ↓reduceIte, Prod.mk.eta]
-  unfold retainedImplementation implementation responseImplementation
-  apply map_congr_on_support _
-  intro response chosen
-  dsimp only
-  rw [changeEq response chosen]
+  unfold retainedImplementation
+  calc
+    _ = ((implementation runtime leaks who reference policy).respond memory input).map id := by
+      apply map_congr_on_support _
+      intro result supported
+      simp only [covered result supported, ↓reduceIte, id_eq]
+    _ = _ := PMF.map_id _
 
 theorem retainedImplementation_response_available (who : Player)
     (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -170,15 +71,11 @@ theorem retainedImplementation_response_available (who : Player)
       ((retainedImplementation runtime leaks menu who reference policy).respond memory
         input).support) :
     result.1 ∈ menu.actions who input.1 input.2 := by
-  obtain ⟨response, _, rfl⟩ := PMF.support_map .. ▸ supported
-  change (retainedResponse runtime leaks menu who memory input response).1 ∈ _
-  unfold retainedResponse
+  obtain ⟨original, _, rfl⟩ := PMF.support_map .. ▸ supported
+  dsimp only
   split
-  · rwa [copyResponse_action]
-  · dsimp only
-    split
-    · assumption
-    · exact (menu.nonempty who input.1 input.2).choose_spec
+  · assumption
+  · exact (menu.nonempty who input.1 input.2).choose_spec
 
 theorem retainedImplementation_policy_available (who : Player)
     (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -239,8 +136,10 @@ private theorem retainedImplementation_response_prefix (who : Player)
       ((retainedImplementation runtime leaks menu who reference policy).respond
         (atRecall runtime leaks reference) (past, view)).support) :
     response.2 = atRecall runtime leaks reference := by
-  obtain ⟨original, _, rfl⟩ := PMF.support_map .. ▸ supported
-  simp only [short, ↓reduceIte]
+  obtain ⟨original, member, rfl⟩ := PMF.support_map .. ▸ supported
+  simp only [implementation, short, ↓reduceIte, PMF.support_map] at member
+  obtain ⟨action, _, rfl⟩ := member
+  rfl
 
 theorem retainedImplementation_posterior_prefix (who : Player)
     (reference past : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -316,8 +215,8 @@ theorem repairResponse_required [Fintype Player] (bounds : MessageBounds graph)
       (.prepared serial) = .fresh)
     (unusable : opening.bind (fun raw => raw.as? payload) = none) :
     (memory.repairResponse runtime leaks who view
-      ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩).1 ∈
-      bounds.requiredDecisionActions runtime leaks who past view := by
+      ⟨some (.submit ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩)⟩).1 ∈
+      bounds.requiredBindingActions runtime leaks who past view := by
   have turnSome := view.application.publicView.ownTurn?_of_ownTurn who event turn
   have actualFresh := reactiveFreshSlot_spec view.application serial fresh
   rw [memory.repairResponse_unusable runtime leaks who view event payload outputEq codeEq node

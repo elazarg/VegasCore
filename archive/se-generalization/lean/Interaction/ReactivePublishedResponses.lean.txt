@@ -1,0 +1,103 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Interaction.ReactiveQuiescent
+import Interaction.ReactiveRounds
+import GameTheoryExtensions.Math.Probability.Support
+
+/-! # Silent response windows at a published checkpoint
+
+This uses the existing round evaluator. At a checkpoint with no unpublished
+pending envelope, any finite window of activations and waits preserves the
+application and every player's current observation when every response is
+silence. The observation rule is unrestricted.
+
+The conclusion retains no equality of private action recall or scheduler
+history. Those records really do change. It is an operational lemma for
+inserting communication opportunities, not an equilibrium quotient.
+-/
+
+noncomputable section
+
+namespace Interaction.ReactiveApplication
+
+open GameTheory.Math.Probability
+
+variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication Principal)
+
+private theorem dispatch_published (players : Principal → app.Policy)
+    (responses : ∀ who past view action, action ∈ (players who past view).support →
+      action = ⟨none⟩)
+    (execution next : app.Execution) (command : app.Command)
+    (published : ∀ message ∈ execution.network.pending,
+      message.id ∈ execution.network.ledger.map Message.id)
+    (permitted : command = .wait ∨ ∃ who, command = .activate who)
+    (reached : next ∈ (app.dispatch players command execution).support) :
+    next.application = execution.application ∧ next.receipts = execution.receipts ∧
+      (∀ observer, next.observe app observer = execution.observe app observer) ∧
+      (∀ message ∈ next.network.pending, message.id ∈ next.network.ledger.map Message.id) := by
+  rcases permitted with rfl | ⟨who, rfl⟩
+  · simp only [dispatch, Execution.environmentStep, PMF.pure_map, PMF.pure_bind,
+      Command.actor?, resume] at reached
+    cases (PMF.mem_support_pure_iff _ _).mp reached
+    exact ⟨rfl, rfl, fun _ => rfl, published⟩
+  · rw [dispatch, execution.activate_of_pending_published app who published] at reached
+    simp only [PMF.pure_bind, Command.actor?, resume, invoke] at reached
+    obtain ⟨action, supported, rfl⟩ := PMF.support_map .. ▸ reached
+    obtain rfl := responses who _ _ action supported
+    exact ⟨rfl, rfl, fun _ => rfl, published⟩
+
+/-- An arbitrary finite sequence of activation/wait choices preserves clean
+application state and all current player views. The scheduler may adapt to the
+public history, and every activation uses the original leak rule. -/
+theorem runRounds_published (scheduler : app.Scheduler) (players : Principal → app.Policy)
+    (commands : ∀ past view command, command ∈ (scheduler past view).support →
+      command = .wait ∨ ∃ who, command = .activate who)
+    (responses : ∀ who past view action, action ∈ (players who past view).support →
+      action = ⟨none⟩)
+    (count : Nat) (execution next : app.Execution)
+    (published : ∀ message ∈ execution.network.pending,
+      message.id ∈ execution.network.ledger.map Message.id)
+    (reached : next ∈ (app.runRounds scheduler players count execution).support) :
+    next.application = execution.application ∧ next.receipts = execution.receipts ∧
+      (∀ observer, next.observe app observer = execution.observe app observer) ∧
+      (∀ message ∈ next.network.pending, message.id ∈ next.network.ledger.map Message.id) := by
+  induction count generalizing execution with
+  | zero =>
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      exact ⟨rfl, rfl, fun _ => rfl, published⟩
+  | succ count ih =>
+      obtain ⟨middle, stepped, continued⟩ :=
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      obtain ⟨command, selected, stepped⟩ :=
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ stepped)
+      obtain ⟨stateEq, receiptsEq, observed, clean⟩ :=
+        app.dispatch_published players responses execution middle command published
+          (commands _ _ command selected) stepped
+      obtain ⟨finalState, finalReceipts, finalObserved, finalClean⟩ :=
+        ih middle clean continued
+      exact ⟨finalState.trans stateEq, finalReceipts.trans receiptsEq,
+        fun observer => (finalObserved observer).trans (observed observer), finalClean⟩
+
+/-- In particular, adding such a window does not randomize the application
+configuration. Private response recall and audit traffic are still retained. -/
+theorem runRounds_published_application (scheduler : app.Scheduler)
+    (players : Principal → app.Policy)
+    (commands : ∀ past view command, command ∈ (scheduler past view).support →
+      command = .wait ∨ ∃ who, command = .activate who)
+    (responses : ∀ who past view action, action ∈ (players who past view).support →
+      action = ⟨none⟩)
+    (count : Nat) (execution : app.Execution)
+    (published : ∀ message ∈ execution.network.pending,
+      message.id ∈ execution.network.ledger.map Message.id) :
+    (app.runRounds scheduler players count execution).map Execution.application =
+      PMF.pure execution.application := by
+  calc
+    _ = (app.runRounds scheduler players count execution).map
+        (fun _ => execution.application) := by
+      apply map_congr_on_support _
+      intro next supported
+      exact (app.runRounds_published scheduler players commands responses count
+        execution next published supported).1
+    _ = _ := PMF.map_const _ _
+
+end Interaction.ReactiveApplication

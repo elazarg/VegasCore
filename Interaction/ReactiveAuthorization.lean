@@ -24,7 +24,7 @@ variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication P
 
 def PlayerEntry.submitsId (entry : app.PlayerEntry) (id : MessageId Principal) : Bool :=
   match entry.action.transmission with
-  | some _ => entry.emitted.any fun message => message.id = id
+  | some (.submit _) => entry.emitted.any fun message => message.id = id
   | _ => false
 
 /-- The first submission, rather than the most recent transmission or replay. -/
@@ -46,12 +46,15 @@ theorem submissionOrigin_emitted (execution : app.Execution) (id : MessageId Pri
   have selected := List.find?_some found
   cases choice : entry.action.transmission with
   | none => simp [PlayerEntry.submitsId, choice] at selected
-  | some material =>
-      cases emitted : entry.emitted with
-      | none => simp [PlayerEntry.submitsId, choice, emitted] at selected
-      | some message =>
-          exact ⟨message, rfl, by
-            simpa [PlayerEntry.submitsId, choice, emitted] using selected⟩
+  | some transmitted =>
+      cases transmitted with
+      | replay prior => simp [PlayerEntry.submitsId, choice] at selected
+      | submit material =>
+          cases emitted : entry.emitted with
+          | none => simp [PlayerEntry.submitsId, choice, emitted] at selected
+          | some message =>
+              exact ⟨message, rfl, by
+                simpa [PlayerEntry.submitsId, choice, emitted] using selected⟩
 
 /-- A newly allocated identifier has no earlier submission origin. -/
 theorem submissionOrigin_next_none (execution : app.Execution) (who : Principal)
@@ -64,10 +67,14 @@ theorem submissionOrigin_next_none (execution : app.Execution) (who : Principal)
       have output : message ∈ app.outputs (execution.recall who) :=
         List.mem_filterMap.mpr ⟨entry, List.mem_of_find?_eq_some found, emitted⟩
       rw [← recall who] at output
-      have bound := serials.inputs message (List.mem_filter.mp output).1
-      change message.id.2 < execution.network.nextSerial message.id.1 at bound
-      rw [identified] at bound
-      exact False.elim (Nat.lt_irrefl _ bound)
+      obtain ⟨input, member, same⟩ := List.mem_filterMap.mp output
+      split at same
+      · have bound := serials.inputs input member
+        have equal := Option.some.inj same
+        change input.envelope.id.2 < execution.network.nextSerial input.envelope.id.1 at bound
+        rw [equal, identified] at bound
+        exact False.elim (Nat.lt_irrefl _ bound)
+      · cases same
 
 theorem submissionOrigin_prefix (before after : app.Execution) (id : MessageId Principal)
     (entry : app.PlayerEntry) (retained : before.recall id.1 <+: after.recall id.1)
@@ -103,9 +110,9 @@ theorem authorizedAtSubmission_iff
 theorem submissionOrigin_submit (execution : app.Execution) (who : Principal)
     (material : app.Submission)
     (fresh : execution.submissionOrigin? app (who, execution.network.nextSerial who) = none) :
-    (execution.respond app who ⟨some material⟩).submissionOrigin? app
+    (execution.respond app who ⟨some (.submit material)⟩).submissionOrigin? app
       (who, execution.network.nextSerial who) =
-        some ⟨execution.observe app who, ⟨some material⟩,
+        some ⟨execution.observe app who, ⟨some (.submit material)⟩,
           some ⟨(who, execution.network.nextSerial who),
             app.packet (app.submit execution.application who material) who
               (execution.network.known who) material⟩⟩ := by
@@ -123,7 +130,7 @@ theorem authorizedAtSubmission_submit
       ⟨(who, execution.network.nextSerial who),
         app.packet (app.submit execution.application who material) who
           (execution.network.known who) material⟩) :
-    (execution.respond app who ⟨some material⟩).AuthorizedAtSubmission
+    (execution.respond app who ⟨some (.submit material)⟩).AuthorizedAtSubmission
       app condition ⟨(who, execution.network.nextSerial who),
         app.packet (app.submit execution.application who material) who
           (execution.network.known who) material⟩ :=

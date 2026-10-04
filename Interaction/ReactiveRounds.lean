@@ -84,7 +84,7 @@ theorem resume_environmentRecall (players : Principal → app.Policy) (actor : O
       rcases action with ⟨transmission⟩
       cases transmission with
       | none => rfl
-      | some transmission => rfl
+      | some transmission => cases transmission <;> rfl
 
 /-- A round records exactly one scheduler command, independently of which
 player it activates or whether the response emits a packet. -/

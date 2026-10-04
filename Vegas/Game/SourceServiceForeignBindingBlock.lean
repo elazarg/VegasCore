@@ -2,7 +2,6 @@
 
 import Vegas.Game.SourceServiceOffTurnWindow
 import Vegas.Game.SourceServiceForeignBindingRepair
-import Vegas.Pending.ReactiveServiceProgress
 import Vegas.Pending.ReactiveBindingMemoryInvariant
 
 /-! # Complete foreign binding blocks under continuation repair
@@ -30,7 +29,7 @@ theorem foreign_binding_block_stopped_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
@@ -49,7 +48,6 @@ theorem foreign_binding_block_stopped_coupling
     (original repaired : (application setup leaks).Execution)
     (frame : BindingMemory.Frame (runtime setup) leaks memory owner original repaired)
     (onlyBindings : memory.shadow.OwnBindings owner)
-    (completedMemory : memory.shadow.CompletedAt original.application.config)
     (started : reference.length ≤ (repaired.recall owner).length)
     (leftRecall : original.InputRecall (application setup leaks))
     (event : (graph setup).EventId) (actor : Player) (different : actor ≠ owner)
@@ -85,11 +83,10 @@ theorem foreign_binding_block_stopped_coupling
         Nonempty (((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
           (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
             (some ⟨remaining, none, next.2.1⟩)) ∧
-        ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
+        ((∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.envelope = false) ∨
-          (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
-            next.2.2.shadow.CompletedAt next.1.application.config)) := by
+            record.input.envelope = false) ∨
+          BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
   classical
   intro app players strategy ending
   let menu := sourceServiceMenu setup leaks bounds rosters
@@ -111,11 +108,10 @@ theorem foreign_binding_block_stopped_coupling
         Nonempty ((menu.protocol (initialLaw setup)
           (rosterPlan setup rosters).length scheduler).Trace
           (some ⟨remaining + ending.length, none, next.2.1⟩)) ∧
-        ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
+        ((∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.envelope = false) ∨
-          (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
-            next.2.2.shadow = memory.shadow)) := by
+            record.input.envelope = false) ∨
+          BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
     have owned : (graph setup).actor? event = some actor := by
       exact (EventCode.actor_cast outputEq ((graph setup).nodes event)).symm.trans
         (congrArg (fun code : EventCode (graph setup).layout (.binding actor payload) =>
@@ -136,8 +132,7 @@ theorem foreign_binding_block_stopped_coupling
         (remaining + ending.length) visits windowTrace before (ending ++ after)
         (by simpa only [ending, List.append_assoc] using split) position
     exact ⟨coupling, first, second, fun next member =>
-      ⟨(related next member).1, ((related next member).2).imp_right
-        (fun good => ⟨good.1, good.2.1⟩)⟩⟩
+      ⟨(related next member).1, ((related next member).2).imp_right And.left⟩⟩
   obtain ⟨window, first, second, related⟩ := existsWindow
   have existsTail next (member : next ∈ window.support) :
       ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
@@ -146,14 +141,13 @@ theorem foreign_binding_block_stopped_coupling
         coupling.map Prod.snd = strategy.runJoint owner players scheduler ending.length
           next.2.1 next.2.2 ∧
         ∀ final ∈ coupling.support,
-          (∃ record ∈ app.executionTraffic final.1, record.envelope.sender = owner ∧
+          (∃ record ∈ app.executionTraffic final.1, record.input.envelope.sender = owner ∧
             (runtime setup).permittedServiceEnvelope record.observation record.ledger
-              record.envelope = false) ∨
-            (BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1 ∧
-            final.2.2.shadow = memory.shadow) := by
-    by_cases bad : ∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
+              record.input.envelope = false) ∨
+            BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1 := by
+    by_cases bad : ∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
         (runtime setup).permittedServiceEnvelope record.observation record.ledger
-          record.envelope = false
+          record.input.envelope = false
     · let left := (runtime setup).runInteractionPlan leaks players network ending next.1
       let right := strategy.runJoint owner players scheduler ending.length next.2.1 next.2.2
       refine ⟨bindPairLaw left (fun _ => right), bindPairLaw_map_fst ..,
@@ -165,7 +159,7 @@ theorem foreign_binding_block_stopped_coupling
         exact ⟨final, supported, rfl⟩
       exact Or.inl ⟨record, ((runtime setup).executionTraffic_runInteractionPlan leaks players
         network ending next.1 final.1 reached).subset present, authored, rejected⟩
-    · obtain ⟨paired, shadow⟩ := ((related next member).2).resolve_left bad
+    · have paired := ((related next member).2).resolve_left bad
       obtain ⟨nextTrace⟩ := (related next member).1
       have reached : next.1 ∈ ((runtime setup).runInteractionPlan leaks players network
           (visits.map ServiceInstruction.player) original).support := by
@@ -191,9 +185,7 @@ theorem foreign_binding_block_stopped_coupling
             (by rw [← length]; exact nextTrace)
             (before ++ visits.map ServiceInstruction.player) after split nextPosition
       exact ⟨coupling, leftLaw, rightLaw, fun final supported =>
-        Or.inr ⟨(connected final supported).2.1, by
-          rw [(connected final supported).2.2]
-          exact shadow⟩⟩
+        Or.inr (connected final supported).2.1⟩
   let tail := fun next member => (existsTail next member).choose
   let coupling := window.bindOnSupport tail
   have leftLaw : coupling.map Prod.fst = (runtime setup).runInteractionPlan leaks players network
@@ -247,14 +239,6 @@ theorem foreign_binding_block_stopped_coupling
       exact trace
   · obtain ⟨next, member, reached⟩ :=
       Set.mem_iUnion₂.mp (PMF.support_bindOnSupport .. ▸ supported)
-    rcases (existsTail next member).choose_spec.2.2 final reached with bad | ⟨paired, shadow⟩
-    · exact Or.inl bad
-    · refine Or.inr ⟨paired, ?_⟩
-      rw [shadow]
-      apply completedMemory.mono
-      apply (runtime setup).runInteractionPlan_completed_subset leaks players network
-        (visits.map ServiceInstruction.player ++ ending) original final.1
-      rw [← leftLaw, PMF.support_map]
-      exact ⟨final, supported, rfl⟩
+    exact (existsTail next member).choose_spec.2.2 final reached
 
 end Vegas

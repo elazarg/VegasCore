@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveService
-import Interaction.ReactiveMessageIdentity
 
 /-! # Publication safety at every legal service history
 
@@ -73,6 +72,7 @@ theorem interaction_history_publishedOnce (runtime : EventGraphRuntime graph)
     ReactiveApplication.serviceInvariant
       (fun execution => execution.network.PublishedOnce) state :=
   (runtime.reactiveApplication leaks).publishedOnce_history _
+    (runtime.interactionScheduler_atMostOnce leaks chosen networkTurns network)
     initial horizon trace
 
 end Vegas.EventGraphRuntime

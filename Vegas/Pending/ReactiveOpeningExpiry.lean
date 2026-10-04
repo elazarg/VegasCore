@@ -56,10 +56,9 @@ theorem OpeningWindowFrame.expiry (runtime : EventGraphRuntime graph)
           (cast (congrArg EventField.Action outputEq.symm) true)
           (cast (congrArg EventField.Value outputEq.symm) (PublicationResult.success value)) with
         clock := initial.application.clock + ticks }
-      else (({ initial.application with clock := initial.application.clock + ticks } :
-        State graph).complete event ready (cast (congrArg EventField.Action outputEq.symm) false)
-          (cast (congrArg EventField.Value outputEq.symm)
-            PublicationResult.failure)).markMissed event) ∧
+      else ({ initial.application with clock := initial.application.clock + ticks } : State graph)
+        |>.complete event ready (cast (congrArg EventField.Action outputEq.symm) false)
+          (cast (congrArg EventField.Value outputEq.symm) PublicationResult.failure)) ∧
     final.network.Satisfies (fun message => message.id ∈ final.network.ledger.map Message.id) ∧
     final.network.ledger = (if selected.isSome then List.append initial.network.ledger
       [runtime.windowEnvelope leaks owner event candidate ⟨payload, value⟩ initial]
@@ -146,10 +145,9 @@ theorem openingWindow_expiry (runtime : EventGraphRuntime graph)
           (cast (congrArg EventField.Action outputEq.symm) true)
           (cast (congrArg EventField.Value outputEq.symm) (PublicationResult.success value)) with
         clock := initial.application.clock + ticks }
-      else (({ initial.application with clock := initial.application.clock + ticks } :
-        State graph).complete event ready (cast (congrArg EventField.Action outputEq.symm) false)
-          (cast (congrArg EventField.Value outputEq.symm)
-            PublicationResult.failure)).markMissed event) ∧
+      else ({ initial.application with clock := initial.application.clock + ticks } : State graph)
+        |>.complete event ready (cast (congrArg EventField.Action outputEq.symm) false)
+          (cast (congrArg EventField.Value outputEq.symm) PublicationResult.failure)) ∧
     final.network.Satisfies (fun message => message.id ∈ final.network.ledger.map Message.id) ∧
     final.network.ledger = (if selected.isSome then List.append initial.network.ledger
       [runtime.windowEnvelope leaks owner event candidate ⟨payload, value⟩ initial]

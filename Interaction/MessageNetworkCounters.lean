@@ -45,7 +45,8 @@ theorem SerialsBeforeNext.lookup_next_none (valid : network.SerialsBeforeNext)
   rw [same] at earlier
   exact Nat.lt_irrefl _ earlier
 
-/-- The newly submitted envelope is found at its fresh authenticated identity. -/
+/-- The newly submitted envelope is found at its fresh authenticated identity,
+even when earlier pending traffic contains replay copies. -/
 theorem SerialsBeforeNext.lookup_submit (valid : network.SerialsBeforeNext)
     (who : Principal) (payload : Payload) :
     (network.submit who payload).2.lookup (who, network.nextSerial who) =
@@ -54,6 +55,13 @@ theorem SerialsBeforeNext.lookup_submit (valid : network.SerialsBeforeNext)
   change network.pending.find? _ = none at absent
   simp only [MessageNetwork.lookup, MessageNetwork.submit, List.find?_append, absent]
   simp
+
+theorem SerialsBeforeNext.replay (valid : network.SerialsBeforeNext)
+    (who : Principal) (id : MessageId Principal) :
+    (network.replay who id).2.SerialsBeforeNext := by
+  have retained := Satisfies.replay valid who id
+  cases found : (network.known who).find? (fun envelope => envelope.id = id) <;>
+    simpa only [SerialsBeforeNext, MessageNetwork.replay, found] using retained
 
 theorem SerialsBeforeNext.learn (valid : network.SerialsBeforeNext)
     (who : Principal) (selected : Finset (MessageId Principal)) :

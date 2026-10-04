@@ -1,0 +1,102 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.SourceServiceFirstInputPassage
+import Vegas.Game.AsyncServiceFirstTurnProfile
+
+/-! # Initialized native passage through actual first event inputs
+
+The finite risk-menu representation and the physical first-turn evaluator
+have the same complete first-input law. The actual rank support derives each
+untouched seed boundary, then the stopping-time kernel retains its input through
+the remaining physical horizon. No stopped-history likelihood is supplied.
+-/
+
+noncomputable section
+
+namespace Vegas.AsyncServiceSpec
+
+open SourceProgram Interaction EventGraphRuntime GameTheory.Protocol
+  GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] [Fintype Player]
+  {L : IExpr} [IExpr.ResultTypes L] (service : AsyncServiceSpec Player L)
+
+/-- The represented normalized first-turn profile's chronological terminal
+input law is exactly the genuine initialized first-activation stopped law.
+It includes all actual network samples, own recall and before-response view. -/
+theorem normalizedFirstTurnProfile_first_input_law (turns : Nat)
+    (profile : BehavioralProfile service.setup.program)
+    (permitted : ∀ who, (profile who).Admitted service.setup.program
+      (CommitmentInterface.values service.setup.program))
+    (who : Player) (event : (graph service.setup).EventId)
+    (owned : (graph service.setup).actor? event = some who) :
+    let normalized := normalizeDisclosureProfile service.setup.program []
+      (Revelations.initial service.setup.context) profile
+    let players := sourceServiceTurnPolicy service.setup service.leaks service.bound turns
+      (firstTurnTiming service.setup turns) normalized
+    let menu := service.bounds.riskMenu (runtime service.setup) service.leaks service.bound
+    let model := menu.information (initialLaw service.setup) service.horizon service.scheduler
+    let certificate := (menu.bounded (initialLaw service.setup) service.horizon
+      service.scheduler).wellFoundedHistories
+    ((model.runBehavioralTerminalFrom certificate (service.firstTurnProfile turns normalized)
+      (menu.protocol (initialLaw service.setup) service.horizon service.scheduler).initHistory).map
+        fun final => sourceServiceFirstInput? service.setup service.leaks who event
+          ((application service.setup service.leaks).recallAt who final.state)) =
+      service.setup.initialLaw.bind fun initial =>
+        ((application service.setup service.leaks).runUntilHorizon service.scheduler players
+          (sourceServiceRankCompleted event.val) service.horizon
+          (.initial (application service.setup service.leaks)
+            (EventGraphRuntime.State.initial (service.setup.eventInputs initial)))).bind
+              fun execution =>
+                ((application service.setup service.leaks).runUntilHorizon service.scheduler
+                  players (fun final => sourceServiceTurnInput? service.setup service.leaks
+                    who event (final.recall who) ≠ none) service.horizon execution).map
+                      fun stopped => sourceServiceTurnInput? service.setup service.leaks who event
+                        (stopped.recall who) := by
+  classical
+  intro normalized players menu model certificate
+  let app := application service.setup service.leaks
+  let start := fun initial : State L service.setup.context =>
+    ReactiveApplication.Execution.initial app
+      (EventGraphRuntime.State.initial (service.setup.eventInputs initial))
+  have admitted (owner : Player) : (normalized owner).Admitted service.setup.program
+      (CommitmentInterface.values service.setup.program) :=
+    (profile owner).normalizeDisclosureFrom_admitted service.setup.program
+      (CommitmentInterface.values service.setup.program) (permitted owner) []
+      (Revelations.initial service.setup.context) (fun view => PMF.pure view.2)
+  have effective (owner : Player) : (normalized owner).EffectiveDisclosures
+      service.setup.program [] (Revelations.initial service.setup.context) :=
+    (profile owner).normalizeDisclosureFrom_effective service.setup.program []
+      (Revelations.initial service.setup.context) (fun view => PMF.pure view.2)
+  have represented := congrArg (PMF.map fun state =>
+      sourceServiceFirstInput? service.setup service.leaks who event (app.recallAt who state))
+    (service.firstTurnProfile_initialized_control_law turns normalized admitted)
+  simp only [PMF.map_comp, ReactiveApplication.finished, ReactiveApplication.recallAt,
+    Function.comp_def] at represented
+  calc
+    _ = (app.roundsFrom (initialLaw service.setup) service.scheduler players
+        service.horizon).map (fun final => sourceServiceFirstInput? service.setup service.leaks
+          who event (final.recall who)) := represented
+    _ = service.setup.initialLaw.bind (fun initial =>
+        (app.runToHorizon service.scheduler players service.horizon (start initial)).map
+          fun final => sourceServiceFirstInput? service.setup service.leaks who event
+            (final.recall who)) := by
+      simp only [ReactiveApplication.roundsFrom, initialLaw, PMF.bind_map,
+        PMF.map_bind, ReactiveApplication.runToHorizon, start,
+        ReactiveApplication.Execution.initial, List.length_nil, Nat.sub_zero,
+        Function.comp_def]
+    _ = _ := by
+      apply bind_congr_on_support service.setup.initialLaw
+      intro initial initialSupport
+      rw [app.runToHorizon_eq_runUntilHorizon_bind service.scheduler players
+        (sourceServiceRankCompleted event.val), PMF.map_bind]
+      apply bind_congr_on_support _
+      intro execution reached
+      obtain ⟨bounded, boundary⟩ :=
+        (sourceServiceFirstTurn_rank_law (turns := turns) service.contract service.timely
+          normalized effective initial initialSupport event.val (Nat.le_of_lt event.isLt)).1
+            execution reached
+      exact sourceServiceFirstActivation_terminal_input service.contract service.timely players who
+        normalized rfl event owned execution boundary bounded
+
+end Vegas.AsyncServiceSpec

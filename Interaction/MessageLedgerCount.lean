@@ -4,8 +4,7 @@ import Interaction.MessageNetwork
 
 /-! # Processed identifiers per author
 
-The modeled network never includes an identifier twice, but a deployed chain
-may deliver duplicate transactions, and inclusion here does not itself check
+A ledger may hold several copies of one envelope: inclusion does not check
 whether an identifier was already included. A contract processes each
 identifier once, so the number of an author's calls it has processed is the
 number of distinct identifiers of that author on the ledger, whether each call

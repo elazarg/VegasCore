@@ -13,7 +13,7 @@ action by the canonical decision (`EventGraphRuntime.canonicalServiceDecision`),
 which submits a binding at the slot the audit's conformance rule expects.
 
 `sourceServiceCanonicalOpportunity` is one opportunity of the turn-counted
-policy: it remains silent once the event is recorded in the owner's recall, and
+policy: it replays once the event is recorded in the owner's own recall, and
 it makes a fresh call only while a packet included within `bound event` slots
 is included strictly before the event's deadline.
 -/
@@ -205,17 +205,17 @@ theorem sourceServiceCanonicalPolicy_reveal {Γ : SourceCtx Player L}
 /-- One opportunity of the turn-counted policy: replay once the event is
 recorded in the owner's recall or once a fresh call could no longer be
 included before the deadline within `bound event` slots; otherwise make the
-canonical source decision, retaining silence if it emits nothing. -/
+canonical source decision, replaying if it is silent. -/
 def sourceServiceCanonicalOpportunity (bound : (graph setup).EventId → Nat)
     (profile : BehavioralProfile setup.program) (who : Player) (event : (graph setup).EventId) :
     (application setup leaks).Policy := fun past view =>
   if (runtime setup).eventRecorded leaks past event then
-    (application setup leaks).silentPolicy past view
+    (application setup leaks).replayPolicy past view
   else if view.application.publicView.InclusionFitsDeadline (runtime setup) bound event then
     (sourceServiceCanonicalPolicy setup leaks profile who past view).bind fun response =>
-      if response.transmission = none then (application setup leaks).silentPolicy past view
+      if response.transmission = none then (application setup leaks).replayPolicy past view
       else PMF.pure response
-  else (application setup leaks).silentPolicy past view
+  else (application setup leaks).replayPolicy past view
 
 theorem sourceServiceCanonicalPolicy_finiteSupport (finite : setup.program.FiniteBindingTypes)
     (profile : BehavioralProfile setup.program) (who : Player) :
@@ -241,14 +241,14 @@ theorem sourceServiceCanonicalOpportunity_finiteSupport (bound : (graph setup).E
   intro past view
   unfold sourceServiceCanonicalOpportunity
   split
-  · exact (application setup leaks).silentPolicy_finiteSupport past view
+  · exact (application setup leaks).replayPolicy_finiteSupport past view
   · split
     · refine bind_support_finite
         (sourceServiceCanonicalPolicy_finiteSupport setup leaks finite profile who past view)
         fun response _ => ?_
       split
-      · exact (application setup leaks).silentPolicy_finiteSupport past view
+      · exact (application setup leaks).replayPolicy_finiteSupport past view
       · simp
-    · exact (application setup leaks).silentPolicy_finiteSupport past view
+    · exact (application setup leaks).replayPolicy_finiteSupport past view
 
 end Vegas

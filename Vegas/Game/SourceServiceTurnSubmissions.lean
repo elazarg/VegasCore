@@ -2,13 +2,12 @@
 
 import Vegas.Game.SourceServiceFirstTurnMixture
 import Vegas.Game.SourceServiceAsyncTimeliness
-import Vegas.Pending.ReactiveSubmissionRecall
 
 /-! # Fresh submissions only at the author's own turn
 
 The prescribed responses submit fresh packets only for the event that is the
 responding player's own turn: the source decision is compiled at that event,
-and every other response is silent. This is a property of play on the support
+and every other response replays. This is a property of play on the support
 of the turn-counted policy, trembles included, and of the policies deciding
 one fixed action at the first turn (`Vegas.SubmissionsAtTurn`).
 
@@ -82,11 +81,12 @@ def ActivationsAnswered (execution : (application setup leaks).Execution) : Prop
     ∃ answer ∈ execution.recall who,
       answer.beforeView.application.publicView = entry.beforeView.application
 
-theorem silentPolicy_submitsAtTurn (who : Player) :
-    SubmitsAtTurn setup leaks (application setup leaks).silentPolicy who := by
+theorem replayPolicy_submitsAtTurn (who : Player) :
+    SubmitsAtTurn setup leaks (application setup leaks).replayPolicy who := by
   intro past view response chosen event submitted
-  obtain rfl := (application setup leaks).silentPolicy_cases past view response chosen
-  simp [EventGraphRuntime.submittedEvent?] at submitted
+  rw [ReactiveApplication.replayPolicy, PMF.support_map] at chosen
+  obtain ⟨selected, _, rfl⟩ := chosen
+  cases selected <;> simp [EventGraphRuntime.submittedEvent?] at submitted
 
 /-- The packet a resolution decision prepares names its event. -/
 private theorem reactiveResolutionPacket_event {owner : Player} (who : Player)
@@ -139,8 +139,24 @@ theorem submittedEvent_canonicalServiceDecision (who : Player)
     other = event := by
   apply submittedEvent_canonicalReactiveDecision setup leaks who event action view.application
     other
-  simpa only [EventGraphRuntime.canonicalServiceDecision,
-    EventGraphRuntime.submittedEvent_normalization] using submitted
+  unfold EventGraphRuntime.canonicalServiceDecision at submitted
+  dsimp only at submitted
+  split at submitted
+  · simp [EventGraphRuntime.submittedEvent?] at submitted
+  · rename_i transmission _
+    revert submitted
+    rcases (runtime setup).canonicalReactiveDecision leaks who event action view.application
+      with
+      ⟨_ | (material | id)⟩
+    · simp [EventGraphRuntime.submittedEvent?, ReactiveApplication.SubmissionNormalization.action]
+    · intro submitted
+      simpa [EventGraphRuntime.submittedEvent?,
+        ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
+        WitnessedSubmission.normalizeReactive, Submission.normalizeReactive_packet]
+        using submitted
+    · intro submitted
+      simp only [ReactiveApplication.SubmissionNormalization.action] at submitted
+      split at submitted <;> simp [EventGraphRuntime.submittedEvent?] at submitted
 
 theorem sourceServiceCanonicalPolicy_submitsAtTurn (profile : BehavioralProfile setup.program)
     (who : Player) :
@@ -174,18 +190,18 @@ theorem sourceServiceCanonicalOpportunity_submitsAtTurn (bound : (graph setup).E
   intro past view response chosen other submitted
   unfold sourceServiceCanonicalOpportunity at chosen
   split at chosen
-  · exact silentPolicy_submitsAtTurn setup leaks who past view response chosen other submitted
+  · exact replayPolicy_submitsAtTurn setup leaks who past view response chosen other submitted
   · split at chosen
     · rw [PMF.support_bind] at chosen
       obtain ⟨decided, decidedChosen, member⟩ := Set.mem_iUnion₂.mp chosen
       split at member
-      · exact silentPolicy_submitsAtTurn setup leaks who past view response member other
+      · exact replayPolicy_submitsAtTurn setup leaks who past view response member other
           submitted
       · rw [PMF.mem_support_pure_iff] at member
         subst member
         exact sourceServiceCanonicalPolicy_submitsAtTurn setup leaks profile who past view
           response decidedChosen other submitted
-    · exact silentPolicy_submitsAtTurn setup leaks who past view response chosen other
+    · exact replayPolicy_submitsAtTurn setup leaks who past view response chosen other
         submitted
 
 theorem turnScheduledPolicy_submitsAtTurn
@@ -223,15 +239,15 @@ theorem sourceServiceTurnPolicy_submitsAtTurn (bound : (graph setup).EventId →
   intro past view response chosen event submitted
   unfold sourceServiceTurnPolicy at chosen
   split at chosen
-  · exact silentPolicy_submitsAtTurn setup leaks who past view response chosen event submitted
+  · exact replayPolicy_submitsAtTurn setup leaks who past view response chosen event submitted
   · split at chosen
     · rename_i turnEvent _ owned
       exact policyMixture_submitsAtTurn setup leaks _ _ who (fun slot =>
         turnScheduledPolicy_submitsAtTurn setup leaks _ _ _ _ who
           (sourceServiceCanonicalOpportunity_submitsAtTurn setup leaks bound profile who
             turnEvent)
-          (silentPolicy_submitsAtTurn setup leaks who)) past view response chosen event submitted
-    · exact silentPolicy_submitsAtTurn setup leaks who past view response chosen event
+          (replayPolicy_submitsAtTurn setup leaks who)) past view response chosen event submitted
+    · exact replayPolicy_submitsAtTurn setup leaks who past view response chosen event
         submitted
 
 /-- Deciding a fixed action at the first turn submits only for that event,
@@ -252,20 +268,20 @@ theorem decidedTurnPolicy_submitsAtTurn (bound : (graph setup).EventId → Nat) 
       · cases first
     unfold decidedOpportunity at chosen
     split at chosen
-    · exact silentPolicy_submitsAtTurn setup leaks owner past view response chosen other
+    · exact replayPolicy_submitsAtTurn setup leaks owner past view response chosen other
         submitted
     · split at chosen
       · split at chosen
-        · exact silentPolicy_submitsAtTurn setup leaks owner past view response chosen other
+        · exact replayPolicy_submitsAtTurn setup leaks owner past view response chosen other
             submitted
         · rw [PMF.mem_support_pure_iff] at chosen
           subst chosen
           rw [submittedEvent_canonicalServiceDecision setup leaks owner past view event action
             other submitted]
           exact turn
-      · exact silentPolicy_submitsAtTurn setup leaks owner past view response chosen other
+      · exact replayPolicy_submitsAtTurn setup leaks owner past view response chosen other
           submitted
-  · exact silentPolicy_submitsAtTurn setup leaks owner past view response chosen other submitted
+  · exact replayPolicy_submitsAtTurn setup leaks owner past view response chosen other submitted
 
 /-- A round of players that submit only at their own turns keeps every
 recorded submission at its author's turn. -/
@@ -346,33 +362,6 @@ theorem round_activationsAnswered {scheduler : (application setup leaks).Schedul
     · change middle'.application.publicView = execution.application.publicView
       rw [sameApp]
 
-section Answered
-
-variable {setup leaks}
-
-/-- Every activation in completed rounds has an actual response in own recall,
-even if that response was silent or sent a packet for a different event. -/
-theorem roundsFrom_activationsAnswered
-    {scheduler : (application setup leaks).Scheduler}
-    {players : Player → (application setup leaks).Policy} (count : Nat)
-    (execution : (application setup leaks).Execution)
-    (supported : execution ∈ ((application setup leaks).roundsFrom (initialLaw setup) scheduler
-      players count).support) :
-    ActivationsAnswered setup leaks execution := by
-  let app := application setup leaks
-  induction count generalizing execution with
-  | zero =>
-      obtain ⟨state, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      intro entry member
-      cases member
-  | succ count ih =>
-      rw [app.roundsFrom_succ (initialLaw setup) scheduler players count] at supported
-      obtain ⟨prior, priorMem, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
-      exact round_activationsAnswered setup leaks (ih prior priorMem) moved
-
-end Answered
-
 /-- Both facts hold along rounds of players that submit only at their own
 turns, from initialization under every scheduler. -/
 theorem roundsFrom_turnFacts {scheduler : (application setup leaks).Scheduler}
@@ -424,7 +413,7 @@ theorem respond_candidate_fixed (execution : (application setup leaks).Execution
     (fixed : execution.application.candidates.lookup handle ≠ .fresh) :
     (execution.respond (application setup leaks) who response).application.candidates.lookup
       handle = execution.application.candidates.lookup handle := by
-  rcases response with ⟨_ | material⟩
+  rcases response with ⟨_ | (material | id)⟩
   · rfl
   · change (submitStep (material.call.register execution.application who) who
       material.call.packet).candidates.lookup handle = _
@@ -447,6 +436,7 @@ theorem respond_candidate_fixed (execution : (application setup leaks).Execution
       · exact CommitmentCandidates.lookup_freeze_eq_of_not_fresh _ _ _ fixed
       · rfl
     all_goals rfl
+  · rfl
 
 /-- An environment step never changes a candidate whose meaning is fixed. -/
 theorem environmentStep_candidate_fixed (execution next : (application setup leaks).Execution)

@@ -1,9 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceServiceInitialTraffic
 import Vegas.Game.SourceServiceDisclosureMemory
 import Vegas.Game.SourceServiceDisclosure
-import Vegas.Game.ServicePlanPolicies
+import Vegas.Game.RevealServiceRosterLaw
 import Vegas.Pending.ReactiveOpeningLikelihood
 import GameTheory.Math.Probability.ConditionalObservation
 import Vegas.Source.ObservationRecall
@@ -35,6 +34,87 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
+
+/-- Correlated initial draws with the same source view have identical native
+traffic projections, including the genuine owned initial candidate catalogue. -/
+theorem source_initial_traffic_eq
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (focal : Player) (left right : State L setup.context)
+    (same : (setup.initialConfig left).view focal = (setup.initialConfig right).view focal) :
+    (runtime setup).bindingTraffic leaks focal
+        (ReactiveApplication.Execution.initial (application setup leaks)
+          (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs left))) =
+      (runtime setup).bindingTraffic leaks focal
+        (ReactiveApplication.Execution.initial (application setup leaks)
+          (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs right))) := by
+  have first := SourceCheckpoint.initial setup left
+  have second := SourceCheckpoint.initial setup right
+  have observed := checkpoint_playerObservation_eq setup _ 0
+    (ContextRefs.initial_coversPrefix setup.program) focal _ _ _ _
+      (EventGraphRuntime.State.initial_invariant
+        (graph := graph setup) (setup.eventInputs left)).reachable
+      (EventGraphRuntime.State.initial_invariant
+        (graph := graph setup) (setup.eventInputs right)).reachable
+      first.ordered second.ordered first.agrees second.agrees first.history second.history same
+  have paired := NativeReplay.initial (runtime setup) focal
+    (setup.eventInputs left) (setup.eventInputs right) observed
+  have publics : (EventGraphRuntime.State.initial (graph := graph setup)
+        (setup.eventInputs left)).publicView =
+      (EventGraphRuntime.State.initial (graph := graph setup)
+        (setup.eventInputs right)).publicView := paired.publicView
+  have candidates := EventGraphRuntime.State.initial_candidates_eq_of_observation
+    (graph := graph setup) focal (setup.eventInputs left) (setup.eventInputs right) observed
+  have views : (EventGraphRuntime.State.initial (graph := graph setup)
+        (setup.eventInputs left)).playerView focal =
+      (EventGraphRuntime.State.initial (graph := graph setup)
+        (setup.eventInputs right)).playerView focal := by
+    unfold EventGraphRuntime.State.playerView
+    rw [publics, observed, candidates]
+    rfl
+  unfold EventGraphRuntime.bindingTraffic
+  dsimp only [ReactiveApplication.Execution.initial]
+  rw [views, publics]
+
+/-- The induction starts from the actual supplied initial law. There is no
+independence assumption on private types, and original and effective histories
+are paired only at initialization, before any intention can be erased. -/
+theorem source_initial_memory_factorization
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (focal : Player) :
+    ∃ noise : DecisionView focal setup.context → PMF _,
+      setup.initialLaw.map (fun initial =>
+        ((setup.initialConfig initial, setup.initialConfig initial),
+          (runtime setup).bindingTraffic leaks focal
+            (ReactiveApplication.Execution.initial (application setup leaks)
+              (EventGraphRuntime.State.initial (graph := graph setup)
+                (setup.eventInputs initial))))) =
+      (setup.initialLaw.map fun initial =>
+        (setup.initialConfig initial, setup.initialConfig initial)).bind fun pair =>
+          (noise (pair.1.view focal)).map fun extra => (pair, extra) := by
+  classical
+  let read := fun initial : State L setup.context =>
+    (runtime setup).bindingTraffic leaks focal
+      (ReactiveApplication.Execution.initial (application setup leaks)
+        (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial)))
+  let noise := fun view : DecisionView focal setup.context =>
+    if present : ∃ initial ∈ setup.initialLaw.support,
+        (setup.initialConfig initial).view focal = view then
+      PMF.pure (read present.choose)
+    else PMF.pure (read setup.initialLaw.support_nonempty.choose)
+  refine ⟨noise, ?_⟩
+  rw [PMF.bind_map]
+  change setup.initialLaw.bind (fun initial => PMF.pure
+      ((setup.initialConfig initial, setup.initialConfig initial), read initial)) = _
+  apply bind_congr_on_support _
+  intro initial supported
+  have present : ∃ other ∈ setup.initialLaw.support,
+      (setup.initialConfig other).view focal = (setup.initialConfig initial).view focal :=
+    ⟨initial, supported, rfl⟩
+  simp only [noise, Function.comp_apply, dite_eq_left present, PMF.pure_map]
+  rw [show read initial = read present.choose from
+    source_initial_traffic_eq setup leaks focal initial present.choose present.choose_spec.2.symm]
 
 /-- A real clock step or expiry preserves the traffic factorization.
 The carried source configuration is proof data; the native application still
@@ -90,7 +170,7 @@ theorem source_replay_factorization
     ∃ nextNoise : DecisionView focal Γ → PMF _,
       (prior.bind fun seed =>
         ((runtime setup).runInteractionPlan leaks
-          (fun _ => (application setup leaks).silentPolicy) network
+          (fun _ => (application setup leaks).replayPolicy) network
           (roster.map ServiceInstruction.player) (execution seed)).map fun final =>
             (source seed, (runtime setup).bindingTraffic leaks focal final)) =
       (prior.map source).bind fun config =>
@@ -100,12 +180,12 @@ theorem source_replay_factorization
     (fun config => config.view focal) noise factor (fun _ => PMF.pure Unit.unit)
     (fun config _ => config) (fun config => config.view focal)
     (fun seed _ => ((runtime setup).runInteractionPlan leaks
-      (fun _ => (application setup leaks).silentPolicy) network
+      (fun _ => (application setup leaks).replayPolicy) network
       (roster.map ServiceInstruction.player) (execution seed)).map
         ((runtime setup).bindingTraffic leaks focal))
     (fun _ _ _ _ _ _ _ _ same => same)
     (fun left leftSupport _ _ right rightSupport _ _ _ same =>
-      (runtime setup).silent_window_focal_law leaks network roster focal
+      (runtime setup).replay_window_focal_law leaks network roster focal
         (execution left) (execution right) (recalled left leftSupport)
         (recalled right rightSupport) same)
   exact ⟨nextNoise, by simpa only [PMF.pure_bind, PMF.pure_map,
@@ -216,8 +296,8 @@ def bindingPhaseTranscript
   let serial := execution.application.publicView.bindingCount owner
   let family := fun selected => app.scheduledPolicy offset selected
     (fun _ _ => PMF.pure
-      ((runtime setup).reactiveBinding leaks owner event payload result serial)) app.silentPolicy
-  let players := Function.update (fun _ => app.silentPolicy) owner
+      ((runtime setup).reactiveBinding leaks owner event payload result serial)) app.replayPolicy
+  let players := Function.update (fun _ => app.replayPolicy) owner
     (app.policyMixture timing family).policy
   ((runtime setup).runInteractionPlan leaks players network
     ((roster.map ServiceInstruction.player ++ [.includeLatest event owner]) ++
@@ -289,7 +369,7 @@ theorem binding_successor_memory_factorization
     conv_rhs => rw [runInteractionPlan_append, PMF.map_bind]
     apply bind_eq_of_map_eq _ _ _ _ (by simpa only [serialEq] using coupled)
     intro before _ after _ equal
-    let replay := fun _ : Player => (application setup leaks).silentPolicy
+    let replay := fun _ : Player => (application setup leaks).replayPolicy
     calc
       _ = ((runtime setup).runInteractionPlan leaks replay network
           (List.replicate ticks .tick ++ [.expire event]) before).map

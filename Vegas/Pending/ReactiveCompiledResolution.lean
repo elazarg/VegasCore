@@ -22,28 +22,7 @@ variable {Player : Type} [DecidableEq Player]
   (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
-/-- False is an explicit evidence-free resolution decision. -/
-theorem serviceDecision_resolution_false
-    (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
-    (event : graph.EventId) (owner : Player) (payload : L.Ty)
-    (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (GuardCheck graph.layout payload))
-    (outputEq : graph.outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
-      (graph.nodes event) = .resolve owner payload binding checks)
-    (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq) :
-    runtime.serviceDecision leaks who past view event
-      (cast (congrArg EventField.Action outputEq.symm) false) =
-      ⟨some ⟨⟨.withhold event, none⟩, .none⟩⟩ := by
-  simp only [serviceDecision, reactiveDecision, node, reactiveResolutionPacket,
-    cast_cast, cast_eq, Bool.false_eq_true, ↓reduceIte,
-    disclosureSubmission_normalize_withhold]
-  simp only [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
-    disclosureSubmission, WitnessedSubmission.normalizeReactive,
-    Submission.normalizeReactive_none, EvidenceRequest.normalize_none]
-
-/-- A resolution sends withholding or the successful typed value selected by
+/-- A resolution sends only silence or the successful typed value selected by
 its deferred guards. Its evidence representation is left explicit. -/
 theorem serviceDecision_resolution_cases
     (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -58,13 +37,13 @@ theorem serviceDecision_resolution_cases
     (choice : Bool) :
     let response := runtime.serviceDecision leaks who past view event
       (cast (congrArg EventField.Action outputEq.symm) choice)
-    response = ⟨some ⟨⟨.withhold event, none⟩, .none⟩⟩ ∨ ∃ candidate value evidence,
+    response = ⟨none⟩ ∨ ∃ candidate value evidence,
       EventCode.resolveOutput? binding checks true view.application.observation.store =
           some (.success value) ∧
       view.application.publicView.accepted binding.field = some candidate ∧
       candidate.1 = who ∧
       response =
-        ⟨some ⟨⟨.opening event candidate ⟨payload, value⟩, none⟩, evidence⟩⟩ := by
+        ⟨some (.submit ⟨⟨.opening event candidate ⟨payload, value⟩, none⟩, evidence⟩)⟩ := by
   let action := cast (congrArg EventField.Action outputEq.symm) choice
   have shape : reactiveResolutionPacket who event payload binding checks outputEq action
       view.application = .withhold event ∨
@@ -107,9 +86,7 @@ theorem serviceDecision_resolution_cases
   · left
     simp only [serviceDecision, reactiveDecision, node, withheld,
       disclosureSubmission_normalize_withhold]
-    simp only [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
-      disclosureSubmission, WitnessedSubmission.normalizeReactive,
-      Submission.normalizeReactive_none, EvidenceRequest.normalize_none]
+    rfl
   · let first := WitnessedSubmission.normalizeReactive who view.application []
       (disclosureSubmission (.opening event candidate ⟨payload, value⟩))
     let evidence := (first.normalizeReactive who view.application
@@ -125,7 +102,8 @@ theorem serviceDecision_resolution_cases
 variable [Fintype Player]
 
 /-- Every retained choice while a resolution is the only ready event is
-silence or one first withholding or opening. Under the barrier order a ready resolution is always
+transport or one first current-event opening. The fallback and failed deferred
+guards add only silence. Under the barrier order a ready resolution is always
 the only ready event. -/
 theorem MessageBounds.compiled_resolution_cases (bounds : MessageBounds graph)
     (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -141,9 +119,7 @@ theorem MessageBounds.compiled_resolution_cases (bounds : MessageBounds graph)
     (response : (runtime.reactiveApplication leaks).Action)
     (member : response ∈ bounds.compiledActions runtime leaks who past view) :
     response = ⟨none⟩ ∨
-      (graph.actor? event = some who ∧ view.application.publicView.EventReady event ∧
-        runtime.firstSubmission leaks past response = true ∧
-        response = ⟨some ⟨⟨.withhold event, none⟩, .none⟩⟩) ∨
+      response ∈ ((runtime.reactiveApplication leaks).replayPolicy past view).support ∨
       ∃ candidate value evidence,
         graph.actor? event = some who ∧ view.application.publicView.EventReady event ∧
         EventCode.resolveOutput? binding checks true view.application.observation.store =
@@ -152,7 +128,7 @@ theorem MessageBounds.compiled_resolution_cases (bounds : MessageBounds graph)
         candidate.1 = who ∧
         runtime.firstSubmission leaks past response = true ∧
         response =
-          ⟨some ⟨⟨.opening event candidate ⟨payload, value⟩, none⟩, evidence⟩⟩ := by
+          ⟨some (.submit ⟨⟨.opening event candidate ⟨payload, value⟩, none⟩, evidence⟩)⟩ := by
   classical
   have permitted := (Finset.mem_inter.mp member).1
   rcases Finset.mem_union.mp permitted with decision | replay
@@ -168,13 +144,14 @@ theorem MessageBounds.compiled_resolution_cases (bounds : MessageBounds graph)
       rw [node] at chosen
       obtain ⟨choice, _, rfl⟩ := Finset.mem_image.mp chosen
       rcases runtime.serviceDecision_resolution_cases leaks who past view event actor payload
-        binding checks outputEq codeEq node choice with withheld |
+        binding checks outputEq codeEq node choice with silent |
           ⟨candidate, value, evidence, result, associated, owned, response⟩
-      · exact Or.inr (Or.inl ⟨active.1, active.2, first, withheld⟩)
+      · exact Or.inl silent
       · exact Or.inr (Or.inr ⟨candidate, value, evidence, active.1, active.2,
           result, associated, owned, first, response⟩)
     · exact Or.inl (Finset.mem_singleton.mp chosen)
-  · exact Or.inl (Finset.mem_singleton.mp replay)
+  · exact Or.inr (Or.inl (((runtime.reactiveApplication leaks).mem_replayActions_iff _ _ _).mp
+      replay))
 
 /-- This phase law applies to every retained response, not just the compiler's
 selected strategy. No private registration occurs during resolution. -/
@@ -194,15 +171,16 @@ theorem MessageBounds.compiled_resolution_application (bounds : MessageBounds gr
     (execution.respond (runtime.reactiveApplication leaks) who response).application =
       execution.application := by
   rcases bounds.compiled_resolution_cases runtime leaks who _ _ event actor payload binding checks
-    outputEq codeEq node sole response member with rfl | ⟨_, _, _, rfl⟩ |
+    outputEq codeEq node sole response member with rfl | replay |
       ⟨candidate, value, evidence, _, _, _, _, _, _, rfl⟩
   · rfl
-  · rfl
+  · rcases (runtime.reactiveApplication leaks).replayPolicy_cases _ _ response replay with
+      rfl | ⟨id, rfl⟩ <;> rfl
   · rfl
 
 /-- An arbitrary finite response roster preserves the application while a
-resolution is the only ready event. Passive reads remain in the actual run; only inclusion and
-expiry are outside this segment. -/
+resolution is the only ready event. Passive reads and every known-envelope replay remain
+in the actual run; only inclusion and expiry are outside this segment. -/
 theorem MessageBounds.compiled_resolution_run_application (bounds : MessageBounds graph)
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (covered : ∀ who past view response, response ∈ (players who past view).support →

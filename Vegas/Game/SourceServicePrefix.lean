@@ -2,7 +2,6 @@
 
 import Vegas.Game.SourceServiceCheckpoint
 import Vegas.Compile.EventGraphReadout
-import Vegas.Source.SetupProtocolEvaluation
 
 /-! # Reading full source protocol positions from native checkpoints
 
@@ -296,35 +295,5 @@ theorem SourcePrefixCheckpoint.state_unique {setup : Setup (Player := Player) (L
   have secondRead := SourcePrefixCheckpoint.decode program refs registry revelations outputs
     offset count right native second
   exact Option.some.inj (firstRead.symm.trans secondRead)
-
-theorem decodeSourcePrefix?_terminal_readout
-    {Field : Type} [DecidableEq Field] {layout : Field → EventGraph.EventField Player L}
-    {Γ : SourceCtx Player L} {openNames : Finset VarId}
-    (program : SourceProgram Player L Γ openNames) (refs : ContextRefs layout Γ)
-    (registry : Registry Γ) (revelations : Revelations Γ)
-    (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
-    (store : EventGraph.Store layout) (history : SourceProgram.History Player L) :
-    (decodeSourcePrefix? program refs registry revelations outputs (eventCount program)
-      store history).bind (ProtocolState.readout program) =
-        decodeState? (terminalRefsWith program refs outputs) store := by
-  induction program with
-  | ret payoffs =>
-      simp only [eventCount, decodeSourcePrefix?, terminalRefsWith]
-      cases decodeState? refs store <;> rfl
-  | sample name fresh distribution next ih =>
-      simp only [eventCount, decodeSourcePrefix?, terminalRefsWith, Option.bind_map]
-      exact ih _ _ _ _
-  | commit name owner fresh guard next ih =>
-      simp only [eventCount, decodeSourcePrefix?, terminalRefsWith, Option.bind_map]
-      exact ih _ _ _ _
-  | reveal published owner name fresh binding unresolved next ih =>
-      simp only [eventCount, decodeSourcePrefix?, terminalRefsWith, Option.bind_map]
-      exact ih _ _ _ _
-
-theorem sourceServicePrefix?_terminal_readout
-    (setup : Setup (Player := Player) (L := L)) (config : (graph setup).Config) :
-    setup.protocolReadout (sourceServicePrefix? setup (eventCount setup.program) config) =
-      decodeState? (terminalRefs setup.program) config.store :=
-  decodeSourcePrefix?_terminal_readout setup.program _ _ _ _ _ _
 
 end Vegas

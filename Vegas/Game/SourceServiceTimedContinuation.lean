@@ -61,6 +61,24 @@ private theorem statePrefix_readout
       exact bind_congr_on_support _ fun disclose _ => ih (afterReveal profile)
         (revealSuccessor published binding source disclose)
 
+/-- One source step followed by the source continuation is the source
+continuation. -/
+theorem sourceStep_continuation
+    {Γ : SourceCtx Player L} {names : Finset VarId}
+    (program : SourceProgram Player L Γ names) (profile : BehavioralProfile program)
+    (state : ProtocolState program) :
+    (ProtocolState.behavioralStateStep program profile state).bind
+      (ProtocolState.continuationLaw program profile) =
+        ProtocolState.continuationLaw program profile state := by
+  classical
+  unfold ProtocolState.behavioralStateStep
+  split
+  · exact PMF.pure_bind _ _
+  · rename_i running
+    exact ProtocolState.continuationLaw_behavioral_step program profile state running
+      (independentProduct fun who => (profile who).protocolAction program
+        (ProtocolState.observe who program state)) (fun who => independentProduct_map_eval _ who)
+
 private theorem liftedPrefix_continuation
     {Γ Δ : SourceCtx Player L} {names restNames : Finset VarId}
     (whole : SourceProgram Player L Γ names) (wholeProfile : BehavioralProfile whole)
@@ -97,7 +115,7 @@ theorem sourceServiceTimedPolicy_suffix_state_law
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (timing : TimingLaw setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (wholeProfile : BehavioralProfile setup.program)
@@ -156,7 +174,7 @@ theorem sourceServiceTimedPolicy_suffix_readout_law
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (timing : TimingLaw setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (wholeProfile : BehavioralProfile setup.program)
@@ -207,7 +225,7 @@ theorem sourceServiceTimedPolicy_continuation_law
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (timing : TimingLaw setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (profile : BehavioralProfile setup.program)

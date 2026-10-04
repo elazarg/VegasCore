@@ -65,13 +65,27 @@ theorem RetainsUnsettled.submit (retained : network.RetainsUnsettled settled)
   · exact Satisfies.mono retained fun _ located => located.imp_left (List.mem_append_left _)
   · exact Or.inl (List.mem_append_right _ (List.mem_singleton.mpr rfl))
 
+theorem RetainsUnsettled.replay (retained : network.RetainsUnsettled settled)
+    (who : Principal) (id : MessageId Principal) :
+    (network.replay who id).2.RetainsUnsettled settled := by
+  unfold MessageNetwork.replay
+  split
+  · exact retained
+  · rename_i packet found
+    have widened : network.Satisfies (fun candidate =>
+        candidate ∈ network.pending ++ [packet] ∨ settled candidate) :=
+      Satisfies.mono retained fun _ located => located.imp_left (List.mem_append_left _)
+    have result := widened.replay who id
+    simpa only [RetainsUnsettled, MessageNetwork.replay, found] using result
+
 theorem RetainsUnsettled.learn (retained : network.RetainsUnsettled settled)
     (who : Principal) (selected : Finset (MessageId Principal)) :
     (network.learn who selected).RetainsUnsettled settled :=
   Satisfies.learn retained who selected
 
 /-- Inclusion is safe when the removed envelope is settled afterward and
-previously settled envelopes remain settled. -/
+previously settled envelopes remain settled. Duplicate identifiers need not
+be ruled out for this carrier-level result. -/
 theorem RetainsUnsettled.includePending (retained : network.RetainsUnsettled settled)
     (id : MessageId Principal) (persists : ∀ packet, settled packet → later packet)
     (settles : ∀ packet, network.lookup id = some packet → later packet) :
@@ -89,6 +103,18 @@ theorem RetainsUnsettled.includePending (retained : network.RetainsUnsettled set
         · exact Or.inl (by simpa [MessageNetwork.includePending, found] using kept)
         · exact Or.inr (settles packet selectedPacket)
   · exact Or.inr (persists packet done)
+
+/-- Settled envelopes must be outside the current choice menu. -/
+theorem RetainsUnsettled.retainsEligible (retained : network.RetainsUnsettled settled)
+    (eligible : Message Principal Payload → Bool)
+    (excluded : ∀ packet, settled packet → eligible packet = false) :
+    network.RetainsEligible eligible := by
+  intro who packet known accepted
+  rcases retained.known who packet known with pending | done
+  · simp only [eligibleIds, List.mem_toFinset, List.mem_map]
+    exact ⟨packet, List.mem_filter.mpr ⟨pending, accepted⟩, rfl⟩
+  · have impossible := (excluded packet done).symm.trans accepted
+    cases impossible
 
 end MessageNetwork
 end Interaction

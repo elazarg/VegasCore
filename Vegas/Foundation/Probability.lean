@@ -104,18 +104,6 @@ def pure (value : α) : RationalLaw α where
   entries := [(value, 1)]
   normalized := by simp
 
-@[simp] theorem denote_pure (value : α) :
-    (pure value).denote = PMF.pure value := by
-  unfold denote
-  calc
-    _ = (pure value).indexLaw.map (fun _ => value) := by
-      apply map_congr_on_support _
-      intro index _
-      change Fin 1 at index
-      fin_cases index
-      rfl
-    _ = _ := PMF.map_const _ _
-
 end RationalLaw
 
 end Vegas

@@ -21,7 +21,13 @@ theorem observed_respond (execution : app.Execution) (who actor : Principal)
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact seen
-  | some material => exact seen
+  | some transmission =>
+      cases transmission with
+      | submit material => exact seen
+      | replay id =>
+          cases found : (execution.network.known actor).find? (fun message => message.id = id) <;>
+            simpa only [Execution.respond, MessageNetwork.replay, found,
+              PacketEvidence.observe, Execution.observe, MessageNetwork.observe] using seen
 
 theorem observed_environment (execution next : app.Execution) (who : Principal)
     (command : app.Command) (fact : evidence.Fact)

@@ -176,7 +176,7 @@ theorem exists_decisionPhase (who : Player) (remaining : Nat)
   obtain ⟨event, slot, _, selected, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
       sole, _, _, _, _, _, _, position, _⟩ :=
     sourceService_decision_boundary service.setup service.leaks service.bounds service.values
-      service.capacity service.rosters service.opportunities service.network
+      service.capacity service.rosters service.opportunities.binding service.network
       (failureProfile service.setup.program) who ⟨remaining, some who, execution⟩ trace rfl
   exact ⟨⟨event, slot, selected, position,
     (execution.application.publicView_eventReady event).mp sole.1⟩⟩
@@ -264,14 +264,14 @@ def ofSource (service : SourceServiceSpec Player L)
   have nativeMixed : native.IsFullyMixed :=
     sourceServiceTimedProfile_fullyMixed service.setup service.leaks service.bounds
       service.values service.initialValues service.capacity service.rosters
-      service.opportunities service.network timing timingFull source full
+      service.opportunities.binding service.network timing timingFull source full
   { timing := timing
     timingFull := timingFull
     profile := normalized
     admitted := normalized_sourceService_admitted service.setup original permitted
     covered := sourceServiceTimedPolicy_admissible service.setup service.leaks service.bounds
       service.values service.initialValues service.capacity service.rosters
-      service.opportunities service.network timing timingFull normalized
+      service.opportunities.binding service.network timing timingFull normalized
       (normalized_sourceService_admitted service.setup original permitted)
     effective := fun who => (original who).normalizeDisclosureFrom_effective
       service.setup.program [] (Revelations.initial service.setup.context)
@@ -306,7 +306,7 @@ theorem ofSource_bayes (service : SourceServiceSpec Player L)
   InformationModel.bayesAssessment_isBayesConsistent _ _
       (sourceServiceTimedProfile_fullyMixed service.setup service.leaks service.bounds
       service.values service.initialValues service.capacity service.rosters
-      service.opportunities service.network timing timingFull source full) _
+      service.opportunities.binding service.network timing timingFull source full) _
 
 end TimedApproximant
 

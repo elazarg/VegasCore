@@ -1,189 +1,32 @@
 # VegasCore
 
-VegasCore is a Lean 4 foundation for describing executable games with partial
-information and proving that their strategic meaning survives compilation.
-The checked compilation path is:
+VegasCore describes finite games with partial information, compiles them to
+typed event graphs, and studies their execution through signed pending messages.
+Blockchain runtimes are a target; the semantic interfaces remain runtime-general.
 
-```text
-failure-aware SourceProgram
-  -> dependency-driven EventGraph
-  -> public pending-message runtime
-```
+The source language supports private inputs, fresh bindings, public chance,
+guarded resolution and withholding. The pending runtime has explicit clock and
+expiry commands, authentic evidence and partial observation.
 
-The source supports private initial state, dependent public chance, bindings,
-explicit disclosure failure, deferred public guards, heterogeneous results,
-own-action recall, and terminal payoffs. The compiler preserves honest outcome
-laws and translates every unilateral target deviation to a finite mixture of
-legal source policies while leaving opponents unchanged. The resulting
-pending-message profile preserves and reflects same-error epsilon-Nash.
-Sequential compilation adds predecessor barriers to the same event graph;
-both execution modes use the same pending-message runtime and strategic proof.
+The fixed-calendar sequential-equilibrium preservation theorem is checked.
+Preservation for arbitrary admissible builders remains open. The
+[design and proof plan](docs/se-schedule-generalization.md) states the semantics,
+concrete issues and a finite experiment for the missing timing and belief
+comparisons. Honest outcome simulation alone does not establish equilibrium
+preservation. The [calendar checklist](docs/se-proof-checklist.md)
+records its checked evidence; the [module map](docs/module-architecture.md) locates
+the implementation. Retired designs and experiments are in the
+[uncompiled archive](archive/se-generalization/README.md).
 
-The native target uses authenticated messages, ideal opaque commitments,
-public opening verification, and relative deadlines. Its concrete finite
-service runs fixed-shape epochs: a public policy adaptively chooses a
-permutation of all events, each event receives its prescribed opportunities,
-then the clock advances once and expiry is checked. The strategic theorem
-assumes every event deadline is at least two ticks. The wire and order policies
-may adapt to their public observations and histories; no generalized fair
-network is assumed. The repository does not provide computational
-cryptographic security, censorship resistance, ledger refinement, or EVM
-deployment.
+Build and validate:
 
-An arbitrary real-valued observation of the public source result may be used
-in the deviation guarantee; it need not be a player's declared payoff. Thus a
-source lower bound that holds against every legal unilateral source deviation
-also holds against every unilateral native deviation, with missing native
-outcomes represented explicitly.
-
-`Vegas.Language` is a surface-syntax prototype for typed bindings and nullable
-guard notation. It lowers to an internal `SurfaceCore` representation whose
-optional `Legal` predicate requires satisfiable commitment guards. This differs
-from `SourceProgram`, which admits unsatisfiable guards and represents their
-resolution as failure. The prototype has no execution semantics or verified
-elaboration into `SourceProgram`; its typed lowering carries no operational or
-strategic compilation claim. Its syntax and tests are maintained separately.
-
-Start with the [artifact guide](ARTIFACT.md), [theorem map](docs/active-tower.md),
-[module ownership](docs/module-architecture.md), and
-[compilation design](docs/compilation-design.md). Semantic details live in the
-[source rationale](docs/source-design-rationale.md),
-[source semantics](docs/source-semantics.md),
-[source-to-graph edge](docs/source-graph-edge.md), and
-[pending-message proof](docs/event-pending-deviation.md). The
-[scheduling proof](docs/event-graph-scheduling-proof.md) and
-[public-opening boundary](docs/event-graph-public-observations.md) explain
-the information conditions. The [frontend boundary](docs/compiler-boundary.md)
-and [outcome/utility distinction](docs/outcomes-and-utilities.md) describe the
-interfaces to richer languages and analyses. The
-[road ahead](docs/a-road-ahead.md) describes target boundaries still to add, and
-the [auction discussion](docs/auctions-discussion.md) collects open questions on
-allocations, private values, and truthfulness.
-The [EventGraph design](docs/event-graph-design.md) specifies the asynchronous
-compilation boundary. The event-addressed pending-message game has checked
-arbitrary-player completion, honest outcome, unilateral-deviation mixture, and
-same-error epsilon-Nash theorems under the concrete
-[public epoch service](docs/event-service.md). The deviation may use any native
-player policy. Its exact source-policy mixture is chosen before private setup,
-while the native wire and event-order policies remain public and adaptive.
-
-Subgame perfection requires additional continuation guarantees. The
-[obstruction inventory](docs/spe-obstructions.md) records the concrete failure
-mechanisms, their evidence, and the obligations for addressing them. The
-[combined service design](docs/reactive-spe-service.md) includes a checked
-submission-authorization rule and per-player event isolation, with backend
-enforcement and the full continuation theorem still open. The reactive
-compiler has a [checked counterexample under uniform inclusion](docs/early-opening-and-spe.md):
-an honest source SPE compiles to a policy with a profitable off-path deviation.
-The deviation spends a transmission on an early opening instead of repairing
-the current binding. The [inclusion investigation](docs/inclusion-and-spe.md)
-separates the proved local selection laws from the remaining service and
-compiler obligations. Honest SPE preservation under a suitable constrained
-service remains open.
-
-The [sequential-equilibrium analysis](docs/sequential-equilibrium-design.md)
-requires credible continuation play at private information sets as well. A
-[checked native counterexample](docs/sequential-disclosure-impossibility.md)
-rules out general utility-independent preservation: an authenticated opening
-can reveal a private type even when a deferred guard records publication
-failure. The proof covers the actual source equilibrium, arbitrary native
-beliefs and whole continuation policies, with timeout completion under all raw
-player policies. [Cryptographic alternatives](docs/cryptographic-runtime-future-work.md)
-are documented as future work with their distinct validity, recovery and
-disclosure assumptions.
-
-The [communication semantics](docs/ambient-communication.md) keeps evidence
-separate from game results. Its checked source adapter exposes an authenticated
-opening even when publication fails, and permits voluntary disclosure at
-explicit communication opportunities. The experiment proves evidence soundness,
-perfect recall, bounded play, and the original counterexample's corrected
-information behavior without adding a `failure(value)` result. The reactive
-compiler preserves opening evidence on guard failure; native receipt decoding
-and knowledge of the corresponding binding are checked under arbitrary play.
-Independent verification before inclusion and recognition of a later accepted
-binding are checked. The [selective-association separation](docs/selective-association-proof-contract.md)
-shows that certificates restricted to already accepted source bindings omit
-a strategically relevant capability: one source sequential-equilibrium outcome
-cannot occur at any native sequential equilibrium of the stated finite service.
-Its utilities are the program's returned payoffs, and even Alice's payout law
-cannot be matched by a payoff-aware strategy translation into that native game.
-Correspondence with a stronger communication semantics remains open. With an
-audited settlement, the full-language theorem below preserves every source SE.
-
-A [monitored guessing fragment](docs/research/se-native-pilot.md) has checked
-end-to-end SE preservation: every source SE has a native SE with identical
-joint initial-bit, public-result and actual net-payoff laws. It uses the actual
-compiled graph and full bounded raw menus, a fixed finite service, ordinary
-partial monitoring, and a collectible rejection charge of at least two.
-The zero-payoff watcher reports rationally by indifference. This theorem adds
-no source construct; it does not cover arbitrary games, repeated communication,
-paid reporting or an escrow implementation.
-
-The [general sanctions investigation](docs/research/se-ideal-sanctions.md)
-has a checked general SE extension theorem under a structural action restriction
-and sound conditional collection. It derives retained strategies and beliefs,
-constructs rational new continuations, and preserves the joint completed-history
-and actual net-payoff law. The theorem aligns decision steps and requires finite,
-clocked protocols with decision-site recall; every reactive response menu has
-this recall property. General source-to-native correspondence and
-collection remain compiler obligations. Forcing future actions to fail is
-sufficient only when their actual continuation loss deters the departure.
-
-For the two-reveal program of the monitored guessing fragment, with an
-arbitrary declared integer payoff table and a zero-payoff watcher, the
-[declared-payoff theorem](Vegas/Examples/MonitoredGuessing/DeclaredCompilation.lean)
-gives every source SE a full bounded raw native SE with the same joint initial
-type, public results and net payoffs. The
-[SE compiler roadmap](docs/se-preservation-roadmap.md) records checked
-executable inference of the least sufficient deposit for a finite rational
-comparison table. Exact finite-game checking is a separate proposed diagnostic;
-failure of a sufficient certificate is not an impossibility result.
-
-For the full source language, including private inputs, fresh commitments,
-public chance and guarded disclosure, the
-[full-language compiler theorem](Vegas/Game/SourceServiceCompilation.lean)
-(`Vegas.Paper.source_audited_raw_sequential_equilibrium`) preserves every
-source SE in the audited bounded raw runtime, for programs whose commitment
-payload types are finite. Both equilibria are standard sequential equilibria of
-complete play. The native SE has the source joint law of the typed terminal
-state and payoff, with the payoff realized as settlement, and the audit charges
-no player on its paths. The native service, activation rosters,
-audit backend and deposits are fixed before an equilibrium is chosen.
-Authentic partial audit evidence, positive conditional collection coverage
-over closed communication, protected service with a non-strategic
-environment, and collectible fixed deposits are explicit backend assumptions;
-the theorem retains bounded interaction and a finite response interface, and
-asserts no cryptographic or EVM refinement. The
-[completion checklist](docs/se-proof-checklist.md) is the status ledger and
-the [implementation stack](docs/se-compilation-stack.md) the proof map and
-assumption list.
-
-The [runtime abstraction investigation](docs/runtime-abstraction-classification.md)
-classifies what a game presentation may forget. Its generic continuation
-simulation theorem supplies composable sufficient certificates and is used by
-the checked private-response normalization theorem. The investigation separates
-preservation by a fixed strategy compiler from equilibrium-outcome
-implementability, and distinguishes finite classification results from the
-unimplemented general finite-game decision procedure. For one fixed payoff,
-the terminal classification permits erasure when every observation fiber has a
-common maximizing action. Generic continuation decisions and induced-information
-bounds factor the earlier native disclosure impossibilities.
-
-## Build
-
-```text
-git submodule update --init --recursive
-lake exe cache get
-python scripts/check-doc-references.py
-python scripts/check-lean-options.py
-python scripts/check-module-boundaries.py
-python scripts/report-open-obligations.py
-python -m unittest discover -s scripts -p "test_*.py"
+```powershell
 lake --wfail build
+python scripts/check-module-boundaries.py
+python scripts/check-lean-options.py
+python scripts/check-doc-references.py
 python scripts/check-se-evidence.py
+python -m unittest discover -s scripts -p 'test_*.py'
 ```
 
-The pinned `GameTheory` dependency and `GameTheoryExtensions` contain reusable
-game-theoretic mathematics. `Interaction` owns runtime-independent message
-semantics. `Vegas` owns the source language, typed graph, compiler, and their
-correspondence.
+The GameTheory dependency is managed separately as a Git submodule.

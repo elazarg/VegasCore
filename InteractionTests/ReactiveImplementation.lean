@@ -30,7 +30,7 @@ private abbrev app : ReactiveApplication Bool where
   observePublic _ := ()
   observePending _ _ := PMF.pure ∅
 
-private def send (bit : Bool) : app.Action := ⟨some bit⟩
+private def send (bit : Bool) : app.Action := ⟨some (.submit bit)⟩
 
 private def retainedBit : app.Implementation Bool where
   initial := (PMF.uniformOfFintype _)

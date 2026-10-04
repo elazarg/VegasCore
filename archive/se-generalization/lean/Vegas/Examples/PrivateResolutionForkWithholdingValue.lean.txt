@@ -1,0 +1,220 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Examples.PrivateResolutionForkLowFalseUtility
+import Vegas.Game.SourceServiceWithholdingGuessBound
+import Vegas.Game.SourceServiceWithholdingCommittedBound
+import Vegas.Game.SourceServiceFirstInputTerminalLaw
+
+/-! # The private-type public utility after an actual withholding
+
+At a real completed native endpoint, Bob's source utility reads the actual
+publication output and the same initial private type. A recorded withholding
+therefore bounds his whole native continuation by the LOW-correct indicator.
+Later policies are arbitrary; this is not a source-posterior identification.
+-/
+
+noncomputable section
+
+namespace Vegas.PrivateResolutionFork
+
+open SourceProgram EventGraphRuntime Interaction GameTheory GameTheory.Protocol
+  GameTheory.Math.Probability GameTheory.Enforcement
+
+variable (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph))
+
+/-- The fixture's public utility at Bob is precisely the publication guess
+against the immutable initial type, for every typed terminal source state. -/
+theorem lowFalse_bob_public_projection (source : State simpleExpr setup.program.terminalCtx) :
+    lowFalseSourceUtility source bob =
+      if (source.get .here).isSuccess = typeParameter (initialState setup.program source)
+        then 1 else 0 := by
+  unfold lowFalseSourceUtility lowFalsePublicUtility
+  dsimp only
+  rw [ite_eq_right (by decide : bob ≠ alice)]
+  rfl
+
+/-- Typed decoding identifies the actual public publication, while initial
+readout preserves the same selected initial state. No source support is needed. -/
+theorem native_bob_public_utility_eq
+    (control : (application setup leaks).Control)
+    (terminal : control.execution.application.config.cut.Terminal)
+    (initial : State simpleExpr setup.context)
+    (initialized : sourceInitialReadout setup control.execution.application.config =
+      some initial) :
+    baseUtility setup leaks lowFalseSourceUtility (some control) bob =
+      sourcePublicationGuessValue setup leaks bobResolution .bool rfl (typeParameter initial)
+        (some control) := by
+  let config := control.execution.application.config
+  have available := decodeState?_isSome_of_available (terminalRefs setup.program) config.store
+    (fun field => config.store_available_of_terminal terminal field)
+  cases decoded : decodeState? (terminalRefs setup.program) config.store with
+  | none => simp only [decoded, Option.isSome_none, Bool.false_eq_true] at available
+  | some source =>
+      have read : sourceReadout setup leaks (some control) = some source :=
+        (sourceReadout_eq_decode setup leaks control).trans decoded
+      have original := sourceInitialReadout_of_sourceReadout setup leaks control source read
+      have sameInitial : initialState setup.program source = initial :=
+        Option.some.inj (original.symm.trans initialized)
+      have agree : (terminalRefs setup.program).Agrees source config.store :=
+        decodeState?_agrees (terminalRefs setup.program) config.store source decoded
+      have output : config.outputs bobResolution = some (source.get .here) := by
+        exact agree .here
+      simp only [baseUtility, read, Option.elim_some, lowFalse_bob_public_projection, sameInitial]
+      simp only [sourcePublicationGuessValue, Option.elim_some, cast_eq]
+      change (if (source.get .here).isSuccess = typeParameter initial then 1 else 0) =
+        (config.outputs bobResolution).elim 0 (fun result =>
+          if result.isSuccess = typeParameter initial then 1 else 0)
+      rw [output]
+      rfl
+
+open Classical in
+/-- The whole actual continuation retains the same initialized type and reads
+its actual terminal public output, under every later native profile. -/
+theorem native_bob_public_continuation_value_eq
+    (menu : (application setup leaks).ResponseMenu) (horizon : Nat)
+    (scheduler : (application setup leaks).Scheduler)
+    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
+    (profile : ∀ who, (menu.information (initialLaw setup) horizon scheduler).BehavioralPolicy who)
+    (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
+    (control : (application setup leaks).Control) (current : history.state = some control)
+    (backend : EvidenceReportService (SettledEvidence setup))
+    (deposit : Player → ℝ) :
+    let high := (sourceInitialReadout setup control.execution.application.config).elim false
+      typeParameter
+    expect ((menu.information (initialLaw setup) horizon scheduler).runBehavioralTerminalFrom
+      (menu.bounded (initialLaw setup) horizon scheduler).wellFoundedHistories profile history)
+      (fun final => TerminalAudit.utility (baseUtility setup leaks lowFalseSourceUtility)
+        ((runtime setup).serviceAuditObservation leaks)
+        (sourceServiceAudit setup leaks backend.sample) deposit final.state bob) =
+    expect ((menu.information (initialLaw setup) horizon scheduler).runBehavioralTerminalFrom
+      (menu.bounded (initialLaw setup) horizon scheduler).wellFoundedHistories profile history)
+      (fun final => TerminalAudit.utility
+        (fun state _ => sourcePublicationGuessValue setup leaks bobResolution .bool rfl high state)
+        ((runtime setup).serviceAuditObservation leaks)
+        (sourceServiceAudit setup leaks backend.sample) deposit final.state bob) := by
+  intro high
+  let app := application setup leaks
+  let model := menu.information (initialLaw setup) horizon scheduler
+  let certificate := (menu.bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
+  let law := model.runBehavioralTerminalFrom certificate profile history
+  obtain ⟨initial, _selected, initialized⟩ := sourceInitialReadout_history setup leaks horizon
+    scheduler control (current ▸ menu.toRawTrace (initialLaw setup) horizon scheduler history.trace)
+  have highEq : high = typeParameter initial := by simp only [high, initialized, Option.elim_some]
+  change expect law (fun final => TerminalAudit.utility
+      (baseUtility setup leaks lowFalseSourceUtility)
+      ((runtime setup).serviceAuditObservation leaks)
+      (sourceServiceAudit setup leaks backend.sample) deposit final.state bob) =
+      expect law (fun final => TerminalAudit.utility
+        (fun state _ => sourcePublicationGuessValue setup leaks bobResolution .bool rfl high state)
+        ((runtime setup).serviceAuditObservation leaks)
+        (sourceServiceAudit setup leaks backend.sample) deposit final.state bob)
+  apply expect_congr_on_support
+  intro final supported
+  have terminal := model.runBehavioralTerminalFrom_support_terminal certificate profile history
+    final supported
+  have runner := model.runBehavioralTerminalFrom_eq_remaining certificate profile
+    (menu.bounded (initialLaw setup) horizon scheduler) history
+  have path := (menu.protocol (initialLaw setup) horizon scheduler).runRandomizedFor_reachesWithin
+    (model.randomizedChooser profile) (2 * horizon + 1 - history.trace.length) history final
+      (by
+        change final ∈ (model.runBehavioralFrom profile
+          (2 * horizon + 1 - history.trace.length) history).support
+        rw [← runner]
+        exact supported)
+  cases finalState : final.state with
+  | none => simp only [TerminalAudit.utility, baseUtility, sourceReadout,
+      Option.bind_none, Option.elim_none, sourcePublicationGuessValue]
+  | some after =>
+      have rawPath := menu.reaches_raw (initialLaw setup) horizon scheduler path
+      have same := sourceInitialReadout_reaches (initialLaw setup) horizon scheduler rawPath
+        control after current finalState
+      have complete := completes after
+        (finalState ▸ menu.toRawTrace (initialLaw setup) horizon scheduler final.trace)
+        (finalState ▸ terminal)
+      have projection := native_bob_public_utility_eq leaks after complete initial
+        (same.trans initialized)
+      simpa only [TerminalAudit.utility, finalState, highEq] using
+        congrArg (fun value => value - TerminalAudit.charge
+          ((runtime setup).serviceAuditObservation leaks)
+          (sourceServiceAudit setup leaks backend.sample) (some after) bob * deposit bob) projection
+
+open Classical in
+/-- An actual first LOW packet gives Bob at most the LOW-correct initial
+indicator under every later native policy, including further transmissions. -/
+theorem withhold_bob_public_continuation_le
+    (menu : (application setup leaks).ResponseMenu) (horizon : Nat)
+    (scheduler : (application setup leaks).Scheduler)
+    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
+    (profile : ∀ who, (menu.information (initialLaw setup) horizon scheduler).BehavioralPolicy who)
+    (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
+    (control : (application setup leaks).Control) (current : history.state = some control)
+    (backend : EvidenceReportService (SettledEvidence setup))
+    (observationRate deliveryRate : Player → ℝ)
+    (delivery_nonnegative : ∀ who, 0 ≤ deliveryRate who)
+    (coverage : FinalForbiddenEvidenceCoverage backend observationRate deliveryRate)
+    (record : (application setup leaks).TrafficRecord)
+    (present : record ∈ (application setup leaks).stateTraffic history.state)
+    (authored : record.envelope.sender = bob)
+    (call : record.envelope.payload.call = .withhold bobResolution)
+    (deposit : Player → ℝ) (nonnegative : 0 ≤ deposit bob)
+    (sufficient : 1 ≤ observationRate bob * deliveryRate bob * deposit bob) :
+    let high := (sourceInitialReadout setup control.execution.application.config).elim false
+      typeParameter
+    expect ((menu.information (initialLaw setup) horizon scheduler).runBehavioralTerminalFrom
+      (menu.bounded (initialLaw setup) horizon scheduler).wellFoundedHistories profile history)
+      (fun final => TerminalAudit.utility (baseUtility setup leaks lowFalseSourceUtility)
+        ((runtime setup).serviceAuditObservation leaks)
+        (sourceServiceAudit setup leaks backend.sample) deposit final.state bob) ≤
+      if high then 0 else 1 := by
+  intro high
+  rw [native_bob_public_continuation_value_eq leaks menu horizon scheduler completes profile history
+    control current backend deposit]
+  have bound := sourceService_withhold_guess_continuation_le setup leaks menu horizon scheduler
+    completes profile history backend observationRate deliveryRate delivery_nonnegative coverage
+    record present bobResolution .bool rfl call high deposit
+      (authored.symm ▸ nonnegative) (by simpa only [authored] using sufficient)
+  simpa only [authored] using bound
+
+open Classical in
+/-- An available actual LOW decision bounds Bob's original public utility for
+the whole later native policy. The emitted receipt and initial type are real. -/
+theorem withhold_bob_public_committed_le
+    (menu : (application setup leaks).ResponseMenu) (horizon : Nat)
+    (scheduler : (application setup leaks).Scheduler)
+    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
+    (profile : ∀ who, (menu.information (initialLaw setup) horizon scheduler).BehavioralPolicy who)
+    (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
+    (remaining : Nat) (execution : (application setup leaks).Execution)
+    (current : history.state = some ⟨remaining, some bob, execution⟩)
+    (info : (menu.information (initialLaw setup) horizon scheduler).InfoState bob)
+    (choice : (menu.information (initialLaw setup) horizon scheduler).Choice bob info)
+    (observed : (menu.information (initialLaw setup) horizon scheduler).infoOf bob
+      history.trace = info)
+    (material : (application setup leaks).Submission)
+    (selected : choice.1 = some ⟨some material⟩)
+    (withheld : material.call.packet = .withhold bobResolution)
+    (backend : EvidenceReportService (SettledEvidence setup))
+    (observationRate deliveryRate : Player → ℝ)
+    (delivery_nonnegative : ∀ who, 0 ≤ deliveryRate who)
+    (coverage : FinalForbiddenEvidenceCoverage backend observationRate deliveryRate)
+    (deposit : Player → ℝ) (nonnegative : 0 ≤ deposit bob)
+    (sufficient : 1 ≤ observationRate bob * deliveryRate bob * deposit bob) :
+    let high := (sourceInitialReadout setup execution.application.config).elim false typeParameter
+    expect ((menu.information (initialLaw setup) horizon scheduler).runBehavioralTerminalFrom
+      (menu.bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
+      (Profile.update
+        (sig := (menu.information (initialLaw setup) horizon scheduler).behavioralSignature)
+        profile bob ((profile bob).commit info choice)) history)
+      (fun final => TerminalAudit.utility (baseUtility setup leaks lowFalseSourceUtility)
+        ((runtime setup).serviceAuditObservation leaks)
+        (sourceServiceAudit setup leaks backend.sample) deposit final.state bob) ≤
+      if high then 0 else 1 := by
+  intro high
+  rw [native_bob_public_continuation_value_eq leaks menu horizon scheduler completes _ history
+    ⟨remaining, some bob, execution⟩ current backend deposit]
+  exact sourceService_withhold_guess_committed_le setup leaks menu horizon scheduler completes
+    profile history bob remaining execution current info choice observed material selected
+    bobResolution .bool rfl withheld backend observationRate deliveryRate delivery_nonnegative
+    coverage high deposit nonnegative sufficient
+
+end Vegas.PrivateResolutionFork

@@ -42,12 +42,15 @@ theorem foreign_observed (frame : Frame runtime leaks memory owner original repa
 private theorem repairResponse_transport
     (view : (runtime.reactiveApplication leaks).PlayerView)
     (response : (runtime.reactiveApplication leaks).Action)
-    (transport : ∀ submission, response.transmission ≠ some submission) :
+    (transport : ∀ submission, response.transmission ≠ some (.submit submission)) :
     memory.repairResponse runtime leaks owner view response = (response, memory.shadow) := by
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some material => exact (transport material rfl).elim
+  | some transmission =>
+      cases transmission with
+      | replay id => rfl
+      | submit material => exact (transport material rfl).elim
 
 /-- One real player response has a joint coupling with the private repair.
 This statement concerns the response window, not later inclusion. -/
@@ -57,7 +60,7 @@ theorem resume_transport_coupling
     (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
     (started : reference.length ≤ (repaired.recall owner).length)
     (transport : ∀ past view response, response ∈ (players owner past view).support →
-      ∀ material, response.transmission ≠ some material)
+      ∀ material, response.transmission ≠ some (.submit material))
     (actor : Option Player) :
     let app := runtime.reactiveApplication leaks
     let strategy := implementation runtime leaks owner reference (players owner)
@@ -136,7 +139,7 @@ theorem dispatch_transport_coupling
     (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
     (started : reference.length ≤ (repaired.recall owner).length)
     (transport : ∀ past view response, response ∈ (players owner past view).support →
-      ∀ material, response.transmission ≠ some material)
+      ∀ material, response.transmission ≠ some (.submit material))
     (command : (runtime.reactiveApplication leaks).Command)
     (allowed : command = .wait ∨ ∃ actor, command = .activate actor) :
     let app := runtime.reactiveApplication leaks
@@ -216,7 +219,7 @@ theorem round_transport_coupling
     (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
     (started : reference.length ≤ (repaired.recall owner).length)
     (transport : ∀ past view response, response ∈ (players owner past view).support →
-      ∀ material, response.transmission ≠ some material)
+      ∀ material, response.transmission ≠ some (.submit material))
     (commands : ∀ past view command, command ∈ (scheduler past view).support →
       command = .wait ∨ ∃ actor, command = .activate actor) :
     let app := runtime.reactiveApplication leaks
@@ -263,7 +266,7 @@ theorem run_transport_coupling
     (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
     (started : reference.length ≤ (repaired.recall owner).length)
     (transport : ∀ past view response, response ∈ (players owner past view).support →
-      ∀ material, response.transmission ≠ some material)
+      ∀ material, response.transmission ≠ some (.submit material))
     (commands : ∀ past view command, command ∈ (scheduler past view).support →
       command = .wait ∨ ∃ actor, command = .activate actor)
     (count : Nat) :

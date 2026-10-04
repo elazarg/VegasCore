@@ -8,7 +8,7 @@ import Vegas.Pending.ReactiveServiceAudit
 The induction executes the existing service plan. It preserves both complete
 marginal laws, the fixed repair implementation's private memory, and actual
 retained-history reachability. Once a first departure is certified, its real
-traffic or public missed-decision evidence survives the arbitrary physical suffix.
+traffic or public omission evidence survives the arbitrary physical suffix.
 -/
 
 noncomputable section
@@ -34,23 +34,31 @@ theorem frame_recall_length
   exact Nat.min_self _
 
 omit [Fintype Player] in
-theorem missed_decision_plan_persistent
+theorem omission_plan_persistent
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (players : Player → (application setup leaks).Policy)
     (network : (runtime setup).NetworkPolicy leaks)
     (plan : List (ServiceInstruction (graph setup))) (owner : Player)
     (original final : (application setup leaks).Execution)
-    (missed : original.application.publicView.missedDecisionBy owner = true)
+    (missed : original.application.publicView.missedBindingBy owner = true)
     (reached : final ∈ ((runtime setup).runInteractionPlan leaks players network plan
-      original).support) : final.application.publicView.missedDecisionBy owner = true := by
+      original).support) : final.application.publicView.missedBindingBy owner = true := by
   classical
-  obtain ⟨event, missing, owned⟩ := of_decide_eq_true missed
-  apply PublicView.missedDecisionBy_of_event _ owner event owned
-  exact (runtime setup).runInteractionPlan_preserves leaks players network _
-    (ReactiveApplication.Invariant.policyInvariant (application setup leaks)
-      ((runtime setup).reactiveMissedDecisionInvariant leaks event) players)
-    plan original final missing reached
+  obtain ⟨event, owned, missing⟩ := of_decide_eq_true missed
+  apply PublicView.missedBindingBy_of_event _ owner event owned
+  cases shape : (graph setup).outputLayout event with
+  | binding actor payload =>
+      exact (runtime setup).runInteractionPlan_preserves leaks players network _
+        (ReactiveApplication.Invariant.policyInvariant (application setup leaks)
+          ((runtime setup).reactiveMissedBindingInvariant leaks event actor payload shape) players)
+        plan original final missing reached
+  | publicData payload =>
+      simp only [PublicView.missedBinding, shape, Bool.false_eq_true] at missing
+  | privateInput actor payload =>
+      simp only [PublicView.missedBinding, shape, Bool.false_eq_true] at missing
+  | publication payload =>
+      simp only [PublicView.missedBinding, shape, Bool.false_eq_true] at missing
 
 theorem remaining_events_stopped_coupling
     (setup : Setup (Player := Player) (L := L))
@@ -58,7 +66,7 @@ theorem remaining_events_stopped_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
@@ -77,12 +85,10 @@ theorem remaining_events_stopped_coupling
     (original repaired : (application setup leaks).Execution)
     (frame : BindingMemory.Frame (runtime setup) leaks memory owner original repaired)
     (onlyBindings : memory.shadow.OwnBindings owner)
-    (completedMemory : memory.shadow.CompletedAt original.application.config)
     (started : reference.length ≤ (repaired.recall owner).length)
     (leftRecall : original.InputRecall (application setup leaks))
     (sound : ((runtime setup).packetEvidence leaks).Sound original)
     (leftBinding : original.application.BindingInvariant)
-    (leftRemembered : original.application.remembered = fun _ => none)
     (events : List (graph setup).EventId) (remaining : Nat)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
@@ -110,12 +116,11 @@ theorem remaining_events_stopped_coupling
           (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
             (some ⟨remaining, none, next.2.1⟩)) ∧
         next.2.2.shadow.OwnBindings owner ∧
-        ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
+        ((∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.envelope = false) ∨
-          next.1.application.publicView.missedDecisionBy owner = true ∨
-          (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
-            next.2.2.shadow.CompletedAt next.1.application.config)) := by
+            record.input.envelope = false) ∨
+          next.1.application.publicView.missedBindingBy owner = true ∨
+          BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
   classical
   intro app players strategy
   let menu := sourceServiceMenu setup leaks bounds rosters
@@ -136,16 +141,15 @@ theorem remaining_events_stopped_coupling
           ReactiveApplication.Implementation.runJoint, PMF.pure_map]
       · intro next reached
         cases (PMF.mem_support_pure_iff _ _).mp reached
-        exact ⟨⟨trace⟩, onlyBindings, Or.inr (Or.inr ⟨frame, completedMemory⟩)⟩
+        exact ⟨⟨trace⟩, onlyBindings, Or.inr (Or.inr frame)⟩
   | cons event rest ih =>
       let block := rosterBlock setup rosters event
       let suffix := rest.flatMap (rosterBlock setup rosters)
       obtain ⟨eventRank, restEq⟩ := finRange_drop_cons eventsEq
       obtain ⟨step, first, second, related⟩ := event_block_stopped_coupling setup leaks bounds
         values capacity rosters opportunities network source target agrees owner policy
-          available reference memory original repaired frame onlyBindings completedMemory started
-            leftRecall sound
-            leftBinding leftRemembered event (remaining + suffix.length) (by
+          available reference memory original repaired frame onlyBindings started leftRecall sound
+            leftBinding event (remaining + suffix.length) (by
               have equal : remaining + suffix.length + block.length =
                   remaining + ((event :: rest).flatMap (rosterBlock setup rosters)).length := by
                 simp only [List.flatMap_cons, List.length_append]
@@ -164,17 +168,16 @@ theorem remaining_events_stopped_coupling
             coupling.map Prod.snd = strategy.runJoint owner players scheduler suffix.length
               next.2.1 next.2.2 ∧
             ∀ final ∈ coupling.support,
-              ((∃ record ∈ app.executionTraffic final.1, record.envelope.sender = owner ∧
+              ((∃ record ∈ app.executionTraffic final.1, record.input.envelope.sender = owner ∧
                 (runtime setup).permittedServiceEnvelope record.observation record.ledger
-                  record.envelope = false) ∨
-                final.1.application.publicView.missedDecisionBy owner = true ∨
-                (BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1 ∧
-                  final.2.2.shadow.CompletedAt final.1.application.config)) := by
+                  record.input.envelope = false) ∨
+                final.1.application.publicView.missedBindingBy owner = true ∨
+                BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1) := by
         by_cases bad : (∃ record ∈ app.executionTraffic next.1,
-            record.envelope.sender = owner ∧
+            record.input.envelope.sender = owner ∧
               (runtime setup).permittedServiceEnvelope record.observation record.ledger
-                record.envelope = false) ∨
-            next.1.application.publicView.missedDecisionBy owner = true
+                record.input.envelope = false) ∨
+            next.1.application.publicView.missedBindingBy owner = true
         · let left := (runtime setup).runInteractionPlan leaks players network suffix next.1
           let right := strategy.runJoint owner players scheduler suffix.length next.2.1 next.2.2
           refine ⟨bindPairLaw left (fun _ => right), bindPairLaw_map_fst ..,
@@ -186,11 +189,11 @@ theorem remaining_events_stopped_coupling
           rcases bad with ⟨record, present, authored, forbidden⟩ | missed
           · exact Or.inl ⟨record, ((runtime setup).executionTraffic_runInteractionPlan leaks
               players network suffix next.1 final.1 reached).subset present, authored, forbidden⟩
-          · exact Or.inr (Or.inl (missed_decision_plan_persistent setup leaks players network suffix
+          · exact Or.inr (Or.inl (omission_plan_persistent setup leaks players network suffix
               owner next.1 final.1 missed reached))
         · have connected := related next member
           obtain ⟨nextTrace⟩ := connected.1
-          obtain ⟨paired, nextCompleted⟩ := (connected.2.resolve_left (fun traffic => bad (Or.inl
+          have paired := (connected.2.resolve_left (fun traffic => bad (Or.inl
             traffic))).resolve_left
             (fun omission => bad (Or.inr omission))
           have leftSupport : next.1 ∈
@@ -228,19 +231,11 @@ theorem remaining_events_stopped_coupling
             (ReactiveApplication.Invariant.policyInvariant app
               ((runtime setup).reactiveBindingInvariant leaks) players)
             block original next.1 leftBinding leftSupport
-          have nextRemembered := (runtime setup).runInteractionPlan_preserves leaks
-            players network _
-            (ReactiveApplication.Invariant.policyInvariant app
-              ((runtime setup).reactiveRememberedInvariant leaks
-                (fun table => table = fun _ => none)) players)
-            block original next.1 leftRemembered leftSupport
           have nextPosition : next.1.environmentRecall.length = (before ++ block).length := by
             rw [(runtime setup).runInteractionPlan_recall leaks players network block original
               next.1 leftSupport, position, List.length_append]
           obtain ⟨coupling, leftLaw, rightLaw, connected⟩ := ih next.2.2 next.1 next.2.1 paired
-            nextMemory nextCompleted nextStarted nextRecall nextSound nextBinding nextRemembered
-            nextTrace
-            (before ++ block)
+            nextMemory nextStarted nextRecall nextSound nextBinding nextTrace (before ++ block)
             (by simpa only [List.flatMap_cons, List.append_assoc, block, suffix] using split)
             (rank + 1) restEq (by rw [beforeEq, ← eventRank, rosterPlanPrefix_succ]) nextPosition
           exact ⟨coupling, leftLaw, rightLaw, fun final supported =>

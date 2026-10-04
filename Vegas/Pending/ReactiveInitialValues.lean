@@ -79,29 +79,32 @@ theorem withInitialValues_rawMenu [DecidableEq Player] (bounds : MessageBounds g
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => trivial
-  | some submission =>
-      have allowed := (bounds.submissions_mem _ submission).mp member
-      apply ((bounds.withInitialValues initial).submissions_mem _ submission).mpr
-      refine ⟨⟨?_, ?_⟩, ?_⟩
-      · cases packet : submission.call.packet <;>
-          simp only [packet, AllowsPacket] at allowed ⊢
-        · exact allowed.1.1
-        · exact ⟨allowed.1.1.1, bounds.withInitialValues_preserves_values initial allowed.1.1.2⟩
-        · exact bounds.withInitialValues_preserves_values initial allowed.1.1
-      · cases opening : submission.call.opening with
-        | none => trivial
-        | some raw =>
-            have present : raw ∈ bounds.values := by
-              simpa only [opening, AllowsOpening] using allowed.1.2
-            exact bounds.withInitialValues_preserves_values initial present
-      · cases request : submission.evidence with
-        | none => trivial
-        | owned fact =>
-            have permitted : bounds.AllowsHandle fact.handle ∧ fact.raw ∈ bounds.values := by
-              simpa only [request, AllowsEvidence] using allowed.2
-            exact ⟨permitted.1, bounds.withInitialValues_preserves_values initial permitted.2⟩
-        | forward id =>
-            simpa only [request, AllowsEvidence] using allowed.2
+  | some transmission =>
+      cases transmission with
+      | replay id => exact member
+      | submit submission =>
+          have allowed := (bounds.submissions_mem _ submission).mp member
+          apply ((bounds.withInitialValues initial).submissions_mem _ submission).mpr
+          refine ⟨⟨?_, ?_⟩, ?_⟩
+          · cases packet : submission.call.packet <;>
+              simp only [packet, AllowsPacket] at allowed ⊢
+            · exact allowed.1.1
+            · exact ⟨allowed.1.1.1, bounds.withInitialValues_preserves_values initial allowed.1.1.2⟩
+            · exact bounds.withInitialValues_preserves_values initial allowed.1.1
+          · cases opening : submission.call.opening with
+            | none => trivial
+            | some raw =>
+                have present : raw ∈ bounds.values := by
+                  simpa only [opening, AllowsOpening] using allowed.1.2
+                exact bounds.withInitialValues_preserves_values initial present
+          · cases request : submission.evidence with
+            | none => trivial
+            | owned fact =>
+                have permitted : bounds.AllowsHandle fact.handle ∧ fact.raw ∈ bounds.values := by
+                  simpa only [request, AllowsEvidence] using allowed.2
+                exact ⟨permitted.1, bounds.withInitialValues_preserves_values initial permitted.2⟩
+            | forward id =>
+                simpa only [request, AllowsEvidence] using allowed.2
 
 /-- Every initialized opening remains an available normalized response at every
 local view. Availability does not assert that the packet will be accepted. -/
@@ -114,7 +117,7 @@ theorem initialized_opening_available [DecidableEq Player] (bounds : MessageBoun
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView) (event : graph.EventId) :
     (runtime.reactiveNormalization leaks).action who past view
-        ⟨some (disclosureSubmission (.opening event (who, .initial input) raw))⟩ ∈
+        ⟨some (.submit (disclosureSubmission (.opening event (who, .initial input) raw)))⟩ ∈
       ((bounds.withInitialValues initial).menu runtime leaks).actions who past view := by
   have covered := bounds.initial_value_covered initial finite state supported who input raw
     fixed

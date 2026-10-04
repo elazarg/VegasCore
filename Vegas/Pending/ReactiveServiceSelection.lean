@@ -65,7 +65,7 @@ theorem reactiveLatest_after_submit (runtime : EventGraphRuntime graph)
     (addressed : submission.call.packet.event? graph = some event) :
     runtime.reactiveLatest leaks event who
       ((execution.respond (runtime.reactiveApplication leaks) who
-        ⟨some submission⟩).observeEnvironment (runtime.reactiveApplication leaks)) =
+        ⟨some (.submit submission)⟩).observeEnvironment (runtime.reactiveApplication leaks)) =
       .include (who, execution.network.nextSerial who) := by
   apply runtime.reactiveLatest_last leaks who event _ execution.network.pending
     ⟨(who, execution.network.nextSerial who), submission.emit

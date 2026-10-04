@@ -1,15 +1,22 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ServiceSettledEvidence
+import Vegas.Game.SourceServiceTrafficSound
 import Vegas.Game.SourceServiceCanonicalSerial
 
-/-! # Actual packet soundness against the settled record
+/-! # The settled record permits every retained packet
 
-A protected conforming sole packet remains pending with permitted content, or
-is actually accepted with the content checked by the final contract record.
-These packet facts apply to every scheduler satisfying protected inclusion and
-to arbitrary later player policies. Explicit withholding carries no evidence;
-its lawful accepted content persists through later commands.
+At every history of the retained source service, every transmitted packet is
+permitted by the settled record: its event is unsettled, or the contract
+accepted it with the content the record checks
+(`Vegas.sourceService_history_settled`).
+
+Each retained packet conforms on the view its author saw, so it is on track:
+its event is ready, it is not yet accepted, and the record will accept its
+content, which stays fixed while the event is ready. The roster calendar
+includes an owner's sole packet before the event can complete in any other way
+(`Vegas.prescribed_packet_settles` under `Vegas.rosterScheduler_protectedInclusion`),
+so the event completes only by accepting it.
 -/
 
 noncomputable section
@@ -39,8 +46,7 @@ def PendingContent (state : EventGraphRuntime.State (graph setup))
   | .opening _ _ _ =>
       certifiedOpening message.payload = true ∧
         state.publicView.openingGuardsAccepted message.payload = true
-  | .withhold _ => message.payload.evidence = none
-  | .malformed _ => False
+  | .withhold _ | .malformed _ => False
 
 /-- A retained packet is on track, or accepted with the content the record
 accepts. -/
@@ -69,7 +75,7 @@ theorem pendingContent_of_fresh (state : EventGraphRuntime.State (graph setup))
   | opening event candidate raw =>
       unfold EventGraphRuntime.freshServiceEnvelope at fresh
       exact ⟨fresh.2.2.1, fresh.2.2.2.1⟩
-  | withhold event => exact fresh.2.2.1
+  | withhold event => exact fresh.elim
   | malformed raw => exact fresh.elim
 
 /-- The settled content of a packet for a completed event survives every later
@@ -92,7 +98,7 @@ theorem settledContent_step {before after : EventGraphRuntime.State (graph setup
   rcases message with ⟨id, ⟨call, evidence, token⟩⟩
   cases call with
   | malformed raw => exact content.elim
-  | withhold actual => exact content
+  | withhold actual => exact content.elim
   | commitment actual candidate =>
       change some actual = some event at named
       cases Option.some.inj named
@@ -136,7 +142,7 @@ theorem settledContent_of_pending (before after : EventGraphRuntime.State (graph
   rcases message with ⟨id, ⟨call, evidence, token⟩⟩
   cases call with
   | malformed raw => exact pending.elim
-  | withhold actual => exact pending
+  | withhold actual => exact pending.elim
   | commitment actual candidate =>
       change some actual = some event at named
       cases Option.some.inj named
@@ -180,7 +186,7 @@ theorem pendingContent_congr {first second : EventGraphRuntime.State (graph setu
       unfold PublicView.openingGuardsAccepted at pending ⊢
       rw [same]
       exact pending
-  | withhold event => simpa only [call] using pending
+  | withhold event => simp only [call] at pending
   | malformed raw => simp only [call] at pending
 
 /-- A conforming packet meets the inclusion deadline with no slack. -/
@@ -202,10 +208,7 @@ theorem fresh_fits (view : PublicView (graph setup))
         change some actual = some event at named
         cases Option.some.inj named
         exact fresh.2.1
-    | withhold actual =>
-        change some actual = some event at named
-        cases Option.some.inj named
-        exact fresh.2.1
+    | withhold actual => exact fresh.elim
     | malformed raw => exact fresh.elim
   unfold PublicView.InclusionFitsDeadline
   cases activated : view.activatedAt event with
@@ -219,7 +222,7 @@ theorem fresh_fits (view : PublicView (graph setup))
 /-- A submission names the event its emitted packet addresses. -/
 theorem submittedEvent_of_issued {entry : (application setup leaks).PlayerEntry}
     {material : (application setup leaks).Submission}
-    (transmission : entry.action.transmission = some material)
+    (transmission : entry.action.transmission = some (.submit material))
     {state : EventGraphRuntime.State (graph setup)} {who : Player}
     {known : List (Message Player (WitnessedPacket (graph setup)))}
     {message : Message Player (WitnessedPacket (graph setup))}
@@ -249,7 +252,9 @@ theorem retained_accepted {horizon : Nat} {scheduler : (application setup leaks)
     (message.id, true) ∈ control.execution.receipts := by
   let app := application setup leaks
   have facts := legalFacts setup leaks _ _ control trace
-  have issued := facts.provenance.inputs message emitted
+  obtain ⟨input, inputMember, inputEq⟩ := List.mem_map.mp emitted
+  have issued := facts.provenance.inputs input inputMember
+  rw [inputEq] at issued
   obtain ⟨entry, entryMember, material, transmission, entryEmitted, state, known, packet⟩ := issued
   have fresh := conform message.sender entry entryMember material message transmission
     entryEmitted
@@ -281,15 +286,19 @@ theorem retained_accepted {horizon : Nat} {scheduler : (application setup leaks)
     have output : replayed ∈ app.outputs (control.execution.recall message.sender) :=
       List.mem_filterMap.mpr ⟨other, otherRecall, emittedOther⟩
     rw [← facts.inputs message.sender] at output
-    have replayMember := (List.mem_filter.mp output).1
-    obtain ⟨issuer, issuerMember, _, issuerTransmission, issuerEmitted, _, _, issuerPacket⟩ :=
-      facts.provenance.inputs replayed replayMember
-    rw [replayedAuthor] at issuerMember
-    have issuerEvent : (runtime setup).submittedEvent? leaks issuer.action = some event := by
-      rw [submittedEvent_of_issued issuerTransmission issuerPacket]
-      exact replayedAddressed
-    exact differentId (once message.sender issuer issuerMember entry entryMember event _ _
-      issuerEvent entryEvent issuerEmitted entryEmitted)
+    obtain ⟨replayInput, replayMember, replayEq⟩ := List.mem_filterMap.mp output
+    split at replayEq
+    · cases Option.some.inj replayEq
+      obtain ⟨issuer, issuerMember, _, issuerTransmission, issuerEmitted, _, _, issuerPacket⟩ :=
+        facts.provenance.inputs replayInput replayMember
+      have senderEq : replayInput.envelope.sender = message.sender := replayedAuthor
+      rw [senderEq] at issuerMember
+      have issuerEvent : (runtime setup).submittedEvent? leaks issuer.action = some event := by
+        rw [submittedEvent_of_issued issuerTransmission issuerPacket]
+        exact replayedAddressed
+      exact differentId (once message.sender issuer issuerMember entry entryMember event _ _
+        issuerEvent entryEvent issuerEmitted entryEmitted)
+    · cases replayEq
   have settles : SettlesFreshCalls setup leaks message.sender event (fun _ => 0)
       control.execution :=
     settlesFreshCalls_history setup leaks inclusion message.sender event owned trace
@@ -413,11 +422,10 @@ theorem respond_recall_cases (execution : (application setup leaks).Execution) (
     entry ∈ execution.recall observer ∨
       (observer = who ∧ entry.beforeView = execution.observe (application setup leaks) who ∧
         entry.action = action ∧
-        ∀ material, action.transmission = some material →
+        ∀ material, action.transmission = some (.submit material) →
           entry.emitted = some ⟨(who, execution.network.nextSerial who),
             (application setup leaks).packet ((application setup leaks).submit
-              execution.application who material) who (execution.network.known who)
-                material⟩) := by
+              execution.application who material) who (execution.network.known who) material⟩) := by
   by_cases same : observer = who
   · subst observer
     rcases action with ⟨transmission⟩
@@ -429,15 +437,24 @@ theorem respond_recall_cases (execution : (application setup leaks).Execution) (
         · exact Or.inl prior
         · subst fresh
           exact Or.inr ⟨rfl, rfl, rfl, fun material submitted => by cases submitted⟩
-    | some material =>
-        simp only [ReactiveApplication.Execution.respond, ↓reduceIte, List.mem_append,
-          List.mem_singleton] at member
-        rcases member with prior | fresh
-        · exact Or.inl prior
-        · subst fresh
-          refine Or.inr ⟨rfl, rfl, rfl, fun other submitted => ?_⟩
-          cases submitted
-          rfl
+    | some transmission =>
+        cases transmission with
+        | submit material =>
+            simp only [ReactiveApplication.Execution.respond, ↓reduceIte, List.mem_append,
+              List.mem_singleton] at member
+            rcases member with prior | fresh
+            · exact Or.inl prior
+            · subst fresh
+              refine Or.inr ⟨rfl, rfl, rfl, fun other submitted => ?_⟩
+              cases submitted
+              rfl
+        | replay id =>
+            simp only [ReactiveApplication.Execution.respond, ↓reduceIte, List.mem_append,
+              List.mem_singleton] at member
+            rcases member with prior | fresh
+            · exact Or.inl prior
+            · subst fresh
+              exact Or.inr ⟨rfl, rfl, rfl, fun material submitted => by cases submitted⟩
   · left
     have recallEq := (application setup leaks).respond_recall_other execution who observer same
       action
@@ -470,7 +487,7 @@ theorem retainedFacts_history {horizon : Nat} {scheduler : (application setup le
         (some ⟨remaining, some who, execution⟩) →
       ∀ response ∈ menu.actions who (execution.recall who)
         (execution.observe (application setup leaks) who),
-      ∀ material, response.transmission = some material →
+      ∀ material, response.transmission = some (.submit material) →
         (runtime setup).freshServiceEnvelope execution.application.publicView
           ⟨(who, execution.network.nextSerial who),
             (application setup leaks).packet ((application setup leaks).submit
@@ -528,12 +545,13 @@ theorem retainedFacts_history {horizon : Nat} {scheduler : (application setup le
                   firstEvent secondEvent firstEmitted secondEmitted
                 have submittedOf : ∀ entry : app.PlayerEntry,
                     (runtime setup).submittedEvent? leaks entry.action = some event →
-                    ∃ material, entry.action.transmission = some material := by
+                    ∃ material, entry.action.transmission = some (.submit material) := by
                   intro entry submitted
                   rcases entry with ⟨view, ⟨transmission⟩, emittedOption⟩
-                  rcases transmission with _ | material
+                  rcases transmission with _ | (material | id)
                   · cases submitted
                   · exact ⟨material, rfl⟩
+                  · cases submitted
                 rcases respond_recall_cases execution who response observer first firstMember with
                     firstPrior | ⟨firstWho, _, firstAction, firstEmittedEq⟩ <;>
                   rcases respond_recall_cases execution who response observer second secondMember
@@ -602,6 +620,121 @@ theorem retainedFacts_history {horizon : Nat} {scheduler : (application setup le
                     exact emitted
                   exact (valid.good message emittedBefore).environment inclusion facts supported
                     rawNext conform once emittedBefore
+
+/-- In the retained source service a fresh submission conforms on the public
+view its author sees. -/
+theorem sourceService_fresh_response [Fintype Player] (bounds : MessageBounds (graph setup))
+    (values : bounds.CoversBindingValues)
+    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
+    {rosters : (graph setup).EventId → List Player}
+    (opportunities : BindingOpportunities setup rosters)
+    (network : (runtime setup).NetworkPolicy leaks) {remaining : Nat} {who : Player}
+    {execution : (application setup leaks).Execution}
+    (prior : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
+      (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
+        (some ⟨remaining, some who, execution⟩))
+    (response : (application setup leaks).Action)
+    (member : response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who
+      (execution.recall who) (execution.observe (application setup leaks) who))
+    (material : (application setup leaks).Submission)
+    (submitted : response.transmission = some (.submit material)) :
+    (runtime setup).freshServiceEnvelope execution.application.publicView
+      ⟨(who, execution.network.nextSerial who),
+        (application setup leaks).packet ((application setup leaks).submit
+          execution.application who material) who (execution.network.known who) material⟩ := by
+  classical
+  let app := application setup leaks
+  let menu := sourceServiceMenu setup leaks bounds rosters
+  let joint : ∀ i, Option ((menu.protocol (initialLaw setup) (rosterPlan setup rosters).length
+      (rosterScheduler setup leaks rosters network)).Action i) :=
+    fun i => if i = who then some response else none
+  have legal : (menu.protocol (initialLaw setup) (rosterPlan setup rosters).length
+      (rosterScheduler setup leaks rosters network)).Legal
+        (some ⟨remaining, some who, execution⟩) joint := by
+    refine ⟨fun stopped => ?_, fun player => ?_⟩
+    · change remaining = 0 ∧ some who = none at stopped
+      cases stopped.2
+    · by_cases same : player = who
+      · subst player
+        simp only [joint, ↓reduceIte]
+        exact ⟨rfl, member⟩
+      · simp only [joint, same, ↓reduceIte]
+        intro active
+        exact same (Option.some.inj active.symm)
+  have reached : some ⟨remaining, none, execution.respond app who response⟩ ∈
+      ((menu.protocol (initialLaw setup) (rosterPlan setup rosters).length
+        (rosterScheduler setup leaks rosters network)).step
+          (some ⟨remaining, some who, execution⟩) ⟨joint, legal⟩).support := by
+    change _ ∈ (app.transition (initialLaw setup) (rosterPlan setup rosters).length
+      (rosterScheduler setup leaks rosters network) (some ⟨remaining, some who, execution⟩)
+        joint).support
+    simp only [ReactiveApplication.transition, joint, ↓reduceIte, Option.getD_some]
+    exact (PMF.mem_support_pure_iff _ _).mpr rfl
+  have trafficOk := sourceService_history_traffic bounds values capacity opportunities network
+    ⟨_, .extend prior joint legal reached⟩
+  have traffic := app.stateTraffic_transition (initialLaw setup) _ _
+    ⟨_, menu.toRawTrace (initialLaw setup) _ _ prior⟩ joint _ reached
+  have facts := settledFacts_history (initialLaw setup) _ _
+    (menu.toRawTrace (initialLaw setup) _ _ prior)
+  rcases response with ⟨transmission⟩
+  cases submitted
+  have recorded : (⟨execution.application.publicView, execution.network.ledger,
+      ⟨who, ⟨(who, execution.network.nextSerial who),
+        app.packet (app.submit execution.application who material) who
+          (execution.network.known who) material⟩⟩⟩ : app.TrafficRecord) ∈
+      app.stateTraffic (some ⟨remaining, none,
+        execution.respond app who ⟨some (.submit material)⟩⟩) := by
+    rw [traffic]
+    refine List.mem_append_right _ ?_
+    simp only [ReactiveApplication.trafficStep, ReactiveApplication.Execution.respond,
+      MessageNetwork.submit, List.drop_left', List.map_cons, List.map_nil,
+      List.mem_singleton]
+    rfl
+  have permitted := trafficOk _ recorded
+  have unpublished : (who, execution.network.nextSerial who) ∉
+      execution.network.ledger.map Message.id := by
+    intro published
+    obtain ⟨other, otherMember, same⟩ := List.mem_map.mp published
+    have bound := facts.serials.ledger other otherMember
+    rw [same] at bound
+    exact Nat.lt_irrefl _ bound
+  exact (((runtime setup).permittedServiceEnvelope_unpublished_iff _ _ _ unpublished).mp
+    permitted).2
+
+/-- **The settled record permits every retained packet.** At every history of
+the retained source service, including off-path and intermediate histories,
+every transmitted packet is permitted by the contract's current record. -/
+theorem sourceService_history_settled [Fintype Player] (bounds : MessageBounds (graph setup))
+    (values : bounds.CoversBindingValues)
+    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
+    {rosters : (graph setup).EventId → List Player}
+    (opportunities : BindingOpportunities setup rosters)
+    (network : (runtime setup).NetworkPolicy leaks) {control : (application setup leaks).Control}
+    (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
+      (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
+        (some control)) :
+    ∀ record ∈ (application setup leaks).executionTraffic control.execution,
+      ((runtime setup).settledRecord leaks control.execution).permits record.input.envelope =
+        true := by
+  have retained : RetainedFacts setup leaks control.execution :=
+    retainedFacts_history (rosterScheduler_protectedInclusion setup leaks rosters network)
+      (sourceServiceMenu setup leaks bounds rosters)
+      (fun prior response member material submitted =>
+        sourceService_fresh_response bounds values capacity opportunities network prior response
+          member material submitted)
+      (fun who _ _ response member => bounds.compiledActions_firstSubmission (runtime setup) leaks
+        who _ _ response (sourceServiceMenu_in_compiled setup leaks bounds rosters who _ _ member))
+      trace
+  have inputs := (application setup leaks).stateTraffic_inputs (initialLaw setup) _ _
+    ((sourceServiceMenu setup leaks bounds rosters).toRawTrace (initialLaw setup) _ _ trace)
+  change ((application setup leaks).executionTraffic control.execution).map
+    ReactiveApplication.TrafficRecord.input = control.execution.network.inputs at inputs
+  intro record member
+  have emitted : Emitted setup leaks control.execution record.input.envelope := by
+    unfold Emitted
+    rw [← inputs, List.map_map]
+    exact List.mem_map.mpr ⟨record, member, rfl⟩
+  exact (retained.good _ emitted).permits
 
 end Retained
 

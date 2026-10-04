@@ -343,6 +343,25 @@ theorem playerStep
           submittedAt_other }
       simp only [MessageApplication.afterSubmit]
       rw [replay.pool]
+  | replay id =>
+      simp only [MessageApplication.playerStep, MessageApplication.PlayerCommand.toAction,
+        MessageApplication.advance, MessageApplication.step, PMF.pure_bind,
+        PMF.mem_support_pure_iff _ _] at leftSupported rightSupported
+      subst leftNext
+      subst rightNext
+      refine
+        { publicView := replay.publicView
+          observation := replay.observation
+          remembered := replay.remembered
+          candidates := replay.candidates
+          pool := ?_
+          receipts := replay.receipts
+          focalHistory
+          environmentHistory
+          stagingCount_other
+          submittedAt_other }
+      simp only
+      rw [replay.pool]
   | wait =>
       rw [runtime.application.playerStep_wait, PMF.mem_support_pure_iff _ _]
         at leftSupported rightSupported

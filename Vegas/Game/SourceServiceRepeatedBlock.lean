@@ -5,7 +5,6 @@ import Vegas.Game.SourceServiceImplementationSegment
 import Vegas.Pending.ReactiveRepeatedSubmissionData
 import Vegas.Pending.ReactiveBindingForeignInclusion
 import Vegas.Pending.ReactiveBindingFrameForeign
-import Vegas.Pending.ReactiveServiceProgress
 
 /-! # Protected settlement after a stopped repeated binding window
 
@@ -40,9 +39,6 @@ theorem repeated_binding_block_coupling
     (memory : BindingMemory (runtime setup) leaks)
     (original repaired : (application setup leaks).Execution)
     (frame : BindingMemory.Frame (runtime setup) leaks memory owner original repaired)
-    (completedMemory : ∀ other, other ≠ event →
-      (memory.shadow.actions other).isSome ∨ (memory.shadow.values (.inr other)).isSome →
-        other ∈ original.application.config.cut.completed)
     (reference : List (application setup leaks).PlayerEntry)
     (started : reference.length ≤ (repaired.recall owner).length)
     (leftRecall : original.InputRecall (application setup leaks))
@@ -92,11 +88,10 @@ theorem repeated_binding_block_coupling
         (rosterScheduler setup leaks rosters network)
           (visits.map ServiceInstruction.player ++ ending).length repaired memory ∧
       ∀ next ∈ coupling.support,
-        (∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
+        (∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.envelope = false) ∨
-        (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
-          next.2.2.shadow.CompletedAt next.1.application.config) := by
+            record.input.envelope = false) ∨
+        BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 := by
   classical
   intro app strategy ending
   let message : Message Player (WitnessedPacket (graph setup)) :=
@@ -139,14 +134,13 @@ theorem repeated_binding_block_coupling
           ((runtime setup).runInteractionPlan leaks players network ending next.2.1).map
             (fun final => (final, next.2.2)) ∧
         ∀ final ∈ coupling.support,
-          (∃ record ∈ app.executionTraffic final.1, record.envelope.sender = owner ∧
+          (∃ record ∈ app.executionTraffic final.1, record.input.envelope.sender = owner ∧
             (runtime setup).permittedServiceEnvelope record.observation record.ledger
-              record.envelope = false) ∨
-          (BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1 ∧
-            final.2.2.shadow.CompletedAt final.1.application.config) := by
-    by_cases bad : ∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
+              record.input.envelope = false) ∨
+          BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1 := by
+    by_cases bad : ∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
         (runtime setup).permittedServiceEnvelope record.observation record.ledger
-          record.envelope = false
+          record.input.envelope = false
     · let leftLaw := (runtime setup).runInteractionPlan leaks players network ending next.1
       let rightLaw := ((runtime setup).runInteractionPlan leaks players network ending next.2.1).map
         fun final => (final, next.2.2)
@@ -162,12 +156,12 @@ theorem repeated_binding_block_coupling
       exact ((runtime setup).executionTraffic_runInteractionPlan leaks players network ending
         next.1 final.1 reached).subset present
     · obtain ⟨paired, shadow, rightView⟩ := (related next supported).resolve_left bad
-      have clean : ∀ record ∈ app.executionTraffic next.1, record.envelope.sender = owner →
+      have clean : ∀ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner →
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.envelope = true := by
+            record.input.envelope = true := by
         intro record present authored
         cases value : (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.envelope with
+            record.input.envelope with
         | true => rfl
         | false => exact (bad ⟨record, present, authored, value⟩).elim
       obtain ⟨leftView, _, _, _, _, _⟩ := (runtime setup).repeated_window_clean_data leaks bounds
@@ -262,27 +256,7 @@ theorem repeated_binding_block_coupling
       · rw [PMF.pure_map, rightLaw, PMF.pure_map]
       · intro final member
         cases (PMF.mem_support_pure_iff _ _).mp member
-        right
-        refine ⟨connected, ?_⟩
-        have tailReach : left ∈ ((runtime setup).runInteractionPlan leaks players network
-            (List.replicate ticks .tick ++ [.expire event]) (finish next.1)).support := by
-          rw [leftClock]
-          exact ((PMF.mem_support_pure_iff _ _).mpr rfl)
-        have tailCompleted := (runtime setup).runInteractionPlan_completed_subset leaks players
-          network _ (finish next.1) left tailReach
-        have windowCompleted := (runtime setup).runInteractionPlan_completed_subset leaks players
-          network _ original next.1 (leftReach next supported)
-        have includeCompleted := ((runtime setup).reactiveCompletedInvariant leaks
-          next.1.application.config.cut.completed).includePending next.1 message.id
-            (fun _ member => member)
-        intro query present
-        by_cases same : query = event
-        · exact tailCompleted (same ▸ completed)
-        · apply tailCompleted
-          apply includeCompleted
-          apply windowCompleted
-          apply completedMemory query same
-          simpa only [shadow] using present
+        exact Or.inr connected
   let tail := fun next supported => (existsTail next supported).choose
   refine ⟨window.bindOnSupport tail, ?_, ?_, ?_⟩
   · rw [map_bindOnSupport]

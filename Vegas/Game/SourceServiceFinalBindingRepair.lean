@@ -29,7 +29,7 @@ theorem final_binding_history_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (players : Player → (application setup leaks).Policy)
     (owner : Player) (remaining : Nat)
@@ -38,7 +38,6 @@ theorem final_binding_history_coupling
       (prior.environmentStep (application setup leaks) (.activate owner)).support)
     (memory : BindingMemory (runtime setup) leaks)
     (frame : BindingMemory.Frame (runtime setup) leaks memory owner original repaired)
-    (completedMemory : memory.shadow.CompletedAt original.application.config)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         (some ⟨remaining, some owner, repaired⟩))
@@ -75,12 +74,11 @@ theorem final_binding_history_coupling
           strategy.runJoint owner players (rosterScheduler setup leaks rosters network)
             plan.length next.1 next.2) ∧
       ∀ next ∈ coupling.support,
-        (∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
+        (∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.envelope = false) ∨
-        event ∈ next.1.application.missedEvents ∨
-        (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
-          next.2.2.shadow.CompletedAt next.1.application.config) := by
+            record.input.envelope = false) ∨
+        next.1.application.publicView.missedBinding event = true ∨
+        BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 := by
   classical
   intro app strategy plan
   have owned : (graph setup).actor? event = some owner := by
@@ -148,8 +146,7 @@ theorem final_binding_history_coupling
     have covered := values event
     rw [outputEq] at covered
     exact covered (L.someValue payload)
-  obtain ⟨coupling, first, second, related⟩ := frame.required_binding_final_block_coupling
-    completedMemory bounds
+  obtain ⟨coupling, first, second, related⟩ := frame.required_binding_final_block_coupling bounds
     (sourceServiceMenu setup leaks bounds rosters) players network prior sampled reference started
       recalled remaining event payload outputEq codeEq node
       (by rw [counted]; exact (frame.slots _).mpr fresh)
@@ -158,8 +155,7 @@ theorem final_binding_history_coupling
       originalReady originalTimely originalUnused unsent originalVacant originalPublished
       entered ((runtime setup).deadline event) originalActivated due visits absent
       (frame.network ▸ serials)
-      (required_decision_sourceService setup leaks bounds rosters owner _ _)
-      (sourceServiceMenu_in_compiled setup leaks bounds rosters owner _ _) available
+      (required_binding_sourceService setup leaks bounds rosters owner _ _) available
   refine ⟨coupling, first, ?_, related⟩
   rw [second]
   apply bind_congr_on_support _

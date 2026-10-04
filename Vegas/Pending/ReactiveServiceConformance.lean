@@ -50,16 +50,7 @@ def freshServiceEnvelope (view : PublicView graph)
             view.accepted binding.field = some candidate ∧ raw.ty = payload ∧
             message.payload.token = some ⟨event⟩
         | .bind .. | .sample .. => False)
-  | .withhold event =>
-      view.EventReady event ∧
-      (match view.activatedAt event with
-        | none => False
-        | some entered => view.clock - entered < runtime.deadline event) ∧
-      message.payload.evidence = none ∧ message.payload.token = some ⟨event⟩ ∧
-      (match nodeView graph event with
-        | .resolve owner _ _ _ _ _ => message.sender = owner
-        | .bind .. | .sample .. => False)
-  | .malformed .. => False
+  | .withhold .. | .malformed .. => False
 
 open Classical in
 /-- A replay carries its original author's serial. The checker does not
@@ -146,10 +137,7 @@ theorem freshServiceEnvelope_ready (view : PublicView graph)
   | opening event candidate raw =>
       simp only [freshServiceEnvelope, call] at permitted
       exact ⟨event, rfl, permitted.1⟩
-  | withhold event =>
-      simp only [freshServiceEnvelope, call] at permitted
-      exact ⟨event, rfl, permitted.1⟩
-  | malformed =>
+  | withhold event | malformed =>
       simp only [freshServiceEnvelope, call] at permitted
 
 /-- Every conforming fresh call names a ready event whose actor is its sender. -/
@@ -187,20 +175,7 @@ theorem freshServiceEnvelope_owned (view : PublicView graph)
           have actor := congrArg EventCode.actor codeEq
           rw [EventCode.actor_cast outputEq (graph.nodes event)] at actor
           exact ⟨event, rfl, permitted.1, authored ▸ actor⟩
-  | withhold event =>
-      simp only [freshServiceEnvelope, call] at permitted
-      cases node : nodeView graph event with
-      | bind owner payload outputEq codeEq =>
-          simp only [node, and_false] at permitted
-      | sample payload kernel outputEq codeEq =>
-          simp only [node, and_false] at permitted
-      | resolve owner payload binding checks outputEq codeEq =>
-          simp only [node] at permitted
-          have authored : message.sender = owner := permitted.2.2.2.2
-          have actor := congrArg EventCode.actor codeEq
-          rw [EventCode.actor_cast outputEq (graph.nodes event)] at actor
-          exact ⟨event, rfl, permitted.1, authored ▸ actor⟩
-  | malformed =>
+  | withhold event | malformed =>
       simp only [freshServiceEnvelope, call] at permitted
 
 /-- While one event is the only ready event, every conforming fresh call names
@@ -256,11 +231,7 @@ theorem freshServiceEnvelope_binding_shape
       change some actual = some event at named
       cases Option.some.inj named
       simp only [freshServiceEnvelope, node, and_false] at permitted
-  | withhold actual =>
-      change some actual = some event at named
-      cases Option.some.inj named
-      simp only [freshServiceEnvelope, node, and_false] at permitted
-  | malformed =>
+  | withhold actual | malformed =>
       simp only [freshServiceEnvelope] at permitted
 
 /-- A public canonical binding remains acceptable for every private opening
@@ -304,28 +275,8 @@ theorem freshServiceEnvelope_opening_iff
         token = some ⟨event⟩ := by
   simp only [freshServiceEnvelope, node, Message.sender]
 
-/-- A conforming withholding packet has the ready owner's authenticated token
-and carries no opening evidence. -/
-theorem freshServiceEnvelope_withhold_iff
-    (view : PublicView graph) (id : MessageId Player) (event : graph.EventId)
-    (owner : Player) (payload : L.Ty)
-    (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (GuardCheck graph.layout payload))
-    (outputEq : graph.outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
-      (graph.nodes event) = .resolve owner payload binding checks)
-    (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
-    (evidence : Option (OpeningFact graph)) (token : Option (ReadinessToken graph)) :
-    runtime.freshServiceEnvelope view ⟨id, ⟨.withhold event, evidence, token⟩⟩ ↔
-      view.EventReady event ∧
-      (match view.activatedAt event with
-        | none => False
-        | some entered => view.clock - entered < runtime.deadline event) ∧
-      evidence = none ∧ token = some ⟨event⟩ ∧ id.1 = owner := by
-  simp only [freshServiceEnvelope, node, Message.sender]
-
-/-- A conforming packet at a resolve phase is an explicit withholding decision
-or the currently associated, certified, publicly validated opening. -/
+/-- A conforming packet at a resolve phase is necessarily the currently
+associated, certified, publicly validated opening. -/
 theorem freshServiceEnvelope_resolution_shape
     (view : PublicView graph) (owner : Player) (event : graph.EventId) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
@@ -337,8 +288,6 @@ theorem freshServiceEnvelope_resolution_shape
     (message : Message Player (WitnessedPacket graph))
     (named : message.payload.call.event? graph = some event)
     (permitted : runtime.freshServiceEnvelope view message) :
-    (message.sender = owner ∧
-      message.payload = ⟨.withhold event, none, some ⟨event⟩⟩) ∨
     ∃ candidate raw, message.sender = owner ∧ candidate.1 = owner ∧
       view.accepted binding.field = some candidate ∧ raw.ty = payload ∧
       message.payload = ⟨.opening event candidate raw, some ⟨candidate, raw⟩, some ⟨event⟩⟩ ∧
@@ -362,16 +311,9 @@ theorem freshServiceEnvelope_resolution_shape
         | some fact =>
             simp only [certifiedOpening, decide_eq_true_eq] at certified
             exact congrArg some certified
-      refine Or.inr ⟨candidate, raw, authored, owned, associated, typed, ?_, guards⟩
+      refine ⟨candidate, raw, authored, owned, associated, typed, ?_, guards⟩
       rw [evidenceEq, tokened]
-  | withhold actual =>
-      change some actual = some event at named
-      cases Option.some.inj named
-      obtain ⟨_, _, empty, tokened, authored⟩ :=
-        (runtime.freshServiceEnvelope_withhold_iff view id event owner payload binding checks
-          outputEq codeEq node evidence token).mp permitted
-      exact Or.inl ⟨authored, by rw [empty, tokened]⟩
-  | malformed =>
+  | withhold actual | malformed =>
       simp only [freshServiceEnvelope] at permitted
 
 /-- Submission normalization cannot hide another public evidence choice under

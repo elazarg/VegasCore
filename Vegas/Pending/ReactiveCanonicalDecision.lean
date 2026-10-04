@@ -72,26 +72,28 @@ def canonicalReactiveDecision (runtime : EventGraphRuntime graph)
   transmission := match nodeView graph event with
     | .sample .. => none
     | .bind _owner payload outputEq _codeEq =>
-        (canonicalFreshSlot who view).map fun serial =>
+        (canonicalFreshSlot who view).map fun serial => .submit
           ⟨⟨.commitment event (who, .prepared serial),
             match (cast (congrArg EventField.Action outputEq) action :
                 PublicationResult (L.Val payload)) with
             | .failure => none
             | .success value => some ⟨payload, value⟩⟩, .none⟩
     | .resolve _owner payload binding checks outputEq _codeEq =>
-        some ((disclosureSubmission (reactiveResolutionPacket who event payload
-          binding checks outputEq action view)).normalizeReactive who view [])
+        some (.submit ((disclosureSubmission (reactiveResolutionPacket who event payload
+          binding checks outputEq action view)).normalizeReactive who view []))
 
-/-- `serviceDecision` over `canonicalReactiveDecision`, with private response
-aliases normalized. -/
+/-- `serviceDecision` over `canonicalReactiveDecision`: withheld publications
+are settled by expiry and private response aliases are normalized. -/
 def canonicalServiceDecision (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)
     (event : graph.EventId) (choice : graph.Action event) :
     (runtime.reactiveApplication leaks).Action :=
-  (runtime.reactiveNormalization leaks).action who past view
-    (runtime.canonicalReactiveDecision leaks who event choice view.application)
+  let response := runtime.canonicalReactiveDecision leaks who event choice view.application
+  match response.transmission with
+  | some (.submit ⟨⟨.withhold _, _⟩, _⟩) => ⟨none⟩
+  | _ => (runtime.reactiveNormalization leaks).action who past view response
 
 /-- Away from bindings the canonical decision is the existing decision. -/
 theorem canonicalReactiveDecision_eq_of_not_bind (runtime : EventGraphRuntime graph)
@@ -119,8 +121,19 @@ theorem canonicalServiceDecision_eq_of_not_bind (runtime : EventGraphRuntime gra
     runtime.canonicalServiceDecision leaks who past view event choice =
       runtime.serviceDecision leaks who past view event choice := by
   unfold canonicalServiceDecision serviceDecision
+  dsimp only
   rw [runtime.canonicalReactiveDecision_eq_of_not_bind leaks who event choice view.application
     notBind]
+  generalize runtime.reactiveDecision leaks who event choice view.application = response
+  obtain ⟨transmission⟩ := response
+  cases transmission with
+  | none => rfl
+  | some transmission =>
+      cases transmission with
+      | replay => rfl
+      | submit material =>
+          obtain ⟨⟨packet, _⟩, _⟩ := material
+          cases packet <;> rfl
 
 /-- A binding decision submits the canonical binding at the selected slot. -/
 theorem canonicalServiceDecision_binding (runtime : EventGraphRuntime graph)
@@ -148,28 +161,6 @@ theorem canonicalServiceDecision_binding (runtime : EventGraphRuntime graph)
   rw [normalized]
   exact runtime.reactiveBinding_normal_of_fresh leaks who past view event payload result serial
     fresh
-
-/-- The source decision to withhold emits an evidence-free decision packet. -/
-theorem canonicalServiceDecision_resolution_false (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
-    (event : graph.EventId) (owner : Player) (payload : L.Ty)
-    (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (GuardCheck graph.layout payload))
-    (outputEq : graph.outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
-      (graph.nodes event) = .resolve owner payload binding checks)
-    (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq) :
-    runtime.canonicalServiceDecision leaks who past view event
-      (cast (congrArg EventField.Action outputEq.symm) false) =
-      ⟨some ⟨⟨.withhold event, none⟩, .none⟩⟩ := by
-  simp only [canonicalServiceDecision, canonicalReactiveDecision, node,
-    reactiveResolutionPacket, cast_cast, cast_eq, Bool.false_eq_true, ↓reduceIte,
-    disclosureSubmission_normalize_withhold]
-  simp only [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
-    disclosureSubmission, WitnessedSubmission.normalizeReactive,
-    Submission.normalizeReactive_none, EvidenceRequest.normalize_none]
 
 /-- The public deadline still admits inclusion of a packet for `event`. -/
 def PublicView.WithinDeadline (runtime : EventGraphRuntime graph) (view : PublicView graph)

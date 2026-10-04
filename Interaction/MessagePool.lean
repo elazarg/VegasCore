@@ -9,12 +9,15 @@ Authors: VegasCore contributors
 Messages carry sender-local identifiers. Submission records a pending message;
 delivery copies an existing pending message into a selected observer's local
 inbox; inclusion removes an existing pending message and appends it to the
-public ledger. Neither delivery nor inclusion invokes a sender callback.
+public ledger. Replay copies an unchanged message known to a broadcaster back
+into pending. Neither delivery nor inclusion invokes a sender callback.
 
 Any observer may receive any pending message. The published ledger is a shared
 observation in this model; pending delivery is recipient-local. Sender fields
-are raw labels and provide no authentication. Sent lists record the sender's
-authored submissions. The carrier adds no clocks or service guarantees.
+are raw labels and provide no authentication. Sent lists record both newly
+authored submissions and rebroadcast messages, and the ledger may contain
+repeated copies of the same envelope. The carrier adds no clocks or service
+guarantees.
 -/
 
 namespace Interaction
@@ -105,9 +108,30 @@ structure View (Principal : Type uPrincipal) (Payload : Type uPayload) where
   ledger : List (Message Principal Payload)
   sent : List (Message Principal Payload)
 
+def View.known? (view : View Principal Payload) (id : MessageId Principal) :
+    Option (Message Principal Payload) :=
+  (view.sent ++ view.inbox ++ view.ledger).find? fun message => message.id = id
+
 def observe (state : MessagePool Principal Payload) (who : Principal) :
     View Principal Payload :=
   ⟨state.inbox who, state.ledger, state.sent who⟩
+
+def replay (state : MessagePool Principal Payload) (broadcaster : Principal)
+    (id : MessageId Principal) : Result Principal Payload :=
+  match (state.observe broadcaster).known? id with
+  | some message =>
+      ⟨some message, {
+        state with
+        pending := state.pending ++ [message]
+        sent := fun who =>
+          if who = broadcaster then state.sent broadcaster ++ [message] else state.sent who }⟩
+  | none => Result.invalid state
+
+theorem replay_pending_length_le (state : MessagePool Principal Payload)
+    (broadcaster : Principal) (id : MessageId Principal) :
+    (state.replay broadcaster id).state.pending.length ≤ state.pending.length + 1 := by
+  unfold replay
+  split <;> simp [Result.invalid]
 
 @[simp] theorem deliver_invalid (state : MessagePool Principal Payload) (observer : Principal)
     (id : MessageId Principal) (hmissing : state.lookup id = none) :
@@ -177,7 +201,8 @@ theorem removeFirst_length_of_find (id : MessageId Principal)
           simpa [List.find?, hfirst] using hfind
         simpa [removeFirst, hfirst, Nat.add_assoc] using congrArg Nat.succ (ih hrest)
 
-/-- Inclusion consumes the pending message even when the application rejects it. -/
+/-- Inclusion consumes one pending copy even when the application rejects it,
+and even when other copies carry the same identifier. -/
 theorem include_pending_length (state : MessagePool Principal Payload)
     (id : MessageId Principal) (message : Message Principal Payload)
     (hlookup : state.lookup id = some message) :
@@ -209,7 +234,7 @@ private theorem mem_removeFirst_or_selected (id : MessageId Principal)
           · exact Or.inr hselected
 
 /-- An included identifier either leaves this exact envelope pending or
-selects it. -/
+selects it. This also holds for duplicate identifiers and replayed copies. -/
 theorem pending_retained_or_selected (state : MessagePool Principal Payload)
     (id : MessageId Principal) (candidate : Message Principal Payload)
     (hmem : candidate ∈ state.pending) :

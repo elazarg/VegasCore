@@ -27,7 +27,7 @@ private abbrev app : ReactiveApplication Bool where
 
 private def sent : app.Execution :=
   (ReactiveApplication.Execution.initial app false).respond app false
-    ⟨some 7⟩
+    ⟨some (.submit 7)⟩
 
 private def rejected : app.Execution := sent.includePending app (false, 0)
 
@@ -37,18 +37,28 @@ theorem rejection_is_published :
 
 private def ready : app.Execution := { rejected with application := true }
 
-/-- A spent identifier is no longer pending: making the application ready
-does not let it be included again. -/
-theorem rejected_is_not_reincluded :
-    ready.network.pending = [] ∧
-      (ready.includePending app (false, 0)).receipts = [((false, 0), false)] := ⟨rfl, rfl⟩
+private def replayed : app.Execution :=
+  ready.respond app false ⟨some (.replay (false, 0))⟩
 
-/-- The service's at-most-once guard also refuses the spent identifier. -/
-theorem rejected_service_law :
-    app.atMostOnceCommand (ready.observeEnvironment app) (.include (false, 0)) = .wait := rfl
+/-- Rebroadcast is a legal transmission and still enters the pending pool. -/
+theorem rejected_replay_is_pending :
+    replayed.network.pending = [⟨(false, 0), 7⟩] := rfl
+
+/-- Making the application ready does not restore an already spent identifier. -/
+theorem rejected_replay_is_not_reincluded :
+    app.atMostOnceCommand (replayed.observeEnvironment app) (.include (false, 0)) =
+      .wait := rfl
+
+theorem rejected_replay_service_law :
+    ((replayed.environmentStep app
+      (app.atMostOnceCommand (replayed.observeEnvironment app) (.include (false, 0)))).map
+        (fun execution => execution.receipts)) = PMF.pure [((false, 0), false)] := by
+  rw [rejected_replay_is_not_reincluded]
+  simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
+  rfl
 
 private def retried : app.Execution :=
-  ready.respond app false ⟨some 7⟩
+  replayed.respond app false ⟨some (.submit 7)⟩
 
 /-- The payload can be identical; the retry receives a fresh identifier. -/
 theorem retry_is_fresh :

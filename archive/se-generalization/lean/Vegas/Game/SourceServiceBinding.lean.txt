@@ -1,0 +1,112 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.SourceServiceStep
+
+/-! # The source commitment kernel through actual native inclusion
+
+The policy is the compiler's physical source policy, and the evaluator is the
+runtime's existing response and protected inclusion. The theorem includes the
+entire original source distribution at its current typed observation. It makes
+no equilibrium assumption and allows arbitrary existing accepted handles and
+candidate catalogues satisfying the stated fresh-allocation conditions.
+-/
+
+noncomputable section
+
+namespace Vegas
+
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  (setup : Setup (Player := Player) (L := L))
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+
+/-- One invocation of the actual source compiler and its reserved inclusion
+has exactly the source commitment kernel. Guards remain deferred, and the
+accepted packet's receipt is successful for every selected binding value. -/
+theorem sourceServicePolicy_commit_service
+    {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    {name : VarId} {owner : Player} {payload : L.Ty}
+    (fresh : name ∉ Γ.map Prod.fst) (guard : SourceGuard L Γ owner name payload)
+    (next : SourceProgram Player L ((name, .commitment owner payload) :: Γ)
+      (insert name openNames))
+    (wholeProfile : BehavioralProfile setup.program)
+    (profile : BehavioralProfile (.commit name owner fresh guard next))
+    (refs : ContextRefs (graphLayout setup.program) Γ) (source : Config Player L Γ)
+    (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
+      (.commit name owner fresh guard next))
+    (refsBefore : ContextRefsBefore refs embedding) (offset : Nat)
+    (aligned : CompiledPolicySuffix setup.program wholeProfile
+      (.commit name owner fresh guard next) profile
+      refs source.revelations source.registry embedding refsBefore offset)
+    (execution : (application setup leaks).Execution)
+    (agree : refs.Agrees source.state execution.application.config.store)
+    (history : decodeHistory setup.program
+      (execution.application.config.history.map
+        (setup.eventGraph.fromModeCompletion .sequential)) = source.history)
+    (serial : Nat)
+    (selected : reactiveFreshSlot (execution.observe
+      (application setup leaks) owner).application = some serial)
+    (candidate : execution.application.candidates.lookup (owner, .prepared serial) = .fresh)
+    (unused : execution.application.HandleUnused (owner, .prepared serial))
+    (serials : execution.network.SerialsBeforeNext)
+    (players : Player → (application setup leaks).Policy)
+    (network : (runtime setup).NetworkPolicy leaks) :
+    let headIndex : Fin (eventCount (.commit name owner fresh guard next)) :=
+      ⟨0, by simp [eventCount]⟩
+    let event := embedding.event headIndex
+    let outputEq : (graph setup).outputLayout event = .binding owner payload := by
+      change outputLayout setup.program (embedding.event headIndex) = _
+      simpa [headIndex, outputLayout, eventCount] using embedding.layout_eq headIndex
+    ∀ (ready : execution.application.config.cut.Ready event)
+      (_timely : execution.application.WithinDeadline (runtime setup) event)
+      (_vacant : execution.application.accepted (.inr event) = none),
+    ((sourceServicePolicy setup leaks wholeProfile owner (execution.recall owner)
+        (execution.observe (application setup leaks) owner)).bind
+      (fun response => (runtime setup).interactionStep leaks players network
+        (.includeLatest event owner)
+        (execution.respond (application setup leaks) owner response))).map
+      (fun final => (final.application.config, final.receipts)) =
+      (commitKernel profile (source.view owner)).map fun choice =>
+        (execution.application.config.complete event ready
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice)
+          (cast (congrArg EventGraph.EventField.Value outputEq.symm) choice),
+          execution.receipts ++ [((owner, execution.network.nextSerial owner), true)]) := by
+  dsimp only
+  intro ready timely vacant
+  let headIndex : Fin (eventCount (.commit name owner fresh guard next)) :=
+    ⟨0, by simp [eventCount]⟩
+  let event := embedding.event headIndex
+  have outputEq : (graph setup).outputLayout event = .binding owner payload := by
+    change outputLayout setup.program (embedding.event headIndex) = _
+    simpa [headIndex, outputLayout, eventCount] using embedding.layout_eq headIndex
+  have codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .bind owner payload := by
+    change cast (congrArg (EventGraph.EventCode (graphLayout setup.program)) outputEq)
+      ((toEventGraph setup.program).nodes event) = _
+    simpa [event, headIndex, compileRankedNodes] using aligned.graphSuffix.nodeEq headIndex
+  have node : nodeView (graph setup) event = .bind owner payload outputEq codeEq :=
+    EventGraphRuntime.nodeView_eq_bind _ _
+  have policy := sourceServicePolicy_commit setup leaks fresh guard next wholeProfile profile
+    refs source embedding refsBefore offset aligned execution agree history ready
+  dsimp only at policy
+  rw [policy]
+  have responses :
+      (commitKernel profile (source.view owner)).map
+          (fun choice => (runtime setup).serviceDecision leaks owner (execution.recall owner)
+            (execution.observe (application setup leaks) owner) event
+            (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice)) =
+        (commitKernel profile (source.view owner)).map
+          ((runtime setup).reactiveBinding leaks owner event payload · serial) := by
+    apply congrArg (fun response => (commitKernel profile (source.view owner)).map response)
+    funext choice
+    exact serviceDecision_binding_fresh (runtime setup) leaks execution owner event payload
+      outputEq codeEq node serial selected candidate choice
+  rw [responses]
+  exact source_binding_service (runtime setup) leaks execution owner event payload outputEq codeEq
+    node (commitKernel profile (source.view owner)) serial ready timely candidate vacant unused
+    serials players network
+
+end Vegas

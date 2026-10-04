@@ -1,0 +1,158 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Interaction.MessageNetwork
+import GameTheoryExtensions.Math.Probability.Support
+import GameTheory.Math.Probability.Mixture
+import GameTheory.Math.Probability.Product
+import GameTheoryExtensions.Math.Probability.Expectation
+
+/-! # One optional transmission per player activation
+
+An application supplies atomic submission and inclusion semantics. A player's
+response may submit one envelope. Implementation memory is private
+state of the strategy, not a field of the response or game history. Only the
+public envelope enters the network input history. The scheduler
+can activate a player again after observing that output.
+Before a response, the separate observation rule privately samples pending
+message identifiers. The scheduler sees public traffic and its own command
+recall, with no access to the sample or any player's leaked-message knowledge.
+-/
+
+namespace Interaction
+
+open GameTheory.Math.Probability
+
+structure ReactiveApplication (Principal : Type) where
+  State : Type
+  Payload : Type
+  Submission : Type
+  EnvironmentCommand : Type
+  LocalObservation : Type
+  PublicObservation : Type
+  /-- Materialize a packet from the post-submission state and evidence already
+  possessed by the sender before this response. -/
+  packet : State → Principal → List (Message Principal Payload) → Submission → Payload
+  submit : State → Principal → Submission → State
+  handle : State → Message Principal Payload → Option State
+  environment : State → EnvironmentCommand → PMF State
+  observePlayer : State → Principal → LocalObservation
+  observePublic : State → PublicObservation
+  observePending : MessageNetwork.ObservationRule Principal Payload
+
+namespace ReactiveApplication
+
+variable {Principal : Type} (app : ReactiveApplication Principal)
+
+/-- A response transmits at most one submission. -/
+structure Action where
+  transmission : Option app.Submission
+
+structure PlayerView where
+  messages : MessageNetwork.PlayerView Principal app.Payload
+  application : app.LocalObservation
+  receipts : List (MessageId Principal × Bool)
+
+structure PlayerEntry where
+  beforeView : app.PlayerView
+  action : app.Action
+  emitted : Option (Message Principal app.Payload)
+
+structure EnvironmentView where
+  network : MessageNetwork.PublicView Principal app.Payload
+  application : app.PublicObservation
+  receipts : List (MessageId Principal × Bool)
+
+inductive Command where
+  | activate (who : Principal)
+  | include (id : MessageId Principal)
+  | application (command : app.EnvironmentCommand)
+  | wait
+
+structure EnvironmentEntry where
+  beforeView : app.EnvironmentView
+  command : app.Command
+
+structure Execution where
+  application : app.State
+  network : MessageNetwork Principal app.Payload
+  receipts : List (MessageId Principal × Bool)
+  recall : Principal → List app.PlayerEntry
+  environmentRecall : List app.EnvironmentEntry
+
+def Execution.initial (state : app.State) : app.Execution :=
+  ⟨state, .empty, [], fun _ => [], []⟩
+
+def Execution.observe (execution : app.Execution) (who : Principal) : app.PlayerView :=
+  ⟨execution.network.observe who, app.observePlayer execution.application who, execution.receipts⟩
+
+def Execution.observeEnvironment (execution : app.Execution) : app.EnvironmentView :=
+  ⟨execution.network.publicView, app.observePublic execution.application, execution.receipts⟩
+
+abbrev Policy := List app.PlayerEntry → app.PlayerView → PMF app.Action
+abbrev Scheduler := List app.EnvironmentEntry → app.EnvironmentView → PMF app.Command
+
+/-- Silence at every view: the prescribed response of a player with nothing to
+send. -/
+noncomputable def silentPolicy : app.Policy := fun _ _ => PMF.pure ⟨none⟩
+
+@[simp] theorem silentPolicy_apply (past : List app.PlayerEntry) (view : app.PlayerView) :
+    app.silentPolicy past view = PMF.pure ⟨none⟩ := rfl
+
+theorem mem_silentPolicy_support {past : List app.PlayerEntry} {view : app.PlayerView}
+    {action : app.Action} : action ∈ (app.silentPolicy past view).support ↔ action = ⟨none⟩ :=
+  PMF.mem_support_pure_iff _ _
+
+theorem silentPolicy_support (past : List app.PlayerEntry) (view : app.PlayerView) :
+    (⟨none⟩ : app.Action) ∈ (app.silentPolicy past view).support :=
+  app.mem_silentPolicy_support.mpr rfl
+
+theorem silentPolicy_cases (past : List app.PlayerEntry) (view : app.PlayerView)
+    (action : app.Action) (supported : action ∈ (app.silentPolicy past view).support) :
+    action = ⟨none⟩ :=
+  app.mem_silentPolicy_support.mp supported
+
+variable [DecidableEq Principal]
+
+/-- Application submission and its envelope are one transition. The emitted
+packet is part of the player's own recall; private material never enters the network. -/
+def Execution.respond (execution : app.Execution) (who : Principal) (action : app.Action) :
+    app.Execution :=
+  let (state, emitted, network) := match action.transmission with
+    | none => (execution.application, none, execution.network)
+    | some submission =>
+        let next := app.submit execution.application who submission
+        let packet := app.packet next who (execution.network.known who) submission
+        let (envelope, network) := execution.network.submit who packet
+        (next, some envelope, network)
+  { execution with
+    application := state
+    network := network
+    recall := fun observer => if observer = who then execution.recall who ++
+      [⟨execution.observe app who, action, emitted⟩] else execution.recall observer }
+
+def Execution.includePending (execution : app.Execution) (id : MessageId Principal) :
+    app.Execution :=
+  let (envelope, network) := execution.network.includePending id
+  match envelope with
+  | none => { execution with network := network }
+  | some envelope =>
+      let result := app.handle execution.application envelope
+      { execution with
+        network := network
+        application := result.getD execution.application
+        receipts := execution.receipts ++ [(id, result.isSome)] }
+
+noncomputable def Execution.environmentStep (execution : app.Execution) (command : app.Command) :
+    PMF app.Execution :=
+  let law := match command with
+    | .activate who => (app.observePending who execution.network.pending).map fun selected =>
+        { execution with network := execution.network.learn who selected }
+    | .wait => PMF.pure execution
+    | .include id => PMF.pure (execution.includePending app id)
+    | .application command => (app.environment execution.application command).map fun state =>
+        { execution with application := state }
+  law.map fun next => { next with environmentRecall := execution.environmentRecall ++
+    [⟨execution.observeEnvironment app, command⟩] }
+
+end ReactiveApplication
+end Interaction

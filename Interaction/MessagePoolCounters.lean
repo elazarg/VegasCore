@@ -12,7 +12,7 @@ import Interaction.MessagePoolFreshness
 Every envelope retained by a well-counted pool has a serial strictly below
 the current counter of its stated sender. Submission establishes this fact for
 the newly allocated identifier and advances only that sender's counter;
-delivery and inclusion merely move or copy already retained messages.
+delivery, replay, and inclusion merely move or copy already retained messages.
 -/
 
 namespace Interaction.MessagePool
@@ -46,6 +46,12 @@ theorem nextSerial_le_submit (pool : MessagePool Principal Payload)
   unfold MessagePool.deliver
   split <;> rfl
 
+@[simp] theorem replay_nextSerial (pool : MessagePool Principal Payload)
+    (broadcaster : Principal) (id : MessageId Principal) (who : Principal) :
+    (pool.replay broadcaster id).state.nextSerial who = pool.nextSerial who := by
+  unfold MessagePool.replay
+  split <;> rfl
+
 /-- Submitting a fresh envelope preserves the strict serial bound on every
 retained copy. -/
 theorem SerialsBeforeNext.submit {pool : MessagePool Principal Payload}
@@ -69,6 +75,15 @@ theorem SerialsBeforeNext.deliver {pool : MessagePool Principal Payload}
     (pool.deliver observer id).state.SerialsBeforeNext := by
   unfold SerialsBeforeNext at hserials ⊢
   simpa only [deliver_nextSerial] using hserials.deliver observer id
+
+/-- Replay preserves the counter invariant because it copies a known retained
+envelope without changing any sender's allocation counter. -/
+theorem SerialsBeforeNext.replay {pool : MessagePool Principal Payload}
+    (hserials : pool.SerialsBeforeNext) (broadcaster : Principal)
+    (id : MessageId Principal) :
+    (pool.replay broadcaster id).state.SerialsBeforeNext := by
+  unfold SerialsBeforeNext at hserials ⊢
+  simpa only [replay_nextSerial] using hserials.replay broadcaster id
 
 /-- Inclusion preserves the counter invariant while moving the selected
 pending envelope to the ledger. -/

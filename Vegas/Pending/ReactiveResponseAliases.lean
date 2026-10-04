@@ -43,7 +43,14 @@ theorem rawMenu_eq_of_outputs (who : Player)
     ReactiveApplication.ResponseMenu.fromSubmissions_mem]
   cases response.transmission with
   | none => rfl
-  | some submission => simp only [known]
+  | some transmission =>
+      cases transmission with
+      | submit submission => simp only [known]
+      | replay id =>
+          change (∃ message ∈ ReactiveApplication.ResponseMenu.knownPackets
+            (app := runtime.reactiveApplication leaks) first view, message.id = id) ↔ _
+          rw [known]
+          rfl
 
 theorem rawMenu_recall (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)

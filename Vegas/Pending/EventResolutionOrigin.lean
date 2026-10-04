@@ -289,7 +289,7 @@ theorem serviceStep_resolutionOrigins
         Set.mem_iUnion] at member
       obtain ⟨command, commandMem, step⟩ := member
       cases command with
-      | privateCommand privateCommand | wait =>
+      | privateCommand privateCommand | replay privateCommand | wait =>
           apply ResolutionOrigins.of_retained runtime inputs ordered players wire (.player who)
             before after owner invariant origins
             (by

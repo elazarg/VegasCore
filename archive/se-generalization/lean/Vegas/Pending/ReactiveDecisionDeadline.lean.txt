@@ -1,0 +1,76 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Pending.ReactiveRevealBlock
+
+/-! # Actual missed decisions at the deadline
+
+Clock ticks followed by due expiry insert the public marker for any ready
+owned decision. This uses the executed expiry command, including resolution
+expiry, rather than an inference from a binding's absent accepted handle.
+-/
+
+noncomputable section
+
+namespace Vegas.EventGraphRuntime
+
+open Interaction EventGraph GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player]
+  {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
+
+theorem decision_deadline_missed
+    (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (network : runtime.NetworkPolicy leaks)
+    (execution : (runtime.reactiveApplication leaks).Execution)
+    (owner : Player) (event : graph.EventId)
+    (owned : graph.actor? event = some owner)
+    (ready : execution.application.config.cut.Ready event)
+    (entered ticks : Nat)
+    (activated : execution.application.activatedAt event = some entered)
+    (due : runtime.deadline event ≤ execution.application.clock + ticks - entered) :
+    ∃ next, runtime.runInteractionPlan leaks players network
+        (List.replicate ticks .tick ++ [.expire event]) execution = PMF.pure next ∧
+      event ∈ next.application.missedEvents := by
+  classical
+  let app := runtime.reactiveApplication leaks
+  obtain ⟨ticked, tickLaw, application, _, _, _⟩ :=
+    runtime.interaction_ticks_pure leaks players network ticks execution
+  obtain ⟨after, expiry⟩ : ∃ after, app.environment ticked.application (.expire event) =
+      PMF.pure after := ⟨_, rfl⟩
+  have marked := environmentStep_expire_missedEvents runtime ticked.application after event
+    (by change after ∈ (app.environment ticked.application (.expire event)).support
+        rw [expiry]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
+  have obligations : ticked.application.config.cut.Ready event ∧
+      (∃ start, ticked.application.activatedAt event = some start ∧
+        runtime.deadline event ≤ ticked.application.clock - start) ∧
+      graph.actor? event ≠ none := by
+    rw [application]
+    refine ⟨ready, ⟨entered, activated, due⟩, ?_⟩
+    simp only [owned, ne_eq, reduceCtorEq, not_false_eq_true]
+  have member : event ∈ after.missedEvents := by
+    rw [marked, ite_eq_left obligations]
+    exact Finset.mem_insert_self _ _
+  let next : app.Execution := { ticked with
+    application := after
+    environmentRecall := ticked.environmentRecall ++
+      [⟨ticked.observeEnvironment app, .application (.expire event)⟩] }
+  have step : runtime.interactionStep leaks players network (.expire event) ticked =
+      PMF.pure next := by
+    simp only [interactionStep, interactionInstruction, PMF.pure_bind,
+      ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
+    change (ticked.environmentStep app (.application (.expire event))).bind PMF.pure = _
+    rw [PMF.bind_pure]
+    change ((app.environment ticked.application (.expire event)).map
+      (fun state => { ticked with application := state })).map (fun result : app.Execution =>
+        { result with environmentRecall := ticked.environmentRecall ++
+          [(⟨ticked.observeEnvironment app, .application (.expire event)⟩ :
+            app.EnvironmentEntry)] }) = _
+    rw [expiry, PMF.pure_map, PMF.pure_map]
+  refine ⟨next, ?_, member⟩
+  rw [runtime.runInteractionPlan_append, tickLaw, PMF.pure_bind,
+    runInteractionPlan, step, PMF.pure_bind]
+  rfl
+
+end Vegas.EventGraphRuntime

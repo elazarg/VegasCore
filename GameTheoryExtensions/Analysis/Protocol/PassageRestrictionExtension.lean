@@ -2,7 +2,6 @@
 
 import GameTheory.Analysis.Protocol.RestrictionExtension
 import GameTheory.Analysis.Protocol.SubgameLocalization
-import GameTheoryExtensions.Analysis.Protocol.AgentPayoffCompletion
 
 /-! # Extension across an action restriction without a common decision depth
 
@@ -428,10 +427,9 @@ theorem exists_consistent_extension_unclocked
     Finset.univ.filter fun agent => ¬ restriction.Retained agent.1 agent.2.1
   obtain ⟨residual, sequence, target, index, played, mixed, bayes,
       increasing, converges, consistent, freeOptimal⟩ :=
-    N.exists_consistent_free_agent_payoff_completion decisionRecall fallback certificate payoff
-      (fun _ => payoff) (fun _ => 0) tendsto_const_nhds (fun _ _ _ _ => by simp)
-        free pinned referenceLaws (fun n agent _ => pinnedFull n agent) referenceFull epsilon
-          positive small vanishes
+    N.exists_consistent_free_agent_completion decisionRecall fallback certificate payoff free
+      pinned referenceLaws (fun n agent _ => pinnedFull n agent) referenceFull epsilon positive
+      small vanishes
   have perturbs (n : ℕ) : restriction.PerturbsProfile (sourceSequence n).strategy
       reference.strategy (sequence n).strategy (epsilon n) (positive n).le (small n).le := by
     intro who site

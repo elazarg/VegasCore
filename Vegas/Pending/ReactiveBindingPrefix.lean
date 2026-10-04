@@ -61,9 +61,9 @@ theorem rawBinding_reserved_all_preparedPrefix
     (reached : final ∈
       (runtime.interactionStep leaks players scheduler (.includeLatest event owner)
         (execution.respond (runtime.reactiveApplication leaks) owner
-          ⟨some ⟨⟨.commitment event
+          ⟨some (.submit ⟨⟨.commitment event
             (owner, .prepared (execution.application.publicView.bindingCount owner)), opening⟩,
-              .none⟩⟩)).support) :
+              .none⟩)⟩)).support) :
     ∀ who, final.application.PreparedPrefix who := by
   intro who
   by_cases acting : who = owner
@@ -75,7 +75,7 @@ theorem rawBinding_reserved_all_preparedPrefix
   let serial := execution.application.publicView.bindingCount owner
   let material : WitnessedSubmission graph :=
     ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩
-  let submitted := execution.respond app owner ⟨some material⟩
+  let submitted := execution.respond app owner ⟨some (.submit material)⟩
   let id := (owner, execution.network.nextSerial owner)
   have fresh : execution.application.candidates.lookup (owner, .prepared serial) = .fresh :=
     (allocated owner serial).mpr (Nat.le_refl _)

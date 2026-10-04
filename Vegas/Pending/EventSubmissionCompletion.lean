@@ -80,7 +80,7 @@ theorem serviceStep_new_submission_ready (runtime : EventGraphRuntime graph)
         have history := runtime.application.playerStep_history_self owner before command after step
         rw [history] at submitted
         cases command with
-        | privateCommand command | wait =>
+        | privateCommand command | wait | replay id =>
             simp only [submittedAt, List.any_append, List.any_cons, List.any_nil,
               Bool.or_false] at submitted
             change submittedAt (before.principalHistory owner) event = true at submitted

@@ -29,7 +29,7 @@ def responseCandidateSlot (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (response : (runtime.reactiveApplication leaks).Action) : Option Nat :=
   match response.transmission with
-  | some material => material.call.packet.preparedCommitment?
+  | some (.submit material) => material.call.packet.preparedCommitment?
   | _ => none
 
 def submittedCandidateSlots (runtime : EventGraphRuntime graph)
@@ -115,19 +115,22 @@ theorem candidateRecall_respond (runtime : EventGraphRuntime graph)
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => exact fresh
-  | some material =>
-      apply Eq.trans (submission_candidate_other execution.application who observer serial
-        material.call ?_) fresh
-      by_cases same : observer = who
-      · subst observer
-        right
-        rw [runtime.submittedCandidateSlots_respond] at absent
-        intro selected
-        apply absent
-        apply List.mem_append_right
-        change serial ∈ material.call.packet.preparedCommitment?.toList
-        simp [selected]
-      · exact Or.inl same
+  | some transmission =>
+      cases transmission with
+      | replay id => exact fresh
+      | submit material =>
+          apply Eq.trans (submission_candidate_other execution.application who observer serial
+            material.call ?_) fresh
+          by_cases same : observer = who
+          · subst observer
+            right
+            rw [runtime.submittedCandidateSlots_respond] at absent
+            intro selected
+            apply absent
+            apply List.mem_append_right
+            change serial ∈ material.call.packet.preparedCommitment?.toList
+            simp [selected]
+          · exact Or.inl same
 
 private theorem issued_candidate_slot (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))

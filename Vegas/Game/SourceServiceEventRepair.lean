@@ -28,7 +28,7 @@ theorem event_block_stopped_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
@@ -47,12 +47,10 @@ theorem event_block_stopped_coupling
     (original repaired : (application setup leaks).Execution)
     (frame : BindingMemory.Frame (runtime setup) leaks memory owner original repaired)
     (onlyBindings : memory.shadow.OwnBindings owner)
-    (completedMemory : memory.shadow.CompletedAt original.application.config)
     (started : reference.length ≤ (repaired.recall owner).length)
     (leftRecall : original.InputRecall (application setup leaks))
     (sound : ((runtime setup).packetEvidence leaks).Sound original)
     (leftBinding : original.application.BindingInvariant)
-    (leftRemembered : original.application.remembered = fun _ => none)
     (event : (graph setup).EventId) (remaining : Nat)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
@@ -77,12 +75,11 @@ theorem event_block_stopped_coupling
         Nonempty (((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
           (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
             (some ⟨remaining, none, next.2.1⟩)) ∧
-        ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
+        ((∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.envelope = false) ∨
-          next.1.application.publicView.missedDecisionBy owner = true ∨
-          (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
-            next.2.2.shadow.CompletedAt next.1.application.config)) := by
+            record.input.envelope = false) ∨
+          next.1.application.publicView.missedBindingBy owner = true ∨
+          BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
   classical
   intro app players strategy
   let menu := sourceServiceMenu setup leaks bounds rosters
@@ -144,12 +141,11 @@ theorem event_block_stopped_coupling
         Nonempty ((menu.protocol (initialLaw setup)
           (rosterPlan setup rosters).length scheduler).Trace
           (some ⟨remaining, none, next.2.1⟩)) ∧
-        ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
+        ((∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.envelope = false) ∨
-          next.1.application.publicView.missedDecisionBy owner = true ∨
-          (BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
-            next.2.2.shadow.CompletedAt next.1.application.config)) := by
+            record.input.envelope = false) ∨
+          next.1.application.publicView.missedBindingBy owner = true ∨
+          BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
     have repairedReady : repaired.application.config.cut.Ready event := boundary.ready event rfl
     cases node : nodeView (graph setup) event with
     | sample payload law outputEq codeEq =>
@@ -161,7 +157,7 @@ theorem event_block_stopped_coupling
         ready_of_publicView_eq frame.publicView repairedReady
       obtain ⟨coupling, first, second, related⟩ := sample_block_stopped_coupling setup leaks bounds
         rosters network source target agrees owner policy available reference memory
-        original repaired paired onlyBindings completedMemory nextStarted leftNextRecall
+        original repaired paired onlyBindings nextStarted leftNextRecall
         rightRecall (by rw [paired.network]; exact boundary.serials)
         event payload law outputEq codeEq node
         ready remaining (rosters event) (event.val + 1) phaseTrace
@@ -181,7 +177,7 @@ theorem event_block_stopped_coupling
         have deadline : (runtime setup).deadline event = event.val + 1 := rfl
         obtain ⟨coupling, first, second, related⟩ := binding_phase_stopped_coupling setup leaks
           bounds values capacity rosters opportunities network source target agrees owner
-          policy available reference memory original repaired paired completedMemory
+          policy available reference memory original repaired paired
           nextStarted leftNextRecall event payload outputEq codeEq node repairedReady
           (boundary.unsent owner event (Nat.le_refl _)) remaining phaseTrace
           before after
@@ -193,13 +189,12 @@ theorem event_block_stopped_coupling
         · refine ⟨(related next member).1, ?_⟩
           rcases (related next member).2 with bad | missed | framed
           · exact Or.inl bad
-          · exact Or.inr (Or.inl (PublicView.missedDecisionBy_of_event _ owner event owned missed))
+          · exact Or.inr (Or.inl (PublicView.missedBindingBy_of_event _ owner event owned missed))
           · exact Or.inr (Or.inr framed)
       · obtain ⟨coupling, first, second, related⟩ := foreign_binding_block_stopped_coupling setup
           leaks bounds values capacity rosters opportunities network source target agrees
           owner policy available reference memory original repaired paired
-          onlyBindings completedMemory nextStarted leftNextRecall event actor same payload outputEq
-          codeEq node
+          onlyBindings nextStarted leftNextRecall event actor same payload outputEq codeEq node
           repairedReady remaining (rosters event) (event.val + 1) phaseTrace
           before after
           (by simpa only [body, owned, List.append_assoc] using nextSplit) nextPosition
@@ -214,17 +209,16 @@ theorem event_block_stopped_coupling
             code.actor) codeEq)
       obtain ⟨coupling, first, second, related⟩ := resolution_block_stopped_coupling setup leaks
         bounds values capacity rosters opportunities network source target agrees owner
-        policy available reference memory original repaired paired onlyBindings completedMemory
-        nextStarted leftNextRecall leftSound leftNextBinding leftRemembered
-        event actor payload binding checks
+        policy available reference memory original repaired paired onlyBindings
+        nextStarted leftNextRecall leftSound leftNextBinding event actor payload binding checks
         outputEq codeEq node repairedReady remaining (rosters event)
-        (event.val + 1) (Nat.le_refl _) phaseTrace
+        (event.val + 1) phaseTrace
         before after
         (by simpa only [body, owned, List.append_assoc] using nextSplit) nextPosition
       refine ⟨coupling, ?_, ?_, fun next member => ?_⟩
       · simpa only [body, owned] using first
       · simpa only [body, owned] using second
-      · exact ⟨(related next member).1, (related next member).2⟩
+      · exact ⟨(related next member).1, ((related next member).2).imp_right Or.inr⟩
   obtain ⟨coupling, first, second, related⟩ := existsBody
   refine ⟨coupling, ?_, ?_, related⟩
   · rw [block]

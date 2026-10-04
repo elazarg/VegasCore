@@ -3,8 +3,6 @@
 import Vegas.Pending.ReactiveBindingForeignData
 import Vegas.Pending.ReactiveBindingWindowLaw
 import Vegas.Pending.ReactiveBindingFrameStep
-import Vegas.Pending.ReactiveBindingFrameForeign
-import Vegas.Pending.ReactiveServiceProgress
 
 /-! # Good binding repair after a foreign response tail
 
@@ -68,18 +66,15 @@ theorem pending_binding_foreign_coupling
     (unused : original.application.HandleUnused (owner, slot))
     (leftFixed : original.application.candidates.lookup (owner, slot) ≠ .fresh)
     (rightFixed : repaired.application.candidates.lookup (owner, slot) ≠ .fresh)
-    (resources :
-      (memory.shadow.actions event = some
-          (cast (congrArg EventField.Action outputEq.symm)
-            (original.application.bindingResult (owner, slot) payload)) ∧
-        memory.shadow.values (.inr event) = some
-          (cast (congrArg EventField.Value outputEq.symm)
-            (original.application.bindingResult (owner, slot) payload)) ∧
-        ∀ value, original.application.bindingResult (owner, slot) payload = .success value →
-          repaired.application.bindingResult (owner, slot) payload = .success value) ∨
-      (memory.shadow.actions event = none ∧ memory.shadow.values (.inr event) = none ∧
-        repaired.application.bindingResult (owner, slot) payload =
-          original.application.bindingResult (owner, slot) payload))
+    (rememberedAction : memory.shadow.actions event = some
+      (cast (congrArg EventField.Action outputEq.symm)
+        (original.application.bindingResult (owner, slot) payload)))
+    (rememberedValue : memory.shadow.values (.inr event) = some
+      (cast (congrArg EventField.Value outputEq.symm)
+        (original.application.bindingResult (owner, slot) payload)))
+    (successful : ∀ value,
+      original.application.bindingResult (owner, slot) payload = .success value →
+        repaired.application.bindingResult (owner, slot) payload = .success value)
     (pending : (⟨(owner, nonce), ⟨.commitment event (owner, slot), none, some ⟨event⟩⟩⟩ :
       Message Player (WitnessedPacket graph)) ∈ original.network.pending)
     (unpublished : (owner, nonce) ∉ original.network.ledger.map Message.id)
@@ -195,27 +190,20 @@ theorem pending_binding_foreign_coupling
       rw [accepted] at same
       exact unused field same
     constructor
-    · rcases resources with ⟨rememberedAction, rememberedValue, successful⟩ |
-          ⟨noAction, noValue, sameResult⟩
-      · apply (related pair chosen).pending_binding_inclusion event payload outputEq codeEq node
-          message.id (owner, slot) rfl rfl (selection pair chosen).2 currentReady currentTimely
-            currentVacant currentUnused
-        · rw [leftSlot]
-          exact leftFixed
-        · rw [rightSlot]
-          exact rightFixed
-        · rw [leftResult]
-          exact rememberedAction
-        · rw [leftResult]
-          exact rememberedValue
-        · intro value equal
-          rw [rightResult]
-          exact successful value (leftResult ▸ equal)
-      · exact (related pair chosen).binding_inclusion_unmodified message.id event (owner, slot)
-          owner payload outputEq codeEq node currentReady currentTimely rfl rfl currentVacant
-          currentUnused (by rwa [leftSlot]) (by rwa [rightSlot])
-          (by rw [leftResult, rightResult]; exact sameResult) noValue noAction none
-          (selection pair chosen).2
+    · apply (related pair chosen).pending_binding_inclusion event payload outputEq codeEq node
+        message.id (owner, slot) rfl rfl (selection pair chosen).2 currentReady currentTimely
+          currentVacant currentUnused
+      · rw [leftSlot]
+        exact leftFixed
+      · rw [rightSlot]
+        exact rightFixed
+      · rw [leftResult]
+        exact rememberedAction
+      · rw [leftResult]
+        exact rememberedValue
+      · intro value equal
+        rw [rightResult]
+        exact successful value (leftResult ▸ equal)
     · exact binding_inclusion_completed pair.1 event payload outputEq codeEq node slot nonce
         (selection pair chosen).2 currentReady currentTimely currentVacant currentUnused
 
@@ -224,7 +212,6 @@ canonical binding response, including missing or mistyped private material.
 The only old-envelope premise concerns this owner; foreign traffic is arbitrary. -/
 theorem binding_submission_foreign_coupling
     (frame : Frame runtime leaks memory owner original repaired)
-    (completedMemory : memory.shadow.CompletedAt original.application.config)
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks)
     (event : graph.EventId) (payload : L.Ty)
@@ -245,7 +232,7 @@ theorem binding_submission_foreign_coupling
     let app := runtime.reactiveApplication leaks
     let view := repaired.observe app owner
     let response : app.Action :=
-      ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩
+      ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩
     let changed := memory.repairResponse runtime leaks owner view response
     let remembered : BindingMemory runtime leaks :=
       ⟨changed.2, memory.responses ++ [(memory.shadow.inputView runtime leaks view, response)]⟩
@@ -256,8 +243,7 @@ theorem binding_submission_foreign_coupling
       coupling.map Prod.snd = runtime.runInteractionPlan leaks players network plan
         (repaired.respond app owner changed.1) ∧
       ∀ next ∈ coupling.support, Frame runtime leaks remembered owner next.1 next.2 ∧
-        event ∈ next.1.application.config.cut.completed ∧
-        remembered.shadow.CompletedAt next.1.application.config := by
+        event ∈ next.1.application.config.cut.completed := by
   intro app view response changed remembered plan
   let left := original.respond app owner response
   let right := repaired.respond app owner changed.1
@@ -268,7 +254,7 @@ theorem binding_submission_foreign_coupling
   have coupled := frame.binding_submission event payload outputEq codeEq node serial opening
     fresh ready
   have data := frame.binding_submission_pending event payload outputEq codeEq node serial opening
-    fresh (fun _ _ => completedMemory.ready_none event ready)
+    fresh
   have unchanged := runtime.reactive_respond_application leaks original owner response
   have leftReady : left.application.config.cut.Ready event := by
     rw [unchanged.1]
@@ -302,33 +288,16 @@ theorem binding_submission_foreign_coupling
   have pending : message ∈ left.network.pending := by
     rw [networkEq]
     exact List.mem_append_right _ (List.mem_singleton_self _)
-  obtain ⟨coupling, first, second, related⟩ := coupled.pending_binding_foreign_coupling
-    players network event payload outputEq codeEq
+  exact coupled.pending_binding_foreign_coupling players network event payload outputEq codeEq
     node (.prepared serial) (original.network.nextSerial owner) leftReady leftTimely leftVacant
-    leftUnused data.1 data.2.1 data.2.2 pending
+    leftUnused data.1 data.2.1 data.2.2.1 data.2.2.2.1 data.2.2.2.2 pending
     (serials.next_unpublished owner) packets visits absent
-  refine ⟨coupling, first, second, ?_⟩
-  intro next supported
-  have reached : next.1 ∈ (runtime.runInteractionPlan leaks players network plan left).support := by
-    rw [← first, PMF.support_map]
-    exact ⟨next, supported, rfl⟩
-  have advanced : original.application.config.cut.completed ⊆
-      next.1.application.config.cut.completed := by
-    rw [← unchanged.1]
-    exact runtime.runInteractionPlan_completed_subset leaks players network plan left next.1 reached
-  refine ⟨(related next supported).1, (related next supported).2, ?_⟩
-  exact memory.repairResponse_completedAt runtime leaks owner view event payload outputEq codeEq
-    node serial opening (by rw [frame.observed]; exact fresh)
-    ((frame.slots (.prepared serial)).mp fresh) original.application.config
-      next.1.application.config
-      completedMemory advanced (related next supported).2
 
 /-- The complete remaining binding block, including actual clock padding and
 expiry, preserves the good-branch frame. The original private candidate may be
 unusable; both the repaired response and every subsequent policy remain fixed. -/
 theorem binding_submission_foreign_block_coupling
     (frame : Frame runtime leaks memory owner original repaired)
-    (completedMemory : memory.shadow.CompletedAt original.application.config)
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks)
     (event : graph.EventId) (payload : L.Ty)
@@ -349,7 +318,7 @@ theorem binding_submission_foreign_block_coupling
     let app := runtime.reactiveApplication leaks
     let view := repaired.observe app owner
     let response : app.Action :=
-      ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩
+      ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩
     let changed := memory.repairResponse runtime leaks owner view response
     let remembered : BindingMemory runtime leaks :=
       ⟨changed.2, memory.responses ++ [(memory.shadow.inputView runtime leaks view, response)]⟩
@@ -360,13 +329,11 @@ theorem binding_submission_foreign_block_coupling
         (original.respond app owner response) ∧
       coupling.map Prod.snd = runtime.runInteractionPlan leaks players network plan
         (repaired.respond app owner changed.1) ∧
-      ∀ next ∈ coupling.support, Frame runtime leaks remembered owner next.1 next.2 ∧
-        remembered.shadow.CompletedAt next.1.application.config := by
+      ∀ next ∈ coupling.support, Frame runtime leaks remembered owner next.1 next.2 := by
   classical
   intro app view response changed remembered plan
   obtain ⟨included, first, second, related⟩ := frame.binding_submission_foreign_coupling
-    completedMemory players network event payload outputEq codeEq node serial opening fresh ready
-      timely vacant
+    players network event payload outputEq codeEq node serial opening fresh ready timely vacant
       unused serials published visits absent
   have existsTail next (supported : next ∈ included.support) :
       ∃ coupling : PMF (app.Execution × app.Execution),
@@ -374,21 +341,16 @@ theorem binding_submission_foreign_block_coupling
           (List.replicate ticks .tick ++ [.expire event]) next.1 ∧
         coupling.map Prod.snd = runtime.runInteractionPlan leaks players network
           (List.replicate ticks .tick ++ [.expire event]) next.2 ∧
-        ∀ after ∈ coupling.support, Frame runtime leaks remembered owner after.1 after.2 ∧
-          remembered.shadow.CompletedAt after.1.application.config := by
+        ∀ after ∈ coupling.support, Frame runtime leaks remembered owner after.1 after.2 := by
     obtain ⟨left, right, leftLaw, rightLaw, paired⟩ :=
       (related next supported).1.completed_clock_tail players network event
-        (related next supported).2.1 ticks
+        (related next supported).2 ticks
     refine ⟨PMF.pure (left, right), ?_, ?_, ?_⟩
     · rw [PMF.pure_map, leftLaw]
     · rw [PMF.pure_map, rightLaw]
     · intro after member
       cases (PMF.mem_support_pure_iff _ _).mp member
-      refine ⟨paired, ?_⟩
-      apply (related next supported).2.2.mono
-      apply runtime.runInteractionPlan_completed_subset leaks players network _ next.1 left
-      rw [leftLaw]
-      exact ((PMF.mem_support_pure_iff _ _).mpr rfl)
+      exact paired
   let tail := fun next supported => (existsTail next supported).choose
   refine ⟨included.bindOnSupport tail, ?_, ?_, ?_⟩
   · rw [map_bindOnSupport]

@@ -48,7 +48,7 @@ theorem off_turn_history_response_coupling
       (prior.environmentStep (application setup leaks) (.activate owner)).support)
     (frame : BindingMemory.Frame (runtime setup) leaks memory owner original repaired)
     (started : reference.length ≤ (repaired.recall owner).length)
-    (_leftRecall : original.InputRecall (application setup leaks))
+    (leftRecall : original.InputRecall (application setup leaks))
     (idle : original.application.publicView.Idle owner)
     (remaining : Nat)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
@@ -67,23 +67,24 @@ theorem off_turn_history_response_coupling
         Nonempty (((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
           (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
             (some ⟨remaining, none, next.2.1⟩)) ∧
-        ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
+        ((∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.envelope = false) ∨
+            record.input.envelope = false) ∨
         BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
-          reference.length ≤ (next.2.1.recall owner).length ∧
-          next.2.2.shadow = memory.shadow) := by
+          reference.length ≤ (next.2.1.recall owner).length) := by
   classical
   intro app players strategy
   let menu := sourceServiceMenu setup leaks bounds rosters
   let scheduler := rosterScheduler setup leaks rosters network
   have rawTrace := menu.toRawTrace (initialLaw setup) (rosterPlan setup rosters).length
     scheduler trace
+  have rightRecall : repaired.InputRecall app :=
+    app.history_inputRecall (initialLaw setup) (rosterPlan setup rosters).length scheduler rawTrace
   have rightSerials : repaired.network.SerialsBeforeNext :=
     app.serialsBeforeNext_history scheduler (initialLaw setup) (rosterPlan setup rosters).length
       rawTrace
   have coverage (response : app.Action)
-      (supported : response ∈ (app.silentPolicy (repaired.recall owner)
+      (supported : response ∈ (app.replayPolicy (repaired.recall owner)
         (repaired.observe app owner)).support) :
       response ∈ menu.actions owner (repaired.recall owner) (repaired.observe app owner) := by
     apply off_turn_replay_sourceService setup leaks bounds rosters owner _ _ _ response supported
@@ -91,7 +92,7 @@ theorem off_turn_history_response_coupling
     rw [← frame.publicView]
     exact idle
   obtain ⟨coupling, leftLaw, rightLaw, related⟩ := frame.off_turn_stopped_response_coupling
-    bounds menu players reference started (frame.network ▸ rightSerials)
+    bounds menu players reference started leftRecall rightRecall (frame.network ▸ rightSerials)
       remaining idle coverage
         (by simpa only [players, Function.update_self] using available _ _)
   refine ⟨coupling, leftLaw, rightLaw, ?_⟩
@@ -131,6 +132,6 @@ theorem off_turn_history_response_coupling
         ⟨remaining, some owner, original⟩ ⟨remaining, none, next.1⟩ publicSame rfl
       rw [same, trafficSame, step]
       exact List.mem_append_right _ (List.mem_singleton_self _)
-    · exact Or.inr ⟨good.1, good.2.1, good.2.2.1⟩
+    · exact Or.inr ⟨good.1, good.2.1⟩
 
 end Vegas

@@ -38,14 +38,14 @@ theorem sample_response_transport {who : Player} {remaining : Nat}
     (response : (application service.setup service.leaks).Action)
     (allowed : response ∈ service.menu.actions who (execution.recall who)
       (execution.observe (application service.setup service.leaks) who)) :
-    response = ⟨none⟩ := by
+    response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩ := by
   have present := service.menu.fullyMixed_response_support (initialLaw service.setup)
     service.planLength service.scheduler approx.players approx.covered approx.assessment
     approx.strategy approx.mixed who remaining execution trace response allowed
   simp only [players, sourceServiceTimedPolicy_idle _ _ _ _ _ who _
     (execution.observe (application service.setup service.leaks) who)
     (sole.idle (by rw [chance]; exact (Option.some_ne_none who).symm))] at present
-  exact (application service.setup service.leaks).silentPolicy_cases _ _ response present
+  exact (application service.setup service.leaks).replayPolicy_cases _ _ response present
 
 open Classical in
 /-- At a public-sampling site, every local lottery has the prescribed

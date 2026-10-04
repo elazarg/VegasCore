@@ -1,0 +1,167 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.SourceServiceUnsentResolution
+import Vegas.Game.SourceServiceSampleComparison
+import Vegas.Game.SourceServiceForeignDisclosure
+import Vegas.Game.SourceServiceSiteKind
+import Vegas.Game.SourceServiceTimedLaw
+import Vegas.Game.ServiceRosterTiming
+import Vegas.Game.ServiceRosterClock
+import GameTheoryExtensions.Analysis.Protocol.LocalSimulationLimit
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheoryExtensions.Math.Probability.Support
+
+/-! # Sequential equilibrium of the full-language service
+
+Every sequential equilibrium of the source information model has a sequential
+equilibrium of the permitted native service model with the same law of typed
+source terminal states. The native equilibrium is a limit of the timed
+approximants `Vegas.TimedApproximant.ofSource` of
+one fully supported Bayes sequence of the source equilibrium, with the roster
+timing law at weight one half. Each native decision site is compared with
+original source deviations according to its kind
+(`Vegas.DecisionSiteKind`): most kinds have zero
+gain, and both unsent bindings and unsent disclosures are simulated exactly.
+-/
+
+noncomputable section
+
+namespace Vegas
+
+open SourceProgram
+
+open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
+open GameTheory.Math.Probability Interaction EventGraphRuntime Filter
+
+variable {Player : Type} [DecidableEq Player] [Fintype Player]
+  {L : IExpr} [IExpr.ResultTypes L]
+
+namespace SourceServiceSpec
+
+variable (service : SourceServiceSpec Player L)
+
+/-- Every sequential equilibrium of the source information model has a
+sequential equilibrium of the permitted native service model whose law of
+typed source terminal states is the source law. -/
+theorem exists_native_sequentialEquilibrium
+    (utility : Option (State L service.setup.program.terminalCtx) → Player → ℝ)
+    (source : service.sourceModel.BehavioralAssessment)
+    (equilibrium : source.IsSequentialEquilibriumFor
+      (service.setup.decision_antichain (CommitmentInterface.values service.setup.program))
+      (fun who site => source.truncatedContinuationContext site
+        (fun final => utility (service.setup.protocolReadout final.state) who)
+        (instructionCount service.setup.program + 1))) :
+    ∃ target : service.model.BehavioralAssessment,
+      target.IsSequentialEquilibriumFor
+        (service.menu.decisionInformationAntichain (initialLaw service.setup)
+          service.planLength service.scheduler)
+        (fun who site => target.truncatedContinuationContext site
+          (fun final => utility (service.readout final) who) service.fuel) ∧
+      (service.model.runBehavioral target.strategy service.fuel).map service.readout =
+        (service.sourceModel.runBehavioral source.strategy
+            (instructionCount service.setup.program + 1)).map
+              (fun final => service.setup.protocolReadout final.state) := by
+  classical
+  let admission := CommitmentInterface.values service.setup.program
+  let sourceModel := service.setup.informationModel admission
+  obtain ⟨witness, approximates, _⟩ := equilibrium.2
+  let _ : Finite (service.setup.executionProtocol admission).History :=
+    (approximates 0).1.finite_history (service.setup.protocol_bounded admission)
+      (fun who info =>
+        have := service.setup.finite_choice
+          (sourceService_finiteBindingTypes service.setup service.bounds service.values)
+          admission who info
+        Set.toFinite _)
+      (fun draw => service.setup.protocolStep_support_finite _ draw.1)
+  obtain ⟨sourceSequence, full, sourceBayes, converges, _⟩ :=
+    sourceService_consistent_supported_sequence service.setup service.bounds service.values
+      source (service.setup.decision_antichain admission) equilibrium.2
+  have sourceMixed : (sourceSequence 0).IsFullyMixed := fun who site => full 0 who site.1
+  -- The timing law and the native approximants.
+  let half : ℝ := 1 / 2
+  have halfNonnegative : 0 ≤ half := by norm_num [half]
+  have halfBounded : half ≤ 1 := by norm_num [half]
+  let timing := rosterTiming service.setup service.rosters service.opportunities half
+    halfNonnegative halfBounded
+  have timingFull (event : (graph service.setup).EventId) (who : Player)
+      (owned : (graph service.setup).actor? event = some who) :
+      FullSupport (timing event who owned) :=
+    rosterTiming_fullSupport service.setup service.rosters service.opportunities half
+      halfNonnegative halfBounded (by norm_num [half]) event who owned
+  let approx (n : Nat) := TimedApproximant.ofSource service timing timingFull
+    (sourceSequence n).strategy (full n)
+  let sourceObserve := fun final : (service.setup.executionProtocol admission).History =>
+    service.setup.protocolReadout final.state
+  have localSimulations (n : Nat) (who : Player) (site : service.model.InformationSite who)
+      (law : PMF (service.model.Choice who site.1)) :
+      let comparison := service.model.assessmentComparisonWith (service.model.truncatedRunner
+          service.fuel) service.readout
+        (approx n).assessment who (site, ((approx n).assessment.strategy who).withLaw site.1 law)
+      comparison.alternative = comparison.prescribed ∨
+        ∃ mixture : PMF (sourceModel.AssessmentDeviation who),
+          comparison.prescribed = mixture.bind (fun deviation =>
+            (sourceModel.assessmentComparisonWith
+              (sourceModel.truncatedRunner (instructionCount service.setup.program + 1))
+              sourceObserve (sourceSequence n) who deviation).prescribed) ∧
+          comparison.alternative = mixture.bind (fun deviation =>
+            (sourceModel.assessmentComparisonWith
+              (sourceModel.truncatedRunner (instructionCount service.setup.program + 1))
+              sourceObserve (sourceSequence n) who deviation).alternative) := by
+    obtain ⟨past, view, event, observed, readyView, kind⟩ :=
+      service.exists_siteKind who site
+    cases kind with
+    | chance actorless =>
+        exact Or.inl ((approx n).sample_comparison_eq who site past view observed
+          actorless readyView law)
+    | foreignBinding owner payload foreign outputEq =>
+        exact Or.inl ((approx n).foreign_binding_comparison_eq who site past view
+          observed foreign outputEq readyView law)
+    | foreignDisclosure owner payload foreign owned outputEq =>
+        exact Or.inl ((approx n).foreign_disclosure_comparison_eq who site past view
+          observed foreign owned outputEq readyView law)
+    | recordedBinding payload outputEq recorded =>
+        exact Or.inl ((approx n).recorded_comparison_eq who site past view observed
+          outputEq readyView recorded law)
+    | unsentBinding payload outputEq unsent =>
+        obtain ⟨mixture, prescribedEq, alternativeEq⟩ :=
+          TimedApproximant.unsent_binding_comparisons service timing timingFull
+            (sourceSequence n) (full n) (sourceBayes n) (approx n) rfl who site past view
+            observed outputEq readyView unsent law
+        exact Or.inr ⟨mixture, prescribedEq, alternativeEq⟩
+    | recordedDisclosure payload owned outputEq recorded =>
+        exact Or.inl ((approx n).recorded_disclosure_comparison_eq who site past view
+          observed owned outputEq readyView recorded law)
+    | unsentDisclosure payload owned outputEq unsent =>
+        obtain ⟨mixture, prescribedEq, alternativeEq⟩ :=
+          TimedApproximant.unsent_resolution_comparisons service timing timingFull
+            (sourceSequence n) (full n) (sourceBayes n) (approx n) rfl who site past view
+            observed outputEq owned readyView unsent law
+        exact Or.inr ⟨mixture, prescribedEq, alternativeEq⟩
+  have initialized (n : Nat) :
+      (service.model.runBehavioral (approx n).assessment.strategy service.fuel).map
+          service.readout =
+        (sourceModel.runBehavioral (sourceSequence n).strategy
+          (instructionCount service.setup.program + 1)).map sourceObserve := by
+    rw [TimedApproximant.ofSource_strategy]
+    exact sourceServiceTimedProfile_protocol_law service.setup service.leaks service.bounds
+      service.values service.initialValues service.capacity service.rosters
+      service.opportunities timing timingFull service.network (sourceSequence n).strategy
+  obtain ⟨target, targetEquilibrium, law, _⟩ :=
+    InformationModel.exists_sequentialEquilibrium_limit_of_local_simulations sourceObserve
+      service.readout (instructionCount service.setup.program + 1) service.fuel
+      (service.menu.bounded (initialLaw service.setup) service.planLength service.scheduler)
+      (service.menu.decisionRecall (initialLaw service.setup) service.planLength
+        service.scheduler)
+      utility source sourceSequence converges equilibrium.1
+      (fun n => (approx n).assessment) (fun n => (approx n).mixed)
+      (fun n => TimedApproximant.ofSource_bayes service timing timingFull
+        (sourceSequence n).strategy (full n))
+      localSimulations initialized
+  exact ⟨target, targetEquilibrium, law⟩
+
+end SourceServiceSpec
+
+end Vegas

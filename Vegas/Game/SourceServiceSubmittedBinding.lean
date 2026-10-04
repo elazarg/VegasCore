@@ -30,7 +30,7 @@ theorem sourceService_submitted_binding
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (who : Player) (control : (application setup leaks).Control)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
@@ -115,7 +115,7 @@ theorem sourceService_recorded_binding_resources
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (who : Player) (control : (application setup leaks).Control)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
@@ -197,9 +197,9 @@ theorem sourceService_recorded_binding_resources
   have unpublished : message.id ∉ submitted.network.ledger.map Message.id :=
     beforeSerials.next_unpublished owner
   obtain ⟨sameApp, ledger, _, counters, safe, retained⟩ :=
-    (runtime setup).silent_window_preserves leaks menu.uniformResponses network owner submitted
+    (runtime setup).replay_window_preserves leaks menu.uniformResponses network owner submitted
       transport _ packets remaining prior tail
-  obtain ⟨selected, found⟩ := (runtime setup).silent_window_selection leaks menu.uniformResponses
+  obtain ⟨selected, found⟩ := (runtime setup).replay_window_selection leaks menu.uniformResponses
     network owner submitted transport event message rfl rfl packets pending unpublished remaining
       prior tail
   have currentApp : control.execution.application = submitted.application := by

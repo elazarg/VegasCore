@@ -91,14 +91,21 @@ theorem response_recall_entry (runtime : EventGraphRuntime graph)
       refine ⟨⟨_, _, none⟩, ?_, rfl, rfl⟩
       simp only [ReactiveApplication.Execution.respond, ↓reduceIte]
       rfl
-  | some submission =>
-      let app := runtime.reactiveApplication leaks
-      refine ⟨⟨execution.observe app who, ⟨some submission⟩,
-        some (execution.network.submit who (app.packet
-          (app.submit execution.application who submission) who
-          (execution.network.known who) submission)).1⟩, ?_, rfl, rfl⟩
-      simp only [ReactiveApplication.Execution.respond, ↓reduceIte]
-      rfl
+  | some transmission =>
+      cases transmission with
+      | submit submission =>
+          let app := runtime.reactiveApplication leaks
+          refine ⟨⟨execution.observe app who, ⟨some (.submit submission)⟩,
+            some (execution.network.submit who (app.packet
+              (app.submit execution.application who submission) who
+              (execution.network.known who) submission)).1⟩, ?_, rfl, rfl⟩
+          simp only [ReactiveApplication.Execution.respond, ↓reduceIte]
+          rfl
+      | replay id =>
+          refine ⟨⟨_, ⟨some (.replay id)⟩, (execution.network.replay who id).1⟩,
+            ?_, rfl, rfl⟩
+          simp only [ReactiveApplication.Execution.respond, ↓reduceIte]
+          rfl
 
 theorem interactionStep_recall_prefix (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))

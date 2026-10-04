@@ -104,19 +104,23 @@ theorem normalized_opening_included_serial (runtime : EventGraphRuntime graph)
     simp
   · simp [same, Ne.symm same]
 
-/-- Silence allocates no new message id and publishes no packet. Private
-response recall is retained. -/
+/-- Silence and rebroadcasts allocate no new message id and publish no new
+packet by themselves. Actual replay input and private recall are retained. -/
 theorem refusing_response_public_fields (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (execution : (runtime.reactiveApplication leaks).Execution) (owner : Player)
     (response : (runtime.reactiveApplication leaks).Action)
-    (refuses : response = ⟨none⟩) :
+    (refuses : response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩) :
     (execution.respond (runtime.reactiveApplication leaks) owner response).network.ledger =
         execution.network.ledger ∧
       (execution.respond (runtime.reactiveApplication leaks) owner response).network.nextSerial =
         execution.network.nextSerial := by
-  rcases refuses with rfl
-  exact ⟨rfl, rfl⟩
+  rcases refuses with rfl | ⟨id, rfl⟩
+  · exact ⟨rfl, rfl⟩
+  · change (execution.network.replay owner id).2.ledger = execution.network.ledger ∧
+      (execution.network.replay owner id).2.nextSerial = execution.network.nextSerial
+    unfold MessageNetwork.replay
+    split <;> exact ⟨rfl, rfl⟩
 
 /-- The actual successful response and inclusion preserve all three public
 transcript equations. The caller supplies the actual completed configuration
@@ -176,7 +180,7 @@ theorem refusing_settlement_transcript (runtime : EventGraphRuntime graph)
     (event : graph.EventId) (ready : execution.application.config.cut.Ready event)
     (action : graph.Action event) (value : (graph.outputLayout event).Value)
     (response : (runtime.reactiveApplication leaks).Action)
-    (refuses : response = ⟨none⟩)
+    (refuses : response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩)
     (ledger : execution.network.ledger =
       publicationLedger accepted (graph.publicObserve execution.application.config))
     (receipts : execution.receipts =
