@@ -8,6 +8,7 @@ import Vegas.Game.SourceServiceCompatibleChargedComparison
 import Vegas.Game.SourceServiceMissBranchComparison
 import Vegas.Game.SourceServiceCompatibleBindingResponse
 import Vegas.Game.AsyncServiceBindingBayesResponse
+import Vegas.Game.AsyncServiceResolutionBayesResponse
 import Vegas.Game.SourceContinuation
 import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
 import GameTheoryExtensions.Analysis.Protocol.AgentPayoffCompletion
@@ -42,6 +43,8 @@ parameter, effective prefix, typed draw and complete
 traffic are retained jointly, with counterfactual history weights including
 foreign waits and full-menu excursions. Original source restoration and
 source-posterior transport remain separate from this conditional draw law.
+The same native sequence also has the conditional resolution law, retaining
+separate effective FALSE/TRUE response traffic through actual source residuals.
 The uniform maximum bound controls only initialized loss; it does not assert
 that the information-dependent waiting rates enforce those comparisons.
 -/
@@ -230,6 +233,21 @@ theorem exists_consistent_original_sequence_completion
           view.application.publicView.ownTurn? who = some event →
           (runtime service.setup).eventRecorded service.leaks past event = false →
           service.BindingConditionalResponseLaw parameter currentProfile who payload event binding
+            site past view (weight n) (weightNonnegative n) (weightSmall n) (delta n)
+              (deltaPositive n).le (deltaSmall n).le (nativeSequence n)) ∧
+      (∀ n,
+        let currentProfile := normalizeDisclosureProfile service.setup.program []
+          (Revelations.initial service.setup.context)
+          (service.setup.decodeBehavioralProfile (CommitmentInterface.values service.setup.program)
+            (sourceSequence n).strategy)
+        ∀ (Parameter : Type) (parameter : State L service.setup.context → Parameter)
+          who payload event
+          (_publication : (graph service.setup).outputLayout event = .publication payload)
+          (site : (model).InformationSite who) past view,
+          site.1 = some (past, view) → service.sourceCompatibleInfo who site.1 →
+          view.application.publicView.ownTurn? who = some event →
+          (runtime service.setup).eventRecorded service.leaks past event = false →
+          service.ResolutionConditionalResponseLaw parameter currentProfile who payload event
             site past view (weight n) (weightNonnegative n) (weightSmall n) (delta n)
               (deltaPositive n).le (deltaSmall n).le (nativeSequence n)) ∧
       (∀ who (site : (model).InformationSite who), ¬ service.sourceCompatibleInfo who site.1 →
@@ -489,7 +507,7 @@ theorem exists_consistent_original_sequence_completion
       (Option.some_injective (State L service.setup.program.terminalCtx))] using limit
   have sourceTarget := sourceRuns.map (fun state => (some state, utility state))
   refine ⟨nativeSequence, assessment, index, mixed, bayes, increasing, converges, consistent,
-    ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, compatiblePlay, ?_⟩
+    ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, compatiblePlay, ?_⟩
   · intro n who site compatible
     exact kept n who site compatible
   · intro n currentProfile event execution binding remaining trace compatible turn unrecorded
@@ -523,6 +541,15 @@ theorem exists_consistent_original_sequence_completion
       payload (permitted n who) event binding site past view observed compatible turn unrecorded
       (weight n) (weightNonnegative n) (weightSmall n) (delta n) (deltaPositive n).le
       (deltaSmall n).le (nativeSequence n) (bayes n) (constructed n who site) positive
+  · intro n currentProfile Parameter parameter who payload event publication site past view
+      observed compatible turn unrecorded
+    have positive := (model).informationMass_pos_of_fullSupport (nativeSequence n).strategy
+      (mixed n) who site
+    exact service.information_wait_resolution_bayes_joint_response parameter currentProfile who
+      payload (permitted n who) (effective n) event publication site past view observed compatible
+      turn unrecorded (weight n) (weightNonnegative n) (weightSmall n) (delta n)
+      (deltaPositive n).le (deltaSmall n).le (nativeSequence n) (bayes n)
+      (constructed n who site) positive
   · intro who site incompatible law
     exact freeOptimal who site (Finset.mem_filter.mpr ⟨Finset.mem_univ _, incompatible⟩) law
   · intro who site incompatible

@@ -91,7 +91,9 @@ theorem sourceServiceDecision_clear_protected_resolution_response {horizon remai
   exact law
 
 omit [Fintype Player] in
-private theorem effective_resolution_response_decision
+/-- An effective residual choice has its exact physical FALSE or TRUE packet
+tag, derived from the actual initialized raw prefix and guarded opening facts. -/
+theorem RevealSource.response_decision
     {horizon remaining : Nat} {scheduler : (application setup leaks).Scheduler}
     {owner : Player}
     (execution : (application setup leaks).Execution)
@@ -176,7 +178,7 @@ theorem sourceServiceDecision_clear_protected_resolution_marginal {horizon remai
   congr 1
   apply map_congr_on_support _
   intro disclose supported
-  exact effective_resolution_response_decision execution
+  exact RevealSource.response_decision execution
     ((bounds.riskMenu (runtime setup) leaks bound).toRawTrace _ _ _ trace) site effective disclose
     supported
 

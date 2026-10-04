@@ -2974,6 +2974,17 @@ weights. The original completion producer returns this law for every compatible
 binding input of its same native sequence, deriving positive mass, its pin and
 Bayes consistency internally. Source-posterior identification, conditional
 escape control and the native continuation after this response remain open.
+[AsyncServiceResolutionBayesResponse](../Vegas/Game/AsyncServiceResolutionBayesResponse.lean)
+provides the conditional resolution law for that same native sequence. Actual
+full-menu histories derive the source residual and its supported effective
+FALSE or TRUE choice, together with the initial parameter, decoded effective
+prefix and entire post-response traffic. FALSE withholding and TRUE opening
+retain their distinct physical channels. The full uniform branch, WAIT and
+per-history canonical draws have the actual counterfactual incoming weights;
+foreign waiting and free excursions are retained. The original completion
+producer derives positive mass and its pin from its own fully mixed Bayes
+sequence. This does not restore failed TRUE intentions, identify source
+posteriors, choose suitable waiting rates or prove continuation incentives.
 
 [SourceServiceAliasEquilibrium](../Vegas/Game/SourceServiceAliasEquilibrium.lean)
 supplies the final normalization stage: an audited SE of the complete

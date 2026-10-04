@@ -30,7 +30,9 @@ local notation "model" => ReactiveApplication.ResponseMenu.information
   (service.bounds.menu (Vegas.runtime service.setup) service.leaks)
   (initialLaw service.setup) service.horizon service.scheduler
 
-private theorem immediate_decoded_response
+/-- Actual compatible full-menu slots and protection identify the represented
+immediate law with its canonical compiler response at this unrecorded turn. -/
+theorem sourceCompatibleInfo_immediate_decoded_response
     (profile : BehavioralProfile service.setup.program) (who : Player)
     (permitted : (profile who).Admitted service.setup.program (CommitmentInterface.values _))
     (remaining : Nat) (execution : (app).Execution)
@@ -113,8 +115,8 @@ theorem completedInformationWaitProfile_binding_joint_response
   obtain ⟨_, atTurn, slots, _⟩ := service.sourceCompatibleInfo_raw_prefixFacts
     ⟨remaining, some site.owner, execution⟩ rawTrace site.owner compatible
   have fresh := canonicalSlot_fresh_of_used rawTrace site.owner atTurn slots event turn unrecorded
-  have canonical := service.immediate_decoded_response profile site.owner permitted remaining
-    execution trace compatible event turn unrecorded
+  have canonical := service.sourceCompatibleInfo_immediate_decoded_response profile site.owner
+    permitted remaining execution trace compatible event turn unrecorded
   rw [sourceServiceCanonicalPolicy_at_event service.setup service.leaks profile site.owner
     execution event turn site.owned, BindingSource.compiled_choice execution site,
     PMF.map_comp] at canonical
