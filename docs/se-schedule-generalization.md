@@ -2752,10 +2752,15 @@ materializes owned certificates from immutable private catalogues or forwards
 them from authentic known packets. `Vegas.SourceSession.packetEvidence`
 instantiates the existing reactive packet-evidence framework: both certificate
 kinds remain valid at every legal native history, including pending observation,
-forwarding, rejected calls and nested reports. This capability soundness does
-not yet identify an accepted original handle's meaning with its source binding
-field. That provenance invariant and the information-local source simulation
-remain proof obligations.
+forwarding, rejected calls and nested reports.
+`Vegas.SourceSession.associationInvariant` preserves the existing graph
+association invariant through submissions, binding acceptance, decision
+admission/opening, chance, cancellation and reporting.
+`Vegas.SourceSession.history_opening_stored` combines these instances to identify
+an authentic pending original certificate with the selected source binding's
+stored value at every initialized native history. This supplies the stored-value
+premise of the TRUE source-step theorem. The information-local source observation
+and private-recall simulation remain proof obligations.
 
 The service contract must address phase keys, with packet uniqueness scoped to
 one phase. Admission and opening require different authenticated envelopes for

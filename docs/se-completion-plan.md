@@ -109,8 +109,10 @@ admission, separate authenticated opening certificates, fresh opening timers,
 and public-timeout cancellation. Its operational lemmas and
 [native regression tests](../VegasTests/SourceSession.lean) establish the handler
 boundary. Its packet-evidence instance supplies all-history capability
-soundness through the existing generic framework; accepted-binding provenance
-and the compiler's private-recall simulation,
+soundness through the existing generic framework. Its association-invariant
+instance and `Vegas.SourceSession.history_opening_stored` identify authentic
+pending original certificates with selected source binding values at every
+initialized native history. The compiler's private-recall simulation,
 phase service contract and conditional source/traffic law remain unproved.
 Its two-charge candidate keeps the existing bounded
 deadline audit and separates a one-time verifiable-misconduct fine, so the
@@ -140,11 +142,13 @@ for the native application:
    The event-wide sole-packet clause does not protect the honest two-packet
    resolution. `ReactiveAuthorizedService` filters builder inclusions and is
    not a proof for every builder satisfying the intended contract.
-3. Derive accepted-binding provenance and source observation/private recall
-   using the existing immutable-catalogue laws, source-to-graph decoder and
-   disclosure normalization. The packet-evidence instance already supplies
-   authentic helper and original capabilities; do not repeat its raw-history
-   induction.
+3. Derive source observation/private recall using the source-to-graph decoder
+   and disclosure normalization. The existing graph association invariant is
+   preserved by `SourceSession.associationInvariant`; combined with packet
+   evidence, `SourceSession.history_opening_stored` supplies the stored-value
+   premise of `SourceSession.success_source_step`. Reuse these adapters instead
+   of repeating their raw-history induction. Source-step correctness alone
+   does not establish the compiler's information or strategy relation.
 4. Connect actual watcher observation and delivery to the static misconduct
    audit. Reuse `EvidenceReportService.sample_coverage` for a genuine
    conditional observation/delivery law and the terminal-audit settlement

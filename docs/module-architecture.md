@@ -40,6 +40,7 @@ The [completion plan](se-completion-plan.md) identifies the remaining adapters.
 | --- | --- | --- |
 | Typed source results and effective disclosure | [DisclosureAliases](../Vegas/Source/DisclosureAliases.lean), [Validation](../Vegas/EventGraph/Validation.lean), [EventGraphObservation](../Vegas/Compile/EventGraphObservation.lean) | Effective FALSE and the original private intention differ. Decode observations and retain private recall through the actual compiler relation. |
 | Immutable opaque meanings | [CommitmentCandidates](../Interaction/CommitmentCandidates.lean), [EventCommitmentBinding](../Vegas/Pending/EventCommitmentBinding.lean) | Preparation and freezing preserve fixed meanings. These ideal capabilities do not establish concrete cryptographic hiding or binding. |
+| Accepted handles and source values | [EventAssociationInvariant](../Vegas/Pending/EventAssociationInvariant.lean), [SourceSession](../Vegas/Pending/SourceSession.lean) | The graph association invariant relates an accepted handle's immutable opening to its stored source value. `SourceSession.associationInvariant` preserves it under native operations; `SourceSession.history_opening_stored` combines it with authentic pending evidence at initialized histories. |
 | Pending execution, authentic envelopes and recall | [ReactiveApplication](../Interaction/ReactiveApplication.lean), [ReactiveProvenance](../Interaction/ReactiveProvenance.lean), [ReactiveSubmissionAudit](../Interaction/ReactiveSubmissionAudit.lean) | Reuse the runner and its original-submission records; a signed identifier is not a freely forgeable packet body. |
 | Facts at arbitrary native histories | [ReactiveInvariant](../Interaction/ReactiveInvariant.lean), [ReactiveInvariantContinuation](../Interaction/ReactiveInvariantContinuation.lean), [ReactivePacketEvidence](../Interaction/ReactivePacketEvidence.lean) | Supply local submission, handler and environment obligations. The framework supplies history and continuation induction, including rejected calls and partial observations. |
 | Accepted-receipt evidence | [ReactiveEvidence](../Interaction/ReactiveEvidence.lean), [ReactiveEvidenceKnowledge](../Interaction/ReactiveEvidenceKnowledge.lean) | A successful receipt can certify handler effects. It does not authenticate a pending packet or an unsuccessful receipt. |
@@ -53,8 +54,10 @@ The [completion plan](se-completion-plan.md) identifies the remaining adapters.
 | Complete-play continuation horizons | [ContinuationHorizon](../GameTheoryExtensions/Protocol/ContinuationHorizon.lean), [ReactiveFiniteAssessment](../Interaction/ReactiveFiniteAssessment.lean) | Establish finite menus and a bounded terminal horizon, then reuse the terminal/full/remaining-horizon equivalences. |
 
 [SourceSession](../Vegas/Pending/SourceSession.lean) instantiates the existing
-reactive runner and packet-evidence framework for decision admission, mandatory
-opening and cancellation. Its phase identifiers are needed because admission
+reactive runner, packet-evidence framework and graph association invariant for
+decision admission, mandatory opening and cancellation. Authentic original
+certificates agree with selected source binding values at every initialized
+native history. Its phase identifiers are needed because admission
 and opening use different packets for one source event. The event-indexed
 [AsyncContract](../Vegas/Pending/ReactiveAsyncContract.lean) does not supply
 phase-indexed protection by itself. The source-to-graph compiler and graph
