@@ -2102,8 +2102,12 @@ preparation still excludes additional owner commitments. Each endpoint preserves
 candidate provenance and opening capabilities, or the same owner-authored signed
 breach in both actual inputs. Clean branches retain equal actual risk records and
 service risk for every inclusion bound. Initialized traces and the real evaluator derive
-ordinary service invariants. One common finite induction serves both the complete
-bounded effective menu and the risk menu. The risk consumer derives repaired
+ordinary service invariants.
+[ReactiveImplementationCoupling](../Interaction/ReactiveImplementationCoupling.lean)
+supplies the shared finite induction over the actual round and private joint
+evaluators, with exact marginals and supported prefixes on both sides. The same
+kernel serves the complete bounded effective menu, the risk menu and the pending
+segment below. The risk consumer derives repaired
 admission from actual original risk support, current binding invariants and
 recalled records. Reused bindings and terminal utility
 domination remain open.
@@ -2236,8 +2240,9 @@ recovers `CompletedAt`.
 [SourceServiceUnclassifiedPendingCommands](../Vegas/Game/SourceServiceUnclassifiedPendingCommands.lean)
 derives the exception from the same retained typed-default selection and
 discharges sole readiness from the source graph's actual order. Packet
-inclusion uses the actual packet provenance and handler checks below; finite
-pending-segment composition and whole-policy payoff comparison remain open.
+inclusion uses the actual packet provenance and handler checks below. The finite
+pending segment composes these transitions; whole-policy payoff comparison
+remains open.
 [SourceServicePendingPacketOrigin](../Vegas/Game/SourceServicePendingPacketOrigin.lean)
 uses the actual owner recall split, initial unrecorded event and later silent
 responses to identify every owner packet naming the pending event with the
@@ -2251,6 +2256,16 @@ the pending frame; acceptance supplies actual completion and restores completed
 memory. Both environment-step marginals and the exceptional memory invariant
 are preserved. No timely acceptance or completion-before-inclusion premise is
 added, and this local law supplies no terminal utility comparison.
+[SourceServicePendingSegment](../Vegas/Game/SourceServicePendingSegment.lean)
+couples every actual scheduler command and owner, foreign or inactive response
+through the real remaining RAW budget. While pending, the full frame, single
+unfinished override and actual anchored silent recall tail persist. The segment
+exits at actual settlement with completed memory, or at a sampled classified
+owner response with its real active RAW trace and response transition. Both
+checkpoint marginals and subsequent actual tail supports are retained. After an
+exit, the tails need not remain related; this supplies no terminal payoff
+comparison. A shorter run may still end pending, so the lemma does not assume
+settlement before the chosen budget.
 
 [SourceServiceSiteKind](../Vegas/Game/SourceServiceSiteKind.lean) derives the
 actual local input and either a publicly completed cut or a ready event with
@@ -2815,6 +2830,15 @@ authentic partial sampling whenever that owner had no public miss at the
 boundary, even if private opportunity risk persists. This execution law does
 not identify native beliefs, select the returned assessment's free continuation,
 or establish an accepted-late-action incentive comparison.
+[SourceServiceCanonicalRestartSettlement](../Vegas/Game/SourceServiceCanonicalRestartSettlement.lean)
+combines that same restart with actual terminal settlement. From a canonical
+completion boundary with no owner's public miss, its joint full typed source
+readout and realized public-payoff vector equal the source continuation law.
+The initial parameter and outcome use the same source draw. Authentic partial
+sampling may correlate all owners' verdicts, and accepted delayed prefixes with
+persistent private opportunity risk are allowed. This is a clean continuation
+benchmark; it does not select the equilibrium completion's free continuation or
+establish its accepted-delay comparison.
 [SourceServiceCanonicalSettlement](../Vegas/Game/SourceServiceCanonicalSettlement.lean)
 proves that packets on an actual canonical history with no owned public miss
 are permitted by its final record. Completed owned unmarked decisions supply

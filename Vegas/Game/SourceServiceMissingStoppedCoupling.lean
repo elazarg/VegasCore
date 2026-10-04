@@ -6,6 +6,7 @@ import Vegas.Pending.ReactiveBindingInertClosure
 import Vegas.Pending.ReactiveBindingRiskAdmission
 import Vegas.Pending.ReactiveBindingRiskRecall
 import Interaction.ReactiveImplementationInvariant
+import Interaction.ReactiveImplementationCoupling
 
 /-! # Actual missing-binding continuation up to an owner's signed breach
 
@@ -575,116 +576,68 @@ private theorem missing_copied_stopped_coupling
       coupling.map Prod.snd = strategy.runJoint owner players scheduler count repaired.execution
         memory ∧ ∀ next ∈ coupling.support, good next ∨ bad next := by
     intro count
-    induction count with
-    | zero =>
-        refine ⟨PMF.pure (original.execution, repaired.execution, memory), PMF.pure_map ..,
-          PMF.pure_map .., ?_⟩
-        intro next member
-        cases (PMF.mem_support_pure_iff _ _).mp member
-        exact Or.inl ⟨frame, onlyBindings, past, initialProvenance, started, initialRecords,
-          originalFacts.2.2.2.2.2, repairedFacts.2.2.2.2.2, preserved, fun _ matched => matched⟩
-    | succ count ih =>
-        obtain ⟨joint, first, second, related⟩ := ih
-        have leftSupport (next) (member : next ∈ joint.support) :
-            next.1 ∈ (app.runRounds scheduler players count original.execution).support := by
-          rw [← first, PMF.support_map]
-          exact ⟨next, member, rfl⟩
-        have rightSupport (next) (member : next ∈ joint.support) :
-            next.2 ∈ (strategy.runJoint owner players scheduler count repaired.execution
-              memory).support := by
-          rw [← second, PMF.support_map]
-          exact ⟨next, member, rfl⟩
-        have independent
-            (next : app.Execution × app.Execution × BindingMemory (runtime setup) leaks)
-            (breach : bad next) :
-            ∃ step : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
-              step.map Prod.fst = app.round scheduler players next.1 ∧
-              step.map Prod.snd = strategy.round owner players scheduler next.2.1 next.2.2 ∧
-              ∀ after ∈ step.support, good after ∨ bad after := by
-          obtain ⟨message, authored, forbidden, leftEmitted, rightEmitted⟩ := breach
-          let left := app.round scheduler players next.1
-          let right := strategy.round owner players scheduler next.2.1 next.2.2
-          let step := left.bind fun l => right.map fun r => (l, r)
-          refine ⟨step, ?_, ?_, ?_⟩
-          · simp only [step, PMF.map_bind, PMF.map_comp, Function.comp_def]
-            rw [show (fun l => right.map (fun _ => l)) =
-                (fun l => PMF.pure l) from funext fun _ => PMF.map_const _ _]
-            exact PMF.bind_pure _
-          · simp only [step, PMF.map_bind, PMF.map_comp, Function.comp_def]
-            change (left.bind fun _ => right.map id) = right
-            rw [PMF.map_id]
-            exact PMF.bind_const _ _
-          · intro after member
-            obtain ⟨l, lMember, pairedMember⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ member)
-            obtain ⟨r, rMember, rfl⟩ := PMF.support_map .. ▸ pairedMember
-            obtain ⟨command, _, dispatched⟩ :=
-              Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ lMember)
-            exact Or.inr ⟨message, authored, forbidden,
-              (input_policy players message).dispatch command next.1 l leftEmitted dispatched,
-              (input_service scheduler message).implementation_round strategy owner players
-                next.2.1 next.2.2 r rightEmitted rMember⟩
-        have existsStep (next) (member : next ∈ joint.support) :
-            ∃ step : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
-              step.map Prod.fst = app.round scheduler players next.1 ∧
-              step.map Prod.snd = strategy.round owner players scheduler next.2.1 next.2.2 ∧
-              ∀ after ∈ step.support, good after ∨ bad after := by
-          rcases related next member with matched | breach
-          swap
-          · exact independent next breach
-          by_cases breached : ownerBreachInInputs owner next.1
-          · obtain ⟨message, emitted, authored, forbidden⟩ := breached
-            exact independent next
-              ⟨message, authored, forbidden, emitted, matched.1.network ▸ emitted⟩
-          have leftCurrentFacts := (continuationFacts_policy players).runRounds scheduler count
-            original.execution next.1 originalFacts (leftSupport next member)
-          have rightCurrentFacts := (continuationFacts_service scheduler).implementation_runJoint
-            strategy owner players count repaired.execution memory next.2 repairedFacts
-              (rightSupport next member)
-          obtain ⟨currentFrame, currentOwn, currentPast, currentLedger, currentStarted,
-            currentRecords, _currentLeftRecall, _currentRightRecall, currentCapability,
-            currentSlots⟩ := matched
-          obtain ⟨step, left, right, continued⟩ := clean_round_coupling currentFrame currentOwn
-            currentPast currentLedger currentRecords leftCurrentFacts rightCurrentFacts
-              breached menu currentCapability currentSlots players scheduler reference resumes
-                currentStarted
-          refine ⟨step, left, right, fun after afterMember => ?_⟩
-          obtain ⟨afterFrame, afterOwn, afterPast, afterLedger, afterStarted, afterRecords,
-            afterLeftRecall, afterRightRecall, afterCapability, afterSlots⟩ :=
-              continued after afterMember
-          refine Or.inl ⟨afterFrame, afterOwn, afterPast, afterLedger, afterStarted, afterRecords,
-            afterLeftRecall, afterRightRecall, afterCapability, ?_⟩
-          intro slot matched
-          exact afterSlots slot (currentSlots slot matched)
-        let step := fun next member => (existsStep next member).choose
-        refine ⟨joint.bindOnSupport step, ?_, ?_, ?_⟩
-        · rw [map_bindOnSupport]
-          calc
-            _ = joint.bind (fun next => app.round scheduler players next.1) := by
-              apply bindOnSupport_eq_bind_of_eq_on_support _
-              intro next member
-              exact (existsStep next member).choose_spec.1
-            _ = (joint.map Prod.fst).bind (app.round scheduler players) := by
-              rw [PMF.bind_map]; rfl
-            _ = _ := by
-              rw [first, app.runRounds_add]
-              simp only [ReactiveApplication.runRounds, PMF.bind_pure]
-        · rw [map_bindOnSupport]
-          calc
-            _ = joint.bind (fun next => strategy.round owner players scheduler next.2.1
-                next.2.2) := by
-              apply bindOnSupport_eq_bind_of_eq_on_support _
-              intro next member
-              exact (existsStep next member).choose_spec.2.1
-            _ = (joint.map Prod.snd).bind (fun next => strategy.round owner players scheduler
-                next.1 next.2) := by rw [PMF.bind_map]; rfl
-            _ = _ := by
-              rw [second, ReactiveApplication.Implementation.runJoint_add]
-              simp only [ReactiveApplication.Implementation.runJoint, Prod.mk.eta, PMF.bind_pure]
-              rfl
-        · intro final member
-          obtain ⟨next, chosen, reached⟩ :=
-            Set.mem_iUnion₂.mp (PMF.support_bindOnSupport .. ▸ member)
-          exact (existsStep next chosen).choose_spec.2.2 final reached
+    have seeded : good (original.execution, repaired.execution, memory) :=
+      ⟨frame, onlyBindings, past, initialProvenance, started, initialRecords,
+        originalFacts.2.2.2.2.2, repairedFacts.2.2.2.2.2, preserved, fun _ matched => matched⟩
+    apply strategy.runJoint_coupling owner players scheduler original.execution repaired.execution
+      memory (fun _ next => good next ∨ bad next) (Or.inl seeded) count
+    intro index _within next leftReached rightReached relation
+    have independent
+        (next : app.Execution × app.Execution × BindingMemory (runtime setup) leaks)
+        (breach : bad next) :
+        ∃ step : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+          step.map Prod.fst = app.round scheduler players next.1 ∧
+          step.map Prod.snd = strategy.round owner players scheduler next.2.1 next.2.2 ∧
+          ∀ after ∈ step.support, good after ∨ bad after := by
+      obtain ⟨message, authored, forbidden, leftEmitted, rightEmitted⟩ := breach
+      let left := app.round scheduler players next.1
+      let right := strategy.round owner players scheduler next.2.1 next.2.2
+      let step := left.bind fun l => right.map fun r => (l, r)
+      refine ⟨step, ?_, ?_, ?_⟩
+      · simp only [step, PMF.map_bind, PMF.map_comp, Function.comp_def]
+        rw [show (fun l => right.map (fun _ => l)) =
+            (fun l => PMF.pure l) from funext fun _ => PMF.map_const _ _]
+        exact PMF.bind_pure _
+      · simp only [step, PMF.map_bind, PMF.map_comp, Function.comp_def]
+        change (left.bind fun _ => right.map id) = right
+        rw [PMF.map_id]
+        exact PMF.bind_const _ _
+      · intro after member
+        obtain ⟨l, lMember, pairedMember⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ member)
+        obtain ⟨r, rMember, rfl⟩ := PMF.support_map .. ▸ pairedMember
+        obtain ⟨command, _, dispatched⟩ :=
+          Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ lMember)
+        exact Or.inr ⟨message, authored, forbidden,
+          (input_policy players message).dispatch command next.1 l leftEmitted dispatched,
+          (input_service scheduler message).implementation_round strategy owner players
+            next.2.1 next.2.2 r rightEmitted rMember⟩
+    rcases relation with matched | breach
+    swap
+    · exact independent next breach
+    by_cases breached : ownerBreachInInputs owner next.1
+    · obtain ⟨message, emitted, authored, forbidden⟩ := breached
+      exact independent next
+        ⟨message, authored, forbidden, emitted, matched.1.network ▸ emitted⟩
+    have leftCurrentFacts := (continuationFacts_policy players).runRounds scheduler index
+      original.execution next.1 originalFacts leftReached
+    have rightCurrentFacts := (continuationFacts_service scheduler).implementation_runJoint
+      strategy owner players index repaired.execution memory next.2 repairedFacts
+        rightReached
+    obtain ⟨currentFrame, currentOwn, currentPast, currentLedger, currentStarted,
+      currentRecords, _currentLeftRecall, _currentRightRecall, currentCapability,
+      currentSlots⟩ := matched
+    obtain ⟨step, left, right, continued⟩ := clean_round_coupling currentFrame currentOwn
+      currentPast currentLedger currentRecords leftCurrentFacts rightCurrentFacts
+        breached menu currentCapability currentSlots players scheduler reference resumes
+          currentStarted
+    refine ⟨step, left, right, fun after afterMember => ?_⟩
+    obtain ⟨afterFrame, afterOwn, afterPast, afterLedger, afterStarted, afterRecords,
+      afterLeftRecall, afterRightRecall, afterCapability, afterSlots⟩ :=
+        continued after afterMember
+    refine Or.inl ⟨afterFrame, afterOwn, afterPast, afterLedger, afterStarted, afterRecords,
+      afterLeftRecall, afterRightRecall, afterCapability, ?_⟩
+    intro slot matched
+    exact afterSlots slot (currentSlots slot matched)
   obtain ⟨coupling, left, right, related⟩ := coupled count
   refine ⟨coupling, left, right, fun next member => ?_⟩
   rcases related next member with matched | breach

@@ -114,6 +114,7 @@ import Interaction.ReactiveInvariant
 import Interaction.ReactivePolicyInvariant
 import Interaction.ReactiveRecovery
 import Interaction.ReactiveImplementation
+import Interaction.ReactiveImplementationCoupling
 import Interaction.ReactiveImplementationInvariant
 import Interaction.ReactivePolicyMixture
 import Interaction.ReactiveMessageReadout
