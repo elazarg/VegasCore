@@ -102,6 +102,15 @@ play; readiness starts the timer. The general retained menu keeps deferrals.
 Late unrecorded opportunities and persistent owner risk open the bounded raw
 continuation menu.
 
+The [decision-commitment analysis](se-schedule-generalization.md#a-commitment-based-decision-protocol)
+examines a compiler that freezes effective resolutions before mandatory
+opening. Its admission/execution simulation and conditional source/traffic
+law remain unproved. First-offense total-charge comparisons and reserved
+per-fault accounting are alternative enforcement routes; replenishment is not
+established as necessary. A native partial reporter also needs its actual
+report/settlement joint law, rather than terminal resampling of an already
+emitted batch.
+
 [SourceServiceRepeatedRepair](../Vegas/Game/SourceServiceRepeatedRepair.lean)
 provides the full remaining execution coupling through repeated completed and
 pending repair phases. It derives a genuine unusable-response seed, preserves

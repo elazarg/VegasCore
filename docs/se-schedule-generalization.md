@@ -2759,15 +2759,16 @@ matching public packet formats. A plain hash of a Boolean is insufficient.
 Ordinary commit/reveal alone also retains the sender's abort choice
 ([F3B, Section 3.1](https://arxiv.org/html/2205.08529)).
 
-For this candidate, fault accounting reserves a separate unit for each phase
+One enforcement variant reserves a separate unit for each phase
 and closes that phase when its fault is charged. Packet offenses remain
 separate, deduplicated by authenticated envelope ID. The bounded horizon allows
 one upfront escrow covering all phase reserves and possible packet fines; no
-stepwise top-up is needed. These are reserves for distinct faults, not charges for ordinary source
-decisions or every runtime step. This is one proposed enforcement design, not
-a proof that separate reserves are necessary in every protocol. A previously
-consumed whole-owner OR fine cannot supply these units. Uncertain collection
-of that OR fine can still deter a later offense if it increases the chance of
+stepwise top-up is needed. These are reserves for distinct faults, not charges
+for ordinary source decisions or every runtime step. This is one proposed
+enforcement design, not a proof that separate reserves are necessary in every
+protocol. A previously consumed whole-owner OR fine cannot supply these units.
+Uncertain collection of that OR fine can still deter a later offense if it
+increases the chance of
 collection, but a positive bound on each offense's collection probability
 does not establish such an increase.
 
@@ -2779,11 +2780,69 @@ counted fines from one to `1/5`. Prefix-stable collection or a concrete
 irrevocable collection argument is therefore an additional backend obligation,
 not an independence or certain-observation assumption.
 
+Fresh per-fault fines are not established as necessary for existential SE
+preservation. At protected compatible RAW information,
+[CompatibleImmediateAudit](../Vegas/Game/SourceServiceCompatibleImmediateAudit.lean)
+already proves `sourceCompatibleInfo_immediate_finish_charge_zero` against
+arbitrary foreign RAW continuation, including all earlier owner traffic. A
+first forbidden-packet departure can therefore use a total one-time charge
+bound. Public misses exclude source-compatible information by
+`sourceCompatibleInfo_history_no_public_miss`; those sites can receive rational
+free completion. Extending these actual owner resources through the decision
+commitment and mandatory opening is an operational proof obligation.
+
+A smaller accounting candidate separates a once-per-owner public-miss fee
+`DM` from a once-per-owner collected-packet fine `DP`, funded by one escrow
+`DM + DP`. Take nonnegative fines, base utility on actual final states in
+`[m, M]`, and a positive conditional collection lower bound `q` for a first
+forbidden packet. Then `q * DP >= M - m + DM` bounds that offending
+continuation by `m - DM`. From a prefix whose earlier owner packets are
+accepted and settled-good, literal owner silence produces no new packets and
+pays at most `DM`, giving the same lower bound against arbitrary foreign RAW
+play. Accepted receipts and their settled content persist. This avoids a
+renewed fine at every future step, but does not supply the conditional source
+simulation or a complete equilibrium construction.
+
+Neither opacity nor this floor forces canonical admission at every unsafe
+turn. With canonical admission probability `1/4`, TRUE utility `2`, miss
+utility `0` and public-miss fee `4`, canonical TRUE is worth at most `-5/2`.
+A certainly admitted offending packet with collection probability `1/2` and
+packet fine `4` is worth `0`. The accepted extra evidence is visible in the
+whole ledger packet, so it enters a different receiver information fiber.
+Moreover, the current settled verdict also forbids a well-formed packet not
+accepted before expiry. Silence cannot erase an already-issued unprotected
+packet. Apply first-offense comparisons before that issue; its later histories
+need actual free completion or a stronger comparison.
+
+A concrete partial-watcher candidate can remove detection-rate drift. After
+gameplay, at a fresh report activation, deduplicate already known packets and
+the public ledger by authenticated ID, and retain each with probability `p`.
+The activation rule samples all pending IDs with the same marginal probability;
+keep newly learned packets without thinning again. Own outputs, if any,
+come from recall. The existing `MessageNetwork.learn` suppression of known
+IDs and the watcher's remembered prior leaked list support this partition.
+Each retained gameplay packet then has report probability `p`, regardless of
+whether it remains pending or has moved into the ledger. With fixed common
+batch-delivery probability `r`, expected additive fines are
+`p * r * sum(forbidden packet fines)`; packetwise delivery independence is
+unnecessary. Equal catch probability does not preserve a prior verdict that
+changes between gameplay continuations.
+
+This reporter still needs a real authenticated batch handler and a fresh
+protected window. `ProtectedInclusion` supplies a receipt, not its acceptance,
+so validity, timely first submission and exclusion of alternative phase
+completion must establish accepted delivery. Observation can remain partial
+even when this first report is protected. Freeze authoritative gameplay
+verdicts, exclude report packets from their evidence domain, and integrate
+the actual report/settlement joint law. The present external terminal-sampling
+kernel cannot substitute for an already emitted native report: conditional on
+that terminal history, its batch contents are determined.
+
 Before a general assembly, establish the actual compiler-specific phase
 simulation: equal admission traffic, zero-charge protected opening, exactly
-the source-public observation, and the fault comparison with earlier escrow
-intact. Then derive conditional source/traffic likelihoods and select one
-consistent perturbation family. The protocol does not make arbitrary
+the source-public observation, and the appropriate first-offense or incremental
+fault comparison. Then derive conditional source/traffic likelihoods and select
+one consistent perturbation family. The protocol does not make arbitrary
 type-dependent WAIT rates harmless. Neither this design nor its end-to-end
 SE preservation has been implemented or proved.
 
