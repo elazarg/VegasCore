@@ -3792,11 +3792,19 @@ history. `Vegas.SourceSession.history_reportedEvidence_eq_nil` proves that
 an absent or expired report contributes no evidence. The possibility of
 reporting timeout is covered by the joint observation/delivery bound.
 
-This reporter has zero charge on lawful initialized play, catches every
-first preseal owner offense with the stated positive conditional probability,
-and continues to work after that owner's later raw responses. It supplies a
-bounded implementable reporting-policy specification; its actual native
-coverage and initialized zero-charge theorem remain to be formalized.
+[SourceSessionWatcher](../Vegas/Pending/SourceSessionWatcher.lean) implements
+the bounded reporter using the real local view and own recall. Its
+`Vegas.SourceSession.reportWitness_material` theorem identifies the exact
+signed body transmitted by the emitter. The two-envelope budget and uniform
+owner-selection bound are proved, including the empty-player case for the
+budget. `Vegas.SourceSession.watcherPolicy_observe` reconstructs genuine
+possessed evidence, and `Vegas.SourceSession.watcher_invoke_inclusion_lower`
+connects the `1/K` bound to an actual newly submitted report, pending inclusion
+and accepting receipt. It assumes that immediate inclusion step; conditional
+delivery under the general service remains open. Joint witness observation,
+first-preseal-witness persistence and initialized zero charge also remain open.
+Proving these obligations would yield the stated `p^2 * r / K` collection
+bound uniformly over later player responses.
 
 The initialized-play audit theorem does not supply a clean comparator from
 every clear prefix. A false risk flag alone says nothing about an earlier

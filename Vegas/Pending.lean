@@ -295,5 +295,6 @@ import Vegas.Pending.ReactiveResolutionMiss
 import Vegas.Pending.SourceSession
 import Vegas.Pending.SourceSessionPolicy
 import Vegas.Pending.SourceSessionAudit
+import Vegas.Pending.SourceSessionWatcher
 
 /-! Graph execution and strategic refinement over public pending messages. -/

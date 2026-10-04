@@ -146,6 +146,22 @@ theorem misconductCharge_of_pair (view : PublicView graph)
     simp only [authored, decide_true, Bool.true_and]
     exact List.any_eq_true.mpr ⟨second, second_present, duplicate⟩⟩)
 
+/-- Adding authentic evidence cannot erase an already established verdict. -/
+theorem misconductCharge_mono (view : PublicView graph) (who : Player)
+    {before after : List (Message (Principal Player) (Packet graph))}
+    (included : before ⊆ after) (bad : misconductCharge view before who = true) :
+    misconductCharge view after who = true := by
+  rcases Bool.or_eq_true_iff.mp bad with unary | pair
+  · obtain ⟨message, present, checked⟩ := List.any_eq_true.mp unary
+    have parts := Bool.and_eq_true_iff.mp checked
+    exact misconductCharge_of_unary view after who message (included present)
+      (of_decide_eq_true parts.1) (by simpa using parts.2)
+  · obtain ⟨first, present, checked⟩ := List.any_eq_true.mp pair
+    have parts := Bool.and_eq_true_iff.mp checked
+    obtain ⟨second, secondPresent, paired⟩ := List.any_eq_true.mp parts.2
+    exact misconductCharge_of_pair view after who first second (included present)
+      (included secondPresent) (of_decide_eq_true parts.1) paired
+
 @[simp] theorem misconductCharge_nil (view : PublicView graph) (who : Player) :
     misconductCharge view [] who = false := rfl
 

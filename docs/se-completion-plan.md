@@ -175,6 +175,15 @@ history that those bodies carry exactly the recorded report IDs, including
 reporting timeout and later deviations. The complete prescribed-play
 report/settlement joint law still needs proof; terminal resampling cannot
 replace an already emitted batch.
+[SourceSessionWatcher](../Vegas/Pending/SourceSessionWatcher.lean) implements
+uniform owner selection and a report with at most two actual known envelopes.
+Its materialization theorem identifies the emitted bodies exactly, including
+repeated knowledge of one identifier. `Vegas.SourceSession.watcherPolicy_observe`
+connects the policy to the native runner's possessed evidence.
+`Vegas.SourceSession.watcher_invoke_inclusion_lower` proves the `1/K`
+collection bound when that actual emitted report is immediately included in
+its live window. A general builder's conditional report delivery, joint pair
+observation and preseal witness persistence still require proofs.
 
 The [concurrent alternative](se-schedule-generalization.md#concurrent-alternative-one-fixed-cancellation-payoff-per-player)
 uses a fixed cancellation deduction from every player, rather than only the
@@ -242,6 +251,10 @@ for the native application:
    proves agreement with the contract record. Connect actual observation,
    owner selection and accepted delivery to its charge event; do not read the
    entire pending pool or resample terminal evidence.
+   `SourceSessionWatcher` supplies the bounded reporter, exact body lookup,
+   uniform selection bound and native immediate-inclusion adapter. Extend this
+   adapter through the real service continuation and prove joint observation
+   before using `p^2 * r / K` as an actual first-misconduct collection rate.
 5. Prove the compiler-specific source/traffic fiber relation and one
    information-local timing selection. The
    [source-independent timing argument](se-schedule-generalization.md#timing-selection-does-not-need-the-source-equilibrium)

@@ -2,6 +2,7 @@
 
 import Vegas.Pending.SourceSessionPolicy
 import Vegas.Pending.SourceSessionAudit
+import Vegas.Pending.SourceSessionWatcher
 import Vegas.Examples.LateResolutionService
 import Vegas.Source.DisclosureAliases
 
@@ -591,6 +592,67 @@ example :
     Vegas.SourceSession.misconductCharge reportedAdmissions.application.publicView
       (Vegas.SourceSession.reportedEvidence reportedAdmissions.network.ledger
         reportedAdmissions.receipts) owner = true := by
+  exact ⟨rfl, rfl⟩
+
+private def pendingAdmissions : app.Execution :=
+  ((start (.success true)).respond app player (admission .failure none)).respond
+    app player (admission .failure none)
+
+private def pairSnapshot : app.Execution :=
+  { pendingAdmissions with application := pendingAdmissions.application.cancel admissionPhase }
+
+private def observedPair (selected : Finset (MessageId (Vegas.SourceSession.Principal Player))) :
+    app.Execution := pairSnapshot.sampledActivation app watcher selected
+
+/-- Seeing just one individually canonical admission does not prove the pair
+offense. This uses the actual passive pending-message activation. -/
+example : Vegas.SourceSession.misconductCharge pairSnapshot.application.publicView
+    (Vegas.SourceSession.reportCandidates
+      ((observedPair {(player, 0)}).network.known watcher)) owner = false := by
+  rfl
+
+/-- Observing both signed identifiers supplies the actual two-envelope witness. -/
+example : (Vegas.SourceSession.reportWitness pairSnapshot.application.publicView
+    (Vegas.SourceSession.reportCandidates
+      ((observedPair {(player, 0), (player, 1)}).network.known watcher)) owner).map Message.id =
+      [(player, 0), (player, 1)] := by
+  rfl
+
+example : Vegas.SourceSession.misconductCharge pairSnapshot.application.publicView
+    (Vegas.SourceSession.reportWitness pairSnapshot.application.publicView
+      (Vegas.SourceSession.reportCandidates
+        ((observedPair {(player, 0), (player, 1)}).network.known watcher)) owner) owner = true := by
+  rfl
+
+/-- Reobserving one admission twice never creates a second signed identifier. -/
+example : Vegas.SourceSession.reportWitness pairSnapshot.application.publicView
+    (Vegas.SourceSession.reportCandidates
+      (pendingAdmissions.network.inputs.take 1 ++
+        pendingAdmissions.network.inputs.take 1)) owner = [] := by
+  rfl
+
+/-- Unary misuse is selected even when a nested report repeats other known evidence. -/
+example : (Vegas.SourceSession.reportWitness cancelledPlayerReport.application.publicView
+    (Vegas.SourceSession.reportCandidates (cancelledPlayerReport.network.known watcher))
+      owner).map Message.id = [(player, 1)] := by
+  have known : cancelledPlayerReport.network.known watcher =
+      [⟨(player, 0), .gameplay
+        ⟨.admission resolution decisionHandle, [], some admissionPhase⟩⟩,
+       ⟨(player, 1), .report [⟨(player, 0), .gameplay
+        ⟨.admission resolution decisionHandle, [], some admissionPhase⟩⟩] none⟩] := rfl
+  rw [known]
+  simp only [Vegas.SourceSession.reportCandidates, Vegas.SourceSession.reportMaterial,
+    Vegas.SourceSession.reportEnvelope?, Vegas.SourceSession.reportEnvelopes,
+    List.flatMap_cons, List.flatMap_nil, Vegas.SourceSession.Packet.envelopes,
+    Vegas.SourceSession.Packet.nestedEnvelopes, List.cons_append, List.nil_append,
+    List.append_nil]
+  rfl
+
+/-- A premature tokenless watcher transmission does not consume its later
+authorized report opportunity. An authorized report does suppress repetition. -/
+example : Vegas.SourceSession.alreadyReported runtime leaks
+    (((start (.success true)).respond app watcher ⟨some (.report [])⟩).recall watcher) = false ∧
+    Vegas.SourceSession.alreadyReported runtime leaks (reported.recall watcher) = true := by
   exact ⟨rfl, rfl⟩
 
 /-- Multiple reported departures still collect the fine only once. -/

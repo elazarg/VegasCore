@@ -322,6 +322,22 @@ def certificateFor (state : State graph) (who : Principal Player)
       (known.find? fun message => message.id = id).bind fun message =>
         message.payload.certificates[index]?
 
+/-- Authentic envelopes available to report, including previously received
+nested report bodies. -/
+def reportEnvelopes (known : List (Message (Principal Player) (Packet graph))) :
+    List (Message (Principal Player) (Packet graph)) :=
+  known.flatMap fun message => message.payload.envelopes message.id
+
+def reportEnvelope? (known : List (Message (Principal Player) (Packet graph)))
+    (id : MessageId (Principal Player)) : Option (Message (Principal Player) (Packet graph)) :=
+  (reportEnvelopes known).find? fun message => message.id = id
+
+/-- Reporting and watcher selection use the same identifier lookup. -/
+def reportMaterial (known : List (Message (Principal Player) (Packet graph)))
+    (ids : List (MessageId (Principal Player))) :
+    List (Message (Principal Player) (Packet graph)) :=
+  ids.eraseDups.filterMap (reportEnvelope? known)
+
 /-- Materialization is the only route from a private request to authentic wire
 evidence. Failed requests remain ordinary unauthenticated transmissions. -/
 def emit (state : State graph) (who : Principal Player)
@@ -330,9 +346,7 @@ def emit (state : State graph) (who : Principal Player)
       ⟨submission.call, submission.certificates.filterMap (certificateFor state who known),
         submission.call.phase?.bind state.tokenFor⟩
   | .report ids =>
-      let available := known.flatMap fun message => message.payload.envelopes message.id
-      .report (ids.eraseDups.filterMap fun id => available.find? fun message => message.id = id)
-        (state.tokenFor .reporting)
+      .report (reportMaterial known ids) (state.tokenFor .reporting)
 
 /-- The actual admitted handle, independent of its private catalogue meaning. -/
 def acceptDecision (state : State graph) (event : graph.EventId) (handle : DecisionHandle graph)
@@ -671,7 +685,10 @@ theorem emit_report_origin (state : State graph) (who : Principal Player)
     ∃ original ∈ known, message ∈ original.payload.envelopes original.id := by
   have exact := (Packet.report.inj emitted).1
   rw [← exact] at member
+  change message ∈ reportMaterial known ids at member
+  unfold reportMaterial at member
   obtain ⟨id, _, found⟩ := List.mem_filterMap.mp member
+  unfold reportEnvelope? reportEnvelopes at found
   exact List.mem_flatMap.mp (List.mem_of_find?_eq_some found)
 
 theorem handleGame_none_of_closed (runtime : Runtime graph) (state : State graph)
