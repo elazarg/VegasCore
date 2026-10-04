@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.SourceSession
+import Vegas.Pending.SourceSessionPolicy
 import Vegas.Examples.LateResolutionService
 import Vegas.Source.DisclosureAliases
 
@@ -106,6 +106,58 @@ private def admitted (initial result : PublicationResult Bool) : app.Execution :
 
 private def opened (initial result : PublicationResult Bool) : app.Execution :=
   ((admitted initial result).respond app player (opening result)).includePending app (player, 1)
+
+private def binding : EventGraph.FieldRef graph.layout (.binding owner .bool) :=
+  ⟨.inl ⟨0, by decide⟩, rfl⟩
+
+private def compiledAdmission (initial : PublicationResult Bool) (intention : Bool) : app.Action :=
+  ⟨some (.gameplay (Vegas.SourceSession.resolutionAdmission owner resolution .bool binding []
+    intention (graph.playerObserve owner (readyState initial).source.config)))⟩
+
+private def compiledAdmitted (initial : PublicationResult Bool) (intention : Bool) :
+    app.Execution :=
+  ((start initial).respond app player (compiledAdmission initial intention)).includePending
+    app (player, 0)
+
+private def compiledOpening (initial : PublicationResult Bool) (intention : Bool) : app.Action :=
+  let state := (compiledAdmitted initial intention).application
+  ⟨(Vegas.SourceSession.frozenResolutionOpening owner resolution .bool binding state.source.accepted
+    (fun event => state.decisions.lookup (owner, event))).map
+      Vegas.SourceSession.Submission.gameplay⟩
+
+private def compiledOpened (initial : PublicationResult Bool) (intention : Bool) : app.Execution :=
+  ((compiledAdmitted initial intention).respond app player
+    (compiledOpening initial intention)).includePending app (player, 1)
+
+/-- The production constructors normalize a failed original TRUE to helper
+FALSE and accept its opening through the actual pending-message runner. -/
+example : compiledAdmission .failure true = admission .failure (some true) := by
+  rfl
+
+example : (compiledOpened .failure true).receipts = [((player, 0), true), ((player, 1), true)] := by
+  rfl
+
+example : (compiledOpened .failure true).application.source.config.outputs resolution =
+    some PublicationResult.failure := by
+  rfl
+
+/-- The admitted private TRUE survives its public FALSE opening and restores
+the original source action from actual private recall. -/
+example :
+    Vegas.SourceSession.recalledResolutionIntent runtime leaks
+      ((compiledOpened .failure true).recall player) resolution (player, 0) = some true := by
+  rfl
+
+example :
+    (Vegas.SourceSession.restoreResolutionCompletion runtime leaks owner
+      ((compiledOpened .failure true).recall player)
+      (compiledOpened .failure true).application.receipts ⟨resolution, false⟩) =
+        ⟨resolution, true⟩ := by
+  rfl
+
+example : (compiledOpened (.success true) true).application.source.config.outputs resolution =
+    some (PublicationResult.success true) := by
+  rfl
 
 /-- A bare admission freezes the helper value without completing the source resolution. -/
 example :

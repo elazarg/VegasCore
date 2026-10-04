@@ -244,7 +244,7 @@ theorem initial_bindingInvariant (inputs : graph.Inputs) :
 end State
 
 omit [DecidableEq Player] in
-private theorem bindingInvariant_of_nonbinding_step
+theorem bindingInvariant_of_nonbinding_step
     {state next : State graph} (invariant : state.BindingInvariant)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
     (action : graph.Action event)

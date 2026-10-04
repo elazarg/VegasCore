@@ -2753,8 +2753,8 @@ them from authentic known packets. `Vegas.SourceSession.packetEvidence`
 instantiates the existing reactive packet-evidence framework: both certificate
 kinds remain valid at every legal native history, including pending observation,
 forwarding, rejected calls and nested reports.
-`Vegas.SourceSession.associationInvariant` preserves the existing graph
-association invariant through submissions, binding acceptance, decision
+`Vegas.SourceSession.bindingInvariant` preserves the existing bidirectional graph
+binding invariant through submissions, binding acceptance, decision
 admission/opening, chance, cancellation and reporting.
 `Vegas.SourceSession.history_opening_stored` combines these instances to identify
 an authentic pending original certificate with the selected source binding's
@@ -2769,6 +2769,17 @@ prefix and valid readiness timestamps from a supported setup at every initialize
 history. Public cancellation preserves that prefix without completing missing
 source events. The information-local source observation and private-recall
 simulation remain proof obligations.
+
+[SourceSessionPolicy](../Vegas/Pending/SourceSessionPolicy.lean) computes admission
+material using the existing owner-local source evaluator, retaining the original
+Boolean only in private submission recall. The later opening reads the fixed
+helper candidate and materializes exactly the required authentic certificates.
+`Vegas.SourceSession.frozenResolutionOpening_accepted` proves acceptance and the
+exact source completion under explicit authorization, timing, admitted-handle,
+source-result and fixed-helper premises. The private recall decoder reuses actual
+submission origins keyed by the admission receipt; it does not infer the original
+Boolean from public FALSE. The full policy selector, restoration of the entire
+source own-action history and service discharge of these premises remain open.
 
 The service contract must address phase keys, with packet uniqueness scoped to
 one phase. Admission and opening require different authenticated envelopes for

@@ -7,7 +7,7 @@ Authors: VegasCore contributors
 import Vegas.Pending.ReactiveRuntime
 import Vegas.EventGraph.Validation
 import Vegas.Pending.EventCommitmentBinding
-import Vegas.Pending.EventAssociationInvariant
+import Vegas.Pending.EventBindingInvariant
 import Interaction.ReactivePacketEvidence
 
 /-! # Source gameplay with frozen resolution decisions
@@ -161,10 +161,10 @@ def initial (inputs : graph.Inputs) : State graph :=
     sealedAt := 0
     report := none }
 
-theorem initial_associationInvariant (inputs : graph.Inputs) :
-    (initial inputs).source.AssociationInvariant := by
+theorem initial_bindingInvariant (inputs : graph.Inputs) :
+    (initial inputs).source.BindingInvariant := by
   rw [initial, finish_source]
-  exact EventGraphRuntime.State.initial_associationInvariant inputs
+  exact EventGraphRuntime.State.initial_bindingInvariant inputs
 
 def activePhase? (state : State graph) (event : graph.EventId) : Option PhaseKind :=
   if state.status = .running ∧ state.source.config.cut.Ready event then
@@ -785,7 +785,7 @@ theorem openDecision_complete (state next : State graph) (event : graph.EventId)
         source := state.source.complete event ready
           (cast (congrArg EventField.Action outputEq.symm) disclose)
           (cast (congrArg EventField.Value outputEq.symm) result) } ∧
-        (state.source.AssociationInvariant →
+        (state.source.BindingInvariant →
           (∀ fact ∈ certificates, fact.Holds state) →
           state.source.config.step event ready
             (cast (congrArg EventField.Action outputEq.symm) disclose) =
@@ -828,7 +828,8 @@ theorem openDecision_complete (state next : State graph) (event : graph.EventId)
                             .openable ⟨payload, value⟩ :=
                           certified (.source ⟨selected, ⟨payload, value⟩⟩)
                             (by simp [exactCertificates])
-                        have stored := valid.opening_stored binding selected value original opened
+                        have stored := valid.toAssociationInvariant.opening_stored binding selected
+                          value original opened
                         simpa only [ite_true] using success_source_step state event ready owner
                           payload binding checks outputEq codeEq value true stored verdict
               · simp at accepted
@@ -841,8 +842,8 @@ theorem handleGame_preserves (runtime : Runtime graph) (state next : State graph
     next.decisions = state.decisions ∧
       (∀ handle : Handle graph, state.source.candidates.lookup handle ≠ .fresh →
         next.source.candidates.lookup handle = state.source.candidates.lookup handle) ∧
-      (state.source.AssociationInvariant → next.source.AssociationInvariant) ∧
-      (∀ inputs, state.source.Invariant inputs → state.source.AssociationInvariant →
+      (state.source.BindingInvariant → next.source.BindingInvariant) ∧
+      (∀ inputs, state.source.Invariant inputs → state.source.BindingInvariant →
         (∀ fact ∈ packet.certificates, fact.Holds state) → next.source.Invariant inputs) := by
   rcases packet with ⟨call, certificates, token⟩
   cases call with
@@ -856,13 +857,15 @@ theorem handleGame_preserves (runtime : Runtime graph) (state next : State graph
           | bind owner payload outputEq codeEq =>
               simp only [view] at accepted
               split at accepted
-              · cases Option.some.inj accepted
+              · rename_i allowed
+                cases Option.some.inj accepted
                 refine ⟨(State.finish_catalogues _).2, (fun handle fixed => ?_), ?_, ?_⟩
                 · rw [(State.finish_catalogues _).1]
                   exact state.source.candidates.lookup_freeze_eq_of_not_fresh handle selected fixed
                 · intro valid
                   rw [State.finish_source]
                   exact valid.acceptBinding event ready owner payload outputEq selected
+                    allowed.2.1 allowed.2.2.2.2
                 · intro inputs valid _ _
                   rw [State.finish_source]
                   have step := EventGraphRuntime.bind_complete_mem_step state.source event ready
@@ -908,7 +911,10 @@ theorem handleGame_preserves (runtime : Runtime graph) (state next : State graph
                       rfl
                     · intro valid
                       rw [State.finish_source]
-                      exact valid.complete event ready _ _
+                      exact valid.complete_nonbinding event ready _ _ (by
+                        intro owner payload
+                        rw [outputEq]
+                        simp)
                     · intro inputs valid association certified
                       rw [State.finish_source]
                       have step := sourceStep association certified
@@ -950,8 +956,8 @@ theorem handle_preserves (runtime : Runtime graph) (state next : State graph)
     next.decisions = state.decisions ∧
       (∀ handle : Handle graph, state.source.candidates.lookup handle ≠ .fresh →
         next.source.candidates.lookup handle = state.source.candidates.lookup handle) ∧
-      (state.source.AssociationInvariant → next.source.AssociationInvariant) ∧
-      (∀ inputs, state.source.Invariant inputs → state.source.AssociationInvariant →
+      (state.source.BindingInvariant → next.source.BindingInvariant) ∧
+      (∀ inputs, state.source.Invariant inputs → state.source.BindingInvariant →
         (∀ fact ∈ message.payload.certificates, fact.Holds state) →
         next.source.Invariant inputs) := by
   cases packet : message.payload with
@@ -971,13 +977,13 @@ theorem environment_preserves (runtime : Runtime graph) (state next : State grap
     (command : EnvironmentCommand graph)
     (reached : next ∈ (environment runtime state command).support) :
     next.source.candidates = state.source.candidates ∧ next.decisions = state.decisions ∧
-      (state.source.AssociationInvariant → next.source.AssociationInvariant) ∧
+      (state.source.BindingInvariant → next.source.BindingInvariant) ∧
       (∀ inputs, state.source.Invariant inputs → next.source.Invariant inputs) := by
   cases command with
   | advanceClock =>
       cases (PMF.mem_support_pure_iff _ _).mp reached
       refine ⟨rfl, rfl, (fun valid =>
-        valid.transport rfl (fun _ _ => rfl) (fun _ _ stored => stored)), ?_⟩
+        valid.copy rfl rfl rfl), ?_⟩
       intro inputs valid
       refine ⟨valid.reachable, valid.activated_iff, ?_⟩
       intro event entered activated
@@ -995,16 +1001,21 @@ theorem environment_preserves (runtime : Runtime graph) (state next : State grap
       split at reached
       · obtain ⟨source, sampled, rfl⟩ := PMF.support_map .. ▸ reached
         have preserved : source.candidates = state.source.candidates ∧
-            (state.source.AssociationInvariant → source.AssociationInvariant) ∧
+            (state.source.BindingInvariant → source.BindingInvariant) ∧
             (∀ inputs, state.source.Invariant inputs → source.Invariant inputs) := by
           unfold EventGraphRuntime.executeSample at sampled
           split at sampled
-          · cases view : nodeView graph event with
-            | sample =>
+          · rename_i ready
+            cases view : nodeView graph event with
+            | sample payload law outputEq codeEq =>
                 simp only [view] at sampled
                 obtain ⟨config, step, rfl⟩ := PMF.support_map .. ▸ sampled
-                refine ⟨rfl, (fun valid => valid.transport rfl (fun _ _ => rfl) ?_), ?_⟩
-                · exact state.source.config.step_store_of_some config event _ _ step
+                refine ⟨rfl, (fun valid => ?_), ?_⟩
+                · exact EventGraphRuntime.bindingInvariant_of_nonbinding_step valid event ready
+                    _ step rfl rfl (by
+                      intro owner payload
+                      rw [outputEq]
+                      simp)
                 · exact fun _ valid => valid.refreshStep event _ _ config step
             | bind | resolve =>
                 simp only [view, PMF.mem_support_pure_iff _ _] at sampled
@@ -1151,9 +1162,9 @@ theorem certificateInvariant (runtime : Runtime graph)
 
 /-- Private registration and exposure preserve the existing graph binding
 association invariant, including arbitrary and rejected submissions. -/
-theorem submit_associationInvariant (state : State graph) (who : Principal Player)
-    (submission : Submission graph) (valid : state.source.AssociationInvariant) :
-    (submit state who submission).source.AssociationInvariant := by
+theorem submit_bindingInvariant (state : State graph) (who : Principal Player)
+    (submission : Submission graph) (valid : state.source.BindingInvariant) :
+    (submit state who submission).source.BindingInvariant := by
   cases submission with
   | report ids => exact valid
   | gameplay material =>
@@ -1164,14 +1175,14 @@ theorem submit_associationInvariant (state : State graph) (who : Principal Playe
           | binding event selected =>
               let original : EventGraphRuntime.Submission graph :=
                 ⟨.commitment event selected, material.material⟩
-              have registered : (original.register state.source who).AssociationInvariant := by
+              have registered : (original.register state.source who).BindingInvariant := by
                 rw [original.register_eq]
                 cases original.registrationCommand who with
                 | none => exact valid
                 | some command =>
-                    exact EventGraphRuntime.privateStep_associationInvariant _ who command valid
+                    exact EventGraphRuntime.privateStep_bindingInvariant _ valid who command
               simpa only [submit, call] using
-                EventGraphRuntime.submitStep_associationInvariant _ who original.packet registered
+                EventGraphRuntime.submitStep_bindingInvariant _ registered who original.packet
           | admission event selected =>
               simp only [submit, call]
               split <;> exact valid
@@ -1180,10 +1191,10 @@ theorem submit_associationInvariant (state : State graph) (who : Principal Playe
 
 /-- The source component retains its accepted-handle meaning at every native
 history through the generic application-invariant framework. -/
-theorem associationInvariant (runtime : Runtime graph)
+theorem bindingInvariant (runtime : Runtime graph)
     (leaks : MessageNetwork.ObservationRule (Principal Player) (Packet graph)) :
-    (application runtime leaks).Invariant (fun state => state.source.AssociationInvariant) where
-  submit := submit_associationInvariant
+    (application runtime leaks).Invariant (fun state => state.source.BindingInvariant) where
+  submit := submit_bindingInvariant
   handle state message next valid accepted :=
     (handle_preserves runtime state next message accepted).2.2.1 valid
   environment state command next valid reached :=
@@ -1218,12 +1229,12 @@ theorem sourceServiceInvariant (runtime : Runtime graph)
     (inputs : PMF graph.Inputs) (scheduler : (application runtime leaks).Scheduler) :
     (application runtime leaks).ServiceInvariant scheduler (fun execution =>
       (∃ setup ∈ inputs.support, execution.application.source.Invariant setup) ∧
-        execution.application.source.AssociationInvariant ∧
+        execution.application.source.BindingInvariant ∧
         (packetEvidence runtime leaks).Sound execution) where
   respond execution who action valid := by
     obtain ⟨⟨setup, supported, legal⟩, association, sound⟩ := valid
     refine ⟨⟨setup, supported, ?_⟩,
-      (associationInvariant runtime leaks).respond execution who action association,
+      (bindingInvariant runtime leaks).respond execution who action association,
       (packetEvidence runtime leaks).sound_respond execution who action sound⟩
     rcases action with ⟨transmission⟩
     cases transmission with
@@ -1232,7 +1243,7 @@ theorem sourceServiceInvariant (runtime : Runtime graph)
   environment execution next command valid _ reached := by
     obtain ⟨⟨setup, supported, legal⟩, association, sound⟩ := valid
     refine ⟨⟨setup, supported, ?_⟩,
-      (associationInvariant runtime leaks).environmentStep execution next command
+      (bindingInvariant runtime leaks).environmentStep execution next command
         association reached,
       (packetEvidence runtime leaks).sound_environment execution next command sound reached⟩
     cases command with
@@ -1280,7 +1291,7 @@ theorem history_source_invariant (runtime : Runtime graph)
     (inputs.map State.initial) horizon (by
       intro state supported
       obtain ⟨setup, chosen, rfl⟩ := PMF.support_map .. ▸ supported
-      refine ⟨⟨setup, chosen, ?_⟩, State.initial_associationInvariant setup,
+      refine ⟨⟨setup, chosen, ?_⟩, State.initial_bindingInvariant setup,
         (packetEvidence runtime leaks).sound_initial (State.initial setup)⟩
       change (State.initial setup).source.Invariant setup
       rw [State.initial, State.finish_source]
@@ -1305,14 +1316,14 @@ theorem history_opening_stored (runtime : Runtime graph)
     (certified : Certificate.source ⟨original, ⟨payload, value⟩⟩ ∈ message.payload.certificates)
     (associated : control.execution.application.source.accepted binding.field = some original) :
     binding.get? control.execution.application.source.config.store = some (.success value) := by
-  have valid : control.execution.application.source.AssociationInvariant :=
-    (associationInvariant runtime leaks).history (PMF.pure (State.initial inputs)) horizon scheduler
+  have valid : control.execution.application.source.BindingInvariant :=
+    (bindingInvariant runtime leaks).history (PMF.pure (State.initial inputs)) horizon scheduler
       (fun state supported => by
         cases (PMF.mem_support_pure_iff _ _).mp supported
-        exact State.initial_associationInvariant inputs) trace
+        exact State.initial_bindingInvariant inputs) trace
   have sound : (packetEvidence runtime leaks).Sound control.execution :=
     (packetEvidence runtime leaks).history_sound _ horizon scheduler trace
-  exact valid.opening_stored binding original value associated
+  exact valid.toAssociationInvariant.opening_stored binding original value associated
     (sound.lookup message.id message found _ certified)
 
 end Vegas.SourceSession
