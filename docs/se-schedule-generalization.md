@@ -3348,6 +3348,76 @@ for players. The proposed misconduct fine uses these content and pair checks;
 it does not reuse the existing acceptance-based deadline audit wholesale.
 The public cancellation deduction supplies timeout enforcement separately.
 
+### Serial history projection with original intention recall
+
+There is a direct induction for the source-history requirement; it does not
+require recovering an original intention from a public FALSE. Consider a
+lawful native trace on the sequentialized graph. Project only completed source
+events. For each completed resolution, find its accepted admission identifier
+in that owner's actual submission recall. Use its validated original Boolean
+when present, and otherwise the executable effective Boolean. Leave binding
+and chance actions unchanged. Replay these actions in source event order from
+the same initial inputs, using the actual source chance draws. Call the replayed
+configuration $\widehat s$.
+
+The induction invariant has three parts: the source cut and typed store agree
+with the native source configuration; the replayed chronological history has
+the projected actions; and every owner's restored observation equals its
+observation of $\widehat s$. Its transition cases are:
+
+1. **Initialization.** The input stores agree, histories are empty and private
+   prepared catalogues are fresh. No original action needs restoration.
+2. **Stuttering.** Submission, passive observation, clock advancement and
+   accepted decision admission do not complete a source event. They preserve
+   the cut and typed source store. Catalogue changes and an owner's pending
+   chosen action remain in actual native recall, outside the completed source
+   history. They do not add a source action prematurely.
+3. **Binding completion.** The authentic canonical handle's frozen typed
+   value, or failure, is both its source action and stored result. Replaying
+   that action makes exactly the same store update and appends the same owned
+   completion. Extra mistyped private material remains representation data.
+4. **Chance completion.** The same original source kernel runs on the same
+   store. Couple by the actual draw, making the same store update. Its action
+   and event identity require no private-intention change.
+5. **Resolution completion.** Let `r` be the projected original Boolean and
+   `y` the frozen result. Validation against the actual pre-admission view
+   gives source resolution output `y` for `r`. If there is no validated label,
+   failure projects to FALSE and success to TRUE; the authentic binding and
+   public guard checks again give `y`. All those source inputs remain fixed
+   between admission and opening. The handler stores `y` and records its
+   effective Boolean. Replay stores the same `y` and records `r`. These differ
+   only in the owner's private original-action history. Later event kernels
+   read the typed store, not that private action history.
+6. **Cancellation and reporting.** Cancellation retains this legal source
+   prefix and makes no further source completion possible. Reporting does not
+   change it. Its incomplete cut is not decoded as a source terminal outcome.
+
+Thus restoring one completed action cannot invalidate an earlier replay or
+change a later source evaluator. Filtering the replayed history for owner `i`
+gives exactly the original actions recovered from that owner's admissions.
+Masked stores agree because the full stores agree. Event identities and their
+order agree because projection changes only actions. These are precisely the
+three fields of the existing graph player observation. At the next source
+decision, the chronological prefix is the fixed source-rank prefix; policy
+normalization therefore removes no relevant information.
+
+For an unfinished resolution, the completed projection remains at the previous
+source prefix. The owner additionally remembers its admitted action and fixed
+result. This is the opening information used by the timing proof, rather than
+a fabricated completed source event. Other owners have no later economic
+decision until that result executes; early observation of its canonical opening
+cannot become an additional private source observation at their next decision.
+
+The argument uses existing local facts:
+`Vegas.EventGraph.EventCode.resolveOutput?_playerStore` makes prevalidation
+owner-local, and
+`Vegas.SourceProgram.revealSuccessor_restore_effective` preserves a source
+successor including its original action recall. The compiler already decodes
+masked graph stores and original own completions. The missing formal step is
+the native history induction relating these APIs to actual admission receipts
+and all lawful representation choices; an all-history reachability theorem for
+the physical effective-action history alone does not prove this relation.
+
 The initialized-play audit theorem does not supply a clean comparator from
 every clear prefix. A false risk flag alone says nothing about an earlier
 packet's extra evidence. At a legal risk-menu prefix, however,

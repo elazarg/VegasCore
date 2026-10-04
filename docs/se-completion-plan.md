@@ -131,6 +131,11 @@ uses explicit phase authorization, timing, admitted-handle and fixed-value
 premises. The native regression covers an original TRUE with a failed binding:
 helper FALSE opens successfully while actual private recall restores TRUE.
 The whole-service source-information relation remains open.
+The [serial history projection](se-schedule-generalization.md#serial-history-projection-with-original-intention-recall)
+gives its mathematical induction: replay original admitted actions, retain the
+same typed store and cut, and identify restored own recall at every completion.
+Its native formal statement must still connect actual receipts and lawful raw
+representations to that replay.
 The [serial finite-game argument](se-schedule-generalization.md#a-finite-game-argument-for-serial-phases)
 derives a common completion-maximizing timing policy, source-posterior
 factorization and rational free completion for an explicit opaque phase
