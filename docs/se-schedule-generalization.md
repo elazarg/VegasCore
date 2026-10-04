@@ -2941,6 +2941,18 @@ retains the full effective menu. This law is checked in
 and consumed by the original completion producer without new source-posterior
 or rate-selection premises. It does not remove foreign waiting likelihoods or
 control uniform and free excursions in rare conditional fibers.
+[AsyncServiceBindingBayesResponse](../Vegas/Game/AsyncServiceBindingBayesResponse.lean)
+conditions the binding response on each actual native information fiber. Every
+hidden history supplies a legal full-menu prefix, supported initial state and
+decoded effective source prefix. The same initial parameter, prefix, typed
+choice and complete post-response traffic remain joint. The current law splits
+into the full uniform branch, WAIT and the actual per-history compiler draw;
+each atom has the actual counterfactual reach divided by the total incoming
+counterfactual mass. Foreign waiting and free excursions remain in those
+weights. The original completion producer returns this law for every compatible
+binding input of its same native sequence, deriving positive mass, its pin and
+Bayes consistency internally. Source-posterior identification, conditional
+escape control and the native continuation after this response remain open.
 
 [SourceServiceAliasEquilibrium](../Vegas/Game/SourceServiceAliasEquilibrium.lean)
 supplies the final normalization stage: an audited SE of the complete
