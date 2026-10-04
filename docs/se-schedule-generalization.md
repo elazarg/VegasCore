@@ -6,8 +6,9 @@ This note separates the checked implementation kernels from the remaining
 proof obligations. It describes which scheduling restrictions
 `Vegas.Paper.source_audited_raw_sequential_equilibrium` imposes, compares
 contract designs for ordering concurrent events, and lists the obligations of a
-general theorem. Finite probes support the argument that preservation survives
-adaptive orders. Design D1, open at readiness, is chosen (below). The
+general theorem. Retained waiting and selective inclusion remain unresolved
+strategic obligations; initialized execution correspondence does not settle
+them. Design D1, open at readiness, is chosen (below). The
 [completion plan](#completion-plan) records where the work stands and the
 remaining milestones.
 
@@ -2638,6 +2639,76 @@ not needed for normalization or for equality of settlement along a preserved
 frame. Scheduler assumptions belong to protected source play and the generic
 continuation coupling. Keeping these premises explicit isolates unresolved
 cases without weakening the capstone or duplicating the proof machinery.
+
+### Selective inclusion and retained waiting
+
+The resolution-fork service supports an analytical audit that does not assume
+uniform trembles or prescribed source actions at delayed Bob inputs. This is
+not a checked native counterexample: full raw-action classification and exact
+incoming information fibers remain required before concluding that no preserving
+native equilibrium exists.
+
+Keep the fork's initial HIGH probability `1/4`, Alice's public utility and
+scheduler. Modify only Bob's public utility: after Alice publishes TRUE, a
+correct HIGH guess pays 2 and a correct LOW guess pays 1; after FALSE, these
+rewards are 1 and 2. Incorrect guesses pay zero. Bob consequently needs HIGH
+posterior at least `1/3` to choose HIGH after TRUE, and at least `2/3` after
+FALSE. Both types publishing TRUE, with Bob choosing LOW after TRUE and HIGH
+after FALSE, satisfies the source incentives. A source consistency sequence
+with HIGH-dominated FALSE trembles supplies the latter belief. All base payoffs
+remain in `[0, 2]`.
+
+Suppose the native joint source law is preserved. LOW then gets `1/2` at its
+first turn. After literal WAIT, the clean second turn has probability `9/10`;
+the risky second turn has probability `1/10`. Let `alpha` be Bob's HIGH-choice
+probability at the canonical delayed TRUE input and `beta` its HIGH-choice
+probability at canonical delayed FALSE. LOW's clean TRUE value is
+`1/2 + 3*alpha/2`, and bare FALSE pays `1 - beta` on either branch. Risky bare
+FALSE is included certainly and costs no deposit.
+
+If WAIT is unprofitable, the clean optimal value is at most `5/9`, because the
+risky optimal value is nonnegative. Thus `alpha <= 1/27` and `beta >= 4/9`.
+For every deposit `D >= 4`, risky LOW TRUE has value at most
+`3/4*(1/2 + 3*alpha/2) + 1/4*(1-D) <= -1/3`.
+In the canonical two-action continuation LOW must therefore choose FALSE
+on the risky branch. HIGH chooses TRUE on the clean branch; its risky TRUE
+value is `3/2 - D/4`.
+
+For `D >= 6`, HIGH chooses risky FALSE, allowing indifference at `D = 6`.
+The limiting decision likelihoods conditional on each type's first WAIT give
+TRUE a HIGH likelihood at least `9/10` and a LOW likelihood at most `9/10`;
+FALSE has HIGH likelihood at most `1/10`
+and LOW likelihood at least `1/10`. Hence its TRUE posterior is at least its
+FALSE posterior, for any type-dependent WAIT rates. Bob's positive LOW choice
+after TRUE requires the former at most `1/3`, while its positive HIGH choice
+after FALSE requires the latter at least `2/3`: incompatible requirements.
+For `4 <= D < 6`, HIGH strictly chooses risky TRUE. The TRUE posterior bound
+keeps the HIGH/LOW WAIT-rate ratio bounded, so vanishing HIGH FALSE trembles
+cannot compete with LOW's risky FALSE mass. The FALSE posterior then tends
+to zero, giving the same conflict. These calculations use arbitrary asymmetric
+vanishing trembles, rather than a chosen uniform rate.
+
+The raw-menu audit must exclude alternative responses using their actual
+settlement and Bob's potentially different observations. With forbidden-packet
+collection at least `1/2`, the candidate upper bounds are `2-D/2` for clean
+forbidden TRUE, `3/4*(2-D/2)+1/4*(1-D)` for risky forbidden TRUE, and `1-D/2`
+for forbidden FALSE. Silence or rejection leaves a public miss and value at
+most `1-D`. Incoming Bayes fibers must retain the complete ledger envelope,
+receipt, readiness clock and serial: an evidence-bearing FALSE packet is a
+different information input from bare FALSE. Neither coarse public-output
+posteriors nor the existing prescribed pins discharge these obligations.
+
+This audit concerns a player with no earlier offense; additional fines or
+replenished collateral would not charge its permitted WAIT or accepted bare
+FALSE. A candidate delivery condition instead couples inclusion or miss
+independently of the canonical decision, with a common miss continuation.
+It removes the fork's privileged FALSE channel. Equal marginal inclusion
+probabilities alone do not establish that coupling, and the condition is
+stronger than the current asynchronous contract. Its implementability and the
+general equilibrium proof remain separate obligations. The asynchronous
+mediator literature also separates deviation simulation from consistent-belief
+construction and assumes a scheduler unable to read message contents
+([Geffner and Halpern, Section 6](https://arxiv.org/html/2309.14618v3)).
 
 The initialized-play audit theorem does not supply a clean comparator from
 every clear prefix. A false risk flag alone says nothing about an earlier
