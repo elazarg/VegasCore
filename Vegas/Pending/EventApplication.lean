@@ -891,7 +891,7 @@ theorem nodeView_eq_sample {graph : Vegas.EventGraph Player L} {event : graph.Ev
       rfl
 
 omit [DecidableEq Player] in
-private theorem bind_complete_mem_step (state : State graph)
+theorem bind_complete_mem_step (state : State graph)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
     (owner : Player) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding owner payload)

@@ -2759,8 +2759,16 @@ admission/opening, chance, cancellation and reporting.
 `Vegas.SourceSession.history_opening_stored` combines these instances to identify
 an authentic pending original certificate with the selected source binding's
 stored value at every initialized native history. This supplies the stored-value
-premise of the TRUE source-step theorem. The information-local source observation
-and private-recall simulation remain proof obligations.
+premise of the TRUE source-step theorem. `Vegas.SourceSession.openDecision_complete`
+uses the existing TRUE/FALSE transitions to identify each accepted authentic
+opening with an exact deterministic source step.
+`Vegas.SourceSession.sourceServiceInvariant` carries network evidence alongside
+the existing graph-runtime invariant through the native runner;
+`Vegas.SourceSession.history_source_invariant` establishes a source-reachable
+prefix and valid readiness timestamps from a supported setup at every initialized
+history. Public cancellation preserves that prefix without completing missing
+source events. The information-local source observation and private-recall
+simulation remain proof obligations.
 
 The service contract must address phase keys, with packet uniqueness scoped to
 one phase. Admission and opening require different authenticated envelopes for

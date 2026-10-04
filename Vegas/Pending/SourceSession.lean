@@ -21,9 +21,9 @@ same pending-message runner afterward.
 
 The certificate instance reuses the generic packet-evidence theorem at every
 legal history, including partial leaks, forwarding and rejected calls. Source
-binding provenance reuses the graph association invariant. Compiler recall remains
-a separate obligation. This module
-does not assert equilibrium preservation or a watcher collection bound.
+binding provenance and reachability reuse the graph runtime invariants, with
+authentic network evidence supplying the source-step premises. Compiler recall,
+equilibrium preservation and watcher collection bounds remain separate obligations.
 -/
 
 noncomputable section
@@ -768,12 +768,15 @@ theorem submit_decision_fixed (state : State graph) (who : Principal Player)
           | binding event selected | opening event selected raw | giveUp phase | malformed raw =>
               simp [submit, call]
 
-/-- Every accepted opening appends exactly one source completion. -/
+/-- Every accepted opening appends one source completion. Authentic original
+evidence and the graph association invariant make it a legal source step. -/
 theorem openDecision_complete (state next : State graph) (event : graph.EventId)
     (ready : state.source.config.cut.Ready event) (owner : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
     (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .resolve owner payload binding checks)
     (handle : DecisionHandle graph) (raw : Raw L) (certificates : List (Certificate graph))
     (accepted : openDecision state event ready owner payload binding checks outputEq
       handle raw certificates = some next) :
@@ -781,7 +784,12 @@ theorem openDecision_complete (state next : State graph) (event : graph.EventId)
       next = { state with
         source := state.source.complete event ready
           (cast (congrArg EventField.Action outputEq.symm) disclose)
-          (cast (congrArg EventField.Value outputEq.symm) result) } := by
+          (cast (congrArg EventField.Value outputEq.symm) result) } ∧
+        (state.source.AssociationInvariant →
+          (∀ fact ∈ certificates, fact.Holds state) →
+          state.source.config.step event ready
+            (cast (congrArg EventField.Action outputEq.symm) disclose) =
+              PMF.pure next.source.config) := by
   unfold openDecision at accepted
   simp only [Option.bind_eq_bind, Option.pure_def] at accepted
   cases decoded : raw.as? (R.result payload) with
@@ -794,7 +802,8 @@ theorem openDecision_complete (state next : State graph) (event : graph.EventId)
           split at accepted
           · simp only [Option.some.injEq] at accepted
             subst next
-            exact ⟨false, .failure, rfl⟩
+            refine ⟨false, .failure, rfl, fun _ _ => ?_⟩
+            exact failure_source_step state event ready owner payload binding checks outputEq codeEq
           · simp at accepted
       | success value =>
           simp only [decision] at accepted
@@ -803,7 +812,8 @@ theorem openDecision_complete (state next : State graph) (event : graph.EventId)
           | some selected =>
               simp only [original, Option.bind_some] at accepted
               split at accepted
-              · cases verdict : GuardCheck.allAccepted? checks
+              · rename_i exactCertificates
+                cases verdict : GuardCheck.allAccepted? checks
                     (graph.publicStore state.source.config.store) (.success value) with
                 | none => simp [verdict] at accepted
                 | some passed =>
@@ -813,7 +823,14 @@ theorem openDecision_complete (state next : State graph) (event : graph.EventId)
                         simp only [verdict, Option.bind_some, ↓reduceIte,
                           Option.some.injEq] at accepted
                         subst next
-                        exact ⟨true, .success value, rfl⟩
+                        refine ⟨true, .success value, rfl, fun valid certified => ?_⟩
+                        have opened : state.source.candidates.lookup selected =
+                            .openable ⟨payload, value⟩ :=
+                          certified (.source ⟨selected, ⟨payload, value⟩⟩)
+                            (by simp [exactCertificates])
+                        have stored := valid.opening_stored binding selected value original opened
+                        simpa only [ite_true] using success_source_step state event ready owner
+                          payload binding checks outputEq codeEq value true stored verdict
               · simp at accepted
 
 /-- Accepted calls preserve all fixed meanings; binding can only freeze a
@@ -824,7 +841,9 @@ theorem handleGame_preserves (runtime : Runtime graph) (state next : State graph
     next.decisions = state.decisions ∧
       (∀ handle : Handle graph, state.source.candidates.lookup handle ≠ .fresh →
         next.source.candidates.lookup handle = state.source.candidates.lookup handle) ∧
-      (state.source.AssociationInvariant → next.source.AssociationInvariant) := by
+      (state.source.AssociationInvariant → next.source.AssociationInvariant) ∧
+      (∀ inputs, state.source.Invariant inputs → state.source.AssociationInvariant →
+        (∀ fact ∈ packet.certificates, fact.Holds state) → next.source.Invariant inputs) := by
   rcases packet with ⟨call, certificates, token⟩
   cases call with
   | binding event selected =>
@@ -838,12 +857,17 @@ theorem handleGame_preserves (runtime : Runtime graph) (state next : State graph
               simp only [view] at accepted
               split at accepted
               · cases Option.some.inj accepted
-                refine ⟨(State.finish_catalogues _).2, (fun handle fixed => ?_), ?_⟩
+                refine ⟨(State.finish_catalogues _).2, (fun handle fixed => ?_), ?_, ?_⟩
                 · rw [(State.finish_catalogues _).1]
                   exact state.source.candidates.lookup_freeze_eq_of_not_fresh handle selected fixed
                 · intro valid
                   rw [State.finish_source]
                   exact valid.acceptBinding event ready owner payload outputEq selected
+                · intro inputs valid _ _
+                  rw [State.finish_source]
+                  have step := EventGraphRuntime.bind_complete_mem_step state.source event ready
+                    owner payload outputEq codeEq (state.source.bindingResult selected payload)
+                  exact (valid.refreshStep event ready _ _ step).copy rfl rfl rfl
               · cases accepted
           | sample | resolve => simp [view] at accepted
         · cases accepted
@@ -856,7 +880,7 @@ theorem handleGame_preserves (runtime : Runtime graph) (state next : State graph
             simp only [view] at accepted
             split at accepted
             · cases Option.some.inj accepted
-              exact ⟨rfl, (fun _ _ => rfl), fun valid => valid⟩
+              exact ⟨rfl, (fun _ _ => rfl), (fun valid => valid), fun _ valid _ _ => valid⟩
             · cases accepted
         | bind | sample => simp [view] at accepted
       · cases accepted
@@ -876,14 +900,28 @@ theorem handleGame_preserves (runtime : Runtime graph) (state next : State graph
                 | some executed =>
                     simp only [opened, Option.bind_some, Option.some.injEq] at accepted
                     subst next
-                    obtain ⟨disclose, result, rfl⟩ := openDecision_complete state executed event
-                      ready owner payload binding checks outputEq selected raw certificates opened
-                    refine ⟨(State.finish_catalogues _).2, (fun _ _ => ?_), ?_⟩
+                    obtain ⟨disclose, result, rfl, sourceStep⟩ := openDecision_complete state
+                      executed event ready owner payload binding checks outputEq codeEq
+                      selected raw certificates opened
+                    refine ⟨(State.finish_catalogues _).2, (fun _ _ => ?_), ?_, ?_⟩
                     · rw [(State.finish_catalogues _).1]
                       rfl
                     · intro valid
                       rw [State.finish_source]
                       exact valid.complete event ready _ _
+                    · intro inputs valid association certified
+                      rw [State.finish_source]
+                      have step := sourceStep association certified
+                      have member :
+                          (state.source.complete event ready
+                            (cast (congrArg EventField.Action outputEq.symm) disclose)
+                            (cast (congrArg EventField.Value outputEq.symm) result)).config ∈
+                          (state.source.config.step event ready
+                            (cast (congrArg EventField.Action outputEq.symm)
+                              disclose)).support := by
+                        rw [step]
+                        exact (PMF.mem_support_pure_iff _ _).mpr rfl
+                      exact (valid.refreshStep event ready _ _ member).copy rfl rfl rfl
               · cases accepted
           | bind | sample => simp [view] at accepted
         · cases accepted
@@ -900,7 +938,7 @@ theorem handleGame_preserves (runtime : Runtime graph) (state next : State graph
                 simp only [view] at accepted
                 split at accepted
                 · cases Option.some.inj accepted
-                  exact ⟨rfl, (fun _ _ => rfl), fun valid => valid⟩
+                  exact ⟨rfl, (fun _ _ => rfl), (fun valid => valid), fun _ valid _ _ => valid⟩
                 · cases accepted
             | sample => simp [view] at accepted
           · cases accepted
@@ -912,16 +950,19 @@ theorem handle_preserves (runtime : Runtime graph) (state next : State graph)
     next.decisions = state.decisions ∧
       (∀ handle : Handle graph, state.source.candidates.lookup handle ≠ .fresh →
         next.source.candidates.lookup handle = state.source.candidates.lookup handle) ∧
-      (state.source.AssociationInvariant → next.source.AssociationInvariant) := by
+      (state.source.AssociationInvariant → next.source.AssociationInvariant) ∧
+      (∀ inputs, state.source.Invariant inputs → state.source.AssociationInvariant →
+        (∀ fact ∈ message.payload.certificates, fact.Holds state) →
+        next.source.Invariant inputs) := by
   cases packet : message.payload with
   | gameplay game =>
-      exact handleGame_preserves runtime state next message.id game
-        (by simpa only [handle, packet] using accepted)
+      simpa only [packet, Packet.certificates] using handleGame_preserves runtime state next
+        message.id game (by simpa only [handle, packet] using accepted)
   | report evidence token =>
       simp only [handle, packet] at accepted
       split at accepted
       · cases Option.some.inj accepted
-        exact ⟨rfl, (fun _ _ => rfl), fun valid => valid⟩
+        exact ⟨rfl, (fun _ _ => rfl), (fun valid => valid), fun _ valid _ _ => valid⟩
       · cases accepted
 
 /-- Source sampling, clock movement, cancellation and reporting preserve both
@@ -930,44 +971,55 @@ theorem environment_preserves (runtime : Runtime graph) (state next : State grap
     (command : EnvironmentCommand graph)
     (reached : next ∈ (environment runtime state command).support) :
     next.source.candidates = state.source.candidates ∧ next.decisions = state.decisions ∧
-      (state.source.AssociationInvariant → next.source.AssociationInvariant) := by
+      (state.source.AssociationInvariant → next.source.AssociationInvariant) ∧
+      (∀ inputs, state.source.Invariant inputs → next.source.Invariant inputs) := by
   cases command with
   | advanceClock =>
       cases (PMF.mem_support_pure_iff _ _).mp reached
-      exact ⟨rfl, rfl, fun valid =>
-        valid.transport rfl (fun _ _ => rfl) (fun _ _ stored => stored)⟩
+      refine ⟨rfl, rfl, (fun valid =>
+        valid.transport rfl (fun _ _ => rfl) (fun _ _ stored => stored)), ?_⟩
+      intro inputs valid
+      refine ⟨valid.reachable, valid.activated_iff, ?_⟩
+      intro event entered activated
+      have := valid.activated_le event entered activated
+      change entered ≤ state.source.clock + 1
+      omega
   | expire phase =>
       simp only [environment, PMF.mem_support_pure_iff _ _] at reached
       subst next
       split
-      · cases phase <;> exact ⟨rfl, rfl, fun valid => valid⟩
-      · exact ⟨rfl, rfl, fun valid => valid⟩
+      · cases phase <;> exact ⟨rfl, rfl, (fun valid => valid), fun _ valid => valid⟩
+      · exact ⟨rfl, rfl, (fun valid => valid), fun _ valid => valid⟩
   | executeSample event =>
       simp only [environment] at reached
       split at reached
       · obtain ⟨source, sampled, rfl⟩ := PMF.support_map .. ▸ reached
         have preserved : source.candidates = state.source.candidates ∧
-            (state.source.AssociationInvariant → source.AssociationInvariant) := by
+            (state.source.AssociationInvariant → source.AssociationInvariant) ∧
+            (∀ inputs, state.source.Invariant inputs → source.Invariant inputs) := by
           unfold EventGraphRuntime.executeSample at sampled
           split at sampled
           · cases view : nodeView graph event with
             | sample =>
                 simp only [view] at sampled
                 obtain ⟨config, step, rfl⟩ := PMF.support_map .. ▸ sampled
-                refine ⟨rfl, fun valid => valid.transport rfl (fun _ _ => rfl) ?_⟩
-                exact state.source.config.step_store_of_some config event _ _ step
+                refine ⟨rfl, (fun valid => valid.transport rfl (fun _ _ => rfl) ?_), ?_⟩
+                · exact state.source.config.step_store_of_some config event _ _ step
+                · exact fun _ valid => valid.refreshStep event _ _ config step
             | bind | resolve =>
                 simp only [view, PMF.mem_support_pure_iff _ _] at sampled
                 subst source
-                exact ⟨rfl, fun valid => valid⟩
+                exact ⟨rfl, (fun valid => valid), fun _ valid => valid⟩
           · cases (PMF.mem_support_pure_iff _ _).mp sampled
-            exact ⟨rfl, fun valid => valid⟩
+            exact ⟨rfl, (fun valid => valid), fun _ valid => valid⟩
         refine ⟨(State.finish_catalogues _).1.trans preserved.1,
-          (State.finish_catalogues _).2, ?_⟩
-        rw [State.finish_source]
-        exact preserved.2
+          (State.finish_catalogues _).2, ?_, ?_⟩
+        · rw [State.finish_source]
+          exact preserved.2.1
+        · rw [State.finish_source]
+          exact preserved.2.2
       · cases (PMF.mem_support_pure_iff _ _).mp reached
-        exact ⟨rfl, rfl, fun valid => valid⟩
+        exact ⟨rfl, rfl, (fun valid => valid), fun _ valid => valid⟩
 
 omit [DecidableEq Player] in
 /-- Authentication of a report preserves every certificate carried by a
@@ -1133,9 +1185,19 @@ theorem associationInvariant (runtime : Runtime graph)
     (application runtime leaks).Invariant (fun state => state.source.AssociationInvariant) where
   submit := submit_associationInvariant
   handle state message next valid accepted :=
-    (handle_preserves runtime state next message accepted).2.2 valid
+    (handle_preserves runtime state next message accepted).2.2.1 valid
   environment state command next valid reached :=
-    (environment_preserves runtime state next command reached).2.2 valid
+    (environment_preserves runtime state next command reached).2.2.1 valid
+
+/-- Private submissions retain the source configuration, clock and readiness
+metadata used by the existing source-runtime invariant. -/
+theorem submit_invariant (state : State graph) (who : Principal Player)
+    (submission : Submission graph) {inputs : graph.Inputs}
+    (valid : state.source.Invariant inputs) :
+    (submit state who submission).source.Invariant inputs :=
+  valid.copy (submit_config state who submission)
+    (congrArg (fun view => view.source.clock) (submit_publicView state who submission))
+    (congrArg (fun view => view.source.activatedAt) (submit_publicView state who submission))
 
 /-- The generic evidence theorem applies to every legal native history,
 with arbitrary scheduling, deviations, rejected receipts and partial leaks. -/
@@ -1147,6 +1209,85 @@ def packetEvidence (runtime : Runtime graph)
   decode := Packet.certificates
   persists := certificateInvariant runtime leaks
   issued := emit_sound
+
+/-- The native execution retains a legal source prefix and valid activation
+metadata. The network-evidence premise comes from the actual runner, rather
+than a restriction on raw player submissions or scheduler inclusions. -/
+theorem sourceServiceInvariant (runtime : Runtime graph)
+    (leaks : MessageNetwork.ObservationRule (Principal Player) (Packet graph))
+    (inputs : PMF graph.Inputs) (scheduler : (application runtime leaks).Scheduler) :
+    (application runtime leaks).ServiceInvariant scheduler (fun execution =>
+      (∃ setup ∈ inputs.support, execution.application.source.Invariant setup) ∧
+        execution.application.source.AssociationInvariant ∧
+        (packetEvidence runtime leaks).Sound execution) where
+  respond execution who action valid := by
+    obtain ⟨⟨setup, supported, legal⟩, association, sound⟩ := valid
+    refine ⟨⟨setup, supported, ?_⟩,
+      (associationInvariant runtime leaks).respond execution who action association,
+      (packetEvidence runtime leaks).sound_respond execution who action sound⟩
+    rcases action with ⟨transmission⟩
+    cases transmission with
+    | none => exact legal
+    | some material => exact submit_invariant execution.application who material legal
+  environment execution next command valid _ reached := by
+    obtain ⟨⟨setup, supported, legal⟩, association, sound⟩ := valid
+    refine ⟨⟨setup, supported, ?_⟩,
+      (associationInvariant runtime leaks).environmentStep execution next command
+        association reached,
+      (packetEvidence runtime leaks).sound_environment execution next command sound reached⟩
+    cases command with
+    | wait =>
+        simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+        cases (PMF.mem_support_pure_iff _ _).mp reached
+        exact legal
+    | activate who =>
+        obtain ⟨updated, learned, rfl⟩ := PMF.support_map .. ▸ reached
+        obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ learned
+        exact legal
+    | «include» id =>
+        simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+        cases (PMF.mem_support_pure_iff _ _).mp reached
+        unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
+        cases found : execution.network.lookup id with
+        | none => exact legal
+        | some message =>
+            change EventGraphRuntime.State.Invariant setup
+              ((handle runtime execution.application message).getD execution.application).source
+            cases accepted : handle runtime execution.application message with
+            | none => exact legal
+            | some state =>
+                have preserved := handle_preserves runtime execution.application state
+                  message accepted
+                exact preserved.2.2.2 setup legal association (sound.lookup id message found)
+    | application command =>
+        obtain ⟨updated, moved, rfl⟩ := PMF.support_map .. ▸ reached
+        obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ moved
+        have preserved := environment_preserves runtime execution.application state command changed
+        exact preserved.2.2.2 setup legal
+
+/-- Every initialized native history has a source configuration reachable from
+a supported setup, with exact readiness and bounded activation timestamps.
+Cancellation leaves a legal partial prefix; it does not invent a source result.
+This theorem asserts semantic legality, not an information or equilibrium lift. -/
+theorem history_source_invariant (runtime : Runtime graph)
+    (leaks : MessageNetwork.ObservationRule (Principal Player) (Packet graph))
+    (inputs : PMF graph.Inputs) (horizon : Nat) (scheduler : (application runtime leaks).Scheduler)
+    {state} (trace : ((application runtime leaks).protocol (inputs.map State.initial)
+      horizon scheduler).Trace state) :
+    ReactiveApplication.stateInvariant (fun state : State graph =>
+      ∃ setup ∈ inputs.support, state.source.Invariant setup) state := by
+  have preserved := (sourceServiceInvariant runtime leaks inputs scheduler).history
+    (inputs.map State.initial) horizon (by
+      intro state supported
+      obtain ⟨setup, chosen, rfl⟩ := PMF.support_map .. ▸ supported
+      refine ⟨⟨setup, chosen, ?_⟩, State.initial_associationInvariant setup,
+        (packetEvidence runtime leaks).sound_initial (State.initial setup)⟩
+      change (State.initial setup).source.Invariant setup
+      rw [State.initial, State.finish_source]
+      exact EventGraphRuntime.State.initial_invariant setup) trace
+  cases state with
+  | none => trivial
+  | some control => exact preserved.1
 
 /-- Authentic original evidence in a pending envelope agrees with the selected
 source binding at every initialized history, before or after disclosure. No
