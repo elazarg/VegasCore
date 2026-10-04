@@ -19,6 +19,10 @@ compatibility. When renaming or refactoring, update all callers and docs.
 
 # Notes
 
+* Before adding definitions or general proof machinery, search the owning layers
+  with `rg` and inspect their declaration surfaces with `lean-defs.py`. Consult
+  `docs/module-architecture.md` for reusable APIs and their scope; instantiate
+  existing machinery and identify missing adapter hypotheses before replacing it.
 * Commit and push each stable, verified checkpoint.
 * Configure required Lean options centrally in lakefile.toml, not with local set_option directives.
 * Do not encode history into code or documentation

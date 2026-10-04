@@ -16,13 +16,57 @@
 | test libraries | Executable regressions and theorem instances |
 | `Paper` | Direct paper-visible theorem restatements and axiom pins |
 
-Not all of `Interaction` is load-bearing. The Vegas capstones are parametric in
-the application, and the instance they are used with is
-`EventGraphRuntime.application`, so a dependency walk from `Paper` reaches the
-pool, the policies and the invariants, but not `IdealCommitments`,
-`MessageReplay`, `MessageApplicationPending` or `MessageApplicationLocality`.
-Those characterize what the host permits, which is worth stating and worth not
-mistaking for a step in a proof; their module headers say so.
+Imports and declaration dependencies answer different questions. An imported
+model or theorem is available to a client; it need not occur in that client's
+proof. The full-language fixed-calendar SE capstone is
+[SourceServiceCompilation](../Vegas/Game/SourceServiceCompilation.lean), using
+the reactive pending runner. `scripts/check-se-evidence.py` checks the
+declaration dependencies of its paper-visible theorem against the SE checklist.
+Operational interfaces and cryptographic refinements require their own
+evidence; import reachability alone does not establish them.
+
+Search existing definitions in their owning layer before adding a model or
+general proof. `rg --files` locates modules, `rg -n` finds declarations and
+callers, and `python lean-defs.py <files-or-directories>` shows definitions and
+theorem signatures without proof bodies. Include the pinned `GameTheory`
+submodule in searches for general game-theoretic and probability results.
+Tests and experimental modules can explain an interface or exhibit a boundary;
+they do not supply a production theorem merely by using the same vocabulary.
+
+The following APIs cover the main reusable parts of asynchronous SE work.
+The [completion plan](se-completion-plan.md) identifies the remaining adapters.
+
+| Requirement | Existing API | Scope that the client must respect |
+| --- | --- | --- |
+| Typed source results and effective disclosure | [DisclosureAliases](../Vegas/Source/DisclosureAliases.lean), [Validation](../Vegas/EventGraph/Validation.lean), [EventGraphObservation](../Vegas/Compile/EventGraphObservation.lean) | Effective FALSE and the original private intention differ. Decode observations and retain private recall through the actual compiler relation. |
+| Immutable opaque meanings | [CommitmentCandidates](../Interaction/CommitmentCandidates.lean), [EventCommitmentBinding](../Vegas/Pending/EventCommitmentBinding.lean) | Preparation and freezing preserve fixed meanings. These ideal capabilities do not establish concrete cryptographic hiding or binding. |
+| Pending execution, authentic envelopes and recall | [ReactiveApplication](../Interaction/ReactiveApplication.lean), [ReactiveProvenance](../Interaction/ReactiveProvenance.lean), [ReactiveSubmissionAudit](../Interaction/ReactiveSubmissionAudit.lean) | Reuse the runner and its original-submission records; a signed identifier is not a freely forgeable packet body. |
+| Facts at arbitrary native histories | [ReactiveInvariant](../Interaction/ReactiveInvariant.lean), [ReactiveInvariantContinuation](../Interaction/ReactiveInvariantContinuation.lean), [ReactivePacketEvidence](../Interaction/ReactivePacketEvidence.lean) | Supply local submission, handler and environment obligations. The framework supplies history and continuation induction, including rejected calls and partial observations. |
+| Accepted-receipt evidence | [ReactiveEvidence](../Interaction/ReactiveEvidence.lean), [ReactiveEvidenceKnowledge](../Interaction/ReactiveEvidenceKnowledge.lean) | A successful receipt can certify handler effects. It does not authenticate a pending packet or an unsuccessful receipt. |
+| Menus and private aliases | [ReactiveMenuRestriction](../Interaction/ReactiveMenuRestriction.lean), [ReactiveAliasEquilibrium](../Interaction/ReactiveAliasEquilibrium.lean) | Menu inclusion shares an application and scheduler. Private aliases must have identical effects; a different wire format or timeout behavior is not an alias. |
+| Partial collection and reporting windows | [ChallengeWindow](../Interaction/ChallengeWindow.lean), [MessageMonitoringProbability](../Interaction/MessageMonitoringProbability.lean), [ReactiveAuditCollection](../Interaction/ReactiveAuditCollection.lean) | Snapshot observation and conditional delivery bounds must be connected to actual execution. A pair witness needs joint collection; individual marginal bounds do not suffice. |
+| Actual settlement comparisons | [TerminalAuditContinuation](../GameTheoryExtensions/Analysis/Protocol/TerminalAuditContinuation.lean), [TerminalAuditCoupling](../GameTheoryExtensions/Analysis/Protocol/TerminalAuditCoupling.lean) | Preserve earlier expected charges. A departure comparison requires incremental collection, rather than charging an already certain fine again. Native reports already in the outcome must not be resampled. |
+| Finite-deposit feasibility | [EnforcementLimits](../GameTheoryExtensions/Analysis/EnforcementLimits.lean), [EnforcementSynthesis](../GameTheoryExtensions/Analysis/EnforcementSynthesis.lean) | Additional collection must cover the gain in the actual comparison. The scalar solver consumes finite rational certificates; it does not derive the comparisons or prove an SE embedding. |
+| Beliefs and own-action reach | [ReactiveOwnPlay](../Interaction/ReactiveOwnPlay.lean), [BeliefTransport](../GameTheory/GameTheory/Analysis/Protocol/BeliefTransport.lean), [PassageRestrictionExtension](../GameTheoryExtensions/Analysis/Protocol/PassageRestrictionExtension.lean) | Own recall supplies a common own-reach factor. Source/traffic factorization and negligible contamination at rare information values remain compiler-specific premises. |
+| Perturbations, execution error and common limits | [SupportedChoiceDomination](../GameTheoryExtensions/Analysis/Protocol/SupportedChoiceDomination.lean), [ConsistencyCompletion](../GameTheoryExtensions/Analysis/Protocol/ConsistencyCompletion.lean), [LocalSimulationLimit](../GameTheoryExtensions/Analysis/Protocol/LocalSimulationLimit.lean) | Initialized total-variation bounds alone do not transport rare conditional beliefs. The limit theorem requires local gain bounds and one fully mixed Bayes family for fixed games and utilities. |
+| Raw-action extension without common decision depths | [LocalizedEnforcement](../GameTheoryExtensions/Analysis/Protocol/LocalizedEnforcement.lean), [PassageRestrictionExtension](../GameTheoryExtensions/Analysis/Protocol/PassageRestrictionExtension.lean) | Enforced departures need collection and a comparator shared across hidden histories. Retained deferrals require their own incentive argument. |
+| Complete-play continuation horizons | [ContinuationHorizon](../GameTheoryExtensions/Protocol/ContinuationHorizon.lean), [ReactiveFiniteAssessment](../Interaction/ReactiveFiniteAssessment.lean) | Establish finite menus and a bounded terminal horizon, then reuse the terminal/full/remaining-horizon equivalences. |
+
+[SourceSession](../Vegas/Pending/SourceSession.lean) instantiates the existing
+reactive runner and packet-evidence framework for decision admission, mandatory
+opening and cancellation. Its phase identifiers are needed because admission
+and opening use different packets for one source event. The event-indexed
+[AsyncContract](../Vegas/Pending/ReactiveAsyncContract.lean) does not supply
+phase-indexed protection by itself. The source-to-graph compiler and graph
+semantics remain shared; source simulation, phase service, native collection
+and the general SE capstone require proofs for this application.
+
+The watcher is a distinct native role with zero gameplay utility. General SE
+transport interfaces use the same player type on both sides, so the source
+assessment needs an inactive-role lift before they can be applied here.
+`GameTheory.GameSignature.reindexPlayers` requires an equivalence and its
+strategic transport results concern Nash and correlated equilibrium; it does
+not add a participant or prove this SE lift.
 
 The reactive protocol in `Interaction` is source-independent. Its scheduler
 chooses an activation or network/application operation; a player returns
@@ -38,8 +82,9 @@ availability holds at every legal reactive history. Network provenance and
 compiled-player packet uniqueness are checked: opponents can replay a
 prescribed packet but cannot replace it under that author and event. Packet
 acceptance, protection through reserved inclusion, and full compiler
-correctness remain open. Passive pending-message observation is separate from
-scheduling: only foreign, previously unknown packets enter private knowledge,
+correctness are checked for the fixed-calendar full-language SE service.
+Their general asynchronous counterparts remain open. Passive pending-message
+observation is separate from scheduling: only foreign, previously unknown packets enter private knowledge,
 and the sampled subset is absent from scheduler view and recall. These laws
 are checked in `Interaction.ReactiveObservation` and
 `Interaction.ReactiveKnowledge`. The generic proper-root argument for an

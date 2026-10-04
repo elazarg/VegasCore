@@ -2749,8 +2749,13 @@ information; retain that intention in the owner's private carrier instead.
 decision and original-binding certificates. FALSE needs only the former;
 TRUE requires both and checks their values and public guards. Its host
 materializes owned certificates from immutable private catalogues or forwards
-them from authentic known packets. The general compiler's provenance invariant
-and information-local source simulation remain proof obligations.
+them from authentic known packets. `Vegas.SourceSession.packetEvidence`
+instantiates the existing reactive packet-evidence framework: both certificate
+kinds remain valid at every legal native history, including pending observation,
+forwarding, rejected calls and nested reports. This capability soundness does
+not yet identify an accepted original handle's meaning with its source binding
+field. That provenance invariant and the information-local source simulation
+remain proof obligations.
 
 The service contract must address phase keys, with packet uniqueness scoped to
 one phase. Admission and opening require different authenticated envelopes for

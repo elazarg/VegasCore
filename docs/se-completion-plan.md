@@ -108,7 +108,9 @@ opening. [SourceSession](../Vegas/Pending/SourceSession.lean) implements opaque
 admission, separate authenticated opening certificates, fresh opening timers,
 and public-timeout cancellation. Its operational lemmas and
 [native regression tests](../VegasTests/SourceSession.lean) establish the handler
-boundary; the compiler's legal-history provenance, private-recall simulation,
+boundary. Its packet-evidence instance supplies all-history capability
+soundness through the existing generic framework; accepted-binding provenance
+and the compiler's private-recall simulation,
 phase service contract and conditional source/traffic law remain unproved.
 Its two-charge candidate keeps the existing bounded
 deadline audit and separates a one-time verifiable-misconduct fine, so the
@@ -122,6 +124,50 @@ watcher can report authentic observed envelopes through the same pending
 runner, including source-player misuse of the report format. Its partial
 collection bound, two-charge audit and actual report/settlement joint law remain
 open; terminal resampling cannot replace an already emitted batch.
+
+Use the [existing API map](module-architecture.md) for this proof. General
+history induction, belief normalization, consistent subsequence extraction,
+local-comparison limits and depth-free restriction extension already have
+production implementations. The remaining work is to provide their premises
+for the native application:
+
+1. Align player types. `SourceSession.Principal` adds a neutral watcher;
+   the source assessment needs an inactive-role lift. Player reindexing along
+   an equivalence cannot discharge this addition, and Nash transport cannot
+   replace sequential-equilibrium transport.
+2. Adapt the event service contract to phases, including the full opening
+   budget after actual admission and the reporting window after sealing.
+   The event-wide sole-packet clause does not protect the honest two-packet
+   resolution. `ReactiveAuthorizedService` filters builder inclusions and is
+   not a proof for every builder satisfying the intended contract.
+3. Derive accepted-binding provenance and source observation/private recall
+   using the existing immutable-catalogue laws, source-to-graph decoder and
+   disclosure normalization. The packet-evidence instance already supplies
+   authentic helper and original capabilities; do not repeat its raw-history
+   induction.
+4. Connect actual watcher observation and delivery to the static misconduct
+   audit. Reuse `EvidenceReportService.sample_coverage` for a genuine
+   conditional observation/delivery law and the terminal-audit settlement
+   interface for charges. A public cancellation deduction can be included in
+   that interface's base payoff, provided its ownership and payoff law are
+   proved; no separate general two-fine theorem is needed just to add such a
+   deduction. Evaluate an already realized native report directly. Pair
+   witnesses still require a joint observation bound. `EnforcementLimits`
+   already characterizes finite-sanction feasibility through additional
+   collection; prove the actual comparison coefficients before using that
+   result or the finite rational deposit solver.
+5. Prove the compiler-specific source/traffic fiber relation and one
+   information-local timing selection. Reuse own-play reach cancellation and
+   `GameTheory.Math.Probability.conditional_domination_converges_of_subset`
+   once their actual reach and relative-error hypotheses hold. Initialized
+   total-variation control alone does not supply those hypotheses at rare
+   information values.
+6. Supply the local gain comparisons to
+   `GameTheory.Protocol.InformationModel.exists_sequentialEquilibrium_limit_of_local_comparisons_of_lawError`.
+   Reuse `LocalizedEnforcement`, the unclocked restriction-extension results
+   and private-alias transport for the raw extension. Their shared comparator
+   and actual collection premises still need proofs; retained WAIT is not an
+   excluded action that a sound misconduct audit can charge.
 
 [SourceServiceRepeatedRepair](../Vegas/Game/SourceServiceRepeatedRepair.lean)
 provides the full remaining execution coupling through repeated completed and

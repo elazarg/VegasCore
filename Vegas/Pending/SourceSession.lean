@@ -6,6 +6,8 @@ Authors: VegasCore contributors
 
 import Vegas.Pending.ReactiveRuntime
 import Vegas.EventGraph.Validation
+import Vegas.Pending.EventCommitmentBinding
+import Interaction.ReactivePacketEvidence
 
 /-! # Source gameplay with frozen resolution decisions
 
@@ -16,8 +18,10 @@ has its own authorization and deadline. A public timeout seals gameplay without
 inventing source outputs; an authenticated report can still travel through the
 same pending-message runner afterward.
 
-This module defines the protocol and its operational boundary. It does not
-assert an equilibrium-preservation theorem or a watcher collection bound.
+The certificate instance reuses the generic packet-evidence theorem at every
+legal history, including partial leaks, forwarding and rejected calls. Source
+binding provenance and compiler recall remain separate obligations. This module
+does not assert equilibrium preservation or a watcher collection bound.
 -/
 
 noncomputable section
@@ -209,6 +213,12 @@ omit [DecidableEq Player] in
   simp [baseUtility]
 
 end State
+
+/-- Carried certificates concern immutable catalogue meanings, independently
+of call acceptance, readiness, or which binding handle was selected. -/
+def Certificate.Holds : Certificate graph → State graph → Prop
+  | .source fact, state => fact.Holds state.source
+  | .decision fact, state => state.decisions.lookup fact.handle = .openable fact.raw
 
 /-- Register only the authenticated sender's material. Exposure fixes a fresh
 candidate as openable or permanently unopenable; retries cannot replace it. -/
@@ -677,5 +687,397 @@ theorem environment_closed (runtime : Runtime graph) (state : State graph)
       | reporting =>
           simp only [environment, PMF.pure_map]
           split <;> rfl
+
+/-- Terminal classification never modifies either commitment catalogue. -/
+theorem State.finish_catalogues (state : State graph) :
+    state.finish.source.candidates = state.source.candidates ∧
+      state.finish.decisions = state.decisions := by
+  unfold State.finish
+  split <;> exact ⟨rfl, rfl⟩
+
+/-- Private registration preserves every already fixed original meaning. -/
+theorem submit_source_fixed (state : State graph) (who : Principal Player)
+    (submission : Submission graph) (handle : Handle graph)
+    (fixed : state.source.candidates.lookup handle ≠ .fresh) :
+    (submit state who submission).source.candidates.lookup handle =
+      state.source.candidates.lookup handle := by
+  cases submission with
+  | report ids => rfl
+  | gameplay material =>
+      cases who with
+      | watcher => rfl
+      | player who =>
+          cases call : material.call with
+          | binding event selected =>
+              let original : EventGraphRuntime.Submission graph :=
+                ⟨.commitment event selected, material.material⟩
+              have registered : (original.register state.source who).candidates.lookup handle =
+                  state.source.candidates.lookup handle := by
+                rw [original.register_eq]
+                cases original.registrationCommand who with
+                | none => rfl
+                | some command =>
+                    exact EventGraphRuntime.privateStep_lookup_of_not_fresh
+                      state.source who command handle fixed
+              simpa only [submit, call] using
+                (EventGraphRuntime.submitStep_lookup_of_not_fresh _ who original.packet
+                  handle (by rwa [registered])).trans registered
+          | admission event selected =>
+              simp only [submit, call]
+              split <;> rfl
+          | opening event selected raw | giveUp phase | malformed raw => simp [submit, call]
+
+/-- Preparing or exposing another helper cannot rewrite a frozen decision. -/
+theorem submit_decision_fixed (state : State graph) (who : Principal Player)
+    (submission : Submission graph) (handle : DecisionHandle graph)
+    (fixed : state.decisions.lookup handle ≠ .fresh) :
+    (submit state who submission).decisions.lookup handle = state.decisions.lookup handle := by
+  cases submission with
+  | report ids => rfl
+  | gameplay material =>
+      cases who with
+      | watcher => rfl
+      | player who =>
+          cases call : material.call with
+          | admission event selected =>
+              simp only [submit, call]
+              split
+              · cases prepared : material.material with
+                | none =>
+                    exact state.decisions.lookup_freeze_eq_of_not_fresh handle selected fixed
+                | some raw =>
+                    have unchanged := state.decisions.lookup_prepare_eq_of_not_fresh
+                      handle who selected.2 raw fixed
+                    have frozen :=
+                      (state.decisions.prepare who selected.2 raw).lookup_freeze_eq_of_not_fresh
+                        handle selected (by rwa [unchanged])
+                    exact frozen.trans unchanged
+              · rfl
+          | binding event selected | opening event selected raw | giveUp phase | malformed raw =>
+              simp [submit, call]
+
+/-- Opening changes only the source event, never its certified catalogue. -/
+theorem openDecision_catalogues (state next : State graph) (event : graph.EventId)
+    (ready : state.source.config.cut.Ready event) (owner : Player) (payload : L.Ty)
+    (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (GuardCheck graph.layout payload))
+    (outputEq : graph.outputLayout event = .publication payload)
+    (handle : DecisionHandle graph) (raw : Raw L) (certificates : List (Certificate graph))
+    (accepted : openDecision state event ready owner payload binding checks outputEq
+      handle raw certificates = some next) :
+    next.source.candidates = state.source.candidates ∧ next.decisions = state.decisions := by
+  unfold openDecision at accepted
+  simp only [Option.bind_eq_bind, Option.pure_def] at accepted
+  cases decoded : raw.as? (R.result payload) with
+  | none => simp [decoded] at accepted
+  | some encoded =>
+      simp only [decoded, Option.bind_some] at accepted
+      cases decision : R.valueEquiv payload encoded with
+      | failure =>
+          simp only [decision] at accepted
+          split at accepted
+          · simp only [Option.some.injEq] at accepted
+            subst next
+            exact ⟨rfl, rfl⟩
+          · simp at accepted
+      | success value =>
+          simp only [decision] at accepted
+          cases original : state.source.accepted binding.field with
+          | none => simp [original] at accepted
+          | some selected =>
+              simp only [original, Option.bind_some] at accepted
+              split at accepted
+              · cases verdict : GuardCheck.allAccepted? checks
+                    (graph.publicStore state.source.config.store) (.success value) with
+                | none => simp [verdict] at accepted
+                | some passed =>
+                    cases passed with
+                    | false => simp [verdict] at accepted
+                    | true =>
+                        simp only [verdict, Option.bind_some, ↓reduceIte,
+                          Option.some.injEq] at accepted
+                        subst next
+                        exact ⟨rfl, rfl⟩
+              · simp at accepted
+
+/-- Accepted calls preserve all fixed meanings; binding can only freeze a
+fresh original candidate, and no handler changes the helper catalogue. -/
+theorem handleGame_catalogues (runtime : Runtime graph) (state next : State graph)
+    (id : MessageId (Principal Player)) (packet : GamePacket graph)
+    (accepted : handleGame runtime state id packet = some next) :
+    next.decisions = state.decisions ∧
+      ∀ handle : Handle graph, state.source.candidates.lookup handle ≠ .fresh →
+        next.source.candidates.lookup handle = state.source.candidates.lookup handle := by
+  rcases packet with ⟨call, certificates, token⟩
+  cases call with
+  | binding event selected =>
+      simp only [handleGame, Call.phase?, Option.bind_eq_bind, Option.bind_some,
+        Option.pure_def] at accepted
+      split at accepted
+      · split at accepted
+        · rename_i ready
+          cases view : nodeView graph event with
+          | bind owner payload outputEq codeEq =>
+              simp only [view] at accepted
+              split at accepted
+              · cases Option.some.inj accepted
+                refine ⟨(State.finish_catalogues _).2, ?_⟩
+                intro handle fixed
+                rw [(State.finish_catalogues _).1]
+                exact state.source.candidates.lookup_freeze_eq_of_not_fresh handle selected fixed
+              · cases accepted
+          | sample | resolve => simp [view] at accepted
+        · cases accepted
+      · cases accepted
+  | admission event selected =>
+      simp only [handleGame, Call.phase?, Option.bind_eq_bind, Option.bind_some] at accepted
+      split at accepted
+      · cases view : nodeView graph event with
+        | resolve owner payload binding checks outputEq codeEq =>
+            simp only [view] at accepted
+            split at accepted
+            · cases Option.some.inj accepted
+              exact ⟨rfl, fun _ _ => rfl⟩
+            · cases accepted
+        | bind | sample => simp [view] at accepted
+      · cases accepted
+  | opening event selected raw =>
+      simp only [handleGame, Call.phase?, Option.bind_eq_bind, Option.bind_some] at accepted
+      split at accepted
+      · split at accepted
+        · rename_i ready
+          cases view : nodeView graph event with
+          | resolve owner payload binding checks outputEq codeEq =>
+              simp only [view] at accepted
+              split at accepted
+              · simp only [Option.pure_def] at accepted
+                cases opened : openDecision state event ready owner payload binding checks
+                    outputEq selected raw certificates with
+                | none => simp [opened] at accepted
+                | some executed =>
+                    simp only [opened, Option.bind_some, Option.some.injEq] at accepted
+                    subst next
+                    have tables := openDecision_catalogues state executed event ready owner
+                      payload binding checks outputEq selected raw certificates opened
+                    refine ⟨(State.finish_catalogues _).2.trans tables.2, ?_⟩
+                    intro handle _
+                    rw [(State.finish_catalogues _).1]
+                    change executed.source.candidates.lookup handle = _
+                    rw [tables.1]
+              · cases accepted
+          | bind | sample => simp [view] at accepted
+        · cases accepted
+      · cases accepted
+  | giveUp phase =>
+      cases phase with
+      | reporting => simp [handleGame, Call.phase?] at accepted
+      | source event kind =>
+          simp only [handleGame, Call.phase?, Option.bind_eq_bind, Option.bind_some] at accepted
+          split at accepted
+          · cases view : nodeView graph event with
+            | bind owner payload outputEq codeEq
+            | resolve owner payload binding checks outputEq codeEq =>
+                simp only [view] at accepted
+                split at accepted
+                · cases Option.some.inj accepted
+                  exact ⟨rfl, fun _ _ => rfl⟩
+                · cases accepted
+            | sample => simp [view] at accepted
+          · cases accepted
+  | malformed raw => simp [handleGame, Call.phase?] at accepted
+
+theorem handle_catalogues (runtime : Runtime graph) (state next : State graph)
+    (message : Message (Principal Player) (Packet graph))
+    (accepted : handle runtime state message = some next) :
+    next.decisions = state.decisions ∧
+      ∀ handle : Handle graph, state.source.candidates.lookup handle ≠ .fresh →
+        next.source.candidates.lookup handle = state.source.candidates.lookup handle := by
+  cases packet : message.payload with
+  | gameplay game =>
+      exact handleGame_catalogues runtime state next message.id game
+        (by simpa only [handle, packet] using accepted)
+  | report evidence token =>
+      simp only [handle, packet] at accepted
+      split at accepted
+      · cases Option.some.inj accepted
+        exact ⟨rfl, fun _ _ => rfl⟩
+      · cases accepted
+
+/-- Source sampling, clock movement, cancellation and reporting preserve both
+catalogues, including before any gameplay outcome exists. -/
+theorem environment_catalogues (runtime : Runtime graph) (state next : State graph)
+    (command : EnvironmentCommand graph)
+    (reached : next ∈ (environment runtime state command).support) :
+    next.source.candidates = state.source.candidates ∧ next.decisions = state.decisions := by
+  cases command with
+  | advanceClock =>
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      exact ⟨rfl, rfl⟩
+  | expire phase =>
+      simp only [environment, PMF.mem_support_pure_iff _ _] at reached
+      subst next
+      split
+      · cases phase <;> exact ⟨rfl, rfl⟩
+      · exact ⟨rfl, rfl⟩
+  | executeSample event =>
+      simp only [environment] at reached
+      split at reached
+      · obtain ⟨source, sampled, rfl⟩ := PMF.support_map .. ▸ reached
+        have tables : source.candidates = state.source.candidates := by
+          unfold EventGraphRuntime.executeSample at sampled
+          split at sampled
+          · cases view : nodeView graph event with
+            | sample =>
+                simp only [view] at sampled
+                obtain ⟨config, _, rfl⟩ := PMF.support_map .. ▸ sampled
+                rfl
+            | bind | resolve =>
+                simp only [view, PMF.mem_support_pure_iff _ _] at sampled
+                subst source
+                rfl
+          · cases (PMF.mem_support_pure_iff _ _).mp sampled
+            rfl
+        exact ⟨(State.finish_catalogues _).1.trans tables, (State.finish_catalogues _).2⟩
+      · cases (PMF.mem_support_pure_iff _ _).mp reached
+        exact ⟨rfl, rfl⟩
+
+omit [DecidableEq Player] in
+/-- Authentication of a report preserves every certificate carried by a
+nested signed envelope, including a rejected player report. -/
+theorem Packet.nested_certificate (packet : Packet graph)
+    (message : Message (Principal Player) (Packet graph))
+    (member : message ∈ packet.nestedEnvelopes) (fact : Certificate graph)
+    (certified : fact ∈ message.payload.certificates) : fact ∈ packet.certificates := by
+  cases shape : packet with
+  | gameplay game => simp only [shape, nestedEnvelopes, List.not_mem_nil] at member
+  | report evidence token =>
+      simp only [shape, nestedEnvelopes] at member
+      obtain ⟨parent, present, nested⟩ := List.mem_flatMap.mp member
+      simp only [certificates]
+      apply List.mem_flatMap.mpr
+      refine ⟨parent, present, ?_⟩
+      rcases List.mem_cons.mp nested with same | descendant
+      · subst message
+        exact certified
+      · exact parent.payload.nested_certificate message descendant fact certified
+termination_by sizeOf packet
+decreasing_by
+  rw [shape]
+  simp_wf
+  have member := List.sizeOf_lt_of_mem present
+  have fields : sizeOf parent = 1 + sizeOf parent.id + sizeOf parent.payload := by
+    cases parent
+    rfl
+  omega
+
+omit [DecidableEq Player] in
+theorem Packet.envelope_certificate (packet : Packet graph)
+    (id : MessageId (Principal Player)) (message : Message (Principal Player) (Packet graph))
+    (member : message ∈ packet.envelopes id) (fact : Certificate graph)
+    (certified : fact ∈ message.payload.certificates) : fact ∈ packet.certificates := by
+  unfold envelopes at member
+  rcases List.mem_cons.mp member with same | nested
+  · subst message
+    exact certified
+  · cases packet with
+    | gameplay game => exact (List.not_mem_nil nested).elim
+    | report evidence token =>
+        exact (Packet.report evidence token).nested_certificate message nested fact certified
+
+theorem certificateFor_sound (state : State graph) (who : Principal Player)
+    (known : List (Message (Principal Player) (Packet graph)))
+    (received : ∀ message ∈ known, ∀ fact ∈ message.payload.certificates, fact.Holds state)
+    (request : CertificateRequest graph) (fact : Certificate graph)
+    (issued : certificateFor state who known request = some fact) : fact.Holds state := by
+  cases request with
+  | owned certificate =>
+      cases certificate with
+      | source original =>
+          simp only [certificateFor] at issued
+          split at issued
+          · rename_i verified
+            cases Option.some.inj issued
+            exact (CommitmentCandidates.verify_eq_true_iff _ _ _).mp verified.2
+          · cases issued
+      | decision decision =>
+          simp only [certificateFor] at issued
+          split at issued
+          · rename_i verified
+            cases Option.some.inj issued
+            exact (CommitmentCandidates.verify_eq_true_iff _ _ _).mp verified.2
+          · cases issued
+  | forward id index =>
+      simp only [certificateFor] at issued
+      cases found : known.find? (fun message => message.id = id) with
+      | none => simp [found] at issued
+      | some message =>
+          simp only [found, Option.bind_some] at issued
+          obtain ⟨within, equal⟩ := List.getElem?_eq_some_iff.mp issued
+          exact received message (List.mem_of_find?_eq_some found) fact
+            (equal ▸ List.getElem_mem within)
+
+/-- Owned issuance and forwarding are sound even when the surrounding call
+is rejected or sent outside its gameplay phase. -/
+theorem emit_sound (state : State graph) (who : Principal Player)
+    (known : List (Message (Principal Player) (Packet graph))) (submission : Submission graph)
+    (received : ∀ message ∈ known, ∀ fact ∈ message.payload.certificates, fact.Holds state)
+    (fact : Certificate graph) (issued : fact ∈ (emit state who known submission).certificates) :
+    fact.Holds state := by
+  cases submission with
+  | gameplay material =>
+      simp only [emit, Packet.certificates] at issued
+      obtain ⟨request, _, certified⟩ := List.mem_filterMap.mp issued
+      exact certificateFor_sound state who known received request fact certified
+  | report ids =>
+      simp only [emit, Packet.certificates] at issued
+      obtain ⟨message, reported, certified⟩ := List.mem_flatMap.mp issued
+      obtain ⟨original, present, authentic⟩ :=
+        emit_report_origin state who known ids _ _ rfl message reported
+      exact received original present fact
+        (original.payload.envelope_certificate original.id message authentic fact certified)
+
+/-- Both opening capabilities persist through arbitrary raw continuations. -/
+theorem certificateInvariant (runtime : Runtime graph)
+    (leaks : MessageNetwork.ObservationRule (Principal Player) (Packet graph))
+    (fact : Certificate graph) : (application runtime leaks).Invariant fact.Holds where
+  submit state who material valid := by
+    cases fact with
+    | source original =>
+        exact (submit_source_fixed state who material original.handle
+          (by rw [valid]; simp)).trans valid
+    | decision decision =>
+        exact (submit_decision_fixed state who material decision.handle
+          (by rw [valid]; simp)).trans valid
+  handle state message next valid accepted := by
+    have tables := handle_catalogues runtime state next message accepted
+    cases fact with
+    | source original =>
+        exact (tables.2 original.handle (by rw [valid]; simp)).trans valid
+    | decision decision =>
+        change next.decisions.lookup decision.handle = .openable decision.raw
+        rw [tables.1]
+        exact valid
+  environment state command next valid reached := by
+    have tables := environment_catalogues runtime state next command reached
+    cases fact with
+    | source original =>
+        change next.source.candidates.lookup original.handle = .openable original.raw
+        rw [tables.1]
+        exact valid
+    | decision decision =>
+        change next.decisions.lookup decision.handle = .openable decision.raw
+        rw [tables.2]
+        exact valid
+
+/-- The generic evidence theorem now applies to every legal native history,
+with arbitrary scheduling, deviations, rejected receipts and partial leaks. -/
+def packetEvidence (runtime : Runtime graph)
+    (leaks : MessageNetwork.ObservationRule (Principal Player) (Packet graph)) :
+    (application runtime leaks).PacketEvidence where
+  Fact := Certificate graph
+  valid state fact := fact.Holds state
+  decode := Packet.certificates
+  persists := certificateInvariant runtime leaks
+  issued := emit_sound
 
 end Vegas.SourceSession
