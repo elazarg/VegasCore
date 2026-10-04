@@ -52,6 +52,7 @@ The [completion plan](se-completion-plan.md) identifies the remaining adapters.
 | Finite-deposit feasibility | [EnforcementLimits](../GameTheoryExtensions/Analysis/EnforcementLimits.lean), [EnforcementSynthesis](../GameTheoryExtensions/Analysis/EnforcementSynthesis.lean) | Additional collection must cover the gain in the actual comparison. The scalar solver consumes finite rational certificates; it does not derive the comparisons or prove an SE embedding. |
 | Beliefs and own-action reach | [ReactiveOwnPlay](../Interaction/ReactiveOwnPlay.lean), [BeliefTransport](../GameTheory/GameTheory/Analysis/Protocol/BeliefTransport.lean), [PassageRestrictionExtension](../GameTheoryExtensions/Analysis/Protocol/PassageRestrictionExtension.lean) | Own recall supplies a common own-reach factor. Source/traffic factorization and negligible contamination at rare information values remain compiler-specific premises. |
 | Perturbations, execution error and common limits | [SupportedChoiceDomination](../GameTheoryExtensions/Analysis/Protocol/SupportedChoiceDomination.lean), [ConsistencyCompletion](../GameTheoryExtensions/Analysis/Protocol/ConsistencyCompletion.lean), [LocalSimulationLimit](../GameTheoryExtensions/Analysis/Protocol/LocalSimulationLimit.lean) | Initialized total-variation bounds alone do not transport rare conditional beliefs. The limit theorem requires local gain bounds and one fully mixed Bayes family for fixed games and utilities. |
+| Direct native assessment with an extra neutral role | [AgentPayoffCompletion](../GameTheoryExtensions/Analysis/Protocol/AgentPayoffCompletion.lean) | Selects a consistent assessment and rational free information agents in one native game. The player index need not match a source game; pin the zero-utility watcher directly. Comparisons at pinned source/timing inputs and their conditional belief transport remain client obligations. |
 | Raw-action extension without common decision depths | [LocalizedEnforcement](../GameTheoryExtensions/Analysis/Protocol/LocalizedEnforcement.lean), [PassageRestrictionExtension](../GameTheoryExtensions/Analysis/Protocol/PassageRestrictionExtension.lean) | Enforced departures need collection and a comparator shared across hidden histories. Retained deferrals require their own incentive argument. |
 | Complete-play continuation horizons | [ContinuationHorizon](../GameTheoryExtensions/Protocol/ContinuationHorizon.lean), [ReactiveFiniteAssessment](../Interaction/ReactiveFiniteAssessment.lean) | Establish finite menus and a bounded terminal horizon, then reuse the terminal/full/remaining-horizon equivalences. |
 
@@ -71,6 +72,9 @@ and the general SE capstone require proofs for this application.
 The watcher is a distinct native role with zero gameplay utility. General SE
 transport interfaces use the same player type on both sides, so the source
 assessment needs an inactive-role lift before they can be applied here.
+Direct native free-agent completion avoids that cross-game index requirement;
+source comparisons are used only at source-player roles, and the native
+watcher's zero utility gives all of its comparisons directly.
 `GameTheory.GameSignature.reindexPlayers` requires an equivalence and its
 strategic transport results concern Nash and correlated equilibrium; it does
 not add a participant or prove this SE lift.

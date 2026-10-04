@@ -717,8 +717,10 @@ public events has completed.
     it: it is attached at emission from the contract state the sender sees,
     so a packet made before readiness has none, exactly. The token carries
     no creation time and is valid only for its own event, so pretending a
-    packet is older is not expressible. On EVM it is a hash of the
-    completing block.
+    packet is older is not expressible in this ideal emission interface.
+    A concrete backend must authenticate activation and make its evidence
+    unavailable before activation. A phase identifier or block-hash field
+    alone does not establish this causal-capability property.
   - *Settled-record verdicts.* "Too late" cannot be a token property, and it
     matters: an opening sent after its owner withheld is verifiable
     disclosure, not cheap talk, and would let a withholding owner reveal
@@ -3030,6 +3032,10 @@ following serial phase interface:
    cannot execute can only produce the same game-ending fault. Equivalent
    representations supply no new information about other source histories and
    no additional economic transition outside this classification.
+   A canonical packet's readiness evidence is obtainable only after its phase
+   activates, and publicly verifiable afterward. The emitter's automatic tag
+   is an ideal representation of this causal capability, not an unrestricted
+   sender-written phase identifier.
 6. Earlier lawful owner packets cannot become misconduct witnesses through
    foreign behavior. If an owner creates its first witness while gameplay is
    running, actual watcher observation and accepted reporting collect a
@@ -3266,6 +3272,9 @@ missing inclusion, or elapsed time. A pair witness consists of two distinct
 signed identifiers by one source player for the same source phase. Reobserving
 or forwarding one identifier is not a second transmission. Admission and
 opening are different phases.
+Verify historical readiness evidence, not the final state's current
+`Vegas.SourceSession.State.tokenFor`: current authorization is absent after
+sealing, while a properly issued old credential remains authentic.
 
 | Response before sealing | Mathematical classification |
 | --- | --- |
@@ -3347,6 +3356,58 @@ author, so exempting legitimate watcher reports does not exempt that format
 for players. The proposed misconduct fine uses these content and pair checks;
 it does not reuse the existing acceptance-based deadline audit wholesale.
 The public cancellation deduction supplies timeout enforcement separately.
+
+### Causal readiness evidence and premature openings
+
+The readiness assumption is separate from ordinary packet authentication.
+`Vegas.SourceSession.emit` inserts `Vegas.SourceSession.State.tokenFor` from
+the current application state. `GameSubmission` has no field for choosing
+that token. The existing event runtime does the same. Thus arbitrary calls can be sent prematurely,
+but their emitted tokens are absent. The mathematical raw-response audit uses
+this fact to classify a premature packet as misconduct. The field's Lean
+carrier is only a phase key; its provenance comes from the restricted emitter,
+not from the value of that key.
+
+Without that causal restriction, even opaque admissions permit an early
+verifiable-information attack. Let Alice own an initial hidden binding to a
+uniform bit, and let Bob choose a guess before Alice's source resolution.
+Both players receive one for a correct guess and zero otherwise. A source
+equilibrium has Bob always guess zero, with Alice revealing
+her bit only afterward. A bare phase identifier can be written in an early
+canonical admission. That freezes Alice's future helper; a second early
+packet, for the different opening phase, carries its authentic helper and
+initial-binding certificates. The two identifiers are for different phases,
+and all their content can match the final accepted record. Let a public builder
+include both once their phases become ready. No cancellation occurs and the
+content-and-pair audit collects no fine.
+
+If Alice has bit one, Bob's passive observation of that authentic early opening
+proves the bit. At that information input Bob strictly prefers guessing one,
+whatever beliefs a consistency sequence selects. A builder may activate Alice
+twice while an earlier chance event is pending, then complete that event and
+give Bob his protected first turn. This satisfies the phase-opportunity rule;
+it does not require delaying Bob after his phase starts. With observation
+probability `p > 0`, Alice's early-disclosure deviation gains at least `p` over
+the zero payoff of the source equilibrium at bit one. Increasing either fine
+does not help: this expanded interface creates no classified offense. This
+is an attack on unrestricted sender-written tokens, not a trace permitted by
+the current ideal emitter.
+
+An implementation therefore needs publicly checkable evidence of phase
+activation, such as a causally issued attestation or a proof against an
+authenticated finalized ledger checkpoint. It must bind the session, event
+and phase, and cannot be available before the relevant predecessors complete.
+Opening evidence becomes available only after the admitted handle is recorded;
+reporting evidence only after gameplay seals. Late use of an existing credential
+is not a false claim about send time. Exact canonical contents and distinct-ID
+pairs handle subsequent signaling; timeouts use the separate public deduction.
+
+This requirement is not a builder censorship rule. A player may send any
+unsupported claim, but cannot authenticate premature readiness. The watcher
+judges the actual signed packet and attached evidence, without learning its
+transmission time. The current model supplies the causal restriction as an
+ideal capability. A concrete ledger or cryptographic refinement must prove it;
+automatic client stamping and a hash field do not discharge that obligation.
 
 ### Serial history projection with original intention recall
 
@@ -3548,6 +3609,137 @@ is an alternative mathematical route for barrier concurrency, conditional on
 the stated opaque phase service and complete raw-response classification.
 The global cancellation deduction, auxiliary timing selection and native
 instantiation are not implemented or formally proved.
+
+### Timing selection does not need the source equilibrium
+
+The timing construction can use one fixed fully supported source reference
+profile. This is stronger than selecting a new timing game from each source
+equilibrium. Fix the builder, initial law, opaque packet forms and legal source
+actions. For a lawful source profile `pi`, write the joint prefix weight with
+an auxiliary hidden scheduler history `b` and owner timing information `z` as
+
+`Pr_pi(h,b,z) = Pr_source,pi(h) * K(b,z,public(h))`.
+
+The transition-product proof includes latent not-yet-executed bindings during
+a concurrent stage. Their values affect source-action factors, while their
+opaque wire forms and completion order affect only `K`. At an opening, include
+the fixed effective public result in the public argument of `K`. Original
+private intentions remain in `h`, not in that argument.
+
+At native input `(I,z)`, source perfect recall fixes the public source prefix
+`p`. For an already admitted action, include that action in `I`; at opening,
+include its fixed effective result in `p`, even before public inclusion.
+Summing over compatible source histories and applying Bayes gives
+
+`Pr_pi(b | I,z) = K(b,z,p) / sum_b' K(b',z,p)`.
+
+The source reach factor cancels. This is the hidden-builder posterior needed
+by the timing optimization, not just the player's posterior over source types.
+Conditioning additionally on lawful private representation data multiplies
+numerator and denominator by another common factor and leaves the same law.
+Thus every source type and every fully mixed source profile induce the same
+auxiliary conditional law at a given timing input and fixed public result.
+
+Use the fixed full-support reference to give positive mass to every feasible
+public source prefix. Construct the auxiliary timing families in stage order
+under that reference. Each stage's entry law is then determined by earlier
+timing choices; it has no dependency on a later timing selection. Choose each
+stage's tremble small relative to its own clean timing-input reach, and use the
+compact free-agent completion already described. A single subsequence fixes
+the timing strategy and auxiliary beliefs for all stages. The factorization
+transports them to every source consistency sequence. Only the final raw
+contamination weight must be chosen relative to that sequence's native source
+information reach masses.
+
+This removes a potential circularity: timing strategies are selected for
+completion, deposits use source-wide payoff bounds and causal witness coverage,
+and the chosen source equilibrium supplies only source-action laws and beliefs.
+The full native continuation after misconduct may still depend on the source
+equilibrium; its existence and rationality are supplied by free agent completion.
+
+The neutral watcher need not first be added to the source game for this direct
+construction. Build the assessment in the native game indexed by
+`Vegas.SourceSession.Principal`, pin the watcher policy there, and use source
+comparisons only at roles of the form `player i`. Every watcher comparison is
+an equality because its utility is identically zero. The existing
+`GameTheory.Protocol.InformationModel.exists_consistent_free_agent_payoff_completion`
+constructs a consistent assessment in one native game and does not require a
+source game with matching player types. An inactive-role SE lift is necessary
+only if an alternative assembly uses a cross-game simulation API requiring
+identical player indices.
+
+### A bounded reporter needs at most two source envelopes
+
+Full-batch reporting is unnecessary for the first-misconduct bound. The
+immutable audit has unary witnesses and pairs of distinct identifiers, so
+one owner's offense can be established with at most two signed source
+envelopes. Let `K >= 1` bound the number of source players. A concrete neutral
+watcher policy is:
+
+1. At its postseal observation, retain source envelopes already known through
+   the ledger, prior leaks or authentic nested evidence. Learn unknown pending
+   envelopes using the actual network observation rule.
+2. Draw one source player uniformly, independently of that observation.
+3. On its known source envelopes and the sealed public source record, search
+   for a unary witness or a distinct-ID pair against that player. If one
+   exists, report its one or two identifiers. Otherwise report an empty list.
+4. Submit this genuine report in the protected reporting opportunity.
+
+With no source players, report an empty list; the owner-coverage claim is
+vacuous.
+
+The finite search is implementable from the watcher's actual view. It neither
+enumerates unknown pending identifiers nor needs to decide whether an unseen
+offense exists. The source record is stable after sealing; later packets
+cannot invalidate an already found content or pair witness. Choosing a newer
+valid witness for the same owner instead also collects the same once-per-owner
+fine. Other owners' traffic cannot dilute the uniform owner choice.
+
+Suppose independent postseal observation learns every still-unknown pending
+body with probability at least `0 < p <= 1`. Network conservation places each
+preseal witness body in the ledger or pending pool, unless already known.
+A unary witness is known with probability at least `p`; both bodies of a
+fixed pair are known with probability at least `p^2`. Selecting that owner
+has probability at least `1/K`. Therefore actual collection has lower bound
+
+`q_i = p^2 / K`
+
+when this at-most-two-envelope report is guaranteed accepted. With uniform
+conditional acceptance probability `r`, use `q_i = p^2 * r / K`. The delivery
+bound must hold over all report contents and later source continuations.
+Correlated observation can replace independence only with a proved positive
+joint pair bound. Individual marginal coverage alone is insufficient.
+
+This is coverage of the owner's charge event, not guaranteed reporting of one
+particular witness. Conditional on observing any valid witness against `i`,
+selecting `i` and delivering the chosen witness collects its fine. If applying
+`Interaction.EvidenceReportService.sample_coverage`, first derive the
+owner-verdict channel from the actual signed reports. Its fixed-evidence
+delivery premise need not hold for every witness individually when the
+watcher chooses a different valid witness against the same owner.
+
+The report menu needs room for two bounded source envelopes, rather than the
+whole known network. Authentic nested report evidence is flattened by existing
+`Vegas.SourceSession.Packet.envelopes`; reobserving one identifier never
+creates a pair. The current submission form `report(ids)` already transmits
+only actually possessed envelopes selected by those identifiers. A concrete
+byte or gas budget must admit the two-envelope evidence form; mathematical
+finiteness alone does not establish that budget.
+
+Settlement must use the accepted reporting receipt and the corresponding
+watcher packet in the public ledger. Its body contains the actual reported
+envelopes; the application records their identifiers. Judging those envelopes
+against the sealed public source record supplies the misconduct indicator.
+It requires no pending-pool read and no new evidence sample at termination.
+The receipt and body consistency must follow from actual handler execution,
+not be postulated for an arbitrary state. A reporting timeout gives empty
+evidence. Its possibility is covered by the joint observation/delivery bound.
+
+This reporter has zero charge on lawful initialized play, catches every
+first preseal owner offense with the stated positive conditional probability,
+and continues to work after that owner's later raw responses. It supplies a
+bounded implementable reporting-policy specification; its actual native
+coverage and receipt-to-body theorems remain to be formalized.
 
 The initialized-play audit theorem does not supply a clean comparator from
 every clear prefix. A false risk flag alone says nothing about an earlier

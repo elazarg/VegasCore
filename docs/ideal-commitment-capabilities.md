@@ -50,6 +50,7 @@ Vegas adapters, not from an unforgeable Lean constructor for handles.
 | Replay another player's observed envelope | Permitted without changing its author or payload. Replay does not make its commitment belong to the broadcaster. Newly copying its call into one's own submission gives a new authored envelope. |
 | Commit to a related unknown value by transforming opaque commitment material | Absent. There is no operation on commitment bytes, relation constructor, or transfer of an existing hidden meaning to another candidate. A newly openable own candidate receives an explicit raw value. |
 | Fabricate claims or malformed application messages | Permitted within the modeled alphabet, including false evidence requests whose calls still transmit. A false request does not fabricate a valid certificate. Raw byte strings outside the declared alphabet are not the packet carrier. |
+| Choose a future event's readiness tag before its activation | Not represented as an arbitrary wire choice. The emitter automatically supplies the current readiness token; raw submissions cannot override it. A concrete backend needs causally available, publicly verifiable phase evidence. A bare event or phase identifier is not such evidence. |
 
 The key declarations are:
 

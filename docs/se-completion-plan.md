@@ -183,15 +183,19 @@ local-comparison limits and depth-free restriction extension already have
 production implementations. The remaining work is to provide their premises
 for the native application:
 
-1. Align player types. `SourceSession.Principal` adds a neutral watcher;
-   the source assessment needs an inactive-role lift. Player reindexing along
-   an equivalence cannot discharge this addition, and Nash transport cannot
-   replace sequential-equilibrium transport.
+1. Choose the assessment assembly. Direct native free-agent completion uses
+   `SourceSession.Principal`, pins the zero-utility watcher and applies source
+   comparisons only to source-player roles. It needs no source inactive-role
+   lift. A cross-game simulation API with equal player indices would instead
+   require that lift; player reindexing along an equivalence cannot supply it.
 2. Adapt the event service contract to phases, including the full opening
    budget after actual admission and the reporting window after sealing.
    The event-wide sole-packet clause does not protect the honest two-packet
    resolution. `ReactiveAuthorizedService` filters builder inclusions and is
    not a proof for every builder satisfying the intended contract.
+   State the ideal causal-readiness evidence requirement explicitly. A
+   sender-written phase key cannot replace the current emitter's provenance;
+   premature authentic openings otherwise evade the proposed content audit.
 3. Derive source observation/private recall using the source-to-graph decoder
    and disclosure normalization. The existing bidirectional graph binding invariant is
    preserved by `SourceSession.bindingInvariant`; combined with packet
@@ -220,13 +224,25 @@ for the native application:
    already characterizes finite-sanction feasibility through additional
    collection; prove the actual comparison coefficients before using that
    result or the finite rational deposit solver.
+   The [bounded witness reporter](se-schedule-generalization.md#a-bounded-reporter-needs-at-most-two-source-envelopes)
+   chooses one source owner and reports at most two actual known envelopes.
+   Independent pending observation at rate `p` and conditional accepted delivery
+   at rate `r` give coverage `p^2 * r / K` for `K` source players. Recover the
+   actual accepted report body from its receipt and public ledger; do not read
+   the entire pending pool or resample terminal evidence.
 5. Prove the compiler-specific source/traffic fiber relation and one
-   information-local timing selection. Reuse own-play reach cancellation and
+   information-local timing selection. The
+   [source-independent timing argument](se-schedule-generalization.md#timing-selection-does-not-need-the-source-equilibrium)
+   cancels source reach from the hidden-builder posterior, allowing a fixed
+   full-support source reference for selection before choosing an equilibrium.
+   Reuse own-play reach cancellation and
    `GameTheory.Math.Probability.conditional_domination_converges_of_subset`
    once their actual reach and relative-error hypotheses hold. Initialized
    total-variation control alone does not supply those hypotheses at rare
    information values.
-6. Supply the local gain comparisons to
+6. Supply the local gain comparisons at pinned native inputs and use
+   `GameTheory.Protocol.InformationModel.exists_consistent_free_agent_payoff_completion`
+   for the remaining native inputs. Alternatively, supply comparisons to
    `GameTheory.Protocol.InformationModel.exists_sequentialEquilibrium_limit_of_local_comparisons_of_lawError`.
    Reuse `LocalizedEnforcement`, the unclocked restriction-extension results
    and private-alias transport for the raw extension. Their shared comparator
