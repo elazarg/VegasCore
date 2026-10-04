@@ -651,7 +651,7 @@ theorem privateStep_accepted (state : State graph) (who : Player)
 /-- Install a binding handle and complete the bind with the immutable meaning
 already associated with that handle. Wrong-typed and unprepared candidates
 produce genuine binding failure without changing packet shape. -/
-private def acceptBinding (state : State graph) (event : graph.EventId)
+def acceptBinding (state : State graph) (event : graph.EventId)
     (ready : state.config.cut.Ready event) (owner : Player) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding owner payload)
     (handle : Handle graph) :
@@ -932,7 +932,7 @@ private theorem resolve_complete_mem_step (state : State graph)
     rfl
 
 omit [DecidableEq Player] in
-private theorem resolveOutput?_false_eq_failure_of_ready (state : State graph)
+theorem resolveOutput?_false_eq_failure_of_ready (state : State graph)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
     (owner : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
@@ -1669,7 +1669,7 @@ theorem handle_publicView_replaceRemembered (runtime : EventGraphRuntime graph)
 
 /-- A sample command runs the retained chance kernel once when the addressed
 event is ready. Other event kinds stutter. -/
-private def executeSample (state : State graph) (event : graph.EventId) :
+def executeSample (state : State graph) (event : graph.EventId) :
     PMF (State graph) :=
   if ready : state.config.cut.Ready event then
     match nodeView graph event with

@@ -12,5 +12,6 @@ import VegasTests.Honest
 import VegasTests.SourceSemantics
 import VegasTests.SourceSetup
 import VegasTests.PrivateInputs
+import VegasTests.SourceSession
 
 /-! Regression tests for the source, typed graph, and message runtime. -/

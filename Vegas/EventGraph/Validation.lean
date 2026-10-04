@@ -56,6 +56,18 @@ theorem GuardCheck.eval?_publicStore {payload : L.Ty}
     exact graph.publicStore_of_public store field
       ((check.reads ref read).field?_isPublic field found)
 
+omit [DecidableEq Player] in
+/-- All guard checks depend only on public store data and the explicit proposal. -/
+theorem GuardCheck.allAccepted?_publicStore {payload : L.Ty}
+    (checks : List (GuardCheck graph.layout payload))
+    (store : Store graph.layout) (proposal : PublicationResult (L.Val payload)) :
+    GuardCheck.allAccepted? checks (graph.publicStore store) proposal =
+      GuardCheck.allAccepted? checks store proposal := by
+  induction checks with
+  | nil => rfl
+  | cons check rest ih =>
+      simp only [GuardCheck.allAccepted?, check.eval?_publicStore store proposal, ih]
+
 theorem GuardCheck.eval?_playerStore {payload : L.Ty}
     (check : GuardCheck graph.layout payload) (who : Player)
     (store : Store graph.layout) (proposal : PublicationResult (L.Val payload)) :
@@ -82,6 +94,20 @@ theorem GuardCheck.allAccepted?_playerStore {payload : L.Ty}
   | nil => rfl
   | cons check rest ih =>
       simp only [GuardCheck.allAccepted?, check.eval?_playerStore who store proposal, ih]
+
+omit [DecidableEq Player] in
+/-- A supplied binding value reduces resolution to public checks on that
+explicit proposal. -/
+theorem EventCode.resolveOutput?_of_binding {owner : Player} {payload : L.Ty}
+    (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (GuardCheck graph.layout payload))
+    (store : Store graph.layout) (bound : PublicationResult (L.Val payload))
+    (stored : binding.get? store = some bound) :
+    EventCode.resolveOutput? binding checks true store = (do
+      let accepted ← GuardCheck.allAccepted? checks (graph.publicStore store) bound
+      pure (if accepted then bound else .failure)) := by
+  rw [GuardCheck.allAccepted?_publicStore]
+  simp [EventCode.resolveOutput?, stored]
 
 /-- Owner-local prevalidation computes the exact deterministic resolution
 output.  Foreign private bindings are neither needed nor exposed. -/

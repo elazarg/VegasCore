@@ -15,23 +15,6 @@ application accepts the call and records publication failure.
 
 noncomputable section
 
-namespace Vegas.EventGraph
-
-variable {Player : Type} {L : IExpr} [IExpr.ResultTypes L]
-  {graph : Vegas.EventGraph Player L}
-
-theorem GuardCheck.allAccepted?_publicStore {payload : L.Ty}
-    (checks : List (GuardCheck graph.layout payload)) (store : Store graph.layout)
-    (proposal : PublicationResult (L.Val payload)) :
-    GuardCheck.allAccepted? checks (graph.publicStore store) proposal =
-      GuardCheck.allAccepted? checks store proposal := by
-  induction checks with
-  | nil => rfl
-  | cons check rest ih =>
-      simp only [GuardCheck.allAccepted?, check.eval?_publicStore store proposal, ih]
-
-end Vegas.EventGraph
-
 namespace Vegas.EventGraphRuntime
 
 open Interaction EventGraph

@@ -2729,10 +2729,12 @@ admission and execution boundary for each source resolution:
    an openable value, not absence of opening material: a successful helper
    opening may contain the failure code while completing the source FALSE
    outcome. TRUE must additionally authenticate the original accepted binding
-   and its opening capability. Ordinary source guard failure remains a source
-   outcome, not a protocol offense.
-4. Withholding, invalid execution or expiry of the mandatory phase closes it
-   with a public nonreveal fault. The handler must derive the source action
+   and its opening capability. An original TRUE intention whose source guards
+   fail is compiled as effective FALSE, with that intention retained privately.
+   Opening helper TRUE with failed public guards is rejected; it cannot disclose
+   the original value while executing a legitimate source FALSE.
+4. Withholding or rejected execution leaves the mandatory phase incomplete;
+   its public expiry seals gameplay with a nonreveal fault. The handler derives the source action
    from the frozen decision; accepting a fresh phase-two Boolean would restore
    the uncharged TRUE-to-FALSE switch.
 
@@ -2743,9 +2745,19 @@ without its private opening. Result-valued payloads can represent effective
 FALSE without exposing the original value. Opening the original intended
 action when it normalizes to FALSE would expose extra source-private
 information; retain that intention in the owner's private carrier instead.
-The current single-certificate packet does not by itself prove both the
-decision opening and the original binding opening. Their relation needs an
-explicit handler and evidence check.
+[SourceSession](../Vegas/Pending/SourceSession.lean) implements separate
+decision and original-binding certificates. FALSE needs only the former;
+TRUE requires both and checks their values and public guards. Its host
+materializes owned certificates from immutable private catalogues or forwards
+them from authentic known packets. The general compiler's provenance invariant
+and information-local source simulation remain proof obligations.
+
+The service contract must address phase keys, with packet uniqueness scoped to
+one phase. Admission and opening require different authenticated envelopes for
+the same source event; the existing event-wide sole-identifier condition would
+remove protection from this honest sequence. The opening opportunity and its
+inclusion budget start at the actual accepted admission, while reporting uses
+the distinct watcher role and starts when gameplay seals.
 
 Admission then selects an opaque decision or a miss. At a late mandatory
 opening, the owner can execute that fixed decision or incur a fault; it cannot
@@ -2859,10 +2871,13 @@ One candidate closeout makes the first public phase miss or nonreveal fault
 seal gameplay with a declared cancellation payoff. It freezes economic
 outcome before later source calls, samples or reporting. The watcher does
 not trigger this seal; its partial evidence is processed afterward. An
-explicit aborted state could project to the existing optional source-readout
-carrier with a fixed cancellation payoff, without filling future typed
-private values. This requires an actual runtime abort state and completion
-rule: the current unfinished `none` is not a proved cancellation mechanism.
+explicit cancelled state in
+[SourceSession](../Vegas/Pending/SourceSession.lean) has a fixed cancellation
+payoff and no source outcome; it does not fill future typed private values.
+`State.cancel_baseUtility`, `handle_closed` and `environment_closed` prove that
+cancellation fixes the base payoff and prevents later source calls or samples
+from advancing gameplay. This operational boundary does not yet provide the
+compiler's outcome decoder, phase contract or equilibrium argument.
 Ordinary source guard failure and a valid encoded FALSE remain normal
 source outcomes. Include the cancellation value in the payoff extrema when
 choosing both fines; a source-only payoff span may be too small.
@@ -2886,8 +2901,9 @@ the builder's complete environment history is not available to that owner.
 Private original intentions must remain in source recall even when their
 effective public result is FALSE. The cancellation policy also changes fault
 semantics: one public timeout ends gameplay for everyone, while reporting
-continues. This candidate, its information-local simulation and its consistent
-perturbation family have not been implemented or proved.
+continues. The native cancellation semantics and their closure laws are
+implemented. The information-local simulation and consistent perturbation
+family remain unproved.
 
 A balanced partial-watcher candidate for additive fines can remove
 detection-rate drift. After gameplay, at a fresh report activation, deduplicate
@@ -2904,12 +2920,21 @@ batch-delivery probability `r`, expected additive fines are
 unnecessary. Equal catch probability does not preserve a prior verdict that
 changes between gameplay continuations.
 
-This reporter still needs a real authenticated batch handler and a fresh
-protected window. `ProtectedInclusion` supplies a receipt, not its acceptance,
+The native batch handler in
+[SourceSession](../Vegas/Pending/SourceSession.lean) accepts reports only from
+the distinct watcher role during the report phase. `emit_report_origin` ties
+each reported signed envelope to an actually known packet or its authentic
+nested evidence. Reports can include a source player's rejected report-format
+packet, so that misuse remains available as a misconduct witness. Legitimate
+watcher packets are excluded from source-player fines by actor role; excluding
+the entire report constructor would discard those witnesses.
+
+The reporter still needs a fresh protected window and a proved sampling and
+delivery law. `ProtectedInclusion` supplies a receipt, not its acceptance,
 so validity, timely first submission and exclusion of alternative phase
 completion must establish accepted delivery. Observation can remain partial
 even when this first report is protected. Freeze authoritative gameplay
-verdicts, exclude report packets from their evidence domain, and integrate
+verdicts, use authentic source-player envelopes as evidence, and integrate
 the actual report/settlement joint law. The present external terminal-sampling
 kernel cannot substitute for an already emitted native report: conditional on
 that terminal history, its batch contents are determined.
@@ -2919,8 +2944,12 @@ simulation: equal admission traffic, zero-charge protected opening, exactly
 the source-public observation, and the appropriate first-offense or incremental
 fault comparison. Then derive conditional source/traffic likelihoods and select
 one consistent perturbation family. The protocol does not make arbitrary
-type-dependent WAIT rates harmless. Neither this design nor its end-to-end
-SE preservation has been implemented or proved.
+type-dependent WAIT rates harmless. The native runtime and
+[its regression tests](../VegasTests/SourceSession.lean) check frozen admission,
+certificate-gated opening, fresh opening timers, cancellation, private
+intention retention and authentic reports through the actual pending runner.
+The two-charge audit, phase service contract, compiler simulation and end-to-end
+SE preservation remain unproved.
 
 The initialized-play audit theorem does not supply a clean comparator from
 every clear prefix. A false risk flag alone says nothing about an earlier
