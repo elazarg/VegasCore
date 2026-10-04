@@ -363,6 +363,27 @@ without any opening. No original private binding evidence belongs in it. -/
 def encodeDecision (payload : L.Ty) (decision : PublicationResult (L.Val payload)) : Raw L :=
   ⟨R.result payload, (R.valueEquiv payload).symm decision⟩
 
+/-- The handler and settled audit share the same public opening decoder. -/
+def PublicView.openingDecision? (view : PublicView graph) (owner : Player) (payload : L.Ty)
+    (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (GuardCheck graph.layout payload))
+    (handle : DecisionHandle graph) (raw : Raw L)
+    (certificates : List (Certificate graph)) :
+    Option (Bool × PublicationResult (L.Val payload)) := do
+  let encoded ← raw.as? (R.result payload)
+  let decision := R.valueEquiv payload encoded
+  let helper := Certificate.decision (graph := graph) ⟨handle, raw⟩
+  match decision with
+    | .failure =>
+        if certificates = [helper] then some (false, PublicationResult.failure) else none
+    | .success value => do
+        let original ← view.source.accepted binding.field
+        if certificates = [helper, .source ⟨original, ⟨payload, value⟩⟩] then
+          let accepted ← GuardCheck.allAccepted? checks
+            view.source.observation.store (.success value)
+          if accepted then pure (true, .success value) else none
+        else none
+
 def openDecision (state : State graph) (event : graph.EventId)
     (ready : state.source.config.cut.Ready event) (owner : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
@@ -370,19 +391,8 @@ def openDecision (state : State graph) (event : graph.EventId)
     (outputEq : graph.outputLayout event = .publication payload)
     (handle : DecisionHandle graph) (raw : Raw L)
     (certificates : List (Certificate graph)) : Option (State graph) := do
-  let encoded ← raw.as? (R.result payload)
-  let decision := R.valueEquiv payload encoded
-  let helper := Certificate.decision (graph := graph) ⟨handle, raw⟩
-  let (disclose, result) ← match decision with
-    | .failure =>
-        if certificates = [helper] then some (false, PublicationResult.failure) else none
-    | .success value => do
-        let original ← state.source.accepted binding.field
-        if certificates = [helper, .source ⟨original, ⟨payload, value⟩⟩] then
-          let accepted ← GuardCheck.allAccepted? checks
-            (graph.publicStore state.source.config.store) (.success value)
-          if accepted then pure (true, .success value) else none
-        else none
+  let (disclose, result) ← state.publicView.openingDecision? owner payload binding checks
+    handle raw certificates
   let next := state.source.complete event ready
     (cast (congrArg EventField.Action outputEq.symm) disclose)
     (cast (congrArg EventField.Value outputEq.symm) result)
@@ -401,7 +411,7 @@ theorem openDecision_failure (state : State graph) (event : graph.EventId)
         source := state.source.complete event ready
           (cast (congrArg EventField.Action outputEq.symm) false)
           (cast (congrArg EventField.Value outputEq.symm) PublicationResult.failure) } := by
-  simp [openDecision, encodeDecision]
+  simp [openDecision, PublicView.openingDecision?, encodeDecision]
 
 theorem openDecision_success (state : State graph) (event : graph.EventId)
     (ready : state.source.config.cut.Ready event) (owner : Player) (payload : L.Ty)
@@ -421,7 +431,9 @@ theorem openDecision_success (state : State graph) (event : graph.EventId)
         source := state.source.complete event ready
           (cast (congrArg EventField.Action outputEq.symm) true)
           (cast (congrArg EventField.Value outputEq.symm) (PublicationResult.success value)) } := by
-  simp [openDecision, encodeDecision, associated, verdict]
+  simp [openDecision, PublicView.openingDecision?, State.publicView,
+    EventGraphRuntime.State.publicView, EventGraph.publicObserve, encodeDecision,
+    associated, verdict]
 
 /-- A helper TRUE that would disclose extra private data while producing
 source FALSE cannot complete the source event. Honest source guard failure
@@ -439,7 +451,9 @@ theorem openDecision_guard_failure (state : State graph) (event : graph.EventId)
         (encodeDecision payload (.success value))
         [.decision ⟨handle, encodeDecision payload (.success value)⟩,
           .source ⟨original, ⟨payload, value⟩⟩] = none := by
-  simp [openDecision, encodeDecision, associated, verdict]
+  simp [openDecision, PublicView.openingDecision?, State.publicView,
+    EventGraphRuntime.State.publicView, EventGraph.publicObserve, encodeDecision,
+    associated, verdict]
 
 omit [DecidableEq Player] in
 /-- Executing encoded FALSE uses exactly the existing deterministic source
@@ -798,7 +812,9 @@ theorem openDecision_complete (state next : State graph) (event : graph.EventId)
           state.source.config.step event ready
             (cast (congrArg EventField.Action outputEq.symm) disclose) =
               PMF.pure next.source.config) := by
-  unfold openDecision at accepted
+  unfold openDecision PublicView.openingDecision? at accepted
+  dsimp only [State.publicView, EventGraphRuntime.State.publicView,
+    EventGraph.publicObserve] at accepted
   simp only [Option.bind_eq_bind, Option.pure_def] at accepted
   cases decoded : raw.as? (R.result payload) with
   | none => simp [decoded] at accepted
@@ -808,7 +824,7 @@ theorem openDecision_complete (state next : State graph) (event : graph.EventId)
       | failure =>
           simp only [decision] at accepted
           split at accepted
-          · simp only [Option.some.injEq] at accepted
+          · simp only [Option.bind_some, Option.some.injEq] at accepted
             subst next
             refine ⟨false, .failure, rfl, fun _ _ => ?_⟩
             exact failure_source_step state event ready owner payload binding checks outputEq codeEq

@@ -165,8 +165,16 @@ gameplay; source-suffix induction and the information-local timing channel
 remain open. Replenishment is not established as necessary. The distinct native
 watcher can report authentic observed envelopes through the same pending
 runner, including source-player misuse of the report format. Its partial
-collection bound, two-charge audit and actual report/settlement joint law remain
-open; terminal resampling cannot replace an already emitted batch.
+collection bound and initialized zero-charge proof remain open.
+[SourceSessionAudit](../Vegas/Pending/SourceSessionAudit.lean) implements the
+public content and pair verdicts and the capped misconduct fine, with the
+public cancellation deduction included in the base payoff. Settlement uses
+accepted watcher bodies in the public ledger.
+`Vegas.SourceSession.history_reportedEvidence` proves at every initialized
+history that those bodies carry exactly the recorded report IDs, including
+reporting timeout and later deviations. The complete prescribed-play
+report/settlement joint law still needs proof; terminal resampling cannot
+replace an already emitted batch.
 
 The [concurrent alternative](se-schedule-generalization.md#concurrent-alternative-one-fixed-cancellation-payoff-per-player)
 uses a fixed cancellation deduction from every player, rather than only the
@@ -193,9 +201,10 @@ for the native application:
    The event-wide sole-packet clause does not protect the honest two-packet
    resolution. `ReactiveAuthorizedService` filters builder inclusions and is
    not a proof for every builder satisfying the intended contract.
-   State the ideal causal-readiness evidence requirement explicitly. A
-   sender-written phase key cannot replace the current emitter's provenance;
-   premature authentic openings otherwise evade the proposed content audit.
+   Reuse minted-token provenance for causal authorization. Invalid phase
+   evidence is forbidden by the public audit independently of event completion.
+   A concrete backend must refine this ideal capability; sender-written phase
+   keys do not satisfy the existing model's evidence requirement.
 3. Derive source observation/private recall using the source-to-graph decoder
    and disclosure normalization. The existing bidirectional graph binding invariant is
    preserved by `SourceSession.bindingInvariant`; combined with packet
@@ -227,9 +236,12 @@ for the native application:
    The [bounded witness reporter](se-schedule-generalization.md#a-bounded-reporter-needs-at-most-two-source-envelopes)
    chooses one source owner and reports at most two actual known envelopes.
    Independent pending observation at rate `p` and conditional accepted delivery
-   at rate `r` give coverage `p^2 * r / K` for `K` source players. Recover the
-   actual accepted report body from its receipt and public ledger; do not read
-   the entire pending pool or resample terminal evidence.
+   at rate `r` give coverage `p^2 * r / K` for `K` source players.
+   `SourceSession.reportedEvidence` recovers accepted watcher bodies from the
+   public ledger and actual receipts, and `SourceSession.history_reportedEvidence`
+   proves agreement with the contract record. Connect actual observation,
+   owner selection and accepted delivery to its charge event; do not read the
+   entire pending pool or resample terminal evidence.
 5. Prove the compiler-specific source/traffic fiber relation and one
    information-local timing selection. The
    [source-independent timing argument](se-schedule-generalization.md#timing-selection-does-not-need-the-source-equilibrium)

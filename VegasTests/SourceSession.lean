@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.SourceSessionPolicy
+import Vegas.Pending.SourceSessionAudit
 import Vegas.Examples.LateResolutionService
 import Vegas.Source.DisclosureAliases
 
@@ -524,6 +525,79 @@ private def reportPlayerReport : app.Action :=
 
 private def reportedPlayerReport : app.Execution :=
   (cancelledPlayerReport.respond app watcher reportPlayerReport).includePending app (watcher, 0)
+
+/-- A source-player report in the ledger is misconduct evidence, but does
+not itself count as an accepted watcher report or collect any fine. -/
+example : Vegas.SourceSession.reportedEvidence playerReport.network.ledger
+    playerReport.receipts = [] := by
+  rfl
+
+example : Vegas.SourceSession.misconductCharge playerReport.application.publicView
+    (Vegas.SourceSession.reportedEvidence playerReport.network.ledger playerReport.receipts)
+      owner = false := by
+  rfl
+
+/-- An accepted watcher report collects that same signed offense even though
+cancellation leaves the addressed source resolution unfinished. -/
+example : Vegas.SourceSession.misconductCharge reportedPlayerReport.application.publicView
+    (Vegas.SourceSession.reportedEvidence reportedPlayerReport.network.ledger
+      reportedPlayerReport.receipts) owner = true := by
+  rfl
+
+/-- Reporting a canonical admission after cancellation does not make it an
+offense merely because its source event never completed. -/
+example : Vegas.SourceSession.misconductCharge reported.application.publicView
+    (Vegas.SourceSession.reportedEvidence reported.network.ledger reported.receipts)
+      owner = false := by
+  rfl
+
+/-- A later report attempt cannot replace the first report body. -/
+example : Vegas.SourceSession.reportedEvidence
+    ((reportedPlayerReport.respond app watcher ⟨some (.report [])⟩).includePending
+      app (watcher, 1)).network.ledger
+    ((reportedPlayerReport.respond app watcher ⟨some (.report [])⟩).includePending
+      app (watcher, 1)).receipts =
+      Vegas.SourceSession.reportedEvidence reportedPlayerReport.network.ledger
+        reportedPlayerReport.receipts := by
+  rfl
+
+private def reportedPremature : app.Execution :=
+  let cancelled := { premature with application := premature.application.cancel admissionPhase }
+  (cancelled.respond app watcher ⟨some (.report [(player, 0)])⟩).includePending app (watcher, 0)
+
+/-- Missing causal evidence remains punishable when its event never settles. -/
+example : Vegas.SourceSession.misconductCharge reportedPremature.application.publicView
+    (Vegas.SourceSession.reportedEvidence reportedPremature.network.ledger
+      reportedPremature.receipts) owner = true := by
+  rfl
+
+private def repeatedAdmissions : app.Execution :=
+  ((((start (.success true)).respond app player (admission .failure none)).respond
+    app player (admission .failure none)).includePending app (player, 0)).includePending
+      app (player, 1)
+
+private def reportedAdmissions : app.Execution :=
+  let cancelled := { repeatedAdmissions with
+    application := repeatedAdmissions.application.cancel openingPhase }
+  (cancelled.respond app watcher ⟨some (.report [(player, 0), (player, 1)])⟩).includePending
+    app (watcher, 0)
+
+/-- Two canonical, token-bearing admissions sent before either inclusion
+establish a pair offense, although each body's unary verdict permits it. -/
+example :
+    (Vegas.SourceSession.reportedEvidence reportedAdmissions.network.ledger
+      reportedAdmissions.receipts).all (fun message =>
+        reportedAdmissions.application.publicView.permitsPacket owner message.payload) = true ∧
+    Vegas.SourceSession.misconductCharge reportedAdmissions.application.publicView
+      (Vegas.SourceSession.reportedEvidence reportedAdmissions.network.ledger
+        reportedAdmissions.receipts) owner = true := by
+  exact ⟨rfl, rfl⟩
+
+/-- Multiple reported departures still collect the fine only once. -/
+example : Vegas.SourceSession.settlement (fun _ _ => 0) (fun _ => -3) (fun _ => 10)
+    runtime leaks reportedAdmissions player = -13 := by
+  change (-3 : ℝ) - 10 = -13
+  norm_num
 
 /-- A rejected source-player report remains a signed report envelope in watcher evidence. -/
 example :

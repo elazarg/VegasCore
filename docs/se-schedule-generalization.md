@@ -3255,9 +3255,13 @@ secret supplied by the scheduler. It does not prove that the existing
 ### Raw-response audit for the serial argument
 
 The concrete candidate below concerns the bounded ideal-capability interface
-of [SourceSession](../Vegas/Pending/SourceSession.lean). It specifies the
-misconduct predicate needed by the mathematical argument; the complete checker
-and source-information simulation are not implemented. Acceptance alone is
+of [SourceSession](../Vegas/Pending/SourceSession.lean).
+[SourceSessionAudit](../Vegas/Pending/SourceSessionAudit.lean) implements this
+public misconduct predicate and settlement from actual accepted watcher
+reports. `Vegas.SourceSession.history_reportedEvidence` proves the report IDs
+agree with the accepted ledger bodies at every initialized native history.
+Zero charge throughout prescribed play, first-offense persistence and native
+watcher coverage still require proofs, as does source-information simulation. Acceptance alone is
 insufficient: the handler accepts some noncanonical binding handles, and a
 rejected packet can still communicate through the pending network.
 This audit assumes the stage-A sequentialized graph, with at most one ready
@@ -3292,9 +3296,9 @@ the certificate list is empty. Reuse
 `Vegas.EventGraphRuntime.PublicView.bindingCountBefore`: before the first
 submission, the number of completed owned bindings determines that slot;
 the sealed completion list reconstructs it. In serial play, later bindings
-cannot complete before the current one. An unsuccessful current binding ends
-gameplay rather than creating a later mismatch. Both successful and failed
-source bindings consume a slot.
+cannot complete before the current one. Cancellation freezes the prefix when
+a binding never completes; an accepted source failure is a legal completion
+and consumes its slot, just like an accepted source success.
 
 The existing `Vegas.EventGraphRuntime.State.PreparedPrefix` and fresh-slot
 lemma describe the unsent boundary. They do not describe the entire pending
@@ -3378,9 +3382,11 @@ collection under the observation and report-delivery coverage hypotheses.
 Punishment is conditional on authentic watcher collection, rather than certain.
 
 `Vegas.SourceSession.emit` and `Vegas.SourceSession.handleGame` enforce the
-corresponding phase-token minting and acceptance gate. Its settled-record
-verdict and actual watcher-report collection still need integration, including
-verdicts when cancellation leaves addressed events incomplete. The arguments
+corresponding phase-token minting and acceptance gate.
+`Vegas.SourceSession.PublicView.permitsGamePacket_eq_false_of_invalid_token`
+forbids missing or invalid phase evidence even after cancellation leaves the
+addressed event incomplete. Native watcher coverage and incentive integration
+remain open. The arguments
 below concern an expanded interface allowing sender-written tokens; they do
 not exhibit a premature valid-token action in the current Lean runtime.
 Concrete authentication of these ideal capabilities is a backend refinement
@@ -3778,15 +3784,19 @@ watcher packet in the public ledger. Its body contains the actual reported
 envelopes; the application records their identifiers. Judging those envelopes
 against the sealed public source record supplies the misconduct indicator.
 It requires no pending-pool read and no new evidence sample at termination.
-The receipt and body consistency must follow from actual handler execution,
-not be postulated for an arbitrary state. A reporting timeout gives empty
-evidence. Its possibility is covered by the joint observation/delivery bound.
+`Vegas.SourceSession.reportedEvidence` extracts those bodies from accepting
+watcher entries paired with the runner's receipts.
+`Vegas.SourceSession.history_reportedEvidence` derives agreement of their IDs
+with the application record from actual handler execution at every initialized
+history. `Vegas.SourceSession.history_reportedEvidence_eq_nil` proves that
+an absent or expired report contributes no evidence. The possibility of
+reporting timeout is covered by the joint observation/delivery bound.
 
 This reporter has zero charge on lawful initialized play, catches every
 first preseal owner offense with the stated positive conditional probability,
 and continues to work after that owner's later raw responses. It supplies a
 bounded implementable reporting-policy specification; its actual native
-coverage and receipt-to-body theorems remain to be formalized.
+coverage and initialized zero-charge theorem remain to be formalized.
 
 The initialized-play audit theorem does not supply a clean comparator from
 every clear prefix. A false risk flag alone says nothing about an earlier

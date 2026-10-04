@@ -294,5 +294,6 @@ import Vegas.Pending.ReactiveBindingCopiedSubmission
 import Vegas.Pending.ReactiveResolutionMiss
 import Vegas.Pending.SourceSession
 import Vegas.Pending.SourceSessionPolicy
+import Vegas.Pending.SourceSessionAudit
 
 /-! Graph execution and strategic refinement over public pending messages. -/
