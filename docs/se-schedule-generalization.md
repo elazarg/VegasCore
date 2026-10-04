@@ -2266,6 +2266,16 @@ checkpoint marginals and subsequent actual tail supports are retained. After an
 exit, the tails need not remain related; this supplies no terminal payoff
 comparison. A shorter run may still end pending, so the lemma does not assume
 settlement before the chosen budget.
+[SourceServiceUnusablePendingSegment](../Vegas/Game/SourceServiceUnusablePendingSegment.lean)
+derives that segment's entire seed from an actual full-effective unusable
+response at a RAW owner prefix and the same clear legal repaired risk prefix.
+Typed-default selection supplies the real allocated anchor, both registered
+candidates, original typed failure and remembered exception. Running the real
+original remaining budget gives a terminal RAW trace; `CompletesPlay` excludes
+a still-ready pending event. Every coupled endpoint therefore retains an actual
+settlement or classified-response checkpoint and both subsequent tail supports.
+No future risk-policy support, shared postsettlement path or terminal utility
+comparison is assumed.
 
 [SourceServiceSiteKind](../Vegas/Game/SourceServiceSiteKind.lean) derives the
 actual local input and either a publicly completed cut or a ready event with

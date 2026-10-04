@@ -94,6 +94,7 @@ import Vegas.Game.SourceServiceUnclassifiedPending
 import Vegas.Game.SourceServiceUnclassifiedPendingCommands
 import Vegas.Game.SourceServicePendingPacketOrigin
 import Vegas.Game.SourceServicePendingSegment
+import Vegas.Game.SourceServiceUnusablePendingSegment
 import Vegas.Game.SourceServiceCompatiblePinValue
 import Vegas.Game.AsyncServiceFirstTurnBeliefResources
 import Vegas.Game.SourceServiceFirstBindingTraffic
