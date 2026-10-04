@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceResolutionComplement
+import Vegas.Game.SourceServiceRetainedSlots
 import Vegas.Pending.ReactiveBindingContinuation
 import Vegas.Pending.ReactiveBindingFrameStep
 import Vegas.Pending.ReactiveBindingForeignWindow
@@ -158,7 +159,9 @@ theorem sourceServiceRecorded_ready_resume_coupling
     (silent : ∀ entry ∈ later, entry.action.transmission = none)
     (players : Player → (application setup leaks).Policy)
     (reference : List (application setup leaks).PlayerEntry)
-    (started : reference.length ≤ (repaired.recall who).length) :
+    (started : reference.length ≤ (repaired.recall who).length)
+    (rightAtTurn : OwnSubmissionsAtTurn setup leaks repaired who)
+    (rightSlots : CanonicalSlotsUsed setup leaks repaired who) :
     let app := application setup leaks
     let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
       (bounds.riskMenu (runtime setup) leaks bound) who reference (players who)
@@ -175,6 +178,8 @@ theorem sourceServiceRecorded_ready_resume_coupling
         (next.2.2.shadow = memory.shadow ∧
           next.2.2.Frame (runtime setup) leaks who next.1 next.2.1 ∧
           next.1.application.config = original.application.config ∧
+          OwnSubmissionsAtTurn setup leaks next.2.1 who ∧
+          CanonicalSlotsUsed setup leaks next.2.1 who ∧
           ∃ laterNext, next.1.recall who = earlier ++ anchor :: laterNext ∧
             ∀ entry ∈ laterNext, entry.action.transmission = none) := by
   classical
@@ -186,7 +191,7 @@ theorem sourceServiceRecorded_ready_resume_coupling
       refine ⟨PMF.pure (original, repaired, memory), PMF.pure_map .., PMF.pure_map .., ?_⟩
       intro next supported
       cases (PMF.mem_support_pure_iff _ _).mp supported
-      exact Or.inr ⟨rfl, frame, rfl, later, split, silent⟩
+      exact Or.inr ⟨rfl, frame, rfl, rightAtTurn, rightSlots, later, split, silent⟩
   | some actor =>
       by_cases own : actor = who
       · subst actor
@@ -201,11 +206,19 @@ theorem sourceServiceRecorded_ready_resume_coupling
         intro next chosen
         rcases supported next chosen with charged | good
         · exact Or.inl ⟨rfl, charged⟩
-        · obtain ⟨leftSilent, _rightSilent, unchanged, related⟩ := good
+        · obtain ⟨leftSilent, rightSilent, unchanged, related⟩ := good
           right
-          refine ⟨unchanged, related, ?_, ?_⟩
+          refine ⟨unchanged, related, ?_, ?_, ?_, ?_⟩
           · rw [leftSilent]
             exact (runtime setup).reactive_respond_application leaks original who ⟨none⟩ |>.1
+          · rw [rightSilent]
+            apply ownSubmissionsAtTurn_respond_current repaired who ⟨none⟩ rightAtTurn
+            intro other named
+            cases named
+          · rw [rightSilent]
+            apply canonicalSlotsUsed_respond_counted repaired who ⟨none⟩ rightSlots
+            intro serial slot
+            cases slot
           · let entry : app.PlayerEntry := ⟨original.observe app who, ⟨none⟩, none⟩
             refine ⟨later ++ [entry], ?_, ?_⟩
             · rw [leftSilent]
@@ -235,10 +248,22 @@ theorem sourceServiceRecorded_ready_resume_coupling
             rw [PMF.support_map]
             exact ⟨pair, reached, rfl⟩
           obtain ⟨response, _chosen, actual⟩ := PMF.support_map .. ▸ leftChosen
+          have rightChosen : pair.2 ∈ (app.invoke players actor repaired).support := by
+            rw [← second, PMF.support_map]
+            exact ⟨pair, reached, rfl⟩
+          obtain ⟨rightResponse, _rightSelected, rightActual⟩ :=
+            PMF.support_map .. ▸ rightChosen
           right
-          refine ⟨rfl, supported pair reached, ?_, later, ?_, silent⟩
+          refine ⟨rfl, supported pair reached, ?_, ?_, ?_, later, ?_, silent⟩
           · rw [← actual]
             exact (runtime setup).reactive_respond_application leaks original actor response |>.1
+          · change OwnSubmissionsAtTurn setup leaks pair.2 who
+            rw [← rightActual]
+            unfold OwnSubmissionsAtTurn
+            rwa [app.respond_recall_other repaired actor who (Ne.symm own) rightResponse]
+          · change CanonicalSlotsUsed setup leaks pair.2 who
+            rw [← rightActual]
+            exact canonicalSlotsUsed_respond_other repaired (Ne.symm own) rightResponse rightSlots
           · rw [← actual, app.respond_recall_other original actor who (Ne.symm own) response]
             exact split
 

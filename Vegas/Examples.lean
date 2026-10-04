@@ -42,6 +42,10 @@ import Vegas.Examples.PendingMenusStrategies
 import Vegas.Examples.PrivateValueAuction
 import Vegas.Examples.PrivateResolutionForkSource
 import Vegas.Examples.PrivateResolutionForkSourceLikelihood
+import Vegas.Examples.PrivateResolutionForkLowFalseUtility
+import Vegas.Examples.PrivateResolutionForkSourceConsistency
+import Vegas.Examples.PrivateResolutionForkSourceEquilibrium
+import Vegas.Examples.PrivateResolutionForkWithholdingValue
 import Vegas.Examples.ReactiveAssociationEvidence
 import Vegas.Examples.ReactiveAuthorization
 import Vegas.Examples.ReactiveDependencyService

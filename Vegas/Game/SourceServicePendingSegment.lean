@@ -262,6 +262,8 @@ private def pendingPhase
     next.2.2.shadow.values (.inr pending) = some
       (cast (congrArg EventField.Value outputEq.symm) PublicationResult.failure) ∧
     reference.length ≤ (next.2.1.recall who).length ∧
+    OwnSubmissionsAtTurn setup leaks next.2.1 who ∧
+    CanonicalSlotsUsed setup leaks next.2.1 who ∧
     ∃ later, next.1.recall who = earlier ++ anchor :: later ∧
       ∀ entry ∈ later, entry.action.transmission = none
 
@@ -276,6 +278,8 @@ private def pendingExit
   (next.2.2.Frame (runtime setup) leaks who next.1 next.2.1 ∧
     next.2.2.shadow.OwnBindings who ∧ next.2.2.shadow.CompletedAt next.1.application.config ∧
       pending ∈ next.1.application.config.cut.completed ∧
+      OwnSubmissionsAtTurn setup leaks next.2.1 who ∧
+      CanonicalSlotsUsed setup leaks next.2.1 who ∧
       ∃ later, next.1.recall who = earlier ++ anchor :: later ∧
         ∀ entry ∈ later, entry.action.transmission = none) ∨
     ∃ remaining original response,
@@ -329,7 +333,8 @@ private theorem pending_dispatch_coupling
   let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
     (bounds.riskMenu (runtime setup) leaks bound) who reference (players who)
   obtain ⟨frame, onlyBindings, past, ready, leftFixed, rightFixed, failed,
-    rememberedAction, rememberedValue, started, later, split, silent⟩ := phase
+    rememberedAction, rememberedValue, started, rightAtTurn, rightSlots, later, split,
+    silent⟩ := phase
   obtain ⟨environment, left, right, related⟩ := sourceService_pending_environment_coupling
     original repaired who memory frame trace onlyBindings pending past payload outputEq codeEq
       node ready id candidate leftFixed rightFixed failed rememberedAction rememberedValue
@@ -350,6 +355,10 @@ private theorem pending_dispatch_coupling
           pendingPhase who pending payload outputEq candidate anchor earlier reference next ∨
             pendingExit horizon scheduler players who pending anchor earlier next := by
     obtain ⟨currentFrame, currentPast, completeMemory⟩ := related pair member
+    have currentAtTurn : OwnSubmissionsAtTurn setup leaks pair.2 who := by
+      unfold OwnSubmissionsAtTurn
+      rwa [app.environmentStep_recall repaired pair.2 command (rightSupport pair member)]
+    have currentSlots := canonicalSlotsUsed_environment (rightSupport pair member) who rightSlots
     by_cases completed : pending ∈ pair.1.application.config.cut.completed
     · have inactive : command.actor? app = none := by
         cases command with
@@ -366,7 +375,7 @@ private theorem pending_dispatch_coupling
       · intro next chosen
         cases (PMF.mem_support_pure_iff _ _).mp chosen
         refine Or.inr (Or.inl ⟨currentFrame, onlyBindings, completeMemory completed,
-          completed, later, ?_, silent⟩)
+          completed, currentAtTurn, currentSlots, later, ?_, silent⟩)
         rw [app.environmentStep_recall original pair.1 command (leftSupport pair member)]
         exact split
     · have retained := ((runtime setup).reactiveCompletedInvariant leaks
@@ -385,7 +394,8 @@ private theorem pending_dispatch_coupling
       obtain ⟨resume, first, second, supported⟩ :=
         sourceServiceRecorded_ready_resume_coupling bounds bound pair.1 pair.2 who memory
           currentFrame (command.actor? app) currentTrace pending currentReady anchor earlier later
-            currentSplit named silent players reference currentStarted
+            currentSplit named silent players reference currentStarted currentAtTurn
+              currentSlots
       refine ⟨resume, first, second, ?_⟩
       intro next chosen
       rcases supported next chosen with charged | good
@@ -394,7 +404,8 @@ private theorem pending_dispatch_coupling
         right
         refine ⟨remaining, pair.1, response, ?_, picked, actual, classified⟩
         exact ⟨by simpa only [actor] using currentTrace⟩
-      · obtain ⟨unchanged, afterFrame, configEq, laterNext, afterSplit, afterSilent⟩ := good
+      · obtain ⟨unchanged, afterFrame, configEq, afterAtTurn, afterSlots, laterNext,
+          afterSplit, afterSilent⟩ := good
         have leftResumed : next.1 ∈ (app.resume players (command.actor? app) pair.1).support := by
           rw [← first, PMF.support_map]
           exact ⟨next, chosen, rfl⟩
@@ -413,8 +424,8 @@ private theorem pending_dispatch_coupling
         have fullLeftLookup := afterLeftLookup.trans leftLookup
         have fullRightLookup := afterRight.1.trans rightLookup
         left
-        refine ⟨afterFrame, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, laterNext, afterSplit,
-          afterSilent⟩
+        refine ⟨afterFrame, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, afterAtTurn,
+          afterSlots, laterNext, afterSplit, afterSilent⟩
         · rw [unchanged]; exact onlyBindings
         · rw [unchanged, configEq]; exact currentPast
         · rwa [configEq]
@@ -550,6 +561,8 @@ theorem sourceService_pending_stopped_coupling
     (players : Player → (application setup leaks).Policy)
     (reference : List (application setup leaks).PlayerEntry)
     (started : reference.length ≤ (repaired.recall who).length)
+    (rightAtTurn : OwnSubmissionsAtTurn setup leaks repaired who)
+    (rightSlots : CanonicalSlotsUsed setup leaks repaired who)
     (count : Nat) (bounded : count ≤ remaining) :
     let app := application setup leaks
     let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
@@ -559,6 +572,8 @@ theorem sourceService_pending_stopped_coupling
       (next.2.2.Frame (runtime setup) leaks who next.1 next.2.1 ∧
         next.2.2.shadow.OwnBindings who ∧ next.2.2.shadow.CompletedAt next.1.application.config ∧
           pending ∈ next.1.application.config.cut.completed ∧
+          OwnSubmissionsAtTurn setup leaks next.2.1 who ∧
+          CanonicalSlotsUsed setup leaks next.2.1 who ∧
           ∃ laterNext, next.1.recall who = earlier ++ anchor :: laterNext ∧
             ∀ entry ∈ laterNext, entry.action.transmission = none) ∨
         ∃ budget before response,
@@ -577,6 +592,8 @@ theorem sourceService_pending_stopped_coupling
           next.2.2.shadow.OwnBindings who ∧
           next.2.2.shadow.CompletedExcept next.1.application.config pending ∧
           next.1.application.config.cut.Ready pending ∧
+          OwnSubmissionsAtTurn setup leaks next.2.1 who ∧
+          CanonicalSlotsUsed setup leaks next.2.1 who ∧
           ∃ laterNext, next.1.recall who = earlier ++ anchor :: laterNext ∧
             ∀ entry ∈ laterNext, entry.action.transmission = none) ∨
         ∃ stopped ≤ count,
@@ -606,7 +623,8 @@ theorem sourceService_pending_stopped_coupling
           checkpoint.2.1 checkpoint.2.2).support
   have seed : good (original, repaired, memory) ∨ closed 0 (original, repaired, memory) :=
     Or.inl ⟨frame, onlyBindings, past, ready, leftFixed, rightFixed, failed,
-      rememberedAction, rememberedValue, started, later, split, silent⟩
+      rememberedAction, rememberedValue, started, rightAtTurn, rightSlots, later, split,
+      silent⟩
   obtain ⟨coupling, left, right, related⟩ := strategy.runJoint_coupling who players scheduler
     original repaired memory (fun index next => good next ∨ closed index next) seed count (by
       intro index within next leftReached _rightReached relation
@@ -678,8 +696,10 @@ theorem sourceService_pending_stopped_coupling
   intro next member
   rcases related next member with ongoing | closed
   · obtain ⟨afterFrame, afterOwn, afterPast, afterReady, _leftFixed, _rightFixed, _failed,
-      _action, _value, _started, laterNext, afterSplit, afterSilent⟩ := ongoing
-    exact Or.inl ⟨afterFrame, afterOwn, afterPast, afterReady, laterNext, afterSplit, afterSilent⟩
+      _action, _value, _started, afterAtTurn, afterSlots, laterNext, afterSplit,
+      afterSilent⟩ := ongoing
+    exact Or.inl ⟨afterFrame, afterOwn, afterPast, afterReady, afterAtTurn, afterSlots,
+      laterNext, afterSplit, afterSilent⟩
   · exact Or.inr closed
 
 end Vegas

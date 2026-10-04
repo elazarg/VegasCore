@@ -78,7 +78,9 @@ theorem sourceServiceMissing_unusable_pending_stopped_coupling
         (next.2.2.Frame (runtime setup) leaks who next.1 next.2.1 ∧
           next.2.2.shadow.OwnBindings who ∧ next.2.2.shadow.CompletedAt
             next.1.application.config ∧ event ∈ next.1.application.config.cut.completed ∧
-          OwnerCommitmentsInertOrMatching who next.1 next.2.1) ∨
+          OwnerCommitmentsInertOrMatching who next.1 next.2.1 ∧
+          OwnSubmissionsAtTurn setup leaks next.2.1 who ∧
+          CanonicalSlotsUsed setup leaks next.2.1 who) ∨
           ∃ budget before chosen,
             Nonempty ((app.protocol (initialLaw setup) horizon scheduler).Trace
               (some ⟨budget, some who, before⟩)) ∧
@@ -233,11 +235,24 @@ theorem sourceServiceMissing_unusable_pending_stopped_coupling
         (memory.repairResponse (runtime setup) leaks who view response).1 :=
       congrArg Prod.fst chosen.1
     exact same.symm ▸ chosen.2.1
+  have retained : selected.1 ∈ bounds.canonicalActions (runtime setup) leaks who
+      (repaired.recall who) (repaired.observe app who) := by
+    have member : selected.1 ∈ bounds.riskActions (runtime setup) leaks bound who
+        (repaired.recall who) (repaired.observe app who) := by
+      have same : selected.1 =
+          (memory.repairResponse (runtime setup) leaks who view response).1 :=
+        congrArg Prod.fst chosen.1
+      exact same.symm ▸ chosen.2.1
+    rwa [bounds.riskActions_of_clear (runtime setup) leaks bound who _ _ clear] at member
+  have afterAtTurn := retainedOwnSubmissionsAtTurn_respond bounds repaired who selected.1
+    retained rightAtTurn
+  have afterSlots := retainedCanonicalSlots_respond bounds rightTrace retained rightAtTurn
+    rightSlots
   have coupled := sourceService_pending_stopped_coupling bounds bound left right who remembered
     afterFrame afterTrace afterOwn event afterPast payload outputEq codeEq node afterReady id
       candidate leftFixed rightFixed failed rememberedAction rememberedValue anchor
         (original.recall who) [] split named earlierUnrecorded (by simp) rfl players
-          (repaired.recall who) started leftRemaining (Nat.le_refl _)
+          (repaired.recall who) started afterAtTurn afterSlots leftRemaining (Nat.le_refl _)
   dsimp only
   obtain ⟨coupling, first, second, related⟩ := coupled
   refine ⟨event, named, coupling, first, second, ?_⟩
@@ -273,7 +288,9 @@ theorem sourceServiceMissing_unusable_pending_stopped_coupling
           checkpoint.2.2.shadow.OwnBindings who ∧ checkpoint.2.2.shadow.CompletedAt
             checkpoint.1.application.config ∧
           event ∈ checkpoint.1.application.config.cut.completed ∧
-          OwnerCommitmentsInertOrMatching who checkpoint.1 checkpoint.2.1) ∨
+          OwnerCommitmentsInertOrMatching who checkpoint.1 checkpoint.2.1 ∧
+          OwnSubmissionsAtTurn setup leaks checkpoint.2.1 who ∧
+          CanonicalSlotsUsed setup leaks checkpoint.2.1 who) ∨
         ∃ budget before chosen,
           Nonempty ((app.protocol (initialLaw setup) horizon scheduler).Trace
             (some ⟨budget, some who, before⟩)) ∧
@@ -283,8 +300,8 @@ theorem sourceServiceMissing_unusable_pending_stopped_coupling
             (before.observe app who) chosen ∨
               recordedServiceResponse setup leaks (before.recall who) chosen) := by
       rcases boundary with settled | classified
-      · obtain ⟨settledFrame, settledOwn, settledPast, completed, laterNext, recallEq,
-          laterSilent⟩ := settled
+      · obtain ⟨settledFrame, settledOwn, settledPast, completed, settledAtTurn, settledSlots,
+          laterNext, recallEq, laterSilent⟩ := settled
         obtain ⟨actualTrace⟩ := checkpointLeft
         have originalAtTurn := sourceServiceFrame_ownSubmissionsAtTurn
           ⟨leftRemaining, some who, original⟩ ⟨rightRemaining, some who, repaired⟩ who memory frame
@@ -296,7 +313,8 @@ theorem sourceServiceMissing_unusable_pending_stopped_coupling
           checkpoint.2.1 who leftTrace actualTrace originalAtTurn event originalTurn
             earlierUnrecorded response players stopped leftReached anchor named laterNext recallEq
               laterSilent completed
-        exact Or.inl ⟨settledFrame, settledOwn, settledPast, completed, ledger⟩
+        exact Or.inl ⟨settledFrame, settledOwn, settledPast, completed, ledger, settledAtTurn,
+          settledSlots⟩
       · exact Or.inr classified
     exact ⟨stopped, bounded, checkpoint, leftReached, rightReached, boundaryWithLedger,
       checkpointLeft, checkpointRight.1, checkpointRight.2, leftTail, rightTail⟩

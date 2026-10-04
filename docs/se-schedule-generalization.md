@@ -1748,9 +1748,22 @@ actual initialized decision law. The separate
 derives Bob's actual source Bayes type likelihood from that execution: the
 numerator is the HIGH prior times Alice's HIGH disclosure atom, and the
 denominator adds the corresponding LOW mass. No posterior equation is supplied
-as a premise. Source equilibrium, a native service contract and the full native
-information-fiber likelihoods remain separate obligations; these source facts
-do not establish a timing counterexample.
+as a premise.
+[PrivateResolutionForkLowFalseUtility](../Vegas/Examples/PrivateResolutionForkLowFalseUtility.lean)
+defines a separate public utility: Alice's HIGH type strictly prefers TRUE;
+her LOW type receives one half from TRUE followed by Bob's LOW guess, and zero
+from FALSE followed by his HIGH guess. Bob receives one for guessing her type
+correctly.
+[PrivateResolutionForkSourceConsistency](../Vegas/Examples/PrivateResolutionForkSourceConsistency.lean)
+derives consistent beliefs from actual fully mixed source executions: Alice's
+FALSE probabilities are `t` at HIGH and `t^2` at LOW, with `t` tending to zero.
+Bob's HIGH posterior tends to one after FALSE and one quarter after TRUE.
+[PrivateResolutionForkSourceEquilibrium](../Vegas/Examples/PrivateResolutionForkSourceEquilibrium.lean)
+proves the resulting source sequential equilibrium against every whole source
+policy: Alice chooses TRUE at both types; Bob guesses LOW after TRUE and HIGH
+after FALSE. A native service contract and the full native information-fiber
+likelihoods remain separate obligations. These source results do not establish
+a timing counterexample.
 [ReactiveWithholdingReceipts](../Vegas/Pending/ReactiveWithholdingReceipts.lean)
 proves that an accepting receipt for an actual withholding envelope fixes its
 publication output to failure on every later initialized raw history.
@@ -1759,10 +1772,23 @@ uses that receipt invariant and actual final-record collection to bound the
 whole future audited guessing score after withholding by the LOW-correct
 indicator. An accepted packet fixes LOW; an unaccepted packet is forbidden at
 completion, and observation-times-delivery collection with a deposit covering
-the score range makes its expected net score nonpositive. The bound uses the existing
-terminal evaluator, arbitrary later player policies, actual traffic persistence
-and the same fixed initial type. It does not identify that score with a concrete
-source utility or supply an incoming type posterior.
+the score range makes its expected net score nonpositive. The bound uses the
+existing terminal evaluator, arbitrary later player policies, actual traffic
+persistence and the same fixed initial type.
+[SourceServiceWithholdingCommittedBound](../Vegas/Game/SourceServiceWithholdingCommittedBound.lean)
+derives the bound after committing an actual available withholding choice,
+using that response's emitted traffic record and every later native policy.
+[PrivateResolutionForkWithholdingValue](../Vegas/Examples/PrivateResolutionForkWithholdingValue.lean)
+identifies Bob's actual completed source utility with this public guessing
+score against the same immutable initial type, and derives the whole native
+continuation bound for that utility.
+[AsyncServiceWithholdingBayesBound](../Vegas/Game/AsyncServiceWithholdingBayesBound.lean)
+averages the committed-choice bound under the actual native Bayes belief. Its
+upper bound is the actual LOW-type counterfactual mass divided by total native
+counterfactual mass, retaining foreign waiting and free-menu likelihoods. No
+source posterior or illustrative scheduler-branch probability is substituted.
+The incoming native type likelihood and the protected HIGH comparison remain
+separate obligations.
 [OpaqueBindingForkSourcePosterior](../Vegas/Examples/OpaqueBindingForkSourcePosterior.lean)
 proves that the actual conditional typed configuration is the clean witness's
 configuration. Both physical decoders succeed, and the common original-memory
@@ -2258,6 +2284,8 @@ frame, owned-binding memory, completed memory and unconditional owner slot
 resources, including at an expanded risk input. The actual RAW trace, packet
 classifier complement and counted slots derive its noncommitment or fresh
 registration shape; the selected emitted envelope is equal in both executions.
+Noncommitment and fresh-registration provenance also preserve the actual owner
+commitment ledger on this copied branch.
 [SourceServiceUnclassifiedSlots](../Vegas/Game/SourceServiceUnclassifiedSlots.lean)
 derives this first bare counted-registration shape and its slot preservation
 without deadline protection or a clear risk flag. Foreign responses need not
@@ -2285,15 +2313,27 @@ successor RAW traces are derived from that same draw. Every unclassified branch
 also preserves unconditional owner submission and slot resources. At a clear
 input the actual selection is copy or typed default; at an expanded risk input
 physical transport admits the same effective response and derives its actual
-copy. No clear-risk premise is imposed on this invocation. Foreign policies
-are arbitrary physical policies.
+copy. The copied branch retains its completed commitment ledger; the pending
+default branch exposes its actual clear before-input. No clear-risk premise is
+imposed on this invocation. Foreign policies are arbitrary physical policies.
 [SourceServiceCompletedCommands](../Vegas/Game/SourceServiceCompletedCommands.lean)
 couples the next actual scheduler command using completed memory and the owner
 commitment ledger. Both marginals have actual RAW successor controls and retain
 completed memory, the ledger and unconditional owner slots. The frame persists
 or an actual inclusion names a signed owner-content breach. A clock opening an
-unsafe opportunity is not classified as a charge. Whole-phase composition and
-whole-policy utility comparison remain open.
+unsafe opportunity is not classified as a charge.
+[SourceServiceCompletedResume](../Vegas/Game/SourceServiceCompletedResume.lean)
+composes actual owner, inactive and arbitrary foreign resumption with this
+completed boundary. Its genuine pending alternative retains the sampled
+response, selected tuple, clear before-input and physical successor identities.
+[SourceServiceCompletedRound](../Vegas/Game/SourceServiceCompletedRound.lean)
+joins the real scheduler command, environment transition and resumption with
+the exact original and repaired round marginals. Copied branches preserve the
+completed ledger and unconditional owner slots; pending and classified exits
+retain their actual command and response witnesses. A signed-content inclusion
+exit retains independent actual resumption laws, without asserting a surviving
+repair frame. Repeated phase composition and whole-policy utility comparison
+remain open.
 [SourceServiceUnclassifiedPending](../Vegas/Game/SourceServiceUnclassifiedPending.lean)
 proves that, while an actually recorded event remains ready, every owner
 response outside the public-packet and duplicate classifiers is silence.
@@ -2335,9 +2375,12 @@ added, and this local law supplies no terminal utility comparison.
 couples every actual scheduler command and owner, foreign or inactive response
 through the real remaining RAW budget. While pending, the full frame, single
 unfinished override and actual anchored silent recall tail persist. The segment
-exits at actual settlement with completed memory and the actual anchored silent
-recall tail, or at a sampled classified
-owner response with its real active RAW trace and response transition. Both
+exits at actual settlement with completed memory, unconditional owner
+submission and slot resources, and the actual anchored silent recall tail, or
+at a sampled classified owner response with its real active RAW trace and
+response transition. The same pending induction derives these resources from
+actual owner silence, arbitrary foreign responses and environment transitions.
+Both
 checkpoint marginals and subsequent actual tail supports are retained. After an
 exit, the tails need not remain related; this supplies no terminal payoff
 comparison. A shorter run may still end pending, so the lemma does not assume
@@ -2352,8 +2395,10 @@ original remaining budget gives a terminal RAW trace; `CompletesPlay` excludes
 a still-ready pending event. Every coupled endpoint therefore retains an actual
 settlement or classified-response checkpoint and both subsequent tail supports.
 The actual checkpoint supports and accounted remaining budgets derive RAW
-traces on both sides and the repaired owner's conditional submission and slot
-resources.
+traces on both sides. At settlement, the same pending induction retains the
+repaired owner's submission and slot resources without a persistent-clear
+condition. Subsequent arbitrary tails retain only the separate conditional
+resource conclusion.
 [SourceServicePendingCommitmentLedger](../Vegas/Game/SourceServicePendingCommitmentLedger.lean)
 derives the settled checkpoint's owner commitment ledger from that actual tail.
 Before the unrecorded current opportunity, every earlier at-turn submission
@@ -2361,9 +2406,9 @@ addresses an already completed event; the original run preserves those
 completions, and settlement completes the anchored event. Initialized packet
 provenance therefore makes every owner commitment inert by completion. No
 separate ledger or equality of private candidate meanings is assumed.
-The checkpoint's remaining slot resource is conditional on clear persistent
-risk; extending that resource through the same pending induction and composing
-the next completed phase remain separate obligations.
+The settled checkpoint's ledger and unconditional slots supply the completed
+round's local resource premises. Composing repeated completed and pending
+phases under one fixed implementation reference remains a separate obligation.
 No future risk-policy support, shared postsettlement path or terminal utility
 comparison is assumed.
 

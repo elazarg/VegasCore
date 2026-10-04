@@ -250,7 +250,7 @@ theorem sourceServiceFirstTurn_terminal_joint_readout {Parameter : Type}
         _ = _ := by rw [inputLaw, PMF.pure_map]; rfl
 
 omit [Fintype Player] in
-private theorem initialReadout_reaches
+theorem sourceInitialReadout_reaches
     (initial : PMF (application setup leaks).State) (horizon : Nat)
     (scheduler : (application setup leaks).Scheduler)
     {first last : ((application setup leaks).protocol initial horizon scheduler).History}
@@ -308,7 +308,8 @@ theorem sourceServicePastRestoredPrefixReadout_reaches {Parameter : Type}
   have same := sourceServicePastPrefix_reaches setup leaks initial horizon scheduler rank path
     before after firstEq lastEq (fun event preceding => (ordered.2 event).mpr preceding)
   unfold sourceServicePastRestoredPrefixReadout sourceServiceRestoredPrefixReadout
-  rw [initialReadout_reaches initial horizon scheduler path before after firstEq lastEq, same.2,
+  rw [sourceInitialReadout_reaches initial horizon scheduler path before after firstEq lastEq,
+    same.2,
     sourceServicePastPrefix?_eq_at_prefix setup rank _ ordered]
   rfl
 

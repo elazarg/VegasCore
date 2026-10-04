@@ -94,6 +94,8 @@ import Vegas.Game.SourceServiceUnclassifiedSlots
 import Vegas.Game.SourceServiceCompletedResponse
 import Vegas.Game.SourceServiceCompletedInvocation
 import Vegas.Game.SourceServiceCompletedCommands
+import Vegas.Game.SourceServiceCompletedResume
+import Vegas.Game.SourceServiceCompletedRound
 import Vegas.Game.SourceServiceUnclassifiedPending
 import Vegas.Game.SourceServiceUnclassifiedPendingCommands
 import Vegas.Game.SourceServicePendingPacketOrigin
@@ -101,6 +103,8 @@ import Vegas.Game.SourceServicePendingCommitmentLedger
 import Vegas.Game.SourceServicePendingSegment
 import Vegas.Game.SourceServiceUnusablePendingSegment
 import Vegas.Game.SourceServiceWithholdingGuessBound
+import Vegas.Game.SourceServiceWithholdingCommittedBound
+import Vegas.Game.AsyncServiceWithholdingBayesBound
 import Vegas.Game.SourceServiceCompatiblePinValue
 import Vegas.Game.AsyncServiceFirstTurnBeliefResources
 import Vegas.Game.SourceServiceFirstBindingTraffic

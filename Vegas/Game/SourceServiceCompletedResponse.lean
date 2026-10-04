@@ -3,6 +3,7 @@
 import Vegas.Game.SourceServiceUnclassifiedSelection
 import Vegas.Game.SourceServiceUnclassifiedSlots
 import Vegas.Pending.ReactiveBindingCopiedWindow
+import Vegas.Pending.ReactiveBindingCommitmentProvenance
 
 /-! # Actual copied responses at a completed repair boundary
 
@@ -36,6 +37,7 @@ theorem sourceServiceUnclassified_copied_response_frame
     (frame : memory.Frame (runtime setup) leaks who original repaired)
     (onlyBindings : memory.shadow.OwnBindings who)
     (past : memory.shadow.CompletedAt original.application.config)
+    (ledger : OwnerCommitmentsInertOrMatching who original repaired)
     (leftTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨leftRemaining, some who, original⟩))
     (rightTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
@@ -62,6 +64,8 @@ theorem sourceServiceUnclassified_copied_response_frame
         (repaired.respond app who selected.1) ∧
       remembered.shadow.OwnBindings who ∧
       remembered.shadow.CompletedAt (original.respond app who response).application.config ∧
+      OwnerCommitmentsInertOrMatching who (original.respond app who response)
+        (repaired.respond app who selected.1) ∧
       OwnSubmissionsAtTurn setup leaks (repaired.respond app who selected.1) who ∧
       CanonicalSlotsUsed setup leaks (repaired.respond app who selected.1) who := by
   classical
@@ -71,6 +75,7 @@ theorem sourceServiceUnclassified_copied_response_frame
   let updated : BindingMemory (runtime setup) leaks :=
     ⟨changed.2, memory.responses ++
       [(memory.shadow.inputView (runtime setup) leaks view, response)]⟩
+  have leftFacts := legalFacts setup leaks horizon scheduler _ leftTrace
   have physical := sourceServiceUnclassified_response_transport bounds original repaired
     who memory frame leftTrace rightTrace response effective notPacket notRecorded
   have rightNotPacket : ¬ auditableServiceResponse setup leaks who (repaired.recall who)
@@ -118,7 +123,9 @@ theorem sourceServiceUnclassified_copied_response_frame
     rightTrace rightAtTurn rightSlots response physical.1 rightNotPacket rightNotRecorded
   have resources : updated.Frame (runtime setup) leaks who (original.respond app who response)
       (repaired.respond app who changed.1) ∧ updated.shadow.OwnBindings who ∧
-      updated.shadow.CompletedAt (original.respond app who response).application.config := by
+      updated.shadow.CompletedAt (original.respond app who response).application.config ∧
+      OwnerCommitmentsInertOrMatching who (original.respond app who response)
+        (repaired.respond app who changed.1) := by
     rcases shape with
       noncommitment | fresh
     · have changedEq := memory.copyResponse_noncommitment (runtime setup) leaks who view response
@@ -132,7 +139,7 @@ theorem sourceServiceUnclassified_copied_response_frame
         | some material =>
             exact reactiveApplication_submit_noncommitment (runtime setup) leaks
               execution.application who material (noncommitment material rfl)
-      refine ⟨?_, ?_, ?_⟩
+      refine ⟨?_, ?_, ?_, ?_⟩
       · rw [same]
         rcases response with ⟨transmission⟩
         cases transmission with
@@ -152,6 +159,9 @@ theorem sourceServiceUnclassified_copied_response_frame
         exact onlyBindings
       · rw [shadow, inert original]
         exact past
+      · rw [same]
+        exact ledger.respond_noncommitment leftFacts.binding who response response
+          (fun _ => noncommitment)
     · obtain ⟨event, serial, opening, fresh, actual⟩ := fresh
       rw [actual]
       have rightFresh := (frame.slots (.prepared serial)).mp fresh
@@ -162,11 +172,13 @@ theorem sourceServiceUnclassified_copied_response_frame
       have changedEq := memory.copyResponse_fresh (runtime setup) leaks who view event
         (.prepared serial) opening .none ownFresh rightFresh
       have resources := frame.copied_binding_submission onlyBindings past event serial opening
-      refine ⟨?_, ?_, ?_⟩
+      refine ⟨?_, ?_, ?_, ?_⟩
       · simpa only [updated, changed, actual, changedEq] using resources.1
       · simpa only [updated, changed, actual, changedEq] using resources.2.1
       · simpa only [updated, changed, actual, changedEq] using resources.2.2
-  refine ⟨same, resources.1, resources.2.1, resources.2.2, ?_⟩
+      · simpa only [changed, actual, changedEq] using
+          ledger.respond_fresh_binding leftFacts.binding frame event serial opening fresh
+  refine ⟨same, resources.1, resources.2.1, resources.2.2.1, resources.2.2.2, ?_⟩
   simpa only [same] using actualSlots
 
 end Vegas

@@ -40,6 +40,7 @@ theorem sourceService_completed_invoke_coupling
     (frame : memory.Frame (runtime setup) leaks who original repaired)
     (onlyBindings : memory.shadow.OwnBindings who)
     (past : memory.shadow.CompletedAt original.application.config)
+    (ledger : OwnerCommitmentsInertOrMatching who original repaired)
     (leftTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨leftRemaining, some who, original⟩))
     (rightTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
@@ -85,8 +86,10 @@ theorem sourceService_completed_invoke_coupling
               next.2.2.shadow.OwnBindings who ∧
               OwnSubmissionsAtTurn setup leaks next.2.1 who ∧
               CanonicalSlotsUsed setup leaks next.2.1 who ∧
-              (next.2.2.shadow.CompletedAt next.1.application.config ∨
+              ((next.2.2.shadow.CompletedAt next.1.application.config ∧
+                OwnerCommitmentsInertOrMatching who next.1 next.2.1) ∨
                 ∃ event,
+                  (runtime setup).serviceRisk leaks bound who input.1 input.2 = false ∧
                   unusableServiceBindingResponse setup leaks who input.1 input.2 response ∧
                   (runtime setup).submittedEvent? leaks response = some event ∧
                   next.2.2.shadow.CompletedExcept next.1.application.config event))) := by
@@ -177,11 +180,11 @@ theorem sourceService_completed_invoke_coupling
             available packet recorded
         rcases split with copied | defaulted
         · have resources := sourceServiceUnclassified_copied_response_frame bounds bound original
-            repaired who memory frame onlyBindings past leftTrace rightTrace rightAtTurn
+            repaired who memory frame onlyBindings past ledger leftTrace rightTrace rightAtTurn
               rightSlots response available
               packet recorded copied.1
           exact Or.inr ⟨resources.2.1, resources.2.2.1, targetSlots.1, targetSlots.2,
-            Or.inl resources.2.2.2.1⟩
+            Or.inl ⟨resources.2.2.2.1, resources.2.2.2.2.1⟩⟩
         · have resources := sourceServiceMissing_unusable_default_frame bounds bound values original
             repaired who memory frame onlyBindings past leftTrace rightTrace rightAtTurn rightSlots
               clear response available defaulted.1
@@ -196,7 +199,7 @@ theorem sourceService_completed_invoke_coupling
             original repaired who memory frame past rightTrace rightAtTurn rightSlots clear response
               available unusable event named
           exact Or.inr ⟨resources.1, resources.2.1, targetSlots.1, targetSlots.2,
-            Or.inr ⟨event, unusable, named, pending⟩⟩
+            Or.inr ⟨event, clear, unusable, named, pending⟩⟩
       · have expanded : (runtime setup).serviceRisk leaks bound who (repaired.recall who)
             (repaired.observe app who) = true := Bool.eq_true_of_not_eq_false clear
         have physical := sourceServiceUnclassified_response_transport bounds original repaired
@@ -206,9 +209,10 @@ theorem sourceService_completed_invoke_coupling
           rw [bounds.riskActions_of_risk (runtime setup) leaks bound who _ _ expanded]
           exact physical.1
         have resources := sourceServiceUnclassified_copied_response_frame bounds bound original
-          repaired who memory frame onlyBindings past leftTrace rightTrace rightAtTurn rightSlots
+          repaired who memory frame onlyBindings past ledger leftTrace rightTrace
+            rightAtTurn rightSlots
             response available packet recorded member
-        exact Or.inr ⟨resources.2.1, resources.2.2.1, resources.2.2.2.2.1,
-          resources.2.2.2.2.2, Or.inl resources.2.2.2.1⟩
+        exact Or.inr ⟨resources.2.1, resources.2.2.1, resources.2.2.2.2.2.1,
+          resources.2.2.2.2.2.2, Or.inl ⟨resources.2.2.2.1, resources.2.2.2.2.1⟩⟩
 
 end Vegas
