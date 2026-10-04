@@ -2236,7 +2236,18 @@ clear. The environment and response kernels in
 conditional resources one real transition at a time. Unclassified selection,
 typed-default registration and pending-segment seeding consume only the actual
 repaired RAW trace and current focal resources. They do not require a globally
-retained repaired history or future risk-policy coverage.
+retained repaired history or future risk-policy coverage. Its real round and
+joint-run induction derive the same RAW trace and conditional focal resources
+at every supported continuation endpoint.
+[SourceServiceCompletedInvocation](../Vegas/Game/SourceServiceCompletedInvocation.lean)
+samples the original full-effective native owner policy once and derives both
+its actual invocation and the retained implementation's actual resumption
+marginals. Each sampled response either supplies a real auditable or recorded
+exit, preserves the completed repair frame through a copied response, or
+supplies the typed-default frame with one named pending exception. Both
+successor RAW traces and the repaired owner's conditional slot resources are
+derived from that same draw. Foreign policies are arbitrary physical policies.
+Completed scheduler composition and whole-policy utility comparison remain open.
 [SourceServiceUnclassifiedPending](../Vegas/Game/SourceServiceUnclassifiedPending.lean)
 proves that, while an actually recorded event remains ready, every owner
 response outside the public-packet and duplicate classifiers is silence.
@@ -2293,6 +2304,10 @@ candidates, original typed failure and remembered exception. Running the real
 original remaining budget gives a terminal RAW trace; `CompletesPlay` excludes
 a still-ready pending event. Every coupled endpoint therefore retains an actual
 settlement or classified-response checkpoint and both subsequent tail supports.
+The actual checkpoint supports and accounted remaining budgets derive RAW
+traces on both sides and the repaired owner's conditional submission and slot
+resources. A clear settled checkpoint can therefore reuse the completed
+invocation's current resources without a global repaired risk history.
 No future risk-policy support, shared postsettlement path or terminal utility
 comparison is assumed.
 

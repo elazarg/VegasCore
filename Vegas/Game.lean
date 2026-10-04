@@ -91,6 +91,7 @@ import Vegas.Game.SourceServiceUnusableResponseFrame
 import Vegas.Game.SourceServiceUnclassifiedTransport
 import Vegas.Game.SourceServiceUnclassifiedSelection
 import Vegas.Game.SourceServiceCompletedResponse
+import Vegas.Game.SourceServiceCompletedInvocation
 import Vegas.Game.SourceServiceUnclassifiedPending
 import Vegas.Game.SourceServiceUnclassifiedPendingCommands
 import Vegas.Game.SourceServicePendingPacketOrigin

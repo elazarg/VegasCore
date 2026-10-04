@@ -3,6 +3,7 @@
 import Vegas.Game.SourceServicePendingSegment
 import Vegas.Pending.ReactiveUnusableBinding
 import Vegas.Pending.ReactiveAsyncContract
+import Vegas.Game.SourceServiceRetainedLocalSlots
 
 /-! # The actual unusable response seeds its pending segment
 
@@ -95,6 +96,14 @@ theorem sourceServiceMissing_unusable_pending_stopped_coupling
               checkpoint.2 ∈
                 (strategy.runJoint who players scheduler stopped right remembered).support ∧
               boundary checkpoint ∧
+              Nonempty ((app.protocol (initialLaw setup) horizon scheduler).Trace
+                (some ⟨leftRemaining - stopped, none, checkpoint.1⟩)) ∧
+              Nonempty ((app.protocol (initialLaw setup) horizon scheduler).Trace
+                (some ⟨leftRemaining - stopped, none, checkpoint.2.1⟩)) ∧
+              ((runtime setup).persistentServiceRisk leaks bound who (checkpoint.2.1.recall who)
+                  (checkpoint.2.1.observe app who) = false →
+                OwnSubmissionsAtTurn setup leaks checkpoint.2.1 who ∧
+                  CanonicalSlotsUsed setup leaks checkpoint.2.1 who) ∧
               next.1 ∈
                 (app.runRounds scheduler players (leftRemaining - stopped) checkpoint.1).support ∧
               next.2 ∈ (strategy.runJoint who players scheduler (leftRemaining - stopped)
@@ -203,6 +212,25 @@ theorem sourceServiceMissing_unusable_pending_stopped_coupling
     exact Nat.le_add_right _ _
   obtain ⟨afterTrace⟩ := app.raw_trace_respond (initialLaw setup) horizon scheduler leftRemaining
     original who response leftTrace
+  have leftAccounted := app.raw_trace_accounted (initialLaw setup) horizon scheduler leftTrace
+  have rightAccounted := app.raw_trace_accounted (initialLaw setup) horizon scheduler rightTrace
+  change original.environmentRecall.length + leftRemaining = horizon at leftAccounted
+  change repaired.environmentRecall.length + rightRemaining = horizon at rightAccounted
+  rw [← frame.service] at rightAccounted
+  have sameBudget : rightRemaining = leftRemaining := by omega
+  obtain ⟨rightAfterTrace⟩ := app.raw_trace_respond (initialLaw setup) horizon scheduler
+    rightRemaining repaired who selected.1 rightTrace
+  have rightAfterSlots : (runtime setup).persistentServiceRisk leaks bound who (right.recall who)
+        (right.observe app who) = false →
+      OwnSubmissionsAtTurn setup leaks right who ∧ CanonicalSlotsUsed setup leaks right who := by
+    intro persistent
+    apply riskCanonicalSlots_respond bounds bound repaired who who selected.1 rightTrace
+      (fun _ => ⟨rightAtTurn, rightSlots⟩) _ persistent
+    intro _
+    have same : selected.1 =
+        (memory.repairResponse (runtime setup) leaks who view response).1 :=
+      congrArg Prod.fst chosen.1
+    exact same.symm ▸ chosen.2.1
   have coupled := sourceService_pending_stopped_coupling bounds bound left right who remembered
     afterFrame afterTrace afterOwn event afterPast payload outputEq codeEq node afterReady id
       candidate leftFixed rightFixed failed rememberedAction rememberedValue anchor
@@ -227,6 +255,18 @@ theorem sourceServiceMissing_unusable_pending_stopped_coupling
     apply pending.2.2.2.1.1
     rw [terminal]
     exact Finset.mem_univ _
-  · exact exited
+  · obtain ⟨stopped, bounded, checkpoint, leftReached, rightReached, boundary, leftTail,
+      rightTail⟩ := exited
+    have accounted : leftRemaining - stopped + stopped = leftRemaining :=
+      Nat.sub_add_cancel bounded
+    have checkpointLeft := app.raw_trace_runRounds (initialLaw setup) horizon scheduler players
+      (leftRemaining - stopped) stopped left checkpoint.1 (accounted.symm ▸ afterTrace)
+        leftReached
+    have checkpointRight := sourceServiceRetained_runJoint_slots bounds bound
+      (horizon := horizon) (remaining := leftRemaining - stopped) stopped right who remembered
+        (by simpa only [accounted, sameBudget] using rightAfterTrace) rightAfterSlots players
+          (repaired.recall who) checkpoint.2 rightReached
+    exact ⟨stopped, bounded, checkpoint, leftReached, rightReached, boundary, checkpointLeft,
+      checkpointRight.1, checkpointRight.2, leftTail, rightTail⟩
 
 end Vegas
