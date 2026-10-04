@@ -199,7 +199,11 @@ theorem sourceServiceFirstTurn_binding_prefix_factorization [Fintype Player]
       sourceServicePrefix? setup (rank + 1) final.application.config =
         some (after (commitSuccessor name guard (source seed) value)) := by
     have completed := decided_completion contract timely event (execution seed)
-      (actualBoundary seed supported) (bounded seed supported) (ready seed supported) owned
+      (actualBoundary seed supported)
+      (roundsFrom_turnFacts setup leaks
+        (fun who => sourceServiceTurnPolicy_submitsAtTurn setup leaks _ _ _ _ who)
+        _ _ (actualBoundary seed supported).supported).1
+      (bounded seed supported) (ready seed supported) owned
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) value)
       (by unfold EffectiveAction; rw [node]; trivial) final reached
     rw [commit_step (execution seed).application.config event (ready seed supported) outputEq

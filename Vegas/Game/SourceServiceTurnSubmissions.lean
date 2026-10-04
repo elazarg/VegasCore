@@ -8,7 +8,7 @@ import Vegas.Pending.ReactiveSubmissionRecall
 
 The prescribed responses submit fresh packets only for the event that is the
 responding player's own turn: the source decision is compiled at that event,
-and every other response replays. This is a property of play on the support
+and every other response is silent. This is a property of play on the support
 of the turn-counted policy, trembles included, and of the policies deciding
 one fixed action at the first turn (`Vegas.SubmissionsAtTurn`).
 
@@ -345,6 +345,33 @@ theorem round_activationsAnswered {scheduler : (application setup leaks).Schedul
       exact List.mem_append_right _ (List.mem_singleton_self _)
     · change middle'.application.publicView = execution.application.publicView
       rw [sameApp]
+
+section Answered
+
+variable {setup leaks}
+
+/-- Every activation in completed rounds has an actual response in own recall,
+even if that response was silent or sent a packet for a different event. -/
+theorem roundsFrom_activationsAnswered
+    {scheduler : (application setup leaks).Scheduler}
+    {players : Player → (application setup leaks).Policy} (count : Nat)
+    (execution : (application setup leaks).Execution)
+    (supported : execution ∈ ((application setup leaks).roundsFrom (initialLaw setup) scheduler
+      players count).support) :
+    ActivationsAnswered setup leaks execution := by
+  let app := application setup leaks
+  induction count generalizing execution with
+  | zero =>
+      obtain ⟨state, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      intro entry member
+      cases member
+  | succ count ih =>
+      rw [app.roundsFrom_succ (initialLaw setup) scheduler players count] at supported
+      obtain ⟨prior, priorMem, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+      exact round_activationsAnswered setup leaks (ih prior priorMem) moved
+
+end Answered
 
 /-- Both facts hold along rounds of players that submit only at their own
 turns, from initialization under every scheduler. -/

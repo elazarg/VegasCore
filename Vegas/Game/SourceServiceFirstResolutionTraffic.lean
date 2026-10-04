@@ -176,7 +176,10 @@ theorem sourceServiceFirstResolution_prefix_probability
           cases result : disclosureResult published selected source true with
           | failure => simp only [effectiveDisclosure, result] at kept; cases kept
           | success value => exact ⟨value, by rw [resolved, result]⟩
-        have native := decided_completion contract timely event start boundary within ready
+        have native := decided_completion contract timely event start boundary
+          (roundsFrom_turnFacts setup leaks
+            (fun who => sourceServiceTurnPolicy_submitsAtTurn setup leaks _ _ _ _ who)
+            _ start boundary.supported).1 within ready
           site.owned (cast (congrArg EventGraph.EventField.Action site.outputEq.symm) disclose)
           realized stopped supported
         rw [start.application.config.step_eq_map_of_code event ready site.outputEq _ codeEq disclose

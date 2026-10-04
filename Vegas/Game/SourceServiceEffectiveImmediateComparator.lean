@@ -3,6 +3,7 @@
 import Vegas.Game.SourceServiceCompatibleImmediateAudit
 import Interaction.ReactiveSupportedMenuPolicy
 import GameTheory.Protocol.BehavioralTerminal
+import GameTheoryExtensions.Analysis.FinitePayoffBounds
 
 /-! # An immediate comparator in the complete effective menu
 
@@ -16,7 +17,7 @@ noncomputable section
 
 namespace Vegas.AsyncServiceSpec
 
-open SourceProgram Interaction EventGraphRuntime EventGraph GameTheory.Math.Probability
+open SourceProgram Interaction EventGraphRuntime EventGraph GameTheory GameTheory.Math.Probability
   GameTheory.Enforcement GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
@@ -25,6 +26,10 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 local notation "app" => application service.setup service.leaks
 local notation "runtime" => runtime service.setup
 local notation "menu" => service.bounds.menu (runtime) service.leaks
+
+local instance immediate_history_nonempty : Nonempty (((menu).protocol (initialLaw service.setup)
+    service.horizon service.scheduler).History) :=
+  ⟨((menu).protocol (initialLaw service.setup) service.horizon service.scheduler).initHistory⟩
 
 /-- Actual owner slot resources suffice for local admission in the full effective
 menu. No risk-menu trace or global immediate-policy admission is required. -/
@@ -328,5 +333,56 @@ theorem effectiveImmediateComparator_charge_zero_at_information
       exact service.effectiveImmediateComparator_terminal_charge_zero profile who permitted
         certificate baseline history.1 remaining execution current actualCompatible final reached
         sample authentic
+
+open Classical in
+/-- Authentic zero collection makes the actual immediate comparator worth at
+least the finite base-payoff minimum under every belief on the compatible
+information fiber. The opponents and the deposit are arbitrary. -/
+theorem effectiveImmediateComparator_expected_utility_lower
+    (base : (app).ProtocolState → Player → ℝ)
+    (sample : List (SettledEvidence service.setup) → PMF (List (SettledEvidence service.setup)))
+    (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
+    (deposit : Player → ℝ)
+    (profile : BehavioralProfile service.setup.program) (who : Player)
+    (permitted : (profile who).Admitted service.setup.program (CommitmentInterface.values _))
+    (certificate : ((menu).protocol (initialLaw service.setup) service.horizon
+      service.scheduler).WellFoundedHistories)
+    (baseline : ∀ player, ((menu).information (initialLaw service.setup) service.horizon
+      service.scheduler).BehavioralPolicy player)
+    (site : ((menu).information (initialLaw service.setup) service.horizon
+      service.scheduler).InformationSite who)
+    (compatible : service.sourceCompatibleInfo who site.1)
+    (belief : PMF (((menu).information (initialLaw service.setup) service.horizon
+      service.scheduler).InformationHistory who site.1)) :
+    FinitePayoffBounds.lower (fun final : ((menu).protocol (initialLaw service.setup)
+      service.horizon service.scheduler).History => base final.state who) ≤
+      expect belief (fun history => expect (((menu).information (initialLaw service.setup)
+        service.horizon service.scheduler).runBehavioralTerminalFrom certificate
+        (GameTheory.Profile.update (sig := ((menu).information (initialLaw service.setup)
+          service.horizon service.scheduler).behavioralSignature) baseline who
+            (service.effectiveImmediateComparator profile who)) history.1)
+        (fun final => TerminalAudit.utility base ((runtime).serviceAuditObservation service.leaks)
+          (sourceServiceAudit service.setup service.leaks sample) deposit final.state who)) := by
+  let extremum := fun final : ((menu).protocol (initialLaw service.setup) service.horizon
+    service.scheduler).History => base final.state who
+  have clean := service.effectiveImmediateComparator_charge_zero_at_information profile who
+    permitted certificate baseline site compatible sample authentic
+  rw [← expect_constant belief (FinitePayoffBounds.lower extremum)]
+  apply expect_mono _ (payoffIntegrable_constant _ _) (payoffIntegrable_of_finite _ _)
+  intro history _
+  let law := ((menu).information (initialLaw service.setup) service.horizon
+    service.scheduler).runBehavioralTerminalFrom certificate
+      (GameTheory.Profile.update (sig := ((menu).information (initialLaw service.setup)
+        service.horizon service.scheduler).behavioralSignature) baseline who
+          (service.effectiveImmediateComparator profile who)) history.1
+  rw [← expect_constant law (FinitePayoffBounds.lower extremum)]
+  apply expect_mono _ (payoffIntegrable_constant _ _) (payoffIntegrable_of_finite _ _)
+  intro final supported
+  have zero := clean history final supported
+  change FinitePayoffBounds.lower extremum ≤ base final.state who -
+    TerminalAudit.charge ((runtime).serviceAuditObservation service.leaks)
+      (sourceServiceAudit service.setup service.leaks sample) final.state who * deposit who
+  rw [zero, zero_mul, sub_zero]
+  exact FinitePayoffBounds.lower_le extremum final
 
 end Vegas.AsyncServiceSpec

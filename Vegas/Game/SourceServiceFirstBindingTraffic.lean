@@ -573,7 +573,10 @@ theorem sourceServiceFirstBinding_prefix_probability [Fintype Player]
             (fun final => event ∈ final.application.config.cut.completed) horizon start).support) :
           sourceServicePrefix? setup (event.val + 1) stopped.application.config =
             some (embed (commitSuccessor name guard source value)) := by
-        have native := decided_completion contract timely event start boundary within ready
+        have native := decided_completion contract timely event start boundary
+          (roundsFrom_turnFacts setup leaks
+            (fun who => sourceServiceTurnPolicy_submitsAtTurn setup leaks _ _ _ _ who)
+            _ start boundary.supported).1 within ready
           site.owned (cast (congrArg EventGraph.EventField.Action site.outputEq.symm) value)
           (by unfold EffectiveAction; rw [nodeView_eq_bind site.outputEq site.code]; trivial)
           stopped supported

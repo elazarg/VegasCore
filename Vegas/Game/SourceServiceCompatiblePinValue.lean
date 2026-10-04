@@ -183,30 +183,16 @@ theorem sourceCompatibleInfo_pin_value_lower
   have floor (n : Nat) : FinitePayoffBounds.lower extremum ≤
       (assessment.continuationContext certificate site (payoff who)).value
         (comparator (further n)) := by
-    have clean := service.effectiveImmediateComparator_charge_zero_at_information
-      (profiles (index (further n))) who (permitted (index (further n)) who) certificate
-        assessment.strategy site compatible sample authentic
     have tower := assessment.continuationContextWith_value_tower
       ((model).runBehavioralTerminalFrom certificate) site (payoff who)
       (comparator (further n)) (payoffIntegrable_of_finite _ _)
     change FinitePayoffBounds.lower extremum ≤
       (assessment.continuationContextWith ((model).runBehavioralTerminalFrom certificate)
         site (payoff who)).value (comparator (further n))
-    rw [tower, ← expect_constant (assessment.belief who site) (FinitePayoffBounds.lower extremum)]
-    apply expect_mono _ (payoffIntegrable_constant _ _) (payoffIntegrable_of_finite _ _)
-    intro history _
-    let law := (model).runBehavioralTerminalFrom certificate
-      (Profile.update (sig := (model).behavioralSignature) assessment.strategy who
-        (comparator (further n))) history.1
-    rw [← expect_constant law (FinitePayoffBounds.lower extremum)]
-    apply expect_mono _ (payoffIntegrable_constant _ _) (payoffIntegrable_of_finite _ _)
-    intro final supported
-    have zero := clean history final supported
-    change FinitePayoffBounds.lower extremum ≤ base final.state who -
-      TerminalAudit.charge ((runtime service.setup).serviceAuditObservation service.leaks)
-        (sourceServiceAudit service.setup service.leaks sample) final.state who * deposit who
-    rw [zero, zero_mul, sub_zero]
-    exact FinitePayoffBounds.lower_le extremum final
+    rw [tower]
+    exact service.effectiveImmediateComparator_expected_utility_lower base sample authentic
+      deposit (profiles (index (further n))) who (permitted (index (further n)) who) certificate
+        assessment.strategy site compatible (assessment.belief who site)
   let _ := Fintype.ofFinite (((menu).protocol (initialLaw service.setup) service.horizon
     service.scheduler).History)
   let total := ∑ final : ((menu).protocol (initialLaw service.setup) service.horizon

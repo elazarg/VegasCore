@@ -299,12 +299,13 @@ theorem sourceServiceFirstTurn_prefix_law [Fintype Player]
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
       delay bound)
     (timely : AsyncTimely (runtime setup) delay bound)
-    (timing : TurnTiming setup turns) (profile : BehavioralProfile setup.program)
+    (profile : BehavioralProfile setup.program)
     (effective : ∀ who, (profile who).EffectiveDisclosures setup.program []
       (Revelations.initial setup.context))
+    {players : Player → (application setup leaks).Policy}
     (event : (graph setup).EventId) (start : (application setup leaks).Execution)
-    (boundary : CompletionBoundary setup leaks scheduler
-      (sourceServiceTurnPolicy setup leaks bound turns timing profile) event.val start)
+    (boundary : CompletionBoundary setup leaks scheduler players event.val start)
+    (submissions : SubmissionsAtTurn setup leaks start)
     (bounded : start.environmentRecall.length ≤ horizon) :
     ∃ before : ProtocolState setup.program,
       sourceServicePrefix? setup event.val start.application.config = some before ∧
@@ -321,8 +322,7 @@ theorem sourceServiceFirstTurn_prefix_law [Fintype Player]
   obtain ⟨law, sourceStep, policy, effectiveLaw⟩ :=
     SourceResidual.head_step leaks residual event rfl ready
   obtain ⟨startTrace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler
-    (sourceServiceTurnPolicy setup leaks bound turns timing profile) _ bounded start
-    boundary.supported
+    players _ bounded start boundary.supported
   have actualStep :
       (app.runUntilHorizon scheduler (firstTurnProfile setup leaks bound turns profile event)
         (fun final => event ∈ final.application.config.cut.completed) horizon start).map
@@ -371,8 +371,9 @@ theorem sourceServiceFirstTurn_prefix_law [Fintype Player]
                 (fun _ => completedConfig) := by
             apply map_congr_on_support _
             intro stopped reached
-            have completed := decided_completion contract timely event start boundary bounded
-              ready owned action (effectiveLaw effective action chosen) stopped reached
+            have completed := decided_completion contract timely event start boundary
+              submissions bounded ready owned action (effectiveLaw effective action chosen)
+              stopped reached
             rw [pure, PMF.mem_support_pure_iff] at completed
             exact completed
           _ = _ := PMF.map_const _ _
@@ -408,8 +409,11 @@ theorem sourceServiceTurnPolicy_firstTurnCompletes [Finite Player]
     completionRun_completes contract.completes event execution boundary bounded stopped reached,
     ?_, fun execution boundary => boundary.terminal_continuation (profile := profile)⟩
   intro event start boundary bounded
-  obtain ⟨before, decoded, prefixLaw⟩ := sourceServiceFirstTurn_prefix_law contract timely timing
-    profile effective event start boundary bounded
+  have submissions := (roundsFrom_turnFacts setup leaks
+    (fun who => sourceServiceTurnPolicy_submitsAtTurn setup leaks bound turns timing profile who)
+    _ start boundary.supported).1
+  obtain ⟨before, decoded, prefixLaw⟩ := sourceServiceFirstTurn_prefix_law contract timely
+    profile effective event start boundary submissions bounded
   let continuation := fun state : Option (ProtocolState setup.program) =>
     (setup.continuationLaw profile state).map some
   have composed := congrArg (fun distribution => distribution.bind continuation) prefixLaw

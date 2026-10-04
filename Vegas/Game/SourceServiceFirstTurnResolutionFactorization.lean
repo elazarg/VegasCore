@@ -241,7 +241,11 @@ theorem sourceServiceFirstTurn_resolution_prefix_factorization [Fintype Player]
       | failure => simp only [effectiveDisclosure, result] at kept; cases kept
       | success found => exact ⟨found, by rw [resolved, result]⟩
     have completed := decided_completion contract timely event (execution seed)
-      (actualBoundary seed supported) (bounded seed supported) (ready seed supported) owned
+      (actualBoundary seed supported)
+      (roundsFrom_turnFacts setup leaks
+        (fun who => sourceServiceTurnPolicy_submitsAtTurn setup leaks _ _ _ _ who)
+        _ _ (actualBoundary seed supported).supported).1
+      (bounded seed supported) (ready seed supported) owned
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) value) realized final reached
     rw [(execution seed).application.config.step_eq_map_of_code event (ready seed supported)
       outputEq _ actualCode value

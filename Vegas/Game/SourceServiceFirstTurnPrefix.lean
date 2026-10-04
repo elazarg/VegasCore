@@ -47,15 +47,14 @@ private theorem firstTurn_phaseProfile (bound : (graph setup).EventId → Nat)
       rw [app.policyMixture_policy, fixed, PMF.pure_bind]
 
 /-- The actual global first-turn policy has exactly the event-local stopped
-execution law at every initialized completion boundary. This preserves the
+execution law at every actual completion boundary. This preserves the
 whole execution, including private recall and network traffic. -/
 theorem sourceServiceTurnPolicy_firstTurn_phase
     {scheduler : (application setup leaks).Scheduler} {horizon turns : Nat}
     {bound : (graph setup).EventId → Nat} {profile : BehavioralProfile setup.program}
+    {players : Player → (application setup leaks).Policy}
     (event : (graph setup).EventId) (start : (application setup leaks).Execution)
-    (boundary : CompletionBoundary setup leaks scheduler
-      (sourceServiceTurnPolicy setup leaks bound turns (firstTurnTiming setup turns) profile)
-      event.val start) :
+    (boundary : CompletionBoundary setup leaks scheduler players event.val start) :
     (application setup leaks).runUntilHorizon scheduler
         (sourceServiceTurnPolicy setup leaks bound turns (firstTurnTiming setup turns) profile)
         (fun final => event ∈ final.application.config.cut.completed) horizon start =
@@ -81,10 +80,10 @@ theorem sourceServiceTurnPolicy_firstTurn_prefix_law [Fintype Player]
     (profile : BehavioralProfile setup.program)
     (effective : ∀ who, (profile who).EffectiveDisclosures setup.program []
       (Revelations.initial setup.context))
+    {players : Player → (application setup leaks).Policy}
     (event : (graph setup).EventId) (start : (application setup leaks).Execution)
-    (boundary : CompletionBoundary setup leaks scheduler
-      (sourceServiceTurnPolicy setup leaks bound turns (firstTurnTiming setup turns) profile)
-      event.val start)
+    (boundary : CompletionBoundary setup leaks scheduler players event.val start)
+    (submissions : SubmissionsAtTurn setup leaks start)
     (bounded : start.environmentRecall.length ≤ horizon) :
     ∃ before : ProtocolState setup.program,
       sourceServicePrefix? setup event.val start.application.config = some before ∧
@@ -95,7 +94,7 @@ theorem sourceServiceTurnPolicy_firstTurn_prefix_law [Fintype Player]
             stopped.application.config) =
         (ProtocolState.behavioralStateStep setup.program profile before).map some := by
   obtain ⟨before, decoded, law⟩ := sourceServiceFirstTurn_prefix_law contract timely
-    (firstTurnTiming setup turns) profile effective event start boundary bounded
+    profile effective event start boundary submissions bounded
   refine ⟨before, decoded, ?_⟩
   rw [sourceServiceTurnPolicy_firstTurn_phase event start boundary]
   exact law

@@ -180,28 +180,12 @@ theorem charged_expected_utility_le_immediate
         (service.effectiveImmediateComparator reference who)) history.1)
           (fun final => payoff final.state who)) := by
   intro certificate probability deposit observe audit payoff
-  let extremum := fun history : ((menu).protocol (initialLaw service.setup) service.horizon
-    service.scheduler).History => base history.state who
-  have clean := service.effectiveImmediateComparator_charge_zero_at_information reference who
-    permitted certificate baseline site compatible backend.sample backend.sample_authentic
   have charged := service.charged_expected_utility_le_lower base backend observationRate
     deliveryRate
     delivery_nonnegative coverage who positive baseline site compatible choice classified belief
-  apply charged.trans
-  rw [← expect_constant belief (FinitePayoffBounds.lower extremum)]
-  apply expect_mono _ (payoffIntegrable_constant _ _) (payoffIntegrable_of_finite _ _)
-  intro history _
-  let comparator := (model).runBehavioralTerminalFrom certificate
-    (Profile.update (sig := (model).behavioralSignature) baseline who
-      (service.effectiveImmediateComparator reference who)) history.1
-  rw [← expect_constant comparator (FinitePayoffBounds.lower extremum)]
-  apply expect_mono _ (payoffIntegrable_constant _ _) (payoffIntegrable_of_finite _ _)
-  intro final supported
-  have zero := clean history final supported
-  change FinitePayoffBounds.lower extremum ≤
-    base final.state who - TerminalAudit.charge observe audit final.state who * deposit who
-  rw [zero, zero_mul, sub_zero]
-  exact FinitePayoffBounds.lower_le extremum final
+  exact charged.trans (service.effectiveImmediateComparator_expected_utility_lower base
+    backend.sample backend.sample_authentic deposit reference who permitted certificate baseline
+      site compatible belief)
 
 open Classical in
 /-- Actual compatible pins and free-site comparisons turn the clean

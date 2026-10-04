@@ -1,0 +1,114 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.SourceServiceUnusableResponseFrame
+import Vegas.Pending.ReactiveBindingPendingCommands
+
+/-! # Actual pending memory at an uncharged binding default
+
+The classified full-effective response and its actual retained default seed
+one pending completion exception. Sequential readiness discharges the generic
+scheduler-command closure's uniqueness resource. No future risk-menu support,
+completed pending memory or private certificate equality is assumed.
+-/
+
+noncomputable section
+
+namespace Vegas
+
+open SourceProgram Interaction EventGraphRuntime EventGraph GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] [Fintype Player]
+  {L : IExpr} [IExpr.ResultTypes L]
+  {setup : Setup (Player := Player) (L := L)}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+
+/-- The actual typed-default selection creates only its named event's pending
+completion exception. The original full-effective action is not presumed to
+follow a risk policy, and its original raw material may be absent or mistyped. -/
+theorem sourceServiceMissing_unusable_default_completedExcept
+    (bounds : MessageBounds (graph setup)) (bound : (graph setup).EventId → Nat)
+    (values : bounds.CoversBindingValues)
+    {horizon remaining : Nat} {scheduler : (application setup leaks).Scheduler}
+    (original repaired : (application setup leaks).Execution) (who : Player)
+    (memory : BindingMemory (runtime setup) leaks)
+    (frame : memory.Frame (runtime setup) leaks who original repaired)
+    (past : memory.shadow.CompletedAt original.application.config)
+    (rightTrace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup)
+      horizon scheduler).Trace (some ⟨remaining, some who, repaired⟩))
+    (clear : (runtime setup).serviceRisk leaks bound who (repaired.recall who)
+      (repaired.observe (application setup leaks) who) = false)
+    (response : (application setup leaks).Action)
+    (effective : response ∈ (bounds.menu (runtime setup) leaks).actions who
+      (original.recall who) (original.observe (application setup leaks) who))
+    (unusable : unusableServiceBindingResponse setup leaks who (repaired.recall who)
+      (repaired.observe (application setup leaks) who) response)
+    (event : (graph setup).EventId)
+    (named : (runtime setup).submittedEvent? leaks response = some event) :
+    let app := application setup leaks
+    let input := (repaired.recall who, repaired.observe app who)
+    let selected := BindingMemory.retainedResponse (runtime setup) leaks
+      (bounds.riskMenu (runtime setup) leaks bound) who memory input response
+    selected.2.CompletedExcept (original.respond app who response).application.config event := by
+  let app := application setup leaks
+  let view := repaired.observe app who
+  have selected := sourceServiceMissing_unusable_default_retained bounds bound values original
+    repaired who memory frame rightTrace clear response effective unusable
+  obtain ⟨actual, payload, outputEq, codeEq, node, turn, unrecorded, opening, responseEq,
+    missing⟩ := unusable
+  have addressed : (runtime setup).submittedEvent? leaks response = some actual := by
+    rw [responseEq]
+    rfl
+  have same : actual = event := Option.some.inj (addressed.symm.trans named)
+  subst actual
+  let serial := repaired.application.publicView.bindingCount who
+  have persistent := ((runtime setup).serviceRisk_clear_iff leaks bound who _ _).mp clear |>.1
+  have rightFresh := riskCanonicalSlot_fresh_at_turn bounds bound _ rightTrace who persistent
+    event turn unrecorded
+  have fresh := (frame.slots (.prepared serial)).mpr rightFresh
+  have ownFresh : (memory.shadow.inputView (runtime setup) leaks view).application.candidates
+      (.prepared serial) = .fresh := by
+    rw [frame.observed]
+    exact fresh
+  have pending := BindingMemory.repairResponse_unusable_completedExcept who memory view
+    original.application.config past event payload outputEq codeEq node serial opening ownFresh
+      rightFresh missing
+  dsimp only
+  rw [selected.1, (runtime setup).reactive_respond_application leaks original who response |>.1,
+    responseEq]
+  exact pending
+
+omit [Fintype Player] in
+/-- The actual source graph has one ready event, so scheduler application
+commands preserve the pending frame and recover CompletedAt at real settlement. -/
+theorem sourceService_pending_application_coupling
+    (original repaired : (application setup leaks).Execution) (who : Player)
+    (memory : BindingMemory (runtime setup) leaks)
+    (frame : memory.Frame (runtime setup) leaks who original repaired)
+    (onlyBindings : memory.shadow.OwnBindings who)
+    (pending : (graph setup).EventId)
+    (past : memory.shadow.CompletedExcept original.application.config pending)
+    (payload : L.Ty)
+    (outputEq : (graph setup).outputLayout pending = .binding who payload)
+    (codeEq : cast (congrArg (EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes pending) = .bind who payload)
+    (node : nodeView (graph setup) pending = .bind who payload outputEq codeEq)
+    (ready : original.application.config.cut.Ready pending)
+    (rememberedAction : memory.shadow.actions pending = some
+      (cast (congrArg EventField.Action outputEq.symm) PublicationResult.failure))
+    (rememberedValue : memory.shadow.values (.inr pending) = some
+      (cast (congrArg EventField.Value outputEq.symm) PublicationResult.failure))
+    (command : EnvironmentCommand (graph setup)) :
+    let app := application setup leaks
+    ∃ coupling : PMF (app.Execution × app.Execution),
+      coupling.map Prod.fst = original.environmentStep app (.application command) ∧
+      coupling.map Prod.snd = repaired.environmentStep app (.application command) ∧
+      ∀ pair ∈ coupling.support,
+        memory.Frame (runtime setup) leaks who pair.1 pair.2 ∧
+          memory.shadow.CompletedExcept pair.1.application.config pending ∧
+          (pending ∈ pair.1.application.config.cut.completed →
+            memory.shadow.CompletedAt pair.1.application.config) := by
+  exact frame.pending_application_coupling onlyBindings pending past payload outputEq codeEq node
+    ready (fun event otherReady => ready_unique _ otherReady ready) rememberedAction rememberedValue
+      command
+
+end Vegas

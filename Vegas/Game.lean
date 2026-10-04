@@ -54,6 +54,7 @@ import Vegas.Game.SourceServiceTurnSubmissions
 import Vegas.Game.SourceServiceDecidedCompletion
 import Vegas.Game.SourceServiceFirstTurnCompletes
 import Vegas.Game.SourceServiceFirstTurnPrefix
+import Vegas.Game.SourceServiceCanonicalRestart
 import Vegas.Game.SourceServiceFirstTurnRanks
 import Vegas.Game.SourceServiceInitialTraffic
 import Vegas.Game.SourceServiceFirstTurnInformation
@@ -88,6 +89,7 @@ import Vegas.Game.SourceServiceUnusableResponseFrame
 import Vegas.Game.SourceServiceUnclassifiedTransport
 import Vegas.Game.SourceServiceUnclassifiedSelection
 import Vegas.Game.SourceServiceUnclassifiedPending
+import Vegas.Game.SourceServiceUnclassifiedPendingCommands
 import Vegas.Game.SourceServiceCompatiblePinValue
 import Vegas.Game.AsyncServiceFirstTurnBeliefResources
 import Vegas.Game.SourceServiceFirstBindingTraffic

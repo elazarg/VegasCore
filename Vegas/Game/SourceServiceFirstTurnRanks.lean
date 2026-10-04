@@ -214,6 +214,9 @@ theorem sourceServiceFirstTurn_rank_law [Fintype Player]
             rw [phaseEq execution reached]
             obtain ⟨before, decoded, law⟩ := sourceServiceTurnPolicy_firstTurn_prefix_law
               contract timely profile effective event execution (supported execution reached).2
+              (roundsFrom_turnFacts setup leaks
+                (fun who => sourceServiceTurnPolicy_submitsAtTurn setup leaks _ _ _ _ who)
+                _ _ (supported execution reached).2.supported).1
               (supported execution reached).1
             rw [decoded]
             exact law

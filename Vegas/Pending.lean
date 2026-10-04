@@ -258,6 +258,7 @@ import Vegas.Pending.ReactiveBindingDeadline
 import Vegas.Pending.ReactiveUnusableBinding
 import Vegas.Pending.ReactiveBindingRestoration
 import Vegas.Pending.ReactiveBindingPendingExpiry
+import Vegas.Pending.ReactiveBindingPendingCommands
 import Vegas.Pending.ReactiveBindingRiskResolve
 import Vegas.Pending.ReactiveBindingShadowInvariant
 import Vegas.Pending.ReactiveBindingCoupling

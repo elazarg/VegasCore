@@ -8,6 +8,7 @@ import Vegas.Game.SourceServiceProtectedDecisionLaw
 import Vegas.Game.SourceServiceCompletedRationality
 import Vegas.Game.SourceServiceFreeRationality
 import Vegas.Game.SourceServiceCompatibleChargedComparison
+import Vegas.Game.SourceServiceMissBranchComparison
 import GameTheoryExtensions.Analysis.Protocol.PrescribedCompletion
 import GameTheoryExtensions.Protocol.ContinuationHorizon
 
@@ -33,6 +34,9 @@ continuous.
 Actual report coverage and the matching configured deposit also rule out
 classified forbidden packets and recorded repetitions against the same
 assessment, using its prescribed agreement and rational free continuations.
+Valid configured observation and delivery rate bounds also bound each
+positive-mass terminal public-miss fiber by that same assessment's value.
+The complementary no-miss fiber remains an unproved continuation comparison.
 -/
 
 noncomputable section
@@ -513,6 +517,21 @@ theorem exists_consistent_source_completion
                 (alternative.commit site.1 choice) ≤
               (assessment.continuationContext certificate site (payoff who)).value
                 (assessment.strategy who)) ∧
+      (∀ observationRate deliveryRate : Player → ℝ,
+        probability = (fun player => observationRate player * deliveryRate player) →
+        ∀ who (site : (effectiveModel).InformationSite who),
+          service.sourceCompatibleInfo who site.1 → observationRate who ≤ 1 →
+          0 ≤ deliveryRate who → deliveryRate who ≤ 1 →
+          0 < observationRate who * deliveryRate who →
+          ∀ alternative : (effectiveModel).BehavioralPolicy who,
+            let context := assessment.continuationContext certificate site (payoff who)
+            let law := context.outcome alternative
+            let missing := fun final : ((effectiveMenu).protocol (initialLaw service.setup)
+              service.horizon service.scheduler).History => (final.state.map fun control =>
+                control.execution.application.publicView.missedDecisionBy who).getD false
+            true ∈ (law.map missing).support →
+              expect (fiberPosterior law missing true) (payoff who) ≤
+                context.value (assessment.strategy who)) ∧
       (effectiveModel).runBehavioralTerminalFrom certificate assessment.strategy
           ((effectiveMenu).protocol (initialLaw service.setup) service.horizon
             service.scheduler).initHistory =
@@ -621,7 +640,7 @@ theorem exists_consistent_source_completion
           (fun player => service.effectiveImmediateComparator profile player)
           ((effectiveMenu).protocol (initialLaw service.setup) service.horizon
             service.scheduler).initHistory := histories
-  refine ⟨assessment, consistent, ?_, ?_, ?_, ?_, ?_, initializedHistories, ?_⟩
+  refine ⟨assessment, consistent, ?_, ?_, ?_, ?_, ?_, ?_, initializedHistories, ?_⟩
   · intro who site compatible
     apply agrees who site
     simpa only [free, Finset.mem_filter, Finset.mem_univ, true_and, not_not] using compatible
@@ -666,6 +685,30 @@ theorem exists_consistent_source_completion
     intro player current incompatible law
     exact freeOptimal player current (Finset.mem_filter.mpr
       ⟨Finset.mem_univ _, incompatible⟩) law
+  · intro observationRate deliveryRate rates who site compatible observationSmall
+      deliveryNonnegative deliverySmall positive alternative context law missing possible
+    subst probability
+    have comparator := service.sourceCompatibleInfo_agree_continuation_le (effectiveMenu)
+      assessment consistent certificate payoff
+      (fun player current incompatible actionLaw => freeOptimal player current
+        (Finset.mem_filter.mpr ⟨Finset.mem_univ _, incompatible⟩) actionLaw)
+      who site (service.effectiveImmediateComparator profile who)
+      (fun current currentCompatible => (agrees who current (by
+        simpa only [free, Finset.mem_filter, Finset.mem_univ, true_and, not_not] using
+          currentCompatible)).symm)
+    have cleanFloor := service.effectiveImmediateComparator_expected_utility_lower base sample
+      authentic (service.auditDeposit base
+        (fun player => observationRate player * deliveryRate player))
+      profile who (permitted who) certificate assessment.strategy site compatible
+        (assessment.belief who site)
+    have tower := assessment.continuationContextWith_value_tower
+      ((effectiveModel).runBehavioralTerminalFrom certificate) site (payoff who)
+      (service.effectiveImmediateComparator profile who) (payoffIntegrable_of_finite _ _)
+    have lower := (cleanFloor.trans_eq tower.symm).trans comparator
+    have split := service.public_miss_continuation_decomposition base sample observationRate
+      deliveryRate who observationSmall deliveryNonnegative deliverySmall positive assessment
+        site alternative
+    exact (split.2 possible).trans lower
   · rw [initializedHistories]
     exact service.effectiveImmediateProfile_joint_law profile permitted effective utility
       sample authentic probability

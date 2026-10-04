@@ -24,7 +24,9 @@ variable {Player : Type} [DecidableEq Player]
   {memory : BindingMemory runtime leaks} {owner : Player}
   {original repaired : (runtime.reactiveApplication leaks).Execution}
 
-private theorem application_stutter_coupling
+/-- Actual application stutters preserve the full frame and append equal
+service observations, even while a private completion override is pending. -/
+theorem application_stutter_coupling
     (frame : Frame runtime leaks memory owner original repaired)
     (command : EnvironmentCommand graph)
     (leftStays : environmentStep runtime original.application command =

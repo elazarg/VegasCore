@@ -5,6 +5,7 @@ import Vegas.Game.SourceServiceCompletedRationality
 import Vegas.Game.SourceServiceFreeRationality
 import Vegas.Game.SourceServiceCompatiblePinValue
 import Vegas.Game.SourceServiceCompatibleChargedComparison
+import Vegas.Game.SourceServiceMissBranchComparison
 import Vegas.Game.SourceContinuation
 import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
 
@@ -23,6 +24,9 @@ completed compatible sites with nonnegative deposits, classified charged first-c
 comparisons with arbitrary focal continuations under actual backend coverage, and the initialized
 typed outcome and sampled settlement law. Uncharged prescribed-site comparisons and
 conditional escape relative to rare observations remain separate obligations.
+Valid configured rate bounds also compare each positive-mass terminal
+public-miss fiber with the same assessment's pin-derived value floor.
+This leaves its actual no-miss continuation fiber unbounded here.
 The uniform maximum bound controls only initialized loss; it does not assert
 that the information-dependent waiting rates enforce those comparisons.
 -/
@@ -193,6 +197,21 @@ theorem exists_consistent_original_sequence_completion
                 (alternative.commit site.1 choice) ≤
               (assessment.continuationContext certificate site (payoff who)).value
                 (assessment.strategy who)) ∧
+      (∀ observationRate deliveryRate : Player → ℝ,
+        probability = (fun player => observationRate player * deliveryRate player) →
+        ∀ who (site : (model).InformationSite who),
+          service.sourceCompatibleInfo who site.1 → observationRate who ≤ 1 →
+          0 ≤ deliveryRate who → deliveryRate who ≤ 1 →
+          0 < observationRate who * deliveryRate who →
+          ∀ alternative : (model).BehavioralPolicy who,
+            let context := assessment.continuationContext certificate site (payoff who)
+            let law := context.outcome alternative
+            let missing := fun final : ((menu).protocol (initialLaw service.setup)
+              service.horizon service.scheduler).History => (final.state.map fun control =>
+                control.execution.application.publicView.missedDecisionBy who).getD false
+            true ∈ (law.map missing).support →
+              expect (fiberPosterior law missing true) (payoff who) ≤
+                context.value (assessment.strategy who)) ∧
       (∀ fuel history, history ∈ ((model).runBehavioral assessment.strategy fuel).support →
         ∀ who, ((menu).protocol (initialLaw service.setup) service.horizon service.scheduler).active
           history.state who → service.sourceCompatibleInfo who ((model).infoOf who history.trace)) ∧
@@ -391,7 +410,7 @@ theorem exists_consistent_original_sequence_completion
       (Option.some_injective (State L service.setup.program.terminalCtx))] using limit
   have sourceTarget := sourceRuns.map (fun state => (some state, utility state))
   refine ⟨nativeSequence, assessment, index, mixed, bayes, increasing, converges, consistent,
-    ?_, ?_, ?_, ?_, ?_, compatiblePlay, ?_⟩
+    ?_, ?_, ?_, ?_, ?_, ?_, compatiblePlay, ?_⟩
   · intro n who site compatible
     exact kept n who site compatible
   · intro who site incompatible law
@@ -445,6 +464,22 @@ theorem exists_consistent_original_sequence_completion
       site (payoff who)).value (alternative.commit site.1 choice) ≤ _
     rw [tower]
     exact charged.trans lower
+  · intro observationRate deliveryRate rates who site compatible observationSmall
+      deliveryNonnegative deliverySmall positive alternative context law missing possible
+    subst probability
+    have lower := service.sourceCompatibleInfo_pin_value_lower normalized permitted weight
+      weightNonnegative weightSmall bound bounded boundVanishes delta
+      (fun n => (deltaPositive n).le) (fun n => (deltaSmall n).le) deltaVanishes
+      nativeSequence assessment index increasing converges consistent
+      (fun n player current currentCompatible => kept n player current currentCompatible)
+      base sample authentic
+      (service.auditDeposit base (fun player => observationRate player * deliveryRate player))
+      (fun player current incompatible actionLaw => freeOptimal player current
+        (Finset.mem_filter.mpr ⟨Finset.mem_univ _, incompatible⟩) actionLaw) who site compatible
+    have split := service.public_miss_continuation_decomposition base sample observationRate
+      deliveryRate who observationSmall deliveryNonnegative deliverySmall positive assessment
+        site alternative
+    exact (split.2 possible).trans lower
   · have sourceAlong := sourceTarget.subseq increasing
     have aligned := nativeJoint
     simp only [referenceJoint] at aligned

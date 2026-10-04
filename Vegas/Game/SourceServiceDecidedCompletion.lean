@@ -6,7 +6,8 @@ import Vegas.Pending.ReactiveDisclosureStability
 
 /-! # A fixed first-turn decision completes its event with that action
 
-From a completion boundary of the turn-counted policy, suppose the owner of
+From an actual completion boundary with submissions at their owners' turns,
+suppose the owner of
 the current event decides a fixed action at its first turn there and every
 other response is silent. Under the asynchronous contract with
 `delay + bound < deadline`, every stopped point has completed the event with
@@ -19,9 +20,9 @@ exactly that action (`Vegas.decided_completion`).
   an effective `true` disclosure. Protected inclusion accepts that packet
   before expiry and completes the event with the decided action.
 
-The invariants are properties of play on the support of the turn-counted
-policy, trembles included, up to the boundary, and of the decided policy
-after it. They are not claims about arbitrary deviations.
+The earlier players may differ from the decided continuation. Actual
+initialization and submission-turn resources are retained at the boundary;
+no persistent-risk clarity is required.
 -/
 
 noncomputable section
@@ -1314,19 +1315,20 @@ theorem runUntilHorizon_completes {horizon : Nat}
     rw [terminal]
     exact Finset.mem_univ _
 
-/-- **Decided completion.** From a completion boundary of the turn-counted
-policy, under the asynchronous contract with `delay + bound < deadline`, if the
+/-- **Decided completion.** From an actual completion boundary with
+submissions at their owners' turns, under the asynchronous contract with
+`delay + bound < deadline`, if the
 owner decides an effective action at its first turn and every other response
-replays, every stopped point has completed the event with that action. -/
+is silent, every stopped point has completed the event with that action. -/
 theorem decided_completion {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
     {delay bound : (graph setup).EventId → Nat}
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
       delay bound)
     (timely : AsyncTimely (runtime setup) delay bound)
-    {turns : Nat} {timing : TurnTiming setup turns} {profile : BehavioralProfile setup.program}
+    {players : Player → (application setup leaks).Policy}
     (event : (graph setup).EventId) (start : (application setup leaks).Execution)
-    (boundary : CompletionBoundary setup leaks scheduler
-      (sourceServiceTurnPolicy setup leaks bound turns timing profile) event.val start)
+    (boundary : CompletionBoundary setup leaks scheduler players event.val start)
+    (submissions : SubmissionsAtTurn setup leaks start)
     (bounded : start.environmentRecall.length ≤ horizon)
     (ready : start.application.config.cut.Ready event)
     {owner : Player} (owned : (graph setup).actor? event = some owner)
@@ -1339,11 +1341,8 @@ theorem decided_completion {horizon : Nat} {scheduler : (application setup leaks
     stopped.application.config ∈ (start.application.config.step event ready action).support := by
   let app := application setup leaks
   obtain ⟨startTrace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler
-    (sourceServiceTurnPolicy setup leaks bound turns timing profile) _ bounded start
-    boundary.supported
-  obtain ⟨submissions, answered⟩ := roundsFrom_turnFacts setup leaks
-    (fun who => sourceServiceTurnPolicy_submitsAtTurn setup leaks bound turns timing profile who) _
-    start boundary.supported
+    players _ bounded start boundary.supported
+  have answered := roundsFrom_activationsAnswered _ start boundary.supported
   have untouched := boundary.untouched event rfl
   have phase := DecidedPhase.initial delay bound action untouched submissions (owner := owner)
   rcases DecidedPhase.runUntil contract timely untouched ready owned effective

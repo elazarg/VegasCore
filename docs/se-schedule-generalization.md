@@ -949,6 +949,10 @@ Open obligations this creates:
   coverage. The no-miss fiber retains its actual value; the split alone gives
   neither an accepted-action source law nor WAIT optimality. A current action
   can succeed before a later different event causes the owner-miss flag.
+  Both actual completion producers compare each positive-mass miss fiber
+  with the same returned assessment's value at compatible information, using
+  the real clean comparator or native pin sequence. The valid rate bounds
+  remain conditional conclusions, without additional producer inputs.
 - **Rational continuation.** Public misses and native certificate observations
   create information absent from protected source execution. Simultaneous free
   agent completion can supply consistent rational play there, once the
@@ -2221,6 +2225,16 @@ implementation resume marginals. The silent branch preserves the same repair
 frame and unchanged shadow; the other branch identifies an actual classified
 response. This one-step law neither completes the pending memory nor proves
 the remaining command closure or whole-continuation payoff comparison.
+[ReactiveBindingPendingCommands](../Vegas/Pending/ReactiveBindingPendingCommands.lean)
+tracks one uncompleted override with `BindingShadow.CompletedExcept`, using the
+same frame and shadow. The actual fresh unusable repair seeds the exception.
+Clock advancement, sample execution and arbitrary expiry preserve both
+environment-step marginals and the frame; actual completion of the named event
+recovers `CompletedAt`.
+[SourceServiceUnclassifiedPendingCommands](../Vegas/Game/SourceServiceUnclassifiedPendingCommands.lean)
+derives the exception from the same retained typed-default selection and
+discharges sole readiness from the source graph's actual order. Packet
+inclusion, invocation closure and whole-policy payoff comparison remain open.
 
 [SourceServiceSiteKind](../Vegas/Game/SourceServiceSiteKind.lean) derives the
 actual local input and either a publicly completed cut or a ready event with
@@ -2768,6 +2782,17 @@ the exact stopped typed-configuration marginal and the real effective source
 head step. Its joint full-traffic law retains each action's actual stopped
 channel; TRUE and FALSE resolution channels are not equated. Conditional source
 beliefs and utility comparisons remain separate.
+[SourceServiceCanonicalRestart](../Vegas/Game/SourceServiceCanonicalRestart.lean)
+derives the full typed source continuation from an actual canonical completion
+boundary, including a prefix with accepted delayed calls and private opportunity
+risk. The existing first-turn runner resumes from that prefix's retained recall;
+its future-profile support from initialization is not a premise. Actual prior
+submission and answered-activation resources supply the generalized decided
+completion kernel. A real earlier event-completion stop supplies the untouched
+next boundary. Mapping the terminal law preserves the initial-parameter/public-
+outcome base-payoff vector before audit deductions. This execution law does not
+identify native beliefs, select the returned assessment's free continuation,
+or establish an accepted-late-action incentive comparison.
 [SourceServiceCompatibleCollection](../Vegas/Game/SourceServiceCompatibleCollection.lean)
 derives the backend's collection bound for a classified forbidden packet or
 repeated submission at compatible information in any response menu. The
