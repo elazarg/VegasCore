@@ -102,6 +102,24 @@ play; readiness starts the timer. The general retained menu keeps deferrals.
 Late unrecorded opportunities and persistent owner risk open the bounded raw
 continuation menu.
 
+[SourceServiceRepeatedRepair](../Vegas/Game/SourceServiceRepeatedRepair.lean)
+provides the full remaining execution coupling through repeated completed and
+pending repair phases. It derives a genuine unusable-response seed, preserves
+one retained implementation and fixed reference, and retains actual checkpoint
+and subsequent tail laws at classified or signed-content exits. The next
+comparison must use the same target assessment and actual settlement, including
+earlier collection; per-offense coverage supplies no renewed deposit.
+
+The concrete private-resolution audit uses
+[PrivateResolutionForkService](../Vegas/Examples/PrivateResolutionForkService.lean),
+[PrivateResolutionForkNativeInputs](../Vegas/Examples/PrivateResolutionForkNativeInputs.lean)
+and [PrivateResolutionForkClockPhase](../Vegas/Examples/PrivateResolutionForkClockPhase.lean).
+The source equilibrium, initial type hiding and all-raw timing resources are
+proved. Certify the builder contract on every raw history, derive actual
+accepting-receipt provenance and complete native Bayes likelihoods, then compare
+whole native continuations. These obligations precede any timing counterexample
+or conclusion about the general contract's sufficiency.
+
 [SourceServiceFirstActivation](../Vegas/Game/SourceServiceFirstActivation.lean)
 derives the first ready owner input from an actual untouched completion
 boundary. The contract horizon bounds its stopping time, the source

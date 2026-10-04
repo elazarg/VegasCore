@@ -160,7 +160,7 @@ private theorem sourceObserve_cons_congr {who : Player} {Γ : SourceCtx Player s
   | there selected =>
       cases ty <;> exact congrArg (fun observation => observation.cells.get selected) same
 
-private theorem source_bob_initial_observation :
+theorem source_bob_initial_observation :
     sourceObserve bob (sourceInitial true) = sourceObserve bob (sourceInitial false) := by
   apply sourceObserve_congr
   · intro name ty selected

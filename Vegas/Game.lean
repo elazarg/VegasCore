@@ -102,6 +102,7 @@ import Vegas.Game.SourceServicePendingPacketOrigin
 import Vegas.Game.SourceServicePendingCommitmentLedger
 import Vegas.Game.SourceServicePendingSegment
 import Vegas.Game.SourceServiceUnusablePendingSegment
+import Vegas.Game.SourceServiceRepeatedRepair
 import Vegas.Game.SourceServiceWithholdingGuessBound
 import Vegas.Game.SourceServiceWithholdingCommittedBound
 import Vegas.Game.AsyncServiceWithholdingBayesBound

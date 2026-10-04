@@ -1764,6 +1764,22 @@ policy: Alice chooses TRUE at both types; Bob guesses LOW after TRUE and HIGH
 after FALSE. A native service contract and the full native information-fiber
 likelihoods remain separate obligations. These source results do not establish
 a timing counterexample.
+[PrivateResolutionForkService](../Vegas/Examples/PrivateResolutionForkService.lean)
+defines a public command-order fork before Alice's second resolution turn.
+The clean order certainly includes her latest packet; the risky order
+randomizes between that inclusion and inclusion of withholding only. Both
+orders use actual public scheduler recall. Equal second responses followed by
+the same inclusion give Bob the same complete player input.
+[PrivateResolutionForkNativeInputs](../Vegas/Examples/PrivateResolutionForkNativeInputs.lean)
+derives initial Bob input equality across Alice's private types. A fresh serial
+zero at an initialized raw prefix also proves every earlier own response was
+literal silence.
+[PrivateResolutionForkClockPhase](../Vegas/Examples/PrivateResolutionForkClockPhase.lean)
+accounts for every initialized raw trace: any Bob decision has clock three,
+eleven scheduler commands, two Alice responses and no earlier Bob response.
+These are actual trace and timing invariants. The all-history service
+certificate, accepted-receipt provenance and complete conditional likelihoods
+remain open; no native incentive counterexample follows from these invariants.
 [ReactiveWithholdingReceipts](../Vegas/Pending/ReactiveWithholdingReceipts.lean)
 proves that an accepting receipt for an actual withholding envelope fixes its
 publication output to failure on every later initialized raw history.
@@ -2332,8 +2348,8 @@ the exact original and repaired round marginals. Copied branches preserve the
 completed ledger and unconditional owner slots; pending and classified exits
 retain their actual command and response witnesses. A signed-content inclusion
 exit retains independent actual resumption laws, without asserting a surviving
-repair frame. Repeated phase composition and whole-policy utility comparison
-remain open.
+repair frame. The repeated-phase consumer below composes these actual round
+laws; whole-policy utility comparison remains open.
 [SourceServiceUnclassifiedPending](../Vegas/Game/SourceServiceUnclassifiedPending.lean)
 proves that, while an actually recorded event remains ready, every owner
 response outside the public-packet and duplicate classifiers is silence.
@@ -2409,8 +2425,19 @@ separate ledger or equality of private candidate meanings is assumed.
 The settled checkpoint's ledger and unconditional slots supply the completed
 round's local resource premises. The actual pending seed and its checkpoint
 and continuation laws preserve one fixed implementation reference, supplied
-with its current recall-length bound. Composing repeated completed and pending
-phases remains a separate obligation.
+with its current recall-length bound.
+[SourceServiceRepeatedRepair](../Vegas/Game/SourceServiceRepeatedRepair.lean)
+composes completed copies and genuine pending typed defaults through the full
+remaining runtime budget with one retained implementation and fixed reference.
+Actual pending settlement restores the completed commitment ledger and owner
+slots. Complete play excludes a still-pending terminal branch. The initial
+unusable-response consumer derives its pending seed and equal remaining budgets
+from the actual response transitions and both raw traces, then uses the same
+finite coupling kernel. Both consumers allow an arbitrary full-effective owner
+policy and arbitrary raw foreign policies. At a classified owner response or
+signed-content inclusion, they retain the real checkpoint and actual subsequent
+tail laws without asserting that those tails remain related. Comparing their
+whole-continuation utilities under the same target assessment remains open.
 No future risk-policy support, shared postsettlement path or terminal utility
 comparison is assumed.
 

@@ -1,0 +1,83 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Examples.PrivateResolutionForkService
+import Vegas.Game.SourceServiceInitialTraffic
+import Interaction.ReactiveSubmissionSerial
+
+/-! # Actual input resources for the private-type resolution fork
+
+Bob's initialized full input conceals Alice's private type, including the
+candidate catalogue and message fields. A genuine fresh identifier zero at
+an initialized raw prefix proves that every preceding own response was silent.
+These facts do not invert a later information fiber or certify the scheduler.
+-/
+
+noncomputable section
+
+namespace Vegas.PrivateResolutionFork
+
+open SourceProgram EventGraphRuntime Interaction
+
+def nativeInitial (high : Bool) : app.Execution :=
+  ReactiveApplication.Execution.initial app
+    (EventGraphRuntime.State.initial (setup.eventInputs (sourceInitial high)))
+
+theorem native_initial_bob_input_type_eq (first second : Bool) :
+    ((nativeInitial first).recall bob, (nativeInitial first).observe app bob) =
+      ((nativeInitial second).recall bob, (nativeInitial second).observe app bob) := by
+  have same : (setup.initialConfig (sourceInitial first)).view bob =
+      (setup.initialConfig (sourceInitial second)).view bob := by
+    change (sourceObserve bob (sourceInitial first), []) =
+      (sourceObserve bob (sourceInitial second), [])
+    cases first <;> cases second
+    · rfl
+    · exact congrArg (fun observed => (observed, [])) source_bob_initial_observation.symm
+    · exact congrArg (fun observed => (observed, [])) source_bob_initial_observation
+    · rfl
+  have traffic := source_initial_traffic_eq setup leaks bob
+    (sourceInitial first) (sourceInitial second) same
+  change (runtime setup).bindingTraffic leaks bob (nativeInitial first) =
+    (runtime setup).bindingTraffic leaks bob (nativeInitial second) at traffic
+  have network := congrArg (fun projection => projection.1) traffic
+  have receipts := congrArg (fun projection => projection.2.1) traffic
+  have recalled := congrArg (fun projection => projection.2.2.2.1) traffic
+  have viewed := congrArg (fun projection => projection.2.2.2.2.1) traffic
+  change (nativeInitial first).network = (nativeInitial second).network at network
+  change (nativeInitial first).receipts = (nativeInitial second).receipts at receipts
+  change (nativeInitial first).recall bob = (nativeInitial second).recall bob at recalled
+  let forget (view : EventGraphRuntime.PlayerView nativeGraph) :
+      ReactivePlayerView nativeGraph :=
+    ⟨view.who, view.publicView, view.observation, view.candidates⟩
+  have observed := congrArg forget viewed
+  change app.observePlayer (nativeInitial first).application bob =
+    app.observePlayer (nativeInitial second).application bob at observed
+  apply Prod.ext recalled
+  unfold ReactiveApplication.Execution.observe
+  rw [network, receipts, observed]
+
+/-- A forwarding request still allocates a fresh envelope; zero is possible
+only before any genuine earlier submission, independently of packet contents. -/
+theorem fresh_zero_prior_wait (control : app.Control)
+    (trace : (app.protocol (initialLaw setup) horizon scheduler).Trace (some control))
+    (material : app.Submission)
+    (identified : (control.execution.network.submit alice
+      (app.packet (app.submit control.execution.application alice material) alice
+        (control.execution.network.known alice) material)).1.id = (alice, 0)) :
+    ∀ entry ∈ control.execution.recall alice, entry.action.transmission = none := by
+  have zero : control.execution.network.nextSerial alice = 0 :=
+    congrArg Prod.snd identified
+  have counted := app.serialRecall_history scheduler (initialLaw setup) horizon trace
+  change control.execution.SerialRecall app at counted
+  have absent : app.submissionCount (control.execution.recall alice) = 0 :=
+    (counted alice).symm.trans zero
+  unfold ReactiveApplication.submissionCount at absent
+  intro entry member
+  have excluded := List.countP_eq_zero.mp absent entry member
+  cases chosen : entry.action.transmission with
+  | none => rfl
+  | some material =>
+      have submitted : entry.action.isSubmission app = true := by
+        simp [ReactiveApplication.Action.isSubmission, chosen]
+      exact (excluded submitted).elim
+
+end Vegas.PrivateResolutionFork

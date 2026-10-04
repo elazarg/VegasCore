@@ -896,6 +896,25 @@ changed candidate reuse and whole-policy utility domination remain open.
 
 ## Proof and build discipline
 
+[SourceServiceRepeatedRepair](../Vegas/Game/SourceServiceRepeatedRepair.lean)
+couples the actual full remaining execution laws through repeated completed
+copies, pending typed defaults and their settlement. One retained implementation
+and fixed reference serve every phase. Its actual unusable-response consumer
+derives the initial pending phase and equal remaining budgets from both raw
+traces. Complete play rules out an unfinished terminal phase. Classified
+responses and signed-content inclusions retain actual checkpoint and tail
+supports; no repair relation or utility order is asserted after those exits.
+The whole-continuation payoff comparison remains open, including previous
+collection and the one-time deposit.
+
+[PrivateResolutionForkService](../Vegas/Examples/PrivateResolutionForkService.lean),
+[PrivateResolutionForkNativeInputs](../Vegas/Examples/PrivateResolutionForkNativeInputs.lean)
+and [PrivateResolutionForkClockPhase](../Vegas/Examples/PrivateResolutionForkClockPhase.lean)
+provide a concrete public-order schedule, initial private-type hiding and timing
+resources for every initialized raw trace. The schedule's all-history service
+contract, accepting-receipt provenance, full conditional likelihoods and native
+incentive comparison remain separate obligations.
+
 Read `AGENTS.md` and inspect the actual Git state before editing. Generic
 mathematics belongs in `GameTheoryExtensions`, generic execution in
 `Interaction`, pending semantics in `Vegas/Pending`, and source/compiler proofs

@@ -41,6 +41,9 @@ import Vegas.Examples.PendingMenusSource
 import Vegas.Examples.PendingMenusStrategies
 import Vegas.Examples.PrivateValueAuction
 import Vegas.Examples.PrivateResolutionForkSource
+import Vegas.Examples.PrivateResolutionForkService
+import Vegas.Examples.PrivateResolutionForkNativeInputs
+import Vegas.Examples.PrivateResolutionForkClockPhase
 import Vegas.Examples.PrivateResolutionForkSourceLikelihood
 import Vegas.Examples.PrivateResolutionForkLowFalseUtility
 import Vegas.Examples.PrivateResolutionForkSourceConsistency

@@ -243,7 +243,10 @@ private theorem implementation_resume_resources
               rw [(application setup leaks).respond_recall_length]
               exact Nat.le_add_right _ _⟩
 
-private def pendingPhase
+/-- The actual one-event pending repair state keeps its allocated anchor,
+unfinished failure override, silent later owner recall and current counted slots.
+It does not assert completed memory before the event actually settles. -/
+def sourceServicePendingPhase
     (who : Player) (pending : (graph setup).EventId) (payload : L.Ty)
     (outputEq : (graph setup).outputLayout pending = .binding who payload)
     (candidate : Handle (graph setup)) (anchor : (application setup leaks).PlayerEntry)
@@ -267,7 +270,9 @@ private def pendingPhase
     ∃ later, next.1.recall who = earlier ++ anchor :: later ∧
       ∀ entry ∈ later, entry.action.transmission = none
 
-private def pendingExit
+/-- The pending segment's real boundary is settlement or an actual classified
+owner response. Both alternatives name physical states, not future support. -/
+def sourceServicePendingExit
     (horizon : Nat) (scheduler : (application setup leaks).Scheduler)
     (players : Player → (application setup leaks).Policy) (who : Player)
     (pending : (graph setup).EventId)
@@ -313,7 +318,8 @@ private theorem pending_dispatch_coupling
     (memory : BindingMemory (runtime setup) leaks)
     (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨remaining + 1, none, original⟩))
-    (phase : pendingPhase who pending payload outputEq candidate anchor earlier reference
+    (phase : sourceServicePendingPhase who pending payload outputEq candidate anchor
+      earlier reference
       (original, repaired, memory))
     (command : (application setup leaks).Command)
     (selected : command ∈ (scheduler original.environmentRecall
@@ -326,8 +332,9 @@ private theorem pending_dispatch_coupling
       coupling.map Prod.snd = (repaired.environmentStep app command).bind
         (fun next => strategy.resume who players (command.actor? app) next memory) ∧
       ∀ next ∈ coupling.support,
-        pendingPhase who pending payload outputEq candidate anchor earlier reference next ∨
-          pendingExit horizon scheduler players who pending anchor earlier next := by
+        sourceServicePendingPhase who pending payload outputEq candidate anchor
+      earlier reference next ∨
+          sourceServicePendingExit horizon scheduler players who pending anchor earlier next := by
   classical
   let app := application setup leaks
   let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
@@ -352,8 +359,9 @@ private theorem pending_dispatch_coupling
         coupling.map Prod.fst = app.resume players (command.actor? app) pair.1 ∧
         coupling.map Prod.snd = strategy.resume who players (command.actor? app) pair.2 memory ∧
         ∀ next ∈ coupling.support,
-          pendingPhase who pending payload outputEq candidate anchor earlier reference next ∨
-            pendingExit horizon scheduler players who pending anchor earlier next := by
+          sourceServicePendingPhase who pending payload outputEq candidate anchor
+      earlier reference next ∨
+            sourceServicePendingExit horizon scheduler players who pending anchor earlier next := by
     obtain ⟨currentFrame, currentPast, completeMemory⟩ := related pair member
     have currentAtTurn : OwnSubmissionsAtTurn setup leaks pair.2 who := by
       unfold OwnSubmissionsAtTurn
@@ -463,7 +471,9 @@ private theorem pending_dispatch_coupling
       Set.mem_iUnion₂.mp (PMF.support_bindOnSupport .. ▸ supported)
     exact (existsResume pair moved).choose_spec.2.2 next resumed
 
-private theorem pending_round_coupling
+/-- One real pending round either keeps the same pending resources or
+reaches actual settlement or a classified owner draw, with both exact marginals. -/
+theorem sourceService_pending_round_coupling
     (bounds : MessageBounds (graph setup)) (bound : (graph setup).EventId → Nat)
     {horizon remaining : Nat} {scheduler : (application setup leaks).Scheduler}
     (who : Player) (pending : (graph setup).EventId) (payload : L.Ty)
@@ -482,7 +492,8 @@ private theorem pending_round_coupling
     (memory : BindingMemory (runtime setup) leaks)
     (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨remaining + 1, none, original⟩))
-    (phase : pendingPhase who pending payload outputEq candidate anchor earlier reference
+    (phase : sourceServicePendingPhase who pending payload outputEq candidate anchor
+      earlier reference
       (original, repaired, memory)) :
     let app := application setup leaks
     let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
@@ -491,8 +502,9 @@ private theorem pending_round_coupling
       coupling.map Prod.fst = app.round scheduler players original ∧
       coupling.map Prod.snd = strategy.round who players scheduler repaired memory ∧
       ∀ next ∈ coupling.support,
-        pendingPhase who pending payload outputEq candidate anchor earlier reference next ∨
-          pendingExit horizon scheduler players who pending anchor earlier next := by
+        sourceServicePendingPhase who pending payload outputEq candidate anchor
+      earlier reference next ∨
+          sourceServicePendingExit horizon scheduler players who pending anchor earlier next := by
   classical
   let app := application setup leaks
   let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
@@ -609,8 +621,9 @@ theorem sourceService_pending_stopped_coupling
   let app := application setup leaks
   let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
     (bounds.riskMenu (runtime setup) leaks bound) who reference (players who)
-  let good := pendingPhase who pending payload outputEq candidate anchor earlier reference
-  let exited := pendingExit horizon scheduler players who pending anchor earlier
+  let good := sourceServicePendingPhase who pending payload outputEq candidate anchor
+      earlier reference
+  let exited := sourceServicePendingExit horizon scheduler players who pending anchor earlier
   let closed (index : Nat) (next : app.Execution × app.Execution × BindingMemory
       (runtime setup) leaks) :=
     ∃ stopped ≤ index,
@@ -639,7 +652,8 @@ theorem sourceService_pending_stopped_coupling
             (some ⟨remaining - (index + 1) + 1, none, next.1⟩) := by
           simpa only [show remaining - (index + 1) + 1 = remaining - index by omega]
             using currentTrace
-        obtain ⟨step, first, second, supported⟩ := pending_round_coupling bounds bound who pending
+        obtain ⟨step, first, second, supported⟩ := sourceService_pending_round_coupling bounds bound
+          who pending
           payload outputEq codeEq node id candidate anchor earlier reference named unrecorded
             emitted players next.1 next.2.1 next.2.2 roundTrace phase
         refine ⟨step, first, second, ?_⟩

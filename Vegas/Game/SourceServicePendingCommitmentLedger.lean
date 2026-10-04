@@ -90,6 +90,47 @@ theorem ownSubmissionsAtTurn_earlier_completed
   rw [unrecorded] at recorded
   cases recorded
 
+/-- Initialized traffic provenance recovers every actual owner commitment.
+If the earlier named responses and the anchor event have really completed,
+the silent tail contributes no further commitment; all actual owner commitments
+are inert by completion, independent of private candidate meanings. -/
+theorem sourceService_silent_tail_completed_commitment_ledger
+    {horizon afterRemaining : Nat}
+    {scheduler : (application setup leaks).Scheduler}
+    (after repaired : (application setup leaks).Execution) (who : Player)
+    (afterTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨afterRemaining, none, after⟩))
+    (earlier : List (application setup leaks).PlayerEntry)
+    (anchor : (application setup leaks).PlayerEntry)
+    (pending : (graph setup).EventId)
+    (named : (runtime setup).submittedEvent? leaks anchor.action = some pending)
+    (later : List (application setup leaks).PlayerEntry)
+    (split : after.recall who = earlier ++ anchor :: later)
+    (silent : ∀ entry ∈ later, entry.action.transmission = none)
+    (earlierCompleted : ∀ entry ∈ earlier, ∀ event,
+      (runtime setup).submittedEvent? leaks entry.action = some event →
+        event ∈ after.application.config.cut.completed)
+    (completed : pending ∈ after.application.config.cut.completed) :
+    OwnerCommitmentsInertOrMatching who after repaired := by
+  have facts := legalFacts setup leaks horizon scheduler _ afterTrace
+  intro message member authored event candidate committed _valid
+  obtain ⟨entry, recalled, material, transmission, _emitted, _state, _known, issued⟩ :=
+    facts.provenance.inputs message member
+  change entry ∈ after.recall message.id.1 at recalled
+  change message.id.1 = who at authored
+  rw [authored, split] at recalled
+  have submitted : (runtime setup).submittedEvent? leaks entry.action = some event :=
+    (submittedEvent_of_issued transmission issued).trans (by rw [committed]; rfl)
+  left
+  rcases List.mem_append.mp recalled with earlier | recent
+  · exact earlierCompleted entry earlier event submitted
+  · rcases List.mem_cons.mp recent with current | latest
+    · subst entry
+      have same : pending = event := Option.some.inj (named.symm.trans submitted)
+      rwa [← same]
+    · rw [silent entry latest] at transmission
+      cases transmission
+
 /-- The actual anchor and silent recall tail close the commitment ledger at
 settlement. The real original run supplies completed-cut monotonicity; initialized
 packet provenance supplies each packet's recorded response origin. -/
@@ -117,29 +158,16 @@ theorem sourceService_pending_completed_commitment_ledger
     (completed : pending ∈ after.application.config.cut.completed) :
     OwnerCommitmentsInertOrMatching who after repaired := by
   let app := application setup leaks
-  have facts := legalFacts setup leaks horizon scheduler _ afterTrace
   have invariant := ReactiveApplication.Invariant.policyInvariant app
     ((runtime setup).reactiveCompletedInvariant leaks before.application.config.cut.completed)
       players
   have retained := invariant.runRounds scheduler count (before.respond app who response) after
     (by rw [((runtime setup).reactive_respond_application leaks before who response).1]) reached
-  intro message member authored event candidate committed _valid
-  obtain ⟨entry, recalled, material, transmission, _emitted, _state, _known, issued⟩ :=
-    facts.provenance.inputs message member
-  change entry ∈ after.recall message.id.1 at recalled
-  change message.id.1 = who at authored
-  rw [authored, split] at recalled
-  have submitted : (runtime setup).submittedEvent? leaks entry.action = some event :=
-    (submittedEvent_of_issued transmission issued).trans (by rw [committed]; rfl)
-  left
-  rcases List.mem_append.mp recalled with earlier | recent
-  · exact retained (ownSubmissionsAtTurn_earlier_completed _ beforeTrace who atTurn pending turn
-      unrecorded entry earlier event submitted)
-  · rcases List.mem_cons.mp recent with current | latest
-    · subst entry
-      have same : pending = event := Option.some.inj (named.symm.trans submitted)
-      rwa [← same]
-    · rw [silent entry latest] at transmission
-      cases transmission
+  exact sourceService_silent_tail_completed_commitment_ledger after repaired who afterTrace
+    (before.recall who) anchor pending named later split silent
+    (fun entry member event named => retained
+      (ownSubmissionsAtTurn_earlier_completed _ beforeTrace who atTurn pending turn unrecorded
+        entry member event named)) completed
+
 
 end Vegas
