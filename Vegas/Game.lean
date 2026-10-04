@@ -110,6 +110,8 @@ import Vegas.Game.AsyncServiceWithholdingBayesBound
 import Vegas.Game.SourceServiceCommittedImmediateComparator
 import Vegas.Game.SourceServiceImmediateTrueComparator
 import Vegas.Game.AsyncServiceTrueGuessBayes
+import Vegas.Game.SourceServiceInitialGuessPayoff
+import Vegas.Game.AsyncServiceGuessOptimality
 import Vegas.Game.SourceServiceCompatiblePinValue
 import Vegas.Game.AsyncServiceFirstTurnBeliefResources
 import Vegas.Game.SourceServiceFirstBindingTraffic
@@ -162,7 +164,6 @@ import Vegas.Game.SourceServiceRecordedCollection
 import Vegas.Game.SourceServiceCompatibleBindingResponse
 import Vegas.Game.AsyncServiceBindingBayesResponse
 import Vegas.Game.AsyncServiceResolutionBayesResponse
-import Vegas.Game.SourceServiceCompatibleCollection
 import Vegas.Game.SourceServiceCompatibleChargedComparison
 import Vegas.Game.SourceServiceMissBranchComparison
 import Vegas.Game.SourceServiceResolutionComplement

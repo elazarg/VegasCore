@@ -1531,4 +1531,65 @@ theorem rosterScheduler_asyncTimely (setup : Setup (Player := Player) (L := L)) 
   change event.val + 0 < event.val + 1
   omega
 
+/-- At expiry, the real invariant and activation-time bound complete the current
+event, while an already completed current event remains completed. -/
+theorem expire_prefix_next (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (execution next : (application setup leaks).Execution) (event : (graph setup).EventId)
+    (owner : Player) (owned : (graph setup).actor? event = some owner)
+    {inputs : (graph setup).Inputs}
+    (invariant : EventGraphRuntime.State.Invariant (graph := graph setup) inputs
+      execution.application)
+    (ordered : execution.application.config.cut.IsPrefix event.val ∨
+      execution.application.config.cut.IsPrefix (event.val + 1))
+    (maximum : Nat)
+    (enteredBound : ∀ entered, execution.application.activatedAt event = some entered →
+      entered ≤ maximum)
+    (clock : maximum + (runtime setup).deadline event ≤ execution.application.clock)
+    (moved : next ∈ (execution.environmentStep (application setup leaks)
+      (.application (.expire event))).support) :
+    next.application.config.cut.IsPrefix (event.val + 1) := by
+  have physical := (applicationStep_facts execution next _ moved).1
+  rcases ordered with current | completed
+  · have ready := (ready_iff_rank setup _ event.val current event).mpr rfl
+    obtain ⟨entered, activated⟩ := invariant.activatedAt_eq_some_of_ready_actor event ready
+      (by rw [owned]; rfl)
+    have before := enteredBound entered activated
+    have due : (runtime setup).deadline event ≤ execution.application.clock - entered := by omega
+    have completed := (expire_completes (runtime setup) _ _ event owner owned ready entered
+      activated due physical).1
+    rw [completed]
+    exact current.complete_at event ready rfl
+  · have notReady : ¬ execution.application.config.cut.Ready event := by
+      intro ready
+      exact ready.1 ((completed.2 event).mpr (by omega))
+    rw [environmentStep_expire_of_not_ready (runtime setup) _ event notReady,
+      PMF.mem_support_pure_iff _ _] at physical
+    rw [physical]
+    exact completed
+
+/-- Activation, waiting and clock advances preserve the semantic configuration
+and its actual activation table. -/
+theorem environmentStep_config_activated_stutter (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (execution next : (application setup leaks).Execution)
+    (command : (application setup leaks).Command)
+    (ordinary : (∃ who, command = .activate who) ∨ command = .wait ∨
+      command = .application .advanceClock)
+    (moved : next ∈ (execution.environmentStep (application setup leaks) command).support) :
+    next.application.config = execution.application.config ∧
+      next.application.activatedAt = execution.application.activatedAt := by
+  rcases ordinary with ⟨who, rfl⟩ | rfl | rfl
+  · obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ moved
+    obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
+    exact ⟨rfl, rfl⟩
+  · simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+      PMF.mem_support_pure_iff _ _] at moved
+    cases moved
+    exact ⟨rfl, rfl⟩
+  · have physical := (applicationStep_facts execution next _ moved).1
+    simp only [environmentStep, PMF.mem_support_pure_iff _ _] at physical
+    rw [physical]
+    exact ⟨rfl, rfl⟩
+
 end Vegas

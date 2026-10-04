@@ -494,57 +494,6 @@ private theorem Phase.window (control : app.Control) (phase : Phase control)
   · exact Or.inl ordered
   · exact Or.inr ordered
 
-private theorem expiry_finish (execution next : app.Execution) (event : nativeGraph.EventId)
-    (owner : Player) (owned : nativeGraph.actor? event = some owner)
-    {inputs : nativeGraph.Inputs}
-    (invariant : EventGraphRuntime.State.Invariant (graph := nativeGraph) inputs
-      execution.application)
-    (ordered : execution.application.config.cut.IsPrefix event.val ∨
-      execution.application.config.cut.IsPrefix (event.val + 1))
-    (maximum : Nat)
-    (enteredBound : ∀ entered, execution.application.activatedAt event = some entered →
-      entered ≤ maximum)
-    (clock : maximum + (runtime setup).deadline event ≤ execution.application.clock)
-    (moved : next ∈ (execution.environmentStep app (.application (.expire event))).support) :
-    next.application.config.cut.IsPrefix (event.val + 1) := by
-  have physical := (applicationStep_facts execution next _ moved).1
-  rcases ordered with current | completed
-  · have ready := (ready_iff_rank setup _ event.val current event).mpr rfl
-    obtain ⟨entered, activated⟩ := invariant.activatedAt_eq_some_of_ready_actor event ready
-      (by rw [owned]; rfl)
-    have before := enteredBound entered activated
-    have due : (runtime setup).deadline event ≤ execution.application.clock - entered := by omega
-    have completed := (expire_completes (runtime setup) _ _ event owner owned ready entered
-      activated due physical).1
-    rw [completed]
-    exact current.complete_at event ready rfl
-  · have notReady : ¬ execution.application.config.cut.Ready event := by
-      intro ready
-      exact ready.1 ((completed.2 event).mpr (by omega))
-    rw [environmentStep_expire_of_not_ready (runtime setup) _ event notReady,
-      PMF.mem_support_pure_iff _ _] at physical
-    rw [physical]
-    exact completed
-
-private theorem environment_stutter (execution next : app.Execution) (command : app.Command)
-    (ordinary : (∃ who, command = .activate who) ∨ command = .wait ∨
-      command = .application .advanceClock)
-    (moved : next ∈ (execution.environmentStep app command).support) :
-    next.application.config = execution.application.config ∧
-      next.application.activatedAt = execution.application.activatedAt := by
-  rcases ordinary with ⟨who, rfl⟩ | rfl | rfl
-  · obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ moved
-    obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
-    exact ⟨rfl, rfl⟩
-  · simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
-      PMF.mem_support_pure_iff _ _] at moved
-    cases moved
-    exact ⟨rfl, rfl⟩
-  · have physical := (applicationStep_facts execution next _ moved).1
-    simp only [environmentStep, PMF.mem_support_pure_iff _ _] at physical
-    rw [physical]
-    exact ⟨rfl, rfl⟩
-
 private theorem phase_environment_ordered (control : app.Control) (phase : Phase control)
     (trace : (app.protocol (initialLaw setup) horizon scheduler).Trace (some control))
     (next : app.Execution) (command : app.Command)
@@ -561,7 +510,8 @@ private theorem phase_environment_ordered (control : app.Control) (phase : Phase
   obtain ⟨inputs, invariant⟩ := (roster_trace_facts setup leaks horizon scheduler trace).1
   have unique := app.uniqueIds_history scheduler (initialLaw setup) horizon control trace
   by_cases four : control.execution.environmentRecall.length = 4
-  · have same := environment_stutter control.execution next command (by
+  · have same := environmentStep_config_activated_stutter setup leaks
+      control.execution next command (by
         rcases selected_four _ _ _ four selected with first | second
         · exact Or.inl ⟨alice, first⟩
         · exact Or.inr (Or.inr second)) moved
@@ -630,7 +580,8 @@ private theorem phase_environment_ordered (control : app.Control) (phase : Phase
     · exact ⟨_, by simp [length, stageEq, lowerRank],
         by simp [length, stageEq, upperRank], completed⟩
   case «9» =>
-    have complete := expiry_finish control.execution next binding alice binding_actor invariant
+    have complete := expire_prefix_next setup leaks control.execution next binding alice
+      binding_actor invariant
       (Phase.window control phase binding (by simp [stageEq, lowerRank])
         (by simp [stageEq, upperRank])) 0
       (by intro entered activated; have exactClock := phase.entered binding entered activated
@@ -640,7 +591,8 @@ private theorem phase_environment_ordered (control : app.Control) (phase : Phase
     exact ⟨_, by simp [length, stageEq, lowerRank],
       by simp [length, stageEq, upperRank], complete⟩
   case «16» =>
-    have complete := expiry_finish control.execution next bobResolution bob bobResolution_actor
+    have complete := expire_prefix_next setup leaks control.execution next bobResolution bob
+      bobResolution_actor
       invariant
       (Phase.window control phase bobResolution (by simp [stageEq, lowerRank])
         (by simp [stageEq, upperRank])) 3
@@ -651,7 +603,7 @@ private theorem phase_environment_ordered (control : app.Control) (phase : Phase
     exact ⟨_, by simp [length, stageEq, lowerRank],
       by simp [length, stageEq, upperRank], complete⟩
   case «24» =>
-    have complete := expiry_finish control.execution next aliceResolution alice
+    have complete := expire_prefix_next setup leaks control.execution next aliceResolution alice
       aliceResolution_actor invariant
       (Phase.window control phase aliceResolution (by simp [stageEq, lowerRank])
         (by simp [stageEq, upperRank])) 7
@@ -663,7 +615,7 @@ private theorem phase_environment_ordered (control : app.Control) (phase : Phase
     exact ⟨_, by simp [length, stageEq, lowerRank],
       by simp [length, stageEq, upperRank], complete⟩
   all_goals
-    have same := environment_stutter control.execution next _ (by
+    have same := environmentStep_config_activated_stutter setup leaks control.execution next _ (by
       simp only [stageCommand]
       first
         | (split <;> simp)

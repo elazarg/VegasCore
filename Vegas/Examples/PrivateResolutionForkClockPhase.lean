@@ -33,7 +33,7 @@ def visitCount (history : List app.EnvironmentEntry) (who : Player) : Nat :=
     else if history.length = 5 then if lastTick history then 1 else 2 else 2
   else if history.length ≤ 10 then 0 else 1
 
-private theorem environment_effect (execution next : app.Execution) (command : app.Command)
+theorem environment_graph_or_tick (execution next : app.Execution) (command : app.Command)
     (moved : next ∈ (execution.environmentStep app command).support) :
     (command = .application .advanceClock ∧
       next.application.config = execution.application.config ∧
@@ -72,7 +72,7 @@ private def tickCount : app.Command → Nat
 private theorem environment_clock (execution next : app.Execution) (command : app.Command)
     (moved : next ∈ (execution.environmentStep app command).support) :
     next.application.clock = execution.application.clock + tickCount command := by
-  rcases environment_effect execution next command moved with ⟨tick, _, _, clock⟩ | step
+  rcases environment_graph_or_tick execution next command moved with ⟨tick, _, _, clock⟩ | step
   · rw [tick, clock]
     rfl
   · have clock : next.application.clock = execution.application.clock := by
@@ -89,14 +89,14 @@ private theorem environment_clock (execution next : app.Execution) (command : ap
         | executeSample | expire => exact clock
     | activate | wait | «include» => exact clock
 
-private theorem selected_four (history : List app.EnvironmentEntry) (view : app.EnvironmentView)
+theorem scheduler_support_four (history : List app.EnvironmentEntry) (view : app.EnvironmentView)
     (command : app.Command) (four : history.length = 4)
     (selected : command ∈ (scheduler history view).support) :
     command = .activate alice ∨ command = .application .advanceClock := by
   simp only [scheduler, four, ite_true] at selected
   exact (mem_support_mix_pure_iff _ _ _ (by norm_num) (by norm_num)).mp selected
 
-private theorem selected_six (history : List app.EnvironmentEntry) (view : app.EnvironmentView)
+theorem scheduler_support_six (history : List app.EnvironmentEntry) (view : app.EnvironmentView)
     (command : app.Command) (six : history.length = 6)
     (selected : command ∈ (scheduler history view).support) :
     command = (runtime setup).reactiveLatest leaks aliceResolution alice view ∨
@@ -106,7 +106,7 @@ private theorem selected_six (history : List app.EnvironmentEntry) (view : app.E
   · exact (mem_support_mix_pure_iff _ _ _ (by norm_num) (by norm_num)).mp selected
   · exact Or.inl (PMF.mem_support_pure_iff _ _ |>.mp selected)
 
-private theorem selected_other (history : List app.EnvironmentEntry) (view : app.EnvironmentView)
+theorem scheduler_support_other (history : List app.EnvironmentEntry) (view : app.EnvironmentView)
     (command : app.Command) (four : history.length ≠ 4) (six : history.length ≠ 6)
     (selected : command ∈ (scheduler history view).support) :
     command = stageCommand history.length history view := by
@@ -117,15 +117,15 @@ private theorem stageClock_append (history : List app.EnvironmentEntry)
     (selected : command ∈ (scheduler history view).support) :
     stageClock (history ++ [⟨view, command⟩]) = stageClock history + tickCount command := by
   by_cases four : history.length = 4
-  · rcases selected_four history view command four selected with rfl | rfl <;>
+  · rcases scheduler_support_four history view command four selected with rfl | rfl <;>
       simp [stageClock, four, lastTick, tickCount]
   by_cases six : history.length = 6
-  · rcases selected_six history view command six selected with rfl | rfl
+  · rcases scheduler_support_six history view command six selected with rfl | rfl
     · unfold reactiveLatest
       split <;> simp [stageClock, six, tickCount]
     · unfold latestAliceWithhold
       split <;> simp [stageClock, six, tickCount]
-  have chosen := selected_other history view command four six selected
+  have chosen := scheduler_support_other history view command four six selected
   rw [chosen]
   generalize stageEq : history.length = stage at beforeEnd four six ⊢
   change stage < 17 at beforeEnd
@@ -143,17 +143,17 @@ private theorem visitCount_append (history : List app.EnvironmentEntry)
     visitCount (history ++ [⟨view, command⟩]) who = visitCount history who +
       if command.actor? app = some who then 1 else 0 := by
   by_cases four : history.length = 4
-  · rcases selected_four history view command four selected with rfl | rfl <;>
+  · rcases scheduler_support_four history view command four selected with rfl | rfl <;>
       fin_cases who <;> simp [visitCount, four, lastTick, ReactiveApplication.Command.actor?]
   by_cases six : history.length = 6
-  · rcases selected_six history view command six selected with rfl | rfl
+  · rcases scheduler_support_six history view command six selected with rfl | rfl
     · unfold reactiveLatest
       split <;> fin_cases who <;>
         simp [visitCount, six, ReactiveApplication.Command.actor?]
     · unfold latestAliceWithhold
       split <;> fin_cases who <;>
         simp [visitCount, six, ReactiveApplication.Command.actor?]
-  have chosen := selected_other history view command four six selected
+  have chosen := scheduler_support_other history view command four six selected
   rw [chosen]
   generalize stageEq : history.length = stage at beforeEnd four six ⊢
   change stage < 17 at beforeEnd
@@ -175,16 +175,16 @@ private theorem selected_activation (history : List app.EnvironmentEntry)
       (history.length + 1 = 6 ∧ who = alice) ∨
       (history.length + 1 = 11 ∧ who = bob) := by
   by_cases four : history.length = 4
-  · rcases selected_four history view command four selected with rfl | rfl
+  · rcases scheduler_support_four history view command four selected with rfl | rfl
     · exact Or.inr (Or.inl ⟨by omega, (Option.some.inj active).symm⟩)
     · cases active
   by_cases six : history.length = 6
-  · rcases selected_six history view command six selected with rfl | rfl
+  · rcases scheduler_support_six history view command six selected with rfl | rfl
     · unfold reactiveLatest at active
       split at active <;> cases active
     · unfold latestAliceWithhold at active
       split at active <;> cases active
-  have chosen := selected_other history view command four six selected
+  have chosen := scheduler_support_other history view command four six selected
   rw [chosen] at active
   generalize stageEq : history.length = stage at beforeEnd four six active ⊢
   change stage < 17 at beforeEnd

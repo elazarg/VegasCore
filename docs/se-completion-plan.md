@@ -121,7 +121,11 @@ The concrete private-resolution audit uses
 [PrivateResolutionForkNativeInputs](../Vegas/Examples/PrivateResolutionForkNativeInputs.lean)
 and [PrivateResolutionForkClockPhase](../Vegas/Examples/PrivateResolutionForkClockPhase.lean).
 The source equilibrium, initial type hiding and all-raw timing resources are
-proved. Certify the builder contract on every raw history, derive actual
+proved. [PrivateResolutionForkCompletionBounds](../Vegas/Examples/PrivateResolutionForkCompletionBounds.lean)
+proves raw readiness, activation bounds and complete play;
+[PrivateResolutionForkOpportunity](../Vegas/Examples/PrivateResolutionForkOpportunity.lean)
+proves the owner-delay clause using actual public activation witnesses.
+Certify protected inclusion on every raw history, derive actual
 accepting-receipt provenance and complete native Bayes likelihoods, then compare
 whole native continuations. These obligations precede any timing counterexample
 or conclusion about the general contract's sufficiency.
@@ -133,9 +137,17 @@ sites. TRUE support is derived from normalized source support and physical
 guard success; its comparator has protected completion and zero authentic
 charge. [PrivateResolutionForkTrueResource](../Vegas/Examples/PrivateResolutionForkTrueResource.lean)
 derives that success for Bob from every initialized raw history. The values
-retain actual counterfactual likelihoods. Relate the target's actual choice and
-whole continuation to these bounds, then derive its necessary rationality or
-vanishing-regret inequalities; do not insert a source posterior as a premise.
+retain actual counterfactual likelihoods.
+[AsyncServiceGuessOptimality](../Vegas/Game/AsyncServiceGuessOptimality.lean)
+relates the actual incumbent value to its LOW atom and derives the necessary
+ordinary rationality inequality. The same convergent fully mixed Bayes sequence
+with a rational pure LOW limit has a vanishing HIGH-versus-LOW mass gap, from
+actual choice convergence and uniform whole-policy regret.
+[PrivateResolutionForkGuessPayoff](../Vegas/Examples/PrivateResolutionForkGuessPayoff.lean)
+identifies its fixed terminal payoff and rationality with Bob's real public
+utility. Derive the actual LOW-limit input and incoming native fiber likelihoods
+before drawing a rate or preservation conclusion; no source posterior is a
+premise.
 
 [SourceServiceFirstActivation](../Vegas/Game/SourceServiceFirstActivation.lean)
 derives the first ready owner input from an actual untouched completion
@@ -566,18 +578,23 @@ from any actual control with these owner resources, including an idle control
 after a committed response.
 Every hidden history at a compatible effective input has zero owner collection
 against arbitrary effective opponents. Source payoff comparisons remain open.
-[SourceServiceCompatibleCollection](../Vegas/Game/SourceServiceCompatibleCollection.lean)
-derives the backend's collection bound for a classified forbidden packet or
-repeated submission at compatible information in any response menu. The
-recorded-response kernel uses actual raw trace and authentic own-call resources;
-compatibility supplies those resources without an original risk-menu trace.
+[SourceServiceAuditableCollection](../Vegas/Game/SourceServiceAuditableCollection.lean)
+and [SourceServiceRecordedCollection](../Vegas/Game/SourceServiceRecordedCollection.lean)
+derive the backend's total collection bound for a classified forbidden packet or
+repeated submission at any native information in any response menu.
+[ReactiveRecalledEmission](../Vegas/Pending/ReactiveRecalledEmission.lean)
+derives authentic own calls from raw recall, including late or rejected calls;
+actual serial provenance distinguishes the two emitted identifiers. No
+historical deadline-fit or original risk-menu trace is required.
 Later behavioral policies are arbitrary. This bounds the existing one-time
 charge, without assuming certain evidence observation or renewed punishment.
 [SourceServiceCompatibleChargedComparison](../Vegas/Game/SourceServiceCompatibleChargedComparison.lean)
 compares a committed classified forbidden packet or replay with that same clean
 whole-policy comparator. Actual collection and the fixed effective-history
 range deposit give the audited-utility inequality under every belief at a
-compatible effective site and arbitrary future policies. No risk-profile
+compatible effective site and arbitrary future policies. Its total-charge and
+base-range lower bound applies at any native input; the comparator and
+same-assessment comparisons keep their actual compatibility premise. No risk-profile
 extension or future risk support is assumed. Dominance by the prescribed source
 response, uncharged unusable choices and SE preservation remain open.
 

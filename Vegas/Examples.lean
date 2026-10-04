@@ -44,7 +44,10 @@ import Vegas.Examples.PrivateResolutionForkSource
 import Vegas.Examples.PrivateResolutionForkService
 import Vegas.Examples.PrivateResolutionForkNativeInputs
 import Vegas.Examples.PrivateResolutionForkClockPhase
+import Vegas.Examples.PrivateResolutionForkCompletionBounds
+import Vegas.Examples.PrivateResolutionForkOpportunity
 import Vegas.Examples.PrivateResolutionForkTrueResource
+import Vegas.Examples.PrivateResolutionForkGuessPayoff
 import Vegas.Examples.PrivateResolutionForkSourceLikelihood
 import Vegas.Examples.PrivateResolutionForkLowFalseUtility
 import Vegas.Examples.PrivateResolutionForkSourceConsistency

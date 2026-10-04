@@ -1,7 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceEffectiveImmediateComparator
-import Vegas.Game.SourceServiceCompatibleCollection
+import Vegas.Game.SourceServiceAuditableCollection
+import Vegas.Game.SourceServiceRecordedCollection
 import Vegas.Game.AsyncServiceDeposit
 import Vegas.Game.SourceServiceFreeRationality
 import GameTheoryExtensions.Analysis.Protocol.TerminalAuditContinuation
@@ -9,8 +10,8 @@ import GameTheoryExtensions.Analysis.Protocol.TerminalAuditContinuation
 /-! # Charged continuation comparisons at compatible effective information
 
 A classified packet or repeated response has an actual terminal collection
-bound under arbitrary effective continuation policies. One shared immediate
-comparator has zero owner collection at the same compatible information.
+bound under arbitrary effective continuation policies, at any native input.
+One shared immediate comparator has zero owner collection at the same compatible information.
 The fixed deposit covers the entire effective-history payoff range, giving
 an expected net-utility comparison for every belief on that information fiber.
 
@@ -45,7 +46,6 @@ private theorem charged_collection_at_information
     (backend : EvidenceReportService (SettledEvidence service.setup))
     (baseline : ∀ player, (model).BehavioralPolicy player) (who : Player)
     (site : (model).InformationSite who)
-    (compatible : service.sourceCompatibleInfo who site.1)
     (choice : (model).Choice who site.1)
     (classified : auditableServiceChoice service.setup service.leaks (menu) service.horizon
       service.scheduler who site.1 choice ∨
@@ -73,9 +73,14 @@ private theorem charged_collection_at_information
       rw [current] at active
       change actor = some who at active
       subst actor
-      exact service.sourceCompatibleInfo_charged_collection_committed (menu) backend baseline
-        history.1 who remaining execution current site.1 compatible choice history.2 classified
-        observationRate deliveryRate delivery_nonnegative coverage
+      rcases classified with packet | recorded
+      · exact auditableServiceChoice_collection_committed service.setup service.leaks (menu)
+          service.horizon service.scheduler service.completes backend baseline history.1 who
+          remaining execution current site.1 choice history.2 packet observationRate deliveryRate
+          delivery_nonnegative coverage
+      · exact recordedServiceChoice_collection_committed (menu) service.horizon service.scheduler
+          service.completes backend baseline history.1 who remaining execution current site.1
+          choice history.2 recorded observationRate deliveryRate delivery_nonnegative coverage
 
 open Classical in
 /-- Actual collection of a classified pure response bounds its entire net
@@ -90,7 +95,6 @@ theorem charged_expected_utility_le_lower
     (who : Player) (positive : 0 < observationRate who * deliveryRate who)
     (baseline : ∀ player, (model).BehavioralPolicy player)
     (site : (model).InformationSite who)
-    (compatible : service.sourceCompatibleInfo who site.1)
     (choice : (model).Choice who site.1)
     (classified : auditableServiceChoice service.setup service.leaks (menu) service.horizon
       service.scheduler who site.1 choice ∨
@@ -129,7 +133,7 @@ theorem charged_expected_utility_le_lower
       ((baseline who).commit site.1 choice)) history.1
   have collected : probability who ≤ expect deviating
       (fun final => TerminalAudit.charge observe audit final.state who) :=
-    service.charged_collection_at_information backend baseline who site compatible choice
+    service.charged_collection_at_information backend baseline who site choice
       classified observationRate deliveryRate delivery_nonnegative coverage history
   have upperBound : expect deviating extremum ≤ FinitePayoffBounds.upper extremum :=
     expect_le_const deviating extremum (payoffIntegrable_of_finite _ _)
@@ -182,7 +186,7 @@ theorem charged_expected_utility_le_immediate
   intro certificate probability deposit observe audit payoff
   have charged := service.charged_expected_utility_le_lower base backend observationRate
     deliveryRate
-    delivery_nonnegative coverage who positive baseline site compatible choice classified belief
+    delivery_nonnegative coverage who positive baseline site choice classified belief
   exact charged.trans (service.effectiveImmediateComparator_expected_utility_lower base
     backend.sample backend.sample_authentic deposit reference who permitted certificate baseline
       site compatible belief)

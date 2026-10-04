@@ -36,7 +36,9 @@ private theorem policy_subsequence (who : Player) (policies : ℕ → M.Behavior
   simp only [policy, site.2, ↓reduceDIte]
   exact converges site
 
-private theorem uniform_gain_at_site
+/-- Ordinary rationality at one information site bounds every whole-policy gain
+uniformly along the actual convergent assessment sequence. -/
+theorem BehavioralAssessmentConvergesPointwise.exists_uniform_policy_gain_bound_at_site
     {sequence : ℕ → M.BehavioralAssessment} {assessment : M.BehavioralAssessment}
     (converges : BehavioralAssessmentConvergesPointwise sequence assessment)
     (who : Player) (site : M.InformationSite who) (payoff : E.History → ℝ) (fuel : Nat)
@@ -133,7 +135,7 @@ theorem BehavioralAssessmentConvergesPointwise.exists_uniform_policy_gain_bound
   classical
   let _ := Fintype.ofFinite (M.InformationSite who)
   choose errors nonnegative vanishes bounds using fun site =>
-    uniform_gain_at_site converges who site payoff fuel (rational site)
+    converges.exists_uniform_policy_gain_bound_at_site who site payoff fuel (rational site)
   let error (n : ℕ) := ∑ site, errors site n
   refine ⟨error, (fun n => Finset.sum_nonneg fun site _ => nonnegative site n), ?_, ?_⟩
   · simpa only [Finset.sum_const_zero] using

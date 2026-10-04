@@ -626,8 +626,7 @@ theorem exists_consistent_original_sequence_completion
     have charged := service.charged_expected_utility_le_lower base backend observationRate
       deliveryRate deliveryNonnegative coverage who positive
       (Profile.update (sig := (model).behavioralSignature) assessment.strategy who alternative)
-      site compatible
-      choice classified (assessment.belief who site)
+      site choice classified (assessment.belief who site)
     simp only [Profile.update_same, Profile.update_idem] at charged
     have tower := assessment.continuationContextWith_value_tower
       ((model).runBehavioralTerminalFrom certificate) site (payoff who)

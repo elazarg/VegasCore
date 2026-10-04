@@ -1777,9 +1777,16 @@ literal silence.
 [PrivateResolutionForkClockPhase](../Vegas/Examples/PrivateResolutionForkClockPhase.lean)
 accounts for every initialized raw trace: any Bob decision has clock three,
 eleven scheduler commands, two Alice responses and no earlier Bob response.
-These are actual trace and timing invariants. The all-history service
-certificate, accepted-receipt provenance and complete conditional likelihoods
-remain open; no native incentive counterexample follows from these invariants.
+These are actual trace and timing invariants.
+[PrivateResolutionForkCompletionBounds](../Vegas/Examples/PrivateResolutionForkCompletionBounds.lean)
+tracks actual completed prefixes and activation times through every raw command
+and response. It derives Bob readiness and proves complete play.
+[PrivateResolutionForkOpportunity](../Vegas/Examples/PrivateResolutionForkOpportunity.lean)
+derives actual public owner activation witnesses in each readiness episode and
+proves the owner-delay clause on all initialized raw histories. The protected
+inclusion clause, accepting-receipt provenance and complete conditional
+likelihoods remain open; no native incentive counterexample follows from these
+invariants.
 [ReactiveWithholdingReceipts](../Vegas/Pending/ReactiveWithholdingReceipts.lean)
 proves that an accepting receipt for an actual withholding envelope fixes its
 publication output to failure on every later initialized raw history.
@@ -1819,8 +1826,27 @@ history, without supplying a source witness or assuming receipt success.
 derives the same committed whole comparator's value as the actual HIGH-type
 counterfactual mass divided by total native mass. Both HIGH and LOW comparisons
 retain foreign waiting and free-menu likelihoods. The incoming native type
-likelihood, actual target continuation and their necessary rationality
-inequalities remain separate obligations; no source posterior is substituted.
+likelihood and actual target continuation remain separate obligations; the
+necessary rationality inequality below uses these same native masses, without
+substituting a source posterior.
+[SourceServiceInitialGuessPayoff](../Vegas/Game/SourceServiceInitialGuessPayoff.lean)
+reads the actual immutable parameter at the terminal configuration and proves
+its equality with the same starting-history parameter through every native
+continuation.
+[AsyncServiceGuessOptimality](../Vegas/Game/AsyncServiceGuessOptimality.lean)
+uses this fixed payoff in ordinary continuation contexts. The actual incumbent
+value is bounded by the LOW probability plus its actual non-LOW choice mass.
+Ordinary whole-policy rationality and the genuine HIGH comparator then require
+the HIGH probability to lie below that bound. For the same fully mixed Bayes
+sequence converging to a rational pure LOW limit, actual choice convergence and
+uniform whole-policy regret give `HIGH mass ≤ LOW mass + total mass × error`,
+with error tending to zero. No unconditional execution error is divided by
+rare-site mass.
+[PrivateResolutionForkGuessPayoff](../Vegas/Examples/PrivateResolutionForkGuessPayoff.lean)
+identifies this fixed terminal payoff and ordinary rationality with Bob's actual
+initial-parameter/public-outcome utility under complete play. The full incoming
+fiber likelihoods, actual LOW-limit input and any preservation contradiction
+remain separate obligations.
 [OpaqueBindingForkSourcePosterior](../Vegas/Examples/OpaqueBindingForkSourcePosterior.lean)
 proves that the actual conditional typed configuration is the clean witness's
 configuration. Both physical decoders succeed, and the common original-memory
@@ -3063,18 +3089,23 @@ may persist. No protected-delivery premise is needed for this settlement law;
 the first-turn restart supplies future absence of owned misses separately.
 Arbitrary free continuations and the strategic waiting comparison remain
 separate obligations.
-[SourceServiceCompatibleCollection](../Vegas/Game/SourceServiceCompatibleCollection.lean)
-derives the backend's collection bound for a classified forbidden packet or
-repeated submission at compatible information in any response menu. The
-recorded-response kernel uses actual raw trace and authentic own-call resources;
-compatibility supplies those resources without an original risk-menu trace.
+[SourceServiceAuditableCollection](../Vegas/Game/SourceServiceAuditableCollection.lean)
+and [SourceServiceRecordedCollection](../Vegas/Game/SourceServiceRecordedCollection.lean)
+derive the backend's total collection bound for a classified forbidden packet or
+repeated submission at any native information in any response menu.
+[ReactiveRecalledEmission](../Vegas/Pending/ReactiveRecalledEmission.lean)
+derives authentic own calls from actual raw recall, including late or rejected
+calls. Allocated serial provenance distinguishes the two emitted identifiers.
+No historical deadline-fit or original risk-menu trace is required.
 Later behavioral policies are arbitrary. This bounds the existing one-time
 charge, without assuming certain evidence observation or renewed punishment.
 [SourceServiceCompatibleChargedComparison](../Vegas/Game/SourceServiceCompatibleChargedComparison.lean)
 compares a committed classified forbidden packet or replay with that same clean
 whole-policy comparator. Actual collection and the fixed effective-history
 range deposit give the audited-utility inequality under every belief at a
-compatible effective site and arbitrary future policies. No risk-profile
+compatible effective site and arbitrary future policies. Its total-charge and
+base-range lower bound applies at any native input; the comparator and
+same-assessment comparisons retain their actual compatibility premise. No risk-profile
 extension or future risk support is assumed. The fixed-profile completion's
 actual compatible pins and free-site comparisons bound the clean comparator
 by the same returned assessment, yielding no gain from classified forbidden

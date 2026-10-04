@@ -9,8 +9,8 @@ The player's own recall identifies an earlier submission for the named event.
 Committing a further response creates a different actual identifier. Both traffic
 records persist, and authentic final-record coverage applies to whichever one
 the final settlement forbids. The bound concerns total one-time charge from an
-actual raw prefix with authentic own calls, not renewed collection after an
-already collected fine.
+actual raw prefix with authentic recalled emissions, not renewed collection
+after an already collected fine.
 -/
 
 noncomputable section
@@ -63,10 +63,9 @@ variable {setup leaks} [Fintype Player]
 
 open Classical in
 /-- A committed locally recorded extra response has the backend's collection
-bound under every later behavioral policy. Actual raw history and fresh own
-call provenance supply the earlier packet; no risk-menu trace is required. -/
+bound under every later behavioral policy. Actual raw history and recalled
+emission supply the earlier packet; no risk-menu trace is required. -/
 theorem recordedServiceChoice_collection_committed
-    {bound : (graph setup).EventId → Nat}
     (menu : (application setup leaks).ResponseMenu)
     (horizon : Nat) (scheduler : (application setup leaks).Scheduler)
     (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
@@ -76,7 +75,6 @@ theorem recordedServiceChoice_collection_committed
     (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
     (who : Player) (remaining : Nat) (execution : (application setup leaks).Execution)
     (current : history.state = some ⟨remaining, some who, execution⟩)
-    (calls : OwnFreshCalls setup leaks bound execution who)
     (info : (menu.information (initialLaw setup) horizon scheduler).InfoState who)
     (choice : (menu.information (initialLaw setup) horizon scheduler).Choice who info)
     (observed : (menu.information (initialLaw setup) horizon scheduler).infoOf who
@@ -130,7 +128,7 @@ theorem recordedServiceChoice_collection_committed
         (app.submit execution.application who material) who
           (execution.network.known who) material⟩⟩
   obtain ⟨first, firstPresent, secondPresent, firstOwner, different, firstNamed, secondNamed⟩ :=
-    recordedResponse_duplicateTraffic execution who rawTrace calls event earlierRecorded material
+    recordedResponse_duplicateTraffic execution who rawTrace event earlierRecorded material
       submitted
   have committed := menu.run_commit_response (initialLaw setup) horizon scheduler profile history
     who remaining execution current choice ⟨some material⟩ selected

@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveSubmissionRecall
+import Vegas.Pending.ReactiveRecalledEmission
 import Vegas.Pending.ReactiveSubmissionSerial
 import Vegas.Pending.ReactiveUnsubmittedWindow
 import Vegas.Pending.ReactiveServiceConformance

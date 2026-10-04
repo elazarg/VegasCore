@@ -102,16 +102,21 @@ future private values changed by repair are outside the claim.
   control. Every hidden
   compatible history has zero owner collection against arbitrary effective
   opponents. Source payoff comparisons remain open.
-- [SourceServiceCompatibleCollection](../Vegas/Game/SourceServiceCompatibleCollection.lean)
-  derives actual collection for both classified forbidden packets and repeated
-  submissions at compatible information in any response menu. The replay kernel
-  needs actual raw trace and authentic own calls, derived from compatibility;
-  it imposes no original risk support on the prefix or future policies.
+- [SourceServiceAuditableCollection](../Vegas/Game/SourceServiceAuditableCollection.lean)
+  and [SourceServiceRecordedCollection](../Vegas/Game/SourceServiceRecordedCollection.lean)
+  derive actual total collection for classified forbidden packets and repeated
+  submissions at any native information in any response menu.
+  [ReactiveRecalledEmission](../Vegas/Pending/ReactiveRecalledEmission.lean)
+  supplies authentic recalled calls from initialized raw history, including
+  late or rejected calls; actual allocated serials distinguish the replay.
+  No historical deadline-fit or original risk-support premise is needed.
 - [SourceServiceCompatibleChargedComparison](../Vegas/Game/SourceServiceCompatibleChargedComparison.lean)
   proves that every classified forbidden packet or replay is bounded by the same
   clean whole-policy comparator under any compatible-site belief and arbitrary
   effective continuation policies. Actual collection and the fixed deposit give
-  the inequality. Prescribed-response dominance and uncharged unusable choices
+  the inequality. Its uniform total-charge/base-range bound applies at any
+  native information; the comparator and same-assessment comparisons retain
+  their actual compatibility premise. Prescribed-response dominance and uncharged unusable choices
   remain open.
 - [AsyncServiceCompatibleRecall](../Vegas/Game/AsyncServiceCompatibleRecall.lean)
   derives compatibility of every earlier own recalled decision and equality of
@@ -143,8 +148,18 @@ future private values changed by repair are outside the claim.
   [AsyncServiceTrueGuessBayes](../Vegas/Game/AsyncServiceTrueGuessBayes.lean)
   averages that same comparator under actual native Bayes beliefs, obtaining the
   exact HIGH counterfactual mass divided by total native mass. The existing LOW
-  bound uses the same native weights. Incoming likelihoods and the necessary
-  target rationality inequalities remain open.
+  bound uses the same native weights. The fixture's incoming likelihoods and
+  their application to target rationality remain open.
+- [AsyncServiceGuessOptimality](../Vegas/Game/AsyncServiceGuessOptimality.lean)
+  derives necessary native HIGH-versus-LOW mass bounds from ordinary
+  whole-policy rationality. For the same fully mixed Bayes sequence with a
+  rational pure LOW limit, actual non-LOW choice mass and uniform whole-policy
+  regret give a vanishing error without rare-site division.
+  [SourceServiceInitialGuessPayoff](../Vegas/Game/SourceServiceInitialGuessPayoff.lean)
+  supplies the fixed actual terminal payoff;
+  [PrivateResolutionForkGuessPayoff](../Vegas/Examples/PrivateResolutionForkGuessPayoff.lean)
+  identifies it and ordinary rationality with Bob's real public utility.
+  The incoming likelihoods and actual LOW-limit input remain open.
 - [SourceServiceRecordedDecisionCompletion](../Vegas/Game/SourceServiceRecordedDecisionCompletion.lean)
   gives acceptance of the exact original recorded packet and no public miss
   under the asynchronous contract. [SourceServiceRecordedBindingCompletion](../Vegas/Game/SourceServiceRecordedBindingCompletion.lean)
@@ -928,8 +943,13 @@ survival does not assert absence of earlier exits.
 [PrivateResolutionForkNativeInputs](../Vegas/Examples/PrivateResolutionForkNativeInputs.lean)
 and [PrivateResolutionForkClockPhase](../Vegas/Examples/PrivateResolutionForkClockPhase.lean)
 provide a concrete public-order schedule, initial private-type hiding and timing
-resources for every initialized raw trace. The schedule's all-history service
-contract, accepting-receipt provenance, full conditional likelihoods and native
+resources for every initialized raw trace.
+[PrivateResolutionForkCompletionBounds](../Vegas/Examples/PrivateResolutionForkCompletionBounds.lean)
+derives the actual completed-prefix and activation bounds, Bob readiness and
+complete play. [PrivateResolutionForkOpportunity](../Vegas/Examples/PrivateResolutionForkOpportunity.lean)
+derives readiness-episode owner activation witnesses from real scheduler command
+support, proving the owner-delay clause on all raw histories. Protected
+inclusion, accepting-receipt provenance, full conditional likelihoods and native
 incentive comparison remain separate obligations.
 
 ## Proof and build discipline

@@ -1,7 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceSignedCollection
-import Vegas.Game.SourceServiceCanonicalSerial
+import Vegas.Game.SourceServiceAsyncTimeliness
+import Vegas.Pending.ReactiveRecalledEmission
 
 /-! # Final collection for two packets of one owner and event
 
@@ -169,16 +170,14 @@ theorem duplicateTraffic_collection_continuation
             delivery_nonnegative coverage
 
 omit [Fintype Player] in
-/-- An actual raw prefix with authentic fresh own calls reconstructs its
+/-- An actual raw prefix reconstructs its authored emission and
 earlier recorded packet from recall. A further response naming that event emits
 a different identifier and leaves both real records present, regardless of content. -/
 theorem recordedResponse_duplicateTraffic
-    {bound : (graph setup).EventId → Nat}
     {horizon remaining : Nat} {scheduler : (application setup leaks).Scheduler}
     (execution : (application setup leaks).Execution) (who : Player)
     (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨remaining, some who, execution⟩))
-    (calls : OwnFreshCalls setup leaks bound execution who)
     (event : (graph setup).EventId)
     (recorded : (runtime setup).eventRecorded leaks (execution.recall who) event = true)
     (material : (application setup leaks).Submission)
@@ -207,10 +206,12 @@ theorem recordedResponse_duplicateTraffic
         simp only [EventGraphRuntime.submittedEvent?, current] at namedEntry
         cases namedEntry
     | some priorMaterial => exact ⟨priorMaterial, rfl⟩
-  obtain ⟨priorEvent, message, emitted, authored, named, priorNamed, _⟩ :=
-    calls entry recalled priorMaterial transmission
-  have eventEq : priorEvent = event := Option.some.inj (priorNamed.symm.trans namedEntry)
-  subst priorEvent
+  obtain ⟨message, emitted, authored, callEq⟩ :=
+    (runtime setup).recalled_submission_emission leaks (initialLaw setup) horizon scheduler
+      ⟨remaining, some who, execution⟩ trace who entry recalled priorMaterial transmission
+  have named : message.payload.call.event? (graph setup) = some event := by
+    rw [callEq]
+    simpa only [EventGraphRuntime.submittedEvent?, transmission] using namedEntry
   have output : message ∈ app.outputs (execution.recall who) :=
     List.mem_filterMap.mpr ⟨entry, recalled, emitted⟩
   rw [← facts.inputs who] at output

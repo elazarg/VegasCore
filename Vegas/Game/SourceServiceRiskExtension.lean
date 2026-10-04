@@ -322,20 +322,14 @@ theorem risk_sequentialEquilibrium_extends
         rw [mul_div_cancel₀ _ (positive who).ne']
         exact le_of_eq (by ring))
       (fun _ who _ _ _ _ _ final _ => (effectiveBounds who final).2)
-      (fun targetProfile who site action extra breach history => by
+      (fun targetProfile who site action _extra breach history => by
         let app := application service.setup service.leaks
-        obtain ⟨past, view, _response, input, _, _, _, clear⟩ :=
-          service.riskRestriction_extra_clear who site action extra
         have observed : (effective.information initial count scheduler).infoOf who
             (restriction.history history.1).trace = (restriction.site who site).1 :=
           (restriction.observed who history.1).trans history.2
-        have observedState : app.observe who (restriction.history history.1).state =
-            some (past, view) :=
-          (effective.info initial count scheduler who
-            (restriction.history history.1).trace).symm.trans
-            (observed.trans input)
-        have active := (app.observe_isSome who (restriction.history history.1).state).mp
-          (by rw [observedState]; rfl)
+        have active := InformationModel.InformationSite.active _ (restriction.site who site)
+          (restriction.informationHistory who site history)
+        change app.actor (restriction.history history.1).state = some who at active
         cases current : (restriction.history history.1).state with
         | none => rw [current] at active; cases active
         | some control =>
@@ -349,22 +343,9 @@ theorem risk_sequentialEquilibrium_extends
                 (restriction.history history.1) who remaining execution current
                 (restriction.site who site).1 action observed packet observationRate deliveryRate
                 delivery_nonnegative coverage
-            · have actualInput : (execution.recall who, execution.observe app who) =
-                  (past, view) := by
-                apply Option.some.inj
-                simpa only [current, ReactiveApplication.observe, ↓reduceIte] using observedState
-              have actualClear := (congrArg (fun data =>
-                (runtime service.setup).serviceRisk service.leaks service.bound who data.1 data.2)
-                  actualInput).trans clear
-              have riskTrace : (menu.protocol initial count scheduler).Trace
-                  (restriction.history history.1).state := history.1.trace
-              have persistentClear := ((runtime service.setup).serviceRisk_clear_iff
-                service.leaks service.bound who _ _).mp actualClear |>.1
-              have calls := (riskPacketFacts_history service.bounds service.bound service.contract
-                _ (current ▸ riskTrace) who persistentClear).1
-              exact recordedServiceChoice_collection_committed effective count scheduler
+            · exact recordedServiceChoice_collection_committed effective count scheduler
                 service.completes backend targetProfile (restriction.history history.1) who
-                remaining execution current calls (restriction.site who site).1 action observed
+                remaining execution current (restriction.site who site).1 action observed
                 recorded observationRate deliveryRate delivery_nonnegative coverage)
       (fun sourceProfile _ _ who site action extra _ belief => by
         obtain ⟨past, view, _response, observed, _, _, _, clear⟩ :=
