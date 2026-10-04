@@ -40,6 +40,8 @@ import Vegas.Examples.PendingMenus
 import Vegas.Examples.PendingMenusSource
 import Vegas.Examples.PendingMenusStrategies
 import Vegas.Examples.PrivateValueAuction
+import Vegas.Examples.PrivateResolutionForkSource
+import Vegas.Examples.PrivateResolutionForkSourceLikelihood
 import Vegas.Examples.ReactiveAssociationEvidence
 import Vegas.Examples.ReactiveAuthorization
 import Vegas.Examples.ReactiveDependencyService

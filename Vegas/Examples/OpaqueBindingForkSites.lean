@@ -456,8 +456,8 @@ theorem riskyAccepted_config : riskyAccepted.application.config =
 
 theorem accepted_application_eq : cleanAccepted.application = riskyAccepted.application := by
   obtain ⟨applicationEq, networkEq, receiptsEq⟩ :=
-    WaitRiskConfounding.binding_advance_response_fields (runtime setup) leaks
-      emptyIncludeExecution alice binding .bool true 0
+    WaitRiskConfounding.response_advance_fields (runtime setup) leaks
+      emptyIncludeExecution alice bindingResponse
   change cleanTicked.application = riskySubmitted.application at applicationEq
   change cleanTicked.network = riskySubmitted.network at networkEq
   dsimp only [cleanAccepted, riskyAccepted, includedExecution,
@@ -778,8 +778,8 @@ theorem accepted_fields_eq : cleanAccepted.application = riskyAccepted.applicati
     cleanAccepted.network = riskyAccepted.network ∧
       cleanAccepted.receipts = riskyAccepted.receipts := by
   obtain ⟨applicationEq, networkEq, receiptsEq⟩ :=
-    WaitRiskConfounding.binding_advance_response_fields (runtime setup) leaks
-      emptyIncludeExecution alice binding .bool true 0
+    WaitRiskConfounding.response_advance_fields (runtime setup) leaks
+      emptyIncludeExecution alice bindingResponse
   change cleanTicked.application = riskySubmitted.application at applicationEq
   change cleanTicked.network = riskySubmitted.network at networkEq
   change cleanTicked.receipts = riskySubmitted.receipts at receiptsEq
@@ -790,8 +790,8 @@ theorem accepted_fields_eq : cleanAccepted.application = riskyAccepted.applicati
 
 theorem accepted_bob_input_eq : (cleanAccepted.recall bob, cleanAccepted.observe app bob) =
     (riskyAccepted.recall bob, riskyAccepted.observe app bob) :=
-  WaitRiskConfounding.binding_advance_foreign_input (runtime setup) leaks emptyIncludeExecution
-    alice bob (by decide) binding .bool true 0 (alice, 0)
+  WaitRiskConfounding.response_advance_foreign_input (runtime setup) leaks emptyIncludeExecution
+    alice bob (by decide) bindingResponse (alice, 0)
 
 /-- Bob observes the full same local input after either actual accepted branch,
 including public state, his message sample, receipts and own response recall. -/

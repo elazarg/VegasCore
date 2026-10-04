@@ -1710,7 +1710,13 @@ play. Perturbed waiting beliefs and sequential rationality remain open.
 checks that protected and unprotected timely binding responses can emit the
 same typed-success packet, receive acceptance at the same clock, and give a
 foreign owner the same full input. Only the sender's private risk recall
-differs. A separate geometric two-branch calculation gives conditional risk
+differs. The clock/submission exchange holds for every fixed semantic response,
+including certified openings and withholding: private registration commutes
+with the clock, and emitted evidence and readiness tokens are unchanged.
+Inclusion of the same identifier then preserves the foreign player's complete
+recall and observation. This does not equate different information-dependent
+response lotteries or histories with other intervening operations.
+A separate geometric two-branch calculation gives conditional risk
 one half at every positive waiting weight below one. This is a local runtime
 pair and a finite path law; certification as an initialized asynchronous
 service and identification with native Bayes likelihoods remain separate.
@@ -1732,6 +1738,19 @@ conditional private risk one half for every positive alpha. This certifies the
 rare-fiber limitation of an unconditional convergence estimate. It does not
 prove the behavior of rational free completion, source-payoff distortion or
 failure of SE preservation.
+[PrivateResolutionForkSource](../Vegas/Examples/PrivateResolutionForkSource.lean)
+defines a two-player source with authentic initial commitments, a singleton
+publication payload and Alice's immutable private type, HIGH with probability
+one quarter. Bob's full source observation hides her type and exposes her
+publication result. It classifies every legal source history and computes the
+actual initialized decision law. The separate
+[PrivateResolutionForkSourceLikelihood](../Vegas/Examples/PrivateResolutionForkSourceLikelihood.lean)
+derives Bob's actual source Bayes type likelihood from that execution: the
+numerator is the HIGH prior times Alice's HIGH disclosure atom, and the
+denominator adds the corresponding LOW mass. No posterior equation is supplied
+as a premise. Source equilibrium, a native service contract and the full native
+information-fiber likelihoods remain separate obligations; these source facts
+do not establish a timing counterexample.
 [OpaqueBindingForkSourcePosterior](../Vegas/Examples/OpaqueBindingForkSourcePosterior.lean)
 proves that the actual conditional typed configuration is the clean witness's
 configuration. Both physical decoders succeed, and the common original-memory
@@ -2209,7 +2228,9 @@ unrecorded effective original response. Successful typed binding provenance
 and the same repair frame justify a valid opening certificate; effective bare
 commitments and withholding request none. The same response is then effective
 at the repaired input and emits the same envelope with the same resulting
-network. Charged and recorded responses remain separate exits. This local
+network. Emitted-token provenance supplies readiness; this transport does not
+require protected inclusion, a timely deadline or clear private risk at either
+input. Charged and recorded responses remain separate exits. This local
 transport supplies neither an unconditional future frame nor a whole-policy
 utility comparison.
 [SourceServiceUnclassifiedSelection](../Vegas/Game/SourceServiceUnclassifiedSelection.lean)

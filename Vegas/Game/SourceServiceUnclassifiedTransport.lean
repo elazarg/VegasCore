@@ -7,7 +7,7 @@ import Vegas.Pending.ReactiveMissingBindingTransport
 
 /-! # Actual uncharged certificate transport through typed binding repair
 
-An unclassified effective response at a clear original input requests only a
+An unclassified effective response at an actual original input requests only a
 certificate justified by an actual successful typed binding, or no certificate.
 The successful-binding frame preserves that certificate without preserving every
 private raw capability. Charged and recorded responses remain separate.
@@ -24,12 +24,12 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {setup : Setup (Player := Player) (L := L)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
-/-- Actual legal paired traces determine the original clear flag. Outside the
-charged public-packet and recalled-response classes, typed success provenance
-then gives the same certificate and full effective response after repair. No
-original risk-menu trace or preservation of all raw capabilities is required. -/
+/-- Outside the charged public-packet and recalled-response classes, actual
+typed success provenance gives the same certificate and full effective response
+after repair. Readiness comes from the emitted token; deadline time and both
+current risk flags may be arbitrary. No global capability equality is used. -/
 theorem sourceServiceUnclassified_response_transport
-    (bounds : MessageBounds (graph setup)) (bound : (graph setup).EventId → Nat)
+    (bounds : MessageBounds (graph setup))
     {horizon leftRemaining rightRemaining : Nat}
     {scheduler : (application setup leaks).Scheduler}
     (original repaired : (application setup leaks).Execution) (who : Player)
@@ -39,8 +39,6 @@ theorem sourceServiceUnclassified_response_transport
       (some ⟨leftRemaining, some who, original⟩))
     (rightTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨rightRemaining, some who, repaired⟩))
-    (clear : (runtime setup).serviceRisk leaks bound who (repaired.recall who)
-      (repaired.observe (application setup leaks) who) = false)
     (response : (application setup leaks).Action)
     (effective : response ∈ (bounds.menu (runtime setup) leaks).actions who
       (original.recall who) (original.observe (application setup leaks) who))
@@ -61,12 +59,6 @@ theorem sourceServiceUnclassified_response_transport
   have rawRight := rightTrace
   have leftFacts := legalFacts setup leaks horizon scheduler _ leftTrace
   have rightFacts := legalFacts setup leaks horizon scheduler _ rawRight
-  have records := frame.submissionRiskRecords (runtime setup) leaks leftTrace rawRight
-  have leftClear : (runtime setup).serviceRisk leaks bound who (original.recall who)
-      (original.observe app who) = false :=
-    ((runtime setup).serviceRisk_congr leaks bound who (original.recall who) (repaired.recall who)
-      (original.observe app who) (repaired.observe app who) rfl frame.publicView records).trans
-        clear
   have leftKnown : ReactiveApplication.ResponseMenu.knownPackets (original.recall who)
       (original.observe app who) = original.network.known who :=
     (app.known_from_recall original who leftFacts.inputs).symm
@@ -81,8 +73,8 @@ theorem sourceServiceUnclassified_response_transport
       cases response with
       | mk transmitted => cases transmission; rfl
     rw [responseEq] at effective notPacket notRecorded
-    obtain ⟨event, named, owned, ready, turn, _, fits⟩ := unclassifiedSubmission_opportunity
-      bound original who leftTrace leftClear material notPacket notRecorded
+    obtain ⟨event, named, owned, _ready, turn, _unrecorded⟩ :=
+      unclassifiedSubmission_ready original who leftTrace material notPacket notRecorded
     let message : Message Player (WitnessedPacket (graph setup)) :=
       ⟨(who, original.network.nextSerial who), app.packet
         (app.submit original.application who material) who (original.network.known who) material⟩
@@ -162,67 +154,105 @@ theorem sourceServiceUnclassified_response_transport
             have actorEq := nodeView_resolve_actor outputEq codeEq
             rw [owned] at actorEq
             cases Option.some.inj actorEq
-            have permitted := unclassifiedResolutionSubmission_conforms original who leftTrace
-              event payload binding checks outputEq codeEq node turn ready fits.withinDeadline
-                material named notPacket
-            have casesResolution := (runtime setup).service_resolution_response leaks bounds
-              original who leftFacts.evidence leftFacts.binding leftFacts.inputs event payload
-                binding checks outputEq codeEq node material named effective permitted
-            rcases casesResolution with withheld | ⟨value, stored, resolvedOutput, decided⟩
-            · rw [(runtime setup).serviceDecision_resolution_false leaks who (original.recall who)
-                (original.observe app who) event who payload binding checks outputEq codeEq node]
-                at withheld
-              have callEq := congrArg (fun action : app.Action =>
-                action.transmission.map (fun submission => submission.call.packet)) withheld
-              change some material.call.packet = some (.withhold event) at callEq
-              have actualCall : material.call.packet = .opening event candidate raw := called
-              rw [actualCall] at callEq
-              cases Option.some.inj callEq
-            · obtain ⟨_, selected, associated, _, selectedOwner, leftFixed, rightFixed⟩ :=
-                frame.successful_opening leftFacts.binding rightFacts.binding binding value stored
-              have physical := (runtime setup).serviceDecision_successful_opening leaks original
-                leftFacts.inputs who event payload binding checks outputEq codeEq node selected
-                  value associated selectedOwner leftFixed resolvedOutput
-              have materialEq := Option.some.inj
-                (congrArg ReactiveApplication.Action.transmission (decided.trans physical))
-              have rightMaterial := materialEq.trans
-                (frame.normalized_opening_eq event selected ⟨payload, value⟩ selectedOwner leftFixed
-                  rightFixed)
-              have leftLocal : original.application.candidates.lookup (who, selected.2) =
-                  .openable ⟨payload, value⟩ := by
-                simpa only [← selectedOwner, Prod.mk.eta] using leftFixed
-              have rightLocal : repaired.application.candidates.lookup (who, selected.2) =
-                  .openable ⟨payload, value⟩ := by
-                simpa only [← selectedOwner, Prod.mk.eta] using rightFixed
-              have originalResolved : material.evidence.resolve who
-                  (material.call.candidateAfter who (fun slot =>
-                    original.application.candidates.lookup (who, slot)))
-                  (original.network.known who) = some ⟨selected, ⟨payload, value⟩⟩ := by
-                rw [materialEq]
-                simp only [disclosureSubmission, WitnessedSubmission.normalizeReactive,
-                  Submission.normalizeReactive_none, Submission.candidateAfter_opening]
-                change ((EvidenceRequest.owned ⟨selected, ⟨payload, value⟩⟩).normalize who
+            have certified : certifiedOpening message.payload = true := by
+              by_contra notCertified
+              exact content (Or.inr (Or.inr (Or.inr
+                ⟨event, candidate, raw, called, Bool.eq_false_iff.mpr notCertified⟩)))
+            have publicChecks : ¬ (original.application.publicView.openingGuardsAccepted
+                message.payload = false ∨ candidate.1 ≠ who ∨
+                  original.application.publicView.accepted binding.field ≠ some candidate) := by
+              intro bad
+              apply notAuditable
+              refine Or.inr (Or.inr (Or.inr (Or.inr ⟨event, turn,
+                Or.inr ⟨candidate, raw, called, ?_⟩⟩)))
+              simpa only [node] using bad
+            have guarded : original.application.publicView.openingGuardsAccepted
+                message.payload = true := by
+              by_contra rejected
+              exact publicChecks (Or.inl (Bool.eq_false_iff.mpr rejected))
+            have candidateOwner : candidate.1 = who := by
+              by_contra foreign
+              exact publicChecks (Or.inr (Or.inl foreign))
+            have associated : original.application.accepted binding.field = some candidate := by
+              by_contra absent
+              exact publicChecks (Or.inr (Or.inr absent))
+            obtain ⟨actual, selected, claimed, token, packetEq⟩ :=
+              (certifiedOpening_iff message.payload).mp certified
+            have actualCall := congrArg WitnessedPacket.call packetEq
+            rw [called] at actualCall
+            cases actualCall
+            rw [packetEq] at guarded
+            obtain ⟨value, rawEq, _checked⟩ :=
+              (original.application.publicView.openingGuardsAccepted_iff who event payload
+                binding checks outputEq codeEq node candidate raw (some ⟨candidate, raw⟩)).mp
+                  guarded
+            subst raw
+            have unchanged : app.submit original.application who material =
+                original.application := by
+              rcases material with ⟨⟨packet, registration⟩, request⟩
+              change packet = .opening event candidate ⟨payload, value⟩ at called
+              subst packet
+              cases registration <;> rfl
+            have emitted : material.emit original.application who (original.network.known who) =
+                ⟨.opening event candidate ⟨payload, value⟩,
+                  some ⟨candidate, ⟨payload, value⟩⟩, token⟩ := by
+              change material.emit (app.submit original.application who material) who
+                (original.network.known who) = _ at packetEq
+              rwa [unchanged] at packetEq
+            have valid := material.emit_sound original.application who (original.network.known who)
+              (fun message member fact evidence => leftFacts.evidence.known who message member fact
+                (by simp only [packetEvidence, evidence, Option.toList_some, List.mem_singleton]))
+              ⟨candidate, ⟨payload, value⟩⟩ (congrArg WitnessedPacket.evidence emitted)
+            change original.application.candidates.lookup candidate =
+              .openable ⟨payload, value⟩ at valid
+            have stored := leftFacts.binding.opening_stored binding candidate value associated valid
+            obtain ⟨_, selected, leftAssociated, _, _selectedOwner, leftFixed, rightFixed⟩ :=
+              frame.successful_opening leftFacts.binding rightFacts.binding binding value stored
+            have same : selected = candidate :=
+              Option.some.inj (leftAssociated.symm.trans associated)
+            subst selected
+            have normalized := (runtime setup).normalize_opening_of_matching_packet leaks
+              original.application who (original.network.known who) material event candidate
+                ⟨payload, value⟩ token emitted candidateOwner valid
+            have materialEq := normal.symm.trans normalized
+            have rightMaterial := materialEq.trans
+              (frame.normalized_opening_eq event candidate ⟨payload, value⟩ candidateOwner leftFixed
+                rightFixed)
+            have leftLocal : original.application.candidates.lookup (who, candidate.2) =
+                .openable ⟨payload, value⟩ := by
+              simpa only [← candidateOwner, Prod.mk.eta] using leftFixed
+            have rightLocal : repaired.application.candidates.lookup (who, candidate.2) =
+                .openable ⟨payload, value⟩ := by
+              simpa only [← candidateOwner, Prod.mk.eta] using rightFixed
+            have originalResolved : material.evidence.resolve who
+                (material.call.candidateAfter who (fun slot =>
+                  original.application.candidates.lookup (who, slot)))
+                (original.network.known who) = some ⟨candidate, ⟨payload, value⟩⟩ := by
+              rw [materialEq]
+              simp only [disclosureSubmission, WitnessedSubmission.normalizeReactive,
+                Submission.normalizeReactive_none, Submission.candidateAfter_opening]
+              change ((EvidenceRequest.owned ⟨candidate, ⟨payload, value⟩⟩).normalize who
+                (fun slot => original.application.candidates.lookup (who, slot))
+                (original.network.known who)).resolve who
                   (fun slot => original.application.candidates.lookup (who, slot))
-                  (original.network.known who)).resolve who
-                    (fun slot => original.application.candidates.lookup (who, slot))
-                    (original.network.known who) = _
-                rw [EvidenceRequest.resolve_normalize]
-                simp only [EvidenceRequest.resolve, selectedOwner, leftLocal, and_self, ↓reduceIte]
-              have repairedResolved : material.evidence.resolve who
-                  (material.call.candidateAfter who (fun slot =>
-                    repaired.application.candidates.lookup (who, slot)))
-                  (repaired.network.known who) = some ⟨selected, ⟨payload, value⟩⟩ := by
-                rw [rightMaterial]
-                simp only [disclosureSubmission, WitnessedSubmission.normalizeReactive,
-                  Submission.normalizeReactive_none, Submission.candidateAfter_opening]
-                change ((EvidenceRequest.owned ⟨selected, ⟨payload, value⟩⟩).normalize who
+                  (original.network.known who) = _
+              rw [EvidenceRequest.resolve_normalize]
+              simp only [EvidenceRequest.resolve, candidateOwner, leftLocal, and_self, ↓reduceIte]
+            have repairedResolved : material.evidence.resolve who
+                (material.call.candidateAfter who (fun slot =>
+                  repaired.application.candidates.lookup (who, slot)))
+                (repaired.network.known who) = some ⟨candidate, ⟨payload, value⟩⟩ := by
+              rw [rightMaterial]
+              simp only [disclosureSubmission, WitnessedSubmission.normalizeReactive,
+                Submission.normalizeReactive_none, Submission.candidateAfter_opening]
+              change ((EvidenceRequest.owned ⟨candidate, ⟨payload, value⟩⟩).normalize who
+                (fun slot => repaired.application.candidates.lookup (who, slot))
+                (repaired.network.known who)).resolve who
                   (fun slot => repaired.application.candidates.lookup (who, slot))
-                  (repaired.network.known who)).resolve who
-                    (fun slot => repaired.application.candidates.lookup (who, slot))
-                    (repaired.network.known who) = _
-                rw [EvidenceRequest.resolve_normalize]
-                simp only [EvidenceRequest.resolve, selectedOwner, rightLocal, and_self, ↓reduceIte]
-              exact originalResolved.trans repairedResolved.symm
+                  (repaired.network.known who) = _
+              rw [EvidenceRequest.resolve_normalize]
+              simp only [EvidenceRequest.resolve, candidateOwner, rightLocal, and_self, ↓reduceIte]
+            exact originalResolved.trans repairedResolved.symm
   exact (runtime setup).effectiveResponse_resolved_transport leaks bounds who original repaired
     leftFacts.inputs rightFacts.inputs frame.network frame.publicView frame.slots response resolved
       effective

@@ -64,8 +64,8 @@ theorem sourceServiceUnclassified_response_selection
   let menu := bounds.riskMenu (runtime setup) leaks bound
   let input := (repaired.recall who, repaired.observe app who)
   have rawRight := rightTrace
-  have physical := sourceServiceUnclassified_response_transport bounds bound original repaired
-    who memory frame leftTrace rightTrace clear response effective notPacket notRecorded
+  have physical := sourceServiceUnclassified_response_transport bounds original repaired
+    who memory frame leftTrace rightTrace response effective notPacket notRecorded
   have sameEnvelope (material : app.Submission)
       (transmission : response.transmission = some material) :
       localServiceEnvelope setup leaks who (original.recall who) (original.observe app who)

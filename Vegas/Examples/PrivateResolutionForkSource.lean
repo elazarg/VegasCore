@@ -1,0 +1,507 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Examples.LateResolutionService
+import Vegas.Source.SetupProtocolBehavioral
+import Mathlib.Tactic.DeriveFintype
+import GameTheoryExtensions.Math.Probability.Uniform
+import Vegas.Game.SourceStateKernel
+import Vegas.Source.ProtocolChoiceFiniteness
+
+/-! # A singleton initial publication and private type
+
+The source has only two strategic resolutions. Both bindings are authentic
+initial commitments; Alice's publication payload has exactly one value and
+her persistent private input is the hidden type. Bob guesses HIGH by opening
+his initial TRUE binding and LOW by withholding it. This file defines the
+concrete compiled source and its deterministic source transitions. It does
+not yet certify a native scheduler, source equilibrium or native beliefs.
+-/
+
+noncomputable section
+
+namespace Vegas.PrivateResolutionFork
+
+open SourceProgram EventGraphRuntime Interaction GameTheory GameTheory.Math.Probability
+
+abbrev Player := Fin 2
+abbrev alice : Player := 0
+abbrev bob : Player := 1
+abbrev unitPayload : BaseTy := .range 0 0
+
+def unitValue : Val unitPayload := ⟨0, by decide⟩
+
+abbrev initialCtx : SourceCtx Player simpleExpr :=
+  [(0, .commitment alice unitPayload), (1, .commitment bob .bool),
+    (6, .privateInput alice .bool)]
+
+def program : SourceProgram Player simpleExpr initialCtx {0, 1} :=
+  .sample 2 (payload := .bool) (by decide) (.weighted (.pure true)) <|
+  .sample 3 (payload := .bool) (by decide) (.weighted (.pure true)) <|
+  .reveal 4 alice 0 (by decide) (.there (.there .here)) (by decide) <|
+  .reveal 5 bob 1 (by decide) (.there (.there (.there (.there .here)))) (by decide) <|
+  .ret [(alice, .constInt 0), (bob, .constInt 0)]
+
+def sourceInitial (high : Bool) : State simpleExpr initialCtx :=
+  Env.cons (.success unitValue) <| Env.cons (.success true) <|
+    Env.cons high <| Env.empty _
+
+def setup : Setup (Player := Player) (L := simpleExpr) where
+  context := initialCtx
+  namesNodup := by decide
+  initialLaw := mix (1 / 4) (by norm_num) (by norm_num)
+    (PMF.pure (sourceInitial true)) (PMF.pure (sourceInitial false))
+  obligations := {0, 1}
+  program := program
+  accounts := rfl
+
+abbrev nativeGraph := graph setup
+abbrev sample0 : nativeGraph.EventId := ⟨0, by decide⟩
+abbrev sample1 : nativeGraph.EventId := ⟨1, by decide⟩
+abbrev aliceResolution : nativeGraph.EventId := ⟨2, by decide⟩
+abbrev bobResolution : nativeGraph.EventId := ⟨3, by decide⟩
+
+def sourceStart (high : Bool) := setup.initialConfig (sourceInitial high)
+def sourceSampled (high : Bool) := sampleSuccessor 2 (payload := BaseTy.bool)
+  (sourceStart high) true
+def sourceReady (high : Bool) := sampleSuccessor 3 (payload := BaseTy.bool)
+  (sourceSampled high) true
+def sourceAliceDone (high disclose : Bool) :=
+  revealSuccessor 4 (.there (.there .here)) (sourceReady high) disclose
+def sourceDone (high disclose guess : Bool) :=
+  revealSuccessor 5 (.there (.there (.there (.there .here))))
+    (sourceAliceDone high disclose) guess
+
+/-- The Alice payload genuinely admits no alternative ordinary value. -/
+theorem unit_value_unique (value : Val unitPayload) : value = unitValue := by
+  apply Subtype.ext
+  exact le_antisymm value.2.2 value.2.1
+
+@[simp] theorem source_alice_publication (high disclose guess : Bool) :
+    (sourceDone high disclose guess).state.get (.there .here) =
+      if disclose then .success unitValue else .failure := by
+  cases high <;> cases disclose <;> cases guess <;> decide
+
+@[simp] theorem source_bob_publication (high disclose guess : Bool) :
+    (sourceDone high disclose guess).state.get .here =
+      if guess then .success true else .failure := by
+  cases high <;> cases disclose <;> cases guess <;> decide
+
+def sourceUtility (state : State simpleExpr setup.program.terminalCtx) (who : Player) : ℝ :=
+  let high := state.get (.there (.there (.there (.there (.there (.there .here))))))
+  if who = alice then
+    if (state.get (.there .here)).isSuccess then (if high then 2 else 1 / 2) else 0
+  else if (state.get .here).isSuccess = high then 1 else 0
+
+theorem source_utility (high disclose guess : Bool) (who : Player) :
+    sourceUtility (sourceDone high disclose guess).state who =
+      if who = alice then (if disclose then (if high then 2 else 1 / 2) else 0)
+      else if guess = high then 1 else 0 := by
+  have parameter : (sourceDone high disclose guess).state.get
+      (.there (.there (.there (.there (.there (.there .here)))))) = high := by
+    cases high <;> cases disclose <;> cases guess <;> decide
+  unfold sourceUtility
+  rw [source_alice_publication, source_bob_publication, parameter]
+  cases high <;> cases disclose <;> cases guess <;> fin_cases who <;> rfl
+
+
+/-- Every possible ordinary binding payload is already fixed at initialization.
+No source binding choice can create an alternative private intention here. -/
+def sourceAdmission : CommitmentInterface setup.program :=
+  CommitmentInterface.values setup.program
+
+abbrev sourceArena := setup.executionProtocol sourceAdmission
+abbrev sourceModel := setup.informationModel sourceAdmission
+
+/-- The actual source policies may condition Alice's disclosure on her own
+immutable type; Bob conditions only on the public publication decision. -/
+def sourcePolicy (aliceLaw : Bool → PMF Bool) (bobLaw : Bool → PMF Bool)
+    (who : Player) : BehavioralPolicy who setup.program :=
+  ((fun _ view => aliceLaw
+      ((view.1.cells.get (.there (.there (.there (.there .here))))).getD false)),
+    (fun _ view => bobLaw (view.1.cells.get .here).isSuccess), PUnit.unit)
+
+theorem sourcePolicy_admitted (aliceLaw : Bool → PMF Bool) (bobLaw : Bool → PMF Bool)
+    (who : Player) : (sourcePolicy aliceLaw bobLaw who).Admitted setup.program sourceAdmission :=
+  trivial
+
+def sourceProfile (aliceLaw : Bool → PMF Bool) (bobLaw : Bool → PMF Bool) :
+    Profile sourceModel.behavioralSignature :=
+  fun who => setup.toProtocolBehavioralPolicy sourceAdmission who
+    (sourcePolicy aliceLaw bobLaw who) (sourcePolicy_admitted aliceLaw bobLaw who)
+
+theorem source_alice_choice (aliceLaw : Bool → PMF Bool) (bobLaw : Bool → PMF Bool)
+    (high : Bool) :
+    (sourcePolicy aliceLaw bobLaw alice).1 rfl ((sourceReady high).view alice) = aliceLaw high := by
+  cases high <;> rfl
+
+theorem source_bob_choice (aliceLaw : Bool → PMF Bool) (bobLaw : Bool → PMF Bool)
+    (high disclose : Bool) :
+    (sourcePolicy aliceLaw bobLaw bob).2.1 rfl ((sourceAliceDone high disclose).view bob) =
+      bobLaw disclose := by
+  cases high <;> cases disclose <;> rfl
+
+private theorem source_alice_bob_history (high disclose : Bool) :
+    (sourceAliceDone high disclose).history bob = [] := by
+  change Function.update (sourceReady high).history alice
+    ((sourceReady high).history alice ++ [OwnAction.reveal alice 0 disclose]) bob = []
+  rw [Function.update_of_ne (by decide : bob ≠ alice)]
+  rfl
+
+private theorem sourceObserve_cons_congr {who : Player} {Γ : SourceCtx Player simpleExpr}
+    {name : VarId} {cell : CellTy Player simpleExpr}
+    (left right : State simpleExpr Γ) (value : CellVal simpleExpr cell)
+    (same : sourceObserve who left = sourceObserve who right) :
+    sourceObserve who (Env.cons (x := name) value left) =
+      sourceObserve who (Env.cons (x := name) value right) := by
+  apply congrArg SourceObservation.mk
+  funext x ty selected
+  cases selected with
+  | here => cases cell <;> rfl
+  | there selected =>
+      cases ty <;> exact congrArg (fun observation => observation.cells.get selected) same
+
+private theorem source_bob_initial_observation :
+    sourceObserve bob (sourceInitial true) = sourceObserve bob (sourceInitial false) := by
+  apply sourceObserve_congr
+  · intro name ty selected
+    cases selected with
+    | there selected => cases selected with
+      | there selected => cases selected with
+        | there selected => cases selected
+  · intro name ty selected
+    cases selected with
+    | there selected => cases selected with
+      | there selected => cases selected with
+        | there selected => cases selected
+  · intro name ty selected
+    cases selected with
+    | there selected => cases selected with
+      | there selected => cases selected with
+        | there selected => cases selected
+  · intro name ty selected
+    cases selected with
+    | there selected => cases selected with
+      | here => rfl
+      | there selected => cases selected with
+        | there selected => cases selected
+
+private theorem source_bob_sampled_observation :
+    sourceObserve bob (sourceSampled true).state =
+      sourceObserve bob (sourceSampled false).state :=
+  sourceObserve_cons_congr (name := 2) (cell := .publicData .bool)
+    _ _ true source_bob_initial_observation
+
+private theorem source_bob_ready_observation :
+    sourceObserve bob (sourceReady true).state =
+      sourceObserve bob (sourceReady false).state :=
+  sourceObserve_cons_congr (name := 3) (cell := .publicData .bool)
+    _ _ true source_bob_sampled_observation
+
+private theorem source_alice_state (high disclose : Bool) :
+    (sourceAliceDone high disclose).state =
+      Env.cons (x := 4) (τ := CellTy.publication unitPayload)
+        (if disclose then .success unitValue else .failure) (sourceReady high).state := by
+  cases disclose <;> rfl
+
+private theorem source_bob_observation (disclose : Bool) :
+    sourceObserve bob (sourceAliceDone true disclose).state =
+      sourceObserve bob (sourceAliceDone false disclose).state := by
+  rw [source_alice_state, source_alice_state]
+  exact sourceObserve_cons_congr _ _ _ source_bob_ready_observation
+
+/-- At his actual source choice Bob does not observe the private type. -/
+theorem source_bob_view_type_eq (disclose : Bool) :
+    (sourceAliceDone true disclose).view bob = (sourceAliceDone false disclose).view bob := by
+  exact congrArg₂ Prod.mk (source_bob_observation disclose)
+    ((source_alice_bob_history true disclose).trans
+      (source_alice_bob_history false disclose).symm)
+
+def uniformSourceProfile : Profile sourceModel.behavioralSignature :=
+  sourceProfile (fun _ => PMF.uniformOfFintype Bool) (fun _ => PMF.uniformOfFintype Bool)
+
+theorem sourceProfile_full (aliceLaw bobLaw : Bool → PMF Bool)
+    (fullAlice : ∀ bit, FullSupport (aliceLaw bit))
+    (fullBob : ∀ disclose, FullSupport (bobLaw disclose))
+    (who : Player) (info : sourceModel.InfoState who) :
+    FullSupport (sourceProfile aliceLaw bobLaw who info) := by
+  intro choice
+  have alicePositive (bit answer : Bool) : (aliceLaw bit) answer ≠ 0 :=
+    (PMF.mem_support_iff _ _).mp (fullAlice bit answer)
+  have bobPositive (disclose answer : Bool) : (bobLaw disclose) answer ≠ 0 :=
+    (PMF.mem_support_iff _ _).mp (fullBob disclose answer)
+  suffices choice.val ∈ ((sourceProfile aliceLaw bobLaw who info).map Subtype.val).support by
+    obtain ⟨other, supported, same⟩ := PMF.support_map .. ▸ this
+    exact (Subtype.ext same) ▸ supported
+  rw [sourceProfile, Setup.toProtocolBehavioralPolicy_map_val]
+  rcases choice with ⟨action, legal⟩
+  change setup.protocolMenu sourceAdmission who info action at legal
+  cases info with
+  | none => exact (PMF.mem_support_pure_iff _ _).mpr legal
+  | some info =>
+      rcases info with current | current | current | current | current
+      all_goals fin_cases who <;> cases action
+      all_goals
+        have allowed := legal
+        dsimp [Setup.protocolMenu, setup, program, ProtocolView.menu, ProtocolView.actor,
+          ProtocolView.available] at allowed
+        first
+        | solve
+          | have currentFalse := alicePositive
+              ((current.1.cells.get (.there (.there (.there (.there .here))))).getD false)
+              false
+            have currentTrue := alicePositive
+              ((current.1.cells.get (.there (.there (.there (.there .here))))).getD false)
+              true
+            simp_all [setup, program, BehavioralPolicy.protocolAction, sourcePolicy,
+              PMF.support_map, alice, bob, eq_comm]
+        | solve
+          | have currentFalse := bobPositive (current.1.cells.get .here).isSuccess false
+            have currentTrue := bobPositive (current.1.cells.get .here).isSuccess true
+            simp_all [setup, program, BehavioralPolicy.protocolAction, sourcePolicy,
+              alice, bob, eq_comm]
+        | simp_all [setup, program, BehavioralPolicy.protocolAction, sourcePolicy,
+            alice, bob, eq_comm]
+
+theorem uniform_source_full (who : Player) (info : sourceModel.InfoState who) :
+    FullSupport (uniformSourceProfile who info) :=
+  sourceProfile_full _ _ (fun _ => PMF.mem_support_uniformOfFintype)
+    (fun _ => PMF.mem_support_uniformOfFintype) who info
+
+theorem uniform_source_fullyMixed :
+    (GameTheory.Protocol.InformationModel.BehavioralAssessment.ofStrategy
+      uniformSourceProfile).IsFullyMixed := fun who site => uniform_source_full who site.1
+
+instance : setup.FiniteInitialLaw := by
+  constructor
+  change (mix (1 / 4) (by norm_num) (by norm_num)
+    (PMF.pure (sourceInitial true)) (PMF.pure (sourceInitial false))).support.Finite
+  have high : (PMF.pure (sourceInitial true)).support.Finite := by simp
+  have low : (PMF.pure (sourceInitial false)).support.Finite := by simp
+  exact (high.union low).subset (support_mix_subset _ _ _ _ _)
+
+instance : Finite sourceArena.History :=
+  uniform_source_fullyMixed.finite_history (setup.protocol_bounded sourceAdmission)
+    (fun who info =>
+      have := setup.finite_choice (by trivial : setup.program.FiniteBindingTypes)
+        sourceAdmission who info
+      Set.toFinite _)
+    (fun draw => setup.protocolStep_support_finite _ draw.1)
+
+instance : Fintype sourceArena.History := Fintype.ofFinite _
+
+
+inductive SourcePosition where
+  | root
+  | initialized (high : Bool)
+  | sampled (high : Bool)
+  | ready (high : Bool)
+  | guessed (high disclose : Bool)
+  | done (high disclose guess : Bool)
+  deriving DecidableEq, Fintype
+
+def SourcePosition.state : SourcePosition → setup.ProtocolState
+  | .root => none
+  | .initialized high => some (.inl (sourceStart high))
+  | .sampled high => some (.inr (.inl (sourceSampled high)))
+  | .ready high => some (.inr (.inr (.inl (sourceReady high))))
+  | .guessed high disclose => some (.inr (.inr (.inr (.inl
+      (sourceAliceDone high disclose)))))
+  | .done high disclose guess => some (.inr (.inr (.inr (.inr
+      (sourceDone high disclose guess)))))
+
+/-- Every legal actual source trace is one of the concrete typed prefixes. -/
+theorem source_position_trace : ∀ {state} (_trace : sourceArena.Trace state),
+    ∃ position : SourcePosition, state = position.state
+  | _, .start => ⟨.root, rfl⟩
+  | _, .extend earlier joint legal supported => by
+      obtain ⟨position, stateEq⟩ := source_position_trace earlier
+      cases stateEq
+      cases position with
+      | root =>
+          change _ ∈ (setup.initialLaw.map _).support at supported
+          rw [PMF.support_map] at supported
+          obtain ⟨initial, selected, rfl⟩ := supported
+          change initial ∈ (mix (1 / 4) (by norm_num) (by norm_num)
+            (PMF.pure (sourceInitial true)) (PMF.pure (sourceInitial false))).support at selected
+          rcases support_mix_subset _ _ _ _ _ selected with high | low
+          · cases (PMF.mem_support_pure_iff _ _).mp high
+            exact ⟨.initialized true, rfl⟩
+          · cases (PMF.mem_support_pure_iff _ _).mp low
+            exact ⟨.initialized false, rfl⟩
+      | initialized high =>
+          have step : sourceArena.step (SourcePosition.initialized high).state ⟨joint, legal⟩ =
+              PMF.pure (SourcePosition.sampled high).state := by
+            simp [sourceArena, Setup.executionProtocol, Setup.protocolStep, SourcePosition.state,
+              setup, program, ProtocolState.step, ProtocolState.entry, sourceSampled,
+              IExpr.evalDist, simpleExpr, evalLawDistExpr, RationalLaw.denote_pure, PMF.pure_map]
+          rw [step] at supported
+          exact ⟨.sampled high, (PMF.mem_support_pure_iff _ _).mp supported⟩
+      | sampled high =>
+          have step : sourceArena.step (SourcePosition.sampled high).state ⟨joint, legal⟩ =
+              PMF.pure (SourcePosition.ready high).state := by
+            simp [sourceArena, Setup.executionProtocol, Setup.protocolStep, SourcePosition.state,
+              setup, program, ProtocolState.step, ProtocolState.entry, sourceReady,
+              IExpr.evalDist, simpleExpr, evalLawDistExpr, RationalLaw.denote_pure, PMF.pure_map]
+          rw [step] at supported
+          exact ⟨.ready high, (PMF.mem_support_pure_iff _ _).mp supported⟩
+      | ready high =>
+          have step : sourceArena.step (SourcePosition.ready high).state ⟨joint, legal⟩ =
+              PMF.pure (SourcePosition.guessed high
+                (OwnAction.disclosure (joint alice))).state := by
+            simp [sourceArena, Setup.executionProtocol, Setup.protocolStep, SourcePosition.state,
+              setup, program, ProtocolState.step, ProtocolState.entry, sourceAliceDone,
+              PMF.pure_map]
+          rw [step] at supported
+          exact ⟨.guessed high (OwnAction.disclosure (joint alice)),
+            (PMF.mem_support_pure_iff _ _).mp supported⟩
+      | guessed high disclose =>
+          have step : sourceArena.step (SourcePosition.guessed high disclose).state
+              ⟨joint, legal⟩ = PMF.pure
+                (SourcePosition.done high disclose (OwnAction.disclosure (joint bob))).state := by
+            simp [sourceArena, Setup.executionProtocol, Setup.protocolStep, SourcePosition.state,
+              setup, program, ProtocolState.step, ProtocolState.entry, sourceDone, PMF.pure_map]
+          rw [step] at supported
+          exact ⟨.done high disclose (OwnAction.disclosure (joint bob)),
+            (PMF.mem_support_pure_iff _ _).mp supported⟩
+      | done high disclose guess => exact (legal.1 trivial).elim
+
+theorem source_step_initialized (aliceLaw bobLaw : Bool → PMF Bool) (high : Bool) :
+    setup.behavioralStateStep sourceAdmission (sourceProfile aliceLaw bobLaw)
+      (SourcePosition.initialized high).state =
+      PMF.pure (SourcePosition.sampled high).state := by
+  unfold sourceProfile
+  change setup.behavioralStateStep sourceAdmission _ (some (.inl (sourceStart high))) = _
+  rw [Setup.behavioralStateStep_encoded_some]
+  erw [ProtocolState.behavioralStateStep_sample_entry (sourcePolicy aliceLaw bobLaw)]
+  simp [SourcePosition.state, setup, program,
+    IExpr.evalDist, simpleExpr, evalLawDistExpr, RationalLaw.denote_pure, sourceSampled,
+    ProtocolState.entry, PMF.pure_map]
+
+theorem source_step_sampled (aliceLaw bobLaw : Bool → PMF Bool) (high : Bool) :
+    setup.behavioralStateStep sourceAdmission (sourceProfile aliceLaw bobLaw)
+      (SourcePosition.sampled high).state =
+      PMF.pure (SourcePosition.ready high).state := by
+  unfold sourceProfile
+  change setup.behavioralStateStep sourceAdmission _
+    (some (.inr (.inl (sourceSampled high)))) = _
+  rw [Setup.behavioralStateStep_encoded_some]
+  erw [ProtocolState.behavioralStateStep_sample_tail (sourcePolicy aliceLaw bobLaw),
+    ProtocolState.behavioralStateStep_sample_entry (afterSample (sourcePolicy aliceLaw bobLaw))]
+  simp [SourcePosition.state, setup, program, IExpr.evalDist, simpleExpr, evalLawDistExpr,
+    RationalLaw.denote_pure, sourceReady, ProtocolState.entry, PMF.pure_map]
+
+theorem source_step_ready (aliceLaw bobLaw : Bool → PMF Bool) (high : Bool) :
+    setup.behavioralStateStep sourceAdmission (sourceProfile aliceLaw bobLaw)
+      (SourcePosition.ready high).state =
+      (aliceLaw high).map (fun disclose => (SourcePosition.guessed high disclose).state) := by
+  unfold sourceProfile
+  change setup.behavioralStateStep sourceAdmission _
+    (some (.inr (.inr (.inl (sourceReady high))))) = _
+  rw [Setup.behavioralStateStep_encoded_some]
+  erw [ProtocolState.behavioralStateStep_sample_tail (sourcePolicy aliceLaw bobLaw),
+    ProtocolState.behavioralStateStep_sample_tail (afterSample (sourcePolicy aliceLaw bobLaw)),
+    ProtocolState.behavioralStateStep_reveal_entry
+      (afterSample (afterSample (sourcePolicy aliceLaw bobLaw)))]
+  simp only [PMF.map_comp]
+  change ((sourcePolicy aliceLaw bobLaw alice).1 rfl ((sourceReady high).view alice)).map
+    (fun disclose => (SourcePosition.guessed high disclose).state) = _
+  rw [source_alice_choice]
+
+theorem source_step_guessed (aliceLaw bobLaw : Bool → PMF Bool) (high disclose : Bool) :
+    setup.behavioralStateStep sourceAdmission (sourceProfile aliceLaw bobLaw)
+      (SourcePosition.guessed high disclose).state =
+      (bobLaw disclose).map (fun guess => (SourcePosition.done high disclose guess).state) := by
+  unfold sourceProfile
+  change setup.behavioralStateStep sourceAdmission _
+    (some (.inr (.inr (.inr (.inl (sourceAliceDone high disclose)))))) = _
+  rw [Setup.behavioralStateStep_encoded_some]
+  erw [ProtocolState.behavioralStateStep_sample_tail (sourcePolicy aliceLaw bobLaw),
+    ProtocolState.behavioralStateStep_sample_tail (afterSample (sourcePolicy aliceLaw bobLaw)),
+    ProtocolState.behavioralStateStep_reveal_tail
+      (afterSample (afterSample (sourcePolicy aliceLaw bobLaw))),
+    ProtocolState.behavioralStateStep_reveal_entry
+      (afterReveal (afterSample (afterSample (sourcePolicy aliceLaw bobLaw))))]
+  simp only [PMF.map_comp]
+  change ((sourcePolicy aliceLaw bobLaw bob).2.1 rfl ((sourceAliceDone high disclose).view bob)).map
+    (fun guess => (SourcePosition.done high disclose guess).state) = _
+  rw [source_bob_choice]
+
+theorem source_initialized_bob_law (aliceLaw bobLaw : Bool → PMF Bool) :
+    (sourceModel.runBehavioral (sourceProfile aliceLaw bobLaw) 4).map
+      GameTheory.Protocol.ExecutionProtocol.History.state =
+      mix (1 / 4) (by norm_num) (by norm_num)
+        ((aliceLaw true).map (fun disclose => (SourcePosition.guessed true disclose).state))
+        ((aliceLaw false).map (fun disclose => (SourcePosition.guessed false disclose).state)) := by
+  change (sourceModel.runBehavioralFrom (sourceProfile aliceLaw bobLaw) 4
+    sourceArena.initHistory).map GameTheory.Protocol.ExecutionProtocol.History.state = _
+  rw [Setup.runBehavioralFrom_state]
+  simp only [Function.iterate_succ_apply', Function.iterate_zero_apply, PMF.pure_bind,
+    GameTheory.Protocol.ExecutionProtocol.initHistory, sourceArena,
+    Setup.executionProtocol]
+  rw [Setup.behavioralStateStep_none]
+  change ((((mix (1 / 4) (by norm_num) (by norm_num)
+    (PMF.pure (sourceInitial true)) (PMF.pure (sourceInitial false))).map
+      (fun initial => some (ProtocolState.entry setup.program (setup.initialConfig initial)))).bind
+        (setup.behavioralStateStep sourceAdmission (sourceProfile aliceLaw bobLaw))).bind
+          (setup.behavioralStateStep sourceAdmission (sourceProfile aliceLaw bobLaw))).bind
+            (setup.behavioralStateStep sourceAdmission (sourceProfile aliceLaw bobLaw)) = _
+  rw [mix_map, mix_bind, mix_bind, mix_bind]
+  simp only [PMF.pure_map, PMF.pure_bind]
+  change mix _ _ _
+    (((setup.behavioralStateStep sourceAdmission (sourceProfile aliceLaw bobLaw)
+      (SourcePosition.initialized true).state).bind
+        (setup.behavioralStateStep sourceAdmission (sourceProfile aliceLaw bobLaw))).bind
+          (setup.behavioralStateStep sourceAdmission (sourceProfile aliceLaw bobLaw)))
+    (((setup.behavioralStateStep sourceAdmission (sourceProfile aliceLaw bobLaw)
+      (SourcePosition.initialized false).state).bind
+        (setup.behavioralStateStep sourceAdmission (sourceProfile aliceLaw bobLaw))).bind
+          (setup.behavioralStateStep sourceAdmission (sourceProfile aliceLaw bobLaw))) = _
+  rw [source_step_initialized, source_step_initialized, PMF.pure_bind, PMF.pure_bind,
+    source_step_sampled, source_step_sampled, PMF.pure_bind, PMF.pure_bind,
+    source_step_ready, source_step_ready]
+
+theorem source_alice_active_state (site : sourceModel.InformationSite alice)
+    (history : sourceModel.InformationHistory alice site.1) :
+    ∃ high, history.1.state = (SourcePosition.ready high).state := by
+  have active := GameTheory.Protocol.InformationModel.InformationSite.active sourceModel site
+    history
+  obtain ⟨position, same⟩ := source_position_trace history.1.trace
+  rw [same] at active
+  cases position with
+  | ready high => exact ⟨high, same⟩
+  | root | initialized | sampled | guessed | done => cases active
+
+theorem source_bob_active_state (site : sourceModel.InformationSite bob)
+    (history : sourceModel.InformationHistory bob site.1) :
+    ∃ high disclose, history.1.state = (SourcePosition.guessed high disclose).state := by
+  have active := GameTheory.Protocol.InformationModel.InformationSite.active sourceModel site
+    history
+  obtain ⟨position, same⟩ := source_position_trace history.1.trace
+  rw [same] at active
+  cases position with
+  | guessed high disclose => exact ⟨high, disclose, same⟩
+  | root | initialized | sampled | ready | done => cases active
+
+theorem source_alice_depth (site : sourceModel.InformationSite alice) :
+    GameTheory.Protocol.InformationModel.InformationSite.CommonDepth sourceModel site 3 := by
+  intro history
+  obtain ⟨high, same⟩ := source_alice_active_state site history
+  have count := setup.protocol_history_length sourceAdmission history.1.trace
+  have remaining := congrArg setup.protocolRemaining same
+  change setup.protocolRemaining history.1.state = 2 at remaining
+  rw [remaining] at count
+  change history.1.trace.length + 2 = 5 at count
+  omega
+
+theorem source_bob_depth (site : sourceModel.InformationSite bob) :
+    GameTheory.Protocol.InformationModel.InformationSite.CommonDepth sourceModel site 4 := by
+  intro history
+  obtain ⟨high, disclose, same⟩ := source_bob_active_state site history
+  have count := setup.protocol_history_length sourceAdmission history.1.trace
+  have remaining := congrArg setup.protocolRemaining same
+  change setup.protocolRemaining history.1.state = 1 at remaining
+  rw [remaining] at count
+  change history.1.trace.length + 1 = 5 at count
+  omega
+
+end Vegas.PrivateResolutionFork

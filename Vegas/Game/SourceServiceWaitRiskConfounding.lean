@@ -7,9 +7,9 @@ import Vegas.Pending.ReactiveUnusableBinding
 
 /-! # Accepted late binding calls can hide persistent opportunity risk
 
-The real runtime calculation exchanges one clock tick and an evidence-free
-binding response. Their actual submitted packets, post-tick application states,
-networks and foreign inputs coincide. The owner's recorded before-view does not:
+The real runtime calculation exchanges one clock tick and a fixed semantic
+response, including certified openings. The actual submitted packet, post-tick
+application state, network and foreign input coincide. The owner's recorded before-view does not:
 an unprotected opportunity latches private risk even when its call is accepted.
 
 The separate finite path law retains the common geometric first wait. A fair
@@ -57,40 +57,75 @@ theorem activate_empty_law (execution : (app).Execution) (owner : Player)
   simp only [ReactiveApplication.Execution.environmentStep, reactiveApplication, empty,
     PMF.pure_map, MessageNetwork.learn_empty, activate]
 
-omit [DecidableEq Player] in
-/-- Issuance depends on prerequisite completion, not the submission clock. -/
-theorem advance_token (state : EventGraphRuntime.State graph) (call : Payload graph) :
-    ({ state with clock := state.clock + 1 } : EventGraphRuntime.State graph).publicView.tokenFor
-      call =
-      state.publicView.tokenFor call := by
-  cases call <;> rfl
+/-- Packet contents, evidence and readiness tokens are independent of the clock. -/
+theorem submission_emit_clock (material : WitnessedSubmission graph)
+    (state : EventGraphRuntime.State graph) (owner : Player)
+    (known : List (Message Player (WitnessedPacket graph))) (clock : Nat) :
+    material.emit { state with clock := clock } owner known =
+      material.emit state owner known := by
+  rfl
 
-/-- Moving the tick before the opaque typed-success response leaves the actual
-post-response application and complete message network unchanged. -/
-theorem binding_advance_response_fields (execution : (app).Execution) (owner : Player)
-    (event : graph.EventId) (payload : L.Ty) (value : L.Val payload) (serial : Nat) :
-    let response := runtime.reactiveBinding leaks owner event payload (.success value) serial
+/-- Actual private candidate registration commutes with assigning the clock. -/
+theorem submission_register_clock (material : WitnessedSubmission graph)
+    (state : EventGraphRuntime.State graph) (owner : Player) (clock : Nat) :
+    (app).submit { state with clock := clock } owner material =
+      { (app).submit state owner material with clock := clock } := by
+  rcases material with ⟨⟨packet, opening⟩, evidence⟩
+  cases packet with
+  | commitment event candidate =>
+    rcases candidate with ⟨actor, slot⟩
+    cases slot <;> cases opening <;>
+      simp only [reactiveApplication, Submission.register, submitStep]
+    all_goals split_ifs <;> rfl
+  | opening => rfl
+  | withhold => rfl
+  | malformed => rfl
+
+/-- Exchanging a tick and the same semantic response preserves the complete
+application, network and receipts, including certificate-bearing packets. -/
+theorem response_advance_fields (execution : (app).Execution) (owner : Player)
+    (response : (app).Action) :
     let early := advance runtime leaks
       ((activate runtime leaks execution owner).respond (app) owner response)
     let late := (activate runtime leaks (advance runtime leaks execution) owner).respond (app)
       owner response
     early.application = late.application ∧ early.network = late.network ∧
       early.receipts = late.receipts := by
-  intro response early late
-  refine ⟨?_, ?_, rfl⟩
-  · dsimp only [early, late, advance, activate, ReactiveApplication.Execution.respond, response,
-      reactiveBinding]
-    simp only [reactiveApplication, Submission.register, ↓reduceIte, submitStep]
-  · simp only [early, late, advance, activate, ReactiveApplication.Execution.respond, response,
-      reactiveBinding, reactiveApplication_packet_none, advance_token]
+  intro early late
+  rcases response with ⟨emission⟩
+  cases emission with
+  | none => exact ⟨rfl, rfl, rfl⟩
+  | some material =>
+    have clockEq := congrArg PublicView.clock
+      (runtime.reactiveApplication_submit_publicView leaks execution.application owner material)
+    change ((app).submit execution.application owner material).clock =
+      execution.application.clock at clockEq
+    refine ⟨?_, ?_, rfl⟩
+    · change { (app).submit execution.application owner material with
+          clock := ((app).submit execution.application owner material).clock + 1 } =
+        (app).submit { execution.application with clock := execution.application.clock + 1 }
+          owner material
+      rw [clockEq]
+      exact (submission_register_clock runtime leaks material execution.application owner _).symm
+    · change (execution.network.submit owner
+          ((app).packet ((app).submit execution.application owner material) owner
+            (execution.network.known owner) material)).2 =
+        (execution.network.submit owner
+          ((app).packet ((app).submit
+            { execution.application with clock := execution.application.clock + 1 } owner material)
+            owner (execution.network.known owner) material)).2
+      rw [submission_register_clock]
+      change _ = (execution.network.submit owner
+        (material.emit { (app).submit execution.application owner material with
+          clock := execution.application.clock + 1 } owner
+            (execution.network.known owner))).2
+      rw [submission_emit_clock]
+      rfl
 
-/-- A foreign player recalls neither of these owner responses. Its entire
-actual before-response input is equal after inclusion of the same identifier. -/
-theorem binding_advance_foreign_input (execution : (app).Execution) (owner focal : Player)
-    (foreign : focal ≠ owner) (event : graph.EventId) (payload : L.Ty) (value : L.Val payload)
-    (serial : Nat)
-    (id : MessageId Player) :
-    let response := runtime.reactiveBinding leaks owner event payload (.success value) serial
+/-- After the same actual inclusion, a foreign player has the same full input.
+The sender's recorded before-view remains private and may differ. -/
+theorem response_advance_foreign_input (execution : (app).Execution) (owner focal : Player)
+    (foreign : focal ≠ owner) (response : (app).Action) (id : MessageId Player) :
     let early := (advance runtime leaks
       ((activate runtime leaks execution owner).respond (app) owner response)).includePending
         (app) id
@@ -98,9 +133,9 @@ theorem binding_advance_foreign_input (execution : (app).Execution) (owner focal
       owner response).includePending (app) id
     (early.recall focal, early.observe (app) focal) =
       (late.recall focal, late.observe (app) focal) := by
-  intro response early late
+  intro early late
   obtain ⟨applicationEq, networkEq, receiptsEq⟩ :=
-    binding_advance_response_fields runtime leaks execution owner event payload value serial
+    response_advance_fields runtime leaks execution owner response
   have recalled :
       (advance runtime leaks
         ((activate runtime leaks execution owner).respond (app) owner response)).recall focal =
@@ -112,11 +147,9 @@ theorem binding_advance_foreign_input (execution : (app).Execution) (owner focal
         owner focal foreign response).symm
   dsimp only [early, late, ReactiveApplication.Execution.includePending]
   rw [networkEq, applicationEq, receiptsEq]
-  dsimp only [response] at recalled ⊢
   cases included :
       (((activate runtime leaks (advance runtime leaks execution) owner).respond (app) owner
-        (runtime.reactiveBinding leaks owner event payload (.success value)
-          serial)).network.includePending id).1 <;>
+        response).network.includePending id).1 <;>
     simp only [ReactiveApplication.Execution.observe, recalled]
 
 /-- With deadline three and inclusion bound two, the tick preserves actual
@@ -243,7 +276,7 @@ theorem second_binding_accepted (execution : (app).Execution) (owner : Player)
   have received : late.receipts = execution.receipts ++ [(id, true)] :=
     congrArg Prod.snd realizedEndpoint
   obtain ⟨applicationEq, networkEq, receiptsEq⟩ :=
-    binding_advance_response_fields runtime leaks execution owner event payload value serial
+    response_advance_fields runtime leaks execution owner response
   have same : early.application = late.application ∧ early.receipts = late.receipts := by
     dsimp only [early, late, ReactiveApplication.Execution.includePending]
     rw [applicationEq, networkEq, receiptsEq]

@@ -130,8 +130,8 @@ theorem sourceServiceUnclassified_copied_response_frame
   let updated : BindingMemory (runtime setup) leaks :=
     ⟨changed.2, memory.responses ++
       [(memory.shadow.inputView (runtime setup) leaks view, response)]⟩
-  have physical := sourceServiceUnclassified_response_transport bounds bound original repaired
-    who memory frame leftTrace rightTrace clear response effective notPacket notRecorded
+  have physical := sourceServiceUnclassified_response_transport bounds original repaired
+    who memory frame leftTrace rightTrace response effective notPacket notRecorded
   have canonical := retained
   rw [bounds.riskActions_of_clear (runtime setup) leaks bound who _ _ clear] at canonical
   have selectedEq : BindingMemory.retainedResponse (runtime setup) leaks

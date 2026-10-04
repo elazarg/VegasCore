@@ -119,7 +119,9 @@ theorem accepted_opening_identifies (runtime : EventGraphRuntime graph)
   have verified := runtime.handle_opening_verified state next id event candidate claimed accepted
   exact ⟨rfl, CommitmentCandidate.openable.inj (verified.symm.trans fixed)⟩
 
-private theorem normalize_opening_of_matching_packet
+/-- Matching authentic emitted opening evidence determines the normalized
+submission without any readiness, deadline or accepting-receipt premise. -/
+theorem normalize_opening_of_matching_packet
     (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (state : State graph) (who : Player)
