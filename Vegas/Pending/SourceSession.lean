@@ -308,6 +308,12 @@ def Packet.envelopes (id : MessageId (Principal Player)) (packet : Packet graph)
     | .gameplay _ => []
     | .report .. => packet.nestedEnvelopes
 
+omit [DecidableEq Player] in
+theorem Packet.envelopes_eq_root_cons (packet : Packet graph)
+    (id : MessageId (Principal Player)) :
+    packet.envelopes id = ⟨id, packet⟩ :: packet.nestedEnvelopes := by
+  cases packet <;> simp [envelopes, nestedEnvelopes]
+
 def certificateFor (state : State graph) (who : Principal Player)
     (known : List (Message (Principal Player) (Packet graph))) :
     CertificateRequest graph → Option (Certificate graph)
@@ -690,6 +696,105 @@ theorem emit_report_origin (state : State graph) (who : Principal Player)
   obtain ⟨id, _, found⟩ := List.mem_filterMap.mp member
   unfold reportEnvelope? reportEnvelopes at found
   exact List.mem_flatMap.mp (List.mem_of_find?_eq_some found)
+
+/-- Every nested signed body retained by the network is a genuine submission
+in its input record. Forwarding report contents cannot invent another body
+under an existing sender and identifier. -/
+def EnvelopeInputs (network : MessageNetwork (Principal Player) (Packet graph)) : Prop :=
+  network.Satisfies fun message => ∀ nested ∈ message.payload.envelopes message.id,
+    nested ∈ network.inputs
+
+theorem EnvelopeInputs.submit
+    {network : MessageNetwork (Principal Player) (Packet graph)}
+    (valid : EnvelopeInputs network) (state : State graph) (who : Principal Player)
+    (submission : Submission graph) :
+    EnvelopeInputs (network.submit who (emit state who (network.known who) submission)).2 := by
+  let payload := emit state who (network.known who) submission
+  have old : network.Satisfies fun message => ∀ nested ∈ message.payload.envelopes message.id,
+      nested ∈ (network.submit who payload).2.inputs :=
+    valid.mono fun _ authentic nested member => List.mem_append_left _ (authentic nested member)
+  apply old.submit who payload
+  intro nested member
+  rw [Packet.envelopes_eq_root_cons] at member
+  rcases List.mem_cons.mp member with same | descendant
+  · subst nested
+    exact List.mem_append_right _ (by simp)
+  · cases submission with
+    | gameplay request =>
+        simp only [payload, emit, Packet.nestedEnvelopes, List.not_mem_nil] at descendant
+    | report ids =>
+        change nested ∈ (Packet.report (reportMaterial (network.known who) ids)
+          (state.tokenFor .reporting)).nestedEnvelopes at descendant
+        rw [Packet.nestedEnvelopes] at descendant
+        obtain ⟨parent, present, nestedParent⟩ := List.mem_flatMap.mp descendant
+        obtain ⟨original, known, origin⟩ := emit_report_origin state who (network.known who)
+          ids _ _ rfl parent present
+        have submitted := valid.known who original known parent origin
+        have authentic := valid.inputs parent submitted
+        have inside : nested ∈ parent.payload.envelopes parent.id := by
+          rw [Packet.envelopes_eq_root_cons]
+          exact nestedParent
+        exact List.mem_append_left _ (authentic nested inside)
+
+theorem EnvelopeInputs.learn
+    {network : MessageNetwork (Principal Player) (Packet graph)}
+    (valid : EnvelopeInputs network) (who : Principal Player)
+    (selected : Finset (MessageId (Principal Player))) :
+    EnvelopeInputs (network.learn who selected) :=
+  MessageNetwork.Satisfies.learn valid who selected
+
+theorem EnvelopeInputs.includePending
+    {network : MessageNetwork (Principal Player) (Packet graph)}
+    (valid : EnvelopeInputs network) (id : MessageId (Principal Player)) :
+    EnvelopeInputs (network.includePending id).2 := by
+  have retained := MessageNetwork.Satisfies.includePending valid id
+  cases found : network.lookup id <;>
+    simpa only [EnvelopeInputs, MessageNetwork.includePending, found] using retained
+
+theorem envelopeInputsInvariant (runtime : Runtime graph)
+    (leaks : MessageNetwork.ObservationRule (Principal Player) (Packet graph))
+    (scheduler : (application runtime leaks).Scheduler) :
+    (application runtime leaks).ServiceInvariant scheduler
+      (fun execution => EnvelopeInputs execution.network) where
+  respond execution who action valid := by
+    rcases action with ⟨transmission⟩
+    cases transmission with
+    | none => exact valid
+    | some submission =>
+        exact valid.submit (submit execution.application who submission) who submission
+  environment execution next command valid _ reached := by
+    cases command with
+    | wait =>
+        simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+        cases (PMF.mem_support_pure_iff _ _).mp reached
+        exact valid
+    | activate who =>
+        obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+        obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
+        exact valid.learn who selected
+    | «include» id =>
+        simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+        cases (PMF.mem_support_pure_iff _ _).mp reached
+        change EnvelopeInputs (execution.includePending (application runtime leaks) id).network
+        unfold ReactiveApplication.Execution.includePending
+        cases found : execution.network.lookup id <;>
+          simpa only [MessageNetwork.includePending, found] using valid.includePending id
+    | application command =>
+        obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+        obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ supported
+        exact valid
+
+/-- The nested-envelope input invariant holds at every initialized raw
+history, including rejected reports and arbitrary partial observations. -/
+theorem history_envelopeInputs (runtime : Runtime graph)
+    (leaks : MessageNetwork.ObservationRule (Principal Player) (Packet graph))
+    (scheduler : (application runtime leaks).Scheduler)
+    (initial : PMF (State graph)) (horizon : Nat)
+    (control : (application runtime leaks).Control)
+    (trace : ((application runtime leaks).protocol initial horizon scheduler).Trace
+      (some control)) : EnvelopeInputs control.execution.network :=
+  (envelopeInputsInvariant runtime leaks scheduler).history initial horizon
+    (fun _ _ => MessageNetwork.Satisfies.empty) trace
 
 theorem handleGame_none_of_closed (runtime : Runtime graph) (state : State graph)
     (closed : state.status ≠ .running) (id : MessageId (Principal Player))

@@ -3800,9 +3800,17 @@ owner-selection bound are proved, including the empty-player case for the
 budget. `Vegas.SourceSession.watcherPolicy_observe` reconstructs genuine
 possessed evidence, and `Vegas.SourceSession.watcher_invoke_inclusion_lower`
 connects the `1/K` bound to an actual newly submitted report, pending inclusion
-and accepting receipt. It assumes that immediate inclusion step; conditional
-delivery under the general service remains open. Joint witness observation,
-first-preseal-witness persistence and initialized zero charge also remain open.
+and accepting receipt. `Vegas.SourceSession.history_envelopeInputs` proves
+that nested bodies originate in genuine submissions at every initialized raw
+history. Native identifier uniqueness then prevents another nested body from
+shadowing a possessed witness during report lookup.
+`Vegas.SourceSession.pending_pair_observation_lower` transports the actual
+joint sample mass of two unknown foreign pending bodies to the candidate
+verdict. `Vegas.SourceSession.watcher_activation_inclusion_lower` connects
+sampled offense probability, multiplied by `1/K`, to real activation and
+immediate report inclusion. Conditional delivery under the general service
+remains open, as do a positive observation bound covering all witness locations,
+first-preseal-witness validity through sealing and initialized zero charge.
 Proving these obligations would yield the stated `p^2 * r / K` collection
 bound uniformly over later player responses.
 

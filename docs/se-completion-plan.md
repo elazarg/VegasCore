@@ -182,8 +182,17 @@ repeated knowledge of one identifier. `Vegas.SourceSession.watcherPolicy_observe
 connects the policy to the native runner's possessed evidence.
 `Vegas.SourceSession.watcher_invoke_inclusion_lower` proves the `1/K`
 collection bound when that actual emitted report is immediately included in
-its live window. A general builder's conditional report delivery, joint pair
-observation and preseal witness persistence still require proofs.
+its live window. `Vegas.SourceSession.history_envelopeInputs` proves that
+nested report bodies are genuine submitted envelopes at every initialized raw
+history. Combined with native identifier uniqueness, this preserves every
+possessed witness through report lookup and normalization.
+`Vegas.SourceSession.pending_pair_observation_lower` transports the actual
+joint sample mass of two unknown foreign pending packets to the candidate
+verdict. `Vegas.SourceSession.watcher_activation_inclusion_lower` transports
+the sampled offense probability, times `1/K`, through real activation,
+submission and immediate accepting inclusion. A general builder's conditional
+report delivery, a positive observation bound covering all witness locations,
+and preseal witness validity through sealing still require proofs.
 
 The [concurrent alternative](se-schedule-generalization.md#concurrent-alternative-one-fixed-cancellation-payoff-per-player)
 uses a fixed cancellation deduction from every player, rather than only the
@@ -251,10 +260,13 @@ for the native application:
    proves agreement with the contract record. Connect actual observation,
    owner selection and accepted delivery to its charge event; do not read the
    entire pending pool or resample terminal evidence.
-   `SourceSessionWatcher` supplies the bounded reporter, exact body lookup,
-   uniform selection bound and native immediate-inclusion adapter. Extend this
-   adapter through the real service continuation and prove joint observation
-   before using `p^2 * r / K` as an actual first-misconduct collection rate.
+   `SourceSessionWatcher` supplies the bounded reporter, authentic body lookup,
+   uniform selection bound and native activation/immediate-inclusion adapter.
+   Its pair-observation theorem handles two unknown foreign pending bodies
+   using their actual joint sample mass. Cover known and published witnesses,
+   prove the positive joint bound, and extend inclusion through the real
+   service continuation before using `p^2 * r / K` as an actual
+   first-misconduct collection rate.
 5. Prove the compiler-specific source/traffic fiber relation and one
    information-local timing selection. The
    [source-independent timing argument](se-schedule-generalization.md#timing-selection-does-not-need-the-source-equilibrium)
