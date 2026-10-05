@@ -263,9 +263,13 @@ The [CommittedResolutionService](../Vegas/Examples/CommittedResolutionService.le
 horizon-16 scheduler over initialized unrestricted RAW histories. Alice acts at
 clocks 0/1, then postcompletion Alice and first Bob at clock 2, Bob expiry at 5;
 empty gameplay leaks, Alice delay 0/bound 1, Bob delay 2/bound 0 and N=4.
-Censored T's FALSE receipt separates it from clean expiry. First-packet final-verdict,
-zero-charge and clean-J full-input adapters remain open. The two native SE constructions
-are conditional paper mathematics; no checked native/general SE or live watcher follows.
+Censored T's FALSE receipt separates it from clean expiry. `silent_bob_input_law` checks
+one common full first-Bob input under literal silent initialized play at both types,
+including empty own recall and public Alice failure. It supplies silent witnesses,
+not mixed-play Bayes weights or a characterization of the entire information fiber.
+TRUE acceptance, zero charge and concrete first-packet verdict consumers remain open.
+The two native SE constructions are conditional paper mathematics;
+no checked native/general SE or live watcher follows.
 
 The archived [exact finite checker](../archive/se-generalization/documents/scripts/experiments/adaptive_schedules.py)
 and [C6 probe](../archive/se-generalization/documents/scripts/experiments/deferral_miss_probe.py)
@@ -279,13 +283,17 @@ result counts toward that proof only with premises derived from the actual runti
 ## Road to the proof
 
 1. **Derive the concrete runtime adapters.** From the checked fixed horizon-16 service,
-   prove first-packet final verdicts under arbitrary RAW continuations, zero charge on
-   the two prescribed laws, and the clean-J full-input law. Connect these to the actual
-   conditional audit backend and assessment construction. Arbitrary later source
-   economics need their own comparisons.
-2. **State one native assessment construction.** Decide which native inputs
-   follow the source assessment and which need free rational completion. Specify
-   one fully mixed source/timing/raw family and a single common subsequence.
+   prove TRUE acceptance and zero charge on the two prescribed laws. Instantiate
+   [opening conformance](../Vegas/Pending/ReactiveOpeningConformance.lean) and existing
+   [condemnation/persistence](../Vegas/Game/ServiceSettledEvidence.lean) with the actual initialized
+   resources for first-packet verdicts under RAW continuations. Derive mixed-play reach
+   weights using the checked silent-input witnesses and connect the actual audit backend.
+   Arbitrary later source economics need their own comparisons.
+2. **Instantiate the existing native completion.** Use the actual bounded RAW menu,
+   runtime information and decision recall with
+   [free-agent completion](../GameTheory/GameTheory/Analysis/Protocol/AgentCompletion.lean).
+   Choose source-following and free inputs, one fully mixed source/timing/raw family,
+   independent pinned rates and free floors, and a single actual Bayes subsequence.
    Give a legal comparator shared across all hidden histories of an information
    set. Do not pin a source policy at delayed inputs without proving rationality.
 3. **Prove the source/traffic invariant.** Couple legal source actions, chance,

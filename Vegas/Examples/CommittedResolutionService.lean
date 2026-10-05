@@ -853,4 +853,222 @@ theorem contract :
     AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay bound :=
   ⟨opportunity, inclusion, completes⟩
 
+private def silentPlayers : Player → app.Policy := fun _ _ _ => PMF.pure ⟨none⟩
+
+private def silentInitial (high : Bool) : app.Execution :=
+  ReactiveApplication.Execution.initial app
+    (EventGraphRuntime.State.initial (setup.eventInputs (sourceInitial high)))
+
+private def sampledState (high : Bool) : EventGraphRuntime.State nativeGraph :=
+  (silentInitial high).application.complete sampleEvent (by cases high <;> decide) PUnit.unit true
+
+private def silentCompleted (high : Bool) : EventGraphRuntime.State nativeGraph :=
+  ({ sampledState high with clock := 2 } : EventGraphRuntime.State nativeGraph).complete
+    aliceEvent (by cases high <;> decide) false .failure
+
+private theorem silent_sample (high : Bool) :
+    EventGraphRuntime.environmentStep (runtime setup) (silentInitial high).application
+      (.executeSample sampleEvent) = PMF.pure (sampledState high) := by
+  rw [environmentStep_executeSample_eq (runtime setup) _ sampleEvent (by cases high <;> decide)
+    .bool _ rfl rfl rfl]
+  rw [Config.step_eq_map_of_eval _ sampleEvent _ _ (PMF.pure true) (by
+    change some (RationalLaw.pure true).denote = some (PMF.pure true)
+    congr 1
+    unfold RationalLaw.denote
+    have value : (RationalLaw.pure true).entryValue = fun _ => true := by
+      funext index
+      fin_cases index
+      rfl
+    rw [value]
+    exact PMF.map_const _ _)]
+  simp only [PMF.pure_map]
+  rfl
+
+private theorem silent_expire (high : Bool) :
+    EventGraphRuntime.environmentStep (runtime setup) { sampledState high with clock := 2 }
+      (.expire aliceEvent) = PMF.pure (silentCompleted high) := by
+  apply environmentStep_expire_resolve_eq (runtime setup) _ aliceEvent
+    (by cases high <;> decide) 0 (by cases high <;> decide) (by decide +revert)
+    alice .bool _ [] rfl rfl rfl
+
+private def recorded (execution : app.Execution) (command : app.Command)
+    (state : app.State) : app.Execution :=
+  { execution with application := state, environmentRecall := execution.environmentRecall ++
+      [⟨execution.observeEnvironment app, command⟩] }
+
+private theorem recorded_application (execution : app.Execution)
+    (command : EnvironmentCommand nativeGraph) (state : app.State)
+    (moved : EventGraphRuntime.environmentStep (runtime setup) execution.application command =
+      PMF.pure state) :
+    execution.environmentStep app (.application command) =
+      PMF.pure (recorded execution (.application command) state) := by
+  simp only [ReactiveApplication.Execution.environmentStep]
+  change ((EventGraphRuntime.environmentStep (runtime setup) execution.application command).map
+    (fun state => { execution with application := state })).map _ = _
+  rw [moved, PMF.pure_map, PMF.pure_map]
+  rfl
+
+private theorem recorded_activation (execution : app.Execution) (who : Player) :
+    execution.environmentStep app (.activate who) =
+      PMF.pure (recorded execution (.activate who) execution.application) := by
+  simp only [ReactiveApplication.Execution.environmentStep]
+  change ((PMF.pure (∅ : Finset (MessageId Player))).map
+    (fun selected => { execution with network := execution.network.learn who selected })).map _ = _
+  rw [PMF.pure_map, PMF.pure_map, MessageNetwork.learn_empty]
+  rfl
+
+private theorem recorded_wait (execution : app.Execution) :
+    execution.environmentStep app .wait =
+      PMF.pure (recorded execution .wait execution.application) := by
+  simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
+  rfl
+
+private theorem silent_round (execution next : app.Execution) (position : Nat)
+    (command : app.Command)
+    (cursor : execution.environmentRecall.length = position)
+    (chosen : stageChoice position (execution.observeEnvironment app) = PMF.pure command)
+    (moved : execution.environmentStep app command = PMF.pure next) :
+    app.round scheduler silentPlayers execution =
+      app.resume silentPlayers (command.actor? app) next := by
+  rw [ReactiveApplication.round, scheduler, cursor, chosen, PMF.pure_bind,
+    ReactiveApplication.dispatch, moved, PMF.pure_bind]
+
+private theorem silent_prefix (high : Bool) : ∃ execution : app.Execution,
+    app.runRounds scheduler silentPlayers 10 (silentInitial high) = PMF.pure execution ∧
+    execution.environmentRecall.length = 10 ∧ execution.network = .empty ∧
+    execution.receipts = [] ∧ execution.recall bob = [] ∧
+    execution.application = silentCompleted high := by
+  let e0 := silentInitial high
+  let e1 := recorded e0 (.application (.executeSample sampleEvent)) (sampledState high)
+  let e2 := (recorded e1 (.activate alice) e1.application).respond app alice ⟨none⟩
+  let e3 := recorded e2 .wait e2.application
+  let e4 := recorded e3 (.application .advanceClock) { e3.application with clock := 1 }
+  let e5 := (recorded e4 (.activate alice) e4.application).respond app alice ⟨none⟩
+  let e6 := recorded e5 .wait e5.application
+  let e7 := recorded e6 (.application .advanceClock) { e6.application with clock := 2 }
+  let e8 := recorded e7 (.application (.expire aliceEvent)) (silentCompleted high)
+  let e9 := (recorded e8 (.activate alice) e8.application).respond app alice ⟨none⟩
+  let e10 := recorded e9 .wait e9.application
+  have s0 : app.round scheduler silentPlayers e0 = PMF.pure e1 := by
+    rw [silent_round e0 e1 0 (.application (.executeSample sampleEvent)) rfl rfl
+      (recorded_application e0 _ _ (silent_sample high))]
+    rfl
+  have s1 : app.round scheduler silentPlayers e1 = PMF.pure e2 := by
+    rw [silent_round e1 _ 1 (.activate alice) rfl rfl (recorded_activation e1 alice)]
+    simp only [ReactiveApplication.Command.actor?, ReactiveApplication.resume,
+      ReactiveApplication.invoke, silentPlayers, PMF.pure_map]
+    rfl
+  have s2 : app.round scheduler silentPlayers e2 = PMF.pure e3 := by
+    rw [silent_round e2 e3 2 .wait rfl rfl (recorded_wait e2)]
+    rfl
+  have s3 : app.round scheduler silentPlayers e3 = PMF.pure e4 := by
+    rw [silent_round e3 e4 3 (.application .advanceClock) rfl rfl
+      (recorded_application e3 _ _ rfl)]
+    rfl
+  have s4 : app.round scheduler silentPlayers e4 = PMF.pure e5 := by
+    rw [silent_round e4 _ 4 (.activate alice) rfl rfl (recorded_activation e4 alice)]
+    simp only [ReactiveApplication.Command.actor?, ReactiveApplication.resume,
+      ReactiveApplication.invoke, silentPlayers, PMF.pure_map]
+    rfl
+  have s5 : app.round scheduler silentPlayers e5 = PMF.pure e6 := by
+    have chosen : stageChoice 5 (e5.observeEnvironment app) = PMF.pure .wait := by
+      change mix (3 / 4) (by norm_num) (by norm_num)
+        (PMF.pure (.wait : app.Command)) (PMF.pure .wait) = PMF.pure .wait
+      exact mix_self _ _ _ _
+    rw [silent_round e5 e6 5 .wait rfl chosen (recorded_wait e5)]
+    rfl
+  have s6 : app.round scheduler silentPlayers e6 = PMF.pure e7 := by
+    rw [silent_round e6 e7 6 (.application .advanceClock) rfl rfl
+      (recorded_application e6 _ _ rfl)]
+    rfl
+  have s7 : app.round scheduler silentPlayers e7 = PMF.pure e8 := by
+    rw [silent_round e7 e8 7 (.application (.expire aliceEvent)) rfl rfl
+      (recorded_application e7 _ _ (silent_expire high))]
+    rfl
+  have s8 : app.round scheduler silentPlayers e8 = PMF.pure e9 := by
+    rw [silent_round e8 _ 8 (.activate alice) rfl rfl (recorded_activation e8 alice)]
+    simp only [ReactiveApplication.Command.actor?, ReactiveApplication.resume,
+      ReactiveApplication.invoke, silentPlayers, PMF.pure_map]
+    rfl
+  have s9 : app.round scheduler silentPlayers e9 = PMF.pure e10 := by
+    rw [silent_round e9 e10 9 .wait rfl rfl (recorded_wait e9)]
+    rfl
+  refine ⟨e10, ?_, rfl, rfl, rfl, rfl, rfl⟩
+  change app.runRounds scheduler silentPlayers 10 e0 = PMF.pure e10
+  simp only [ReactiveApplication.runRounds, s0, s1, s2, s3, s4, s5, s6, s7, s8, s9,
+    PMF.pure_bind]
+
+private theorem silent_completed_bob_view (high : Bool) :
+    app.observePlayer (silentCompleted high) bob =
+      app.observePlayer (silentCompleted false) bob := by
+  have observation : nativeGraph.playerObserve bob (silentCompleted high).config =
+      nativeGraph.playerObserve bob (silentCompleted false).config := by
+    apply nativeGraph.playerObserve_congr bob (silentCompleted high).config
+      (silentCompleted false).config rfl
+    intro field visible
+    cases field with
+    | inl input =>
+        fin_cases input
+        · change alice = bob at visible
+          exact ((by decide : alice ≠ bob) visible).elim
+        · rfl
+    | inr event => fin_cases event <;> rfl
+  have publicEq : (silentCompleted high).publicView = (silentCompleted false).publicView := by
+    unfold EventGraphRuntime.State.publicView
+    congr 1
+    apply nativeGraph.publicObserve_congr (silentCompleted high).config
+      (silentCompleted false).config rfl
+    intro field visible
+    cases field with
+    | inl input => fin_cases input <;> change False at visible <;> contradiction
+    | inr event => fin_cases event <;> rfl
+  have candidates : (fun slot => (silentCompleted high).candidates.lookup (bob, slot)) =
+      fun slot => (silentCompleted false).candidates.lookup (bob, slot) := by
+    funext slot
+    change (EventGraphRuntime.State.initial (graph := nativeGraph)
+      (setup.eventInputs (sourceInitial high))).candidates.lookup (bob, slot) =
+      (EventGraphRuntime.State.initial (graph := nativeGraph)
+        (setup.eventInputs (sourceInitial false))).candidates.lookup (bob, slot)
+    rw [EventGraphRuntime.State.initial_candidate, EventGraphRuntime.State.initial_candidate]
+    cases slot with
+    | prepared _ => rfl
+    | initial input => fin_cases input <;> rfl
+  change (ReactivePlayerView.mk bob _ _ _) = ReactivePlayerView.mk bob _ _ _
+  rw [publicEq, observation, candidates]
+
+/-- Literal silence reaches one full first-Bob input at both initial types.
+This identifies the canonical path, not every history in that information fiber. -/
+theorem silent_bob_input_law : ∃ input : List app.PlayerEntry × app.PlayerView,
+    input.1 = [] ∧
+    input.2.application.publicView.observation.store (.inr aliceEvent) = some .failure ∧
+    ∀ high : Bool,
+      (((app.runRounds scheduler (fun _ _ _ => PMF.pure (⟨none⟩ : app.Action)) 10
+        (ReactiveApplication.Execution.initial app
+          (EventGraphRuntime.State.initial (setup.eventInputs (sourceInitial high))))).bind
+        (fun before => (scheduler before.environmentRecall (before.observeEnvironment app)).bind
+          (before.environmentStep app))).map
+        (fun after => (after.recall bob, after.observe app bob))) = PMF.pure input := by
+  obtain ⟨baseline, _, _, baseNetwork, baseReceipts, baseRecall, baseState⟩ := silent_prefix false
+  refine ⟨(baseline.recall bob, baseline.observe app bob), baseRecall, ?_, ?_⟩
+  · change (app.observePlayer baseline.application bob).publicView.observation.store
+      (.inr aliceEvent) = some .failure
+    rw [baseState]
+    rfl
+  · intro high
+    obtain ⟨execution, prefixLaw, cursor, network, receipts, recalled, state⟩ := silent_prefix high
+    change (((app.runRounds scheduler silentPlayers 10 (silentInitial high)).bind _).map _) = _
+    rw [prefixLaw, PMF.pure_bind]
+    have chosen : scheduler execution.environmentRecall (execution.observeEnvironment app) =
+        PMF.pure (.activate bob) := by simp only [scheduler, cursor, stageChoice]
+    rw [chosen, PMF.pure_bind, recorded_activation, PMF.pure_map]
+    apply congrArg PMF.pure
+    change (execution.recall bob, execution.observe app bob) =
+      (baseline.recall bob, baseline.observe app bob)
+    apply Prod.ext
+    · rw [recalled, baseRecall]
+    · change (ReactiveApplication.PlayerView.mk _ _ _) =
+        ReactiveApplication.PlayerView.mk _ _ _
+      rw [network, baseNetwork, receipts, baseReceipts, state, baseState,
+        silent_completed_bob_view]
+
 end Vegas.Examples.CommittedResolutionService

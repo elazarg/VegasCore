@@ -245,8 +245,13 @@ The extra inclusion publishes censored T with a FALSE receipt: it is a revealed
 failure fiber, while all THREE Alice NONE responses give the paired clean J.
 `contract`, `timely` and finite Nature support in [CommittedResolutionService](../Vegas/Examples/CommittedResolutionService.lean)
 are kernel-checked for this compiled source setup and scheduler over initialized unrestricted RAW histories.
-Protected inclusion supplies a Bool receipt; acceptance, first-packet final verdicts,
-zero charge, clean-J full-input equality and native SE still need actual adapters.
+`silent_bob_input_law` also checks one common full Bob input under literal silence
+through his first activation, with empty own recall and public Alice failure at both types.
+This supplies silent witnesses, not mixed-play reach weights or the entire information fiber.
+Protected inclusion supplies a Bool receipt; TRUE acceptance and zero charge remain open.
+First-packet verdicts reuse [opening conformance](../Vegas/Pending/ReactiveOpeningConformance.lean)
+and [condemnation/persistence](../Vegas/Game/ServiceSettledEvidence.lean); their concrete initialized
+resources and consumers remain to be derived. Native SE remains open.
 Early Bob responses, guard failure, later Alice source economics and a live watcher remain outside this fixture.
 
 The fixed 16-round controller also supports the source SE H→T, L→F, with Bob
