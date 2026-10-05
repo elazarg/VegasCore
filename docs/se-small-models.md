@@ -203,6 +203,21 @@ Under the fixed shared audit coin, old R fixes the owner's OR charge; the new pa
 This tests the pooling premise, not preservation impossibility.
 Changed guards/candidates, later source economics and general service/backend refinement remain open.
 
+For committed θ, use the same payoff table with T=source `success θ`; `success false` is not failure.
+Require no Bob response before Alice completes, then a clear protected first Bob input
+on ALL compared histories. Select protected H→silence for H, all-W for L with no own authored/pending H.
+These closed paths give value 1 and zero charge uniformly over hidden histories and Alice RAW futures.
+ε-full references, the finite chooser and one ACTUAL Bayes subsequence free-complete other sites;
+conditional pin deficit ≤(1+D)Nε, for finite step bound N, gives rational pins in that SAME family.
+This selects a robust fixed π, not robustness of every rational Bob policy. Start Alice clear,
+retain her first genuine opening and let sθ be final source-success probability, including rescues.
+On failure that envelope has no TRUE receipt and is forbidden. The SAME unobserved all/none backend
+gives TOTAL conditional expected charge C=qD, not a new incremental fine. Hence
+V_H≤2s_H−(1−s_H)C; V_L≤s_L/2+(1−s_L)(1−C).
+C≥1/2 bounds these by source TRUE values 2 and 1/2. This is a paper attempted-opening comparison
+under stated service premises, not an AsyncContract instance or SE construction. Packet-free WAIT
+has no witness; its actual common-family clean-expiry versus censored-opening law remains open.
+
 ### Inclusion and audit parameters
 
 In the same three-action tree, take 0<p<1, q∈[0,1], D≥0, c=qD and b=(1−p)c.

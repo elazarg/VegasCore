@@ -251,6 +251,10 @@ certificate packet to reveal θ after an old R, without a second shared-coin fin
 That breaks the pooling premise, not preservation. Actual service/backend certification,
 different source resources and later source economics remain outside the result.
 
+In the committed-type fragment, a selected truthful-success continuation bounds
+attempted openings under scoped service/backend premises. Packet-free WAIT still
+requires the actual common-family clean-expiry versus censored-opening law.
+
 The archived [exact finite checker](../archive/se-generalization/documents/scripts/experiments/adaptive_schedules.py)
 and [C6 probe](../archive/se-generalization/documents/scripts/experiments/deferral_miss_probe.py)
 are reference tools. C6 studies bindings with a certain penalty; its negative
