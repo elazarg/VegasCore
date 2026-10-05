@@ -45,7 +45,8 @@ theorem canonicalReactiveDecision_transmission (runtime : EventGraphRuntime grap
     exact Or.inr ⟨_, rfl,
       reactiveResolutionPacket_event who event payload binding checks outputEq choice view⟩
 
-/-- Every emitted canonical decision names exactly its decision event. -/
+/-- Withholding normalizes to silence; every other canonical decision names
+exactly its decision event. -/
 theorem canonicalServiceDecision_cases (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -65,10 +66,16 @@ theorem canonicalServiceDecision_cases (runtime : EventGraphRuntime graph)
   · have same : runtime.canonicalReactiveDecision leaks who event choice view.application =
         ⟨some material⟩ := congrArg (fun transmission =>
           (⟨transmission⟩ : (runtime.reactiveApplication leaks).Action)) emitted
-    right
-    simp only [canonicalServiceDecision, same]
-    rw [runtime.submittedEvent_normalization]
-    exact named
+    obtain ⟨⟨packet, opening⟩, evidence⟩ := material
+    cases packet with
+    | withhold other =>
+        left
+        simp only [canonicalServiceDecision, same]
+    | commitment other candidate | opening other candidate raw | malformed raw =>
+        right
+        simp only [canonicalServiceDecision, same]
+        rw [runtime.submittedEvent_normalization]
+        exact named
 
 /-- Semantic normalization preserves the submitted event identity. -/
 theorem canonicalServiceDecision_submittedEvent (runtime : EventGraphRuntime graph)
@@ -120,7 +127,8 @@ def canonicalChoices (event : graph.EventId) : Finset (graph.Action event) :=
 variable [Fintype Player] (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
-/-- A bounded raw canonical decision is available after normalization. -/
+/-- A bounded raw canonical decision is available after normalization or
+representation of withholding by silence. -/
 theorem canonicalServiceDecision_available (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)
@@ -129,8 +137,23 @@ theorem canonicalServiceDecision_available (who : Player)
       (bounds.rawMenu runtime leaks).actions who past view) :
     runtime.canonicalServiceDecision leaks who past view event choice ∈
       (bounds.menu runtime leaks).actions who past view := by
-  rw [canonicalServiceDecision, menu, ReactiveApplication.SubmissionNormalization.menu_mem]
-  exact ⟨_, available, rfl⟩
+  unfold canonicalServiceDecision
+  generalize runtime.canonicalReactiveDecision leaks who event choice view.application =
+    response at available ⊢
+  obtain ⟨transmission⟩ := response
+  cases transmission with
+  | none =>
+      rw [bounds.menu_mem]
+      exact ⟨trivial, rfl⟩
+  | some material =>
+      obtain ⟨⟨packet, opening⟩, evidence⟩ := material
+      cases packet with
+      | withhold other =>
+          rw [bounds.menu_mem]
+          exact ⟨trivial, rfl⟩
+      | commitment other candidate | opening other candidate raw | malformed raw =>
+          rw [menu, ReactiveApplication.SubmissionNormalization.menu_mem]
+          exact ⟨_, available, rfl⟩
 
 open Classical in
 /-- Timely canonical decisions at the player's own ready event. The delivery
@@ -384,7 +407,7 @@ theorem canonical_binding_value_retained (who : Player)
         exact included)
 
 /-- Both resolution choices are retained whenever their actual selected packet
-fits the bounds. Failed guards and withholding select a withholding packet. -/
+fits the bounds. Failed guards and withholding normalize to silence. -/
 theorem canonical_resolution_retained (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)

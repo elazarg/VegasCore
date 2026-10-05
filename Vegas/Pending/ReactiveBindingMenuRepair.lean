@@ -44,7 +44,7 @@ theorem repairResponse_binding_available
       (.prepared serial) = .fresh) :
     (memory.repairResponse runtime leaks who view
       ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩).1 ∈
-        bounds.requiredDecisionActions runtime leaks who past view := by
+        bounds.requiredBindingActions runtime leaks who past view := by
   have turnSome := view.application.publicView.ownTurn?_of_ownTurn who event turn
   cases decoded : opening.bind (fun raw => raw.as? payload) with
   | none =>
@@ -86,7 +86,7 @@ theorem retainedImplementation_binding_response
     (default : (⟨payload, L.someValue payload⟩ : Raw L) ∈ bounds.values)
     (originalFresh : (memory.shadow.inputView runtime leaks view).application.candidates
       (.prepared serial) = .fresh)
-    (coverage : bounds.requiredDecisionActions runtime leaks who past view ⊆
+    (coverage : bounds.requiredBindingActions runtime leaks who past view ⊆
       menu.actions who past view)
     (canonical : ∀ response ∈ (policy (memory.restoreRecall runtime leaks past)
       (memory.shadow.inputView runtime leaks view)).support,

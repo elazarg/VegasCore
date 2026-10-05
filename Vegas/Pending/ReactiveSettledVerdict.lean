@@ -11,17 +11,16 @@ record: the final public view and the receipt of every inclusion
 public view or the ledger at transmission.
 
 A packet for an event the record has not settled is permitted. Once the event
-has settled, a commitment, opening or withholding is permitted only when the record accepted
+has settled, a commitment or opening is permitted only when the record accepted
 it, with its content checked against the record:
 
 * a commitment carries no opening evidence and names the author's next prepared
   handle, counted from the author's bindings settled before the event;
 * an opening carries its exact certificate, and the event's guards accept the
-  opened value on the settled public store;
-* withholding carries no opening evidence.
+  opened value on the settled public store.
 
-Every malformed packet is forbidden. Equivocation needs no separate rule: of
-two packets of one author
+A withholding packet for a settled event, and every malformed packet, is
+forbidden. Equivocation needs no separate rule: of two packets of one author
 for one event the contract accepts at most one, and the other is forbidden once
 the event settles. The same holds for an opening sent after its owner withheld:
 it was not accepted, so it is forbidden whenever it was sent.
@@ -81,8 +80,7 @@ def SettledContent (record : SettledRecord graph)
   | .opening _ _ _ =>
       certifiedOpening message.payload = true ∧
         record.view.openingGuardsAccepted message.payload = true
-  | .withhold _ => message.payload.evidence = none
-  | .malformed _ => False
+  | .withhold _ | .malformed _ => False
 
 /-- **The settled verdict.** A packet for an unsettled event is permitted; a
 packet for a settled event is permitted when the record accepted it and its

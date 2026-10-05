@@ -13,7 +13,7 @@ import GameTheoryExtensions.Math.Probability.Support
 
 The physical policy reads the existing compiler's policy table at the player's
 turn, its ready event. Binding choices are atomic submissions; ineffective disclosures and
-withholding submit authenticated evidence-free decisions. The correspondence below permits
+withholding are settled by silence and expiry. The correspondence below permits
 arbitrary outstanding source guards and does not freeze the candidate catalogue
 or accepted handles at initialization.
 

@@ -2,7 +2,6 @@
 
 import Vegas.Game.SourceServiceFirstTurnMixture
 import Vegas.Game.SourceServiceAsyncTimeliness
-import Vegas.Pending.ReactiveSubmissionRecall
 
 /-! # Fresh submissions only at the author's own turn
 
@@ -139,8 +138,21 @@ theorem submittedEvent_canonicalServiceDecision (who : Player)
     other = event := by
   apply submittedEvent_canonicalReactiveDecision setup leaks who event action view.application
     other
-  simpa only [EventGraphRuntime.canonicalServiceDecision,
-    EventGraphRuntime.submittedEvent_normalization] using submitted
+  unfold EventGraphRuntime.canonicalServiceDecision at submitted
+  dsimp only at submitted
+  split at submitted
+  · simp [EventGraphRuntime.submittedEvent?] at submitted
+  · rename_i transmission _
+    revert submitted
+    rcases (runtime setup).canonicalReactiveDecision leaks who event action view.application
+      with
+      ⟨_ | material⟩
+    · simp [EventGraphRuntime.submittedEvent?, ReactiveApplication.SubmissionNormalization.action]
+    · intro submitted
+      simpa [EventGraphRuntime.submittedEvent?,
+        ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
+        WitnessedSubmission.normalizeReactive, Submission.normalizeReactive_packet]
+        using submitted
 
 theorem sourceServiceCanonicalPolicy_submitsAtTurn (profile : BehavioralProfile setup.program)
     (who : Player) :

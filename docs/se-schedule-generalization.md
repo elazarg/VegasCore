@@ -17,13 +17,19 @@ approval (see the [checklist](se-async-checklist.md)). In particular:
 | Readiness | Dependencies complete; readiness starts the event's timer. There is no grant cursor. |
 | Clock | Only explicit clock commands advance time. The deadline is the configured event deadline, currently its index plus one. |
 | Binding | Submit an opaque handle. Acceptance records the handle and its immutable typed value or source failure. |
-| Resolution | Canonical TRUE sends an authentic opening when owner-local validation succeeds. Canonical FALSE, and TRUE whose validation fails, send an authenticated evidence-free withholding packet, which completes the event on inclusion. |
-| Silence | WAIT, an undecided owner. Resolution expiry with no accepted decision executes source FALSE and is a public decision miss, charged like a binding omission. |
-| Binding expiry | Executes source failure. A completed binding with no accepted handle is a public decision miss. |
+| Resolution | Source withholding is a legal move whose consequences the program's failure branch prices; it is not honest play forced on the owner. Canonical TRUE sends the authentic opening when owner-local validation succeeds. Canonical FALSE, and TRUE whose validation fails, stay silent. There is no withholding call: the contract rejects any explicit withholding packet. |
+| Silence | WAIT. Resolution expiry executes source FALSE with publication failure; it is neither charged nor a miss. |
+| Binding expiry | Executes source failure. A completed binding with no accepted handle is a public binding omission, derived from the record. |
 | Authorship | A player transmits only fresh envelopes it authors; there are no copies. Delivery and inclusion handle the original envelope, so ledger identifiers are distinct. |
 | Causal evidence | The restricted emitter supplies a readiness credential only after the prerequisites complete. Raw callers cannot choose a credential themselves. |
 | Packet verdict | Read only the signed packet, historical readiness evidence, final public record and receipts. Completed events require an accepting receipt and canonical content. |
-| Enforcement | One capped charge per owner, from authentic partial evidence or a public decision miss. Gameplay continues after a charge or miss. |
+| Enforcement | One capped charge per owner, from authentic partial evidence or a public binding omission. Gameplay continues after a charge or omission. |
+
+An explicit-withholding variant, in which canonical FALSE sends an evidence-free
+withholding packet and every strategic expiry is a charged public decision miss,
+was implemented with its honest-execution proof (box S1 of the
+[checklist](se-async-checklist.md)) and is preserved at the git tag
+`explicit-withholding`. It is not the baseline.
 
 The source language, guarded TRUE behavior and original private action recall
 are unchanged. No mandatory decision admission, mandatory opening, session
@@ -85,8 +91,8 @@ after constructing one consistent native sequence and its comparisons.
 [PassageRestrictionExtension](../GameTheoryExtensions/Analysis/Protocol/PassageRestrictionExtension.lean)
 already proves `exists_consistent_extension_unclocked`, giving consistent rational
 completion at genuinely new sites, and `sequentialEquilibrium_extends_of_continuation_unclocked`,
-which consumes whole-policy comparisons at retained sites. A public decision miss
-gives certain capped collection via `serviceAudit_charge_of_miss` in
+which consumes whole-policy comparisons at retained sites. Public binding omission
+gives certain capped collection via `serviceAudit_charge_of_omission` in
 [ReactiveServiceAudit](../Vegas/Pending/ReactiveServiceAudit.lean); later comparisons
 use base payoff and rational completion, not renewed collateral. Hidden departures
 pooling at a retained input are not thereby new free sites.
@@ -110,7 +116,7 @@ menu inclusion preserves the SAME runner and full information. A coarse source
 decoder in [ServiceInformation](../Vegas/Game/ServiceInformation.lean) is not a
 source-to-native ActionRestriction embedding. Construct the retained native
 assessment and its actual reach/continuation law before invoking the extension.
-Explicit FALSE, failed TRUE and deferral need no physical intention tag:
+Silent FALSE, failed TRUE and deferral need no physical intention tag:
 [policyMixture](../Interaction/ReactivePolicyMixture.lean) conditions the chosen slot on actual recall,
 and [realization](../Interaction/ReactiveMixtureRounds.lean) preserves the whole execution law.
 [DisclosurePosterior](../Vegas/Game/SourceServiceDisclosurePosterior.lean) and
@@ -132,8 +138,8 @@ proposed SE proof benefit with the user.
    Compare the whole later policy, including ordinary resolution expiry and
    binding-omission charges. Longer deadlines alone do not prove this comparison.
 2. **Selective inclusion can select public opening contents.** A builder can
-   include late TRUE only for some values and raw withholding reliably; the
-   withholding packet's possible charge still belongs in the payoff comparison.
+   include late TRUE only for some values and let the others expire as FALSE; a
+   censored opening's possible charge still belongs in the payoff comparison.
    Opaque binding traffic does not make public openings opaque. A builder using
    only public data can still select by the disclosed value. Derive the actual
    success/rejection/expiry law before reducing a delayed decision to a source
@@ -266,13 +272,11 @@ clocks 0/1, then postcompletion Alice and first Bob at clock 2, Bob expiry at 5;
 empty gameplay leaks, Alice delay 0/bound 1, Bob delay 2/bound 0 and N=4.
 Censored T's FALSE receipt separates it from clean expiry. `silent_bob_input_law` checks
 one common full first-Bob input under literal silent initialized play at both types,
-including empty own recall, public Alice failure and Alice's public decision miss, without
-characterizing the entire fiber.
+including empty own recall and public Alice failure, without characterizing the entire fiber.
 `prescribed_packets_clean` derives TRUE receipts and final permissions for all transmitted
-envelopes, evidence-free FALSE withholding included, on initialized ALL-prescribed `sourceServiceTurnPolicy`/`firstTurnTiming` play,
+envelopes on initialized ALL-prescribed `sourceServiceTurnPolicy`/`firstTurnTiming` play,
 for any source behavioral profile. `prescribed_settlement` gives the full joint payoff vector
-as pure arbitrary base utility under any authentic sampler and arbitrary deposit; its
-absence of public decision misses is `sourceServiceFirstTurn_no_miss`.
+as pure arbitrary base utility under any authentic sampler and arbitrary deposit.
 `first_true_bob_output_law` checks the actual canonical first H opening's prompt stage-2
 acceptance and public `success true` through first Bob activation under arbitrary later
 native policies. `mixed_bob_reach_bound` proves abc≤mL and mH≤u at the full common input:

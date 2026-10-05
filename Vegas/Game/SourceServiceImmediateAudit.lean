@@ -9,7 +9,7 @@ import Vegas.Game.SourceServiceAudit
 The same immediate policy starts from actual recall at any clear active owner
 history of the risk menu, including histories with earlier silent deferrals.
 Prefix packet soundness and answered activations are derived from that legal
-history. Its response establishes own-turn coverage for the raw suffix.
+history. Its response establishes binding-turn coverage for the raw suffix.
 Every supported continuation within the horizon remains clear and every owner
 packet passes the actual settled verdict. Authentic sampling collects no owner
 charge. Other owners' suffix policies are arbitrary raw policies.
@@ -59,7 +59,7 @@ theorem sourceServiceImmediatePolicy_clean_continuation
       (execution.respond (application setup leaks) who response)).support) :
     (runtime setup).serviceRisk leaks bound who (next.recall who)
         (next.observe (application setup leaks) who) = false ∧
-      next.application.publicView.missedDecisionBy who = false ∧
+      next.application.publicView.missedBindingBy who = false ∧
       (∀ record ∈ (application setup leaks).executionTraffic next, record.envelope.sender = who →
         ((runtime setup).settledRecord leaks next).permits record.envelope = true) := by
   let app := application setup leaks
@@ -68,7 +68,7 @@ theorem sourceServiceImmediatePolicy_clean_continuation
   have components := ((runtime setup).serviceRisk_clear_iff leaks bound who _ _).mp clear
   obtain ⟨atTurn, slots⟩ := riskCanonicalSlots_history bounds bound _ trace who components.1
   have rawTrace := menu.toRawTrace (initialLaw setup) horizon scheduler trace
-  have turned := sourceServiceImmediatePolicy_ownTurnsRecorded_respond rawTrace atTurn slots
+  have turned := sourceServiceImmediatePolicy_bindingTurnsRecorded_respond rawTrace atTurn slots
     clear response chosen
   have available := sourceServiceImmediatePolicy_risk_retained bounds covered initialCovered
     capacity bound profile who permitted _ trace response chosen
@@ -84,7 +84,7 @@ theorem sourceServiceImmediatePolicy_clean_continuation
       (sourceServiceImmediatePolicy_submissionFits chosen) components.2).trans components.1
   have clearStart := (runtime setup).serviceRisk_clear leaks bound who (start.recall who)
     (start.observe app who) persistentClear
-    (recordedTurns_currentOpportunity_clear contract timely traceStart answered who turned)
+    (recordedBindings_currentOpportunity_clear contract timely traceStart answered who turned)
   obtain ⟨atStart, slotsStart, callsStart, conformStart, onceStart, goodStart⟩ :=
     sourceServiceImmediatePolicy_packetFacts_after_prefix_response bounds contract who profile
       execution trace clear response chosen

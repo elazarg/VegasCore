@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveBindingForeignWindow
-import Vegas.Pending.ReactiveDecisionFinalMiss
+import Vegas.Pending.ReactiveBindingFinalOmission
 
 /-! # A pending owner envelope through arbitrary foreign responses
 

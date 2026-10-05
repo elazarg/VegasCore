@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ServiceRoster
-import Vegas.Game.SourceServiceCalendarClock
+import Vegas.Game.RevealServiceCalendarState
 import Vegas.Pending.ReactiveAsyncContract
 import Vegas.Pending.ReactiveStateInvariant
 import Vegas.Pending.EventSequentialTiming

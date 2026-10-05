@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceRiskPolicy
-import Vegas.Game.SourceServiceFirstTurnCalls
+import Vegas.Game.SourceServiceFirstTurnBinding
 
 /-! # Immediate source decisions from actual clear recall
 
@@ -210,48 +210,14 @@ theorem sourceServiceImmediatePolicy_binding_call {horizon remaining : Nat}
       event := by
     by_contra unprotected
     have currentClear := ((runtime setup).serviceRisk_clear_iff leaks bound who _ _).mp clear |>.2
-    have risky := ((runtime setup).firstUnprotectedOpportunity_iff leaks bound who
+    have risky := ((runtime setup).firstUnprotectedBindingOpportunity_iff leaks bound who
       (middle.recall who) (middle.observe (application setup leaks) who)).mpr
-        ⟨rfl, event, turn, unrecorded, unprotected⟩
+        ⟨rfl, event, who, payload, turn, outputEq, unrecorded, unprotected⟩
     rw [currentClear] at risky
     cases risky
   rw [sourceServiceImmediatePolicy_at_event clear turn] at chosen
   exact sourceServiceCanonicalOpportunity_binding_call trace atTurn slots event payload outputEq
     codeEq node turn unrecorded fits response chosen
-
-/-- A clear unsent immediate opportunity emits and records its actual protected
-decision, including explicit withholding at a resolution. -/
-theorem sourceServiceImmediatePolicy_call {horizon remaining : Nat}
-    {scheduler : (application setup leaks).Scheduler}
-    {bound : (graph setup).EventId → Nat} {profile : BehavioralProfile setup.program}
-    {middle : (application setup leaks).Execution} {who : Player}
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-      (some ⟨remaining, some who, middle⟩))
-    (atTurn : OwnSubmissionsAtTurn setup leaks middle who)
-    (slots : CanonicalSlotsUsed setup leaks middle who)
-    (clear : (runtime setup).serviceRisk leaks bound who (middle.recall who)
-      (middle.observe (application setup leaks) who) = false)
-    (event : (graph setup).EventId)
-    (turn : middle.application.publicView.ownTurn? who = some event)
-    (unrecorded : (runtime setup).eventRecorded leaks (middle.recall who) event = false)
-    (response : (application setup leaks).Action)
-    (chosen : response ∈ (sourceServiceImmediatePolicy setup leaks bound profile who
-      (middle.recall who) (middle.observe (application setup leaks) who)).support) :
-    ∃ material, response = ⟨some material⟩ ∧
-      let app := application setup leaks
-      let message : Message Player (WitnessedPacket (graph setup)) :=
-        ⟨(who, middle.network.nextSerial who), app.packet
-          (app.submit middle.application who material) who (middle.network.known who) material⟩
-      let entry : app.PlayerEntry := ⟨middle.observe app who, response, some message⟩
-      FreshCall setup leaks who event bound entry message ∧
-        (runtime setup).eventRecorded leaks ((middle.respond app who response).recall who)
-          event = true := by
-  have fits := (runtime setup).serviceRisk_clear_protected_opportunity leaks bound who
-    (middle.recall who) (middle.observe (application setup leaks) who) event rfl turn unrecorded
-    clear
-  rw [sourceServiceImmediatePolicy_at_event clear turn] at chosen
-  exact sourceServiceCanonicalOpportunity_call trace atTurn slots event turn unrecorded fits
-    response chosen
 
 /-- One immediate response preserves the owner's submission turns and used
 canonical slots. Environment and foreign response closures require no policy

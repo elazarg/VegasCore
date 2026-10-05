@@ -8,7 +8,8 @@ Every native information site of the permitted service model is a decision
 during the phase of the one ready event. What the acting player faces there is
 decided by that event, the player's own recall, and its view: a public sample,
 another player's binding or disclosure, or the player's own binding or
-disclosure, before or after its submission. Each kind carries the
+disclosure, before or after its submission. An unsent own disclosure is split
+further by whether the view carries an authentic opening. Each kind carries the
 facts its local comparison uses. Since the kind is a function of the site's
 information state, every history of a site has the same kind.
 -/
@@ -53,12 +54,21 @@ inductive DecisionSiteKind (setup : Setup (Player := Player) (L := L))
       (owned : (graph setup).actor? event = some who)
       (outputEq : (graph setup).outputLayout event = .publication payload)
       (recorded : (runtime setup).eventRecorded leaks past event = true)
-  /-- The player's own disclosure, not yet submitted. Both effective Boolean
-  source choices produce an actual decision packet. -/
-  | unsentDisclosure (payload : L.Ty)
+  /-- The player's own disclosure, not yet submitted, with no authentic opening
+  in its view. -/
+  | absentOpening (payload : L.Ty)
       (owned : (graph setup).actor? event = some who)
       (outputEq : (graph setup).outputLayout event = .publication payload)
       (unsent : (runtime setup).eventRecorded leaks past event = false)
+      (absent : rosterOpening? setup leaks who event view = none)
+  /-- The player's own disclosure, not yet submitted, with an authentic opening
+  in its view. -/
+  | availableOpening (payload : L.Ty)
+      (owned : (graph setup).actor? event = some who)
+      (outputEq : (graph setup).outputLayout event = .publication payload)
+      (unsent : (runtime setup).eventRecorded leaks past event = false)
+      (candidate : Handle (graph setup)) (raw : Raw L)
+      (available : rosterOpening? setup leaks who event view = some (candidate, raw))
 
 /-- Every decision has a kind. -/
 theorem DecisionSiteKind.classify (setup : Setup (Player := Player) (L := L))
@@ -89,7 +99,11 @@ theorem DecisionSiteKind.classify (setup : Setup (Player := Player) (L := L))
       · subst same
         cases recorded : (runtime setup).eventRecorded leaks past event with
         | true => exact .recordedDisclosure payload owned outputEq recorded
-        | false => exact .unsentDisclosure payload owned outputEq recorded
+        | false =>
+            cases opening : rosterOpening? setup leaks who event view with
+            | none => exact .absentOpening payload owned outputEq recorded opening
+            | some found =>
+                exact .availableOpening payload owned outputEq recorded found.1 found.2 opening
       · exact .foreignDisclosure owner payload same owned outputEq
 
 variable [Fintype Player]

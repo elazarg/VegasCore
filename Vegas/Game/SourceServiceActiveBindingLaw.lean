@@ -194,7 +194,7 @@ theorem sourceServiceTimedPolicy_active_binding_law [Fintype Player]
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (timing : TimingLaw setup rosters)
     (full : ∀ event who owned, FullSupport (timing event who owned))
     (network : (runtime setup).NetworkPolicy leaks)
@@ -259,12 +259,11 @@ theorem sourceServiceTimedPolicy_active_binding_law [Fintype Player]
     change outputLayout setup.program (embedding.event index) = _
     simpa [index, outputLayout, eventCount] using embedding.layout_eq index
   have positive : 0 < (rosters event).count owner :=
-    List.count_pos_iff.mpr
-      (opportunities event owner (binding_actor setup event owner payload outputEq))
+    List.count_pos_iff.mpr (opportunities event owner payload outputEq)
   let last : Fin ((rosters event).count owner) := ⟨(rosters event).count owner - 1, by omega⟩
-  have future := sourceServiceTimedMixture_decision_future setup leaks bounds values initialValues
+  have future := sourceServiceTimedMixture_binding_future setup leaks bounds values initialValues
     capacity rosters opportunities network wholeProfile permitted owner
-    ⟨remainingFuel, some owner, execution⟩ trace rfl event ready owned unsent
+    ⟨remainingFuel, some owner, execution⟩ trace rfl event ready owned payload outputEq unsent
     (timing event owner owned) last (full event owner owned last) (by dsimp only [last]; omega)
   rw [sourceServiceTimedPolicy_active_phase_law setup leaks rosters timing wholeProfile event
     owner owned network remaining ticks execution

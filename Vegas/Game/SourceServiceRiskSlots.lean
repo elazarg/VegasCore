@@ -6,7 +6,7 @@ import Vegas.Pending.ReactiveRiskPersistence
 /-! # Owner-local canonical slots at clear risk-menu histories
 
 A clear persistent risk signal implies that the owner's earlier responses
-were canonical. Own recall latches every unprotected first owned opportunity,
+were canonical. Own recall latches every unprotected first binding opportunity,
 even when the chosen response is silent or names a foreign event. Current
 opportunities can change between responses, so they are not assumed persistent.
 Other owners may use every raw response admitted by their expanded menus.
@@ -57,7 +57,7 @@ theorem sourceServiceTurnPolicy_submissionFits
   exact fits
 
 /-- An actual prescribed submission is at a protected own turn, so its
-before-view cannot be an unprotected first owned opportunity. This premise
+before-view cannot be an unprotected first binding opportunity. This premise
 concerns a submission; it is not inferred from silence or deferred turns. -/
 theorem sourceServiceTurnPolicy_submitting_opportunityClear
     {bound : (graph setup).EventId → Nat} {turns : Nat}
@@ -68,9 +68,9 @@ theorem sourceServiceTurnPolicy_submitting_opportunityClear
       (sourceServiceTurnPolicy setup leaks bound turns timing profile who past view).support)
     {material : (application setup leaks).Submission}
     (submits : response.transmission = some material) :
-    (runtime setup).firstUnprotectedOpportunity leaks bound who past view = false := by
+    (runtime setup).firstUnprotectedBindingOpportunity leaks bound who past view = false := by
   obtain ⟨event, _, turn, _, fits, _⟩ := sourceServiceTurnPolicy_submission chosen submits
-  exact (runtime setup).firstUnprotectedOpportunity_protected leaks bound who past view
+  exact (runtime setup).firstUnprotectedBindingOpportunity_protected leaks bound who past view
     event turn fits
 
 /-- A prescribed protected first binding response, and every other actual
@@ -84,15 +84,15 @@ theorem sourceServiceTurnPolicy_submitting_no_opportunityRecall
       (execution.recall who) (execution.observe (application setup leaks) who)).support)
     {material : (application setup leaks).Submission}
     (submits : response.transmission = some material) :
-    (runtime setup).recalledOpportunityRisk leaks bound who
+    (runtime setup).recalledBindingOpportunityRisk leaks bound who
         ((execution.respond (application setup leaks) who response).recall who) =
-      (runtime setup).recalledOpportunityRisk leaks bound who (execution.recall who) :=
-  (runtime setup).recalledOpportunityRisk_respond_clear leaks bound execution who response
+      (runtime setup).recalledBindingOpportunityRisk leaks bound who (execution.recall who) :=
+  (runtime setup).recalledBindingOpportunityRisk_respond_clear leaks bound execution who response
     (sourceServiceTurnPolicy_submitting_opportunityClear chosen submits)
 
 /-- Following the prescribed policy cannot introduce recalled submission risk.
 This component is separate from opportunity risk: late deferral can latch an
-unprotected owned opportunity even when it submits nothing. Foreign responses
+unprotected binding opportunity even when it submits nothing. Foreign responses
 and every environment command, including chance, preserve own recall. -/
 theorem sourceServiceTurnPolicy_recalledSubmissionRiskInvariant
     (players : Player → (application setup leaks).Policy) (who : Player)
@@ -115,7 +115,7 @@ theorem sourceServiceTurnPolicy_recalledSubmissionRiskInvariant
     exact clear
 
 /-- The actual submission-risk component stays clear along any number of
-prescribed rounds. Opportunity risk and public decision misses are separate. -/
+prescribed rounds. Opportunity risk and public binding misses are separate. -/
 theorem sourceServiceTurnPolicy_recalledSubmissionRisk_roundsFrom
     (scheduler : (application setup leaks).Scheduler)
     (players : Player → (application setup leaks).Policy) (who : Player)

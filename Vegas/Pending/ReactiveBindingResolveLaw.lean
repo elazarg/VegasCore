@@ -1,13 +1,12 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveBindingGuardedStep
-import Vegas.Pending.ReactiveCompiledResolution
 import Vegas.Pending.ReactiveBindingFrameRounds
 import GameTheoryExtensions.Math.Probability.Support
 
 /-! # The actual mixed disclosure response under binding repair
 
-Silence, first withholding decisions and successful guarded openings use
+Silence and first successful guarded openings use
 the unchanged response on the repaired execution. This identifies the real
 legal implementation transition, including private-memory update and the
 complete joint observations. Inclusion may still occur later.
@@ -25,66 +24,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)}
   {memory : BindingMemory runtime leaks} {owner : Player}
   {original repaired : (runtime.reactiveApplication leaks).Execution}
-
-omit [Fintype Player] in
-/-- Evidence-free withholding has the same actual packet and private response
-record on the two executions, independently of hidden binding material. -/
-theorem withholding_response_frame
-    (frame : Frame runtime leaks memory owner original repaired) (event : graph.EventId) :
-    let app := runtime.reactiveApplication leaks
-    let response : app.Action := ⟨some ⟨⟨.withhold event, none⟩, .none⟩⟩
-    Frame runtime leaks
-      (memory.record runtime leaks
-        (memory.shadow.inputView runtime leaks (repaired.observe app owner)) response)
-      owner (original.respond app owner response) (repaired.respond app owner response) := by
-  dsimp only
-  apply frame.inert_submission _ _ rfl rfl
-  simp only [WitnessedSubmission.emit_eq_resolve, EvidenceRequest.resolve, frame.publicView]
-
-/-- A first evidence-free withholding decision remains in the compiled menu
-after binding repair, with its actual own-history submission test. -/
-theorem withholding_response_retained
-    (frame : Frame runtime leaks memory owner original repaired) (bounds : MessageBounds graph)
-    (event : graph.EventId) (payload : L.Ty)
-    (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (GuardCheck graph.layout payload))
-    (outputEq : graph.outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
-      (graph.nodes event) = .resolve owner payload binding checks)
-    (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
-    (turn : original.application.publicView.OwnTurn owner event)
-    (actor : graph.actor? event = some owner)
-    (first : runtime.firstSubmission leaks (original.recall owner)
-      ⟨some ⟨⟨.withhold event, none⟩, .none⟩⟩ = true) :
-    (⟨some ⟨⟨.withhold event, none⟩, .none⟩⟩ : (runtime.reactiveApplication leaks).Action) ∈
-      bounds.compiledActions runtime leaks owner (repaired.recall owner)
-        (repaired.observe (runtime.reactiveApplication leaks) owner) := by
-  classical
-  let app := runtime.reactiveApplication leaks
-  have turnSome := original.application.publicView.ownTurn?_of_ownTurn owner event turn
-  have rightTurn : (repaired.observe app owner).application.publicView.ownTurn? owner =
-      some event := by
-    change repaired.application.publicView.ownTurn? owner = some event
-    rw [← frame.publicView]
-    exact turnSome
-  have rightReady : (repaired.observe app owner).application.publicView.EventReady event := by
-    change repaired.application.publicView.EventReady event
-    rw [← frame.publicView]
-    exact turn.1
-  have canonical := runtime.serviceDecision_resolution_false leaks owner (repaired.recall owner)
-    (repaired.observe app owner) event owner payload binding checks outputEq codeEq node
-  apply bounds.decision_compiled runtime leaks owner (repaired.recall owner)
-    (repaired.observe app owner) _
-  · simp only [MessageBounds.decisionActions, rightTurn, actor, rightReady,
-      and_self, ↓reduceIte, node]
-    exact Finset.mem_image.mpr ⟨false, Finset.mem_univ _, canonical⟩
-  · rw [← frame.firstSubmission]
-    exact first
-  · rw [bounds.menu_mem]
-    refine ⟨⟨⟨trivial, trivial⟩, trivial⟩, ?_⟩
-    simp only [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
-      WitnessedSubmission.normalizeReactive, Submission.normalizeReactive_none,
-      EvidenceRequest.normalize_none]
 
 omit [Fintype Player] in
 /-- The exact canonical physical response preserves the repaired frame; the

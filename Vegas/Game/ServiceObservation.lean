@@ -239,7 +239,6 @@ theorem checkpoint_observe_eq
     (accepted : left.application.accepted = right.application.accepted)
     (clock : left.application.clock = right.application.clock)
     (activated : left.application.activatedAt = right.application.activatedAt)
-    (missed : left.application.missedEvents = right.application.missedEvents)
     (ledger : left.network.ledger = right.network.ledger)
     (leaked : left.network.leaked who = right.network.leaked who)
     (receipts : left.receipts = right.receipts) :
@@ -250,7 +249,7 @@ theorem checkpoint_observe_eq
     left.application.config right.application.config same
   have publicView : left.application.publicView = right.application.publicView := by
     unfold EventGraphRuntime.State.publicView
-    rw [publicObservation, accepted, clock, activated, missed]
+    rw [publicObservation, accepted, clock, activated]
   change ReactiveApplication.PlayerView.mk
       ⟨left.network.leaked who, left.network.ledger⟩
       ⟨who, left.application.publicView,

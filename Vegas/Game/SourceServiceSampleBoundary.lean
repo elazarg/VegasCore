@@ -161,13 +161,6 @@ theorem ServiceBoundary.sample_block
     toSourceCheckpoint := finalCheckpoint
     invariant := invariant
     binding := binding
-    remembered := boundary.run_remembered players network
-      (rosterBlock setup rosters event) after reached
-    missed := by
-      rw [afterApp, sampledApp]
-      change visited.application.missedEvents = ∅
-      rw [sameApp]
-      exact boundary.missed
     prepared := ?_
     represented := ?_
     acceptedRecorded := ?_

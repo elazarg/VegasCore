@@ -33,7 +33,7 @@ theorem sourceService_audited_raw_equilibrium_extends {Parameter Observation : T
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     [network.FiniteSupport]
     (parameter : State L setup.context → Parameter)

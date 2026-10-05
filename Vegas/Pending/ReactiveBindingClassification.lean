@@ -105,7 +105,7 @@ theorem binding_response_cases [Fintype Player] (bounds : MessageBounds graph)
       (execution.recall who) (execution.observe (runtime.reactiveApplication leaks) who)) :
     let app := runtime.reactiveApplication leaks
     let serial := execution.application.publicView.bindingCount who
-    response ∈ bounds.requiredDecisionActions runtime leaks who
+    response ∈ bounds.requiredBindingActions runtime leaks who
         (execution.recall who) (execution.observe app who) ∨
       (∃ opening, response =
         ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩ ∧

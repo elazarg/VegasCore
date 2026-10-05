@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Game.SourceServiceFiniteness
 import Vegas.Game.SourceServiceCanonicalPolicy
 import Interaction.ReactiveMixtureRounds
 import GameTheoryExtensions.Math.Probability.TotalVariation

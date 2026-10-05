@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceServiceActiveResolutionRepair
+import Vegas.Game.SourceServiceDecisionResources
 import Vegas.Game.SourceServiceRepairForeignWindow
 import Vegas.Pending.ReactiveResolutionAuditStep
 import Interaction.ReactiveTrafficContinuation
@@ -30,7 +30,7 @@ theorem resolution_history_activation_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
@@ -61,13 +61,6 @@ theorem resolution_history_activation_coupling
     (node : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
     (ready : repaired.application.config.cut.Ready event)
     (remaining : Nat)
-    (visits : List Player) (ticks : Nat)
-    (dueTicks : (runtime setup).deadline event ≤ ticks)
-    (before after : List (ServiceInstruction (graph setup)))
-    (split : rosterPlan setup rosters = before ++ (.player owner ::
-      (visits.map ServiceInstruction.player ++
-        (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event]))) ++ after)
-    (position : original.environmentRecall.length = before.length)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         (some ⟨remaining + 1, none, repaired⟩))
@@ -90,11 +83,6 @@ theorem resolution_history_activation_coupling
         ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
             record.envelope = false) ∨
-        (∀ (later : Player → app.Policy) (scheduler : (runtime setup).NetworkPolicy leaks)
-          (final : app.Execution), final ∈ ((runtime setup).runInteractionPlan leaks later scheduler
-            (visits.map ServiceInstruction.player ++
-              (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event]))
-                next.1).support → event ∈ final.application.missedEvents) ∨
         BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
           reference.length ≤ (next.2.1.recall owner).length) := by
   classical
@@ -104,71 +92,101 @@ theorem resolution_history_activation_coupling
   have command : scheduler repaired.environmentRecall (repaired.observeEnvironment app) =
       PMF.pure (.activate owner) := by
     simp only [scheduler, rosterScheduler, selected, interactionInstruction]
-  let law := leaks owner original.network.pending
-  have existsStep (sample) (supported : sample ∈ law.support) :
-      ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
-        coupling.map Prod.fst = app.invoke players owner
-          (original.sampledActivation app owner sample) ∧
-        coupling.map Prod.snd = strategy.resume owner players (some owner)
-          (repaired.sampledActivation app owner sample) memory ∧
-        ∀ next ∈ coupling.support,
-          Nonempty ((menu.protocol (initialLaw setup)
-            (rosterPlan setup rosters).length scheduler).Trace (some ⟨remaining, none, next.2.1⟩)) ∧
-          ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
-            (runtime setup).permittedServiceEnvelope record.observation record.ledger
-              record.envelope = false) ∨
-          (∀ (later : Player → app.Policy) (scheduler : (runtime setup).NetworkPolicy leaks)
-            (final : app.Execution), final ∈
-              ((runtime setup).runInteractionPlan leaks later scheduler
-              (visits.map ServiceInstruction.player ++
-                (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event]))
-                  next.1).support → event ∈ final.application.missedEvents) ∨
-          BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
-            reference.length ≤ (next.2.1.recall owner).length) := by
-    let left := original.sampledActivation app owner sample
-    let right := repaired.sampledActivation app owner sample
-    have sampled : right ∈ (repaired.environmentStep app (.activate owner)).support := by
-      rw [ReactiveApplication.Execution.activation_samples, PMF.support_map]
-      refine ⟨sample, ?_, rfl⟩
-      rwa [← frame.network]
-    obtain ⟨activeTrace⟩ := menu.trace_environment (initialLaw setup)
-      (rosterPlan setup rosters).length scheduler remaining repaired right (.activate owner)
+  obtain ⟨sample, supported⟩ := (leaks owner repaired.network.pending).support_nonempty
+  let activated := repaired.sampledActivation app owner sample
+  have sampled : activated ∈ (repaired.environmentStep app (.activate owner)).support := by
+    rw [ReactiveApplication.Execution.activation_samples, PMF.support_map]
+    exact ⟨sample, supported, rfl⟩
+  obtain ⟨activeTrace⟩ := menu.trace_environment (initialLaw setup)
+    (rosterPlan setup rosters).length scheduler remaining repaired activated (.activate owner)
       trace (by rw [command]; exact (PMF.mem_support_pure_iff _ _).mpr rfl) sampled
-    have leftSampled : left ∈ (original.environmentStep app (.activate owner)).support := by
-      rw [ReactiveApplication.Execution.activation_samples, PMF.support_map]
-      exact ⟨sample, supported, rfl⟩
-    exact resolution_history_response_coupling setup leaks bounds values capacity rosters
-      opportunities network source target agrees owner policy available reference memory original
-      left right leftSampled (frame.activate owner sample) started
-      (app.environment_inputRecall original left (.activate owner) leftRecall leftSampled)
-      (sound.learn owner sample) leftBinding event payload binding checks outputEq codeEq node ready
-      remaining visits ticks dueTicks (before ++ [.player owner]) after
-      (by simpa only [List.append_assoc, List.singleton_append, List.cons_append,
-        List.nil_append] using split)
-      (by dsimp only [left, ReactiveApplication.Execution.sampledActivation]
-          simp only [position, List.length_append, List.length_singleton]) activeTrace
-  let step := fun sample supported => (existsStep sample supported).choose
-  let coupling := law.bindOnSupport step
-  have firstLaw : coupling.map Prod.fst = app.dispatch players (.activate owner) original := by
-    rw [map_bindOnSupport]
-    change _ = (original.environmentStep app (.activate owner)).bind _
-    rw [ReactiveApplication.Execution.activation_samples, PMF.bind_map]
-    apply bindOnSupport_eq_bind_of_eq_on_support _
-    intro sample supported
-    exact (existsStep sample supported).choose_spec.1
-  have secondLaw : coupling.map Prod.snd =
-      strategy.round owner players scheduler repaired memory := by
-    rw [ReactiveApplication.Implementation.round, command, PMF.pure_bind,
-      map_bindOnSupport, ReactiveApplication.Execution.activation_samples, PMF.bind_map]
-    change _ = (leaks owner repaired.network.pending).bind _
-    rw [show leaks owner repaired.network.pending = law from frame.network.symm ▸ rfl]
-    apply bindOnSupport_eq_bind_of_eq_on_support _
-    intro sample supported
-    exact (existsStep sample supported).choose_spec.2.1
-  refine ⟨coupling, firstLaw, secondLaw, ?_⟩
-  intro next supported
-  obtain ⟨sample, member, reached⟩ :=
-    Set.mem_iUnion₂.mp (PMF.support_bindOnSupport .. ▸ supported)
-  exact (existsStep sample member).choose_spec.2.2 next reached
+  have owned : (graph setup).actor? event = some owner := by
+    have actor := congrArg EventCode.actor codeEq
+    rw [EventCode.actor_cast outputEq ((graph setup).nodes event)] at actor
+    exact actor
+  obtain ⟨ready, timely, rightBinding, rightRecall, _, serials, first⟩ :=
+    sourceService_decision_resources setup leaks bounds values capacity rosters opportunities
+      network owner ⟨remaining, some owner, activated⟩ activeTrace rfl event ready
+        owner owned
+  have rightReady : repaired.application.config.cut.Ready event := ready
+  have rightTimely : repaired.application.WithinDeadline (runtime setup) event := timely
+  have rightBound : repaired.application.BindingInvariant := rightBinding
+  have rightRecalled : repaired.InputRecall app := rightRecall
+  have rightSerials : repaired.network.SerialsBeforeNext :=
+    app.serialsBeforeNext_history scheduler (initialLaw setup) (rosterPlan setup rosters).length
+      (menu.toRawTrace (initialLaw setup) (rosterPlan setup rosters).length scheduler trace)
+  have originalReady : original.application.config.cut.Ready event := by
+    rw [← State.publicView_eventReady, frame.publicView, State.publicView_eventReady]
+    exact rightReady
+  have originalTimely : original.application.WithinDeadline (runtime setup) event := by
+    unfold State.WithinDeadline at rightTimely ⊢
+    have clocks : original.application.clock = repaired.application.clock :=
+      congrArg PublicView.clock frame.publicView
+    have activations : original.application.activatedAt = repaired.application.activatedAt :=
+      congrArg PublicView.activatedAt frame.publicView
+    rw [clocks, activations]
+    exact rightTimely
+  have originalFirst : original.network.nextSerial owner =
+      Message.distinctAuthoredCount original.network.ledger owner →
+      (runtime setup).eventRecorded leaks (original.recall owner) event = false := by
+    intro counted
+    rw [(runtime setup).eventRecorded_congr leaks _ _ frame.submissions event]
+    apply first
+    change repaired.network.nextSerial owner =
+      Message.distinctAuthoredCount repaired.network.ledger owner
+    rwa [frame.network] at counted
+  obtain ⟨coupling, leftLaw, rightLaw, related⟩ := frame.resolution_stopped_activation_coupling
+    bounds menu players reference started leftRecall rightRecalled sound leftBinding rightBound
+      remaining event payload binding checks outputEq codeEq node
+        ((soleReady_of_ready setup original.application originalReady).ownTurn owned) originalReady
+        originalTimely originalFirst (frame.network ▸ rightSerials) (by
+          intro observed _
+          dsimp only
+          intro response member
+          have optional : ¬ bindingRequired setup leaks rosters owner
+              ((repaired.sampledActivation app owner observed).recall owner)
+              ((repaired.sampledActivation app owner observed).observe app owner) := by
+            rintro ⟨candidate, _, selectedTurn, bindingOutput, _⟩
+            cases Option.some.inj (selectedTurn.symm.trans
+              (ownTurn?_of_ready setup repaired.application rightReady owned))
+            rw [outputEq] at bindingOutput
+            cases bindingOutput
+          change response ∈ sourceServiceActions setup leaks bounds rosters owner _ _
+          rw [sourceServiceActions, ite_eq_right optional]
+          exact member)
+        (by intro observed _; simpa only [players, Function.update_self] using available _ _)
+  have jointLaw : coupling.map Prod.snd = strategy.round owner players scheduler repaired memory :=
+    by
+      rw [ReactiveApplication.Implementation.round, command, PMF.pure_bind]
+      exact rightLaw
+  refine ⟨coupling, leftLaw, jointLaw, ?_⟩
+  intro next member
+  have rightSupport : next.2 ∈ (strategy.round owner players scheduler repaired memory).support :=
+    by
+      rw [← jointLaw, PMF.support_map]
+      exact ⟨next, member, rfl⟩
+  refine ⟨?_, ?_⟩
+  · apply menu.trace_implementation_round (initialLaw setup) (rosterPlan setup rosters).length
+      scheduler strategy owner players _ _ remaining repaired memory trace next.2 rightSupport
+    · intro who different
+      simpa only [players, Function.update_of_ne different] using
+        (sourceServiceMenu_in_effective setup leaks bounds rosters).decoded_admissible
+          (initialLaw setup) (rosterPlan setup rosters).length scheduler source target agrees who
+    · intro next past view response member
+      exact BindingMemory.retainedImplementation_response_available (runtime setup) leaks menu
+        owner reference (players owner) next (past, view) response member
+  · rcases related next member with bad | good
+    · obtain ⟨record, step, authored, rejected⟩ := bad
+      have reached : next.1 ∈ (app.dispatch players (.activate owner) original).support := by
+        rw [← leftLaw, PMF.support_map]
+        exact ⟨next, member, rfl⟩
+      obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      obtain ⟨response, _, same⟩ := PMF.support_map .. ▸ resumed
+      refine Or.inl ⟨record, ?_, authored, rejected⟩
+      rw [← same, app.executionTraffic_activated_response original middle owner response
+        remaining moved]
+      rw [same, step]
+      exact List.mem_append_right _ (List.mem_singleton_self _)
+    · exact Or.inr good
 
 end Vegas

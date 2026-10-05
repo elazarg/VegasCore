@@ -4,7 +4,7 @@ import Vegas.Game.SourceServiceExecution
 import Vegas.Game.SourceServiceCoverage
 import Vegas.Game.SourceServiceDecisionSupport
 import Vegas.Source.DisclosureContinuation
-import Vegas.Game.SourceServiceRestrictedEvaluation
+import Vegas.Game.RevealServiceRosterInitialized
 
 /-! # Exact execution of the total full-source compiler
 
@@ -25,7 +25,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
 /-- Actual source opportunities are legal at every retained unsent owner site.
-Every supported source decision submits, even before the final visit. -/
+At a binding they always submit, even before the final visit. -/
 theorem sourceServiceOpportunity_at_history
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -33,7 +33,7 @@ theorem sourceServiceOpportunity_at_history
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (profile : BehavioralProfile setup.program)
     (permitted : ∀ who, (profile who).Admitted setup.program
@@ -52,7 +52,8 @@ theorem sourceServiceOpportunity_at_history
       (control.execution.observe (application setup leaks) who)).support) :
     response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who
       (control.execution.recall who) (control.execution.observe (application setup leaks) who) ∧
-    (runtime setup).submittedEvent? leaks response = some event := by
+    (∀ payload, (graph setup).outputLayout event = .binding who payload →
+      (runtime setup).submittedEvent? leaks response = some event) := by
   classical
   let app := application setup leaks
   let menu := sourceServiceMenu setup leaks bounds rosters
@@ -126,7 +127,7 @@ theorem sourceServiceOpportunity_at_history
         (control.execution.application.publicView.bindingCount who) selected candidate room
         (by simpa only [← same] using ready)
         (by simpa only [← same] using unsent) response (by simpa only [← same] using supported)
-      exact ⟨covered.1, by simpa only [← same] using covered.2⟩
+      exact ⟨covered.1, fun _ _ => by simpa only [← same] using covered.2⟩
   | @reveal Γ names published owner name sourcePayload fresh binding unresolved next =>
       let index : Fin (eventCount (.reveal published owner name fresh binding unresolved next)) :=
         ⟨0, by simp [eventCount]⟩
@@ -158,7 +159,12 @@ theorem sourceServiceOpportunity_at_history
         aligned control.execution checkpoint valid recalled bounded.1 candidateValues
         (by simpa only [← same] using ready)
         (by simpa only [← same] using unsent) response (by simpa only [← same] using supported)
-      exact ⟨covered.1, covered.2.trans (congrArg some same)⟩
+      refine ⟨covered, ?_⟩
+      intro payload bound
+      have published : (graph setup).outputLayout event = .publication sourcePayload := by
+        change outputLayout setup.program event = _
+        simpa [← same, index, outputLayout, eventCount] using embedding.layout_eq index
+      cases bound.symm.trans published
 
 theorem sourceServiceLastPolicy_admissible
     (setup : Setup (Player := Player) (L := L))
@@ -167,7 +173,7 @@ theorem sourceServiceLastPolicy_admissible
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (profile : BehavioralProfile setup.program)
     (permitted : ∀ who, (profile who).Admitted setup.program
@@ -182,7 +188,7 @@ theorem sourceServiceLastPolicy_admissible
   let past := control.execution.recall who
   let view := control.execution.observe app who
   have silent_covered (silenced : response ∈ (app.silentPolicy past view).support)
-      (optional : ¬ decisionRequired setup leaks rosters who past view) :
+      (optional : ¬ bindingRequired setup leaks rosters who past view) :
       response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who past view := by
     change response ∈ sourceServiceActions setup leaks bounds rosters who past view
     rw [sourceServiceActions, ite_eq_right optional]
@@ -192,7 +198,7 @@ theorem sourceServiceLastPolicy_admissible
   cases serving : view.application.publicView.ownTurn? who with
   | none =>
       simp only [sourceServiceLastPolicy, serving] at supported
-      exact silent_covered supported (by rintro ⟨event, same, _⟩; simp [serving] at same)
+      exact silent_covered supported (by rintro ⟨event, _, same, _⟩; simp [serving] at same)
   | some event =>
       simp only [sourceServiceLastPolicy, serving] at supported
       split at supported
@@ -206,7 +212,7 @@ theorem sourceServiceLastPolicy_admissible
               using supported)).1
       · rename_i waiting
         apply silent_covered supported
-        rintro ⟨other, otherTurn, owned, _, unsent, final⟩
+        rintro ⟨other, _, otherTurn, _, owned, _, unsent, final⟩
         have same : other = event := Option.some.inj (otherTurn.symm.trans serving)
         subst other
         exact waiting ⟨owned, unsent, final⟩
@@ -237,7 +243,7 @@ theorem sourceServiceCompiledProfile_complete_state
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (original : BehavioralProfile setup.program)
     (permitted : ∀ who, (original who).Admitted setup.program

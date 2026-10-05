@@ -54,7 +54,7 @@ theorem resolution_roster_stopped_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
@@ -76,8 +76,7 @@ theorem resolution_roster_stopped_coupling
     (codeEq : cast (congrArg (EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .resolve owner payload binding checks)
     (node : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
-    (remaining : Nat) (visits : List Player) (ticks : Nat)
-    (dueTicks : (runtime setup).deadline event ≤ ticks)
+    (remaining : Nat) (visits : List Player)
     (memory : BindingMemory (runtime setup) leaks)
     (original repaired : (application setup leaks).Execution)
     (frame : BindingMemory.Frame (runtime setup) leaks memory owner original repaired)
@@ -90,8 +89,7 @@ theorem resolution_roster_stopped_coupling
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         (some ⟨remaining + visits.length, none, repaired⟩))
     (before after : List (ServiceInstruction (graph setup)))
-    (split : rosterPlan setup rosters = before ++ visits.map ServiceInstruction.player ++
-      (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event]) ++ after)
+    (split : rosterPlan setup rosters = before ++ visits.map ServiceInstruction.player ++ after)
     (position : original.environmentRecall.length = before.length) :
     let app := application setup leaks
     let players := Function.update ((bounds.menu (runtime setup) leaks).decodeProfile
@@ -111,9 +109,6 @@ theorem resolution_roster_stopped_coupling
         ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
             record.envelope = false) ∨
-        (∀ final ∈ ((runtime setup).runInteractionPlan leaks players network
-          (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event])
-            next.1).support, event ∈ final.application.missedEvents) ∨
         BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
           reference.length ≤ (next.2.1.recall owner).length) := by
   classical
@@ -137,16 +132,15 @@ theorem resolution_roster_stopped_coupling
         PMF.pure_map .., ?_⟩
       intro next member
       cases (PMF.mem_support_pure_iff _ _).mp member
-      exact ⟨⟨trace⟩, Or.inr (Or.inr ⟨frame, started⟩)⟩
+      exact ⟨⟨trace⟩, Or.inr ⟨frame, started⟩⟩
   | cons actor rest ih =>
       have cursor : repaired.environmentRecall.length = before.length := by
         rw [← frame.service]
         exact position
       have selected : (rosterPlan setup rosters)[repaired.environmentRecall.length]? =
           some (.player actor) := by
-        rw [cursor, split]
-        simp only [List.append_assoc]
-        rw [List.getElem?_append_right (Nat.le_refl _), Nat.sub_self]
+        rw [cursor, split, List.append_assoc, List.getElem?_append_right (Nat.le_refl _),
+          Nat.sub_self]
         rfl
       have command : scheduler repaired.environmentRecall (repaired.observeEnvironment app) =
           PMF.pure (.activate actor) := by
@@ -164,28 +158,15 @@ theorem resolution_roster_stopped_coupling
             ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
               (runtime setup).permittedServiceEnvelope record.observation record.ledger
                 record.envelope = false) ∨
-              (∀ final ∈ ((runtime setup).runInteractionPlan leaks players network
-                (rest.map ServiceInstruction.player ++
-                  (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event]))
-                    next.1).support, event ∈ final.application.missedEvents) ∨
               BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
                 reference.length ≤ (next.2.1.recall owner).length) := by
         by_cases same : actor = owner
         · subst actor
-          obtain ⟨coupling, first, second, related⟩ := resolution_history_activation_coupling
-            setup leaks bounds values capacity rosters
+          exact resolution_history_activation_coupling setup leaks bounds values capacity rosters
             opportunities network source target agrees owner policy available reference
               memory original repaired frame started leftRecall sound leftBinding event payload
                 binding checks outputEq codeEq node ready (remaining + rest.length)
-                  rest ticks dueTicks before after
-                  (by simpa only [List.map_cons, List.append_assoc, List.cons_append] using split)
-                  position currentTrace selected
-          refine ⟨coupling, first, second, fun next member => ?_⟩
-          refine ⟨(related next member).1, ?_⟩
-          rcases (related next member).2 with bad | missed | framed
-          · exact Or.inl bad
-          · exact Or.inr (Or.inl (missed players network))
-          · exact Or.inr (Or.inr framed)
+                  currentTrace selected
         · obtain ⟨physical, first, second, related⟩ :=
             frame.foreign_activation_coupling players actor same
           let step := physical.map fun pair => (pair.1, pair.2, memory)
@@ -222,7 +203,7 @@ theorem resolution_roster_stopped_coupling
             refine ⟨menu.trace_implementation_round (initialLaw setup)
               (rosterPlan setup rosters).length scheduler strategy owner players opponents own
                 (remaining + rest.length) repaired memory currentTrace _ rightSupport,
-              Or.inr (Or.inr ⟨related pair supported, ?_⟩)⟩
+              Or.inr ⟨related pair supported, ?_⟩⟩
             have reached : pair.2 ∈ (app.dispatch players (.activate actor) repaired).support := by
               rw [← second, PMF.support_map]
               exact ⟨pair, supported, rfl⟩
@@ -245,9 +226,6 @@ theorem resolution_roster_stopped_coupling
               (∃ record ∈ app.executionTraffic final.1, record.envelope.sender = owner ∧
                 (runtime setup).permittedServiceEnvelope record.observation record.ledger
                   record.envelope = false) ∨
-              (∀ endpoint ∈ ((runtime setup).runInteractionPlan leaks players network
-                (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event])
-                  final.1).support, event ∈ endpoint.application.missedEvents) ∨
               BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1 ∧
                 reference.length ≤ (final.2.1.recall owner).length := by
         by_cases bad : ∃ record ∈ app.executionTraffic next.1,
@@ -267,56 +245,33 @@ theorem resolution_roster_stopped_coupling
           exact Or.inl ⟨record, ((runtime setup).executionTraffic_runInteractionPlan leaks players
             network (rest.map ServiceInstruction.player) next.1 final.1 reached).subset present,
               authored, rejected⟩
-        · by_cases missed : ∀ final ∈ ((runtime setup).runInteractionPlan leaks players network
-              (rest.map ServiceInstruction.player ++
-                (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event]))
-                  next.1).support, event ∈ final.application.missedEvents
-          · let left := (runtime setup).runInteractionPlan leaks players network
-              (rest.map ServiceInstruction.player) next.1
-            let right := strategy.runJoint owner players scheduler rest.length next.2.1 next.2.2
-            refine ⟨bindPairLaw left (fun _ => right), bindPairLaw_map_fst ..,
-              bindPairLaw_const_map_snd .., ?_⟩
-            intro final supported
-            right
-            left
-            intro endpoint reached
-            apply missed endpoint
-            rw [(runtime setup).runInteractionPlan_append, PMF.support_bind]
-            apply Set.mem_iUnion₂.mpr
-            refine ⟨final.1, ?_, reached⟩
-            change final.1 ∈ left.support
-            rw [← bindPairLaw_map_fst left (fun _ => right), PMF.support_map]
-            exact ⟨final, supported, rfl⟩
-          · obtain ⟨nextTrace⟩ := (related next member).1
-            obtain ⟨paired, begun⟩ :=
-              (((related next member).2).resolve_left bad).resolve_left missed
-            have reached : next.1 ∈ (app.dispatch players (.activate actor) original).support := by
-              rw [← first, PMF.support_map]
-              exact ⟨next, member, rfl⟩
-            obtain ⟨recalled, certified, valid⟩ := resolution_dispatch_resources setup leaks players
-              original next.1 actor leftRecall sound leftBinding reached
-            have single : next.1 ∈ ((runtime setup).runInteractionPlan leaks players network
-                ([actor].map ServiceInstruction.player) original).support := by
-              simpa only [List.map_cons, List.map_nil, runInteractionPlan, interactionStep,
-                interactionInstruction, PMF.pure_bind, PMF.bind_pure] using reached
-            have publicEq := ((runtime setup).player_window_application leaks players network
-              [actor]
-              original next.1 single).2
-            have nextReady : next.2.1.application.config.cut.Ready event :=
-              ready_of_publicView_eq paired.publicView.symm
-                (ready_of_publicView_eq publicEq (ready_of_publicView_eq frame.publicView ready))
-            have nextPosition : next.1.environmentRecall.length =
-                (before ++ [ServiceInstruction.player actor]).length := by
-              rw [app.dispatch_environmentRecall players (.activate actor) original next.1 reached]
-              simp only [List.length_append, List.length_singleton, position]
-            obtain ⟨coupling, leftLaw, rightLaw, connected⟩ := ih next.2.2 next.1 next.2.1
-              paired begun recalled certified valid nextReady nextTrace
-                (before ++ [ServiceInstruction.player actor])
-                (by simpa only [List.map_cons, List.append_assoc, List.singleton_append]
-                  using split)
-                  nextPosition
-            exact ⟨coupling, leftLaw, rightLaw, fun final supported =>
-              (connected final supported).2⟩
+        · obtain ⟨nextTrace⟩ := (related next member).1
+          obtain ⟨paired, begun⟩ := ((related next member).2).resolve_left bad
+          have reached : next.1 ∈ (app.dispatch players (.activate actor) original).support := by
+            rw [← first, PMF.support_map]
+            exact ⟨next, member, rfl⟩
+          obtain ⟨recalled, certified, valid⟩ := resolution_dispatch_resources setup leaks players
+            original next.1 actor leftRecall sound leftBinding reached
+          have single : next.1 ∈ ((runtime setup).runInteractionPlan leaks players network
+              ([actor].map ServiceInstruction.player) original).support := by
+            simpa only [List.map_cons, List.map_nil, runInteractionPlan, interactionStep,
+              interactionInstruction, PMF.pure_bind, PMF.bind_pure] using reached
+          have publicEq := ((runtime setup).player_window_application leaks players network [actor]
+            original next.1 single).2
+          have nextReady : next.2.1.application.config.cut.Ready event :=
+            ready_of_publicView_eq paired.publicView.symm
+              (ready_of_publicView_eq publicEq (ready_of_publicView_eq frame.publicView ready))
+          have nextPosition : next.1.environmentRecall.length =
+              (before ++ [ServiceInstruction.player actor]).length := by
+            rw [app.dispatch_environmentRecall players (.activate actor) original next.1 reached]
+            simp only [List.length_append, List.length_singleton, position]
+          obtain ⟨coupling, leftLaw, rightLaw, connected⟩ := ih next.2.2 next.1 next.2.1
+            paired begun recalled certified valid nextReady nextTrace
+              (before ++ [ServiceInstruction.player actor])
+              (by simpa only [List.map_cons, List.append_assoc, List.singleton_append] using split)
+                nextPosition
+          exact ⟨coupling, leftLaw, rightLaw, fun final supported =>
+            (connected final supported).2⟩
       let tail := fun next member => (existsTail next member).choose
       let coupling := step.bindOnSupport tail
       have leftLaw : coupling.map Prod.fst =

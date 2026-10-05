@@ -28,7 +28,7 @@ theorem active_nonbinding_block_stopped_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
@@ -53,12 +53,10 @@ theorem active_nonbinding_block_stopped_coupling
     (leftRecall : original.InputRecall (application setup leaks))
     (sound : ((runtime setup).packetEvidence leaks).Sound original)
     (leftBinding : original.application.BindingInvariant)
-    (leftRemembered : original.application.remembered = fun _ => none)
     (event : (graph setup).EventId)
     (notBinding : ∀ payload, (graph setup).outputLayout event ≠ .binding owner payload)
     (ready : original.application.config.cut.Ready event)
     (remaining : Nat) (visits : List Player) (ticks : Nat)
-    (dueTicks : (runtime setup).deadline event ≤ ticks)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         (some ⟨remaining + visits.length + (ticks + 2), some owner, repaired⟩))
@@ -94,7 +92,6 @@ theorem active_nonbinding_block_stopped_coupling
         ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
             record.envelope = false) ∨
-          next.1.application.publicView.missedDecisionBy owner = true ∨
           BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
   classical
   intro app players strategy ending
@@ -116,9 +113,7 @@ theorem active_nonbinding_block_stopped_coupling
           ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
             (runtime setup).permittedServiceEnvelope record.observation record.ledger
               record.envelope = false) ∨
-            (∀ final ∈ ((runtime setup).runInteractionPlan leaks players network suffix
-            next.1).support, final.application.publicView.missedDecisionBy owner = true) ∨
-          BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
+            BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
               reference.length ≤ (next.2.1.recall owner).length) := by
     by_cases owned : (graph setup).actor? event = some owner
     · cases node : nodeView (graph setup) event with
@@ -142,30 +137,13 @@ theorem active_nonbinding_block_stopped_coupling
               (congrArg (fun code : EventCode (graph setup).layout (.publication payload) =>
                 code.actor) codeEq)
           cases Option.some.inj (actual.symm.trans owned)
-          obtain ⟨coupling, first, second, related⟩ := resolution_history_response_coupling
-            setup leaks bounds values capacity rosters
+          exact resolution_history_response_coupling setup leaks bounds values capacity rosters
             opportunities network source target agrees owner policy available reference
             memory prior original repaired sampled frame started leftRecall sound leftBinding
-            event payload binding checks outputEq codeEq node repairedReady rank
-            visits ticks dueTicks before after
-            (by simpa only [actual] using split) position trace
-          refine ⟨coupling, first, second, fun next member => ?_⟩
-          refine ⟨(related next member).1, ?_⟩
-          rcases (related next member).2 with bad | missed | framed
-          · exact Or.inl bad
-          · right
-            left
-            intro final reached
-            apply PublicView.missedDecisionBy_of_event _ owner event actual
-            apply missed players network final
-            simpa only [suffix, ending, actual] using reached
-          · exact Or.inr (Or.inr framed)
-    · obtain ⟨coupling, first, second, related⟩ := off_turn_history_response_coupling
-        setup leaks bounds rosters network source target
+            event payload binding checks outputEq codeEq node repairedReady rank trace
+    · exact off_turn_history_response_coupling setup leaks bounds rosters network source target
         agrees owner policy available reference memory prior original repaired sampled frame
         started leftRecall (idle_of_ready setup original.application ready owned) rank trace
-      exact ⟨coupling, first, second, fun next member =>
-        ⟨(related next member).1, ((related next member).2).imp_right Or.inr⟩⟩
   obtain ⟨step, first, second, related⟩ := existsResponse
   have existsTail next (member : next ∈ step.support) :
       ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
@@ -179,14 +157,11 @@ theorem active_nonbinding_block_stopped_coupling
           ((∃ record ∈ app.executionTraffic final.1, record.envelope.sender = owner ∧
             (runtime setup).permittedServiceEnvelope record.observation record.ledger
               record.envelope = false) ∨
-            final.1.application.publicView.missedDecisionBy owner = true ∨
             BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1) := by
     obtain ⟨nextTrace⟩ := (related next member).1
-    by_cases bad : (∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
+    by_cases bad : ∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
         (runtime setup).permittedServiceEnvelope record.observation record.ledger
-          record.envelope = false) ∨
-        (∀ final ∈ ((runtime setup).runInteractionPlan leaks players network suffix
-          next.1).support, final.application.publicView.missedDecisionBy owner = true)
+          record.envelope = false
     · let left := (runtime setup).runInteractionPlan leaks players network suffix next.1
       let right := strategy.runJoint owner players scheduler suffix.length next.2.1 next.2.2
       refine ⟨bindPairLaw left (fun _ => right), bindPairLaw_map_fst ..,
@@ -212,13 +187,10 @@ theorem active_nonbinding_block_stopped_coupling
             menu owner reference (players owner) current (past, view) response supported
         · rw [length]
           simpa only [rank, Nat.add_assoc] using nextTrace
-      · rcases bad with ⟨record, present, authored, forbidden⟩ | missed
-        · exact Or.inl ⟨record, ((runtime setup).executionTraffic_runInteractionPlan leaks players
-            network suffix next.1 final.1 leftSupport).subset present, authored, forbidden⟩
-        · exact Or.inr (Or.inl (missed final.1 leftSupport))
-    · obtain ⟨paired, nextStarted⟩ :=
-        (((related next member).2).resolve_left (fun traffic => bad (Or.inl traffic))).resolve_left
-          (fun missed => bad (Or.inr missed))
+      · obtain ⟨record, present, authored, forbidden⟩ := bad
+        exact Or.inl ⟨record, ((runtime setup).executionTraffic_runInteractionPlan leaks players
+          network suffix next.1 final.1 leftSupport).subset present, authored, forbidden⟩
+    · obtain ⟨paired, nextStarted⟩ := (related next member).2.resolve_left bad
       have moved : next.1 ∈ (app.invoke players owner original).support := by
         rw [← first, PMF.support_map]
         exact ⟨next, member, rfl⟩
@@ -270,9 +242,7 @@ theorem active_nonbinding_block_stopped_coupling
             remaining visits ticks nextTrace before after
             (by simpa only [actual] using split) nextPosition
           exact ⟨coupling, by simpa only [suffix, ending, actual] using leftLaw,
-            by simpa only [suffix, ending, actual] using rightLaw, fun final supported =>
-              ⟨(connected final supported).1,
-                ((connected final supported).2).imp_right Or.inr⟩⟩
+            by simpa only [suffix, ending, actual] using rightLaw, connected⟩
       | bind actor payload outputEq codeEq =>
           have different : actor ≠ owner := by
             intro equal
@@ -288,24 +258,17 @@ theorem active_nonbinding_block_stopped_coupling
             nextRepairedReady remaining visits ticks nextTrace before after
             (by simpa only [actual] using split) nextPosition
           exact ⟨coupling, by simpa only [suffix, ending, actual] using leftLaw,
-            by simpa only [suffix, ending, actual] using rightLaw, fun final supported =>
-              ⟨(connected final supported).1,
-                ((connected final supported).2).imp_right Or.inr⟩⟩
+            by simpa only [suffix, ending, actual] using rightLaw, connected⟩
       | resolve actor payload binding checks outputEq codeEq =>
           have actual : (graph setup).actor? event = some actor :=
             (EventCode.actor_cast outputEq ((graph setup).nodes event)).symm.trans
               (congrArg (fun code : EventCode (graph setup).layout (.publication payload) =>
                 code.actor) codeEq)
-          have nextRemembered : next.1.application.remembered = fun _ => none := by
-            rw [← same]
-            exact ((runtime setup).reactiveRememberedInvariant leaks
-              (fun table => table = fun _ => none)).respond original owner response leftRemembered
           obtain ⟨coupling, leftLaw, rightLaw, connected⟩ := resolution_block_stopped_coupling
             setup leaks bounds values capacity rosters opportunities network source target
             agrees owner policy available reference next.2.2 next.1 next.2.1 paired nextMemory
-            nextStarted nextRecall nextSound nextBinding nextRemembered
-            event actor payload binding checks
-            outputEq codeEq node nextRepairedReady remaining visits ticks dueTicks nextTrace
+            nextStarted nextRecall nextSound nextBinding event actor payload binding checks
+            outputEq codeEq node nextRepairedReady remaining visits ticks nextTrace
             before after (by simpa only [actual] using split) nextPosition
           exact ⟨coupling, by simpa only [suffix, ending, actual] using leftLaw,
             by simpa only [suffix, ending, actual] using rightLaw, connected⟩

@@ -126,7 +126,7 @@ theorem audited_raw_sequentialEquilibrium_preserved {Parameter : Type}
     source truncated
   obtain ⟨target, targetSE, clear, targetLaw⟩ := sourceService_audited_raw_equilibrium_extends
     service.setup service.leaks service.bounds service.values service.capacity service.rosters
-    service.opportunities service.network parameter utility sample authentic
+    service.opportunities.binding service.network parameter utility sample authentic
     probability positive coverage (sourceReadout service.setup service.leaks)
     (sourceReadout_normalization service.setup service.leaks) native nativeSE
   have jointLaw := congrArg (fun law => law.map (fun output =>

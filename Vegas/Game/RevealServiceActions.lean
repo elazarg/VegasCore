@@ -1,0 +1,152 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.RevealService
+import GameTheoryExtensions.Math.Probability.ActionSplitting
+
+/-! # Source choices in the ordinary revelation menu
+
+At a covered revelation opportunity, the actual ordinary menu projects to the
+source Boolean choice: its sole submission opens the commitment, while silence
+withholds it. Finite action splitting gives
+exact projected laws and full support. These local facts do not assert a
+history correspondence or sequential equilibrium preservation.
+-/
+
+noncomputable section
+
+namespace Vegas
+
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  (setup : Setup (Player := Player) (L := L))
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+
+/-- Normalizing the requested certificate preserves the submission constructor. -/
+theorem opening_is_submission (who : Player)
+    (past : List (application setup leaks).PlayerEntry)
+    (view : (application setup leaks).PlayerView) (response : (application setup leaks).Action)
+    (selected : opening? setup leaks who past view = some response) :
+    ∃ submission, response = ⟨some submission⟩ := by
+  unfold opening? at selected
+  obtain ⟨event, _turn, selected⟩ := Option.bind_eq_some_iff.mp selected
+  split at selected
+  · cases selected
+  · cases node : nodeView (graph setup) event with
+    | sample => simp only [node] at selected; cases selected
+    | bind => simp only [node] at selected; cases selected
+    | resolve owner payload binding checks outputEq codeEq =>
+        simp only [node] at selected
+        cases resolved : EventGraph.EventCode.resolveOutput? binding checks true
+            view.application.observation.store with
+        | none => simp only [resolved] at selected; cases selected
+        | some publication =>
+            cases publication with
+            | failure => simp only [resolved] at selected; cases selected
+            | success value =>
+                simp only [resolved] at selected
+                obtain ⟨candidate, _accepted, selected⟩ := Option.bind_eq_some_iff.mp selected
+                split at selected
+                · cases selected
+                · have same := Option.some.inj selected
+                  refine ⟨_, same.symm⟩
+
+/-- The decoder keeps the distinction between publication and refusal, while
+every private name for refusal has the same source choice. -/
+def sourceChoice (response : (application setup leaks).Action) : Bool :=
+  match response.transmission with
+  | some _ => true
+  | none => false
+
+theorem sourceChoice_opening (who : Player)
+    (past : List (application setup leaks).PlayerEntry)
+    (view : (application setup leaks).PlayerView) (response : (application setup leaks).Action)
+    (selected : opening? setup leaks who past view = some response) :
+    sourceChoice setup leaks response = true := by
+  obtain ⟨submission, rfl⟩ := opening_is_submission setup leaks who past view response selected
+  rfl
+
+theorem opening_ne_silence (who : Player)
+    (past : List (application setup leaks).PlayerEntry)
+    (view : (application setup leaks).PlayerView) (response : (application setup leaks).Action)
+    (selected : opening? setup leaks who past view = some response) : response ≠ ⟨none⟩ := by
+  intro same
+  have choice := sourceChoice_opening setup leaks who past view response selected
+  rw [same] at choice
+  cases choice
+
+variable [Fintype Player] (bounds : MessageBounds (graph setup))
+
+/-- Refusal in the ordinary menu is silence. -/
+theorem ordinary_false_iff (who : Player)
+    (past : List (application setup leaks).PlayerEntry)
+    (view : (application setup leaks).PlayerView) (response : (application setup leaks).Action)
+    (member : response ∈ ordinaryActions setup leaks bounds who past view) :
+    sourceChoice setup leaks response = false ↔ response = ⟨none⟩ := by
+  constructor
+  · intro refuses
+    rcases ordinary_response_cases setup leaks bounds who past view response member with
+      silent | opening
+    · exact silent
+    · rw [sourceChoice_opening setup leaks who past view response opening] at refuses
+      cases refuses
+  · rintro rfl; rfl
+
+variable (who : Player) (past : List (application setup leaks).PlayerEntry)
+  (view : (application setup leaks).PlayerView) (opening : (application setup leaks).Action)
+  (selected : opening? setup leaks who past view = some opening)
+  (covered : opening ∈ (bounds.menu (runtime setup) leaks).actions who past view)
+
+include selected in
+theorem ordinary_true_iff (response : (application setup leaks).Action)
+    (member : response ∈ ordinaryActions setup leaks bounds who past view) :
+    sourceChoice setup leaks response = true ↔ response = opening := by
+  constructor
+  · intro discloses
+    rcases ordinary_response_cases setup leaks bounds who past view response member with
+      silent | opened
+    · rw [silent] at discloses
+      cases discloses
+    · exact Option.some.inj (opened.symm.trans selected)
+  · intro same
+    rw [same]
+    exact sourceChoice_opening setup leaks who past view opening selected
+
+def canonicalOrdinaryChoice (disclose : Bool) :
+    {response // response ∈ ordinaryActions setup leaks bounds who past view} :=
+  if disclose then ⟨opening, opening_ordinary setup leaks bounds who past view opening
+    selected covered⟩ else ⟨⟨none⟩, silence_ordinary setup leaks bounds who past view⟩
+
+theorem sourceChoice_canonical (disclose : Bool) :
+    sourceChoice setup leaks
+      (canonicalOrdinaryChoice setup leaks bounds who past view opening selected covered
+        disclose).1 = disclose := by
+  cases disclose
+  · rfl
+  · exact sourceChoice_opening setup leaks who past view opening selected
+
+def splitChoiceLaw (law : PMF Bool) (weight : ℝ)
+    (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1) :
+    PMF {response // response ∈ ordinaryActions setup leaks bounds who past view} :=
+  law.bind (PMF.splitKernel (fun response => sourceChoice setup leaks response.1)
+    (canonicalOrdinaryChoice setup leaks bounds who past view opening selected covered)
+    (sourceChoice_canonical setup leaks bounds who past view opening selected covered)
+    weight nonnegative atMostOne)
+
+theorem splitChoiceLaw_project (law : PMF Bool) (weight : ℝ)
+    (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1) :
+    (splitChoiceLaw setup leaks bounds who past view opening selected covered
+      law weight nonnegative atMostOne).map (fun response => sourceChoice setup leaks response.1) =
+        law :=
+  PMF.split_project _ _ _ law weight nonnegative atMostOne
+
+theorem splitChoiceLaw_fullSupport (law : PMF Bool) (mixed : FullSupport law)
+    (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1)
+    (positive : 0 < weight) :
+    FullSupport (splitChoiceLaw setup leaks bounds who past view opening selected covered
+      law weight nonnegative atMostOne) :=
+  PMF.split_fullSupport _ _ _ law mixed weight nonnegative atMostOne positive
+
+end Vegas

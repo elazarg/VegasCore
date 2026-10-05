@@ -63,13 +63,6 @@ theorem BindingInvariant.copy {before after : State graph}
     · simpa only [candidatesEq] using candidate
 
 omit [DecidableEq Player] in
-/-- Recording a public expiry does not change the binding store or tables. -/
-theorem BindingInvariant.markMissed {state : State graph}
-    (invariant : state.BindingInvariant) (event : graph.EventId) :
-    (state.markMissed event).BindingInvariant :=
-  invariant.copy rfl rfl rfl
-
-omit [DecidableEq Player] in
 /-- Preserve provenance when the commitment tables are unchanged and every
 successful binding in the new store was already the same success before. -/
 theorem BindingInvariant.of_successes_before {before after : State graph}
@@ -556,7 +549,6 @@ theorem environmentStep_bindingInvariant (runtime : EventGraphRuntime graph)
                     activated due owner payload outputEq codeEq view] at member
                   simp only [PMF.mem_support_pure_iff _ _] at member
                   subst next
-                  apply State.BindingInvariant.markMissed
                   apply invariant.complete_of_no_success
                   intro newOwner newPayload newEq value
                   have kinds : EventField.binding owner payload =
@@ -568,7 +560,6 @@ theorem environmentStep_bindingInvariant (runtime : EventGraphRuntime graph)
                     activated due owner payload binding checks outputEq codeEq view] at member
                   simp only [PMF.mem_support_pure_iff _ _] at member
                   subst next
-                  apply State.BindingInvariant.markMissed
                   apply invariant.complete_nonbinding
                   intro bindingOwner bindingPayload bindingEq
                   rw [outputEq] at bindingEq

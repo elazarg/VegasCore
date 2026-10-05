@@ -1,8 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceRosterPolicy
-import Vegas.Game.ServiceRosterTiming
-import Vegas.Game.ServicePlanPolicies
+import Vegas.Game.RevealServiceRosterTiming
+import Vegas.Game.RevealServiceRosterLaw
 import Vegas.Pending.ReactivePolicyMixture
 import Vegas.Pending.ReactiveStateInvariant
 import Interaction.ScheduledOpening

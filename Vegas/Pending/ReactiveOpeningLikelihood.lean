@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ReactiveDecisionWindowLikelihood
+import Vegas.Pending.ReactiveBindingSchedule
 import Vegas.Pending.ReactiveOpeningSettlement
 import Vegas.Pending.ReactiveRevealBlock
 import GameTheoryExtensions.Math.Probability.Support
@@ -188,6 +188,57 @@ theorem openingWindow_focal_coupling (runtime : EventGraphRuntime graph)
           · simp only [players, app, openingWindowPlayers, ite_true,
               ReactiveApplication.scheduledPolicy, ite_eq_right nextNot]
       · apply waiting <;> simp only [players, app, openingWindowPlayers, ite_eq_right acts]
+
+private theorem bindingTraffic_include_of_handler (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (left right : (runtime.reactiveApplication leaks).Execution) (focal : Player)
+    (same : runtime.bindingTraffic leaks focal left = runtime.bindingTraffic leaks focal right)
+    (id : MessageId Player) (message : Message Player (WitnessedPacket graph))
+    (found : left.network.lookup id = some message)
+    (handled : ((runtime.reactiveApplication leaks).handle left.application message).map
+        (fun state => state.playerView focal) =
+      ((runtime.reactiveApplication leaks).handle right.application message).map
+        (fun state => state.playerView focal)) :
+    runtime.bindingTraffic leaks focal
+        (left.includePending (runtime.reactiveApplication leaks) id) =
+      runtime.bindingTraffic leaks focal
+        (right.includePending (runtime.reactiveApplication leaks) id) := by
+  let app := runtime.reactiveApplication leaks
+  have networks : left.network = right.network := congrArg Prod.fst same
+  have receipts : left.receipts = right.receipts := congrArg (fun value => value.2.1) same
+  have environments : left.environmentRecall = right.environmentRecall :=
+    congrArg (fun value => value.2.2.1) same
+  have recalled : left.recall focal = right.recall focal :=
+    congrArg (fun value => value.2.2.2.1) same
+  have views : left.application.playerView focal = right.application.playerView focal :=
+    congrArg (fun value => value.2.2.2.2.1) same
+  have publics : left.application.publicView = right.application.publicView :=
+    congrArg (fun value => value.2.2.2.2.2) same
+  have rightFound : right.network.lookup id = some message := networks ▸ found
+  simp only [bindingTraffic, ReactiveApplication.Execution.includePending,
+    MessageNetwork.includePending, found, rightFound]
+  cases first : (runtime.reactiveApplication leaks).handle left.application message with
+  | none =>
+      cases second : (runtime.reactiveApplication leaks).handle right.application message with
+      | none =>
+          simp only [Option.getD_none, Option.isSome_none]
+          exact Prod.ext (by rw [networks]) (Prod.ext (by rw [receipts])
+            (Prod.ext environments (Prod.ext recalled (Prod.ext views publics))))
+      | some state =>
+          simp only [first, second, Option.map_none, Option.map_some] at handled
+          cases handled
+  | some before =>
+      cases second : (runtime.reactiveApplication leaks).handle right.application message with
+      | none =>
+          simp only [first, second, Option.map_none, Option.map_some] at handled
+          cases handled
+      | some after =>
+          have nextViews : before.playerView focal = after.playerView focal := by
+            simpa only [first, second, Option.map_some, Option.some.injEq] using handled
+          simp only [Option.getD_some, Option.isSome_some]
+          exact Prod.ext (by rw [networks]) (Prod.ext (by rw [receipts])
+            (Prod.ext environments (Prod.ext recalled
+              (Prod.ext nextViews (congrArg PlayerView.publicView nextViews)))))
 
 /-- Protected inclusion preserves focal likelihood once the actual canonical
 handler results agree. This operational premise concerns the concrete packet;

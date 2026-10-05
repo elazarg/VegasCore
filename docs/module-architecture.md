@@ -20,7 +20,7 @@ outside the Lean source and default build roots.
 
 Search with rg and inspect signatures with lean-defs.py before adding machinery.
 Useful existing boundaries are the
-[source runtime](../Vegas/Game/SourceServiceRuntime.lean),
+[source runtime](../Vegas/Game/RevealService.lean),
 [compiler observation relation](../Vegas/Compile/EventGraphObservation.lean),
 [final-record verdict](../Vegas/Pending/ReactiveSettledVerdict.lean),
 [asynchronous contract](../Vegas/Pending/ReactiveAsyncContract.lean),

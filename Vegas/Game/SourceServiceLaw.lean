@@ -2,7 +2,6 @@
 
 import Vegas.Game.SourceServicePhaseLaw
 import Vegas.Game.SourceServiceCompiledExecution
-import Vegas.Game.SourceServiceReadout
 import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Initialized source laws of the full native service
@@ -58,8 +57,9 @@ theorem sourceService_prefix_state_law
   let readout := fun count (execution : app.Execution) =>
     sourceServicePrefix? setup count execution.application.config
   let kernel := setup.behavioralStateStep admission encoded
+  have bindingOpportunities := opportunities.binding
   have covered := sourceServiceLastPolicy_admissible setup leaks bounds values initialValues
-    capacity rosters opportunities network profile permitted
+    capacity rosters bindingOpportunities network profile permitted
   have step (rank : Nat) (inside : rank < (graph setup).order.eventCount)
       (execution : app.Execution) (supported : execution ∈ (physical rank).support) :
       ((runtime setup).runInteractionPlan leaks players network
@@ -71,7 +71,7 @@ theorem sourceService_prefix_state_law
       current, refs, embedding, refsBefore, aligned, _admitted, lift, stateEq, stepEq, decodeEq,
       inheritedEffective, _, boundary⟩ :=
       initialized_sourceService_prefix_support setup leaks bounds values capacity rosters
-        opportunities menu.uniformResponses
+        bindingOpportunities menu.uniformResponses
         (fun who past view response chosen =>
           (menu.uniformResponses_support who past view response).mp chosen)
         network profile rank inside.le execution uniform
@@ -152,6 +152,38 @@ theorem sourceService_prefix_state_law
   exact (prefixes count within).trans sourceLaw.symm
 
 omit [Fintype Player] in
+theorem decodeSourcePrefix?_terminal_readout
+    {Field : Type} [DecidableEq Field] {layout : Field → EventGraph.EventField Player L}
+    {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    (program : SourceProgram Player L Γ openNames) (refs : ContextRefs layout Γ)
+    (registry : Registry Γ) (revelations : Revelations Γ)
+    (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
+    (store : EventGraph.Store layout) (history : SourceProgram.History Player L) :
+    (decodeSourcePrefix? program refs registry revelations outputs (eventCount program)
+      store history).bind (ProtocolState.readout program) =
+        decodeState? (terminalRefsWith program refs outputs) store := by
+  induction program with
+  | ret payoffs =>
+      simp only [eventCount, decodeSourcePrefix?, terminalRefsWith]
+      cases decodeState? refs store <;> rfl
+  | sample name fresh distribution next ih =>
+      simp only [eventCount, decodeSourcePrefix?, terminalRefsWith, Option.bind_map]
+      exact ih _ _ _ _
+  | commit name owner fresh guard next ih =>
+      simp only [eventCount, decodeSourcePrefix?, terminalRefsWith, Option.bind_map]
+      exact ih _ _ _ _
+  | reveal published owner name fresh binding unresolved next ih =>
+      simp only [eventCount, decodeSourcePrefix?, terminalRefsWith, Option.bind_map]
+      exact ih _ _ _ _
+
+omit [Fintype Player] in
+theorem sourceServicePrefix?_terminal_readout
+    (setup : Setup (Player := Player) (L := L)) (config : (graph setup).Config) :
+    setup.protocolReadout (sourceServicePrefix? setup (eventCount setup.program) config) =
+      decodeState? (terminalRefs setup.program) config.store :=
+  decodeSourcePrefix?_terminal_readout setup.program _ _ _ _ _ _
+
+omit [Fintype Player] in
 /-- The whole physical service has the typed outcome law of its effective
 source policy. This theorem includes the original sampling distributions and
 all dynamically created source bindings. -/
@@ -214,8 +246,9 @@ theorem sourceServiceCompiledProfile_readout_law
         (fun final => sourceReadout setup leaks final.state) = (setup.run original).map some := by
   let normalized := normalizeDisclosureProfile setup.program []
     (Revelations.initial setup.context) original
+  have bindingOpportunities := opportunities.binding
   have physical := sourceServiceCompiledProfile_complete_state setup leaks bounds values
-    initialValues capacity rosters opportunities network original permitted
+    initialValues capacity rosters bindingOpportunities network original permitted
   have observed := congrArg (PMF.map (sourceReadout setup leaks)) physical
   simp only [PMF.map_comp, Function.comp_def] at observed
   have effective (who : Player) : (normalized who).EffectiveDisclosures setup.program []

@@ -5,7 +5,6 @@ import Vegas.Game.SourceServiceTimedPolicy
 import Vegas.Game.SourceServiceAdmission
 import Vegas.Pending.ReactiveBoundedValues
 import Vegas.Pending.ReactiveGuardedResponse
-import Vegas.Pending.ReactiveCompiledResolution
 
 /-! # Coverage of actual source decisions in the retained service
 
@@ -85,9 +84,16 @@ theorem sourceService_opening_covered
         owner _ (execution.network.known owner))⟩ : app.Action) = _
     rw [known]
     rfl
-  apply required_decision_sourceService setup leaks bounds rosters owner
-    (execution.recall owner) (execution.observe app owner)
-  apply bounds.decision_required (runtime setup) leaks owner (execution.recall owner)
+  have optional : ¬ bindingRequired setup leaks rosters owner (execution.recall owner)
+      (execution.observe app owner) := by
+    rintro ⟨other, otherPayload, otherTurn, otherBinding, _⟩
+    have same : other = event := Option.some.inj (otherTurn.symm.trans serving)
+    subst other
+    cases otherBinding.symm.trans outputEq
+  change _ ∈ sourceServiceActions setup leaks bounds rosters owner (execution.recall owner)
+    (execution.observe app owner)
+  rw [sourceServiceActions, ite_eq_right optional]
+  apply bounds.decision_compiled (runtime setup) leaks owner (execution.recall owner)
     (execution.observe app owner)
   · have publicReady := (execution.application.publicView_eventReady event).mpr ready
     have turnView : (execution.observe app owner).application.publicView.ownTurn? owner =
@@ -109,61 +115,6 @@ theorem sourceService_opening_covered
         MessageBounds.AllowsOpening]
     · apply bounds.normalize_evidence_mem
       exact ⟨handles binding.field candidate associated, values candidate ⟨payload, value⟩ fixed⟩
-
-/-- Authenticated withholding remains available at the final owner visit as
-well as at every earlier unsent resolution opportunity. -/
-theorem sourceService_withholding_covered
-    (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
-    (execution : (application setup leaks).Execution)
-    (owner : Player) (event : (graph setup).EventId) (payload : L.Ty)
-    (binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload))
-    (checks : List (EventGraph.GuardCheck (graph setup).layout payload))
-    (outputEq : (graph setup).outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks)
-    (node : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
-    (owned : (graph setup).actor? event = some owner)
-    (ready : execution.application.config.cut.Ready event)
-    (unsent : (runtime setup).eventRecorded leaks (execution.recall owner) event = false) :
-    (runtime setup).serviceDecision leaks owner (execution.recall owner)
-      (execution.observe (application setup leaks) owner) event
-      (cast (congrArg EventGraph.EventField.Action outputEq.symm) false) ∈
-      (sourceServiceMenu setup leaks bounds rosters).actions owner (execution.recall owner)
-        (execution.observe (application setup leaks) owner) := by
-  classical
-  let app := application setup leaks
-  have serving := ownTurn?_of_ready setup execution.application ready owned
-  have canonical : (runtime setup).serviceDecision leaks owner (execution.recall owner)
-      (execution.observe app owner) event
-      (cast (congrArg EventGraph.EventField.Action outputEq.symm) false) =
-      ⟨some ⟨⟨.withhold event, none⟩, .none⟩⟩ := by
-    simp only [serviceDecision, reactiveDecision, node, reactiveResolutionPacket,
-      cast_cast, cast_eq, Bool.false_eq_true, ↓reduceIte,
-      disclosureSubmission_normalize_withhold]
-    simp only [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
-      disclosureSubmission, WitnessedSubmission.normalizeReactive,
-      Submission.normalizeReactive_none, EvidenceRequest.normalize_none]
-  apply required_decision_sourceService setup leaks bounds rosters owner
-    (execution.recall owner) (execution.observe app owner)
-  apply bounds.decision_required (runtime setup) leaks owner (execution.recall owner)
-    (execution.observe app owner)
-  · have publicReady := (execution.application.publicView_eventReady event).mpr ready
-    have turnView : (execution.observe app owner).application.publicView.ownTurn? owner =
-        some event := serving
-    have readyView : (execution.observe app owner).application.publicView.EventReady event :=
-      publicReady
-    simp only [MessageBounds.decisionActions, turnView, owned, readyView,
-      and_self, ↓reduceIte, node]
-    exact Finset.mem_image.mpr ⟨false, Finset.mem_univ _, rfl⟩
-  · rw [canonical]
-    simp only [firstSubmission, submittedEvent?, Payload.event?, unsent, Bool.not_false]
-  · rw [canonical, bounds.menu_mem]
-    refine ⟨⟨⟨trivial, trivial⟩, trivial⟩, ?_⟩
-    simp only [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
-      WitnessedSubmission.normalizeReactive, Submission.normalizeReactive_none,
-      EvidenceRequest.normalize_none]
 
 theorem sourceServiceOpportunity_commit_covered
     (setup : Setup (Player := Player) (L := L))
@@ -244,7 +195,7 @@ theorem sourceServiceOpportunity_commit_covered
     unsent serial selected capacity value (bounded value)
   rw [serviceDecision_binding_fresh (runtime setup) leaks execution owner event payload
     outputEq codeEq node serial selected candidate (.success value)] at member
-  exact ⟨required_decision_sourceService setup leaks bounds rosters owner
+  exact ⟨required_binding_sourceService setup leaks bounds rosters owner
     (execution.recall owner) (execution.observe app owner) _ member, rfl⟩
 
 /-- Every supported guarded disclosure is retained at any unsent owner
@@ -284,8 +235,7 @@ theorem sourceServiceOpportunity_reveal_covered
       response ∈ (sourceServiceOpportunity setup leaks wholeProfile owner event
         (execution.recall owner) (execution.observe (application setup leaks) owner)).support →
       response ∈ (sourceServiceMenu setup leaks bounds rosters).actions owner
-        (execution.recall owner) (execution.observe (application setup leaks) owner) ∧
-        (runtime setup).submittedEvent? leaks response = some event := by
+        (execution.recall owner) (execution.observe (application setup leaks) owner) := by
   classical
   intro index event ready unsent response supported
   let app := application setup leaks
@@ -306,31 +256,13 @@ theorem sourceServiceOpportunity_reveal_covered
       (compileChecks (published := published) refs source.registry source.revelations binding)
       outputEq codeEq :=
     EventGraphRuntime.nodeView_eq_resolve _ _
-  have emitted (choice : Bool) : ((runtime setup).serviceDecision leaks owner
-      (execution.recall owner) (execution.observe app owner) event
-      (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice)).transmission ≠ none := by
-    rcases (runtime setup).serviceDecision_resolution_cases leaks owner (execution.recall owner)
-      (execution.observe app owner) event owner payload (refs.get binding)
-      (compileChecks (published := published) refs source.registry source.revelations binding)
-      outputEq codeEq node choice with withheld | ⟨candidate, value, evidence, _, _, _, opened⟩
-    · rw [withheld]
-      intro same
-      cases same
-    · rw [opened]
-      intro same
-      cases same
-  have named (choice : Bool) : (runtime setup).submittedEvent? leaks
-      ((runtime setup).serviceDecision leaks owner (execution.recall owner)
-        (execution.observe app owner) event
-        (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice)) = some event := by
-    rcases (runtime setup).serviceDecision_resolution_cases leaks owner (execution.recall owner)
-      (execution.observe app owner) event owner payload (refs.get binding)
-      (compileChecks (published := published) refs source.registry source.revelations binding)
-      outputEq codeEq node choice with withheld | ⟨candidate, value, evidence, _, _, _, opened⟩
-    · rw [withheld]
-      rfl
-    · rw [opened]
-      rfl
+  have optional : ¬ bindingRequired setup leaks rosters owner (execution.recall owner)
+      (execution.observe app owner) := by
+    rintro ⟨other, otherPayload, otherTurn, otherBinding, _⟩
+    have same : other = event := Option.some.inj
+      (otherTurn.symm.trans (ownTurn?_of_ready setup execution.application ready owned))
+    subst other
+    cases otherBinding.symm.trans outputEq
   simp only [sourceServiceOpportunity, unsent, Bool.false_eq_true, ↓reduceIte] at supported
   rw [sourceServicePolicy_reveal setup leaks fresh binding unresolved next wholeProfile profile
       refs source embedding refsBefore offset aligned execution checkpoint.agrees checkpoint.history
@@ -342,30 +274,46 @@ theorem sourceServiceOpportunity_reveal_covered
     execution checkpoint.agrees event outputEq codeEq node disclose] at supported
   cases effective : effectiveDisclosure published binding source disclose with
   | false =>
-      rw [effective, ite_eq_right (emitted false)] at supported
-      cases (PMF.mem_support_pure_iff _ _).mp supported
-      exact ⟨sourceService_withholding_covered setup leaks bounds rosters execution owner event
-        payload (refs.get binding)
-        (compileChecks (published := published) refs source.registry source.revelations binding)
-        outputEq codeEq node owned ready unsent, named false⟩
+      rw [effective] at supported
+      have silent : (runtime setup).serviceDecision leaks owner (execution.recall owner)
+          (execution.observe app owner) event
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) false) = ⟨none⟩ := by
+        simp only [serviceDecision, reactiveDecision, node, reactiveResolutionPacket,
+          cast_cast, cast_eq, Bool.false_eq_true, ↓reduceIte,
+          disclosureSubmission_normalize_withhold]
+        rfl
+      rw [silent, ite_eq_left rfl] at supported
+      change response ∈ sourceServiceActions setup leaks bounds rosters owner
+        (execution.recall owner) (execution.observe app owner)
+      rw [sourceServiceActions, ite_eq_right optional]
+      exact bounds.silent_compiled (runtime setup) leaks owner _ _ response supported
   | true =>
-      rw [effective, ite_eq_right (emitted true)] at supported
-      cases (PMF.mem_support_pure_iff _ _).mp supported
-      obtain ⟨value, success⟩ : ∃ value,
-          disclosureResult published binding source true = .success value := by
-        cases disclose with
-        | false => simp only [effectiveDisclosure_false, Bool.false_eq_true] at effective
-        | true =>
-            cases result : disclosureResult published binding source true with
-            | failure => simp only [effectiveDisclosure, result, Bool.false_eq_true] at effective
-            | success value => exact ⟨value, rfl⟩
-      have resolved := compiled_disclosure_result (graph := graph setup)
-        published binding source refs
-        execution.application.config.store checkpoint.agrees true
-      rw [success, EventGraph.EventCode.resolveOutput?_playerStore] at resolved
-      exact ⟨sourceService_opening_covered setup leaks bounds rosters execution valid recalled
-        handles values owner event payload (refs.get binding)
-        (compileChecks (published := published) refs source.registry source.revelations binding)
-        outputEq codeEq node owned ready unsent value resolved, named true⟩
+      rw [effective] at supported
+      by_cases silent : ((runtime setup).serviceDecision leaks owner (execution.recall owner)
+          (execution.observe app owner) event
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)).transmission = none
+      · rw [ite_eq_left silent] at supported
+        change response ∈ sourceServiceActions setup leaks bounds rosters owner
+          (execution.recall owner) (execution.observe app owner)
+        rw [sourceServiceActions, ite_eq_right optional]
+        exact bounds.silent_compiled (runtime setup) leaks owner _ _ response supported
+      · rw [ite_eq_right silent] at supported
+        cases (PMF.mem_support_pure_iff _ _).mp supported
+        obtain ⟨value, success⟩ : ∃ value,
+            disclosureResult published binding source true = .success value := by
+          cases disclose with
+          | false => simp only [effectiveDisclosure_false, Bool.false_eq_true] at effective
+          | true =>
+              cases result : disclosureResult published binding source true with
+              | failure => simp only [effectiveDisclosure, result, Bool.false_eq_true] at effective
+              | success value => exact ⟨value, rfl⟩
+        have resolved := compiled_disclosure_result (graph := graph setup)
+          published binding source refs
+          execution.application.config.store checkpoint.agrees true
+        rw [success, EventGraph.EventCode.resolveOutput?_playerStore] at resolved
+        exact sourceService_opening_covered setup leaks bounds rosters execution valid recalled
+          handles values owner event payload (refs.get binding)
+          (compileChecks (published := published) refs source.registry source.revelations binding)
+          outputEq codeEq node owned ready unsent value resolved
 
 end Vegas

@@ -1,21 +1,21 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceServiceFirstTurnCalls
+import Vegas.Game.SourceServiceFirstTurnBinding
 import Vegas.Game.SourceServiceFirstTurnOpportunity
 import Vegas.Game.SourceServiceRiskSlots
 
 /-! # Clear opportunity recall under exact first-turn play
 
-At every own ready turn the event has either already been submitted, or
+At every own binding turn the event has either already been submitted, or
 the turn is the first one and the asynchronous reaction budget protects it.
-The first-turn prescribed response submits that decision and records its event.
-Thus no own response latches an unprotected first owned opportunity.
+The first-turn prescribed response submits that binding and records its event.
+Thus no own response latches an unprotected first binding opportunity.
 
 The proof constrains only this owner's policy. Foreign policies remain
 arbitrary, including raw continuations after their own risk. Bounds on the
 number of rounds are explicit because the service contract covers the fixed
 raw protocol horizon. This result concerns private opportunity recall; it
-does not claim zero audit charge or absence of public missed decisions.
+does not claim zero audit charge or absence of public binding misses.
 -/
 
 noncomputable section
@@ -29,32 +29,33 @@ variable {Player : Type} [DecidableEq Player]
   (setup : Setup (Player := Player) (L := L))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
-/-- Every earlier own ready turn has a submitted call naming that event in
+/-- Every earlier own binding turn has a submitted call naming that event in
 the owner's current actual recall. This does not assert successful inclusion. -/
-def OwnTurnsRecorded (execution : (application setup leaks).Execution) (who : Player) : Prop :=
-  ∀ entry ∈ execution.recall who, ∀ event,
+def BindingTurnsRecorded (execution : (application setup leaks).Execution) (who : Player) : Prop :=
+  ∀ entry ∈ execution.recall who, ∀ event owner payload,
     entry.beforeView.application.publicView.ownTurn? who = some event →
-      (runtime setup).eventRecorded leaks (execution.recall who) event = true
+      (graph setup).outputLayout event = .binding owner payload →
+        (runtime setup).eventRecorded leaks (execution.recall who) event = true
 
 variable {setup leaks}
 
-private theorem ownTurnsRecorded_environment
+private theorem bindingTurnsRecorded_environment
     {execution next : (application setup leaks).Execution}
     {command : (application setup leaks).Command} (who : Player)
-    (valid : OwnTurnsRecorded setup leaks execution who)
+    (valid : BindingTurnsRecorded setup leaks execution who)
     (moved : next ∈ (execution.environmentStep (application setup leaks) command).support) :
-    OwnTurnsRecorded setup leaks next who := by
-  unfold OwnTurnsRecorded
+    BindingTurnsRecorded setup leaks next who := by
+  unfold BindingTurnsRecorded
   rw [(application setup leaks).environmentStep_recall execution next command moved]
   exact valid
 
-private theorem ownTurnsRecorded_respond_other
+private theorem bindingTurnsRecorded_respond_other
     (execution : (application setup leaks).Execution) (actor who : Player)
     (response : (application setup leaks).Action) (different : who ≠ actor)
-    (valid : OwnTurnsRecorded setup leaks execution who) :
-    OwnTurnsRecorded setup leaks
+    (valid : BindingTurnsRecorded setup leaks execution who) :
+    BindingTurnsRecorded setup leaks
       (execution.respond (application setup leaks) actor response) who := by
-  unfold OwnTurnsRecorded
+  unfold BindingTurnsRecorded
   rw [(application setup leaks).respond_recall_other execution actor who different response]
   exact valid
 
@@ -74,18 +75,18 @@ private theorem firstTurn_recallFacts_round {horizon remaining : Nat}
     (answered : ActivationsAnswered setup leaks execution)
     (atTurn : OwnSubmissionsAtTurn setup leaks execution who)
     (slots : CanonicalSlotsUsed setup leaks execution who)
-    (valid : OwnTurnsRecorded setup leaks execution who)
-    (clear : (runtime setup).recalledOpportunityRisk leaks bound who
+    (valid : BindingTurnsRecorded setup leaks execution who)
+    (clear : (runtime setup).recalledBindingOpportunityRisk leaks bound who
       (execution.recall who) = false)
     (reached : next ∈ ((application setup leaks).round scheduler players execution).support) :
-    OwnTurnsRecorded setup leaks next who ∧
-      (runtime setup).recalledOpportunityRisk leaks bound who
+    BindingTurnsRecorded setup leaks next who ∧
+      (runtime setup).recalledBindingOpportunityRisk leaks bound who
         (next.recall who) = false := by
   let app := application setup leaks
   obtain ⟨command, selected, middle, moved, cases⟩ := round_cases setup leaks reached
   have recallEq := app.environmentStep_recall execution middle command moved
-  have validMiddle := ownTurnsRecorded_environment who valid moved
-  have clearMiddle : (runtime setup).recalledOpportunityRisk leaks bound who
+  have validMiddle := bindingTurnsRecorded_environment who valid moved
+  have clearMiddle : (runtime setup).recalledBindingOpportunityRisk leaks bound who
       (middle.recall who) = false := by rw [recallEq]; exact clear
   rcases cases with ⟨_, rfl⟩ | ⟨responder, active, response, chosen, rfl⟩
   · exact ⟨validMiddle, clearMiddle⟩
@@ -107,8 +108,9 @@ private theorem firstTurn_recallFacts_round {horizon remaining : Nat}
         rw [recallEq]
         exact atTurn
       have slotsMiddle := canonicalSlotsUsed_environment moved who slots
-      have dichotomy (event : (graph setup).EventId)
-          (turn : middle.application.publicView.ownTurn? who = some event) :
+      have dichotomy (event : (graph setup).EventId) (owner : Player) (payload : L.Ty)
+          (turn : middle.application.publicView.ownTurn? who = some event)
+          (binding : (graph setup).outputLayout event = .binding owner payload) :
           (runtime setup).eventRecorded leaks (middle.recall who) event = true ∨
             (sourceServiceTurn setup leaks who event (middle.recall who)
               (middle.observe app who) = some 0 ∧
@@ -125,7 +127,8 @@ private theorem firstTurn_recallFacts_round {horizon remaining : Nat}
             simp only [turn, ↓reduceIte]
             apply congrArg some
             exact List.countP_eq_zero.mpr fun entry member seen =>
-              recorded (validMiddle entry member event (of_decide_eq_true seen))
+              recorded (validMiddle entry member event owner payload
+                (of_decide_eq_true seen) binding)
           have owned := (PublicView.ownTurn?_spec _ who event turn).2
           have ready : execution.application.config.cut.Ready event := by
             rw [← appEq]
@@ -138,42 +141,55 @@ private theorem firstTurn_recallFacts_round {horizon remaining : Nat}
           refine Or.inr ⟨first, ?_⟩
           rw [appEq]
           exact fits
-      have opportunityClear : (runtime setup).firstUnprotectedOpportunity leaks bound who
+      have opportunityClear : (runtime setup).firstUnprotectedBindingOpportunity leaks bound who
           (middle.recall who) (middle.observe app who) = false := by
         apply Bool.eq_false_of_not_eq_true
         intro risky
-        obtain ⟨_, event, turn, unrecorded, unprotected⟩ :=
-          ((runtime setup).firstUnprotectedOpportunity_iff leaks bound who _ _).mp risky
-        rcases dichotomy event turn with recorded | ⟨_, fits⟩
+        obtain ⟨_, event, owner, payload, turn, binding, unrecorded, unprotected⟩ :=
+          ((runtime setup).firstUnprotectedBindingOpportunity_iff leaks bound who _ _).mp risky
+        rcases dichotomy event owner payload turn binding with recorded | ⟨_, fits⟩
         · rw [unrecorded] at recorded
           cases recorded
         · exact unprotected fits
-      have nextClear := ((runtime setup).recalledOpportunityRisk_respond_clear leaks bound
+      have nextClear := ((runtime setup).recalledBindingOpportunityRisk_respond_clear leaks bound
         middle who response opportunityClear).trans clearMiddle
       refine ⟨?_, nextClear⟩
       obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks middle who response
-      intro entry member event turn
+      intro entry member event owner payload turn binding
       rw [recalled] at member
       rcases List.mem_append.mp member with old | new
       · exact (runtime setup).eventRecorded_respond_of_recorded leaks middle who who response event
-          (validMiddle entry old event turn)
+          (validMiddle entry old event owner payload turn binding)
       · cases List.mem_singleton.mp new
         change middle.application.publicView.ownTurn? who = some event at turn
-        rcases dichotomy event turn with recorded | ⟨first, fits⟩
+        rcases dichotomy event owner payload turn binding with recorded | ⟨first, fits⟩
         · exact (runtime setup).eventRecorded_respond_of_recorded leaks middle who who response
             event recorded
         · rw [follows] at chosen
-          obtain ⟨material, _, _, recorded⟩ := sourceServiceFirstTurn_call middleTrace
-            atMiddle slotsMiddle event first fits response chosen
-          exact recorded
+          cases node : nodeView (graph setup) event with
+          | sample sampled law outputEq codeEq =>
+              rw [outputEq] at binding
+              cases binding
+          | resolve actor resolutionPayload bindingRef checks outputEq codeEq =>
+              rw [outputEq] at binding
+              cases binding
+          | bind actor bindingPayload outputEq codeEq =>
+              have actorEq : actor = who := Option.some.inj
+                ((nodeView_bind_actor outputEq codeEq).symm.trans
+                  (PublicView.ownTurn?_spec _ who event turn).2)
+              subst actorEq
+              obtain ⟨material, _, _, _, recorded⟩ := sourceServiceFirstTurn_binding_call
+                middleTrace atMiddle slotsMiddle event bindingPayload outputEq codeEq node first
+                  fits response chosen
+              exact recorded
     · have different : who ≠ responder := Ne.symm same
-      refine ⟨ownTurnsRecorded_respond_other middle responder who response different
+      refine ⟨bindingTurnsRecorded_respond_other middle responder who response different
         validMiddle, ?_⟩
       rw [app.respond_recall_other middle responder who different response]
       exact clearMiddle
 
-/-- Exact first-turn timing never records an unprotected first owned
-opportunity. Every earlier own ready turn has already recorded its event.
+/-- Exact first-turn timing never records an unprotected first binding
+opportunity. Every earlier own binding turn has already recorded its event.
 No restriction is imposed on any foreign policy. -/
 theorem sourceServiceFirstTurn_recallFacts {horizon : Nat}
     {scheduler : (application setup leaks).Scheduler}
@@ -188,15 +204,15 @@ theorem sourceServiceFirstTurn_recallFacts {horizon : Nat}
     (count : Nat) (within : count ≤ horizon) (execution : (application setup leaks).Execution)
     (reached : execution ∈ ((application setup leaks).roundsFrom (initialLaw setup) scheduler
       players count).support) :
-    OwnTurnsRecorded setup leaks execution who ∧
-      (runtime setup).recalledOpportunityRisk leaks bound who (execution.recall who) =
+    BindingTurnsRecorded setup leaks execution who ∧
+      (runtime setup).recalledBindingOpportunityRisk leaks bound who (execution.recall who) =
         false := by
   let app := application setup leaks
   induction count generalizing execution with
   | zero =>
       obtain ⟨state, _, supported⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       cases (PMF.mem_support_pure_iff _ _).mp supported
-      refine ⟨?_, (runtime setup).recalledOpportunityRisk_nil leaks bound who⟩
+      refine ⟨?_, (runtime setup).recalledBindingOpportunityRisk_nil leaks bound who⟩
       intro entry member
       cases member
   | succ count ih =>
@@ -227,8 +243,8 @@ theorem sourceServiceFirstTurn_recallFacts_roundSupported {horizon : Nat}
     (control : (application setup leaks).Control)
     (reached : (application setup leaks).RoundSupported (initialLaw setup) horizon scheduler
       players (some control)) :
-    OwnTurnsRecorded setup leaks control.execution who ∧
-      (runtime setup).recalledOpportunityRisk leaks bound who
+    BindingTurnsRecorded setup leaks control.execution who ∧
+      (runtime setup).recalledBindingOpportunityRisk leaks bound who
         (control.execution.recall who) = false := by
   obtain ⟨remaining, actor, execution⟩ := control
   cases actor with
@@ -243,7 +259,7 @@ theorem sourceServiceFirstTurn_recallFacts_roundSupported {horizon : Nat}
       obtain ⟨lengthEq, count, prior, command, counted, priorMem, _, _, moved⟩ := reached
       obtain ⟨valid, clear⟩ := sourceServiceFirstTurn_recallFacts contract timely players who turns
         profile follows count (by omega) prior priorMem
-      refine ⟨ownTurnsRecorded_environment who valid moved, ?_⟩
+      refine ⟨bindingTurnsRecorded_environment who valid moved, ?_⟩
       rw [(application setup leaks).environmentStep_recall prior execution command moved]
       exact clear
 

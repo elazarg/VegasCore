@@ -251,7 +251,7 @@ theorem foreign_binding_phase_invariant {who : Player} {remaining : Nat}
   obtain ⟨codeEq, node⟩ := binding_nodeView service.setup phase.event owner payload outputEq
   obtain ⟨ready, timely, _, _, _, serials, resources⟩ := sourceService_binding_decision_resources
     service.setup service.leaks service.bounds service.values service.capacity service.rosters
-    service.opportunities service.network who ⟨remaining, some who, execution⟩ trace rfl
+    service.opportunities.binding service.network who ⟨remaining, some who, execution⟩ trace rfl
     phase.event phase.ready owner payload outputEq codeEq node owned
   obtain ⟨_, freshSlot, fresh, unused, vacant, _, published⟩ := resources unsent
   obtain ⟨site⟩ := service.exists_bindingSource approx.profile trace phase outputEq

@@ -77,9 +77,9 @@ theorem MessageBounds.compiled_current_response (bounds : MessageBounds graph)
               rw [node] at chosen
               obtain ⟨choice, _, rfl⟩ := Finset.mem_image.mp chosen
               rcases runtime.serviceDecision_resolution_cases leaks who past view event owner
-                  payload binding checks outputEq codeEq node choice with withheld |
+                  payload binding checks outputEq codeEq node choice with zero |
                   ⟨candidate, value, evidence, _, _, _, physical⟩
-              · exact Or.inr ⟨active.1, by rw [withheld]; rfl⟩
+              · exact Or.inl (zero ▸ silent)
               · exact Or.inr ⟨active.1, by rw [physical]; rfl⟩
         · cases Finset.mem_singleton.mp chosen
           exact Or.inl silent

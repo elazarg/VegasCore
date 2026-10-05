@@ -118,12 +118,10 @@ theorem serviceDecision_resolutionEvidence
         ⟨cast (congrArg EventField.Action outputEq) choice, by
           simp only [cast_cast, cast_eq]⟩
       rcases runtime.serviceDecision_resolution_cases leaks who _ _ event who payload binding
-        checks outputEq codeEq node disclose with withheld |
+        checks outputEq codeEq node disclose with quiet |
           ⟨candidate, value, evidence, resolved, associated, candidateOwner, shape⟩
-      · rw [withheld] at submitted
-        cases Option.some.inj (congrArg ReactiveApplication.Action.transmission submitted)
-        simp only [WitnessedSubmission.emit_eq_resolve, EvidenceRequest.resolve] at issued
-        cases issued
+      · rw [quiet] at submitted
+        cases submitted
       · change EventCode.resolveOutput? binding checks true
           (graph.playerStore who execution.application.config.store) = _ at resolved
         rw [EventCode.resolveOutput?_playerStore] at resolved
@@ -136,9 +134,10 @@ theorem serviceDecision_resolutionEvidence
           cases disclose with
           | true => rfl
           | false =>
-              rw [runtime.serviceDecision_resolution_false leaks who _ _ event who payload
-                binding checks outputEq codeEq node] at shape
-              cases shape
+              simp only [serviceDecision, reactiveDecision, node, reactiveResolutionPacket,
+                cast_cast, cast_eq, Bool.false_eq_true, ↓reduceIte,
+                disclosureSubmission_normalize_withhold] at submitted
+              cases submitted
         subst disclose
         have canonical := runtime.serviceDecision_successful_opening leaks execution recalled
           who event payload binding checks outputEq codeEq node candidate value associated

@@ -20,22 +20,6 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
-theorem roster_count_before {visits : List Player} {slot : Nat} {who : Player}
-    (selected : visits[slot]? = some who) :
-    (visits.take slot).count who < visits.count who := by
-  induction visits generalizing slot with
-  | nil => simp at selected
-  | cons first rest ih =>
-      cases slot with
-      | zero =>
-          simp only [List.getElem?_cons_zero, Option.some.injEq] at selected
-          subst first
-          simp
-      | succ slot =>
-          simp only [List.getElem?_cons_succ] at selected
-          simpa only [List.take_succ_cons, List.count_cons, beq_iff_eq] using
-            Nat.add_lt_add_right (ih selected) (if first = who then 1 else 0)
-
 theorem roster_instruction_actor (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (network : (runtime setup).NetworkPolicy leaks)

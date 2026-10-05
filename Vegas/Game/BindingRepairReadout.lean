@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.EventGraphParameterReadout
-import Vegas.Game.SourceServiceReadout
+import Vegas.Game.RevealServicePayoffs
 import Vegas.Pending.ReactiveBindingFrameStep
 
 /-! # Analysis outcomes of concrete hidden-binding repair

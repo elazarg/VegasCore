@@ -5,6 +5,7 @@ import Vegas.Game.SourceServiceGeometricTiming
 import Vegas.Game.SourceServiceImmediateRisk
 import Vegas.Game.SourceServiceOwnerSettled
 import Vegas.Game.SourceServiceAudit
+import Vegas.Game.RevealServiceCalendarState
 
 /-! # The realized settlement law of the turn-counted policy
 
@@ -21,7 +22,7 @@ player is idle, leave nothing to compare.
 Under the asynchronous contract the first-turn limit has the exact source joint
 law of the typed outcome and the realized settlement
 (`Vegas.sourceServiceFirstTurn_settlement_law`): its readout law is the source
-law, no owner has a public decision miss, and every transmitted packet is
+law, no owner has a public binding omission, and every transmitted packet is
 permitted by the settled record, so an authentic partial audit collects
 nothing. Hence the turn-counted policy has the source joint law of typed
 outcome and realized payoffs within the total deferral weight, on executions
@@ -34,7 +35,8 @@ foreign play this is `Vegas.sourceServiceClients_honestExecution`, and in the
 menu's information model `Vegas.sourceServiceClients_settlement_lawError`. The
 error vanishes with the geometric timing's weight
 (`Vegas.geometricTiming_settlement_lawError`). Deferral can still produce
-charged decision misses; their mass is part of this error.
+charged binding omissions and, at a resolution, uncharged withholding by
+expiry; their mass is part of this error.
 -/
 
 noncomputable section
@@ -343,7 +345,7 @@ theorem sourceServiceTurnPolicy_roundsFrom_bind_within {β : Type}
 /-- **No charge under the first-turn limit.** Under the asynchronous contract,
 at every execution the first-turn profile reaches within the horizon, an
 authentic partial audit collects from no player: no owner has a public
-decision miss and the settled record permits every transmitted packet. -/
+binding omission and the settled record permits every transmitted packet. -/
 theorem sourceServiceFirstTurn_charge_zero {scheduler : (application setup leaks).Scheduler}
     {horizon turns : Nat} {delay bound : (graph setup).EventId → Nat}
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
@@ -552,8 +554,8 @@ source profile with effective disclosures, players admissible for a response
 menu that follow the turn-counted policy have, in the menu's information model,
 the source joint law of typed outcome and realized payoffs within the total
 deferral weight in total variation, for every authentic partial audit and
-every deposit. Charged decision misses caused by deferral are part of this
-error. -/
+every deposit. Binding omissions and expired resolutions caused by deferral
+are part of this error. -/
 theorem sourceServiceTurnPolicy_settlement_lawError
     {scheduler : (application setup leaks).Scheduler} {horizon turns : Nat}
     {delay bound : (graph setup).EventId → Nat}

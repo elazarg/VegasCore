@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.ServiceRosterClock
+import Vegas.Game.RevealServiceRosterMixing
 import Interaction.ReactiveScheduleEvaluation
 
 /-! # The finite roster game evaluates the physical runtime

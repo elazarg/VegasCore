@@ -288,9 +288,9 @@ theorem ServiceBoundary.reveal_state_law [Fintype Player]
   have due := boundary.invariant.due_after_deadline (runtime setup) event entered activated
   have phase := sourceServiceLastPolicy_reveal_roster_readout setup leaks rosters fresh binding
     unresolved next wholeProfile profile refs source embedding refsBefore offset aligned execution
-    boundary.toSourceCheckpoint boundary.binding boundary.remembered (event.val + 1)
+    boundary.toSourceCheckpoint boundary.binding entered (event.val + 1)
     boundary.published boundary.serials network visited remaining absent position
-    ready (boundary.timely event atRank strategic)
+    ready (boundary.timely event atRank strategic) activated due
     (boundary.unsent owner event atRank.ge)
     (boundary.response_offset event atRank owner)
   change ((runtime setup).runInteractionPlan leaks players network

@@ -34,8 +34,8 @@ theorem recorded_compiled_sourceService
     bounds.compiledActions (runtime setup) leaks who past view ⊆
       (sourceServiceMenu setup leaks bounds rosters).actions who past view := by
   classical
-  have optional : ¬ decisionRequired setup leaks rosters who past view := by
-    rintro ⟨selected, sameTurn, _, _, unsent, _⟩
+  have optional : ¬ bindingRequired setup leaks rosters who past view := by
+    rintro ⟨selected, _, sameTurn, _, _, _, unsent, _⟩
     cases Option.some.inj (sameTurn.symm.trans serving)
     rw [recorded] at unsent
     cases unsent

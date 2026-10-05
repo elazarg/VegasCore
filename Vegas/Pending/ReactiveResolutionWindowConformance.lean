@@ -46,16 +46,9 @@ theorem MessageBounds.compiled_resolution_accounted (bounds : MessageBounds grap
         Message.distinctAuthoredCount next.network.ledger owner := by
   apply runtime.event_accounted_response leaks execution who owner event response counted
   rcases bounds.compiled_resolution_cases runtime leaks who _ _ event owner payload binding checks
-    outputEq codeEq node sole response member with rfl | ⟨acting, _, _, shape⟩ |
+    outputEq codeEq node sole response member with rfl |
       ⟨candidate, value, evidence, acting, _, _, _, _, _, shape⟩
   · exact Or.inl rfl
-  · have owned : graph.actor? event = some owner := by
-      have actor := congrArg EventCode.actor codeEq
-      rw [EventCode.actor_cast outputEq (graph.nodes event)] at actor
-      exact actor
-    refine Or.inr ⟨Option.some.inj (acting.symm.trans owned), ?_⟩
-    rw [shape]
-    rfl
   · have owned : graph.actor? event = some owner := by
       have actor := congrArg EventCode.actor codeEq
       rw [EventCode.actor_cast outputEq (graph.nodes event)] at actor

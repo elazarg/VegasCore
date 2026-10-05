@@ -16,9 +16,8 @@ The proof has two edges:
    hidden histories of its information set.
 
 [SourceServiceAudit](../Vegas/Game/SourceServiceAudit.lean) judges authentic
-packet evidence against the final record and separately charges public decision
-misses: binding or resolution expiries without an accepted decision. Canonical
-FALSE is an evidence-free withholding packet, which the final record permits. Packet monitoring can be partial. Positive conditional collection
+packet evidence against the final record and separately checks public binding
+omissions. Packet monitoring can be partial. Positive conditional collection
 and collectible collateral are backend assumptions, not consequences of
 packet authenticity. Runtime utilities depend on initial parameters and public
 results. Cryptographic and EVM realization require separate refinement proofs.

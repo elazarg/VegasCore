@@ -56,14 +56,16 @@ sampler with conditional coverage until box W closes.
   Partial evidence: readiness credentials and the final-record verdict are
   implemented; players transmit only fresh envelopes they author, and ledger
   and pending identifiers stay distinct on every history
-  (`ReactiveApplication.idsDistinct_history`). Explicit resolution decisions are
-  implemented: canonical FALSE emits an evidence-free withholding packet
-  (`canonicalServiceDecision_resolution_false`); the settled verdict permits an
-  accepted withholding without evidence (`SettledRecord.SettledContent`); every
-  strategic expiry records a public missed decision (`State.missedEvents`,
-  `environmentStep_expire_missedEvents`) that accepted decisions never write
-  (`handle_missedEvents`), and the audit charges it for both event kinds
-  (`PublicView.missedDecisionBy`, `serviceAudit_charge_of_miss`). The remaining
+  (`ReactiveApplication.idsDistinct_history`). Silent withholding is
+  implemented: a canonical resolution response is silence or the successful
+  authentic opening (`serviceDecision_resolution_cases`); resolution expiry
+  executes source FALSE with publication failure
+  (`environmentStep_expire_resolve_eq`); and the audit charges only a traffic
+  verdict or a public binding omission read from the record
+  (`serviceAudit_charge`, `PublicView.missedBinding`), so an expired resolution
+  is never charged. Divergence: the contract still accepts an explicit
+  withholding call, which executes FALSE and whose packet the settled verdict
+  forbids (`SettledRecord.SettledContent`), instead of rejecting it. The remaining
   rows have not been checked against the implementation one by one.
 - [x] **A2. A non-calendar builder satisfies the contract.** Evidence: the
   fixed linear scheduler of
@@ -93,10 +95,10 @@ sampler with conditional coverage until box W closes.
   `eventCount * weight` in the menu's information model, and
   `geometricTiming_deferral_tendsto` makes it vanish. The route couples the
   turn-counted run with its first-turn limit as laws of whole executions
-  (`sourceServiceTurnPolicy_runToHorizon_bind_within`), so charged decision
-  misses caused by deferral lie inside the error, and the first-turn limit's
-  joint law is exact (`sourceServiceFirstTurn_settlement_law`: no public miss by
-  `sourceServiceFirstTurn_no_miss`, permitted packets by
+  (`sourceServiceTurnPolicy_runToHorizon_bind_within`), so charged binding
+  omissions and resolutions expired by deferral lie inside the error, and the
+  first-turn limit's joint law is exact (`sourceServiceFirstTurn_settlement_law`:
+  no public binding omission by `sourceServiceFirstTurn_no_miss`, permitted packets by
   `sourceServiceTurnPolicy_owner_settled`). The information-model form for
   admissible menus is `sourceServiceClients_settlement_lawError`.
 - [ ] **S2. One common native consistency sequence.** One fully mixed family
@@ -125,8 +127,7 @@ sampler with conditional coverage until box W closes.
   Partial evidence: under the final-record coverage hypothesis
   `FinalForbiddenEvidenceCoverage`, collection bounds under arbitrary later
   policies for signed constructor breaches
-  (`signedContentBreach_collection_continuation_of_finalCoverage`; withholding
-  is a breach only when it carries evidence),
+  (`signedContentBreach_collection_continuation_of_finalCoverage`),
   noncanonical commitment handles
   (`noncanonicalCommitment_collection_continuation`) and openings whose public
   guards fail (`guardFailingOpening_collection_continuation`), combined in
@@ -151,7 +152,7 @@ sampler with conditional coverage until box W closes.
 - [ ] **S8. Composition.** The retained game is the risk menu
   (`Vegas/Pending/ReactiveRiskMenu.lean`): canonical responses while an owner
   is clear, and every unforbidden bounded response once the owner has a public
-  decision miss or recalls its own unprotected opportunity, with free play there
+  binding omission or recalls its own unprotected opportunity, with free play there
   chosen by rational completion. S1–S7 compose through
   `exists_sequentialEquilibrium_limit_of_local_comparisons_of_lawError` and
   `sequentialEquilibrium_extends_of_continuation_unclocked` into the target

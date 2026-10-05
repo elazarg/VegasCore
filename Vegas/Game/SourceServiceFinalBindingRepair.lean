@@ -29,7 +29,7 @@ theorem final_binding_history_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (players : Player → (application setup leaks).Policy)
     (owner : Player) (remaining : Nat)
@@ -77,7 +77,7 @@ theorem final_binding_history_coupling
         (∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
             record.envelope = false) ∨
-        event ∈ next.1.application.missedEvents ∨
+        next.1.application.publicView.missedBinding event = true ∨
         BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 := by
   classical
   intro app strategy plan
@@ -155,7 +155,7 @@ theorem final_binding_history_coupling
       originalReady originalTimely originalUnused unsent originalVacant originalPublished
       entered ((runtime setup).deadline event) originalActivated due visits absent
       (frame.network ▸ serials)
-      (required_decision_sourceService setup leaks bounds rosters owner _ _) available
+      (required_binding_sourceService setup leaks bounds rosters owner _ _) available
   refine ⟨coupling, first, ?_, related⟩
   rw [second]
   apply bind_congr_on_support _

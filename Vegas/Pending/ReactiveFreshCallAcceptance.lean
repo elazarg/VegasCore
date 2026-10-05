@@ -74,18 +74,7 @@ theorem freshServiceAcceptable.tokenValid {view : PublicView graph}
       | sample _ _ _ _ =>
           simp only [freshServiceAcceptable, freshServiceEnvelope, node] at conforming
           exact conforming.2.2.2.2.elim
-  | withhold event =>
-      cases node : nodeView graph event with
-      | resolve owner payload binding checks outputEq codeEq =>
-          obtain ⟨_, _, _, tokened, _⟩ :=
-            (runtime.freshServiceEnvelope_withhold_iff view id event owner payload binding checks
-              outputEq codeEq node evidence token).mp conforming
-          subst tokened
-          exact WitnessedPacket.tokenValid_withhold _ _
-      | bind _ _ _ _ =>
-          simp only [freshServiceAcceptable, freshServiceEnvelope, node, and_false] at conforming
-      | sample _ _ _ _ =>
-          simp only [freshServiceAcceptable, freshServiceEnvelope, node, and_false] at conforming
+  | withhold actual => exact conforming.elim
   | malformed raw => exact conforming.elim
 
 /-- A packet acceptable on the public view its author saw is accepted at a
@@ -166,21 +155,7 @@ theorem freshServiceAcceptable_accepted (state : State graph) (view : PublicView
       | sample _ _ _ _ =>
           simp only [freshServiceAcceptable, freshServiceEnvelope, node] at conforming
           exact conforming.2.2.2.2.elim
-  | withhold actual =>
-      change some actual = some event at named
-      cases Option.some.inj named
-      cases node : nodeView graph event with
-      | resolve owner payload binding checks outputEq codeEq =>
-          obtain ⟨ready, _, _, _, sender⟩ :=
-            (runtime.freshServiceEnvelope_withhold_iff view id event owner payload binding checks
-              outputEq codeEq node evidence token).mp conforming
-          obtain ⟨disclose, _, accepted⟩ := runtime.handle_withhold_failure_eq state id event owner
-            payload binding checks outputEq codeEq node (readyOf ready) timely sender
-          exact ⟨_, accepted⟩
-      | bind _ _ _ _ =>
-          simp only [freshServiceAcceptable, freshServiceEnvelope, node, and_false] at conforming
-      | sample _ _ _ _ =>
-          simp only [freshServiceAcceptable, freshServiceEnvelope, node, and_false] at conforming
+  | withhold actual => exact conforming.elim
   | malformed raw => exact conforming.elim
 
 end Vegas.EventGraphRuntime

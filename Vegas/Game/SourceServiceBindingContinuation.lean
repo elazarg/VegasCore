@@ -37,7 +37,7 @@ theorem sourceServiceTimedPolicy_binding_response_continuation
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (timing : TimingLaw setup rosters)
     (full : ∀ event who owned, FullSupport (timing event who owned))
     (network : (runtime setup).NetworkPolicy leaks)
@@ -203,13 +203,12 @@ theorem sourceServiceTimedPolicy_binding_response_continuation
   have future : ∀ slot ∈ posterior.support,
       (execution.recall owner).length ≤ rosterOffset setup rosters owner event + slot.val := by
     have positive : 0 < (rosters event).count owner :=
-      List.count_pos_iff.mpr
-        (opportunities event owner (binding_actor setup event owner payload outputEq))
+      List.count_pos_iff.mpr (opportunities event owner payload outputEq)
     let last : Fin ((rosters event).count owner) := ⟨(rosters event).count owner - 1, by omega⟩
-    exact sourceServiceTimedMixture_decision_future setup leaks bounds values initialValues capacity
+    exact sourceServiceTimedMixture_binding_future setup leaks bounds values initialValues capacity
       rosters opportunities network wholeProfile permitted owner
       ⟨remainingFuel, some owner, execution⟩
-      trace rfl event ready owned unsent (timing event owner owned) last
+      trace rfl event ready owned payload outputEq unsent (timing event owner owned) last
       (full event owner owned last) (by dsimp only [last]; omega)
   have codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind owner payload := by

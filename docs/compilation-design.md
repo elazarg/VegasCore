@@ -14,15 +14,11 @@ observed packets. They do not see unsampled pending messages or the builder's
 hidden history.
 
 The [canonical client](../Vegas/Pending/ReactiveCanonicalDecision.lean) implements
-source FALSE, and TRUE whose owner-local validation fails, by an authenticated
-evidence-free withholding packet, which completes the resolution with FALSE on
-inclusion. The [final-record audit](../Vegas/Pending/ReactiveSettledVerdict.lean)
-permits an accepted withholding packet that carries no evidence. Silence is WAIT,
-an undecided owner. Expiry of a strategic event without an accepted decision
-executes source FALSE or binding failure and records a public decision miss
-(`Vegas.EventGraphRuntime.PublicView.missedDecisionBy`), which the
-[service audit](../Vegas/Pending/ReactiveServiceAudit.lean) charges like a
-binding omission.
+source FALSE or failed validation by silence followed by
+ordinary FALSE expiry. A raw explicit withholding call also executes FALSE, but
+the [final-record audit](../Vegas/Pending/ReactiveSettledVerdict.lean) forbids its
+settled packet. Packet-free resolution expiry is not a binding-omission charge.
+WAIT therefore need not represent a deviation from the source prescription.
 
 A runtime compiler result needs three kinds of evidence: executable source
 correspondence, preservation of the information used by strategies, and actual

@@ -191,12 +191,9 @@ theorem canonicalServiceDecision_freshServiceEnvelope {horizon remaining : Nat}
           have emitted := WitnessedSubmission.normalizeReactive_emit (runtime setup) leaks
             middle.application actor (middle.network.known actor)
               (disclosureSubmission (.opening event handle ⟨payload, value⟩))
-          have verified : middle.application.candidates.verify handle ⟨payload, value⟩ = true :=
-            (CommitmentCandidates.verify_eq_true_iff _ _ _).mpr fixed
-          apply emitted.trans
-          simp only [application, EventGraphRuntime.reactiveApplication,
-            disclosureSubmission, WitnessedSubmission.emit, Submission.register,
-            submitStep_opening, handleOwner, verified, and_self, ↓reduceIte]
+          have packet := (runtime setup).windowOpening_packet leaks actor event handle
+            ⟨payload, value⟩ middle.application (middle.network.known actor) handleOwner fixed
+          exact emitted.trans packet
         rw [packetEq, middle.application.publicView_tokenFor_of_ready _ event rfl ready]
         apply ((runtime setup).freshServiceEnvelope_opening_iff middle.application.publicView
           (actor, middle.network.nextSerial actor) event actor payload binding checks outputEq
@@ -212,19 +209,8 @@ theorem canonicalServiceDecision_freshServiceEnvelope {horizon remaining : Nat}
         rw [EventGraph.GuardCheck.allAccepted?_publicStore]
         exact EventGraph.EventCode.guards_pass_of_resolve_success binding checks true
           middle.application.config.store value resolved
-      · simp only [packet,
-          ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
-          disclosureSubmission, WitnessedSubmission.normalizeReactive,
-          Submission.normalizeReactive_none, EvidenceRequest.normalize_none] at submits
-        have materialEq : material = ⟨⟨.withhold event, none⟩, .none⟩ := by
-          exact (Option.some.inj submits).symm
-        subst materialEq
-        rw [reactiveApplication_packet_none,
-          middle.application.publicView_tokenFor_of_ready _ event rfl ready]
-        apply ((runtime setup).freshServiceEnvelope_withhold_iff middle.application.publicView
-          (actor, middle.network.nextSerial actor) event actor payload binding checks outputEq
-          codeEq node none (some ⟨event⟩)).mpr
-        exact ⟨readyView, deadline, rfl, rfl, rfl⟩
+      · rw [packet] at submits
+        cases submits
 
 end Decision
 

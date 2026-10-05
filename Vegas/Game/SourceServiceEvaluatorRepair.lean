@@ -29,7 +29,7 @@ theorem active_evaluator_stopped_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
@@ -75,7 +75,7 @@ theorem active_evaluator_stopped_coupling
           record.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
             record.envelope = false) ∨
-          pair.1.execution.application.publicView.missedDecisionBy owner = true ∨
+          pair.1.execution.application.publicView.missedBindingBy owner = true ∨
           BindingMemory.Frame (runtime setup) leaks pair.2.2 owner pair.1.execution
             pair.2.1.execution) := by
   intro app menu effective horizon scheduler inclusion policy repair

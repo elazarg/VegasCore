@@ -6,7 +6,7 @@ import Vegas.Game.SourceServiceTimedAdmissibility
 
 Actual retained histories determine the current owner count. Positive timing
 and supported effective source choices then cover the entire retained menu,
-including deferral before the final owner visit and explicit false disclosure.
+including silence after failed guarded disclosure.
 -/
 
 noncomputable section
@@ -26,7 +26,7 @@ private theorem current_slot
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (who : Player) (control : (application setup leaks).Control)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
@@ -64,6 +64,37 @@ private theorem current_slot
     exact (boundary.application.publicView_eventReady event).mpr (checkpoint.ready event rfl)
 
 omit [Fintype Player] in
+private theorem nonbinding_silence
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (bounds : MessageBounds (graph setup)) (who : Player)
+    (past : List (application setup leaks).PlayerEntry)
+    (view : (application setup leaks).PlayerView) (event : (graph setup).EventId)
+    (serving : view.application.publicView.ownTurn? who = some event)
+    (owned : (graph setup).actor? event = some who)
+    (ready : view.application.publicView.EventReady event)
+    (nonbinding : ∀ payload, (graph setup).outputLayout event ≠ .binding who payload) :
+    (⟨none⟩ : (application setup leaks).Action) ∈
+      bounds.decisionActions (runtime setup) leaks who past view := by
+  classical
+  simp only [MessageBounds.decisionActions, serving, owned, ready, and_self, ↓reduceIte]
+  cases node : nodeView (graph setup) event with
+  | sample payload law outputEq codeEq => exact Finset.mem_singleton_self _
+  | bind owner payload outputEq codeEq =>
+      have actor : (graph setup).actor? event = some owner := by
+        change EventGraph.EventCode.actor ((graph setup).nodes event) = _
+        rw [← EventGraph.EventCode.actor_cast outputEq ((graph setup).nodes event), codeEq]
+        rfl
+      cases Option.some.inj (owned.symm.trans actor)
+      exact False.elim (nonbinding payload outputEq)
+  | resolve owner payload binding checks outputEq codeEq =>
+      refine Finset.mem_image.mpr ⟨false, Finset.mem_univ _, ?_⟩
+      simp only [serviceDecision, reactiveDecision, node, reactiveResolutionPacket,
+        cast_cast, cast_eq, Bool.false_eq_true, ↓reduceIte,
+        disclosureSubmission_normalize_withhold]
+      rfl
+
+omit [Fintype Player] in
 private theorem opportunity_source
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -84,6 +115,23 @@ private theorem opportunity_source
     exact (application setup leaks).silentPolicy_support past view
   · exact (PMF.mem_support_pure_iff _ _).mpr rfl
 
+omit [Fintype Player] in
+private theorem opportunity_silent
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (profile : BehavioralProfile setup.program) (who : Player) (event : (graph setup).EventId)
+    (past : List (application setup leaks).PlayerEntry)
+    (view : (application setup leaks).PlayerView)
+    (unsent : (runtime setup).eventRecorded leaks past event = false)
+    (silence : (⟨none⟩ : (application setup leaks).Action) ∈
+      (sourceServicePolicy setup leaks profile who past view).support)
+    (response : (application setup leaks).Action)
+    (supported : response ∈ ((application setup leaks).silentPolicy past view).support) :
+    response ∈ (sourceServiceOpportunity setup leaks profile who event past view).support := by
+  simp only [sourceServiceOpportunity, unsent, Bool.false_eq_true, ↓reduceIte,
+    PMF.support_bind]
+  exact Set.mem_iUnion₂.mpr ⟨⟨none⟩, silence, by simpa only [↓reduceIte] using supported⟩
+
 private theorem required_choices
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -91,13 +139,13 @@ private theorem required_choices
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView)
     (witness : (application setup leaks).Action)
-    (present : witness ∈ bounds.requiredDecisionActions (runtime setup) leaks who past view)
+    (present : witness ∈ bounds.requiredBindingActions (runtime setup) leaks who past view)
     (nonsilent : witness ≠ ⟨none⟩)
     (response : (application setup leaks).Action)
-    (member : response ∈ bounds.requiredDecisionActions (runtime setup) leaks who past view) :
+    (member : response ∈ bounds.requiredBindingActions (runtime setup) leaks who past view) :
     response ∈ bounds.decisionActions (runtime setup) leaks who past view := by
   classical
-  dsimp only [MessageBounds.requiredDecisionActions] at present member
+  dsimp only [MessageBounds.requiredBindingActions] at present member
   split at present
   · rename_i nonempty
     rw [ite_eq_left nonempty] at member
@@ -111,7 +159,7 @@ private theorem required_decision
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (profile : BehavioralProfile setup.program)
     (permitted : ∀ who, (profile who).Admitted setup.program
@@ -124,7 +172,7 @@ private theorem required_decision
     (ready : control.execution.application.config.cut.Ready event)
     (owned : (graph setup).actor? event = some who)
     (unsent : (runtime setup).eventRecorded leaks (control.execution.recall who) event = false)
-    (required : decisionRequired setup leaks rosters who (control.execution.recall who)
+    (required : bindingRequired setup leaks rosters who (control.execution.recall who)
       (control.execution.observe (application setup leaks) who))
     (response : (application setup leaks).Action)
     (member : response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who
@@ -135,13 +183,13 @@ private theorem required_decision
   let app := application setup leaks
   let past := control.execution.recall who
   let view := control.execution.observe app who
-  change decisionRequired setup leaks rosters who past view at required
+  change bindingRequired setup leaks rosters who past view at required
   have memberRequired : response ∈
-      bounds.requiredDecisionActions (runtime setup) leaks who past view := by
+      bounds.requiredBindingActions (runtime setup) leaks who past view := by
     change response ∈ sourceServiceActions setup leaks bounds rosters who past view at member
     simpa only [sourceServiceActions, ite_eq_left required] using member
   have serving := ownTurn?_of_ready setup control.execution.application ready owned
-  obtain ⟨other, otherTurn, _, ready, _, last⟩ := required
+  obtain ⟨other, payload, otherTurn, binding, _, ready, _, last⟩ := required
   have same : other = event := Option.some.inj (otherTurn.symm.trans serving)
   subst other
   obtain ⟨action, supported⟩ :=
@@ -150,15 +198,15 @@ private theorem required_decision
     capacity rosters opportunities network profile permitted who control trace active event
       serving owned unsent action supported
   have actionRequired : action ∈
-      bounds.requiredDecisionActions (runtime setup) leaks who past view := by
+      bounds.requiredBindingActions (runtime setup) leaks who past view := by
     have permittedAction := covered.1
     change action ∈ sourceServiceActions setup leaks bounds rosters who past view at permittedAction
-    have selectedRequired : decisionRequired setup leaks rosters who past view :=
-      ⟨event, serving, owned, ready, unsent, last⟩
+    have selectedRequired : bindingRequired setup leaks rosters who past view :=
+      ⟨event, payload, serving, binding, owned, ready, unsent, last⟩
     simpa only [sourceServiceActions, ite_eq_left selectedRequired] using permittedAction
   have nonsilent : action ≠ ⟨none⟩ := by
     intro silent
-    have submitted := covered.2
+    have submitted := covered.2 payload binding
     rw [silent] at submitted
     cases submitted
   exact required_choices setup leaks bounds who past view action actionRequired nonsilent
@@ -174,7 +222,7 @@ theorem sourceServiceTimedPolicy_supported
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (timing : TimingLaw setup rosters)
     (timingFull : ∀ event who owned, FullSupport (timing event who owned))
@@ -244,7 +292,7 @@ theorem sourceServiceTimedPolicy_supported
         apply app.policyMixture_action_support _ _ past view current response currentSupported
         simpa only [sourceServiceTimedFamily, ReactiveApplication.scheduledPolicy,
           Option.map_some, ← count, ↓reduceIte] using supported
-      by_cases required : decisionRequired setup leaks rosters who past view
+      by_cases required : bindingRequired setup leaks rosters who past view
       · have decision := required_decision setup leaks bounds values initialValues capacity rosters
           opportunities network profile permitted who control trace active event controlReady owned
             unsent required response member
@@ -279,7 +327,16 @@ theorem sourceServiceTimedPolicy_supported
                 rosterOffset setup rosters who event + (rosters event).count who := by
               have within := current.isLt
               omega
-            exact False.elim (required ⟨event, serving, owned, ready, unsent, final⟩)
+            have nonbinding : ∀ payload,
+                (graph setup).outputLayout event ≠ .binding who payload := by
+              intro payload binding
+              exact required ⟨event, payload, serving, binding, owned, ready, unsent, final⟩
+            have silence := sourceService_decision_supported setup leaks bounds values capacity
+              rosters opportunities network profile full who control trace active event controlReady
+              owned ⟨none⟩ (nonbinding_silence setup leaks bounds who past view event
+                serving owned ready nonbinding)
+            exact selected (opportunity_silent setup leaks profile who event past view
+              unsent silence response silenced)
         · exact selected (opportunity_source setup leaks profile who event past view
             unsent response source)
   · have idle : view.application.publicView.ownTurn? who = none := sole.ownTurn?_foreign owned
@@ -298,7 +355,7 @@ theorem sourceServiceTimedProfile_fullyMixed
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ActorOpportunities setup rosters)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (timing : TimingLaw setup rosters)
     (timingFull : ∀ event who owned, FullSupport (timing event who owned))
