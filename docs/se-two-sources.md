@@ -97,6 +97,21 @@ it.
    information sets are those of `S_exp` minus every history containing a
    withholding.
 
+6. **Concurrent reveals (deferred).** Reveals are ordered because a later
+   owner's withholding choice may depend on earlier opened values. In `S_int`
+   there is no such choice, and under the forfeit withholding is strictly
+   dominated at every information set whatever the owner knows, so the
+   information available to it does not matter. A compiler for `S_int` could
+   then run a block of consecutive reveals concurrently, even though the
+   runtime lets the last revealer read the earlier openings while they are
+   still pending. The licence is game-theoretic, not a program equivalence: in
+   `S_exp`, with priced withholding, reordering changes the withholder's
+   information and is not faithful. Bindings are concurrent because their
+   values are hidden; reveals would be concurrent because their alternative is
+   deterred. Limits: a guard that reads an earlier publication, and any
+   decision between two reveals that observes the first, keep their order.
+   Not part of the current design.
+
 ## Proposed box
 
 **H. Intended-game preservation.** For every program of `S_int` and every
