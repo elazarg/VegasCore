@@ -73,27 +73,32 @@ sampler with conditional coverage until box W closes.
 
 ## S. Serial stage, every contract builder
 
-- [ ] **S1. Honest execution.** For every source profile, the prescribed
+- [x] **S1. Honest execution.** For every source profile, the prescribed
   turn-counted clients give the source joint law of initial parameters, typed
   results and realized settlement, up to an error that vanishes with the
   deferral weight, and their every transmitted packet is permitted by the final
   record against arbitrary foreign raw play.
-  Partial evidence: `prescribed_packet_settles`,
-  `sourceServiceTurnPolicy_boundaryContinuationWithin`; `prescribed_settlement`
-  for the example. For every scheduler satisfying `AsyncContract` and
-  `AsyncTimely`, `sourceServiceTurnPolicy_firstTurnCompletes` discharges the
-  first-turn premises, so `sourceServiceTurnPolicy_initialized_lawError` bounds
-  every typed outcome probability by the total deferral weight, and
-  `geometricTiming_boundaryContinuationWithin` with
-  `geometricTiming_deferral_tendsto` makes that error vanish.
-  `sourceServiceTurnPolicy_owner_settled` shows every packet of an owner
-  following the prescribed policy is permitted by the actual settled record,
-  whatever the other players do; with explicit decisions the prescribed packets
-  include evidence-free withholding. With exact first-turn timing,
-  `sourceServiceFirstTurn_no_miss` shows the owner has no public decision miss
-  against arbitrary foreign play. Missing: the realized settlement law; silent
-  deferrals can still produce public decision misses at bindings and
-  resolutions, which are charged.
+  Evidence: `sourceServiceClients_honestExecution`
+  ([SourceServiceTurnSettlement](../Vegas/Game/SourceServiceTurnSettlement.lean)).
+  For every scheduler satisfying `AsyncContract` and `AsyncTimely`, every turn
+  timing and every source profile, the clients (the turn-counted policy of the
+  profile's disclosure normalization, `sourceServiceClientProfile`, which has
+  the profile's source law) give executions whose joint law of complete typed
+  terminal state and realized settlement vector is within the total deferral
+  weight in total variation of the source joint law, for every authentic
+  partial audit and every deposit; and every packet of a player following its
+  client is permitted by the settled record at every execution within the
+  horizon, whatever the other players do. The error is the deferral weight
+  itself; `geometricTiming_settlement_lawError` bounds it by
+  `eventCount * weight` in the menu's information model, and
+  `geometricTiming_deferral_tendsto` makes it vanish. The route couples the
+  turn-counted run with its first-turn limit as laws of whole executions
+  (`sourceServiceTurnPolicy_runToHorizon_bind_within`), so charged decision
+  misses caused by deferral lie inside the error, and the first-turn limit's
+  joint law is exact (`sourceServiceFirstTurn_settlement_law`: no public miss by
+  `sourceServiceFirstTurn_no_miss`, permitted packets by
+  `sourceServiceTurnPolicy_owner_settled`). The information-model form for
+  admissible menus is `sourceServiceClients_settlement_lawError`.
 - [ ] **S2. One common native consistency sequence.** One fully mixed family
   over source trembles, timing and raw responses, with exceptional mass
   negligible relative to clean reach on every information set, converging to a

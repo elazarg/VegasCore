@@ -201,6 +201,7 @@ import Vegas.Game.SourceServiceTimingPosterior
 import Vegas.Game.SourceServiceTimingRates
 import Vegas.Game.SourceServiceTrafficSound
 import Vegas.Game.SourceServiceTurnPolicy
+import Vegas.Game.SourceServiceTurnSettlement
 import Vegas.Game.SourceServiceTurnSubmissions
 import Vegas.Game.SourceServiceUnsentBinding
 import Vegas.Game.SourceServiceUnsentResolution
