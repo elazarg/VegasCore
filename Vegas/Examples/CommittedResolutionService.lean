@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ServiceRosterAsync
+import Vegas.Game.SourceServiceCanonicalSerial
+import Vegas.Game.SourceServiceAudit
 import Vegas.Expr.Simple
 import GameTheoryExtensions.Math.Probability.Uniform
 import Interaction.ReactiveScheduleClock
@@ -1070,5 +1072,148 @@ theorem silent_bob_input_law : ∃ input : List app.PlayerEntry × app.PlayerVie
         ReactiveApplication.PlayerView.mk _ _ _
       rw [network, baseNetwork, receipts, baseReceipts, state, baseState,
         silent_completed_bob_view]
+
+open GameTheory.Enforcement
+
+private theorem prescribed_opening_content (before : PublicView nativeGraph)
+    (record : SettledRecord nativeGraph) (event : nativeGraph.EventId)
+    (message : Message Player (WitnessedPacket nativeGraph))
+    (named : message.payload.call.event? nativeGraph = some event)
+    (conforming : (runtime setup).freshServiceEnvelope before message)
+    (owned : nativeGraph.actor? event = some message.sender) :
+    record.SettledContent message := by
+  fin_cases event
+  · change none = some message.sender at owned
+    cases owned
+  · let binding : FieldRef nativeGraph.layout (.binding alice .bool) := ⟨.inl ⟨0, by decide⟩, rfl⟩
+    obtain ⟨candidate, raw, _, _, _, typed, packet, _⟩ :=
+      freshServiceEnvelope_resolution_shape (runtime setup) before alice aliceEvent .bool
+        binding [] rfl rfl rfl message named conforming
+    cases raw with
+    | mk kind value =>
+        change kind = .bool at typed
+        subst kind
+        unfold SettledRecord.SettledContent
+        rw [packet]
+        refine ⟨by simp [certifiedOpening], ?_⟩
+        exact (record.view.openingGuardsAccepted_iff alice aliceEvent .bool binding []
+          rfl rfl rfl candidate ⟨.bool, value⟩ (some ⟨candidate, ⟨.bool, value⟩⟩)).mpr
+          ⟨value, rfl, rfl⟩
+  · let binding : FieldRef nativeGraph.layout (.binding bob .bool) := ⟨.inl ⟨1, by decide⟩, rfl⟩
+    obtain ⟨candidate, raw, _, _, _, typed, packet, _⟩ :=
+      freshServiceEnvelope_resolution_shape (runtime setup) before bob bobEvent .bool
+        binding [] rfl rfl rfl message named conforming
+    cases raw with
+    | mk kind value =>
+        change kind = .bool at typed
+        subst kind
+        unfold SettledRecord.SettledContent
+        rw [packet]
+        refine ⟨by simp [certifiedOpening], ?_⟩
+        exact (record.view.openingGuardsAccepted_iff bob bobEvent .bool binding []
+          rfl rfl rfl candidate ⟨.bool, value⟩ (some ⟨candidate, ⟨.bool, value⟩⟩)).mpr
+          ⟨value, rfl, rfl⟩
+
+/-- Every transmitted envelope on initialized all-prescribed play is accepted and permitted. -/
+theorem prescribed_packets_clean (original : BehavioralProfile program) (execution : app.Execution)
+    (reached : execution ∈ (app.roundsFrom (initialLaw setup) scheduler
+      (sourceServiceTurnPolicy setup leaks bound 0 (firstTurnTiming setup 0) original)
+      horizon).support) :
+    ∀ input ∈ execution.network.inputs,
+      (input.envelope.id, true) ∈ execution.receipts ∧
+        ((runtime setup).settledRecord leaks execution).permits input.envelope = true := by
+  let players := sourceServiceTurnPolicy setup leaks bound 0 (firstTurnTiming setup 0) original
+  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler players
+    horizon le_rfl execution reached
+  simp only [Nat.sub_self] at trace
+  have facts := legalFacts setup leaks horizon scheduler _ trace
+  have finished := completes ⟨0, none, execution⟩ trace ⟨rfl, rfl⟩
+  intro input member
+  obtain ⟨entry, inside, material, fresh, emitted, _, _, _⟩ :=
+    facts.provenance.inputs input member
+  obtain ⟨calls, once, _⟩ := serialFacts_roundsFrom contract players input.envelope.sender
+    (firstTurnTiming setup 0) original rfl horizon le_rfl execution reached
+  obtain ⟨event, message, sent, authored, addressed, submitted, fits⟩ :=
+    calls entry inside material fresh
+  have identified : message = input.envelope := Option.some.inj (sent.symm.trans emitted)
+  subst message
+  have conforming := sourceServiceTurnPolicy_freshServiceEnvelope scheduler players
+    input.envelope.sender (firstTurnTiming setup 0) original rfl horizon execution reached
+    entry inside material fresh input.envelope emitted
+  obtain ⟨actual, named, ready, owned⟩ :=
+    (runtime setup).freshServiceEnvelope_owned _ input.envelope conforming
+  have eventEq : actual = event := Option.some.inj (named.symm.trans addressed)
+  subst actual
+  obtain ⟨earlier, later, split⟩ := List.mem_iff_append.mp inside
+  have call : FreshCall setup leaks input.envelope.sender event bound entry input.envelope :=
+    ⟨⟨material, fresh⟩, emitted, rfl, addressed, ready, fits,
+      freshServiceEnvelope.acceptable (runtime setup) conforming⟩
+  have sole : ∀ other ∈ earlier ++ later,
+      ¬ EmitsOtherFor (runtime setup) leaks other event input.envelope.id := by
+    intro other member ⟨replayed, output, author, addressedOther, different⟩
+    have recalled : other ∈ execution.recall input.envelope.sender := by
+      rw [split]
+      rcases List.mem_append.mp member with left | right
+      · exact List.mem_append_left _ left
+      · exact List.mem_append_right _ (List.mem_cons_of_mem _ right)
+    have issued : replayed ∈ app.outputs (execution.recall input.envelope.sender) :=
+      List.mem_filterMap.mpr ⟨other, recalled, output⟩
+    rw [← facts.inputs input.envelope.sender] at issued
+    obtain ⟨record, present, projected⟩ := List.mem_filterMap.mp issued
+    split at projected
+    · cases Option.some.inj projected
+      obtain ⟨issuer, issuerMember, issuerMaterial, issuerFresh, issuerEmitted,
+        state, known, packet⟩ := facts.provenance.inputs record present
+      rw [author] at issuerMember
+      have issuerNames : (runtime setup).submittedEvent? leaks issuer.action =
+          record.envelope.payload.call.event? nativeGraph := by
+        unfold EventGraphRuntime.submittedEvent?
+        rw [issuerFresh, ← packet]
+        rfl
+      exact different (once issuer issuerMember entry inside event _ _
+        (issuerNames.trans addressedOther) submitted
+        issuerEmitted emitted)
+    · cases projected
+  have accepted := (prescribed_packet_settles setup leaks inclusion trace event
+    input.envelope.sender owned earlier later entry input.envelope split call sole).2
+    (by rw [finished]; exact Finset.mem_univ event)
+  refine ⟨accepted, SettledRecord.permits_of_accepted _ _ event addressed accepted ?_⟩
+  exact prescribed_opening_content entry.beforeView.application.publicView _ event
+    input.envelope addressed conforming owned
+
+/-- Authentic terminal sampling leaves the entire prescribed payoff vector unchanged. -/
+theorem prescribed_settlement (original : BehavioralProfile program) (execution : app.Execution)
+    (reached : execution ∈ (app.roundsFrom (initialLaw setup) scheduler
+      (sourceServiceTurnPolicy setup leaks bound 0 (firstTurnTiming setup 0) original)
+      horizon).support)
+    (sample : List (SettledEvidence setup) → PMF (List (SettledEvidence setup)))
+    (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
+    (base : app.ProtocolState → Player → ℝ) (deposit : Player → ℝ) :
+    TerminalAudit.settlement base ((runtime setup).serviceAuditObservation leaks)
+      (sourceServiceAudit setup leaks sample) deposit (some ⟨0, none, execution⟩) =
+        PMF.pure (base (some ⟨0, none, execution⟩)) := by
+  apply TerminalAudit.settlement_clean
+  intro who
+  have clean := prescribed_packets_clean original execution reached
+  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler _
+    horizon le_rfl execution reached
+  simp only [Nat.sub_self] at trace
+  have noOmission := execution.application.publicView.missedBindingBy_of_publications
+    (by
+      intro event owner payload
+      fin_cases event <;> intro incompatible <;> cases incompatible) who
+  unfold sourceServiceAudit
+  rw [(runtime setup).serviceAudit_charge, noOmission]
+  simp only [Bool.false_eq_true, ↓reduceIte]
+  apply app.sampledTrafficAudit_sound
+  · exact authentic _
+  · intro record member _
+    have inputs := app.stateTraffic_inputs (initialLaw setup) horizon scheduler trace
+    change (app.executionTraffic execution).map ReactiveApplication.TrafficRecord.input =
+      execution.network.inputs at inputs
+    have present : record.input ∈ execution.network.inputs := by
+      rw [← inputs]
+      exact List.mem_map.mpr ⟨record, member, rfl⟩
+    exact (clean record.input present).2
 
 end Vegas.Examples.CommittedResolutionService

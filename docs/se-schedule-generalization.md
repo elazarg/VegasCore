@@ -267,7 +267,12 @@ Censored T's FALSE receipt separates it from clean expiry. `silent_bob_input_law
 one common full first-Bob input under literal silent initialized play at both types,
 including empty own recall and public Alice failure. It supplies silent witnesses,
 not mixed-play Bayes weights or a characterization of the entire information fiber.
-TRUE acceptance, zero charge and concrete first-packet verdict consumers remain open.
+`prescribed_packets_clean` derives TRUE receipts and final permissions for all transmitted
+envelopes on initialized ALL-prescribed `sourceServiceTurnPolicy`/`firstTurnTiming` play,
+for any source behavioral profile. `prescribed_settlement` gives the full joint payoff vector
+as pure arbitrary base utility under any authentic sampler and arbitrary deposit.
+Prompt first-T acceptance against arbitrary later RAW actions, source outcome transport,
+mixed-play Bayes bounds and concrete first-packet verdict consumers remain open.
 The two native SE constructions are conditional paper mathematics;
 no checked native/general SE or live watcher follows.
 
@@ -282,9 +287,9 @@ result counts toward that proof only with premises derived from the actual runti
 
 ## Road to the proof
 
-1. **Derive the concrete runtime adapters.** From the checked fixed horizon-16 service,
-   prove TRUE acceptance and zero charge on the two prescribed laws. Instantiate
-   [opening conformance](../Vegas/Pending/ReactiveOpeningConformance.lean) and existing
+1. **Derive the remaining concrete runtime adapters.** Reuse the checked all-prescribed
+   receipt and settlement consumers; prove prompt first-T acceptance under arbitrary later RAW.
+   Instantiate [opening conformance](../Vegas/Pending/ReactiveOpeningConformance.lean) and existing
    [condemnation/persistence](../Vegas/Game/ServiceSettledEvidence.lean) with the actual initialized
    resources for first-packet verdicts under RAW continuations. Derive mixed-play reach
    weights using the checked silent-input witnesses and connect the actual audit backend.

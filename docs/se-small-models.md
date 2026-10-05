@@ -248,10 +248,15 @@ are kernel-checked for this compiled source setup and scheduler over initialized
 `silent_bob_input_law` also checks one common full Bob input under literal silence
 through his first activation, with empty own recall and public Alice failure at both types.
 This supplies silent witnesses, not mixed-play reach weights or the entire information fiber.
-Protected inclusion supplies a Bool receipt; TRUE acceptance and zero charge remain open.
+Protected inclusion supplies a Bool receipt. `prescribed_packets_clean` derives TRUE receipts
+and final permissions for every transmitted envelope on initialized ALL-prescribed play,
+using `sourceServiceTurnPolicy`/`firstTurnTiming` for an arbitrary source behavioral profile.
+`prescribed_settlement` gives the full joint payoff vector as pure arbitrary base utility,
+for every authentic sampler and arbitrary deposit. This does not prove source outcome transport
+or prompt TRUE acceptance against arbitrary later RAW actions.
 First-packet verdicts reuse [opening conformance](../Vegas/Pending/ReactiveOpeningConformance.lean)
 and [condemnation/persistence](../Vegas/Game/ServiceSettledEvidence.lean); their concrete initialized
-resources and consumers remain to be derived. Native SE remains open.
+resources and consumers remain to be derived. Mixed-play Bayes bounds and native SE remain open.
 Early Bob responses, guard failure, later Alice source economics and a live watcher remain outside this fixture.
 
 The fixed 16-round controller also supports the source SE H→T, L→F, with Bob
