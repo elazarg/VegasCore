@@ -79,6 +79,23 @@ after deriving a common proportional reach factor on the actual fiber, and
 [local comparison limits](../GameTheoryExtensions/Analysis/Protocol/LocalSimulationLimit.lean)
 after constructing one consistent native sequence and its comparisons.
 
+[PassageRestrictionExtension](../GameTheoryExtensions/Analysis/Protocol/PassageRestrictionExtension.lean)
+already proves `exists_consistent_extension_unclocked`, giving consistent rational
+completion at genuinely new sites, and `sequentialEquilibrium_extends_of_continuation_unclocked`,
+which consumes whole-policy comparisons at retained sites. Public binding omission
+gives certain capped collection via `serviceAudit_charge_of_omission` in
+[ReactiveServiceAudit](../Vegas/Pending/ReactiveServiceAudit.lean); later comparisons
+use base payoff and rational completion, not renewed collateral. Hidden departures
+pooling at a retained input are not thereby new free sites.
+[TerminalAudit](../GameTheoryExtensions/Analysis/Protocol/TerminalAudit.lean)'s
+`sequential_equilibrium_extends_of_terminal_audit` supplies the first-extra range
+argument using conditional owner OR collection from every retained hidden history
+under arbitrary target futures, with upper−ρD≤lower (ρ is the conditional owner OR rate).
+Its scalar API requires `InformationSite.CommonDepth`.
+The unclocked whole-policy consumer above and `settlement_le_of_departure_coupling`
+in [TerminalAuditCoupling](../GameTheoryExtensions/Analysis/Protocol/TerminalAuditCoupling.lean)
+are existing comparison routes; the coupling theorem uses incremental charge.
+
 These are existing interfaces to instantiate, not unproved arrows in a new
 transformation tower. Reuse, remove or replace existing machinery first. Before
 implementing a new abstraction or changing semantics, identify the concrete
@@ -182,6 +199,12 @@ preserving gameplay and players' information. Do not independently resample a
 report already realized in the execution. Public binding omissions remain
 contract evidence; a watcher cannot certify an unseen absence.
 
+The history-integrated terminal-audit interface does not require coverage of each
+final list. In contrast, `sampledTrafficAudit_collection_from_record` in
+[ReactiveAuditCollection](../Interaction/ReactiveAuditCollection.lean) propagates
+a persistent attributed forbidden record only after pointwise sampler coverage
+is supplied. Authenticity supplies the separate zero-charge soundness direction.
+
 ## Small objects that isolate the hard questions
 
 Use the following objects to settle specific lemmas before generalizing. They
@@ -198,11 +221,12 @@ connection to the final proof.
 | An opaque binding swap | Two different owners, two independent bindings, no intervening public opening, and a public order choice. | Use the existing commutation of normalized behavioral kernels preserving typed store and every owner's original-action recall; then analyze native timing, traffic and adaptive order. | Barrier concurrency. The source-level commutation theorem does not supply native conditional beliefs. |
 
 The [resolution-and-guess calculation](se-small-models.md#a-resolution-followed-by-a-guess)
-solves one restricted three-action tree, with authentic partial audit, exact
-receipt/clock fibers and one common fully mixed family. It preserves the source
-joint law while using different rational play at generated late inputs. It does
-not cover lawful copies, competing or rejected packets, nonempty leaks, sunk-fine
-continuations, a full AsyncContract instance or live collection. The next useful
+solves one restricted three-action tree for every 0<p<1 and qD≥0, with authentic
+partial audit, exact receipt/clock fibers and one common fully mixed family. It preserves the source
+joint law while using different rational play at generated late inputs. It
+also covers a known-copy extension under explicit terminal closure; it does not
+cover adaptive copy continuations, competing or rejected packets, nonempty leaks,
+sunk-fine continuations, a full AsyncContract instance or live collection. The next
 result must discharge one of these explicit composition obligations from the
 baseline, rather than turn the calculation into a transformation framework.
 
@@ -236,11 +260,12 @@ premises derivable from the actual runtime.
    public results and original own recall to actual native histories. Establish
    the conditional weights, including hidden builder history and foreign WAIT.
    Supply the relative escape bounds required by the common sequence.
-4. **Discharge actual incentive and collection bounds.** Compare source choices,
-   WAIT, recorded decisions, private representations, forwarding and first
-   auditable departures. Handle prior charges through rational continuation,
-   not a renewed deposit. Instantiate the real watcher and prove zero charge
-   on supported equilibrium play and enough collection for the first departure.
+4. **Instantiate existing comparisons and collection.** Derive actual retained
+   WAIT/copy/private-representation comparisons and the information/payoff embedding.
+   Use existing rational completion for publicly sunk charges. Derive conditional
+   postgame service and first-extra collection; distinguish history-integrated bounds
+   from the source capstone's pointwise coverage. Establish zero charge on supported
+   equilibrium play. These runtime premises, not another sunk-fine theorem, remain open.
 5. **Compose the general serial capstone.** Reuse the existing local-comparison
    limit and depth-free extension APIs. Derive their compiler-specific premises
    rather than assuming posterior correspondence or continuation dominance.

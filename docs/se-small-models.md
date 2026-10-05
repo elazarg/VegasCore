@@ -127,13 +127,54 @@ is (H,T,L,2,0) with mass 1/4 and (L,T,L,1/2,1) with mass 3/4, exactly the source
 law. Limit play incurs no charge. Rational lateT play differs from source play;
 preservation does not require source beliefs or actions at every new native input.
 
-**Excluded:** lawful copies of accepted envelopes; prior binding traffic;
+**Excluded from the three-action result:** lawful copies; prior binding traffic;
 competing identifiers/aliases, malformed or extra evidence, stale credentials,
 guard failures, rejected-inclusion receipt branches, additional activations,
 nonempty leaks, arbitrary foreign raw traffic, later economic decisions after
 an already-sunk fine, full runtime/AsyncContract certification, and a live watcher.
 Copies retain the original author and cannot be classified as newly authored R.
 These require real information/payoff comparisons before a full-raw conclusion.
+
+### One terminal-closure copy extension
+
+At firstT/firstR/lateT/lateR, add Bob C: replay Alice's known included envelope.
+Include that exact copy, give Bob no further activation, then expire his own
+resolution. This terminal closure is an explicit schedule restriction.
+[Replay settlement](../Vegas/Pending/ReactiveReplaySettlement.lean)'s `replay_response_preserves`
+gives immediate application stutter. Inclusion appends the Alice body and a FALSE
+receipt; her existing TRUE receipt remains, so T stays lawful and R Alice-forbidden.
+C gives Bob guess L with no own fine: value 1−μ, exactly L's source/net-payoff law.
+Its actual replay recall, broadcaster traffic, duplicate ledger and receipt differ.
+At these four sites split L mass ℓ into ℓ−t² and C=t². Here ℓ is respectively
+1−2t, t, 2/3−t, t; both parts are positive for 0<t≤1/20. Incoming Bayes laws
+are unchanged, C vanishes in the limit, and all whole-policy inequalities and
+the initialized source/net law persist. E has no known envelope under the fixture.
+An adaptive builder may instead reactivate Bob after visible C but expire after
+silence. At firstR, C followed by H can yield 1 versus terminal L's 0; direct H
+already yields 1. Thus C is not generally terminal L, and this is no preservation
+counterexample. Additional activations need a real whole-subtree comparison.
+
+### Inclusion and audit parameters
+
+In the same three-action tree, take 0<p<1, q∈[0,1], D≥0, c=qD and b=(1−p)c.
+Keep the same information partition and shared all-or-none audit coin of weight q.
+If b≤2p, both types send late T; choose Bob's lateT HIGH probability α in
+max{0,(2b−p)/(3p)}≤α≤min{1,(2b+1−p)/(3p)}.
+The interval is nonempty. Late T values are H:2p−b and L:p(1/2+3α/2)−b,
+respectively in [0,2) and [0,1/2]; W=0 and R=−c. Hence first WAIT cannot improve.
+If b>2p, both types choose late W and α=0; both T values are negative, so
+first WAIT gives 0. At b=2p, sending uses α=1 and ties W at 0.
+Use the original Alice first family. In the sending regime retain her late
+family; in the waiting regime swap its T/W columns. At each Bob site with
+limiting HIGH probability a use ((1−3t)a+t,(1−3t)(1−a)+t,t).
+Here a=0 at firstT, 1 at firstR/lateR/E, α at lateT. All probabilities are positive.
+The five type posteriors still tend to (1/4,1,1/2,1,1/2). E's full belief is
+half H and half L with censored [W,T] when sending, [W,W] when waiting.
+Bob's values are (μ,1−μ,1−μ−c); the stated choices are optimal, including ties.
+These backward inequalities cover all modeled whole policies. The initialized
+joint law remains exactly the two atoms above, with zero realized charges.
+Thus the restricted preservation result holds for every such p,q,D, including c=0;
+it does not certify omitted raw actions, adaptive continuations or the runtime contract.
 
 ## B. Publishing a known forbidden witness
 
@@ -167,7 +208,7 @@ M≥1 distinct known forbidden IDs of a yields pr/(KM). First-witness selection
 need not cover m. Existing single-ID replay is not batch forwarding.
 
 Reuse `sampling_delivery_lower` in [MessageMonitoringProbability](../Interaction/MessageMonitoringProbability.lean)
-and `expect_bind_of_finite` in [Expectation](../GameTheoryExtensions/Math/Probability/Expectation.lean).
+and `GameTheory.Math.Probability.expect_bind_of_finite` in [Expectation](../GameTheoryExtensions/Math/Probability/Expectation.lean).
 They compose supported conditional bounds; they do not supply the service promises.
 Current AsyncContract has no postterminal activation/publication guarantee.
 [SourceServiceAudit](../Vegas/Game/SourceServiceAudit.lean) samples authentic
