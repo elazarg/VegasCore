@@ -24,6 +24,11 @@ compatibility. When renaming or refactoring, update all callers and docs.
   `docs/module-architecture.md` for reusable APIs and their scope; instantiate
   existing machinery and identify missing adapter hypotheses before replacing it.
 * Commit and push each stable, verified checkpoint.
+* Work on sequential-equilibrium preservation beyond the fixed calendar is
+  tracked in `docs/se-async-checklist.md`. Follow its methodology: boxes close
+  only on checked theorems, and the target, boxes and semantics change only with
+  the owner's explicit approval. Read `ephemeral/se-async-log.md` (approvals and
+  work log) when present, and append to its work log.
 * Configure required Lean options centrally in lakefile.toml, not with local set_option directives.
 * Do not encode history into code or documentation
 * Never report work as "completed" when it'd not done - e.g., when there are sorry's left that should not be there.
