@@ -55,7 +55,7 @@ nor Alice's recall. Rejected inclusion would publish a body and FALSE receipt,
 creating a different, omitted input.
 Bob's choices are H (authentic opening, certainly included), L (no packet until
 FALSE expiry), and R (accepted raw withholding, effective guess L but forbidden).
-There is no subsequent economic decision by either owner.
+In this three-action tree each owner has one resolution decision.
 
 ### Authentic audit and one common consistency family
 
@@ -127,32 +127,61 @@ is (H,T,L,2,0) with mass 1/4 and (L,T,L,1/2,1) with mass 3/4, exactly the source
 law. Limit play incurs no charge. Rational lateT play differs from source play;
 preservation does not require source beliefs or actions at every new native input.
 
-**Excluded from the three-action result:** lawful copies; prior binding traffic;
-competing identifiers/aliases, malformed or extra evidence, stale credentials,
-guard failures, rejected-inclusion receipt branches, additional activations,
-nonempty leaks, arbitrary foreign raw traffic, later economic decisions after
-an already-sunk fine, full runtime/AsyncContract certification, and a live watcher.
-Copies retain the original author and cannot be classified as newly authored R.
-These require real information/payoff comparisons before a full-raw conclusion.
+**The three-action calculation omits:** prior binding traffic, competing IDs,
+malformed or extra evidence, stale credentials, guard failures, rejection receipts,
+extra activations, nonempty leaks and raw foreign traffic. The next result treats
+copies and RAW tails at fixed prefix inputs; arbitrary RAW prefixes, later source
+economic moves and service/backend certification remain excluded. Copies retain
+the original author and cannot be classified as newly authored R.
 
-### One terminal-closure copy extension
+### Copies and a rational RAW continuation
 
-At firstT/firstR/lateT/lateR, add Bob C: replay Alice's known included envelope.
-Include that exact copy, give Bob no further activation, then expire his own
-resolution. This terminal closure is an explicit schedule restriction.
-[Replay settlement](../Vegas/Pending/ReactiveReplaySettlement.lean)'s `replay_response_preserves`
-gives immediate application stutter. Inclusion appends the Alice body and a FALSE
-receipt; her existing TRUE receipt remains, so T stays lawful and R Alice-forbidden.
-C gives Bob guess L with no own fine: value 1−μ, exactly L's source/net-payoff law.
-Its actual replay recall, broadcaster traffic, duplicate ledger and receipt differ.
-At these four sites split L mass ℓ into ℓ−t² and C=t². Here ℓ is respectively
-1−2t, t, 2/3−t, t; both parts are positive for 0<t≤1/20. Incoming Bayes laws
-are unchanged, C vanishes in the limit, and all whole-policy inequalities and
-the initialized source/net law persist. E has no known envelope under the fixture.
-An adaptive builder may instead reactivate Bob after visible C but expire after
-silence. At firstR, C followed by H can yield 1 versus terminal L's 0; direct H
-already yields 1. Thus C is not generally terminal L, and this is no preservation
-counterexample. Additional activations need a real whole-subtree comparison.
+For p=3/4, q=1/2, D=4, keep Alice's two-opportunity {T,W,R} prefix. Starting
+BEFORE Bob's first response at the five listed inputs, allow full bounded RAW
+menus and a finite public adaptive tail, including reactivation of either owner.
+No extra activation or omitted Alice RAW action before these inputs is included.
+Require complete play and prompt protected Bob H acceptance (bound 0, deadline
+duration 3, sole ID followed by silence/copies), stable completed outputs and
+verdicts of EXISTING envelopes, and the same unobserved final audit coin.
+These are explicit service premises, not a certified AsyncContract instance.
+
+The resource shape is source-expressible: θ is Alice's separate privateInput Bool;
+both initial commitments contain TRUE, a constant sample precedes the reveals,
+and their guards are empty. FALSE leaves Bob's decision available. `ret []` omits
+built-in payoff expressions, not terminal publications; [parameterGame](../Vegas/Source/InitialState.lean)
+supports utilities of θ and both public outcomes. θ has no opening certificate.
+Same raw requests pair all prepared candidates, genuine known IDs and emitted
+certificates, by [candidate updates](../Vegas/Pending/EventPlayerAction.lean) and
+`WitnessedSubmission.emit_local` in [OpeningEvidence](../Vegas/Pending/OpeningEvidence.lean).
+Pair the entire public scheduler past as well as its current view.
+
+With a common θ-erased Alice tail at EVERY n, any Bob whole policy has equal
+future observation kernels across matched types. In one class its gross value
+is μr+(1−μ)(1−r)≤max(μ,1−μ). At E, the two paired-class H/L reach ratios are
+(1−2t²)/(1−t²−t³) and 1; their posterior mixture tends uniformly to 1/2,
+including at rare copied/leaked/receipt fibers. [Provenance](../Interaction/ReactiveProvenance.lean)
+prevents Alice creating a Bob-authored opening under his all-W policy: initial
+bindings are not signed envelopes. Complete expiry then gives lawful L. Prompt H
+attains μ. His first [recall entry](../Interaction/ReactiveRecall.lean) preserves the input, preventing later class merges.
+
+Construct the common tail using a positive reference root law λref and terminal
+utility weights λn/λref, where λn is the actual prefix law. Alice's erased recall
+fixes H/L odds, so proxy comparisons equal actual L's. Use the finite
+[pinned best-response chooser](../GameTheory/GameTheory/Analysis/PerturbedEquilibrium.lean)
+with paired full-support RAW references, then one subsequence of ACTUAL Bayes
+assessments. After clear T/F, L's possible gain is at most 3/2 or 1, below the
+first-new-forbidden cost 2; silence supplies the zero-charge comparator. H's base
+is constant, so the H type optimally mimics this clear proxy. After R/censored T its old
+forbidden witness and expected capped charge 2 persist; his net value is constant.
+No further fine is counted. Lawful copies preserve the original author and verdict.
+
+Keep the original Bob limiting laws. After original W/copy at firstT/lateT/E
+with no own pending HIGH, select LOW expiry; after protected H select silence.
+Optimize remaining tail sites in that SAME family. The whole-policy bounds give
+rational completion and preserve the two atoms above, with distinct RAW histories. This paper
+result excludes arbitrary Alice RAW prefixes, changed guards/candidates, later
+source economic moves and live watcher/runtime certification. Copy is not a
+scheduler-independent quotient of silence; its continuation is optimized.
 
 ### Inclusion and audit parameters
 

@@ -95,6 +95,18 @@ Its scalar API requires `InformationSite.CommonDepth`.
 The unclocked whole-policy consumer above and `settlement_le_of_departure_coupling`
 in [TerminalAuditCoupling](../GameTheoryExtensions/Analysis/Protocol/TerminalAuditCoupling.lean)
 are existing comparison routes; the coupling theorem uses incremental charge.
+The calendar's `active_evaluator_stopped_coupling` in
+[SourceServiceEvaluatorRepair](../Vegas/Game/SourceServiceEvaluatorRepair.lean)
+supplies actual endpoint marginals. `bindingFrame_baseUtility` in
+[BindingRepairReadout](../Vegas/Game/BindingRepairReadout.lean) preserves parameter
+and public payoff from full Frame plus RIGHT OwnBindings; private-material
+changes on these branches require no blanket positive collection rate.
+
+[ReactiveMenuRestriction](../Interaction/ReactiveMenuRestriction.lean)'s native
+menu inclusion preserves the SAME runner and full information. A coarse source
+decoder in [ServiceInformation](../Vegas/Game/ServiceInformation.lean) is not a
+source-to-native ActionRestriction embedding. Construct the retained native
+assessment and its actual reach/continuation law before invoking the extension.
 
 These are existing interfaces to instantiate, not unproved arrows in a new
 transformation tower. Reuse, remove or replace existing machinery first. Before
@@ -198,6 +210,11 @@ The concrete reporting component must refine the baseline audit backend while
 preserving gameplay and players' information. Do not independently resample a
 report already realized in the execution. Public binding omissions remain
 contract evidence; a watcher cannot certify an unseen absence.
+An endpoint coupling does not automatically contain full protocol histories.
+For a history-dependent challenge, reconstruct each actual side-history law
+conditionally on its endpoint using [fiberPosterior_reconstruct](../GameTheory/GameTheory/Math/Probability/Conditioning.lean).
+Use each side's own evidence; prove the joint Boolean audit law factors through
+the declared observation/backend, rather than infer this from a collection bound.
 
 The history-integrated terminal-audit interface does not require coverage of each
 final list. In contrast, `sampledTrafficAudit_collection_from_record` in
@@ -222,13 +239,13 @@ connection to the final proof.
 
 The [resolution-and-guess calculation](se-small-models.md#a-resolution-followed-by-a-guess)
 solves one restricted three-action tree for every 0<p<1 and qD≥0, with authentic
-partial audit, exact receipt/clock fibers and one common fully mixed family. It preserves the source
-joint law while using different rational play at generated late inputs. It
-also covers a known-copy extension under explicit terminal closure; it does not
-cover adaptive copy continuations, competing or rejected packets, nonempty leaks,
-sunk-fine continuations, a full AsyncContract instance or live collection. The next
-result must discharge one of these explicit composition obligations from the
-baseline, rather than turn the calculation into a transformation framework.
+partial audit, exact receipt/clock fibers and one common fully mixed family.
+At p=3/4,q=1/2,D=4 its fixed Alice prefix also admits a rational full bounded RAW
+Bob/tail completion, including copies and reactivation, under explicit protection,
+complete expiry, paired resources and stable audit premises. The source-expressible
+private type has no certificate. This preserves the joint law without pinning
+every generated input to source play. Arbitrary Alice RAW prefixes, actual service
+and backend certification, and later source economics remain outside the result.
 
 The archived [exact finite checker](../archive/se-generalization/documents/scripts/experiments/adaptive_schedules.py)
 and [C6 probe](../archive/se-generalization/documents/scripts/experiments/deferral_miss_probe.py)
@@ -236,21 +253,17 @@ are reference tools. C6 studies bindings with a certain penalty; its negative
 control also finds other preserving equilibria. It establishes neither generic
 composition nor an impossibility result for resolution.
 
-The charge and report objects can be analyzed independently. Binding commutation
-can also be checked independently, but full asynchronous composition requires
-the same timing and belief construction throughout. These boundaries identify
-where separate proofs can be merged and where an independence assumption would
-be unjustified. A successful toy calculation counts only when its lemma has
-premises derivable from the actual runtime.
+Charge/report adapters and binding commutation can be checked separately, but
+full composition needs the same timing and belief construction. A small-model
+result counts toward that proof only with premises derived from the actual runtime.
 
 ## Road to the proof
 
 1. **Connect the finite strategic core to the baseline.** Use the restricted
-   result's actual information and whole-policy calculations. Discharge its
-   omitted raw-action and collection obligations, or isolate a reusable result
-   with premises derived from the runtime. Treat sunk-fine continuation separately;
-   the small tree has no later economic move after an own charge. Add no framework
-   merely to restate these obligations.
+   prefix/common-tail information and whole-policy calculations. Derive its
+   protection, paired resources and stable collection premises; extend omitted
+   Alice RAW prefixes without assuming the same conditional reach factors.
+   Its H clear/sunk proxy argument does not cover arbitrary later source utility.
 2. **State one native assessment construction.** Decide which native inputs
    follow the source assessment and which need free rational completion. Specify
    one fully mixed source/timing/raw family and a single common subsequence.
