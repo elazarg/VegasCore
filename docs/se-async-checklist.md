@@ -56,7 +56,7 @@ sampler with conditional coverage until box W closes.
   Partial evidence: readiness credentials and the final-record verdict are
   implemented; players transmit only fresh envelopes they author, and ledger
   and pending identifiers stay distinct on every history
-  (`MessageNetwork.idsDistinct_history`). The remaining rows have not been
+  (`ReactiveApplication.idsDistinct_history`). The remaining rows have not been
   checked against the implementation one by one.
 - [x] **A2. A non-calendar builder satisfies the contract.** Evidence: the
   fixed linear scheduler of
