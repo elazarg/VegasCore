@@ -153,12 +153,13 @@ a hard proof or convenient lemma alone does not justify changing it.
 
 ## Faithful watcher and settlement
 
-Use a postgame challenge window after the source outcome is fixed. Preserve the
-watcher's actual known envelopes and public ledger, and observe still-unknown
-pending envelopes through the real observation rule. Submit authentic evidence
-and count only reports accepted before settlement. Delivery may be uncertain;
-its positive conditional bound must hold over reported contents and later raw
-traffic. A longer window does not imply certainty.
+Use a postgame challenge window after the source outcome is fixed and existing-envelope verdicts are stable.
+Preserve actual known envelopes and public ledger; observe genuinely unknown
+foreign pending IDs through the real observation rule. Replay known authentic
+witnesses for publication. A FALSE gameplay receipt still publishes the original
+signed body, so a fresh accepted report is unnecessary. Conditional publication
+bounds must cover selected contents and later raw traffic; a longer window alone
+does not imply certainty.
 
 The baseline final-record audit has a unary packet verdict. If two different
 identifiers compete for one completed event, at least one lacks an accepting
@@ -166,15 +167,15 @@ receipt; forwarding one identifier does not create that offense. Do not import
 the archived protocol's distinct-packet pair audit or its pair-coverage requirement
 without showing that the baseline audit actually needs it.
 
-A bounded implementation can choose one source owner uniformly and report one
-known packet forbidden by the final record. If every relevant pending body is
-observed with probability at least p, there are K source owners and actual report
-delivery has conditional probability at least r, with 0 < p, r <= 1, the
-owner-charge lower bound is p times r divided by K. This needs an operational
-proof covering pending, published and already known evidence, report
-materialization, selection and the accepting receipt. It is not an assumed
-native charge event. If reporting occurs before the final verdict stabilizes,
-selection and observation must be analyzed jointly instead.
+A bounded reporter can choose one source owner uniformly after observation and
+publish one known forbidden witness. Supported conditional availability and
+publication bounds p and r give total owner OR collection at least pr/K; fixed
+record selection among at most M known offending IDs adds a factor 1/M. The
+[small-model note](se-small-models.md#b-publishing-a-known-forbidden-witness)
+derives these bounds without independence. Activation/publication service is
+still absent, and an ex ante challenge bound does not supply the current audit's
+pointwise per-record sampler coverage. If the verdict is not stable, observation
+and selection need an additional joint analysis.
 
 The concrete reporting component must refine the baseline audit backend while
 preserving gameplay and players' information. Do not independently resample a
@@ -193,31 +194,17 @@ connection to the final proof.
 | A timed decision | One owner, two source actions, two opportunities, a hidden builder branch, expiry and bounded continuation values. Binding packets are opaque; resolution packets can expose their fixed public value. | Derive the actual stopping law and a whole-policy WAIT comparison, using source rationality or the change in charge probability where applicable. Include ordinary FALSE expiry. | The WAIT/source-choice comparison for a constructed assessment. A pointwise send-now argument is insufficient. |
 | A timing information experiment | Two hidden types, one sender and one later receiver, two timing signals and a binary public outcome. Fix the source action law and actual inclusion kernels. | Derive the joint reach table. Where the construction follows the source assessment, test its required conditional weights using rational timing and one common tremble family; generated off-path inputs may instead have different beliefs and rational actions. | The belief-and-timing compatibility question. A timing equilibrium and a separately chosen factorization do not suffice. |
 | A capped-sanction continuation | Two economic stages and one Boolean charge flag, with uncertain observation and delivery. Give the remaining stage an arbitrary bounded payoff. | Prove the first-departure whole-payoff inequality and identify what remains rational once the charge is already certain. Use the change in collection probability, not a second full fine. | The enforcement boundary and the correct domain for free rational completion. Existing general enforcement/completion APIs should discharge the abstract part. |
-| A signed-witness channel | One fixed forbidden envelope, pending/public/known locations, one partial observer, one bounded report and an accepting receipt. No source utility or equilibrium. | Prove a lower bound on the actual accepted-report charge event and authenticity of its body, uniformly over later traffic. | The watcher/backend refinement. This is a network probability lemma, not an SE theorem. |
+| A signed-witness channel | One forbidden envelope, actual pending/public/known locations, partial observation and known-ID replay; any Boolean receipt publishes the signed body. | Conditional publication gives total owner OR pr/K; fixed-record selection needs its own coverage. Derive actual postgame service and settlement refinement. | The watcher/backend boundary in the small-model note; no new report handler or SE theorem follows. |
 | An opaque binding swap | Two different owners, two independent bindings, no intervening public opening, and a public order choice. | Use the existing commutation of normalized behavioral kernels preserving typed store and every owner's original-action recall; then analyze native timing, traffic and adaptive order. | Barrier concurrency. The source-level commutation theorem does not supply native conditional beliefs. |
 
-The first experiment is one resolution followed by a binary guess. A private
-parameter is H with probability 1/4 and L otherwise; only Alice knows it. Her
-initial binding is a constant TRUE, independent of the parameter. Alice chooses
-TRUE or FALSE; Bob guesses H or L. Alice's payoff is 2 for H/TRUE and 0 for
-H/FALSE. For L it is 2 or 1/2 on TRUE when Bob guesses H or L, and 0 or 1 on
-FALSE. Bob gets 1 for a correct guess. First verify the source assessment with
-Alice TRUE at both types, Bob L after TRUE and H after FALSE, using actual
-consistent FALSE trembles rather than an assigned off-path posterior.
-
-Add a protected first opportunity and one unsafe later opportunity. Protect
-sole early packets; allow selective delivery of late public TRUE, with the
-same inclusion kernel for both hidden types. Canonical FALSE uses ordinary
-uncharged expiry. Keep accepted raw withholding, rejected or competing packets,
-copies, clocks and receipts as distinct branches with their actual verdicts.
-Bob's full input, not just the publication, determines the information fiber.
-Enumerate bounded whole continuations and test existential preserving SE with
-one fully mixed Bayes family, allowing rational off-path completion. Failure of
-a pinned client strategy does not refute preservation. The deliverable is a
-reusable WAIT-and-reach calculation with runtime-derived premises, or a finite
-counterexample satisfying every contract clause on all histories. Removing the
-guess isolates the stopping/payoff part. Stop after this tree is resolved;
-add no protocol, sanction or transformation library to make it pass.
+The [resolution-and-guess calculation](se-small-models.md#a-resolution-followed-by-a-guess)
+solves one restricted three-action tree, with authentic partial audit, exact
+receipt/clock fibers and one common fully mixed family. It preserves the source
+joint law while using different rational play at generated late inputs. It does
+not cover lawful copies, competing or rejected packets, nonempty leaks, sunk-fine
+continuations, a full AsyncContract instance or live collection. The next useful
+result must discharge one of these explicit composition obligations from the
+baseline, rather than turn the calculation into a transformation framework.
 
 The archived [exact finite checker](../archive/se-generalization/documents/scripts/experiments/adaptive_schedules.py)
 and [C6 probe](../archive/se-generalization/documents/scripts/experiments/deferral_miss_probe.py)
@@ -234,13 +221,12 @@ premises derivable from the actual runtime.
 
 ## Road to the proof
 
-1. **Solve the finite strategic core in mathematics.** Fix the baseline runtime
-   and contract. Analyze one private binding and one guarded resolution, two
-   hidden types, a protected first visit, later selective inclusion, expiry and
-   one capped fine. Include every whole continuation and actual information.
-   Produce either a preservation argument with derived operational premises or
-   a counterexample satisfying the entire contract. Add no proof framework
-   before this resolves the WAIT and sunk-fine questions.
+1. **Connect the finite strategic core to the baseline.** Use the restricted
+   result's actual information and whole-policy calculations. Discharge its
+   omitted raw-action and collection obligations, or isolate a reusable result
+   with premises derived from the runtime. Treat sunk-fine continuation separately;
+   the small tree has no later economic move after an own charge. Add no framework
+   merely to restate these obligations.
 2. **State one native assessment construction.** Decide which native inputs
    follow the source assessment and which need free rational completion. Specify
    one fully mixed source/timing/raw family and a single common subsequence.
