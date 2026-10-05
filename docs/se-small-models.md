@@ -235,8 +235,18 @@ the same free completion therefore give a CONDITIONAL finite-tree SE with joint 
 (H,success true,HIGH,2,1):1/4; (L,success false,LOW,1/2,1):3/4, zero realized charges.
 The rates fit this toy's chosen source assessment: source FALSE has limiting H
 posterior 1. They are not a construction for arbitrary given source assessments.
-This paper result still needs actual full-menu/service certification; it covers no
-early Bob response, guard failure, later Alice source economics or live watcher.
+One concrete public controller instantiates the service premises on paper, using
+the existing [Scheduler](../Interaction/ReactiveApplication.lean) and `reactiveLatest`:
+sample e0; activate/include Alice at clock 0; if unfinished, tick to 1 and activate
+Alice with 3/4 latest inclusion or 1/4 WAIT; if unfinished, tick to 2 and expire her event.
+At completion, without a tick, activate/include Alice, then activate/include Bob;
+tick three times and expire Bob. Empty gameplay leaks, delay 0/bound 1, horizon 16
+and N=4 are explicit. Public completion and its first recorded beforeView recover phases.
+The extra inclusion publishes censored T with a FALSE receipt: it is a revealed
+failure fiber, while all THREE Alice NONE responses give the paired clean J.
+The [three AsyncContract clauses](../Vegas/Pending/ReactiveAsyncContract.lean), full-body
+classification and full-input adapters remain uncertified in Lean. Early Bob responses,
+guard failure, later Alice source economics and a live watcher remain outside this result.
 
 ### Inclusion and audit parameters
 

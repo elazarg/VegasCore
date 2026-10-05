@@ -258,7 +258,11 @@ The committed-type fragment also has a conditional finite full-RAW-tree construc
 separate first-NONE rates and later free floors make clean expiry favor H in ONE
 Bayes family; selected truthful/expiry continuations bound whole WAIT policies.
 Its no-early-Bob/protection, first-packet classification and authentic backend premises
-still need actual runtime certification; no arbitrary-builder theorem follows.
+have a concrete 16-round public-controller instantiation on paper: two Alice opportunities,
+same-clock postcompletion Alice activation/inclusion, then protected Bob service; empty
+gameplay leaks, delay 0/bound 1 and N=4. Censored T is published with a FALSE receipt
+and separated from clean expiry. Its three AsyncContract clauses and body/input adapters
+still need Lean certification; no arbitrary-builder theorem follows.
 
 The archived [exact finite checker](../archive/se-generalization/documents/scripts/experiments/adaptive_schedules.py)
 and [C6 probe](../archive/se-generalization/documents/scripts/experiments/deferral_miss_probe.py)
@@ -271,11 +275,11 @@ result counts toward that proof only with premises derived from the actual runti
 
 ## Road to the proof
 
-1. **Connect the finite strategic core to the baseline.** Construct an actual finite
-   public builder with protected first Alice service, an unsafe later opportunity
-   and the stated Bob origin. Authenticate/classify full RAW responses and derive
-   complete play and collection. The committed-resource fragment is covered only
-   conditionally; arbitrary later source economics still need their comparisons.
+1. **Certify the concrete public controller.** Prove the existing Opportunity,
+   ProtectedInclusion and CompletesPlay fields for the specified horizon-16 scheduler
+   on the actual compiled source setup. Then authenticate/classify full RAW responses
+   and derive the clean-J full-input law and collection. The committed-resource result
+   remains conditional; arbitrary later source economics need their own comparisons.
 2. **State one native assessment construction.** Decide which native inputs
    follow the source assessment and which need free rational completion. Specify
    one fully mixed source/timing/raw family and a single common subsequence.
