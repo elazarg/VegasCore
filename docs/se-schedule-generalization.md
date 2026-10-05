@@ -258,12 +258,14 @@ The committed-type fragment has conditional finite full-RAW-tree constructions f
 two source assessments. Separate first-NONE rates and free floors select HIGH at
 off-path expiry for T at both types, or LOW at on-path FALSE for H→T, L→F.
 Each uses ONE Bayes family and selected continuations to bound whole WAIT policies.
-Its no-early-Bob/protection, first-packet classification and authentic backend premises
-have a concrete linear 16-round public-controller instantiation on paper: Alice at
+The [CommittedResolutionService](../Vegas/Examples/CommittedResolutionService.lean) example proves
+`contract`, `timely` and finite Nature support for the compiled source setup and fixed linear
+horizon-16 scheduler over initialized unrestricted RAW histories. Alice acts at
 clocks 0/1, then postcompletion Alice and first Bob at clock 2, Bob expiry at 5;
 empty gameplay leaks, Alice delay 0/bound 1, Bob delay 2/bound 0 and N=4.
-Censored T's FALSE receipt separates it from clean expiry. The three AsyncContract clauses
-and body/input adapters still need Lean certification; no arbitrary-builder theorem follows.
+Censored T's FALSE receipt separates it from clean expiry. First-packet final-verdict,
+zero-charge and clean-J full-input adapters remain open. The two native SE constructions
+are conditional paper mathematics; no checked native/general SE or live watcher follows.
 
 The archived [exact finite checker](../archive/se-generalization/documents/scripts/experiments/adaptive_schedules.py)
 and [C6 probe](../archive/se-generalization/documents/scripts/experiments/deferral_miss_probe.py)
@@ -276,11 +278,11 @@ result counts toward that proof only with premises derived from the actual runti
 
 ## Road to the proof
 
-1. **Certify the concrete public controller.** Prove the existing Opportunity,
-   ProtectedInclusion and CompletesPlay fields for the fixed linear horizon-16 scheduler
-   on the actual compiled source setup. Then authenticate/classify full RAW responses
-   and derive the clean-J full-input law and collection. The committed-resource result
-   remains conditional; arbitrary later source economics need their own comparisons.
+1. **Derive the concrete runtime adapters.** From the checked fixed horizon-16 service,
+   prove first-packet final verdicts under arbitrary RAW continuations, zero charge on
+   the two prescribed laws, and the clean-J full-input law. Connect these to the actual
+   conditional audit backend and assessment construction. Arbitrary later source
+   economics need their own comparisons.
 2. **State one native assessment construction.** Decide which native inputs
    follow the source assessment and which need free rational completion. Specify
    one fully mixed source/timing/raw family and a single common subsequence.

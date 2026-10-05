@@ -209,7 +209,8 @@ protected first Alice T followed by silence/copies, and NO Bob response before A
 completes. His first ready input must be clear/protected on ALL Alice alternatives.
 Require the same authentic all/none backend and permanent verdicts of existing envelopes;
 every first Alice body except a genuine current T/its aliases must remain forbidden.
-These are explicit physical premises, not a certified AsyncContract instance.
+The checked controller below supplies the service contract; its packet, information
+and audit adapters remain separate.
 
 In ONE family let λ=t², g_H=t, g_L=t^(2N+3), δ=t^(2N+5), t↓0. Pin first Alice
 with total NONE atom g_θ and a δ-full reference. Pin honest first-T descendants with
@@ -242,9 +243,11 @@ Empty gameplay leaks, horizon 16 and N=4 are explicit. Alice has delay 0/bound 1
 Bob has delay 2/bound 0, so his first age is at most 2, below deadline duration 3.
 The extra inclusion publishes censored T with a FALSE receipt: it is a revealed
 failure fiber, while all THREE Alice NONE responses give the paired clean J.
-The [three AsyncContract clauses](../Vegas/Pending/ReactiveAsyncContract.lean) have a paper proof;
-their Lean certificate and body/input adapters remain open. Early Bob responses, guard failure, later Alice
-source economics and a live watcher remain outside this result.
+`contract`, `timely` and finite Nature support in [CommittedResolutionService](../Vegas/Examples/CommittedResolutionService.lean)
+are kernel-checked for this compiled source setup and scheduler over initialized unrestricted RAW histories.
+Protected inclusion supplies a Bool receipt; acceptance, first-packet final verdicts,
+zero charge, clean-J full-input equality and native SE still need actual adapters.
+Early Bob responses, guard failure, later Alice source economics and a live watcher remain outside this fixture.
 
 The fixed 16-round controller also supports the source SE H→T, L→F, with Bob
 truthful on success and LOW on failure; Alice's values are 2 and 1. Set λ=t²,
@@ -257,7 +260,7 @@ subsequence give rational completion: H's T value 2 is maximal; L's packet-free
 value is 1, attempted T ≤1/2, and any other first forbidden body ≤0 (TOTAL C=2).
 The exact initialized joint law is (H,success true,HIGH,2,1):1/4;
 (L,failure,LOW,1,1):3/4, with zero charge. This is conditional paper mathematics
-for fixed16, with NO Alice response after Bob; no native contract certificate follows.
+for fixed16, with NO Alice response after Bob; no checked native SE follows.
 Reuse [policyMixture realization](../Interaction/ReactiveMixtureRounds.lean) and `guarded_disclosure_response_memory`
 in [DisclosureMemory](../Vegas/Game/SourceServiceDisclosureMemory.lean) for silent-action transport; their runtime premises remain to be derived.
 
