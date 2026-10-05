@@ -5,7 +5,7 @@ import Vegas.Pending.ReactiveResolutionWindowSupport
 /-! # Network state inside a retained disclosure window
 
 Within a served resolve phase every retained response keeps the application.
-Before the owner's opening all traffic stays published. The owner's opening is
+Before the owner's decision all traffic stays published. The owner's decision is
 its only possible submission; afterwards that envelope is pending and
 unpublished, and every in-flight envelope is either published or the opening.
 Transport responses and passive samples preserve this, so it holds at every
@@ -132,9 +132,34 @@ theorem ResolutionWindowState.respond (bounds : MessageBounds graph)
       · rw [preserved.2.1]
         exact preserved.2.2.2.2.1
   rcases bounds.compiled_resolution_cases runtime leaks who _ _ event owner payload binding checks
-    outputEq codeEq node sole response member with silent |
+    outputEq codeEq node sole response member with silent | ⟨acting, _, first, shape⟩ |
       ⟨candidate, value, evidence, acting, _, _, _, candidateOwned, first, shape⟩
   · exact transportCase silent
+  · have owned : graph.actor? event = some owner := by
+      have actor := congrArg EventCode.actor codeEq
+      rw [EventCode.actor_cast outputEq (graph.nodes event)] at actor
+      exact actor
+    have equal : who = owner := Option.some.inj (acting.symm.trans owned)
+    subst who
+    subst response
+    let submission : WitnessedSubmission graph := ⟨⟨.withhold event, none⟩, .none⟩
+    have unsent : runtime.eventRecorded leaks (execution.recall owner) event = false := by
+      simpa only [firstSubmission, submittedEvent?, Payload.event?, Bool.not_eq_true'] using first
+    have recordedAfter : runtime.eventRecorded leaks
+        ((execution.respond app owner ⟨some submission⟩).recall owner) event = true :=
+      runtime.eventRecorded_respond leaks execution owner _ event rfl
+    let packet := app.packet (app.submit execution.application owner submission) owner
+      (execution.network.known owner) submission
+    let message : Message Player (WitnessedPacket graph) :=
+      ⟨(owner, execution.network.nextSerial owner), packet⟩
+    refine ⟨applicationAfter.trans sameApp, serialsAfter, fun unsentAfter => ?_,
+      fun _ => ⟨message, rfl, rfl, List.mem_append_right _ (List.mem_singleton_self _),
+        serials.next_unpublished owner, ?_⟩⟩
+    · rw [recordedAfter] at unsentAfter
+      cases unsentAfter
+    · change (execution.network.submit owner packet).2.Satisfies _
+      exact ((unsentPublished unsent).mono (fun _ prior => Or.inl prior)).submit owner packet
+        (Or.inr rfl)
   · have owned : graph.actor? event = some owner := by
       have actor := congrArg EventCode.actor codeEq
       rw [EventCode.actor_cast outputEq (graph.nodes event)] at actor

@@ -46,7 +46,8 @@ theorem State.acceptHandle_playerView_congr (left right : State graph) (focal : 
   have publicEq := congrArg PlayerView.publicView views
   have observationEq := congrArg
     (fun view : PlayerView graph =>
-      (view.observation.completionOrder, view.observation.store, view.observation.ownActions)) views
+      (view.observation.completionOrder, view.observation.store,
+        view.observation.ownActions)) views
   have observed : graph.playerObserve focal left.config =
       graph.playerObserve focal right.config := by
     apply PlayerObservation.ext graph
@@ -60,10 +61,20 @@ theorem State.acceptHandle_playerView_congr (left right : State graph) (focal : 
   have publicObserved := congrArg PublicView.observation publicEq
   have clockEq := congrArg PublicView.clock publicEq
   have activatedEq := congrArg PublicView.activatedAt publicEq
+  have missedEq := congrArg PublicView.missedEvents publicEq
   unfold State.playerView State.publicView
   congr 1
   congr 1
   exact congrArg (fun accepted => Function.update accepted field (some candidate)) acceptedEq
+
+/-- Recording the same actual expiry preserves equality of the whole player view. -/
+theorem State.markMissed_playerView_congr (left right : State graph) (focal : Player)
+    (views : left.playerView focal = right.playerView focal) (event : graph.EventId) :
+    (left.markMissed event).playerView focal =
+      (right.markMissed event).playerView focal := by
+  exact congrArg (fun view : PlayerView graph =>
+    { view with publicView := { view.publicView with
+      missedEvents := insert event view.publicView.missedEvents } }) views
 
 /-- Completing the same event exposes only its public result and the focal
 player's own action. Clock activation and native service metadata introduce
@@ -93,6 +104,7 @@ theorem State.complete_playerView_congr (left right : State graph) (focal : Play
   have acceptedEq := congrArg PublicView.accepted publicEq
   have clockEq := congrArg PublicView.clock publicEq
   have activatedEq := congrArg PublicView.activatedAt publicEq
+  have missedEq := congrArg PublicView.missedEvents publicEq
   have nextActivated :
       State.refreshActivated (left.config.complete event leftReady leftAction leftValue)
           left.clock left.activatedAt =

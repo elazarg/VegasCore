@@ -112,6 +112,55 @@ theorem policyMixture_posterior_wait {Index : Type} (initial : PMF Index)
   rw [conditioned, PMF.map_comp]
   exact PMF.map_id _
 
+open Classical in
+/-- An actually recalled response conditions a policy mixture on exactly the
+supported indices giving it unit probability. No source strategy or posterior
+formula is assumed. -/
+theorem policyMixture_posterior_of_indicator {Index : Type} (initial : PMF Index)
+    (policies : Index → app.Policy) (past : List app.PlayerEntry) (entry : app.PlayerEntry)
+    (kept : Set Index)
+    (meets : ∃ index ∈ kept,
+      index ∈ ((app.policyMixture initial policies).posterior past).support)
+    (likelihood : ∀ index ∈ ((app.policyMixture initial policies).posterior past).support,
+      ((policies index past entry.beforeView) entry.action).toReal =
+        if index ∈ kept then 1 else 0) :
+    (app.policyMixture initial policies).posterior (past ++ [entry]) =
+      ((app.policyMixture initial policies).posterior past).filter kept meets := by
+  classical
+  let prior := (app.policyMixture initial policies).posterior past
+  let joint := prior.bind fun index =>
+    (policies index past entry.beforeView).map fun response => (response, index)
+  have marginal : joint.map Prod.fst = prior.bind
+      (fun index => policies index past entry.beforeView) := by
+    simp only [joint, PMF.map_bind, PMF.map_comp, Function.comp_def]
+    exact bind_congr_on_support _ fun _ _ => PMF.map_id _
+  have mass : ((joint.map Prod.fst) entry.action).toReal =
+      (prior.toOuterMeasure kept).toReal := by
+    rw [marginal, toReal_bind_apply]
+    calc
+      _ = expect prior (fun index => if index ∈ kept then (1 : ℝ) else 0) :=
+        expect_congr_on_support likelihood
+      _ = _ := expect_indicator prior kept
+  have possible : entry.action ∈ (joint.map Prod.fst).support := by
+    apply pmf_toReal_pos_iff.mp
+    rw [mass]
+    exact toOuterMeasure_toReal_pos prior meets
+  apply pmf_ext_toReal
+  intro index
+  rw [ReactiveApplication.Implementation.posterior_snoc]
+  change (((fiberPosterior joint Prod.fst entry.action).map Prod.snd) index).toReal = _
+  rw [fiberPosterior_map_snd_apply joint entry.action possible index,
+    ENNReal.toReal_mul, ENNReal.toReal_inv, mass,
+    bind_map_tag_apply, ENNReal.toReal_mul, toReal_filter_apply]
+  by_cases supported : index ∈ prior.support
+  · rw [likelihood index supported]
+    by_cases retained : index ∈ kept <;>
+      simp only [prior, retained, ↓reduceIte, mul_one, mul_zero, zero_mul, div_eq_mul_inv]
+  · have zero := pmf_toReal_eq_zero_iff.mpr supported
+    change (prior index).toReal * _ * _ =
+      if index ∈ kept then (prior index).toReal / _ else 0
+    simp only [zero, zero_mul, zero_div, ite_self]
+
 /-- Slots still available after `count` waiting responses. Never opening is
 always retained. -/
 def remainingOpeningSlots {slots : Nat} (count : Nat) : Set (Option (Fin slots)) :=

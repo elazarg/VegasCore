@@ -10,8 +10,8 @@ import Interaction.MessageApplicationFiniteness
 This is the source-independent runtime core for one fixed `EventGraph`.
 Packets address stable events, readiness comes from the graph cut, and each
 strategic event has its own activation time. Candidate meanings and remembered
-actions are private semantic state; public views expose only handles and the
-graph's public observation.
+actions are private semantic state; public views expose handles, missed
+strategic decisions, and the graph's public observation.
 -/
 
 noncomputable section
@@ -88,6 +88,8 @@ structure State (graph : Vegas.EventGraph Player L) where
   remembered : RememberedActions graph
   clock : Nat
   activatedAt : graph.EventId → Option Nat
+  /-- Strategic decisions completed by deadline expiry. -/
+  missedEvents : Finset graph.EventId
 
 /-- Public application projection. Candidate meanings, hidden binding values,
 and remembered actions are absent. -/
@@ -96,6 +98,8 @@ structure PublicView (graph : Vegas.EventGraph Player L) where
   accepted : AcceptedHandles graph
   clock : Nat
   activatedAt : graph.EventId → Option Nat
+  /-- The contract's exact record of expired strategic decisions. -/
+  missedEvents : Finset graph.EventId
 
 /-- The readiness token of one event: the contract's public certificate that
 the event's direct prerequisites have completed. It names its event and nothing
@@ -282,7 +286,11 @@ def initial (inputs : graph.Inputs) : State graph :=
     candidates := initialCandidates inputs
     remembered := fun _ => none
     clock := 0
-    activatedAt := refreshActivated config 0 (fun _ => none) }
+    activatedAt := refreshActivated config 0 (fun _ => none)
+    missedEvents := ∅ }
+
+@[simp] theorem initial_missedEvents (inputs : graph.Inputs) :
+    (initial inputs).missedEvents = ∅ := rfl
 
 /-- Initial candidate slots contain precisely the owner-visible typed input;
 prepared slots have not yet been allocated. -/
@@ -361,6 +369,11 @@ def publicView (state : State graph) : PublicView graph where
   accepted := state.accepted
   clock := state.clock
   activatedAt := state.activatedAt
+  missedEvents := state.missedEvents
+
+omit [DecidableEq Player] in
+@[simp] theorem publicView_missedEvents (state : State graph) :
+    state.publicView.missedEvents = state.missedEvents := rfl
 
 def playerView (state : State graph) (who : Player) : PlayerView graph where
   who
@@ -378,6 +391,51 @@ def complete (state : State graph) (event : graph.EventId)
   { state with
     config
     activatedAt := refreshActivated config state.clock state.activatedAt }
+
+omit [DecidableEq Player] in
+@[simp] theorem complete_missedEvents (state : State graph) (event : graph.EventId)
+    (ready : state.config.cut.Ready event) (action : graph.Action event)
+    (value : (graph.outputLayout event).Value) :
+    (state.complete event ready action value).missedEvents = state.missedEvents := rfl
+
+/-- Record an expired strategic decision without changing its graph result or
+any private application state. The expiry transition applies this after its
+actual graph completion. -/
+def markMissed (state : State graph) (event : graph.EventId) : State graph :=
+  { state with missedEvents := insert event state.missedEvents }
+
+omit [DecidableEq Player] in
+@[simp] theorem markMissed_missedEvents (state : State graph) (event : graph.EventId) :
+    (state.markMissed event).missedEvents = insert event state.missedEvents := rfl
+
+omit [DecidableEq Player] in
+@[simp] theorem markMissed_config (state : State graph) (event : graph.EventId) :
+    (state.markMissed event).config = state.config := rfl
+
+omit [DecidableEq Player] in
+@[simp] theorem markMissed_accepted (state : State graph) (event : graph.EventId) :
+    (state.markMissed event).accepted = state.accepted := rfl
+
+omit [DecidableEq Player] in
+@[simp] theorem markMissed_candidates (state : State graph) (event : graph.EventId) :
+    (state.markMissed event).candidates = state.candidates := rfl
+
+omit [DecidableEq Player] in
+@[simp] theorem markMissed_remembered (state : State graph) (event : graph.EventId) :
+    (state.markMissed event).remembered = state.remembered := rfl
+
+omit [DecidableEq Player] in
+@[simp] theorem markMissed_clock (state : State graph) (event : graph.EventId) :
+    (state.markMissed event).clock = state.clock := rfl
+
+omit [DecidableEq Player] in
+@[simp] theorem markMissed_activatedAt (state : State graph) (event : graph.EventId) :
+    (state.markMissed event).activatedAt = state.activatedAt := rfl
+
+omit [DecidableEq Player] in
+theorem markMissed_publicView (state : State graph) (event : graph.EventId) :
+    (state.markMissed event).publicView =
+      { state.publicView with missedEvents := insert event state.missedEvents } := rfl
 
 /-- No accepted handle may be reused for another binding field. -/
 def HandleUnused (state : State graph) (handle : Handle graph) : Prop :=
@@ -427,6 +485,11 @@ theorem privateStep_publicView (state : State graph) (who : Player)
       · rw [privateStep, dite_eq_left owned]
         cases state.remembered event <;> rfl
       · rw [privateStep, dite_eq_right owned]
+
+@[simp] theorem privateStep_missedEvents (state : State graph) (who : Player)
+    (command : PrivateCommand graph) :
+    (privateStep state who command).missedEvents = state.missedEvents := by
+  exact congrArg PublicView.missedEvents (privateStep_publicView state who command)
 
 /-- Private commands by one player do not change another player's application
 observation, including its authenticated candidate catalogue and choice cache. -/
@@ -500,6 +563,10 @@ def submitStep (state : State graph) (who : Player) (packet : Payload graph) : S
     (packet : Payload graph) :
     (submitStep state who packet).activatedAt = state.activatedAt := by
   cases packet <;> simp [submitStep]
+
+@[simp] theorem submitStep_missedEvents (state : State graph) (who : Player)
+    (packet : Payload graph) :
+    (submitStep state who packet).missedEvents = state.missedEvents := rfl
 
 @[simp] theorem submitStep_publicView (state : State graph) (who : Player)
     (packet : Payload graph) :
@@ -1062,6 +1129,75 @@ theorem handle_withhold_unremembered_eq
   simp [handle, ready, timely, view, Message.sender, sender, withholdingAction,
     remembered, acceptResolution, resolved]
 
+/-- A timely withholding call completes its resolution with failure. The
+recorded action may retain a remembered intention with the same output. -/
+theorem handle_withhold_failure_eq
+    (runtime : EventGraphRuntime graph) (state : State graph)
+    (id : MessageId Player) (event : graph.EventId)
+    (owner : Player) (payload : L.Ty)
+    (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (GuardCheck graph.layout payload))
+    (outputEq : graph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .resolve owner payload binding checks)
+    (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
+    (ready : state.config.cut.Ready event) (timely : state.WithinDeadline runtime event)
+    (sender : id.1 = owner) :
+    ∃ disclose : Bool,
+      EventCode.resolveOutput? binding checks disclose state.config.store = some .failure ∧
+      handle runtime state ⟨id, .withhold event⟩ =
+        some (state.complete event ready
+          (cast (congrArg EventField.Action outputEq.symm) disclose)
+          (cast (congrArg EventField.Value outputEq.symm)
+            (PublicationResult.failure : PublicationResult (L.Val payload)))) := by
+  have resolved : EventCode.resolveOutput? binding checks
+      (withholdingAction state event owner payload binding checks outputEq)
+      state.config.store = some .failure := by
+    rw [withholdingAction_output]
+    exact resolveOutput?_false_eq_failure_of_ready state event ready owner payload binding
+      checks outputEq codeEq
+  refine ⟨withholdingAction state event owner payload binding checks outputEq, resolved, ?_⟩
+  simp [handle, ready, timely, node, Message.sender, sender, acceptResolution, resolved]
+
+/-- Withholding records `false` when disclosure would succeed, irrespective of
+the application's remembered intention. -/
+theorem handle_withhold_of_success_eq
+    (runtime : EventGraphRuntime graph) (state : State graph)
+    (id : MessageId Player) (event : graph.EventId)
+    (owner : Player) (payload : L.Ty)
+    (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (GuardCheck graph.layout payload))
+    (outputEq : graph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .resolve owner payload binding checks)
+    (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
+    (ready : state.config.cut.Ready event) (timely : state.WithinDeadline runtime event)
+    (sender : id.1 = owner) (value : L.Val payload)
+    (resolvedTrue : EventCode.resolveOutput? binding checks true state.config.store =
+      some (.success value)) :
+    handle runtime state ⟨id, .withhold event⟩ =
+      some (state.complete event ready
+        (cast (congrArg EventField.Action outputEq.symm) false)
+        (cast (congrArg EventField.Value outputEq.symm)
+          (PublicationResult.failure : PublicationResult (L.Val payload)))) := by
+  have resolvedFalse := resolveOutput?_false_eq_failure_of_ready state event ready
+    owner payload binding checks outputEq codeEq
+  have localTrue := EventCode.resolveOutput?_playerStore (graph := graph) binding checks
+    state.config.store true
+  have localFalse := EventCode.resolveOutput?_playerStore (graph := graph) binding checks
+    state.config.store false
+  have actionFalse : withholdingAction state event owner payload binding checks outputEq =
+      false := by
+    unfold withholdingAction
+    cases remembered : state.remembered event with
+    | none => rfl
+    | some action =>
+        cases actionEq : cast (congrArg EventField.Action outputEq) action with
+        | false => simp [actionEq]
+        | true => simp [actionEq, localTrue, localFalse, resolvedTrue, resolvedFalse]
+  simp [handle, ready, timely, node, Message.sender, sender, actionFalse,
+    acceptResolution, resolvedFalse]
+
 /-- Canonical failure traffic preserves the owner's original disclosure
 decision, even when that decision was `true` and local validation rejected it. -/
 theorem handle_withhold_eq
@@ -1383,6 +1519,23 @@ theorem handle_remembered (runtime : EventGraphRuntime graph)
         handle_withhold_config_step runtime state next id event accepted
       exact memory
 
+/-- An accepted player decision does not record a missed decision, including
+when its typed output is failure. -/
+theorem handle_missedEvents (runtime : EventGraphRuntime graph)
+    (state next : State graph) (message : Message Player (Payload graph))
+    (accepted : handle runtime state message = some next) :
+    next.missedEvents = state.missedEvents := by
+  rcases message with ⟨id, packet⟩
+  cases packet <;>
+    simp only [handle, acceptBinding, acceptResolution, bind, pure,
+      Option.bind] at accepted
+  all_goals
+    repeat' split at accepted
+    all_goals
+      first
+      | obtain rfl := Option.some.inj accepted; rfl
+      | cases accepted
+
 /-- Replacing the private remembered-action cache cannot change the public
 result of applying any pending packet. Rejected original `true` actions remain
 available to the owner as ghost recall without becoming ledger information. -/
@@ -1530,7 +1683,8 @@ private def executeSample (state : State graph) (event : graph.EventId) :
   else PMF.pure state
 
 /-- Expiry is local to one ready strategic event and consumes no other event's
-budget. It completes binds with failure and resolutions with `false`. -/
+budget. It completes binds with failure and resolutions with `false`, and
+records that the addressed strategic decision was missed. -/
 private def expire (runtime : EventGraphRuntime graph) (state : State graph)
     (event : graph.EventId) : State graph :=
   if ready : state.config.cut.Ready event then
@@ -1541,12 +1695,14 @@ private def expire (runtime : EventGraphRuntime graph) (state : State graph)
           match nodeView graph event with
           | .bind _owner payload outputEq _codeEq =>
               let failed : PublicationResult (L.Val payload) := .failure
-              state.complete event ready
+              (state.complete event ready
                 (cast (congrArg EventField.Action outputEq.symm) failed)
-                (cast (congrArg EventField.Value outputEq.symm) failed)
+                (cast (congrArg EventField.Value outputEq.symm) failed)).markMissed event
           | .resolve owner payload binding checks outputEq _codeEq =>
-              (acceptResolution state event ready owner payload binding checks
-                outputEq false).getD state
+              match acceptResolution state event ready owner payload binding checks
+                  outputEq false with
+              | none => state
+              | some next => next.markMissed event
           | .sample .. => state
         else state
   else state
@@ -1698,8 +1854,31 @@ theorem environmentStep_executeSample_of_nonsample
       exact (view payload law outputEq codeEq actual).elim
 
 omit [DecidableEq Player] in
-/-- Once a ready binding deadline is due, expiry is exactly the binding's
-failure graph completion. -/
+/-- Chance execution cannot record a missed strategic decision. -/
+theorem environmentStep_executeSample_missedEvents
+    (runtime : EventGraphRuntime graph) (state next : State graph)
+    (event : graph.EventId)
+    (member : next ∈ (environmentStep runtime state (.executeSample event)).support) :
+    next.missedEvents = state.missedEvents := by
+  change next ∈ (executeSample state event).support at member
+  unfold executeSample at member
+  split at member
+  · cases view : nodeView graph event with
+    | bind | resolve =>
+        simp only [view, PMF.mem_support_pure_iff _ _] at member
+        subst next
+        rfl
+    | sample =>
+        simp only [view, PMF.support_map, Set.mem_image] at member
+        obtain ⟨config, _, rfl⟩ := member
+        rfl
+  · simp only [PMF.mem_support_pure_iff _ _] at member
+    subst next
+    rfl
+
+omit [DecidableEq Player] in
+/-- Once a ready binding deadline is due, expiry completes it with failure and
+records its public missed decision. -/
 theorem environmentStep_expire_bind_eq
     (runtime : EventGraphRuntime graph) (state : State graph)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
@@ -1711,11 +1890,11 @@ theorem environmentStep_expire_bind_eq
       (graph.nodes event) = .bind owner payload)
     (viewEq : nodeView graph event = .bind owner payload outputEq codeEq) :
     environmentStep runtime state (.expire event) =
-      PMF.pure (state.complete event ready
+      PMF.pure ((state.complete event ready
         (cast (congrArg EventField.Action outputEq.symm)
           (PublicationResult.failure : PublicationResult (L.Val payload)))
         (cast (congrArg EventField.Value outputEq.symm)
-          (PublicationResult.failure : PublicationResult (L.Val payload)))) := by
+          (PublicationResult.failure : PublicationResult (L.Val payload)))).markMissed event) := by
   simp only [environmentStep, expire, dite_eq_left ready]
   split
   · rename_i activation
@@ -1727,8 +1906,8 @@ theorem environmentStep_expire_bind_eq
     simp only [dite_eq_left due, viewEq]
 
 omit [DecidableEq Player] in
-/-- Once a ready resolution deadline is due, expiry is exactly its canonical
-withholding step, which is total and stores publication failure. -/
+/-- Once a ready resolution deadline is due, expiry completes its `false`
+action with publication failure and records its public missed decision. -/
 theorem environmentStep_expire_resolve_eq
     (runtime : EventGraphRuntime graph) (state : State graph)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
@@ -1743,10 +1922,10 @@ theorem environmentStep_expire_resolve_eq
     (viewEq : nodeView graph event =
       .resolve owner payload binding checks outputEq codeEq) :
     environmentStep runtime state (.expire event) =
-      PMF.pure (state.complete event ready
+      PMF.pure ((state.complete event ready
         (cast (congrArg EventField.Action outputEq.symm) false)
         (cast (congrArg EventField.Value outputEq.symm)
-          (PublicationResult.failure : PublicationResult (L.Val payload)))) := by
+          (PublicationResult.failure : PublicationResult (L.Val payload)))).markMissed event) := by
   have resultEq := resolveOutput?_false_eq_failure_of_ready state event ready
     owner payload binding checks outputEq codeEq
   simp only [environmentStep, expire, dite_eq_left ready]
@@ -1794,7 +1973,7 @@ theorem environmentStep_expire_config_eq_or_mem_step
             refine Or.inr ⟨ready,
               cast (congrArg EventField.Action outputEq.symm) false, ?_⟩
             simpa only [view, acceptResolution, resultEq, bind, pure, State.complete,
-              Option.bind_some, Option.getD_some] using
+              Option.bind_some, State.markMissed_config] using
                 resolve_complete_mem_step state event ready owner payload binding
                   checks outputEq codeEq false .failure resultEq
       · exact Or.inl rfl
@@ -1856,6 +2035,65 @@ theorem environmentStep_expire_sample_eq
     have same : actualEntered = entered := by simpa [activated] using actual.symm
     subst actualEntered
     simp only [dite_eq_left due, viewEq]
+
+omit [DecidableEq Player] in
+/-- Expiry inserts exactly its addressed event when that event is ready,
+activated, due, and strategic. All other expiry commands preserve the marker. -/
+theorem environmentStep_expire_missedEvents
+    (runtime : EventGraphRuntime graph) (state next : State graph)
+    (event : graph.EventId)
+    (member : next ∈ (environmentStep runtime state (.expire event)).support) :
+    next.missedEvents =
+      if state.config.cut.Ready event ∧
+          (∃ entered, state.activatedAt event = some entered ∧
+            runtime.deadline event ≤ state.clock - entered) ∧ graph.actor? event ≠ none then
+        insert event state.missedEvents else state.missedEvents := by
+  classical
+  by_cases ready : state.config.cut.Ready event
+  · cases activated : state.activatedAt event with
+    | none =>
+        rw [environmentStep_expire_of_not_activated runtime state event ready activated,
+          PMF.mem_support_pure_iff _ _] at member
+        subst next
+        simp
+    | some entered =>
+        by_cases due : runtime.deadline event ≤ state.clock - entered
+        · cases view : nodeView graph event with
+          | sample payload law outputEq codeEq =>
+              have actor : graph.actor? event = none :=
+                (EventCode.actor_cast outputEq (graph.nodes event)).symm.trans
+                  (congrArg EventCode.actor codeEq)
+              rw [environmentStep_expire_sample_eq runtime state event ready entered
+                activated due payload law outputEq codeEq view,
+                PMF.mem_support_pure_iff _ _] at member
+              subst next
+              simp [actor]
+          | bind owner payload outputEq codeEq =>
+              have actor : graph.actor? event = some owner :=
+                (EventCode.actor_cast outputEq (graph.nodes event)).symm.trans
+                  (congrArg EventCode.actor codeEq)
+              rw [environmentStep_expire_bind_eq runtime state event ready entered
+                activated due owner payload outputEq codeEq view,
+                PMF.mem_support_pure_iff _ _] at member
+              subst next
+              simp [ready, due, actor]
+          | resolve owner payload binding checks outputEq codeEq =>
+              have actor : graph.actor? event = some owner :=
+                (EventCode.actor_cast outputEq (graph.nodes event)).symm.trans
+                  (congrArg EventCode.actor codeEq)
+              rw [environmentStep_expire_resolve_eq runtime state event ready entered
+                activated due owner payload binding checks outputEq codeEq view,
+                PMF.mem_support_pure_iff _ _] at member
+              subst next
+              simp [ready, due, actor]
+        · rw [environmentStep_expire_of_not_due runtime state event ready entered
+            activated due, PMF.mem_support_pure_iff _ _] at member
+          subst next
+          simp [due]
+  · rw [environmentStep_expire_of_not_ready runtime state event ready,
+      PMF.mem_support_pure_iff _ _] at member
+    subst next
+    simp [ready]
 
 omit [DecidableEq Player] in
 /-- A supported sample command either stutters or performs its addressed graph

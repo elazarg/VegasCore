@@ -121,7 +121,8 @@ theorem reactiveBinding_submit_hidden_congr (runtime : EventGraphRuntime graph)
     exact ((runtime.reactiveApplication leaks).respond_recall_other
       left owner who different _).trans
       ((recall who different).trans
-        ((runtime.reactiveApplication leaks).respond_recall_other right owner who different _).symm)
+        ((runtime.reactiveApplication leaks).respond_recall_other
+          right owner who different _).symm)
 
 /-- Repeated repairs keep the real candidate allocator aligned. This includes
 the unavailable-slot case; no assumption supplies an inexhaustible finite menu. -/
@@ -203,6 +204,7 @@ private theorem complete_binding_public_congr
   have clockEq := congrArg PublicView.clock publicEq
   have activatedEq := congrArg PublicView.activatedAt publicEq
   have acceptedEq := congrArg PublicView.accepted publicEq
+  have missedEq := congrArg PublicView.missedEvents publicEq
   have nextActivated :
       State.refreshActivated (left.config.complete event leftReady leftAction leftValue)
           left.clock left.activatedAt =
@@ -276,6 +278,7 @@ theorem reactive_include_binding_public_congr (runtime : EventGraphRuntime graph
   have observed := congrArg PublicView.observation completed
   have activated := congrArg PublicView.activatedAt completed
   have clockEq := congrArg PublicView.clock completed
+  have missedEq := congrArg PublicView.missedEvents completed
   unfold State.publicView
   congr 1
   exact congrArg (fun accepted : graph.Field → Option (Handle graph) =>

@@ -238,6 +238,35 @@ theorem accepted_certified_opening_of_binding_success
       binding checks outputEq codeEq node candidate ⟨payload, value⟩ associated owned fixed
       known submission serial addressed conforming accepted⟩
 
+/-- Evidence-free withholding has one semantic normal form, regardless of
+private material or whether an unsuccessful certificate request was made. -/
+theorem withhold_normalization_of_empty_evidence
+    (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (state : State graph) (who : Player)
+    (known : List (Message Player (WitnessedPacket graph)))
+    (submission : WitnessedSubmission graph) (event : graph.EventId)
+    (withheld : submission.call.packet = .withhold event)
+    (empty : (submission.emit
+      ((runtime.reactiveApplication leaks).submit state who submission) who known).evidence =
+        none) :
+    submission.normalizeReactive who ((runtime.reactiveApplication leaks).observePlayer state who)
+        known = disclosureSubmission (.withhold event) := by
+  rcases submission with ⟨⟨packet, material⟩, evidence⟩
+  dsimp only at withheld
+  subst packet
+  rw [WitnessedSubmission.emit_eq_resolve] at empty
+  change evidence.resolve who (fun slot => state.candidates.lookup (who, slot)) known = none
+    at empty
+  simp only [WitnessedSubmission.normalizeReactive, Submission.normalizeReactive,
+    openingEffective, ↓reduceIte, disclosureSubmission]
+  congr 1
+  change evidence.normalize who (fun slot => state.candidates.lookup (who, slot)) known =
+    EvidenceRequest.none
+  rw [← EvidenceRequest.normalize_none who (fun slot => state.candidates.lookup (who, slot))
+    known]
+  exact (EvidenceRequest.normalize_eq_iff_resolve_eq ..).mpr empty
+
 /-- Exhaustive classification of a newly submitted current-event packet.
 An extra semantic normal form either yields a rejected call or violates the
 static public format. No restriction is imposed on raw certificate requests,

@@ -84,17 +84,20 @@ private theorem expiry_application_frame
                   PMF.mem_support_pure_iff _ _] at rightSupport
               subst left
               subst right
-              exact frame.complete_unmodified event ready rightReady noValue noAction _ _
+              exact (frame.complete_unmodified event ready rightReady
+                noValue noAction _ _).markMissed event
           | resolve actor payload binding checks outputEq codeEq =>
-              rw [environmentStep_expire_resolve_eq runtime original.application event ready entered
-                activated due actor payload binding checks outputEq codeEq node,
+              rw [environmentStep_expire_resolve_eq runtime original.application
+                event ready entered activated due actor payload
+                  binding checks outputEq codeEq node,
                   PMF.mem_support_pure_iff _ _] at leftSupport
               rw [environmentStep_expire_resolve_eq runtime repaired.application event rightReady
                 entered rightActivated rightDue actor payload binding checks outputEq codeEq node,
                   PMF.mem_support_pure_iff _ _] at rightSupport
               subst left
               subst right
-              exact frame.complete_unmodified event ready rightReady noValue noAction _ _
+              exact (frame.complete_unmodified event ready rightReady
+                noValue noAction _ _).markMissed event
         · have rightNotDue : ¬ runtime.deadline event ≤ repaired.application.clock - entered := by
             rw [← clocks]
             exact due

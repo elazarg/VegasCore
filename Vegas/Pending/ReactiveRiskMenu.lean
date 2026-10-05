@@ -6,9 +6,9 @@ import Interaction.ReactiveMenuRestriction
 
 /-! # A candidate continuation menu after locally visible service risk
 
-The public trigger is owner-specific: only `missedBindingBy who` affects
+The public trigger is owner-specific: only `missedDecisionBy who` affects
 `who`'s menu. Private recall remembers unprotected owned submissions and
-unprotected first binding opportunities. They include a ready binding already
+unprotected first owned opportunities. They include a ready decision already
 due for expiry and open the complete effective menu before the first attempt. Any response
 latches the opportunity, including silence or a packet for a foreign event.
 Each recorded before-view is tested against the recall prefix preceding it,
@@ -17,9 +17,8 @@ so a protected pending submission stays clear.
 Persistent risk and the current opportunity are separate. Environment commands
 can change the current opportunity without changing own recall. The menu is
 canonical when both are clear and otherwise admits every bounded effective response.
-Resolution withholding does not itself trigger expansion: it is represented
-by silence and is not a binding opportunity. No trigger reads hidden execution
-state, an unsampled packet, or a watcher verdict.
+Explicit resolution withholding is a recorded decision. No trigger reads hidden
+execution state, an unsampled packet, or a watcher verdict.
 
 These are local menu and recall facts for a candidate one-escrow continuation
 design. The trigger alone does not establish a collected charge or that
@@ -228,120 +227,104 @@ theorem recalledSubmissionRisk_respond_protected
       List.any_append, List.any_cons, List.any_nil, entryClear, Bool.or_false]
 
 open Classical in
-/-- A ready binding has no recorded call and its inclusion is no longer
-protected. Due-but-unexpired bindings are included: expiry is explicit. This
+/-- A ready owned decision has no recorded call and its inclusion is no longer
+protected. Due-but-unexpired decisions are included: expiry is explicit. This
 is tested before choosing a response, not after sending. -/
-def firstUnprotectedBindingOpportunity (who : Player)
+def firstUnprotectedOpportunity (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView) : Bool :=
   if view.application.who = who then
     match view.application.publicView.ownTurn? who with
     | none => false
     | some event =>
-        match graph.outputLayout event with
-        | .binding _ _ => !runtime.eventRecorded leaks past event &&
-            !decide (view.application.publicView.InclusionFitsDeadline runtime bound event)
-        | _ => false
+        !runtime.eventRecorded leaks past event &&
+          !decide (view.application.publicView.InclusionFitsDeadline runtime bound event)
   else false
 
-theorem firstUnprotectedBindingOpportunity_iff (who : Player)
+theorem firstUnprotectedOpportunity_iff (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView) :
-    runtime.firstUnprotectedBindingOpportunity leaks bound who past view = true ↔
-      view.application.who = who ∧ ∃ event owner payload,
+    runtime.firstUnprotectedOpportunity leaks bound who past view = true ↔
+      view.application.who = who ∧ ∃ event,
         view.application.publicView.ownTurn? who = some event ∧
-        graph.outputLayout event = .binding owner payload ∧
         runtime.eventRecorded leaks past event = false ∧
         ¬ view.application.publicView.InclusionFitsDeadline runtime bound event := by
-  unfold firstUnprotectedBindingOpportunity
+  unfold firstUnprotectedOpportunity
   by_cases identity : view.application.who = who
   · simp only [identity, ↓reduceIte, true_and]
     cases selected : view.application.publicView.ownTurn? who with
     | none => simp
-    | some event =>
-        cases layout : graph.outputLayout event <;> simp [layout]
+    | some event => simp
   · simp only [identity, ↓reduceIte, Bool.false_eq_true, false_and]
 
 /-- Only the identity, public view and earlier submitted event names matter
 for the current opportunity; pending-message samples and receipts do not. -/
-theorem firstUnprotectedBindingOpportunity_congr (who : Player)
+theorem firstUnprotectedOpportunity_congr (who : Player)
     (leftPast rightPast : List (runtime.reactiveApplication leaks).PlayerEntry)
     (leftView rightView : (runtime.reactiveApplication leaks).PlayerView)
     (identityEq : leftView.application.who = rightView.application.who)
     (publicEq : leftView.application.publicView = rightView.application.publicView)
     (recallEq : runtime.submissionRecall leaks leftPast =
       runtime.submissionRecall leaks rightPast) :
-    runtime.firstUnprotectedBindingOpportunity leaks bound who leftPast leftView =
-      runtime.firstUnprotectedBindingOpportunity leaks bound who rightPast rightView := by
+    runtime.firstUnprotectedOpportunity leaks bound who leftPast leftView =
+      runtime.firstUnprotectedOpportunity leaks bound who rightPast rightView := by
   have recorded : ∀ event, runtime.eventRecorded leaks leftPast event =
       runtime.eventRecorded leaks rightPast event :=
     runtime.eventRecorded_congr leaks leftPast rightPast recallEq
-  simp only [firstUnprotectedBindingOpportunity, identityEq, publicEq, recorded]
+  simp only [firstUnprotectedOpportunity, identityEq, publicEq, recorded]
 
-theorem firstUnprotectedBindingOpportunity_protected (who : Player)
+theorem firstUnprotectedOpportunity_protected (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView) (event : graph.EventId)
     (selected : view.application.publicView.ownTurn? who = some event)
     (fits : view.application.publicView.InclusionFitsDeadline runtime bound event) :
-    runtime.firstUnprotectedBindingOpportunity leaks bound who past view = false := by
-  simp only [firstUnprotectedBindingOpportunity, selected]
-  cases graph.outputLayout event <;> simp [fits]
+    runtime.firstUnprotectedOpportunity leaks bound who past view = false := by
+  simp [firstUnprotectedOpportunity, selected, fits]
 
 /-- Later opportunities do not trigger on an event already submitted in the
 owner's actual recall, even after its protected inclusion window closes. -/
-theorem firstUnprotectedBindingOpportunity_recorded (who : Player)
+theorem firstUnprotectedOpportunity_recorded (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView) (event : graph.EventId)
     (selected : view.application.publicView.ownTurn? who = some event)
     (recorded : runtime.eventRecorded leaks past event = true) :
-    runtime.firstUnprotectedBindingOpportunity leaks bound who past view = false := by
-  simp only [firstUnprotectedBindingOpportunity, selected]
-  cases graph.outputLayout event <;> simp [recorded]
-
-/-- Lawful silent resolution withholding is not a binding opportunity. -/
-theorem firstUnprotectedBindingOpportunity_not_binding (who : Player)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView) (event : graph.EventId)
-    (selected : view.application.publicView.ownTurn? who = some event)
-    (notBinding : ∀ owner payload, graph.outputLayout event ≠ .binding owner payload) :
-    runtime.firstUnprotectedBindingOpportunity leaks bound who past view = false := by
-  simp only [firstUnprotectedBindingOpportunity, selected]
-  cases layout : graph.outputLayout event <;> simp
+    runtime.firstUnprotectedOpportunity leaks bound who past view = false := by
+  simp [firstUnprotectedOpportunity, selected, recorded]
 
 /-- Scan before-views using the recall prefix that preceded each response.
 The response itself is appended only after testing its opportunity. -/
-def recalledBindingOpportunityRiskFrom (who : Player)
+def recalledOpportunityRiskFrom (who : Player)
     (earlier : List (runtime.reactiveApplication leaks).PlayerEntry) :
     List (runtime.reactiveApplication leaks).PlayerEntry → Bool
   | [] => false
-  | entry :: rest => runtime.firstUnprotectedBindingOpportunity leaks bound who earlier
-      entry.beforeView || recalledBindingOpportunityRiskFrom who (earlier ++ [entry]) rest
+  | entry :: rest => runtime.firstUnprotectedOpportunity leaks bound who earlier
+      entry.beforeView || recalledOpportunityRiskFrom who (earlier ++ [entry]) rest
 
-def recalledBindingOpportunityRisk (who : Player)
+def recalledOpportunityRisk (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry) : Bool :=
-  runtime.recalledBindingOpportunityRiskFrom leaks bound who [] past
+  runtime.recalledOpportunityRiskFrom leaks bound who [] past
 
-theorem recalledBindingOpportunityRiskFrom_append (who : Player)
+theorem recalledOpportunityRiskFrom_append (who : Player)
     (earlier past extra : List (runtime.reactiveApplication leaks).PlayerEntry) :
-    runtime.recalledBindingOpportunityRiskFrom leaks bound who earlier (past ++ extra) =
-      (runtime.recalledBindingOpportunityRiskFrom leaks bound who earlier past ||
-        runtime.recalledBindingOpportunityRiskFrom leaks bound who (earlier ++ past) extra) := by
+    runtime.recalledOpportunityRiskFrom leaks bound who earlier (past ++ extra) =
+      (runtime.recalledOpportunityRiskFrom leaks bound who earlier past ||
+        runtime.recalledOpportunityRiskFrom leaks bound who (earlier ++ past) extra) := by
   induction past generalizing earlier with
-  | nil => simp [recalledBindingOpportunityRiskFrom]
+  | nil => simp [recalledOpportunityRiskFrom]
   | cons entry rest ih =>
-      simp only [List.cons_append, recalledBindingOpportunityRiskFrom, ih,
+      simp only [List.cons_append, recalledOpportunityRiskFrom, ih,
         Bool.or_assoc, List.append_assoc, List.nil_append]
 
-@[simp] theorem recalledBindingOpportunityRisk_nil (who : Player) :
-    runtime.recalledBindingOpportunityRisk leaks bound who [] = false := rfl
+@[simp] theorem recalledOpportunityRisk_nil (who : Player) :
+    runtime.recalledOpportunityRisk leaks bound who [] = false := rfl
 
-theorem recalledBindingOpportunityRisk_append (who : Player)
+theorem recalledOpportunityRisk_append (who : Player)
     (past extra : List (runtime.reactiveApplication leaks).PlayerEntry) :
-    runtime.recalledBindingOpportunityRisk leaks bound who (past ++ extra) =
-      (runtime.recalledBindingOpportunityRisk leaks bound who past ||
-        runtime.recalledBindingOpportunityRiskFrom leaks bound who past extra) := by
-  simpa only [recalledBindingOpportunityRisk, List.nil_append] using
-    runtime.recalledBindingOpportunityRiskFrom_append leaks bound who [] past extra
+    runtime.recalledOpportunityRisk leaks bound who (past ++ extra) =
+      (runtime.recalledOpportunityRisk leaks bound who past ||
+        runtime.recalledOpportunityRiskFrom leaks bound who past extra) := by
+  simpa only [recalledOpportunityRisk, List.nil_append] using
+    runtime.recalledOpportunityRiskFrom_append leaks bound who [] past extra
 
 private theorem submissionRecall_of_riskRecords
     (left right : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -353,14 +336,14 @@ private theorem submissionRecall_of_riskRecords
   simpa only [List.map_map, submissionRiskRecord, submissionRecall, Function.comp_def]
     using projected
 
-theorem recalledBindingOpportunityRiskFrom_congr (who : Player)
+theorem recalledOpportunityRiskFrom_congr (who : Player)
     (leftEarlier rightEarlier left right : List (runtime.reactiveApplication leaks).PlayerEntry)
     (earlierEq : leftEarlier.map (runtime.submissionRiskRecord leaks) =
       rightEarlier.map (runtime.submissionRiskRecord leaks))
     (same : left.map (runtime.submissionRiskRecord leaks) =
       right.map (runtime.submissionRiskRecord leaks)) :
-    runtime.recalledBindingOpportunityRiskFrom leaks bound who leftEarlier left =
-      runtime.recalledBindingOpportunityRiskFrom leaks bound who rightEarlier right := by
+    runtime.recalledOpportunityRiskFrom leaks bound who leftEarlier left =
+      runtime.recalledOpportunityRiskFrom leaks bound who rightEarlier right := by
   induction left generalizing leftEarlier rightEarlier right with
   | nil =>
       cases right with
@@ -375,74 +358,74 @@ theorem recalledBindingOpportunityRiskFrom_congr (who : Player)
             Player × PublicView graph × Option graph.EventId => record.1) headEq
           have publicEq := congrArg (fun record :
             Player × PublicView graph × Option graph.EventId => record.2.1) headEq
-          have currentEq := runtime.firstUnprotectedBindingOpportunity_congr leaks bound who
+          have currentEq := runtime.firstUnprotectedOpportunity_congr leaks bound who
             leftEarlier rightEarlier entry.beforeView other.beforeView identityEq publicEq
             (submissionRecall_of_riskRecords runtime leaks leftEarlier rightEarlier earlierEq)
           have prefixEq : (leftEarlier ++ [entry]).map (runtime.submissionRiskRecord leaks) =
               (rightEarlier ++ [other]).map (runtime.submissionRiskRecord leaks) := by
             simp only [List.map_append, List.map_cons, List.map_nil, earlierEq, headEq]
-          simp only [recalledBindingOpportunityRiskFrom, currentEq,
+          simp only [recalledOpportunityRiskFrom, currentEq,
             ih _ _ tail prefixEq tailEq]
 
 /-- The entire prefix scan depends only on the owner's local risk records. -/
-theorem recalledBindingOpportunityRisk_congr (who : Player)
+theorem recalledOpportunityRisk_congr (who : Player)
     (left right : List (runtime.reactiveApplication leaks).PlayerEntry)
     (same : left.map (runtime.submissionRiskRecord leaks) =
       right.map (runtime.submissionRiskRecord leaks)) :
-    runtime.recalledBindingOpportunityRisk leaks bound who left =
-      runtime.recalledBindingOpportunityRisk leaks bound who right :=
-  runtime.recalledBindingOpportunityRiskFrom_congr leaks bound who [] [] left right rfl same
+    runtime.recalledOpportunityRisk leaks bound who left =
+      runtime.recalledOpportunityRisk leaks bound who right :=
+  runtime.recalledOpportunityRiskFrom_congr leaks bound who [] [] left right rfl same
 
-theorem recalledBindingOpportunityRisk_mono (who : Player)
+theorem recalledOpportunityRisk_mono (who : Player)
     (past extra : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (risky : runtime.recalledBindingOpportunityRisk leaks bound who past = true) :
-    runtime.recalledBindingOpportunityRisk leaks bound who (past ++ extra) = true := by
-  rw [runtime.recalledBindingOpportunityRisk_append, risky, Bool.true_or]
+    (risky : runtime.recalledOpportunityRisk leaks bound who past = true) :
+    runtime.recalledOpportunityRisk leaks bound who (past ++ extra) = true := by
+  rw [runtime.recalledOpportunityRisk_append, risky, Bool.true_or]
 
 /-- Any own response records the opportunity, regardless of its transmission. -/
-theorem recalledBindingOpportunityRisk_respond
+theorem recalledOpportunityRisk_respond
     (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (response : (runtime.reactiveApplication leaks).Action) :
-    runtime.recalledBindingOpportunityRisk leaks bound who
+    runtime.recalledOpportunityRisk leaks bound who
         ((execution.respond (runtime.reactiveApplication leaks) who response).recall who) =
-      (runtime.recalledBindingOpportunityRisk leaks bound who (execution.recall who) ||
-        runtime.firstUnprotectedBindingOpportunity leaks bound who (execution.recall who)
+      (runtime.recalledOpportunityRisk leaks bound who (execution.recall who) ||
+        runtime.firstUnprotectedOpportunity leaks bound who (execution.recall who)
           (execution.observe (runtime.reactiveApplication leaks) who)) := by
   simp only [ReactiveApplication.Execution.respond, ↓reduceIte,
-    runtime.recalledBindingOpportunityRisk_append, recalledBindingOpportunityRiskFrom,
+    runtime.recalledOpportunityRisk_append, recalledOpportunityRiskFrom,
     Bool.or_false]
 
-theorem recalledBindingOpportunityRisk_respond_clear
+theorem recalledOpportunityRisk_respond_clear
     (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (response : (runtime.reactiveApplication leaks).Action)
-    (clear : runtime.firstUnprotectedBindingOpportunity leaks bound who (execution.recall who)
+    (clear : runtime.firstUnprotectedOpportunity leaks bound who (execution.recall who)
       (execution.observe (runtime.reactiveApplication leaks) who) = false) :
-    runtime.recalledBindingOpportunityRisk leaks bound who
+    runtime.recalledOpportunityRisk leaks bound who
         ((execution.respond (runtime.reactiveApplication leaks) who response).recall who) =
-      runtime.recalledBindingOpportunityRisk leaks bound who (execution.recall who) := by
-  rw [runtime.recalledBindingOpportunityRisk_respond, clear, Bool.or_false]
+      runtime.recalledOpportunityRisk leaks bound who (execution.recall who) := by
+  rw [runtime.recalledOpportunityRisk_respond, clear, Bool.or_false]
 
-theorem recalledBindingOpportunityRisk_respond_of_opportunity
+theorem recalledOpportunityRisk_respond_of_opportunity
     (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (response : (runtime.reactiveApplication leaks).Action)
-    (risky : runtime.firstUnprotectedBindingOpportunity leaks bound who (execution.recall who)
+    (risky : runtime.firstUnprotectedOpportunity leaks bound who (execution.recall who)
       (execution.observe (runtime.reactiveApplication leaks) who) = true) :
-    runtime.recalledBindingOpportunityRisk leaks bound who
+    runtime.recalledOpportunityRisk leaks bound who
       ((execution.respond (runtime.reactiveApplication leaks) who response).recall who) =
         true := by
-  rw [runtime.recalledBindingOpportunityRisk_respond, risky, Bool.or_true]
+  rw [runtime.recalledOpportunityRisk_respond, risky, Bool.or_true]
 
-theorem recalledBindingOpportunityRisk_respond_mono
+theorem recalledOpportunityRisk_respond_mono
     (execution : (runtime.reactiveApplication leaks).Execution) (actor who : Player)
     (response : (runtime.reactiveApplication leaks).Action)
-    (risky : runtime.recalledBindingOpportunityRisk leaks bound who
+    (risky : runtime.recalledOpportunityRisk leaks bound who
       (execution.recall who) = true) :
-    runtime.recalledBindingOpportunityRisk leaks bound who
+    runtime.recalledOpportunityRisk leaks bound who
       ((execution.respond (runtime.reactiveApplication leaks) actor response).recall who) =
         true := by
   by_cases same : actor = who
   · subst actor
-    rw [runtime.recalledBindingOpportunityRisk_respond, risky, Bool.true_or]
+    rw [runtime.recalledOpportunityRisk_respond, risky, Bool.true_or]
   · rw [(runtime.reactiveApplication leaks).respond_recall_other execution actor who
       (Ne.symm same) response]
     exact risky
@@ -452,30 +435,30 @@ opportunity is deliberately absent from this state. -/
 def persistentServiceRisk (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView) : Bool :=
-  view.application.publicView.missedBindingBy who ||
+  view.application.publicView.missedDecisionBy who ||
     runtime.recalledSubmissionRisk leaks bound who past ||
-    runtime.recalledBindingOpportunityRisk leaks bound who past
+    runtime.recalledOpportunityRisk leaks bound who past
 
 theorem persistentServiceRisk_iff (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView) :
     runtime.persistentServiceRisk leaks bound who past view = true ↔
-      (view.application.publicView.missedBindingBy who = true ∨
+      (view.application.publicView.missedDecisionBy who = true ∨
         runtime.recalledSubmissionRisk leaks bound who past = true) ∨
-          runtime.recalledBindingOpportunityRisk leaks bound who past = true := by
+          runtime.recalledOpportunityRisk leaks bound who past = true := by
   simp only [persistentServiceRisk, Bool.or_eq_true]
 
 theorem persistentServiceRisk_clear_iff (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView) :
     runtime.persistentServiceRisk leaks bound who past view = false ↔
-      (view.application.publicView.missedBindingBy who = false ∧
+      (view.application.publicView.missedDecisionBy who = false ∧
         runtime.recalledSubmissionRisk leaks bound who past = false) ∧
-          runtime.recalledBindingOpportunityRisk leaks bound who past = false := by
+          runtime.recalledOpportunityRisk leaks bound who past = false := by
   unfold persistentServiceRisk
-  cases view.application.publicView.missedBindingBy who <;>
+  cases view.application.publicView.missedDecisionBy who <;>
     cases runtime.recalledSubmissionRisk leaks bound who past <;>
-      cases runtime.recalledBindingOpportunityRisk leaks bound who past <;> simp
+      cases runtime.recalledOpportunityRisk leaks bound who past <;> simp
 
 theorem persistentServiceRisk_congr (who : Player)
     (leftPast rightPast : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -487,14 +470,14 @@ theorem persistentServiceRisk_congr (who : Player)
       runtime.persistentServiceRisk leaks bound who rightPast rightView := by
   have submittedEq := runtime.recalledSubmissionRisk_congr leaks bound who leftPast rightPast
     recallEq
-  have opportunityEq := runtime.recalledBindingOpportunityRisk_congr leaks bound who leftPast
+  have opportunityEq := runtime.recalledOpportunityRisk_congr leaks bound who leftPast
     rightPast recallEq
   simp only [persistentServiceRisk, publicEq, submittedEq, opportunityEq]
 
 theorem persistentServiceRisk_of_public_miss (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)
-    (missed : view.application.publicView.missedBindingBy who = true) :
+    (missed : view.application.publicView.missedDecisionBy who = true) :
     runtime.persistentServiceRisk leaks bound who past view = true := by
   simp only [persistentServiceRisk, missed, Bool.true_or]
 
@@ -508,19 +491,19 @@ theorem persistentServiceRisk_of_recalled (who : Player)
 theorem persistentServiceRisk_of_opportunityRecall (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)
-    (risky : runtime.recalledBindingOpportunityRisk leaks bound who past = true) :
+    (risky : runtime.recalledOpportunityRisk leaks bound who past = true) :
     runtime.persistentServiceRisk leaks bound who past view = true := by
   simp only [persistentServiceRisk, risky, Bool.or_true]
 
 /-- Protection of the submitted call and clarity of the current opportunity
-are separate premises. Silence supplies no protection fact for an unsent binding. -/
+are separate premises. Silence supplies no protection fact for an unsent decision. -/
 theorem persistentServiceRisk_respond_protected
     (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (response : (runtime.reactiveApplication leaks).Action)
     (allFit : ∀ event, runtime.submittedEvent? leaks response = some event →
       PublicView.InclusionFitsDeadline runtime bound
         (execution.observe (runtime.reactiveApplication leaks) who).application.publicView event)
-    (opportunityClear : runtime.firstUnprotectedBindingOpportunity leaks bound who
+    (opportunityClear : runtime.firstUnprotectedOpportunity leaks bound who
       (execution.recall who) (execution.observe (runtime.reactiveApplication leaks) who) = false) :
     runtime.persistentServiceRisk leaks bound who
         ((execution.respond (runtime.reactiveApplication leaks) who response).recall who)
@@ -531,28 +514,28 @@ theorem persistentServiceRisk_respond_protected
   have publicEq := (runtime.reactive_respond_application leaks execution who response).2
   have submittedEq := runtime.recalledSubmissionRisk_respond_protected leaks bound execution who
     response allFit
-  have opportunityEq := runtime.recalledBindingOpportunityRisk_respond_clear leaks bound execution
+  have opportunityEq := runtime.recalledOpportunityRisk_respond_clear leaks bound execution
     who response opportunityClear
   unfold persistentServiceRisk
   rw [submittedEq, opportunityEq]
   exact congrArg (fun publicFlag : Bool => publicFlag ||
     runtime.recalledSubmissionRisk leaks bound who (execution.recall who) ||
-      runtime.recalledBindingOpportunityRisk leaks bound who (execution.recall who))
-    (congrArg (fun view : PublicView graph => view.missedBindingBy who) publicEq)
+      runtime.recalledOpportunityRisk leaks bound who (execution.recall who))
+    (congrArg (fun view : PublicView graph => view.missedDecisionBy who) publicEq)
 
-/-- Effective play opens at the first unprotected binding opportunity, before any
+/-- Effective play opens at the first unprotected owned opportunity, before any
 attempt, and remains open after that opportunity enters private recall. -/
 def serviceRisk (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView) : Bool :=
   runtime.persistentServiceRisk leaks bound who past view ||
-    runtime.firstUnprotectedBindingOpportunity leaks bound who past view
+    runtime.firstUnprotectedOpportunity leaks bound who past view
 
 theorem serviceRisk_iff (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView) :
     runtime.serviceRisk leaks bound who past view = true ↔
       runtime.persistentServiceRisk leaks bound who past view = true ∨
-        runtime.firstUnprotectedBindingOpportunity leaks bound who past view = true := by
+        runtime.firstUnprotectedOpportunity leaks bound who past view = true := by
   simp only [serviceRisk, Bool.or_eq_true]
 
 theorem serviceRisk_clear_iff (who : Player)
@@ -560,18 +543,34 @@ theorem serviceRisk_clear_iff (who : Player)
     (view : (runtime.reactiveApplication leaks).PlayerView) :
     runtime.serviceRisk leaks bound who past view = false ↔
       runtime.persistentServiceRisk leaks bound who past view = false ∧
-        runtime.firstUnprotectedBindingOpportunity leaks bound who past view = false := by
+        runtime.firstUnprotectedOpportunity leaks bound who past view = false := by
   unfold serviceRisk
   cases runtime.persistentServiceRisk leaks bound who past view <;>
-    cases runtime.firstUnprotectedBindingOpportunity leaks bound who past view <;> simp
+    cases runtime.firstUnprotectedOpportunity leaks bound who past view <;> simp
 
 theorem serviceRisk_clear (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)
     (persistentClear : runtime.persistentServiceRisk leaks bound who past view = false)
-    (opportunityClear : runtime.firstUnprotectedBindingOpportunity leaks bound who past view =
+    (opportunityClear : runtime.firstUnprotectedOpportunity leaks bound who past view =
       false) : runtime.serviceRisk leaks bound who past view = false := by
   simp only [serviceRisk, persistentClear, opportunityClear, Bool.false_or]
+
+/-- A clear unrecorded owned opportunity still has protected inclusion time. -/
+theorem serviceRisk_clear_protected_opportunity (who : Player)
+    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (view : (runtime.reactiveApplication leaks).PlayerView) (event : graph.EventId)
+    (identity : view.application.who = who)
+    (selected : view.application.publicView.ownTurn? who = some event)
+    (unrecorded : runtime.eventRecorded leaks past event = false)
+    (clear : runtime.serviceRisk leaks bound who past view = false) :
+    view.application.publicView.InclusionFitsDeadline runtime bound event := by
+  by_contra unprotected
+  have risky := (runtime.firstUnprotectedOpportunity_iff leaks bound who past view).mpr
+    ⟨identity, event, selected, unrecorded, unprotected⟩
+  have opportunity := (runtime.serviceRisk_clear_iff leaks bound who past view).mp clear |>.2
+  rw [opportunity] at risky
+  cases risky
 
 theorem serviceRisk_congr (who : Player)
     (leftPast rightPast : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -584,7 +583,7 @@ theorem serviceRisk_congr (who : Player)
       runtime.serviceRisk leaks bound who rightPast rightView := by
   have persistentEq := runtime.persistentServiceRisk_congr leaks bound who leftPast rightPast
     leftView rightView publicEq recallEq
-  have currentEq := runtime.firstUnprotectedBindingOpportunity_congr leaks bound who leftPast
+  have currentEq := runtime.firstUnprotectedOpportunity_congr leaks bound who leftPast
     rightPast leftView rightView identityEq publicEq
     (submissionRecall_of_riskRecords runtime leaks leftPast rightPast recallEq)
   simp only [serviceRisk, persistentEq, currentEq]
@@ -592,7 +591,7 @@ theorem serviceRisk_congr (who : Player)
 theorem serviceRisk_of_public_miss (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)
-    (missed : view.application.publicView.missedBindingBy who = true) :
+    (missed : view.application.publicView.missedDecisionBy who = true) :
     runtime.serviceRisk leaks bound who past view = true := by
   rw [serviceRisk, runtime.persistentServiceRisk_of_public_miss leaks bound who past view missed,
     Bool.true_or]
@@ -600,7 +599,7 @@ theorem serviceRisk_of_public_miss (who : Player)
 theorem serviceRisk_of_opportunity (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)
-    (risky : runtime.firstUnprotectedBindingOpportunity leaks bound who past view = true) :
+    (risky : runtime.firstUnprotectedOpportunity leaks bound who past view = true) :
     runtime.serviceRisk leaks bound who past view = true := by
   simp only [serviceRisk, risky, Bool.or_true]
 
@@ -618,10 +617,10 @@ theorem serviceRisk_clear_before_respond
       (execution.observe (runtime.reactiveApplication leaks) who) = false := by
   obtain ⟨⟨publicClear, submittedClear⟩, opportunityClear⟩ :=
     (runtime.persistentServiceRisk_clear_iff leaks bound who _ _).mp persistentClear
-  have beforePublic : PublicView.missedBindingBy
+  have beforePublic : PublicView.missedDecisionBy
       (execution.observe (runtime.reactiveApplication leaks) who).application.publicView who =
         false := by
-    exact (congrArg (fun view : PublicView graph => view.missedBindingBy who)
+    exact (congrArg (fun view : PublicView graph => view.missedDecisionBy who)
       (runtime.reactive_respond_application leaks execution who response).2).symm.trans publicClear
   have beforeSubmitted : runtime.recalledSubmissionRisk leaks bound who
       (execution.recall who) = false := by
@@ -635,12 +634,12 @@ theorem serviceRisk_clear_before_respond
           response present, risk⟩)
     rw [submittedClear] at kept
     cases kept
-  rw [runtime.recalledBindingOpportunityRisk_respond] at opportunityClear
-  have split : runtime.recalledBindingOpportunityRisk leaks bound who (execution.recall who) =
-        false ∧ runtime.firstUnprotectedBindingOpportunity leaks bound who (execution.recall who)
+  rw [runtime.recalledOpportunityRisk_respond] at opportunityClear
+  have split : runtime.recalledOpportunityRisk leaks bound who (execution.recall who) =
+        false ∧ runtime.firstUnprotectedOpportunity leaks bound who (execution.recall who)
           (execution.observe (runtime.reactiveApplication leaks) who) = false := by
-    cases recalled : runtime.recalledBindingOpportunityRisk leaks bound who (execution.recall who)
-      <;> cases current : runtime.firstUnprotectedBindingOpportunity leaks bound who
+    cases recalled : runtime.recalledOpportunityRisk leaks bound who (execution.recall who)
+      <;> cases current : runtime.firstUnprotectedOpportunity leaks bound who
         (execution.recall who) (execution.observe (runtime.reactiveApplication leaks) who)
       <;> simp_all
   apply runtime.serviceRisk_clear leaks bound who _ _ _ split.2
@@ -651,7 +650,7 @@ namespace MessageBounds
 variable [Fintype Player] (bounds : MessageBounds graph)
 
 /-- Candidate menu: canonical actions while clear, all bounded effective actions
-at a first unprotected binding opportunity or after persistent own risk. -/
+at a first unprotected owned opportunity or after persistent own risk. -/
 def riskActions (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView) :
@@ -680,7 +679,7 @@ theorem riskActions_of_risk (who : Player)
 theorem riskActions_of_opportunity (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)
-    (risky : runtime.firstUnprotectedBindingOpportunity leaks bound who past view = true) :
+    (risky : runtime.firstUnprotectedOpportunity leaks bound who past view = true) :
     bounds.riskActions runtime leaks bound who past view =
       (bounds.menu runtime leaks).actions who past view :=
   bounds.riskActions_of_risk runtime leaks bound who past view
@@ -691,7 +690,7 @@ silence and submissions naming a different owner's event. -/
 theorem riskActions_after_opportunity
     (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (response : (runtime.reactiveApplication leaks).Action)
-    (risky : runtime.firstUnprotectedBindingOpportunity leaks bound who (execution.recall who)
+    (risky : runtime.firstUnprotectedOpportunity leaks bound who (execution.recall who)
       (execution.observe (runtime.reactiveApplication leaks) who) = true) :
     bounds.riskActions runtime leaks bound who
         ((execution.respond (runtime.reactiveApplication leaks) who response).recall who)
@@ -705,7 +704,7 @@ theorem riskActions_after_opportunity
   apply (runtime.serviceRisk_iff leaks bound who _ _).mpr
   left
   apply runtime.persistentServiceRisk_of_opportunityRecall leaks bound
-  exact runtime.recalledBindingOpportunityRisk_respond_of_opportunity leaks bound execution who
+  exact runtime.recalledOpportunityRisk_respond_of_opportunity leaks bound execution who
     response risky
 
 /-- A clear owner waiting for a recorded event still has the canonical menu,
@@ -720,7 +719,7 @@ theorem riskActions_recorded_of_persistentClear (who : Player)
       bounds.canonicalActions runtime leaks who past view :=
   bounds.riskActions_of_clear runtime leaks bound who past view
     (runtime.serviceRisk_clear leaks bound who past view persistentClear
-      (runtime.firstUnprotectedBindingOpportunity_recorded leaks bound who past view event
+      (runtime.firstUnprotectedOpportunity_recorded leaks bound who past view event
         selected recorded))
 
 theorem riskActions_effective (who : Player)

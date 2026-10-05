@@ -3,6 +3,7 @@
 import Vegas.Game.ServiceRosterAsync
 import Vegas.Game.SourceServiceCanonicalSerial
 import Vegas.Game.SourceServiceAudit
+import Vegas.Game.SourceServiceImmediateRisk
 import Vegas.Expr.Simple
 import GameTheoryExtensions.Math.Probability.Uniform
 import Interaction.ReactiveScheduleClock
@@ -865,8 +866,8 @@ private def sampledState (high : Bool) : EventGraphRuntime.State nativeGraph :=
   (silentInitial high).application.complete sampleEvent (by cases high <;> decide) PUnit.unit true
 
 private def silentCompleted (high : Bool) : EventGraphRuntime.State nativeGraph :=
-  ({ sampledState high with clock := 2 } : EventGraphRuntime.State nativeGraph).complete
-    aliceEvent (by cases high <;> decide) false .failure
+  (({ sampledState high with clock := 2 } : EventGraphRuntime.State nativeGraph).complete
+    aliceEvent (by cases high <;> decide) false .failure).markMissed aliceEvent
 
 private theorem silent_sample (high : Bool) :
     EventGraphRuntime.environmentStep (runtime setup) (silentInitial high).application
@@ -1130,6 +1131,7 @@ private theorem silent_completed_bob_view (high : Bool) :
   rw [publicEq, observation, candidates]
 
 /-- Literal silence reaches one full first-Bob input at both initial types.
+Alice's expiry is then a public missed decision, visible in that input.
 This identifies the canonical path, not every history in that information fiber. -/
 theorem silent_bob_input_law : ∃ input : List app.PlayerEntry × app.PlayerView,
     input.1 = [] ∧
@@ -1179,33 +1181,37 @@ private theorem prescribed_opening_content (before : PublicView nativeGraph)
   · change none = some message.sender at owned
     cases owned
   · let binding : FieldRef nativeGraph.layout (.binding alice .bool) := ⟨.inl ⟨0, by decide⟩, rfl⟩
-    obtain ⟨candidate, raw, _, _, _, typed, packet, _⟩ :=
-      freshServiceEnvelope_resolution_shape (runtime setup) before alice aliceEvent .bool
-        binding [] rfl rfl rfl message named conforming
-    cases raw with
-    | mk kind value =>
-        change kind = .bool at typed
-        subst kind
-        unfold SettledRecord.SettledContent
-        rw [packet]
-        refine ⟨by simp [certifiedOpening], ?_⟩
-        exact (record.view.openingGuardsAccepted_iff alice aliceEvent .bool binding []
-          rfl rfl rfl candidate ⟨.bool, value⟩ (some ⟨candidate, ⟨.bool, value⟩⟩)).mpr
-          ⟨value, rfl, rfl⟩
+    rcases freshServiceEnvelope_resolution_shape (runtime setup) before alice aliceEvent .bool
+        binding [] rfl rfl rfl message named conforming with
+      ⟨_, packet⟩ | ⟨candidate, raw, _, _, _, typed, packet, _⟩
+    · unfold SettledRecord.SettledContent
+      rw [packet]
+    · cases raw with
+      | mk kind value =>
+          change kind = .bool at typed
+          subst kind
+          unfold SettledRecord.SettledContent
+          rw [packet]
+          refine ⟨by simp [certifiedOpening], ?_⟩
+          exact (record.view.openingGuardsAccepted_iff alice aliceEvent .bool binding []
+            rfl rfl rfl candidate ⟨.bool, value⟩ (some ⟨candidate, ⟨.bool, value⟩⟩)).mpr
+            ⟨value, rfl, rfl⟩
   · let binding : FieldRef nativeGraph.layout (.binding bob .bool) := ⟨.inl ⟨1, by decide⟩, rfl⟩
-    obtain ⟨candidate, raw, _, _, _, typed, packet, _⟩ :=
-      freshServiceEnvelope_resolution_shape (runtime setup) before bob bobEvent .bool
-        binding [] rfl rfl rfl message named conforming
-    cases raw with
-    | mk kind value =>
-        change kind = .bool at typed
-        subst kind
-        unfold SettledRecord.SettledContent
-        rw [packet]
-        refine ⟨by simp [certifiedOpening], ?_⟩
-        exact (record.view.openingGuardsAccepted_iff bob bobEvent .bool binding []
-          rfl rfl rfl candidate ⟨.bool, value⟩ (some ⟨candidate, ⟨.bool, value⟩⟩)).mpr
-          ⟨value, rfl, rfl⟩
+    rcases freshServiceEnvelope_resolution_shape (runtime setup) before bob bobEvent .bool
+        binding [] rfl rfl rfl message named conforming with
+      ⟨_, packet⟩ | ⟨candidate, raw, _, _, _, typed, packet, _⟩
+    · unfold SettledRecord.SettledContent
+      rw [packet]
+    · cases raw with
+      | mk kind value =>
+          change kind = .bool at typed
+          subst kind
+          unfold SettledRecord.SettledContent
+          rw [packet]
+          refine ⟨by simp [certifiedOpening], ?_⟩
+          exact (record.view.openingGuardsAccepted_iff bob bobEvent .bool binding []
+            rfl rfl rfl candidate ⟨.bool, value⟩ (some ⟨candidate, ⟨.bool, value⟩⟩)).mpr
+            ⟨value, rfl, rfl⟩
 
 /-- Every transmitted envelope on initialized all-prescribed play is accepted and permitted. -/
 theorem prescribed_packets_clean (original : BehavioralProfile program) (execution : app.Execution)
@@ -1288,10 +1294,8 @@ theorem prescribed_settlement (original : BehavioralProfile program) (execution 
   obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler _
     horizon le_rfl execution reached
   simp only [Nat.sub_self] at trace
-  have noOmission := execution.application.publicView.missedBindingBy_of_publications
-    (by
-      intro event owner payload
-      fin_cases event <;> intro incompatible <;> cases incompatible) who
+  have noOmission := sourceServiceFirstTurn_no_miss contract timely _ who 0 original rfl horizon
+    le_rfl execution reached
   unfold sourceServiceAudit
   rw [(runtime setup).serviceAudit_charge, noOmission]
   simp only [Bool.false_eq_true, ↓reduceIte]

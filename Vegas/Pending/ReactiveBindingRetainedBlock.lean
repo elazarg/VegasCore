@@ -104,7 +104,7 @@ theorem binding_window_retained_coupling
       rw [unchanged]
       rw [silentLaw] at silenced
       exact bounds.silent_compiled runtime leaks owner _ _ response silenced
-    · apply bounds.requiredBindingActions_subset_compiled runtime leaks owner
+    · apply bounds.requiredDecisionActions_subset_compiled runtime leaks owner
       exact repairResponse_binding_available runtime leaks bounds owner memory
         (repaired.recall owner) (repaired.observe app owner) event payload outputEq codeEq node
         turn owned rightReady unsent serial actualSlot capacity default opening bounded
@@ -157,7 +157,7 @@ theorem binding_retained_coupling
     (vacant : original.application.accepted (.inr event) = none)
     (unused : original.application.HandleUnused (owner, .prepared serial))
     (serials : original.network.SerialsBeforeNext)
-    (coverage : bounds.requiredBindingActions runtime leaks owner (repaired.recall owner)
+    (coverage : bounds.requiredDecisionActions runtime leaks owner (repaired.recall owner)
       (repaired.observe (runtime.reactiveApplication leaks) owner) ⊆
         menu.actions owner (repaired.recall owner)
           (repaired.observe (runtime.reactiveApplication leaks) owner))

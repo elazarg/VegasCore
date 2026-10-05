@@ -5,6 +5,8 @@ import Vegas.Game.ServiceSettledEvidence
 import Vegas.Pending.ReactiveEntryStability
 import Vegas.Pending.ReactiveFreshCallAcceptance
 import Vegas.Pending.ReactiveCanonicalDecision
+import Vegas.Pending.ReactiveObservedState
+import Vegas.Pending.ReactiveDecisionMiss
 import Interaction.ReactiveMessageIdentity
 
 /-! # An acceptable fresh call settles in time under the asynchronous contract
@@ -62,13 +64,14 @@ structure FreshCall (owner : Player) (event : (graph setup).EventId)
     event
   conforming : AcceptableFreshCall setup leaks entry message
 
-/-- An event completes only together with an accepting receipt for `id`, and
-every receipt for `id` is accompanied by an accepting one. -/
+/-- An event completes only together with an accepting receipt for `id`, every
+receipt for `id` is accompanied by an accepting one, and the event never expires. -/
 def Settled (event : (graph setup).EventId) (id : MessageId Player)
     (execution : (application setup leaks).Execution) : Prop :=
   (event ∈ execution.application.config.cut.completed → (id, true) ∈ execution.receipts) ∧
     (∀ accepted, (id, accepted) ∈ execution.receipts → (id, true) ∈ execution.receipts) ∧
-    ((id, true) ∈ execution.receipts → event ∈ execution.application.config.cut.completed)
+    ((id, true) ∈ execution.receipts → event ∈ execution.application.config.cut.completed) ∧
+    event ∉ execution.application.missedEvents
 
 /-- Every recorded fresh call of `owner` for `event`, with no other identifier
 emitted by `owner` for the event, is settled. -/
@@ -190,6 +193,9 @@ structure LegalFacts (execution : (application setup leaks).Execution) : Prop wh
   unique : execution.network.UniqueIds
   provenance : execution.Provenance (application setup leaks)
   inputs : execution.InputRecall (application setup leaks)
+  remembered : execution.application.remembered = fun _ => none
+  misses : ∀ event ∈ execution.application.missedEvents,
+    event ∈ execution.application.config.cut.completed ∧ (graph setup).actor? event ≠ none
 
 theorem legalFacts (horizon : Nat) (scheduler : (application setup leaks).Scheduler)
     (control : (application setup leaks).Control)
@@ -212,15 +218,27 @@ theorem legalFacts (horizon : Nat) (scheduler : (application setup leaks).Schedu
     unique := (application setup leaks).uniqueIds_history scheduler (initialLaw setup) horizon
       control trace
     provenance := provenance
-    inputs := inputs }
+    inputs := inputs
+    remembered := ((runtime setup).reactiveRememberedInvariant leaks
+      (fun table => table = fun _ => none)).history (initialLaw setup) horizon scheduler (by
+        intro state supported
+        obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
+        rfl) trace
+    misses := ((runtime setup).reactiveMissedEventsWellFormed leaks).history
+      (initialLaw setup) horizon scheduler (by
+        intro state supported
+        obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
+        intro event missed
+        exact (Finset.notMem_empty event missed).elim) trace }
 
 private theorem settled_congr {event : (graph setup).EventId} {id : MessageId Player}
     {before after : (application setup leaks).Execution}
     (configEq : after.application.config = before.application.config)
     (receiptsEq : after.receipts = before.receipts)
+    (markersEq : after.application.missedEvents = before.application.missedEvents)
     (settled : Settled setup leaks event id before) : Settled setup leaks event id after := by
   unfold Settled
-  rw [configEq, receiptsEq]
+  rw [configEq, receiptsEq, markersEq]
   exact settled
 
 /-- A response preserves the settlement invariant. -/
@@ -234,8 +252,10 @@ theorem settlesFreshCalls_respond (owner : Player) (event : (graph setup).EventI
   let app := application setup leaks
   have configEq := ((runtime setup).reactive_respond_application leaks execution who action).1
   have receiptsEq := app.respond_receipts execution who action
+  have markersEq := congrArg PublicView.missedEvents
+    ((runtime setup).reactive_respond_application leaks execution who action).2
   intro earlier entry later message split call sole
-  apply settled_congr setup leaks configEq receiptsEq
+  apply settled_congr setup leaks configEq receiptsEq markersEq
   by_cases same : who = owner
   · subst who
     obtain ⟨emitted, recallEq, idOf⟩ := respond_recall_self setup leaks execution owner action
@@ -249,13 +269,15 @@ theorem settlesFreshCalls_respond (owner : Player) (event : (graph setup).EventI
       have readyNow : execution.application.config.cut.Ready event :=
         (execution.application.publicView_eventReady event).mp call.ready
       refine ⟨fun finished => (readyNow.1 finished).elim, fun accepted member => ?_,
-        fun member => ?_⟩
+        fun member => ?_, ?_⟩
       · rw [idEq] at member
         exact (no_receipt_next setup leaks execution facts.receipts facts.serials owner accepted
           member).elim
       · rw [idEq] at member
         exact (no_receipt_next setup leaks execution facts.receipts facts.serials owner true
           member).elim
+      · intro missed
+        exact readyNow.1 (facts.misses event missed).1
     · simp only [List.concat_eq_append] at split sole
       have reassociated : earlier ++ entry :: (init ++ [last]) =
           (earlier ++ entry :: init) ++ [last] := by simp
@@ -293,6 +315,17 @@ theorem settlesFreshCalls_environment {horizon : Nat}
   intro earlier entry later message split call sole
   rw [recallEq] at split
   have before := valid earlier entry later message split call sole
+  have markers := ((runtime setup).reactiveMissedEventsWellFormed leaks).environmentStep
+    execution next command facts.misses reached
+  have clearFinished (finished : event ∈ execution.application.config.cut.completed) :
+      event ∉ next.application.missedEvents := by
+    intro missed
+    have expired := reactive_new_missedEvent (runtime setup) leaks command reached event
+      before.2.2.2 missed
+    exact expired.2.1.1 finished
+  have clearUnfinished (unfinished : event ∉ next.application.config.cut.completed) :
+      event ∉ next.application.missedEvents := fun missed =>
+    unfinished (markers event missed).1
   have member : entry ∈ execution.recall owner := by rw [split]; simp
   obtain ⟨entered, activated, early⟩ := call.fits.exists
   -- Before the bound has passed the event is still timely; after it, a receipt exists.
@@ -303,7 +336,7 @@ theorem settlesFreshCalls_environment {horizon : Nat}
     obtain ⟨accepted, receipt⟩ := inclusion ⟨remaining + 1, none, execution⟩ prior event
       owner owned earlier later entry message split call.emitted call.authored call.addressed
       call.ready sole unfinished (by change _ < execution.application.clock; omega)
-    exact unfinished (before.2.2 (before.2.1 accepted receipt))
+    exact unfinished (before.2.2.1 (before.2.1 accepted receipt))
   have current (unfinished : event ∉ execution.application.config.cut.completed) :=
     entry_view_current setup leaks execution facts.stable owner entry member event call.ready
       unfinished
@@ -322,6 +355,7 @@ theorem settlesFreshCalls_environment {horizon : Nat}
   -- accepting entries and the event is not newly completed without acceptance.
   by_cases finished : event ∈ execution.application.config.cut.completed
   · have accepted := before.1 finished
+    have unmarked := clearFinished finished
     unfold ReactiveApplication.Execution.environmentStep at reached
     rw [PMF.support_map] at reached
     obtain ⟨updated, supported, rfl⟩ := reached
@@ -346,7 +380,7 @@ theorem settlesFreshCalls_environment {horizon : Nat}
           rw [PMF.support_map] at supported
           obtain ⟨_, _, rfl⟩ := supported
           exact accepted
-    exact ⟨fun _ => kept, fun _ _ => kept, fun _ => mono finished⟩
+    exact ⟨fun _ => kept, fun _ _ => kept, fun _ => mono finished, unmarked⟩
   · -- The event is unfinished before the command.
     have viewObservation := (current finished).1
     have viewAccepted := (current finished).2.1
@@ -409,7 +443,11 @@ theorem settlesFreshCalls_environment {horizon : Nat}
               have receipt : (id, true) ∈ execution.receipts ++
                   [(id, (some accepted).isSome)] :=
                 List.mem_append_right _ (List.mem_singleton_self _)
-              exact ⟨fun _ => receipt, fun _ _ => receipt, fun _ => completed⟩
+              refine ⟨fun _ => receipt, fun _ _ => receipt, fun _ => completed, ?_⟩
+              change named ∉ accepted.missedEvents
+              rw [handle_missedEvents (runtime setup) execution.application accepted
+                ⟨envelope.id, envelope.payload.call⟩ handled]
+              exact before.2.2.2
             · -- Another envelope cannot complete the event, and leaves our receipts alone.
               have otherReceipt (accepted : Bool)
                   (receipt : (message.id, accepted) ∈ execution.receipts ++
@@ -452,10 +490,17 @@ theorem settlesFreshCalls_environment {horizon : Nat}
                         senderEq.trans call.authored.symm, namedEq,
                         fun equal => sameId (envelopeId.symm.trans equal)⟩
                     · exact finished old
-              exact ⟨fun completedNow => (notCompleted completedNow).elim,
+              refine ⟨fun completedNow => (notCompleted completedNow).elim,
                 fun accepted receipt => List.mem_append_left _
                   (before.2.1 accepted (otherReceipt accepted receipt)),
-                fun receipt => (finished (before.2.2 (otherReceipt true receipt))).elim⟩
+                fun receipt => (finished (before.2.2.1 (otherReceipt true receipt))).elim, ?_⟩
+              cases handled : app.handle execution.application envelope with
+              | none => exact before.2.2.2
+              | some accepted =>
+                  change event ∉ accepted.missedEvents
+                  rw [handle_missedEvents (runtime setup) execution.application accepted
+                    ⟨envelope.id, envelope.payload.call⟩ (reactiveHandle_call handled)]
+                  exact before.2.2.2
     | application command =>
         rw [PMF.support_map] at supported
         obtain ⟨state, changed, rfl⟩ := supported
@@ -508,7 +553,8 @@ theorem settlesFreshCalls_environment {horizon : Nat}
                     exact finished completedAfter
                 · exact finished old
         exact ⟨fun completedNow => (notCompleted completedNow).elim, before.2.1,
-          fun receipt => (finished (before.2.2 receipt)).elim⟩
+          fun receipt => (finished (before.2.2.1 receipt)).elim,
+          clearUnfinished notCompleted⟩
 
 /-- The settlement invariant holds at every legal history. -/
 theorem settlesFreshCalls_history {horizon : Nat}

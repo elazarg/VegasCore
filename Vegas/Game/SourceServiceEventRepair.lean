@@ -28,7 +28,7 @@ theorem event_block_stopped_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
@@ -51,6 +51,7 @@ theorem event_block_stopped_coupling
     (leftRecall : original.InputRecall (application setup leaks))
     (sound : ((runtime setup).packetEvidence leaks).Sound original)
     (leftBinding : original.application.BindingInvariant)
+    (leftRemembered : original.application.remembered = fun _ => none)
     (event : (graph setup).EventId) (remaining : Nat)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
@@ -78,7 +79,7 @@ theorem event_block_stopped_coupling
         ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
             record.envelope = false) ∨
-          next.1.application.publicView.missedBindingBy owner = true ∨
+          next.1.application.publicView.missedDecisionBy owner = true ∨
           BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
   classical
   intro app players strategy
@@ -144,7 +145,7 @@ theorem event_block_stopped_coupling
         ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
             record.envelope = false) ∨
-          next.1.application.publicView.missedBindingBy owner = true ∨
+          next.1.application.publicView.missedDecisionBy owner = true ∨
           BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
     have repairedReady : repaired.application.config.cut.Ready event := boundary.ready event rfl
     cases node : nodeView (graph setup) event with
@@ -189,7 +190,7 @@ theorem event_block_stopped_coupling
         · refine ⟨(related next member).1, ?_⟩
           rcases (related next member).2 with bad | missed | framed
           · exact Or.inl bad
-          · exact Or.inr (Or.inl (PublicView.missedBindingBy_of_event _ owner event owned missed))
+          · exact Or.inr (Or.inl (PublicView.missedDecisionBy_of_event _ owner event owned missed))
           · exact Or.inr (Or.inr framed)
       · obtain ⟨coupling, first, second, related⟩ := foreign_binding_block_stopped_coupling setup
           leaks bounds values capacity rosters opportunities network source target agrees
@@ -210,15 +211,16 @@ theorem event_block_stopped_coupling
       obtain ⟨coupling, first, second, related⟩ := resolution_block_stopped_coupling setup leaks
         bounds values capacity rosters opportunities network source target agrees owner
         policy available reference memory original repaired paired onlyBindings
-        nextStarted leftNextRecall leftSound leftNextBinding event actor payload binding checks
+        nextStarted leftNextRecall leftSound leftNextBinding leftRemembered
+        event actor payload binding checks
         outputEq codeEq node repairedReady remaining (rosters event)
-        (event.val + 1) phaseTrace
+        (event.val + 1) (Nat.le_refl _) phaseTrace
         before after
         (by simpa only [body, owned, List.append_assoc] using nextSplit) nextPosition
       refine ⟨coupling, ?_, ?_, fun next member => ?_⟩
       · simpa only [body, owned] using first
       · simpa only [body, owned] using second
-      · exact ⟨(related next member).1, ((related next member).2).imp_right Or.inr⟩
+      · exact ⟨(related next member).1, (related next member).2⟩
   obtain ⟨coupling, first, second, related⟩ := existsBody
   refine ⟨coupling, ?_, ?_, related⟩
   · rw [block]

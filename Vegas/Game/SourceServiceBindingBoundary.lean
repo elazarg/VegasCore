@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceBoundary
+import Vegas.Pending.ReactiveServiceMarkers
 import Vegas.Game.SourceServiceBindingSupport
 import Vegas.Pending.ReactiveBindingWindowSupport
 import Vegas.Pending.ReactiveServiceSoundness
@@ -359,6 +360,11 @@ theorem ServiceBoundary.binding_block
     value, admitted, checkpoint⟩ := boundary.binding_inclusion bounds covered players lawful
       network event atRank name owner payload guard outputEq codeEq node owned
         beforeRefs decoded opportunity capacity included inclusion
+  have includedMarkers : included.application.missedEvents = ∅ := by
+    rw [(runtime setup).runInteractionPlan_missedEvents_eq leaks players network
+      ((rosters event).map ServiceInstruction.player ++ [.includeLatest event owner])
+      (by simp) (by intro other; simp) execution included inclusion]
+    exact boundary.missed
   have settled : ¬included.application.config.cut.Ready event := by
     intro ready
     have next := (ready_iff_rank setup _ (rank + 1) checkpoint.ordered event).mp ready
@@ -381,6 +387,9 @@ theorem ServiceBoundary.binding_block
     toSourceCheckpoint := finalCheckpoint
     invariant := invariant
     binding := binding
+    remembered := boundary.run_remembered players network
+      (rosterBlock setup rosters event) after reached
+    missed := by rw [afterApp]; exact includedMarkers
     prepared := ?_
     represented := ?_
     acceptedRecorded := ?_

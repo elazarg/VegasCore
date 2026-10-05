@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceBinding
-import Vegas.Game.RevealServiceState
+import Vegas.Game.SourceServiceInitialObservation
 import Vegas.Source.SetupProtocol
 
 /-! # Dynamic source configuration checkpoints

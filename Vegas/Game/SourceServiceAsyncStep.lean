@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceTurnPolicy
-import Vegas.Game.SourceServiceCompletion
+import Vegas.Game.SourceServiceCompletionBoundary
 import Interaction.ReactiveRawRoundTrace
 
 /-! # The approximate step law of the turn-counted policy

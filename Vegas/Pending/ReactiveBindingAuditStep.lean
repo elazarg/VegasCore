@@ -234,7 +234,7 @@ theorem binding_stopped_response_coupling
           ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩).1 ∈
             menu.actions owner (repaired.recall owner) (repaired.observe app owner) := by
         apply coverage
-        apply bounds.requiredBindingActions_subset_compiled runtime leaks owner
+        apply bounds.requiredDecisionActions_subset_compiled runtime leaks owner
         exact repairResponse_binding_available runtime leaks bounds owner memory
           (repaired.recall owner) (repaired.observe app owner) event payload outputEq codeEq node
           rightTurn owned rightReady (first counted) serial actualSlot capacity default opening

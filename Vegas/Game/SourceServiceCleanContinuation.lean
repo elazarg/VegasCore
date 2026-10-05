@@ -186,7 +186,8 @@ theorem sourceServiceImmediatePolicy_packetFacts_round {horizon remaining : Nat}
       obtain ⟨atNext, slotsNext⟩ := sourceServiceImmediatePolicy_canonicalSlots_respond middleTrace
         atMiddle slotsMiddle chosen
       obtain ⟨callsNext, conformNext, onceNext, goodNext⟩ := ownerPacketFacts_respond middle who
-        response (settledFacts_history (initialLaw setup) horizon scheduler middleTrace) callsMiddle
+        response (settledFacts_history (initialLaw setup) horizon scheduler middleTrace)
+        callsMiddle
         conformMiddle onceMiddle goodMiddle (sourceServiceImmediatePolicy_firstSubmission chosen)
         (sourceServiceImmediatePolicy_freshServiceEnvelope middleTrace atMiddle slotsMiddle chosen)
         (sourceServiceImmediatePolicy_submissionFits chosen)
@@ -205,8 +206,8 @@ theorem sourceServiceImmediatePolicy_packetFacts_round {horizon remaining : Nat}
       exact ⟨atNext, slotsNext, callsNext, conformNext, onceNext, goodNext⟩
 
 /-- One actual round preserves the immediate owner's full clear signal and
-all local packet resources. Earlier binding turns remain recorded, which
-protects newly offered unsent bindings and rules out public omissions. -/
+all local packet resources. Earlier own turns remain recorded, which
+protects newly offered unsent decisions and rules out public omissions. -/
 theorem sourceServiceImmediatePolicy_continuationFacts_round {horizon remaining : Nat}
     {scheduler : (application setup leaks).Scheduler} {delay bound : (graph setup).EventId → Nat}
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
@@ -219,7 +220,7 @@ theorem sourceServiceImmediatePolicy_continuationFacts_round {horizon remaining 
     (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨remaining + 1, none, execution⟩))
     (answered : ActivationsAnswered setup leaks execution)
-    (turned : BindingTurnsRecorded setup leaks execution who)
+    (turned : OwnTurnsRecorded setup leaks execution who)
     (clear : (runtime setup).serviceRisk leaks bound who (execution.recall who)
       (execution.observe (application setup leaks) who) = false)
     (atTurn : OwnSubmissionsAtTurn setup leaks execution who)
@@ -230,7 +231,7 @@ theorem sourceServiceImmediatePolicy_continuationFacts_round {horizon remaining 
     (good : ∀ message, message.sender = who → Emitted setup leaks execution message →
       SettledGood setup leaks execution message)
     (reached : next ∈ ((application setup leaks).round scheduler players execution).support) :
-    ActivationsAnswered setup leaks next ∧ BindingTurnsRecorded setup leaks next who ∧
+    ActivationsAnswered setup leaks next ∧ OwnTurnsRecorded setup leaks next who ∧
       (runtime setup).serviceRisk leaks bound who (next.recall who)
         (next.observe (application setup leaks) who) = false ∧
       OwnSubmissionsAtTurn setup leaks next who ∧ CanonicalSlotsUsed setup leaks next who ∧
@@ -250,13 +251,13 @@ theorem sourceServiceImmediatePolicy_continuationFacts_round {horizon remaining 
       (((runtime setup).serviceRisk_clear_iff leaks bound who _ _).mp clear).1
   obtain ⟨command, selected, middle, moved, effect⟩ := round_cases setup leaks reached
   have recallEq := app.environmentStep_recall execution middle command moved
-  have turnedMiddle : BindingTurnsRecorded setup leaks middle who := by
-    unfold BindingTurnsRecorded
+  have turnedMiddle : OwnTurnsRecorded setup leaks middle who := by
+    unfold OwnTurnsRecorded
     rw [recallEq]
     exact turned
-  have recallFacts : BindingTurnsRecorded setup leaks next who ∧
+  have recallFacts : OwnTurnsRecorded setup leaks next who ∧
       (runtime setup).recalledSubmissionRisk leaks bound who (next.recall who) = false ∧
-      (runtime setup).recalledBindingOpportunityRisk leaks bound who (next.recall who) =
+      (runtime setup).recalledOpportunityRisk leaks bound who (next.recall who) =
         false := by
     rcases effect with ⟨_, rfl⟩ | ⟨responder, active, response, chosen, rfl⟩
     · refine ⟨turnedMiddle, ?_, ?_⟩ <;> rw [recallEq]
@@ -299,7 +300,7 @@ theorem sourceServiceImmediatePolicy_continuationFacts_round {horizon remaining 
       · have different : who ≠ responder := Ne.symm same
         have otherRecall := app.respond_recall_other middle responder who different response
         refine ⟨?_, ?_, ?_⟩
-        · unfold BindingTurnsRecorded
+        · unfold OwnTurnsRecorded
           rw [otherRecall]
           exact turnedMiddle
         · rw [otherRecall, recallEq]
@@ -307,18 +308,18 @@ theorem sourceServiceImmediatePolicy_continuationFacts_round {horizon remaining 
         · rw [otherRecall, recallEq]
           exact opportunityRecallClear
   obtain ⟨turnedNext, submittedNext, opportunityRecallNext⟩ := recallFacts
-  have publicNext := recordedBindings_no_public_miss_round contract timely trace answered who
+  have publicNext := recordedTurns_no_public_miss_round contract timely trace answered who
     turned publicClear reached nextTrace callsNext conformNext onceNext atNext
   have persistentNext := ((runtime setup).persistentServiceRisk_clear_iff leaks bound who
     (next.recall who) (next.observe app who)).mpr
       ⟨⟨publicNext, submittedNext⟩, opportunityRecallNext⟩
-  have opportunityNext := recordedBindings_currentOpportunity_clear contract timely nextTrace
+  have opportunityNext := recordedTurns_currentOpportunity_clear contract timely nextTrace
     answeredNext who turnedNext
   exact ⟨answeredNext, turnedNext, (runtime setup).serviceRisk_clear leaks bound who _ _
     persistentNext opportunityNext, atNext, slotsNext, callsNext, conformNext, onceNext, goodNext⟩
 
 /-- A single suffix induction jointly preserves full clear risk, answered
-activations, recorded binding turns and the soundness of every owner packet.
+activations, recorded own turns and the soundness of every owner packet.
 Only the selected owner's continuation policy is prescribed. -/
 theorem sourceServiceImmediatePolicy_continuationFacts_runRounds {horizon remaining : Nat}
     {scheduler : (application setup leaks).Scheduler} {delay bound : (graph setup).EventId → Nat}
@@ -332,7 +333,7 @@ theorem sourceServiceImmediatePolicy_continuationFacts_runRounds {horizon remain
     (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨remaining + count, none, execution⟩))
     (answered : ActivationsAnswered setup leaks execution)
-    (turned : BindingTurnsRecorded setup leaks execution who)
+    (turned : OwnTurnsRecorded setup leaks execution who)
     (clear : (runtime setup).serviceRisk leaks bound who (execution.recall who)
       (execution.observe (application setup leaks) who) = false)
     (atTurn : OwnSubmissionsAtTurn setup leaks execution who)
@@ -344,7 +345,7 @@ theorem sourceServiceImmediatePolicy_continuationFacts_runRounds {horizon remain
       SettledGood setup leaks execution message)
     (reached : next ∈ ((application setup leaks).runRounds scheduler players count
       execution).support) :
-    ActivationsAnswered setup leaks next ∧ BindingTurnsRecorded setup leaks next who ∧
+    ActivationsAnswered setup leaks next ∧ OwnTurnsRecorded setup leaks next who ∧
       (runtime setup).serviceRisk leaks bound who (next.recall who)
         (next.observe (application setup leaks) who) = false ∧
       OwnSubmissionsAtTurn setup leaks next who ∧ CanonicalSlotsUsed setup leaks next who ∧
@@ -385,7 +386,7 @@ theorem sourceServiceImmediatePolicy_owner_settled_runRounds {horizon remaining 
     (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨remaining + count, none, execution⟩))
     (answered : ActivationsAnswered setup leaks execution)
-    (turned : BindingTurnsRecorded setup leaks execution who)
+    (turned : OwnTurnsRecorded setup leaks execution who)
     (clear : (runtime setup).serviceRisk leaks bound who (execution.recall who)
       (execution.observe (application setup leaks) who) = false)
     (atTurn : OwnSubmissionsAtTurn setup leaks execution who)
@@ -458,7 +459,8 @@ theorem sourceServiceImmediatePolicy_packetFacts_after_prefix_response
   obtain ⟨atNext, slotsNext⟩ := sourceServiceImmediatePolicy_canonicalSlots_respond rawTrace atTurn
     slots chosen
   obtain ⟨callsNext, conformNext, onceNext, goodNext⟩ := ownerPacketFacts_respond execution who
-    response (settledFacts_history (initialLaw setup) horizon scheduler rawTrace) calls conform once
+    response (settledFacts_history (initialLaw setup) horizon scheduler rawTrace)
+    calls conform once
     good (sourceServiceImmediatePolicy_firstSubmission chosen)
     (sourceServiceImmediatePolicy_freshServiceEnvelope rawTrace atTurn slots chosen)
     (sourceServiceImmediatePolicy_submissionFits chosen)

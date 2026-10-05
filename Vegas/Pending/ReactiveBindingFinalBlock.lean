@@ -9,7 +9,7 @@ import Vegas.Pending.ReactiveServiceTraffic
 One fixed legal repair is coupled to an arbitrary effective mixed response and
 the whole remaining physical binding block. Every terminal branch either retains
 the joint frame, carries an actual rejected traffic record, or has actual public
-missed-binding evidence. Foreign responses are never assumed conforming.
+missed binding marker. Foreign responses are never assumed conforming.
 -/
 
 noncomputable section
@@ -66,7 +66,7 @@ theorem required_binding_final_block_coupling
     (due : runtime.deadline event ≤ original.application.clock + ticks - entered)
     (visits : List Player) (absent : owner ∉ visits)
     (serials : original.network.SerialsBeforeNext)
-    (coverage : bounds.requiredBindingActions runtime leaks owner (repaired.recall owner)
+    (coverage : bounds.requiredDecisionActions runtime leaks owner (repaired.recall owner)
       (repaired.observe (runtime.reactiveApplication leaks) owner) ⊆
         menu.actions owner (repaired.recall owner)
           (repaired.observe (runtime.reactiveApplication leaks) owner))
@@ -89,7 +89,7 @@ theorem required_binding_final_block_coupling
         (∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
           runtime.permittedServiceEnvelope record.observation record.ledger
             record.envelope = false) ∨
-        next.1.application.publicView.missedBinding event = true ∨
+        event ∈ next.1.application.missedEvents ∨
         Frame runtime leaks next.2.2 owner next.1 next.2.1 := by
   classical
   have turnSome := original.application.publicView.ownTurn?_of_ownTurn owner event turn
@@ -116,7 +116,7 @@ theorem required_binding_final_block_coupling
     (∃ record ∈ app.executionTraffic execution, record.envelope.sender = owner ∧
       runtime.permittedServiceEnvelope record.observation record.ledger
         record.envelope = false) ∨
-    execution.application.publicView.missedBinding event = true
+    event ∈ execution.application.missedEvents
   have responseLaw : strategy.respond memory (repaired.recall owner,
       repaired.observe app owner) = law.map adjusted := by
     change ((implementation runtime leaks owner reference (players owner)).respond memory
@@ -167,8 +167,8 @@ theorem required_binding_final_block_coupling
         intro material
         rcases app.silentPolicy_cases _ _ response silenced with rfl
         simp
-      apply runtime.last_binding_transport_omission leaks players network original owner event
-        payload outputEq codeEq node ready unbound published entered ticks activated due
+      apply runtime.last_decision_transport_miss leaks players network original owner event owned
+        ready published entered ticks activated due
           visits absent response transport final
       simpa only [leftRun, plan, List.append_assoc, List.singleton_append, List.cons_append,
         List.nil_append]

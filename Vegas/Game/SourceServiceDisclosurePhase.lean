@@ -2,7 +2,8 @@
 
 import Vegas.Game.SourceServiceSettlement
 import Vegas.Game.SourceServiceBindingPhase
-import Vegas.Game.RevealServiceRosterLaw
+import Vegas.Game.ServicePlanPolicies
+import Vegas.Pending.ReactiveCompiledResolution
 
 /-! # Guarded disclosure across an actual response roster
 
@@ -23,20 +24,19 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-private theorem opening_silent_inclusion
+private theorem decision_silent_inclusion
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (network : (runtime setup).NetworkPolicy leaks)
     (execution : (application setup leaks).Execution) (owner : Player)
-    (event : (graph setup).EventId) (candidate : Handle (graph setup)) (raw : Raw L)
-    (evidence : EvidenceRequest (graph setup))
+    (event : (graph setup).EventId) (submission : WitnessedSubmission (graph setup))
+    (addressed : submission.call.packet.event? (graph setup) = some event)
     (published : execution.network.Satisfies fun packet =>
       packet.id ∈ execution.network.ledger.map Message.id)
     (serials : execution.network.SerialsBeforeNext) (remaining : List Player) :
     let app := application setup leaks
     let players : Player → app.Policy := fun _ => app.silentPolicy
-    let submitted := execution.respond app owner
-      ⟨some ⟨⟨.opening event candidate raw, none⟩, evidence⟩⟩
+    let submitted := execution.respond app owner ⟨some submission⟩
     ((runtime setup).runInteractionPlan leaks players network
       (remaining.map ServiceInstruction.player ++ [.includeLatest event owner]) submitted).map
         (fun final => (final.application, final.network.ledger,
@@ -48,10 +48,9 @@ private theorem opening_silent_inclusion
   dsimp only
   let app := application setup leaks
   let players : Player → app.Policy := fun _ => app.silentPolicy
-  let submission : WitnessedSubmission (graph setup) :=
-    ⟨⟨.opening event candidate raw, none⟩, evidence⟩
   let submitted := execution.respond app owner ⟨some submission⟩
-  let packet := app.packet execution.application owner (execution.network.known owner) submission
+  let packet := app.packet (app.submit execution.application owner submission) owner
+    (execution.network.known owner) submission
   let message : Message Player (WitnessedPacket (graph setup)) :=
     ⟨(owner, execution.network.nextSerial owner), packet⟩
   have responses := fun (current : app.Execution) who response
@@ -67,9 +66,9 @@ private theorem opening_silent_inclusion
   have pending : message ∈ submitted.network.pending :=
     List.mem_append_right _ (List.mem_singleton_self _)
   have delayed := (runtime setup).silent_window_settlement leaks players network owner submitted
-    responses event message rfl rfl packets pending (serials.next_unpublished owner) remaining
+    responses event message rfl addressed packets pending (serials.next_unpublished owner) remaining
   have immediate := (runtime setup).silent_window_settlement leaks players network owner submitted
-    responses event message rfl rfl packets pending (serials.next_unpublished owner) []
+    responses event message rfl addressed packets pending (serials.next_unpublished owner) []
   exact delayed.trans (by
     simpa only [List.map_nil, List.nil_append, runInteractionPlan, PMF.bind_pure]
       using immediate.symm)
@@ -85,6 +84,7 @@ theorem guarded_reveal_silent_service
     (execution : (application setup leaks).Execution)
     (agree : refs.Agrees source.state execution.application.config.store)
     (valid : execution.application.BindingInvariant)
+    (unremembered : execution.application.remembered = fun _ => none)
     (event : (graph setup).EventId)
     (outputEq : (graph setup).outputLayout event = .publication payload)
     (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
@@ -95,8 +95,7 @@ theorem guarded_reveal_silent_service
       outputEq codeEq)
     (ready : execution.application.config.cut.Ready event)
     (timely : execution.application.WithinDeadline (runtime setup) event)
-    (entered ticks : Nat) (activated : execution.application.activatedAt event = some entered)
-    (due : (runtime setup).deadline event ≤ execution.application.clock + ticks - entered)
+    (ticks : Nat)
     (packets : execution.network.Satisfies fun message =>
       message.id ∈ execution.network.ledger.map Message.id)
     (serials : execution.network.SerialsBeforeNext)
@@ -121,164 +120,136 @@ theorem guarded_reveal_silent_service
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose)
           (cast (congrArg EventGraph.EventField.Value outputEq.symm)
             (disclosureResult published binding source disclose)),
-          if disclose then execution.receipts ++
-            [((owner, execution.network.nextSerial owner), true)] else execution.receipts) := by
+          execution.receipts ++ [((owner, execution.network.nextSerial owner), true)]) := by
   intro app players response law
-  cases disclose with
-  | false =>
-      have silent : response = ⟨none⟩ := by
-        simp only [response, serviceDecision, reactiveDecision, node, reactiveResolutionPacket,
-          cast_cast, cast_eq, Bool.false_eq_true, ↓reduceIte,
-          disclosureSubmission_normalize_withhold]
-        rfl
-      have lawEq : law = app.silentPolicy (execution.recall owner)
-          (execution.observe app owner) := by
-        simp only [law, silent, ↓reduceIte]
-      let expected := (execution.application.config.complete event ready
-        (cast (congrArg EventGraph.EventField.Action outputEq.symm) false)
-        (cast (congrArg EventGraph.EventField.Value outputEq.symm)
-          (disclosureResult published binding source false)), execution.receipts)
-      rw [lawEq, PMF.map_bind]
-      trans (app.silentPolicy (execution.recall owner) (execution.observe app owner)).bind
-        (fun _ => PMF.pure expected)
-      · apply bind_congr_on_support _
-        intro action supported
-        let submitted := execution.respond app owner action
-        obtain ⟨same, ledger, receipt, _, safe, _⟩ :=
-          (runtime setup).silent_response_preserves leaks _ execution packets owner action
-            (app.silentPolicy_cases _ _ action supported)
-        change submitted.application = execution.application at same
-        change submitted.receipts = execution.receipts at receipt
-        rw [(runtime setup).runInteractionPlan_append, PMF.map_bind]
-        trans ((runtime setup).runInteractionPlan leaks players network
-          (remaining.map ServiceInstruction.player) submitted).bind
-            (fun _ => PMF.pure expected)
-        · apply bind_congr_on_support _
-          intro current reached
-          obtain ⟨currentSame, currentLedger, currentReceipt, _, currentSafe, _⟩ :=
-            (runtime setup).silent_window_preserves leaks players network owner submitted
-              (fun value who response _ _ chosen => app.silentPolicy_cases _ _ response chosen)
-              _ safe remaining current reached
-          have currentReady : current.application.config.cut.Ready event := by
-            rw [currentSame, same]; exact ready
-          have currentPending : ∀ message ∈ current.network.pending,
-              message.id ∈ current.network.ledger.map Message.id := by
-            intro message member
-            rw [currentLedger, ledger]
-            exact currentSafe.pending message member
-          let waited : app.Execution := { current with
-            environmentRecall := current.environmentRecall ++
-              [⟨current.observeEnvironment app, .wait⟩] }
-          have included : (runtime setup).interactionStep leaks players network
-              (.includeLatest event owner) current = PMF.pure waited := by
-            rw [(runtime setup).interaction_includeLatest_of_pending_published leaks players
-              network current owner event currentPending]
-            simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
-            rfl
-          obtain ⟨final, tailLaw, state, _, receipts, _⟩ :=
-            (runtime setup).canonical_silent_expiry leaks players network waited owner event
-              payload (refs.get binding)
-              (compileChecks (published := published) refs source.registry
-                source.revelations binding)
-              outputEq codeEq node currentReady entered ticks
-              (by change current.application.activatedAt event = _
-                  rw [currentSame, same]; exact activated)
-              (by change _ ≤ current.application.clock + ticks - entered
-                  rw [currentSame, same]; exact due)
-          rw [List.cons_append, runInteractionPlan, included, PMF.pure_bind,
-            tailLaw, PMF.pure_map,
-            state, receipts]
-          simp only [waited, currentSame, same, currentReceipt, receipt, expected,
-            disclosureResult_false, EventGraphRuntime.State.complete]
-        · exact PMF.bind_const _ _
-      · exact PMF.bind_const _ _
-  | true =>
-      obtain ⟨value, success⟩ : ∃ value, disclosureResult published binding source true =
-          PublicationResult.success value := by
-        cases result : disclosureResult published binding source true with
-        | failure => simp only [effectiveDisclosure, result, Bool.false_eq_true] at effective
-        | success value => exact ⟨value, rfl⟩
-      have resolved := compiled_disclosure_result published binding source refs
-        execution.application.config.store agree true
-      rw [success, EventGraph.EventCode.resolveOutput?_playerStore] at resolved
-      have stored : (refs.get binding).get? execution.application.config.store =
-          some (.success value) := by
-        have bound := success
-        simp only [disclosureResult, revealSuccessor, ite_true, Env.cons_get_here] at bound
-        have originalValue : source.state.get binding = .success value := by
-          split at bound
-          · exact bound
-          · cases bound
-        simpa only [originalValue, cellValue] using agree binding
-      obtain ⟨candidate, decision, accepted⟩ := (runtime setup).reactiveDecision_opening_law leaks
-        execution.application valid (owner, execution.network.nextSerial owner) owner event payload
-        (refs.get binding)
-        (compileChecks (published := published) refs source.registry source.revelations binding)
-        outputEq codeEq node ready timely rfl
-        (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
-        (by simp only [cast_cast, cast_eq]) value stored resolved
-      have original : (runtime setup).reactiveDecision leaks owner event
+  let after := execution.application.complete event ready
+    (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose)
+    (cast (congrArg EventGraph.EventField.Value outputEq.symm)
+      (disclosureResult published binding source disclose))
+  obtain ⟨submission, responseEq, addressed, accepted⟩ :
+      ∃ submission : WitnessedSubmission (graph setup), response = ⟨some submission⟩ ∧
+        submission.call.packet.event? (graph setup) = some event ∧
+        app.handle (app.submit execution.application owner submission)
+          ⟨(owner, execution.network.nextSerial owner),
+            app.packet (app.submit execution.application owner submission) owner
+              (execution.network.known owner) submission⟩ = some after := by
+    cases disclose with
+    | false =>
+        let material : WitnessedSubmission (graph setup) :=
+          ⟨⟨.withhold event, none⟩, .none⟩
+        have shape : response = ⟨some material⟩ :=
+          (runtime setup).serviceDecision_resolution_false leaks owner _ _ event owner payload
+            (refs.get binding)
+            (compileChecks (published := published) refs source.registry
+              source.revelations binding) outputEq codeEq node
+        have baseHandled := (runtime setup).handle_withhold_unremembered_eq
+          execution.application (owner, execution.network.nextSerial owner) event owner payload
+          (refs.get binding)
+          (compileChecks (published := published) refs source.registry source.revelations binding)
+          outputEq codeEq node ready timely rfl (by rw [unremembered])
+        refine ⟨material, shape, rfl, ?_⟩
+        change (application setup leaks).handle execution.application
+          ⟨(owner, execution.network.nextSerial owner),
+            ⟨.withhold event, none,
+              execution.application.publicView.tokenFor (.withhold event)⟩⟩ = _
+        simpa only [after, disclosureResult_false] using
+          (reactiveApplication_handle_of_tokenValid (runtime setup) leaks _ _
+          (tokenFor_tokenValid_of_handle (runtime setup) execution.application _ _ _ _
+            baseHandled)).trans baseHandled
+    | true =>
+        obtain ⟨value, success⟩ : ∃ value,
+            disclosureResult published binding source true = PublicationResult.success value := by
+          cases result : disclosureResult published binding source true with
+          | failure =>
+              simp only [effectiveDisclosure, result, Bool.false_eq_true] at effective
+          | success value => exact ⟨value, rfl⟩
+        have resolved := compiled_disclosure_result published binding source refs
+          execution.application.config.store agree true
+        rw [success, EventGraph.EventCode.resolveOutput?_playerStore] at resolved
+        have stored : (refs.get binding).get? execution.application.config.store =
+            some (.success value) := by
+          have bound := success
+          simp only [disclosureResult, revealSuccessor, ite_true, Env.cons_get_here] at bound
+          have originalValue : source.state.get binding = .success value := by
+            split at bound
+            · exact bound
+            · cases bound
+          simpa only [originalValue, cellValue] using agree binding
+        obtain ⟨candidate, decision, baseHandled⟩ :=
+          (runtime setup).reactiveDecision_opening_law leaks execution.application valid
+            (owner, execution.network.nextSerial owner) owner event payload (refs.get binding)
+            (compileChecks (published := published) refs source.registry
+              source.revelations binding)
+            outputEq codeEq node ready timely rfl
+            (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
+            (by simp only [cast_cast, cast_eq]) value stored resolved
+        have original : (runtime setup).reactiveDecision leaks owner event
+            (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
+            (execution.observe app owner).application =
+          (runtime setup).canonicalRevealResponse leaks event candidate ⟨payload, value⟩ true :=
+          congrArg ReactiveApplication.Action.mk decision
+        have canonical : response = ((runtime setup).reactiveNormalization leaks).action owner
+            (execution.recall owner) (execution.observe app owner)
+            ((runtime setup).canonicalRevealResponse leaks event candidate
+              ⟨payload, value⟩ true) := by
+          dsimp only [response, serviceDecision]
+          rw [original]
+        obtain ⟨evidence, shape⟩ := (runtime setup).normalized_reveal_response leaks owner
+          (execution.recall owner) (execution.observe app owner) event candidate ⟨payload, value⟩
+        let material : WitnessedSubmission (graph setup) :=
+          ⟨⟨.opening event candidate ⟨payload, value⟩, none⟩, evidence⟩
+        refine ⟨material, canonical.trans shape, rfl, ?_⟩
+        rw [show after = execution.application.complete event ready
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
-          (execution.observe app owner).application =
-        (runtime setup).canonicalRevealResponse leaks event candidate ⟨payload, value⟩ true :=
-        congrArg ReactiveApplication.Action.mk decision
-      have canonical : response = ((runtime setup).reactiveNormalization leaks).action owner
-          (execution.recall owner) (execution.observe app owner)
-          ((runtime setup).canonicalRevealResponse leaks event candidate
-            ⟨payload, value⟩ true) := by
-        dsimp only [response, serviceDecision]
-        rw [original]
-        rfl
-      obtain ⟨evidence, shape⟩ := (runtime setup).normalized_reveal_response leaks owner
-        (execution.recall owner) (execution.observe app owner) event candidate ⟨payload, value⟩
-      have responseEq := canonical.trans shape
-      have lawEq : law = PMF.pure response := by
-        simp only [law, responseEq, reduceCtorEq, ↓reduceIte]
-      obtain ⟨included, inclusion, state, _, receipts, _, _⟩ :=
-        (runtime setup).opening_published_checkpoint leaks players network execution owner event
-          candidate ⟨payload, value⟩ evidence _ packets.pending
-          (serials.next_unpublished owner) accepted
-      let submitted := execution.respond app owner response
-      let delayed := (runtime setup).runInteractionPlan leaks players network
-        (remaining.map ServiceInstruction.player ++ [.includeLatest event owner]) submitted
-      have delayedLaw : delayed.map (fun final => (final.application, final.network.ledger,
-          final.receipts, final.network.nextSerial)) =
-          PMF.pure (included.application, included.network.ledger,
-            included.receipts, included.network.nextSerial) := by
-        dsimp only [delayed, submitted]
-        rw [responseEq, opening_silent_inclusion setup leaks network execution owner event
-          candidate ⟨payload, value⟩ evidence packets serials remaining,
-          inclusion, PMF.pure_map]
-      have settled : ∀ final ∈ delayed.support,
-          ¬final.application.config.cut.Ready event := by
-        intro final reached
-        have member : (final.application, final.network.ledger, final.receipts,
-            final.network.nextSerial) ∈ (delayed.map (fun next =>
-              (next.application, next.network.ledger,
-                next.receipts, next.network.nextSerial))).support :=
-          PMF.support_map .. ▸ ⟨final, reached, rfl⟩
-        rw [delayedLaw] at member
-        have equal := congrArg Prod.fst ((PMF.mem_support_pure_iff _ _).mp member)
-        change final.application = included.application at equal
-        rw [equal, state]
-        intro active
-        exact active.1 (by simp [EventGraphRuntime.State.complete, EventOrder.Cut.complete])
-      rw [lawEq, PMF.pure_bind]
-      have splitPlan : remaining.map ServiceInstruction.player ++
-          (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event]) =
-          (remaining.map ServiceInstruction.player ++ [.includeLatest event owner]) ++
-            (List.replicate ticks .tick ++ [.expire event]) := by simp only [List.append_assoc,
-              List.cons_append, List.nil_append]
-      rw [splitPlan, (runtime setup).runInteractionPlan_append]
-      change (delayed.bind _).map _ = _
-      rw [(runtime setup).settled_tail_config_receipts leaks players network delayed event ticks
-        settled]
-      have projected := congrArg (PMF.map (fun result : EventGraphRuntime.State (graph setup) ×
-          List (Message Player (WitnessedPacket (graph setup))) ×
-          List (MessageId Player × Bool) × (Player → Nat) =>
-          (result.1.config, result.2.2.1))) delayedLaw
-      simpa only [PMF.map_comp, PMF.pure_map, Function.comp_def, state, receipts,
-        success, ↓reduceIte, EventGraphRuntime.State.complete] using projected
+          (cast (congrArg EventGraph.EventField.Value outputEq.symm) (.success value)) by
+            dsimp only [after]; rw [success]]
+        exact (reactiveApplication_handle_of_tokenValid (runtime setup) leaks _ _
+          (tokenFor_tokenValid_of_handle (runtime setup) execution.application _ _ _ _
+            baseHandled)).trans baseHandled
+  have lawEq : law = PMF.pure response := by
+    simp only [law, responseEq, reduceCtorEq, ↓reduceIte]
+  obtain ⟨included, inclusion, state, _, receipts, _, _⟩ :=
+    (runtime setup).submission_published_checkpoint leaks players network execution owner event
+      submission addressed after packets.pending (serials.next_unpublished owner) accepted
+  let submitted := execution.respond app owner response
+  let delayed := (runtime setup).runInteractionPlan leaks players network
+    (remaining.map ServiceInstruction.player ++ [.includeLatest event owner]) submitted
+  have delayedLaw : delayed.map (fun final => (final.application, final.network.ledger,
+      final.receipts, final.network.nextSerial)) =
+      PMF.pure (included.application, included.network.ledger,
+        included.receipts, included.network.nextSerial) := by
+    dsimp only [delayed, submitted]
+    rw [responseEq, decision_silent_inclusion setup leaks network execution owner event
+      submission addressed packets serials remaining, inclusion, PMF.pure_map]
+  have settled : ∀ final ∈ delayed.support, ¬final.application.config.cut.Ready event := by
+    intro final reached
+    have member : (final.application, final.network.ledger, final.receipts,
+        final.network.nextSerial) ∈ (delayed.map (fun next =>
+          (next.application, next.network.ledger,
+            next.receipts, next.network.nextSerial))).support :=
+      PMF.support_map .. ▸ ⟨final, reached, rfl⟩
+    rw [delayedLaw] at member
+    have equal := congrArg Prod.fst ((PMF.mem_support_pure_iff _ _).mp member)
+    change final.application = included.application at equal
+    rw [equal, state]
+    intro active
+    exact active.1 (by simp [after, EventGraphRuntime.State.complete, EventOrder.Cut.complete])
+  rw [lawEq, PMF.pure_bind]
+  have splitPlan : remaining.map ServiceInstruction.player ++
+      (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event]) =
+      (remaining.map ServiceInstruction.player ++ [.includeLatest event owner]) ++
+        (List.replicate ticks .tick ++ [.expire event]) := by
+    simp only [List.append_assoc, List.cons_append, List.nil_append]
+  rw [splitPlan, (runtime setup).runInteractionPlan_append]
+  change (delayed.bind _).map _ = _
+  rw [(runtime setup).settled_tail_config_receipts leaks players network delayed event ticks
+    settled]
+  have projected := congrArg (PMF.map (fun result : EventGraphRuntime.State (graph setup) ×
+      List (Message Player (WitnessedPacket (graph setup))) ×
+      List (MessageId Player × Bool) × (Player → Nat) =>
+      (result.1.config, result.2.2.1))) delayedLaw
+  simpa only [PMF.map_comp, PMF.pure_map, Function.comp_def, state, receipts, after,
+    EventGraphRuntime.State.complete] using projected
 
 private theorem foreign_service_law
     (setup : Setup (Player := Player) (L := L))
@@ -336,7 +307,8 @@ theorem sourceServiceLastPolicy_reveal_opportunity
     (execution : (application setup leaks).Execution)
     (checkpoint : SourceCheckpoint setup source refs offset execution.application.config)
     (valid : execution.application.BindingInvariant)
-    (entered ticks : Nat)
+    (unremembered : execution.application.remembered = fun _ => none)
+    (ticks : Nat)
     (packets : execution.network.Satisfies fun message =>
       message.id ∈ execution.network.ledger.map Message.id)
     (serials : execution.network.SerialsBeforeNext)
@@ -350,8 +322,6 @@ theorem sourceServiceLastPolicy_reveal_opportunity
       simpa [index, outputLayout, eventCount] using embedding.layout_eq index
     ∀ (ready : execution.application.config.cut.Ready event)
       (_timely : execution.application.WithinDeadline (runtime setup) event)
-      (_activated : execution.application.activatedAt event = some entered)
-      (_due : (runtime setup).deadline event ≤ execution.application.clock + ticks - entered)
       (_unsent : (runtime setup).eventRecorded leaks (execution.recall owner) event = false)
       (_last : (execution.recall owner).length + 1 =
         rosterOffset setup rosters owner event + (rosters event).count owner),
@@ -366,9 +336,8 @@ theorem sourceServiceLastPolicy_reveal_opportunity
             (effectiveDisclosure published binding source disclose))
           (cast (congrArg EventGraph.EventField.Value outputEq.symm)
             (disclosureResult published binding source disclose)),
-          if effectiveDisclosure published binding source disclose then execution.receipts ++
-            [((owner, execution.network.nextSerial owner), true)] else execution.receipts) := by
-  intro index event outputEq ready timely activated due unsent last
+          execution.receipts ++ [((owner, execution.network.nextSerial owner), true)]) := by
+  intro index event outputEq ready timely unsent last
   let app := application setup leaks
   let players := sourceServiceLastPolicy setup leaks rosters wholeProfile
   let transport : Player → app.Policy := fun _ => app.silentPolicy
@@ -426,8 +395,8 @@ theorem sourceServiceLastPolicy_reveal_opportunity
     rw [((runtime setup).reactive_respond_application leaks observed owner action).2]
     exact soleReady_of_ready setup execution.application ready
   · have exactLaw := guarded_reveal_silent_service setup leaks published binding source refs
-      observed checkpoint.agrees valid event outputEq codeEq node ready timely entered ticks
-        activated due packets serials network remaining effective
+      observed checkpoint.agrees valid unremembered event outputEq codeEq node ready timely ticks
+        packets serials network remaining effective
         (effectiveDisclosure_idempotent published binding source disclose)
     dsimp only at exactLaw
     simpa only [effective, observed, response, app, transport,
@@ -458,7 +427,8 @@ theorem sourceServiceLastPolicy_reveal_roster
     (execution : (application setup leaks).Execution)
     (checkpoint : SourceCheckpoint setup source refs offset execution.application.config)
     (valid : execution.application.BindingInvariant)
-    (entered ticks : Nat)
+    (unremembered : execution.application.remembered = fun _ => none)
+    (ticks : Nat)
     (packets : execution.network.Satisfies fun message =>
       message.id ∈ execution.network.ledger.map Message.id)
     (serials : execution.network.SerialsBeforeNext)
@@ -473,8 +443,6 @@ theorem sourceServiceLastPolicy_reveal_roster
     ∀ (_position : rosters event = visited ++ owner :: remaining)
       (ready : execution.application.config.cut.Ready event)
       (_timely : execution.application.WithinDeadline (runtime setup) event)
-      (_activated : execution.application.activatedAt event = some entered)
-      (_due : (runtime setup).deadline event ≤ execution.application.clock + ticks - entered)
       (_unsent : (runtime setup).eventRecorded leaks (execution.recall owner) event = false)
       (_counted : (execution.recall owner).length = rosterOffset setup rosters owner event),
     ((runtime setup).runInteractionPlan leaks
@@ -488,9 +456,8 @@ theorem sourceServiceLastPolicy_reveal_roster
             (effectiveDisclosure published binding source disclose))
           (cast (congrArg EventGraph.EventField.Value outputEq.symm)
             (disclosureResult published binding source disclose)),
-          if effectiveDisclosure published binding source disclose then execution.receipts ++
-            [((owner, execution.network.nextSerial owner), true)] else execution.receipts) := by
-  intro index event outputEq position ready timely activated due unsent counted
+          execution.receipts ++ [((owner, execution.network.nextSerial owner), true)]) := by
+  intro index event outputEq position ready timely unsent counted
   let app := application setup leaks
   let players := sourceServiceLastPolicy setup leaks rosters wholeProfile
   let expected := (revealKernel profile (source.view owner)).map fun disclose =>
@@ -499,8 +466,7 @@ theorem sourceServiceLastPolicy_reveal_roster
         (effectiveDisclosure published binding source disclose))
       (cast (congrArg EventGraph.EventField.Value outputEq.symm)
         (disclosureResult published binding source disclose)),
-      if effectiveDisclosure published binding source disclose then execution.receipts ++
-        [((owner, execution.network.nextSerial owner), true)] else execution.receipts)
+      execution.receipts ++ [((owner, execution.network.nextSerial owner), true)])
   have owned : (graph setup).actor? event = some owner := by
     change (toEventGraph setup.program).actor? event = some owner
     simpa [event, index, eventOwner?, eventCount] using aligned.actorEq index
@@ -526,11 +492,6 @@ theorem sourceServiceLastPolicy_reveal_roster
     have currentReady : current.application.config.cut.Ready event := by rw [same]; exact ready
     have currentTimely : current.application.WithinDeadline (runtime setup) event := by
       rw [same]; exact timely
-    have currentActivated : current.application.activatedAt event = some entered := by
-      rw [same]; exact activated
-    have currentDue : (runtime setup).deadline event ≤
-        current.application.clock + ticks - entered := by
-      rw [same]; exact due
     have currentSerials := (runtime setup).runInteractionPlan_serials leaks players network
       (visited.map ServiceInstruction.player) execution current serials reached
     have currentPublished : current.network.Satisfies fun message =>
@@ -553,9 +514,9 @@ theorem sourceServiceLastPolicy_reveal_roster
       omega
     have completed := sourceServiceLastPolicy_reveal_opportunity setup leaks rosters fresh binding
       unresolved next wholeProfile profile refs source embedding refsBefore offset aligned current
-        currentCheckpoint currentValid entered ticks currentPublished currentSerials network
-        remaining absent currentReady currentTimely currentActivated currentDue
-          currentUnsent last
+        currentCheckpoint currentValid (by rw [same]; exact unremembered) ticks
+        currentPublished currentSerials network
+        remaining absent currentReady currentTimely currentUnsent last
     simpa only [same, receipts, counters] using completed
   · exact PMF.bind_const _ expected
 

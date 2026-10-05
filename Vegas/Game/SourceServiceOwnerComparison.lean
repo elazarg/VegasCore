@@ -141,7 +141,7 @@ theorem owner_source_comparisons (service : SourceServiceSpec Player L)
     owner_site_position service who site past view observed readyView
   obtain ⟨_, mixture, prescribedLaw, alternativeLaw⟩ := sourceService_owner_assessment_comparisons
     service.setup service.leaks service.bounds service.values service.initialValues
-    service.capacity service.rosters service.opportunities.binding timing timingFull
+    service.capacity service.rosters service.opportunities timing timingFull
     service.network source (fun player site => full player site.1) sourceBayes
     (ofSource service timing timingFull source.strategy full).assessment rfl
     (ofSource service timing timingFull source.strategy full).mixed
@@ -269,7 +269,7 @@ theorem owner_site_source_histories (service : SourceServiceSpec Player L)
   obtain ⟨⟨sourceView, viewSupport, active, belief⟩, _⟩ :=
     sourceService_owner_assessment_comparisons service.setup service.leaks service.bounds
       service.values service.initialValues service.capacity service.rosters
-      service.opportunities.binding timing timingFull service.network source
+      service.opportunities timing timingFull service.network source
       (fun player site => full player site.1) sourceBayes
       (ofSource service timing timingFull source.strategy full).assessment rfl
       (ofSource service timing timingFull source.strategy full).mixed

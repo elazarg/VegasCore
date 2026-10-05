@@ -33,7 +33,7 @@ theorem sourceService_continuation_settlement_comparison {Parameter : Type}
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks) [network.FiniteSupport]
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)

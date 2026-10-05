@@ -3,6 +3,15 @@
 These calculations support the [generalization plan](se-schedule-generalization.md):
 scoped finite-game preservation and a conditional publication bound, not a general runtime theorem.
 
+Section A models canonical FALSE as packet-free expiry, which is lawful there, and
+an accepted withholding packet as forbidden. The baseline semantics of the
+[plan](se-schedule-generalization.md#target-and-fixed-semantics) is the reverse:
+canonical FALSE is an evidence-free withholding packet, which the settled verdict
+permits, and resolution expiry without an accepted decision is a charged public
+decision miss. Section A's tables, comparisons and equilibrium are therefore
+evidence about that alternative semantics only; they must be rederived before
+they count for the baseline. Section B does not depend on this difference.
+
 ## A. Resolution followed by a guess
 
 Alice privately knows H (probability 1/4) or L (3/4). Both owners have constant

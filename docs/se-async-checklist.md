@@ -56,8 +56,15 @@ sampler with conditional coverage until box W closes.
   Partial evidence: readiness credentials and the final-record verdict are
   implemented; players transmit only fresh envelopes they author, and ledger
   and pending identifiers stay distinct on every history
-  (`ReactiveApplication.idsDistinct_history`). The remaining rows have not been
-  checked against the implementation one by one.
+  (`ReactiveApplication.idsDistinct_history`). Explicit resolution decisions are
+  implemented: canonical FALSE emits an evidence-free withholding packet
+  (`canonicalServiceDecision_resolution_false`); the settled verdict permits an
+  accepted withholding without evidence (`SettledRecord.SettledContent`); every
+  strategic expiry records a public missed decision (`State.missedEvents`,
+  `environmentStep_expire_missedEvents`) that accepted decisions never write
+  (`handle_missedEvents`), and the audit charges it for both event kinds
+  (`PublicView.missedDecisionBy`, `serviceAudit_charge_of_miss`). The remaining
+  rows have not been checked against the implementation one by one.
 - [x] **A2. A non-calendar builder satisfies the contract.** Evidence: the
   fixed linear scheduler of
   [CommittedResolutionService](../Vegas/Examples/CommittedResolutionService.lean)
@@ -81,8 +88,12 @@ sampler with conditional coverage until box W closes.
   `geometricTiming_deferral_tendsto` makes that error vanish.
   `sourceServiceTurnPolicy_owner_settled` shows every packet of an owner
   following the prescribed policy is permitted by the actual settled record,
-  whatever the other players do. Missing: the realized settlement law; silent
-  deferrals can still produce public binding omissions, which are charged.
+  whatever the other players do; with explicit decisions the prescribed packets
+  include evidence-free withholding. With exact first-turn timing,
+  `sourceServiceFirstTurn_no_miss` shows the owner has no public decision miss
+  against arbitrary foreign play. Missing: the realized settlement law; silent
+  deferrals can still produce public decision misses at bindings and
+  resolutions, which are charged.
 - [ ] **S2. One common native consistency sequence.** One fully mixed family
   over source trembles, timing and raw responses, with exceptional mass
   negligible relative to clean reach on every information set, converging to a
@@ -109,7 +120,8 @@ sampler with conditional coverage until box W closes.
   Partial evidence: under the final-record coverage hypothesis
   `FinalForbiddenEvidenceCoverage`, collection bounds under arbitrary later
   policies for signed constructor breaches
-  (`signedContentBreach_collection_continuation_of_finalCoverage`),
+  (`signedContentBreach_collection_continuation_of_finalCoverage`; withholding
+  is a breach only when it carries evidence),
   noncanonical commitment handles
   (`noncanonicalCommitment_collection_continuation`) and openings whose public
   guards fail (`guardFailingOpening_collection_continuation`), combined in

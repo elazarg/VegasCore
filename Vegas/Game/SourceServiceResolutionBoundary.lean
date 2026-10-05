@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceBoundary
+import Vegas.Game.SourceServiceResolutionRequired
 import Vegas.Pending.ReactiveResolutionSettlement
 import Vegas.Pending.ReactiveResolutionWindowConformance
 import Vegas.Pending.ReactiveServiceEvents
@@ -55,6 +56,7 @@ theorem ServiceBoundary.reveal_block
     (owned : (graph setup).actor? event = some owner)
     (beforeRefs : ∀ {readName cell} (ref : HasVar Γ readName cell),
       FieldBefore event (refs.get ref).field)
+    (opportunity : owner ∈ rosters event)
     (decoded : ∀ disclose : Bool, decodeEventAction setup.program event
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose) =
         some (.reveal owner name disclose))
@@ -82,12 +84,32 @@ theorem ServiceBoundary.reveal_block
       (compileChecks (published := published) refs source.registry source.revelations binding)
       outputEq codeEq node (rosters event) execution included sole boundary.published
       boundary.serials inclusion
+  have recorded : (runtime setup).eventRecorded leaks (included.recall owner) event = true := by
+    have split := inclusion
+    rw [(runtime setup).runInteractionPlan_append] at split
+    obtain ⟨visited, window, selection⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ split)
+    have called := sourceService_resolution_roster_recorded setup leaks bounds rosters players
+      lawful network owner event payload (refs.get binding)
+      (compileChecks (published := published) refs source.registry source.revelations binding)
+      outputEq codeEq node owned (rosters event) execution visited ready boundary.published
+      (boundary.unsent owner event (by omega)) opportunity
+      (by rw [boundary.response_offset event atRank]) window
+    have lengths := fixed_plan_response_counts setup leaks network players
+      [.includeLatest event owner] (by simp) visited included selection owner
+    have same := ((runtime setup).runInteractionPlan_recall_prefix leaks players network
+      [.includeLatest event owner] visited included selection owner).eq_of_length (by
+        simpa only [List.filterMap_cons, instructionActor, List.filterMap_nil, List.count_nil,
+          Nat.add_zero] using lengths.symm)
+    rw [← same]
+    exact called
   obtain ⟨result, accounted⟩ := bounds.compiled_resolution_settlement (runtime setup) leaks
     players ordinary network owner event payload (refs.get binding)
       (compileChecks (published := published) refs source.registry source.revelations binding)
-      outputEq codeEq node (rosters event) execution included boundary.binding ready timely
+      outputEq codeEq node (rosters event) execution included boundary.binding
+      (by rw [boundary.remembered]) ready timely
       sole boundary.published boundary.serials boundary.accounted inclusion
-  obtain ⟨disclose, effective, config, candidates, accepted, sameNetwork, sameRecall⟩ :
+  obtain ⟨disclose, effective, config, candidates, accepted, sameNetwork, sameRecall,
+      markers⟩ :
       ∃ disclose, effectiveDisclosure published binding source disclose = disclose ∧
         final.application.config = execution.application.config.complete event ready
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose)
@@ -95,40 +117,24 @@ theorem ServiceBoundary.reveal_block
             (disclosureResult published binding source disclose)) ∧
         final.application.candidates = execution.application.candidates ∧
         final.application.accepted = execution.application.accepted ∧
-        final.network = included.network ∧ final.recall = included.recall := by
-    rcases result with silent | ⟨value, resolved, completed⟩
-    · obtain ⟨entered, activated⟩ := Option.isSome_iff_exists.mp
-        ((boundary.invariant.activated_iff event).mpr
-          ⟨ready, by simp only [owned, Option.isSome_some]⟩)
-      have due : (runtime setup).deadline event ≤
-          included.application.clock + (event.val + 1) - entered := by
-        rw [silent]
-        have earlier := boundary.invariant.activated_le event entered activated
-        change event.val + 1 ≤ execution.application.clock + (event.val + 1) - entered
-        omega
-      obtain ⟨after, exactTail, afterApp, afterNetwork, _, afterRecall⟩ :=
-        (runtime setup).canonical_silent_expiry leaks players network included owner event payload
-          (refs.get binding)
-          (compileChecks (published := published) refs source.registry source.revelations binding)
-          outputEq codeEq node (by rw [silent]; exact ready) entered (event.val + 1)
-          (by rw [silent]; exact activated) due
-      rw [exactTail] at tail
-      have finalEq := (PMF.mem_support_pure_iff _ _).mp tail
-      subst final
-      refine ⟨false, effectiveDisclosure_false _ _ _, ?_, ?_, ?_, afterNetwork, afterRecall⟩
-      · rw [afterApp]
-        simp only [EventGraphRuntime.State.complete, silent, disclosureResult_false]
-      · rw [afterApp]
-        change included.application.candidates = execution.application.candidates
-        exact congrArg EventGraphRuntime.State.candidates silent
-      · rw [afterApp]
-        change included.application.accepted = execution.application.accepted
-        exact congrArg EventGraphRuntime.State.accepted silent
+        final.network = included.network ∧ final.recall = included.recall ∧
+        final.application.missedEvents = execution.application.missedEvents := by
+    rcases result with silent | ⟨disclose, result, resolved, lawfulDecision, completed⟩
+    · have impossible := silent.2
+      rw [recorded, boundary.unsent owner event (by omega)] at impossible
+      cases impossible
     · have sourceResult := compiled_disclosure_result published binding source refs
-        execution.application.config.store boundary.agrees true
+        execution.application.config.store boundary.agrees disclose
       rw [EventGraph.EventCode.resolveOutput?_playerStore, resolved] at sourceResult
-      have success : disclosureResult published binding source true = .success value :=
+      have resultEq : disclosureResult published binding source disclose = result :=
         (Option.some.inj sourceResult).symm
+      have effective : effectiveDisclosure published binding source disclose = disclose := by
+        rcases lawfulDecision with rfl | ⟨value, success⟩
+        · exact effectiveDisclosure_false _ _ _
+        · rw [← resultEq] at success
+          cases disclose
+          · exact effectiveDisclosure_false _ _ _
+          · simp only [effectiveDisclosure, success]
       have settled : ¬included.application.config.cut.Ready event := by
         rw [completed]
         intro active
@@ -139,9 +145,10 @@ theorem ServiceBoundary.reveal_block
       rw [exactTail] at tail
       have finalEq := (PMF.mem_support_pure_iff _ _).mp tail
       subst final
-      refine ⟨true, ?_, ?_, ?_, ?_, afterNetwork, afterRecall⟩
-      · simp only [effectiveDisclosure, success]
-      · rw [afterApp, completed, success]
+      refine ⟨disclose, effective, ?_, ?_, ?_, afterNetwork, afterRecall, ?_⟩
+      · rw [afterApp, completed, resultEq]
+        rfl
+      · rw [afterApp, completed]
         rfl
       · rw [afterApp, completed]
         rfl
@@ -170,6 +177,9 @@ theorem ServiceBoundary.reveal_block
     toSourceCheckpoint := checkpoint
     invariant := invariant
     binding := valid
+    remembered := boundary.run_remembered players network
+      (rosterBlock setup rosters event) final reached
+    missed := markers.trans boundary.missed
     prepared := ?_
     represented := ?_
     acceptedRecorded := ?_

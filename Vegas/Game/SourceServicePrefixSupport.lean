@@ -40,7 +40,7 @@ theorem run_sourceService_prefix_support
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (players : Player → (application setup leaks).Policy)
     (lawful : ∀ who past view response, response ∈ (players who past view).support →
       response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who past view)
@@ -257,7 +257,7 @@ theorem run_sourceService_prefix_support
           obtain ⟨value, _, nextBoundary⟩ := boundary.binding_block bounds values players lawful
             network event atRank name owner payload guard outputEq codeEq node owned
               (fun ref => refsBefore ref index) decoded
-              (opportunities event owner payload outputEq)
+              (opportunities event owner (binding_actor setup event owner payload outputEq))
               (boundary.binding_capacity bounds capacity event atRank owner) middle first
           have tailAligned : CompiledPolicySuffix setup.program wholeProfile next
               (afterCommit profile) tailRefs
@@ -351,7 +351,8 @@ theorem run_sourceService_prefix_support
           obtain ⟨middle, first, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
           obtain ⟨disclose, _, nextBoundary⟩ := boundary.reveal_block bounds players lawful network
             event atRank published selected outputEq codeEq node owned
-              (fun ref => refsBefore ref index) decoded middle first
+              (fun ref => refsBefore ref index) (opportunities event owner owned)
+              decoded middle first
           have tailAligned : CompiledPolicySuffix setup.program wholeProfile next
               (afterReveal profile) tailRefs
               (revealSuccessor published selected source disclose).revelations
@@ -402,7 +403,7 @@ theorem initialized_sourceService_prefix_support
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (players : Player → (application setup leaks).Policy)
     (lawful : ∀ who past view response, response ∈ (players who past view).support →
       response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who past view)

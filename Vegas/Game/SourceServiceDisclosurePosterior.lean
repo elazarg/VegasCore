@@ -10,7 +10,7 @@ import GameTheoryExtensions.Math.Probability.Uniform
 /-! # Private intentions behind a failed native disclosure
 
 At an actual compiled guarded resolve, an ineffective source disclosure and
-withholding produce the same native silence. Conditioning on that physical
+withholding produce the same authenticated withholding packet. Conditioning on that physical
 response preserves the complete source intention distribution. Restoring the
 private intention reconstructs the original source successor, including the
 history used by later source policies. This is a local operational posterior
@@ -44,14 +44,15 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 include agree node
 
-/-- A guarded source failure is actual silence under the retained compiler,
+/-- A guarded source failure emits authenticated withholding under the retained compiler,
 whether the original private intention was withholding or disclosure. -/
 theorem failed_disclosure_response
     (failure : disclosureResult published binding source true = .failure)
     (intention : Bool) :
     (runtime setup).serviceDecision leaks owner (execution.recall owner)
       (execution.observe (application setup leaks) owner) event
-      (cast (congrArg EventGraph.EventField.Action outputEq.symm) intention) = ⟨none⟩ := by
+      (cast (congrArg EventGraph.EventField.Action outputEq.symm) intention) =
+        ⟨some ⟨⟨.withhold event, none⟩, .none⟩⟩ := by
   have resolved := compiled_disclosure_result published binding source refs
     execution.application.config.store agree true
   rw [failure] at resolved
@@ -62,9 +63,12 @@ theorem failed_disclosure_response
   cases intention <;>
     simp only [serviceDecision, reactiveDecision, node, reactiveResolutionPacket,
       cast_cast, cast_eq, localResult, Bool.false_eq_true, ↓reduceIte] <;>
-    rw [disclosureSubmission_normalize_withhold] <;> rfl
+    rw [disclosureSubmission_normalize_withhold] <;>
+    simp only [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
+      disclosureSubmission, WitnessedSubmission.normalizeReactive,
+      Submission.normalizeReactive_none, EvidenceRequest.normalize_none]
 
-/-- The posterior over original intentions after the physical silent response
+/-- The posterior over original intentions after the physical withholding response
 is the original law. In particular, no artificial resampling or erasure of the
 owner's private failed intention is justified by this response. -/
 theorem failed_disclosure_response_posterior
@@ -73,7 +77,8 @@ theorem failed_disclosure_response_posterior
     fiberPosterior intentions (fun intention =>
       (runtime setup).serviceDecision leaks owner (execution.recall owner)
         (execution.observe (application setup leaks) owner) event
-        (cast (congrArg EventGraph.EventField.Action outputEq.symm) intention)) ⟨none⟩ =
+        (cast (congrArg EventGraph.EventField.Action outputEq.symm) intention))
+      ⟨some ⟨⟨.withhold event, none⟩, .none⟩⟩ =
       intentions := by
   classical
   have constant := failed_disclosure_response setup leaks published binding source refs
@@ -82,11 +87,14 @@ theorem failed_disclosure_response_posterior
       (runtime setup).serviceDecision leaks owner (execution.recall owner)
         (execution.observe (application setup leaks) owner) event
         (cast (congrArg EventGraph.EventField.Action outputEq.symm) intention)) =
-      fun _ : Bool => (⟨none⟩ : (application setup leaks).Action) := funext constant
+      fun _ : Bool =>
+        (⟨some ⟨⟨.withhold event, none⟩, .none⟩⟩ : (application setup leaks).Action) :=
+    funext constant
   rw [functionEq]
   obtain ⟨intention, supported⟩ := intentions.support_nonempty
-  have present : ∃ intention ∈ (fun _ : Bool => (⟨none⟩ : (application setup leaks).Action)) ⁻¹'
-      {⟨none⟩}, intention ∈ intentions.support :=
+  have present : ∃ intention ∈ (fun _ : Bool =>
+      (⟨some ⟨⟨.withhold event, none⟩, .none⟩⟩ : (application setup leaks).Action)) ⁻¹'
+      {⟨some ⟨⟨.withhold event, none⟩, .none⟩⟩}, intention ∈ intentions.support :=
     ⟨intention, rfl, supported⟩
   rw [fiberPosterior_eq_filter_preimage _ _ present]
   exact filter_of_support_subset _ _ _ fun _ _ => rfl
@@ -100,7 +108,8 @@ theorem failed_disclosure_successor_posterior
     ((fiberPosterior intentions (fun intention =>
       (runtime setup).serviceDecision leaks owner (execution.recall owner)
         (execution.observe (application setup leaks) owner) event
-        (cast (congrArg EventGraph.EventField.Action outputEq.symm) intention)) ⟨none⟩).map
+        (cast (congrArg EventGraph.EventField.Action outputEq.symm) intention))
+      ⟨some ⟨⟨.withhold event, none⟩, .none⟩⟩).map
       (revealSuccessor published binding source)) =
       intentions.map (fun intention =>
         (revealSuccessor published binding source false).restoreDisclosure

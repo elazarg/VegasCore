@@ -85,8 +85,8 @@ after constructing one consistent native sequence and its comparisons.
 [PassageRestrictionExtension](../GameTheoryExtensions/Analysis/Protocol/PassageRestrictionExtension.lean)
 already proves `exists_consistent_extension_unclocked`, giving consistent rational
 completion at genuinely new sites, and `sequentialEquilibrium_extends_of_continuation_unclocked`,
-which consumes whole-policy comparisons at retained sites. Public binding omission
-gives certain capped collection via `serviceAudit_charge_of_omission` in
+which consumes whole-policy comparisons at retained sites. A public decision miss
+gives certain capped collection via `serviceAudit_charge_of_miss` in
 [ReactiveServiceAudit](../Vegas/Pending/ReactiveServiceAudit.lean); later comparisons
 use base payoff and rational completion, not renewed collateral. Hidden departures
 pooling at a retained input are not thereby new free sites.
@@ -110,7 +110,7 @@ menu inclusion preserves the SAME runner and full information. A coarse source
 decoder in [ServiceInformation](../Vegas/Game/ServiceInformation.lean) is not a
 source-to-native ActionRestriction embedding. Construct the retained native
 assessment and its actual reach/continuation law before invoking the extension.
-Silent FALSE, failed TRUE and deferral need no physical intention tag:
+Explicit FALSE, failed TRUE and deferral need no physical intention tag:
 [policyMixture](../Interaction/ReactivePolicyMixture.lean) conditions the chosen slot on actual recall,
 and [realization](../Interaction/ReactiveMixtureRounds.lean) preserves the whole execution law.
 [DisclosurePosterior](../Vegas/Game/SourceServiceDisclosurePosterior.lean) and
@@ -266,11 +266,13 @@ clocks 0/1, then postcompletion Alice and first Bob at clock 2, Bob expiry at 5;
 empty gameplay leaks, Alice delay 0/bound 1, Bob delay 2/bound 0 and N=4.
 Censored T's FALSE receipt separates it from clean expiry. `silent_bob_input_law` checks
 one common full first-Bob input under literal silent initialized play at both types,
-including empty own recall and public Alice failure, without characterizing the entire fiber.
+including empty own recall, public Alice failure and Alice's public decision miss, without
+characterizing the entire fiber.
 `prescribed_packets_clean` derives TRUE receipts and final permissions for all transmitted
-envelopes on initialized ALL-prescribed `sourceServiceTurnPolicy`/`firstTurnTiming` play,
+envelopes, evidence-free FALSE withholding included, on initialized ALL-prescribed `sourceServiceTurnPolicy`/`firstTurnTiming` play,
 for any source behavioral profile. `prescribed_settlement` gives the full joint payoff vector
-as pure arbitrary base utility under any authentic sampler and arbitrary deposit.
+as pure arbitrary base utility under any authentic sampler and arbitrary deposit; its
+absence of public decision misses is `sourceServiceFirstTurn_no_miss`.
 `first_true_bob_output_law` checks the actual canonical first H opening's prompt stage-2
 acceptance and public `success true` through first Bob activation under arbitrary later
 native policies. `mixed_bob_reach_bound` proves abc≤mL and mH≤u at the full common input:

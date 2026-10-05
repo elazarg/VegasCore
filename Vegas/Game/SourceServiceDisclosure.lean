@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceStep
-import Vegas.Game.RevealServiceRosterPolicy
+import Vegas.Game.ServiceRosterPolicy
 import Vegas.Source.DisclosureBehavioral
 
 /-! # Effective guarded source disclosures in the native service
@@ -84,7 +84,7 @@ theorem guarded_rosterOpening_success
     owned, ne_eq, not_true_eq_false, ↓reduceIte]
 
 /-- Guard failure suppresses the opening even though the binding itself may
-be valid and permanently fixed. The runtime still reaches failure by expiry. -/
+be valid and permanently fixed. An effective false decision explicitly withholds. -/
 theorem guarded_rosterOpening_failure
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))

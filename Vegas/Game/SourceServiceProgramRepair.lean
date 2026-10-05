@@ -72,7 +72,7 @@ theorem binding_phase_stopped_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
@@ -132,13 +132,13 @@ theorem binding_phase_stopped_coupling
         ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
             record.envelope = false) ∨
-          next.1.application.publicView.missedBinding event = true ∨
+          event ∈ next.1.application.missedEvents ∨
           BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
   classical
   intro app players strategy ending
   let scheduler := rosterScheduler setup leaks rosters network
   obtain ⟨foreign, rest, roster, absent⟩ := split_owner owner (rosters event)
-    (opportunities event owner payload outputEq)
+    (opportunities event owner (binding_actor setup event owner payload outputEq))
   let suffix := rest.map ServiceInstruction.player ++ ending
   let rank := remaining + rest.length + ((runtime setup).deadline event + 2)
   have suffixLength : suffix.length = rest.length + 1 + (runtime setup).deadline event + 1 := by
@@ -177,7 +177,7 @@ theorem binding_phase_stopped_coupling
           ((∃ record ∈ app.executionTraffic final.1, record.envelope.sender = owner ∧
             (runtime setup).permittedServiceEnvelope record.observation record.ledger
               record.envelope = false) ∨
-            final.1.application.publicView.missedBinding event = true ∨
+            event ∈ final.1.application.missedEvents ∨
             BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1) := by
     obtain ⟨paired, sameMemory, nextTrace, prior, priorSupport, sampled⟩ := related next member
     obtain ⟨nextTrace⟩ := nextTrace

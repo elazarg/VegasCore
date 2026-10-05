@@ -2,7 +2,7 @@
 
 import Vegas.Game.SourceServiceDisclosureMemory
 import Vegas.Game.SourceServiceDisclosure
-import Vegas.Game.RevealServiceRosterLaw
+import Vegas.Game.ServicePlanPolicies
 import Vegas.Pending.ReactiveOpeningLikelihood
 import GameTheory.Math.Probability.ConditionalObservation
 import Vegas.Source.ObservationRecall

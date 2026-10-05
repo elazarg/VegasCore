@@ -10,7 +10,7 @@ import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Legal shared timing at full-source decisions
 
-At every unsent binding visit, earlier scheduled binding slots have zero
+At every unsent decision visit, earlier scheduled binding slots have zero
 posterior probability: each would have submitted at its recorded legal input.
 At the final visit only the current slot remains.
 This uses actual own recall and original source-policy admission, rather than
@@ -84,14 +84,14 @@ private theorem posterior_action {Player Index : Type}
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
-private theorem recalled_binding_not_selected
+private theorem recalled_decision_not_selected
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (profile : BehavioralProfile setup.program)
     (permitted : ∀ who, (profile who).Admitted setup.program
@@ -101,7 +101,6 @@ private theorem recalled_binding_not_selected
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         (some control)) (active : control.actor = some who)
     (event : (graph setup).EventId) (owned : (graph setup).actor? event = some who)
-    (payload : L.Ty) (binding : (graph setup).outputLayout event = .binding who payload)
     (unsent : (runtime setup).eventRecorded leaks (control.execution.recall who) event = false)
     (earlier : List (application setup leaks).PlayerEntry)
     (entry : (application setup leaks).PlayerEntry)
@@ -173,21 +172,21 @@ private theorem recalled_binding_not_selected
           rw [pastEq, viewEq]
           exact selected)
       have recorded := (runtime setup).eventRecorded_iff leaks (control.execution.recall who) event
-      have contradiction := recorded.mpr ⟨entry, by rw [recalled]; simp, response.2 payload binding⟩
+      have contradiction := recorded.mpr ⟨entry, by rw [recalled]; simp, response.2⟩
       rw [unsent] at contradiction
       cases contradiction
 
-/-- At an actual unsent binding decision, every timing slot in the posterior
-is current or future. An earlier slot would have submitted a binding, which
+/-- At an actual unsent owned decision, every timing slot in the posterior
+is current or future. An earlier slot would have submitted a decision, which
 would still be recorded in the player's own recall. -/
-theorem sourceServiceTimedMixture_binding_future
+theorem sourceServiceTimedMixture_decision_future
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (profile : BehavioralProfile setup.program)
     (permitted : ∀ who, (profile who).Admitted setup.program
@@ -199,7 +198,6 @@ theorem sourceServiceTimedMixture_binding_future
     (event : (graph setup).EventId)
     (ready : control.execution.application.config.cut.Ready event)
     (owned : (graph setup).actor? event = some who)
-    (payload : L.Ty) (binding : (graph setup).outputLayout event = .binding who payload)
     (unsent : (runtime setup).eventRecorded leaks (control.execution.recall who) event = false)
     (timing : PMF (Fin ((rosters event).count who)))
     (witness : Fin ((rosters event).count who)) (positive : witness ∈ timing.support)
@@ -266,22 +264,22 @@ theorem sourceServiceTimedMixture_binding_future
       (past ++ before) entry.beforeView).support := by
     simpa only [family, sourceServiceTimedFamily, ReactiveApplication.scheduledPolicy,
       Option.map_some, pastLength, offset, ↓reduceIte] using selectedAction
-  exact recalled_binding_not_selected setup leaks bounds values initialValues capacity rosters
-    opportunities network profile permitted who control trace active event owned payload binding
+  exact recalled_decision_not_selected setup leaks bounds values initialValues capacity rosters
+    opportunities network profile permitted who control trace active event owned
     unsent (past ++ before) entry after (by rw [recalled, split, List.append_assoc])
     (legal before entry after split).2 opportunity
 
-/-- At the actual final unsent binding opportunity, conditioning the shared
+/-- At the actual final unsent decision opportunity, conditioning the shared
 timing lottery leaves only the current slot. The complete physical response
 law is exactly the existing source opportunity law. -/
-theorem sourceServiceTimedMixture_binding_last
+theorem sourceServiceTimedMixture_decision_last
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (profile : BehavioralProfile setup.program)
     (permitted : ∀ who, (profile who).Admitted setup.program
@@ -293,7 +291,6 @@ theorem sourceServiceTimedMixture_binding_last
     (event : (graph setup).EventId)
     (ready : control.execution.application.config.cut.Ready event)
     (owned : (graph setup).actor? event = some who)
-    (payload : L.Ty) (binding : (graph setup).outputLayout event = .binding who payload)
     (unsent : (runtime setup).eventRecorded leaks (control.execution.recall who) event = false)
     (timing : PMF (Fin ((rosters event).count who))) (full : FullSupport timing)
     (last : (control.execution.recall who).length + 1 =
@@ -306,16 +303,21 @@ theorem sourceServiceTimedMixture_binding_last
   let app := application setup leaks
   let family := sourceServiceTimedFamily setup leaks rosters profile who event
   let offset := rosterOffset setup rosters who event
-  have positive : 0 < (rosters event).count who :=
-    List.count_pos_iff.mpr (opportunities event who payload binding)
+  obtain ⟨past, suffix, recalled, count, _⟩ := sourceService_unsubmitted_recall setup leaks
+    bounds values capacity rosters opportunities network who control trace active
+      event ready owned unsent
+  have lengths := congrArg List.length recalled
+  simp only [List.length_append, count] at lengths
+  have positive : 0 < (rosters event).count who := by
+    omega
   let current : Fin ((rosters event).count who) :=
     ⟨(rosters event).count who - 1, by omega⟩
   have currentTime : offset + current.val = (control.execution.recall who).length := by
     dsimp only [offset, current]
     omega
-  have future := sourceServiceTimedMixture_binding_future setup leaks bounds values initialValues
+  have future := sourceServiceTimedMixture_decision_future setup leaks bounds values initialValues
     capacity rosters opportunities network profile permitted who control trace active event ready
-      owned payload binding unsent timing current (full current) currentTime.ge
+      owned unsent timing current (full current) currentTime.ge
   have selectedNow : ∀ selected ∈ ((app.policyMixture timing family).posterior
       (control.execution.recall who)).support,
       offset + selected.val = (control.execution.recall who).length := by
@@ -337,7 +339,7 @@ theorem sourceServiceTimedMixture_binding_last
   · exact PMF.bind_const _ _
 
 /-- Shared positive timing is legal at every retained history. The final
-binding visit is forced by its actual posterior, including histories that
+decision visit is forced by its actual posterior, including histories that
 have zero probability under the limiting final-slot policy. -/
 theorem sourceServiceTimedPolicy_admissible
     (setup : Setup (Player := Player) (L := L))
@@ -346,7 +348,7 @@ theorem sourceServiceTimedPolicy_admissible
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (timing : TimingLaw setup rosters)
     (full : ∀ event who owned, FullSupport (timing event who owned))
@@ -363,7 +365,7 @@ theorem sourceServiceTimedPolicy_admissible
   let past := control.execution.recall who
   let view := control.execution.observe app who
   have silent_covered (silenced : response ∈ (app.silentPolicy past view).support)
-      (optional : ¬ bindingRequired setup leaks rosters who past view) :
+      (optional : ¬ decisionRequired setup leaks rosters who past view) :
       response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who past view := by
     change response ∈ sourceServiceActions setup leaks bounds rosters who past view
     rw [sourceServiceActions, ite_eq_right optional]
@@ -373,7 +375,7 @@ theorem sourceServiceTimedPolicy_admissible
   cases serving : view.application.publicView.ownTurn? who with
   | none =>
       simp only [sourceServiceTimedPolicy, serving] at supported
-      exact silent_covered supported (by rintro ⟨event, _, same, _⟩; simp [serving] at same)
+      exact silent_covered supported (by rintro ⟨event, same, _⟩; simp [serving] at same)
   | some event =>
       have ready : control.execution.application.config.cut.Ready event :=
         (control.execution.application.publicView_eventReady event).mp
@@ -383,20 +385,20 @@ theorem sourceServiceTimedPolicy_admissible
         · rw [sourceServiceTimedPolicy_recorded setup leaks rosters timing profile who past view
             event serving recorded] at supported
           apply silent_covered supported
-          rintro ⟨other, _, otherTurn, _, _, _, unsent, _⟩
+          rintro ⟨other, otherTurn, _, _, unsent, _⟩
           have same : other = event := Option.some.inj (otherTurn.symm.trans serving)
           subst other
           simp only [recorded, Bool.true_eq_false] at unsent
         · have unsent : (runtime setup).eventRecorded leaks past event = false :=
             Bool.eq_false_iff.mpr recorded
           simp only [sourceServiceTimedPolicy, serving, dite_eq_left owned] at supported
-          by_cases required : bindingRequired setup leaks rosters who past view
-          · obtain ⟨other, payload, otherTurn, binding, _, _, _, last⟩ := required
+          by_cases required : decisionRequired setup leaks rosters who past view
+          · obtain ⟨other, otherTurn, _, _, _, last⟩ := required
             have same : other = event := Option.some.inj (otherTurn.symm.trans serving)
             subst other
-            have physical := sourceServiceTimedMixture_binding_last setup leaks bounds values
+            have physical := sourceServiceTimedMixture_decision_last setup leaks bounds values
               initialValues capacity rosters opportunities network profile permitted who control
-              trace active event ready owned payload binding unsent (timing event who owned)
+              trace active event ready owned unsent (timing event who owned)
               (full event who owned) last
             change response ∈ (((app.policyMixture (timing event who owned)
               (sourceServiceTimedFamily setup leaks rosters profile who event)).policy
@@ -420,7 +422,7 @@ theorem sourceServiceTimedPolicy_admissible
             · exact silent_covered produced required
       · simp only [sourceServiceTimedPolicy, serving, dite_eq_right owned] at supported
         apply silent_covered supported
-        rintro ⟨other, _, otherTurn, _, actor, _⟩
+        rintro ⟨other, otherTurn, actor, _⟩
         have same : other = event := Option.some.inj (otherTurn.symm.trans serving)
         subst other
         exact owned actor

@@ -215,7 +215,7 @@ policies are arbitrary laws supported by the entire retained menu. -/
 theorem initialized_sourceService_prefix_conformance
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (players : Player → (application setup leaks).Policy)
     (lawful : ∀ who past view response, response ∈ (players who past view).support →
       response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who past view)
@@ -254,7 +254,7 @@ Public chance, fresh bindings and arbitrary guarded disclosures are included. -/
 theorem initialized_sourceService_conformance
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (players : Player → (application setup leaks).Policy)
     (lawful : ∀ who past view response, response ∈ (players who past view).support →
       response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who past view)

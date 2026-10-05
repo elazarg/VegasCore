@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RevealServiceCalendarState
+import Vegas.Game.SourceServiceCalendarClock
 import Vegas.Pending.ReactiveBindingPrefix
 import Interaction.ReactiveSubmissionSerial
 import Vegas.Pending.ReactiveServiceRecall
@@ -9,6 +9,7 @@ import Vegas.Pending.ReactiveServiceOpportunity
 import Vegas.Game.SourceServiceBindingPhase
 import Vegas.Game.SourceServiceCheckpoint
 import Vegas.Pending.ReactiveBindingTranscript
+import Vegas.Pending.ReactiveObservedState
 
 /-! # Operational boundaries for the complete source syntax
 
@@ -43,6 +44,8 @@ structure ServiceBoundary (setup : Setup (Player := Player) (L := L))
   invariant : EventGraphRuntime.State.Invariant (graph := graph setup)
     (setup.eventInputs initial) execution.application
   binding : execution.application.BindingInvariant
+  remembered : execution.application.remembered = fun _ => none
+  missed : execution.application.missedEvents = ∅
   prepared : ∀ who, execution.application.PreparedPrefix who
   represented : execution.application.CandidatesRepresented
   acceptedRecorded : execution.application.AcceptedRecorded
@@ -91,6 +94,8 @@ theorem serviceBoundary_initial
     toSourceCheckpoint := SourceCheckpoint.initial setup initial
     invariant := EventGraphRuntime.State.initial_invariant _
     binding := EventGraphRuntime.State.initial_bindingInvariant _
+    remembered := rfl
+    missed := rfl
     prepared := EventGraphRuntime.State.preparedPrefix_initial _
     represented := EventGraphRuntime.State.candidatesRepresented_initial _
     acceptedRecorded := EventGraphRuntime.State.acceptedRecorded_initial _
@@ -256,6 +261,26 @@ theorem ServiceBoundary.run_core {setup : Setup (Player := Player) (L := L)}
       environment := app.environment_serialRecall }
     exact (runtime setup).runInteractionPlan_preserves leaks players network _ preserved plan
       execution final boundary.serialRecall reached
+
+/-- Reactive submissions and public processing preserve the initial empty
+application intention table throughout any physical continuation. -/
+theorem ServiceBoundary.run_remembered {setup : Setup (Player := Player) (L := L)}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+    {rosters : (graph setup).EventId → List Player} {initial : State L setup.context}
+    {Γ : SourceCtx Player L} {source : Config Player L Γ}
+    {refs : ContextRefs (graph setup).layout Γ} {rank : Nat}
+    {execution : (application setup leaks).Execution}
+    (boundary : ServiceBoundary setup leaks rosters initial source refs rank execution)
+    (players : Player → (application setup leaks).Policy)
+    (network : (runtime setup).NetworkPolicy leaks)
+    (plan : List (ServiceInstruction (graph setup)))
+    (final : (application setup leaks).Execution)
+    (reached : final ∈ ((runtime setup).runInteractionPlan leaks players network plan
+      execution).support) : final.application.remembered = fun _ => none :=
+  (runtime setup).runInteractionPlan_preserves leaks players network _
+    (ReactiveApplication.Invariant.policyInvariant (application setup leaks)
+      ((runtime setup).reactiveRememberedInvariant leaks (fun table => table = fun _ => none))
+      players) plan execution final boundary.remembered reached
 
 /-- Finishing the real roster advances every player's response offset by
 exactly the number of their scheduled opportunities, independently of actions. -/

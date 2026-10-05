@@ -182,6 +182,7 @@ theorem sourceService_reveal_prefix_factorization
     (fun seed supported => (boundary seed supported).ready event eventRank)
     (fun seed supported => (boundary seed supported).timely event eventRank
       (by simp only [owned, Option.isSome_some]))
+    (fun seed supported => congrFun (boundary seed supported).remembered event)
     (fun seed supported => (boundary seed supported).recall)
     (fun seed supported => (boundary seed supported).serials)
     (fun seed supported => (boundary seed supported).published)
@@ -232,22 +233,15 @@ theorem sourceService_reveal_prefix_factorization
     apply bind_congr_on_support _
     intro seed supported
     have ready := (boundary seed supported).ready event eventRank
-    obtain ⟨entered, activated⟩ := Option.isSome_iff_exists.mp
-      (((boundary seed supported).invariant.activated_iff event).mpr
-        ⟨ready, by simp only [owned, Option.isSome_some]⟩)
-    have due : (runtime setup).deadline event ≤
-        (execution seed).application.clock + (event.val + 1) - entered := by
-      have earlier := (boundary seed supported).invariant.activated_le event entered activated
-      change event.val + 1 ≤ (execution seed).application.clock + (event.val + 1) - entered
-      omega
     have exactLaw := sourceServiceTimedPolicy_reveal_joint_law setup leaks rosters timing
       fresh binding unresolved next wholeProfile profile refs (source seed) embedding refsBefore
       rank (aligned seed) (execution seed) (boundary seed supported).toSourceCheckpoint
-      (boundary seed supported).binding (boundary seed supported).recall (origins seed supported)
-      (effective seed supported) (boundary seed supported).published
-      (boundary seed supported).serials network entered (event.val + 1) focal owned
+      (boundary seed supported).binding (boundary seed supported).remembered
+      (boundary seed supported).recall (origins seed supported) (effective seed supported)
+      (boundary seed supported).published
+      (boundary seed supported).serials network (event.val + 1) focal owned
       ready ((boundary seed supported).timely event eventRank
-        (by simp only [owned, Option.isSome_some])) activated due
+        (by simp only [owned, Option.isSome_some]))
       ((boundary seed supported).unsent owner event (Nat.le_of_eq eventRank.symm))
       ((boundary seed supported).response_offset event eventRank owner)
     simpa only [PMF.map_bind, PMF.map_comp, Function.comp_def,
@@ -544,7 +538,7 @@ theorem sourceService_prefix_ready [Fintype Player]
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (players : Player → (application setup leaks).Policy)
     (covered : ∀ who, (sourceServiceMenu setup leaks bounds rosters).Admissible
@@ -579,7 +573,7 @@ theorem sourceService_prefix_boundary_of_checkpoint [Fintype Player]
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (players : Player → (application setup leaks).Policy)
     (covered : ∀ who, (sourceServiceMenu setup leaks bounds rosters).Admissible
@@ -749,7 +743,7 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (timing : TimingLaw setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (wholeProfile : BehavioralProfile setup.program)
@@ -1388,7 +1382,7 @@ theorem sourceServiceTimedPolicy_initialized_prefix_factorization [Fintype Playe
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (timing : TimingLaw setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (profile : BehavioralProfile setup.program)
@@ -1488,7 +1482,7 @@ theorem sourceServiceTimedProfile_prefix_factorization [Fintype Player]
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : BindingOpportunities setup rosters)
+    (opportunities : ActorOpportunities setup rosters)
     (timing : TimingLaw setup rosters)
     (full : ∀ event who owned, FullSupport (timing event who owned))
     (network : (runtime setup).NetworkPolicy leaks)

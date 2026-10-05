@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceTimedPolicy
-import Vegas.Game.RevealServiceRosterLaw
+import Vegas.Game.ServicePlanPolicies
 import Vegas.Game.SourceServiceBindingPhase
 import GameTheoryExtensions.Math.Probability.Support
 
