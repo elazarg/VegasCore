@@ -11,14 +11,13 @@ effective (`Vegas.sourceServiceTurnPolicy_firstTurnCompletes`).
 
 * `completes`: complete play completes the current event before the run stops.
 * `terminal`: at the terminal rank the decoded source state is terminal.
-* `exact`: at a chance event every response replays, the configuration stays
+* `exact`: at a chance event no response changes the configuration, which stays
   put until the scheduler samples, and the sample has the source law
   (`Vegas.sample_runUntil`). At an owned event the first-turn decision is a
   mixture over source actions (`Vegas.firstTurn_runUntil_mixture`), and each
   fixed action completes the event with exactly that action
-  (`Vegas.decided_completion`). The actual stopped prefix has the complete
-  source behavioral step law (`Vegas.sourceServiceFirstTurn_prefix_law`),
-  which supplies exactness after applying the source continuation kernel.
+  (`Vegas.decided_completion`); the source continuation decomposes the same way
+  (`Vegas.SourceResidual.head_law`).
 -/
 
 noncomputable section
@@ -289,111 +288,12 @@ theorem sample_runUntil (scheduler : (application setup leaks).Scheduler)
                 ready.1 (same ▸ completedNext)
               simp [continuation, different])
 
-/-- The first-turn phase preserves the actual whole source prefix after one
-event. Its decoder reads the stopped configuration; its marginal is the real
-behavioral source step, including public samples and explicit withholding.
-This is a local completion law, without a native information posterior. -/
-theorem sourceServiceFirstTurn_prefix_law [Fintype Player]
-    {scheduler : (application setup leaks).Scheduler} {horizon turns : Nat}
-    {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
-      delay bound)
-    (timely : AsyncTimely (runtime setup) delay bound)
-    (profile : BehavioralProfile setup.program)
-    (effective : ∀ who, (profile who).EffectiveDisclosures setup.program []
-      (Revelations.initial setup.context))
-    {players : Player → (application setup leaks).Policy}
-    (event : (graph setup).EventId) (start : (application setup leaks).Execution)
-    (boundary : CompletionBoundary setup leaks scheduler players event.val start)
-    (submissions : SubmissionsAtTurn setup leaks start)
-    (bounded : start.environmentRecall.length ≤ horizon) :
-    ∃ before : ProtocolState setup.program,
-      sourceServicePrefix? setup event.val start.application.config = some before ∧
-      ((application setup leaks).runUntilHorizon scheduler
-        (firstTurnProfile setup leaks bound turns profile event)
-        (fun final => event ∈ final.application.config.cut.completed) horizon start).map
-          (fun stopped => sourceServicePrefix? setup (event.val + 1)
-            stopped.application.config) =
-        (ProtocolState.behavioralStateStep setup.program profile before).map some := by
-  let app := application setup leaks
-  have ready : start.application.config.cut.Ready event :=
-    (ready_iff_rank setup _ event.val boundary.ordered event).mpr rfl
-  obtain ⟨residual⟩ := boundary.sourceResidual (profile := profile)
-  obtain ⟨law, sourceStep, policy, effectiveLaw⟩ :=
-    SourceResidual.head_step leaks residual event rfl ready
-  obtain ⟨startTrace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler
-    players _ bounded start boundary.supported
-  have actualStep :
-      (app.runUntilHorizon scheduler (firstTurnProfile setup leaks bound turns profile event)
-        (fun final => event ∈ final.application.config.cut.completed) horizon start).map
-          (fun stopped => stopped.application.config) =
-        law.bind fun action => start.application.config.step event ready action := by
-    cases owned : (graph setup).actor? event with
-    | none =>
-        have profileEq : firstTurnProfile setup leaks bound turns profile event =
-            fun _ => app.silentPolicy := by
-          unfold firstTurnProfile
-          simp only [owned]
-          rfl
-        rw [profileEq]
-        have samples (action : (graph setup).Action event) :
-            (app.runUntilHorizon scheduler (fun _ => app.silentPolicy)
-              (fun final => event ∈ final.application.config.cut.completed) horizon start).map
-                (fun stopped => stopped.application.config) =
-              start.application.config.step event ready action :=
-          sample_runUntil scheduler _ event owned start.application.config event.val
-            boundary.ordered ready action _ start rfl
-            (fun stopped reached => runUntilHorizon_completes contract.completes bounded
-              startTrace stopped reached)
-        calc
-          _ = law.bind fun _ =>
-              (app.runUntilHorizon scheduler (fun _ => app.silentPolicy)
-                (fun final => event ∈ final.application.config.cut.completed) horizon start).map
-                  (fun stopped => stopped.application.config) := (PMF.bind_const _ _).symm
-          _ = _ := bind_congr_on_support law fun action _ => samples action
-    | some owner =>
-        unfold ReactiveApplication.runUntilHorizon
-        rw [firstTurn_runUntil_mixture event start boundary owner owned bound turns profile law
-          (policy owner owned) _, PMF.map_bind]
-        apply bind_congr_on_support law
-        intro action chosen
-        obtain ⟨completedConfig, member⟩ :=
-          (start.application.config.step event ready action).support_nonempty
-        have pure := start.application.config.step_eq_pure_of_actor event ready action owner owned
-          completedConfig member
-        rw [pure]
-        calc
-          _ = (app.runUntil scheduler
-              (Function.update (fun _ => app.silentPolicy) owner
-                (decidedTurnPolicy setup leaks bound owner event action))
-              (fun final => event ∈ final.application.config.cut.completed)
-              (horizon - start.environmentRecall.length) start).map
-                (fun _ => completedConfig) := by
-            apply map_congr_on_support _
-            intro stopped reached
-            have completed := decided_completion contract timely event start boundary
-              submissions bounded ready owned action (effectiveLaw effective action chosen)
-              stopped reached
-            have completed := completed.1
-            rw [pure, PMF.mem_support_pure_iff] at completed
-            exact completed
-          _ = _ := PMF.map_const _ _
-  refine ⟨residual.lift (ProtocolState.entry residual.program residual.source),
-    residual.decode, ?_⟩
-  calc
-    _ = ((app.runUntilHorizon scheduler (firstTurnProfile setup leaks bound turns profile event)
-        (fun final => event ∈ final.application.config.cut.completed) horizon start).map
-          (fun stopped => stopped.application.config)).map
-            (sourceServicePrefix? setup (event.val + 1)) := by
-      rw [PMF.map_comp]
-      rfl
-    _ = (law.bind fun action => start.application.config.step event ready action).map
-        (sourceServicePrefix? setup (event.val + 1)) := by rw [actualStep]
-    _ = _ := sourceStep.symm
-
-/-- The asynchronous contract supplies the first-turn completion and exact
-source-continuation premises. Exactness follows from the actual stopped-prefix
-law before applying the source continuation kernel. -/
+/-- **The first-turn premises hold under the asynchronous contract.** For every
+scheduler satisfying the contract with `delay + bound < deadline`, every turn
+timing, and every source profile whose disclosures are effective, the
+turn-counted policy with the contract's inclusion bound completes each event
+before the run stops, deciding at the first turn is exact, and the terminal
+continuation is the readout. -/
 theorem sourceServiceTurnPolicy_firstTurnCompletes [Finite Player]
     {scheduler : (application setup leaks).Scheduler} {horizon turns : Nat}
     {delay bound : (graph setup).EventId → Nat}
@@ -404,26 +304,71 @@ theorem sourceServiceTurnPolicy_firstTurnCompletes [Finite Player]
     (effective : ∀ who, (profile who).EffectiveDisclosures setup.program []
       (Revelations.initial setup.context)) :
     FirstTurnCompletes setup leaks scheduler horizon bound turns timing profile := by
-  let := Fintype.ofFinite Player
   let app := application setup leaks
   refine ⟨fun event execution boundary bounded stopped reached =>
     completionRun_completes contract.completes event execution boundary bounded stopped reached,
     ?_, fun execution boundary => boundary.terminal_continuation (profile := profile)⟩
   intro event start boundary bounded
-  have submissions := (roundsFrom_turnFacts setup leaks
-    (fun who => sourceServiceTurnPolicy_submitsAtTurn setup leaks bound turns timing profile who)
-    _ start boundary.supported).1
-  obtain ⟨before, decoded, prefixLaw⟩ := sourceServiceFirstTurn_prefix_law contract timely
-    profile effective event start boundary submissions bounded
-  let continuation := fun state : Option (ProtocolState setup.program) =>
-    (setup.continuationLaw profile state).map some
-  have composed := congrArg (fun distribution => distribution.bind continuation) prefixLaw
-  rw [PMF.bind_map, PMF.bind_map] at composed
-  change _ = (ProtocolState.behavioralStateStep setup.program profile before).bind
-    (fun state => (ProtocolState.continuationLaw setup.program profile state).map some)
-      at composed
-  rw [← PMF.map_bind, sourceStep_continuation] at composed
-  simpa only [sourceContinuation, decoded, Setup.continuationLaw, continuation, Function.comp_def]
-    using composed
+  have ready : start.application.config.cut.Ready event :=
+    (ready_iff_rank setup _ event.val boundary.ordered event).mpr rfl
+  obtain ⟨residual⟩ := boundary.sourceResidual (profile := profile)
+  obtain ⟨law, continuation, policy, effectiveLaw⟩ :=
+    SourceResidual.head_law leaks residual event rfl ready
+  rw [continuation]
+  obtain ⟨startTrace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler
+    (sourceServiceTurnPolicy setup leaks bound turns timing profile) _ bounded start
+    boundary.supported
+  cases owned : (graph setup).actor? event with
+  | none =>
+      have profileEq : firstTurnProfile setup leaks bound turns profile event =
+          fun _ => app.silentPolicy := by
+        unfold firstTurnProfile
+        simp only [owned]
+        rfl
+      rw [profileEq]
+      have samples (action : (graph setup).Action event) :
+          (app.runUntilHorizon scheduler (fun _ => app.silentPolicy)
+            (fun final => event ∈ final.application.config.cut.completed) horizon start).map
+              (fun stopped => stopped.application.config) =
+            start.application.config.step event ready action :=
+        sample_runUntil scheduler _ event owned start.application.config event.val
+          boundary.ordered ready action _ start rfl
+          (fun stopped reached => runUntilHorizon_completes contract.completes bounded startTrace
+            stopped reached)
+      calc _ = ((app.runUntilHorizon scheduler (fun _ => app.silentPolicy)
+            (fun final => event ∈ final.application.config.cut.completed) horizon start).map
+              (fun stopped => stopped.application.config)).bind
+            (sourceContinuation setup profile (event.val + 1)) := by
+            rw [PMF.bind_map]
+            rfl
+        _ = law.bind (fun _ => ((app.runUntilHorizon scheduler (fun _ => app.silentPolicy)
+            (fun final => event ∈ final.application.config.cut.completed) horizon start).map
+              (fun stopped => stopped.application.config)).bind
+            (sourceContinuation setup profile (event.val + 1))) := (PMF.bind_const _ _).symm
+        _ = _ := bind_congr_on_support law fun action _ => by rw [samples action]
+  | some owner =>
+      unfold ReactiveApplication.runUntilHorizon
+      rw [firstTurn_runUntil_mixture event start boundary owner owned bound turns profile law
+        (policy owner owned) _, PMF.bind_bind]
+      apply bind_congr_on_support law
+      intro action chosen
+      obtain ⟨completedConfig, member⟩ :=
+        (start.application.config.step event ready action).support_nonempty
+      have pure := start.application.config.step_eq_pure_of_actor event ready action owner owned
+        completedConfig member
+      rw [pure, PMF.pure_bind]
+      calc _ = (app.runUntil scheduler
+            (Function.update (fun _ => app.silentPolicy) owner
+              (decidedTurnPolicy setup leaks bound owner event action))
+            (fun final => event ∈ final.application.config.cut.completed)
+            (horizon - start.environmentRecall.length) start).bind
+              (fun _ => sourceContinuation setup profile (event.val + 1) completedConfig) := by
+            apply bind_congr_on_support _
+            intro stopped reached
+            have completed := decided_completion contract timely event start boundary bounded
+              ready owned action (effectiveLaw effective action chosen) stopped reached
+            rw [pure, PMF.mem_support_pure_iff] at completed
+            rw [completed]
+        _ = _ := PMF.bind_const _ _
 
 end Vegas

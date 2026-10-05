@@ -2,6 +2,7 @@
 
 import Vegas.Pending.ReactiveNormalization
 import Interaction.ReactiveFiniteAssessment
+import Interaction.ReactiveMenuRestriction
 
 /-! # Complete finite response syntax under explicit message bounds
 
@@ -206,6 +207,17 @@ theorem rawMenu_closed (runtime : EventGraphRuntime graph)
   cases transmission with
   | none => trivial
   | some submission => exact bounds.normalize_submission_mem who view.application _ _ member
+
+/-- Every complete effective response is a bounded raw response. The normal
+form changes only private representations and remains within the same bounds. -/
+theorem menu_in_raw (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :
+    (bounds.menu runtime leaks).IncludedIn (bounds.rawMenu runtime leaks) := by
+  intro who past view response member
+  obtain ⟨original, allowed, normal⟩ := (runtime.reactiveNormalization leaks).menu_mem
+    (bounds.rawMenu runtime leaks) who past view response |>.mp member
+  rw [← normal]
+  exact bounds.rawMenu_closed runtime leaks who past view original allowed
 
 /-- Exact completeness: every bounded normal response is admitted, including
 all packet errors; every admitted response is bounded and normal. -/

@@ -78,6 +78,36 @@ theorem decode_embedPolicy_covered (who : Principal)
   rw [value, Option.getD_some] at same
   exact same ▸ member
 
+/-- Decoding any finite-menu behavioral policy and restricting it back recovers
+its complete policy, including inputs outside legal histories. -/
+theorem restrict_decode_embedPolicy (who : Principal)
+    (policy : (menu.information initial horizon scheduler).BehavioralPolicy who) :
+    menu.restrictPolicy initial horizon scheduler who
+        (app.decodePolicy (menu.embedPolicy initial horizon scheduler who policy)) = policy := by
+  funext info
+  apply pmf_map_injective (f := menu.rawChoice initial horizon scheduler who info)
+  · intro first second equal
+    have values := congrArg Subtype.val equal
+    exact Subtype.ext values
+  · change menu.embedPolicy initial horizon scheduler who
+        (menu.restrictPolicy initial horizon scheduler who
+          (app.decodePolicy (menu.embedPolicy initial horizon scheduler who policy))) info = _
+    cases info with
+    | none =>
+        rw [show menu.embedPolicy initial horizon scheduler who
+            (menu.restrictPolicy initial horizon scheduler who
+              (app.decodePolicy (menu.embedPolicy initial horizon scheduler who policy))) none =
+            app.encodePolicy
+              (app.decodePolicy (menu.embedPolicy initial horizon scheduler who policy)) none by
+          simp [embedPolicy, restrictPolicy, encodePolicy, rawChoice, PMF.pure_map]]
+        exact congrFun (app.encode_decodePolicy
+          (menu.embedPolicy initial horizon scheduler who policy)) none
+    | some data =>
+        rw [menu.embed_restrictPolicy initial horizon scheduler who _ data.1 data.2
+          (menu.decode_embedPolicy_covered initial horizon scheduler who policy data.1 data.2)]
+        exact congrFun (app.encode_decodePolicy
+          (menu.embedPolicy initial horizon scheduler who policy)) (some data)
+
 /-- All-input coverage makes finite restriction an exact decoding inverse,
 including inputs outside the legal histories used by `Admissible`. -/
 theorem decode_restrictPolicy_of_covered (who : Principal) (policy : app.Policy)

@@ -1,0 +1,337 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.SourceServiceRiskPolicy
+import Vegas.Game.SourceServiceFirstTurnBinding
+
+/-! # Immediate source decisions from actual clear recall
+
+At a clear service-risk view, the owner takes the current canonical opportunity
+immediately, regardless of earlier silent turns. Its actual submission recall
+still suppresses repeated calls, and the opportunity still gates transmission
+on protected inclusion. Without an own turn, or when risk is present, the policy
+is silent.
+
+The local results admit the policy at legal risk-menu histories and derive its
+actual first binding call, fresh conformance and slot preservation. They neither
+reset private recall nor prescribe a rational continuation at risky sites.
+-/
+
+noncomputable section
+
+namespace Vegas
+
+open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime
+
+variable {Player : Type} [DecidableEq Player]
+  {L : IExpr} [IExpr.ResultTypes L]
+  (setup : Setup (Player := Player) (L := L))
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+
+/-- Take the protected current source opportunity whenever the owner's actual
+local risk flag is clear, without testing an earlier turn count. -/
+def sourceServiceImmediatePolicy (bound : (graph setup).EventId → Nat)
+    (profile : BehavioralProfile setup.program) (who : Player) :
+    (application setup leaks).Policy := fun past view =>
+  if (runtime setup).serviceRisk leaks bound who past view = false then
+    match view.application.publicView.ownTurn? who with
+    | none => (application setup leaks).silentPolicy past view
+    | some event => sourceServiceCanonicalOpportunity setup leaks bound profile who event past view
+  else (application setup leaks).silentPolicy past view
+
+variable {setup leaks}
+
+/-- At a clear own turn, the immediate policy is the current canonical
+opportunity even if earlier silent responses already saw that event. -/
+theorem sourceServiceImmediatePolicy_at_event
+    {bound : (graph setup).EventId → Nat} {profile : BehavioralProfile setup.program}
+    {who : Player} {past : List (application setup leaks).PlayerEntry}
+    {view : (application setup leaks).PlayerView} {event : (graph setup).EventId}
+    (clear : (runtime setup).serviceRisk leaks bound who past view = false)
+    (turn : view.application.publicView.ownTurn? who = some event) :
+    sourceServiceImmediatePolicy setup leaks bound profile who past view =
+      sourceServiceCanonicalOpportunity setup leaks bound profile who event past view := by
+  simp only [sourceServiceImmediatePolicy, clear, ↓reduceIte, turn]
+
+/-- Every supported response is silence or a current opportunity at clear risk. -/
+theorem sourceServiceImmediatePolicy_cases
+    {bound : (graph setup).EventId → Nat} {profile : BehavioralProfile setup.program}
+    {who : Player} {past : List (application setup leaks).PlayerEntry}
+    {view : (application setup leaks).PlayerView} {response : (application setup leaks).Action}
+    (chosen : response ∈ (sourceServiceImmediatePolicy setup leaks bound profile who
+      past view).support) :
+    response = ⟨none⟩ ∨ ∃ event,
+      (runtime setup).serviceRisk leaks bound who past view = false ∧
+      view.application.publicView.ownTurn? who = some event ∧
+      response ∈ (sourceServiceCanonicalOpportunity setup leaks bound profile who event
+        past view).support := by
+  unfold sourceServiceImmediatePolicy at chosen
+  split at chosen
+  · rename_i clear
+    split at chosen
+    · exact Or.inl ((application setup leaks).silentPolicy_cases past view response chosen)
+    · rename_i event turn
+      exact Or.inr ⟨event, clear, turn, chosen⟩
+  · exact Or.inl ((application setup leaks).silentPolicy_cases past view response chosen)
+
+/-- Every actual immediate submission is an unsent protected canonical source
+decision at the current own turn. -/
+theorem sourceServiceImmediatePolicy_submission
+    {bound : (graph setup).EventId → Nat} {profile : BehavioralProfile setup.program}
+    {who : Player} {past : List (application setup leaks).PlayerEntry}
+    {view : (application setup leaks).PlayerView} {response : (application setup leaks).Action}
+    (chosen : response ∈ (sourceServiceImmediatePolicy setup leaks bound profile who
+      past view).support)
+    {material : (application setup leaks).Submission}
+    (submits : response.transmission = some material) :
+    ∃ event action, view.application.publicView.ownTurn? who = some event ∧
+      (runtime setup).eventRecorded leaks past event = false ∧
+      view.application.publicView.InclusionFitsDeadline (runtime setup) bound event ∧
+      response = (runtime setup).canonicalServiceDecision leaks who past view event action := by
+  rcases sourceServiceImmediatePolicy_cases chosen with silent | ⟨event, _, turn, member⟩
+  · rw [silent] at submits
+    cases submits
+  · obtain ⟨unrecorded, fits, other, action, otherTurn, decision⟩ :=
+      sourceServiceCanonicalOpportunity_submission member submits
+    have same : other = event := Option.some.inj (otherTurn.symm.trans turn)
+    subst same
+    exact ⟨other, action, turn, unrecorded, fits, decision⟩
+
+/-- An immediate response names only the current own event. -/
+theorem sourceServiceImmediatePolicy_submitsAtTurn
+    (bound : (graph setup).EventId → Nat) (profile : BehavioralProfile setup.program)
+    (who : Player) :
+    SubmitsAtTurn setup leaks (sourceServiceImmediatePolicy setup leaks bound profile who)
+      who := by
+  intro past view response chosen event named
+  rcases sourceServiceImmediatePolicy_cases chosen with silent | ⟨other, _, _, member⟩
+  · rw [silent] at named
+    cases named
+  · exact sourceServiceCanonicalOpportunity_submitsAtTurn setup leaks bound profile who other
+      past view response member event named
+
+/-- Every supported immediate response satisfies the first-submission discipline. -/
+theorem sourceServiceImmediatePolicy_firstSubmission
+    {bound : (graph setup).EventId → Nat} {profile : BehavioralProfile setup.program}
+    {who : Player} {past : List (application setup leaks).PlayerEntry}
+    {view : (application setup leaks).PlayerView} {response : (application setup leaks).Action}
+    (chosen : response ∈ (sourceServiceImmediatePolicy setup leaks bound profile who
+      past view).support) :
+    (runtime setup).firstSubmission leaks past response = true := by
+  cases transmission : response.transmission with
+  | none =>
+      simp only [EventGraphRuntime.firstSubmission, EventGraphRuntime.submittedEvent?,
+        transmission]
+  | some material =>
+      obtain ⟨event, action, _, unrecorded, _, decision⟩ :=
+        sourceServiceImmediatePolicy_submission chosen transmission
+      rw [decision]
+      exact (runtime setup).canonicalServiceDecision_firstSubmission leaks who past view event
+        action unrecorded
+
+/-- Every named immediate submission passes its protected inclusion gate. -/
+theorem sourceServiceImmediatePolicy_submissionFits
+    {bound : (graph setup).EventId → Nat} {profile : BehavioralProfile setup.program}
+    {who : Player} {past : List (application setup leaks).PlayerEntry}
+    {view : (application setup leaks).PlayerView} {response : (application setup leaks).Action}
+    (chosen : response ∈ (sourceServiceImmediatePolicy setup leaks bound profile who
+      past view).support)
+    (event : (graph setup).EventId)
+    (named : (runtime setup).submittedEvent? leaks response = some event) :
+    view.application.publicView.InclusionFitsDeadline (runtime setup) bound event := by
+  obtain ⟨material, transmission⟩ : ∃ material, response.transmission = some material := by
+    cases sent : response.transmission with
+    | none => simp only [EventGraphRuntime.submittedEvent?, sent] at named; cases named
+    | some material => exact ⟨material, rfl⟩
+  obtain ⟨chosenEvent, action, _, _, fits, decision⟩ :=
+    sourceServiceImmediatePolicy_submission chosen transmission
+  rw [decision] at named
+  rw [submittedEvent_canonicalServiceDecision setup leaks who past view chosenEvent action event
+    named]
+  exact fits
+
+/-- An actual fresh immediate envelope conforms on its actual before-view. -/
+theorem sourceServiceImmediatePolicy_freshServiceEnvelope {horizon remaining : Nat}
+    {scheduler : (application setup leaks).Scheduler}
+    {bound : (graph setup).EventId → Nat} {profile : BehavioralProfile setup.program}
+    {middle : (application setup leaks).Execution} {who : Player}
+    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨remaining, some who, middle⟩))
+    (atTurn : OwnSubmissionsAtTurn setup leaks middle who)
+    (slots : CanonicalSlotsUsed setup leaks middle who)
+    {response : (application setup leaks).Action}
+    (chosen : response ∈ (sourceServiceImmediatePolicy setup leaks bound profile who
+      (middle.recall who) (middle.observe (application setup leaks) who)).support)
+    (material : (application setup leaks).Submission)
+    (submits : response.transmission = some material) :
+    (runtime setup).freshServiceEnvelope middle.application.publicView
+      ⟨(who, middle.network.nextSerial who), (application setup leaks).packet
+        ((application setup leaks).submit middle.application who material) who
+        (middle.network.known who) material⟩ := by
+  obtain ⟨event, action, turn, unrecorded, fits, decision⟩ :=
+    sourceServiceImmediatePolicy_submission chosen submits
+  have fresh := canonicalSlot_fresh_of_used trace who atTurn slots event turn unrecorded
+  exact canonicalServiceDecision_freshServiceEnvelope trace event turn fits.withinDeadline fresh
+    action material (by rw [← decision]; exact submits)
+
+/-- At a clear unrecorded binding turn, the immediate response emits and records
+its actual protected commitment, regardless of the number of earlier deferrals. -/
+theorem sourceServiceImmediatePolicy_binding_call {horizon remaining : Nat}
+    {scheduler : (application setup leaks).Scheduler}
+    {bound : (graph setup).EventId → Nat} {profile : BehavioralProfile setup.program}
+    {middle : (application setup leaks).Execution} {who : Player}
+    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨remaining, some who, middle⟩))
+    (atTurn : OwnSubmissionsAtTurn setup leaks middle who)
+    (slots : CanonicalSlotsUsed setup leaks middle who)
+    (clear : (runtime setup).serviceRisk leaks bound who (middle.recall who)
+      (middle.observe (application setup leaks) who) = false)
+    (event : (graph setup).EventId) (payload : L.Ty)
+    (outputEq : (graph setup).outputLayout event = .binding who payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .bind who payload)
+    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
+    (turn : middle.application.publicView.ownTurn? who = some event)
+    (unrecorded : (runtime setup).eventRecorded leaks (middle.recall who) event = false)
+    (response : (application setup leaks).Action)
+    (chosen : response ∈ (sourceServiceImmediatePolicy setup leaks bound profile who
+      (middle.recall who) (middle.observe (application setup leaks) who)).support) :
+    ∃ material, response = ⟨some material⟩ ∧
+      let app := application setup leaks
+      let message : Message Player (WitnessedPacket (graph setup)) :=
+        ⟨(who, middle.network.nextSerial who), app.packet
+          (app.submit middle.application who material) who (middle.network.known who) material⟩
+      let entry : app.PlayerEntry := ⟨middle.observe app who, response, some message⟩
+      FreshCall setup leaks who event bound entry message ∧
+        message.payload.call = .commitment event
+          (who, .prepared (middle.application.publicView.bindingCount who)) ∧
+        (runtime setup).eventRecorded leaks ((middle.respond app who response).recall who)
+          event = true := by
+  have fits : middle.application.publicView.InclusionFitsDeadline (runtime setup) bound
+      event := by
+    by_contra unprotected
+    have currentClear := ((runtime setup).serviceRisk_clear_iff leaks bound who _ _).mp clear |>.2
+    have risky := ((runtime setup).firstUnprotectedBindingOpportunity_iff leaks bound who
+      (middle.recall who) (middle.observe (application setup leaks) who)).mpr
+        ⟨rfl, event, who, payload, turn, outputEq, unrecorded, unprotected⟩
+    rw [currentClear] at risky
+    cases risky
+  rw [sourceServiceImmediatePolicy_at_event clear turn] at chosen
+  exact sourceServiceCanonicalOpportunity_binding_call trace atTurn slots event payload outputEq
+    codeEq node turn unrecorded fits response chosen
+
+/-- One immediate response preserves the owner's submission turns and used
+canonical slots. Environment and foreign response closures require no policy
+restriction and are supplied separately. -/
+theorem sourceServiceImmediatePolicy_canonicalSlots_respond {horizon remaining : Nat}
+    {scheduler : (application setup leaks).Scheduler}
+    {bound : (graph setup).EventId → Nat} {profile : BehavioralProfile setup.program}
+    {middle : (application setup leaks).Execution} {who : Player}
+    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨remaining, some who, middle⟩))
+    (atTurn : OwnSubmissionsAtTurn setup leaks middle who)
+    (slots : CanonicalSlotsUsed setup leaks middle who)
+    {response : (application setup leaks).Action}
+    (chosen : response ∈ (sourceServiceImmediatePolicy setup leaks bound profile who
+      (middle.recall who) (middle.observe (application setup leaks) who)).support) :
+    OwnSubmissionsAtTurn setup leaks (middle.respond (application setup leaks) who response) who ∧
+      CanonicalSlotsUsed setup leaks (middle.respond (application setup leaks) who response)
+        who := by
+  let app := application setup leaks
+  have appEq := (runtime setup).reactive_respond_application leaks middle who response
+  obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks middle who response
+  refine ⟨?_, ?_⟩
+  · intro entry member event named
+    rw [recalled] at member
+    rcases List.mem_append.mp member with old | new
+    · exact atTurn entry old event named
+    · cases List.mem_singleton.mp new
+      exact sourceServiceImmediatePolicy_submitsAtTurn _ _ who _ _ response chosen event named
+  · intro serial used
+    rw [(runtime setup).submittedCandidateSlots_respond leaks middle who response] at used
+    rw [appEq.2]
+    rcases List.mem_append.mp used with old | new
+    · rcases slots serial old with lower | ⟨equal, other, payload, layout, unfinished, recorded⟩
+      · exact Or.inl lower
+      · refine Or.inr ⟨equal, other, payload, layout, ?_, ?_⟩
+        · rw [appEq.1]
+          exact unfinished
+        · exact (runtime setup).eventRecorded_respond_of_recorded leaks middle who who response
+            other recorded
+    · have slot : (runtime setup).responseCandidateSlot leaks response = some serial :=
+        Option.mem_toList.mp new
+      obtain ⟨material, submits⟩ : ∃ material, response.transmission = some material := by
+        unfold EventGraphRuntime.responseCandidateSlot at slot
+        split at slot
+        · exact ⟨_, ‹_›⟩
+        · cases slot
+      obtain ⟨event, action, turn, unrecorded, _, rfl⟩ :=
+        sourceServiceImmediatePolicy_submission chosen submits
+      have owned := (PublicView.ownTurn?_spec _ who event turn).2
+      have fresh := canonicalSlot_fresh_of_used trace who atTurn slots event turn unrecorded
+      have canonical := canonicalFreshSlot_canonical who (middle.observe app who).application
+        fresh
+      obtain ⟨selected, ⟨payload, layout⟩, named⟩ := canonicalServiceDecision_candidateSlot who
+        (middle.recall who) (middle.observe app who) event owned action serial slot
+      rw [canonical] at selected
+      cases Option.some.inj selected
+      have ready := (middle.application.publicView_eventReady event).mp
+        (PublicView.ownTurn?_spec _ who event turn).1
+      refine Or.inr ⟨rfl, event, payload, layout, ?_, ?_⟩
+      · rw [appEq.1]
+        exact ready.1
+      · rw [recalled]
+        unfold EventGraphRuntime.eventRecorded
+        rw [List.any_append]
+        simp only [List.any_cons, List.any_nil, Bool.or_false]
+        rw [named]
+        simp
+
+section Menu
+
+variable [Fintype Player]
+
+/-- The immediate policy is locally admitted at every actual legal risk-menu
+history, including histories with earlier deferrals or foreign raw responses. -/
+theorem sourceServiceImmediatePolicy_risk_retained
+    (bounds : MessageBounds (graph setup)) (covered : bounds.CoversBindingValues)
+    (initialCovered : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
+    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
+    (bound : (graph setup).EventId → Nat) (profile : BehavioralProfile setup.program)
+    (who : Player)
+    (permitted : (profile who).Admitted setup.program (CommitmentInterface.values _))
+    {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
+    (control : (application setup leaks).Control)
+    (trace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control))
+    (response : (application setup leaks).Action)
+    (chosen : response ∈ (sourceServiceImmediatePolicy setup leaks bound profile who
+      (control.execution.recall who)
+      (control.execution.observe (application setup leaks) who)).support) :
+    response ∈ bounds.riskActions (runtime setup) leaks bound who (control.execution.recall who)
+      (control.execution.observe (application setup leaks) who) := by
+  rcases sourceServiceImmediatePolicy_cases chosen with rfl | ⟨event, clear, turn, member⟩
+  · exact bounds.canonicalActions_subset_risk (runtime setup) leaks bound who _ _
+      (bounds.silence_canonical (runtime setup) leaks who _ _)
+  · rw [bounds.riskActions_of_clear (runtime setup) leaks bound who _ _ clear]
+    exact sourceServiceCanonicalOpportunity_risk_retained bounds covered initialCovered capacity
+      bound profile who permitted control trace clear event turn response member
+
+/-- The local coverage gives a policy admission certificate on every legal
+decision history of the finite risk menu. -/
+theorem sourceServiceImmediatePolicy_risk_admissible
+    (bounds : MessageBounds (graph setup)) (covered : bounds.CoversBindingValues)
+    (initialCovered : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
+    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
+    (bound : (graph setup).EventId → Nat) (profile : BehavioralProfile setup.program)
+    (who : Player)
+    (permitted : (profile who).Admitted setup.program (CommitmentInterface.values _))
+    (horizon : Nat) (scheduler : (application setup leaks).Scheduler) :
+    (bounds.riskMenu (runtime setup) leaks bound).Admissible (initialLaw setup) horizon scheduler
+      who (sourceServiceImmediatePolicy setup leaks bound profile who) := by
+  intro control trace _ response chosen
+  exact sourceServiceImmediatePolicy_risk_retained bounds covered initialCovered capacity bound
+    profile who permitted control trace response chosen
+
+end Menu
+
+end Vegas

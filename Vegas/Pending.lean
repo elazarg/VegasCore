@@ -103,8 +103,10 @@ import Vegas.Pending.ReactiveBindingMemoryInvariant
 import Vegas.Pending.ReactiveBindingMenuRepair
 import Vegas.Pending.ReactiveBindingObservation
 import Vegas.Pending.ReactiveBindingOmission
+import Vegas.Pending.ReactiveBindingOrigin
 import Vegas.Pending.ReactiveBindingPrefix
 import Vegas.Pending.ReactiveBindingRealization
+import Vegas.Pending.ReactiveBindingReceipts
 import Vegas.Pending.ReactiveBindingRecordedOmission
 import Vegas.Pending.ReactiveBindingRepair
 import Vegas.Pending.ReactiveBindingWaiting
@@ -128,6 +130,7 @@ import Vegas.Pending.ReactiveBoundedValues
 import Vegas.Pending.ReactiveCandidateBudget
 import Vegas.Pending.ReactiveCandidateRealization
 import Vegas.Pending.ReactiveCanonicalDecision
+import Vegas.Pending.ReactiveCanonicalMenu
 import Vegas.Pending.ReactiveCompiledMenu
 import Vegas.Pending.ReactiveCompiledResolution
 import Vegas.Pending.ReactiveContinuationObservation
@@ -166,6 +169,10 @@ import Vegas.Pending.ReactiveRawBindingFrame
 import Vegas.Pending.ReactiveRepeatedSubmissionData
 import Vegas.Pending.ReactiveRepeatedSubmissionStep
 import Vegas.Pending.ReactiveRepeatedSubmissionWindow
+import Vegas.Pending.ReactiveRiskMenu
+import Vegas.Pending.ReactiveRiskPersistence
+import Vegas.Pending.ReactiveSettledCollection
+import Vegas.Pending.ReactiveSignedEvidence
 import Vegas.Pending.ReactiveSilentApplication
 import Vegas.Pending.ReactiveSilentSettlement
 import Vegas.Pending.ReactiveResolutionAuditStep

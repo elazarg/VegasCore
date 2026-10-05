@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheoryExtensions.Analysis.Protocol.AgentPayoffCompletion
+import GameTheory.Analysis.Protocol.AgentCompletion
 
 /-! # Consistent rational completion outside prescribed information sites
 
@@ -60,9 +60,8 @@ theorem exists_consistent_prescribed_completion
   classical
   obtain ⟨_residual, sequence, assessment, index, played, _mixed, _bayes,
       increasing, converges, consistent, freeOptimal⟩ :=
-    M.exists_consistent_free_agent_payoff_completion decisionRecall fallback certificate payoff
-      (fun _ => payoff) (fun _ => 0) tendsto_const_nhds (fun _ _ _ _ => by simp)
-        free pinned reference pinnedFull referenceFull epsilon positive small vanishes
+    M.exists_consistent_free_agent_completion decisionRecall fallback certificate payoff free pinned
+      reference pinnedFull referenceFull epsilon positive small vanishes
   have agrees (who : Player) (site : M.InformationSite who) (kept : M.agentAt site ∉ free) :
       assessment.strategy who site.1 = prescribed who site.1 := by
     apply (converges.strategy who site).unique

@@ -154,25 +154,25 @@ theorem owner_packet_accepted {horizon : Nat}
     conforming := EventGraphRuntime.freshServiceEnvelope.acceptable (runtime setup) fresh }
   have sole : ∀ other ∈ earlier ++ later,
       ¬ EmitsOtherFor (runtime setup) leaks other event message.id := by
-    intro other otherMember ⟨replayed, emittedOther, replayedAuthor, replayedAddressed,
+    intro other otherMember ⟨second, emittedOther, secondAuthor, secondAddressed,
       differentId⟩
     have otherRecall : other ∈ control.execution.recall who := by
       rw [split]
       rcases List.mem_append.mp otherMember with inside | inside
       · exact List.mem_append_left _ inside
       · exact List.mem_append_right _ (List.mem_cons_of_mem _ inside)
-    have output : replayed ∈ app.outputs (control.execution.recall who) :=
+    have output : second ∈ app.outputs (control.execution.recall who) :=
       List.mem_filterMap.mpr ⟨other, otherRecall, emittedOther⟩
     rw [← facts.inputs who] at output
-    have replayMember := (List.mem_filter.mp output).1
+    have secondMember := (List.mem_filter.mp output).1
     obtain ⟨issuer, issuerMember, _, issuerTransmission, issuerEmitted, _, _, issuerPacket⟩ :=
-      facts.provenance.inputs replayed replayMember
-    change issuer ∈ control.execution.recall replayed.id.1 at issuerMember
-    change replayed.id.1 = message.id.1 at replayedAuthor
-    rw [replayedAuthor, authored] at issuerMember
+      facts.provenance.inputs second secondMember
+    change issuer ∈ control.execution.recall second.id.1 at issuerMember
+    change second.id.1 = message.id.1 at secondAuthor
+    rw [secondAuthor, authored] at issuerMember
     have issuerEvent : (runtime setup).submittedEvent? leaks issuer.action = some event := by
       rw [submittedEvent_of_issued issuerTransmission issuerPacket]
-      exact replayedAddressed
+      exact secondAddressed
     exact differentId (once issuer issuerMember entry entryMember event _ _ issuerEvent
       entryEvent issuerEmitted entryEmitted)
   have settles : SettlesFreshCalls setup leaks who event bound control.execution :=

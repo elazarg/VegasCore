@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Game.AsyncServiceDeposit
 import Vegas.Game.AsyncServiceSpec
 import Vegas.Game.BindingRepairBlock
 import Vegas.Game.BindingRepairReadout
@@ -99,11 +100,13 @@ import Vegas.Game.SourceServiceAssessment
 import Vegas.Game.SourceServiceAsyncStep
 import Vegas.Game.SourceServiceAsyncTimeliness
 import Vegas.Game.SourceServiceAudit
+import Vegas.Game.SourceServiceAuditableCollection
 import Vegas.Game.SourceServiceAvailableOpening
 import Vegas.Game.SourceServiceBayes
 import Vegas.Game.SourceServiceBinding
 import Vegas.Game.SourceServiceBindingBoundary
 import Vegas.Game.SourceServiceBindingContinuation
+import Vegas.Game.SourceServiceBindingMiss
 import Vegas.Game.SourceServiceBindingPhase
 import Vegas.Game.SourceServiceBindingRoster
 import Vegas.Game.SourceServiceBindingSource
@@ -116,6 +119,7 @@ import Vegas.Game.SourceServiceCanonicalSerial
 import Vegas.Game.SourceServiceCanonicalSlots
 import Vegas.Game.SourceServiceCheckpoint
 import Vegas.Game.SourceServiceChoiceSupport
+import Vegas.Game.SourceServiceCleanContinuation
 import Vegas.Game.SourceServiceCompilation
 import Vegas.Game.SourceServiceCompiledExecution
 import Vegas.Game.SourceServiceCompletion
@@ -140,21 +144,34 @@ import Vegas.Game.SourceServiceFactorization
 import Vegas.Game.SourceServiceFinalBindingRepair
 import Vegas.Game.SourceServiceFiniteness
 import Vegas.Game.SourceServiceFirstBindingBlock
+import Vegas.Game.SourceServiceFirstTurnBinding
+import Vegas.Game.SourceServiceFirstTurnCompletes
 import Vegas.Game.SourceServiceFirstTurnMixture
+import Vegas.Game.SourceServiceFirstTurnOpportunity
+import Vegas.Game.SourceServiceFirstTurnRisk
 import Vegas.Game.SourceServiceForeignBindingBlock
 import Vegas.Game.SourceServiceForeignBindingRepair
 import Vegas.Game.SourceServiceForeignComparison
 import Vegas.Game.SourceServiceForeignDisclosure
+import Vegas.Game.SourceServiceGeometricTiming
+import Vegas.Game.SourceServiceGuardFailure
 import Vegas.Game.SourceServiceHarmlessContinuation
+import Vegas.Game.SourceServiceImmediateAudit
+import Vegas.Game.SourceServiceImmediateComparator
+import Vegas.Game.SourceServiceImmediatePolicy
+import Vegas.Game.SourceServiceImmediateRecall
+import Vegas.Game.SourceServiceImmediateRisk
 import Vegas.Game.SourceServiceImplementationSegment
 import Vegas.Game.SourceServiceInclusionSupport
 import Vegas.Game.SourceServiceLaw
 import Vegas.Game.SourceServiceLocalComparison
 import Vegas.Game.SourceServiceLocalSupport
 import Vegas.Game.SourceServiceMenu
+import Vegas.Game.SourceServiceNoncanonicalBinding
 import Vegas.Game.SourceServiceOffTurnWindow
 import Vegas.Game.SourceServiceOmission
 import Vegas.Game.SourceServiceOwnerComparison
+import Vegas.Game.SourceServiceOwnerSettled
 import Vegas.Game.SourceServicePhaseLaw
 import Vegas.Game.SourceServicePhaseStart
 import Vegas.Game.SourceServicePolicy
@@ -165,6 +182,7 @@ import Vegas.Game.SourceServicePrefixInformation
 import Vegas.Game.SourceServicePrefixPosterior
 import Vegas.Game.SourceServicePrefixSupport
 import Vegas.Game.SourceServiceProgramRepair
+import Vegas.Game.SourceServiceProtectedBinding
 import Vegas.Game.SourceServiceRawExtension
 import Vegas.Game.SourceServiceReachedDecoding
 import Vegas.Game.SourceServiceRecordedContinuation
@@ -179,7 +197,14 @@ import Vegas.Game.SourceServiceResolutionBlock
 import Vegas.Game.SourceServiceResolutionBoundary
 import Vegas.Game.SourceServiceResolutionRepair
 import Vegas.Game.SourceServiceResolutionWindow
+import Vegas.Game.SourceServiceResponseCompletion
 import Vegas.Game.SourceServiceRestrictionExtension
+import Vegas.Game.SourceServiceRetainedPolicy
+import Vegas.Game.SourceServiceRetainedSlots
+import Vegas.Game.SourceServiceRiskExtension
+import Vegas.Game.SourceServiceRiskPolicy
+import Vegas.Game.SourceServiceRiskPrefix
+import Vegas.Game.SourceServiceRiskSlots
 import Vegas.Game.SourceServiceRosterPolicy
 import Vegas.Game.SourceServiceSampleBoundary
 import Vegas.Game.SourceServiceSampleComparison
@@ -187,6 +212,10 @@ import Vegas.Game.SourceServiceSampleFactorization
 import Vegas.Game.SourceServiceSampleRepair
 import Vegas.Game.SourceServiceSettledSound
 import Vegas.Game.SourceServiceSettlement
+import Vegas.Game.SourceServiceSignedCollection
+import Vegas.Game.SourceServiceSignedExclusion
+import Vegas.Game.SourceServiceSignedInformation
+import Vegas.Game.SourceServiceSiteBridge
 import Vegas.Game.SourceServiceSiteKind
 import Vegas.Game.SourceServiceStep
 import Vegas.Game.SourceServiceStoppedBindingWindow
@@ -204,6 +233,7 @@ import Vegas.Game.SourceServiceTimedReachability
 import Vegas.Game.SourceServiceTimedSample
 import Vegas.Game.SourceServiceTimedSupport
 import Vegas.Game.SourceServiceTimingPosterior
+import Vegas.Game.SourceServiceTimingRates
 import Vegas.Game.SourceServiceTrafficSound
 import Vegas.Game.SourceServiceTurnPolicy
 import Vegas.Game.SourceServiceTurnSubmissions

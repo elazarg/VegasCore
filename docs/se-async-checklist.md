@@ -73,25 +73,62 @@ sampler with conditional coverage until box W closes.
   record against arbitrary foreign raw play.
   Partial evidence: `prescribed_packet_settles`,
   `sourceServiceTurnPolicy_boundaryContinuationWithin`; `prescribed_settlement`
-  for the example.
+  for the example. For every scheduler satisfying `AsyncContract` and
+  `AsyncTimely`, `sourceServiceTurnPolicy_firstTurnCompletes` discharges the
+  first-turn premises, so `sourceServiceTurnPolicy_initialized_lawError` bounds
+  every typed outcome probability by the total deferral weight, and
+  `geometricTiming_boundaryContinuationWithin` with
+  `geometricTiming_deferral_tendsto` makes that error vanish.
+  `sourceServiceTurnPolicy_owner_settled` shows every packet of an owner
+  following the prescribed policy is permitted by the actual settled record,
+  whatever the other players do. Missing: the realized settlement law; silent
+  deferrals can still produce public binding omissions, which are charged.
 - [ ] **S2. One common native consistency sequence.** One fully mixed family
   over source trembles, timing and raw responses, with exceptional mass
   negligible relative to clean reach on every information set, converging to a
   consistent native assessment.
+  Partial evidence: `exists_consistent_prescribed_completion` (consistent
+  rational completion at free sites, keeping prescribed limits and the terminal
+  law); `exists_deferralWeights_faster` and `exists_source_timing_rates`
+  (deferral rates negligible against given source scales);
+  `runBehavioral_withinTV_of_supported_choices`. No native sequence over the
+  actual runtime is constructed.
 - [ ] **S3. Joint source and traffic law at every native information set.**
   Actual reach weights couple legal source actions, chance, public results,
   original own recall and traffic, including foreign WAIT likelihoods and
   hidden builder history, so that native beliefs are derived, not chosen.
-  Partial evidence: `mixed_bob_reach_bound` for the example.
+  Partial evidence: `mixed_bob_reach_bound` for the example;
+  `bayesBelief_bind_eq_conditional_passage` (beliefs at a site as conditional
+  passage laws, abstract).
 - [ ] **S4. WAIT comparisons.** At every retained owner input, every whole
   continuation that waits, including later attempts under selective inclusion
   and expiry, is bounded by source comparisons at the same assessment.
 - [ ] **S5. Charged deviations before the first charge.** Every forbidden or
   unprescribed packet is bounded by the deposit times the actual change in
   conditional collection, uniformly over arbitrary later play.
+  Partial evidence: under the final-record coverage hypothesis
+  `FinalForbiddenEvidenceCoverage`, collection bounds under arbitrary later
+  policies for signed constructor breaches
+  (`signedContentBreach_collection_continuation_of_finalCoverage`),
+  noncanonical commitment handles
+  (`noncanonicalCommitment_collection_continuation`) and openings whose public
+  guards fail (`guardFailingOpening_collection_continuation`), combined in
+  `auditableServiceChoice_collection_committed`. `signedContentBreach_risk_excluded`
+  and `auditableBreachAtSite_of_signed_witness` classify these packets per
+  information site in the risk-menu restriction;
+  `sequential_equilibrium_extends_of_local_collection` and
+  `risk_sequentialEquilibrium_extends` extend an audited risk-menu equilibrium
+  to the complete effective runtime, given backend coverage and a comparison
+  for the other excluded responses;
+  `asyncAuditDeposit_covers_gain` fixes the deposit per scheduler. Missing:
+  private binding material, guard-passing uncertified capability and other
+  unprescribed packets; coverage is assumed, not derived (box W2).
 - [ ] **S6. Rational continuation after a sunk charge.** Once a charge is
   certain, continuations are rational under the remaining utility, and no
   further fine is counted.
+  Partial evidence: `isSequentiallyRationalAt_iff_of_constant_collection`
+  (when expected collection is constant across continuations, rationality is
+  rationality under the base payoff).
 - [ ] **S7. Remaining sites.** Sample, foreign, recorded and private
   representation sites have bounded gain at the same assessment.
 - [ ] **S8. Composition.** S1–S7 compose through

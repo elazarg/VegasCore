@@ -60,9 +60,9 @@ completion boundary within the horizon:
 * `terminal`: at the terminal boundary the source continuation is the point
   mass at the readout.
 
-The asynchronous preservation argument must derive these premises from the
-service contract, timeliness and the source correspondence. This structure
-records the required continuation facts; it does not prove them. -/
+The premises hold for every scheduler satisfying the asynchronous contract with
+`delay + bound < deadline` and every source profile whose disclosures are
+effective (`Vegas.sourceServiceTurnPolicy_firstTurnCompletes`). -/
 structure FirstTurnCompletes (scheduler : (application setup leaks).Scheduler) (horizon : Nat)
     (bound : (graph setup).EventId → Nat) (turns : Nat) (timing : TurnTiming setup turns)
     (profile : BehavioralProfile setup.program) :

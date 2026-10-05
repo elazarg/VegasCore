@@ -8,7 +8,7 @@ import Interaction.ReactiveRawRoundTrace
 
 /-! # Concrete signed content breaches and actual report collection
 
-Malformed packets, withholding carrying evidence, commitments carrying opening evidence,
+Malformed packets, signed withholding, commitments carrying opening evidence,
 and uncertified openings cannot pass the settled content check. A named packet
 may still be permitted before its event completes; complete settlement is an
 explicit prerequisite for the final forbidden verdict.
@@ -33,7 +33,7 @@ variable {Player : Type} [DecidableEq Player]
 content. This predicate reads only the authenticated packet, never send time. -/
 def SignedContentBreach (message : Message Player (WitnessedPacket graph)) : Prop :=
   message.payload.call.event? graph = none ∨
-    (∃ event, message.payload.call = .withhold event ∧ message.payload.evidence ≠ none) ∨
+    (∃ event, message.payload.call = .withhold event) ∨
     (∃ event candidate, message.payload.call = .commitment event candidate ∧
       message.payload.evidence ≠ none) ∨
     (∃ event candidate raw, message.payload.call = .opening event candidate raw ∧
@@ -42,7 +42,7 @@ def SignedContentBreach (message : Message Player (WitnessedPacket graph)) : Pro
 theorem SignedContentBreach.not_settledContent
     {message : Message Player (WitnessedPacket graph)} (breach : SignedContentBreach message)
     (record : SettledRecord graph) : ¬ record.SettledContent message := by
-  rcases breach with unnamed | ⟨event, withheld, evidence⟩ |
+  rcases breach with unnamed | ⟨event, withheld⟩ |
       ⟨event, candidate, committed, evidence⟩ | ⟨event, candidate, raw, opened, uncertified⟩
   · cases packet : message.payload.call with
     | commitment event candidate | opening event candidate raw | withhold event =>
@@ -54,7 +54,7 @@ theorem SignedContentBreach.not_settledContent
         exact id
   · unfold SettledRecord.SettledContent
     rw [withheld]
-    exact evidence
+    exact id
   · unfold SettledRecord.SettledContent
     rw [committed]
     exact fun content => evidence content.1
@@ -85,13 +85,12 @@ theorem SignedContentBreach.not_freshServiceEnvelope
     {message : Message Player (WitnessedPacket graph)} (breach : SignedContentBreach message)
     (view : PublicView graph) : ¬ runtime.freshServiceEnvelope view message := by
   intro conforms
-  rcases breach with unnamed | ⟨event, withheld, evidence⟩ |
+  rcases breach with unnamed | ⟨event, withheld⟩ |
       ⟨event, candidate, committed, evidence⟩ | ⟨event, candidate, raw, opened, uncertified⟩
   · obtain ⟨event, named, _⟩ := runtime.freshServiceEnvelope_ready view message conforms
     rw [unnamed] at named
     cases named
   · simp only [freshServiceEnvelope, withheld] at conforms
-    exact evidence conforms.2.2.1
   · simp only [freshServiceEnvelope, committed] at conforms
     exact evidence conforms.2.2.1
   · simp only [freshServiceEnvelope, opened] at conforms

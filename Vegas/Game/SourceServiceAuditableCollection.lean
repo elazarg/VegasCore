@@ -3,10 +3,6 @@
 import Vegas.Game.SourceServiceNoncanonicalBinding
 import Vegas.Game.SourceServiceGuardFailure
 import Vegas.Game.SourceServiceSignedCollection
-import Vegas.Game.SourceServiceAuthorizationBreach
-import Vegas.Game.SourceServiceNodeKindBreach
-import Vegas.Game.SourceServiceCompletedPacket
-import Vegas.Game.SourceServicePublicRejection
 import Interaction.ReactiveLocalContinuation
 import Interaction.ReactiveSubmissionSerial
 import Vegas.Pending.EvidenceNormalization
@@ -15,12 +11,10 @@ import GameTheoryExtensions.Protocol.ContinuationHorizon
 /-! # Information-local auditable responses and actual collection
 
 Own recall and the current view reconstruct the next signed envelope. The
-charged classes are constructor-level breaches, invalid readiness tokens,
-packets addressed to another actor's event, the wrong event constructor or an
-already completed event, a commitment to the current owned event with a
-noncanonical handle, and an opening of that event whose public guard check,
-candidate ownership or public binding association fails. These checks read
-the public store, accepted handle and signed value, so no private oracle is needed.
+charged classes are constructor-level breaches, a commitment to the current
+owned event with a noncanonical handle, and an opening of that event whose
+public guard check fails. The guard check reads the public store and signed
+opened value, so this classification needs no private configuration oracle.
 
 Committing a classified response produces actual traffic. That traffic
 persists, and complete play supplies its final forbidden verdict under every
@@ -41,23 +35,16 @@ variable {Player : Type} [DecidableEq Player]
   (setup : Setup (Player := Player) (L := L))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
-/-- Constructor, authorization, node-kind and completed-event breaches need no opportunity.
-Handle, guard and opening-association failures use the owner's ready event and public metadata. -/
+/-- Constructor breaches need no opportunity. The two additional classes
+refer to the owner's currently ready event and public application metadata. -/
 def AuditableServicePacket (view : PublicView (graph setup)) (who : Player)
     (message : Message Player (WitnessedPacket (graph setup))) : Prop :=
-  SignedContentBreach message ∨ ServiceAuthorizationBreach message ∨
-    ServiceNodeKindBreach message ∨
-    (∃ event, message.payload.call.event? (graph setup) = some event ∧
-      ¬ view.Unsettled event) ∨
+  SignedContentBreach message ∨
     ∃ event, view.ownTurn? who = some event ∧
       ((∃ candidate, message.payload.call = .commitment event candidate ∧
           candidate ≠ (who, .prepared (view.bindingCount who))) ∨
         ∃ candidate raw, message.payload.call = .opening event candidate raw ∧
-          (view.openingGuardsAccepted message.payload = false ∨
-            match nodeView (graph setup) event with
-            | .resolve owner _ binding _ _ _ =>
-                candidate.1 ≠ owner ∨ view.accepted binding.field ≠ some candidate
-            | .bind .. | .sample .. => False))
+          view.openingGuardsAccepted message.payload = false)
 
 /-- Compute the actual next envelope using only the player's own recall,
 observed candidate meanings, known packets and public readiness tokens. -/
@@ -133,8 +120,8 @@ def auditableServiceChoice (menu : (application setup leaks).ResponseMenu)
 
 omit [Fintype Player] in
 /-- Every classified actual packet is forbidden at every reachable complete
-record. Receipt soundness checks authorization of the actual emitted packet;
-the other classes use constructors, ordinals and current public contract data. -/
+record. The current-opportunity classes use the checked ordinal and public
+guard persistence results; constructor breaches need no readiness premise. -/
 theorem auditableServicePacket_forbidden_reaches
     {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
     {first last :
@@ -146,42 +133,22 @@ theorem auditableServicePacket_forbidden_reaches
     (firstState : first.state = some before) (lastState : last.state = some after)
     (who : Player) (message : Message Player (WitnessedPacket (graph setup)))
     (authored : message.sender = who)
-    (fresh : message.id = (who, before.execution.network.nextSerial who))
     (classified : AuditableServicePacket setup before.execution.application.publicView who message)
-    (emitted : Emitted setup leaks after.execution message)
     (complete : after.execution.application.config.cut.Terminal) :
     ((runtime setup).settledRecord leaks after.execution).permits message = false := by
-  rcases classified with signed | unauthorized | wrongKind | ⟨event, named, settled⟩ |
-      ⟨event, turn, noncanonical | guarded⟩
+  rcases classified with signed | ⟨event, turn, noncanonical | guarded⟩
   · exact signed.forbidden (runtime setup) leaks after.execution complete
-  · exact unauthorized.forbidden_history (lastState ▸ last.trace) emitted complete
-  · exact wrongKind.forbidden_history (lastState ▸ last.trace) emitted complete
-  · have completed : event ∈ before.execution.application.config.cut.completed := by
-      apply (before.execution.application.config.history_exact event).mp
-      exact Classical.not_not.mp settled
-    apply completedPacket_forbidden_reaches path before after firstState lastState event completed
-      message named ?_ emitted complete
-    simpa only [authored] using fresh
   · obtain ⟨candidate, committed, different⟩ := noncanonical
     have ready := (before.execution.application.publicView_eventReady event).mp
       ((before.execution.application.publicView.ownTurn?_spec who event turn).1)
     apply (noncanonicalCommitment_forbidden_reaches path before after firstState lastState
       event ready message candidate committed ?_ complete).2
     simpa only [authored] using different
-  · obtain ⟨candidate, raw, opened, failure⟩ := guarded
+  · obtain ⟨candidate, raw, opened, rejected⟩ := guarded
     have ready := (before.execution.application.publicView_eventReady event).mp
       ((before.execution.application.publicView.ownTurn?_spec who event turn).1)
-    rcases failure with rejected | association
-    · exact (guardFailingOpening_forbidden_reaches path before after firstState lastState
-        event ready message candidate raw opened rejected complete).2
-    · cases node : nodeView (graph setup) event with
-      | bind | sample => rw [node] at association; exact association.elim
-      | resolve owner payload binding checks outputEq codeEq =>
-          rw [node] at association
-          apply wrongAssociationOpening_forbidden_reaches path before after firstState lastState
-            event owner payload binding checks outputEq codeEq node ready message candidate raw
-            opened association ?_ emitted complete
-          simpa only [authored] using fresh
+    exact (guardFailingOpening_forbidden_reaches path before after firstState lastState
+      event ready message candidate raw opened rejected complete).2
 
 open Classical in
 /-- Committing an information-local classified choice creates actual signed
@@ -241,9 +208,8 @@ theorem auditableServiceChoice_collection_committed
   apply settledPacket_collection_committed setup leaks menu horizon scheduler completes backend
     profile history who remaining execution current info choice observed material selected ?_
     observationRate deliveryRate delivery_nonnegative coverage
-  intro fuel final path control finalState complete emitted
+  intro fuel final path control finalState complete
   exact auditableServicePacket_forbidden_reaches setup leaks path
-    ⟨remaining, some who, execution⟩ control current finalState who _ rfl rfl auditable emitted
-    complete
+    ⟨remaining, some who, execution⟩ control current finalState who _ rfl auditable complete
 
 end Vegas

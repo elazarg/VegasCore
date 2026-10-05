@@ -1,0 +1,298 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.SourceServiceImmediateComparator
+import Vegas.Game.AsyncServiceDeposit
+import Vegas.Game.SourceServiceAuditableCollection
+import Vegas.Pending.ReactiveSignedEvidence
+import Interaction.ReactiveFiniteAssessment
+import GameTheoryExtensions.Analysis.Protocol.LocalizedEnforcement
+
+/-! # The risk-menu restriction of the complete effective runtime
+
+Both games have the actual application, scheduler, observations and horizon.
+The restriction preserves complete histories and their actual audited net
+payoffs, including nonzero audit charges on retained histories. An excluded effective
+choice can occur only at a clear local information site. There the fixed
+immediate comparator supplies a clean whole-policy continuation.
+
+The asynchronous deposit uses extrema over this complete effective history space.
+Authentic coverage of packets forbidden by the final record and the comparison
+for other excluded responses remain separate runtime obligations. The result
+extends an audited risk-menu equilibrium; embedding a source-language
+equilibrium is separate.
+-/
+
+noncomputable section
+
+namespace Vegas.AsyncServiceSpec
+
+open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
+  GameTheory.Math.Probability GameTheory.Enforcement Interaction EventGraphRuntime
+
+variable {Player : Type} [DecidableEq Player] [Fintype Player]
+  {L : IExpr} [IExpr.ResultTypes L]
+  (service : AsyncServiceSpec Player L)
+
+/-- The actual nested-menu action restriction changes no application state,
+observation, response or scheduler step. -/
+def riskRestriction :
+    ((service.bounds.riskMenu (runtime service.setup) service.leaks service.bound).information
+      (initialLaw service.setup) service.horizon service.scheduler).ActionRestriction
+      ((service.bounds.menu (runtime service.setup) service.leaks).information
+        (initialLaw service.setup) service.horizon service.scheduler) :=
+  ReactiveApplication.ResponseMenu.IncludedIn.actionRestriction
+    (service.bounds.riskMenu_in_effective (runtime service.setup) service.leaks service.bound)
+    (initialLaw service.setup) service.horizon service.scheduler
+
+/-- An excluded choice has the same concrete recall and view throughout its
+information site, and that local view has clear full service risk. Risky sites
+already admit every bounded effective response. -/
+theorem riskRestriction_extra_clear
+    (who : Player)
+    (site : ((service.bounds.riskMenu (runtime service.setup) service.leaks
+      service.bound).information (initialLaw service.setup) service.horizon
+        service.scheduler).InformationSite who)
+    (action : ((service.bounds.menu (runtime service.setup) service.leaks).information
+      (initialLaw service.setup) service.horizon service.scheduler).Choice who
+        ((service.riskRestriction.site who site).1))
+    (extra : action ∉ Set.range (service.riskRestriction.choice who site.1)) :
+    ∃ past view response,
+      site.1 = some (past, view) ∧ action.1 = some response ∧
+        response ∈ (service.bounds.menu (runtime service.setup) service.leaks).actions who
+          past view ∧
+        response ∉ service.bounds.riskActions (runtime service.setup) service.leaks service.bound
+          who past view ∧
+        (runtime service.setup).serviceRisk service.leaks service.bound who past view = false := by
+  let effective := service.bounds.menu (runtime service.setup) service.leaks
+  let included := service.bounds.riskMenu_in_effective (runtime service.setup) service.leaks
+    service.bound
+  rcases site with ⟨info, occurs⟩
+  cases info with
+  | none =>
+      obtain ⟨_, _, response, member⟩ := occurs
+      cases member
+  | some data =>
+      change (effective.information (initialLaw service.setup) service.horizon
+        service.scheduler).Choice
+        who (some data) at action
+      change action ∉ Set.range ((included.actionRestriction (initialLaw service.setup)
+        service.horizon service.scheduler).choice who (some data)) at extra
+      obtain ⟨response, value, available, absent⟩ := included.extra_choice_response
+        (initialLaw service.setup) service.horizon service.scheduler who data.1 data.2 action extra
+      refine ⟨data.1, data.2, response, rfl, value, available, absent, ?_⟩
+      cases risk : (runtime service.setup).serviceRisk service.leaks service.bound who
+          data.1 data.2 with
+      | false => rfl
+      | true =>
+          have same := service.bounds.riskActions_of_risk (runtime service.setup) service.leaks
+            service.bound who data.1 data.2 risk
+          change response ∉ service.bounds.riskActions (runtime service.setup) service.leaks
+            service.bound who data.1 data.2 at absent
+          exact (absent (same.symm ▸ available)).elim
+
+local instance effectiveHistory_nonempty :
+    Nonempty ((service.bounds.menu (runtime service.setup) service.leaks).protocol
+      (initialLaw service.setup) service.horizon service.scheduler).History :=
+  ⟨((service.bounds.menu (runtime service.setup) service.leaks).protocol
+    (initialLaw service.setup) service.horizon service.scheduler).initHistory⟩
+
+/-- A charged excluded response is classified directly from the information
+state and chosen material. Constructor breaches, noncanonical current-event
+handles and current-event guard failures are auditable. No hidden-history
+quantification, new runtime observation or gate is introduced. -/
+def auditableBreachAtSite
+    (who : Player)
+    (site : ((service.bounds.riskMenu (runtime service.setup) service.leaks
+      service.bound).information (initialLaw service.setup) service.horizon
+        service.scheduler).InformationSite who)
+    (action : ((service.bounds.menu (runtime service.setup) service.leaks).information
+      (initialLaw service.setup) service.horizon service.scheduler).Choice who
+        ((service.riskRestriction.site who site).1)) : Prop :=
+  auditableServiceChoice service.setup service.leaks
+    (service.bounds.menu (runtime service.setup) service.leaks) service.horizon service.scheduler
+    who (service.riskRestriction.site who site).1 action
+
+open Classical in
+/-- Every excluded effective response outside the auditable packet classes has a
+legal risk-menu continuation dominating its actual audited continuation.
+One policy serves all hidden histories under the specified belief. Private
+binding material and certificate capabilities remain explicit obligations. -/
+def riskOtherExclusionComparisons
+    (utility : State L service.setup.program.terminalCtx → Player → ℝ)
+    (sample : List (SettledEvidence service.setup) → PMF (List (SettledEvidence service.setup)))
+    (deposit : Player → ℝ) : Prop :=
+  let menu := service.bounds.riskMenu (runtime service.setup) service.leaks service.bound
+  let effective := service.bounds.menu (runtime service.setup) service.leaks
+  let initial := initialLaw service.setup
+  let count := service.horizon
+  let scheduler := service.scheduler
+  let restriction := service.riskRestriction
+  let sourceCertificate := (menu.bounded initial count scheduler).wellFoundedHistories
+  let targetCertificate := (effective.bounded initial count scheduler).wellFoundedHistories
+  let base := baseUtility service.setup service.leaks utility
+  let observe := (runtime service.setup).serviceAuditObservation service.leaks
+  let audit := sourceServiceAudit service.setup service.leaks sample
+  let payoff := TerminalAudit.utility base observe audit deposit
+  ∀ (sourceProfile : ∀ who, (menu.information initial count scheduler).BehavioralPolicy who)
+    (targetProfile : ∀ who, (effective.information initial count scheduler).BehavioralPolicy who),
+    restriction.ExtendsProfile sourceProfile targetProfile →
+    ∀ who (site : (menu.information initial count scheduler).InformationSite who)
+      (action : (effective.information initial count scheduler).Choice who
+        (restriction.site who site).1),
+      action ∉ Set.range (restriction.choice who site.1) →
+      ¬ service.auditableBreachAtSite who site action →
+      ∀ belief : PMF ((menu.information initial count scheduler).InformationHistory who site.1),
+        ∃ alternative : (menu.information initial count scheduler).BehavioralPolicy who,
+          expect belief (fun history =>
+            expect ((effective.information initial count scheduler).runBehavioralTerminalFrom
+              targetCertificate
+              (Profile.update
+                (sig := (effective.information initial count scheduler).behavioralSignature)
+                  targetProfile who
+                  ((targetProfile who).commit (restriction.site who site).1 action))
+              (restriction.history history.1)) (fun final => payoff final.state who)) ≤
+          expect belief (fun history =>
+            expect ((menu.information initial count scheduler).runBehavioralTerminalFrom
+              sourceCertificate
+              (Profile.update
+                (sig := (menu.information initial count scheduler).behavioralSignature)
+                  sourceProfile who alternative) history.1)
+              (fun final => payoff final.state who))
+
+open Classical in
+/-- An audited risk-menu SE extends to the complete effective runtime once
+backend coverage and the other-exclusion comparison obligations hold.
+The source payoff includes actual retained charges. Structural embedding,
+finite histories, decision recall, payoff bounds, deposit sufficiency and the
+fixed clean comparator are derived for this service.
+
+Coverage concerns actual signed evidence forbidden by the final settled
+record. Delivery is conditional on the full observation and includes delivery
+before the challenge-window bound. This contract implies collection after
+each classified excluded packet without independence or a continuation-fuel
+premise. The other comparison requires one legal continuation shared across
+the belief's hidden histories. Both remain hypotheses. -/
+theorem risk_sequentialEquilibrium_extends
+    (utility : State L service.setup.program.terminalCtx → Player → ℝ)
+    (backend : EvidenceReportService (SettledEvidence service.setup))
+    (observationRate deliveryRate : Player → ℝ)
+    (delivery_nonnegative : ∀ who, 0 ≤ deliveryRate who)
+    (positive : ∀ who, 0 < observationRate who * deliveryRate who)
+    (coverage : FinalForbiddenEvidenceCoverage backend observationRate deliveryRate)
+    (reference : BehavioralProfile service.setup.program)
+    (permitted : ∀ who, (reference who).Admitted service.setup.program
+      (CommitmentInterface.values _)) :
+    let menu := service.bounds.riskMenu (runtime service.setup) service.leaks service.bound
+    let effective := service.bounds.menu (runtime service.setup) service.leaks
+    let initial := initialLaw service.setup
+    let count := service.horizon
+    let scheduler := service.scheduler
+    let restriction := service.riskRestriction
+    let sourceCertificate := (menu.bounded initial count scheduler).wellFoundedHistories
+    let targetCertificate := (effective.bounded initial count scheduler).wellFoundedHistories
+    let probability := fun who => observationRate who * deliveryRate who
+    let sample := backend.sample
+    let base := baseUtility service.setup service.leaks utility
+    let deposit := service.auditDeposit base probability
+    let audit := sourceServiceAudit service.setup service.leaks sample
+    let observe := (runtime service.setup).serviceAuditObservation service.leaks
+    let payoff := TerminalAudit.utility base observe audit deposit
+    let settle := TerminalAudit.settlement base observe audit deposit
+    service.riskOtherExclusionComparisons utility sample deposit →
+    ∀ source : (menu.information initial count scheduler).BehavioralAssessment,
+      source.IsSequentialEquilibrium (menu.decisionInformationAntichain initial count scheduler)
+        sourceCertificate (fun who final => payoff final.state who) →
+    ∃ target : (effective.information initial count scheduler).BehavioralAssessment,
+      target.IsSequentialEquilibrium
+        (effective.decisionInformationAntichain initial count scheduler)
+        targetCertificate (fun who final => payoff final.state who) ∧
+      restriction.ExtendsProfile source.strategy target.strategy ∧
+      (∀ who site, target.belief who (restriction.site who site) =
+        (source.belief who site).map (restriction.informationHistory who site)) ∧
+      ((menu.information initial count scheduler).runBehavioralTerminalFrom sourceCertificate
+          source.strategy (menu.protocol initial count scheduler).initHistory).map
+          restriction.history =
+        (effective.information initial count scheduler).runBehavioralTerminalFrom targetCertificate
+          target.strategy (effective.protocol initial count scheduler).initHistory ∧
+      ((menu.information initial count scheduler).runBehavioralTerminalFrom sourceCertificate
+        source.strategy (menu.protocol initial count scheduler).initHistory).bind
+          (fun final => (settle final.state).map (fun payoffs => (final.state, payoffs))) =
+        ((effective.information initial count scheduler).runBehavioralTerminalFrom
+          targetCertificate
+          target.strategy (effective.protocol initial count scheduler).initHistory).bind
+            (fun final => (settle final.state).map (fun payoffs => (final.state, payoffs))) := by
+  classical
+  intro menu effective initial count scheduler restriction sourceCertificate targetCertificate
+    probability sample base deposit audit observe payoff settle otherComparison source equilibrium
+  let extremum := fun who (history : (effective.protocol initial count scheduler).History) =>
+    base history.state who
+  have effectiveBounds (who : Player)
+      (history : (effective.protocol initial count scheduler).History) :
+      FinitePayoffBounds.lower (extremum who) ≤ base history.state who ∧
+        base history.state who ≤ FinitePayoffBounds.upper (extremum who) :=
+    ⟨FinitePayoffBounds.lower_le (extremum who) history,
+      FinitePayoffBounds.le_upper (extremum who) history⟩
+  obtain ⟨target, targetSE, agrees, beliefs, histories, _joint⟩ :=
+    restriction.sequential_equilibrium_extends_of_local_collection
+      (menu.decisionInformationAntichain initial count scheduler)
+      sourceCertificate targetCertificate (effective.uniformAssessment initial count scheduler)
+      (effective.uniform_fullyMixed initial count scheduler)
+      (effective.decisionRecall initial count scheduler)
+      (fun who final => payoff final.state who) (fun who final => base final.state who)
+      (fun who final => TerminalAudit.charge observe audit final.state who) deposit
+      (fun _ _ => rfl) (service.auditableBreachAtSite)
+      (fun who _ => FinitePayoffBounds.lower (extremum who))
+      (fun who _ => FinitePayoffBounds.upper (extremum who)) (fun who _ => probability who)
+      (fun who => asyncAuditDeposit_nonnegative service.setup service.leaks service.bounds
+        service.horizon service.scheduler base probability who (positive who))
+      (fun who _ _ _ _ => by
+        change FinitePayoffBounds.upper (extremum who) - probability who *
+          ((FinitePayoffBounds.upper (extremum who) -
+            FinitePayoffBounds.lower (extremum who)) / probability who) ≤
+              FinitePayoffBounds.lower (extremum who)
+        rw [mul_div_cancel₀ _ (positive who).ne']
+        exact le_of_eq (by ring))
+      (fun _ who _ _ _ _ _ final _ => (effectiveBounds who final).2)
+      (fun targetProfile who site action _ breach history => by
+        let app := application service.setup service.leaks
+        have classified : auditableServiceChoice service.setup service.leaks effective count
+            scheduler who (restriction.site who site).1 action := breach
+        obtain ⟨past, view, _response, input, _⟩ := classified
+        have observed : (effective.information initial count scheduler).infoOf who
+            (restriction.history history.1).trace = (restriction.site who site).1 :=
+          (restriction.observed who history.1).trans history.2
+        have observedState : app.observe who (restriction.history history.1).state =
+            some (past, view) :=
+          (effective.info initial count scheduler who
+            (restriction.history history.1).trace).symm.trans
+            (observed.trans input)
+        have active := (app.observe_isSome who (restriction.history history.1).state).mp
+          (by rw [observedState]; rfl)
+        cases current : (restriction.history history.1).state with
+        | none => rw [current] at active; cases active
+        | some control =>
+            rcases control with ⟨remaining, actor, execution⟩
+            rw [current] at active
+            change actor = some who at active
+            subst actor
+            exact auditableServiceChoice_collection_committed service.setup service.leaks
+              effective count scheduler service.completes backend targetProfile
+              (restriction.history history.1) who remaining execution current
+              (restriction.site who site).1 action observed breach observationRate deliveryRate
+              delivery_nonnegative coverage)
+      (fun sourceProfile _ _ who site action extra _ belief => by
+        obtain ⟨past, view, _response, observed, _, _, _, clear⟩ :=
+          service.riskRestriction_extra_clear who site action extra
+        obtain ⟨alternative, _fixed, clean⟩ := sourceServiceImmediateComparator_clean_lower
+          service.bounds service.values service.initialValues service.capacity service.contract
+          service.timely reference who (permitted who) sourceCertificate sourceProfile site past
+          view observed clear sample backend.sample_authentic (fun final => base final.state who)
+          (FinitePayoffBounds.lower (extremum who))
+          (fun final _ => (effectiveBounds who (restriction.history final)).1) belief
+        exact ⟨alternative, clean⟩)
+      otherComparison source equilibrium
+  refine ⟨target, targetSE, agrees, beliefs, histories, ?_⟩
+  rw [← histories, PMF.bind_map]
+  rfl
+
+end Vegas.AsyncServiceSpec

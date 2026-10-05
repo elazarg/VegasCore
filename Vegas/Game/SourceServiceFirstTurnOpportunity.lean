@@ -25,6 +25,27 @@ variable {Player : Type} [DecidableEq Player]
   {setup : Setup (Player := Player) (L := L)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
+/-- Every activation in completed rounds has an actual response in own recall,
+even if that response was silent or sent a packet for a different event. -/
+theorem roundsFrom_activationsAnswered
+    {scheduler : (application setup leaks).Scheduler}
+    {players : Player → (application setup leaks).Policy} (count : Nat)
+    (execution : (application setup leaks).Execution)
+    (supported : execution ∈ ((application setup leaks).roundsFrom (initialLaw setup) scheduler
+      players count).support) :
+    ActivationsAnswered setup leaks execution := by
+  let app := application setup leaks
+  induction count generalizing execution with
+  | zero =>
+      obtain ⟨state, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      intro entry member
+      cases member
+  | succ count ih =>
+      rw [app.roundsFrom_succ (initialLaw setup) scheduler players count] at supported
+      obtain ⟨prior, priorMem, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+      exact round_activationsAnswered setup leaks (ih prior priorMem) moved
+
 /-- The first ready own turn is protected under the reaction and inclusion
 budget. The view may be the freshly sampled activation view: only its first
 turn count is needed, while the clock and readiness come from the actual raw

@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Interaction.ChallengeWindow
 import Interaction.CommitmentCandidates
 import Interaction.Communication
 import Interaction.CommunicationBounded
