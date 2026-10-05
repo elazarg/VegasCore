@@ -45,6 +45,9 @@ arbitrary public builder contract. The general preservation theorem is open.
 The contract supplies a timely owner opportunity, bounded inclusion of its sole
 signed identifier, and complete play. Its clauses quantify over raw histories,
 including flooding. Reaction and inclusion bounds must fit each deadline.
+It permits early responses: the proved [roster contract](../Vegas/Game/ServiceRosterAsync.lean)
+can give Bob a pre-ready own id0. Alice can replay it before good id1 is included;
+id1 is then not globally sole. The finite fragment's no-early-Bob/clear origin is stronger.
 
 The calendar's terminal audit takes an authentic partial-sampling backend as a
 parameter. This does not by itself instantiate a watcher that observes and
@@ -107,6 +110,11 @@ menu inclusion preserves the SAME runner and full information. A coarse source
 decoder in [ServiceInformation](../Vegas/Game/ServiceInformation.lean) is not a
 source-to-native ActionRestriction embedding. Construct the retained native
 assessment and its actual reach/continuation law before invoking the extension.
+Silent FALSE, failed TRUE and deferral need no physical intention tag:
+[policyMixture](../Interaction/ReactivePolicyMixture.lean) conditions the chosen slot on actual recall,
+and [realization](../Interaction/ReactiveMixtureRounds.lean) preserves the whole execution law.
+[DisclosurePosterior](../Vegas/Game/SourceServiceDisclosurePosterior.lean) and
+[DisclosureMemory](../Vegas/Game/SourceServiceDisclosureMemory.lean) restore original intentions in the proof law.
 
 These are existing interfaces to instantiate, not unproved arrows in a new
 transformation tower. Reuse, remove or replace existing machinery first. Before
@@ -174,11 +182,9 @@ existence of some preserving native equilibrium.
 | Opaque admission followed by mandatory opening | Add another transaction phase and freeze a resolution before public inclusion. | Prove fresh phase protection and source/private-recall simulation. Nonopening needs a new rule; cancellation changes future gameplay and utility. | Archived protocol alternative; not adopted. |
 | Quitting or repeated penalties after misconduct | Change enforcement or future gameplay. | Specify a public implementable trigger, evidence/delivery probabilities and collateral. Quitting does not prevent pending communication; repeated deductions need an actual funding rule. | Not adopted without a necessity argument. |
 
-Before changing semantics, identify a precise implementability or theorem
-obstruction, or a concrete design defect. Explain why the baseline and existing
-levels cannot handle it, state the proposed proof benefit, and discuss the
-change before implementation. Keep the baseline until a change is agreed;
-a hard proof or convenient lemma alone does not justify changing it.
+Discuss any precise implementability/theorem obstruction or concrete design defect,
+the existing levels' limitation and proposed proof benefit before changing semantics.
+Keep the baseline until a change is agreed; proof convenience alone is insufficient.
 
 ## Faithful watcher and settlement
 
@@ -238,28 +244,26 @@ connection to the final proof.
 | An opaque binding swap | Two different owners, two independent bindings, no intervening public opening, and a public order choice. | Use the existing commutation of normalized behavioral kernels preserving typed store and every owner's original-action recall; then analyze native timing, traffic and adaptive order. | Barrier concurrency. The source-level commutation theorem does not supply native conditional beliefs. |
 
 The [resolution-and-guess calculation](se-small-models.md#a-resolution-followed-by-a-guess)
-solves one restricted three-action tree for every 0<p<1 and qD≥0, with authentic
-partial audit, exact receipt/clock fibers and one common fully mixed family.
-At p=3/4,q=1/2,D=4 its fixed Alice prefix admits rational full bounded RAW Bob/tail
-completion, including copies and reactivation. For a full finite public builder
-extending the retained service, normalized first-extra comparisons and the existing
-unclocked extension admit Alice's earlier responses; forward canonicalRaw lifts aliases.
-Explicit protection, complete play, paired resources and the same fair backend
-preserve the joint law without pinning every generated input to source play.
-The private type is uncommitted: an immutable θ-binding instead permits a rejected
-certificate packet to reveal θ after an old R, without a second shared-coin fine.
-That breaks the pooling premise, not preservation. Actual service/backend certification,
-different source resources and later source economics remain outside the result.
+solves one restricted three-action tree for every 0<p<1 and qD≥0 with one common
+fully mixed family. At p=3/4,q=1/2,D=4, rational full bounded RAW Bob/tail completion
+includes copies and reactivation. A full finite public builder extending retained
+service admits Alice's earlier responses via normalized first-extra comparisons,
+unclocked extension and forward canonicalRaw. Explicit protection, complete play,
+paired resources and the same fair backend preserve the joint law. The private type
+is uncommitted; a θ-binding permits rejected certificates to reveal θ after old R
+without a second fine, breaking pooling, not preservation. Different source resources,
+later economics and actual service/backend certification remain outside that result.
 
-In the committed-type fragment, a selected truthful-success continuation bounds
-attempted openings under scoped service/backend premises. Packet-free WAIT still
-requires the actual common-family clean-expiry versus censored-opening law.
+The committed-type fragment also has a conditional finite full-RAW-tree construction:
+separate first-NONE rates and later free floors make clean expiry favor H in ONE
+Bayes family; selected truthful/expiry continuations bound whole WAIT policies.
+Its no-early-Bob/protection, first-packet classification and authentic backend premises
+still need actual runtime certification; no arbitrary-builder theorem follows.
 
 The archived [exact finite checker](../archive/se-generalization/documents/scripts/experiments/adaptive_schedules.py)
 and [C6 probe](../archive/se-generalization/documents/scripts/experiments/deferral_miss_probe.py)
-are reference tools. C6 studies bindings with a certain penalty; its negative
-control also finds other preserving equilibria. It establishes neither generic
-composition nor an impossibility result for resolution.
+are reference tools. C6's certain-penalty binding probe also finds preserving equilibria
+in its negative control; it establishes neither generic composition nor resolution impossibility.
 
 Charge/report adapters and binding commutation can be checked separately, but
 full composition needs the same timing and belief construction. A small-model
@@ -267,11 +271,11 @@ result counts toward that proof only with premises derived from the actual runti
 
 ## Road to the proof
 
-1. **Connect the finite strategic core to the baseline.** Derive the full builder's
-   protection, paired resources, complete play and stable collection premises.
-   The fixed fixture admits Alice RAW prefixes by existing native-menu extension;
-   its H clear/sunk proxy argument does not cover different certificate resources
-   or arbitrary later source utility. Derive their actual continuation comparisons.
+1. **Connect the finite strategic core to the baseline.** Construct an actual finite
+   public builder with protected first Alice service, an unsafe later opportunity
+   and the stated Bob origin. Authenticate/classify full RAW responses and derive
+   complete play and collection. The committed-resource fragment is covered only
+   conditionally; arbitrary later source economics still need their comparisons.
 2. **State one native assessment construction.** Decide which native inputs
    follow the source assessment and which need free rational completion. Specify
    one fully mixed source/timing/raw family and a single common subsequence.

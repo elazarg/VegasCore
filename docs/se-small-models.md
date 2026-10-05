@@ -203,20 +203,40 @@ Under the fixed shared audit coin, old R fixes the owner's OR charge; the new pa
 This tests the pooling premise, not preservation impossibility.
 Changed guards/candidates, later source economics and general service/backend refinement remain open.
 
-For committed θ, use the same payoff table with T=source `success θ`; `success false` is not failure.
-Require no Bob response before Alice completes, then a clear protected first Bob input
-on ALL compared histories. Select protected H→silence for H, all-W for L with no own authored/pending H.
-These closed paths give value 1 and zero charge uniformly over hidden histories and Alice RAW futures.
-ε-full references, the finite chooser and one ACTUAL Bayes subsequence free-complete other sites;
-conditional pin deficit ≤(1+D)Nε, for finite step bound N, gives rational pins in that SAME family.
-This selects a robust fixed π, not robustness of every rational Bob policy. Start Alice clear,
-retain her first genuine opening and let sθ be final source-success probability, including rescues.
-On failure that envelope has no TRUE receipt and is forbidden. The SAME unobserved all/none backend
-gives TOTAL conditional expected charge C=qD, not a new incremental fine. Hence
-V_H≤2s_H−(1−s_H)C; V_L≤s_L/2+(1−s_L)(1−C).
-C≥1/2 bounds these by source TRUE values 2 and 1/2. This is a paper attempted-opening comparison
-under stated service premises, not an AsyncContract instance or SE construction. Packet-free WAIT
-has no witness; its actual common-family clean-expiry versus censored-opening law remains open.
+For committed θ, T gives source `success θ`; `success false` is not failure.
+Fix q=1/2,D=4 and a finite public builder with full bounded RAW menus, ≤N responses, complete play,
+protected first Alice T followed by silence/copies, and NO Bob response before Alice
+completes. His first ready input must be clear/protected on ALL Alice alternatives.
+Require the same authentic all/none backend and permanent verdicts of existing envelopes;
+every first Alice body except a genuine current T/its aliases must remain forbidden.
+These are explicit physical premises, not a certified AsyncContract instance.
+
+In ONE family let λ=t², g_H=t, g_L=t^(2N+3), δ=t^(2N+5), t↓0. Pin first Alice
+with total NONE atom g_θ and a δ-full reference. Pin honest first-T descendants with
+δ references; leave ALL first-NONE descendants free with λ-full references.
+NONE does not register or emit. Initial handles are opaque, so each all-NONE public
+path pairs H/L to the same FULL Bob input, without equating their certificates.
+For each such input j, one positive public path gives H mass ≥c_j t^(2N+1), while
+L mass ≤3g_L/4+O(Nδ); hence Pr(L | j)→0. Both first errors and later first-T escapes
+are included. Bob's own reach cancels, not Alice's foreign timing likelihood.
+
+Select truthful protected H→silence on public success H, all-W on success L with no
+own pending H, and protected H→silence at j. Free-complete other sites using the
+[existing chooser](../GameTheory/GameTheory/Analysis/Protocol/AgentCompletion.lean) and ONE ACTUAL Bayes subsequence.
+Their conditional pin deficits vanish: at j they are ≤Pr(L|j)+(1+D)Nδ;
+truthful-success paths give value 1 uniformly against Alice RAW futures.
+Against this selected Bob, a first genuine opening with final success probability s_θ
+(including rescues) has V_H≤2s_H−(1−s_H)C and V_L≤s_L/2+(1−s_L)(1−C), C=qD=2.
+Failure retains its forbidden first envelope; C is TOTAL charge, not a new fine.
+First NONE with no later authored packet gives failure/HIGH and value 0; a later
+first T uses these bounds, and any other first body has whole net ≤2−C=0.
+Honest first-T continuations attain 2 or 1/2 and are optimal. Decision recall and
+the same free completion therefore give a CONDITIONAL finite-tree SE with joint law
+(H,success true,HIGH,2,1):1/4; (L,success false,LOW,1/2,1):3/4, zero realized charges.
+The rates fit this toy's chosen source assessment: source FALSE has limiting H
+posterior 1. They are not a construction for arbitrary given source assessments.
+This paper result still needs actual full-menu/service certification; it covers no
+early Bob response, guard failure, later Alice source economics or live watcher.
 
 ### Inclusion and audit parameters
 
