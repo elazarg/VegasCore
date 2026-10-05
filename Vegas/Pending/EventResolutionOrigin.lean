@@ -42,7 +42,7 @@ def ResolutionPacketValid (runtime : EventGraphRuntime graph)
             .submit message.payload
 
 /-- Every retained envelope satisfies resolution origin soundness.  Quantifying
-over all four native retention locations makes replay preservation immediate. -/
+over all four native retention locations makes preservation by delivery and inclusion immediate. -/
 def ResolutionOrigins (runtime : EventGraphRuntime graph)
     (execution : runtime.application.PolicyExecution) (owner : Player) : Prop :=
   ∀ message, runtime.application.Retained execution.native.pool message →
@@ -268,7 +268,7 @@ private theorem ResolutionOrigins.of_retained
     instruction before after owner message invariant member
 
 /-- One concrete service instruction preserves resolution-packet origin
-soundness. Only a prescribed owner's fresh submission is new; every replayed or
+soundness. Only a prescribed owner's fresh submission is new; every
 transported envelope is reduced to the prior retained invariant. -/
 theorem serviceStep_resolutionOrigins
     (runtime : EventGraphRuntime graph) (inputs : graph.Inputs)
@@ -289,7 +289,7 @@ theorem serviceStep_resolutionOrigins
         Set.mem_iUnion] at member
       obtain ⟨command, commandMem, step⟩ := member
       cases command with
-      | privateCommand privateCommand | replay privateCommand | wait =>
+      | privateCommand privateCommand | wait =>
           apply ResolutionOrigins.of_retained runtime inputs ordered players wire (.player who)
             before after owner invariant origins
             (by

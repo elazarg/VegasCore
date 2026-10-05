@@ -6,7 +6,7 @@ import Vegas.Pending.ReactivePlayerWindow
 /-! # Event identities in retained service responses
 
 A fresh retained submission names the submitter's own turn, its ready event.
-Waiting, pending replays and normalized evidence requests do not change this
+Waiting and normalized evidence requests do not change this
 fact. Thus a phase cannot consume another event's first-submission opportunity.
 -/
 
@@ -81,12 +81,11 @@ theorem MessageBounds.compiled_submitted_event (bounds : MessageBounds graph)
                 exact Or.inr rfl
         · cases Finset.mem_singleton.mp chosen
           exact Or.inl rfl
-  · rcases (runtime.reactiveApplication leaks).replayPolicy_cases past view response
-        (((runtime.reactiveApplication leaks).mem_replayActions_iff _ _ _).mp transport) with rfl |
-            ⟨id, rfl⟩ <;> exact Or.inl rfl
+  · cases Finset.mem_singleton.mp transport
+    exact Or.inl rfl
 
 /-- An arbitrary retained response roster changes no player's submission
-record for another event. Passive samples and all replay choices remain in
+record for another event. Passive samples and all silent responses remain in
 the actual execution. -/
 theorem compiled_window_other_events (bounds : MessageBounds graph)
     (players : Player → (runtime.reactiveApplication leaks).Policy)

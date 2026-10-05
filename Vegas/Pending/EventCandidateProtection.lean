@@ -6,8 +6,8 @@ import Vegas.Pending.EventOpponentFrame
 /-! # Protection of prescribed candidate slots
 
 An accepted packet cannot consume the canonical candidate of another still
-unfinished prescribed event. The packet may have been replayed by any player;
-the proof uses its authenticated sender and canonical submission provenance.
+unfinished prescribed event. The proof uses its authenticated sender and
+canonical submission provenance.
 -/
 
 noncomputable section

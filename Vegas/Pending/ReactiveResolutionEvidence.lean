@@ -78,13 +78,13 @@ theorem serviceDecision_resolutionEvidence
     (choice : graph.Action event) (material : WitnessedSubmission graph)
     (submitted : runtime.serviceDecision leaks who (execution.recall who)
       (execution.observe (runtime.reactiveApplication leaks) who) event choice =
-        ⟨some (.submit material)⟩)
+        ⟨some material⟩)
     (fact : OpeningFact graph)
     (issued : (material.emit
       ((runtime.reactiveApplication leaks).submit execution.application who material)
         who (execution.network.known who)).evidence = some fact) :
     runtime.ResolutionEvidence leaks
-      (execution.respond (runtime.reactiveApplication leaks) who ⟨some (.submit material)⟩)
+      (execution.respond (runtime.reactiveApplication leaks) who ⟨some material⟩)
       fact := by
   let app := runtime.reactiveApplication leaks
   cases node : nodeView graph event with
@@ -167,9 +167,9 @@ theorem serviceDecision_resolutionEvidence
           rw [EventCode.resolutionField?_cast outputEq] at field
           exact field
         · have same := (runtime.reactive_respond_application leaks execution who
-            ⟨some (.submit ((disclosureSubmission (.opening event candidate ⟨payload, value⟩))
+            ⟨some ((disclosureSubmission (.opening event candidate ⟨payload, value⟩))
               |>.normalizeReactive who (app.observePlayer execution.application who)
-                (execution.network.known who)))⟩).2
+                (execution.network.known who))⟩).2
           exact (congrFun (congrArg PublicView.accepted same) binding.field).trans associated
         · rw [candidateOwner]
           exact runtime.eventRecorded_respond leaks execution who _ event rfl
@@ -235,8 +235,8 @@ theorem ResolutionEvidenceOrigins.opening_normal
     reactiveNormalization, WitnessedSubmission.normalizeReactive,
     Submission.normalizeReactive_none, disclosureSubmission, Submission.candidateAfter_opening]
   rw [known]
-  exact congrArg (fun evidence => (⟨some (.submit ⟨⟨.opening event candidate raw, none⟩,
-    evidence⟩)⟩ : app.Action)) (EvidenceRequest.normalize_owned_of_no_forward who
+  exact congrArg (fun evidence => (⟨some ⟨⟨.opening event candidate raw, none⟩,
+    evidence⟩⟩ : app.Action)) (EvidenceRequest.normalize_owned_of_no_forward who
       (fun slot => execution.application.candidates.lookup (who, slot))
       (execution.network.known who) ⟨candidate, raw⟩ owned localFixed unavailable)
 
@@ -247,7 +247,7 @@ theorem MessageBounds.compiled_resolutionEvidence (bounds : MessageBounds graph)
     (recalled : execution.InputRecall (runtime.reactiveApplication leaks))
     (valid : execution.application.BindingInvariant)
     (who : Player) (material : WitnessedSubmission graph)
-    (member : (⟨some (.submit material)⟩ : (runtime.reactiveApplication leaks).Action) ∈
+    (member : (⟨some material⟩ : (runtime.reactiveApplication leaks).Action) ∈
       bounds.compiledActions runtime leaks who (execution.recall who)
         (execution.observe (runtime.reactiveApplication leaks) who))
     (fact : OpeningFact graph)
@@ -255,11 +255,11 @@ theorem MessageBounds.compiled_resolutionEvidence (bounds : MessageBounds graph)
       ((runtime.reactiveApplication leaks).submit execution.application who material)
         who (execution.network.known who)).evidence = some fact) :
     runtime.ResolutionEvidence leaks
-      (execution.respond (runtime.reactiveApplication leaks) who ⟨some (.submit material)⟩)
+      (execution.respond (runtime.reactiveApplication leaks) who ⟨some material⟩)
       fact := by
   classical
   have permitted := (Finset.mem_inter.mp member).1
-  rcases Finset.mem_union.mp permitted with decision | replay
+  rcases Finset.mem_union.mp permitted with decision | silenced
   · obtain ⟨chosen, _⟩ := Finset.mem_filter.mp decision
     simp only [MessageBounds.decisionActions] at chosen
     split at chosen
@@ -277,9 +277,7 @@ theorem MessageBounds.compiled_resolutionEvidence (bounds : MessageBounds graph)
             event allowed.1 _ material equal fact issued
       · simp only [Finset.mem_singleton] at chosen
         cases chosen
-  · have transport := (runtime.reactiveApplication leaks).replayPolicy_cases _ _ _
-      (((runtime.reactiveApplication leaks).mem_replayActions_iff _ _ _).mp replay)
-    rcases transport with impossible | ⟨_, impossible⟩ <;> cases impossible
+  · cases Finset.mem_singleton.mp silenced
 
 theorem resolutionEvidenceOrigins_respond (bounds : MessageBounds graph)
     (execution : (runtime.reactiveApplication leaks).Execution)
@@ -296,16 +294,13 @@ theorem resolutionEvidenceOrigins_respond (bounds : MessageBounds graph)
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => exact prior
-  | some transmission =>
-      cases transmission with
-      | replay id => exact prior.replay who id
-      | submit material =>
-          apply prior.submit who
-            ((runtime.reactiveApplication leaks).packet
-              ((runtime.reactiveApplication leaks).submit execution.application who material)
-                who (execution.network.known who) material)
-          exact fun fact issued => bounds.compiled_resolutionEvidence runtime leaks execution
-            recalled valid who material member fact issued
+  | some material =>
+      apply prior.submit who
+        ((runtime.reactiveApplication leaks).packet
+          ((runtime.reactiveApplication leaks).submit execution.application who material)
+            who (execution.network.known who) material)
+      exact fun fact issued => bounds.compiled_resolutionEvidence runtime leaks execution
+        recalled valid who material member fact issued
 
 omit [Fintype Player] in
 theorem resolutionEvidenceOrigins_environment

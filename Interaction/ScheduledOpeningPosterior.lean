@@ -10,7 +10,7 @@ import GameTheoryExtensions.Math.Probability.Support
 /-! # The exact posterior after waiting for an opening
 
 All modes still waiting use the same response law. Its likelihood therefore
-cancels, even when that law depends on earlier observations and replay choices.
+cancels, even when that law depends on earlier observations and silent responses.
 The remaining posterior is the original timing law restricted to unpassed
 slots. This is a calculation on actual response recall, not extra private state.
 -/
@@ -31,7 +31,7 @@ private theorem response_pair_prob {Index : Type} (prior : PMF Index)
 
 open Classical in
 /-- An observed waiting response removes precisely the opening modes.
-Its particular replay likelihood cancels from the posterior. -/
+Its particular silence likelihood cancels from the posterior. -/
 theorem policyMixture_posterior_wait {Index : Type} (initial : PMF Index)
     (policies : Index → app.Policy) (past : List app.PlayerEntry) (entry : app.PlayerEntry)
     (opening : app.Action) (waiting : PMF app.Action) (kept : Set Index)
@@ -183,7 +183,7 @@ theorem scheduledMixture_waiting_step {slots : Nat}
   change (mixture.posterior past).filter _ nextMeets = _
   simpa only [old] using nested
 
-/-- Every observed replay/silence likelihood cancels. After a lawful waiting
+/-- Every observed silence likelihood cancels. After a lawful waiting
 prefix, the actual latent posterior is exactly the original timing law
 conditioned on not selecting an earlier slot. -/
 theorem scheduledMixture_waiting_posterior {slots : Nat}
@@ -311,7 +311,7 @@ theorem remainingOpeningSlots_value_error {slots : Nat} (probability : ℝ)
     whenTrue whenFalse
 
 /-- The real probability of each response under the actual recall-conditioned
-policy is its deferred hazard mixture. All replay likelihoods have cancelled. -/
+policy is its deferred hazard mixture. All silence likelihoods have cancelled. -/
 theorem scheduledMixture_probability_of_posterior {slots : Nat}
     (probability : ℝ) (nonnegative : 0 ≤ probability) (small : probability < 1)
     (timing : PMF (Fin slots)) (offset : Nat) (opening : app.Action) (waiting : app.Policy)

@@ -17,10 +17,10 @@ unimplementable, so no semantic exception is adopted. In particular:
 | Readiness | Dependencies complete; readiness starts the event's timer. There is no grant cursor. |
 | Clock | Only explicit clock commands advance time. The deadline is the configured event deadline, currently its index plus one. |
 | Binding | Submit an opaque handle. Acceptance records the handle and its immutable typed value or source failure. |
-| Resolution | Canonical TRUE sends an authentic opening when owner-local validation succeeds. Canonical FALSE and failed validation use silence or lawful replay aliases until expiry. Raw explicit withholding also executes FALSE, but its settled packet is forbidden by the audit. |
+| Resolution | Canonical TRUE sends an authentic opening when owner-local validation succeeds. Canonical FALSE and failed validation use silence until expiry. Raw explicit withholding also executes FALSE, but its settled packet is forbidden by the audit. |
 | Silence | WAIT. Resolution expiry executes source FALSE; it is not a separately charged resolution miss. |
 | Binding expiry | Executes source failure. A completed binding with no accepted handle supplies the public binding-omission verdict. |
-| Copies | A player may retransmit an actually known signed envelope. It retains its original author, identifier and body. |
+| Authorship | A player transmits only fresh envelopes it authors; there are no copies. Delivery and inclusion handle the original envelope, so ledger identifiers are distinct. |
 | Causal evidence | The restricted emitter supplies a readiness credential only after the prerequisites complete. Raw callers cannot choose a credential themselves. |
 | Packet verdict | Read only the signed packet, historical readiness evidence, final public record and receipts. Completed events require an accepting receipt and canonical content. |
 | Enforcement | One capped charge per owner, from authentic partial evidence or a public binding omission. Gameplay continues after a charge or omission. |
@@ -46,8 +46,8 @@ The contract supplies a timely owner opportunity, bounded inclusion of its sole
 signed identifier, and complete play. Its clauses quantify over raw histories,
 including flooding. Reaction and inclusion bounds must fit each deadline.
 It permits early responses: the proved [roster contract](../Vegas/Game/ServiceRosterAsync.lean)
-can give Bob a pre-ready own id0. Alice can replay it before good id1 is included;
-id1 is then not globally sole. The finite fragment's no-early-Bob/clear origin is stronger.
+can give Bob a pre-ready own id0. If id0 is still pending when good id1 is included,
+id1 is not globally sole. The finite fragment's no-early-Bob/clear origin is stronger.
 
 The calendar's terminal audit takes an authentic partial-sampling backend as a
 parameter. This does not by itself instantiate a watcher that observes and
@@ -190,24 +190,25 @@ Keep the baseline until a change is agreed; proof convenience alone is insuffici
 
 Use a postgame challenge window after the source outcome is fixed and existing-envelope verdicts are stable.
 Preserve actual known envelopes and public ledger; observe genuinely unknown
-foreign pending IDs through the real observation rule. Replay known authentic
-witnesses for publication. A FALSE gameplay receipt still publishes the original
+foreign pending IDs through the real observation rule. Only the builder publishes
+a witness, by including its pending original; a player who knows a foreign envelope
+cannot resubmit it. A FALSE gameplay receipt still publishes the original
 signed body, so a fresh accepted report is unnecessary. Conditional publication
 bounds must cover selected contents and later raw traffic; a longer window alone
 does not imply certainty.
 
 The baseline final-record audit has a unary packet verdict. If two different
 identifiers compete for one completed event, at least one lacks an accepting
-receipt; forwarding one identifier does not create that offense. Do not import
+receipt; including one identifier again does not create that offense. Do not import
 the archived protocol's distinct-packet pair audit or its pair-coverage requirement
 without showing that the baseline audit actually needs it.
 
-A bounded reporter can choose one source owner uniformly after observation and
-publish one known forbidden witness. Supported conditional availability and
-publication bounds p and r give total owner OR collection at least pr/K; fixed
-record selection among at most M known offending IDs adds a factor 1/M. The
-[small-model note](se-small-models.md#b-publishing-a-known-forbidden-witness)
-derives these bounds without independence. Activation/publication service is
+Without copies, no reporter can republish a known foreign witness; a pending
+forbidden envelope is published only when the builder includes it. A supported
+conditional inclusion bound r gives total owner OR collection at least r times the
+probability that the witness is pending or public at the challenge. The
+[small-model note](se-small-models.md#b-publishing-a-pending-forbidden-witness)
+derives this bound without independence. Such a builder inclusion promise is
 still absent, and an ex ante challenge bound does not supply the current audit's
 pointwise per-record sampler coverage. If the verdict is not stable, observation
 and selection need an additional joint analysis.
@@ -240,13 +241,13 @@ connection to the final proof.
 | A timed decision | One owner, two source actions, two opportunities, a hidden builder branch, expiry and bounded continuation values. Binding packets are opaque; resolution packets can expose their fixed public value. | Derive the actual stopping law and a whole-policy WAIT comparison, using source rationality or the change in charge probability where applicable. Include ordinary FALSE expiry. | The WAIT/source-choice comparison for a constructed assessment. A pointwise send-now argument is insufficient. |
 | A timing information experiment | Two hidden types, one sender and one later receiver, two timing signals and a binary public outcome. Fix the source action law and actual inclusion kernels. | Derive the joint reach table. Where the construction follows the source assessment, test its required conditional weights using rational timing and one common tremble family; generated off-path inputs may instead have different beliefs and rational actions. | The belief-and-timing compatibility question. A timing equilibrium and a separately chosen factorization do not suffice. |
 | A capped-sanction continuation | Two economic stages and one Boolean charge flag, with uncertain observation and delivery. Give the remaining stage an arbitrary bounded payoff. | Prove the first-departure whole-payoff inequality and identify what remains rational once the charge is already certain. Use the change in collection probability, not a second full fine. | The enforcement boundary and the correct domain for free rational completion. Existing general enforcement/completion APIs should discharge the abstract part. |
-| A signed-witness channel | One forbidden envelope, actual pending/public/known locations, partial observation and known-ID replay; any Boolean receipt publishes the signed body. | Conditional publication gives total owner OR pr/K; fixed-record selection needs its own coverage. Derive actual postgame service and settlement refinement. | The watcher/backend boundary in the small-model note; no new report handler or SE theorem follows. |
+| A signed-witness channel | One forbidden envelope, actual pending/public/known locations, partial observation and builder inclusion of the pending original; any Boolean receipt publishes the signed body. | Conditional builder inclusion r gives total owner OR collection r·P(pending or public); fixed-record selection needs its own coverage. Derive actual postgame service and settlement refinement. | The watcher/backend boundary in the small-model note; no new report handler or SE theorem follows. |
 | An opaque binding swap | Two different owners, two independent bindings, no intervening public opening, and a public order choice. | Use the existing commutation of normalized behavioral kernels preserving typed store and every owner's original-action recall; then analyze native timing, traffic and adaptive order. | Barrier concurrency. The source-level commutation theorem does not supply native conditional beliefs. |
 
 The [resolution-and-guess calculation](se-small-models.md#a-resolution-followed-by-a-guess)
 solves one restricted three-action tree for every 0<p<1 and qD≥0 with one common
 fully mixed family. At p=3/4,q=1/2,D=4, rational full bounded RAW Bob/tail completion
-includes copies and reactivation. A full finite public builder extending retained
+includes reactivation. A full finite public builder extending retained
 service admits Alice's earlier responses via normalized first-extra comparisons,
 unclocked extension and forward canonicalRaw. Explicit protection, complete play,
 paired resources and the same fair backend preserve the joint law. The private type
@@ -311,7 +312,7 @@ result counts toward that proof only with premises derived from the actual runti
    the conditional weights, including hidden builder history and foreign WAIT.
    Supply the relative escape bounds required by the common sequence.
 4. **Instantiate existing comparisons and collection.** Derive actual retained
-   WAIT/copy/private-representation comparisons and the information/payoff embedding.
+   WAIT/private-representation comparisons and the information/payoff embedding.
    Use existing rational completion for publicly sunk charges. Derive conditional
    postgame service and first-extra collection; distinguish history-integrated bounds
    from the source capstone's pointwise coverage. Establish zero charge on supported

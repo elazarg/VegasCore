@@ -68,7 +68,7 @@ percentage estimate.
 - [x] **S3. Information correspondence at every native decision.** Derive the
   actual conditional information laws throughout every source constructor and
   every intermediate owner visit. Account for private source intentions,
-  timing, replay and passive observations using the original source
+  timing, silence and passive observations using the original source
   assessment. A joint law only at event boundaries does not close this box.
   The event-boundary joint law is checked in
   [SourceServicePrefixFactorization.lean](../Vegas/Game/SourceServicePrefixFactorization.lean);
@@ -84,7 +84,7 @@ percentage estimate.
 
 - [x] **S4. Sequential incentives for every permitted native choice.** Bound
   every actual local native deviation by comparisons in the original source
-  assessment, along the common sequence from S2. Include waiting, replay,
+  assessment, along the common sequence from S2. Include waiting,
   binding and guarded disclosure; any comparison error must vanish uniformly
   as needed by the SE limit theorem. A terminal-law equality does not close this
   box. The site-by-site interface is checked in

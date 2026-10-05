@@ -8,7 +8,7 @@ import Interaction.ReactiveMenuPolicy
 
 The existing source-to-event compiler supplies each owner's disclosure law.
 The service changes only its representation: opening is the certified local
-submission, and withholding has silence and published replay aliases. The
+submission, and withholding is silence. The
 splitting weight is a proof parameter for common fully mixed approximants,
 not a language or service option. Weight zero selects the canonical response.
 

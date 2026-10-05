@@ -131,16 +131,16 @@ preservation does not require source beliefs or actions at every new native inpu
 malformed or extra evidence, stale credentials, guard failures, rejection receipts,
 extra activations, nonempty leaks and raw foreign traffic. The following fixed-parameter
 results admit RAW tails and then Alice's earlier RAW responses under explicit
-service/backend premises. Copies retain the original author and are not newly authored R.
+service/backend premises.
 
-### Copies and a rational RAW continuation
+### A rational RAW continuation
 
 For p=3/4, q=1/2, D=4, keep Alice's two-opportunity {T,W,R} prefix. Starting
 BEFORE Bob's first response at the five listed inputs, allow full bounded RAW
 menus and a finite public adaptive tail, including reactivation of either owner.
 No extra activation or omitted Alice RAW action before these inputs is included.
 Require complete play and prompt protected Bob H acceptance (bound 0, deadline
-duration 3, sole ID followed by silence/copies), stable completed outputs and
+duration 3, sole ID followed by silence), stable completed outputs and
 verdicts of EXISTING envelopes, and the same unobserved final audit coin.
 These are explicit service premises, not a certified AsyncContract instance.
 
@@ -158,7 +158,7 @@ With a common θ-erased Alice tail at EVERY n, any Bob whole policy has equal
 future observation kernels across matched types. In one class its gross value
 is μr+(1−μ)(1−r)≤max(μ,1−μ). At E, the two paired-class H/L reach ratios are
 (1−2t²)/(1−t²−t³) and 1; their posterior mixture tends uniformly to 1/2,
-including at rare copied/leaked/receipt fibers. [Provenance](../Interaction/ReactiveProvenance.lean)
+including at rare leaked/receipt fibers. [Provenance](../Interaction/ReactiveProvenance.lean)
 prevents Alice creating a Bob-authored opening under his all-W policy: initial
 bindings are not signed envelopes. Complete expiry then gives lawful L. Prompt H
 attains μ. His first [recall entry](../Interaction/ReactiveRecall.lean) preserves the input, preventing later class merges.
@@ -172,13 +172,12 @@ assessments. After clear T/F, L's possible gain is at most 3/2 or 1, below the
 first-new-forbidden cost 2; silence supplies the zero-charge comparator. H's base
 is constant, so the H type optimally mimics this clear proxy. After R/censored T its old
 forbidden witness and expected capped charge 2 persist; his net value is constant.
-No further fine is counted. Lawful copies preserve the original author and verdict.
+No further fine is counted.
 
-Keep the original Bob limiting laws. After original W/copy at firstT/lateT/E
+Keep the original Bob limiting laws. After original W at firstT/lateT/E
 with no own pending HIGH, select LOW expiry; after protected H select silence.
 Optimize remaining tail sites in that SAME family. The whole-policy bounds give
 rational completion and preserve the two atoms above, with distinct RAW histories.
-Copy is not a scheduler-independent quotient of silence; its continuation is optimized.
 
 ### Admitting the earlier RAW responses
 
@@ -205,7 +204,7 @@ Changed guards/candidates, later source economics and general service/backend re
 
 For committed θ, T gives source `success θ`; `success false` is not failure.
 Fix q=1/2,D=4 and a finite public builder with full bounded RAW menus, ≤N responses, complete play,
-protected first Alice T followed by silence/copies, and NO Bob response before Alice
+protected first Alice T followed by silence, and NO Bob response before Alice
 completes. His first ready input must be clear/protected on ALL Alice alternatives.
 Require the same authentic all/none backend and permanent verdicts of existing envelopes;
 every first Alice body except a genuine current T/its aliases must remain forbidden.
@@ -304,36 +303,29 @@ joint law remains exactly the two atoms above, with zero realized charges.
 Thus the restricted preservation result holds for every such p,q,D, including c=0;
 it does not certify omitted raw actions, adaptive continuations or the runtime contract.
 
-## B. Publishing a known forbidden witness
+## B. Publishing a pending forbidden witness
 
 Fix a genuine initialized RAW snapshot with completed source gameplay. Source
 readout, cut and accepted bindings, and existing-envelope verdicts stay fixed
 through the challenge; clocks and receipts may change. Let m be a retained authentic
-forbidden envelope authored by a, with an observer distinct from a. At a promised activation,
-availability must be ≥p conditional on every supported preceding history: known or
-public m is available certainly; unknown foreign pending IDs use actual sampling.
-[ReactiveRecall](../Interaction/ReactiveRecall.lean)'s `known_from_recall`
-reconstructs replay eligibility from own outputs, leaks and ledger, not hidden inputs.
+forbidden envelope authored by a. There are no copies: only a submits m, and
+[MessageNetwork](../Interaction/MessageNetwork.lean) keeps it pending until the
+builder includes it. A player who knows m cannot resubmit it, so publication of an
+unpublished m is a builder promise, not a watcher action.
 
-After observation choose an owner uniformly from K≥1 owners. For a selected owner
-with a known forbidden witness, replay one such exact envelope's ID, or do nothing
-if it is already public. [MessageNetwork](../Interaction/MessageNetwork.lean)
-preserves its author, ID and body. [ReactiveApplication](../Interaction/ReactiveApplication.lean)
-publishes before handler evaluation; even a FALSE receipt publishes authentic
-evidence. For this retained m, initialized identity and
+[ReactiveApplication](../Interaction/ReactiveApplication.lean) publishes before
+handler evaluation; even a FALSE receipt publishes authentic evidence. For this
+retained m, initialized identity and
 [receipt invariants](../Interaction/ReactiveReceipts.lean) equate ledger membership
 with some Boolean receipt for its ID. [UniqueIds](../Interaction/MessageNetworkIdentity.lean)
 ensures the same body. No new report constructor or TRUE receipt is needed;
-the audit charges m's author, not its copier.
+the audit charges m's author.
 
-Require conditional publication probability ≥r on every supported selected-witness
-branch, uniformly over later RAW traffic, with 0≤p,r≤1. For settlement collecting
-published forbidden evidence, let A be m's availability, J the selected owner and Cₐ owner a's OR charge;
-the tower rule gives P(Cₐ)≥r·P(A and J=a)=r·P(A)/K≥pr/K, without independence
-of observation and delivery. This is total owner OR collection, not another fine.
-For fixed m paired with each run's actual final R, uniform selection among at most
-M≥1 distinct known forbidden IDs of a yields pr/(KM). First-witness selection
-need not cover m. Existing single-ID replay is not batch forwarding.
+Require conditional inclusion probability ≥r for pending m on every supported
+challenge branch, uniformly over later RAW traffic, with 0≤r≤1. For settlement collecting
+published forbidden evidence, let E be the event that m is pending or public at the
+challenge and Cₐ owner a's OR charge; the tower rule gives P(Cₐ)≥r·P(E). This is
+total owner OR collection, not another fine.
 
 Reuse `sampling_delivery_lower` in [MessageMonitoringProbability](../Interaction/MessageMonitoringProbability.lean)
 and `GameTheory.Math.Probability.expect_bind_of_finite` in [Expectation](../GameTheoryExtensions/Math/Probability/Expectation.lean).
@@ -344,6 +336,6 @@ Current AsyncContract has no postterminal activation/publication guarantee.
 But [SourceServiceCompilation](../Vegas/Game/SourceServiceCompilation.lean)'s
 coverage premise is pointwise for each actual evidence list and each forbidden
 record. A physical challenge can fail on a supported final history, where a
-published-only sampler has zero coverage. Its history-integrated pr/K bound
+published-only sampler has zero coverage. Its history-integrated r·P(E) bound
 does not establish that premise. A faithful settlement/backend refinement and
 its actual evidence accessibility remain open; ledger publication alone is not it.

@@ -2,12 +2,12 @@
 
 import Interaction.PendingPriority
 
-/-! # Why replay invariance needs candidate retention
+/-! # Priority selection after inclusion and a fresh submission
 
 One envelope is submitted and included; a second remains pending. Stable
-identifier priorities prefer the removed envelope if it is rebroadcast.
-A fresh submission does not have that priority. These are exact network
-selection laws, not an application or proper-subgame counterexample.
+identifier priorities select the remaining envelope, and a fresh submission
+does not take precedence over it. These are exact network selection laws, not
+an application or proper-subgame counterexample.
 -/
 
 noncomputable section
@@ -25,15 +25,6 @@ def submitted : MessageNetwork Unit Nat := (MessageNetwork.empty.submit () 1).2
 def removed : MessageNetwork Unit Nat := (submitted.includePending ((), 0)).2
 def pending : MessageNetwork Unit Nat := (removed.submit () 2).2
 
-theorem not_retained : ¬pending.RetainsEligible eligible := by
-  intro retained
-  have member := retained () ⟨((), 0), 1⟩ (by
-    change (⟨((), 0), 1⟩ : Message Unit Nat) ∈
-      [⟨((), 0), 1⟩, ⟨((), 1), 2⟩] ++ [] ++ [⟨((), 0), 1⟩]
-    simp) rfl
-  have absent : ((), 0) ∉ MessageNetwork.eligibleIds eligible pending.pending := by decide
-  exact absent member
-
 theorem old_selection :
     MessageNetwork.priorityPending (PMF.pure priority) eligible pending.pending =
       PMF.pure (some ((), 1)) := by
@@ -49,14 +40,6 @@ theorem fresh_selection (value : Nat) :
         some ((), 1) := by
     change PriorityChoice.choose priority {((), 1), ((), 2)} = some ((), 1)
     decide
-  simp only [MessageNetwork.priorityPending, PriorityChoice.law, PMF.pure_map, chosen]
-
-theorem replay_selection :
-    MessageNetwork.priorityPending (PMF.pure priority) eligible
-      (pending.replay () ((), 0)).2.pending = PMF.pure (some ((), 0)) := by
-  have chosen : PriorityChoice.choose priority
-      (MessageNetwork.eligibleIds eligible (pending.replay () ((), 0)).2.pending) =
-        some ((), 0) := by decide
   simp only [MessageNetwork.priorityPending, PriorityChoice.law, PMF.pure_map, chosen]
 
 end InteractionTests.PendingPriority

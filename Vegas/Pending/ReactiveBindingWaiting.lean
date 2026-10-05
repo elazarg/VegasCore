@@ -1,14 +1,14 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ReactiveReplaySettlement
+import Vegas.Pending.ReactiveSilentSettlement
 import Vegas.Pending.ReactiveCompiledMenu
 import Vegas.Pending.ReactiveUnusableBinding
 
 /-! # A binding may await inclusion through repeated owner visits
 
-After the first binding, the actual retained menu permits only silence and
-known-envelope replay at this turn. All passive samples and replay copies are
-retained. The protected selector therefore includes the same canonical packet
+After the first binding, the actual retained menu permits only silence at
+this turn. All passive samples are retained. The protected selector therefore
+includes the same canonical packet
 with the same typed result as immediate inclusion, even for unusable private
 material. This is an execution law, not a claim that unusability is detectable.
 -/
@@ -46,13 +46,13 @@ theorem compiled_binding_tail_transport (runtime : EventGraphRuntime graph)
     (who : Player) (response : (runtime.reactiveApplication leaks).Action)
     (supported : response ∈ (players who (current.recall who)
       (current.observe (runtime.reactiveApplication leaks) who)).support) :
-    response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩ := by
+    response = ⟨none⟩ := by
   let app := runtime.reactiveApplication leaks
   have currentSole : (current.observe app who).application.publicView.SoleReady event := by
     change current.application.publicView.SoleReady event
     rw [same]
     exact sole
-  have transport : response ∈ (app.replayPolicy (current.recall who)
+  have transport : response ∈ (app.silentPolicy (current.recall who)
       (current.observe app who)).support := by
     by_cases acting : who = owner
     · subst who
@@ -71,7 +71,7 @@ theorem compiled_binding_tail_transport (runtime : EventGraphRuntime graph)
         (currentSole.ownTurn?_foreign
           (fun equal => acting (Option.some.inj (owned.symm.trans equal)).symm))
           response (lawful who _ _ response supported)
-  exact app.replayPolicy_cases _ _ response transport
+  exact app.silentPolicy_cases _ _ response transport
 
 /-- Delayed protected inclusion after an arbitrary retained response roster
 has exactly the same application and public records as immediate inclusion. -/
@@ -96,7 +96,7 @@ theorem rawBinding_delayed_inclusion (runtime : EventGraphRuntime graph)
     (serials : execution.network.SerialsBeforeNext)
     (serial : Nat) (opening : Option (Raw L)) (roster : List Player) :
     let response : (runtime.reactiveApplication leaks).Action :=
-      ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩
+      ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩
     let submitted := execution.respond (runtime.reactiveApplication leaks) owner response
     ((runtime.runInteractionPlan leaks players network
       (roster.map ServiceInstruction.player ++ [.includeLatest event owner]) submitted).map
@@ -108,7 +108,7 @@ theorem rawBinding_delayed_inclusion (runtime : EventGraphRuntime graph)
   dsimp only
   let app := runtime.reactiveApplication leaks
   let response : app.Action :=
-    ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩
+    ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩
   let submitted := execution.respond app owner response
   let packet : WitnessedPacket graph :=
     ⟨.commitment event (owner, .prepared serial), none, some ⟨event⟩⟩
@@ -141,17 +141,17 @@ theorem rawBinding_delayed_inclusion (runtime : EventGraphRuntime graph)
     exact List.mem_append_right _ (List.mem_singleton_self _)
   have unpublished : message.id ∉ submitted.network.ledger.map Message.id :=
     serials.next_unpublished owner
-  have delayed := runtime.replay_window_settlement leaks players network owner submitted
+  have delayed := runtime.silent_window_settlement leaks players network owner submitted
     transport event message rfl rfl packets pending unpublished roster
-  have immediate := runtime.replay_window_settlement leaks players network owner submitted
+  have immediate := runtime.silent_window_settlement leaks players network owner submitted
     transport event message rfl rfl packets pending unpublished []
   exact delayed.trans (by
     simpa only [List.map_nil, List.nil_append, runInteractionPlan, PMF.bind_pure]
       using immediate.symm)
 
 /-- Every delayed retained endpoint has actual immediate-inclusion provenance
-and a clean public network, even when later owner visits replay the pending
-packet. This is a support statement for arbitrary retained policies. -/
+and a clean public network while later owner visits remain silent. This is a
+support statement for arbitrary retained policies. -/
 theorem rawBinding_delayed_support (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (bounds : MessageBounds graph)
@@ -174,7 +174,7 @@ theorem rawBinding_delayed_support (runtime : EventGraphRuntime graph)
     (serial : Nat) (opening : Option (Raw L)) (roster : List Player)
     (final : (runtime.reactiveApplication leaks).Execution) :
     let response : (runtime.reactiveApplication leaks).Action :=
-      ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩
+      ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩
     let submitted := execution.respond (runtime.reactiveApplication leaks) owner response
     final ∈ (runtime.runInteractionPlan leaks players network
       (roster.map ServiceInstruction.player ++ [.includeLatest event owner]) submitted).support →
@@ -188,7 +188,7 @@ theorem rawBinding_delayed_support (runtime : EventGraphRuntime graph)
   intro reached
   let app := runtime.reactiveApplication leaks
   let response : app.Action :=
-    ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩
+    ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩
   let submitted := execution.respond app owner response
   let readout (next : app.Execution) :=
     (next.application, next.network.ledger, next.receipts, next.network.nextSerial)
@@ -212,7 +212,7 @@ theorem rawBinding_delayed_support (runtime : EventGraphRuntime graph)
     exact ready
   have recorded : runtime.eventRecorded leaks (submitted.recall owner) event = true :=
     runtime.eventRecorded_respond leaks execution owner response event rfl
-  exact runtime.submission_replay_settled_published leaks players network owner execution _ event
+  exact runtime.submission_silent_settled_published leaks players network owner execution _ event
     rfl published serials
     (fun current who action same recalled supported => runtime.compiled_binding_tail_transport
       leaks bounds players lawful submitted owner event payload outputEq codeEq node currentSole

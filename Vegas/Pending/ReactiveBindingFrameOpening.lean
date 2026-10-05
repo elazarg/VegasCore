@@ -65,37 +65,37 @@ theorem inert_submission (frame : Frame runtime leaks memory owner original repa
     let app := runtime.reactiveApplication leaks
     let remembered := memory.record runtime leaks
       (memory.shadow.inputView runtime leaks (repaired.observe app owner))
-      ⟨some (.submit left)⟩
+      ⟨some left⟩
     Frame runtime leaks remembered owner
-      (original.respond app owner ⟨some (.submit left)⟩)
-      (repaired.respond app owner ⟨some (.submit right)⟩) := by
+      (original.respond app owner ⟨some left⟩)
+      (repaired.respond app owner ⟨some right⟩) := by
   let app := runtime.reactiveApplication leaks
   have emitted : left.emit (app.submit original.application owner left) owner
       (original.network.known owner) =
       right.emit (app.submit repaired.application owner right) owner
         (repaired.network.known owner) := by rw [leftInert, rightInert]; exact packet
   have nextNetwork :
-      (original.respond app owner ⟨some (.submit left)⟩).network =
-        (repaired.respond app owner ⟨some (.submit right)⟩).network := by
+      (original.respond app owner ⟨some left⟩).network =
+        (repaired.respond app owner ⟨some right⟩).network := by
     change (original.network.submit owner (left.emit
       (app.submit original.application owner left) owner (original.network.known owner))).2 = _
     rw [emitted, frame.network]
     rfl
   have application (execution : app.Execution) (submission : WitnessedSubmission graph)
       (inert : app.submit execution.application owner submission = execution.application) :
-      (execution.respond app owner ⟨some (.submit submission)⟩).application =
+      (execution.respond app owner ⟨some submission⟩).application =
         execution.application := inert
   refine ⟨memory.restoreRecall_submit runtime leaks original repaired owner left right
     frame.lengths frame.past frame.observed frame.network emitted, ?_, ?_, nextNetwork, ?_,
       ?_, ?_, ?_, ?_, ?_⟩
-  · change (⟨(repaired.respond app owner ⟨some (.submit right)⟩).network.observe owner,
+  · change (⟨(repaired.respond app owner ⟨some right⟩).network.observe owner,
       memory.shadow.view (app.observePlayer (app.submit repaired.application owner right) owner),
         repaired.receipts⟩ : app.PlayerView) =
-      ⟨(original.respond app owner ⟨some (.submit left)⟩).network.observe owner,
+      ⟨(original.respond app owner ⟨some left⟩).network.observe owner,
         app.observePlayer (app.submit original.application owner left) owner, original.receipts⟩
     rw [leftInert, rightInert, nextNetwork, frame.receipts]
     exact congrArg (fun view => (⟨
-      (repaired.respond app owner ⟨some (.submit right)⟩).network.observe owner,
+      (repaired.respond app owner ⟨some right⟩).network.observe owner,
       view, repaired.receipts⟩ : app.PlayerView))
       (congrArg ReactiveApplication.PlayerView.application frame.observed)
   · simp only [ReactiveApplication.Execution.respond, ↓reduceIte, BindingMemory.record,
@@ -215,7 +215,7 @@ theorem opening_submission (frame : Frame runtime leaks memory owner original re
         some ⟨candidate, raw⟩) :
     let app := runtime.reactiveApplication leaks
     let response : app.Action :=
-      ⟨some (.submit ⟨⟨.opening event candidate raw, none⟩, evidence⟩)⟩
+      ⟨some ⟨⟨.opening event candidate raw, none⟩, evidence⟩⟩
     Frame runtime leaks
       (memory.record runtime leaks
         (memory.shadow.inputView runtime leaks (repaired.observe app owner)) response)

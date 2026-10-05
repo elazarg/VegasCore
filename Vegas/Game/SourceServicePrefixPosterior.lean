@@ -44,7 +44,7 @@ private theorem owner_window_factorization
     ∃ nextNoise : View → PMF _,
       (prior.bind fun seed =>
         ((runtime setup).runInteractionPlan leaks
-          (Function.update (fun _ => (application setup leaks).replayPolicy) owner policy)
+          (Function.update (fun _ => (application setup leaks).silentPolicy) owner policy)
           network (visits.map ServiceInstruction.player) (execution seed)).map fun final =>
             (source seed, (runtime setup).bindingTraffic leaks owner final)) =
       (prior.map source).bind fun state =>
@@ -53,7 +53,7 @@ private theorem owner_window_factorization
     (fun seed => (runtime setup).bindingTraffic leaks owner (execution seed))
     observe noise factor (fun _ => PMF.pure Unit.unit) (fun state _ => state) observe
     (fun seed _ => ((runtime setup).runInteractionPlan leaks
-      (Function.update (fun _ => (application setup leaks).replayPolicy) owner policy)
+      (Function.update (fun _ => (application setup leaks).silentPolicy) owner policy)
       network (visits.map ServiceInstruction.player) (execution seed)).map
         ((runtime setup).bindingTraffic leaks owner))
     (fun _ _ _ _ _ _ _ _ same => same)
@@ -182,7 +182,7 @@ theorem sourceService_owner_information_law [Fintype Player]
       (runtime setup).runInteractionPlan leaks players network
           (visits.map ServiceInstruction.player) execution =
         (runtime setup).runInteractionPlan leaks
-          (Function.update (fun _ => app.replayPolicy) owner policy) network
+          (Function.update (fun _ => app.silentPolicy) owner policy) network
           (visits.map ServiceInstruction.player) execution := by
     exact sourceServiceTimedPolicy_window_eq setup leaks rosters timing normalized event owner
       owned network visits execution
@@ -250,7 +250,7 @@ private theorem window_config
     execution before beforeSupport).1
 
 /-- A supported pending decision retains the source checkpoint at phase
-entry, even after arbitrary private registrations and replay responses. -/
+entry, even after arbitrary private registrations and silent responses. -/
 theorem sourceService_owner_checkpoint [Fintype Player]
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))

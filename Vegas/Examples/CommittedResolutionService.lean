@@ -1213,8 +1213,8 @@ theorem prescribed_packets_clean (original : BehavioralProfile program) (executi
       (sourceServiceTurnPolicy setup leaks bound 0 (firstTurnTiming setup 0) original)
       horizon).support) :
     ∀ input ∈ execution.network.inputs,
-      (input.envelope.id, true) ∈ execution.receipts ∧
-        ((runtime setup).settledRecord leaks execution).permits input.envelope = true := by
+      (input.id, true) ∈ execution.receipts ∧
+        ((runtime setup).settledRecord leaks execution).permits input = true := by
   let players := sourceServiceTurnPolicy setup leaks bound 0 (firstTurnTiming setup 0) original
   obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler players
     horizon le_rfl execution reached
@@ -1224,55 +1224,52 @@ theorem prescribed_packets_clean (original : BehavioralProfile program) (executi
   intro input member
   obtain ⟨entry, inside, material, fresh, emitted, _, _, _⟩ :=
     facts.provenance.inputs input member
-  obtain ⟨calls, once, _⟩ := serialFacts_roundsFrom contract players input.envelope.sender
+  obtain ⟨calls, once, _⟩ := serialFacts_roundsFrom contract players input.sender
     (firstTurnTiming setup 0) original rfl horizon le_rfl execution reached
   obtain ⟨event, message, sent, authored, addressed, submitted, fits⟩ :=
     calls entry inside material fresh
-  have identified : message = input.envelope := Option.some.inj (sent.symm.trans emitted)
+  have identified : message = input := Option.some.inj (sent.symm.trans emitted)
   subst message
   have conforming := sourceServiceTurnPolicy_freshServiceEnvelope scheduler players
-    input.envelope.sender (firstTurnTiming setup 0) original rfl horizon execution reached
-    entry inside material fresh input.envelope emitted
+    input.sender (firstTurnTiming setup 0) original rfl horizon execution reached
+    entry inside material fresh input emitted
   obtain ⟨actual, named, ready, owned⟩ :=
-    (runtime setup).freshServiceEnvelope_owned _ input.envelope conforming
+    (runtime setup).freshServiceEnvelope_owned _ input conforming
   have eventEq : actual = event := Option.some.inj (named.symm.trans addressed)
   subst actual
   obtain ⟨earlier, later, split⟩ := List.mem_iff_append.mp inside
-  have call : FreshCall setup leaks input.envelope.sender event bound entry input.envelope :=
+  have call : FreshCall setup leaks input.sender event bound entry input :=
     ⟨⟨material, fresh⟩, emitted, rfl, addressed, ready, fits,
       freshServiceEnvelope.acceptable (runtime setup) conforming⟩
   have sole : ∀ other ∈ earlier ++ later,
-      ¬ EmitsOtherFor (runtime setup) leaks other event input.envelope.id := by
-    intro other member ⟨replayed, output, author, addressedOther, different⟩
-    have recalled : other ∈ execution.recall input.envelope.sender := by
+      ¬ EmitsOtherFor (runtime setup) leaks other event input.id := by
+    intro other member ⟨otherEnvelope, output, author, addressedOther, different⟩
+    have recalled : other ∈ execution.recall input.sender := by
       rw [split]
       rcases List.mem_append.mp member with left | right
       · exact List.mem_append_left _ left
       · exact List.mem_append_right _ (List.mem_cons_of_mem _ right)
-    have issued : replayed ∈ app.outputs (execution.recall input.envelope.sender) :=
+    have issued : otherEnvelope ∈ app.outputs (execution.recall input.sender) :=
       List.mem_filterMap.mpr ⟨other, recalled, output⟩
-    rw [← facts.inputs input.envelope.sender] at issued
-    obtain ⟨record, present, projected⟩ := List.mem_filterMap.mp issued
-    split at projected
-    · cases Option.some.inj projected
-      obtain ⟨issuer, issuerMember, issuerMaterial, issuerFresh, issuerEmitted,
-        state, known, packet⟩ := facts.provenance.inputs record present
-      rw [author] at issuerMember
-      have issuerNames : (runtime setup).submittedEvent? leaks issuer.action =
-          record.envelope.payload.call.event? nativeGraph := by
-        unfold EventGraphRuntime.submittedEvent?
-        rw [issuerFresh, ← packet]
-        rfl
-      exact different (once issuer issuerMember entry inside event _ _
-        (issuerNames.trans addressedOther) submitted
-        issuerEmitted emitted)
-    · cases projected
+    rw [← facts.inputs input.sender] at issued
+    have present := (List.mem_filter.mp issued).1
+    obtain ⟨issuer, issuerMember, issuerMaterial, issuerFresh, issuerEmitted,
+      state, known, packet⟩ := facts.provenance.inputs otherEnvelope present
+    rw [author] at issuerMember
+    have issuerNames : (runtime setup).submittedEvent? leaks issuer.action =
+        otherEnvelope.payload.call.event? nativeGraph := by
+      unfold EventGraphRuntime.submittedEvent?
+      rw [issuerFresh, ← packet]
+      rfl
+    exact different (once issuer issuerMember entry inside event _ _
+      (issuerNames.trans addressedOther) submitted
+      issuerEmitted emitted)
   have accepted := (prescribed_packet_settles setup leaks inclusion trace event
-    input.envelope.sender owned earlier later entry input.envelope split call sole).2
+    input.sender owned earlier later entry input split call sole).2
     (by rw [finished]; exact Finset.mem_univ event)
   refine ⟨accepted, SettledRecord.permits_of_accepted _ _ event addressed accepted ?_⟩
   exact prescribed_opening_content entry.beforeView.application.publicView _ event
-    input.envelope addressed conforming owned
+    input addressed conforming owned
 
 /-- Authentic terminal sampling leaves the entire prescribed payoff vector unchanged. -/
 theorem prescribed_settlement (original : BehavioralProfile program) (execution : app.Execution)
@@ -1302,12 +1299,12 @@ theorem prescribed_settlement (original : BehavioralProfile program) (execution 
   · exact authentic _
   · intro record member _
     have inputs := app.stateTraffic_inputs (initialLaw setup) horizon scheduler trace
-    change (app.executionTraffic execution).map ReactiveApplication.TrafficRecord.input =
+    change (app.executionTraffic execution).map ReactiveApplication.TrafficRecord.envelope =
       execution.network.inputs at inputs
-    have present : record.input ∈ execution.network.inputs := by
+    have present : record.envelope ∈ execution.network.inputs := by
       rw [← inputs]
       exact List.mem_map.mpr ⟨record, member, rfl⟩
-    exact (clean record.input present).2
+    exact (clean record.envelope present).2
 
 private def firstAlice : app.Execution :=
   let sampled := recorded (silentInitial true) (.application (.executeSample sampleEvent))
@@ -1357,7 +1354,7 @@ private theorem first_true_prompt (players : Player → app.Policy) :
   have resolved : EventCode.resolveOutput? binding [] true
       firstAlice.application.config.store = some (.success true) := rfl
   have shape : (runtime setup).canonicalServiceDecision leaks alice []
-      (firstAlice.observe app alice) aliceEvent true = ⟨some (.submit opening)⟩ := by
+      (firstAlice.observe app alice) aliceEvent true = ⟨some opening⟩ := by
     rw [canonicalServiceDecision_eq_of_not_bind (runtime setup) leaks alice [] _ aliceEvent true
       (by intro owner payload outputEq codeEq; cases outputEq)]
     have result := (runtime setup).serviceDecision_successful_opening leaks firstAlice
@@ -1366,15 +1363,15 @@ private theorem first_true_prompt (players : Player → app.Policy) :
     change (runtime setup).serviceDecision leaks alice []
       (firstAlice.observe app alice) aliceEvent true = _ at result
     rw [result]
-    change (⟨some (.submit (WitnessedSubmission.normalizeReactive alice
+    change (⟨some (WitnessedSubmission.normalizeReactive alice
       (app.observePlayer firstAlice.application alice) []
-      (disclosureSubmission (.opening aliceEvent candidate ⟨.bool, true⟩))))⟩ : app.Action) = _
+      (disclosureSubmission (.opening aliceEvent candidate ⟨.bool, true⟩)))⟩ : app.Action) = _
     have localFixed : (app.observePlayer firstAlice.application alice).candidates candidate.2 =
         .openable ⟨.bool, true⟩ := fixed
     rw [disclosureSubmission_normalize_opening alice _ aliceEvent candidate ⟨.bool, true⟩
       rfl localFixed]
   rw [shape]
-  let submitted := firstAlice.respond app alice ⟨some (.submit opening)⟩
+  let submitted := firstAlice.respond app alice ⟨some opening⟩
   let completed := firstAlice.application.complete aliceEvent (by decide) true (.success true)
   have packet : app.packet submitted.application alice (firstAlice.network.known alice) opening =
       ⟨.opening aliceEvent candidate ⟨.bool, true⟩,

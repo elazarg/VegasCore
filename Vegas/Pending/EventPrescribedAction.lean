@@ -133,10 +133,6 @@ theorem submittedAt_eq_true_of_mem_submittedPayloads
             rw [List.any_cons, command]
             change (decide (payload.event? graph = some event) || submittedAt rest event) = true
             simp [ih tail]
-      | replay id =>
-          have tail : packet ∈ runtime.application.submittedPayloads rest := by
-            simpa [MessageApplication.submittedPayloads, command] using member
-          simpa [submittedAt, command] using ih tail
       | wait =>
           have tail : packet ∈ runtime.application.submittedPayloads rest := by
             simpa [MessageApplication.submittedPayloads, command] using member

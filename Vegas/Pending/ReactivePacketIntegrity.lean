@@ -4,12 +4,12 @@ import Interaction.ReactivePolicyInvariant
 import Interaction.ReactiveProvenance
 import Vegas.Pending.ReactivePolicyFacts
 
-/-! # Prescribed event packets cannot be replaced by replay or competing traffic
+/-! # Prescribed event packets cannot be replaced by competing traffic
 
 Only the focal player must follow its compiled graph policy. Every envelope
 has a submission origin in its author's recall, and that player's recall has
-at most one emitted packet per event. Arbitrary opponents and schedulers may
-copy that envelope but cannot supply a different one under the same author
+at most one emitted packet per event. Arbitrary opponents and schedulers
+cannot supply a different one under the same author
 and event. Application acceptance and retention until inclusion are separate
 obligations.
 -/
@@ -98,7 +98,7 @@ theorem reactivePacketIntegrity_initial (runtime : EventGraphRuntime graph)
   ⟨MessageNetwork.Satisfies.empty, List.nodup_nil⟩
 
 /-- All retained envelopes from the prescribed owner at this event equal its
-remembered output. This covers pending, included, received, and replayed copies. -/
+remembered output. This covers pending, included, and received copies. -/
 theorem ReactivePacketIntegrity.retained (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player)

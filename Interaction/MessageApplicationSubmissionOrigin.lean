@@ -192,7 +192,7 @@ private theorem invoke_retained_origin
           · exact Or.inl old
           · subst message
             exact Or.inr ⟨rfl, commandMem, step, rfl⟩
-      | privateCommand privateCommand | replay privateCommand | wait =>
+      | privateCommand privateCommand | wait =>
           left
           have afterSafe := app.playerStep_pool_satisfies
             (app.Retained execution.native.pool) actor execution next _

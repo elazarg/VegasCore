@@ -1,13 +1,13 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ReactiveReplaySettlement
+import Vegas.Pending.ReactiveSilentSettlement
 
-/-! # Application laws after replay-only opportunities
+/-! # Application laws after silent response opportunities
 
-Transport aliases retain their actual network effects and private recall.
-Application commands and public sampling nevertheless depend only on the
-application state. Their terminal application law is therefore unchanged by
-replay choices in an earlier transport-only window.
+Silent responses retain actual passive observations and private recall.
+Application commands and public sampling depend only on application state.
+Their terminal application law is unchanged by an earlier silent response
+window.
 -/
 
 noncomputable section
@@ -73,9 +73,9 @@ theorem application_service_law (runtime : EventGraphRuntime graph)
             ReactiveApplication.Command.actor?, ReactiveApplication.resume,
             idle, PMF.bind_pure] using step (.expire event)
 
-/-- Replay-only player rounds before application commands have no effect on
+/-- Silent player rounds before application commands have no effect on
 the terminal application law, including public sample results. -/
-theorem replay_application_service_law (runtime : EventGraphRuntime graph)
+theorem silent_application_service_law (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks) (owner : Player)
@@ -85,7 +85,7 @@ theorem replay_application_service_law (runtime : EventGraphRuntime graph)
       initial.recall owner ⊆ current.recall owner →
       response ∈ (players who (current.recall who)
         (current.observe (runtime.reactiveApplication leaks) who)).support →
-      response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩)
+      response = ⟨none⟩)
     (visits : List Player) (plan : List (ServiceInstruction graph))
     (passive : ∀ instruction ∈ plan, instruction ≠ .wire ∧
       (∀ who, instruction ≠ .player who) ∧
@@ -103,7 +103,7 @@ theorem replay_application_service_law (runtime : EventGraphRuntime graph)
             ReactiveApplication.Execution.application) := by
       apply bind_congr_on_support _
       intro current reached
-      have same := (runtime.replay_window_preserves leaks players network owner initial responses
+      have same := (runtime.silent_window_preserves leaks players network owner initial responses
         (fun _ => True) ⟨by simp, by simp, by simp, by simp⟩ visits current reached).1
       exact runtime.application_service_law leaks players network plan passive _ _ same
     _ = _ := PMF.bind_const _ _

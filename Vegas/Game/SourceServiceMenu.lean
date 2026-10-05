@@ -7,7 +7,7 @@ import Vegas.Pending.ReactiveCompiledMenu
 
 The retained menu uses the player's turn and its own response
 count to identify the last owner visit of a fixed finite roster. Before that
-visit, a binding may wait or replay. At the last visit an unsent binding must
+visit, a binding may wait. At the last visit an unsent binding must
 submit a typed value. Once submitted, no second fresh call of the event is
 permitted. Resolution keeps the ordinary guarded-opening menu.
 

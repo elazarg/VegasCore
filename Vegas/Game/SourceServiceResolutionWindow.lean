@@ -106,9 +106,9 @@ theorem resolution_roster_stopped_coupling
         Nonempty (((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
           (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
             (some ⟨remaining, none, next.2.1⟩)) ∧
-        ((∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
+        ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.input.envelope = false) ∨
+            record.envelope = false) ∨
         BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
           reference.length ≤ (next.2.1.recall owner).length) := by
   classical
@@ -155,9 +155,9 @@ theorem resolution_roster_stopped_coupling
           ∀ next ∈ coupling.support,
             Nonempty ((menu.protocol (initialLaw setup) (rosterPlan setup rosters).length
               scheduler).Trace (some ⟨remaining + rest.length, none, next.2.1⟩)) ∧
-            ((∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
+            ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
               (runtime setup).permittedServiceEnvelope record.observation record.ledger
-                record.input.envelope = false) ∨
+                record.envelope = false) ∨
               BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
                 reference.length ≤ (next.2.1.recall owner).length) := by
         by_cases same : actor = owner
@@ -223,15 +223,15 @@ theorem resolution_roster_stopped_coupling
             coupling.map Prod.snd = strategy.runJoint owner players scheduler rest.length
               next.2.1 next.2.2 ∧
             ∀ final ∈ coupling.support,
-              (∃ record ∈ app.executionTraffic final.1, record.input.envelope.sender = owner ∧
+              (∃ record ∈ app.executionTraffic final.1, record.envelope.sender = owner ∧
                 (runtime setup).permittedServiceEnvelope record.observation record.ledger
-                  record.input.envelope = false) ∨
+                  record.envelope = false) ∨
               BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1 ∧
                 reference.length ≤ (final.2.1.recall owner).length := by
         by_cases bad : ∃ record ∈ app.executionTraffic next.1,
-            record.input.envelope.sender = owner ∧
+            record.envelope.sender = owner ∧
             (runtime setup).permittedServiceEnvelope record.observation record.ledger
-              record.input.envelope = false
+              record.envelope = false
         · let left := (runtime setup).runInteractionPlan leaks players network
             (rest.map ServiceInstruction.player) next.1
           let right := strategy.runJoint owner players scheduler rest.length next.2.1 next.2.2

@@ -62,7 +62,7 @@ theorem first_binding_block_coupling
       (sourceServiceMenu setup leaks bounds rosters) owner reference (players owner)
     let view := repaired.observe app owner
     let response : app.Action :=
-      ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩
+      ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩
     let changed := memory.repairResponse (runtime setup) leaks owner view response
     let remembered : BindingMemory (runtime setup) leaks :=
       ⟨changed.2, memory.responses ++
@@ -76,9 +76,9 @@ theorem first_binding_block_coupling
         (rosterScheduler setup leaks rosters network) plan.length
           (repaired.respond app owner changed.1) remembered ∧
       ∀ next ∈ coupling.support,
-        (∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
+        (∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.input.envelope = false) ∨
+            record.envelope = false) ∨
         BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 := by
   intro app strategy view response changed remembered plan
   let left := original.respond app owner response

@@ -8,7 +8,7 @@ import Vegas.Pending.ReactiveServiceEvaluation
 This connects physical service execution to the terminal audit readout. The
 remaining plan and all player responses are unrestricted. A rejected packet
 keeps the phase and author recorded at transmission, even if it later becomes
-acceptable, is rebroadcast, or is included in the ledger.
+acceptable or is included in the ledger.
 -/
 
 noncomputable section

@@ -7,8 +7,8 @@ import Vegas.Pending.ReactiveRevealResponse
 /-! # Actual restricted responses complete source revelation steps
 
 The service suffix is executed by the existing native interpreter. Every
-ordinary response resolves the current source choice, including every published
-replay alias of withholding. The exact application equation retains completion
+ordinary response resolves the current source choice, including silent
+withholding. The exact application equation retains completion
 times, and the network equation retains the physical response and its receipt.
 -/
 
@@ -82,15 +82,10 @@ theorem ordinary_response_settlement (setup : Setup (Player := Player) (L := L))
   | false =>
       obtain refuses := (ordinary_false_iff setup leaks bounds owner (execution.recall owner)
         (execution.observe (application setup leaks) owner) response member).mp chosen
-      have physical : response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩ ∧
-          id ∈ execution.network.ledger.map Message.id := by
-        rcases refuses with silent | ⟨message, published, replay⟩
-        · exact Or.inl silent
-        · exact Or.inr ⟨message.id, replay, List.mem_map.mpr ⟨message, published, rfl⟩⟩
       obtain ⟨next, law, applicationEq, networkEq, receiptsEq, recallEq⟩ :=
         (runtime setup).refusing_response_settlement leaks players watcher policy execution
           pending owner event payload (refs.get selected) [] outputEq codeEq
-          node ready entered ticks activated due response physical
+          node ready entered ticks activated due response refuses
       refine ⟨next, law, ?_, ?_, ?_, ?_⟩
       · simpa only [chosen, Bool.false_eq_true, ↓reduceIte] using applicationEq
       · simpa only [chosen, Bool.false_eq_true, ↓reduceIte] using networkEq
@@ -145,7 +140,7 @@ theorem ordinary_response_settlement (setup : Setup (Player := Player) (L := L))
 
 /-- The completed native block advances the actual typed source configuration.
 Both the store and the owner's source-action history are transported; physical
-replay names remain solely in native recall and network input history. -/
+responses remain solely in native recall and network input history. -/
 theorem ordinary_response_source_step (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup))

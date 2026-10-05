@@ -7,7 +7,7 @@ import Interaction.MessageApplicationPolicyLaws
 
 An authored commitment fixes its handle before entering the pending pool.
 Every subsequent native action preserves that fixed meaning, including
-private preparation, competing submissions, delivery, replay, and inclusion.
+private preparation, competing submissions, delivery, and inclusion.
 -/
 
 noncomputable section

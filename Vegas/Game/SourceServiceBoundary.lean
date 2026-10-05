@@ -32,7 +32,7 @@ variable {Player : Type} [DecidableEq Player]
 
 /-- A completed service prefix, including its dynamic private catalogues and
 all native communication memory. Pending and privately known packets are
-already public at this boundary; their copies are retained. -/
+already public at this boundary. -/
 structure ServiceBoundary (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player) (initial : State L setup.context)

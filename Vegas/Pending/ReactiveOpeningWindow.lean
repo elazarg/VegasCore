@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Interaction.ReactiveReplayPolicy
+import Interaction.ReactiveMessageReadout
 import Interaction.ScheduledOpening
 import Vegas.Pending.ReactivePolicyMixture
 import Vegas.Pending.ReactivePolicy
@@ -10,11 +10,10 @@ import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Coupling scheduled openings through a finite observation window
 
-The window uses the existing player instructions and passive sampler. Every
-player can replay known envelopes; the current owner may emit its canonical
-opening at one selected response count. Pending observations and unpublished
-replays are retained. Equal auxiliary starts can be coupled without assuming
-the sampler ignores message identity or pending-copy multiplicity.
+The window uses the existing player instructions and passive sampler. The
+current owner may emit its canonical opening at one selected response count;
+other responses are silent. Pending observations are retained. Equal auxiliary
+starts can be coupled without assuming the sampler ignores message identity.
 -/
 
 noncomputable section
@@ -30,7 +29,7 @@ def windowOpening (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (event : graph.EventId) (candidate : Handle graph) (raw : Raw L) :
     (runtime.reactiveApplication leaks).Action :=
-  ⟨some (.submit (disclosureSubmission (.opening event candidate raw)))⟩
+  ⟨some (disclosureSubmission (.opening event candidate raw))⟩
 
 def openingWindowPlayers (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -39,8 +38,8 @@ def openingWindowPlayers (runtime : EventGraphRuntime graph)
     Player → (runtime.reactiveApplication leaks).Policy := fun who =>
   let app := runtime.reactiveApplication leaks
   if who = owner then app.scheduledPolicy offset selected
-    (fun _ _ => PMF.pure (runtime.windowOpening leaks event candidate raw)) app.replayPolicy
-  else app.replayPolicy
+    (fun _ _ => PMF.pure (runtime.windowOpening leaks event candidate raw)) app.silentPolicy
+  else app.silentPolicy
 
 /-- The behavioral realization of a conditional timing law. Its private
 mixture is a proof construction; the actual runtime still receives one
@@ -51,10 +50,10 @@ def openingWindowMixturePlayers (runtime : EventGraphRuntime graph)
     (offset : Nat) {slots : Nat} (choices : PMF (Option (Fin slots))) :
     Player → (runtime.reactiveApplication leaks).Policy :=
   let app := runtime.reactiveApplication leaks
-  Function.update (fun _ => app.replayPolicy) owner
+  Function.update (fun _ => app.silentPolicy) owner
     (app.policyMixture choices (fun selected => app.scheduledPolicy offset selected
       (fun _ _ => PMF.pure (runtime.windowOpening leaks event candidate raw))
-        app.replayPolicy)).policy
+        app.silentPolicy)).policy
 
 theorem openingWindowMixture_law (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -73,19 +72,19 @@ theorem openingWindowMixture_law (runtime : EventGraphRuntime graph)
   let opening := fun (_ : List app.PlayerEntry) (_ : app.PlayerView) =>
     PMF.pure (runtime.windowOpening leaks event candidate raw)
   let family := fun selected : Option (Fin slots) =>
-    app.scheduledPolicy offset selected opening app.replayPolicy
-  have posterior := app.policyMixture_posterior_dormant choices family app.replayPolicy offset
+    app.scheduledPolicy offset selected opening app.silentPolicy
+  have posterior := app.policyMixture_posterior_dormant choices family app.silentPolicy offset
     (fun selected past view earlier =>
-      app.scheduledPolicy_before offset selected opening app.replayPolicy past view earlier)
+      app.scheduledPolicy_before offset selected opening app.silentPolicy past view earlier)
     (execution.recall owner) before
   have actual := runtime.runInteractionPlan_policyMixture leaks choices family owner
-    (fun _ => app.replayPolicy) network plan execution
+    (fun _ => app.silentPolicy) network plan execution
   dsimp only at actual
   rw [posterior] at actual
   refine actual.symm.trans ?_
   apply bind_congr_on_support _
   intro selected _
-  have players : Function.update (fun _ => app.replayPolicy) owner (family selected) =
+  have players : Function.update (fun _ => app.silentPolicy) owner (family selected) =
       runtime.openingWindowPlayers leaks owner event candidate raw offset selected := by
     funext who past view
     by_cases active : who = owner
@@ -97,7 +96,7 @@ theorem openingWindowMixture_law (runtime : EventGraphRuntime graph)
   rw [players]
 
 /-- Every supported first opening makes this behavioral mixture permanently
-use replay/silence for the rest of the phase. Thus fully mixed approximants
+respond silently for the rest of the phase. Thus fully mixed approximants
 have the required off-path stop behavior before taking their common limit. -/
 theorem openingWindowMixture_after_open (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -114,17 +113,15 @@ theorem openingWindowMixture_after_open (runtime : EventGraphRuntime graph)
     (view : (runtime.reactiveApplication leaks).PlayerView) :
     runtime.openingWindowMixturePlayers leaks owner event candidate raw offset choices
       owner (past ++ [entry] ++ suffix) view =
-        (runtime.reactiveApplication leaks).replayPolicy (past ++ [entry] ++ suffix) view := by
+        (runtime.reactiveApplication leaks).silentPolicy (past ++ [entry] ++ suffix) view := by
   let app := runtime.reactiveApplication leaks
   have distinct : runtime.windowOpening leaks event candidate raw ∉
-      (app.replayPolicy past entry.beforeView).support := by
+      (app.silentPolicy past entry.beforeView).support := by
     intro member
-    rcases app.replayPolicy_cases past entry.beforeView _ member with impossible | ⟨id, impossible⟩
-    · cases impossible
-    · cases impossible
+    cases app.silentPolicy_cases past entry.beforeView _ member
   simp only [openingWindowMixturePlayers, Function.update_self] at supported ⊢
   exact app.scheduledMixture_after_open choices offset
-    (runtime.windowOpening leaks event candidate raw) app.replayPolicy slot past entry
+    (runtime.windowOpening leaks event candidate raw) app.silentPolicy slot past entry
       atSlot opened distinct supported suffix view
 
 theorem openingWindowPlayers_cases (runtime : EventGraphRuntime graph)
@@ -137,7 +134,7 @@ theorem openingWindowPlayers_cases (runtime : EventGraphRuntime graph)
     (supported : action ∈
       (runtime.openingWindowPlayers leaks owner event candidate raw offset selected
         who past view).support) :
-    (action = ⟨none⟩ ∨ ∃ id, action = ⟨some (.replay id)⟩) ∨
+    action = ⟨none⟩ ∨
       (who = owner ∧ action = runtime.windowOpening leaks event candidate raw ∧
         selected.isSome) := by
   by_cases active : who = owner
@@ -150,9 +147,9 @@ theorem openingWindowPlayers_cases (runtime : EventGraphRuntime graph)
       | none => simp at chosen
       | some slot => rfl
     · exact Or.inl
-        ((runtime.reactiveApplication leaks).replayPolicy_cases past view action supported)
+        ((runtime.reactiveApplication leaks).silentPolicy_cases past view action supported)
   · simp only [openingWindowPlayers, active, ↓reduceIte] at supported
-    exact Or.inl ((runtime.reactiveApplication leaks).replayPolicy_cases past view action supported)
+    exact Or.inl ((runtime.reactiveApplication leaks).silentPolicy_cases past view action supported)
 
 theorem openingWindowPlayers_application (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -167,8 +164,7 @@ theorem openingWindowPlayers_application (runtime : EventGraphRuntime graph)
     (execution.respond (runtime.reactiveApplication leaks) who action).application =
       execution.application := by
   rcases runtime.openingWindowPlayers_cases leaks owner event candidate raw offset selected
-    who _ _ action supported with (rfl | ⟨id, rfl⟩) | ⟨rfl, rfl, _⟩
-  · rfl
+    who _ _ action supported with rfl | ⟨rfl, rfl, _⟩
   · rfl
   · rfl
 
@@ -177,21 +173,20 @@ theorem openingWindowPlayers_eq (runtime : EventGraphRuntime graph)
     (owner : Player) (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
     (offset : Nat) {slots : Nat} (selected : Option (Fin slots)) (who : Player)
     (left right : (runtime.reactiveApplication leaks).Execution)
-    (leftRecall : left.InputRecall (runtime.reactiveApplication leaks))
-    (rightRecall : right.InputRecall (runtime.reactiveApplication leaks))
-    (networks : left.network = right.network)
     (counts : (left.recall who).length = (right.recall who).length) :
     runtime.openingWindowPlayers leaks owner event candidate raw offset selected who
       (left.recall who) (left.observe (runtime.reactiveApplication leaks) who) =
     runtime.openingWindowPlayers leaks owner event candidate raw offset selected who
       (right.recall who) (right.observe (runtime.reactiveApplication leaks) who) := by
-  have replay := (runtime.reactiveApplication leaks).replayPolicy_eq_of_network_eq
-    left right who leftRecall rightRecall networks
+  have silenced : (runtime.reactiveApplication leaks).silentPolicy
+      (left.recall who) (left.observe (runtime.reactiveApplication leaks) who) =
+    (runtime.reactiveApplication leaks).silentPolicy
+      (right.recall who) (right.observe (runtime.reactiveApplication leaks) who) := rfl
   by_cases active : who = owner
   · subst who
     simp only [openingWindowPlayers, ↓reduceIte,
-      ReactiveApplication.scheduledPolicy, counts, replay]
-  · simpa only [openingWindowPlayers, active, ↓reduceIte] using replay
+      ReactiveApplication.scheduledPolicy, counts, silenced]
+  · simpa only [openingWindowPlayers, active, ↓reduceIte] using silenced
 
 theorem windowOpening_packet (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -221,7 +216,7 @@ private theorem openingWindowPlayers_packet_eq (runtime : EventGraphRuntime grap
       left.application.candidates.lookup candidate = .openable raw ∧
         right.application.candidates.lookup candidate = .openable raw)
     (publicView : left.application.publicView = right.application.publicView) :
-    ∀ submission, action.transmission = some (.submit submission) →
+    ∀ submission, action.transmission = some submission →
       (runtime.reactiveApplication leaks).packet
         ((runtime.reactiveApplication leaks).submit left.application who submission) who
           (left.network.known who) submission =
@@ -230,12 +225,10 @@ private theorem openingWindowPlayers_packet_eq (runtime : EventGraphRuntime grap
           (right.network.known who) submission := by
   intro submission transmitted
   rcases runtime.openingWindowPlayers_cases leaks owner event candidate raw offset selected
-    who _ _ action supported with (rfl | ⟨id, rfl⟩) | ⟨active, rfl, chosen⟩
-  · cases transmitted
+    who _ _ action supported with rfl | ⟨active, rfl, chosen⟩
   · cases transmitted
   · subst who
-    simp only [windowOpening, Option.some.injEq,
-      ReactiveApplication.Transmission.submit.injEq] at transmitted
+    simp only [windowOpening, Option.some.injEq] at transmitted
     subst submission
     change (runtime.reactiveApplication leaks).packet left.application owner
       (left.network.known owner) (disclosureSubmission (.opening event candidate raw)) =
@@ -245,7 +238,7 @@ private theorem openingWindowPlayers_packet_eq (runtime : EventGraphRuntime grap
       windowOpening_packet runtime leaks owner event candidate raw _ _ owned (meaning chosen).2,
       publicView]
 
-/-- A scheduled opening/replay branch has the same auxiliary transcript law
+/-- A scheduled opening branch has the same auxiliary transcript law
 across hidden application states with equal public and focal observations.
 The actual pending pools are coupled, so the sampler remains unrestricted.
 The never-opening branch needs no agreement on the hidden committed value. -/
@@ -304,7 +297,7 @@ theorem openingWindow_coupling (runtime : EventGraphRuntime graph)
       have secondRecall : second.InputRecall app := rightRecall
       have nextNetworks : first.network = second.network := congrArg Prod.fst (sampled ids)
       have responses := runtime.openingWindowPlayers_eq leaks owner event candidate raw offset
-        selected who first second firstRecall secondRecall nextNetworks counts
+        selected who first second counts
       change players who (first.recall who) (first.observe app who) =
         players who (second.recall who) (second.observe app who) at responses
       change (players who (first.recall who) (first.observe app who)).bind _ =

@@ -117,7 +117,7 @@ def latestEventSubmissionCommand (runtime : EventGraphRuntime graph)
   | none => .wait
 
 /-- Any matching pending envelope ensures that the reserved selector returns
-a packet, even in the presence of unrelated or replayed traffic. -/
+a packet, even in the presence of unrelated traffic. -/
 theorem latestEventSubmission?_exists (pool : MessagePool Player (Payload graph))
     (event : graph.EventId) (owner : Player)
     (message : Message Player (Payload graph)) (pending : message ∈ pool.pending)

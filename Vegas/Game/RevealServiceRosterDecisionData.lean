@@ -21,7 +21,7 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
 /-- The active roster occurrence follows strictly fewer occurrences of the
-same player. This counts actual responses, including silence and replay. -/
+same player. This counts actual responses, including silence. -/
 theorem roster_count_before {visits : List Player} {slot : Nat} {who : Player}
     (selected : visits[slot]? = some who) :
     (visits.take slot).count who < visits.count who := by

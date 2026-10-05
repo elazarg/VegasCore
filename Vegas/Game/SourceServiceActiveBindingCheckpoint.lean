@@ -50,11 +50,11 @@ theorem scheduledBindingActive_config
     (choice : PublicationResult (L.Val payload)) (ticks : Nat)
     (final : (application setup leaks).Execution) :
     let app := application setup leaks
-    let players := Function.update (fun _ => app.replayPolicy) owner
+    let players := Function.update (fun _ => app.silentPolicy) owner
       (app.scheduledPolicy offset (some slot)
         (fun _ _ => PMF.pure
           ((runtime setup).reactiveBinding leaks owner event payload choice serial))
-        app.replayPolicy)
+        app.silentPolicy)
     final ∈ ((app.invoke players owner execution).bind
       ((runtime setup).runInteractionPlan leaks players network
         ((remaining.map ServiceInstruction.player ++ [.includeLatest event owner]) ++
@@ -101,12 +101,12 @@ theorem scheduledBindingActive_config
       rw [scheduled_tail_waiting setup leaks network owner event offset slot
         (fun _ _ => PMF.pure response) remaining
         (execution.respond app owner response) after] at includedSupport
-      let transport : Player → app.Policy := fun _ => app.replayPolicy
+      let transport : Player → app.Policy := fun _ => app.silentPolicy
       let readout := fun current : app.Execution =>
         (current.application, current.network.ledger, current.receipts, current.network.nextSerial)
       have delayed (opening : Option (Raw L)) := (runtime setup).rawBinding_delayed_inclusion
         leaks bounds transport (fun who past view action member =>
-          bounds.replay_compiled (runtime setup) leaks who past view action member)
+          bounds.silent_compiled (runtime setup) leaks who past view action member)
         network execution owner event payload outputEq codeEq node
         (soleReady_of_ready setup execution.application ready) owned ready
         published serials serial opening remaining
@@ -141,9 +141,9 @@ theorem scheduledBindingActive_config
       obtain ⟨action, chosen, later⟩ :=
         Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ includedSupport)
       let current := execution.respond app owner action
-      have preserved := (runtime setup).replay_response_preserves leaks
+      have preserved := (runtime setup).silent_response_preserves leaks
         (fun message => message.id ∈ execution.network.ledger.map Message.id) execution
-        published owner action (app.replayPolicy_cases _ _ action chosen)
+        published owner action (app.silentPolicy_cases _ _ action chosen)
       have same : current.application = execution.application := preserved.1
       have currentPublished : current.network.Satisfies fun message =>
           message.id ∈ current.network.ledger.map Message.id := by

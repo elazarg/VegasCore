@@ -71,16 +71,13 @@ theorem sound_respond (execution : app.Execution) (who : Principal) (action : ap
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact sound
-  | some transmission =>
-      cases transmission with
-      | replay id => exact prior.replay who id
-      | submit material =>
-          apply prior.submit who
-            (app.packet (app.submit execution.application who material) who
-              (execution.network.known who) material)
-          exact evidence.issued (app.submit execution.application who material) who
-            (execution.network.known who) material (fun message member =>
-              prior.known who message member)
+  | some material =>
+      apply prior.submit who
+        (app.packet (app.submit execution.application who material) who
+          (execution.network.known who) material)
+      exact evidence.issued (app.submit execution.application who material) who
+        (execution.network.known who) material (fun message member =>
+          prior.known who message member)
 
 theorem sound_includePending (execution : app.Execution) (id : MessageId Principal)
     (sound : evidence.Sound execution) : evidence.Sound (execution.includePending app id) := by

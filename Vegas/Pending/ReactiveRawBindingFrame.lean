@@ -30,7 +30,7 @@ theorem rawBinding_reserved_selection
     (scheduler : runtime.NetworkPolicy leaks) :
     let app := runtime.reactiveApplication leaks
     let response : app.Action :=
-      ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩
+      ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩
     let submitted := execution.respond app owner response
     runtime.interactionStep leaks players scheduler (.includeLatest event owner) submitted =
       submitted.environmentStep app (.include (owner, execution.network.nextSerial owner)) := by
@@ -54,9 +54,9 @@ theorem rawBinding_submit_hidden_congr
     (event : graph.EventId) (serial : Nat) (first second : Option (Raw L)) :
     let app := runtime.reactiveApplication leaks
     let before := left.respond app owner
-      ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), first⟩, .none⟩)⟩
+      ⟨some ⟨⟨.commitment event (owner, .prepared serial), first⟩, .none⟩⟩
     let after := right.respond app owner
-      ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), second⟩, .none⟩)⟩
+      ⟨some ⟨⟨.commitment event (owner, .prepared serial), second⟩, .none⟩⟩
     before.network = after.network ∧ before.receipts = after.receipts ∧
       before.application.publicView = after.application.publicView ∧
       (∀ who, who ≠ owner →
@@ -66,7 +66,7 @@ theorem rawBinding_submit_hidden_congr
   have foreign (execution : app.Execution) (who : Player) (different : who ≠ owner)
       (opening : Option (Raw L)) :
       let response : app.Action :=
-        ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩
+        ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩
       (execution.respond app owner response).application.playerView who =
         execution.application.playerView who := by
     exact (submitStep_playerView_other _ owner who different _).trans
@@ -116,17 +116,17 @@ theorem rawBinding_reserved_hidden_congr
         fun query => next.application.candidates.lookup (owner, query) = .fresh)
     (runtime.interactionStep leaks players scheduler (.includeLatest event owner)
       (left.respond app owner
-        ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), first⟩, .none⟩)⟩)).map
+        ⟨some ⟨⟨.commitment event (owner, .prepared serial), first⟩, .none⟩⟩)).map
           readout =
       (runtime.interactionStep leaks players scheduler (.includeLatest event owner)
         (right.respond app owner
-          ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), second⟩, .none⟩)⟩)).map
+          ⟨some ⟨⟨.commitment event (owner, .prepared serial), second⟩, .none⟩⟩)).map
             readout := by
   let app := runtime.reactiveApplication leaks
   let before := left.respond app owner
-    ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), first⟩, .none⟩)⟩
+    ⟨some ⟨⟨.commitment event (owner, .prepared serial), first⟩, .none⟩⟩
   let after := right.respond app owner
-    ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), second⟩, .none⟩)⟩
+    ⟨some ⟨⟨.commitment event (owner, .prepared serial), second⟩, .none⟩⟩
   let id := (owner, left.network.nextSerial owner)
   have submitted := runtime.rawBinding_submit_hidden_congr leaks left right owner network
     receipts publicEq views recall event serial first second

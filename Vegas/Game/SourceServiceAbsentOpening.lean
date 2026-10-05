@@ -78,7 +78,7 @@ theorem sourceServiceTimedPolicy_absent_transport (setup : Setup (Player := Play
     (who : Player) (response : (application setup leaks).Action)
     (supported : response ∈ (sourceServiceTimedPolicy setup leaks rosters timing profile who
       (current.recall who) (current.observe (application setup leaks) who)).support) :
-    response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩ := by
+    response = ⟨none⟩ := by
   let app := application setup leaks
   have actorOwned : (graph setup).actor? event = some actor := by
     have acts := congrArg EventGraph.EventCode.actor codeEq
@@ -97,7 +97,7 @@ theorem sourceServiceTimedPolicy_absent_transport (setup : Setup (Player := Play
     split at drawn
     · unfold sourceServiceOpportunity at drawn
       split at drawn
-      · exact app.replayPolicy_cases _ _ response drawn
+      · exact app.silentPolicy_cases _ _ response drawn
       · rw [sourceServicePolicy_at_event setup leaks profile actor current event serving acts,
           PMF.bind_map, PMF.support_bind] at drawn
         obtain ⟨action, _, drawn⟩ := Set.mem_iUnion₂.mp drawn
@@ -108,13 +108,13 @@ theorem sourceServiceTimedPolicy_absent_transport (setup : Setup (Player := Play
             ⟨candidate, value, evidence, result, associated, owned, _⟩
         · simp only [cast_cast, cast_eq] at silent
           simp only [Function.comp_apply, silent, ↓reduceIte] at drawn
-          exact app.replayPolicy_cases _ _ response drawn
+          exact app.silentPolicy_cases _ _ response drawn
         · exact (rosterOpening_none_no_opening setup leaks node _ absent candidate value result
             associated owned).elim
-    · exact app.replayPolicy_cases _ _ response drawn
+    · exact app.silentPolicy_cases _ _ response drawn
   · rw [sourceServiceTimedPolicy_idle _ _ _ _ _ who _ (current.observe app who)
       (sole.idle acts)] at supported
-    exact app.replayPolicy_cases _ _ response supported
+    exact app.silentPolicy_cases _ _ response supported
 
 variable [Fintype Player]
 
@@ -174,16 +174,15 @@ theorem absent_opening_phase_invariant {who : Player} {remaining : Nat}
           service.network rest execution).map (fun final => final.application.config) := by
     have member := sourceServiceMenu_in_compiled service.setup service.leaks service.bounds
       service.rosters actor _ _ allowed
-    have transport : response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩ := by
+    have transport : response = ⟨none⟩ := by
       rcases service.bounds.compiled_resolution_cases (runtime service.setup) service.leaks actor
         _ _ phase.event actor payload binding checks isPublication codeEq node phase.sole
-        response member with silent | replay | ⟨candidate, value, _, _, _, result, associated,
+        response member with silent | ⟨candidate, value, _, _, _, result, associated,
           candidateOwned, _, _⟩
-      · exact Or.inl silent
-      · exact app.replayPolicy_cases _ _ response replay
+      · exact silent
       · exact (rosterOpening_none_no_opening service.setup service.leaks node _ absent candidate
           value result associated candidateOwned).elim
-    have preserved := (runtime service.setup).replay_response_preserves service.leaks _
+    have preserved := (runtime service.setup).silent_response_preserves service.leaks _
       execution published actor response transport
     set after := execution.respond app actor response with afterDef
     have sameApp : after.application = execution.application := preserved.1
@@ -197,7 +196,7 @@ theorem absent_opening_phase_invariant {who : Player} {remaining : Nat}
           current.recall actor)
         (supported : action ∈ (approx.players player (current.recall player)
           (current.observe app player)).support) :
-        action = ⟨none⟩ ∨ ∃ id, action = ⟨some (.replay id)⟩ :=
+        action = ⟨none⟩ :=
       sourceServiceTimedPolicy_absent_transport service.setup service.leaks service.rosters
         approx.timing approx.profile node current
         (by rw [currentApp, sameApp]; exact phase.sole)

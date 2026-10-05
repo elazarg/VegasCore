@@ -84,14 +84,14 @@ theorem sourceServiceCompiledProfile_wait [Fintype Player]
       (initialLaw setup) (rosterPlan setup rosters).length
       (rosterScheduler setup leaks rosters network)
       (sourceServiceCompiledProfile setup leaks bounds rosters network original) who past view =
-        (application setup leaks).replayPolicy past view := by
+        (application setup leaks).silentPolicy past view := by
   classical
   let app := application setup leaks
   let menu := sourceServiceMenu setup leaks bounds rosters
   let normalized := normalizeDisclosureProfile setup.program []
     (Revelations.initial setup.context) original
   let policy := sourceServiceLastPolicy setup leaks rosters normalized who
-  have law : policy past view = app.replayPolicy past view :=
+  have law : policy past view = app.silentPolicy past view :=
     sourceServiceLastPolicy_wait setup leaks rosters normalized who past view waiting
   have optional : ¬ bindingRequired setup leaks rosters who past view := by
     rintro ⟨other, payload, otherTurn, _binding, _owned, _ready, unsent, last⟩
@@ -104,7 +104,7 @@ theorem sourceServiceCompiledProfile_wait [Fintype Player]
     rw [law] at supported
     change response ∈ sourceServiceActions setup leaks bounds rosters who past view
     rw [sourceServiceActions, ite_eq_right optional]
-    exact bounds.replay_compiled (runtime setup) leaks who past view response supported
+    exact bounds.silent_compiled (runtime setup) leaks who past view response supported
   change ((menu.embedPolicy (initialLaw setup) (rosterPlan setup rosters).length
     (rosterScheduler setup leaks rosters network) who
       (menu.restrictPolicy (initialLaw setup) (rosterPlan setup rosters).length
@@ -114,7 +114,7 @@ theorem sourceServiceCompiledProfile_wait [Fintype Player]
   change app.decodePolicy (app.encodePolicy policy) past view = _
   rw [app.decode_encodePolicy, law]
 
-/-- A public-chance phase retains every player activation and replay before
+/-- A public-chance phase retains every player activation and response before
 executing the original sample distribution and the actual deadline suffix. -/
 theorem sourceServiceLastPolicy_sample_roster
     (setup : Setup (Player := Player) (L := L))
@@ -171,7 +171,7 @@ theorem sourceServiceLastPolicy_sample_roster
             (_ : execution.recall focal ⊆ point.recall focal)
             (supported : response ∈ (players who (point.recall who)
               (point.observe app who)).support) :
-            response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩ := by
+            response = ⟨none⟩ := by
           have idle : (point.observe app who).application.publicView.ownTurn? who = none := by
             change point.application.publicView.ownTurn? who = none
             rw [same]
@@ -184,9 +184,9 @@ theorem sourceServiceLastPolicy_sample_roster
           change response ∈ (sourceServiceLastPolicy setup leaks rosters profile who
             (point.recall who) (point.observe app who)).support at supported
           rw [waiting] at supported
-          exact app.replayPolicy_cases _ _ response supported
+          exact app.silentPolicy_cases _ _ response supported
         obtain ⟨same, _, receipts, _, _, _⟩ :=
-          (runtime setup).replay_window_preserves leaks players network focal execution
+          (runtime setup).silent_window_preserves leaks players network focal execution
             transport _ packets (rosters event) current reached
         have currentAgree : refs.Agrees source.state current.application.config.store := by
           rw [same]; exact agree

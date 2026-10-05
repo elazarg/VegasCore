@@ -2,20 +2,19 @@
 
 import Vegas.Pending.ReactiveFiniteCompiler
 import Vegas.Pending.ReactiveSubmissionRecall
-import Interaction.ReactiveReplayPolicy
+import Interaction.ReactiveMessageReadout
 
 /-! # Finite retained responses for every event-code constructor
 
 This is a response restriction of the existing reactive application. Its
 binding domain is fixed before selecting an equilibrium and must cover every
-source payload value. Ordinary opportunities permit waiting, replay, and the
+source payload value. Ordinary opportunities permit waiting and the
 first source decision for an event. The service selects the required set only
 at the last unsent binding opportunity. Detecting an omitted required binding
 needs a public deadline obligation, not just an audit of emitted packets.
 
 Fresh openings are permitted once per unique event, using existing own response
-recall. Replaying any already known envelope remains available, including a pending
-canonical opening. Such a replay has the original author's signature.
+recall. Once submitted, a pending canonical opening remains available for inclusion.
 
 At a resolution, failed owner-local validation and withholding use silence.
 Their eventual publication failure requires the existing protected expiry
@@ -42,7 +41,7 @@ def serviceDecision (runtime : EventGraphRuntime graph)
     (runtime.reactiveApplication leaks).Action :=
   let response := runtime.reactiveDecision leaks who event choice view.application
   match response.transmission with
-  | some (.submit ⟨⟨.withhold _, _⟩, _⟩) => ⟨none⟩
+  | some ⟨⟨.withhold _, _⟩, _⟩ => ⟨none⟩
   | _ => (runtime.reactiveNormalization leaks).action who past view response
 
 theorem serviceDecision_binding (runtime : EventGraphRuntime graph)
@@ -138,7 +137,7 @@ def decisionActions (who : Player)
       else {⟨none⟩}
 
 open Classical in
-/-- Ordinary opportunities permit waiting and all known-envelope replays. A
+/-- Ordinary opportunities permit waiting. A
 fresh source decision is available only before its event has been submitted. -/
 def compiledActions (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -146,7 +145,7 @@ def compiledActions (who : Player)
     Finset (runtime.reactiveApplication leaks).Action :=
   ((bounds.decisionActions runtime leaks who past view).filter
     (fun response => runtime.firstSubmission leaks past response) ∪
-      (runtime.reactiveApplication leaks).replayActions past view) ∩
+      {⟨none⟩}) ∩
         (bounds.menu runtime leaks).actions who past view
 
 open Classical in
@@ -168,41 +167,19 @@ theorem silence_compiled (who : Player)
       bounds.compiledActions runtime leaks who past view := by
   classical
   apply Finset.mem_inter.mpr
-  refine ⟨Finset.mem_union_right _ (((runtime.reactiveApplication leaks).mem_replayActions_iff past
-      view _).mpr ?_), ?_⟩
-  · exact (runtime.reactiveApplication leaks).replayPolicy_support past view none
-      (Finset.mem_insert_self _ _)
-  · rw [bounds.menu_mem]
-    exact ⟨trivial, rfl⟩
+  refine ⟨Finset.mem_union_right _ (Finset.mem_singleton_self _), ?_⟩
+  rw [bounds.menu_mem]
+  exact ⟨trivial, rfl⟩
 
-/-- Every response using only already known envelopes is retained, regardless
-of whether the envelope is still pending or has already been published. -/
-theorem replay_compiled (who : Player)
+/-- Silent responses are retained at every ordinary opportunity. -/
+theorem silent_compiled (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)
     (response : (runtime.reactiveApplication leaks).Action)
-    (supported : response ∈ ((runtime.reactiveApplication leaks).replayPolicy past view).support) :
+    (supported : response ∈ ((runtime.reactiveApplication leaks).silentPolicy past view).support) :
     response ∈ bounds.compiledActions runtime leaks who past view := by
-  classical
-  apply Finset.mem_inter.mpr
-  refine ⟨Finset.mem_union_right _ (((runtime.reactiveApplication leaks).mem_replayActions_iff past
-      view _).mpr supported), ?_⟩
-  let app := runtime.reactiveApplication leaks
-  obtain ⟨selected, member, rfl⟩ := PMF.support_map .. ▸ supported
-  have selectedIn := (PMF.mem_support_uniformOfFinset_iff _ _).mp member
-  cases selected with
-  | none =>
-      rw [bounds.menu_mem]
-      exact ⟨trivial, rfl⟩
-  | some id =>
-      apply bounds.known_replay_available runtime leaks who past view id
-      have found : id ∈ (app.outputs past ++ view.messages.leaked ++ view.messages.ledger).map
-          Message.id := by
-        simpa only [ReactiveApplication.replayOptions, Finset.mem_insert, Option.some_ne_none,
-          false_or, Finset.mem_image, Finset.mem_coe, List.mem_toFinset, Option.some.injEq,
-          exists_eq_right] using selectedIn
-      obtain ⟨message, member, same⟩ := List.mem_map.mp found
-      exact ⟨message, member, same⟩
+  cases (runtime.reactiveApplication leaks).silentPolicy_cases past view response supported
+  exact bounds.silence_compiled runtime leaks who past view
 
 theorem compiledActions_nonempty (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -248,7 +225,7 @@ theorem requiredBindingActions_subset_compiled (who : Player)
   · cases Finset.mem_singleton.mp member
     exact bounds.silence_compiled runtime leaks who past view
 
-/-- Neither waiting nor replay resets the fresh-submission discipline. -/
+/-- Waiting preserves the fresh-submission discipline. -/
 theorem compiledActions_firstSubmission (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)
@@ -256,11 +233,10 @@ theorem compiledActions_firstSubmission (who : Player)
     (member : response ∈ bounds.compiledActions runtime leaks who past view) :
     runtime.firstSubmission leaks past response = true := by
   classical
-  rcases Finset.mem_union.mp (Finset.mem_inter.mp member).1 with decision | replayed
+  rcases Finset.mem_union.mp (Finset.mem_inter.mp member).1 with decision | silenced
   · exact (Finset.mem_filter.mp decision).2
-  · have supported := ((runtime.reactiveApplication leaks).mem_replayActions_iff _ _ _).mp replayed
-    rcases (runtime.reactiveApplication leaks).replayPolicy_cases past view response
-        supported with rfl | ⟨id, rfl⟩ <;> rfl
+  · cases Finset.mem_singleton.mp silenced
+    rfl
 
 theorem decision_compiled (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -380,7 +356,7 @@ theorem canonical_binding_response_cases (who : Player)
     (serial : Nat) (fresh : reactiveFreshSlot view.application = some serial)
     (capacity : serial < bounds.candidateCount)
     (opening : Option (Raw L)) (bounded : bounds.AllowsOpening opening) :
-    (⟨some (.submit ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩)⟩ :
+    (⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩ :
       (runtime.reactiveApplication leaks).Action) ∈
         bounds.requiredBindingActions runtime leaks who past view ∨
       opening.bind (fun raw => raw.as? payload) = none := by
@@ -403,8 +379,8 @@ theorem canonical_binding_response_cases (who : Player)
           exact Or.inl represented
 
 /-- At an actual covered binding checkpoint the totalization fallback is
-unreachable. Every retained action is a typed canonical binding; public replay
-and silence cannot replace this required source decision. -/
+unreachable. Every retained action is a typed canonical binding; silence
+cannot replace this required source decision. -/
 theorem required_binding_cases (covered : bounds.CoversBindingValues)
     (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -476,7 +452,7 @@ theorem ordinary_binding_cases
     (serial : Nat) (fresh : reactiveFreshSlot view.application = some serial)
     (response : (runtime.reactiveApplication leaks).Action)
     (member : response ∈ bounds.compiledActions runtime leaks who past view) :
-    response ∈ ((runtime.reactiveApplication leaks).replayPolicy past view).support ∨
+    response ∈ ((runtime.reactiveApplication leaks).silentPolicy past view).support ∨
       ∃ value ∈ bounds.typedValues payload,
         runtime.eventRecorded leaks past event = false ∧
         response = (runtime.reactiveNormalization leaks).action who past view
@@ -495,7 +471,9 @@ theorem ordinary_binding_cases
     simp only [firstSubmission, submittedEvent?, reactiveBinding, Payload.event?,
       Bool.not_eq_true_eq_eq_false] at first
     exact Or.inr ⟨value, admitted, first, shape⟩
-  · exact Or.inl (((runtime.reactiveApplication leaks).mem_replayActions_iff _ _ _).mp transport)
+  · exact Or.inl (by
+      apply (runtime.reactiveApplication leaks).mem_silentPolicy_support.mpr
+      exact Finset.mem_singleton.mp transport)
 
 /-- A pending first binding does not permit another fresh binding during the
 same phase, even though reserved inclusion has not settled the event yet. -/
@@ -514,7 +492,7 @@ theorem ordinary_binding_recorded
     (recorded : runtime.eventRecorded leaks past event = true)
     (response : (runtime.reactiveApplication leaks).Action)
     (member : response ∈ bounds.compiledActions runtime leaks who past view) :
-    response ∈ ((runtime.reactiveApplication leaks).replayPolicy past view).support := by
+    response ∈ ((runtime.reactiveApplication leaks).silentPolicy past view).support := by
   classical
   have turnSome := view.application.publicView.ownTurn?_of_ownTurn who event turn
   cases slot : reactiveFreshSlot view.application with
@@ -535,12 +513,11 @@ theorem ordinary_binding_recorded
           simp only [serviceDecision, reactiveDecision, node, slot, Option.map_none]
           rfl
         rw [← same, silent]
-        exact (runtime.reactiveApplication leaks).replayPolicy_support past view none
-          (Finset.mem_insert_self _ _)
-      · exact ((runtime.reactiveApplication leaks).mem_replayActions_iff _ _ _).mp transport
+        exact (runtime.reactiveApplication leaks).silentPolicy_support past view
+      · exact (runtime.reactiveApplication leaks).mem_silentPolicy_support.mpr
+          (Finset.mem_singleton.mp transport)
 
-/-- A player without a ready event of its own retains transport responses. It
-is not silently deprived of known pending-envelope retransmission. -/
+/-- A player without a ready event of its own responds silently. -/
 theorem compiled_foreign_transport
     (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -548,15 +525,15 @@ theorem compiled_foreign_transport
     (idle : view.application.publicView.ownTurn? who = none)
     (response : (runtime.reactiveApplication leaks).Action)
     (member : response ∈ bounds.compiledActions runtime leaks who past view) :
-    response ∈ ((runtime.reactiveApplication leaks).replayPolicy past view).support := by
+    response ∈ ((runtime.reactiveApplication leaks).silentPolicy past view).support := by
   classical
   rcases Finset.mem_union.mp (Finset.mem_inter.mp member).1 with decision | transport
   · have chosen := (Finset.mem_filter.mp decision).1
     simp only [decisionActions, idle, Finset.mem_singleton] at chosen
     cases chosen
-    exact (runtime.reactiveApplication leaks).replayPolicy_support past view none
-      (Finset.mem_insert_self _ _)
-  · exact ((runtime.reactiveApplication leaks).mem_replayActions_iff _ _ _).mp transport
+    exact (runtime.reactiveApplication leaks).silentPolicy_support past view
+  · exact (runtime.reactiveApplication leaks).mem_silentPolicy_support.mpr
+          (Finset.mem_singleton.mp transport)
 
 end MessageBounds
 

@@ -18,8 +18,8 @@ open Interaction EventGraph
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-/-- The next canonical serial is computable from the public ledger. Replaying
-an envelope does not allocate a new serial or add another ledger entry. -/
+/-- The next canonical serial is computable from the public ledger. Each
+published envelope contributes one entry attributed to its author. -/
 theorem publicationSerial_eq_ledger_count (accepted : AcceptedHandles graph)
     (view : graph.PublicObservation) (who : Player) :
     publicationSerial accepted view who =

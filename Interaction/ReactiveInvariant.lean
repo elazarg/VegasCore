@@ -13,7 +13,7 @@ open GameTheory.Math.Probability
 variable {Principal : Type} (app : ReactiveApplication Principal)
 
 /-- Local application obligations suffice for every player and scheduler.
-Passive observation and replay do not change application state. -/
+Passive observation and silence do not change application state. -/
 structure Invariant (predicate : app.State → Prop) : Prop where
   submit : ∀ state who material, predicate state → predicate (app.submit state who material)
   handle : ∀ state message next, predicate state → app.handle state message = some next →
@@ -30,10 +30,7 @@ theorem Invariant.respond (invariant : app.Invariant predicate)
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact valid
-  | some transmission =>
-      cases transmission with
-      | replay id => exact valid
-      | submit material => exact invariant.submit execution.application who material valid
+  | some material => exact invariant.submit execution.application who material valid
 
 theorem Invariant.includePending (invariant : app.Invariant predicate)
     (execution : app.Execution) (id : MessageId Principal)

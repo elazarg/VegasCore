@@ -6,7 +6,7 @@ import Vegas.Pending.ReactiveServiceRecall
 
 /-! # Legal binding deferral reaches the next actual owner visit
 
-The selected silence or known replay uses the same private repair memory update
+The selected silence uses the same private repair memory update
 as a raw response. Arbitrary unchanged opponents and passive observations then
 lead to a real retained active history. The event stays unsubmitted, while no
 pending observation or private recall is discarded.
@@ -74,9 +74,9 @@ theorem binding_waiting_opportunity
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         (some ⟨remaining + 1 + visits.length, some owner, repaired⟩))
     (leftRecall : original.InputRecall (application setup leaks))
-    (rightRecall : repaired.InputRecall (application setup leaks))
+    (_rightRecall : repaired.InputRecall (application setup leaks))
     (response : (application setup leaks).Action)
-    (transport : response ∈ ((application setup leaks).replayPolicy (original.recall owner)
+    (transport : response ∈ ((application setup leaks).silentPolicy (original.recall owner)
       (original.observe (application setup leaks) owner)).support)
     (optional : ¬ bindingRequired setup leaks rosters owner (repaired.recall owner)
       (repaired.observe (application setup leaks) owner))
@@ -118,19 +118,17 @@ theorem binding_waiting_opportunity
   classical
   intro app players strategy remembered
   let menu := sourceServiceMenu setup leaks bounds rosters
-  have nonSubmit : ∀ submission, response.transmission ≠ some (.submit submission) := by
+  have nonSubmit : ∀ submission, response.transmission ≠ some submission := by
     intro submission
-    rcases app.replayPolicy_cases _ _ response transport with rfl | ⟨id, rfl⟩ <;> simp
+    rcases app.silentPolicy_cases _ _ response transport with rfl; simp
   have unchanged : (runtime setup).submittedEvent? leaks response = none := by
-    rcases app.replayPolicy_cases _ _ response transport with rfl | ⟨id, rfl⟩ <;> rfl
+    rcases app.silentPolicy_cases _ _ response transport with rfl; rfl
   have legal : response ∈ menu.actions owner (repaired.recall owner)
       (repaired.observe app owner) := by
     change response ∈ sourceServiceActions setup leaks bounds rosters owner _ _
     rw [sourceServiceActions, ite_eq_right optional]
-    apply bounds.replay_compiled
-    rw [← app.replayPolicy_eq_of_network_eq original repaired owner leftRecall rightRecall
-      frame.network]
-    exact transport
+    apply bounds.silent_compiled
+    exact app.mem_silentPolicy_support.mpr (app.silentPolicy_cases _ _ response transport)
   obtain ⟨responded⟩ := menu.trace_respond (initialLaw setup) (rosterPlan setup rosters).length
     (rosterScheduler setup leaks rosters network) (remaining + 1 + visits.length) repaired owner
       response trace legal

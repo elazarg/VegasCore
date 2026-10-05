@@ -4,7 +4,7 @@ import Vegas.Pending.ReactiveBindingSubmissionFrame
 
 /-! # Mixed binding and waiting before reserved inclusion
 
-The current owner may wait or replay at an early visit, or fix a fresh opaque
+The current owner may wait at an early visit, or fix a fresh opaque
 commitment. These alternatives use the existing private implementation and
 actual response law. Their coupling keeps the entire joint frame before any
 inclusion. The public classification of excluded responses remains separate.
@@ -38,7 +38,7 @@ theorem binding_submission_pending
     let app := runtime.reactiveApplication leaks
     let view := repaired.observe app owner
     let response : app.Action :=
-      ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩
+      ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩
     let changed := memory.repairResponse runtime leaks owner view response
     let left := original.respond app owner response
     let right := repaired.respond app owner changed.1
@@ -53,7 +53,7 @@ theorem binding_submission_pending
   let app := runtime.reactiveApplication leaks
   let view := repaired.observe app owner
   let response : app.Action :=
-    ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩
+    ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩
   let changed := memory.repairResponse runtime leaks owner view response
   let left := original.respond app owner response
   let right := repaired.respond app owner changed.1
@@ -116,11 +116,11 @@ theorem binding_window_response_coupling
     (ready : original.application.config.cut.Ready event)
     (clean : ∀ response ∈ (players owner (original.recall owner)
       (original.observe (runtime.reactiveApplication leaks) owner)).support,
-      (∀ material, response.transmission ≠ some (.submit material)) ∨
+      (∀ material, response.transmission ≠ some material) ∨
       ∃ serial opening,
         original.application.candidates.lookup (owner, .prepared serial) = .fresh ∧
         response =
-          ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩) :
+          ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩) :
     let app := runtime.reactiveApplication leaks
     let strategy := implementation runtime leaks owner reference (players owner)
     ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory runtime leaks),
@@ -165,10 +165,7 @@ theorem binding_window_response_coupling
           rcases response with ⟨transmission⟩
           cases transmission with
           | none => rfl
-          | some transmission =>
-              cases transmission with
-              | replay id => rfl
-              | submit material => exact (transport material rfl).elim
+          | some material => exact (transport material rfl).elim
         dsimp only [pair]
         rw [unchanged]
         exact frame.transport_response response transport

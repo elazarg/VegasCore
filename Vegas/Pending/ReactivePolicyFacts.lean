@@ -38,7 +38,7 @@ theorem reactiveDecision_transmission (runtime : EventGraphRuntime graph)
     (event : graph.EventId) (action : graph.Action event) (view : ReactivePlayerView graph) :
     (runtime.reactiveDecision leaks who event action view).transmission = none ∨
       ∃ material, (runtime.reactiveDecision leaks who event action view).transmission =
-        some (.submit material) ∧ material.call.packet.event? graph = some event := by
+        some material ∧ material.call.packet.event? graph = some event := by
   unfold reactiveDecision
   split
   · exact Or.inl rfl
@@ -49,7 +49,7 @@ theorem reactiveDecision_transmission (runtime : EventGraphRuntime graph)
     exact Or.inr ⟨_, rfl,
       reactiveResolutionPacket_event who event payload binding checks outputEq action view⟩
 
-/-- No replay and no second submission for an event, regardless of how often
+/-- No second submission for an event, regardless of how often
 the scheduler activates the player. -/
 theorem prescribedReactivePolicy_transmission (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -61,7 +61,7 @@ theorem prescribedReactivePolicy_transmission (runtime : EventGraphRuntime graph
     (supported : action ∈
       (runtime.prescribedReactivePolicy leaks who policy history view).support) :
     action.transmission = none ∨ ∃ event material,
-      action.transmission = some (.submit material) ∧ material.call.packet.event? graph = some
+      action.transmission = some material ∧ material.call.packet.event? graph = some
         event ∧
         runtime.reactiveAlreadySubmitted leaks history event = false := by
   rw [prescribedReactivePolicy_apply] at supported

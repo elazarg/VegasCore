@@ -19,7 +19,7 @@ import GameTheoryExtensions.Math.Probability.Uniform
 
 The proof law retains both the effective source configuration and its original
 private intentions. Only the former is decoded from the native execution.
-Binding timing, passive sampling, replay, and inclusion use the existing
+Binding timing, passive sampling, silence, and inclusion use the existing
 runtime evaluator. Their conditional likelihood is derived from those actual
 operations, rather than supplied as an independent channel hypothesis.
 -/
@@ -152,9 +152,9 @@ theorem source_maintenance_factorization
   exact ⟨nextNoise, by simpa only [PMF.pure_bind, PMF.pure_map,
     PMF.bind_pure, PMF.map_id, PMF.map_comp, Function.comp_def] using law⟩
 
-/-- An actual replay roster preserves the same source-conditioned traffic
+/-- An actual silent roster preserves the same source-conditioned traffic
 law while retaining all passive samples and all players' previous responses. -/
-theorem source_replay_factorization
+theorem source_silent_factorization
     {Seed : Type*} {Γ : SourceCtx Player L}
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -170,7 +170,7 @@ theorem source_replay_factorization
     ∃ nextNoise : DecisionView focal Γ → PMF _,
       (prior.bind fun seed =>
         ((runtime setup).runInteractionPlan leaks
-          (fun _ => (application setup leaks).replayPolicy) network
+          (fun _ => (application setup leaks).silentPolicy) network
           (roster.map ServiceInstruction.player) (execution seed)).map fun final =>
             (source seed, (runtime setup).bindingTraffic leaks focal final)) =
       (prior.map source).bind fun config =>
@@ -180,12 +180,12 @@ theorem source_replay_factorization
     (fun config => config.view focal) noise factor (fun _ => PMF.pure Unit.unit)
     (fun config _ => config) (fun config => config.view focal)
     (fun seed _ => ((runtime setup).runInteractionPlan leaks
-      (fun _ => (application setup leaks).replayPolicy) network
+      (fun _ => (application setup leaks).silentPolicy) network
       (roster.map ServiceInstruction.player) (execution seed)).map
         ((runtime setup).bindingTraffic leaks focal))
     (fun _ _ _ _ _ _ _ _ same => same)
     (fun left leftSupport _ _ right rightSupport _ _ _ same =>
-      (runtime setup).replay_window_focal_law leaks network roster focal
+      (runtime setup).silent_window_focal_law leaks network roster focal
         (execution left) (execution right) (recalled left leftSupport)
         (recalled right rightSupport) same)
   exact ⟨nextNoise, by simpa only [PMF.pure_bind, PMF.pure_map,
@@ -296,8 +296,8 @@ def bindingPhaseTranscript
   let serial := execution.application.publicView.bindingCount owner
   let family := fun selected => app.scheduledPolicy offset selected
     (fun _ _ => PMF.pure
-      ((runtime setup).reactiveBinding leaks owner event payload result serial)) app.replayPolicy
-  let players := Function.update (fun _ => app.replayPolicy) owner
+      ((runtime setup).reactiveBinding leaks owner event payload result serial)) app.silentPolicy
+  let players := Function.update (fun _ => app.silentPolicy) owner
     (app.policyMixture timing family).policy
   ((runtime setup).runInteractionPlan leaks players network
     ((roster.map ServiceInstruction.player ++ [.includeLatest event owner]) ++
@@ -369,22 +369,22 @@ theorem binding_successor_memory_factorization
     conv_rhs => rw [runInteractionPlan_append, PMF.map_bind]
     apply bind_eq_of_map_eq _ _ _ _ (by simpa only [serialEq] using coupled)
     intro before _ after _ equal
-    let replay := fun _ : Player => (application setup leaks).replayPolicy
+    let silentPlayers := fun _ : Player => (application setup leaks).silentPolicy
     calc
-      _ = ((runtime setup).runInteractionPlan leaks replay network
+      _ = ((runtime setup).runInteractionPlan leaks silentPlayers network
           (List.replicate ticks .tick ++ [.expire event]) before).map
             ((runtime setup).bindingTraffic leaks focal) := by
         apply congrArg (PMF.map ((runtime setup).bindingTraffic leaks focal))
-        exact servicePlan_players_eq setup leaks _ replay network _ (by simp)
+        exact servicePlan_players_eq setup leaks _ silentPlayers network _ (by simp)
           (by intro who; simp) before
-      _ = ((runtime setup).runInteractionPlan leaks replay network
+      _ = ((runtime setup).runInteractionPlan leaks silentPlayers network
           (List.replicate ticks .tick ++ [.expire event]) after).map
             ((runtime setup).bindingTraffic leaks focal) :=
-        (runtime setup).settlement_focal_law leaks replay network event ticks before after
+        (runtime setup).settlement_focal_law leaks silentPlayers network event ticks before after
           focal equal
       _ = _ := by
         apply congrArg (PMF.map ((runtime setup).bindingTraffic leaks focal))
-        exact servicePlan_players_eq setup leaks replay _ network _ (by simp)
+        exact servicePlan_players_eq setup leaks silentPlayers _ network _ (by simp)
           (by intro who; simp) after
 
 /-- Restoring the owner's original intentions commutes with the real binding

@@ -448,7 +448,7 @@ theorem applicationStep_completed_subset (runtime : EventGraphRuntime graph)
       simp only [MessageApplication.step, PMF.mem_support_pure_iff _ _] at member
       subst next
       exact privateStep_completed_subset state.application who command
-  | submit who payload | replay who id | deliver who id =>
+  | submit who payload | deliver who id =>
       simp only [MessageApplication.step, PMF.mem_support_pure_iff _ _] at member
       subst next
       exact Finset.Subset.rfl
@@ -469,7 +469,7 @@ theorem applicationStep_completed_subset (runtime : EventGraphRuntime graph)
 /-! ## A call takes effect at most once
 
 The contract keeps no record of rejected identifiers: a rejected call changes
-no state, as a reverted transaction does. A chain may include a copy of an
+no state, as a reverted transaction does. A chain may include an
 already accepted call again, and the contract rejects it, because acceptance
 completes the addressed event and every handler branch requires that event to
 be ready. -/
@@ -550,7 +550,7 @@ theorem applicationRun_completed_subset (runtime : EventGraphRuntime graph)
     state next actions Finset.Subset.rfl member
 
 /-- A call accepted once is rejected at every state reached afterwards by any
-finite native message path, including further inclusions of its copies. -/
+finite native message path, including further inclusions of it. -/
 theorem handle_eq_none_after_accepted_run (runtime : EventGraphRuntime graph)
     (state : State graph) (message : Message Player (Payload graph))
     (start final : runtime.application.State) (actions : List runtime.application.Action)

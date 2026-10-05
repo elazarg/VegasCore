@@ -3,8 +3,8 @@
 import Vegas.Pending.ReactiveBindingObservation
 import Vegas.Pending.ReactiveContinuationObservation
 import Vegas.Pending.ReactivePolicyMixture
-import Vegas.Pending.ReactiveReplaySettlement
-import Interaction.ReactiveReplayPolicy
+import Vegas.Pending.ReactiveSilentSettlement
+import Interaction.ReactiveMessageReadout
 import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Actual communication likelihood during an opaque binding window
@@ -12,7 +12,7 @@ import GameTheoryExtensions.Math.Probability.Support
 The auxiliary projection retains the complete network, service recall, and
 focal private input. Other players' private submission parameters are absent
 from this proof projection. They remain in actual runtime recall. A shared
-passive sample couples arbitrary replay multiplicities without an assumption
+passive sample couples the silent response windows without an assumption
 on the observation rule.
 -/
 
@@ -25,7 +25,7 @@ open Interaction GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-/-- Existing native fields sufficient for the replay window's joint law.
+/-- Existing native fields sufficient for the silent window's joint law.
 This is a proof readout; it is not a player's observation or extra state. -/
 def bindingTraffic (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -96,18 +96,18 @@ theorem bindingTraffic_include (runtime : EventGraphRuntime graph)
               (Prod.ext handled (congrArg PlayerView.publicView handled)))))
 
 /-- Equality of the actual auxiliary start is preserved by a finite roster
-whose physical responses are the fully supported known-replay/silence law. -/
-theorem replay_window_focal_law (runtime : EventGraphRuntime graph)
+whose physical responses are the silent response law. -/
+theorem silent_window_focal_law (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (network : runtime.NetworkPolicy leaks) (roster : List Player) (focal : Player)
     (left right : (runtime.reactiveApplication leaks).Execution)
     (leftRecall : left.InputRecall (runtime.reactiveApplication leaks))
     (rightRecall : right.InputRecall (runtime.reactiveApplication leaks))
     (same : runtime.bindingTraffic leaks focal left = runtime.bindingTraffic leaks focal right) :
-    ((runtime.runInteractionPlan leaks (fun _ => (runtime.reactiveApplication leaks).replayPolicy)
+    ((runtime.runInteractionPlan leaks (fun _ => (runtime.reactiveApplication leaks).silentPolicy)
       network (roster.map ServiceInstruction.player) left).map
         (runtime.bindingTraffic leaks focal)) =
-    ((runtime.runInteractionPlan leaks (fun _ => (runtime.reactiveApplication leaks).replayPolicy)
+    ((runtime.runInteractionPlan leaks (fun _ => (runtime.reactiveApplication leaks).silentPolicy)
       network (roster.map ServiceInstruction.player) right).map
         (runtime.bindingTraffic leaks focal)) := by
   let app := runtime.reactiveApplication leaks
@@ -148,23 +148,25 @@ theorem replay_window_focal_law (runtime : EventGraphRuntime graph)
         change left.environmentRecall ++ [⟨left.observeEnvironment app, .activate who⟩] = _
         rw [environments, environmentView]
         rfl
-      have replay := app.replayPolicy_eq_of_network_eq first second who firstRecall secondRecall
-        nextNetworks
-      change (app.replayPolicy (first.recall who) (first.observe app who)).bind _ =
-        (app.replayPolicy (second.recall who) (second.observe app who)).bind _
-      rw [replay]
+      have silenced :
+          app.silentPolicy (first.recall who) (first.observe app who) =
+            app.silentPolicy (second.recall who) (second.observe app who) := rfl
+      change (app.silentPolicy (first.recall who) (first.observe app who)).bind _ =
+        (app.silentPolicy (second.recall who) (second.observe app who)).bind _
+      rw [silenced]
       apply bind_congr_on_support _
       intro response supported
-      have transport := app.replayPolicy_cases _ _ response supported
+      have transport := app.silentPolicy_cases _ _ response supported
       have firstState : (first.respond app who response).application = first.application := by
-        rcases transport with rfl | ⟨id, rfl⟩ <;> rfl
+        rcases transport with rfl
+        rfl
       have secondState : (second.respond app who response).application = second.application := by
-        rcases transport with rfl | ⟨id, rfl⟩ <;> rfl
+        rcases transport with rfl
+        rfl
       have afterNetworks : (first.respond app who response).network =
           (second.respond app who response).network := by
-        rcases transport with rfl | ⟨id, rfl⟩
-        · exact nextNetworks
-        · simp only [ReactiveApplication.Execution.respond, nextNetworks]
+        rcases transport with rfl
+        exact nextNetworks
       have observed : first.observe app focal = second.observe app focal := by
         have projected := congrArg (fun view : PlayerView graph =>
           (⟨view.who, view.publicView, view.observation, view.candidates⟩ :
@@ -176,7 +178,8 @@ theorem replay_window_focal_law (runtime : EventGraphRuntime graph)
       have recalledAfter := app.respond_focal_recall_eq first second who focal response
         nextNetworks observed recalled (by
           intro submission transmitted
-          rcases transport with rfl | ⟨id, rfl⟩ <;> cases transmitted)
+          rcases transport with rfl
+          cases transmitted)
       apply ih (first.respond app who response) (second.respond app who response)
         (app.respond_inputRecall first who response firstRecall)
         (app.respond_inputRecall second who response secondRecall)
@@ -190,9 +193,9 @@ theorem replay_window_focal_law (runtime : EventGraphRuntime graph)
       exact Prod.ext views publics
 
 /-- Distinct private meanings of the same canonical submitted handle produce
-the same foreign communication law throughout subsequent replay visits.
+the same foreign communication law throughout subsequent silent visits.
 For the owner, equality of its observed private result suffices. -/
-theorem binding_replay_window_coupling (runtime : EventGraphRuntime graph)
+theorem binding_silent_window_coupling (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (network : runtime.NetworkPolicy leaks) (roster : List Player)
     (left right : (runtime.reactiveApplication leaks).Execution)
@@ -204,17 +207,17 @@ theorem binding_replay_window_coupling (runtime : EventGraphRuntime graph)
     (same : runtime.bindingTraffic leaks focal left = runtime.bindingTraffic leaks focal right) :
     let app := runtime.reactiveApplication leaks
     PMF.map (runtime.bindingTraffic leaks focal)
-      (runtime.runInteractionPlan leaks (fun _ => app.replayPolicy) network
+      (runtime.runInteractionPlan leaks (fun _ => app.silentPolicy) network
       (roster.map ServiceInstruction.player)
         (left.respond app owner
           (runtime.reactiveBinding leaks owner event payload first serial))) =
     PMF.map (runtime.bindingTraffic leaks focal)
-      (runtime.runInteractionPlan leaks (fun _ => app.replayPolicy) network
+      (runtime.runInteractionPlan leaks (fun _ => app.silentPolicy) network
       (roster.map ServiceInstruction.player)
         (right.respond app owner
           (runtime.reactiveBinding leaks owner event payload second serial))) := by
   intro app
-  apply runtime.replay_window_focal_law leaks network roster focal _ _
+  apply runtime.silent_window_focal_law leaks network roster focal _ _
     (app.respond_inputRecall left owner _ leftRecall)
     (app.respond_inputRecall right owner _ rightRecall)
   have networks : left.network = right.network := congrArg Prod.fst same
@@ -299,7 +302,7 @@ private theorem binding_submitted_selection (runtime : EventGraphRuntime graph)
     (serials : execution.network.SerialsBeforeNext)
     (current : (runtime.reactiveApplication leaks).Execution)
     (supported : current ∈ (runtime.runInteractionPlan leaks
-      (fun _ => (runtime.reactiveApplication leaks).replayPolicy) network
+      (fun _ => (runtime.reactiveApplication leaks).silentPolicy) network
       (roster.map ServiceInstruction.player) (execution.respond (runtime.reactiveApplication leaks)
         owner (runtime.reactiveBinding leaks owner event payload result serial))).support) :
     runtime.reactiveLatest leaks event owner
@@ -334,14 +337,14 @@ private theorem binding_submitted_selection (runtime : EventGraphRuntime graph)
   have unpublished : message.id ∉ submitted.network.ledger.map Message.id := by
     rw [ledger]
     exact serials.next_unpublished owner
-  exact runtime.replay_window_selection leaks (fun _ => app.replayPolicy) network owner submitted
-    (fun _ _ _ _ _ chosen => app.replayPolicy_cases _ _ _ chosen) event message rfl rfl
+  exact runtime.silent_window_selection leaks (fun _ => app.silentPolicy) network owner submitted
+    (fun _ _ _ _ _ chosen => app.silentPolicy_cases _ _ _ chosen) event message rfl rfl
       packets pending unpublished roster current supported
 
 /-- The likelihood equality extends through the real protected final inclusion.
 All pending copies, sampled leaks and service recall are retained. The owner
 case requires the same private binding result. -/
-theorem binding_replay_inclusion_coupling (runtime : EventGraphRuntime graph)
+theorem binding_silent_inclusion_coupling (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (network : runtime.NetworkPolicy leaks) (roster : List Player)
     (left right : (runtime.reactiveApplication leaks).Execution)
@@ -357,15 +360,15 @@ theorem binding_replay_inclusion_coupling (runtime : EventGraphRuntime graph)
     let app := runtime.reactiveApplication leaks
     let phase := roster.map ServiceInstruction.player ++ [.includeLatest event owner]
     PMF.map (runtime.bindingTraffic leaks focal)
-      (runtime.runInteractionPlan leaks (fun _ => app.replayPolicy) network phase
+      (runtime.runInteractionPlan leaks (fun _ => app.silentPolicy) network phase
         (left.respond app owner (runtime.reactiveBinding leaks owner event payload first serial))) =
     PMF.map (runtime.bindingTraffic leaks focal)
-      (runtime.runInteractionPlan leaks (fun _ => app.replayPolicy) network phase
+      (runtime.runInteractionPlan leaks (fun _ => app.silentPolicy) network phase
         (right.respond app owner
           (runtime.reactiveBinding leaks owner event payload second serial))) :=
     by
   intro app phase
-  have prefixLaw := runtime.binding_replay_window_coupling leaks network roster left right
+  have prefixLaw := runtime.binding_silent_window_coupling leaks network roster left right
     leftRecall rightRecall owner focal event payload first second visible serial same
   dsimp only [phase]
   rw [runInteractionPlan_append, runInteractionPlan_append,

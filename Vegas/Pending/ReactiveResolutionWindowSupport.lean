@@ -1,15 +1,15 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveCompiledResolution
-import Vegas.Pending.ReactiveReplaySettlement
+import Vegas.Pending.ReactiveSilentSettlement
 import Vegas.Pending.ReactiveRevealBlock
 import Vegas.Pending.ReactiveServiceRecall
 
 /-! # Protected inclusion for every retained disclosure policy
 
 A retained resolution window contains at most one fresh opening. Later visits
-still permit passive observation and replay, including replay of that pending
-opening. Protected inclusion restores the published-network boundary for every
+still permit passive observation while the opening remains pending. Protected inclusion
+restores the published-network boundary for every
 retained policy, whether the player opens early or withholds throughout.
 -/
 
@@ -40,12 +40,11 @@ theorem MessageBounds.compiled_resolution_recorded_transport (bounds : MessageBo
     (response : (runtime.reactiveApplication leaks).Action)
     (member : response ∈ bounds.compiledActions runtime leaks who (execution.recall who)
       (execution.observe (runtime.reactiveApplication leaks) who)) :
-    response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩ := by
+    response = ⟨none⟩ := by
   rcases bounds.compiled_resolution_cases runtime leaks who _ _ event owner payload binding checks
-    outputEq codeEq node sole response member with rfl | replay |
+    outputEq codeEq node sole response member with rfl |
       ⟨candidate, value, evidence, acting, _, _, _, _, first, shape⟩
-  · exact Or.inl rfl
-  · exact (runtime.reactiveApplication leaks).replayPolicy_cases _ _ response replay
+  · rfl
   · have owned : graph.actor? event = some owner := by
       have actor := congrArg EventCode.actor codeEq
       rw [EventCode.actor_cast outputEq (graph.nodes event)] at actor
@@ -80,7 +79,7 @@ theorem compiled_resolution_tail_transport (bounds : MessageBounds graph)
     (who : Player) (response : (runtime.reactiveApplication leaks).Action)
     (supported : response ∈ (players who (current.recall who)
       (current.observe (runtime.reactiveApplication leaks) who)).support) :
-    response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩ := by
+    response = ⟨none⟩ := by
   obtain ⟨entry, member, submitted⟩ := (runtime.eventRecorded_iff leaks _ event).mp recorded
   exact bounds.compiled_resolution_recorded_transport runtime leaks current who owner event payload
     binding checks outputEq codeEq node (by rw [same]; exact sole)
@@ -133,21 +132,19 @@ theorem MessageBounds.compiled_resolution_inclusion_published (bounds : MessageB
           message.id ∈ activated.network.ledger.map Message.id := published.learn who sample
       have activeSerials : activated.network.SerialsBeforeNext := serials.learn who sample
       have allowed := lawful who _ _ response chosen
-      have transportCase (transport : response = ⟨none⟩ ∨
-          ∃ id, response = ⟨some (.replay id)⟩) :
+      have transportCase (transport : response = ⟨none⟩) :
           (final.network.Satisfies fun message =>
             message.id ∈ final.network.ledger.map Message.id) := by
-        have preserved := runtime.replay_response_preserves leaks _ activated
+        have preserved := runtime.silent_response_preserves leaks _ activated
           (published.learn who sample) who response transport
         exact ih (activated.respond app who response) (by rw [preserved.1]; exact sole)
           (by rw [preserved.2.1]; exact preserved.2.2.2.2.1)
           ((app.serialsBeforeNextInvariant (fun _ _ => PMF.pure .wait)).respond
             activated who response (serials.learn who sample)) tail
       rcases bounds.compiled_resolution_cases runtime leaks who _ _ event owner payload binding
-        checks outputEq codeEq node sole response allowed with silent | replay |
+        checks outputEq codeEq node sole response allowed with silent |
           ⟨candidate, value, evidence, acting, _, _, _, candidateOwned, _, shape⟩
-      · exact transportCase (Or.inl silent)
-      · exact transportCase (app.replayPolicy_cases _ _ response replay)
+      · exact transportCase silent
       · have owned : graph.actor? event = some owner := by
           have actor := congrArg EventCode.actor codeEq
           rw [EventCode.actor_cast outputEq (graph.nodes event)] at actor
@@ -158,10 +155,10 @@ theorem MessageBounds.compiled_resolution_inclusion_published (bounds : MessageB
         subst response
         let submission : WitnessedSubmission graph :=
           ⟨⟨.opening event candidate ⟨payload, value⟩, none⟩, evidence⟩
-        let submitted := activated.respond app owner ⟨some (.submit submission)⟩
+        let submitted := activated.respond app owner ⟨some submission⟩
         have recorded : runtime.eventRecorded leaks (submitted.recall owner) event = true :=
           runtime.eventRecorded_respond leaks activated owner _ event rfl
-        exact runtime.submission_replay_settled_published leaks players network owner activated
+        exact runtime.submission_silent_settled_published leaks players network owner activated
           submission event rfl activePublished activeSerials
           (fun current actor action same recalled supported =>
             runtime.compiled_resolution_tail_transport leaks bounds players lawful submitted owner

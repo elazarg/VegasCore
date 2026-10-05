@@ -120,7 +120,7 @@ theorem service_opening_response [Fintype Player] (bounds : MessageBounds graph)
     (submission : WitnessedSubmission graph)
     (named : (submission.emit ((runtime.reactiveApplication leaks).submit execution.application
       owner submission) owner (execution.network.known owner)).call.event? graph = some event)
-    (available : (⟨some (.submit submission)⟩ : (runtime.reactiveApplication leaks).Action) ∈
+    (available : (⟨some submission⟩ : (runtime.reactiveApplication leaks).Action) ∈
       (bounds.menu runtime leaks).actions owner (execution.recall owner)
         (execution.observe (runtime.reactiveApplication leaks) owner))
     (permitted : runtime.freshServiceEnvelope execution.application.publicView
@@ -130,7 +130,7 @@ theorem service_opening_response [Fintype Player] (bounds : MessageBounds graph)
     ∃ value, binding.get? execution.application.config.store = some (.success value) ∧
       EventCode.resolveOutput? binding checks true execution.application.config.store =
         some (.success value) ∧
-      (⟨some (.submit submission)⟩ : (runtime.reactiveApplication leaks).Action) =
+      (⟨some submission⟩ : (runtime.reactiveApplication leaks).Action) =
         runtime.serviceDecision leaks owner (execution.recall owner)
           (execution.observe (runtime.reactiveApplication leaks) owner) event
             (cast (congrArg EventField.Action outputEq.symm) true) := by
@@ -160,10 +160,9 @@ theorem service_opening_response [Fintype Player] (bounds : MessageBounds graph)
   have normal : submission.normalizeReactive owner (app.observePlayer execution.application owner)
       (execution.network.known owner) = submission := by
     have equal := ((bounds.menu_mem runtime leaks owner _ _ _).mp available).2
-    change (⟨some (.submit (submission.normalizeReactive owner _ _))⟩ : app.Action) =
-      ⟨some (.submit submission)⟩ at equal
-    have fixed := ReactiveApplication.Transmission.submit.inj
-      (Option.some.inj (congrArg ReactiveApplication.Action.transmission equal))
+    change (⟨some (submission.normalizeReactive owner _ _)⟩ : app.Action) =
+      ⟨some submission⟩ at equal
+    have fixed := Option.some.inj (congrArg ReactiveApplication.Action.transmission equal)
     rw [← known] at fixed
     exact fixed
   have call : submission.call.packet = .opening event candidate ⟨payload, value⟩ := by
@@ -183,13 +182,13 @@ theorem service_opening_response [Fintype Player] (bounds : MessageBounds graph)
   refine ⟨value, stored, resolved, ?_⟩
   rw [runtime.serviceDecision_successful_opening leaks execution recalled owner event payload
     binding checks outputEq codeEq node candidate value associated owned fixed resolved]
-  exact congrArg (fun material => (⟨some (.submit material)⟩ : app.Action))
+  exact congrArg (fun material => (⟨some material⟩ : app.Action))
     (normal.symm.trans normalized)
 
 /-- Once the original binding has failed, no effective fresh submission can
 pass the public checker while its disclosure event is the owner's only ready
-event, as a public resolution always is under the barrier order. Waiting and known-envelope
-replay are still available; the hidden failure itself is not charged. -/
+event, as a public resolution always is under the barrier order. Waiting is
+still available; the hidden failure itself is not charged. -/
 theorem failed_binding_submission_forbidden [Fintype Player] (bounds : MessageBounds graph)
     (execution : (runtime.reactiveApplication leaks).Execution) (owner : Player)
     (sound : (runtime.packetEvidence leaks).Sound execution)
@@ -207,7 +206,7 @@ theorem failed_binding_submission_forbidden [Fintype Player] (bounds : MessageBo
       graph.actor? other = some owner → other = event)
     (failed : binding.get? execution.application.config.store = some .failure)
     (submission : WitnessedSubmission graph)
-    (available : (⟨some (.submit submission)⟩ : (runtime.reactiveApplication leaks).Action) ∈
+    (available : (⟨some submission⟩ : (runtime.reactiveApplication leaks).Action) ∈
       (bounds.menu runtime leaks).actions owner (execution.recall owner)
         (execution.observe (runtime.reactiveApplication leaks) owner)) :
     runtime.permittedServiceEnvelope execution.application.publicView execution.network.ledger

@@ -88,9 +88,9 @@ theorem repeated_binding_block_coupling
         (rosterScheduler setup leaks rosters network)
           (visits.map ServiceInstruction.player ++ ending).length repaired memory ∧
       ∀ next ∈ coupling.support,
-        (∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
+        (∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.input.envelope = false) ∨
+            record.envelope = false) ∨
         BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 := by
   classical
   intro app strategy ending
@@ -134,13 +134,13 @@ theorem repeated_binding_block_coupling
           ((runtime setup).runInteractionPlan leaks players network ending next.2.1).map
             (fun final => (final, next.2.2)) ∧
         ∀ final ∈ coupling.support,
-          (∃ record ∈ app.executionTraffic final.1, record.input.envelope.sender = owner ∧
+          (∃ record ∈ app.executionTraffic final.1, record.envelope.sender = owner ∧
             (runtime setup).permittedServiceEnvelope record.observation record.ledger
-              record.input.envelope = false) ∨
+              record.envelope = false) ∨
           BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1 := by
-    by_cases bad : ∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
+    by_cases bad : ∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
         (runtime setup).permittedServiceEnvelope record.observation record.ledger
-          record.input.envelope = false
+          record.envelope = false
     · let leftLaw := (runtime setup).runInteractionPlan leaks players network ending next.1
       let rightLaw := ((runtime setup).runInteractionPlan leaks players network ending next.2.1).map
         fun final => (final, next.2.2)
@@ -156,12 +156,12 @@ theorem repeated_binding_block_coupling
       exact ((runtime setup).executionTraffic_runInteractionPlan leaks players network ending
         next.1 final.1 reached).subset present
     · obtain ⟨paired, shadow, rightView⟩ := (related next supported).resolve_left bad
-      have clean : ∀ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner →
+      have clean : ∀ record ∈ app.executionTraffic next.1, record.envelope.sender = owner →
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.input.envelope = true := by
+            record.envelope = true := by
         intro record present authored
         cases value : (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.input.envelope with
+            record.envelope with
         | true => rfl
         | false => exact (bad ⟨record, present, authored, value⟩).elim
       obtain ⟨leftView, _, _, _, _, _⟩ := (runtime setup).repeated_window_clean_data leaks bounds

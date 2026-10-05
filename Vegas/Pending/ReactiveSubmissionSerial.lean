@@ -47,13 +47,10 @@ theorem eventRecorded_false_iff_no_submission
     rcases entry with ⟨view, ⟨transmission⟩, emitted⟩
     cases transmission with
     | none => rfl
-    | some transmission =>
-        cases transmission with
-        | replay id => rfl
-        | submit submission =>
-            have selected := onlyCurrent _ member rfl
-            simp only [selected, decide_true]
-            rfl
+    | some submission =>
+        have selected := onlyCurrent _ member rfl
+        simp only [selected, decide_true]
+        rfl
   simp only [eventRecorded, List.any_eq_false,
     ReactiveApplication.submissionCount, List.countP_eq_zero]
   constructor
@@ -65,7 +62,7 @@ theorem eventRecorded_false_iff_no_submission
     exact absent entry member
 
 /-- The public serial check is the private first-submission test at a clean
-single-event window. Replays and arbitrary private observation remain legal. -/
+single-event window. Silence and arbitrary private observation remain legal. -/
 theorem first_event_iff_public_serial
     (before after : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (event : graph.EventId)
@@ -114,7 +111,7 @@ theorem eventRecorded_false_of_public_serial
   rw [fresh] at absent
   exact (absent rfl).elim
 
-/-- Waiting and replay preserve the clean serial test. A fresh submission for
+/-- Waiting preserves the clean serial test. A fresh submission for
 the owner and current event makes its unsent premise false. Thus the test
 propagates through a complete retained window without assuming an empty pool. -/
 theorem event_accounted_response
@@ -123,24 +120,18 @@ theorem event_accounted_response
     (counted : runtime.eventRecorded leaks (execution.recall owner) event = false →
       execution.network.nextSerial owner =
         Message.distinctAuthoredCount execution.network.ledger owner)
-    (shape : (response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩) ∨
+    (shape : response = ⟨none⟩ ∨
       (who = owner ∧ runtime.submittedEvent? leaks response = some event)) :
     let next := execution.respond (runtime.reactiveApplication leaks) who response
     runtime.eventRecorded leaks (next.recall owner) event = false →
       next.network.nextSerial owner =
         Message.distinctAuthoredCount next.network.ledger owner := by
   intro next unsent
-  rcases shape with (rfl | ⟨id, rfl⟩) | ⟨rfl, submitted⟩
+  rcases shape with rfl | ⟨rfl, submitted⟩
   · have previous := runtime.eventRecorded_respond_other leaks execution who owner ⟨none⟩ event
       (fun _ impossible => by cases impossible)
     have account := counted (previous ▸ unsent)
     exact account
-  · have previous := runtime.eventRecorded_respond_other leaks execution who owner
-      ⟨some (.replay id)⟩ event (fun _ impossible => by cases impossible)
-    have account := counted (previous ▸ unsent)
-    cases found : (execution.network.known who).find? (fun message => message.id = id) <;>
-      simpa only [next, ReactiveApplication.Execution.respond, MessageNetwork.replay, found]
-        using account
   · have sent := runtime.eventRecorded_respond leaks execution who response event submitted
     rw [show runtime.eventRecorded leaks (next.recall who) event = true from sent] at unsent
     cases unsent

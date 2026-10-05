@@ -8,7 +8,7 @@ import Vegas.Pending.ReactivePlayerWindow
 
 A retained response at a served event is either transport or a submission
 by that event's owner. Thus an actual prefix with no recorded owner submission
-is also supported by the ordinary replay policy, with its complete private
+is also supported by the ordinary silent policy, with its complete private
 recall and passive samples preserved.
 -/
 
@@ -30,15 +30,14 @@ theorem MessageBounds.compiled_current_response (bounds : MessageBounds graph)
     (view : (runtime.reactiveApplication leaks).PlayerView)
     (response : (runtime.reactiveApplication leaks).Action)
     (member : response ∈ bounds.compiledActions runtime leaks who past view) :
-    response ∈ ((runtime.reactiveApplication leaks).replayPolicy past view).support ∨
+    response ∈ ((runtime.reactiveApplication leaks).silentPolicy past view).support ∨
       ∃ event, view.application.publicView.ownTurn? who = some event ∧
         graph.actor? event = some who ∧ runtime.submittedEvent? leaks response = some event := by
   classical
   have silent : (⟨none⟩ : (runtime.reactiveApplication leaks).Action) ∈
-      ((runtime.reactiveApplication leaks).replayPolicy past view).support :=
-    (runtime.reactiveApplication leaks).replayPolicy_support past view none
-      (Finset.mem_insert_self _ _)
-  rcases Finset.mem_union.mp (Finset.mem_inter.mp member).1 with decision | replay
+      ((runtime.reactiveApplication leaks).silentPolicy past view).support :=
+    (runtime.reactiveApplication leaks).silentPolicy_support past view
+  rcases Finset.mem_union.mp (Finset.mem_inter.mp member).1 with decision | silenced
   · have chosen := (Finset.mem_filter.mp decision).1
     cases selected : view.application.publicView.ownTurn? who with
     | none =>
@@ -84,9 +83,10 @@ theorem MessageBounds.compiled_current_response (bounds : MessageBounds graph)
               · exact Or.inr ⟨active.1, by rw [physical]; rfl⟩
         · cases Finset.mem_singleton.mp chosen
           exact Or.inl silent
-  · exact Or.inl (((runtime.reactiveApplication leaks).mem_replayActions_iff _ _ _).mp replay)
+  · exact Or.inl ((runtime.reactiveApplication leaks).mem_silentPolicy_support.mpr
+      (Finset.mem_singleton.mp silenced))
 
-/-- An actual retained prefix with no owner submission is an actual replay
+/-- An actual retained prefix with no owner submission is an actual silent
 window. This retains the exact execution, including all local observations. -/
 theorem compiled_unsubmitted_window (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -102,7 +102,7 @@ theorem compiled_unsubmitted_window (runtime : EventGraphRuntime graph)
       (visits.map ServiceInstruction.player) initial).support)
     (unsent : runtime.eventRecorded leaks (final.recall owner) event = false) :
     final ∈ (runtime.runInteractionPlan leaks
-      (fun _ => (runtime.reactiveApplication leaks).replayPolicy) network
+      (fun _ => (runtime.reactiveApplication leaks).silentPolicy) network
         (visits.map ServiceInstruction.player) initial).support := by
   let app := runtime.reactiveApplication leaks
   induction visits generalizing initial with
@@ -116,11 +116,11 @@ theorem compiled_unsubmitted_window (runtime : EventGraphRuntime graph)
       obtain ⟨sample, sampled, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨response, chosen, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       let activated := initial.sampledActivation app actor sample
-      have transport : response ∈ (app.replayPolicy (activated.recall actor)
+      have transport : response ∈ (app.silentPolicy (activated.recall actor)
           (activated.observe app actor)).support := by
         rcases bounds.compiled_current_response runtime leaks actor _ _ response
-            (lawful actor _ _ response chosen) with replay | ⟨named, selected, acting, submitted⟩
-        · exact replay
+            (lawful actor _ _ response chosen) with silenced | ⟨named, selected, acting, submitted⟩
+        · exact silenced
         · have ready := (PublicView.ownTurn?_spec _ actor named selected).1
           change initial.application.publicView.EventReady named at ready
           cases sole.2 named ready

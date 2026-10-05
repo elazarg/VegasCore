@@ -135,7 +135,7 @@ theorem applicationStep_ready_public_frame (runtime : EventGraphRuntime graph)
       exact ⟨(privateStep_facts state.application who command).1,
         privateStep_accepted state.application who command,
         privateStep_remembered_of_some state.application who command event⟩
-  | submit who packet | replay who id | deliver who id =>
+  | submit who packet | deliver who id =>
       simp only [MessageApplication.step, PMF.mem_support_pure_iff _ _] at member
       subst next
       exact ⟨rfl, rfl, fun _ cached => cached⟩

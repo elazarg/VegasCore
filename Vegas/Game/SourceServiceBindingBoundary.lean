@@ -11,8 +11,8 @@ import Vegas.Pending.ReactiveRevealSettlement
 /-! # Typed checkpoints for arbitrary permitted binding rosters
 
 This constructs the next source configuration from every supported retained
-binding execution. Choice timing, intervening passive observations and replay
-copies are unrestricted within the fixed finite roster. The clock padding
+binding execution. Choice timing, intervening passive observations and silent
+responses are unrestricted within the fixed finite roster. The clock padding
 after inclusion is separate from this typed and allocation checkpoint.
 -/
 
@@ -229,7 +229,7 @@ theorem ServiceBoundary.binding_prefix_resources
       exact boundary.accounted who
 
 /-- Every envelope known or pending during an arbitrary permitted binding
-roster passes the public phase checker, including copies replayed before the
+roster passes the public phase checker, including traffic before the
 protected inclusion. Earlier valid audit records remain valid at each actual
 prefix, with the phase recorded when the envelope was transmitted. -/
 theorem ServiceBoundary.binding_prefix_conformance
@@ -254,7 +254,7 @@ theorem ServiceBoundary.binding_prefix_conformance
     (owned : (graph setup).actor? event = some owner)
     (traffic : ∀ record ∈ (application setup leaks).executionTraffic execution,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
-        record.input.envelope = true)
+        record.envelope = true)
     (visits : List Player) (current : (application setup leaks).Execution)
     (reached : current ∈ ((runtime setup).runInteractionPlan leaks players network
       (visits.map ServiceInstruction.player) execution).support) :
@@ -262,7 +262,7 @@ theorem ServiceBoundary.binding_prefix_conformance
       current.application.publicView current.network.ledger message = true) ∧
     (∀ record ∈ (application setup leaks).executionTraffic current,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
-        record.input.envelope = true) := by
+        record.envelope = true) := by
   let app := application setup leaks
   induction visits using List.reverseRecOn generalizing current with
   | nil =>
@@ -294,17 +294,17 @@ theorem ServiceBoundary.binding_prefix_conformance
       have issued : ∀ record ∈ app.trafficStep (some ⟨0, some actor, activated⟩)
           (some ⟨0, none, activated.respond app actor response⟩),
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.input.envelope = true := by
+            record.envelope = true := by
         by_cases acting : actor = owner
         · subst actor
           exact bounds.compiled_binding_traffic (runtime setup) leaks activated binding 0
             owner event payload outputEq codeEq node (sole.ownTurn owned) ready timely
             (fun absent => (unsent absent).2.1)
             (fun absent => (unsent absent).2.2.1 owner)
-            (sampled.known owner) response member
+            response member
         · exact bounds.compiled_foreign_traffic (runtime setup) leaks activated 0 actor
             (sole.idle (by rw [owned]; exact fun equal => acting (Option.some.inj equal).symm))
-            (sampled.known actor) response member
+            response member
       refine ⟨(runtime setup).service_response_conformance leaks activated 0 actor response
         sampled issued, ?_⟩
       intro record included
@@ -314,7 +314,7 @@ theorem ServiceBoundary.binding_prefix_conformance
 
 /-- The complete binding service block preserves the operational boundary
 under every permitted policy, including arbitrary early submission and later
-replays. Its source successor is one of the original value-only choices. -/
+is silent. Its source successor is one of the original value-only choices. -/
 theorem ServiceBoundary.binding_block
     {setup : Setup (Player := Player) (L := L)}
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}

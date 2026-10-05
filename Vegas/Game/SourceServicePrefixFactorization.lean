@@ -399,7 +399,7 @@ theorem sourceService_binding_prefix_factorization [Finite Player]
   rw [← PMF.map_comp, marginal, PMF.map_bind]
   simp only [PMF.map_comp, choice, advance, embed, Function.comp_def]
 
-/-- Public chance retains the actual replay-window and maintenance traffic.
+/-- Public chance retains the actual silent-window and maintenance traffic.
 Its conditional auxiliary law is derived from the sampled public value. -/
 theorem sourceService_sample_prefix_factorization
     {Seed : Type} (setup : Setup (Player := Player) (L := L))

@@ -1,11 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ReactiveBindingReplay
+import Vegas.Pending.ReactiveBindingWaiting
 import Vegas.Pending.ReactiveServiceRecall
 
 /-! # Unsubmitted prefixes of retained binding windows
 
-Before the first binding, every actual response is silence or a known replay.
+Before the first binding, every actual response is silence.
 The application, allocator, ledger and serial counter therefore remain exactly
 at the completed boundary. This covers every permitted policy and arbitrary
 passive samples, not just a prescribed source strategy.
@@ -63,7 +63,7 @@ theorem compiled_binding_unsubmitted_prefix (runtime : EventGraphRuntime graph)
       obtain ⟨sample, _, step⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ step)
       obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ step
       let activated := initial.sampledActivation app actor sample
-      have transport : response ∈ (app.replayPolicy (activated.recall actor)
+      have transport : response ∈ (app.silentPolicy (activated.recall actor)
           (activated.observe app actor)).support := by
         by_cases acting : actor = owner
         · subst actor
@@ -71,8 +71,8 @@ theorem compiled_binding_unsubmitted_prefix (runtime : EventGraphRuntime graph)
               (activated.observe app owner) event payload outputEq codeEq node (sole.ownTurn owned)
               owned
               ((initial.application.publicView_eventReady event).mpr ready) serial selected response
-              (lawful owner _ _ response chosen) with replay | ⟨value, _, _, physical⟩
-          · exact replay
+              (lawful owner _ _ response chosen) with silenced | ⟨value, _, _, physical⟩
+          · exact silenced
           · have recorded : runtime.eventRecorded leaks
                 ((activated.respond app owner response).recall owner) event = true := by
               apply runtime.eventRecorded_respond leaks activated owner response event
@@ -90,9 +90,9 @@ theorem compiled_binding_unsubmitted_prefix (runtime : EventGraphRuntime graph)
             (sole.ownTurn?_foreign
               (fun equal => acting (Option.some.inj (owned.symm.trans equal)).symm))
             response (lawful actor _ _ response chosen)
-      have preserved := runtime.replay_response_preserves leaks _ activated
+      have preserved := runtime.silent_response_preserves leaks _ activated
         (published.learn actor sample) actor response
-          (app.replayPolicy_cases _ _ response transport)
+          (app.silentPolicy_cases _ _ response transport)
       have nextSelected : reactiveFreshSlot
           ((activated.respond app actor response).observe app owner).application = some serial := by
         change reactiveFreshSlot (app.observePlayer

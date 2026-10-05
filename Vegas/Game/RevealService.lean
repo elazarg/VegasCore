@@ -18,9 +18,7 @@ watcher activation per source event. It therefore has a fixed finite calendar;
 it does not model arbitrarily many intervening broadcasts.
 
 Canonical openings are included before the watcher observes pending packets.
-Withholding is silence, or replay of an already published envelope, followed by
-expiry. These replays retain the player's own response recall; their source
-interpretation requires action splitting, not erasing native histories.
+Withholding is silence followed by expiry.
 Deadlines increase with source rank
 so that a successor can remain timely after an early successful predecessor.
 The definitions assert no equilibrium property; operational timeliness and the
@@ -251,29 +249,9 @@ theorem silence_effective (who : Player) (past : List (application setup leaks).
   exact ⟨trivial, rfl⟩
 
 open Classical in
-def publishedReplays (view : (application setup leaks).PlayerView) :
-    Finset (application setup leaks).Action :=
-  (view.messages.ledger.map (fun message =>
-    (⟨some (.replay message.id)⟩ : (application setup leaks).Action))).toFinset
-
-omit [Fintype Player] in
-theorem mem_publishedReplays (view : (application setup leaks).PlayerView)
-    (response : (application setup leaks).Action) :
-    response ∈ publishedReplays setup leaks view ↔
-      ∃ message ∈ view.messages.ledger, response = ⟨some (.replay message.id)⟩ := by
-  classical
-  simp only [publishedReplays, List.mem_toFinset, List.mem_map]
-  constructor
-  · rintro ⟨message, member, same⟩
-    exact ⟨message, member, same.symm⟩
-  · rintro ⟨message, member, same⟩
-    exact ⟨message, member, same.symm⟩
-
-open Classical in
 def ordinaryActions (who : Player) (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView) : Finset (application setup leaks).Action :=
-  (insert ⟨none⟩ ((opening? setup leaks who past view).toList.toFinset ∪
-    publishedReplays setup leaks view)) ∩
+  (insert ⟨none⟩ (opening? setup leaks who past view).toList.toFinset) ∩
     (bounds.menu (runtime setup) leaks).actions who past view
 
 theorem silence_ordinary (who : Player) (past : List (application setup leaks).PlayerEntry)
@@ -302,39 +280,20 @@ theorem opening_ordinary (who : Player) (past : List (application setup leaks).P
   apply Finset.mem_inter.mpr
   exact ⟨by simp [selected], covered⟩
 
-theorem published_replay_ordinary (who : Player)
-    (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView)
-    (message : Message Player (WitnessedPacket (graph setup)))
-    (published : message ∈ view.messages.ledger) :
-    (⟨some (.replay message.id)⟩ : (application setup leaks).Action) ∈
-      ordinaryActions setup leaks bounds who past view := by
-  classical
-  refine Finset.mem_inter.mpr ⟨?_, ?_⟩
-  · apply Finset.mem_insert_of_mem
-    exact Finset.mem_union_right _
-      ((mem_publishedReplays setup leaks view _).mpr ⟨message, published, rfl⟩)
-  · apply bounds.known_replay_available (runtime setup) leaks who past view message.id
-    exact ⟨message, List.mem_append_right _ published, rfl⟩
-
-/-- The added aliases are exactly replays of already published envelopes. This
-does not identify the player's private recall after different responses. -/
+/-- The ordinary menu permits silence and its supported opening. -/
 theorem ordinary_response_cases (who : Player)
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView) (response : (application setup leaks).Action)
     (member : response ∈ ordinaryActions setup leaks bounds who past view) :
-    response = ⟨none⟩ ∨ opening? setup leaks who past view = some response ∨
-      ∃ message ∈ view.messages.ledger, response = ⟨some (.replay message.id)⟩ := by
+    response = ⟨none⟩ ∨ opening? setup leaks who past view = some response := by
   classical
   obtain silent | other := Finset.mem_insert.mp (Finset.mem_inter.mp member).1
   · exact Or.inl silent
-  · rcases Finset.mem_union.mp other with opening | published
-    · exact Or.inr (Or.inl (by simpa using opening))
-    · exact Or.inr (Or.inr ((mem_publishedReplays setup leaks view response).mp published))
+  · exact Or.inr (by simpa using other)
 
 open Classical in
-/-- This restricts the existing native menu to silence, a supported opening,
-and published replay aliases. Source value coverage remains a proof obligation.
+/-- This restricts the existing native menu to silence and a supported opening.
+Source value coverage remains a proof obligation.
 The watcher only observes: it transmits nothing at every local input. -/
 def menu (watcher : Player) : (application setup leaks).ResponseMenu where
   actions who past view := if who = watcher then {⟨none⟩}

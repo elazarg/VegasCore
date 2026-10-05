@@ -1,13 +1,13 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceContinuationBridge
-import Vegas.Pending.ReactiveReplayApplication
+import Vegas.Pending.ReactiveSilentApplication
 import Vegas.Game.SourceServiceSubmittedBinding
 
 /-! # Owner visits after an already submitted binding
 
-The authentic pending binding remains selected through every replay choice.
-Once the binding has been recorded, the timed compiler uses replay-only laws
+The authentic pending binding remains selected through every silent response.
+Once the binding has been recorded, the timed compiler uses silent laws
 at all remaining visits. The application law at the next event boundary is
 therefore independent of the owner's current legal response, and the generic
 local comparison gives zero gain at every such owner site.
@@ -44,7 +44,7 @@ theorem sourceServiceTimedPolicy_recorded_transport
     (actor : Player) (response : (application setup leaks).Action)
     (supported : response ∈ (sourceServiceTimedPolicy setup leaks rosters timing profile actor
       (current.recall actor) (current.observe (application setup leaks) actor)).support) :
-    response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩ := by
+    response = ⟨none⟩ := by
   have currentSole :
       (current.observe (application setup leaks) actor).application.publicView.SoleReady event := by
     change current.application.publicView.SoleReady event
@@ -59,13 +59,13 @@ theorem sourceServiceTimedPolicy_recorded_transport
     rw [sourceServiceTimedPolicy_recorded setup leaks rosters timing profile owner _ _ event
       (PublicView.ownTurn?_of_ownTurn _ owner event (currentSole.ownTurn owned)) still]
       at supported
-    exact (application setup leaks).replayPolicy_cases _ _ response supported
+    exact (application setup leaks).silentPolicy_cases _ _ response supported
   · have different : (graph setup).actor? event ≠ some actor := by
       rw [owned]
       exact fun same => isOwner (Option.some.inj same).symm
     simp only [sourceServiceTimedPolicy,
       PublicView.ownTurn?_eq_none _ actor (currentSole.idle different)] at supported
-    exact (application setup leaks).replayPolicy_cases _ _ response supported
+    exact (application setup leaks).silentPolicy_cases _ _ response supported
 
 /-- From any execution after the owner's recorded submission, whose envelope
 is pending and the only unpublished one, the rest of the phase has the exact
@@ -102,7 +102,7 @@ theorem sourceService_recorded_plan_application_law
           application := (app.handle execution.application message).getD
             execution.application }).map ReactiveApplication.Execution.application := by
   intro app players ending
-  have settled := (runtime setup).replay_window_settlement leaks players network owner execution
+  have settled := (runtime setup).silent_window_settlement leaks players network owner execution
     (fun current actor action same recalled supported =>
       sourceServiceTimedPolicy_recorded_transport setup leaks rosters timing profile event owner
         owned execution sole recorded current same recalled actor action supported)
@@ -156,7 +156,7 @@ theorem sourceService_recorded_response_application_law
     (pending : message ∈ execution.network.pending)
     (unpublished : message.id ∉ execution.network.ledger.map Message.id)
     (who : Player) (response : (application setup leaks).Action)
-    (transport : response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩)
+    (transport : response = ⟨none⟩)
     (visits : List Player) (ticks : Nat) :
     let app := application setup leaks
     let players := sourceServiceTimedPolicy setup leaks rosters timing profile
@@ -170,7 +170,7 @@ theorem sourceService_recorded_response_application_law
             execution.application }).map ReactiveApplication.Execution.application := by
   intro app players ending
   let after := execution.respond app who response
-  have unchanged := (runtime setup).replay_response_preserves leaks _ execution packets who
+  have unchanged := (runtime setup).silent_response_preserves leaks _ execution packets who
     response transport
   have respondApplication : after.application = execution.application := unchanged.1
   have afterSole : after.application.publicView.SoleReady event := by
@@ -267,7 +267,7 @@ theorem recorded_phase_invariant {who : Player} {remaining : Nat}
   have transport (response : (application service.setup service.leaks).Action)
       (allowed : response ∈ service.menu.actions who (execution.recall who)
         (execution.observe (application service.setup service.leaks) who)) :
-      response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩ := by
+      response = ⟨none⟩ := by
     have supported := service.menu.fullyMixed_response_support (initialLaw service.setup)
       service.planLength service.scheduler approx.players approx.covered approx.assessment
       approx.strategy approx.mixed who remaining execution trace response allowed

@@ -67,14 +67,6 @@ theorem playerStep_other_policyCoherentAll
       have frame := runtime.afterSubmit_opponent_event execution focal owner different event packet
       exact (coherent event actor).copy runtime execution
         (runtime.application.afterSubmit execution focal packet) owner event frame.1 frame.2.1
-  | replay id =>
-      simp only [MessageApplication.playerStep, MessageApplication.PlayerCommand.toAction,
-        MessageApplication.advance, MessageApplication.step, PMF.pure_bind,
-        PMF.mem_support_pure_iff _ _] at supported
-      subst next
-      apply (coherent event actor).copy runtime execution _ owner event
-      · simp [different]
-      · rfl
   | wait =>
       rw [runtime.application.playerStep_wait] at supported
       simp only [PMF.mem_support_pure_iff _ _] at supported

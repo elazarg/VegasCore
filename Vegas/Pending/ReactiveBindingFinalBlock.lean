@@ -86,9 +86,9 @@ theorem required_binding_final_block_coupling
           (runtime.runInteractionPlan leaks players network plan next.1).map
             fun execution => (execution, next.2)) ∧
       ∀ next ∈ coupling.support,
-        (∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
+        (∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
           runtime.permittedServiceEnvelope record.observation record.ledger
-            record.input.envelope = false) ∨
+            record.envelope = false) ∨
         next.1.application.publicView.missedBinding event = true ∨
         Frame runtime leaks next.2.2 owner next.1 next.2.1 := by
   classical
@@ -113,9 +113,9 @@ theorem required_binding_final_block_coupling
       (repaired.respond app owner (adjusted response).1)).map
         fun execution => (execution, (adjusted response).2)
   let bad (execution : app.Execution) :=
-    (∃ record ∈ app.executionTraffic execution, record.input.envelope.sender = owner ∧
+    (∃ record ∈ app.executionTraffic execution, record.envelope.sender = owner ∧
       runtime.permittedServiceEnvelope record.observation record.ledger
-        record.input.envelope = false) ∨
+        record.envelope = false) ∨
     execution.application.publicView.missedBinding event = true
   have responseLaw : strategy.respond memory (repaired.recall owner,
       repaired.observe app owner) = law.map adjusted := by
@@ -159,13 +159,14 @@ theorem required_binding_final_block_coupling
           bad next.1 ∨ Frame runtime leaks next.2.2 owner next.1 next.2.1 := by
     rcases runtime.binding_audit_response_cases leaks bounds original owner remaining event
         payload outputEq codeEq node turn fresh leftRecall serials response
-          (available response member) with replay | canonical | departure
+          (available response member) with silenced | canonical | departure
     · apply badBranch response
       intro final supported
       right
-      have transport : ∀ material, response.transmission ≠ some (.submit material) := by
+      have transport : ∀ material, response.transmission ≠ some material := by
         intro material
-        rcases app.replayPolicy_cases _ _ response replay with rfl | ⟨id, rfl⟩ <;> simp
+        rcases app.silentPolicy_cases _ _ response silenced with rfl
+        simp
       apply runtime.last_binding_transport_omission leaks players network original owner event
         payload outputEq codeEq node ready unbound published entered ticks activated due
           visits absent response transport final
@@ -174,7 +175,7 @@ theorem required_binding_final_block_coupling
         using supported
     · obtain ⟨opening, bounded, _, rfl⟩ := canonical
       let response : app.Action :=
-        ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩
+        ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩
       have legal : (proposed response).1 ∈ menu.actions owner (repaired.recall owner)
           (repaired.observe app owner) := by
         apply coverage

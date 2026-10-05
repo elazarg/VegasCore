@@ -93,11 +93,11 @@ def rosterPolicy (setup : Setup (Player := Player) (L := L))
     (profile : BehavioralProfile setup.program) (who : Player) :
     (application setup leaks).Policy := fun past view =>
   match view.application.publicView.ownTurn? who with
-  | none => (application setup leaks).replayPolicy past view
+  | none => (application setup leaks).silentPolicy past view
   | some event =>
       if owned : (graph setup).actor? event = some who then
         match rosterOpening? setup leaks who event view with
-        | none => (application setup leaks).replayPolicy past view
+        | none => (application setup leaks).silentPolicy past view
         | some (candidate, raw) =>
             ((application setup leaks).policyMixture
               (rosterSelection (sourceChoiceLaw setup leaks profile who view)
@@ -105,33 +105,33 @@ def rosterPolicy (setup : Setup (Player := Player) (L := L))
               (fun selected => (application setup leaks).scheduledPolicy
                 (rosterOffset setup rosters who event) selected
                 (fun _ _ => PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
-                (application setup leaks).replayPolicy)).policy past view
-      else (application setup leaks).replayPolicy past view
+                (application setup leaks).silentPolicy)).policy past view
+      else (application setup leaks).silentPolicy past view
 
 open Classical in
 /-- The explicit common limit: wait before the final owner visit, make the
-source choice there, and retain only silence/replay after any earlier opening. -/
+source choice there, and retain only silence after any earlier opening. -/
 def rosterLimitPolicy (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
     (profile : BehavioralProfile setup.program) (who : Player) :
     (application setup leaks).Policy := fun past view =>
   match view.application.publicView.ownTurn? who with
-  | none => (application setup leaks).replayPolicy past view
+  | none => (application setup leaks).silentPolicy past view
   | some event =>
       if (graph setup).actor? event = some who then
         match rosterOpening? setup leaks who event view with
-        | none => (application setup leaks).replayPolicy past view
+        | none => (application setup leaks).silentPolicy past view
         | some (candidate, raw) =>
             let offset := rosterOffset setup rosters who event
             let opening := (runtime setup).windowOpening leaks event candidate raw
             if ((past.drop offset).any fun entry => entry.action = opening) ||
                 decide (past.length + 1 ≠ offset + (rosters event).count who) then
-              (application setup leaks).replayPolicy past view
+              (application setup leaks).silentPolicy past view
             else (sourceChoiceLaw setup leaks profile who view).bind fun disclose =>
               if disclose then PMF.pure opening
-              else (application setup leaks).replayPolicy past view
-      else (application setup leaks).replayPolicy past view
+              else (application setup leaks).silentPolicy past view
+      else (application setup leaks).silentPolicy past view
 
 /-- Source choices do not inspect network observations or response recall. -/
 theorem sourceChoiceLaw_application_eq (setup : Setup (Player := Player) (L := L))
@@ -174,13 +174,12 @@ theorem rosterPolicy_application (setup : Setup (Player := Player) (L := L))
       (execution.recall who) (execution.observe (application setup leaks) who)).support) :
     (execution.respond (application setup leaks) who action).application =
       execution.application := by
-  have waiting (member : action ∈ ((application setup leaks).replayPolicy
+  have waiting (member : action ∈ ((application setup leaks).silentPolicy
       (execution.recall who) (execution.observe (application setup leaks) who)).support) :
       (execution.respond (application setup leaks) who action).application =
         execution.application := by
-    rcases (application setup leaks).replayPolicy_cases _ _ action member with rfl | ⟨id, rfl⟩
-    · rfl
-    · rfl
+    rcases (application setup leaks).silentPolicy_cases _ _ action member with rfl
+    rfl
   unfold rosterPolicy at supported
   split at supported
   · exact waiting supported
@@ -197,7 +196,7 @@ theorem rosterPolicy_application (setup : Setup (Player := Player) (L := L))
     · exact waiting supported
 
 /-- The source disclosure law remains fixed after each actual supported
-response, regardless of timing, replay, pending observations, or own recall. -/
+response, regardless of timing, silence, pending observations, or own recall. -/
 theorem rosterPolicy_sourceChoice_unchanged (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
@@ -218,7 +217,7 @@ theorem rosterPolicy_sourceChoice_unchanged (setup : Setup (Player := Player) (L
 
 /-- A whole actual activation window, at any prefix length, leaves the source
 application observation unchanged under the fixed roster policy. The proof
-quantifies over every supported timing/replay branch, including early openings. -/
+quantifies over every supported timing/silence branch, including early openings. -/
 theorem rosterPolicy_run_application (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)

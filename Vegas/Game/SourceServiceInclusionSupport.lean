@@ -300,7 +300,7 @@ theorem sourceService_inclusion_boundary
 
 /-- Before every actual protected binding inclusion, the current canonical
 candidate already contains an admitted typed value. This includes arbitrary
-earlier submission times and replay rosters. -/
+earlier submission times and silent rosters. -/
 theorem sourceService_inclusion_binding_candidate
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))

@@ -50,13 +50,6 @@ omit [DecidableEq Principal] in
   simp [submittedPayloads]
 
 omit [DecidableEq Principal] in
-@[simp] theorem submittedPayloads_append_replay
-    (history : List app.PlayerEntry) (view : app.View) (id : MessageId Principal) :
-    app.submittedPayloads (history ++ [⟨view, .replay id⟩]) =
-      app.submittedPayloads history := by
-  simp [submittedPayloads]
-
-omit [DecidableEq Principal] in
 @[simp] theorem submittedPayloads_append_wait
     (history : List app.PlayerEntry) (view : app.View) :
     app.submittedPayloads (history ++ [⟨view, .wait⟩]) =
@@ -128,21 +121,6 @@ theorem playerStep_authorship
           · simpa [historyOther message.id.1 hsender] using safe)
         apply old.submit who payload
         simp [historySelf, counters who]
-  | replay id =>
-      simp only [PlayerCommand.toAction, step, PMF.mem_support_pure_iff _ _] at nativeMem
-      unfold Authorship
-      rw [nativeMem]
-      refine ⟨?_, (messages.replay who id).mono ?_⟩
-      · intro sender
-        by_cases hsender : sender = who
-        · subst sender
-          simpa [historySelf] using counters who
-        · simpa [historyOther sender hsender] using counters sender
-      · intro message safe
-        by_cases hsender : message.id.1 = who
-        · subst who
-          simpa [historySelf] using safe
-        · simpa [historyOther message.id.1 hsender] using safe
   | wait =>
       simp only [PlayerCommand.toAction, PMF.mem_support_pure_iff _ _] at nativeMem
       unfold Authorship
@@ -237,7 +215,7 @@ theorem runPolicies_initial_authorship
     (PolicyExecution.initial_authorship app _) supported
 
 /-- Authenticated history fixes the payload at each identifier, so every
-pending copy of that identifier has the same content. -/
+pending message is the one its identifier looks up. -/
 theorem Authorship.lookup_eq_of_mem_pending
     (execution : app.PolicyExecution) (authorship : app.Authorship execution)
     (target : Message Principal app.Payload) (pending : target ∈ execution.native.pool.pending) :

@@ -16,7 +16,7 @@ import GameTheoryExtensions.Math.Probability.Support
 
 At an owner's visit to its own unsent binding, the timed compiler draws the
 source value, then the timing slot, then the current response: a submission of
-that value at the chosen slot, and a replay otherwise. A current submission
+that value at the chosen slot, and silence otherwise. A current submission
 fixes the source value. A current transport response leaves the source value
 law unchanged, because value and timing are independent and a transport
 response reveals only that the current slot was not chosen.
@@ -141,7 +141,7 @@ theorem unsent_binding_transport_config_law {who : Player} {remaining : Nat}
     (response : (application service.setup service.leaks).Action)
     (allowed : response ∈ service.menu.actions who (execution.recall who)
       (execution.observe (application service.setup service.leaks) who))
-    (transport : response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩) :
+    (transport : response = ⟨none⟩) :
     approx.phaseConfigLaw phase response =
       (commitKernel site.residual (site.source.view site.owner)).bind fun choice =>
         PMF.pure (execution.application.config.complete phase.event ready
@@ -202,9 +202,9 @@ theorem unsent_binding_transport_config_law {who : Player} {remaining : Nat}
     (approx.timingFull phase.event owner owned last) (by dsimp only [last]; omega)
   have opening := BindingSource.opportunity_law service.leaks execution site phase.ready unsent
     _ freshSlot fresh
-  have preserved := (runtime service.setup).replay_response_preserves service.leaks _
+  have preserved := (runtime service.setup).silent_response_preserves service.leaks _
     execution published owner response transport
-  have counters := (runtime service.setup).replay_response_preserves service.leaks _
+  have counters := (runtime service.setup).silent_response_preserves service.leaks _
     execution serials owner response transport
   have afterUnsent := (runtime service.setup).eventRecorded_respond_transport service.leaks
     execution owner owner response transport phase.event
@@ -245,7 +245,7 @@ theorem unsent_binding_transport_config_law {who : Player} {remaining : Nat}
       service.network (phase.visits.map ServiceInstruction.player ++
         .includeLatest phase.event owner :: rest) after =
       (runtime service.setup).runInteractionPlan service.leaks
-        (Function.update (fun _ => app.replayPolicy) owner mixtureImpl.policy)
+        (Function.update (fun _ => app.silentPolicy) owner mixtureImpl.policy)
         service.network (phase.visits.map ServiceInstruction.player ++
           .includeLatest phase.event owner :: rest) after := by
     rw [runInteractionPlan_append, runInteractionPlan_append,
@@ -257,7 +257,7 @@ theorem unsent_binding_transport_config_law {who : Player} {remaining : Nat}
     exact servicePlan_players_eq service.setup service.leaks _ _ service.network _
       (by simp [rest]) (by intro actor; simp [rest]) current
   have mixture := (runtime service.setup).runInteractionPlan_policyMixture service.leaks
-    (approx.timing phase.event owner owned) family owner (fun _ => app.replayPolicy)
+    (approx.timing phase.event owner owned) family owner (fun _ => app.silentPolicy)
     service.network (phase.visits.map ServiceInstruction.player ++
       .includeLatest phase.event owner :: rest) after
   dsimp only at mixture
@@ -289,11 +289,8 @@ theorem unsent_binding_transport_config_law {who : Player} {remaining : Nat}
         (execution.observe app owner)).support at actionSupport
       rw [fires, opening, PMF.support_map] at actionSupport
       obtain ⟨choice, _, submitted⟩ := actionSupport
-      rcases transport with silent | ⟨id, replayed⟩
-      · rw [silent] at submitted
-        cases submitted
-      · rw [replayed] at submitted
-        cases submitted
+      rw [transport] at submitted
+      cases submitted
     dsimp only
     rw [afterLength]
     change (execution.recall owner).length ≤ offset + memory.val at notBefore
@@ -337,7 +334,7 @@ theorem reactiveBinding_injective {setup : Setup (Player := Player) (L := L)}
   have opening := congrArg
     (fun action : ((runtime setup).reactiveApplication leaks).Action =>
       match action.transmission with
-      | some (.submit submission) =>
+      | some submission =>
           (show WitnessedSubmission (graph setup) from submission).call.opening
       | _ => none) same
   cases first <;> cases second <;>
@@ -451,10 +448,10 @@ theorem BindingSource.submission_readout (service : SourceServiceSpec Player L)
     ReactiveApplication.policyMixture_policy, PMF.support_bind] at present
   obtain ⟨slot, slotSupport, drawn⟩ := Set.mem_iUnion₂.mp present
   have submitted (other : (application service.setup service.leaks).Action)
-      (replayed : other ∈ (app.replayPolicy (execution.recall siteOwner)
+      (silenced : other ∈ (app.silentPolicy (execution.recall siteOwner)
         (execution.observe app siteOwner)).support) (same : other = response) : False := by
     have transmitted := congrArg ReactiveApplication.Action.transmission same
-    rcases app.replayPolicy_cases _ _ other replayed with rfl | ⟨id, rfl⟩ <;>
+    rcases app.silentPolicy_cases _ _ other silenced with rfl;
       simp [response, EventGraphRuntime.reactiveBinding] at transmitted
   by_cases now : rosterOffset service.setup service.rosters siteOwner
       (embedding.event ⟨0, by simp [eventCount]⟩) + slot.val = (execution.recall siteOwner).length
@@ -765,7 +762,7 @@ structure UnsentBindingLaws {who : Player}
     (∃ value ∈ values.support, (∃ serial, response =
         (runtime service.setup).reactiveBinding service.leaks who event payload value serial) ∧
       approx.responseReadout phase response = approx.bindingContinuation ready outputEq value) ∨
-    ((response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩) ∧
+    (response = ⟨none⟩ ∧
       approx.responseReadout phase response =
         values.bind (approx.bindingContinuation ready outputEq))
 
@@ -841,7 +838,7 @@ theorem unsent_binding_decision {who : Player} {remaining : Nat}
   have transported (response : (application service.setup service.leaks).Action)
       (allowed : response ∈ service.menu.actions siteOwner (execution.recall siteOwner)
         (execution.observe (application service.setup service.leaks) siteOwner))
-      (transport : response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩) :
+      (transport : response = ⟨none⟩) :
       approx.responseReadout phase response =
         values.bind (approx.bindingContinuation ready outputEq) := by
     rw [approx.response_continuation_law trace phase response allowed,
@@ -876,7 +873,7 @@ theorem unsent_binding_decision {who : Player} {remaining : Nat}
       ∨ sourceServiceTimedFamily service.setup service.leaks service.rosters approx.profile
           siteOwner phase.event slot (execution.recall siteOwner)
             (execution.observe (application service.setup service.leaks) siteOwner) =
-          (application service.setup service.leaks).replayPolicy (execution.recall siteOwner)
+          (application service.setup service.leaks).silentPolicy (execution.recall siteOwner)
             (execution.observe (application service.setup service.leaks) siteOwner) := by
     by_cases now : rosterOffset service.setup service.rosters siteOwner phase.event + slot.val =
         (execution.recall siteOwner).length
@@ -894,7 +891,7 @@ theorem unsent_binding_decision {who : Player} {remaining : Nat}
       (∃ value ∈ values.support, response = (runtime service.setup).reactiveBinding
         service.leaks siteOwner phase.event sitePayload value
           (execution.application.publicView.bindingCount siteOwner)) ∨
-      (response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩) := by
+      response = ⟨none⟩ := by
     rw [policyEq, PMF.support_bind] at supported
     obtain ⟨slot, _, drawn⟩ := Set.mem_iUnion₂.mp supported
     rcases slotLaw slot with ⟨_, fires⟩ | waits
@@ -902,7 +899,7 @@ theorem unsent_binding_decision {who : Player} {remaining : Nat}
       obtain ⟨value, valueSupport, same⟩ := drawn
       exact Or.inl ⟨value, valueSupport, same.symm⟩
     · rw [waits] at drawn
-      exact Or.inr ((application service.setup service.leaks).replayPolicy_cases _ _ response drawn)
+      exact Or.inr ((application service.setup service.leaks).silentPolicy_cases _ _ response drawn)
   have allowedOf (response : (application service.setup service.leaks).Action)
       (supported : response ∈ (approx.players siteOwner (execution.recall siteOwner)
         (execution.observe (application service.setup service.leaks) siteOwner)).support) :
@@ -938,7 +935,7 @@ theorem unsent_binding_decision {who : Player} {remaining : Nat}
       exact transported response (allowedOf response (present response (by
         rw [waits]
         exact supported)))
-        ((application service.setup service.leaks).replayPolicy_cases _ _ response supported)
+        ((application service.setup service.leaks).silentPolicy_cases _ _ response supported)
   · intro response allowed
     have present := service.menu.fullyMixed_response_support (initialLaw service.setup)
       service.planLength service.scheduler approx.players approx.covered
@@ -1197,11 +1194,8 @@ theorem unsent_binding_comparisons (service : SourceServiceSpec Player L)
         split
         · rename_i found
           obtain ⟨value, serial, submitted⟩ := found
-          rcases transport with silent | ⟨id, replayed⟩
-          · rw [silent] at submitted
-            cases submitted
-          · rw [replayed] at submitted
-            cases submitted
+          rw [transport] at submitted
+          cases submitted
         · rfl
       rw [Function.comp_apply, decodedValue, readout, ← baselineValues, PMF.bind_map, PMF.bind_map]
       rfl

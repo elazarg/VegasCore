@@ -44,9 +44,9 @@ theorem serviceDecision_successful_opening
     let app := runtime.reactiveApplication leaks
     runtime.serviceDecision leaks owner (execution.recall owner) (execution.observe app owner)
       event (cast (congrArg EventField.Action outputEq.symm) true) =
-      ⟨some (.submit
-        ((disclosureSubmission (.opening event candidate ⟨payload, value⟩)).normalizeReactive owner
-          (app.observePlayer execution.application owner) (execution.network.known owner)))⟩ := by
+      ⟨some ((disclosureSubmission (.opening event candidate ⟨payload, value⟩)).normalizeReactive
+          owner
+          (app.observePlayer execution.application owner) (execution.network.known owner))⟩ := by
   intro app
   have localResult : EventCode.resolveOutput? binding checks true
       (app.observePlayer execution.application owner).observation.store =
@@ -72,11 +72,12 @@ theorem serviceDecision_successful_opening
   have view : (execution.observe app owner).application =
       app.observePlayer execution.application owner := rfl
   simp only [serviceDecision, view, reactiveDecision, node, packet, normalized]
-  change (⟨some (.submit
-    ((disclosureSubmission (.opening event candidate ⟨payload, value⟩)).normalizeReactive owner
+  change (⟨some ((disclosureSubmission (.opening event candidate
+      ⟨payload, value⟩)).normalizeReactive
+          owner
       (app.observePlayer execution.application owner)
       (ReactiveApplication.ResponseMenu.knownPackets (execution.recall owner)
-        (execution.observe app owner))))⟩ : app.Action) = _
+        (execution.observe app owner)))⟩ : app.Action) = _
   rw [← known]
 
 /-- A first effective current opening passing the public checks is an actual
@@ -95,11 +96,11 @@ theorem guarded_submission_retained [Fintype Player] (bounds : MessageBounds gra
     (actor : graph.actor? event = some owner)
     (ready : execution.application.config.cut.Ready event)
     (submission : WitnessedSubmission graph)
-    (available : (⟨some (.submit submission)⟩ : (runtime.reactiveApplication leaks).Action) ∈
+    (available : (⟨some submission⟩ : (runtime.reactiveApplication leaks).Action) ∈
       (bounds.menu runtime leaks).actions owner (execution.recall owner)
         (execution.observe (runtime.reactiveApplication leaks) owner))
     (first : runtime.firstSubmission leaks (execution.recall owner)
-      ⟨some (.submit submission)⟩ = true)
+      ⟨some submission⟩ = true)
     (addressed : submission.call.packet.event? graph = some event)
     (serial : Nat) (next : State graph)
     (certified : certifiedOpening (submission.emit
@@ -113,7 +114,7 @@ theorem guarded_submission_retained [Fintype Player] (bounds : MessageBounds gra
       ⟨(owner, serial), submission.emit
         ((runtime.reactiveApplication leaks).submit execution.application owner submission)
           owner (execution.network.known owner)⟩ = some next) :
-    (⟨some (.submit submission)⟩ : (runtime.reactiveApplication leaks).Action) ∈
+    (⟨some submission⟩ : (runtime.reactiveApplication leaks).Action) ∈
       bounds.compiledActions runtime leaks owner (execution.recall owner)
         (execution.observe (runtime.reactiveApplication leaks) owner) := by
   classical
@@ -130,10 +131,9 @@ theorem guarded_submission_retained [Fintype Player] (bounds : MessageBounds gra
       (execution.network.known owner) = submission := by
     have invariant := ((bounds.menu_mem runtime leaks owner (execution.recall owner)
       (execution.observe app owner) _).mp available).2
-    change (⟨some (.submit (submission.normalizeReactive owner _ _))⟩ : app.Action) =
-      ⟨some (.submit submission)⟩ at invariant
-    have same := ReactiveApplication.Transmission.submit.inj
-      (Option.some.inj (congrArg ReactiveApplication.Action.transmission invariant))
+    change (⟨some (submission.normalizeReactive owner _ _)⟩ : app.Action) =
+      ⟨some submission⟩ at invariant
+    have same := Option.some.inj (congrArg ReactiveApplication.Action.transmission invariant)
     rw [← known] at same
     exact same
   have originalCall : submission.call.packet = .opening event candidate ⟨payload, value⟩ := by
@@ -152,15 +152,15 @@ theorem guarded_submission_retained [Fintype Player] (bounds : MessageBounds gra
     rw [unchanged, originalCall] at applied
     exact runtime.handle_opening_verified execution.application next (owner, serial) event
       candidate ⟨payload, value⟩ applied
-  have response : (⟨some (.submit submission)⟩ : app.Action) =
+  have response : (⟨some submission⟩ : app.Action) =
       runtime.serviceDecision leaks owner (execution.recall owner) (execution.observe app owner)
         event (cast (congrArg EventField.Action outputEq.symm) true) := by
     rw [runtime.serviceDecision_successful_opening leaks execution recalled owner event payload
       binding checks outputEq codeEq node candidate value associated owned fixed resolved]
-    exact congrArg (fun material => (⟨some (.submit material)⟩ : app.Action))
+    exact congrArg (fun material => (⟨some material⟩ : app.Action))
       (normal.symm.trans normalized)
   apply bounds.decision_compiled runtime leaks owner (execution.recall owner)
-    (execution.observe app owner) ⟨some (.submit submission)⟩ _ first available
+    (execution.observe app owner) ⟨some submission⟩ _ first available
   rw [response]
   have publicReady := (execution.application.publicView_eventReady event).mpr ready
   have turnView : (execution.observe app owner).application.publicView.ownTurn? owner =

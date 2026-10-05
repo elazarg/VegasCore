@@ -6,9 +6,8 @@ import Interaction.MessageNetworkCounters
 /-! # Observation of already published traffic
 
 Pending envelopes whose identifiers are already on the ledger add no private
-knowledge, under any observation rule. Replaying such an envelope preserves this
-property. These facts do not erase network inputs or action recall and do not
-assert that arbitrary schedulers ignore rebroadcasts.
+knowledge, under any observation rule. These facts do not erase network inputs
+or action recall.
 -/
 
 namespace Interaction.MessageNetwork
@@ -48,73 +47,29 @@ theorem learn_of_pending_published (network : MessageNetwork Principal Payload)
   obtain ⟨prior, present, same⟩ := List.mem_map.mp (published message member)
   exact ⟨prior, List.mem_append_right _ present, same⟩
 
-/-- Rebroadcasting a published identifier cannot introduce unpublished pending
-traffic, even if the known list contains duplicate identifiers. -/
-theorem replay_pending_published (network : MessageNetwork Principal Payload)
-    (who : Principal) (id : MessageId Principal)
-    (published : ∀ message ∈ network.pending, message.id ∈ network.ledger.map Message.id)
-    (spent : id ∈ network.ledger.map Message.id) :
-    ∀ message ∈ (network.replay who id).2.pending,
-      message.id ∈ (network.replay who id).2.ledger.map Message.id := by
-  cases found : (network.known who).find? (fun packet => packet.id = id) with
-  | none => simpa only [replay, found] using published
-  | some packet =>
-      have same : packet.id = id := by
-        simpa using (List.find?_eq_some_iff_append.mp found).1
-      intro message member
-      simp only [replay, found] at member ⊢
-      rcases List.mem_append.mp member with prior | added
-      · exact published message prior
-      · obtain rfl := List.mem_singleton.mp added
-        simpa only [same] using spent
-
 /-- Own output history contributes no hidden packet at a checkpoint where
 every input and every leaked identifier has already been published. -/
 theorem known_published (network : MessageNetwork Principal Payload) (who : Principal)
-    (inputs : ∀ input ∈ network.inputs, input.envelope.id ∈ network.ledger.map Message.id)
+    (inputs : ∀ input ∈ network.inputs, input.id ∈ network.ledger.map Message.id)
     (leaked : ∀ message ∈ network.leaked who, message.id ∈ network.ledger.map Message.id) :
     ∀ message ∈ network.known who, message.id ∈ network.ledger.map Message.id := by
   intro message member
   rcases List.mem_append.mp member with ownOrLeaked | published
   · rcases List.mem_append.mp ownOrLeaked with own | observed
-    · obtain ⟨input, inputMember, selected⟩ := List.mem_filterMap.mp own
-      split at selected
-      · obtain rfl := Option.some.inj selected
-        exact inputs input inputMember
-      · cases selected
+    · exact inputs message (List.mem_filter.mp own).1
     · exact leaked message observed
   · exact List.mem_map.mpr ⟨message, published, rfl⟩
 
-/-- Replaying an already published identifier retains the fact that all
-input records refer to publications, while appending the actual rebroadcast. -/
-theorem replay_inputs_published (network : MessageNetwork Principal Payload)
-    (who : Principal) (id : MessageId Principal)
-    (published : ∀ input ∈ network.inputs, input.envelope.id ∈ network.ledger.map Message.id)
-    (spent : id ∈ network.ledger.map Message.id) :
-    ∀ input ∈ (network.replay who id).2.inputs,
-      input.envelope.id ∈ (network.replay who id).2.ledger.map Message.id := by
-  cases found : (network.known who).find? (fun packet => packet.id = id) with
-  | none => simpa only [replay, found] using published
-  | some packet =>
-      have same : packet.id = id := by
-        simpa using (List.find?_eq_some_iff_append.mp found).1
-      intro input member
-      simp only [replay, found] at member ⊢
-      rcases List.mem_append.mp member with prior | added
-      · exact published input prior
-      · obtain rfl := List.mem_singleton.mp added
-        simpa only [same] using spent
-
 /-- Including the fresh envelope immediately after submission restores a
-published-only checkpoint, retaining old replay copies and the new input. -/
+published-only checkpoint, retaining the new input. -/
 theorem submit_include_published (network : MessageNetwork Principal Payload)
     (who : Principal) (payload : Payload)
     (pending : ∀ message ∈ network.pending, message.id ∈ network.ledger.map Message.id)
-    (inputs : ∀ input ∈ network.inputs, input.envelope.id ∈ network.ledger.map Message.id)
+    (inputs : ∀ input ∈ network.inputs, input.id ∈ network.ledger.map Message.id)
     (serials : network.SerialsBeforeNext) :
     let next := ((network.submit who payload).2.includePending (who, network.nextSerial who)).2
     (∀ message ∈ next.pending, message.id ∈ next.ledger.map Message.id) ∧
-      (∀ input ∈ next.inputs, input.envelope.id ∈ next.ledger.map Message.id) ∧
+      (∀ input ∈ next.inputs, input.id ∈ next.ledger.map Message.id) ∧
       next.leaked = network.leaked ∧ next.SerialsBeforeNext := by
   dsimp only
   have found := serials.lookup_submit who payload

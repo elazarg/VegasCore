@@ -3,12 +3,12 @@
 import Vegas.Game.SourceServiceBoundary
 import Vegas.Game.SourceServiceSettlement
 import Vegas.Pending.ReactiveServiceEvents
-import Vegas.Pending.ReactiveReplaySettlement
+import Vegas.Pending.ReactiveSilentSettlement
 
 /-! # Public chance boundaries under every permitted roster
 
-All participants retain their actual passive observations and known-envelope
-replay opportunities during a chance phase. The real sample command then
+All participants retain their actual passive observations and silent
+opportunities during a chance phase. The real sample command then
 chooses an original source value, and the complete settlement restores the
 dynamic operational boundary. No strategic source policy is selected.
 -/
@@ -55,9 +55,9 @@ theorem sourceService_sample_window
       have transport : ∀ (current : app.Execution) who response,
           current.application = initial.application → initial.recall first ⊆ current.recall first →
           response ∈ (players who (current.recall who) (current.observe app who)).support →
-          response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩ := by
+          response = ⟨none⟩ := by
         intro current who response same _ chosen
-        have replay := bounds.compiled_foreign_transport (runtime setup) leaks who
+        have silenced := bounds.compiled_foreign_transport (runtime setup) leaks who
           (current.recall who) (current.observe app who)
           (by
             change current.application.publicView.ownTurn? who = none
@@ -66,9 +66,9 @@ theorem sourceService_sample_window
           response
           (sourceServiceMenu_in_compiled setup leaks bounds rosters who _ _
             (lawful who _ _ response chosen))
-        exact app.replayPolicy_cases _ _ response replay
+        exact app.silentPolicy_cases _ _ response silenced
       obtain ⟨application, ledger, receipts, counters, safe, _⟩ :=
-        (runtime setup).replay_window_preserves leaks players network first initial transport _
+        (runtime setup).silent_window_preserves leaks players network first initial transport _
           published (first :: rest) final reached
       exact ⟨application, ledger, receipts, counters, by rw [ledger]; exact safe⟩
 

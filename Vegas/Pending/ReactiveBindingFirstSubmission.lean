@@ -96,7 +96,7 @@ theorem compiled_binding_first_submission (runtime : EventGraphRuntime graph)
             change middle.application.publicView.SoleReady event
             rw [application]
             exact sole
-          have shape : response ∈ (app.replayPolicy (activated.recall actor)
+          have shape : response ∈ (app.silentPolicy (activated.recall actor)
               (activated.observe app actor)).support ∨
               actor = owner ∧ ∃ value ∈ bounds.typedValues payload,
                 response = runtime.reactiveBinding leaks owner event payload (.success value)
@@ -115,8 +115,9 @@ theorem compiled_binding_first_submission (runtime : EventGraphRuntime graph)
               rcases bounds.ordinary_binding_cases runtime leaks owner _ _ event payload outputEq
                   codeEq node (currentSole.ownTurn owned) owned currentReady serial currentSelected
                   response
-                    (lawful owner _ _ response chosen) with replay | ⟨value, admitted, _, physical⟩
-              · exact Or.inl replay
+                    (lawful owner _ _ response chosen) with
+                  silenced | ⟨value, admitted, _, physical⟩
+              · exact Or.inl silenced
               · refine Or.inr ⟨rfl, value, admitted, physical.trans ?_⟩
                 have currentFresh : activated.application.candidates.lookup
                     (owner, .prepared serial) = .fresh := by
@@ -129,11 +130,12 @@ theorem compiled_binding_first_submission (runtime : EventGraphRuntime graph)
                 (currentSole.ownTurn?_foreign
                   (fun equal => own (Option.some.inj (owned.symm.trans equal)).symm))
                   response (lawful actor _ _ response chosen))
-          rcases shape with replay | ⟨own, value, admitted, physical⟩
+          rcases shape with silenced | ⟨own, value, admitted, physical⟩
           · have unchanged := runtime.eventRecorded_respond_other leaks activated actor owner
               response event (fun _ => by
-                rcases app.replayPolicy_cases _ _ response replay with rfl | ⟨id, rfl⟩ <;>
-                  intro impossible <;> cases impossible)
+                rcases app.silentPolicy_cases _ _ response silenced with rfl
+                intro impossible
+                cases impossible)
             rw [unchanged] at recorded
             change runtime.eventRecorded leaks (middle.recall owner) event = true at recorded
             rw [priorRecorded] at recorded

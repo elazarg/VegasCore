@@ -1123,7 +1123,7 @@ private theorem service_runPure_execution (runtime : EventGraphRuntime graph)
 private setup.  The resulting finite law is over total deterministic response
 functions, while every opponent policy and every native transition kernel is
 left unchanged. The predraw needs every policy and the initial inputs to branch
-finitely: native commands range over unbounded replay identifiers and raw
+finitely: native commands range over unbounded identifiers and raw
 values, so an arbitrary deviation could reach infinitely many information
 values. -/
 theorem exists_pureServiceResponses_mixture (runtime : EventGraphRuntime graph)

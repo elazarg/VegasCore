@@ -26,15 +26,11 @@ structure Submission (graph : Vegas.EventGraph Player L) where
   packet : Payload graph
   opening : Option (Raw L)
 
-inductive Transmission (graph : Vegas.EventGraph Player L) where
-  | submit (submission : Submission graph)
-  | replay (id : MessageId Player)
-
 /-- Private data can retain randomized choices for future decisions. It is
 ordinary memory, with no instructions, resource allocation, or application effect. -/
 structure PlayerAction (graph : Vegas.EventGraph Player L) where
   memory : List (Nat ⊕ Raw L)
-  transmission : Option (Transmission graph)
+  transmission : Option (Submission graph)
 
 def PlayerAction.wait : PlayerAction graph := ⟨[], none⟩
 
@@ -142,10 +138,9 @@ theorem Submission.candidateAfter_eq (submission : Submission graph) (who : Play
   | opening event handle raw | withhold event | malformed raw => rfl
 
 def transmit (runtime : EventGraphRuntime graph) (who : Player)
-    (state : runtime.application.State) : Option (Transmission graph) → runtime.application.State
+    (state : runtime.application.State) : Option (Submission graph) → runtime.application.State
   | none => state
-  | some (.replay id) => { state with pool := (state.pool.replay who id).state }
-  | some (.submit submission) =>
+  | some submission =>
       { state with
         application := submitStep (submission.register state.application who) who submission.packet
         pool := (state.pool.submit who submission.packet).2 }
@@ -164,26 +159,19 @@ def actionStep (runtime : EventGraphRuntime graph) (who : Player)
     (execution : NativeExecution runtime) (action : PlayerAction graph) :
     PMF (NativeExecution runtime) := PMF.pure (runtime.takeAction who execution action)
 
-/-- Sending, replaying, and waiting cannot cancel or replace a pending envelope.
+/-- Sending and waiting cannot cancel or replace a pending envelope.
 In particular, a fresh commitment does not supersede an earlier submission. -/
 theorem transmit_lookup (runtime : EventGraphRuntime graph) (who : Player)
-    (state : runtime.application.State) (transmission : Option (Transmission graph))
+    (state : runtime.application.State) (transmission : Option (Submission graph))
     (id : MessageId Player) (message : Message Player (Payload graph))
     (pending : state.pool.lookup id = some message) :
     (runtime.transmit who state transmission).pool.lookup id = some message := by
   change state.pool.pending.find? (fun message => message.id = id) = some message at pending
   cases transmission with
   | none => exact pending
-  | some transmission =>
-      cases transmission with
-      | submit submission =>
-          simp only [transmit, MessagePool.submit, MessagePool.lookup, List.find?_append,
-            pending, Option.some_or]
-      | replay replayId =>
-          simp only [transmit, MessagePool.replay]
-          split
-          · simp only [MessagePool.lookup, List.find?_append, pending, Option.some_or]
-          · exact pending
+  | some submission =>
+      simp only [transmit, MessagePool.submit, MessagePool.lookup, List.find?_append,
+        pending, Option.some_or]
 
 def invokeNative (runtime : EventGraphRuntime graph) (who : Player)
     (policy : NativePolicy graph) (execution : NativeExecution runtime) :
@@ -199,7 +187,7 @@ theorem takeAction_history_self (runtime : EventGraphRuntime graph) (who : Playe
 
 theorem takeAction_memory_irrel (runtime : EventGraphRuntime graph) (who : Player)
     (execution : NativeExecution runtime) (first second : List (Nat ⊕ Raw L))
-    (transmission : Option (Transmission graph)) :
+    (transmission : Option (Submission graph)) :
     (runtime.takeAction who execution ⟨first, transmission⟩).native =
       (runtime.takeAction who execution ⟨second, transmission⟩).native := rfl
 
@@ -241,26 +229,23 @@ theorem Submission.register_facts (submission : Submission graph) (who : Player)
   | opening event candidate raw | withhold event | malformed raw => exact ⟨rfl, rfl, rfl⟩
 
 theorem transmit_application (runtime : EventGraphRuntime graph) (who : Player)
-    (state : runtime.application.State) (transmission : Option (Transmission graph)) :
+    (state : runtime.application.State) (transmission : Option (Submission graph)) :
     let next := runtime.transmit who state transmission
     next.application.config = state.application.config ∧
       next.application.remembered = state.application.remembered ∧
       next.application.publicView = state.application.publicView := by
   cases transmission with
   | none => exact ⟨rfl, rfl, rfl⟩
-  | some transmission =>
-      cases transmission with
-      | replay id => exact ⟨rfl, rfl, rfl⟩
-      | submit submission =>
-          simpa only [transmit, submitStep_config, submitStep_remembered,
-            submitStep_publicView] using submission.register_facts who state.application
+  | some submission =>
+      simpa only [transmit, submitStep_config, submitStep_remembered,
+        submitStep_publicView] using submission.register_facts who state.application
 
 /-- The wire receives only the packet. Hidden opening data does not enter
 the pool, receipts, or public application projection at submission. -/
 theorem transmit_submission_public (runtime : EventGraphRuntime graph) (who : Player)
     (state : runtime.application.State) (submission : Submission graph) :
     MessageApplication.State.environmentView runtime.application
-        (runtime.transmit who state (some (.submit submission))) =
+        (runtime.transmit who state (some submission)) =
       ⟨(state.pool.submit who submission.packet).2,
         state.application.publicView, state.receipts⟩ := by
   change MessageInterface.EnvironmentObservation.mk
@@ -275,7 +260,7 @@ theorem takeAction_commitment_fixed (runtime : EventGraphRuntime graph) (who : P
     (execution : NativeExecution runtime) (memory : List (Nat ⊕ Raw L))
     (event : graph.EventId) (slot : CandidateSlot graph) (opening : Option (Raw L)) :
     let next := runtime.takeAction who execution
-      ⟨memory, some (.submit ⟨.commitment event (who, slot), opening⟩)⟩
+      ⟨memory, some ⟨.commitment event (who, slot), opening⟩⟩
     next.native.application.candidates.lookup (who, slot) ≠ .fresh := by
   exact submitStep_commitment_fixed _ who event slot
 
@@ -303,41 +288,32 @@ theorem takeAction_other_input (runtime : EventGraphRuntime graph) (actor observ
     (runtime.transmit actor execution.native action.transmission) observer = _
   cases selected : action.transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | replay id =>
-          simp only [transmit, MessageApplication.State.observe,
-            MessagePool.replay_other_observe _ _ _ _ different]
-      | submit submission =>
-          simp only [transmit, MessageApplication.State.observe, application,
-            submitStep_playerView_other _ _ _ different,
-            submission.register_other _ actor observer different, MessagePool.submit,
-            MessagePool.observe, ite_eq_right different]
+  | some submission =>
+      simp only [transmit, MessageApplication.State.observe, application,
+        submitStep_playerView_other _ _ _ different,
+        submission.register_other _ actor observer different, MessagePool.submit,
+        MessagePool.observe, ite_eq_right different]
 
 /-- A direct submission reuses the established native safety semantics. The
 intermediate implementation states are absent from the strategic history. -/
 theorem transmit_native (runtime : EventGraphRuntime graph) (who : Player)
-    (state : runtime.application.State) (transmission : Option (Transmission graph)) :
+    (state : runtime.application.State) (transmission : Option (Submission graph)) :
     ∃ actions, runtime.application.run actions state =
       PMF.pure (runtime.transmit who state transmission) := by
   cases transmission with
   | none => exact ⟨[], rfl⟩
-  | some transmission =>
-      cases transmission with
-      | replay id => exact ⟨[.replay who id], by simp only [MessageApplication.run,
-          MessageApplication.step, PMF.pure_bind]; rfl⟩
-      | submit submission =>
-          cases registration : submission.registrationCommand who with
-          | none =>
-              refine ⟨[.submit who submission.packet], ?_⟩
-              simp only [MessageApplication.run, MessageApplication.step, PMF.pure_bind,
-                transmit, submission.register_eq, registration]
-              rfl
-          | some command =>
-              refine ⟨[.privateCommand who command, .submit who submission.packet], ?_⟩
-              simp only [MessageApplication.run, MessageApplication.step, PMF.pure_bind,
-                transmit, submission.register_eq, registration]
-              rfl
+  | some submission =>
+      cases registration : submission.registrationCommand who with
+      | none =>
+          refine ⟨[.submit who submission.packet], ?_⟩
+          simp only [MessageApplication.run, MessageApplication.step, PMF.pure_bind,
+            transmit, submission.register_eq, registration]
+          rfl
+      | some command =>
+          refine ⟨[.privateCommand who command, .submit who submission.packet], ?_⟩
+          simp only [MessageApplication.run, MessageApplication.step, PMF.pure_bind,
+            transmit, submission.register_eq, registration]
+          rfl
 
 theorem actionStep_native (runtime : EventGraphRuntime graph) (who : Player)
     (execution next : NativeExecution runtime) (action : PlayerAction graph)

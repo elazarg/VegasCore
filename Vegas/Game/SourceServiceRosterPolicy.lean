@@ -6,8 +6,8 @@ import Vegas.Game.SourceServicePolicy
 /-! # A full-source policy on arbitrary finite service rosters
 
 Each source decision is made at its last owner opportunity. Earlier and later
-visits retain the native replay policy. Source withholding is represented by
-silence or a known-envelope replay. The policy uses only existing local input;
+visits retain the native silent policy. Source withholding is represented by
+silence. The policy uses only existing local input;
 the roster is a fixed compiler parameter, not a hidden scheduler cursor.
 
 This is the limiting physical policy. Coverage at reached checkpoints and
@@ -34,19 +34,19 @@ def sourceServiceLastPolicy (setup : Setup (Player := Player) (L := L))
     (profile : BehavioralProfile setup.program) (who : Player) :
     (application setup leaks).Policy := fun past view =>
   match view.application.publicView.ownTurn? who with
-  | none => (application setup leaks).replayPolicy past view
+  | none => (application setup leaks).silentPolicy past view
   | some event =>
       if (graph setup).actor? event = some who ∧
           (runtime setup).eventRecorded leaks past event = false ∧
           past.length + 1 = rosterOffset setup rosters who event + (rosters event).count who then
         (sourceServicePolicy setup leaks profile who past view).bind fun response =>
           if response.transmission = none then
-            (application setup leaks).replayPolicy past view
+            (application setup leaks).silentPolicy past view
           else PMF.pure response
-      else (application setup leaks).replayPolicy past view
+      else (application setup leaks).silentPolicy past view
 
 /-- A response count outside the final owner opportunity uses the original
-native replay law, including its actual known pending envelopes. -/
+native silent policy. -/
 theorem sourceServiceLastPolicy_wait
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -58,7 +58,7 @@ theorem sourceServiceLastPolicy_wait
       (runtime setup).eventRecorded leaks past event = true ∨
       past.length + 1 ≠ rosterOffset setup rosters who event + (rosters event).count who) :
     sourceServiceLastPolicy setup leaks rosters profile who past view =
-      (application setup leaks).replayPolicy past view := by
+      (application setup leaks).silentPolicy past view := by
   classical
   unfold sourceServiceLastPolicy
   cases serving : view.application.publicView.ownTurn? who with
@@ -87,7 +87,7 @@ theorem sourceServiceLastPolicy_at_last
     sourceServiceLastPolicy setup leaks rosters profile who past view =
       (sourceServicePolicy setup leaks profile who past view).bind (fun response =>
         if response.transmission = none then
-          (application setup leaks).replayPolicy past view else PMF.pure response) := by
+          (application setup leaks).silentPolicy past view else PMF.pure response) := by
   classical
   unfold sourceServiceLastPolicy
   rw [serving]

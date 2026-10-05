@@ -118,7 +118,7 @@ theorem watched_decode_silent (watcher : Player)
 
 /-- Every equilibrium with a silent watcher extends to the full bounded
 raw game of this service. Observations and net utilities ignore only the proved
-private submission normalization; public traffic and replay effects are kept.
+private submission normalization; public traffic and silence effects are kept.
 The construction supplies consistent off-path play rather than assuming it. -/
 theorem watched_raw_equilibrium_extends [setup.FiniteInitialLaw] [leaks.FiniteSupport]
     (watcher : Player) (reveals : setup.program.RevealOnly)

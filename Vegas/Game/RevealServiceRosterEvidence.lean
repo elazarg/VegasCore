@@ -188,8 +188,8 @@ theorem roster_fresh_normal
     reactiveNormalization, WitnessedSubmission.normalizeReactive,
     Submission.normalizeReactive_none, disclosureSubmission, Submission.candidateAfter_opening]
   rw [known]
-  exact congrArg (fun evidence => (⟨some (.submit ⟨⟨.opening event candidate raw, none⟩,
-    evidence⟩)⟩ : app.Action)) (EvidenceRequest.normalize_owned_of_no_forward who
+  exact congrArg (fun evidence => (⟨some ⟨⟨.opening event candidate raw, none⟩,
+    evidence⟩⟩ : app.Action)) (EvidenceRequest.normalize_owned_of_no_forward who
       (fun slot => control.execution.application.candidates.lookup (who, slot))
       (control.execution.network.known who) ⟨candidate, raw⟩ owned localFixed unavailable)
 

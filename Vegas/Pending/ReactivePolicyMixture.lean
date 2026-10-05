@@ -6,7 +6,7 @@ import Vegas.Pending.ReactiveServiceEvaluation
 /-! # Policy mixtures through the actual reserved service
 
 Behavioral realization commutes with every finite existing interaction plan,
-including intervening observations, replays and adaptive network commands.
+including intervening observations, silence and adaptive network commands.
 The law retains the complete runtime execution. No observation-obliviousness
 or immediate-inclusion condition is imposed.
 -/

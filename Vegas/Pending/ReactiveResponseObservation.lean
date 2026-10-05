@@ -7,7 +7,7 @@ import Interaction.ReactiveRecall
 
 Foreign submissions may register private candidates and append public network
 inputs. A player sees them only through the explicit observation or inclusion
-steps. Arbitrary forwarding and replay obey the same rule.
+steps. Arbitrary forwarding requests obey the same rule.
 -/
 
 noncomputable section
@@ -35,25 +35,18 @@ theorem reactive_response_other_input (runtime : EventGraphRuntime graph)
   · rcases action with ⟨transmission⟩
     cases transmission with
     | none => rfl
-    | some transmission =>
-        cases transmission with
-        | replay id =>
-            cases found : (execution.network.known actor).find?
-                (fun envelope => envelope.id = id) <;>
-              simp only [ReactiveApplication.Execution.respond, MessageNetwork.replay, found]
-            all_goals rfl
-        | submit material =>
-            have framed := (submitStep_playerView_other
-              (material.call.register execution.application actor) actor observer different
-                material.call.packet).trans
-                  (material.call.register_other execution.application actor observer different)
-            have projected := congrArg (fun view : PlayerView graph =>
-              (⟨view.who, view.publicView, view.observation, view.candidates⟩ :
-                ReactivePlayerView graph)) framed
-            change ReactiveApplication.PlayerView.mk (app := runtime.reactiveApplication leaks)
-              _ _ _ = _
-            exact congrArg (fun observed =>
-              (⟨execution.network.observe observer, observed, execution.receipts⟩ :
-                (runtime.reactiveApplication leaks).PlayerView)) projected
+    | some material =>
+        have framed := (submitStep_playerView_other
+          (material.call.register execution.application actor) actor observer different
+            material.call.packet).trans
+              (material.call.register_other execution.application actor observer different)
+        have projected := congrArg (fun view : PlayerView graph =>
+          (⟨view.who, view.publicView, view.observation, view.candidates⟩ :
+            ReactivePlayerView graph)) framed
+        change ReactiveApplication.PlayerView.mk (app := runtime.reactiveApplication leaks)
+          _ _ _ = _
+        exact congrArg (fun observed =>
+          (⟨execution.network.observe observer, observed, execution.receipts⟩ :
+            (runtime.reactiveApplication leaks).PlayerView)) projected
 
 end Vegas.EventGraphRuntime

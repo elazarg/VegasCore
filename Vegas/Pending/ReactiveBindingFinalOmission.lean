@@ -8,7 +8,7 @@ import Interaction.MessageNetworkInvariant
 /-! # Missing the last binding opportunity with a foreign response tail
 
 After the binding owner has no remaining opportunity, other players may still
-send arbitrary raw traffic and replay known envelopes. They cannot create a
+send arbitrary raw traffic. They cannot create a
 new envelope signed by that owner. Reserved inclusion therefore cannot rescue
 an omitted binding, and actual expiry supplies public missed-binding evidence.
 No observation failure or conformance assumption on those later players is used.
@@ -38,20 +38,13 @@ private theorem foreign_response_published
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => exact ⟨rfl, published⟩
-  | some transmission =>
-      cases transmission with
-      | submit material =>
-          refine ⟨rfl, published.submit actor _ ?_⟩
-          intro authored
-          exact (different authored).elim
-      | replay id =>
-          refine ⟨?_, published.replay actor id⟩
-          change (execution.network.replay actor id).2.ledger = execution.network.ledger
-          unfold MessageNetwork.replay
-          split <;> rfl
+  | some material =>
+      refine ⟨rfl, published.submit actor _ ?_⟩
+      intro authored
+      exact (different authored).elim
 
 /-- Arbitrary later players cannot forge the absent owner's pending envelope.
-All their observations, submissions, catalog changes and replays remain actual. -/
+All their observations, submissions, and catalog changes remain actual. -/
 theorem foreign_window_owner_published
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks) (owner : Player) (visits : List Player)
@@ -200,7 +193,7 @@ theorem foreign_tail_binding_omission
     outputEq codeEq node currentReady currentUnbound selected entered ticks currentActivated
       currentDue final suffix
 
-/-- Silence and every replay at the last owner visit leave the binding absent,
+/-- Silence at the last owner visit leave the binding absent,
 even when arbitrary raw foreign traffic follows before inclusion and expiry. -/
 theorem last_binding_transport_omission
     (players : Player → (runtime.reactiveApplication leaks).Policy)
@@ -220,7 +213,7 @@ theorem last_binding_transport_omission
     (due : runtime.deadline event ≤ initial.application.clock + ticks - entered)
     (visits : List Player) (absent : owner ∉ visits)
     (response : (runtime.reactiveApplication leaks).Action)
-    (transport : ∀ submission, response.transmission ≠ some (.submit submission))
+    (transport : ∀ submission, response.transmission ≠ some submission)
     (final : (runtime.reactiveApplication leaks).Execution)
     (reached : final ∈ (runtime.runInteractionPlan leaks players network
       (visits.map ServiceInstruction.player ++
@@ -232,29 +225,14 @@ theorem last_binding_transport_omission
     rcases response with ⟨transmission⟩
     cases transmission with
     | none => rfl
-    | some transmission =>
-        cases transmission with
-        | replay id => rfl
-        | submit submission => exact (transport submission rfl).elim
+    | some submission => exact (transport submission rfl).elim
   have packets : (initial.respond app owner response).network.Satisfies
       (fun message => message.sender = owner → message.id ∈
         (initial.respond app owner response).network.ledger.map Message.id) := by
     rcases response with ⟨transmission⟩
     cases transmission with
     | none => exact published
-    | some transmission =>
-        cases transmission with
-        | submit submission => exact (transport submission rfl).elim
-        | replay id =>
-            have ledger : (initial.network.replay owner id).2.ledger =
-                initial.network.ledger := by
-              unfold MessageNetwork.replay
-              split <;> rfl
-            change (initial.network.replay owner id).2.Satisfies
-              (fun message => message.sender = owner → message.id ∈
-                (initial.network.replay owner id).2.ledger.map Message.id)
-            rw [ledger]
-            exact published.replay owner id
+    | some submission => exact (transport submission rfl).elim
   exact runtime.foreign_tail_binding_omission leaks players network
     (initial.respond app owner response) owner event payload outputEq codeEq node
     (unchanged.symm ▸ ready) (unchanged.symm ▸ unbound) packets entered ticks
@@ -287,7 +265,7 @@ theorem omitted_binding_continuation_coupling
     (visits : List Player) (absent : owner ∉ visits)
     (omits : ∀ response ∈ (players owner (original.recall owner)
       (original.observe (runtime.reactiveApplication leaks) owner)).support,
-        ∀ submission, response.transmission ≠ some (.submit submission)) :
+        ∀ submission, response.transmission ≠ some submission) :
     let app := runtime.reactiveApplication leaks
     let strategy := retainedImplementation runtime leaks menu owner reference (players owner)
     let plan := visits.map ServiceInstruction.player ++

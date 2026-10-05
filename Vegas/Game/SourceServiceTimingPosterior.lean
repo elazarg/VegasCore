@@ -5,9 +5,9 @@ import Vegas.Game.SourceServiceTimedDisclosure
 
 /-! # The actual unsent disclosure timing posterior
 
-Every earlier replay is evaluated at its recorded full input. The source view
-and opening candidate remain fixed throughout that real replay window, so its
-response likelihood is the source silence probability times the replay law.
+Every earlier silent response is evaluated at its recorded full input. The source view
+and opening candidate remain fixed throughout that real silent window, so its
+response likelihood is the source silence probability times the silent policy.
 -/
 
 noncomputable section
@@ -21,9 +21,9 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
-/-- Exact timing probabilities through a real replay window. The input posterior
+/-- Exact timing probabilities through a real silent window. The input posterior
 may already include earlier visits of this phase. -/
-theorem sourceServiceTimedMixture_replay_window_posterior
+theorem sourceServiceTimedMixture_silent_window_posterior
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
@@ -76,7 +76,7 @@ theorem sourceServiceTimedMixture_replay_window_posterior
             PMF.deferredSurvival (((revealKernel profile (source.view owner)) true).toReal)
               timing count)
       (_reached : final ∈ ((runtime setup).runInteractionPlan leaks
-        (fun _ => (application setup leaks).replayPolicy) network
+        (fun _ => (application setup leaks).silentPolicy) network
           (visits.map ServiceInstruction.player) execution).support),
     ∀ slot, ((((application setup leaks).policyMixture timing
       (sourceServiceTimedFamily setup leaks rosters wholeProfile owner event)).posterior
@@ -107,10 +107,10 @@ theorem sourceServiceTimedMixture_replay_window_posterior
         Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       let activated := execution.sampledActivation app actor sample
       let current := activated.respond app actor response
-      have casesResponse := app.replayPolicy_cases (activated.recall actor)
+      have casesResponse := app.silentPolicy_cases (activated.recall actor)
         (activated.observe app actor) response supported
       have same : current.application = execution.application :=
-        ((runtime setup).replay_response_preserves leaks (fun _ => True) activated
+        ((runtime setup).silent_response_preserves leaks (fun _ => True) activated
           ⟨by simp, by simp, by simp, by simp⟩ actor response casesResponse).1
       have currentAgree : refs.Agrees source.state current.application.config.store := by
         rw [same]; exact agree
@@ -119,7 +119,7 @@ theorem sourceServiceTimedMixture_replay_window_posterior
         rw [same]; exact history
       have currentValid : current.application.BindingInvariant := by rw [same]; exact valid
       have currentRecall := app.respond_inputRecall activated actor response recalled
-      have currentOrigins := origins_replayed setup leaks activated (origins.learn actor sample)
+      have currentOrigins := origins_silent setup leaks activated (origins.learn actor sample)
         actor response casesResponse
       have currentOpening := (rosterOpening?_application_eq setup leaks owner event current
         execution same).trans opening
@@ -128,7 +128,7 @@ theorem sourceServiceTimedMixture_replay_window_posterior
           false := by
         by_cases equal : actor = owner
         · subst actor
-          rcases casesResponse with rfl | ⟨id, rfl⟩ <;>
+          rcases casesResponse with rfl;
             simpa only [current, activated, eventRecorded, ReactiveApplication.Execution.respond,
               ReactiveApplication.Execution.sampledActivation,
               ↓reduceIte, List.any_append, List.any_cons, List.any_nil, submittedEvent?,
@@ -155,7 +155,7 @@ theorem sourceServiceTimedMixture_replay_window_posterior
           (activated.recall owner) (activated.observe app owner) =
             choice.bind (fun disclose => match (if disclose then rosterOpening? setup leaks owner
               event (activated.observe app owner) else none) with
-              | none => app.replayPolicy (activated.recall owner) (activated.observe app owner)
+              | none => app.silentPolicy (activated.recall owner) (activated.observe app owner)
               | some (candidate, raw) =>
                   PMF.pure ((runtime setup).windowOpening leaks event candidate raw)) :=
           selectedLaw
@@ -163,7 +163,7 @@ theorem sourceServiceTimedMixture_replay_window_posterior
             (execution.recall owner) entry.beforeView = choice.bind (fun disclose =>
               if disclose then PMF.pure ((runtime setup).windowOpening leaks event candidate
                 raw)
-              else app.replayPolicy (execution.recall owner) entry.beforeView) := by
+              else app.silentPolicy (execution.recall owner) entry.beforeView) := by
           rw [entryView]
           refine selectedLaw.trans ?_
           apply bind_congr_on_support _
@@ -171,11 +171,11 @@ theorem sourceServiceTimedMixture_replay_window_posterior
           cases disclose <;> simp only [Bool.false_eq_true, ↓reduceIte, activatedOpening]
           rfl
         have different : response ≠ (runtime setup).windowOpening leaks event candidate raw := by
-          rcases casesResponse with rfl | ⟨id, rfl⟩ <;> simp [windowOpening]
+          rcases casesResponse with rfl; simp [windowOpening]
         have responseProbability : ((sourceServiceOpportunity setup leaks wholeProfile owner event
             (execution.recall owner) entry.beforeView) entry.action).toReal =
               (1 - (choice true).toReal) *
-                ((app.replayPolicy (execution.recall owner) entry.beforeView)
+                ((app.silentPolicy (execution.recall owner) entry.beforeView)
                     entry.action).toReal := by
           rw [actionLaw, PMF.bind_bool_mix, mix_apply_toReal,
             entryAction, PMF.pure_apply_of_ne _ _ different, ENNReal.toReal_zero, mul_zero,
@@ -183,12 +183,12 @@ theorem sourceServiceTimedMixture_replay_window_posterior
         have likelihood (selected : Fin ((rosters event).count owner)) :
             ((family selected (execution.recall owner) entry.beforeView) entry.action).toReal =
               (if selected = slot then 1 - (choice true).toReal else 1) *
-                ((app.replayPolicy (execution.recall owner) entry.beforeView)
+                ((app.silentPolicy (execution.recall owner) entry.beforeView)
                     entry.action).toReal := by
           change (((if some (offset + selected.val) = some (execution.recall owner).length then
             sourceServiceOpportunity setup leaks wholeProfile owner event
               (execution.recall owner) entry.beforeView else
-                app.replayPolicy (execution.recall owner) entry.beforeView))
+                app.silentPolicy (execution.recall owner) entry.beforeView))
                     entry.action).toReal = _
           by_cases equal : selected = slot
           · subst selected
@@ -203,12 +203,12 @@ theorem sourceServiceTimedMixture_replay_window_posterior
             simp only [ite_eq_right unused, equal, ↓reduceIte, one_mul]
             rfl
         have possible : entry.action ∈
-            (app.replayPolicy (execution.recall owner) entry.beforeView).support := by
+            (app.silentPolicy (execution.recall owner) entry.beforeView).support := by
           rw [entryAction, entryView]
           exact supported
         have update := app.scheduledChoice_posterior_step timing family ((choice true).toReal)
           (ENNReal.toReal_nonneg) small (execution.recall owner) entry slot
-            (app.replayPolicy (execution.recall owner) entry.beforeView) possible likelihood old
+            (app.silentPolicy (execution.recall owner) entry.beforeView) possible likelihood old
         have currentCount : (current.recall owner).length = offset + (count + 1) := by
           rw [app.respond_recall_length]
           simp only [↓reduceIte]
@@ -238,8 +238,8 @@ theorem sourceServiceTimedMixture_replay_window_posterior
         simpa only [List.count_cons_of_ne sameOwner] using tail
 
 /-- Starting at a real phase boundary, the timing posterior is derived from
-its original timing law and the complete supported native replay prefix. -/
-theorem sourceServiceTimedMixture_replay_window_posterior_initial
+its original timing law and the complete supported native silent prefix. -/
+theorem sourceServiceTimedMixture_silent_window_posterior_initial
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
@@ -284,7 +284,7 @@ theorem sourceServiceTimedMixture_replay_window_posterior_initial
       (_within : visits.count owner ≤ (rosters event).count owner)
       (_small : ((revealKernel profile (source.view owner)) true).toReal < 1)
       (_reached : final ∈ ((runtime setup).runInteractionPlan leaks
-        (fun _ => (application setup leaks).replayPolicy) network
+        (fun _ => (application setup leaks).silentPolicy) network
           (visits.map ServiceInstruction.player) execution).support),
     ∀ slot, ((((application setup leaks).policyMixture timing
       (sourceServiceTimedFamily setup leaks rosters wholeProfile owner event)).posterior
@@ -296,7 +296,7 @@ theorem sourceServiceTimedMixture_replay_window_posterior_initial
   intro index event timing candidate raw opening ready unsent counted within small reached
   let app := application setup leaks
   let family := sourceServiceTimedFamily setup leaks rosters wholeProfile owner event
-  have dormant := app.policyMixture_posterior_dormant timing family app.replayPolicy
+  have dormant := app.policyMixture_posterior_dormant timing family app.silentPolicy
     (rosterOffset setup rosters owner event)
     (fun slot past view earlier => app.scheduledPolicy_before _ _ _ _ past view earlier)
     (execution.recall owner) counted.le
@@ -309,7 +309,7 @@ theorem sourceServiceTimedMixture_replay_window_posterior_initial
     rw [dormant]
     simp only [Nat.not_lt_zero, ↓reduceIte, mul_one, PMF.deferredSurvival,
       PMF.timingPrefix_zero, mul_zero, sub_zero, div_one]
-  have result := sourceServiceTimedMixture_replay_window_posterior setup leaks rosters fresh binding
+  have result := sourceServiceTimedMixture_silent_window_posterior setup leaks rosters fresh binding
     unresolved next wholeProfile profile refs source embedding refsBefore rank aligned execution
     agree history valid recalled origins effective network visits final timing 0 candidate raw
     opening ready unsent (by simpa only [Nat.add_zero] using counted)

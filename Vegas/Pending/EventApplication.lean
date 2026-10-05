@@ -158,7 +158,7 @@ structure PlayerView (graph : Vegas.EventGraph Player L) where
   remembered : (event : graph.EventId) → Option (graph.Action event)
   candidates : CandidateSlot graph → CommitmentCandidate (Raw L)
 
-/-- Public packets retain malformed, premature, replayed, and competing
+/-- Public packets retain malformed, premature, and competing
 traffic in the shared message pool even when inclusion has no state effect. -/
 inductive Payload (graph : Vegas.EventGraph Player L) where
   | commitment (event : graph.EventId) (handle : Handle graph)

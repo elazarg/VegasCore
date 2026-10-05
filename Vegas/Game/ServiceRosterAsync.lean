@@ -197,7 +197,7 @@ variable {graph : EventGraph Player L} (runtime : EventGraphRuntime graph)
 identifier of its authored packet, that packet, when unpublished, is pending and its
 identifier is exactly what `reactiveLatest` selects: every pending envelope by
 that author addressed to the event was emitted by the owner, so it carries that
-identifier, whatever replays occurred. -/
+identifier. -/
 theorem reactiveLatest_sole
     (execution : (runtime.reactiveApplication leaks).Execution)
     (origins : execution.Provenance (runtime.reactiveApplication leaks))

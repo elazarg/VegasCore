@@ -8,9 +8,9 @@ import Interaction.DeferredObservation
 /-! # Protected inclusion after a finite opening window
 
 The proof tracks the actual network through a roster of activations. A selected
-owner visit creates one fresh certified envelope; subsequent transmissions can
-only replay known envelopes. Pending observations and replay multiplicity remain
-in the execution. The invariant below is a proof predicate, not runtime state.
+owner visit creates one fresh certified envelope; subsequent responses are
+silent. Pending observations remain in the execution. The invariant below is a proof predicate,
+not runtime state.
 -/
 
 noncomputable section
@@ -113,7 +113,7 @@ theorem OpeningWindowFrame.waiting_response (runtime : EventGraphRuntime graph)
     (initial current : (runtime.reactiveApplication leaks).Execution)
     (frame : runtime.OpeningWindowFrame leaks owner event candidate raw offset selected visits
       initial current) (who : Player) (action : (runtime.reactiveApplication leaks).Action)
-    (waiting : action = ⟨none⟩ ∨ ∃ id, action = ⟨some (.replay id)⟩)
+    (waiting : action = ⟨none⟩)
     (passed : openingPassed selected (visits + if who = owner then 1 else 0) =
       openingPassed selected visits) :
     runtime.OpeningWindowFrame leaks owner event candidate raw offset selected
@@ -130,21 +130,8 @@ theorem OpeningWindowFrame.waiting_response (runtime : EventGraphRuntime graph)
         message.id ∈ initial.network.ledger.map Message.id ∨
           message = runtime.windowEnvelope leaks owner event candidate raw initial) ∧
       current.network.pending ⊆ (current.respond app who action).network.pending := by
-    rcases waiting with rfl | ⟨id, rfl⟩
-    · exact ⟨rfl, rfl, rfl, rfl, frame.serials, frame.packets, fun _ member => member⟩
-    · refine ⟨rfl, ?_, rfl, ?_, frame.serials.replay who id,
-        frame.packets.replay who id, ?_⟩
-      · change (current.network.replay who id).2.ledger = current.network.ledger
-        unfold MessageNetwork.replay
-        split <;> rfl
-      · change (current.network.replay who id).2.nextSerial = current.network.nextSerial
-        unfold MessageNetwork.replay
-        split <;> rfl
-      · change current.network.pending ⊆ (current.network.replay who id).2.pending
-        unfold MessageNetwork.replay
-        split
-        · exact fun _ member => member
-        · exact fun _ member => List.mem_append_left _ member
+    rcases waiting with rfl
+    exact ⟨rfl, rfl, rfl, rfl, frame.serials, frame.packets, fun _ member => member⟩
   refine ⟨data.1.trans frame.application, data.2.1.trans frame.ledger,
     data.2.2.1.trans frame.receipts, ?_, ?_, data.2.2.2.2.1, data.2.2.2.2.2.1, ?_⟩
   · rw [app.respond_recall_length, frame.count]
@@ -240,7 +227,7 @@ theorem OpeningWindowFrame.response (runtime : EventGraphRuntime graph)
               initial current owned (valid rfl)
     · rename_i waiting
       apply frame.waiting_response runtime leaks owner event candidate raw offset selected
-        visits initial current owner action (app.replayPolicy_cases _ _ action supported)
+        visits initial current owner action (app.silentPolicy_cases _ _ action supported)
       simp only [↓reduceIte]
       cases selected with
       | none => rfl
@@ -254,7 +241,7 @@ theorem OpeningWindowFrame.response (runtime : EventGraphRuntime graph)
             simp only [earlier, advanced, decide_false]
   · simp only [openingWindowPlayers, active, ↓reduceIte] at supported
     exact frame.waiting_response runtime leaks owner event candidate raw offset selected
-      visits initial current who action (app.replayPolicy_cases _ _ action supported)
+      visits initial current who action (app.silentPolicy_cases _ _ action supported)
         (by simp only [active, ↓reduceIte, Nat.add_zero])
 
 theorem OpeningWindowFrame.run (runtime : EventGraphRuntime graph)
@@ -323,7 +310,7 @@ theorem OpeningWindowFrame.before_published (runtime : EventGraphRuntime graph)
       (frame.packets.ledger message member),
     fun who message member => impossible message (frame.serials.leaked who message member)
       (frame.packets.leaked who message member),
-    fun input member => impossible input.envelope (frame.serials.inputs input member)
+    fun input member => impossible input (frame.serials.inputs input member)
       (frame.packets.inputs input member)⟩
 
 theorem OpeningWindowFrame.selection (runtime : EventGraphRuntime graph)

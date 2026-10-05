@@ -6,7 +6,7 @@ import Vegas.Game.SourceServiceTimedAdmissibility
 
 Actual retained histories determine the current owner count. Positive timing
 and supported effective source choices then cover the entire retained menu,
-including silence after failed guarded disclosure and pending-envelope replay.
+including silence after failed guarded disclosure.
 -/
 
 noncomputable section
@@ -112,12 +112,11 @@ private theorem opportunity_source
   · rename_i silent
     have same : response = ⟨none⟩ := by cases response; cases silent; rfl
     rw [same]
-    exact (application setup leaks).replayPolicy_support past view none
-      (Finset.mem_insert_self _ _)
+    exact (application setup leaks).silentPolicy_support past view
   · exact (PMF.mem_support_pure_iff _ _).mpr rfl
 
 omit [Fintype Player] in
-private theorem opportunity_replay
+private theorem opportunity_silent
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (profile : BehavioralProfile setup.program) (who : Player) (event : (graph setup).EventId)
@@ -127,7 +126,7 @@ private theorem opportunity_replay
     (silence : (⟨none⟩ : (application setup leaks).Action) ∈
       (sourceServicePolicy setup leaks profile who past view).support)
     (response : (application setup leaks).Action)
-    (supported : response ∈ ((application setup leaks).replayPolicy past view).support) :
+    (supported : response ∈ ((application setup leaks).silentPolicy past view).support) :
     response ∈ (sourceServiceOpportunity setup leaks profile who event past view).support := by
   simp only [sourceServiceOpportunity, unsent, Bool.false_eq_true, ↓reduceIte,
     PMF.support_bind]
@@ -263,7 +262,7 @@ theorem sourceServiceTimedPolicy_supported
     by_cases recorded : (runtime setup).eventRecorded leaks past event = true
     · rw [sourceServiceTimedPolicy_recorded setup leaks rosters timing profile who past view
         event serving recorded]
-      rcases Finset.mem_union.mp (Finset.mem_inter.mp ordinary).1 with decision | replay
+      rcases Finset.mem_union.mp (Finset.mem_inter.mp ordinary).1 with decision | silenced
       · have first := (Finset.mem_filter.mp decision).2
         rcases bounds.compiled_current_response (runtime setup) leaks who past view
           response ordinary with transport | ⟨named, selectedNamed, _, submitted⟩
@@ -272,7 +271,8 @@ theorem sourceServiceTimedPolicy_supported
           have denied := (runtime setup).firstSubmission_false_of_recorded leaks past event
             recorded response submitted
           simp only [denied, Bool.false_eq_true] at first
-      · exact ((application setup leaks).mem_replayActions_iff _ _ _).mp replay
+      · exact (application setup leaks).mem_silentPolicy_support.mpr
+          (Finset.mem_singleton.mp silenced)
     · have unsent : (runtime setup).eventRecorded leaks past event = false :=
         Bool.eq_false_iff.mpr recorded
       obtain ⟨current, count, ready⟩ := current_slot setup leaks bounds values capacity rosters
@@ -303,7 +303,7 @@ theorem sourceServiceTimedPolicy_supported
               event controlReady owned response decision)
       · rcases sourceService_response_supported setup leaks bounds values capacity rosters
           opportunities network profile full who control trace active response member with
-          replay | source
+          silenced | source
         · by_cases future : current.val + 1 < (rosters event).count who
           · let next : Fin ((rosters event).count who) := ⟨current.val + 1, future⟩
             have later : past.length ≤ rosterOffset setup rosters who event + next.val := by
@@ -322,7 +322,7 @@ theorem sourceServiceTimedPolicy_supported
               have := Option.some.inj equal
               omega
             simpa only [sourceServiceTimedFamily, ReactiveApplication.scheduledPolicy,
-              Option.map_some, ite_eq_right waiting] using replay
+              Option.map_some, ite_eq_right waiting] using silenced
           · have final : past.length + 1 =
                 rosterOffset setup rosters who event + (rosters event).count who := by
               have within := current.isLt
@@ -335,8 +335,8 @@ theorem sourceServiceTimedPolicy_supported
               rosters opportunities network profile full who control trace active event controlReady
               owned ⟨none⟩ (nonbinding_silence setup leaks bounds who past view event
                 serving owned ready nonbinding)
-            exact selected (opportunity_replay setup leaks profile who event past view
-              unsent silence response replay)
+            exact selected (opportunity_silent setup leaks profile who event past view
+              unsent silence response silenced)
         · exact selected (opportunity_source setup leaks profile who event past view
             unsent response source)
   · have idle : view.application.publicView.ownTurn? who = none := sole.ownTurn?_foreign owned

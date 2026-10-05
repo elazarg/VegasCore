@@ -13,7 +13,7 @@ service contract. Each strategic visit reserves one owner activation followed
 by network opportunities and event-addressed inclusion. There is no reaction
 roster and no private preparation phase.
 Each envelope can be included at most once, including when its call is rejected.
-Players may rebroadcast it; retrying a call requires a fresh envelope.
+Retrying a call requires a fresh envelope.
 -/
 
 noncomputable section
@@ -60,8 +60,7 @@ def interactionEpoch (chosen : ServiceOrder graph) (networkTurns : Nat) :
   chosen.val.flatMap (interactionVisit networkTurns) ++ [.tick] ++
     (List.finRange graph.order.eventCount).map .expire
 
-/-- Selection is by event and authenticated author, excluding spent identifiers.
-Replays retain the envelope author and can affect pending order. -/
+/-- Selection is by event and authenticated author, excluding spent identifiers. -/
 def reactiveLatest (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (event : graph.EventId) (owner : Player)

@@ -107,7 +107,7 @@ theorem serviceStep_canonicalCommitments
       exact runtime.application.environmentPolicyStep_pool_satisfies _ before after _ safe member
 
 /-- Arbitrary service instructions preserve canonical commitment provenance
-for the one player whose policy is prescribed. Replay, delivery, and inclusion
+for the one player whose policy is prescribed. Delivery and inclusion
 retain the original authenticated sender and therefore need no special case. -/
 theorem runServicePlan_canonicalCommitments
     (runtime : EventGraphRuntime graph) (owner : Player)
@@ -150,7 +150,7 @@ theorem serviceEpoch_canonicalCommitments
     (epochPlan chosen roster reactionRounds) before after safe run
 
 /-- Canonical owner commitment provenance survives every adaptive service
-epoch, including all reaction replays and environment inclusions. -/
+epoch, including all reactions and environment inclusions. -/
 theorem runService_canonicalCommitments
     (runtime : EventGraphRuntime graph) (owner : Player)
     (policy : graph.BehavioralPolicy owner)

@@ -5,7 +5,7 @@ import Vegas.Pending.ReactiveBindingFinalOmission
 
 /-! # A pending owner envelope through arbitrary foreign responses
 
-The ideal network preserves envelope authorship under replay. A foreign roster
+The ideal network preserves envelope authorship. A foreign roster
 may add arbitrary traffic, but cannot change the focal owner's private candidate
 view or replace that owner's unique unpublished envelope. No global conformance
 premise is imposed on the other players.
@@ -36,24 +36,12 @@ private theorem foreign_response_data
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => exact ⟨rfl, rfl, rfl, packets, List.Subset.refl _⟩
-  | some transmission =>
-      cases transmission with
-      | submit material =>
-          refine ⟨?_, rfl, rfl, packets.submit actor _ (foreign _ different), ?_⟩
-          · exact (submitStep_playerView_other (material.call.register execution.application actor)
-              actor owner different.symm material.call.packet).trans
-                (material.call.register_other execution.application actor owner different.symm)
-          · exact fun _ member => List.mem_append_left _ member
-      | replay id =>
-          refine ⟨rfl, ?_, rfl, packets.replay actor id, ?_⟩
-          · change (execution.network.replay actor id).2.ledger = execution.network.ledger
-            unfold MessageNetwork.replay
-            split <;> rfl
-          · change execution.network.pending ⊆ (execution.network.replay actor id).2.pending
-            unfold MessageNetwork.replay
-            split
-            · exact List.Subset.refl _
-            · exact fun _ member => List.mem_append_left _ member
+  | some material =>
+      refine ⟨?_, rfl, rfl, packets.submit actor _ (foreign _ different), ?_⟩
+      · exact (submitStep_playerView_other (material.call.register execution.application actor)
+          actor owner different.symm material.call.packet).trans
+            (material.call.register_other execution.application actor owner different.symm)
+      · exact fun _ member => List.mem_append_left _ member
 
 /-- A foreign response window preserves the complete owner candidate view,
 pending owner-envelope constraints, and all prior pending packets. Every
@@ -137,7 +125,7 @@ private theorem reactiveLatest_unique_owner
           simpa only [decide_eq_true_eq] using List.find?_some found
         exact congrArg some (unique selected (List.mem_of_find?_eq_some found) same)
 
-/-- Foreign fresh submissions and arbitrary known-envelope forwarding cannot
+/-- Foreign fresh submissions cannot
 redirect the owner's reserved selection. All other pending traffic is retained. -/
 theorem foreign_window_selection
     (players : Player → (runtime.reactiveApplication leaks).Policy)

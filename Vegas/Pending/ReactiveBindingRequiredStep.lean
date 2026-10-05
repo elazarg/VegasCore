@@ -7,7 +7,7 @@ import Vegas.Pending.ReactiveBindingFinalOmission
 
 Every effective mixed response has one coupling to the fixed legal repair.
 Canonical opaque bindings preserve the joint frame, nonconforming emitted
-traffic gives an audit record, and silence or replay entails a public missed
+traffic gives an audit record, and silence entails a public missed
 binding after the actual foreign tail and deadline. Later policies are arbitrary.
 -/
 
@@ -74,9 +74,9 @@ theorem required_binding_stopped_response_coupling
       ∀ next ∈ coupling.support,
         (∃ record, app.trafficStep (some ⟨remaining, some owner, original⟩)
             (some ⟨remaining, none, next.1⟩) = [record] ∧
-          record.input.envelope.sender = owner ∧
+          record.envelope.sender = owner ∧
           runtime.permittedServiceEnvelope record.observation record.ledger
-            record.input.envelope = false) ∨
+            record.envelope = false) ∨
         (∀ (later : Player → app.Policy) (network : runtime.NetworkPolicy leaks)
           (final : app.Execution), final ∈ (runtime.runInteractionPlan leaks later network
             (visits.map ServiceInstruction.player ++
@@ -138,7 +138,7 @@ theorem required_binding_stopped_response_coupling
     obtain ⟨response, selected, rfl⟩ := PMF.support_map .. ▸ supported
     rcases runtime.binding_audit_response_cases leaks bounds original owner remaining event
         payload outputEq codeEq node turn fresh leftRecall serials response
-          (available response selected) with replay | canonical | departure
+          (available response selected) with silenced | canonical | departure
     · right
       left
       intro later network final reached
@@ -146,10 +146,11 @@ theorem required_binding_stopped_response_coupling
         outputEq codeEq node ready unbound published entered ticks activated due visits absent
         response _ final reached
       intro material
-      rcases app.replayPolicy_cases _ _ response replay with rfl | ⟨id, rfl⟩ <;> simp
+      rcases app.silentPolicy_cases _ _ response silenced with rfl
+      simp
     · obtain ⟨opening, bounded, _, rfl⟩ := canonical
       have legal : (proposed
-          ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩).1 ∈
+          ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩).1 ∈
             menu.actions owner (repaired.recall owner) (repaired.observe app owner) := by
         apply coverage
         exact repairResponse_binding_available runtime leaks bounds owner memory
@@ -222,9 +223,9 @@ theorem required_binding_stopped_activation_coupling
       ∀ next ∈ coupling.support,
         (∃ record, app.trafficStep (some ⟨remaining + 1, none, original⟩)
             (some ⟨remaining, none, next.1⟩) = [record] ∧
-          record.input.envelope.sender = owner ∧
+          record.envelope.sender = owner ∧
           runtime.permittedServiceEnvelope record.observation record.ledger
-            record.input.envelope = false) ∨
+            record.envelope = false) ∨
         (∀ (later : Player → app.Policy) (network : runtime.NetworkPolicy leaks)
           (final : app.Execution), final ∈ (runtime.runInteractionPlan leaks later network
             (visits.map ServiceInstruction.player ++

@@ -52,8 +52,8 @@ theorem respond_records_view (execution : (application setup leaks).Execution) (
       simp only [ReactiveApplication.Execution.respond, ↓reduceIte]
       exact ⟨_, List.mem_append_right _ (List.mem_singleton_self _), rfl⟩
   | some transmission =>
-      cases transmission <;> simp only [ReactiveApplication.Execution.respond, ↓reduceIte] <;>
-        exact ⟨_, List.mem_append_right _ (List.mem_singleton_self _), rfl⟩
+      simp only [ReactiveApplication.Execution.respond, ↓reduceIte]
+      exact ⟨_, List.mem_append_right _ (List.mem_singleton_self _), rfl⟩
 
 /-- Recorded responses persist through a scheduler round. -/
 theorem round_recall_mono (scheduler : (application setup leaks).Scheduler)

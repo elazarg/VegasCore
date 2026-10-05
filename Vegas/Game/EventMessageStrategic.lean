@@ -19,7 +19,7 @@ every serviced play -- completion discharges the terminality test -- and differ
 only where the game never goes.
 
 Native deviations are finitely branching: native commands range over unbounded
-replay identifiers and raw values, so the service's predraw covers exactly the
+identifiers and raw values, so the service's predraw covers exactly the
 deviations whose laws have finite support. The wire and order policies branch
 finitely, fresh binding alphabets are finite, and the initial law is finitely
 supported.

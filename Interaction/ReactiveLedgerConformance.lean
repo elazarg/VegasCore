@@ -5,8 +5,8 @@ import Interaction.ReactivePolicyInvariant
 
 /-! # Persistent conformance evidence from included packets
 
-The checker reads only the public ledger. It identifies an envelope's original
-author, not the broadcaster of a replay. Application acceptance does not erase
+The checker reads only the public ledger and attributes each envelope to its
+author. Application acceptance does not erase
 the packet or exempt it from the public predicate. The predicate must be proved
 sound for the intended source implementation separately.
 
@@ -93,13 +93,7 @@ theorem ledgerViolation_respond
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact detected
-  | some transmission =>
-      cases transmission with
-      | submit material => exact detected
-      | replay id =>
-          cases found : (execution.network.known actor).find? (fun message => message.id = id) <;>
-            simpa only [ReactiveApplication.Execution.respond, MessageNetwork.replay, found]
-              using detected
+  | some material => exact detected
 
 theorem ledgerViolation_environment
     (execution next : app.Execution)

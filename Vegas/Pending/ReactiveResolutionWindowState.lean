@@ -7,11 +7,10 @@ import Vegas.Pending.ReactiveResolutionWindowSupport
 Within a served resolve phase every retained response keeps the application.
 Before the owner's opening all traffic stays published. The owner's opening is
 its only possible submission; afterwards that envelope is pending and
-unpublished, and every in-flight envelope is either published or a copy of it.
-Replay copies and previously published traffic may remain in flight, but they
-identify no other unpublished envelope. Transport responses and passive samples
-preserve this, so it holds at every point of every retained roster window, for
-arbitrary policies of the permitted menu.
+unpublished, and every in-flight envelope is either published or the opening.
+Transport responses and passive samples preserve this, so it holds at every
+point of every retained roster window, for arbitrary policies of the permitted
+menu.
 -/
 
 noncomputable section
@@ -27,8 +26,8 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 
 /-- The network at a point of a disclosure window whose application is fixed:
 all traffic published before the owner's opening; afterwards the opening is
-pending and unpublished, and every in-flight envelope is published or a copy of
-it. -/
+pending and unpublished, and every in-flight envelope is published or is
+the opening. -/
 def ResolutionWindowState (owner : Player) (event : graph.EventId) (application : State graph)
     (execution : (runtime.reactiveApplication leaks).Execution) : Prop :=
   execution.application = application ∧ execution.network.SerialsBeforeNext ∧
@@ -47,18 +46,18 @@ omit [Fintype Player] in
 theorem eventRecorded_respond_transport
     (execution : (runtime.reactiveApplication leaks).Execution) (who observer : Player)
     (response : (runtime.reactiveApplication leaks).Action)
-    (transport : response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩)
+    (transport : response = ⟨none⟩)
     (event : graph.EventId) :
     runtime.eventRecorded leaks
       ((execution.respond (runtime.reactiveApplication leaks) who response).recall observer) event =
       runtime.eventRecorded leaks (execution.recall observer) event := by
   classical
-  rcases transport with rfl | ⟨id, rfl⟩ <;>
-  · by_cases same : observer = who
-    · subst same
-      simp [ReactiveApplication.Execution.respond, eventRecorded, List.any_append,
-        submittedEvent?]
-    · simp [ReactiveApplication.Execution.respond, same]
+  rcases transport with rfl
+  by_cases same : observer = who
+  · subst same
+    simp [ReactiveApplication.Execution.respond, eventRecorded, List.any_append,
+      submittedEvent?]
+  · simp [ReactiveApplication.Execution.respond, same]
 
 omit [Fintype Player] in
 /-- An all-published network with no owner submission is a window state. -/
@@ -111,21 +110,21 @@ theorem ResolutionWindowState.respond (bounds : MessageBounds graph)
     event owner payload binding checks outputEq codeEq node sole response member
   have serialsAfter := (app.serialsBeforeNextInvariant (fun _ _ => PMF.pure .wait)).respond
     execution who response serials
-  have transportCase (transport : response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩) :
+  have transportCase (transport : response = ⟨none⟩) :
       runtime.ResolutionWindowState leaks owner event application
         (execution.respond app who response) := by
     have recordedEq := runtime.eventRecorded_respond_transport leaks execution who owner response
       transport event
     refine ⟨applicationAfter.trans sameApp, serialsAfter, fun unsent => ?_, fun recorded => ?_⟩
     · rw [recordedEq] at unsent
-      have preserved := runtime.replay_response_preserves leaks _ execution
+      have preserved := runtime.silent_response_preserves leaks _ execution
         (unsentPublished unsent) who response transport
       rw [preserved.2.1]
       exact preserved.2.2.2.2.1
     · rw [recordedEq] at recorded
       obtain ⟨message, sender, addressed, pending, unpublished, packets⟩ :=
         recordedMessage recorded
-      have preserved := runtime.replay_response_preserves leaks _ execution packets who response
+      have preserved := runtime.silent_response_preserves leaks _ execution packets who response
         transport
       refine ⟨message, sender, addressed, preserved.2.2.2.2.2 pending, ?_, ?_⟩
       · rw [preserved.2.1]
@@ -133,10 +132,9 @@ theorem ResolutionWindowState.respond (bounds : MessageBounds graph)
       · rw [preserved.2.1]
         exact preserved.2.2.2.2.1
   rcases bounds.compiled_resolution_cases runtime leaks who _ _ event owner payload binding checks
-    outputEq codeEq node sole response member with silent | replay |
+    outputEq codeEq node sole response member with silent |
       ⟨candidate, value, evidence, acting, _, _, _, candidateOwned, first, shape⟩
-  · exact transportCase (Or.inl silent)
-  · exact transportCase (app.replayPolicy_cases _ _ response replay)
+  · exact transportCase silent
   · have owned : graph.actor? event = some owner := by
       have actor := congrArg EventCode.actor codeEq
       rw [EventCode.actor_cast outputEq (graph.nodes event)] at actor
@@ -150,7 +148,7 @@ theorem ResolutionWindowState.respond (bounds : MessageBounds graph)
     have unsent : runtime.eventRecorded leaks (execution.recall owner) event = false := by
       simpa only [firstSubmission, submittedEvent?, Payload.event?, Bool.not_eq_true'] using first
     have recordedAfter : runtime.eventRecorded leaks
-        ((execution.respond app owner ⟨some (.submit submission)⟩).recall owner) event = true :=
+        ((execution.respond app owner ⟨some submission⟩).recall owner) event = true :=
       runtime.eventRecorded_respond leaks execution owner _ event rfl
     let packet := app.packet (app.submit execution.application owner submission) owner
       (execution.network.known owner) submission

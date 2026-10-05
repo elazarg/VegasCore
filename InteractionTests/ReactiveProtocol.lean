@@ -32,20 +32,20 @@ private abbrev app : ReactiveApplication Bool where
   observePublic _ := ()
   observePending _ pending := PMF.pure (pending.map Message.id).toFinset
 
-private def send (value : Nat) : app.Action := ⟨some (.submit value)⟩
+private def send (value : Nat) : app.Action := ⟨some value⟩
 
 private def players : Bool → app.Policy := fun who _ view =>
   PMF.pure (send (if who then
     (view.messages.leaked.head?.map Message.payload).getD 0 + 1 else 7))
 
 /-- Later scheduling can depend on the actual incoming message, including
-the broadcaster. The second Alice activation is an explicit network choice. -/
+its sender. The second Alice activation is an explicit network choice. -/
 private def scheduler : app.Scheduler := fun history view =>
   PMF.pure (match history.length with
     | 0 => .activate false
     | 1 => .activate true
     | _ => if view.network.inputs.any (fun input =>
-        input.broadcaster && input.envelope.payload == 8) then
+        input.sender && input.payload == 8) then
           .activate false else .wait)
 
 private def e0 : app.Execution := .initial app ()
@@ -116,9 +116,9 @@ theorem reaction_before_inclusion :
       scheduler e4.environmentRecall (e4.observeEnvironment app) =
         PMF.pure (.activate false) := ⟨rfl, rfl, rfl, rfl⟩
 
-theorem replay_preserves_author_records_broadcaster :
-    let next := e3.respond app true ⟨some (.replay (false, 0))⟩
-    next.network.inputs = [⟨false, ⟨(false, 0), 7⟩⟩, ⟨true, ⟨(false, 0), 7⟩⟩] := rfl
+/-- The input history records each submitted envelope once, in order. -/
+theorem inputs_record_submissions :
+    e4.network.inputs = [⟨(false, 0), 7⟩, ⟨(true, 0), 8⟩] := rfl
 
 /-- Even a rule selecting an own identifier cannot return that packet to its author. -/
 theorem own_packet_is_not_a_leak :

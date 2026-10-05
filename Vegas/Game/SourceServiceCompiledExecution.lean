@@ -187,18 +187,18 @@ theorem sourceServiceLastPolicy_admissible
   let app := application setup leaks
   let past := control.execution.recall who
   let view := control.execution.observe app who
-  have replay_covered (replay : response ∈ (app.replayPolicy past view).support)
+  have silent_covered (silenced : response ∈ (app.silentPolicy past view).support)
       (optional : ¬ bindingRequired setup leaks rosters who past view) :
       response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who past view := by
     change response ∈ sourceServiceActions setup leaks bounds rosters who past view
     rw [sourceServiceActions, ite_eq_right optional]
-    exact bounds.replay_compiled (runtime setup) leaks who past view response replay
+    exact bounds.silent_compiled (runtime setup) leaks who past view response silenced
   change response ∈ (sourceServiceLastPolicy setup leaks rosters profile who past view).support
     at supported
   cases serving : view.application.publicView.ownTurn? who with
   | none =>
       simp only [sourceServiceLastPolicy, serving] at supported
-      exact replay_covered supported (by rintro ⟨event, _, same, _⟩; simp [serving] at same)
+      exact silent_covered supported (by rintro ⟨event, _, same, _⟩; simp [serving] at same)
   | some event =>
       simp only [sourceServiceLastPolicy, serving] at supported
       split at supported
@@ -211,7 +211,7 @@ theorem sourceServiceLastPolicy_admissible
             simpa only [sourceServiceOpportunity, chosen.2.1, Bool.false_eq_true, ↓reduceIte]
               using supported)).1
       · rename_i waiting
-        apply replay_covered supported
+        apply silent_covered supported
         rintro ⟨other, _, otherTurn, _, owned, _, unsent, final⟩
         have same : other = event := Option.some.inj (otherTurn.symm.trans serving)
         subst other

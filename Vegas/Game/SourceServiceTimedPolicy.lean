@@ -11,7 +11,7 @@ import Interaction.ScheduledOpening
 
 One ordinary behavioral policy realizes a common timing lottery at each
 source event. The source decision is drawn at the selected owner visit.
-All other visits retain the real replay policy. Every family checks actual
+All other visits retain the real silent policy. Every family checks actual
 own recall before emitting, including at off-path inputs of the mixture.
 The latent slot is proof data of behavioral realization, not runtime state.
 -/
@@ -28,16 +28,16 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
 /-- The existing source decision with silent choices realized by the full
-replay law. Recorded prior emissions stop every timing branch. -/
+silent policy. Recorded prior emissions stop every timing branch. -/
 def sourceServiceOpportunity
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (profile : BehavioralProfile setup.program) (who : Player) (event : (graph setup).EventId) :
     (application setup leaks).Policy := fun past view =>
   if (runtime setup).eventRecorded leaks past event then
-    (application setup leaks).replayPolicy past view
+    (application setup leaks).silentPolicy past view
   else (sourceServicePolicy setup leaks profile who past view).bind fun response =>
-    if response.transmission = none then (application setup leaks).replayPolicy past view
+    if response.transmission = none then (application setup leaks).silentPolicy past view
     else PMF.pure response
 
 def sourceServiceTimedFamily
@@ -48,7 +48,7 @@ def sourceServiceTimedFamily
     (slot : Fin ((rosters event).count who)) : (application setup leaks).Policy :=
   (application setup leaks).scheduledPolicy (rosterOffset setup rosters who event) (some slot)
     (sourceServiceOpportunity setup leaks profile who event)
-    (application setup leaks).replayPolicy
+    (application setup leaks).silentPolicy
 
 def sourceServiceTimedPolicy
     (setup : Setup (Player := Player) (L := L))
@@ -58,12 +58,12 @@ def sourceServiceTimedPolicy
     (profile : BehavioralProfile setup.program) (who : Player) :
     (application setup leaks).Policy := fun past view =>
   match view.application.publicView.ownTurn? who with
-  | none => (application setup leaks).replayPolicy past view
+  | none => (application setup leaks).silentPolicy past view
   | some event =>
       if owned : (graph setup).actor? event = some who then
         ((application setup leaks).policyMixture (timing event who owned)
           (sourceServiceTimedFamily setup leaks rosters profile who event)).policy past view
-      else (application setup leaks).replayPolicy past view
+      else (application setup leaks).silentPolicy past view
 
 /-- At its own turn a player follows the event's timing mixture. -/
 theorem sourceServiceTimedPolicy_turn
@@ -81,7 +81,7 @@ theorem sourceServiceTimedPolicy_turn
         (sourceServiceTimedFamily setup leaks rosters profile who event)).policy past view := by
   simp only [sourceServiceTimedPolicy, serving, owned, ↓reduceDIte]
 
-/-- A player owning no ready event replays. -/
+/-- A player owning no ready event is silent. -/
 theorem sourceServiceTimedPolicy_idle
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -92,7 +92,7 @@ theorem sourceServiceTimedPolicy_idle
     (view : (application setup leaks).PlayerView)
     (idle : view.application.publicView.Idle who) :
     sourceServiceTimedPolicy setup leaks rosters timing profile who past view =
-      (application setup leaks).replayPolicy past view := by
+      (application setup leaks).silentPolicy past view := by
   simp only [sourceServiceTimedPolicy, PublicView.ownTurn?_eq_none _ who idle]
 
 /-- Every recorded opening or binding prevents a second fresh response,
@@ -108,13 +108,13 @@ theorem sourceServiceTimedPolicy_recorded
     (serving : view.application.publicView.ownTurn? who = some event)
     (recorded : (runtime setup).eventRecorded leaks past event = true) :
     sourceServiceTimedPolicy setup leaks rosters timing profile who past view =
-      (application setup leaks).replayPolicy past view := by
+      (application setup leaks).silentPolicy past view := by
   simp only [sourceServiceTimedPolicy, serving]
   split
   · rw [ReactiveApplication.policyMixture_policy]
     have same : ∀ slot : Fin ((rosters event).count who),
         sourceServiceTimedFamily setup leaks rosters profile who event slot past view =
-          (application setup leaks).replayPolicy past view := by
+          (application setup leaks).silentPolicy past view := by
       intro slot
       simp only [sourceServiceTimedFamily, ReactiveApplication.scheduledPolicy,
         sourceServiceOpportunity, recorded, ↓reduceIte, ite_self]
@@ -144,7 +144,7 @@ theorem sourceServiceTimedFamily_execution
           network plan execution := by
   let app := application setup leaks
   let family := sourceServiceTimedFamily setup leaks rosters profile who event
-  have dormant := app.policyMixture_posterior_dormant timing family app.replayPolicy
+  have dormant := app.policyMixture_posterior_dormant timing family app.silentPolicy
     (rosterOffset setup rosters who event)
     (fun slot past view earlier => app.scheduledPolicy_before _ _ _ _ past view earlier)
     (execution.recall who) before
@@ -168,7 +168,7 @@ theorem sourceServiceTimedPolicy_window_eq
       (sourceServiceTimedPolicy setup leaks rosters timing profile) network
       (visits.map ServiceInstruction.player) execution =
       (runtime setup).runInteractionPlan leaks
-        (Function.update (fun _ => (application setup leaks).replayPolicy) owner
+        (Function.update (fun _ => (application setup leaks).silentPolicy) owner
           ((application setup leaks).policyMixture (timing event owner owned)
             (sourceServiceTimedFamily setup leaks rosters profile owner event)).policy)
         network (visits.map ServiceInstruction.player) execution := by
@@ -189,7 +189,7 @@ theorem sourceServiceTimedPolicy_window_eq
           event := sole
       have law : sourceServiceTimedPolicy setup leaks rosters timing profile actor
           (activated.recall actor) (activated.observe app actor) =
-          (Function.update (fun _ => app.replayPolicy) owner
+          (Function.update (fun _ => app.silentPolicy) owner
             (app.policyMixture (timing event owner owned)
               (sourceServiceTimedFamily setup leaks rosters profile owner event)).policy) actor
             (activated.recall actor) (activated.observe app actor) := by
@@ -232,12 +232,12 @@ theorem sourceServiceTimedPolicy_phase_law
       (sourceServiceTimedPolicy setup leaks rosters timing profile) network phase execution =
       (timing event owner owned).bind fun slot =>
         (runtime setup).runInteractionPlan leaks
-          (Function.update (fun _ => (application setup leaks).replayPolicy) owner
+          (Function.update (fun _ => (application setup leaks).silentPolicy) owner
             (sourceServiceTimedFamily setup leaks rosters profile owner event slot))
           network phase execution := by
   intro phase
   let app := application setup leaks
-  let mixed := Function.update (fun _ => app.replayPolicy) owner
+  let mixed := Function.update (fun _ => app.silentPolicy) owner
     (app.policyMixture (timing event owner owned)
       (sourceServiceTimedFamily setup leaks rosters profile owner event)).policy
   trans (runtime setup).runInteractionPlan leaks mixed network phase execution
@@ -249,7 +249,7 @@ theorem sourceServiceTimedPolicy_phase_law
     intro current _
     exact servicePlan_players_eq setup leaks _ _ network _ (by simp) (by intro who; simp) current
   · exact sourceServiceTimedFamily_execution setup leaks rosters profile owner event
-      (timing event owner owned) (fun _ => app.replayPolicy) network phase execution before
+      (timing event owner owned) (fun _ => app.silentPolicy) network phase execution before
 
 /-- The actual continuation from an active owner decision is the posterior
 mixture of scheduled continuations, retaining the already sampled input. -/
@@ -272,12 +272,12 @@ theorem sourceServiceTimedPolicy_active_phase_law
       ((runtime setup).runInteractionPlan leaks players network phase) =
       ((app.policyMixture (timing event owner owned) family).posterior
         (execution.recall owner)).bind fun slot =>
-          let scheduled := Function.update (fun _ => app.replayPolicy) owner (family slot)
+          let scheduled := Function.update (fun _ => app.silentPolicy) owner (family slot)
           (app.invoke scheduled owner execution).bind
             ((runtime setup).runInteractionPlan leaks scheduled network phase) := by
   intro app players family phase
   let mixture := app.policyMixture (timing event owner owned) family
-  let mixed := Function.update (fun _ => app.replayPolicy) owner mixture.policy
+  let mixed := Function.update (fun _ => app.silentPolicy) owner mixture.policy
   trans (app.invoke mixed owner execution).bind
     ((runtime setup).runInteractionPlan leaks mixed network phase)
   · simp only [ReactiveApplication.invoke, PMF.bind_map, Function.comp_def]
@@ -303,7 +303,7 @@ theorem sourceServiceTimedPolicy_active_phase_law
     intro current _
     exact servicePlan_players_eq setup leaks _ _ network _ (by simp) (by intro who; simp) current
   · exact ((runtime setup).invoke_runInteractionPlan_policyMixture leaks
-      (timing event owner owned) family owner (fun _ => app.replayPolicy) network phase
+      (timing event owner owned) family owner (fun _ => app.silentPolicy) network phase
       execution).symm
 
 /-- A pure final timing slot is the checked limiting source compiler at

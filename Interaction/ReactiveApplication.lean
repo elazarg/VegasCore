@@ -9,9 +9,9 @@ import GameTheoryExtensions.Math.Probability.Expectation
 /-! # One optional transmission per player activation
 
 An application supplies atomic submission and inclusion semantics. A player's
-response may submit or replay one envelope. Implementation memory is private
+response may submit one envelope. Implementation memory is private
 state of the strategy, not a field of the response or game history. Only the
-public envelope and broadcaster enter the network input history. The scheduler
+public envelope enters the network input history. The scheduler
 can activate a player again after observing that output.
 Before a response, the separate observation rule privately samples pending
 message identifiers. The scheduler sees public traffic and its own command
@@ -43,12 +43,9 @@ namespace ReactiveApplication
 
 variable {Principal : Type} (app : ReactiveApplication Principal)
 
-inductive Transmission where
-  | submit (submission : app.Submission)
-  | replay (id : MessageId Principal)
-
+/-- A response transmits at most one submission. -/
 structure Action where
-  transmission : Option app.Transmission
+  transmission : Option app.Submission
 
 structure PlayerView where
   messages : MessageNetwork.PlayerView Principal app.Payload
@@ -94,6 +91,26 @@ def Execution.observeEnvironment (execution : app.Execution) : app.EnvironmentVi
 abbrev Policy := List app.PlayerEntry → app.PlayerView → PMF app.Action
 abbrev Scheduler := List app.EnvironmentEntry → app.EnvironmentView → PMF app.Command
 
+/-- Silence at every view: the prescribed response of a player with nothing to
+send. -/
+noncomputable def silentPolicy : app.Policy := fun _ _ => PMF.pure ⟨none⟩
+
+@[simp] theorem silentPolicy_apply (past : List app.PlayerEntry) (view : app.PlayerView) :
+    app.silentPolicy past view = PMF.pure ⟨none⟩ := rfl
+
+theorem mem_silentPolicy_support {past : List app.PlayerEntry} {view : app.PlayerView}
+    {action : app.Action} : action ∈ (app.silentPolicy past view).support ↔ action = ⟨none⟩ :=
+  PMF.mem_support_pure_iff _ _
+
+theorem silentPolicy_support (past : List app.PlayerEntry) (view : app.PlayerView) :
+    (⟨none⟩ : app.Action) ∈ (app.silentPolicy past view).support :=
+  app.mem_silentPolicy_support.mpr rfl
+
+theorem silentPolicy_cases (past : List app.PlayerEntry) (view : app.PlayerView)
+    (action : app.Action) (supported : action ∈ (app.silentPolicy past view).support) :
+    action = ⟨none⟩ :=
+  app.mem_silentPolicy_support.mp supported
+
 variable [DecidableEq Principal]
 
 /-- Application submission and its envelope are one transition. The emitted
@@ -102,14 +119,11 @@ def Execution.respond (execution : app.Execution) (who : Principal) (action : ap
     app.Execution :=
   let (state, emitted, network) := match action.transmission with
     | none => (execution.application, none, execution.network)
-    | some (.submit submission) =>
+    | some submission =>
         let next := app.submit execution.application who submission
         let packet := app.packet next who (execution.network.known who) submission
         let (envelope, network) := execution.network.submit who packet
         (next, some envelope, network)
-    | some (.replay id) =>
-        let (emitted, network) := execution.network.replay who id
-        (execution.application, emitted, network)
   { execution with
     application := state
     network := network

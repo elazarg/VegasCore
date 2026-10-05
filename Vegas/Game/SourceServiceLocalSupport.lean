@@ -5,8 +5,8 @@ import Vegas.Game.SourceServiceDecisionSupport
 
 /-! # Actual native choices supported by the source compiler
 
-At every legal retained decision, each physical response is either a replay
-alias or lies in the actual source compiler's response law. This includes
+At every legal retained decision, each physical response is either
+silence or lies in the actual source compiler's response law. This includes
 every typed binding value and every effective guarded disclosure. The proof
 uses the derived residual support property at the actual source checkpoint;
 neither source-state reachability nor a normalized equilibrium is assumed.
@@ -174,7 +174,7 @@ theorem sourceService_decision_supported
             node disclose).symm.trans choiceEq
 
 /-- A retained response at any actual source-service decision is supported
-by its replay law or by the actual compiled source decision law. -/
+by its silent policy or by the actual compiled source decision law. -/
 theorem sourceService_response_supported
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -193,7 +193,7 @@ theorem sourceService_response_supported
     (response : (application setup leaks).Action)
     (member : response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who
       (control.execution.recall who) (control.execution.observe (application setup leaks) who)) :
-    response ∈ ((application setup leaks).replayPolicy (control.execution.recall who)
+    response ∈ ((application setup leaks).silentPolicy (control.execution.recall who)
       (control.execution.observe (application setup leaks) who)).support ∨
     response ∈ (sourceServicePolicy setup leaks profile who (control.execution.recall who)
       (control.execution.observe (application setup leaks) who)).support := by
@@ -207,11 +207,12 @@ theorem sourceService_response_supported
     (ready_iff_rank setup _ event.val checkpoint.ordered event).mpr rfl
   have member := sourceServiceMenu_in_compiled setup leaks bounds rosters who _ _ member
   by_cases owned : (graph setup).actor? event = some who
-  · rcases Finset.mem_union.mp (Finset.mem_inter.mp member).1 with decision | replay
+  · rcases Finset.mem_union.mp (Finset.mem_inter.mp member).1 with decision | silenced
     · exact Or.inr (sourceService_decision_supported setup leaks bounds values capacity rosters
         opportunities network profile full who control trace active event ready owned response
         (Finset.mem_filter.mp decision).1)
-    · exact Or.inl (((application setup leaks).mem_replayActions_iff _ _ _).mp replay)
+    · exact Or.inl ((application setup leaks).mem_silentPolicy_support.mpr
+        (Finset.mem_singleton.mp silenced))
   · exact Or.inl (bounds.compiled_foreign_transport (runtime setup) leaks who
       (control.execution.recall who) (control.execution.observe app who)
       ((soleReady_of_ready setup control.execution.application ready).ownTurn?_foreign owned)

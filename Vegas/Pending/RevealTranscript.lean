@@ -41,7 +41,7 @@ theorem numberPackets_decode {Payload : Type} (serial : Player → Nat)
       rfl
 
 /-- The serial of one extra packet counts precisely earlier packets by the
-same sender. Rebroadcasts are absent from this list because they allocate no id. -/
+same sender. -/
 theorem numberPackets_append {Payload : Type} (serial : Player → Nat)
     (packets : List (Player × Payload)) (who : Player) (payload : Payload) :
     numberPackets serial (packets ++ [(who, payload)]) =

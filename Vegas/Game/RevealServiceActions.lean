@@ -3,11 +3,11 @@
 import Vegas.Game.RevealService
 import GameTheoryExtensions.Math.Probability.ActionSplitting
 
-/-! # Source choices and published replay aliases
+/-! # Source choices in the ordinary revelation menu
 
 At a covered revelation opportunity, the actual ordinary menu projects to the
 source Boolean choice: its sole submission opens the commitment, while silence
-and replays of published envelopes withhold it. Finite action splitting gives
+withholds it. Finite action splitting gives
 exact projected laws and full support. These local facts do not assert a
 history correspondence or sequential equilibrium preservation.
 -/
@@ -29,7 +29,7 @@ theorem opening_is_submission (who : Player)
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView) (response : (application setup leaks).Action)
     (selected : opening? setup leaks who past view = some response) :
-    ∃ submission, response = ⟨some (.submit submission)⟩ := by
+    ∃ submission, response = ⟨some submission⟩ := by
   unfold opening? at selected
   obtain ⟨event, _turn, selected⟩ := Option.bind_eq_some_iff.mp selected
   split at selected
@@ -57,8 +57,8 @@ theorem opening_is_submission (who : Player)
 every private name for refusal has the same source choice. -/
 def sourceChoice (response : (application setup leaks).Action) : Bool :=
   match response.transmission with
-  | some (.submit _) => true
-  | none | some (.replay _) => false
+  | some _ => true
+  | none => false
 
 theorem sourceChoice_opening (who : Player)
     (past : List (application setup leaks).PlayerEntry)
@@ -77,35 +77,22 @@ theorem opening_ne_silence (who : Player)
   rw [same] at choice
   cases choice
 
-theorem opening_ne_replay (who : Player)
-    (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView) (response : (application setup leaks).Action)
-    (selected : opening? setup leaks who past view = some response) (id : MessageId Player) :
-    response ≠ ⟨some (.replay id)⟩ := by
-  intro same
-  have choice := sourceChoice_opening setup leaks who past view response selected
-  rw [same] at choice
-  cases choice
-
 variable [Fintype Player] (bounds : MessageBounds (graph setup))
 
-/-- Decoding a false choice does not discard the requirement that every replay
-identifier came from the current ledger. -/
+/-- Refusal in the ordinary menu is silence. -/
 theorem ordinary_false_iff (who : Player)
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView) (response : (application setup leaks).Action)
     (member : response ∈ ordinaryActions setup leaks bounds who past view) :
-    sourceChoice setup leaks response = false ↔ response = ⟨none⟩ ∨
-      ∃ message ∈ view.messages.ledger, response = ⟨some (.replay message.id)⟩ := by
+    sourceChoice setup leaks response = false ↔ response = ⟨none⟩ := by
   constructor
   · intro refuses
     rcases ordinary_response_cases setup leaks bounds who past view response member with
-      silent | opening | replay
-    · exact Or.inl silent
+      silent | opening
+    · exact silent
     · rw [sourceChoice_opening setup leaks who past view response opening] at refuses
       cases refuses
-    · exact Or.inr replay
-  · rintro (rfl | ⟨message, _published, rfl⟩) <;> rfl
+  · rintro rfl; rfl
 
 variable (who : Player) (past : List (application setup leaks).PlayerEntry)
   (view : (application setup leaks).PlayerView) (opening : (application setup leaks).Action)
@@ -119,12 +106,10 @@ theorem ordinary_true_iff (response : (application setup leaks).Action)
   constructor
   · intro discloses
     rcases ordinary_response_cases setup leaks bounds who past view response member with
-      silent | opened | replay
+      silent | opened
     · rw [silent] at discloses
       cases discloses
     · exact Option.some.inj (opened.symm.trans selected)
-    · obtain ⟨message, _published, rfl⟩ := replay
-      cases discloses
   · intro same
     rw [same]
     exact sourceChoice_opening setup leaks who past view opening selected

@@ -61,7 +61,7 @@ theorem guardedDisclosureWindow_config
     (reached : final ∈ ((runtime setup).runInteractionPlan leaks
       (match (if disclose then rosterOpening? setup leaks owner event
         (execution.observe (application setup leaks) owner) else none) with
-      | none => fun _ => (application setup leaks).replayPolicy
+      | none => fun _ => (application setup leaks).silentPolicy
       | some (candidate, raw) =>
           (runtime setup).openingWindowPlayers leaks owner event candidate raw
             (execution.recall owner).length (some slot)) network
@@ -78,9 +78,9 @@ theorem guardedDisclosureWindow_config
     rw [(runtime setup).runInteractionPlan_append] at reached
     obtain ⟨current, prior, continued⟩ :=
       Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-    have preserved := (runtime setup).replay_window_preserves leaks
-      (fun _ => app.replayPolicy) network owner execution
-      (fun state who response _ _ member => app.replayPolicy_cases _ _ response member)
+    have preserved := (runtime setup).silent_window_preserves leaks
+      (fun _ => app.silentPolicy) network owner execution
+      (fun state who response _ _ member => app.silentPolicy_cases _ _ response member)
       _ packets roster current prior
     have same := preserved.1
     have currentReady : current.application.config.cut.Ready event := by rw [same]; exact ready
@@ -92,14 +92,14 @@ theorem guardedDisclosureWindow_config
     let waited : app.Execution := { current with
       environmentRecall := current.environmentRecall ++
         [⟨current.observeEnvironment app, .wait⟩] }
-    have included : (runtime setup).interactionStep leaks (fun _ => app.replayPolicy) network
+    have included : (runtime setup).interactionStep leaks (fun _ => app.silentPolicy) network
         (.includeLatest event owner) current = PMF.pure waited := by
       rw [(runtime setup).interaction_includeLatest_of_pending_published leaks
-        (fun _ => app.replayPolicy) network current owner event pending]
+        (fun _ => app.silentPolicy) network current owner event pending]
       simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
       rfl
     obtain ⟨endpoint, law, state, _, _, _⟩ :=
-      (runtime setup).canonical_silent_expiry leaks (fun _ => app.replayPolicy) network waited
+      (runtime setup).canonical_silent_expiry leaks (fun _ => app.silentPolicy) network waited
         owner event payload (refs.get binding)
         (compileChecks (published := published) refs source.registry source.revelations binding)
         outputEq codeEq node currentReady entered ticks
@@ -179,7 +179,7 @@ theorem SourceCheckpoint.guardedDisclosureWindow
     (reached : final ∈ ((runtime setup).runInteractionPlan leaks
       (match (if disclose then rosterOpening? setup leaks owner event
         (execution.observe (application setup leaks) owner) else none) with
-      | none => fun _ => (application setup leaks).replayPolicy
+      | none => fun _ => (application setup leaks).silentPolicy
       | some (candidate, raw) =>
           (runtime setup).openingWindowPlayers leaks owner event candidate raw
             (execution.recall owner).length (some slot)) network
@@ -296,7 +296,7 @@ theorem sourceServiceTimedPolicy_reveal_joint_law
   let selected := if disclose then rosterOpening? setup leaks owner event
     (execution.observe app owner) else none
   let players := fun slot : Fin ((rosters event).count owner) => match selected with
-    | none => fun _ => app.replayPolicy
+    | none => fun _ => app.silentPolicy
     | some (candidate, raw) => (runtime setup).openingWindowPlayers leaks owner event candidate raw
         (execution.recall owner).length (some slot)
   trans ((timing event owner owned).bind fun slot =>
@@ -374,7 +374,7 @@ theorem sourceServiceTimedPolicy_sample_joint_law
       simpa [index, outputLayout, eventCount] using embedding.layout_eq index
     ∀ (ready : execution.application.config.cut.Ready event),
     let app := application setup leaks
-    let replay := fun _ => app.replayPolicy
+    let silentPlayers := fun _ => app.silentPolicy
     let completed := fun (current : app.Execution) value =>
       { current with
         application := execution.application.complete event ready
@@ -392,15 +392,15 @@ theorem sourceServiceTimedPolicy_sample_joint_law
                 (decodeHistory setup.program (final.application.config.history.map
                   (setup.eventGraph.fromModeCompletion .sequential))),
               (runtime setup).bindingTraffic leaks focal final)) =
-      ((runtime setup).runInteractionPlan leaks replay network
+      ((runtime setup).runInteractionPlan leaks silentPlayers network
         ((rosters event).map ServiceInstruction.player) execution).bind fun current =>
           (L.evalDist distribution (sourcePublicEnv source.state)).bind fun value =>
-            ((runtime setup).runInteractionPlan leaks replay network
+            ((runtime setup).runInteractionPlan leaks silentPlayers network
               (List.replicate ticks .tick ++ [.expire event]) (completed current value)).map
                 fun final =>
                   (some (Sum.inr (ProtocolState.entry next (sampleSuccessor name source value))),
                     (runtime setup).bindingTraffic leaks focal final) := by
-  intro index event outputEq ready app replay completed
+  intro index event outputEq ready app silentPlayers completed
   have codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .sample payload (compilePublicDist refs distribution) := by
     change cast (congrArg (EventGraph.EventCode (graphLayout setup.program)) outputEq)
@@ -432,8 +432,8 @@ theorem sourceServiceTimedPolicy_sample_joint_law
   have settled : ¬(completed current value).application.config.cut.Ready event := by
     intro active
     exact active.1 (by simp [completed, EventGraphRuntime.State.complete, EventOrder.Cut.complete])
-  obtain ⟨after, exactLaw, afterState, _⟩ := (runtime setup).settled_reveal_expiry leaks replay
-    network (completed current value) event settled ticks
+  obtain ⟨after, exactLaw, afterState, _⟩ := (runtime setup).settled_reveal_expiry leaks
+    silentPlayers network (completed current value) event settled ticks
   rw [exactLaw] at reached
   have finalEq := (PMF.mem_support_pure_iff _ _).mp reached
   subst final
@@ -538,15 +538,15 @@ theorem sourceServiceTimedPolicy_binding_joint_law [Finite Player]
   let family := fun selected : Option (Fin ((rosters event).count owner)) =>
     app.scheduledPolicy (rosterOffset setup rosters owner event) selected
       (fun _ _ => PMF.pure ((runtime setup).reactiveBinding leaks owner event payload
-        choice serial)) app.replayPolicy
+        choice serial)) app.silentPolicy
   let target : Option (ProtocolState (.commit name owner fresh guard next)) :=
     some (Sum.inr (ProtocolState.entry next (commitSuccessor name guard source choice)))
   have dormant := app.policyMixture_posterior_dormant ((timing event owner owned).map some)
-    family app.replayPolicy (rosterOffset setup rosters owner event)
+    family app.silentPolicy (rosterOffset setup rosters owner event)
     (fun selected past view earlier => app.scheduledPolicy_before _ _ _ _ past view earlier)
     (execution.recall owner) counted.le
   have mixture := (runtime setup).runInteractionPlan_policyMixture leaks
-    ((timing event owner owned).map some) family owner (fun _ => app.replayPolicy)
+    ((timing event owner owned).map some) family owner (fun _ => app.silentPolicy)
     network phase execution
   dsimp only at mixture
   rw [dormant, PMF.bind_map] at mixture
@@ -556,7 +556,7 @@ theorem sourceServiceTimedPolicy_binding_joint_law [Finite Player]
       execution choice =
       ((timing event owner owned).bind fun slot =>
         (runtime setup).runInteractionPlan leaks
-          (Function.update (fun _ => app.replayPolicy) owner (family (some slot))) network
+          (Function.update (fun _ => app.silentPolicy) owner (family (some slot))) network
           phase execution).map ((runtime setup).bindingTraffic leaks focal) := by
     rw [mixture]
     simp only [bindingPhaseTranscript, phase, List.append_assoc, List.singleton_append]

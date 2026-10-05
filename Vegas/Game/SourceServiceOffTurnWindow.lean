@@ -23,7 +23,7 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
-theorem off_turn_replay_sourceService
+theorem off_turn_silent_sourceService
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
@@ -31,7 +31,7 @@ theorem off_turn_replay_sourceService
     (view : (application setup leaks).PlayerView)
     (idle : view.application.publicView.Idle who)
     (response : (application setup leaks).Action)
-    (replay : response ∈ ((application setup leaks).replayPolicy past view).support) :
+    (silenced : response ∈ ((application setup leaks).silentPolicy past view).support) :
     response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who past view := by
   classical
   have optional : ¬ bindingRequired setup leaks rosters who past view := by
@@ -39,7 +39,7 @@ theorem off_turn_replay_sourceService
     exact idle event ready owned
   change response ∈ sourceServiceActions setup leaks bounds rosters who past view
   rw [sourceServiceActions, ite_eq_right optional]
-  exact bounds.replay_compiled (runtime setup) leaks who past view response replay
+  exact bounds.silent_compiled (runtime setup) leaks who past view response silenced
 
 /-- No source-owner roster restriction is imposed. Every focal visit is
 classified by the focal player's idleness, while all repaired endpoints remain
@@ -92,9 +92,9 @@ theorem off_turn_roster_stopped_coupling
         Nonempty (((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
           (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
             (some ⟨remaining, none, next.2.1⟩)) ∧
-        ((∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
+        ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.input.envelope = false) ∨
+            record.envelope = false) ∨
         BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
           next.2.2.shadow = memory.shadow ∧
           next.2.1.application.playerView owner = repaired.application.playerView owner) := by
@@ -103,7 +103,7 @@ theorem off_turn_roster_stopped_coupling
   let scheduler := rosterScheduler setup leaks rosters network
   obtain ⟨coupling, first, second, related⟩ := frame.run_off_turn_stopped_coupling bounds
     menu players scheduler reference started leftRecall rightRecall serials idle
-    (off_turn_replay_sourceService setup leaks bounds rosters owner)
+    (off_turn_silent_sourceService setup leaks bounds rosters owner)
     (by simpa only [players, Function.update_self] using available)
     before.length visits.length position
     (fun execution lower upper command supported => roster_activation_segment setup leaks

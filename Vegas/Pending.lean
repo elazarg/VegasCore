@@ -107,7 +107,7 @@ import Vegas.Pending.ReactiveBindingPrefix
 import Vegas.Pending.ReactiveBindingRealization
 import Vegas.Pending.ReactiveBindingRecordedOmission
 import Vegas.Pending.ReactiveBindingRepair
-import Vegas.Pending.ReactiveBindingReplay
+import Vegas.Pending.ReactiveBindingWaiting
 import Vegas.Pending.ReactiveBindingRequiredStep
 import Vegas.Pending.ReactiveBindingReservedInclusion
 import Vegas.Pending.ReactiveBindingResolveLaw
@@ -166,8 +166,8 @@ import Vegas.Pending.ReactiveRawBindingFrame
 import Vegas.Pending.ReactiveRepeatedSubmissionData
 import Vegas.Pending.ReactiveRepeatedSubmissionStep
 import Vegas.Pending.ReactiveRepeatedSubmissionWindow
-import Vegas.Pending.ReactiveReplayApplication
-import Vegas.Pending.ReactiveReplaySettlement
+import Vegas.Pending.ReactiveSilentApplication
+import Vegas.Pending.ReactiveSilentSettlement
 import Vegas.Pending.ReactiveResolutionAuditStep
 import Vegas.Pending.ReactiveResolutionEvidence
 import Vegas.Pending.ReactiveResolutionSettlement

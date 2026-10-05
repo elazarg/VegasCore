@@ -5,7 +5,7 @@ import Vegas.Pending.ReactiveOpeningSettlement
 /-! # Public records of a settled opening window
 
 Protected inclusion records one canonical envelope and receipt, independently
-of the selected owner visit, passive observations, or replay multiplicity.
+of the selected owner visit, or passive observations.
 Every author's allocation counter is accounted for.
 -/
 

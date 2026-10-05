@@ -6,7 +6,7 @@ import Vegas.Pending.ReactiveSelectionObservation
 /-! # Owner information during an unsettled service window
 
 The owner's actual policy can depend on its entire input and response recall.
-When other players only replay known packets, equal complete focal traffic
+When other players respond silently, equal complete focal traffic
 induces equal traffic laws through any finite roster. Passive samples, prepared
 private material and authentic emitted evidence are retained by this equality.
 -/
@@ -62,21 +62,16 @@ theorem bindingTraffic_owner_response (runtime : EventGraphRuntime graph)
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => exact networks
-  | some transmission =>
-      cases transmission with
-      | replay id =>
-          change (left.network.replay owner id).2 = (right.network.replay owner id).2
-          rw [networks]
-      | submit submission =>
-          change (left.network.submit owner (app.packet
-            (app.submit left.application owner submission) owner
-              (left.network.known owner) submission)).2 = _
-          rw [packet, networks]
-          rfl
+  | some submission =>
+      change (left.network.submit owner (app.packet
+        (app.submit left.application owner submission) owner
+          (left.network.known owner) submission)).2 = _
+      rw [packet, networks]
+      rfl
 
 /-- Any actual owner policy preserves the source-conditioned auxiliary
-channel before protected settlement. The other players retain the full replay
-law, including unpublished packets and arbitrary passive sampling. -/
+channel before protected settlement. The other players retain the full silent
+law and arbitrary passive sampling. -/
 theorem owner_window_focal_law (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (network : runtime.NetworkPolicy leaks) (roster : List Player) (owner : Player)
@@ -86,7 +81,7 @@ theorem owner_window_focal_law (runtime : EventGraphRuntime graph)
     (rightRecall : right.InputRecall (runtime.reactiveApplication leaks))
     (same : runtime.bindingTraffic leaks owner left = runtime.bindingTraffic leaks owner right) :
     let app := runtime.reactiveApplication leaks
-    let players := Function.update (fun _ => app.replayPolicy) owner policy
+    let players := Function.update (fun _ => app.silentPolicy) owner policy
     ((runtime.runInteractionPlan leaks players network
       (roster.map ServiceInstruction.player) left).map (runtime.bindingTraffic leaks owner)) =
       ((runtime.runInteractionPlan leaks players network
@@ -137,15 +132,15 @@ theorem owner_window_focal_law (runtime : EventGraphRuntime graph)
         exact ih _ _ (app.respond_inputRecall before owner response beforeRecall)
           (app.respond_inputRecall after owner response afterRecall)
           (runtime.bindingTraffic_owner_response leaks before after owner matched response)
-      · have replay := app.replayPolicy_eq_of_network_eq before after actor
-          beforeRecall afterRecall (congrArg Prod.fst matched)
+      · have silenced : app.silentPolicy (before.recall actor) (before.observe app actor) =
+            app.silentPolicy (after.recall actor) (after.observe app actor) := rfl
         simp only [players, Function.update_of_ne acts]
-        rw [replay]
+        rw [silenced]
         apply bind_congr_on_support _
         intro response supported
         exact ih _ _ (app.respond_inputRecall before actor response beforeRecall)
           (app.respond_inputRecall after actor response afterRecall)
-          (runtime.bindingTraffic_replay leaks before after owner actor matched response
-            (app.replayPolicy_cases _ _ response supported))
+          (runtime.bindingTraffic_silent leaks before after owner actor matched response
+            (app.silentPolicy_cases _ _ response supported))
 
 end Vegas.EventGraphRuntime

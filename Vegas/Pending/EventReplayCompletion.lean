@@ -41,8 +41,8 @@ theorem serviceStep_player_config (runtime : EventGraphRuntime graph)
         PMF.mem_support_pure_iff _ _] at native
       rw [native]
       exact submitStep_config before.native.application owner packet
-  | replay id | wait =>
-      simp only [MessageApplication.PlayerCommand.toAction, MessageApplication.step,
+  | wait =>
+      simp only [MessageApplication.PlayerCommand.toAction,
         PMF.mem_support_pure_iff _ _] at native
       rw [native]
 

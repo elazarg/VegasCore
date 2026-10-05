@@ -9,7 +9,7 @@ import Interaction.ReactiveRawRoundTrace
 From an untouched completion boundary, the turn-counted prescribed policy
 completes the current event and continues in the source within the event's
 deferral weight of the source continuation, for every scheduler. Before the
-event completes it is the only ready event, so every other player replays and
+event completes it is the only ready event, so every other player is silent and
 the owner follows its timing mixture; the mixture splits by the chosen turn,
 whose prior is untouched by the boundary's recall; and the first-turn branch
 carries all but the deferral weight.
@@ -41,13 +41,13 @@ def sourceContinuation (profile : BehavioralProfile setup.program) (rank : Nat)
   (setup.continuationLaw profile (sourceServicePrefix? setup rank config)).map some
 
 /-- The profile in which an event's owner, if any, decides at its first turn
-and every other response replays. -/
+and every other response is silent. -/
 def firstTurnProfile (bound : (graph setup).EventId → Nat) (turns : Nat)
     (profile : BehavioralProfile setup.program)
     (event : (graph setup).EventId) : Player → (application setup leaks).Policy :=
   match (graph setup).actor? event with
-  | none => fun _ => (application setup leaks).replayPolicy
-  | some owner => Function.update (fun _ => (application setup leaks).replayPolicy) owner
+  | none => fun _ => (application setup leaks).silentPolicy
+  | some owner => Function.update (fun _ => (application setup leaks).silentPolicy) owner
       (sourceServiceTurnFamily setup leaks bound profile owner event turns 0)
 
 /-- **The first-turn premises of the step law.** For the turn-counted policy
@@ -132,14 +132,14 @@ theorem activation_application (execution middle : (application setup leaks).Exe
   rfl
 
 /-- Before the current event completes, the turn-counted policy is the owner's
-timing mixture for that event, with every other response replaying. -/
+timing mixture for that event, with every other response silent. -/
 def phaseProfile (bound : (graph setup).EventId → Nat) (turns : Nat)
     (timing : TurnTiming setup turns)
     (profile : BehavioralProfile setup.program) (event : (graph setup).EventId) :
     Player → (application setup leaks).Policy :=
   match owned : (graph setup).actor? event with
-  | none => fun _ => (application setup leaks).replayPolicy
-  | some owner => Function.update (fun _ => (application setup leaks).replayPolicy) owner
+  | none => fun _ => (application setup leaks).silentPolicy
+  | some owner => Function.update (fun _ => (application setup leaks).silentPolicy) owner
       ((application setup leaks).policyMixture (timing event owner owned)
         (sourceServiceTurnFamily setup leaks bound profile owner event turns)).policy
 
@@ -148,7 +148,7 @@ theorem phaseProfile_actorless (bound : (graph setup).EventId → Nat) (turns : 
     (profile : BehavioralProfile setup.program) (event : (graph setup).EventId)
     (actorless : (graph setup).actor? event = none) :
     phaseProfile setup leaks bound turns timing profile event =
-      fun _ => (application setup leaks).replayPolicy := by
+      fun _ => (application setup leaks).silentPolicy := by
   unfold phaseProfile
   split
   · rfl
@@ -161,7 +161,7 @@ theorem phaseProfile_owned (bound : (graph setup).EventId → Nat) (turns : Nat)
     (profile : BehavioralProfile setup.program) (event : (graph setup).EventId) (owner : Player)
     (owned : (graph setup).actor? event = some owner) :
     phaseProfile setup leaks bound turns timing profile event =
-      Function.update (fun _ => (application setup leaks).replayPolicy) owner
+      Function.update (fun _ => (application setup leaks).silentPolicy) owner
         ((application setup leaks).policyMixture (timing event owner owned)
           (sourceServiceTurnFamily setup leaks bound profile owner event turns)).policy := by
   unfold phaseProfile
@@ -320,7 +320,7 @@ theorem sourceServiceTurnPolicy_step_within {scheduler : (application setup leak
     let mixture := app.policyMixture (timing event owner owned)
       (sourceServiceTurnFamily setup leaks bound profile owner event turns)
     have prior : mixture.posterior (execution.recall owner) = timing event owner owned := by
-      apply app.policyMixture_posterior_of_agree _ _ app.replayPolicy
+      apply app.policyMixture_posterior_of_agree _ _ app.silentPolicy
       intro earlier entry member slot
       apply app.turnScheduledPolicy_of_none
       apply sourceServiceTurn_of_not_turn
@@ -333,7 +333,7 @@ theorem sourceServiceTurnPolicy_step_within {scheduler : (application setup leak
       (sourceServiceTurnFamily setup leaks bound profile owner event turns) owner _ _ _ execution,
       prior, PMF.bind_bind]
     have close := PMF.WithinTV.of_bind_point (timing event owner owned) 0
-      (fun slot => (app.runUntil scheduler (Function.update (fun _ => app.replayPolicy) owner
+      (fun slot => (app.runUntil scheduler (Function.update (fun _ => app.silentPolicy) owner
         (sourceServiceTurnFamily setup leaks bound profile owner event turns slot))
         (fun final => event ∈ final.application.config.cut.completed)
         (horizon - execution.environmentRecall.length) execution).bind

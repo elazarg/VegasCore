@@ -226,7 +226,7 @@ theorem checkpoint_candidates_eq (who : Player)
 /-- Assemble the actual native before-view from its semantic observation and
 the service's public fields. The source execution induction must establish
 the stated clock, activation, ledger, leak, and receipt equalities.
-Own response recall is deliberately absent: published replay aliases retain it. -/
+Own response recall is deliberately absent. -/
 theorem checkpoint_observe_eq
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (who : Player) (left right : (application setup leaks).Execution)

@@ -73,8 +73,7 @@ theorem auditedSubmission_eq_of_id
   cases Option.some.inj firstFound
   exact Option.some.inj (firstEmitted.symm.trans secondEmitted)
 
-/-- An audited pending envelope is recovered exactly by its identifier, even
-when rebroadcasting has left several copies in the pending list. -/
+/-- An audited pending envelope is recovered exactly by its identifier. -/
 theorem Execution.SubmissionAudit.lookup_of_mem
     (project : app.LocalObservation → app.PublicObservation) (execution : app.Execution)
     (audit : execution.SubmissionAudit app project) (message : Message Principal app.Payload)
@@ -119,16 +118,13 @@ theorem submissionAudit_respond (project : app.LocalObservation → app.PublicOb
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact prior
-  | some transmission =>
-      cases transmission with
-      | replay id => exact prior.replay who id
-      | submit material =>
-          apply prior.submit who
-            (app.packet (app.submit execution.application who material) who
-              (execution.network.known who) material)
-          refine ⟨_, app.submissionOrigin_submit execution who material fresh, rfl, ?_⟩
-          rw [app.respond_environmentRecall]
-          simpa only [Execution.observe, agrees] using activated
+  | some material =>
+      apply prior.submit who
+        (app.packet (app.submit execution.application who material) who
+          (execution.network.known who) material)
+      refine ⟨_, app.submissionOrigin_submit execution who material fresh, rfl, ?_⟩
+      rw [app.respond_environmentRecall]
+      simpa only [Execution.observe, agrees] using activated
 
 theorem submissionObservation_environment (execution next : app.Execution)
     (command : app.Command) (reached : next ∈ (execution.environmentStep app command).support)

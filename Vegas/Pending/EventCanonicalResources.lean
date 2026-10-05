@@ -7,7 +7,7 @@ import Vegas.Pending.EventServiceLaw
 
 Every unfinished event has an empty acceptance cell. The canonical prepared
 handle of a prescribed owner remains unused until its own event completes.
-The latter fact uses authenticated packet provenance, including replay.
+The latter fact uses authenticated packet provenance.
 -/
 
 noncomputable section
@@ -85,7 +85,7 @@ theorem playerStep_canonicalResources (runtime : EventGraphRuntime graph)
         PMF.mem_support_pure_iff _ _] at native
       rw [native]
       exact privateStep_canonicalResources state.native.application owner who command resources
-  | submit packet | replay id | wait =>
+  | submit packet | wait =>
       simp only [MessageApplication.PlayerCommand.toAction, MessageApplication.step,
         PMF.mem_support_pure_iff _ _] at native
       rw [native]
@@ -194,7 +194,7 @@ theorem runServicePlan_canonicalResources (runtime : EventGraphRuntime graph)
     plan before after ⟨safe, resources⟩ member).2
 
 /-- Canonical vacant/non-aliasing resources hold throughout initialized
-adaptive service, including replayed copies of the owner's messages. -/
+adaptive service. -/
 theorem runService_initial_canonicalResources (runtime : EventGraphRuntime graph)
     (inputs : graph.Inputs) (owner : Player) (policy : graph.BehavioralPolicy owner)
     (roster : List Player) (reactionRounds : Nat)

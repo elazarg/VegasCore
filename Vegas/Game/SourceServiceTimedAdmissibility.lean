@@ -247,7 +247,7 @@ theorem sourceServiceTimedMixture_binding_future
     apply posterior_prefix app timing family _ (entry :: after) witness
     simpa only [recalled, split, List.append_assoc] using witnessSupported
   have waiting : family witness (past ++ before) entry.beforeView =
-      app.replayPolicy (past ++ before) entry.beforeView := by
+      app.silentPolicy (past ++ before) entry.beforeView := by
     have unused : some (offset + witness.val) ≠ some (past ++ before).length := by
       rw [pastLength]
       intro equal
@@ -362,18 +362,18 @@ theorem sourceServiceTimedPolicy_admissible
   let app := application setup leaks
   let past := control.execution.recall who
   let view := control.execution.observe app who
-  have replay_covered (replay : response ∈ (app.replayPolicy past view).support)
+  have silent_covered (silenced : response ∈ (app.silentPolicy past view).support)
       (optional : ¬ bindingRequired setup leaks rosters who past view) :
       response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who past view := by
     change response ∈ sourceServiceActions setup leaks bounds rosters who past view
     rw [sourceServiceActions, ite_eq_right optional]
-    exact bounds.replay_compiled (runtime setup) leaks who past view response replay
+    exact bounds.silent_compiled (runtime setup) leaks who past view response silenced
   change response ∈ (sourceServiceTimedPolicy setup leaks rosters timing profile who
     past view).support at supported
   cases serving : view.application.publicView.ownTurn? who with
   | none =>
       simp only [sourceServiceTimedPolicy, serving] at supported
-      exact replay_covered supported (by rintro ⟨event, _, same, _⟩; simp [serving] at same)
+      exact silent_covered supported (by rintro ⟨event, _, same, _⟩; simp [serving] at same)
   | some event =>
       have ready : control.execution.application.config.cut.Ready event :=
         (control.execution.application.publicView_eventReady event).mp
@@ -382,7 +382,7 @@ theorem sourceServiceTimedPolicy_admissible
       · by_cases recorded : (runtime setup).eventRecorded leaks past event = true
         · rw [sourceServiceTimedPolicy_recorded setup leaks rosters timing profile who past view
             event serving recorded] at supported
-          apply replay_covered supported
+          apply silent_covered supported
           rintro ⟨other, _, otherTurn, _, _, _, unsent, _⟩
           have same : other = event := Option.some.inj (otherTurn.symm.trans serving)
           subst other
@@ -411,15 +411,15 @@ theorem sourceServiceTimedPolicy_admissible
               (PMF.support_bind .. ▸ supported)
             change response ∈ (app.scheduledPolicy (rosterOffset setup rosters who event)
               (some slot) (sourceServiceOpportunity setup leaks profile who event)
-                app.replayPolicy past view).support at produced
+                app.silentPolicy past view).support at produced
             unfold ReactiveApplication.scheduledPolicy at produced
             split at produced
             · exact (sourceServiceOpportunity_at_history setup leaks bounds values initialValues
                 capacity rosters opportunities network profile permitted who control trace active
                   event serving owned unsent response produced).1
-            · exact replay_covered produced required
+            · exact silent_covered produced required
       · simp only [sourceServiceTimedPolicy, serving, dite_eq_right owned] at supported
-        apply replay_covered supported
+        apply silent_covered supported
         rintro ⟨other, _, otherTurn, _, actor, _⟩
         have same : other = event := Option.some.inj (otherTurn.symm.trans serving)
         subst other

@@ -30,18 +30,15 @@ theorem reactive_respond_candidate_fixed (runtime : EventGraphRuntime graph)
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | replay id => rfl
-      | submit submission =>
-          have registered : (submission.call.register execution.application who).candidates.lookup
-              candidate = execution.application.candidates.lookup candidate := by
-            rw [submission.call.register_eq]
-            cases submission.call.registrationCommand who with
-            | none => rfl
-            | some command => exact privateStep_lookup_of_not_fresh _ who command candidate fixed
-          exact (submitStep_lookup_of_not_fresh _ who submission.call.packet candidate
-            (by rwa [registered])).trans registered
+  | some submission =>
+      have registered : (submission.call.register execution.application who).candidates.lookup
+          candidate = execution.application.candidates.lookup candidate := by
+        rw [submission.call.register_eq]
+        cases submission.call.registrationCommand who with
+        | none => rfl
+        | some command => exact privateStep_lookup_of_not_fresh _ who command candidate fixed
+      exact (submitStep_lookup_of_not_fresh _ who submission.call.packet candidate
+        (by rwa [registered])).trans registered
 
 theorem reactive_include_candidate_fixed (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))

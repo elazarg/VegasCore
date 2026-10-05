@@ -8,7 +8,7 @@ import Vegas.Game.RevealServiceRosterBlock
 Every retained continuation, including off-path play, completes exactly one
 source reveal or withholding. The selected opening time is extracted from
 actual response recall. Public records are independent of that time and of
-passive observations and replay choices.
+passive observations and silent responses.
 -/
 
 noncomputable section

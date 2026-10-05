@@ -4,11 +4,11 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Interaction.MessageReplay
+import Interaction.MessagePool
 
 /-! # Predicates on every message retained by a pool
 
-Delivery, replay, and inclusion move or copy existing messages. They preserve
+Delivery and inclusion move or copy existing messages. They preserve
 any predicate that holds throughout the pending inventory, ledger, inboxes,
 and sent histories. Submission additionally requires that predicate for the
 new message. Application-specific secrecy or validity conditions instantiate
@@ -79,33 +79,6 @@ theorem Satisfies.deliver [DecidableEq Principal] (h : Satisfies safe pool)
         exact hmem.elim (hinbox observer candidate) (fun heq => heq ▸ hmessage)
       · simp only [ite_eq_right hwho] at hmem
         exact hinbox who candidate hmem, hsent⟩
-  · exact ⟨hpending, hledger, hinbox, hsent⟩
-
-theorem Satisfies.replay [DecidableEq Principal] (h : Satisfies safe pool)
-    (broadcaster : Principal) (id : MessageId Principal) :
-    Satisfies safe (pool.replay broadcaster id).state := by
-  rcases h with ⟨hpending, hledger, hinbox, hsent⟩
-  unfold MessagePool.replay MessagePool.View.known?
-  split
-  · rename_i message hknown
-    have hmem := List.mem_of_find?_eq_some hknown
-    simp only [List.mem_append] at hmem
-    have hmessage : safe message := by
-      rcases hmem with (hsentMem | hinboxMem) | hledgerMem
-      · exact hsent broadcaster message hsentMem
-      · exact hinbox broadcaster message hinboxMem
-      · exact hledger message hledgerMem
-    exact ⟨by
-      intro candidate hmem
-      simp only [List.mem_append, List.mem_singleton] at hmem
-      exact hmem.elim (hpending candidate) (fun heq => heq ▸ hmessage), hledger, hinbox, by
-      intro who candidate hmem
-      by_cases hwho : who = broadcaster
-      · subst who
-        simp only [ite_eq_left, List.mem_append, List.mem_singleton] at hmem
-        exact hmem.elim (hsent broadcaster candidate) (fun heq => heq ▸ hmessage)
-      · simp only [ite_eq_right hwho] at hmem
-        exact hsent who candidate hmem⟩
   · exact ⟨hpending, hledger, hinbox, hsent⟩
 
 theorem mem_of_mem_removeFirst [DecidableEq Principal]

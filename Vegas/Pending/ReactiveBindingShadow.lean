@@ -342,7 +342,7 @@ theorem restoreRecall_record (memory : BindingMemory runtime leaks)
   simp only [record, restoreRecall, List.zipWith_append lengths,
     List.zipWith_cons_cons, List.zipWith_nil_left]
 
-/-- Replay of the saved original inputs changes no envelope. In particular,
+/-- Resubmitting the saved original inputs changes no envelope. In particular,
 equal packet payloads suffice even when the submitted private openings differ. -/
 theorem restoreRecall_submit (memory : BindingMemory runtime leaks)
     (left right : (runtime.reactiveApplication leaks).Execution) (who : Player)
@@ -361,11 +361,11 @@ theorem restoreRecall_submit (memory : BindingMemory runtime leaks)
     (memory.record runtime leaks
       (memory.shadow.inputView runtime leaks
         (right.observe (runtime.reactiveApplication leaks) who))
-      ⟨some (.submit original)⟩).restoreRecall runtime leaks
+      ⟨some original⟩).restoreRecall runtime leaks
         ((right.respond (runtime.reactiveApplication leaks) who
-          ⟨some (.submit repaired)⟩).recall who) =
+          ⟨some repaired⟩).recall who) =
       (left.respond (runtime.reactiveApplication leaks) who
-        ⟨some (.submit original)⟩).recall who := by
+        ⟨some original⟩).recall who := by
   simp only [ReactiveApplication.Execution.respond, ↓reduceIte]
   rw [restoreRecall_record runtime leaks memory _ lengths, past, observed]
   congr 3
@@ -387,7 +387,7 @@ def repairResponse (who : Player) (memory : BindingMemory runtime leaks)
     (runtime.reactiveApplication leaks).Action × BindingShadow graph :=
   let original := memory.shadow.inputView runtime leaks actual
   match response.transmission with
-  | some (.submit ⟨⟨.commitment event (author, .prepared serial), opening⟩, .none⟩) =>
+  | some ⟨⟨.commitment event (author, .prepared serial), opening⟩, .none⟩ =>
       match nodeView graph event with
       | .bind owner payload outputEq _ =>
           if author = who ∧ owner = who ∧
@@ -425,7 +425,7 @@ theorem repairResponse_unusable (who : Player) (memory : BindingMemory runtime l
     (actualFresh : actual.application.candidates (.prepared serial) = .fresh)
     (unusable : opening.bind (fun raw => raw.as? payload) = none) :
     (memory.repairResponse runtime leaks who actual
-      ⟨some (.submit ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩)⟩).1 =
+      ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩).1 =
       runtime.reactiveBinding leaks who event payload (.success (L.someValue payload)) serial := by
   simp only [repairResponse, node, originalFresh, actualFresh, unusable, and_self, ↓reduceIte]
 
@@ -443,8 +443,8 @@ theorem repairResponse_usable (who : Player) (memory : BindingMemory runtime lea
     (actualFresh : actual.application.candidates (.prepared serial) = .fresh)
     (value : L.Val payload) (usable : opening.bind (fun raw => raw.as? payload) = some value) :
     (memory.repairResponse runtime leaks who actual
-      ⟨some (.submit ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩)⟩).1 =
-      ⟨some (.submit ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩)⟩ := by
+      ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩).1 =
+      ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩ := by
   simp only [repairResponse, node, originalFresh, actualFresh, usable, and_self, ↓reduceIte]
 
 open Classical in

@@ -66,9 +66,9 @@ theorem active_history_stopped_coupling
           (rosterPlan setup rosters).length scheduler).Trace
             (some ⟨0, none, next.2.1⟩)) ∧
         next.2.2.shadow.OwnBindings owner ∧
-        ((∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
+        ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.input.envelope = false) ∨
+            record.envelope = false) ∨
           next.1.application.publicView.missedBindingBy owner = true ∨
           BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
   classical
@@ -160,9 +160,9 @@ theorem active_history_stopped_coupling
           Nonempty ((menu.protocol (initialLaw setup)
             (rosterPlan setup rosters).length scheduler).Trace
               (some ⟨future.length, none, next.2.1⟩)) ∧
-          ((∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
+          ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
             (runtime setup).permittedServiceEnvelope record.observation record.ledger
-              record.input.envelope = false) ∨
+              record.envelope = false) ∨
             next.1.application.publicView.missedBindingBy owner = true ∨
             BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
     by_cases ownBinding : ∃ payload, (graph setup).outputLayout event = .binding owner payload
@@ -246,14 +246,14 @@ theorem active_history_stopped_coupling
         coupling.map Prod.snd = strategy.runJoint owner players scheduler future.length
           next.2.1 next.2.2 ∧
         ∀ final ∈ coupling.support,
-          ((∃ record ∈ app.executionTraffic final.1, record.input.envelope.sender = owner ∧
+          ((∃ record ∈ app.executionTraffic final.1, record.envelope.sender = owner ∧
             (runtime setup).permittedServiceEnvelope record.observation record.ledger
-              record.input.envelope = false) ∨
+              record.envelope = false) ∨
             final.1.application.publicView.missedBindingBy owner = true ∨
             BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1) := by
-    by_cases bad : (∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
+    by_cases bad : (∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
         (runtime setup).permittedServiceEnvelope record.observation record.ledger
-          record.input.envelope = false) ∨
+          record.envelope = false) ∨
         next.1.application.publicView.missedBindingBy owner = true
     · let left := (runtime setup).runInteractionPlan leaks players network future next.1
       let right := strategy.runJoint owner players scheduler future.length next.2.1 next.2.2

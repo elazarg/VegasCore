@@ -2,7 +2,7 @@
 
 import Vegas.Pending.ReactiveServiceEvaluation
 import Vegas.Pending.ReactiveStateInvariant
-import Interaction.ReactiveReplayPolicy
+import Interaction.ReactiveMessageReadout
 import Interaction.ReactivePublication
 
 /-! # Application observations during arbitrary response windows

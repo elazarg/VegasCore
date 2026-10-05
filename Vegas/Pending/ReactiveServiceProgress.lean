@@ -30,31 +30,28 @@ theorem reactive_respond_progress (runtime : EventGraphRuntime graph)
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact .refl invariant
-  | some transmission =>
-      cases transmission with
-      | replay id => exact .refl invariant
-      | submit submission =>
-          change State.ServiceProgress inputs 0 execution.application
-            (submitStep (submission.call.register execution.application who) who
-              submission.call.packet)
-          have facts := submission.call.register_facts who execution.application
-          have publicEq : State.publicView
-              (submitStep (submission.call.register execution.application who) who
-                submission.call.packet) =
-                execution.application.publicView := by
-            rw [submitStep_publicView, facts.2.2]
-          have configEq := (submitStep_config
-            (submission.call.register execution.application who) who submission.call.packet).trans
-              facts.1
-          have clockEq := congrArg PublicView.clock publicEq
-          have activationEq := congrArg PublicView.activatedAt publicEq
-          dsimp only [State.publicView] at clockEq activationEq
-          refine ⟨invariant.copy configEq clockEq activationEq, ?_, ?_, ?_⟩
-          · rw [configEq]
-          · simpa only [Nat.add_zero] using clockEq
-          · intro event entered activated _
-            rw [activationEq]
-            exact activated
+  | some submission =>
+      change State.ServiceProgress inputs 0 execution.application
+        (submitStep (submission.call.register execution.application who) who
+          submission.call.packet)
+      have facts := submission.call.register_facts who execution.application
+      have publicEq : State.publicView
+          (submitStep (submission.call.register execution.application who) who
+            submission.call.packet) =
+            execution.application.publicView := by
+        rw [submitStep_publicView, facts.2.2]
+      have configEq := (submitStep_config
+        (submission.call.register execution.application who) who submission.call.packet).trans
+          facts.1
+      have clockEq := congrArg PublicView.clock publicEq
+      have activationEq := congrArg PublicView.activatedAt publicEq
+      dsimp only [State.publicView] at clockEq activationEq
+      refine ⟨invariant.copy configEq clockEq activationEq, ?_, ?_, ?_⟩
+      · rw [configEq]
+      · simpa only [Nat.add_zero] using clockEq
+      · intro event entered activated _
+        rw [activationEq]
+        exact activated
 
 theorem reactive_resume_progress (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))

@@ -37,15 +37,14 @@ section Submissions
 
 variable {setup leaks}
 
-/-- A replay never makes a fresh submission. -/
-theorem replayPolicy_not_submit {past : List (application setup leaks).PlayerEntry}
+/-- Silence never makes a fresh submission. -/
+theorem silentPolicy_not_submit {past : List (application setup leaks).PlayerEntry}
     {view : (application setup leaks).PlayerView} {response : (application setup leaks).Action}
-    (chosen : response ∈ ((application setup leaks).replayPolicy past view).support)
+    (chosen : response ∈ ((application setup leaks).silentPolicy past view).support)
     (material : (application setup leaks).Submission) :
-    response.transmission ≠ some (.submit material) := by
-  rw [ReactiveApplication.replayPolicy, PMF.support_map] at chosen
-  obtain ⟨selected, _, rfl⟩ := chosen
-  cases selected <;> simp
+    response.transmission ≠ some material := by
+  obtain rfl := (application setup leaks).silentPolicy_cases past view response chosen
+  simp
 
 /-- A fresh submission of the canonical source policy is the canonical decision
 at the player's own turn. -/
@@ -54,7 +53,7 @@ theorem sourceServiceCanonicalPolicy_submission {profile : BehavioralProfile set
     {view : (application setup leaks).PlayerView} {response : (application setup leaks).Action}
     (chosen : response ∈ (sourceServiceCanonicalPolicy setup leaks profile who past view).support)
     {material : (application setup leaks).Submission}
-    (submits : response.transmission = some (.submit material)) :
+    (submits : response.transmission = some material) :
     ∃ event action, view.application.publicView.ownTurn? who = some event ∧
       response = (runtime setup).canonicalServiceDecision leaks who past view event action := by
   unfold sourceServiceCanonicalPolicy at chosen
@@ -84,7 +83,7 @@ theorem sourceServiceCanonicalOpportunity_submission {bound : (graph setup).Even
     (chosen : response ∈
       (sourceServiceCanonicalOpportunity setup leaks bound profile who event past view).support)
     {material : (application setup leaks).Submission}
-    (submits : response.transmission = some (.submit material)) :
+    (submits : response.transmission = some material) :
     (runtime setup).eventRecorded leaks past event = false ∧
       view.application.publicView.InclusionFitsDeadline (runtime setup) bound event ∧
       ∃ turnEvent action, view.application.publicView.ownTurn? who = some turnEvent ∧
@@ -92,19 +91,19 @@ theorem sourceServiceCanonicalOpportunity_submission {bound : (graph setup).Even
           action := by
   unfold sourceServiceCanonicalOpportunity at chosen
   split at chosen
-  · exact (replayPolicy_not_submit chosen material submits).elim
+  · exact (silentPolicy_not_submit chosen material submits).elim
   · rename_i unrecorded
     split at chosen
     · rename_i fits
       rw [PMF.support_bind] at chosen
       obtain ⟨decided, decidedChosen, member⟩ := Set.mem_iUnion₂.mp chosen
       split at member
-      · exact (replayPolicy_not_submit member material submits).elim
+      · exact (silentPolicy_not_submit member material submits).elim
       · rw [PMF.mem_support_pure_iff] at member
         subst member
         exact ⟨by simpa using unrecorded, fits,
           sourceServiceCanonicalPolicy_submission decidedChosen submits⟩
-    · exact (replayPolicy_not_submit chosen material submits).elim
+    · exact (silentPolicy_not_submit chosen material submits).elim
 
 /-- **Fresh submissions of the turn-counted policy.** Every fresh submission on
 its support, at any turn index, is the canonical decision at the player's own
@@ -117,14 +116,14 @@ theorem sourceServiceTurnPolicy_submission {bound : (graph setup).EventId → Na
     (chosen : response ∈
       (sourceServiceTurnPolicy setup leaks bound turns timing profile who past view).support)
     {material : (application setup leaks).Submission}
-    (submits : response.transmission = some (.submit material)) :
+    (submits : response.transmission = some material) :
     ∃ event action, view.application.publicView.ownTurn? who = some event ∧
       (runtime setup).eventRecorded leaks past event = false ∧
       view.application.publicView.InclusionFitsDeadline (runtime setup) bound event ∧
       response = (runtime setup).canonicalServiceDecision leaks who past view event action := by
   unfold sourceServiceTurnPolicy at chosen
   split at chosen
-  · exact (replayPolicy_not_submit chosen material submits).elim
+  · exact (silentPolicy_not_submit chosen material submits).elim
   · rename_i event turn
     split at chosen
     · rw [ReactiveApplication.policyMixture_policy, PMF.support_bind] at chosen
@@ -137,8 +136,8 @@ theorem sourceServiceTurnPolicy_submission {bound : (graph setup).EventId → Na
         have same : other = event := Option.some.inj (otherTurn.symm.trans turn)
         subst same
         exact ⟨other, action, turn, unrecorded, fits, rfl⟩
-      · exact (replayPolicy_not_submit member material submits).elim
-    · exact (replayPolicy_not_submit chosen material submits).elim
+      · exact (silentPolicy_not_submit member material submits).elim
+    · exact (silentPolicy_not_submit chosen material submits).elim
 
 end Submissions
 
@@ -435,7 +434,7 @@ theorem canonicalSlotsUsed_respond {horizon remaining : Nat}
       exact unfinished
   · have slot : (runtime setup).responseCandidateSlot leaks response = some serial :=
       Option.mem_toList.mp new
-    obtain ⟨material, submits⟩ : ∃ material, response.transmission = some (.submit material) := by
+    obtain ⟨material, submits⟩ : ∃ material, response.transmission = some material := by
       unfold EventGraphRuntime.responseCandidateSlot at slot
       split at slot
       · exact ⟨_, ‹_›⟩

@@ -155,15 +155,15 @@ theorem roster_policy_support_exact
   · have idleNow := sole.ownTurn?_foreign ownedEvent
     have waiting : rosterPolicy setup leaks rosters timing decoded who
         (control.execution.recall who) (control.execution.observe app who) =
-          app.replayPolicy (control.execution.recall who) (control.execution.observe app who) := by
+          app.silentPolicy (control.execution.recall who) (control.execution.observe app who) := by
       simp only [rosterPolicy, idleNow]
       rfl
     rw [waiting]
-    refine ⟨replay_roster setup leaks extended rosters who _ _ action, ?_⟩
+    refine ⟨silent_roster setup leaks extended rosters who _ _ action, ?_⟩
     intro member
     rcases roster_response_cases setup leaks extended rosters who _ _ action member with
-      replay | fresh
-    · exact replay
+      silenced | fresh
+    · exact silenced
     · have absent : rosterFresh? setup leaks rosters who (control.execution.recall who)
           (control.execution.observe app who) = none := by
         unfold rosterFresh?
@@ -241,8 +241,8 @@ theorem rosterLimitPolicy_admissible [setup.FiniteInitialLaw]
   classical
   intro control trace active action supported
   rcases rosterLimitPolicy_cases setup leaks rosters profile who _ _ action supported with
-    replay | fresh
-  · exact replay_roster setup leaks _ rosters who _ _ action replay
+    silenced | fresh
+  · exact silent_roster setup leaks _ rosters who _ _ action silenced
   · apply Finset.mem_inter.mpr
     refine ⟨Finset.mem_union_right _ ?_, ?_⟩
     · rw [fresh]

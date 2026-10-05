@@ -35,7 +35,7 @@ def guardedDisclosureTranscript
   let app := application setup leaks
   let phase := (roster.map ServiceInstruction.player ++ [.includeLatest event owner]) ++
     (List.replicate ticks .tick ++ [.expire event])
-  let withheld := ((runtime setup).runInteractionPlan leaks (fun _ => app.replayPolicy)
+  let withheld := ((runtime setup).runInteractionPlan leaks (fun _ => app.silentPolicy)
     network phase execution).map ((runtime setup).bindingTraffic leaks focal)
   if disclose then
     match rosterOpening? setup leaks owner event (execution.observe app owner) with

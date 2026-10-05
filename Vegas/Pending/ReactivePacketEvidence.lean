@@ -74,7 +74,7 @@ theorem reactive_commitment_disclosure (runtime : EventGraphRuntime graph)
     let submission : WitnessedSubmission graph :=
       ⟨⟨.commitment event fact.handle, some raw⟩, .owned fact⟩
     (execution.respond (runtime.reactiveApplication leaks) who
-      ⟨some (.submit submission)⟩).network.pending = execution.network.pending ++
+      ⟨some submission⟩).network.pending = execution.network.pending ++
         [⟨(who, execution.network.nextSerial who),
           ⟨.commitment event fact.handle, some fact,
             execution.application.publicView.tokenFor (.commitment event fact.handle)⟩⟩] := by

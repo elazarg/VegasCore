@@ -1,14 +1,14 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Interaction.ReactiveReplayMenu
+import Interaction.ReactiveResponseMenu
 
 /-! # Removing response distinctions with no operational effect
 
 Submission normalization preserves the exact public packet and complete
-application effect, and can use only the sender's local observation and known packets. Replay
-normalization replaces an unavailable replay by silence. The resulting finite
-menus contain normal forms only. These are operational certificates; they do
-not assert equilibrium equivalence with a game recording raw response syntax.
+application effect, and can use only the sender's local observation and known
+packets. The resulting finite menus contain normal forms only. These are
+operational certificates; they do not assert equilibrium equivalence with a
+game recording raw response syntax.
 -/
 
 noncomputable section
@@ -16,6 +16,13 @@ noncomputable section
 namespace Interaction.ReactiveApplication
 
 variable {Principal : Type} (app : ReactiveApplication Principal)
+
+/-- The envelopes a player can cite: its remembered outputs, leaked packets and
+the ledger. -/
+def ResponseMenu.knownPackets {app : ReactiveApplication Principal}
+    (past : List app.PlayerEntry) (view : app.PlayerView) :
+    List (Message Principal app.Payload) :=
+  app.outputs past ++ view.messages.leaked ++ view.messages.ledger
 
 structure SubmissionNormalization where
   normalize : Principal → app.LocalObservation → List (Message Principal app.Payload) →
@@ -35,19 +42,12 @@ namespace SubmissionNormalization
 
 variable {app} (normal : app.SubmissionNormalization)
 
-/-- This test uses only remembered outputs, leaked packets and the ledger. -/
-def ReplayKnown (past : List app.PlayerEntry) (view : app.PlayerView)
-    (id : MessageId Principal) : Prop :=
-  ∃ message ∈ ResponseMenu.knownPackets past view, message.id = id
-
-open Classical in
 def action (who : Principal) (past : List app.PlayerEntry) (view : app.PlayerView) :
     app.Action → app.Action
   | ⟨none⟩ => ⟨none⟩
-  | ⟨some (.submit submission)⟩ =>
-      ⟨some (.submit (normal.normalize who view.application
-        (ResponseMenu.knownPackets past view) submission))⟩
-  | ⟨some (.replay id)⟩ => if ReplayKnown past view id then ⟨some (.replay id)⟩ else ⟨none⟩
+  | ⟨some submission⟩ =>
+      ⟨some (normal.normalize who view.application
+        (ResponseMenu.knownPackets past view) submission)⟩
 
 theorem action_idempotent (who : Principal) (past : List app.PlayerEntry)
     (view : app.PlayerView) (response : app.Action) :
@@ -57,10 +57,7 @@ theorem action_idempotent (who : Principal) (past : List app.PlayerEntry)
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | submit submission => simp only [action, normal.idempotent]
-      | replay id => by_cases known : ReplayKnown past view id <;> simp [action, known]
+  | some submission => simp only [action, normal.idempotent]
 
 /-- A menu of semantic responses, obtained by normalizing every supplied choice. -/
 def menu (raw : app.ResponseMenu) : app.ResponseMenu where
@@ -102,13 +99,6 @@ theorem menu_mem_iff_of_closed (raw : app.ResponseMenu) (who : Principal)
 
 variable [DecidableEq Principal]
 
-theorem replayKnown_iff (execution : app.Execution) (who : Principal)
-    (valid : execution.InputRecall app) (id : MessageId Principal) :
-    ReplayKnown (execution.recall who) (execution.observe app who) id ↔
-      ∃ message ∈ execution.network.known who, message.id = id := by
-  rw [app.known_from_recall execution who valid]
-  rfl
-
 /-- Only the focal player's recorded raw response may differ. Packets, all
 application state, receipts, scheduler recall and other players' recall agree. -/
 theorem effects (execution : app.Execution) (who : Principal) (response : app.Action)
@@ -131,36 +121,22 @@ theorem effects (execution : app.Execution) (who : Principal) (response : app.Ac
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => exact ⟨rfl, rfl, rfl, rfl, others _ _⟩
-  | some transmission =>
-      cases transmission with
-      | submit submission =>
-          refine ⟨?_, ?_, rfl, rfl, others _ _⟩
-          · exact normal.submit execution.application who _ submission
-          · change (execution.network.submit who
-                (app.packet (app.submit execution.application who
-                  (normal.normalize who _ _ submission)) who (execution.network.known who)
-                    (normal.normalize who _ _ submission))).2 = _
-            rw [known]
-            change (execution.network.submit who
-                (app.packet (app.submit execution.application who
-                  (normal.normalize who (app.observePlayer execution.application who)
-                    (execution.network.known who) submission)) who (execution.network.known who)
-                    (normal.normalize who (app.observePlayer execution.application who)
-                      (execution.network.known who) submission))).2 = _
-            rw [normal.submit, normal.packet]
-            rfl
-      | replay id =>
-          classical
-          by_cases known : ReplayKnown (execution.recall who) (execution.observe app who) id
-          · simp [action, known]
-          · have absent : (execution.network.known who).find?
-                  (fun envelope => envelope.id = id) = none := by
-              apply List.find?_eq_none.mpr
-              intro message member same
-              exact known ((replayKnown_iff execution who valid id).mpr
-                ⟨message, member, of_decide_eq_true same⟩)
-            refine ⟨?_, ?_, ?_, ?_, others _ _⟩
-            all_goals simp [action, known, Execution.respond, MessageNetwork.replay, absent]
+  | some submission =>
+      refine ⟨?_, ?_, rfl, rfl, others _ _⟩
+      · exact normal.submit execution.application who _ submission
+      · change (execution.network.submit who
+            (app.packet (app.submit execution.application who
+              (normal.normalize who _ _ submission)) who (execution.network.known who)
+                (normal.normalize who _ _ submission))).2 = _
+        rw [known]
+        change (execution.network.submit who
+            (app.packet (app.submit execution.application who
+              (normal.normalize who (app.observePlayer execution.application who)
+                (execution.network.known who) submission)) who (execution.network.known who)
+                (normal.normalize who (app.observePlayer execution.application who)
+                  (execution.network.known who) submission))).2 = _
+        rw [normal.submit, normal.packet]
+        rfl
 
 end SubmissionNormalization
 
@@ -168,14 +144,14 @@ namespace ResponseMenu
 
 variable {app}
 
-/-- Every information-local supplied submission, silence, and every known replay. -/
+/-- Every information-local supplied submission, and silence. -/
 def fromSubmissions
     (submissions : Principal → List app.PlayerEntry → app.PlayerView → Finset app.Submission) :
     app.ResponseMenu := by
   classical
-  exact withKnownReplays {
+  exact {
     actions := fun who past view => insert ⟨none⟩
-      ((submissions who past view).image fun submission => ⟨some (.submit submission)⟩)
+      ((submissions who past view).image fun submission => ⟨some submission⟩)
     nonempty := fun _ _ _ => ⟨⟨none⟩, Finset.mem_insert_self _ _⟩ }
 
 theorem fromSubmissions_mem
@@ -185,16 +161,12 @@ theorem fromSubmissions_mem
     response ∈ (fromSubmissions submissions).actions who past view ↔
       match response.transmission with
       | none => True
-      | some (.submit submission) => submission ∈ submissions who past view
-      | some (.replay id) => SubmissionNormalization.ReplayKnown past view id := by
+      | some submission => submission ∈ submissions who past view := by
   classical
   rcases response with ⟨transmission⟩
   cases transmission with
-  | none => simp [fromSubmissions, withKnownReplays]
-  | some transmission =>
-      cases transmission <;>
-        simp [fromSubmissions, withKnownReplays, replayActions,
-          SubmissionNormalization.ReplayKnown, eq_comm]
+  | none => simp [fromSubmissions]
+  | some transmission => simp [fromSubmissions]
 
 end ResponseMenu
 end Interaction.ReactiveApplication

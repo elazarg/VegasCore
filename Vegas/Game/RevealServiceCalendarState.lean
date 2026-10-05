@@ -167,7 +167,7 @@ theorem settlement_calendar (reveals : setup.program.RevealOnly)
 
 /-- The operational checkpoint equations make the whole native before-view a
 function of the source view. Own response recall is separate and may retain
-different published replay choices; no hidden initial inputs are identified. -/
+different silent responses; no hidden initial inputs are identified. -/
 theorem source_checkpoint_observe_eq
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     {Γ : SourceCtx Player L} (refs : ContextRefs (graphLayout setup.program) Γ)

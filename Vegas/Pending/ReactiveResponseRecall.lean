@@ -7,7 +7,7 @@ import Vegas.Pending.EvidenceNormalization
 
 Given the same local input and next sender serial, the same raw response adds
 the same entry to own recall. This retains both the physical response name and
-the emitted certificate or replay envelope. The sender counter is a separate
+the emitted certificate. The sender counter is a separate
 premise: the general message network does not put it in the player observation.
 -/
 
@@ -20,7 +20,7 @@ open Interaction
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-/-- A player's own broadcast record reconstructs replay and evidence lookup
+/-- A player's own broadcast record reconstructs known-envelope and evidence lookup
 exactly, including first-match behavior in lists with repeated identifiers. -/
 theorem known_eq_of_input_eq (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -94,21 +94,15 @@ theorem respond_recall_eq_of_input_eq (runtime : EventGraphRuntime graph)
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => simp only [ReactiveApplication.Execution.respond, ↓reduceIte, past, view]
-  | some transmission =>
-      cases transmission with
-      | submit submission =>
-          have packet := response_packet_eq_of_input_eq runtime leaks left right who submission
-            view remembered known
-          simp only [ReactiveApplication.Execution.respond, MessageNetwork.submit, ↓reduceIte]
-          change left.recall who ++ [⟨left.observe _ who, _,
-            some ⟨(who, left.network.nextSerial who),
-              submission.emit ((runtime.reactiveApplication leaks).submit left.application who
-                submission) who (left.network.known who)⟩⟩] = _
-          rw [past, view, serial, packet]
-          rfl
-      | replay id =>
-          simp only [ReactiveApplication.Execution.respond, MessageNetwork.replay, known,
-            ↓reduceIte, past, view]
-          cases (right.network.known who).find? (fun envelope => envelope.id = id) <;> rfl
+  | some submission =>
+      have packet := response_packet_eq_of_input_eq runtime leaks left right who submission
+        view remembered known
+      simp only [ReactiveApplication.Execution.respond, MessageNetwork.submit, ↓reduceIte]
+      change left.recall who ++ [⟨left.observe _ who, _,
+        some ⟨(who, left.network.nextSerial who),
+          submission.emit ((runtime.reactiveApplication leaks).submit left.application who
+            submission) who (left.network.known who)⟩⟩] = _
+      rw [past, view, serial, packet]
+      rfl
 
 end Vegas.EventGraphRuntime

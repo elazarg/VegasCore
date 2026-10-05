@@ -8,7 +8,7 @@ import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Timing posteriors for a scheduled binary choice
 
-A selected opportunity can itself draw silence. Observing a replay therefore
+A selected opportunity can itself draw silence. Observing silence therefore
 retains that past timing slot with the probability of the silent source choice.
 The update uses the actual recorded response and its conditional likelihood.
 -/
@@ -64,8 +64,8 @@ private theorem posterior_point {Index : Type} (initial : PMF Index)
   congr 1
   rw [bind_map_tag_apply, ENNReal.toReal_mul]
 
-/-- Updating after one replay downweights precisely the selected timing slot.
-All observation-dependent replay probabilities cancel. -/
+/-- Updating after one silent response downweights precisely the selected timing slot.
+All observation-dependent silence probabilities cancel. -/
 theorem scheduledChoice_posterior_step {slots : Nat}
     (timing : PMF (Fin slots)) (policies : Fin slots → app.Policy)
     (probability : ℝ) (nonnegative : 0 ≤ probability) (small : probability < 1)

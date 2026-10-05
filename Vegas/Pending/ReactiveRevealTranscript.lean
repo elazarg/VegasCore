@@ -6,7 +6,7 @@ import Vegas.Pending.ReactiveRevealResponse
 /-! # Actual response effects on the canonical reveal transcript
 
 Successful evidence normalization preserves the emitted packet even when it
-chooses a forwarding request. Published replays preserve public ledger and
+chooses a forwarding request. Silence preserves the public ledger and
 sender counters. These equations connect the public transcript encoder to the
 existing atomic response and at-most-once inclusion operations.
 -/
@@ -104,23 +104,19 @@ theorem normalized_opening_included_serial (runtime : EventGraphRuntime graph)
     simp
   · simp [same, Ne.symm same]
 
-/-- Silence and rebroadcasts allocate no new message id and publish no new
-packet by themselves. Actual replay input and private recall are retained. -/
+/-- Silence allocates no new message id and publishes no packet. Private
+response recall is retained. -/
 theorem refusing_response_public_fields (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (execution : (runtime.reactiveApplication leaks).Execution) (owner : Player)
     (response : (runtime.reactiveApplication leaks).Action)
-    (refuses : response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩) :
+    (refuses : response = ⟨none⟩) :
     (execution.respond (runtime.reactiveApplication leaks) owner response).network.ledger =
         execution.network.ledger ∧
       (execution.respond (runtime.reactiveApplication leaks) owner response).network.nextSerial =
         execution.network.nextSerial := by
-  rcases refuses with rfl | ⟨id, rfl⟩
-  · exact ⟨rfl, rfl⟩
-  · change (execution.network.replay owner id).2.ledger = execution.network.ledger ∧
-      (execution.network.replay owner id).2.nextSerial = execution.network.nextSerial
-    unfold MessageNetwork.replay
-    split <;> exact ⟨rfl, rfl⟩
+  rcases refuses with rfl
+  exact ⟨rfl, rfl⟩
 
 /-- The actual successful response and inclusion preserve all three public
 transcript equations. The caller supplies the actual completed configuration
@@ -171,7 +167,7 @@ theorem opening_settlement_transcript (runtime : EventGraphRuntime graph)
       network, normalized_opening_included_serial runtime leaks execution owner event candidate
         raw recall owned verified serials, counters]
 
-/-- A withholding response, including a published replay alias, preserves the
+/-- A withholding response preserves the
 same transcript while the current publication becomes a public failure. -/
 theorem refusing_settlement_transcript (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -180,7 +176,7 @@ theorem refusing_settlement_transcript (runtime : EventGraphRuntime graph)
     (event : graph.EventId) (ready : execution.application.config.cut.Ready event)
     (action : graph.Action event) (value : (graph.outputLayout event).Value)
     (response : (runtime.reactiveApplication leaks).Action)
-    (refuses : response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩)
+    (refuses : response = ⟨none⟩)
     (ledger : execution.network.ledger =
       publicationLedger accepted (graph.publicObserve execution.application.config))
     (receipts : execution.receipts =

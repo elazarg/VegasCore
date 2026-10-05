@@ -8,9 +8,8 @@ import Vegas.Compile.EventGraphLaw
 /-! # Exact source law of the restricted revelation service
 
 The proof folds actual activation, response, inclusion, monitoring, and deadline
-instructions along the existing source syntax. It allows arbitrary distributions
-over published replay aliases, provided their Boolean projection is the source
-choice kernel. This includes changing one player's private alias selector.
+instructions along the existing source syntax. Its Boolean projection is the source
+choice kernel.
 -/
 
 noncomputable section

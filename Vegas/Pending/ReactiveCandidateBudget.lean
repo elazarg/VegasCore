@@ -7,8 +7,8 @@ import Vegas.Pending.ReactivePolicy
 
 /-! # Finite candidate supply from actual response counts
 
-Only an owner's submission can occupy its prepared candidate. Inclusion and
-replay cannot reserve an additional candidate. Counting slots mentioned by the
+Only an owner's submission can occupy its prepared candidate. Inclusion
+cannot reserve an additional candidate. Counting slots mentioned by the
 owner's own responses bounds the least fresh serial, including after deviations.
 -/
 
@@ -29,7 +29,7 @@ def responseCandidateSlot (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (response : (runtime.reactiveApplication leaks).Action) : Option Nat :=
   match response.transmission with
-  | some (.submit material) => material.call.packet.preparedCommitment?
+  | some material => material.call.packet.preparedCommitment?
   | _ => none
 
 def submittedCandidateSlots (runtime : EventGraphRuntime graph)
@@ -115,22 +115,19 @@ theorem candidateRecall_respond (runtime : EventGraphRuntime graph)
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => exact fresh
-  | some transmission =>
-      cases transmission with
-      | replay id => exact fresh
-      | submit material =>
-          apply Eq.trans (submission_candidate_other execution.application who observer serial
-            material.call ?_) fresh
-          by_cases same : observer = who
-          · subst observer
-            right
-            rw [runtime.submittedCandidateSlots_respond] at absent
-            intro selected
-            apply absent
-            apply List.mem_append_right
-            change serial ∈ material.call.packet.preparedCommitment?.toList
-            simp [selected]
-          · exact Or.inl same
+  | some material =>
+      apply Eq.trans (submission_candidate_other execution.application who observer serial
+        material.call ?_) fresh
+      by_cases same : observer = who
+      · subst observer
+        right
+        rw [runtime.submittedCandidateSlots_respond] at absent
+        intro selected
+        apply absent
+        apply List.mem_append_right
+        change serial ∈ material.call.packet.preparedCommitment?.toList
+        simp [selected]
+      · exact Or.inl same
 
 private theorem issued_candidate_slot (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))

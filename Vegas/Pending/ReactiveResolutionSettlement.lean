@@ -8,7 +8,7 @@ import Interaction.ReactiveSubmissionSerial
 
 Every retained policy either leaves the current resolution for expiry or
 includes its successful guarded opening. The result retains the actual
-replay and observation branches and restores every player's public serial
+silent and observation branches and restores every player's public serial
 accounting. No source strategy or opening schedule is fixed in the premise.
 -/
 
@@ -80,8 +80,7 @@ theorem MessageBounds.compiled_resolution_settlement (bounds : MessageBounds gra
           message.id ∈ activated.network.ledger.map Message.id := published.learn who sample
       have activeSerials : activated.network.SerialsBeforeNext := serials.learn who sample
       have allowed := lawful who _ _ response chosen
-      have transportCase (transport : response = ⟨none⟩ ∨
-          ∃ id, response = ⟨some (.replay id)⟩) :
+      have transportCase (transport : response = ⟨none⟩) :
           (final.application = initial.application ∨ ∃ value,
             EventCode.resolveOutput? binding checks true initial.application.config.store =
               some (.success value) ∧
@@ -90,7 +89,7 @@ theorem MessageBounds.compiled_resolution_settlement (bounds : MessageBounds gra
               (cast (congrArg EventField.Value outputEq.symm) (.success value))) ∧
           (∀ observer, final.network.nextSerial observer =
             Message.distinctAuthoredCount final.network.ledger observer) := by
-        have preserved := runtime.replay_response_preserves leaks _ activated
+        have preserved := runtime.silent_response_preserves leaks _ activated
           activePublished who response transport
         have nextAccounted : ∀ observer,
             (activated.respond app who response).network.nextSerial observer =
@@ -110,10 +109,9 @@ theorem MessageBounds.compiled_resolution_settlement (bounds : MessageBounds gra
         dsimp only [app] at result same
         simpa only [same] using result
       rcases bounds.compiled_resolution_cases runtime leaks who _ _ event owner payload binding
-        checks outputEq codeEq node sole response allowed with silent | replay |
+        checks outputEq codeEq node sole response allowed with silent |
           ⟨candidate, value, evidence, acting, _, resolved, associated, candidateOwned, _, shape⟩
-      · exact transportCase (Or.inl silent)
-      · exact transportCase (app.replayPolicy_cases _ _ response replay)
+      · exact transportCase silent
       · have owned : graph.actor? event = some owner := by
           have actor := congrArg EventCode.actor codeEq
           rw [EventCode.actor_cast outputEq (graph.nodes event)] at actor
@@ -134,7 +132,7 @@ theorem MessageBounds.compiled_resolution_settlement (bounds : MessageBounds gra
         subst selected
         let submission : WitnessedSubmission graph :=
           ⟨⟨.opening event candidate ⟨payload, value⟩, none⟩, evidence⟩
-        let submitted := activated.respond app owner ⟨some (.submit submission)⟩
+        let submitted := activated.respond app owner ⟨some submission⟩
         let packet := app.packet initial.application owner (activated.network.known owner)
           submission
         let message : Message Player (WitnessedPacket graph) :=
@@ -163,7 +161,7 @@ theorem MessageBounds.compiled_resolution_settlement (bounds : MessageBounds gra
             owner packet (Or.inr rfl)
         have pending : message ∈ submitted.network.pending :=
           List.mem_append_right _ (List.mem_singleton_self _)
-        have law := runtime.replay_window_settlement leaks players network owner submitted
+        have law := runtime.silent_window_settlement leaks players network owner submitted
           transport event message rfl rfl packets pending (serials.next_unpublished owner) rest
         have mapped : (final.application, final.network.ledger,
             final.receipts, final.network.nextSerial) ∈

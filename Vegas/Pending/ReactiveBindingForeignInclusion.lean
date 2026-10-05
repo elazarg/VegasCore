@@ -232,7 +232,7 @@ theorem binding_submission_foreign_coupling
     let app := runtime.reactiveApplication leaks
     let view := repaired.observe app owner
     let response : app.Action :=
-      ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩
+      ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩
     let changed := memory.repairResponse runtime leaks owner view response
     let remembered : BindingMemory runtime leaks :=
       ⟨changed.2, memory.responses ++ [(memory.shadow.inputView runtime leaks view, response)]⟩
@@ -318,7 +318,7 @@ theorem binding_submission_foreign_block_coupling
     let app := runtime.reactiveApplication leaks
     let view := repaired.observe app owner
     let response : app.Action :=
-      ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩
+      ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩
     let changed := memory.repairResponse runtime leaks owner view response
     let remembered : BindingMemory runtime leaks :=
       ⟨changed.2, memory.responses ++ [(memory.shadow.inputView runtime leaks view, response)]⟩

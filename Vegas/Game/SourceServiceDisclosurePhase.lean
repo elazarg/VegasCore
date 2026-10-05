@@ -7,8 +7,8 @@ import Vegas.Game.RevealServiceRosterLaw
 /-! # Guarded disclosure across an actual response roster
 
 The selected source opportunity keeps its original Boolean lottery. Its silent
-branch uses the actual replay policy, and later foreign visits retain passive
-samples and replays before protected inclusion. The law records the effective
+branch uses the actual silent policy, and later foreign visits retain passive
+samples and silent responses before protected inclusion. The law records the effective
 source action and the original guarded result. Original failed intentions are
 retained separately by disclosure normalization's conditional memory law.
 -/
@@ -23,7 +23,7 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-private theorem opening_replay_inclusion
+private theorem opening_silent_inclusion
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (network : (runtime setup).NetworkPolicy leaks)
@@ -34,9 +34,9 @@ private theorem opening_replay_inclusion
       packet.id ∈ execution.network.ledger.map Message.id)
     (serials : execution.network.SerialsBeforeNext) (remaining : List Player) :
     let app := application setup leaks
-    let players : Player → app.Policy := fun _ => app.replayPolicy
+    let players : Player → app.Policy := fun _ => app.silentPolicy
     let submitted := execution.respond app owner
-      ⟨some (.submit ⟨⟨.opening event candidate raw, none⟩, evidence⟩)⟩
+      ⟨some ⟨⟨.opening event candidate raw, none⟩, evidence⟩⟩
     ((runtime setup).runInteractionPlan leaks players network
       (remaining.map ServiceInstruction.player ++ [.includeLatest event owner]) submitted).map
         (fun final => (final.application, final.network.ledger,
@@ -47,10 +47,10 @@ private theorem opening_replay_inclusion
             final.receipts, final.network.nextSerial)) := by
   dsimp only
   let app := application setup leaks
-  let players : Player → app.Policy := fun _ => app.replayPolicy
+  let players : Player → app.Policy := fun _ => app.silentPolicy
   let submission : WitnessedSubmission (graph setup) :=
     ⟨⟨.opening event candidate raw, none⟩, evidence⟩
-  let submitted := execution.respond app owner ⟨some (.submit submission)⟩
+  let submitted := execution.respond app owner ⟨some submission⟩
   let packet := app.packet execution.application owner (execution.network.known owner) submission
   let message : Message Player (WitnessedPacket (graph setup)) :=
     ⟨(owner, execution.network.nextSerial owner), packet⟩
@@ -59,24 +59,24 @@ private theorem opening_replay_inclusion
       (_ : submitted.recall owner ⊆ current.recall owner)
       (supported : response ∈ (players who (current.recall who)
         (current.observe app who)).support) =>
-    app.replayPolicy_cases _ _ response supported
+    app.silentPolicy_cases _ _ response supported
   have packets : submitted.network.Satisfies fun other =>
       other.id ∈ submitted.network.ledger.map Message.id ∨ other = message := by
     change (execution.network.submit owner packet).2.Satisfies _
     exact (published.mono (fun _ prior => Or.inl prior)).submit owner packet (Or.inr rfl)
   have pending : message ∈ submitted.network.pending :=
     List.mem_append_right _ (List.mem_singleton_self _)
-  have delayed := (runtime setup).replay_window_settlement leaks players network owner submitted
+  have delayed := (runtime setup).silent_window_settlement leaks players network owner submitted
     responses event message rfl rfl packets pending (serials.next_unpublished owner) remaining
-  have immediate := (runtime setup).replay_window_settlement leaks players network owner submitted
+  have immediate := (runtime setup).silent_window_settlement leaks players network owner submitted
     responses event message rfl rfl packets pending (serials.next_unpublished owner) []
   exact delayed.trans (by
     simpa only [List.map_nil, List.nil_append, runInteractionPlan, PMF.bind_pure]
       using immediate.symm)
 
-/-- The actual replay lottery implementing an effective disclosure preserves
+/-- The actual silent lottery implementing an effective disclosure preserves
 the typed source completion through all later passive activations and expiry. -/
-theorem guarded_reveal_replay_service
+theorem guarded_reveal_silent_service
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     {Γ : SourceCtx Player L} {name : VarId} {owner : Player} {payload : L.Ty}
@@ -104,12 +104,12 @@ theorem guarded_reveal_replay_service
     (disclose : Bool)
     (effective : effectiveDisclosure published binding source disclose = disclose) :
     let app := application setup leaks
-    let players : Player → app.Policy := fun _ => app.replayPolicy
+    let players : Player → app.Policy := fun _ => app.silentPolicy
     let response := (runtime setup).serviceDecision leaks owner (execution.recall owner)
       (execution.observe app owner) event
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose)
     let law := if response.transmission = none then
-      app.replayPolicy (execution.recall owner) (execution.observe app owner)
+      app.silentPolicy (execution.recall owner) (execution.observe app owner)
       else PMF.pure response
     (law.bind fun action => (runtime setup).runInteractionPlan leaks players network
       (remaining.map ServiceInstruction.player ++
@@ -131,7 +131,7 @@ theorem guarded_reveal_replay_service
           cast_cast, cast_eq, Bool.false_eq_true, ↓reduceIte,
           disclosureSubmission_normalize_withhold]
         rfl
-      have lawEq : law = app.replayPolicy (execution.recall owner)
+      have lawEq : law = app.silentPolicy (execution.recall owner)
           (execution.observe app owner) := by
         simp only [law, silent, ↓reduceIte]
       let expected := (execution.application.config.complete event ready
@@ -139,14 +139,14 @@ theorem guarded_reveal_replay_service
         (cast (congrArg EventGraph.EventField.Value outputEq.symm)
           (disclosureResult published binding source false)), execution.receipts)
       rw [lawEq, PMF.map_bind]
-      trans (app.replayPolicy (execution.recall owner) (execution.observe app owner)).bind
+      trans (app.silentPolicy (execution.recall owner) (execution.observe app owner)).bind
         (fun _ => PMF.pure expected)
       · apply bind_congr_on_support _
         intro action supported
         let submitted := execution.respond app owner action
         obtain ⟨same, ledger, receipt, _, safe, _⟩ :=
-          (runtime setup).replay_response_preserves leaks _ execution packets owner action
-            (app.replayPolicy_cases _ _ action supported)
+          (runtime setup).silent_response_preserves leaks _ execution packets owner action
+            (app.silentPolicy_cases _ _ action supported)
         change submitted.application = execution.application at same
         change submitted.receipts = execution.receipts at receipt
         rw [(runtime setup).runInteractionPlan_append, PMF.map_bind]
@@ -156,8 +156,8 @@ theorem guarded_reveal_replay_service
         · apply bind_congr_on_support _
           intro current reached
           obtain ⟨currentSame, currentLedger, currentReceipt, _, currentSafe, _⟩ :=
-            (runtime setup).replay_window_preserves leaks players network owner submitted
-              (fun value who response _ _ chosen => app.replayPolicy_cases _ _ response chosen)
+            (runtime setup).silent_window_preserves leaks players network owner submitted
+              (fun value who response _ _ chosen => app.silentPolicy_cases _ _ response chosen)
               _ safe remaining current reached
           have currentReady : current.application.config.cut.Ready event := by
             rw [currentSame, same]; exact ready
@@ -246,7 +246,7 @@ theorem guarded_reveal_replay_service
           PMF.pure (included.application, included.network.ledger,
             included.receipts, included.network.nextSerial) := by
         dsimp only [delayed, submitted]
-        rw [responseEq, opening_replay_inclusion setup leaks network execution owner event
+        rw [responseEq, opening_silent_inclusion setup leaks network execution owner event
           candidate ⟨payload, value⟩ evidence packets serials remaining,
           inclusion, PMF.pure_map]
       have settled : ∀ final ∈ delayed.support,
@@ -294,7 +294,7 @@ private theorem foreign_service_law
       (sourceServiceLastPolicy setup leaks rosters profile) network
       (remaining.map ServiceInstruction.player ++
         (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event])) execution =
-      (runtime setup).runInteractionPlan leaks (fun _ => (application setup leaks).replayPolicy)
+      (runtime setup).runInteractionPlan leaks (fun _ => (application setup leaks).silentPolicy)
         network (remaining.map ServiceInstruction.player ++
           (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event]))
           execution := by
@@ -313,7 +313,7 @@ private theorem foreign_service_law
   exact servicePlan_players_eq setup leaks _ _ network _ (by simp) (by intro who; simp) current
 
 /-- The last owner visit draws the actual source kernel. Silent source choices
-are implemented by real replay aliases; every later foreign visit remains. -/
+are implemented by silence; every later foreign visit remains. -/
 theorem sourceServiceLastPolicy_reveal_opportunity
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -371,7 +371,7 @@ theorem sourceServiceLastPolicy_reveal_opportunity
   intro index event outputEq ready timely activated due unsent last
   let app := application setup leaks
   let players := sourceServiceLastPolicy setup leaks rosters wholeProfile
-  let transport : Player → app.Policy := fun _ => app.replayPolicy
+  let transport : Player → app.Policy := fun _ => app.silentPolicy
   let observed : app.Execution := { execution with
     environmentRecall := execution.environmentRecall ++
       [⟨execution.observeEnvironment app, .activate owner⟩] }
@@ -409,7 +409,7 @@ theorem sourceServiceLastPolicy_reveal_opportunity
     (execution.observe app owner) event
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) effective)
   trans ((if response.transmission = none then
-    app.replayPolicy (execution.recall owner) (execution.observe app owner)
+    app.silentPolicy (execution.recall owner) (execution.observe app owner)
     else PMF.pure response).bind fun action =>
       (runtime setup).runInteractionPlan leaks transport network
         (remaining.map ServiceInstruction.player ++
@@ -425,7 +425,7 @@ theorem sourceServiceLastPolicy_reveal_opportunity
       remaining absent ticks
     rw [((runtime setup).reactive_respond_application leaks observed owner action).2]
     exact soleReady_of_ready setup execution.application ready
-  · have exactLaw := guarded_reveal_replay_service setup leaks published binding source refs
+  · have exactLaw := guarded_reveal_silent_service setup leaks published binding source refs
       observed checkpoint.agrees valid event outputEq codeEq node ready timely entered ticks
         activated due packets serials network remaining effective
         (effectiveDisclosure_idempotent published binding source disclose)
@@ -535,12 +535,12 @@ theorem sourceServiceLastPolicy_reveal_roster
       (visited.map ServiceInstruction.player) execution current serials reached
     have currentPublished : current.network.Satisfies fun message =>
         message.id ∈ current.network.ledger.map Message.id := by rwa [ledger]
-    have pureReplay := reached
+    have pureSilence := reached
     rw [sourceServiceLastPolicy_waiting_law setup leaks rosters wholeProfile network event owner
       owned visited execution (soleReady_of_ready setup execution.application ready) before]
-      at pureReplay
-    have currentUnsent := (replay_window_eventRecorded setup leaks network visited execution current
-      pureReplay owner event).trans unsent
+      at pureSilence
+    have currentUnsent := (silent_window_eventRecorded setup leaks network visited execution current
+      pureSilence owner event).trans unsent
     have fixed : (ServiceInstruction.wire : ServiceInstruction (graph setup)) ∉
         visited.map ServiceInstruction.player := by simp
     have currentCount := fixed_plan_response_counts setup leaks network players

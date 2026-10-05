@@ -81,7 +81,7 @@ theorem canonicalServiceDecision_freshServiceEnvelope {horizon remaining : Nat}
     (action : (graph setup).Action event) (material : (application setup leaks).Submission)
     (submits : ((runtime setup).canonicalServiceDecision leaks who (middle.recall who)
       (middle.observe (application setup leaks) who) event action).transmission =
-        some (.submit material)) :
+        some material) :
     (runtime setup).freshServiceEnvelope middle.application.publicView
       ⟨(who, middle.network.nextSerial who), (application setup leaks).packet
         ((application setup leaks).submit middle.application who material) who
@@ -221,7 +221,7 @@ from. -/
 def FreshCallsConform (execution : (application setup leaks).Execution) (who : Player) :
     Prop :=
   ∀ entry ∈ execution.recall who, ∀ material message,
-    entry.action.transmission = some (.submit material) → entry.emitted = some message →
+    entry.action.transmission = some material → entry.emitted = some message →
       (runtime setup).freshServiceEnvelope entry.beforeView.application.publicView message
 
 variable {setup leaks}
@@ -269,10 +269,10 @@ theorem freshCallsConform_round {horizon remaining : Nat}
       · exact conformMiddle entry old material message submitted emitted
       · rw [List.mem_singleton] at new
         subst new
-        change response.transmission = some (.submit material) at submitted
+        change response.transmission = some material at submitted
         obtain ⟨event, action, turn, unrecorded, fits, decided⟩ :=
           sourceServiceTurnPolicy_submission chosen submitted
-        have responseEq : response = ⟨some (.submit material)⟩ := by
+        have responseEq : response = ⟨some material⟩ := by
           rcases response with ⟨transmission⟩
           change transmission = _ at submitted
           rw [submitted]
@@ -310,7 +310,7 @@ theorem sourceServiceTurnPolicy_freshServiceEnvelope
       players count).support)
     (entry : (application setup leaks).PlayerEntry) (member : entry ∈ execution.recall who)
     (material : (application setup leaks).Submission)
-    (fresh : entry.action.transmission = some (.submit material))
+    (fresh : entry.action.transmission = some material)
     (message : Message Player (WitnessedPacket (graph setup)))
     (emitted : entry.emitted = some message) :
     (runtime setup).freshServiceEnvelope entry.beforeView.application.publicView message := by

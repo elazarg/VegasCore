@@ -47,7 +47,7 @@ theorem binding_response_coupling
     (canonical : ∀ response ∈ (players owner (original.recall owner)
       (original.observe (runtime.reactiveApplication leaks) owner)).support,
       ∃ opening, response =
-        ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩) :
+        ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩) :
     let app := runtime.reactiveApplication leaks
     let strategy := implementation runtime leaks owner reference (players owner)
     ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory runtime leaks),
@@ -79,9 +79,9 @@ theorem binding_response_coupling
       (nonce : execution.network.nextSerial owner = original.network.nextSerial owner) :
       runtime.interactionStep leaks players scheduler (.includeLatest event owner)
         (execution.respond app owner
-          ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩) =
+          ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩) =
         PMF.pure (finish (execution.respond app owner
-          ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩)) := by
+          ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩)) := by
     rw [runtime.rawBinding_reserved_selection leaks execution owner event serial opening
       before players scheduler, nonce]
     simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]

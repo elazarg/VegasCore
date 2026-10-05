@@ -125,7 +125,7 @@ theorem privateStep_free_prescribedContinuation (state : State graph)
     (fun owned => free (prescribedEvent who owned))
 
 /-- None of a free player's native commands completes a graph event by
-itself. Submission and replay remain observable, but preserve this potential. -/
+itself. Submissions remain observable, but preserve this potential. -/
 theorem playerStep_free_prescribedContinuation (runtime : EventGraphRuntime graph)
     (profile : graph.BehavioralProfile) (who : Player) (free : ¬ prescribed who)
     (execution : runtime.application.PolicyExecution)
@@ -141,9 +141,6 @@ theorem playerStep_free_prescribedContinuation (runtime : EventGraphRuntime grap
   | submit payload =>
       rw [runtime.application.playerStep_submit_eq, PMF.pure_bind]
       rfl
-  | replay id =>
-      simp only [MessageApplication.playerStep, MessageApplication.PlayerCommand.toAction,
-        MessageApplication.advance, MessageApplication.step, PMF.pure_bind]
   | wait =>
       simp only [MessageApplication.playerStep, MessageApplication.PlayerCommand.toAction,
         MessageApplication.advance, PMF.pure_bind]

@@ -16,7 +16,7 @@ import Vegas.Source.SetupProtocol
 /-! # Checkpoint invariants for the actual revelation service
 
 The relation records facts about the existing source configuration and native
-execution. In particular, native response recall and rebroadcast inputs remain
+execution. In particular, native response recall and network inputs remain
 untouched. Only published envelopes may remain pending between source events.
 No strategic correspondence or optimal assessment is a field of this relation.
 -/
@@ -86,7 +86,7 @@ structure Checkpoint (setup : Setup (Player := Player) (L := L))
     message.id ∈ execution.network.ledger.map Message.id
   leaked : execution.network.leaked = fun _ => []
   inputs : ∀ input ∈ execution.network.inputs,
-    input.envelope.id ∈ execution.network.ledger.map Message.id
+    input.id ∈ execution.network.ledger.map Message.id
   serials : execution.network.SerialsBeforeNext
   recall : execution.InputRecall (application setup leaks)
 
@@ -140,7 +140,7 @@ theorem checkpoint_initial (setup : Setup (Player := Player) (L := L))
       List.not_mem_nil, IsEmpty.forall_iff, implies_true]
 
 /-- Every known packet at a checkpoint is already public, including remembered
-own transmissions and earlier rebroadcasts. -/
+own transmissions. -/
 theorem Checkpoint.known_published {setup : Setup (Player := Player) (L := L)}
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
     {initial : State L setup.context} {Γ : SourceCtx Player L}
@@ -168,7 +168,7 @@ theorem PublicCheckpoint.ready {setup : Setup (Player := Player) (L := L)}
 
 /-- At matched source ranks, the actual public metadata formulas make the
 native before-view a function of the source view. This permits different
-initial private states and does not identify the players' replay recalls. -/
+initial private states and does not identify the players' response recalls. -/
 theorem PublicCheckpoint.observe_eq {setup : Setup (Player := Player) (L := L)}
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
     {leftInitial rightInitial : State L setup.context} {Γ : SourceCtx Player L}
@@ -283,7 +283,7 @@ private theorem ordinary_network_checkpoint [Fintype Player]
     (pending : ∀ message ∈ execution.network.pending,
       message.id ∈ execution.network.ledger.map Message.id)
     (inputs : ∀ input ∈ execution.network.inputs,
-      input.envelope.id ∈ execution.network.ledger.map Message.id)
+      input.id ∈ execution.network.ledger.map Message.id)
     (serials : execution.network.SerialsBeforeNext)
     (response : (application setup leaks).Action)
     (member : response ∈ ordinaryActions setup leaks bounds owner (execution.recall owner)
@@ -293,32 +293,21 @@ private theorem ordinary_network_checkpoint [Fintype Player]
       (submitted.network.includePending (owner, execution.network.nextSerial owner)).2
       else submitted.network
     (∀ message ∈ after.pending, message.id ∈ after.ledger.map Message.id) ∧
-      (∀ input ∈ after.inputs, input.envelope.id ∈ after.ledger.map Message.id) ∧
+      (∀ input ∈ after.inputs, input.id ∈ after.ledger.map Message.id) ∧
       after.leaked = execution.network.leaked ∧ after.SerialsBeforeNext := by
   cases chosen : sourceChoice setup leaks response with
   | false =>
       simp only [Bool.false_eq_true, ↓reduceIte]
       obtain refuses := (ordinary_false_iff setup leaks bounds owner (execution.recall owner)
         (execution.observe (application setup leaks) owner) response member).mp chosen
-      rcases refuses with rfl | ⟨message, published, rfl⟩
-      · exact ⟨pending, inputs, rfl, serials⟩
-      · have spent : message.id ∈ execution.network.ledger.map Message.id :=
-          List.mem_map.mpr ⟨message, published, rfl⟩
-        refine ⟨execution.network.replay_pending_published owner message.id pending spent,
-          execution.network.replay_inputs_published owner message.id inputs spent, ?_,
-          serials.replay owner message.id⟩
-        funext observer
-        exact congrArg MessageNetwork.PlayerView.leaked
-          (execution.network.replay_observe owner observer message.id)
+      subst response
+      exact ⟨pending, inputs, rfl, serials⟩
   | true =>
       rcases response with ⟨transmission⟩
       cases transmission with
       | none => cases chosen
-      | some transmission =>
-          cases transmission with
-          | replay id => cases chosen
-          | submit submission =>
-              exact execution.network.submit_include_published owner _ pending inputs serials
+      | some submission =>
+          exact execution.network.submit_include_published owner _ pending inputs serials
 
 /-- Every ordinary response advances the full operational relation. Policies
 after the response are unrestricted except for the fixed watcher, which is

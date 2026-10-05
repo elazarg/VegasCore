@@ -7,7 +7,7 @@ import Interaction.ReactivePolicyInvariant
 /-! # Missing the protected binding response
 
 After the designated binding opportunity, reserved inclusion skips published
-replays. If no accepted handle was installed, the existing clock and expiry
+identifiers. If no accepted handle was installed, the existing clock and expiry
 instructions create public omission evidence. The result is independent of
 all subsequent player and network policies. Earlier waiting opportunities are
 not classified by this result.

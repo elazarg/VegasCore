@@ -222,7 +222,7 @@ theorem fresh_fits (view : PublicView (graph setup))
 /-- A submission names the event its emitted packet addresses. -/
 theorem submittedEvent_of_issued {entry : (application setup leaks).PlayerEntry}
     {material : (application setup leaks).Submission}
-    (transmission : entry.action.transmission = some (.submit material))
+    (transmission : entry.action.transmission = some material)
     {state : EventGraphRuntime.State (graph setup)} {who : Player}
     {known : List (Message Player (WitnessedPacket (graph setup)))}
     {message : Message Player (WitnessedPacket (graph setup))}
@@ -252,9 +252,7 @@ theorem retained_accepted {horizon : Nat} {scheduler : (application setup leaks)
     (message.id, true) ∈ control.execution.receipts := by
   let app := application setup leaks
   have facts := legalFacts setup leaks _ _ control trace
-  obtain ⟨input, inputMember, inputEq⟩ := List.mem_map.mp emitted
-  have issued := facts.provenance.inputs input inputMember
-  rw [inputEq] at issued
+  have issued := facts.provenance.inputs message emitted
   obtain ⟨entry, entryMember, material, transmission, entryEmitted, state, known, packet⟩ := issued
   have fresh := conform message.sender entry entryMember material message transmission
     entryEmitted
@@ -276,29 +274,25 @@ theorem retained_accepted {horizon : Nat} {scheduler : (application setup leaks)
     exact named
   have sole : ∀ other ∈ earlier ++ later,
       ¬ EmitsOtherFor (runtime setup) leaks other event message.id := by
-    intro other otherMember ⟨replayed, emittedOther, replayedAuthor, replayedAddressed,
+    intro other otherMember ⟨otherEnvelope, emittedOther, otherAuthor, otherAddressed,
       differentId⟩
     have otherRecall : other ∈ control.execution.recall message.sender := by
       rw [split]
       rcases List.mem_append.mp otherMember with inside | inside
       · exact List.mem_append_left _ inside
       · exact List.mem_append_right _ (List.mem_cons_of_mem _ inside)
-    have output : replayed ∈ app.outputs (control.execution.recall message.sender) :=
+    have output : otherEnvelope ∈ app.outputs (control.execution.recall message.sender) :=
       List.mem_filterMap.mpr ⟨other, otherRecall, emittedOther⟩
     rw [← facts.inputs message.sender] at output
-    obtain ⟨replayInput, replayMember, replayEq⟩ := List.mem_filterMap.mp output
-    split at replayEq
-    · cases Option.some.inj replayEq
-      obtain ⟨issuer, issuerMember, _, issuerTransmission, issuerEmitted, _, _, issuerPacket⟩ :=
-        facts.provenance.inputs replayInput replayMember
-      have senderEq : replayInput.envelope.sender = message.sender := replayedAuthor
-      rw [senderEq] at issuerMember
-      have issuerEvent : (runtime setup).submittedEvent? leaks issuer.action = some event := by
-        rw [submittedEvent_of_issued issuerTransmission issuerPacket]
-        exact replayedAddressed
-      exact differentId (once message.sender issuer issuerMember entry entryMember event _ _
-        issuerEvent entryEvent issuerEmitted entryEmitted)
-    · cases replayEq
+    have envelopeMember := (List.mem_filter.mp output).1
+    obtain ⟨issuer, issuerMember, _, issuerTransmission, issuerEmitted, _, _, issuerPacket⟩ :=
+      facts.provenance.inputs otherEnvelope envelopeMember
+    rw [otherAuthor] at issuerMember
+    have issuerEvent : (runtime setup).submittedEvent? leaks issuer.action = some event := by
+      rw [submittedEvent_of_issued issuerTransmission issuerPacket]
+      exact otherAddressed
+    exact differentId (once message.sender issuer issuerMember entry entryMember event _ _
+      issuerEvent entryEvent issuerEmitted entryEmitted)
   have settles : SettlesFreshCalls setup leaks message.sender event (fun _ => 0)
       control.execution :=
     settlesFreshCalls_history setup leaks inclusion message.sender event owned trace
@@ -422,7 +416,7 @@ theorem respond_recall_cases (execution : (application setup leaks).Execution) (
     entry ∈ execution.recall observer ∨
       (observer = who ∧ entry.beforeView = execution.observe (application setup leaks) who ∧
         entry.action = action ∧
-        ∀ material, action.transmission = some (.submit material) →
+        ∀ material, action.transmission = some material →
           entry.emitted = some ⟨(who, execution.network.nextSerial who),
             (application setup leaks).packet ((application setup leaks).submit
               execution.application who material) who (execution.network.known who) material⟩) := by
@@ -437,24 +431,15 @@ theorem respond_recall_cases (execution : (application setup leaks).Execution) (
         · exact Or.inl prior
         · subst fresh
           exact Or.inr ⟨rfl, rfl, rfl, fun material submitted => by cases submitted⟩
-    | some transmission =>
-        cases transmission with
-        | submit material =>
-            simp only [ReactiveApplication.Execution.respond, ↓reduceIte, List.mem_append,
-              List.mem_singleton] at member
-            rcases member with prior | fresh
-            · exact Or.inl prior
-            · subst fresh
-              refine Or.inr ⟨rfl, rfl, rfl, fun other submitted => ?_⟩
-              cases submitted
-              rfl
-        | replay id =>
-            simp only [ReactiveApplication.Execution.respond, ↓reduceIte, List.mem_append,
-              List.mem_singleton] at member
-            rcases member with prior | fresh
-            · exact Or.inl prior
-            · subst fresh
-              exact Or.inr ⟨rfl, rfl, rfl, fun material submitted => by cases submitted⟩
+    | some material =>
+        simp only [ReactiveApplication.Execution.respond, ↓reduceIte, List.mem_append,
+          List.mem_singleton] at member
+        rcases member with prior | fresh
+        · exact Or.inl prior
+        · subst fresh
+          refine Or.inr ⟨rfl, rfl, rfl, fun other submitted => ?_⟩
+          cases submitted
+          rfl
   · left
     have recallEq := (application setup leaks).respond_recall_other execution who observer same
       action
@@ -487,7 +472,7 @@ theorem retainedFacts_history {horizon : Nat} {scheduler : (application setup le
         (some ⟨remaining, some who, execution⟩) →
       ∀ response ∈ menu.actions who (execution.recall who)
         (execution.observe (application setup leaks) who),
-      ∀ material, response.transmission = some (.submit material) →
+      ∀ material, response.transmission = some material →
         (runtime setup).freshServiceEnvelope execution.application.publicView
           ⟨(who, execution.network.nextSerial who),
             (application setup leaks).packet ((application setup leaks).submit
@@ -545,13 +530,12 @@ theorem retainedFacts_history {horizon : Nat} {scheduler : (application setup le
                   firstEvent secondEvent firstEmitted secondEmitted
                 have submittedOf : ∀ entry : app.PlayerEntry,
                     (runtime setup).submittedEvent? leaks entry.action = some event →
-                    ∃ material, entry.action.transmission = some (.submit material) := by
+                    ∃ material, entry.action.transmission = some material := by
                   intro entry submitted
                   rcases entry with ⟨view, ⟨transmission⟩, emittedOption⟩
-                  rcases transmission with _ | (material | id)
+                  rcases transmission with _ | material
                   · cases submitted
                   · exact ⟨material, rfl⟩
-                  · cases submitted
                 rcases respond_recall_cases execution who response observer first firstMember with
                     firstPrior | ⟨firstWho, _, firstAction, firstEmittedEq⟩ <;>
                   rcases respond_recall_cases execution who response observer second secondMember
@@ -637,7 +621,7 @@ theorem sourceService_fresh_response [Fintype Player] (bounds : MessageBounds (g
     (member : response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who
       (execution.recall who) (execution.observe (application setup leaks) who))
     (material : (application setup leaks).Submission)
-    (submitted : response.transmission = some (.submit material)) :
+    (submitted : response.transmission = some material) :
     (runtime setup).freshServiceEnvelope execution.application.publicView
       ⟨(who, execution.network.nextSerial who),
         (application setup leaks).packet ((application setup leaks).submit
@@ -679,11 +663,11 @@ theorem sourceService_fresh_response [Fintype Player] (bounds : MessageBounds (g
   rcases response with ⟨transmission⟩
   cases submitted
   have recorded : (⟨execution.application.publicView, execution.network.ledger,
-      ⟨who, ⟨(who, execution.network.nextSerial who),
+      ⟨(who, execution.network.nextSerial who),
         app.packet (app.submit execution.application who material) who
-          (execution.network.known who) material⟩⟩⟩ : app.TrafficRecord) ∈
+          (execution.network.known who) material⟩⟩ : app.TrafficRecord) ∈
       app.stateTraffic (some ⟨remaining, none,
-        execution.respond app who ⟨some (.submit material)⟩⟩) := by
+        execution.respond app who ⟨some material⟩⟩) := by
     rw [traffic]
     refine List.mem_append_right _ ?_
     simp only [ReactiveApplication.trafficStep, ReactiveApplication.Execution.respond,
@@ -714,7 +698,7 @@ theorem sourceService_history_settled [Fintype Player] (bounds : MessageBounds (
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         (some control)) :
     ∀ record ∈ (application setup leaks).executionTraffic control.execution,
-      ((runtime setup).settledRecord leaks control.execution).permits record.input.envelope =
+      ((runtime setup).settledRecord leaks control.execution).permits record.envelope =
         true := by
   have retained : RetainedFacts setup leaks control.execution :=
     retainedFacts_history (rosterScheduler_protectedInclusion setup leaks rosters network)
@@ -728,11 +712,11 @@ theorem sourceService_history_settled [Fintype Player] (bounds : MessageBounds (
   have inputs := (application setup leaks).stateTraffic_inputs (initialLaw setup) _ _
     ((sourceServiceMenu setup leaks bounds rosters).toRawTrace (initialLaw setup) _ _ trace)
   change ((application setup leaks).executionTraffic control.execution).map
-    ReactiveApplication.TrafficRecord.input = control.execution.network.inputs at inputs
+    ReactiveApplication.TrafficRecord.envelope = control.execution.network.inputs at inputs
   intro record member
-  have emitted : Emitted setup leaks control.execution record.input.envelope := by
+  have emitted : Emitted setup leaks control.execution record.envelope := by
     unfold Emitted
-    rw [← inputs, List.map_map]
+    rw [← inputs]
     exact List.mem_map.mpr ⟨record, member, rfl⟩
   exact (retained.good _ emitted).permits
 

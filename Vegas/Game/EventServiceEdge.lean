@@ -7,14 +7,14 @@ import GameTheory.Core.MixtureSimulation
 
 /-! # The public message service as an edge above the canonical graph
 
-Everything the host adds — raw submissions, competing candidates, replay,
+Everything the host adds — raw submissions, competing candidates,
 delivery before inclusion, adaptive wire choices and epoch ordering — is this
 one edge, and so is the mixture a native deviation needs. Below it the graph is
 executed canonically; the edge is the only place where the difference between
 "what the graph says" and "what a message host does" is argued.
 
 The edge considers finitely branching native deviations. Native commands range
-over unbounded replay identifiers and raw values, so an arbitrary deviation can
+over unbounded identifiers and raw values, so an arbitrary deviation can
 reach infinitely many of its own information values, and predrawing it as one
 probability mass function over pure responses need not be possible.
 -/

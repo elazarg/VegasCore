@@ -6,7 +6,7 @@ import Vegas.Pending.ReactiveOpeningExpiry
 /-! # Typed source revelation through an arbitrary activation roster
 
 The current owner chooses one opening opportunity or withholds. Other players
-may read and replay the pending envelope before protected inclusion. The full
+may read the pending envelope before protected inclusion. The full
 block, including deadline expiry, advances the actual source store and decoded
 source action history. Native response and observation memories remain intact.
 -/

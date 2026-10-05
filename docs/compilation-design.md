@@ -14,7 +14,7 @@ observed packets. They do not see unsampled pending messages or the builder's
 hidden history.
 
 The [canonical client](../Vegas/Pending/ReactiveCanonicalDecision.lean) implements
-source FALSE or failed validation by silence or lawful replay followed by
+source FALSE or failed validation by silence followed by
 ordinary FALSE expiry. A raw explicit withholding call also executes FALSE, but
 the [final-record audit](../Vegas/Pending/ReactiveSettledVerdict.lean) forbids its
 settled packet. Packet-free resolution expiry is not a binding-omission charge.

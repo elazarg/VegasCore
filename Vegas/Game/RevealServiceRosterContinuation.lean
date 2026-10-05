@@ -110,7 +110,7 @@ theorem run_roster_source_suffix_option_law
 omit [Fintype Player] in
 /-- The full remaining native roster plan from an existing source protocol
 position has its original continuation law. This holds after any supported
-earlier physical timing and replay choices satisfying the checkpoint. -/
+earlier physical timing and silent responses satisfying the checkpoint. -/
 theorem roster_prefix_continuation_option_law
     [Finite Player]
     (setup : Setup (Player := Player) (L := L))

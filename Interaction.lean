@@ -30,8 +30,7 @@ import Interaction.MessagePool
 import Interaction.MessagePoolCounters
 import Interaction.MessagePoolFreshness
 import Interaction.MessagePublication
-import Interaction.MessageReplay
-import Interaction.MessageReplayObservation
+import Interaction.MessagePublishedObservation
 import Interaction.MessageRetention
 import Interaction.PendingPriority
 import Interaction.PendingSelection
@@ -89,8 +88,7 @@ import Interaction.ReactiveRecallEntries
 import Interaction.ReactiveRecallInvariant
 import Interaction.ReactiveReceipts
 import Interaction.ReactiveRecovery
-import Interaction.ReactiveReplayMenu
-import Interaction.ReactiveReplayPolicy
+import Interaction.ReactiveMessageReadout
 import Interaction.ReactiveResponseBudget
 import Interaction.ReactiveResponseEmbedding
 import Interaction.ReactiveResponseEvaluation

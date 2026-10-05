@@ -57,7 +57,7 @@ theorem respond_ownPlay (execution : app.Execution) (who : Principal) (response 
   cases transmission with
   | none => simp only [Execution.respond, ↓reduceIte, recallOwnPlay_append]
   | some transmission =>
-      cases transmission <;> simp only [Execution.respond, ↓reduceIte, recallOwnPlay_append]
+      simp only [Execution.respond, ↓reduceIte, recallOwnPlay_append]
 
 theorem trace_ownPlay (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (who : Principal) : ∀ {state} (history : (app.protocol initial horizon scheduler).Trace state),

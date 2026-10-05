@@ -7,7 +7,7 @@ import Interaction.ReactiveSubmissionAudit
 /-! # Actual reserved selection and timing during reactive service
 
 The selector uses authenticated authors, event addresses, and spent identifiers.
-Packet integrity makes its choice independent of competing traffic and replay
+Packet integrity makes its choice independent of competing traffic
 when the prescribed event envelope is still pending and unpublished. Zero-tick
 service prefixes retain the deadline of any event they have not completed.
 -/
@@ -65,7 +65,7 @@ theorem reactiveLatest_after_submit (runtime : EventGraphRuntime graph)
     (addressed : submission.call.packet.event? graph = some event) :
     runtime.reactiveLatest leaks event who
       ((execution.respond (runtime.reactiveApplication leaks) who
-        ⟨some (.submit submission)⟩).observeEnvironment (runtime.reactiveApplication leaks)) =
+        ⟨some submission⟩).observeEnvironment (runtime.reactiveApplication leaks)) =
       .include (who, execution.network.nextSerial who) := by
   apply runtime.reactiveLatest_last leaks who event _ execution.network.pending
     ⟨(who, execution.network.nextSerial who), submission.emit

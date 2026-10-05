@@ -8,7 +8,7 @@ import Interaction.MessageApplicationPolicyLaws
 /-! # Immutable event-store prefixes
 
 Once a typed field is available, no native action changes its value. This
-includes arbitrary player commands, malformed traffic, replay, and expiry.
+includes arbitrary player commands, malformed traffic, and expiry.
 Endpoint-conditioned replay may therefore read an earlier public result from
 a later observation without adding that observation to a runtime policy.
 -/

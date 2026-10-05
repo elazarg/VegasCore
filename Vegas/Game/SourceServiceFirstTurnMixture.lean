@@ -7,7 +7,7 @@ import Vegas.Game.SourceServiceReachedDecoding
 At a completion boundary the owner of the current event decides at its first
 turn there. Its response at that turn is the source decision kernel of the
 decoded source position, compiled to a native response; at every other input
-it replays. Since the configuration does not change before the event
+it is silent. Since the configuration does not change before the event
 completes, the kernel is the same at whichever input the first turn falls, so
 the owner's policy is a behavioral mixture over source actions of the policies
 that decide one fixed action at the first turn
@@ -32,27 +32,27 @@ variable {Player : Type} [DecidableEq Player]
 
 /-- The owner's response with its source action fixed: the canonical compiled
 decision when it transmits and a fresh call still fits the deadline within the
-inclusion bound, and a replay when it is silent, too late, or the event is
+inclusion bound, and silence when the decision is silent, too late, or the event is
 already recorded in the owner's own recall. -/
 def decidedOpportunity (bound : (graph setup).EventId → Nat) (owner : Player)
     (event : (graph setup).EventId) (action : (graph setup).Action event) :
     (application setup leaks).Policy := fun past view =>
   if (runtime setup).eventRecorded leaks past event then
-    (application setup leaks).replayPolicy past view
+    (application setup leaks).silentPolicy past view
   else if view.application.publicView.InclusionFitsDeadline (runtime setup) bound event then
     if ((runtime setup).canonicalServiceDecision leaks owner past view event
-        action).transmission = none then (application setup leaks).replayPolicy past view
+        action).transmission = none then (application setup leaks).silentPolicy past view
     else PMF.pure ((runtime setup).canonicalServiceDecision leaks owner past view event action)
-  else (application setup leaks).replayPolicy past view
+  else (application setup leaks).silentPolicy past view
 
-/-- Decide `action` at the first turn at `event`, and replay at every other
+/-- Decide `action` at the first turn at `event`, and stay silent at every other
 input. -/
 def decidedTurnPolicy (bound : (graph setup).EventId → Nat) (owner : Player)
     (event : (graph setup).EventId) (action : (graph setup).Action event) :
     (application setup leaks).Policy :=
   (application setup leaks).turnScheduledPolicy (sourceServiceTurn setup leaks owner event)
     (some (0 : Fin 1)) (decidedOpportunity setup leaks bound owner event action)
-    (application setup leaks).replayPolicy
+    (application setup leaks).silentPolicy
 
 variable {setup}
 
@@ -70,7 +70,7 @@ def EffectiveAction (config : (graph setup).Config) (event : (graph setup).Event
 variable {leaks}
 
 /-- Before its first turn at `event`, an owner's recorded entries were not
-turns at `event`, so a first-turn family replays at all of them. -/
+turns at `event`, so a first-turn family is silent at all of them. -/
 private theorem turn_none_of_first (owner : Player) (event : (graph setup).EventId)
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView)
@@ -111,7 +111,7 @@ theorem firstTurn_runUntil_mixture {scheduler : (application setup leaks).Schedu
         (firstTurnProfile setup leaks bound turns profile event)
         (fun final => event ∈ final.application.config.cut.completed) count execution =
       law.bind fun action => (application setup leaks).runUntil scheduler
-        (Function.update (fun _ => (application setup leaks).replayPolicy) owner
+        (Function.update (fun _ => (application setup leaks).silentPolicy) owner
           (decidedTurnPolicy setup leaks bound owner event action))
         (fun final => event ∈ final.application.config.cut.completed) count execution := by
   let app := application setup leaks
@@ -123,7 +123,7 @@ theorem firstTurn_runUntil_mixture {scheduler : (application setup leaks).Schedu
   have rankEq := isPrefix_unique ranked boundary.ordered
   subst rankEq
   have firstEq : firstTurnProfile setup leaks bound turns profile event =
-      Function.update (fun _ => app.replayPolicy) owner family := by
+      Function.update (fun _ => app.silentPolicy) owner family := by
     unfold firstTurnProfile
     simp only [owned]
     rfl
@@ -141,7 +141,7 @@ theorem firstTurn_runUntil_mixture {scheduler : (application setup leaks).Schedu
           app.turnScheduledPolicy_of_none _ _ _ _ _ _ turn]
         have members : ∀ action, decidedTurnPolicy setup leaks bound owner event action
             (current.recall owner) (current.observe app owner) =
-              app.replayPolicy (current.recall owner) (current.observe app owner) :=
+              app.silentPolicy (current.recall owner) (current.observe app owner) :=
           fun action => app.turnScheduledPolicy_of_none _ _ _ _ _ _ turn
         simp only [members, PMF.bind_const]
         rfl
@@ -149,7 +149,7 @@ theorem firstTurn_runUntil_mixture {scheduler : (application setup leaks).Schedu
         by_cases zero : index = 0
         · subst zero
           have prior : mixture.posterior (current.recall owner) = law := by
-            apply app.policyMixture_posterior_of_agree _ _ app.replayPolicy
+            apply app.policyMixture_posterior_of_agree _ _ app.silentPolicy
             intro before entry member action
             exact app.turnScheduledPolicy_of_none _ _ _ _ _ _
               (turn_none_of_first owner event _ _ turn before entry member)
@@ -187,7 +187,7 @@ theorem firstTurn_runUntil_mixture {scheduler : (application setup leaks).Schedu
               rw [turn]; exact otherFamily slot chosen)]
           have members : ∀ action, decidedTurnPolicy setup leaks bound owner event action
               (current.recall owner) (current.observe app owner) =
-                app.replayPolicy (current.recall owner) (current.observe app owner) :=
+                app.silentPolicy (current.recall owner) (current.observe app owner) :=
             fun action => app.turnScheduledPolicy_unselected _ _ _ _ _ _ (fun slot chosen => by
               rw [turn]; exact other slot)
           simp only [members, PMF.bind_const]
@@ -202,8 +202,8 @@ theorem firstTurn_runUntil_mixture {scheduler : (application setup leaks).Schedu
     · exact same
     · exact (running ((advanced.2 event).mpr (Nat.lt_succ_self _))).elim
   have congruent : app.runUntil scheduler
-      (Function.update (fun _ => app.replayPolicy) owner family) stop count execution =
-      app.runUntil scheduler (Function.update (fun _ => app.replayPolicy) owner mixture.policy)
+      (Function.update (fun _ => app.silentPolicy) owner family) stop count execution =
+      app.runUntil scheduler (Function.update (fun _ => app.silentPolicy) owner mixture.policy)
         stop count execution := by
     apply app.runUntil_congr_of_agree scheduler _ _ _ invariant
     · intro current holds running command _ middle moved who active
@@ -226,12 +226,12 @@ theorem firstTurn_runUntil_mixture {scheduler : (application setup leaks).Schedu
       · exact Or.inl (same.trans (sameOf current holds running))
       · exact Or.inr advanced
     · exact ⟨seen, Or.inl rfl⟩
-  change app.runUntil scheduler (Function.update (fun _ => app.replayPolicy) owner family) stop
+  change app.runUntil scheduler (Function.update (fun _ => app.silentPolicy) owner family) stop
     count execution = _
   rw [congruent, ← app.runUntil_policyMixture scheduler law
     (decidedTurnPolicy setup leaks bound owner event) owner _ stop count execution]
   have prior : mixture.posterior (execution.recall owner) = law := by
-    apply app.policyMixture_posterior_of_agree _ _ app.replayPolicy
+    apply app.policyMixture_posterior_of_agree _ _ app.silentPolicy
     intro before entry member action
     apply app.turnScheduledPolicy_of_none
     apply sourceServiceTurn_of_not_turn

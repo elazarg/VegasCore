@@ -159,9 +159,9 @@ theorem sample_block_stopped_coupling
         Nonempty (((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
           (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
             (some ⟨remaining, none, next.2.1⟩)) ∧
-        ((∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
+        ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.input.envelope = false) ∨
+            record.envelope = false) ∨
           BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
   classical
   intro app players strategy ending
@@ -189,13 +189,13 @@ theorem sample_block_stopped_coupling
           ((runtime setup).runInteractionPlan leaks players network ending next.2.1).map
             (fun final => (final, next.2.2)) ∧
         ∀ final ∈ coupling.support,
-          (∃ record ∈ app.executionTraffic final.1, record.input.envelope.sender = owner ∧
+          (∃ record ∈ app.executionTraffic final.1, record.envelope.sender = owner ∧
             (runtime setup).permittedServiceEnvelope record.observation record.ledger
-              record.input.envelope = false) ∨
+              record.envelope = false) ∨
           BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1 := by
-    by_cases bad : ∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
+    by_cases bad : ∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
         (runtime setup).permittedServiceEnvelope record.observation record.ledger
-          record.input.envelope = false
+          record.envelope = false
     · let left := (runtime setup).runInteractionPlan leaks players network ending next.1
       let right := ((runtime setup).runInteractionPlan leaks players network ending next.2.1).map
         fun final => (final, next.2.2)

@@ -9,7 +9,7 @@ import Interaction.MessageApplicationAuthorship
 An inclusion cannot discard an acceptable prescribed packet without completing
 its event. Binding acceptance follows from the canonical admission resources;
 resolution acceptance follows from the stored action and binding provenance.
-The selected envelope may be a replay and need not be the prescribed packet.
+The selected envelope need not be the prescribed packet.
 -/
 
 noncomputable section
@@ -48,7 +48,7 @@ theorem serviceStep_new_submission (runtime : EventGraphRuntime graph)
         have history := runtime.application.playerStep_history_self owner before command after step
         rw [history] at submitted
         cases command with
-        | privateCommand command | wait | replay id =>
+        | privateCommand command | wait =>
             simp only [submittedAt, List.any_append, List.any_cons, List.any_nil,
               Bool.or_false] at submitted
             change submittedAt (before.principalHistory owner) event = true at submitted
@@ -97,7 +97,7 @@ theorem include_pending_or_completed (runtime : EventGraphRuntime graph)
     exact Finset.mem_insert_self _ _
 
 /-- Any native action retains an acceptable pending packet or completes its
-event. Only inclusion can remove it; replay and submission can add traffic. -/
+event. Only inclusion can remove it; submission can add traffic. -/
 theorem applicationStep_pending_or_completed (runtime : EventGraphRuntime graph)
     (native after : runtime.application.State) (message : Message Player (Payload graph))
     (event : graph.EventId) (next : State graph)
@@ -116,14 +116,6 @@ theorem applicationStep_pending_or_completed (runtime : EventGraphRuntime graph)
       simp only [MessageApplication.step, PMF.mem_support_pure_iff _ _] at member
       subst after
       exact Or.inr (List.mem_append_left _ pending)
-  | replay who id =>
-      simp only [MessageApplication.step, PMF.mem_support_pure_iff _ _] at member
-      subst after
-      right
-      unfold MessagePool.replay
-      split
-      · exact List.mem_append_left _ pending
-      · exact pending
   | deliver who id =>
       simp only [MessageApplication.step, PMF.mem_support_pure_iff _ _] at member
       subst after

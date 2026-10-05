@@ -53,7 +53,7 @@ author saw. -/
 structure FreshCall (owner : Player) (event : (graph setup).EventId)
     (bound : (graph setup).EventId → Nat) (entry : (application setup leaks).PlayerEntry)
     (message : Message Player (WitnessedPacket (graph setup))) : Prop where
-  fresh : ∃ material, entry.action.transmission = some (.submit material)
+  fresh : ∃ material, entry.action.transmission = some material
   emitted : entry.emitted = some message
   authored : message.sender = owner
   addressed : message.payload.call.event? (graph setup) = some event
@@ -154,24 +154,19 @@ theorem respond_recall_self (execution : (application setup leaks).Execution) (w
     ∃ emitted, (execution.respond (application setup leaks) who action).recall who =
         execution.recall who ++
           [⟨execution.observe (application setup leaks) who, action, emitted⟩] ∧
-      ∀ material, action.transmission = some (.submit material) → ∀ message,
+      ∀ material, action.transmission = some material → ∀ message,
         emitted = some message → message.id = (who, execution.network.nextSerial who) := by
   rcases action with ⟨transmission⟩
   cases transmission with
   | none =>
       exact ⟨none, by simp [ReactiveApplication.Execution.respond], by simp⟩
-  | some transmission =>
-      cases transmission with
-      | submit material =>
-          refine ⟨some (execution.network.submit who ((application setup leaks).packet
-            ((application setup leaks).submit execution.application who material) who
-            (execution.network.known who) material)).1,
-            by simp only [ReactiveApplication.Execution.respond, ↓reduceIte], ?_⟩
-          rintro _ ⟨⟩ message ⟨⟩
-          rfl
-      | replay id =>
-          exact ⟨(execution.network.replay who id).1,
-            by simp only [ReactiveApplication.Execution.respond, ↓reduceIte], by simp⟩
+  | some material =>
+      refine ⟨some (execution.network.submit who ((application setup leaks).packet
+        ((application setup leaks).submit execution.application who material) who
+        (execution.network.known who) material)).1,
+        by simp only [ReactiveApplication.Execution.respond, ↓reduceIte], ?_⟩
+      rintro _ ⟨⟩ message ⟨⟩
+      rfl
 
 /-- Completed events stay completed across a public step. -/
 theorem PublicStep.completed_mono {before after : EventGraphRuntime.State (graph setup)}
@@ -387,14 +382,10 @@ theorem settlesFreshCalls_environment {horizon : Nat}
               have output : message ∈ app.outputs (execution.recall owner) :=
                 List.mem_filterMap.mpr ⟨entry, member, call.emitted⟩
               rw [← facts.inputs owner] at output
-              obtain ⟨input, inputMember, inputEq⟩ := List.mem_filterMap.mp output
+              have inputMember := (List.mem_filter.mp output).1
               have envelopeEq : envelope = message := by
-                by_cases broadcaster : input.broadcaster = owner
-                · simp only [broadcaster, ↓reduceIte, Option.some.injEq] at inputEq
-                  have unique := facts.unique.inputs input inputMember
-                  rw [inputEq] at unique
-                  exact unique.pending envelope pending (envelopeId.trans sameId)
-                · simp [broadcaster] at inputEq
+                exact (facts.unique.inputs message inputMember).pending envelope pending
+                  (envelopeId.trans sameId)
               subst envelopeEq
               obtain ⟨accepted, handled⟩ := freshServiceAcceptable_accepted (runtime setup)
                 execution.application entry.beforeView.application.publicView envelope

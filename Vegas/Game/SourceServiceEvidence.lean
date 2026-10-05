@@ -142,9 +142,9 @@ theorem sourceService_successful_opening
         (control.execution.recall who) (control.execution.observe app who)
           ((runtime setup).windowOpening leaks event candidate ⟨payload, value⟩) := by
       rw [canonical]
-      change (⟨some (.submit
-        ((disclosureSubmission (.opening event candidate ⟨payload, value⟩)).normalizeReactive
-          who _ (control.execution.network.known who)))⟩ : app.Action) = _
+      change (⟨some ((disclosureSubmission (.opening event candidate
+          ⟨payload, value⟩)).normalizeReactive
+          who _ (control.execution.network.known who))⟩ : app.Action) = _
       rw [← known]
       rfl
     _ = _ := normal

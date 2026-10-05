@@ -77,7 +77,6 @@ each action; inclusion never invokes the message author's controller. -/
 inductive Action (interface : MessageInterface Principal) where
   | privateCommand (who : Principal) (command : interface.PrivateCommand)
   | submit (who : Principal) (payload : interface.Payload)
-  | replay (who : Principal) (id : MessageId Principal)
   | deliver (who : Principal) (id : MessageId Principal)
   | include (id : MessageId Principal)
   | environment (command : interface.EnvironmentCommand)
@@ -135,8 +134,6 @@ def step [DecidableEq Principal] (state : app.State) : app.Action → PMF app.St
       PMF.pure { state with
         application := app.submitStep state.application who payload
         pool := (state.pool.submit who payload).2 }
-  | .replay who id =>
-      PMF.pure { state with pool := (state.pool.replay who id).state }
   | .deliver who id =>
       PMF.pure { state with pool := (state.pool.deliver who id).state }
   | .include id => PMF.pure (app.includePending state id)

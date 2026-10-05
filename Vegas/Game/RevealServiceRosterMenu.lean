@@ -4,9 +4,8 @@ import Vegas.Game.RevealServiceRosterPolicy
 
 /-! # Retained responses in a finite revelation roster
 
-This finite menu uses the existing effective response bound. It retains all known
-envelope replays, including a pending canonical opening, and permits one fresh
-canonical opening per phase. Its stopping test reads the player's actual own
+This finite menu uses the existing effective response bound. It retains silence and
+permits one fresh canonical opening per phase. Its stopping test reads the player's actual own
 response recall. The full target menu still permits every bounded raw response.
 
 This defines an ordinary action restriction, not an equilibrium claim. Source
@@ -79,7 +78,7 @@ def rosterActions (setup : Setup (Player := Player) (L := L))
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
     (who : Player) (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView) : Finset (application setup leaks).Action :=
-  ((application setup leaks).replayActions past view ∪
+  ({⟨none⟩} ∪
     (rosterFresh? setup leaks rosters who past view).toList.toFinset) ∩
       (bounds.menu (runtime setup) leaks).actions who past view
 
@@ -92,36 +91,22 @@ theorem silence_roster (setup : Setup (Player := Player) (L := L))
       rosterActions setup leaks bounds rosters who past view := by
   classical
   refine Finset.mem_inter.mpr ⟨Finset.mem_union_left _
-    (((application setup leaks).mem_replayActions_iff _ _ _).mpr ?_), ?_⟩
-  · exact (application setup leaks).replayPolicy_support past view none
-      (Finset.mem_insert_self _ _)
+    (Finset.mem_singleton_self _), ?_⟩
   · rw [bounds.menu_mem]
     exact ⟨True.intro, rfl⟩
 
-/-- The replay law's support is exactly lawful raw traffic, without imposing a
+/-- The silent law's support is exactly lawful raw traffic, without imposing a
 static bound on identifiers already known through actual recall or observation. -/
-theorem replay_roster (setup : Setup (Player := Player) (L := L))
+theorem silent_roster (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
     (who : Player) (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView) (action : (application setup leaks).Action)
-    (member : action ∈ ((application setup leaks).replayPolicy past view).support) :
+    (member : action ∈ ((application setup leaks).silentPolicy past view).support) :
     action ∈ rosterActions setup leaks bounds rosters who past view := by
   classical
-  refine Finset.mem_inter.mpr ⟨Finset.mem_union_left _
-    (((application setup leaks).mem_replayActions_iff _ _ _).mpr member), ?_⟩
-  obtain ⟨selected, supported, rfl⟩ := PMF.support_map .. ▸ member
-  have eligible := (PMF.mem_support_uniformOfFinset_iff _ _).mp supported
-  cases selected with
-  | none =>
-      rw [bounds.menu_mem]
-      exact ⟨True.intro, rfl⟩
-  | some id =>
-      simp only [ReactiveApplication.replayOptions, Finset.mem_insert, Option.some_ne_none,
-        false_or, Finset.mem_image, List.mem_toFinset, List.mem_map, Option.some.injEq] at eligible
-      obtain ⟨key, ⟨message, known, same⟩, rfl⟩ := eligible
-      exact bounds.known_replay_available (runtime setup) leaks who past view key
-        ⟨message, known, same⟩
+  obtain rfl := (application setup leaks).silentPolicy_cases past view action member
+  exact silence_roster setup leaks bounds rosters who past view
 
 def rosterMenu (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -155,11 +140,12 @@ theorem roster_response_cases (setup : Setup (Player := Player) (L := L))
     (who : Player) (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView) (action : (application setup leaks).Action)
     (member : action ∈ rosterActions setup leaks bounds rosters who past view) :
-    action ∈ ((application setup leaks).replayPolicy past view).support ∨
+    action ∈ ((application setup leaks).silentPolicy past view).support ∨
       rosterFresh? setup leaks rosters who past view = some action := by
   classical
   rcases Finset.mem_union.mp (Finset.mem_inter.mp member).1 with waiting | opening
-  · exact Or.inl (((application setup leaks).mem_replayActions_iff _ _ _).mp waiting)
+  · exact Or.inl ((application setup leaks).mem_silentPolicy_support.mpr
+      (Finset.mem_singleton.mp waiting))
   · exact Or.inr (by simpa only [List.mem_toFinset, Option.mem_toList] using opening)
 
 omit [Fintype Player] in
@@ -172,7 +158,7 @@ theorem rosterLimitPolicy_cases (setup : Setup (Player := Player) (L := L))
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView) (action : (application setup leaks).Action)
     (supported : action ∈ (rosterLimitPolicy setup leaks rosters profile who past view).support) :
-    action ∈ ((application setup leaks).replayPolicy past view).support ∨
+    action ∈ ((application setup leaks).silentPolicy past view).support ∨
       rosterFresh? setup leaks rosters who past view = some action := by
   classical
   unfold rosterLimitPolicy at supported
@@ -222,15 +208,14 @@ theorem roster_response_application (setup : Setup (Player := Player) (L := L))
     (execution.respond (application setup leaks) who action).application =
       execution.application := by
   rcases roster_response_cases setup leaks bounds rosters who _ _ action member with waiting | fresh
-  · rcases (application setup leaks).replayPolicy_cases _ _ action waiting with rfl | ⟨id, rfl⟩
-    · rfl
-    · rfl
+  · rcases (application setup leaks).silentPolicy_cases _ _ action waiting with rfl
+    rfl
   · obtain ⟨event, candidate, raw, _, _, _, rfl, _⟩ :=
       rosterFresh?_shape setup leaks rosters who _ _ action fresh
     rfl
 
 /-- Arbitrary retained responses preserve the application throughout an
-activation-only prefix, including private observation and replay branches. -/
+activation-only prefix, including private observation and silent branches. -/
 theorem roster_run_application (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)

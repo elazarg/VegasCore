@@ -35,9 +35,9 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
 /-- A window of an open resolve phase under the uniform service menu after
-which the owner's event is still unsent is a replay window: every response in
-it is transport and lies in the support of the replay law. -/
-theorem replay_window_of_unsent (setup : Setup (Player := Player) (L := L))
+which the owner's event is still unsent is a silent window: every response in
+it is transport and lies in the support of the silent policy. -/
+theorem silent_window_of_unsent (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks)
@@ -55,7 +55,7 @@ theorem replay_window_of_unsent (setup : Setup (Player := Player) (L := L))
         (visits.map ServiceInstruction.player) initial).support)
     (unsent : (runtime setup).eventRecorded leaks (final.recall owner) event = false) :
     final ∈ ((runtime setup).runInteractionPlan leaks
-      (fun _ => (application setup leaks).replayPolicy) network
+      (fun _ => (application setup leaks).silentPolicy) network
         (visits.map ServiceInstruction.player) initial).support := by
   let app := application setup leaks
   let menu := sourceServiceMenu setup leaks bounds rosters
@@ -78,21 +78,20 @@ theorem replay_window_of_unsent (setup : Setup (Player := Player) (L := L))
       let activated := initial.sampledActivation app actor sample
       have member := sourceServiceMenu_in_compiled setup leaks bounds rosters actor _ _
         ((menu.uniformResponses_support actor _ _ response).mp supported)
-      have replayed : response ∈ (app.replayPolicy (activated.recall actor)
+      have silenced : response ∈ (app.silentPolicy (activated.recall actor)
           (activated.observe app actor)).support := by
         rcases bounds.compiled_resolution_cases (runtime setup) leaks actor _ _ event owner
           payload binding checks outputEq codeEq node sole response member with silent |
-            replay | ⟨candidate, value, evidence, acting, _, _, _, candidateOwned, _, shape⟩
+            ⟨candidate, value, evidence, acting, _, _, _, candidateOwned, _, shape⟩
         · rw [silent]
-          exact app.replayPolicy_support _ _ none (Finset.mem_insert_self _ _)
-        · exact replay
+          exact app.silentPolicy_support _ _
         · exfalso
           have equal : actor = owner := Option.some.inj (acting.symm.trans owned)
           clear candidateOwned
           subst equal
           subst shape
           have recorded := (runtime setup).eventRecorded_respond leaks activated actor
-            ⟨some (.submit ⟨⟨.opening event candidate ⟨payload, value⟩, none⟩, evidence⟩)⟩ event rfl
+            ⟨some ⟨⟨.opening event candidate ⟨payload, value⟩, none⟩, evidence⟩⟩ event rfl
           obtain ⟨entry, present, submitted⟩ :=
             ((runtime setup).eventRecorded_iff leaks _ event).mp recorded
           obtain ⟨tail, same⟩ := (runtime setup).runInteractionPlan_recall_prefix leaks
@@ -102,13 +101,13 @@ theorem replay_window_of_unsent (setup : Setup (Player := Player) (L := L))
               ⟨entry, same ▸ List.mem_append_left tail present, submitted⟩
           rw [later] at unsent
           cases unsent
-      have transport := app.replayPolicy_cases _ _ response replayed
-      have sameApp := ((runtime setup).replay_response_preserves leaks (fun _ => True) activated
+      have transport := app.silentPolicy_cases _ _ response silenced
+      have sameApp := ((runtime setup).silent_response_preserves leaks (fun _ => True) activated
         ⟨by simp, by simp, by simp, by simp⟩ actor response transport).1
       rw [PMF.support_bind]
       refine Set.mem_iUnion₂.mpr ⟨sample, sampleSupport, ?_⟩
       rw [PMF.support_bind]
-      exact Set.mem_iUnion₂.mpr ⟨response, replayed,
+      exact Set.mem_iUnion₂.mpr ⟨response, silenced,
         ih _ (by rw [sameApp]; exact sole) reached⟩
 
 omit [Fintype Player] in
@@ -334,7 +333,7 @@ theorem withhold_phase_config (setup : Setup (Player := Player) (L := L))
       execution.recall owner ⊆ current.recall owner →
       response ∈ (players who (current.recall who)
         (current.observe (application setup leaks) who)).support →
-      response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩)
+      response = ⟨none⟩)
     (published : execution.network.Satisfies fun message =>
       message.id ∈ execution.network.ledger.map Message.id)
     (ready : execution.application.config.cut.Ready event)
@@ -390,7 +389,7 @@ theorem RevealSource.opportunity_law {setup : Setup (Player := Player) (L := L)}
       (execution.recall site.owner) (execution.observe (application setup leaks) site.owner) =
       (revealKernel site.residual (site.source.view site.owner)).bind fun disclose =>
         if disclose then PMF.pure ((runtime setup).windowOpening leaks event candidate raw)
-        else (application setup leaks).replayPolicy (execution.recall site.owner)
+        else (application setup leaks).silentPolicy (execution.recall site.owner)
           (execution.observe (application setup leaks) site.owner) := by
   obtain ⟨Γ, names, publishedName, owner, name, payload, fresh, binding, unresolved, next,
     residual, refs, source, embedding, refsBefore, aligned, agree, history, head, _, _⟩ := site
@@ -579,21 +578,21 @@ theorem exists_revealSource_step (profile : BehavioralProfile service.setup.prog
         have sameRecall : execution.recall actor = prior.recall actor := by
           rw [executionEq]
           rfl
-        have replayWindow := replay_window_of_unsent service.setup service.leaks service.bounds
+        have silentWindow := silent_window_of_unsent service.setup service.leaks service.bounds
           service.rosters service.network node _ phaseStart prior startSole reachedPrior
           (sameRecall ▸ unsent)
         have within : ((service.rosters (embedding.event ⟨0, by simp [eventCount]⟩)).take
             slot).count actor ≤
               (service.rosters (embedding.event ⟨0, by simp [eventCount]⟩)).count actor :=
           (List.take_sublist _ _).count_le _
-        have posterior := sourceServiceTimedMixture_replay_window_posterior_initial service.setup
+        have posterior := sourceServiceTimedMixture_silent_window_posterior_initial service.setup
           service.leaks service.rosters fresh binding unresolved next profile remainingProfile
           refs source embedding refsBefore _ aligned phaseStart boundary.toSourceCheckpoint.agrees
           boundary.toSourceCheckpoint.history boundary.binding boundary.recall startOrigins
           (inherits effective actor) service.network _ prior timing candidate raw
           ((rosterOpening?_application_eq service.setup service.leaks actor _ phaseStart execution
             sameApp.symm).trans opening) startReady (boundary.unsent actor _ le_rfl)
-          (boundary.counts actor) within small replayWindow
+          (boundary.counts actor) within small silentWindow
         intro chosen
         rw [sameRecall]
         exact posterior chosen
@@ -794,7 +793,7 @@ theorem available_transport_expect {who : Player} {remaining : Nat}
     (response : (application service.setup service.leaks).Action)
     (allowed : response ∈ service.menu.actions who (execution.recall who)
       (execution.observe (application service.setup service.leaks) who))
-    (transport : response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩)
+    (transport : response = ⟨none⟩)
     (utility : (graph service.setup).Config → ℝ) :
     expect (approx.phaseConfigLaw phase response) utility =
       PMF.deferredRemaining site.disclosureProbability (approx.timing phase.event who owned)
@@ -856,25 +855,21 @@ theorem available_transport_expect {who : Player} {remaining : Nat}
     rfl
   have member := sourceServiceMenu_in_compiled service.setup service.leaks service.bounds
     service.rosters actor _ _ allowed
-  have replaySupport : response ∈ (app.replayPolicy (execution.recall actor)
+  have silentSupport : response ∈ (app.silentPolicy (execution.recall actor)
       (execution.observe app actor)).support := by
     rcases service.bounds.compiled_resolution_cases (runtime service.setup) service.leaks actor
       _ _ phase.event actor payload resolveBinding checks isPublication resolveCode node
-      phase.sole response member with silent | replay | ⟨_, _, _, _, _, _, _, _, _, shape⟩
+      phase.sole response member with silent | ⟨_, _, _, _, _, _, _, _, _, shape⟩
     · rw [silent]
-      exact app.replayPolicy_support _ _ none (Finset.mem_insert_self _ _)
-    · exact replay
-    · rcases transport with silent | ⟨id, replayed⟩
-      · rw [silent] at shape
-        cases shape
-      · rw [replayed] at shape
-        cases shape
+      exact app.silentPolicy_support _ _
+    · rw [transport] at shape
+      cases shape
   obtain ⟨entry, entryRecall, entryView, entryAction⟩ :=
     (runtime service.setup).response_recall_entry service.leaks execution actor response
   have likelihood (slot : Fin ((service.rosters phase.event).count actor)) :
       ((family slot (execution.recall actor) entry.beforeView) entry.action).toReal =
         (if slot = current then 1 - q else 1) *
-          ((app.replayPolicy (execution.recall actor) entry.beforeView) entry.action).toReal := by
+          ((app.silentPolicy (execution.recall actor) entry.beforeView) entry.action).toReal := by
     rw [entryView, entryAction]
     by_cases same : slot = current
     · subst same
@@ -885,7 +880,7 @@ theorem available_transport_expect {who : Player} {remaining : Nat}
           Option.map_some, firing, ↓reduceIte]
       have different : response ≠ (runtime service.setup).windowOpening service.leaks
           phase.event candidate raw := by
-        rcases transport with rfl | ⟨id, rfl⟩ <;> simp [windowOpening]
+        rcases transport with rfl; simp [windowOpening]
       rw [fires, opportunity, PMF.bind_bool_mix, mix_apply_toReal,
         PMF.pure_apply_of_ne _ _ different, ENNReal.toReal_zero]
       simp only [↓reduceIte, mul_zero, zero_add]
@@ -904,22 +899,22 @@ theorem available_transport_expect {who : Player} {remaining : Nat}
         Option.map_some, Option.some.injEq, waiting, ↓reduceIte, same, one_mul]
       rfl
   have possible : entry.action ∈
-      (app.replayPolicy (execution.recall actor) entry.beforeView).support := by
+      (app.silentPolicy (execution.recall actor) entry.beforeView).support := by
     rw [entryAction, entryView]
-    exact replaySupport
+    exact silentSupport
   have updated := app.scheduledChoice_posterior_step timing family q (ENNReal.toReal_nonneg)
     small (execution.recall actor) entry current
-    (app.replayPolicy (execution.recall actor) entry.beforeView) possible likelihood old
+    (app.silentPolicy (execution.recall actor) entry.beforeView) possible likelihood old
   have remainingMass := ReactiveApplication.scheduledChoice_remaining_probability timing
     (mixtureImpl.posterior (execution.recall actor ++ [entry])) q (phase.earlier + 1) updated
-  have preserved := (runtime service.setup).replay_response_preserves service.leaks _
+  have preserved := (runtime service.setup).silent_response_preserves service.leaks _
     execution published actor response transport
-  have counters := (runtime service.setup).replay_response_preserves service.leaks _
+  have counters := (runtime service.setup).silent_response_preserves service.leaks _
     execution serials actor response transport
   have afterUnsent := (runtime service.setup).eventRecorded_respond_transport service.leaks
     execution actor actor response transport phase.event
   have afterRecalled := app.respond_inputRecall execution actor response recalled
-  have afterOrigins := origins_replayed service.setup service.leaks execution origins actor
+  have afterOrigins := origins_silent service.setup service.leaks execution origins actor
     response transport
   set after := execution.respond app actor response with afterDef
   have sameApp : after.application = execution.application := preserved.1
@@ -946,7 +941,7 @@ theorem available_transport_expect {who : Player} {remaining : Nat}
       service.network (phase.visits.map ServiceInstruction.player ++
         .includeLatest phase.event actor :: rest) after =
       (runtime service.setup).runInteractionPlan service.leaks
-        (Function.update (fun _ => app.replayPolicy) actor mixtureImpl.policy)
+        (Function.update (fun _ => app.silentPolicy) actor mixtureImpl.policy)
         service.network (phase.visits.map ServiceInstruction.player ++
           .includeLatest phase.event actor :: rest) after := by
     rw [runInteractionPlan_append, runInteractionPlan_append,
@@ -958,12 +953,12 @@ theorem available_transport_expect {who : Player} {remaining : Nat}
     exact servicePlan_players_eq service.setup service.leaks _ _ service.network _
       (by simp [rest]) (by intro player; simp [rest]) current
   have mixture := (runtime service.setup).runInteractionPlan_policyMixture service.leaks
-    timing family actor (fun _ => app.replayPolicy) service.network
+    timing family actor (fun _ => app.silentPolicy) service.network
     (phase.visits.map ServiceInstruction.player ++ .includeLatest phase.event actor :: rest) after
   dsimp only at mixture
   have slotLaw (slot : Fin ((service.rosters phase.event).count actor)) :
       ((runtime service.setup).runInteractionPlan service.leaks
-        (Function.update (fun _ => app.replayPolicy) actor (family slot)) service.network
+        (Function.update (fun _ => app.silentPolicy) actor (family slot)) service.network
         (phase.visits.map ServiceInstruction.player ++ .includeLatest phase.event actor :: rest)
         after).map (fun final => final.application.config) =
         if phase.earlier + 1 ≤ slot.val then
@@ -989,12 +984,12 @@ theorem available_transport_expect {who : Player} {remaining : Nat}
           offset + slot.val ∨ offset + slot.val < (after.recall actor).length := by
         rw [afterLength]
         omega
-      have replayed : (runtime service.setup).runInteractionPlan service.leaks
-          (Function.update (fun _ => app.replayPolicy) actor (family slot)) service.network
+      have silentRun : (runtime service.setup).runInteractionPlan service.leaks
+          (Function.update (fun _ => app.silentPolicy) actor (family slot)) service.network
           (phase.visits.map ServiceInstruction.player ++
             .includeLatest phase.event actor :: rest) after =
           (runtime service.setup).runInteractionPlan service.leaks
-            (fun _ => app.replayPolicy) service.network
+            (fun _ => app.silentPolicy) service.network
             (phase.visits.map ServiceInstruction.player ++
               .includeLatest phase.event actor :: rest) after := by
         rw [runInteractionPlan_append, runInteractionPlan_append]
@@ -1005,8 +1000,8 @@ theorem available_transport_expect {who : Player} {remaining : Nat}
         intro current _
         exact servicePlan_players_eq service.setup service.leaks _ _ service.network _
           (by simp [rest]) (by intro player; simp [rest]) current
-      rw [replayed, withhold_phase_config service.setup service.leaks _ service.network node
-        after (fun _ _ action _ _ supported => app.replayPolicy_cases _ _ action supported)
+      rw [silentRun, withhold_phase_config service.setup service.leaks _ service.network node
+        after (fun _ _ action _ _ supported => app.silentPolicy_cases _ _ action supported)
         afterPublished (by rw [sameApp]; exact ready) entered (phase.event.val + 1)
         (by rw [sameApp]; exact activated) (by rw [sameApp]; exact due) phase.visits]
       simp only [RevealSource.completion, disclosureResult_false, sameApp]
@@ -1017,7 +1012,7 @@ theorem available_transport_expect {who : Player} {remaining : Nat}
   rw [ending, mixed, ← mixture, PMF.map_bind]
   have slotIntegrable (slot : Fin ((service.rosters phase.event).count actor)) :
       PayoffIntegrable (((runtime service.setup).runInteractionPlan service.leaks
-        (Function.update (fun _ => app.replayPolicy) actor (family slot)) service.network
+        (Function.update (fun _ => app.silentPolicy) actor (family slot)) service.network
         (phase.visits.map ServiceInstruction.player ++ .includeLatest phase.event actor :: rest)
         after).map (fun final => final.application.config)) utility := by
     rw [slotLaw slot]
@@ -1105,7 +1100,7 @@ structure AvailableOpeningLaws {who : Player}
     (response = (runtime service.setup).windowOpening service.leaks event candidate raw ∧
       approx.responseReadout phase response =
         approx.boundaryContinuation (event.val + 1) (completion true)) ∨
-    ((response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩) ∧
+    (response = ⟨none⟩ ∧
       ∀ utility : Option (State L service.setup.program.terminalCtx) → ℝ,
         expect (approx.responseReadout phase response) utility =
           PMF.deferredRemaining ((disclosures true).toReal) (approx.timing event who owned)
@@ -1188,7 +1183,7 @@ theorem available_opening_decision {who : Player} {remaining : Nat}
       Option.map_some, firing, ↓reduceIte]
   have waits (slot : Fin ((service.rosters phase.event).count owner)) (other : slot ≠ current) :
       family slot (execution.recall owner) (execution.observe app owner) =
-        app.replayPolicy (execution.recall owner) (execution.observe app owner) := by
+        app.silentPolicy (execution.recall owner) (execution.observe app owner) := by
     have waiting : ¬ rosterOffset service.setup service.rosters owner phase.event + slot.val =
         (execution.recall owner).length := by
       intro now
@@ -1251,7 +1246,7 @@ theorem available_opening_decision {who : Player} {remaining : Nat}
   have transported (response : app.Action)
       (allowed : response ∈ service.menu.actions owner (execution.recall owner)
         (execution.observe app owner))
-      (transport : response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩)
+      (transport : response = ⟨none⟩)
       (utility : Option (State L service.setup.program.terminalCtx) → ℝ) :
       expect (approx.responseReadout phase response) utility =
         PMF.deferredRemaining ((disclosures true).toReal) timing (phase.earlier + 1) *
@@ -1276,20 +1271,20 @@ theorem available_opening_decision {who : Player} {remaining : Nat}
     let later := PMF.deferredRemaining ((disclosures true).toReal) timing (phase.earlier + 1) *
       whenTrue + (1 - PMF.deferredRemaining ((disclosures true).toReal) timing
         (phase.earlier + 1)) * whenFalse
-    have replayed (slot : Fin ((service.rosters phase.event).count owner))
+    have silentValue (slot : Fin ((service.rosters phase.event).count owner))
         (slotSupport : slot ∈ (mixtureImpl.posterior (execution.recall owner)).support)
-        (replayFamily : ∀ response ∈ (app.replayPolicy (execution.recall owner)
+        (silentFamily : ∀ response ∈ (app.silentPolicy (execution.recall owner)
           (execution.observe app owner)).support,
             response ∈ (family slot (execution.recall owner)
               (execution.observe app owner)).support) :
-        expect (app.replayPolicy (execution.recall owner) (execution.observe app owner))
+        expect (app.silentPolicy (execution.recall owner) (execution.observe app owner))
           (fun response => expect (approx.responseReadout phase response) utility) = later := by
-      rw [← expect_constant (app.replayPolicy (execution.recall owner)
+      rw [← expect_constant (app.silentPolicy (execution.recall owner)
         (execution.observe app owner)) later]
       apply expect_congr_on_support
       intro response supported
       exact transported response (present slot slotSupport response
-        (replayFamily response supported)) (app.replayPolicy_cases _ _ response supported) utility
+        (silentFamily response supported)) (app.silentPolicy_cases _ _ response supported) utility
     have familyFinite (slot : Fin ((service.rosters phase.event).count owner)) :
         (family slot (execution.recall owner) (execution.observe app owner)).support.Finite :=
       sourceServiceTimedFamily_finiteSupport service.setup service.leaks service.rosters
@@ -1313,14 +1308,14 @@ theorem available_opening_decision {who : Player} {remaining : Nat}
                 payoffIntegrable_of_finite_support _ _ (by
                   split
                   · simp
-                  · exact app.replayPolicy_finiteSupport _ _)),
+                  · exact app.silentPolicy_finiteSupport _ _)),
             expect_eq_sum, Fintype.sum_bool]
           simp only [↓reduceIte, Bool.false_eq_true, expect_pure]
           have openedHere := opened (present slot slotSupport _ (by
             rw [fires, opportunity, PMF.support_bind]
             exact Set.mem_iUnion₂.mpr ⟨true, both true, by
               simp only [↓reduceIte, PMF.mem_support_pure_iff _ _]⟩))
-          rw [openedHere, replayed slot slotSupport (fun response supported => by
+          rw [openedHere, silentValue slot slotSupport (fun response supported => by
             rw [fires, opportunity, PMF.support_bind]
             exact Set.mem_iUnion₂.mpr ⟨false, both false, by
               simpa only [Bool.false_eq_true, ↓reduceIte] using supported⟩)]
@@ -1329,7 +1324,7 @@ theorem available_opening_decision {who : Player} {remaining : Nat}
           ring
         · simp only [same, ↓reduceIte, add_zero]
           rw [waits slot same]
-          exact replayed slot slotSupport (fun response supported => by
+          exact silentValue slot slotSupport (fun response supported => by
             rw [waits slot same]
             exact supported)
       _ = later + ((mixtureImpl.posterior (execution.recall owner)) current).toReal *
@@ -1362,13 +1357,13 @@ theorem available_opening_decision {who : Player} {remaining : Nat}
       obtain ⟨disclose, _, drawn⟩ := Set.mem_iUnion₂.mp drawn
       cases disclose
       · simp only [Bool.false_eq_true, ↓reduceIte] at drawn
-        have transport := app.replayPolicy_cases _ _ response drawn
+        have transport := app.silentPolicy_cases _ _ response drawn
         exact Or.inr ⟨transport, transported response allowed transport⟩
       · simp only [↓reduceIte, PMF.mem_support_pure_iff _ _] at drawn
         subst drawn
         exact Or.inl ⟨rfl, opened allowed⟩
     · rw [waits slot same] at drawn
-      have transport := app.replayPolicy_cases _ _ response drawn
+      have transport := app.silentPolicy_cases _ _ response drawn
       exact Or.inr ⟨transport, transported response allowed transport⟩
 
 end TimedApproximant
@@ -1653,11 +1648,8 @@ theorem available_opening_gain_le (service : SourceServiceSpec Player L)
           · have different : choice.1.getD ⟨none⟩ ≠ (runtime service.setup).windowOpening
                 service.leaks event candidate raw := by
               intro same
-              rcases transport with silent | ⟨id, replayed⟩
-              · rw [silent] at same
-                cases same
-              · rw [replayed] at same
-                cases same
+              rw [transport] at same
+              cases same
             rw [readout utility, timingEq, probabilityEq, earlierEq, ← valueEq true,
               ← valueEq false]
             simp only [different, ↓reduceIte]

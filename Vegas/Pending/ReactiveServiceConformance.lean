@@ -11,10 +11,10 @@ admits, for a ready event within its deadline, the first canonical opaque
 binding regardless of hidden opening material, and one certified opening whose
 public guards succeed. Authorization is readiness: no service cursor is
 consulted, so conformance does not depend on how an order serves ready events.
-Already published envelopes and copies of the current pending envelope remain
+Already published envelopes and the current pending envelope remain
 permitted. Serial evidence detects another fresh envelope without requiring
 the auditor to have sampled the earlier one; it counts distinct identifiers,
-so a chain that includes a copy of a published envelope again does not shift
+so a chain that includes a published envelope again does not shift
 any author's expected serial. Omitted binding obligations are
 handled separately by actual deadline evidence.
 -/
@@ -53,8 +53,8 @@ def freshServiceEnvelope (view : PublicView graph)
   | .withhold .. | .malformed .. => False
 
 open Classical in
-/-- A replay carries its original author's serial. The checker does not
-attribute a fresh violation to that author merely because someone rebroadcasts.
+/-- A published envelope keeps its author's serial. The checker does not
+attribute a fresh violation to that author when it is included again.
 A fresh envelope's serial must equal the number of distinct identifiers of its
 author already on the ledger (`Interaction.Message.distinctAuthoredCount`), the
 number of the author's calls the contract has processed; repeated inclusions of

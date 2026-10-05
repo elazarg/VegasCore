@@ -5,7 +5,7 @@ import Vegas.Game.ServiceRoster
 /-! # Separating the source choice from actual roster traffic
 
 One complete phase of the global native policy is exactly the source
-Boolean choice followed by an actual-runtime conditional timing/replay law.
+Boolean choice followed by an actual-runtime conditional timing/silence law.
 The conditional branch does not mention the source policy. This is a law of
 the existing interpreter, including private recall and all network state.
 -/
@@ -60,7 +60,7 @@ theorem servicePlan_players_eq
 
 /-- The exact full phase law, including eventual inclusion and deadline
 settlement. Conditioning on the source Boolean leaves only the public timing
-law and replay policy; the entire native execution is retained. -/
+law and silent policy; the entire native execution is retained. -/
 theorem rosterPolicy_phase_law
     (rosters : (graph setup).EventId → List Player)
     (timing : TimingLaw setup rosters)
