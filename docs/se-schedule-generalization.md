@@ -9,21 +9,21 @@ builder, observation mechanism, utility and deposit before choosing the source
 equilibrium. The target concerns all bounded raw responses, not just prescribed
 clients. A target equilibrium may depend on the fixed builder.
 
-The semantic reference is `a41f2855`. No baseline behavior has been proved
-unimplementable, so no semantic exception is adopted. In particular:
+The semantics below are the agreed baseline. Changes require the owner's
+approval (see the [checklist](se-async-checklist.md)). In particular:
 
 | Operation | Meaning |
 | --- | --- |
 | Readiness | Dependencies complete; readiness starts the event's timer. There is no grant cursor. |
 | Clock | Only explicit clock commands advance time. The deadline is the configured event deadline, currently its index plus one. |
 | Binding | Submit an opaque handle. Acceptance records the handle and its immutable typed value or source failure. |
-| Resolution | Canonical TRUE sends an authentic opening when owner-local validation succeeds. Canonical FALSE and failed validation use silence until expiry. Raw explicit withholding also executes FALSE, but its settled packet is forbidden by the audit. |
-| Silence | WAIT. Resolution expiry executes source FALSE; it is not a separately charged resolution miss. |
-| Binding expiry | Executes source failure. A completed binding with no accepted handle supplies the public binding-omission verdict. |
+| Resolution | Canonical TRUE sends an authentic opening when owner-local validation succeeds. Canonical FALSE, and TRUE whose validation fails, send an authenticated evidence-free withholding packet, which completes the event on inclusion. |
+| Silence | WAIT, an undecided owner. Resolution expiry with no accepted decision executes source FALSE and is a public decision miss, charged like a binding omission. |
+| Binding expiry | Executes source failure. A completed binding with no accepted handle is a public decision miss. |
 | Authorship | A player transmits only fresh envelopes it authors; there are no copies. Delivery and inclusion handle the original envelope, so ledger identifiers are distinct. |
 | Causal evidence | The restricted emitter supplies a readiness credential only after the prerequisites complete. Raw callers cannot choose a credential themselves. |
 | Packet verdict | Read only the signed packet, historical readiness evidence, final public record and receipts. Completed events require an accepting receipt and canonical content. |
-| Enforcement | One capped charge per owner, from authentic partial evidence or a public binding omission. Gameplay continues after a charge or omission. |
+| Enforcement | One capped charge per owner, from authentic partial evidence or a public decision miss. Gameplay continues after a charge or miss. |
 
 The source language, guarded TRUE behavior and original private action recall
 are unchanged. No mandatory decision admission, mandatory opening, session
