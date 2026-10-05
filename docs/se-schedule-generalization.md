@@ -265,16 +265,19 @@ clocks 0/1, then postcompletion Alice and first Bob at clock 2, Bob expiry at 5;
 empty gameplay leaks, Alice delay 0/bound 1, Bob delay 2/bound 0 and N=4.
 Censored T's FALSE receipt separates it from clean expiry. `silent_bob_input_law` checks
 one common full first-Bob input under literal silent initialized play at both types,
-including empty own recall and public Alice failure. It supplies silent witnesses,
-not mixed-play Bayes weights or a characterization of the entire information fiber.
+including empty own recall and public Alice failure, without characterizing the entire fiber.
 `prescribed_packets_clean` derives TRUE receipts and final permissions for all transmitted
 envelopes on initialized ALL-prescribed `sourceServiceTurnPolicy`/`firstTurnTiming` play,
 for any source behavioral profile. `prescribed_settlement` gives the full joint payoff vector
 as pure arbitrary base utility under any authentic sampler and arbitrary deposit.
 `first_true_bob_output_law` checks the actual canonical first H opening's prompt stage-2
 acceptance and public `success true` through first Bob activation under arbitrary later
-native policies. Its mixed-play occurrence mass, source outcome transport, Bayes bounds
-and concrete first-packet verdict consumers remain open.
+native policies. `mixed_bob_reach_bound` proves abc≤mL and mH≤u at the full common input:
+a,b,c are actual conditional NONE probabilities at L's three silent-path inputs, and u includes
+ALL first-H mass outside one canonical TRUE atom, including aliases. If abc>0, the initialized
+1:3 weights give mH/(mH+3mL)≤u/(u+3abc). This is physical reach, not yet the SAME native
+assessment's belief. Native Bayes conditioning, concrete payoffs/whole-policy comparisons,
+source outcome transport and concrete first-packet verdict consumers remain open.
 The two native SE constructions are conditional paper mathematics;
 no checked native/general SE or live watcher follows.
 
@@ -293,8 +296,8 @@ result counts toward that proof only with premises derived from the actual runti
    receipt and settlement consumers and canonical first-H branch law under arbitrary later RAW.
    Instantiate [opening conformance](../Vegas/Pending/ReactiveOpeningConformance.lean) and existing
    [condemnation/persistence](../Vegas/Game/ServiceSettledEvidence.lean) with the actual initialized
-   resources for first-packet verdicts under RAW continuations. Derive mixed-play reach
-   weights using the checked silent-input and first-H laws and connect the actual audit backend.
+   resources for first-packet verdicts under RAW continuations. Connect the checked physical
+   mixed-reach bound to Bayes conditioning in the SAME native information game and the actual audit backend.
    Arbitrary later source economics need their own comparisons.
 2. **Instantiate the existing native completion.** Use the actual bounded RAW menu,
    runtime information and decision recall with

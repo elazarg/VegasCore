@@ -247,7 +247,7 @@ failure fiber, while all THREE Alice NONE responses give the paired clean J.
 are kernel-checked for this compiled source setup and scheduler over initialized unrestricted RAW histories.
 `silent_bob_input_law` also checks one common full Bob input under literal silence
 through his first activation, with empty own recall and public Alice failure at both types.
-This supplies silent witnesses, not mixed-play reach weights or the entire information fiber.
+This supplies silent witnesses without characterizing the entire information fiber.
 Protected inclusion supplies a Bool receipt. `prescribed_packets_clean` derives TRUE receipts
 and final permissions for every transmitted envelope on initialized ALL-prescribed play,
 using `sourceServiceTurnPolicy`/`firstTurnTiming` for an arbitrary source behavioral profile.
@@ -255,10 +255,16 @@ using `sourceServiceTurnPolicy`/`firstTurnTiming` for an arbitrary source behavi
 for every authentic sampler and arbitrary deposit. `first_true_bob_output_law` checks the
 actual canonical first H opening: prompt stage-2 inclusion produces public `success true`,
 which persists through first Bob activation under arbitrary later native policies.
-This identifies the successful branch, not its mass in mixed play or source outcome transport.
+`mixed_bob_reach_bound` gives actual mixed-play bounds at this full input J. Let a,b,c
+be the native policy's conditional NONE probabilities at L's first, second and postcompletion
+inputs, and u its entire first-H response mass outside ONE canonical TRUE atom, including aliases.
+For type-conditioned reach masses mL,mH, it proves abc≤mL and mH≤u. If abc>0,
+the initialized 1:3 type weights give mH/(mH+3mL)≤u/(u+3abc), with positive reach.
+Other RAW histories may also reach J; this physical ratio is not yet a native assessment belief.
 First-packet verdicts reuse [opening conformance](../Vegas/Pending/ReactiveOpeningConformance.lean)
 and [condemnation/persistence](../Vegas/Game/ServiceSettledEvidence.lean); their concrete initialized
-resources and consumers remain to be derived. Mixed-play Bayes bounds and native SE remain open.
+resources and consumers remain to be derived. The SAME native Bayes conditioning bridge,
+concrete payoff/whole-policy comparisons, source outcome transport and native SE remain open.
 Early Bob responses, guard failure, later Alice source economics and a live watcher remain outside this fixture.
 
 The fixed 16-round controller also supports the source SE H→T, L→F, with Bob

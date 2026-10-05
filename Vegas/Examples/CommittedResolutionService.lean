@@ -925,80 +925,171 @@ private theorem recorded_wait (execution : app.Execution) :
   simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
   rfl
 
-private theorem silent_round (execution next : app.Execution) (position : Nat)
+private theorem fixed_round (players : Player → app.Policy)
+    (execution next : app.Execution) (position : Nat)
     (command : app.Command)
     (cursor : execution.environmentRecall.length = position)
     (chosen : stageChoice position (execution.observeEnvironment app) = PMF.pure command)
     (moved : execution.environmentStep app command = PMF.pure next) :
-    app.round scheduler silentPlayers execution =
-      app.resume silentPlayers (command.actor? app) next := by
+    app.round scheduler players execution =
+      app.resume players (command.actor? app) next := by
   rw [ReactiveApplication.round, scheduler, cursor, chosen, PMF.pure_bind,
     ReactiveApplication.dispatch, moved, PMF.pure_bind]
+
+/-- The full input readout after the actual next scheduler command, before its response. -/
+def activationInputLaw (players : Player → app.Policy) (high : Bool)
+    (count : Nat) (who : Player) : PMF (List app.PlayerEntry × app.PlayerView) :=
+  (((app.runRounds scheduler players count
+    (ReactiveApplication.Execution.initial app
+      (State.initial (setup.eventInputs (sourceInitial high))))).bind
+    (fun before => (scheduler before.environmentRecall (before.observeEnvironment app)).bind
+      (before.environmentStep app))).map (fun after => (after.recall who, after.observe app who)))
 
 private theorem silent_prefix (high : Bool) : ∃ execution : app.Execution,
     app.runRounds scheduler silentPlayers 10 (silentInitial high) = PMF.pure execution ∧
     execution.environmentRecall.length = 10 ∧ execution.network = .empty ∧
     execution.receipts = [] ∧ execution.recall bob = [] ∧
-    execution.application = silentCompleted high := by
+    execution.application = silentCompleted high ∧
+    ∃ I0 I1 I2 : List app.PlayerEntry × app.PlayerView,
+      activationInputLaw silentPlayers high 1 alice = PMF.pure I0 ∧
+      activationInputLaw silentPlayers high 4 alice = PMF.pure I1 ∧
+      activationInputLaw silentPlayers high 8 alice = PMF.pure I2 ∧
+      ∀ players : Player → app.Policy,
+        ((players alice I0.1 I0.2) ⟨none⟩).toReal *
+          ((players alice I1.1 I1.2) ⟨none⟩).toReal *
+          ((players alice I2.1 I2.2) ⟨none⟩).toReal ≤
+        ((activationInputLaw players high 10 bob)
+          (execution.recall bob, execution.observe app bob)).toReal := by
   let e0 := silentInitial high
   let e1 := recorded e0 (.application (.executeSample sampleEvent)) (sampledState high)
-  let e2 := (recorded e1 (.activate alice) e1.application).respond app alice ⟨none⟩
+  let p0 := recorded e1 (.activate alice) e1.application
+  let e2 := p0.respond app alice ⟨none⟩
   let e3 := recorded e2 .wait e2.application
   let e4 := recorded e3 (.application .advanceClock) { e3.application with clock := 1 }
-  let e5 := (recorded e4 (.activate alice) e4.application).respond app alice ⟨none⟩
+  let p1 := recorded e4 (.activate alice) e4.application
+  let e5 := p1.respond app alice ⟨none⟩
   let e6 := recorded e5 .wait e5.application
   let e7 := recorded e6 (.application .advanceClock) { e6.application with clock := 2 }
   let e8 := recorded e7 (.application (.expire aliceEvent)) (silentCompleted high)
-  let e9 := (recorded e8 (.activate alice) e8.application).respond app alice ⟨none⟩
+  let p2 := recorded e8 (.activate alice) e8.application
+  let e9 := p2.respond app alice ⟨none⟩
   let e10 := recorded e9 .wait e9.application
-  have s0 : app.round scheduler silentPlayers e0 = PMF.pure e1 := by
-    rw [silent_round e0 e1 0 (.application (.executeSample sampleEvent)) rfl rfl
+  have s0 (players : Player → app.Policy) : app.round scheduler players e0 = PMF.pure e1 := by
+    rw [fixed_round players e0 e1 0 (.application (.executeSample sampleEvent)) rfl rfl
       (recorded_application e0 _ _ (silent_sample high))]
     rfl
-  have s1 : app.round scheduler silentPlayers e1 = PMF.pure e2 := by
-    rw [silent_round e1 _ 1 (.activate alice) rfl rfl (recorded_activation e1 alice)]
-    simp only [ReactiveApplication.Command.actor?, ReactiveApplication.resume,
-      ReactiveApplication.invoke, silentPlayers, PMF.pure_map]
+  have s1 (players : Player → app.Policy) : app.round scheduler players e1 =
+      app.invoke players alice p0 := by
+    rw [fixed_round players e1 _ 1 (.activate alice) rfl rfl (recorded_activation e1 alice)]
     rfl
-  have s2 : app.round scheduler silentPlayers e2 = PMF.pure e3 := by
-    rw [silent_round e2 e3 2 .wait rfl rfl (recorded_wait e2)]
+  have s2 (players : Player → app.Policy) : app.round scheduler players e2 = PMF.pure e3 := by
+    rw [fixed_round players e2 e3 2 .wait rfl rfl (recorded_wait e2)]
     rfl
-  have s3 : app.round scheduler silentPlayers e3 = PMF.pure e4 := by
-    rw [silent_round e3 e4 3 (.application .advanceClock) rfl rfl
+  have s3 (players : Player → app.Policy) : app.round scheduler players e3 = PMF.pure e4 := by
+    rw [fixed_round players e3 e4 3 (.application .advanceClock) rfl rfl
       (recorded_application e3 _ _ rfl)]
     rfl
-  have s4 : app.round scheduler silentPlayers e4 = PMF.pure e5 := by
-    rw [silent_round e4 _ 4 (.activate alice) rfl rfl (recorded_activation e4 alice)]
-    simp only [ReactiveApplication.Command.actor?, ReactiveApplication.resume,
-      ReactiveApplication.invoke, silentPlayers, PMF.pure_map]
+  have s4 (players : Player → app.Policy) : app.round scheduler players e4 =
+      app.invoke players alice p1 := by
+    rw [fixed_round players e4 _ 4 (.activate alice) rfl rfl (recorded_activation e4 alice)]
     rfl
-  have s5 : app.round scheduler silentPlayers e5 = PMF.pure e6 := by
+  have s5 (players : Player → app.Policy) : app.round scheduler players e5 = PMF.pure e6 := by
     have chosen : stageChoice 5 (e5.observeEnvironment app) = PMF.pure .wait := by
       change mix (3 / 4) (by norm_num) (by norm_num)
         (PMF.pure (.wait : app.Command)) (PMF.pure .wait) = PMF.pure .wait
       exact mix_self _ _ _ _
-    rw [silent_round e5 e6 5 .wait rfl chosen (recorded_wait e5)]
+    rw [fixed_round players e5 e6 5 .wait rfl chosen (recorded_wait e5)]
     rfl
-  have s6 : app.round scheduler silentPlayers e6 = PMF.pure e7 := by
-    rw [silent_round e6 e7 6 (.application .advanceClock) rfl rfl
+  have s6 (players : Player → app.Policy) : app.round scheduler players e6 = PMF.pure e7 := by
+    rw [fixed_round players e6 e7 6 (.application .advanceClock) rfl rfl
       (recorded_application e6 _ _ rfl)]
     rfl
-  have s7 : app.round scheduler silentPlayers e7 = PMF.pure e8 := by
-    rw [silent_round e7 e8 7 (.application (.expire aliceEvent)) rfl rfl
+  have s7 (players : Player → app.Policy) : app.round scheduler players e7 = PMF.pure e8 := by
+    rw [fixed_round players e7 e8 7 (.application (.expire aliceEvent)) rfl rfl
       (recorded_application e7 _ _ (silent_expire high))]
     rfl
-  have s8 : app.round scheduler silentPlayers e8 = PMF.pure e9 := by
-    rw [silent_round e8 _ 8 (.activate alice) rfl rfl (recorded_activation e8 alice)]
-    simp only [ReactiveApplication.Command.actor?, ReactiveApplication.resume,
-      ReactiveApplication.invoke, silentPlayers, PMF.pure_map]
+  have s8 (players : Player → app.Policy) : app.round scheduler players e8 =
+      app.invoke players alice p2 := by
+    rw [fixed_round players e8 _ 8 (.activate alice) rfl rfl (recorded_activation e8 alice)]
     rfl
-  have s9 : app.round scheduler silentPlayers e9 = PMF.pure e10 := by
-    rw [silent_round e9 e10 9 .wait rfl rfl (recorded_wait e9)]
+  have s9 (players : Player → app.Policy) : app.round scheduler players e9 = PMF.pure e10 := by
+    rw [fixed_round players e9 e10 9 .wait rfl rfl (recorded_wait e9)]
     rfl
-  refine ⟨e10, ?_, rfl, rfl, rfl, rfl, rfl⟩
-  change app.runRounds scheduler silentPlayers 10 e0 = PMF.pure e10
-  simp only [ReactiveApplication.runRounds, s0, s1, s2, s3, s4, s5, s6, s7, s8, s9,
-    PMF.pure_bind]
+  have z1 : app.round scheduler silentPlayers e1 = PMF.pure e2 := by
+    rw [s1]; simp only [ReactiveApplication.invoke, silentPlayers, PMF.pure_map]; rfl
+  have z4 : app.round scheduler silentPlayers e4 = PMF.pure e5 := by
+    rw [s4]; simp only [ReactiveApplication.invoke, silentPlayers, PMF.pure_map]; rfl
+  have z8 : app.round scheduler silentPlayers e8 = PMF.pure e9 := by
+    rw [s8]; simp only [ReactiveApplication.invoke, silentPlayers, PMF.pure_map]; rfl
+  have silentPath : app.runRounds scheduler silentPlayers 10 e0 = PMF.pure e10 := by
+    simp only [ReactiveApplication.runRounds, s0, z1, s2, s3, z4, s5, s6, s7, z8, s9,
+      PMF.pure_bind]
+  refine ⟨e10, silentPath, rfl, rfl, rfl, rfl, rfl,
+    (p0.recall alice, p0.observe app alice), (p1.recall alice, p1.observe app alice),
+    (p2.recall alice, p2.observe app alice), ?_, ?_, ?_, ?_⟩
+  · change (((app.runRounds scheduler silentPlayers 1 e0).bind _).map _) = _
+    simp only [ReactiveApplication.runRounds, s0, PMF.pure_bind, scheduler]
+    change ((PMF.pure (.activate alice : app.Command)).bind _).map _ = _
+    rw [PMF.pure_bind, recorded_activation, PMF.pure_map]
+  · change (((app.runRounds scheduler silentPlayers 4 e0).bind _).map _) = _
+    simp only [ReactiveApplication.runRounds, s0, z1, s2, s3, PMF.pure_bind, scheduler]
+    change ((PMF.pure (.activate alice : app.Command)).bind _).map _ = _
+    rw [PMF.pure_bind, recorded_activation, PMF.pure_map]
+  · change (((app.runRounds scheduler silentPlayers 8 e0).bind _).map _) = _
+    simp only [ReactiveApplication.runRounds, s0, z1, s2, s3, z4, s5, s6, s7,
+      PMF.pure_bind, scheduler]
+    change ((PMF.pure (.activate alice : app.Command)).bind _).map _ = _
+    rw [PMF.pure_bind, recorded_activation, PMF.pure_map]
+  · intro players
+    have term {α β : Type} (law : PMF α) (kernel : α → PMF β) (a : α) (b : β) :
+        law a * kernel a b ≤ (law.bind kernel) b := by
+      rw [PMF.bind_apply]
+      exact ENNReal.le_tsum (f := fun x => law x * kernel x b) a
+    let a := (players alice (p0.recall alice) (p0.observe app alice)) ⟨none⟩
+    let b := (players alice (p1.recall alice) (p1.observe app alice)) ⟨none⟩
+    let c := (players alice (p2.recall alice) (p2.observe app alice)) ⟨none⟩
+    have third : c ≤ (app.runRounds scheduler players 2 e8) e10 := by
+      rw [ReactiveApplication.runRounds, s8, ReactiveApplication.invoke, PMF.bind_map]
+      have picked := term (players alice (p2.recall alice) (p2.observe app alice)) (fun action =>
+        app.runRounds scheduler players 1 (p2.respond app alice action)) ⟨none⟩ e10
+      have afterNone : app.runRounds scheduler players 1 (p2.respond app alice ⟨none⟩) =
+          PMF.pure e10 := by
+        change app.runRounds scheduler players 1 e9 = PMF.pure e10
+        simp only [ReactiveApplication.runRounds, s9, PMF.pure_bind]
+      rw [afterNone, PMF.pure_apply_self, mul_one] at picked
+      exact picked
+    have tail : c ≤ (app.runRounds scheduler players 5 e5) e10 := by
+      simpa only [ReactiveApplication.runRounds, s5, s6, s7, PMF.pure_bind] using third
+    have second : b * c ≤ (app.runRounds scheduler players 6 e4) e10 := by
+      rw [ReactiveApplication.runRounds, s4, ReactiveApplication.invoke, PMF.bind_map]
+      exact (mul_le_mul' le_rfl tail).trans (term (players alice (p1.recall alice)
+        (p1.observe app alice)) (fun action =>
+          app.runRounds scheduler players 5 (p1.respond app alice action)) ⟨none⟩ e10)
+    have middle : b * c ≤ (app.runRounds scheduler players 8 e2) e10 := by
+      simpa only [ReactiveApplication.runRounds, s2, s3, PMF.pure_bind] using second
+    have first : a * (b * c) ≤ (app.runRounds scheduler players 10 e0) e10 := by
+      rw [ReactiveApplication.runRounds, s0, PMF.pure_bind,
+        ReactiveApplication.runRounds, s1, ReactiveApplication.invoke, PMF.bind_map]
+      exact (mul_le_mul' le_rfl middle).trans (term (players alice (p0.recall alice)
+        (p0.observe app alice)) (fun action =>
+          app.runRounds scheduler players 8 (p0.respond app alice action)) ⟨none⟩ e10)
+    let next := fun before : app.Execution =>
+      ((scheduler before.environmentRecall (before.observeEnvironment app)).bind
+        (before.environmentStep app)).map (fun after => (after.recall bob, after.observe app bob))
+    have final : next e10 = PMF.pure (e10.recall bob, e10.observe app bob) := by
+      have cursor : e10.environmentRecall.length = 10 := rfl
+      dsimp only [next]
+      rw [scheduler, cursor]
+      change ((PMF.pure (.activate bob : app.Command)).bind _).map _ = _
+      rw [PMF.pure_bind, recorded_activation, PMF.pure_map]
+      rfl
+    have picked := term (app.runRounds scheduler players 10 e0) next e10
+      (e10.recall bob, e10.observe app bob)
+    rw [final, PMF.pure_apply_self, mul_one] at picked
+    have total := first.trans picked
+    have real := ENNReal.toReal_mono (PMF.apply_ne_top _ _) total
+    simpa only [activationInputLaw, silentInitial, PMF.map_bind, a, b, c,
+      ENNReal.toReal_mul, mul_assoc, next, e0] using real
 
 private theorem silent_completed_bob_view (high : Bool) :
     app.observePlayer (silentCompleted high) bob =
@@ -1050,14 +1141,16 @@ theorem silent_bob_input_law : ∃ input : List app.PlayerEntry × app.PlayerVie
         (fun before => (scheduler before.environmentRecall (before.observeEnvironment app)).bind
           (before.environmentStep app))).map
         (fun after => (after.recall bob, after.observe app bob))) = PMF.pure input := by
-  obtain ⟨baseline, _, _, baseNetwork, baseReceipts, baseRecall, baseState⟩ := silent_prefix false
+  obtain ⟨baseline, _, _, baseNetwork, baseReceipts, baseRecall, baseState, _⟩ :=
+    silent_prefix false
   refine ⟨(baseline.recall bob, baseline.observe app bob), baseRecall, ?_, ?_⟩
   · change (app.observePlayer baseline.application bob).publicView.observation.store
       (.inr aliceEvent) = some .failure
     rw [baseState]
     rfl
   · intro high
-    obtain ⟨execution, prefixLaw, cursor, network, receipts, recalled, state⟩ := silent_prefix high
+    obtain ⟨execution, prefixLaw, cursor, network, receipts, recalled, state, _⟩ :=
+      silent_prefix high
     change (((app.runRounds scheduler silentPlayers 10 (silentInitial high)).bind _).map _) = _
     rw [prefixLaw, PMF.pure_bind]
     have chosen : scheduler execution.environmentRecall (execution.observeEnvironment app) =
@@ -1224,7 +1317,9 @@ private def firstAlice : app.Execution :=
 private theorem first_alice_law (players : Player → app.Policy) :
     (app.runRounds scheduler players 1 (silentInitial true)).bind
       (fun before => (scheduler before.environmentRecall (before.observeEnvironment app)).bind
-        (before.environmentStep app)) = PMF.pure firstAlice := by
+        (before.environmentStep app)) = PMF.pure firstAlice ∧
+    app.runRounds scheduler players 2 (silentInitial true) =
+      app.invoke players alice firstAlice := by
   let sampled := recorded (silentInitial true) (.application (.executeSample sampleEvent))
     (sampledState true)
   have first : app.round scheduler players (silentInitial true) = PMF.pure sampled := by
@@ -1233,10 +1328,16 @@ private theorem first_alice_law (players : Player → app.Policy) :
     rw [PMF.pure_bind, ReactiveApplication.dispatch,
       recorded_application _ _ _ (silent_sample true), PMF.pure_bind]
     rfl
-  simp only [ReactiveApplication.runRounds, first, PMF.pure_bind]
-  change (PMF.pure (.activate alice : app.Command)).bind _ = _
-  rw [PMF.pure_bind, recorded_activation]
-  rfl
+  constructor
+  · simp only [ReactiveApplication.runRounds, first, PMF.pure_bind]
+    change (PMF.pure (.activate alice : app.Command)).bind _ = _
+    rw [PMF.pure_bind, recorded_activation]
+    rfl
+  · simp only [ReactiveApplication.runRounds, first, PMF.pure_bind]
+    rw [fixed_round players sampled firstAlice 1 (.activate alice) rfl rfl
+      (by simpa only [firstAlice] using recorded_activation sampled alice)]
+    rw [PMF.bind_pure]
+    rfl
 
 private theorem first_true_prompt (players : Player → app.Policy) :
     let response := (runtime setup).canonicalServiceDecision leaks alice []
@@ -1332,7 +1433,7 @@ theorem first_true_bob_output_law (players : Player → app.Policy) :
       (fun after => (after.observe app bob).application.publicView.observation.store
         (.inr aliceEvent)) = PMF.pure (some (.success true)) := by
   dsimp only
-  have first := first_alice_law players
+  have first := (first_alice_law players).1
   simp only [silentInitial] at first
   rw [first, PMF.pure_map, PMF.pure_bind]
   obtain ⟨next, prompt, output⟩ := first_true_prompt players
@@ -1358,5 +1459,128 @@ theorem first_true_bob_output_law (players : Player → app.Policy) :
       obtain ⟨command, chosen, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ moved)
       exact constant before prior command chosen after moved
     _ = _ := PMF.map_const _ _
+
+private theorem first_true_reach_bound (players : Player → app.Policy)
+    (input : List app.PlayerEntry × app.PlayerView)
+    (failed : input.2.application.publicView.observation.store (.inr aliceEvent) = some .failure) :
+    ((activationInputLaw players true 10 bob) input).toReal ≤
+      1 - ((players alice (firstAlice.recall alice) (firstAlice.observe app alice))
+        ((runtime setup).canonicalServiceDecision leaks alice [] (firstAlice.observe app alice)
+          aliceEvent true)).toReal := by
+  classical
+  let action := (runtime setup).canonicalServiceDecision leaks alice []
+    (firstAlice.observe app alice) aliceEvent true
+  let response := players alice (firstAlice.recall alice) (firstAlice.observe app alice)
+  let kernel := fun chosen : app.Action =>
+    (((app.runRounds scheduler players 8 (firstAlice.respond app alice chosen)).bind
+      (fun before => (scheduler before.environmentRecall (before.observeEnvironment app)).bind
+        (before.environmentStep app))).map (fun after => (after.recall bob, after.observe app bob)))
+  have splitLaw : activationInputLaw players true 10 bob = response.bind kernel := by
+    change (((app.runRounds scheduler players (2 + 8) (silentInitial true)).bind _).map _) = _
+    rw [ReactiveApplication.runRounds_add, (first_alice_law players).2,
+      ReactiveApplication.invoke, PMF.bind_map, PMF.bind_bind, PMF.map_bind]
+    rfl
+  have successful : (kernel action).map
+      (fun pair => pair.2.application.publicView.observation.store (.inr aliceEvent)) =
+        PMF.pure (some (.success true)) := by
+    have law := first_true_bob_output_law players
+    dsimp only at law
+    have first := (first_alice_law players).1
+    simp only [silentInitial] at first
+    rw [first, PMF.pure_map, PMF.pure_bind] at law
+    simpa only [kernel, action, PMF.map_comp, Function.comp_def] using law
+  have excluded : (kernel action) input = 0 := by
+    apply (PMF.apply_eq_zero_iff _ _).mpr
+    intro supported
+    have mapped := (PMF.mem_support_map_iff
+      (fun pair : List app.PlayerEntry × app.PlayerView =>
+        pair.2.application.publicView.observation.store (.inr aliceEvent))
+      (kernel action) (some .failure)).mpr ⟨input, supported, failed⟩
+    rw [successful] at mapped
+    have incompatible : (some .failure : Option (PublicationResult Bool)) ≠
+        some (.success true) := by decide
+    exact incompatible ((PMF.mem_support_pure_iff _ _).mp mapped)
+  rw [splitLaw, toReal_bind_apply]
+  calc
+    _ ≤ expect response (fun chosen => 1 - if action = chosen then (1 : ℝ) else 0) := by
+      apply expect_mono _ (payoffIntegrable_toReal_apply _ _ _)
+        (payoffIntegrable_sub (payoffIntegrable_constant _ _)
+          (payoffIntegrable_ite_one_zero _ _))
+      intro chosen _
+      by_cases equal : action = chosen
+      · subst chosen
+        simp only [excluded, ENNReal.toReal_zero, ↓reduceIte, sub_self, le_refl]
+      · simpa only [equal, ↓reduceIte, sub_zero] using pmf_toReal_apply_le_one (kernel chosen) input
+    _ = _ := by
+      rw [expect_sub (payoffIntegrable_constant _ _)
+        (payoffIntegrable_ite_one_zero _ _), expect_constant, expect_ite_eq, mul_one]
+
+
+/-- Actual NONE masses give a lower clean-path reach bound. The upper bound includes ALL
+mass outside the one canonical first-H atom, including aliases. The ratio uses the physical
+input law's initialized 1:3 type weights; native assessment transport is separate. -/
+theorem mixed_bob_reach_bound :
+    ∃ J L0 L1 L2 H0 : List app.PlayerEntry × app.PlayerView,
+      J.1 = [] ∧
+      J.2.application.publicView.observation.store (.inr aliceEvent) = some .failure ∧
+      (∀ high, activationInputLaw (fun _ _ _ => PMF.pure (⟨none⟩ : app.Action))
+        high 10 bob = PMF.pure J) ∧
+      activationInputLaw (fun _ _ _ => PMF.pure (⟨none⟩ : app.Action)) false 1 alice = PMF.pure L0 ∧
+      activationInputLaw (fun _ _ _ => PMF.pure (⟨none⟩ : app.Action)) false 4 alice = PMF.pure L1 ∧
+      activationInputLaw (fun _ _ _ => PMF.pure (⟨none⟩ : app.Action)) false 8 alice = PMF.pure L2 ∧
+      activationInputLaw (fun _ _ _ => PMF.pure (⟨none⟩ : app.Action)) true 1 alice = PMF.pure H0 ∧
+      ∀ players : Player → app.Policy,
+        let a := ((players alice L0.1 L0.2) ⟨none⟩).toReal
+        let b := ((players alice L1.1 L1.2) ⟨none⟩).toReal
+        let c := ((players alice L2.1 L2.2) ⟨none⟩).toReal
+        let u := 1 - ((players alice H0.1 H0.2)
+          ((runtime setup).canonicalServiceDecision leaks alice H0.1 H0.2 aliceEvent true)).toReal
+        let mH := ((activationInputLaw players true 10 bob) J).toReal
+        let mL := ((activationInputLaw players false 10 bob) J).toReal
+        a * b * c ≤ mL ∧ mH ≤ u ∧
+          (0 < a * b * c → mH / (mH + 3 * mL) ≤ u / (u + 3 * (a * b * c))) := by
+  obtain ⟨J, emptyRecall, failed, common⟩ := silent_bob_input_law
+  have commonLaw (high : Bool) : activationInputLaw silentPlayers high 10 bob = PMF.pure J :=
+    common high
+  obtain ⟨execution, path, cursor, _, _, _, _, L0, L1, L2, law0, law1, law2, lower⟩ :=
+    silent_prefix false
+  have endpoint : (execution.recall bob, execution.observe app bob) = J := by
+    have law : activationInputLaw silentPlayers false 10 bob =
+        PMF.pure (execution.recall bob, execution.observe app bob) := by
+      change (((app.runRounds scheduler silentPlayers 10 (silentInitial false)).bind _).map _) = _
+      rw [path, PMF.pure_bind, scheduler, cursor]
+      change ((PMF.pure (.activate bob : app.Command)).bind _).map _ = _
+      rw [PMF.pure_bind, recorded_activation, PMF.pure_map]
+      rfl
+    have present : (execution.recall bob, execution.observe app bob) ∈
+        (PMF.pure (execution.recall bob, execution.observe app bob)).support := by simp
+    rw [← law, commonLaw false] at present
+    exact (PMF.mem_support_pure_iff _ _).mp present
+  refine ⟨J, L0, L1, L2, (firstAlice.recall alice, firstAlice.observe app alice),
+    emptyRecall, failed, common, law0, law1, law2, ?_, ?_⟩
+  · change (((app.runRounds scheduler silentPlayers 1 (silentInitial true)).bind _).map _) = _
+    rw [(first_alice_law silentPlayers).1, PMF.pure_map]
+  · intro players
+    dsimp only
+    have lo := lower players
+    rw [endpoint] at lo
+    have hi := first_true_reach_bound players J failed
+    refine ⟨lo, hi, ?_⟩
+    intro positive
+    have hNonneg := ENNReal.toReal_nonneg (a := (activationInputLaw players true 10 bob) J)
+    have lNonneg := ENNReal.toReal_nonneg (a := (activationInputLaw players false 10 bob) J)
+    have uNonneg := hNonneg.trans hi
+    have leftPositive : 0 < ((activationInputLaw players true 10 bob) J).toReal +
+        3 * ((activationInputLaw players false 10 bob) J).toReal := by linarith
+    have rightPositive : 0 < 1 - ((players alice (firstAlice.recall alice)
+        (firstAlice.observe app alice)) ((runtime setup).canonicalServiceDecision leaks alice []
+          (firstAlice.observe app alice) aliceEvent true)).toReal +
+        3 * (((players alice L0.1 L0.2) ⟨none⟩).toReal *
+          ((players alice L1.1 L1.2) ⟨none⟩).toReal *
+          ((players alice L2.1 L2.2) ⟨none⟩).toReal) := by linarith
+    apply (div_le_div_iff₀ leftPositive rightPositive).mpr
+    simp only [show firstAlice.recall alice = [] from rfl] at hi uNonneg ⊢
+    have products := mul_le_mul hi lo (le_of_lt positive) uNonneg
+    nlinarith
 
 end Vegas.Examples.CommittedResolutionService
