@@ -271,8 +271,10 @@ not mixed-play Bayes weights or a characterization of the entire information fib
 envelopes on initialized ALL-prescribed `sourceServiceTurnPolicy`/`firstTurnTiming` play,
 for any source behavioral profile. `prescribed_settlement` gives the full joint payoff vector
 as pure arbitrary base utility under any authentic sampler and arbitrary deposit.
-Prompt first-T acceptance against arbitrary later RAW actions, source outcome transport,
-mixed-play Bayes bounds and concrete first-packet verdict consumers remain open.
+`first_true_bob_output_law` checks the actual canonical first H opening's prompt stage-2
+acceptance and public `success true` through first Bob activation under arbitrary later
+native policies. Its mixed-play occurrence mass, source outcome transport, Bayes bounds
+and concrete first-packet verdict consumers remain open.
 The two native SE constructions are conditional paper mathematics;
 no checked native/general SE or live watcher follows.
 
@@ -288,11 +290,11 @@ result counts toward that proof only with premises derived from the actual runti
 ## Road to the proof
 
 1. **Derive the remaining concrete runtime adapters.** Reuse the checked all-prescribed
-   receipt and settlement consumers; prove prompt first-T acceptance under arbitrary later RAW.
+   receipt and settlement consumers and canonical first-H branch law under arbitrary later RAW.
    Instantiate [opening conformance](../Vegas/Pending/ReactiveOpeningConformance.lean) and existing
    [condemnation/persistence](../Vegas/Game/ServiceSettledEvidence.lean) with the actual initialized
    resources for first-packet verdicts under RAW continuations. Derive mixed-play reach
-   weights using the checked silent-input witnesses and connect the actual audit backend.
+   weights using the checked silent-input and first-H laws and connect the actual audit backend.
    Arbitrary later source economics need their own comparisons.
 2. **Instantiate the existing native completion.** Use the actual bounded RAW menu,
    runtime information and decision recall with

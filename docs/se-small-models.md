@@ -252,8 +252,10 @@ Protected inclusion supplies a Bool receipt. `prescribed_packets_clean` derives 
 and final permissions for every transmitted envelope on initialized ALL-prescribed play,
 using `sourceServiceTurnPolicy`/`firstTurnTiming` for an arbitrary source behavioral profile.
 `prescribed_settlement` gives the full joint payoff vector as pure arbitrary base utility,
-for every authentic sampler and arbitrary deposit. This does not prove source outcome transport
-or prompt TRUE acceptance against arbitrary later RAW actions.
+for every authentic sampler and arbitrary deposit. `first_true_bob_output_law` checks the
+actual canonical first H opening: prompt stage-2 inclusion produces public `success true`,
+which persists through first Bob activation under arbitrary later native policies.
+This identifies the successful branch, not its mass in mixed play or source outcome transport.
 First-packet verdicts reuse [opening conformance](../Vegas/Pending/ReactiveOpeningConformance.lean)
 and [condemnation/persistence](../Vegas/Game/ServiceSettledEvidence.lean); their concrete initialized
 resources and consumers remain to be derived. Mixed-play Bayes bounds and native SE remain open.

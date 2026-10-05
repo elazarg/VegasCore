@@ -1216,4 +1216,147 @@ theorem prescribed_settlement (original : BehavioralProfile program) (execution 
       exact List.mem_map.mpr ⟨record, member, rfl⟩
     exact (clean record.input present).2
 
+private def firstAlice : app.Execution :=
+  let sampled := recorded (silentInitial true) (.application (.executeSample sampleEvent))
+    (sampledState true)
+  recorded sampled (.activate alice) sampled.application
+
+private theorem first_alice_law (players : Player → app.Policy) :
+    (app.runRounds scheduler players 1 (silentInitial true)).bind
+      (fun before => (scheduler before.environmentRecall (before.observeEnvironment app)).bind
+        (before.environmentStep app)) = PMF.pure firstAlice := by
+  let sampled := recorded (silentInitial true) (.application (.executeSample sampleEvent))
+    (sampledState true)
+  have first : app.round scheduler players (silentInitial true) = PMF.pure sampled := by
+    rw [ReactiveApplication.round]
+    change (PMF.pure (.application (.executeSample sampleEvent) : app.Command)).bind _ = _
+    rw [PMF.pure_bind, ReactiveApplication.dispatch,
+      recorded_application _ _ _ (silent_sample true), PMF.pure_bind]
+    rfl
+  simp only [ReactiveApplication.runRounds, first, PMF.pure_bind]
+  change (PMF.pure (.activate alice : app.Command)).bind _ = _
+  rw [PMF.pure_bind, recorded_activation]
+  rfl
+
+private theorem first_true_prompt (players : Player → app.Policy) :
+    let response := (runtime setup).canonicalServiceDecision leaks alice []
+      (firstAlice.observe app alice) aliceEvent true
+    ∃ next, app.round scheduler players (firstAlice.respond app alice response) =
+        PMF.pure next ∧
+      next.application.config.store (.inr aliceEvent) = some (.success true) := by
+  let binding : FieldRef nativeGraph.layout (.binding alice .bool) := ⟨.inl ⟨0, by decide⟩, rfl⟩
+  let candidate : Handle nativeGraph := (alice, .initial ⟨0, by decide⟩)
+  let opening := disclosureSubmission (.opening aliceEvent candidate ⟨.bool, true⟩)
+  have fixed : firstAlice.application.candidates.lookup candidate = .openable ⟨.bool, true⟩ := by
+    change (State.initial (setup.eventInputs (sourceInitial true))).candidates.lookup candidate = _
+    exact State.initial_candidate_binding_success (graph := nativeGraph) _ _ alice .bool
+      rfl true rfl
+  have associated : firstAlice.application.accepted binding.field = some candidate := rfl
+  have stored : binding.get? firstAlice.application.config.store = some (.success true) := rfl
+  have resolved : EventCode.resolveOutput? binding [] true
+      firstAlice.application.config.store = some (.success true) := rfl
+  have shape : (runtime setup).canonicalServiceDecision leaks alice []
+      (firstAlice.observe app alice) aliceEvent true = ⟨some (.submit opening)⟩ := by
+    rw [canonicalServiceDecision_eq_of_not_bind (runtime setup) leaks alice [] _ aliceEvent true
+      (by intro owner payload outputEq codeEq; cases outputEq)]
+    have result := (runtime setup).serviceDecision_successful_opening leaks firstAlice
+      (by intro who; rfl) alice aliceEvent .bool binding [] rfl rfl rfl candidate true
+      associated rfl fixed resolved
+    change (runtime setup).serviceDecision leaks alice []
+      (firstAlice.observe app alice) aliceEvent true = _ at result
+    rw [result]
+    change (⟨some (.submit (WitnessedSubmission.normalizeReactive alice
+      (app.observePlayer firstAlice.application alice) []
+      (disclosureSubmission (.opening aliceEvent candidate ⟨.bool, true⟩))))⟩ : app.Action) = _
+    have localFixed : (app.observePlayer firstAlice.application alice).candidates candidate.2 =
+        .openable ⟨.bool, true⟩ := fixed
+    rw [disclosureSubmission_normalize_opening alice _ aliceEvent candidate ⟨.bool, true⟩
+      rfl localFixed]
+  rw [shape]
+  let submitted := firstAlice.respond app alice ⟨some (.submit opening)⟩
+  let completed := firstAlice.application.complete aliceEvent (by decide) true (.success true)
+  have packet : app.packet submitted.application alice (firstAlice.network.known alice) opening =
+      ⟨.opening aliceEvent candidate ⟨.bool, true⟩,
+        some ⟨candidate, ⟨.bool, true⟩⟩, some ⟨aliceEvent⟩⟩ := by
+    change opening.emit firstAlice.application alice [] = _
+    have verified := (CommitmentCandidates.verify_eq_true_iff _ _ _).mpr fixed
+    have token : firstAlice.application.publicView.tokenFor
+        (.opening aliceEvent candidate ⟨.bool, true⟩) = some ⟨aliceEvent⟩ := by
+      exact firstAlice.application.publicView_tokenFor_of_ready _ aliceEvent rfl (by decide)
+    simp only [opening, disclosureSubmission, WitnessedSubmission.emit, verified, token]
+    rfl
+  have handled : app.handle submitted.application
+      ⟨(alice, 0), ⟨.opening aliceEvent candidate ⟨.bool, true⟩,
+        some ⟨candidate, ⟨.bool, true⟩⟩, some ⟨aliceEvent⟩⟩⟩ = some completed := by
+    rw [reactiveApplication_handle_of_tokenValid (runtime setup) leaks _ _ (by rfl)]
+    exact (runtime setup).handle_opening_eq firstAlice.application _ aliceEvent candidate alice
+      .bool binding [] rfl rfl rfl (by decide) (by change 0 - 0 < 2; decide)
+      rfl rfl associated true fixed stored
+      (.success true) resolved
+  have chosen : scheduler submitted.environmentRecall (submitted.observeEnvironment app) =
+      PMF.pure (.include (alice, 0)) := by
+    change stageChoice 2 _ = _
+    simp only [stageChoice]
+    change PMF.pure ((runtime setup).reactiveLatest leaks aliceEvent alice _) = _
+    congr 1
+  have included : (submitted.includePending app (alice, 0)).application = completed := by
+    change Option.getD (app.handle submitted.application ⟨(alice, 0),
+      app.packet submitted.application alice (firstAlice.network.known alice) opening⟩)
+      submitted.application = _
+    rw [packet, handled]
+    rfl
+  refine ⟨{ submitted.includePending app (alice, 0) with environmentRecall :=
+      submitted.environmentRecall ++ [⟨submitted.observeEnvironment app, .include (alice, 0)⟩] },
+    ?_, ?_⟩
+  · rw [ReactiveApplication.round, chosen, PMF.pure_bind, ReactiveApplication.dispatch]
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+      PMF.pure_bind, ReactiveApplication.Command.actor?, ReactiveApplication.resume]
+    rfl
+  · change (submitted.includePending app (alice, 0)).application.config.store _ = _
+    rw [included]
+    rfl
+
+/-- A canonical first TRUE opening makes Alice's output successful under every later RAW policy. -/
+theorem first_true_bob_output_law (players : Player → app.Policy) :
+    let first := (app.runRounds scheduler players 1
+      (ReactiveApplication.Execution.initial app
+        (State.initial (setup.eventInputs (sourceInitial true))))).bind
+      (fun before => (scheduler before.environmentRecall (before.observeEnvironment app)).bind
+        (before.environmentStep app))
+    let submitted := first.map (fun before => before.respond app alice
+      ((runtime setup).canonicalServiceDecision leaks alice [] (before.observe app alice)
+        aliceEvent true))
+    ((submitted.bind (app.runRounds scheduler players 8)).bind
+      (fun before => (scheduler before.environmentRecall (before.observeEnvironment app)).bind
+        (before.environmentStep app))).map
+      (fun after => (after.observe app bob).application.publicView.observation.store
+        (.inr aliceEvent)) = PMF.pure (some (.success true)) := by
+  dsimp only
+  have first := first_alice_law players
+  simp only [silentInitial] at first
+  rw [first, PMF.pure_map, PMF.pure_bind]
+  obtain ⟨next, prompt, output⟩ := first_true_prompt players
+  rw [ReactiveApplication.runRounds, prompt, PMF.pure_bind]
+  have invariant := ReactiveApplication.Invariant.policyInvariant app
+    ((runtime setup).reactiveStoreInvariant leaks (.inr aliceEvent) (.success true)) players
+  have constant : ∀ before ∈ (app.runRounds scheduler players 7 next).support,
+      ∀ command ∈ (scheduler before.environmentRecall (before.observeEnvironment app)).support,
+      ∀ after ∈ (before.environmentStep app command).support,
+      (after.observe app bob).application.publicView.observation.store (.inr aliceEvent) =
+        some (.success true) := by
+    intro before reached command _ after moved
+    have retained := invariant.runRounds scheduler 7 next before output reached
+    have retained := invariant.environment before after command retained moved
+    exact retained
+  calc
+    _ = ((app.runRounds scheduler players 7 next).bind
+      (fun before => (scheduler before.environmentRecall (before.observeEnvironment app)).bind
+        (before.environmentStep app))).map (fun _ => some (.success true)) := by
+      apply map_congr_on_support
+      intro after reached
+      obtain ⟨before, prior, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      obtain ⟨command, chosen, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ moved)
+      exact constant before prior command chosen after moved
+    _ = _ := PMF.map_const _ _
+
 end Vegas.Examples.CommittedResolutionService
