@@ -258,11 +258,11 @@ The committed-type fragment also has a conditional finite full-RAW-tree construc
 separate first-NONE rates and later free floors make clean expiry favor H in ONE
 Bayes family; selected truthful/expiry continuations bound whole WAIT policies.
 Its no-early-Bob/protection, first-packet classification and authentic backend premises
-have a concrete 16-round public-controller instantiation on paper: two Alice opportunities,
-same-clock postcompletion Alice activation/inclusion, then protected Bob service; empty
-gameplay leaks, delay 0/bound 1 and N=4. Censored T is published with a FALSE receipt
-and separated from clean expiry. Its three AsyncContract clauses and body/input adapters
-still need Lean certification; no arbitrary-builder theorem follows.
+have a concrete linear 16-round public-controller instantiation on paper: Alice at
+clocks 0/1, then postcompletion Alice and first Bob at clock 2, Bob expiry at 5;
+empty gameplay leaks, Alice delay 0/bound 1, Bob delay 2/bound 0 and N=4.
+Censored T's FALSE receipt separates it from clean expiry. The three AsyncContract clauses
+and body/input adapters still need Lean certification; no arbitrary-builder theorem follows.
 
 The archived [exact finite checker](../archive/se-generalization/documents/scripts/experiments/adaptive_schedules.py)
 and [C6 probe](../archive/se-generalization/documents/scripts/experiments/deferral_miss_probe.py)
@@ -276,7 +276,7 @@ result counts toward that proof only with premises derived from the actual runti
 ## Road to the proof
 
 1. **Certify the concrete public controller.** Prove the existing Opportunity,
-   ProtectedInclusion and CompletesPlay fields for the specified horizon-16 scheduler
+   ProtectedInclusion and CompletesPlay fields for the fixed linear horizon-16 scheduler
    on the actual compiled source setup. Then authenticate/classify full RAW responses
    and derive the clean-J full-input law and collection. The committed-resource result
    remains conditional; arbitrary later source economics need their own comparisons.
