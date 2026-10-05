@@ -254,9 +254,10 @@ is uncommitted; a θ-binding permits rejected certificates to reveal θ after ol
 without a second fine, breaking pooling, not preservation. Different source resources,
 later economics and actual service/backend certification remain outside that result.
 
-The committed-type fragment also has a conditional finite full-RAW-tree construction:
-separate first-NONE rates and later free floors make clean expiry favor H in ONE
-Bayes family; selected truthful/expiry continuations bound whole WAIT policies.
+The committed-type fragment has conditional finite full-RAW-tree constructions for
+two source assessments. Separate first-NONE rates and free floors select HIGH at
+off-path expiry for T at both types, or LOW at on-path FALSE for H→T, L→F.
+Each uses ONE Bayes family and selected continuations to bound whole WAIT policies.
 Its no-early-Bob/protection, first-packet classification and authentic backend premises
 have a concrete linear 16-round public-controller instantiation on paper: Alice at
 clocks 0/1, then postcompletion Alice and first Bob at clock 2, Bob expiry at 5;

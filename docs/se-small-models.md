@@ -233,8 +233,7 @@ first T uses these bounds, and any other first body has whole net ≤2−C=0.
 Honest first-T continuations attain 2 or 1/2 and are optimal. Decision recall and
 the same free completion therefore give a CONDITIONAL finite-tree SE with joint law
 (H,success true,HIGH,2,1):1/4; (L,success false,LOW,1/2,1):3/4, zero realized charges.
-The rates fit this toy's chosen source assessment: source FALSE has limiting H
-posterior 1. They are not a construction for arbitrary given source assessments.
+These rates implement the chosen off-path H posterior, not arbitrary source assessments.
 One concrete public controller uses the existing [Scheduler](../Interaction/ReactiveApplication.lean) and `reactiveLatest`.
 Sample e0 and activate/include Alice at clock 0. Tick to 1, activate Alice and choose
 3/4 latest inclusion or 1/4 WAIT. Tick to 2, expire Alice, activate/include Alice,
@@ -246,6 +245,21 @@ failure fiber, while all THREE Alice NONE responses give the paired clean J.
 The [three AsyncContract clauses](../Vegas/Pending/ReactiveAsyncContract.lean) have a paper proof;
 their Lean certificate and body/input adapters remain open. Early Bob responses, guard failure, later Alice
 source economics and a live watcher remain outside this result.
+
+The fixed 16-round controller also supports the source SE H→T, L→F, with Bob
+truthful on success and LOW on failure; Alice's values are 2 and 1. Set λ=t²,
+δ=t^(2N+5), first H's NONE mass t and first L's T mass t; other first-response RAW mass is O(δ).
+Pin silence with δ trembles on CLEAN accepted-T cones and L's clean no-authored-packet NONE cone.
+H's NONE cone and ALL own-bad descendants are free. At the canonical clean j,
+L mass is ≥(3/4)(1−t−O(Nδ)), H mass ≤t/4+O(Nδ), hence Pr(H|j)→0.
+Select LOW at this on-path FALSE input. The same chooser and ONE ACTUAL Bayes
+subsequence give rational completion: H's T value 2 is maximal; L's packet-free
+value is 1, attempted T ≤1/2, and any other first forbidden body ≤0 (TOTAL C=2).
+The exact initialized joint law is (H,success true,HIGH,2,1):1/4;
+(L,failure,LOW,1,1):3/4, with zero charge. This is conditional paper mathematics
+for fixed16, with NO Alice response after Bob; no native contract certificate follows.
+Reuse [policyMixture realization](../Interaction/ReactiveMixtureRounds.lean) and `guarded_disclosure_response_memory`
+in [DisclosureMemory](../Vegas/Game/SourceServiceDisclosureMemory.lean) for silent-action transport; their runtime premises remain to be derived.
 
 ### Inclusion and audit parameters
 
