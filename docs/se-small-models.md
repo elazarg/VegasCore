@@ -1,7 +1,7 @@
 # Two small asynchronous-service calculations
 
 These calculations support the [generalization plan](se-schedule-generalization.md):
-one restricted finite-tree SE and a conditional publication bound, not full-raw preservation.
+scoped finite-game preservation and a conditional publication bound, not a general runtime theorem.
 
 ## A. Resolution followed by a guess
 
@@ -129,10 +129,9 @@ preservation does not require source beliefs or actions at every new native inpu
 
 **The three-action calculation omits:** prior binding traffic, competing IDs,
 malformed or extra evidence, stale credentials, guard failures, rejection receipts,
-extra activations, nonempty leaks and raw foreign traffic. The next result treats
-copies and RAW tails at fixed prefix inputs; arbitrary RAW prefixes, later source
-economic moves and service/backend certification remain excluded. Copies retain
-the original author and cannot be classified as newly authored R.
+extra activations, nonempty leaks and raw foreign traffic. The following fixed-parameter
+results admit RAW tails and then Alice's earlier RAW responses under explicit
+service/backend premises. Copies retain the original author and are not newly authored R.
 
 ### Copies and a rational RAW continuation
 
@@ -178,10 +177,31 @@ No further fine is counted. Lawful copies preserve the original author and verdi
 Keep the original Bob limiting laws. After original W/copy at firstT/lateT/E
 with no own pending HIGH, select LOW expiry; after protected H select silence.
 Optimize remaining tail sites in that SAME family. The whole-policy bounds give
-rational completion and preserve the two atoms above, with distinct RAW histories. This paper
-result excludes arbitrary Alice RAW prefixes, changed guards/candidates, later
-source economic moves and live watcher/runtime certification. Copy is not a
-scheduler-independent quotient of silence; its continuation is optimized.
+rational completion and preserve the two atoms above, with distinct RAW histories.
+Copy is not a scheduler-independent quotient of silence; its continuation is optimized.
+
+### Admitting the earlier RAW responses
+
+For this fixed p,q,D, fix a full finite public builder extending the retained
+T/W/R service, with complete play and the same authentic fair backend. Construct
+the pooling tail with NORMALIZED menus; only Alice's two original clear menus differ.
+Their known lists are empty and there is no prepare-only action. Valid T aliases stay
+retained. Excluded first packets stay forbidden at completion: initial associations
+are immutable and later registration cannot repair their bodies or evidence.
+Against ANY target future, an extra first packet has expected net ≤2−qD=0. One whole silence
+policy emits no Alice packet or binding omission and has net ≥0 against any opponents.
+[Native menu inclusion](../Interaction/ReactiveMenuRestriction.lean) therefore supplies
+the whole comparison for the [unclocked extension](../GameTheoryExtensions/Analysis/Protocol/PassageRestrictionExtension.lean).
+It optimizes new rare fibers; [canonicalRaw](../Vegas/Pending/ReactiveAliasEquilibrium.lean)
+then lifts the full normal-menu SE forward, retaining original request recall.
+Exact initialized history law followed by the SAME correlated settlement kernel preserves both joint atoms.
+
+If an initial immutable binding contains θ, an owned certificate can reveal θ after old R completes FALSE;
+[inclusion](../Interaction/ReactiveApplication.lean) publishes it despite a FALSE receipt.
+Candidate equality required by `emit_local` is absent; a recipient can learn θ after rejection.
+Under the fixed shared audit coin, old R fixes the owner's OR charge; the new packet adds none.
+This tests the pooling premise, not preservation impossibility.
+Changed guards/candidates, later source economics and general service/backend refinement remain open.
 
 ### Inclusion and audit parameters
 

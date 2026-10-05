@@ -240,12 +240,16 @@ connection to the final proof.
 The [resolution-and-guess calculation](se-small-models.md#a-resolution-followed-by-a-guess)
 solves one restricted three-action tree for every 0<p<1 and qD≥0, with authentic
 partial audit, exact receipt/clock fibers and one common fully mixed family.
-At p=3/4,q=1/2,D=4 its fixed Alice prefix also admits a rational full bounded RAW
-Bob/tail completion, including copies and reactivation, under explicit protection,
-complete expiry, paired resources and stable audit premises. The source-expressible
-private type has no certificate. This preserves the joint law without pinning
-every generated input to source play. Arbitrary Alice RAW prefixes, actual service
-and backend certification, and later source economics remain outside the result.
+At p=3/4,q=1/2,D=4 its fixed Alice prefix admits rational full bounded RAW Bob/tail
+completion, including copies and reactivation. For a full finite public builder
+extending the retained service, normalized first-extra comparisons and the existing
+unclocked extension admit Alice's earlier responses; forward canonicalRaw lifts aliases.
+Explicit protection, complete play, paired resources and the same fair backend
+preserve the joint law without pinning every generated input to source play.
+The private type is uncommitted: an immutable θ-binding instead permits a rejected
+certificate packet to reveal θ after an old R, without a second shared-coin fine.
+That breaks the pooling premise, not preservation. Actual service/backend certification,
+different source resources and later source economics remain outside the result.
 
 The archived [exact finite checker](../archive/se-generalization/documents/scripts/experiments/adaptive_schedules.py)
 and [C6 probe](../archive/se-generalization/documents/scripts/experiments/deferral_miss_probe.py)
@@ -259,11 +263,11 @@ result counts toward that proof only with premises derived from the actual runti
 
 ## Road to the proof
 
-1. **Connect the finite strategic core to the baseline.** Use the restricted
-   prefix/common-tail information and whole-policy calculations. Derive its
-   protection, paired resources and stable collection premises; extend omitted
-   Alice RAW prefixes without assuming the same conditional reach factors.
-   Its H clear/sunk proxy argument does not cover arbitrary later source utility.
+1. **Connect the finite strategic core to the baseline.** Derive the full builder's
+   protection, paired resources, complete play and stable collection premises.
+   The fixed fixture admits Alice RAW prefixes by existing native-menu extension;
+   its H clear/sunk proxy argument does not cover different certificate resources
+   or arbitrary later source utility. Derive their actual continuation comparisons.
 2. **State one native assessment construction.** Decide which native inputs
    follow the source assessment and which need free rational completion. Specify
    one fully mixed source/timing/raw family and a single common subsequence.
