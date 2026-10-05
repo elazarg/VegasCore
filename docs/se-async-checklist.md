@@ -131,7 +131,11 @@ sampler with conditional coverage until box W closes.
   rationality under the base payoff).
 - [ ] **S7. Remaining sites.** Sample, foreign, recorded and private
   representation sites have bounded gain at the same assessment.
-- [ ] **S8. Composition.** S1–S7 compose through
+- [ ] **S8. Composition.** The retained game is the risk menu
+  (`Vegas/Pending/ReactiveRiskMenu.lean`): canonical responses while an owner
+  is clear, and every unforbidden bounded response once the owner has a public
+  decision miss or recalls its own unprotected opportunity, with free play there
+  chosen by rational completion. S1–S7 compose through
   `exists_sequentialEquilibrium_limit_of_local_comparisons_of_lawError` and
   `sequentialEquilibrium_extends_of_continuation_unclocked` into the target
   theorem for stage S, with the joint law and no charge on paths.
