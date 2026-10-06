@@ -27,6 +27,7 @@ Useful existing boundaries are the
 [behavioral commutation](../Vegas/EventGraph/PolicyCommutation.lean),
 [whole-continuation enforcement](../GameTheoryExtensions/Analysis/Enforcement.lean),
 [local comparison limit](../GameTheoryExtensions/Analysis/Protocol/LocalSimulationLimit.lean),
+[copied-site limit with free completion](../GameTheoryExtensions/Analysis/Protocol/CopiedSiteLimit.lean),
 [proportional belief transport](../GameTheoryExtensions/Analysis/Protocol/ProportionalBeliefTransport.lean),
 [menu restriction](../GameTheoryExtensions/Protocol/MenuRestriction.lean),
 [intended game](../Vegas/Source/IntendedGame.lean),

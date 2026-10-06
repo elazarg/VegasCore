@@ -248,6 +248,16 @@ joint law. It is not pursued.
   site play is free, chosen by rational completion. H and S1–S7 compose into
   the target theorem for stage S, with the joint law and no charge or forfeit
   on paths.
+  Partial evidence: `exists_sequentialEquilibrium_limit_of_copied_comparisons_of_lawError`
+  ([CopiedSiteLimit](../GameTheoryExtensions/Analysis/Protocol/CopiedSiteLimit.lean)),
+  the abstract limit theorem for this split: copied information agents play
+  prescribed laws converging to a compiled limit, free agents are completed
+  rationally (`exists_consistent_free_agent_completion`); if, for every residual
+  choice at free agents, local gains at copied sites are bounded by source gain
+  mixtures up to a vanishing error and the native observation laws approach the
+  perturbed source laws, there is a native sequential equilibrium with the
+  source law that agrees with the compiled limit at every copied site. Its
+  premises are not constructed for the actual runtime.
 - [ ] **S9. Validation.** The stage-S theorem is pinned in `Paper.lean` with
   standard axioms, the calendar theorem is derived as its instance, and every
   cited evidence declaration is in its dependency closure.
