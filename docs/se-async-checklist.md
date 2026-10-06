@@ -168,8 +168,8 @@ joint law. It is not pursued.
   admissible menus is `sourceServiceClients_settlement_lawError`.
 - [ ] **S2. One common native consistency sequence.** One fully mixed family
   over source trembles, timing and raw responses, with exceptional mass
-  negligible relative to clean reach on every information set, converging to a
-  consistent native assessment.
+  negligible relative to clean reach on every information set that clean play
+  eventually reaches, converging to a consistent native assessment.
   Partial evidence: `exists_consistent_prescribed_completion` (consistent
   rational completion at free sites, keeping prescribed limits and the terminal
   law); `exists_deferralWeights_faster` and `exists_source_timing_rates`
@@ -215,13 +215,12 @@ joint law. It is not pursued.
 - [ ] **S7. Remaining sites.** Sample, foreign, recorded and private
   representation sites have bounded gain at the same assessment.
 - [ ] **S8. Composition.** The retained game is the risk menu
-  (`Vegas/Pending/ReactiveRiskMenu.lean`): canonical responses while an owner
-  is clear, and every unforbidden bounded response once the owner has a public
-  binding omission or recalls its own unprotected opportunity, with free play there
-  chosen by rational completion. S1–S7 compose through
-  `exists_sequentialEquilibrium_limit_of_local_comparisons_of_lawError` and
-  `sequentialEquilibrium_extends_of_continuation_unclocked` into the target
-  theorem for stage S, with the joint law and no charge on paths.
+  (`Vegas/Pending/ReactiveRiskMenu.lean`). At every site whose history still
+  corresponds to a history of the intended game, whatever the timing so far,
+  play copies the compiled equilibrium of the intended game; at every other
+  site play is free, chosen by rational completion. H and S1–S7 compose into
+  the target theorem for stage S, with the joint law and no charge or forfeit
+  on paths.
 - [ ] **S9. Validation.** The stage-S theorem is pinned in `Paper.lean` with
   standard axioms, the calendar theorem is derived as its instance, and every
   cited evidence declaration is in its dependency closure.
