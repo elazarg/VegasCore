@@ -35,25 +35,38 @@ and records which are closed.
 
 ## Target
 
-Fix the program, initial law, utilities, bounded raw runtime, a builder
-satisfying `AsyncContract` with reaction and inclusion bounds that fit every
-deadline, the observation rule, the audit backend and the deposit, before
-choosing a source equilibrium. Every source sequential equilibrium has a
-sequential equilibrium of the bounded raw runtime under that builder that
-preserves the joint law of initial parameters, public results and realized net
-payoffs, and charges no player on its paths. The native equilibrium may depend
-on the builder. Stage S is the sequentialized graph; stage C adds concurrent
-bindings under the barrier order. The audit backend is the authentic partial
-sampler with conditional coverage until box W closes.
+Fix the program of the intended game (every owned commitment holds a value and
+every owned reveal opens; see [two sources](se-two-sources.md)), its initial law
+and utilities, the forfeit pass with a forfeit above the payoff range, the
+bounded raw runtime, a builder satisfying `AsyncContract` with reaction and
+inclusion bounds that fit every deadline, the observation rule, the audit
+backend and the deposit, before choosing an equilibrium of the intended game.
+Every sequential equilibrium of the intended game has a sequential equilibrium
+of the bounded raw runtime for the forfeit-compiled program under that builder
+that preserves the joint law of initial parameters, public results and realized
+net payoffs, and charges and forfeits no player on its paths. The native
+equilibrium may depend on the builder. Stage S is the sequentialized graph;
+stage C adds concurrent bindings under the barrier order. The audit backend is
+the authentic partial sampler with conditional coverage until box W closes.
+
+The earlier target, preservation of every sequential equilibrium of the source
+game with withholding priced by the program's own failure branch, is refuted in
+a small model: `scripts/experiments/censored_disclosure_probe.py` (game G2)
+fixes an honest source equilibrium whose deterrence rests on the responder's
+reply to withholding, and an admissible builder that censors unprotected late
+openings by value, under which no native sequential equilibrium preserves the
+joint law. It is not pursued.
 
 ## A. Model
 
-- [x] **A1. The runtime matches the baseline semantics.** Every operation in
+- [ ] **A1. The runtime matches the baseline semantics.** Every operation in
   the semantics table of the [design](se-schedule-generalization.md) is
   implemented as stated; in particular there are no message copies, readiness
   credentials are attached only after prerequisites complete, and packet
   verdicts read only signed content, readiness evidence and the final record.
-  Evidence: row by row, for `EventGraphRuntime.reactiveApplication` with an
+  Reopened: the approved packet-verdict change (an authentic opening of an
+  event that expired without accepting it is permitted, as silence) is not yet
+  implemented. Evidence: row by row, for `EventGraphRuntime.reactiveApplication` with an
   arbitrary deadline configuration and observation rule, under arbitrary player
   responses and every scheduler.
   Readiness: exactly the ready strategic events carry an activation timestamp,
@@ -111,6 +124,15 @@ sampler with conditional coverage until box W closes.
   [CommittedResolutionService](../Vegas/Examples/CommittedResolutionService.lean)
   satisfies `AsyncContract` and timeliness over unrestricted raw histories; the
   calendar instance is `rosterScheduler_asyncContract`.
+
+## H. Intended game
+
+- [ ] **H. Intended-game preservation.** For every program of the intended game
+  and every sequential equilibrium of it, the forfeit-pass rewriting has a
+  sequential equilibrium of the source game with the same joint law and no
+  forfeit on its paths. Composed with S8 (and C2), it gives the target theorem.
+  The treatment of honest guard failure is open (see
+  [two sources](se-two-sources.md), open point 1).
 
 ## S. Serial stage, every contract builder
 
