@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceCompilation
+import Vegas.Game.IntendedPreservation
 
 /-! # Checked sequential-equilibrium preservation and termination -/
 
@@ -112,5 +113,64 @@ theorem raw_service_horizon [Fintype Player] [IExpr.ResultTypes L]
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.SourceServiceSpec.completeAudit_raw_sequentialEquilibrium_preserved
+
+open Vegas.SourceProgram GameTheory.Protocol in
+/-- **Intended-game preservation.** The intended game of a setup offers, at an
+owner's commit, only the values its guard is predicted to accept from the
+owner's observation, and at an owner's reveal only opening. For a well-formed
+setup (every guard satisfiable at every commit the intended game reaches, and
+values in every initial commitment cell) with finite commitment payload types
+and a finite initial law, every sequential equilibrium of the intended game has
+a sequential equilibrium of the source game under the forfeit pass, which
+charges the owner of every failed reveal a forfeit no smaller than the payoff
+range. Its joint law of typed terminal state and payoff is the intended one,
+and no reveal fails on any history it reaches. -/
+theorem intended_sequential_equilibrium [Fintype Player] [IExpr.ResultTypes L]
+    (setup : Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
+    (wellFormed : setup.WellFormed) {Parameter : Type}
+    (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (forfeit : ℝ) (range : ∀ high low who, utility high who - utility low who ≤ forfeit)
+    (intended : setup.intendedModel.BehavioralAssessment)
+    (equilibrium : intended.IsSequentialEquilibrium setup.intended_decision_antichain
+      setup.intended_bounded.wellFoundedHistories
+      (fun who final => (setup.protocolReadout final.state).elim 0
+        (fun state => utility (setup.parameterOutcome parameter state) who))) :
+    ∃ target : (setup.informationModel
+        (CommitmentInterface.values setup.program)).BehavioralAssessment,
+      target.IsSequentialEquilibrium (setup.decision_antichain _)
+        (setup.protocol_bounded _).wellFoundedHistories
+        (fun who final => (setup.protocolReadout final.state).elim 0
+          (fun state => forfeitUtility setup.program forfeit utility
+            (setup.parameterOutcome parameter state) who)) ∧
+      (∀ final ∈ ((setup.informationModel
+          (CommitmentInterface.values setup.program)).runBehavioralTerminalFrom
+            (setup.protocol_bounded _).wellFoundedHistories target.strategy
+            (setup.executionProtocol
+              (CommitmentInterface.values setup.program)).initHistory).support,
+        ∀ terminal, setup.protocolReadout final.state = some terminal →
+          ∀ who, failedReveals setup.program who (publicOutcome setup.program terminal) = 0) ∧
+      ((setup.informationModel
+          (CommitmentInterface.values setup.program)).runBehavioralTerminalFrom
+            (setup.protocol_bounded _).wellFoundedHistories target.strategy
+            (setup.executionProtocol
+              (CommitmentInterface.values setup.program)).initHistory).map
+          (fun final => (setup.protocolReadout final.state,
+            fun who => (setup.protocolReadout final.state).elim 0
+              (fun state => forfeitUtility setup.program forfeit utility
+                (setup.parameterOutcome parameter state) who))) =
+        (setup.intendedModel.runBehavioralTerminalFrom setup.intended_bounded.wellFoundedHistories
+            intended.strategy setup.intendedProtocol.initHistory).map
+          (fun final => (setup.protocolReadout final.state,
+            fun who => (setup.protocolReadout final.state).elim 0
+              (fun state => utility (setup.parameterOutcome parameter state) who))) :=
+  setup.intended_sequentialEquilibrium_preserved finite wellFormed parameter utility forfeit
+    range _ _ intended equilibrium
+
+/-- info: 'Vegas.Paper.intended_sequential_equilibrium' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.intended_sequential_equilibrium
 
 end Vegas.Paper

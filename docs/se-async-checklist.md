@@ -125,7 +125,7 @@ joint law. It is not pursued.
 
 ## H. Intended game
 
-- [ ] **H. Intended-game preservation.** For every program of the intended game
+- [x] **H. Intended-game preservation.** For every program of the intended game
   with finite commitment payload types and a finite initial law, and every
   sequential equilibrium of it, the forfeit-pass rewriting has a
   sequential equilibrium of the source game with the same joint law and no
@@ -137,6 +137,32 @@ joint law. It is not pursued.
   its commitment cells (both proved outside VegasCore);
   the forfeit pass forfeits the owner of every failed reveal (see
   [two sources](se-two-sources.md), point 1).
+  Evidence: `intended_sequentialEquilibrium_preserved`
+  ([IntendedPreservation](../Vegas/Game/IntendedPreservation.lean)), pinned in
+  [Paper](../Paper.lean) as `Vegas.Paper.intended_sequential_equilibrium` with
+  standard axioms. For every setup with `FiniteBindingTypes`, a finite initial
+  law and `Setup.WellFormed`, every parameter reader and utility, every forfeit
+  D with `utility high who - utility low who ≤ D` for all outcomes, and every
+  sequential equilibrium of `Setup.intendedModel`, there is a sequential
+  equilibrium of the source model under the value interface with payoff
+  `forfeitUtility` (the utility minus D per failed reveal of the player), no
+  failed reveal on any terminal history it reaches, and the intended joint law of
+  typed terminal state and payoff. The intended model restricts the source menus
+  (`Setup.intendedRestriction`): a commit offers the values the guard is
+  predicted to accept from the owner's observation (`SourceGuard.predicts`), or
+  every value when none is, which `Setup.WellFormed` rules out at every commit
+  the intended game reaches; a reveal offers only opening. `Setup.WellFormed`
+  is `GuardsSatisfiableFrom` from every initial configuration in the support
+  together with values in every initial commitment cell. Route: the
+  action-restriction extension without a common depth; no reveal of the intended
+  game fails (`ProtocolState.failedReveals_eq_zero_of_intended`, from the run
+  invariant `Config.Intended` and `Obligation.accepts_eq_predicts`); a source
+  action outside the intended menu leaves its author indebted
+  (`ProtocolState.indebted_of_deviation`), the debt survives every step
+  (`ProtocolState.indebted_step`, using `Obligation.owner_eq_of_completedBy`) and
+  is paid by a failed reveal of the author on every terminal continuation
+  (`ProtocolState.failedReveals_pos_of_indebted`, `deviation_failedReveals_pos`).
+  Players are finite, as in every SE result here.
 
 ## S. Serial stage, every contract builder
 
@@ -224,6 +250,16 @@ joint law. It is not pursued.
 - [ ] **S9. Validation.** The stage-S theorem is pinned in `Paper.lean` with
   standard axioms, the calendar theorem is derived as its instance, and every
   cited evidence declaration is in its dependency closure.
+  Partial evidence: `intended_audited_raw_sequentialEquilibrium`
+  ([IntendedServiceCompilation](../Vegas/Game/IntendedServiceCompilation.lean))
+  composes H with the calendar theorem at the forfeited utility: for a
+  well-formed setup, every intended-game equilibrium has an audited bounded raw
+  runtime equilibrium with the intended joint law of terminal store and payoff
+  realized as settlement, no charge and no failed reveal on its paths. It is the
+  calendar runtime only, under the calendar theorem's audit assumptions, and its
+  deposit is fixed for the forfeited utility, whose range grows with D times
+  the number of reveals. The censored-opening verdict deferred under A1 is not
+  changed.
 
 ## C. Concurrent stage
 

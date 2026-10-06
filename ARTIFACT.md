@@ -5,6 +5,9 @@ runtime, regression tests and the fixed-calendar sequential-equilibrium proof.
 The [calendar capstone](Vegas/Game/SourceServiceCompilation.lean) and
 [Paper](Paper.lean) state the exact theorem and audit its standard axioms.
 The [checklist](docs/se-proof-checklist.md) identifies load-bearing evidence.
+[Paper](Paper.lean) also states
+[intended-game preservation](Vegas/Game/IntendedPreservation.lean), box H of the
+[arbitrary-builder checklist](docs/se-async-checklist.md).
 
 The arbitrary-builder theorem and an operational watcher/reporting refinement
 remain open. The [design and plan](docs/se-schedule-generalization.md) describes

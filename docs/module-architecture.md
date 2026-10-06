@@ -29,6 +29,7 @@ Useful existing boundaries are the
 [local comparison limit](../GameTheoryExtensions/Analysis/Protocol/LocalSimulationLimit.lean),
 [proportional belief transport](../GameTheoryExtensions/Analysis/Protocol/ProportionalBeliefTransport.lean),
 [menu restriction](../GameTheoryExtensions/Protocol/MenuRestriction.lean),
+[intended game](../Vegas/Source/IntendedGame.lean),
 and [depth-free extension](../GameTheoryExtensions/Analysis/Protocol/PassageRestrictionExtension.lean).
 
 Behavioral commutation preserves the typed store and original own recall;

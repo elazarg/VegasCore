@@ -26,6 +26,8 @@ import Vegas.Source.DisclosureContinuation
 import Vegas.Source.Honest
 import Vegas.Source.GuardPrediction
 import Vegas.Source.Forfeit
+import Vegas.Source.IntendedGame
+import Vegas.Source.IntendedPlay
 import Vegas.Source.RevealSequence
 import Vegas.Source.ObservationRecall
 import Vegas.Source.Accounting

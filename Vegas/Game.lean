@@ -15,6 +15,8 @@ import Vegas.Game.DisclosureRealization
 import Vegas.Game.DisclosureRetraction
 import Vegas.Game.EventCompilation
 import Vegas.Game.EventScheduling
+import Vegas.Game.IntendedPreservation
+import Vegas.Game.IntendedServiceCompilation
 import Vegas.Game.PurificationEdge
 import Vegas.Game.RevealService
 import Vegas.Game.RevealServiceActions
