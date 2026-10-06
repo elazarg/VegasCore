@@ -133,7 +133,8 @@ joint law. It is not pursued.
   The intended game's commit menus offer only values the guard accepts,
   judged from the committer's observation. Hypothesis: the program is well
   formed, every guard being satisfiable at every reachable commit given its
-  author's inputs (proved outside VegasCore);
+  author's inputs, and every state in the initial law's support holds values in
+  its commitment cells (both proved outside VegasCore);
   the forfeit pass forfeits the owner of every failed reveal (see
   [two sources](se-two-sources.md), point 1).
 
