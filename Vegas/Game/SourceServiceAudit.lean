@@ -30,21 +30,31 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 
 /-- Authenticated audit evidence: the contract's settled record and one signed
 packet. Neither the broadcaster nor the time of transmission is part of it. -/
-abbrev SettledEvidence (setup : Setup (Player := Player) (L := L)) :=
-  SettledRecord (graph setup) × Message Player (WitnessedPacket (graph setup))
+abbrev SettledEvidence (setup : Setup (Player := Player) (L := L))
+    (mode : EventGraph.ExecutionMode := .sequential) :=
+  SettledRecord (serviceGraph setup mode) × Message Player (WitnessedPacket (serviceGraph setup
+    mode))
 
 /-- A terminal audit of signed packets against the settled record and of public
 binding omissions. The sample is authenticated separately; the verdict denotes
 an actually collected charge under the declared inclusion and escrow service
 contract. -/
-def sourceServiceAudit
+def serviceSourceAudit
+    (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.ExecutionMode)
+    (deadline : (serviceGraph setup mode).EventId → Nat)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+    (sample : List (SettledEvidence setup mode) → PMF (List (SettledEvidence setup mode))) :=
+  (serviceRuntime setup mode deadline).serviceAudit leaks fun record =>
+    (serviceApplication setup mode deadline leaks).sampledTrafficAudit
+      (fun traffic => (record, traffic.envelope))
+      (fun evidence => evidence.2.sender) (fun evidence => evidence.1.permits evidence.2) sample
+
+/-- The audit of the default runtime. -/
+abbrev sourceServiceAudit
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (sample : List (SettledEvidence setup) → PMF (List (SettledEvidence setup))) :=
-  (runtime setup).serviceAudit leaks fun record =>
-    (application setup leaks).sampledTrafficAudit
-      (fun traffic => (record, traffic.envelope))
-      (fun evidence => evidence.2.sender) (fun evidence => evidence.1.permits evidence.2) sample
+  serviceSourceAudit setup .sequential (rankDeadline setup .sequential) leaks sample
 
 omit [Fintype Player] in
 /-- **The verdict reads only signed envelopes and the settled record.** Two
@@ -75,7 +85,8 @@ theorem sourceServiceAudit_congr
               (fun envelope => ((record, envelope) : SettledEvidence setup)) := by
         rw [List.map_map]
         rfl
-      simp only [sourceServiceAudit, serviceAudit, ReactiveApplication.sampledTrafficAudit]
+      simp only [sourceServiceAudit, serviceSourceAudit, serviceAudit,
+        ReactiveApplication.sampledTrafficAudit]
       rw [projected leftTraffic, projected rightTraffic, envelopes]
 
 /-- Soundness is over all retained histories, independently of the compiled
@@ -103,7 +114,7 @@ theorem sourceService_history_audit_clear
       have noOmission := control.execution.application.publicView.missedBindingBy_clear
         (sourceService_history_no_omission setup leaks bounds values capacity rosters
           opportunities network control trace) who
-      unfold sourceServiceAudit
+      unfold sourceServiceAudit serviceSourceAudit
       rw [(runtime setup).serviceAudit_charge, noOmission]
       simp only [Bool.false_eq_true, ↓reduceIte]
       apply (application setup leaks).sampledTrafficAudit_sound
@@ -186,6 +197,6 @@ theorem sourceServiceCompiledProfile_settlement_law
     fun who => (sourceReadout setup leaks final.state).elim 0
       (fun state => utility state who))) = _
   simpa only [PMF.map_comp, Function.comp_def, Option.elim_some,
-    baseUtility, executions, model] using joint
+    baseUtility, serviceBaseUtility, executions, model] using joint
 
 end Vegas

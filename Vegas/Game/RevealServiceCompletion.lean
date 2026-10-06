@@ -267,7 +267,7 @@ theorem terminal_history_settled
         exact accounted
       rw [position, ReactiveApplication.roundsFrom, PMF.support_bind] at reached
       obtain ⟨initial, initially, continued⟩ := Set.mem_iUnion₂.mp reached
-      rw [initialLaw, PMF.support_map] at initially
+      rw [initialLaw, serviceInitialLaw, PMF.support_map] at initially
       obtain ⟨source, _drawn, rfl⟩ := initially
       have actual := suffix_rounds setup leaks watcher responses.uniformResponses []
         (plan setup watcher) rfl
@@ -305,7 +305,7 @@ theorem menu_settles [Fintype Player]
     exact ⟨history, supported, rfl⟩
   rw [menu_execution_law setup leaks responses watcher profile, PMF.support_bind] at observed
   obtain ⟨initial, initially, continued⟩ := Set.mem_iUnion₂.mp observed
-  rw [initialLaw, PMF.support_map] at initially
+  rw [initialLaw, serviceInitialLaw, PMF.support_map] at initially
   obtain ⟨source, _drawn, rfl⟩ := initially
   rw [PMF.support_map] at continued
   obtain ⟨execution, reached, same⟩ := continued

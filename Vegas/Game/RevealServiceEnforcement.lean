@@ -123,7 +123,8 @@ theorem extra_response_packet_cases (execution : (application setup leaks).Execu
       rw [preserved]
       exact ready
     exact reactiveHandle_none ((runtime setup).handle_eq_none_of_other_event_ready_public
-      setup.eventGraph.sequentialize_barrierOrdered _ event (by rw [outputEq]; trivial)
+      (serviceGraph_barrierOrdered setup (mode := .sequential) (by decide)) _ event
+        (by rw [outputEq]; trivial)
       stillReady ⟨(owner, execution.network.nextSerial owner), submission.call.packet⟩ addressed)
 
 omit [Fintype Player] in

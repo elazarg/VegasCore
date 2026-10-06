@@ -33,12 +33,13 @@ open SourceProgram Interaction EventGraphRuntime GameTheory GameTheory.Protocol
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+  {mode : EventGraph.ExecutionMode} {deadline : (serviceGraph setup mode).EventId → Nat}
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 /-- Constructor breaches need no opportunity. The two additional classes
 refer to the owner's currently ready event and public application metadata. -/
-def AuditableServicePacket (view : PublicView (graph setup)) (who : Player)
-    (message : Message Player (WitnessedPacket (graph setup))) : Prop :=
+def AuditableServicePacket (view : PublicView (serviceGraph setup mode)) (who : Player)
+    (message : Message Player (WitnessedPacket (serviceGraph setup mode))) : Prop :=
   SignedContentBreach message ∨
     ∃ event, view.ownTurn? who = some event ∧
       ((∃ candidate, message.payload.call = .commitment event candidate ∧
@@ -49,11 +50,11 @@ def AuditableServicePacket (view : PublicView (graph setup)) (who : Player)
 /-- Compute the actual next envelope using only the player's own recall,
 observed candidate meanings, known packets and public readiness tokens. -/
 def localServiceEnvelope (who : Player)
-    (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView)
-    (material : (application setup leaks).Submission) :
-    Message Player (WitnessedPacket (graph setup)) :=
-  ⟨(who, (application setup leaks).submissionCount past),
+    (past : List (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (view : (serviceApplication setup mode deadline leaks).PlayerView)
+    (material : (serviceApplication setup mode deadline leaks).Submission) :
+    Message Player (WitnessedPacket (serviceGraph setup mode)) :=
+  ⟨(who, (serviceApplication setup mode deadline leaks).submissionCount past),
     ⟨material.call.packet,
       material.evidence.resolve who (material.call.candidateAfter who view.application.candidates)
         (ReactiveApplication.ResponseMenu.knownPackets past view),
@@ -62,8 +63,9 @@ def localServiceEnvelope (who : Player)
 /-- A predicate on the real local response input, with no quantification over
 hidden executions. Silence is not classified as signed evidence. -/
 def auditableServiceResponse (who : Player)
-    (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView) (response : (application setup leaks).Action) :
+    (past : List (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (view : (serviceApplication setup mode deadline leaks).PlayerView) (response :
+      (serviceApplication setup mode deadline leaks).Action) :
     Prop :=
   ∃ material, response.transmission = some material ∧
     AuditableServicePacket setup view.application.publicView who
@@ -72,21 +74,25 @@ def auditableServiceResponse (who : Player)
 /-- Legal own recall and observation reconstruct the entire actual envelope.
 This uses neither a prescribed source policy nor a hidden intention table. -/
 theorem localServiceEnvelope_actual
-    {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
-    {control : (application setup leaks).Control}
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-      (some control)) (who : Player) (material : (application setup leaks).Submission) :
+    {horizon : Nat} {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {control : (serviceApplication setup mode deadline leaks).Control}
+    (trace : ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup
+      mode) horizon scheduler).Trace
+      (some control)) (who : Player) (material : (serviceApplication setup mode deadline
+        leaks).Submission) :
     localServiceEnvelope setup leaks who (control.execution.recall who)
-      (control.execution.observe (application setup leaks) who) material =
-      (⟨(who, control.execution.network.nextSerial who), (application setup leaks).packet
-        ((application setup leaks).submit control.execution.application who material) who
+      (control.execution.observe (serviceApplication setup mode deadline leaks) who) material =
+      (⟨(who, control.execution.network.nextSerial who), (serviceApplication setup mode deadline
+        leaks).packet
+        ((serviceApplication setup mode deadline leaks).submit control.execution.application who
+          material) who
           (control.execution.network.known who) material⟩ :
-            Message Player (WitnessedPacket (graph setup))) := by
-  let app := application setup leaks
+            Message Player (WitnessedPacket (serviceGraph setup mode))) := by
+  let app := serviceApplication setup mode deadline leaks
   have input : control.execution.InputRecall app :=
-    app.history_inputRecall (initialLaw setup) horizon scheduler trace
+    app.history_inputRecall (serviceInitialLaw setup mode) horizon scheduler trace
   have serial : control.execution.SerialRecall app :=
-    app.serialRecall_history scheduler (initialLaw setup) horizon trace
+    app.serialRecall_history scheduler (serviceInitialLaw setup mode) horizon trace
   have known : ReactiveApplication.ResponseMenu.knownPackets (control.execution.recall who)
       (control.execution.observe app who) = control.execution.network.known who :=
     (app.known_from_recall control.execution who input).symm
@@ -97,7 +103,7 @@ theorem localServiceEnvelope_actual
     (app.submit control.execution.application who material) who
       (control.execution.network.known who)
   rw [WitnessedSubmission.emit_eq_resolve,
-    (runtime setup).reactiveApplication_submit_publicView leaks]
+    (serviceRuntime setup mode deadline).reactiveApplication_submit_publicView leaks]
   have candidates : (fun slot => (app.submit control.execution.application who
       material).candidates.lookup (who, slot)) =
       material.call.candidateAfter who
@@ -111,10 +117,12 @@ variable [Fintype Player]
 
 /-- The classifier applies directly to one information state and available
 choice. Both its response and all data used to classify it are owner-local. -/
-def auditableServiceChoice (menu : (application setup leaks).ResponseMenu)
-    (horizon : Nat) (scheduler : (application setup leaks).Scheduler) (who : Player)
-    (info : (menu.information (initialLaw setup) horizon scheduler).InfoState who)
-    (choice : (menu.information (initialLaw setup) horizon scheduler).Choice who info) : Prop :=
+def auditableServiceChoice (menu : (serviceApplication setup mode deadline leaks).ResponseMenu)
+    (horizon : Nat) (scheduler : (serviceApplication setup mode deadline leaks).Scheduler) (who :
+      Player)
+    (info : (menu.information (serviceInitialLaw setup mode) horizon scheduler).InfoState who)
+    (choice : (menu.information (serviceInitialLaw setup mode) horizon scheduler).Choice who
+      info) : Prop :=
   ∃ past view response, info = some (past, view) ∧ choice.1 = some response ∧
     auditableServiceResponse setup leaks who past view response
 
@@ -123,19 +131,24 @@ omit [Fintype Player] in
 record. The current-opportunity classes use the checked ordinal and public
 guard persistence results; constructor breaches need no readiness premise. -/
 theorem auditableServicePacket_forbidden_reaches
-    {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
+    (configuration : RankSequential setup mode deadline)
+    {horizon : Nat} {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
     {first last :
-      ((application setup leaks).protocol (initialLaw setup) horizon scheduler).History}
+      ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
+        horizon scheduler).History}
     {fuel : Nat}
-    (path : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).ReachesWithin
+    (path : ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
+      horizon scheduler).ReachesWithin
       fuel first last)
-    (before after : (application setup leaks).Control)
+    (before after : (serviceApplication setup mode deadline leaks).Control)
     (firstState : first.state = some before) (lastState : last.state = some after)
-    (who : Player) (message : Message Player (WitnessedPacket (graph setup)))
+    (who : Player) (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
     (authored : message.sender = who)
     (classified : AuditableServicePacket setup before.execution.application.publicView who message)
     (complete : after.execution.application.config.cut.Terminal) :
-    ((runtime setup).settledRecord leaks after.execution).permits message = false := by
+    ((serviceRuntime setup mode deadline).settledRecord leaks after.execution).permits message =
+      false := by
+  obtain ⟨rfl, rfl⟩ := configuration
   rcases classified with signed | ⟨event, turn, noncanonical | guarded⟩
   · exact signed.forbidden (runtime setup) leaks after.execution complete
   · obtain ⟨candidate, committed, different⟩ := noncanonical
@@ -156,36 +169,44 @@ traffic and gives the final-record backend's collection bound under arbitrary
 later policies. No hidden-history uniformity, packet-verdict or fuel premise
 is supplied by the caller. -/
 theorem auditableServiceChoice_collection_committed
-    (menu : (application setup leaks).ResponseMenu)
-    (horizon : Nat) (scheduler : (application setup leaks).Scheduler)
-    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
-    (backend : EvidenceReportService (SettledEvidence setup))
+    (configuration : RankSequential setup mode deadline)
+    (menu : (serviceApplication setup mode deadline leaks).ResponseMenu)
+    (horizon : Nat) (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+    (completes : CompletesPlay (serviceRuntime setup mode deadline) leaks (serviceInitialLaw setup
+      mode) horizon scheduler)
+    (backend : EvidenceReportService (SettledEvidence setup mode))
     (profile : ∀ player,
-      (menu.information (initialLaw setup) horizon scheduler).BehavioralPolicy player)
-    (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
-    (who : Player) (remaining : Nat) (execution : (application setup leaks).Execution)
+      (menu.information (serviceInitialLaw setup mode) horizon scheduler).BehavioralPolicy player)
+    (history : (menu.protocol (serviceInitialLaw setup mode) horizon scheduler).History)
+    (who : Player) (remaining : Nat) (execution : (serviceApplication setup mode deadline
+      leaks).Execution)
     (current : history.state = some ⟨remaining, some who, execution⟩)
-    (info : (menu.information (initialLaw setup) horizon scheduler).InfoState who)
-    (choice : (menu.information (initialLaw setup) horizon scheduler).Choice who info)
-    (observed : (menu.information (initialLaw setup) horizon scheduler).infoOf who
+    (info : (menu.information (serviceInitialLaw setup mode) horizon scheduler).InfoState who)
+    (choice : (menu.information (serviceInitialLaw setup mode) horizon scheduler).Choice who info)
+    (observed : (menu.information (serviceInitialLaw setup mode) horizon scheduler).infoOf who
       history.trace = info)
     (classified : auditableServiceChoice setup leaks menu horizon scheduler who info choice)
     (observationRate deliveryRate : Player → ℝ)
     (delivery_nonnegative : ∀ player, 0 ≤ deliveryRate player)
     (coverage : FinalForbiddenEvidenceCoverage backend observationRate deliveryRate) :
     observationRate who * deliveryRate who ≤
-      expect ((menu.information (initialLaw setup) horizon scheduler).runBehavioralTerminalFrom
-        (menu.bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
+      expect ((menu.information (serviceInitialLaw setup mode) horizon
+        scheduler).runBehavioralTerminalFrom
+        (menu.bounded (serviceInitialLaw setup mode) horizon scheduler).wellFoundedHistories
         (Profile.update
-          (sig := (menu.information (initialLaw setup) horizon scheduler).behavioralSignature)
+          (sig := (menu.information (serviceInitialLaw setup mode) horizon
+            scheduler).behavioralSignature)
           profile who ((profile who).commit info choice)) history)
-        (fun final => TerminalAudit.charge ((runtime setup).serviceAuditObservation leaks)
-          (sourceServiceAudit setup leaks backend.sample) final.state who) := by
+        (fun final => TerminalAudit.charge ((serviceRuntime setup mode
+          deadline).serviceAuditObservation leaks)
+          (serviceSourceAudit setup mode deadline leaks backend.sample) final.state who) := by
+  obtain ⟨rfl, rfl⟩ := configuration
   classical
   let app := application setup leaks
   obtain ⟨past, view, response, inputEq, chosen, material, sent, auditable⟩ := classified
   have observedInput : info = app.observe who history.state :=
-    observed.symm.trans (menu.info (initialLaw setup) horizon scheduler who history.trace)
+    observed.symm.trans (menu.info (initialLaw setup) horizon scheduler who
+      history.trace)
   rw [current] at observedInput
   simp only [ReactiveApplication.observe, ↓reduceIte] at observedInput
   have same := Option.some.inj (inputEq.symm.trans observedInput)
@@ -209,7 +230,7 @@ theorem auditableServiceChoice_collection_committed
     profile history who remaining execution current info choice observed material selected ?_
     observationRate deliveryRate delivery_nonnegative coverage
   intro fuel final path control finalState complete
-  exact auditableServicePacket_forbidden_reaches setup leaks path
+  exact auditableServicePacket_forbidden_reaches setup leaks ⟨rfl, rfl⟩ path
     ⟨remaining, some who, execution⟩ control current finalState who _ rfl auditable complete
 
 end Vegas

@@ -353,7 +353,7 @@ native prior, is the source law. -/
 theorem initialLaw_bind_sourceContinuation (profile : BehavioralProfile setup.program) :
     (initialLaw setup).bind (fun state => sourceContinuation setup profile 0 state.config) =
       (setup.run profile).map some := by
-  rw [initialLaw, PMF.bind_map, Setup.run, PMF.map_bind]
+  rw [initialLaw, serviceInitialLaw, PMF.bind_map, Setup.run, PMF.map_bind]
   congr 1
   funext initial
   simp only [Function.comp_apply, sourceContinuation, sourceServicePrefix?_initial,

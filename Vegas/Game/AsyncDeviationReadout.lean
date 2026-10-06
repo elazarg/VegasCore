@@ -182,7 +182,7 @@ theorem asyncDeviation_initialized_prefix_factorization
     · change execution seed ∈ ((application setup leaks).roundsFrom (initialLaw setup) scheduler
         players 0).support
       unfold ReactiveApplication.roundsFrom
-      simp only [ReactiveApplication.runRounds, initialLaw]
+      simp only [ReactiveApplication.runRounds, initialLaw, serviceInitialLaw]
       exact (PMF.mem_support_bind_iff _ _ _).mpr ⟨_, (PMF.mem_support_map_iff _ _ _).mpr
         ⟨seed.val, seed.property, rfl⟩, (PMF.mem_support_pure_iff _ _).mpr rfl⟩
     · intro event _ observer entry member
@@ -217,7 +217,7 @@ theorem asyncDeviation_initialized_prefix_factorization
     (prior.bind fun seed => sourcePrefix seed.val).bind fun state =>
       (noise (setup.protocolObserve who state)).map fun extra => (state, extra) at law
   rw [nativeLaw, sourceLaw] at law
-  rw [initialLaw, PMF.bind_map, PMF.map_bind]
+  rw [initialLaw, serviceInitialLaw, PMF.bind_map, PMF.map_bind]
   exact law
 
 
@@ -241,22 +241,25 @@ terminal-state law of the source run in which that player follows one source
 behavioral policy, possibly binding failure, and every other player keeps its
 source policy. -/
 theorem asyncDeviation_readout_law [Finite Player]
-    (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
-    {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
-      delay bound)
-    (timely : AsyncTimely (runtime setup) delay bound) (turns : Nat)
+    (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
+    {deadline : (serviceGraph setup mode).EventId → Nat}
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+    (configuration : RankSequential setup mode deadline)
+    {horizon : Nat} {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {delay bound : (serviceGraph setup mode).EventId → Nat}
+    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+      (serviceInitialLaw setup mode) horizon scheduler delay bound)
+    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound) (turns : Nat)
     (original : BehavioralProfile setup.program)
-    (who : Player) (deviation : (application setup leaks).Policy) :
+    (who : Player) (deviation : (serviceApplication setup mode deadline leaks).Policy) :
     ∃ policy : BehavioralPolicy who setup.program,
-      ((application setup leaks).roundsFrom (initialLaw setup) scheduler
-        (deviatedTurnProfile bound turns (firstTurnTiming setup turns)
+      ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+        scheduler (deviatedTurnProfile bound turns (firstTurnTiming setup turns mode)
           (sourceServiceClientProfile setup original) who deviation) horizon).map
-          (fun execution => sourceReadout setup leaks ((application setup leaks).finished
-            execution)) =
+          (fun execution => serviceSourceReadout setup mode deadline leaks
+            ((serviceApplication setup mode deadline leaks).finished execution)) =
         (setup.run (Function.update original who policy)).map some := by
+  obtain ⟨rfl, rfl⟩ := configuration
   classical
   have := Fintype.ofFinite Player
   let app := application setup leaks
@@ -315,7 +318,7 @@ theorem asyncDeviation_readout_law [Finite Player]
         have same := runRounds_config_terminal scheduler players _ final next terminal moved
         change sourceReadout setup leaks (some ⟨0, none, next⟩) =
           sourceReadout setup leaks (some ⟨0, none, final⟩)
-        simp only [sourceReadout, Option.bind_some, same]), pmf_map_fun_const]
+        simp only [sourceReadout, serviceSourceReadout, Option.bind_some, same]), pmf_map_fun_const]
     rfl
   rw [physical]
   have projected := congrArg (PMF.map (fun pair => setup.protocolReadout pair.1)) joint

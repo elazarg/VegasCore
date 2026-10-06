@@ -71,7 +71,7 @@ theorem sourceService_initial_prefix_factorization
       setup.initialLaw.map (fun initial =>
         (some (ProtocolState.entry setup.program (setup.initialConfig initial)),
           traffic initial)) := by
-    simp only [initialLaw, PMF.map_comp, Function.comp_def]
+    simp only [initialLaw, serviceInitialLaw, PMF.map_comp, Function.comp_def]
     apply map_congr_on_support _
     intro initial _
     exact Prod.ext (sourceServicePrefix?_initial setup initial) rfl
@@ -1445,7 +1445,8 @@ theorem sourceServiceTimedPolicy_initialized_prefix_factorization [Fintype Playe
         (sourceServiceTimedPolicy setup leaks rosters timing profile) network
         (rosterPlanPrefix setup rosters 0)
         (ReactiveApplication.Execution.initial (application setup leaks) state)).support := by
-    simp only [rosterPlanPrefix, List.take_zero, List.flatMap_nil, runInteractionPlan, initialLaw]
+    simp only [rosterPlanPrefix, List.take_zero, List.flatMap_nil, runInteractionPlan, initialLaw,
+      serviceInitialLaw]
     exact (PMF.mem_support_bind_iff _ _ _).mpr ⟨_, (PMF.mem_support_map_iff _ _ _).mpr
       ⟨seed.val, seed.property, rfl⟩, (PMF.mem_support_pure_iff _ _).mpr rfl⟩
   obtain ⟨noise, law⟩ := sourceServiceTimedPolicy_prefix_joint_factorization setup leaks
@@ -1479,7 +1480,7 @@ theorem sourceServiceTimedPolicy_initialized_prefix_factorization [Fintype Playe
       (noise (setup.protocolObserve focal state)).map fun extra => (state, extra) at law
   rw [nativeLaw, sourceLaw] at law
   rw [setup.encoded_prefix_state]
-  rw [initialLaw, PMF.bind_map, PMF.map_bind]
+  rw [initialLaw, serviceInitialLaw, PMF.bind_map, PMF.map_bind]
   exact law
 
 /-- The compiler's original source policy is normalized only through the

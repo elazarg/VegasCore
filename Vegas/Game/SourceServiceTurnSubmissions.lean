@@ -169,7 +169,7 @@ theorem sourceServiceCanonicalPolicy_submitsAtTurn (profile : BehavioralProfile 
     (who : Player) :
     SubmitsAtTurn setup leaks (sourceServiceCanonicalPolicy setup leaks profile who) who := by
   intro past view response chosen event submitted
-  unfold sourceServiceCanonicalPolicy at chosen
+  unfold sourceServiceCanonicalPolicy serviceCanonicalPolicy at chosen
   split at chosen
   · rename_i identity
     split at chosen
@@ -195,7 +195,7 @@ theorem sourceServiceCanonicalOpportunity_submitsAtTurn (bound : (graph setup).E
     SubmitsAtTurn setup leaks
       (sourceServiceCanonicalOpportunity setup leaks bound profile who event) who := by
   intro past view response chosen other submitted
-  unfold sourceServiceCanonicalOpportunity at chosen
+  unfold sourceServiceCanonicalOpportunity serviceCanonicalOpportunity at chosen
   split at chosen
   · exact silentPolicy_submitsAtTurn setup leaks who past view response chosen other submitted
   · split at chosen
@@ -244,7 +244,7 @@ theorem sourceServiceTurnPolicy_submitsAtTurn (bound : (graph setup).EventId →
     SubmitsAtTurn setup leaks (sourceServiceTurnPolicy setup leaks bound turns timing profile who)
       who := by
   intro past view response chosen event submitted
-  unfold sourceServiceTurnPolicy at chosen
+  unfold sourceServiceTurnPolicy serviceTurnPolicy at chosen
   split at chosen
   · exact silentPolicy_submitsAtTurn setup leaks who past view response chosen event submitted
   · split at chosen
@@ -269,7 +269,7 @@ theorem decidedTurnPolicy_submitsAtTurn (bound : (graph setup).EventId → Nat) 
   split at chosen
   · rename_i first
     have turn : view.application.publicView.ownTurn? owner = some event := by
-      unfold sourceServiceTurn at first
+      unfold sourceServiceTurn serviceTurn at first
       split at first
       · assumption
       · cases first

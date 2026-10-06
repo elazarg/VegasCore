@@ -115,12 +115,24 @@ def serviceRuntime (setup : Setup (Player := Player) (L := L))
     EventGraphRuntime (serviceGraph setup mode) where
   deadline := deadline
 
+@[simp] theorem serviceRuntime_deadline (setup : Setup (Player := Player) (L := L))
+    (mode : EventGraph.ExecutionMode) (deadline : (serviceGraph setup mode).EventId → Nat) :
+    (serviceRuntime setup mode deadline).deadline = deadline := rfl
+
 /-- The default service runtime: the sequential graph with `rankDeadline`. -/
-def runtime (setup : Setup (Player := Player) (L := L)) : EventGraphRuntime (graph setup) where
-  deadline event := event.val + 1
+abbrev runtime (setup : Setup (Player := Player) (L := L)) : EventGraphRuntime (graph setup) :=
+  serviceRuntime setup .sequential (rankDeadline setup .sequential)
 
 theorem runtime_eq_serviceRuntime (setup : Setup (Player := Player) (L := L)) :
     runtime setup = serviceRuntime setup .sequential (rankDeadline setup .sequential) := rfl
+
+/-- A runtime configuration is the default one: the sequential dependency mode
+with rank deadlines. -/
+structure RankSequential (setup : Setup (Player := Player) (L := L))
+    (mode : EventGraph.ExecutionMode) (deadline : (serviceGraph setup mode).EventId → Nat) :
+    Prop where
+  sequential : mode = .sequential
+  rank : deadline = rankDeadline setup mode
 
 /-- The configured deadline of the default runtime is the event's index plus one. -/
 theorem runtime_deadline (setup : Setup (Player := Player) (L := L))
@@ -249,7 +261,7 @@ theorem block_of_owner (setup : Setup (Player := Player) (L := L)) (watcher owne
     block setup watcher event =
       [.player owner, .includeLatest event owner, .player watcher, .wire] ++
         List.replicate (event.val + 1) .tick ++ [.expire event] := by
-  simp only [block, owned, List.cons_append, List.nil_append, runtime]
+  simp only [block, owned, List.cons_append, List.nil_append, runtime_deadline]
 
 theorem block_length (setup : Setup (Player := Player) (L := L)) (watcher : Player)
     (reveals : setup.program.RevealOnly) (event : (graph setup).EventId) :
@@ -273,13 +285,38 @@ theorem plan_expiry_order (setup : Setup (Player := Player) (L := L)) (watcher :
   rw [← List.map_eq_flatMap]
   exact List.map_id _
 
+section Configured
+
+variable (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.ExecutionMode)
+  (deadline : (serviceGraph setup mode).EventId → Nat)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+
+/-- The reactive application of the service runtime of a dependency mode and a
+deadline configuration, under an observation rule for pending packets. -/
+abbrev serviceApplication := (serviceRuntime setup mode deadline).reactiveApplication leaks
+
+/-- The prior over initial values, compiled to initial states of the service
+graph of a dependency mode. -/
+def serviceInitialLaw : PMF (EventGraphRuntime.State (serviceGraph setup mode)) :=
+  setup.initialLaw.map (fun initial => EventGraphRuntime.State.initial (setup.eventInputs initial))
+
+/-- A finitely supported prior compiles to finitely many initial states. -/
+theorem serviceInitialLaw_support_finite [setup.FiniteInitialLaw] :
+    (serviceInitialLaw setup mode).support.Finite := by
+  rw [serviceInitialLaw, PMF.support_map]
+  exact setup.initialLaw_support_finite.image _
+
+end Configured
+
 variable (setup : Setup (Player := Player) (L := L))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
-abbrev application := (runtime setup).reactiveApplication leaks
+/-- The application of the default runtime. -/
+abbrev application := serviceApplication setup .sequential (rankDeadline setup .sequential) leaks
 
-def initialLaw : PMF (EventGraphRuntime.State (graph setup)) :=
-  setup.initialLaw.map (fun initial => EventGraphRuntime.State.initial (setup.eventInputs initial))
+/-- The initial law of the default sequential graph. -/
+abbrev initialLaw : PMF (EventGraphRuntime.State (graph setup)) :=
+  serviceInitialLaw setup .sequential
 
 /-- The fixed service consults only its own public command recall. Its network
 slot is idle: it includes nothing beyond the reserved inclusion of each owner's
@@ -296,9 +333,7 @@ deterministic. -/
 instance scheduler_finiteNature [setup.FiniteInitialLaw] [leaks.FiniteSupport]
     (watcher : Player) :
     (application setup leaks).FiniteNature (initialLaw setup) (scheduler setup leaks watcher) where
-  initial_finite := by
-    rw [initialLaw, PMF.support_map]
-    exact setup.initialLaw_support_finite.image _
+  initial_finite := serviceInitialLaw_support_finite setup .sequential
   scheduler_finite history view := by
     unfold scheduler
     split

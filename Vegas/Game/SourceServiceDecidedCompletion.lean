@@ -535,7 +535,7 @@ theorem sourceServiceTurn_first {owner : Player} {event : (graph setup).EventId}
     (first : sourceServiceTurn setup leaks owner event past view = some 0) :
     view.application.publicView.ownTurn? owner = some event ∧
       ∀ entry ∈ past, entry.beforeView.application.publicView.ownTurn? owner ≠ some event := by
-  unfold sourceServiceTurn at first
+  unfold sourceServiceTurn serviceTurn at first
   split at first
   · rename_i turn
     have counted := Option.some.inj first
@@ -565,7 +565,7 @@ theorem exists_first_turn {owner : Player} {event : (graph setup).EventId}
           · exact List.mem_singleton.mp final
         subst isLast
         refine ⟨rest, entry, [], by simp, ?_⟩
-        unfold sourceServiceTurn
+        unfold sourceServiceTurn serviceTurn
         simp only [turn, ↓reduceIte, Option.some.injEq]
         rw [List.countP_eq_zero]
         intro other member chosen

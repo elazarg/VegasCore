@@ -47,7 +47,7 @@ theorem bindingFrame_parameterReadout {Parameter : Type}
       repaired.execution.application.config.cut.Terminal := by
     unfold EventOrder.Cut.Terminal
     rw [completed]
-  unfold sourceReadout
+  unfold sourceReadout serviceSourceReadout
   simp only [Option.bind_some]
   by_cases done : original.execution.application.config.cut.Terminal
   · rw [ite_eq_left done, ite_eq_left (terminal.mp done)]
@@ -87,7 +87,7 @@ theorem bindingFrame_baseUtility {Parameter : Type}
     outcome.elim 0 (fun output => utility output who)) same
   cases first : sourceReadout setup leaks (some original) <;>
     cases second : sourceReadout setup leaks (some repaired) <;>
-    simp only [baseUtility, first, second, Option.map_none, Option.map_some,
+    simp only [baseUtility, serviceBaseUtility, first, second, Option.map_none, Option.map_some,
       Option.elim_none, Option.elim_some] at value ⊢
   all_goals exact value
 

@@ -32,14 +32,18 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 
 /-- The same immediate policy is used at every information history. Its
 irrelevant finite-menu fallback is only used when an input lacks admission. -/
-def sourceServiceImmediateComparator
-    (bounds : MessageBounds (graph setup)) (bound : (graph setup).EventId → Nat)
-    (horizon : Nat) (scheduler : (application setup leaks).Scheduler)
+def sourceServiceImmediateComparator {mode : EventGraph.ExecutionMode}
+    {deadline : (serviceGraph setup mode).EventId → Nat}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
+    (bounds : MessageBounds (serviceGraph setup mode))
+    (bound : (serviceGraph setup mode).EventId → Nat) (horizon : Nat)
+    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
     (profile : BehavioralProfile setup.program) (who : Player) :
-    ((bounds.riskMenu (runtime setup) leaks bound).information (initialLaw setup) horizon
-      scheduler).BehavioralPolicy who :=
-  (bounds.riskMenu (runtime setup) leaks bound).restrictPolicy (initialLaw setup) horizon
-    scheduler who (sourceServiceImmediatePolicy setup leaks bound profile who)
+    ((bounds.riskMenu (serviceRuntime setup mode deadline) leaks bound).information
+      (serviceInitialLaw setup mode) horizon scheduler).BehavioralPolicy who :=
+  (bounds.riskMenu (serviceRuntime setup mode deadline) leaks bound).restrictPolicy
+    (serviceInitialLaw setup mode) horizon scheduler who
+    (serviceImmediatePolicy setup mode deadline leaks bound profile who)
 
 /-- Whole-policy replacement has exactly the actual physical continuation
 law. Opponent policies are arbitrary policies of the risk-menu information
@@ -244,44 +248,61 @@ theorem sourceServiceImmediateComparator_charge_zero_at_information
 certificate for every belief at the same clear information site. The chosen
 policy is fixed before the belief and shared by all hidden histories. -/
 theorem sourceServiceImmediateComparator_clean_lower
-    (bounds : MessageBounds (graph setup)) (covered : bounds.CoversBindingValues)
-    (initialCovered : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
-    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
-    {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
-    {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
+    {mode : EventGraph.ExecutionMode} {deadline : (serviceGraph setup mode).EventId → Nat}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
+    (configuration : RankSequential setup mode deadline)
+    (bounds : MessageBounds (serviceGraph setup mode)) (covered : bounds.CoversBindingValues)
+    (initialCovered : ∀ state ∈ (serviceInitialLaw setup mode).support, bounds.CandidateValues
+      state)
+    (capacity : (serviceGraph setup mode).order.eventCount ≤ bounds.candidateCount)
+    {horizon : Nat} {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {delay bound : (serviceGraph setup mode).EventId → Nat}
+    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks (serviceInitialLaw setup
+      mode) horizon scheduler
       delay bound)
-    (timely : AsyncTimely (runtime setup) delay bound)
+    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
     (profile : BehavioralProfile setup.program) (who : Player)
     (permitted : (profile who).Admitted setup.program (CommitmentInterface.values _))
-    (certificate : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup)
+    (certificate : ((bounds.riskMenu (serviceRuntime setup mode deadline) leaks bound).protocol
+      (serviceInitialLaw setup mode)
       horizon scheduler).WellFoundedHistories)
-    (baseline : ∀ player, ((bounds.riskMenu (runtime setup) leaks bound).information
-      (initialLaw setup) horizon scheduler).BehavioralPolicy player)
-    (site : ((bounds.riskMenu (runtime setup) leaks bound).information (initialLaw setup) horizon
+    (baseline : ∀ player, ((bounds.riskMenu (serviceRuntime setup mode deadline) leaks
+      bound).information
+      (serviceInitialLaw setup mode) horizon scheduler).BehavioralPolicy player)
+    (site : ((bounds.riskMenu (serviceRuntime setup mode deadline) leaks bound).information
+      (serviceInitialLaw setup mode) horizon
       scheduler).InformationSite who)
-    (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView)
+    (past : List (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (view : (serviceApplication setup mode deadline leaks).PlayerView)
     (observed : site.1 = some (past, view))
-    (clear : (runtime setup).serviceRisk leaks bound who past view = false)
-    (sample : List (SettledEvidence setup) → PMF (List (SettledEvidence setup)))
+    (clear : (serviceRuntime setup mode deadline).serviceRisk leaks bound who past view = false)
+    (sample : List (SettledEvidence setup mode) → PMF (List (SettledEvidence setup mode)))
     (authentic : ∀ actual evidence, evidence ∈ (sample actual).support → evidence ⊆ actual)
-    (base : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup) horizon
+    (base : ((bounds.riskMenu (serviceRuntime setup mode deadline) leaks bound).protocol
+      (serviceInitialLaw setup mode) horizon
       scheduler).History → ℝ) (lower : ℝ)
-    (bounded : ∀ final, (application setup leaks).terminal final.state → lower ≤ base final)
-    (belief : PMF (((bounds.riskMenu (runtime setup) leaks bound).information (initialLaw setup)
+    (bounded : ∀ final, (serviceApplication setup mode deadline leaks).terminal final.state → lower
+      ≤ base final)
+    (belief : PMF (((bounds.riskMenu (serviceRuntime setup mode deadline) leaks bound).information
+      (serviceInitialLaw setup mode)
       horizon scheduler).InformationHistory who site.1)) :
-    ∃ alternative : ((bounds.riskMenu (runtime setup) leaks bound).information (initialLaw setup)
+    ∃ alternative : ((bounds.riskMenu (serviceRuntime setup mode deadline) leaks bound).information
+      (serviceInitialLaw setup mode)
       horizon scheduler).BehavioralPolicy who,
     alternative = sourceServiceImmediateComparator bounds bound horizon scheduler profile who ∧
       ∀ history ∈ belief.support,
-      ∀ final ∈ (((bounds.riskMenu (runtime setup) leaks bound).information (initialLaw setup)
+      ∀ final ∈ (((bounds.riskMenu (serviceRuntime setup mode deadline) leaks bound).information
+        (serviceInitialLaw setup mode)
         horizon scheduler).runBehavioralTerminalFrom certificate
-          (Profile.update (sig := ((bounds.riskMenu (runtime setup) leaks bound).information
-            (initialLaw setup) horizon scheduler).behavioralSignature) baseline who alternative)
+          (Profile.update (sig := ((bounds.riskMenu (serviceRuntime setup mode deadline) leaks
+            bound).information
+            (serviceInitialLaw setup mode) horizon scheduler).behavioralSignature) baseline who
+              alternative)
           history.1).support,
-        lower ≤ base final ∧ TerminalAudit.charge ((runtime setup).serviceAuditObservation leaks)
-          (sourceServiceAudit setup leaks sample) final.state who = 0 := by
+        lower ≤ base final ∧ TerminalAudit.charge ((serviceRuntime setup mode
+          deadline).serviceAuditObservation leaks)
+          (serviceSourceAudit setup mode deadline leaks sample) final.state who = 0 := by
+  obtain ⟨rfl, rfl⟩ := configuration
   refine ⟨sourceServiceImmediateComparator bounds bound horizon scheduler profile who, rfl, ?_⟩
   intro history _ final reached
   refine ⟨bounded final ?_, ?_⟩

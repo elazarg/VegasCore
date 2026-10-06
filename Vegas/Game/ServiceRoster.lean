@@ -59,7 +59,7 @@ instance rosterScheduler_finiteNature (setup : Setup (Player := Player) (L := L)
     (application setup leaks).FiniteNature (initialLaw setup)
       (rosterScheduler setup leaks rosters network) where
   initial_finite := by
-    rw [initialLaw, PMF.support_map]
+    rw [initialLaw, serviceInitialLaw, PMF.support_map]
     exact setup.initialLaw_support_finite.image _
   scheduler_finite past view := by
     unfold rosterScheduler

@@ -26,41 +26,47 @@ open SourceProgram Interaction EventGraphRuntime GameTheory.Protocol
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+  {mode : EventGraph.ExecutionMode} {deadline : (serviceGraph setup mode).EventId → Nat}
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 /-- Actual own recall and current view determine the entire next signed
 envelope, including sender serial, even for arbitrary private material. -/
 theorem sourceService_response_envelope_eq
     {horizon leftRemaining rightRemaining : Nat}
-    {scheduler : (application setup leaks).Scheduler}
-    (left right : (application setup leaks).Execution) (who : Player)
-    (material : (application setup leaks).Submission)
-    (leftTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    (left right : (serviceApplication setup mode deadline leaks).Execution) (who : Player)
+    (material : (serviceApplication setup mode deadline leaks).Submission)
+    (leftTrace : ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup
+      mode) horizon scheduler).Trace
       (some ⟨leftRemaining, some who, left⟩))
-    (rightTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    (rightTrace : ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup
+      mode) horizon scheduler).Trace
       (some ⟨rightRemaining, some who, right⟩))
     (past : left.recall who = right.recall who)
-    (view : left.observe (application setup leaks) who =
-      right.observe (application setup leaks) who) :
-    (⟨(who, left.network.nextSerial who), (application setup leaks).packet
-      ((application setup leaks).submit left.application who material) who
-        (left.network.known who) material⟩ : Message Player (WitnessedPacket (graph setup))) =
-      ⟨(who, right.network.nextSerial who), (application setup leaks).packet
-        ((application setup leaks).submit right.application who material) who
+    (view : left.observe (serviceApplication setup mode deadline leaks) who =
+      right.observe (serviceApplication setup mode deadline leaks) who) :
+    (⟨(who, left.network.nextSerial who), (serviceApplication setup mode deadline leaks).packet
+      ((serviceApplication setup mode deadline leaks).submit left.application who material) who
+        (left.network.known who) material⟩ : Message Player (WitnessedPacket (serviceGraph setup
+          mode))) =
+      ⟨(who, right.network.nextSerial who), (serviceApplication setup mode deadline leaks).packet
+        ((serviceApplication setup mode deadline leaks).submit right.application who material) who
           (right.network.known who) material⟩ := by
-  let app := application setup leaks
+  let app := serviceApplication setup mode deadline leaks
   have leftRecall : left.InputRecall app :=
-    app.history_inputRecall (initialLaw setup) horizon scheduler leftTrace
+    app.history_inputRecall (serviceInitialLaw setup mode) horizon scheduler leftTrace
   have rightRecall : right.InputRecall app :=
-    app.history_inputRecall (initialLaw setup) horizon scheduler rightTrace
-  have known := (runtime setup).known_eq_of_input_eq leaks left right who leftRecall rightRecall
+    app.history_inputRecall (serviceInitialLaw setup mode) horizon scheduler rightTrace
+  have known := (serviceRuntime setup mode deadline).known_eq_of_input_eq leaks left right who
+    leftRecall rightRecall
     past view
-  have packet := (runtime setup).response_packet_eq_of_input_eq leaks left right who material
+  have packet := (serviceRuntime setup mode deadline).response_packet_eq_of_input_eq leaks left
+    right who material
     view known
   have leftSerial : left.SerialRecall app :=
-    app.serialRecall_history scheduler (initialLaw setup) horizon leftTrace
+    app.serialRecall_history scheduler (serviceInitialLaw setup mode) horizon leftTrace
   have rightSerial : right.SerialRecall app :=
-    app.serialRecall_history scheduler (initialLaw setup) horizon rightTrace
+    app.serialRecall_history scheduler (serviceInitialLaw setup mode) horizon rightTrace
   have serial : left.network.nextSerial who = right.network.nextSerial who :=
     (leftSerial who).trans ((congrArg app.submissionCount past).trans (rightSerial who).symm)
   exact congrArg₂ Message.mk (congrArg (fun counter => (who, counter)) serial) packet
@@ -76,41 +82,50 @@ auditable classification. Legal recall reconstructs its signed envelope;
 no uniform hidden-history breach premise is assumed. -/
 theorem auditableBreachAtSite_of_signed_witness
     (who : Player)
-    (site : ((service.bounds.riskMenu (runtime service.setup) service.leaks
-      service.bound).information (initialLaw service.setup) service.horizon
+    (site : ((service.bounds.riskMenu (serviceRuntime service.setup service.mode service.deadline)
+      service.leaks
+      service.bound).information (serviceInitialLaw service.setup service.mode) service.horizon
         service.scheduler).InformationSite who)
-    (action : ((service.bounds.menu (runtime service.setup) service.leaks).information
-      (initialLaw service.setup) service.horizon service.scheduler).Choice who
+    (action : ((service.bounds.menu (serviceRuntime service.setup service.mode service.deadline)
+      service.leaks).information
+      (serviceInitialLaw service.setup service.mode) service.horizon service.scheduler).Choice who
         ((service.riskRestriction.site who site).1))
-    (witness : ((service.bounds.riskMenu (runtime service.setup) service.leaks
-      service.bound).information (initialLaw service.setup) service.horizon
+    (witness : ((service.bounds.riskMenu (serviceRuntime service.setup service.mode
+      service.deadline) service.leaks
+      service.bound).information (serviceInitialLaw service.setup service.mode) service.horizon
         service.scheduler).InformationHistory who site.1)
-    (remaining : Nat) (execution : (application service.setup service.leaks).Execution)
+    (remaining : Nat) (execution : (serviceApplication service.setup service.mode service.deadline
+      service.leaks).Execution)
     (current : witness.1.state = some ⟨remaining, some who, execution⟩)
-    (material : (application service.setup service.leaks).Submission)
+    (material : (serviceApplication service.setup service.mode service.deadline
+      service.leaks).Submission)
     (selected : action.1 = some ⟨some material⟩)
     (breach : SignedContentBreach (⟨(who, execution.network.nextSerial who),
-      (application service.setup service.leaks).packet
-        ((application service.setup service.leaks).submit execution.application who material)
+      (serviceApplication service.setup service.mode service.deadline service.leaks).packet
+        ((serviceApplication service.setup service.mode service.deadline service.leaks).submit
+          execution.application who material)
           who (execution.network.known who) material⟩ :
-            Message Player (WitnessedPacket (graph service.setup)))) :
+            Message Player (WitnessedPacket (serviceGraph service.setup service.mode)))) :
     service.auditableBreachAtSite who site action := by
-  let app := application service.setup service.leaks
-  let menu := service.bounds.riskMenu (runtime service.setup) service.leaks service.bound
+  let app := serviceApplication service.setup service.mode service.deadline service.leaks
+  let menu := service.bounds.riskMenu (serviceRuntime service.setup service.mode service.deadline)
+    service.leaks service.bound
   have input : (service.riskRestriction.site who site).1 =
       some (execution.recall who, execution.observe app who) := by
     change site.1 = _
     calc
-      site.1 = (menu.information (initialLaw service.setup) service.horizon
+      site.1 = (menu.information (serviceInitialLaw service.setup service.mode) service.horizon
           service.scheduler).infoOf who witness.1.trace := witness.2.symm
       _ = app.observe who witness.1.state :=
-        menu.info (initialLaw service.setup) service.horizon service.scheduler who witness.1.trace
+        menu.info (serviceInitialLaw service.setup service.mode) service.horizon service.scheduler
+          who witness.1.trace
       _ = some (execution.recall who, execution.observe app who) := by
         rw [current]
         simp only [ReactiveApplication.observe, ↓reduceIte]
-  have rawTrace : (app.protocol (initialLaw service.setup) service.horizon
+  have rawTrace : (app.protocol (serviceInitialLaw service.setup service.mode) service.horizon
       service.scheduler).Trace (some ⟨remaining, some who, execution⟩) :=
-    current ▸ menu.toRawTrace (initialLaw service.setup) service.horizon service.scheduler
+    current ▸ menu.toRawTrace (serviceInitialLaw service.setup service.mode) service.horizon
+      service.scheduler
       witness.1.trace
   refine ⟨execution.recall who, execution.observe app who, ⟨some material⟩, input, selected,
     material, rfl, Or.inl ?_⟩

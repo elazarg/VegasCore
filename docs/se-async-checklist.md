@@ -384,8 +384,21 @@ joint law. It is not pursued.
   statement is unchanged. In every mode a ready event is its actor's turn
   (`serviceOwnTurn?_of_ready`); a ready public event is the only ready event in
   every mode that keeps reveal dependencies (`soleReady_of_ready_public`) and a
-  ready sample is in every mode (`soleReady_of_ready_public_data`). The Nash and
-  SE chains are still stated for the default sequential runtime only.
+  ready sample is in every mode (`soleReady_of_ready_public_data`).
+  `AsyncServiceSpec` carries the dependency mode and a configured deadline
+  per event, with the contract and timeliness stated against that deadline;
+  the application, initial law, readout, base utility, audit, canonical, turn
+  and client policies are defined for every configuration
+  (`serviceApplication`, `serviceInitialLaw`, `serviceSourceReadout`,
+  `serviceBaseUtility`, `serviceSourceAudit`, `serviceCanonicalPolicy`,
+  `serviceTurnPolicy`, `serviceClientPolicy`), the default names being their
+  sequential instances. The source-prefix decoder reads completions in rank
+  order (`serviceSourcePrefix?`, `EventGraph.Config.rankedHistory`) and agrees
+  with the chronological decoder on reachable sequential configurations
+  (`serviceSourcePrefix?_sequential`). The asynchronous Nash pins take a
+  service with its configuration and still assume the default configuration
+  (`RankSequential`: sequential mode with rank deadlines); the Nash and SE
+  chains below them are still proved for that configuration only.
 - [ ] **C3. Concurrent reveals.** Under the forfeit pass, reveals that the game
   does not order (no guard or later decision reads one before the other) run
   concurrently, and the target theorem holds for that graph; or a

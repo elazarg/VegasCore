@@ -367,7 +367,7 @@ theorem sourceServiceTurn_of_ready {owner : Player} {event : (graph setup).Event
     sourceServiceTurn setup leaks owner event (execution.recall owner)
         (execution.observe (application setup leaks) owner) =
       some (ownerTurns owner event execution) := by
-  unfold sourceServiceTurn ownerTurns
+  unfold sourceServiceTurn serviceTurn ownerTurns
   split
   · rfl
   · rename_i idle

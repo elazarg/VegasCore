@@ -36,35 +36,46 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 /-- The actual nested-menu action restriction changes no application state,
 observation, response or scheduler step. -/
 def riskRestriction :
-    ((service.bounds.riskMenu (runtime service.setup) service.leaks service.bound).information
-      (initialLaw service.setup) service.horizon service.scheduler).ActionRestriction
-      ((service.bounds.menu (runtime service.setup) service.leaks).information
-        (initialLaw service.setup) service.horizon service.scheduler) :=
+    ((service.bounds.riskMenu (serviceRuntime service.setup service.mode service.deadline)
+      service.leaks service.bound).information
+      (serviceInitialLaw service.setup service.mode) service.horizon
+        service.scheduler).ActionRestriction
+      ((service.bounds.menu (serviceRuntime service.setup service.mode service.deadline)
+        service.leaks).information
+        (serviceInitialLaw service.setup service.mode) service.horizon service.scheduler) :=
   ReactiveApplication.ResponseMenu.IncludedIn.actionRestriction
-    (service.bounds.riskMenu_in_effective (runtime service.setup) service.leaks service.bound)
-    (initialLaw service.setup) service.horizon service.scheduler
+    (service.bounds.riskMenu_in_effective (serviceRuntime service.setup service.mode
+      service.deadline) service.leaks service.bound)
+    (serviceInitialLaw service.setup service.mode) service.horizon service.scheduler
 
 /-- An excluded choice has the same concrete recall and view throughout its
 information site, and that local view has clear full service risk. Risky sites
 already admit every bounded effective response. -/
 theorem riskRestriction_extra_clear
     (who : Player)
-    (site : ((service.bounds.riskMenu (runtime service.setup) service.leaks
-      service.bound).information (initialLaw service.setup) service.horizon
+    (site : ((service.bounds.riskMenu (serviceRuntime service.setup service.mode service.deadline)
+      service.leaks
+      service.bound).information (serviceInitialLaw service.setup service.mode) service.horizon
         service.scheduler).InformationSite who)
-    (action : ((service.bounds.menu (runtime service.setup) service.leaks).information
-      (initialLaw service.setup) service.horizon service.scheduler).Choice who
+    (action : ((service.bounds.menu (serviceRuntime service.setup service.mode service.deadline)
+      service.leaks).information
+      (serviceInitialLaw service.setup service.mode) service.horizon service.scheduler).Choice who
         ((service.riskRestriction.site who site).1))
     (extra : action ∉ Set.range (service.riskRestriction.choice who site.1)) :
     ∃ past view response,
       site.1 = some (past, view) ∧ action.1 = some response ∧
-        response ∈ (service.bounds.menu (runtime service.setup) service.leaks).actions who
+        response ∈ (service.bounds.menu (serviceRuntime service.setup service.mode
+          service.deadline) service.leaks).actions who
           past view ∧
-        response ∉ service.bounds.riskActions (runtime service.setup) service.leaks service.bound
+        response ∉ service.bounds.riskActions (serviceRuntime service.setup service.mode
+          service.deadline) service.leaks service.bound
           who past view ∧
-        (runtime service.setup).serviceRisk service.leaks service.bound who past view = false := by
-  let effective := service.bounds.menu (runtime service.setup) service.leaks
-  let included := service.bounds.riskMenu_in_effective (runtime service.setup) service.leaks
+        (serviceRuntime service.setup service.mode service.deadline).serviceRisk service.leaks
+          service.bound who past view = false := by
+  let effective := service.bounds.menu (serviceRuntime service.setup service.mode service.deadline)
+    service.leaks
+  let included := service.bounds.riskMenu_in_effective (serviceRuntime service.setup service.mode
+    service.deadline) service.leaks
     service.bound
   rcases site with ⟨info, occurs⟩
   cases info with
@@ -72,29 +83,36 @@ theorem riskRestriction_extra_clear
       obtain ⟨_, _, response, member⟩ := occurs
       cases member
   | some data =>
-      change (effective.information (initialLaw service.setup) service.horizon
+      change (effective.information (serviceInitialLaw service.setup service.mode) service.horizon
         service.scheduler).Choice
         who (some data) at action
-      change action ∉ Set.range ((included.actionRestriction (initialLaw service.setup)
+      change action ∉ Set.range ((included.actionRestriction (serviceInitialLaw service.setup
+        service.mode)
         service.horizon service.scheduler).choice who (some data)) at extra
       obtain ⟨response, value, available, absent⟩ := included.extra_choice_response
-        (initialLaw service.setup) service.horizon service.scheduler who data.1 data.2 action extra
+        (serviceInitialLaw service.setup service.mode) service.horizon service.scheduler who data.1
+          data.2 action extra
       refine ⟨data.1, data.2, response, rfl, value, available, absent, ?_⟩
-      cases risk : (runtime service.setup).serviceRisk service.leaks service.bound who
+      cases risk : (serviceRuntime service.setup service.mode service.deadline).serviceRisk
+        service.leaks service.bound who
           data.1 data.2 with
       | false => rfl
       | true =>
-          have same := service.bounds.riskActions_of_risk (runtime service.setup) service.leaks
+          have same := service.bounds.riskActions_of_risk (serviceRuntime service.setup
+            service.mode service.deadline) service.leaks
             service.bound who data.1 data.2 risk
-          change response ∉ service.bounds.riskActions (runtime service.setup) service.leaks
+          change response ∉ service.bounds.riskActions (serviceRuntime service.setup service.mode
+            service.deadline) service.leaks
             service.bound who data.1 data.2 at absent
           exact (absent (same.symm ▸ available)).elim
 
 local instance effectiveHistory_nonempty :
-    Nonempty ((service.bounds.menu (runtime service.setup) service.leaks).protocol
-      (initialLaw service.setup) service.horizon service.scheduler).History :=
-  ⟨((service.bounds.menu (runtime service.setup) service.leaks).protocol
-    (initialLaw service.setup) service.horizon service.scheduler).initHistory⟩
+    Nonempty ((service.bounds.menu (serviceRuntime service.setup service.mode service.deadline)
+      service.leaks).protocol
+      (serviceInitialLaw service.setup service.mode) service.horizon service.scheduler).History :=
+  ⟨((service.bounds.menu (serviceRuntime service.setup service.mode service.deadline)
+    service.leaks).protocol
+    (serviceInitialLaw service.setup service.mode) service.horizon service.scheduler).initHistory⟩
 
 /-- A charged excluded response is classified directly from the information
 state and chosen material. Constructor breaches, noncanonical current-event
@@ -102,14 +120,17 @@ handles and current-event guard failures are auditable. No hidden-history
 quantification, new runtime observation or gate is introduced. -/
 def auditableBreachAtSite
     (who : Player)
-    (site : ((service.bounds.riskMenu (runtime service.setup) service.leaks
-      service.bound).information (initialLaw service.setup) service.horizon
+    (site : ((service.bounds.riskMenu (serviceRuntime service.setup service.mode service.deadline)
+      service.leaks
+      service.bound).information (serviceInitialLaw service.setup service.mode) service.horizon
         service.scheduler).InformationSite who)
-    (action : ((service.bounds.menu (runtime service.setup) service.leaks).information
-      (initialLaw service.setup) service.horizon service.scheduler).Choice who
+    (action : ((service.bounds.menu (serviceRuntime service.setup service.mode service.deadline)
+      service.leaks).information
+      (serviceInitialLaw service.setup service.mode) service.horizon service.scheduler).Choice who
         ((service.riskRestriction.site who site).1)) : Prop :=
   auditableServiceChoice service.setup service.leaks
-    (service.bounds.menu (runtime service.setup) service.leaks) service.horizon service.scheduler
+    (service.bounds.menu (serviceRuntime service.setup service.mode service.deadline)
+      service.leaks) service.horizon service.scheduler
     who (service.riskRestriction.site who site).1 action
 
 open Classical in
@@ -119,19 +140,23 @@ One policy serves all hidden histories under the specified belief. Private
 binding material and certificate capabilities remain explicit obligations. -/
 def riskOtherExclusionComparisons
     (utility : State L service.setup.program.terminalCtx → Player → ℝ)
-    (sample : List (SettledEvidence service.setup) → PMF (List (SettledEvidence service.setup)))
+    (sample : List (SettledEvidence service.setup service.mode) → PMF (List (SettledEvidence
+      service.setup service.mode)))
     (deposit : Player → ℝ) : Prop :=
-  let menu := service.bounds.riskMenu (runtime service.setup) service.leaks service.bound
-  let effective := service.bounds.menu (runtime service.setup) service.leaks
-  let initial := initialLaw service.setup
+  let menu := service.bounds.riskMenu (serviceRuntime service.setup service.mode service.deadline)
+    service.leaks service.bound
+  let effective := service.bounds.menu (serviceRuntime service.setup service.mode service.deadline)
+    service.leaks
+  let initial := serviceInitialLaw service.setup service.mode
   let count := service.horizon
   let scheduler := service.scheduler
   let restriction := service.riskRestriction
   let sourceCertificate := (menu.bounded initial count scheduler).wellFoundedHistories
   let targetCertificate := (effective.bounded initial count scheduler).wellFoundedHistories
-  let base := baseUtility service.setup service.leaks utility
-  let observe := (runtime service.setup).serviceAuditObservation service.leaks
-  let audit := sourceServiceAudit service.setup service.leaks sample
+  let base := serviceBaseUtility service.setup service.mode service.deadline service.leaks utility
+  let observe := (serviceRuntime service.setup service.mode
+    service.deadline).serviceAuditObservation service.leaks
+  let audit := serviceSourceAudit service.setup service.mode service.deadline service.leaks sample
   let payoff := TerminalAudit.utility base observe audit deposit
   ∀ (sourceProfile : ∀ who, (menu.information initial count scheduler).BehavioralPolicy who)
     (targetProfile : ∀ who, (effective.information initial count scheduler).BehavioralPolicy who),
@@ -173,8 +198,9 @@ each classified excluded packet without independence or a continuation-fuel
 premise. The other comparison requires one legal continuation shared across
 the belief's hidden histories. Both remain hypotheses. -/
 theorem risk_sequentialEquilibrium_extends
+    (configuration : service.RankSequential)
     (utility : State L service.setup.program.terminalCtx → Player → ℝ)
-    (backend : EvidenceReportService (SettledEvidence service.setup))
+    (backend : EvidenceReportService (SettledEvidence service.setup service.mode))
     (observationRate deliveryRate : Player → ℝ)
     (delivery_nonnegative : ∀ who, 0 ≤ deliveryRate who)
     (positive : ∀ who, 0 < observationRate who * deliveryRate who)
@@ -182,9 +208,11 @@ theorem risk_sequentialEquilibrium_extends
     (reference : BehavioralProfile service.setup.program)
     (permitted : ∀ who, (reference who).Admitted service.setup.program
       (CommitmentInterface.values _)) :
-    let menu := service.bounds.riskMenu (runtime service.setup) service.leaks service.bound
-    let effective := service.bounds.menu (runtime service.setup) service.leaks
-    let initial := initialLaw service.setup
+    let menu := service.bounds.riskMenu (serviceRuntime service.setup service.mode
+      service.deadline) service.leaks service.bound
+    let effective := service.bounds.menu (serviceRuntime service.setup service.mode
+      service.deadline) service.leaks
+    let initial := serviceInitialLaw service.setup service.mode
     let count := service.horizon
     let scheduler := service.scheduler
     let restriction := service.riskRestriction
@@ -192,10 +220,11 @@ theorem risk_sequentialEquilibrium_extends
     let targetCertificate := (effective.bounded initial count scheduler).wellFoundedHistories
     let probability := fun who => observationRate who * deliveryRate who
     let sample := backend.sample
-    let base := baseUtility service.setup service.leaks utility
+    let base := serviceBaseUtility service.setup service.mode service.deadline service.leaks utility
     let deposit := service.auditDeposit base probability
-    let audit := sourceServiceAudit service.setup service.leaks sample
-    let observe := (runtime service.setup).serviceAuditObservation service.leaks
+    let audit := serviceSourceAudit service.setup service.mode service.deadline service.leaks sample
+    let observe := (serviceRuntime service.setup service.mode
+      service.deadline).serviceAuditObservation service.leaks
     let payoff := TerminalAudit.utility base observe audit deposit
     let settle := TerminalAudit.settlement base observe audit deposit
     service.riskOtherExclusionComparisons utility sample deposit →
@@ -254,7 +283,7 @@ theorem risk_sequentialEquilibrium_extends
         exact le_of_eq (by ring))
       (fun _ who _ _ _ _ _ final _ => (effectiveBounds who final).2)
       (fun targetProfile who site action _ breach history => by
-        let app := application service.setup service.leaks
+        let app := serviceApplication service.setup service.mode service.deadline service.leaks
         have classified : auditableServiceChoice service.setup service.leaks effective count
             scheduler who (restriction.site who site).1 action := breach
         obtain ⟨past, view, _response, input, _⟩ := classified
@@ -276,6 +305,7 @@ theorem risk_sequentialEquilibrium_extends
             change actor = some who at active
             subst actor
             exact auditableServiceChoice_collection_committed service.setup service.leaks
+              configuration
               effective count scheduler service.completes backend targetProfile
               (restriction.history history.1) who remaining execution current
               (restriction.site who site).1 action observed breach observationRate deliveryRate
@@ -284,7 +314,8 @@ theorem risk_sequentialEquilibrium_extends
         obtain ⟨past, view, _response, observed, _, _, _, clear⟩ :=
           service.riskRestriction_extra_clear who site action extra
         obtain ⟨alternative, _fixed, clean⟩ := sourceServiceImmediateComparator_clean_lower
-          service.bounds service.values service.initialValues service.capacity service.contract
+          configuration service.bounds service.values service.initialValues service.capacity
+            service.contract
           service.timely reference who (permitted who) sourceCertificate sourceProfile site past
           view observed clear sample backend.sample_authentic (fun final => base final.state who)
           (FinitePayoffBounds.lower (extremum who))

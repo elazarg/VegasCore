@@ -99,12 +99,12 @@ theorem sourceServiceCanonicalOpportunity_binding_call {horizon remaining : Nat}
       (middle.observe (application setup leaks) who).application.publicView event := fits
   have fresh := canonicalSlot_fresh_of_used trace who atTurn slots event turn unrecorded
   have canonical := canonicalFreshSlot_canonical who (middle.observe app who).application fresh
-  unfold sourceServiceCanonicalOpportunity at chosen
+  unfold sourceServiceCanonicalOpportunity serviceCanonicalOpportunity at chosen
   simp only [unrecorded, Bool.false_eq_true, ↓reduceIte] at chosen
   rw [ite_eq_left fitsView] at chosen
   rw [PMF.support_bind] at chosen
   obtain ⟨decided, sampled, after⟩ := Set.mem_iUnion₂.mp chosen
-  rw [sourceServiceCanonicalPolicy_at_event setup leaks profile who middle event turn owned,
+  simp only [sourceServiceCanonicalPolicy_at_event setup leaks profile who middle event turn owned,
     PMF.support_map] at sampled
   obtain ⟨action, _, rfl⟩ := sampled
   let choice : PublicationResult (L.Val payload) :=

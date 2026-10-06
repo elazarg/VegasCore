@@ -157,7 +157,7 @@ theorem timedCanonical_boundaryContinuationWithin [Finite Player]
   induction gap with
   | zero =>
       intro rank execution gapEq boundary bounded
-      have within := boundary.ordered.1
+      have within : rank ≤ (graph setup).order.eventCount := boundary.ordered.1
       have rankEq : rank = (graph setup).order.eventCount := by omega
       subst rankEq
       rw [boundary.terminal_continuation (profile := profile)]
@@ -169,7 +169,7 @@ theorem timedCanonical_boundaryContinuationWithin [Finite Player]
             boundary.ordered reached
           change sourceReadout setup leaks (some ⟨0, none, next⟩) =
             sourceReadout setup leaks (some ⟨0, none, execution⟩)
-          simp only [sourceReadout, Option.bind_some, same])]
+          simp only [sourceReadout, serviceSourceReadout, Option.bind_some, same])]
         exact PMF.map_const _ _
       rw [frozen]
       exact (PMF.WithinTV.refl _).mono (expiryMass_nonneg _ _ _ _ _)

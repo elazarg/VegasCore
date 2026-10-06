@@ -92,7 +92,8 @@ theorem sourceServiceDeviation_initialized_prefix_factorization
       (runtime setup).runInteractionPlan leaks players network
         (rosterPlanPrefix setup rosters 0)
         (ReactiveApplication.Execution.initial (application setup leaks) state)).support := by
-    simp only [rosterPlanPrefix, List.take_zero, List.flatMap_nil, runInteractionPlan, initialLaw]
+    simp only [rosterPlanPrefix, List.take_zero, List.flatMap_nil, runInteractionPlan, initialLaw,
+      serviceInitialLaw]
     exact (PMF.mem_support_bind_iff _ _ _).mpr ⟨_, (PMF.mem_support_map_iff _ _ _).mpr
       ⟨seed.val, seed.property, rfl⟩, (PMF.mem_support_pure_iff _ _).mpr rfl⟩
   obtain ⟨policy, allowed, noise, law⟩ := sourceServiceDeviation_prefix_joint_factorization setup
@@ -126,7 +127,7 @@ theorem sourceServiceDeviation_initialized_prefix_factorization
     (prior.bind fun seed => sourcePrefix seed.val).bind fun state =>
       (noise (setup.protocolObserve who state)).map fun extra => (state, extra) at law
   rw [nativeLaw, sourceLaw] at law
-  rw [initialLaw, PMF.bind_map, PMF.map_bind]
+  rw [initialLaw, serviceInitialLaw, PMF.bind_map, PMF.map_bind]
   exact law
 
 omit [Fintype Player] in

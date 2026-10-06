@@ -44,18 +44,22 @@ response menu under the forfeit pass, and their joint law of typed outcome and
 realized settlement is within `δ` in total variation of the intended joint law
 of terminal store and payoff. -/
 theorem intended_clientProfile_isεNash_of_firstTurn_bounds {Parameter : Type}
+    (configuration : service.RankSequential)
     (wellFormed : service.setup.WellFormed)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
     (forfeit : ℝ) (range : ∀ high low who, utility high who - utility low who ≤ forfeit)
-    (sample : List (SettledEvidence service.setup) →
-      PMF (List (SettledEvidence service.setup)))
+    (sample : List (SettledEvidence service.setup service.mode) →
+      PMF (List (SettledEvidence service.setup service.mode)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
-    (deposit : Player → ℝ) (menu : (application service.setup service.leaks).ResponseMenu)
-    {turns : Nat} (timing : TurnTiming service.setup turns)
+    (deposit : Player → ℝ) (menu : (serviceApplication service.setup service.mode service.deadline
+      service.leaks).ResponseMenu)
+    {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
     (covered : ∀ (source : Profile service.sourceModel.behavioralSignature) who,
-      menu.Admissible (initialLaw service.setup) service.horizon service.scheduler who
-        (sourceServiceClientPolicy service.setup service.leaks service.bound turns timing
+      menu.Admissible (serviceInitialLaw service.setup service.mode) service.horizon
+        service.scheduler who
+        (serviceClientPolicy service.setup service.mode service.deadline service.leaks
+          service.bound turns timing
           (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
             (CommitmentInterface.values service.setup.program) source)) who))
     (low : Player → ℝ) (spread : ℝ)
@@ -76,39 +80,45 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds {Parameter : Type}
         (fun state => utility (service.setup.parameterOutcome parameter state) who)) ε
       intended) :
     let forfeited := forfeitUtility service.setup.program forfeit utility
-    let base := baseUtility service.setup service.leaks
+    let base := serviceBaseUtility service.setup service.mode service.deadline service.leaks
       (fun state => forfeited (service.setup.parameterOutcome parameter state))
     let payoff := TerminalAudit.utility base
-      ((runtime service.setup).serviceAuditObservation service.leaks)
-      (sourceServiceAudit service.setup service.leaks sample) deposit
+      ((serviceRuntime service.setup service.mode service.deadline).serviceAuditObservation
+        service.leaks)
+      (serviceSourceAudit service.setup service.mode service.deadline service.leaks sample) deposit
     let settle := TerminalAudit.settlement base
-      ((runtime service.setup).serviceAuditObservation service.leaks)
-      (sourceServiceAudit service.setup service.leaks sample) deposit
+      ((serviceRuntime service.setup service.mode service.deadline).serviceAuditObservation
+        service.leaks)
+      (serviceSourceAudit service.setup service.mode service.deadline service.leaks sample) deposit
     let clients := sourceServiceClientProfile service.setup
       (service.setup.decodeBehavioralProfile (CommitmentInterface.values service.setup.program)
         source)
-    (∀ who (alternative : (application service.setup service.leaks).Policy),
+    (∀ who (alternative : (serviceApplication service.setup service.mode service.deadline
+      service.leaks).Policy),
       ∃ deviation : service.sourceModel.BehavioralPolicy who,
-        expect (((application service.setup service.leaks).roundsFrom (initialLaw service.setup)
+        expect (((serviceApplication service.setup service.mode service.deadline
+          service.leaks).roundsFrom (serviceInitialLaw service.setup service.mode)
             service.scheduler (deviatedTurnProfile service.bound turns
-              (firstTurnTiming service.setup turns) clients who alternative)
-            service.horizon).map (application service.setup service.leaks).finished)
+              (firstTurnTiming service.setup turns service.mode) clients who alternative)
+            service.horizon).map (serviceApplication service.setup service.mode service.deadline
+              service.leaks).finished)
           (fun final => payoff final who) ≤
         expect (service.sourceModel.runBehavioral (Profile.update source who deviation)
           (instructionCount service.setup.program + 1))
           (fun final => (service.setup.protocolReadout final.state).elim 0
             (fun state => forfeited (service.setup.parameterOutcome parameter state) who))) →
-    IsεNash ((menu.information (initialLaw service.setup) service.horizon
+    IsεNash ((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
         service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
         (fun history who => payoff history.state who)
         (ε + 2 * (∑ event, timing.deferral event) * spread)
         (service.clientProfile menu timing source) ∧
       PMF.WithinTV (∑ event, timing.deferral event)
-        (((menu.information (initialLaw service.setup) service.horizon
+        (((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
           service.scheduler).runBehavioral (service.clientProfile menu timing source)
             (2 * service.horizon + 1)).bind (fun final =>
               (settle final.state).map fun payoffs =>
-                (sourceReadout service.setup service.leaks final.state, payoffs)))
+                (serviceSourceReadout service.setup service.mode service.deadline service.leaks
+                  final.state, payoffs)))
         ((service.setup.intendedModel.runBehavioral intended
             (instructionCount service.setup.program + 1)).map
           (fun final => (service.setup.protocolReadout final.state,
@@ -118,13 +128,14 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds {Parameter : Type}
   obtain ⟨sourceNash, _, sourceLaw⟩ := service.setup.intended_isεNash_preserved
     (sourceService_finiteBindingTypes service.setup service.bounds service.values)
     wellFormed parameter utility forfeit range intended source agrees ε equilibrium
-  refine ⟨service.isεNash_clientProfile_of_firstTurn_bounds parameter forfeited sample authentic
+  refine ⟨service.isεNash_clientProfile_of_firstTurn_bounds configuration parameter forfeited
+    sample authentic
     deposit menu timing covered low spread within ε source firstTurn sourceNash, ?_⟩
   let decoded := service.setup.decodeBehavioralProfile
     (CommitmentInterface.values service.setup.program) source
   let stateUtility := fun state : State L service.setup.program.terminalCtx =>
     forfeited (service.setup.parameterOutcome parameter state)
-  have close := sourceServiceClients_clientPolicy_settlement_lawError service.contract
+  have close := sourceServiceClients_clientPolicy_settlement_lawError configuration service.contract
     service.timely timing decoded menu (covered source) sample authentic stateUtility deposit
   have readoutLaw : (service.sourceModel.runBehavioral source
       (instructionCount service.setup.program + 1)).map

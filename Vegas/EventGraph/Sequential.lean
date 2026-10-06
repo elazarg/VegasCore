@@ -85,23 +85,6 @@ namespace EventGraph
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [IExpr.ResultTypes L]
 
-/-- Add all source-earlier dependencies to an event graph while retaining its
-typed fields, event code, and terminal payoff expressions. -/
-def sequentialize (graph : Vegas.EventGraph Player L) : Vegas.EventGraph Player L where
-  inputCount := graph.inputCount
-  order := EventOrder.sequential graph.order.eventCount
-  inputLayout := graph.inputLayout
-  outputLayout := graph.outputLayout
-  nodes := graph.nodes
-  reads_available := by
-    intro event field read
-    cases field with
-    | inl => trivial
-    | inr producer =>
-        apply (EventOrder.sequential.mem_predecessors producer event).2
-        exact graph.order.predecessor_lt (graph.reads_available event (.inr producer) read)
-  payoffs := graph.payoffs
-
 /-- Dependency constraint used by an EventGraph execution: the graph's own
 dependencies, the total source ranking, or the graph's dependencies without the
 direct ones between independent reveals. -/
@@ -174,45 +157,41 @@ omit [DecidableEq Player] in
   cases graph
   rfl
 
-omit [DecidableEq Player] in
-@[simp] theorem withMode_sequential (graph : Vegas.EventGraph Player L) :
-    graph.withMode .sequential = graph.sequentialize := rfl
+/-- Add all source-earlier dependencies to an event graph while retaining its
+typed fields, event code, and terminal payoff expressions: the sequential
+dependency mode. -/
+abbrev sequentialize (graph : Vegas.EventGraph Player L) : Vegas.EventGraph Player L :=
+  graph.withMode .sequential
 
 omit [DecidableEq Player] in
 @[simp] theorem withMode_inputCount (graph : Vegas.EventGraph Player L)
     (mode : ExecutionMode) :
-    (graph.withMode mode).inputCount = graph.inputCount := by
-  cases mode <;> rfl
+    (graph.withMode mode).inputCount = graph.inputCount := rfl
 
 omit [DecidableEq Player] in
 @[simp] theorem withMode_eventCount (graph : Vegas.EventGraph Player L)
     (mode : ExecutionMode) :
-    (graph.withMode mode).order.eventCount = graph.order.eventCount := by
-  cases mode <;> rfl
+    (graph.withMode mode).order.eventCount = graph.order.eventCount := rfl
 
 omit [DecidableEq Player] in
 @[simp] theorem withMode_inputLayout (graph : Vegas.EventGraph Player L)
     (mode : ExecutionMode) (input : graph.InputId) :
-    (graph.withMode mode).inputLayout input = graph.inputLayout input := by
-  cases mode <;> rfl
+    (graph.withMode mode).inputLayout input = graph.inputLayout input := rfl
 
 omit [DecidableEq Player] in
 @[simp] theorem withMode_outputLayout (graph : Vegas.EventGraph Player L)
     (mode : ExecutionMode) (event : graph.EventId) :
-    (graph.withMode mode).outputLayout event = graph.outputLayout event := by
-  cases mode <;> rfl
+    (graph.withMode mode).outputLayout event = graph.outputLayout event := rfl
 
 omit [DecidableEq Player] in
 @[simp] theorem withMode_nodes (graph : Vegas.EventGraph Player L)
     (mode : ExecutionMode) (event : graph.EventId) :
-    (graph.withMode mode).nodes event = graph.nodes event := by
-  cases mode <;> rfl
+    (graph.withMode mode).nodes event = graph.nodes event := rfl
 
 omit [DecidableEq Player] in
 @[simp] theorem withMode_payoffs (graph : Vegas.EventGraph Player L)
     (mode : ExecutionMode) :
-    (graph.withMode mode).payoffs = graph.payoffs := by
-  cases mode <;> rfl
+    (graph.withMode mode).payoffs = graph.payoffs := rfl
 
 omit [DecidableEq Player] in
 @[simp] theorem sequentialize_inputCount (graph : Vegas.EventGraph Player L) :

@@ -228,7 +228,7 @@ theorem initialized_roster_prefix_support
             (setup.initialConfig initial)))).support ∧
       finished.network.Satisfies (fun message =>
         message.id ∈ finished.network.ledger.map Message.id) := by
-  rw [initialLaw, PMF.bind_map, PMF.support_bind] at supported
+  rw [initialLaw, serviceInitialLaw, PMF.bind_map, PMF.support_bind] at supported
   obtain ⟨initial, initialSupport, reached⟩ := Set.mem_iUnion₂.mp supported
   let profile : BehavioralProfile setup.program :=
     fun who => RevealOnly.uniformPolicy who setup.program reveals

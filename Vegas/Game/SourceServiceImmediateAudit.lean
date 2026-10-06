@@ -143,7 +143,7 @@ theorem sourceServiceImmediatePolicy_audit_clear_after_prefix_response
   obtain ⟨_, noMiss, permits⟩ := sourceServiceImmediatePolicy_clean_continuation bounds covered
     initialCovered capacity contract timely players who profile permitted follows execution trace
     clear response chosen count within next reached
-  unfold sourceServiceAudit
+  unfold sourceServiceAudit serviceSourceAudit
   rw [(runtime setup).serviceAudit_charge, noMiss]
   simp only [Bool.false_eq_true, ↓reduceIte]
   apply (application setup leaks).sampledTrafficAudit_sound

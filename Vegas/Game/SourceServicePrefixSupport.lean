@@ -457,7 +457,7 @@ theorem initialized_sourceService_prefix_support
               ∀ who, (remainingProfile who).SupportsEffectiveChoices remaining
                 (CommitmentInterface.values remaining) current.registry current.revelations) ∧
           ServiceBoundary setup leaks rosters initial current refs count final := by
-  rw [initialLaw, PMF.bind_map, PMF.support_bind] at reached
+  rw [initialLaw, serviceInitialLaw, PMF.bind_map, PMF.support_bind] at reached
   obtain ⟨initial, initialSupport, continued⟩ := Set.mem_iUnion₂.mp reached
   obtain ⟨state, related, Γ, names, remaining, remainingProfile, current, refs,
       embedding, refsBefore, aligned, admitted, lift, stateEq, stepEq, decodeEq,

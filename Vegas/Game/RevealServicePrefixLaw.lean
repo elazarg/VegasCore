@@ -273,7 +273,7 @@ theorem initialized_prefix_source_law
     (fun initial => PMF.pure
       (some (ProtocolState.entry setup.program (setup.initialConfig initial))))
   conv_rhs => rw [← PMF.bind_pure_comp, Function.comp_def]
-  rw [split, initialLaw, PMF.bind_map, PMF.map_bind]
+  rw [split, initialLaw, serviceInitialLaw, PMF.bind_map, PMF.map_bind]
   apply bind_congr_on_support _
   intro initial supported
   have wrapped := iterate_kernel_map

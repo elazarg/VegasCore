@@ -56,7 +56,7 @@ theorem sourceServiceCanonicalPolicy_submission {profile : BehavioralProfile set
     (submits : response.transmission = some material) :
     ∃ event action, view.application.publicView.ownTurn? who = some event ∧
       response = (runtime setup).canonicalServiceDecision leaks who past view event action := by
-  unfold sourceServiceCanonicalPolicy at chosen
+  unfold sourceServiceCanonicalPolicy serviceCanonicalPolicy at chosen
   split at chosen
   · split at chosen
     · rw [PMF.mem_support_pure_iff] at chosen
@@ -89,7 +89,7 @@ theorem sourceServiceCanonicalOpportunity_submission {bound : (graph setup).Even
       ∃ turnEvent action, view.application.publicView.ownTurn? who = some turnEvent ∧
         response = (runtime setup).canonicalServiceDecision leaks who past view turnEvent
           action := by
-  unfold sourceServiceCanonicalOpportunity at chosen
+  unfold sourceServiceCanonicalOpportunity serviceCanonicalOpportunity at chosen
   split at chosen
   · exact (silentPolicy_not_submit chosen material submits).elim
   · rename_i unrecorded
@@ -121,14 +121,14 @@ theorem sourceServiceTurnPolicy_submission {bound : (graph setup).EventId → Na
       (runtime setup).eventRecorded leaks past event = false ∧
       view.application.publicView.InclusionFitsDeadline (runtime setup) bound event ∧
       response = (runtime setup).canonicalServiceDecision leaks who past view event action := by
-  unfold sourceServiceTurnPolicy at chosen
+  unfold sourceServiceTurnPolicy serviceTurnPolicy at chosen
   split at chosen
   · exact (silentPolicy_not_submit chosen material submits).elim
   · rename_i event turn
     split at chosen
     · rw [ReactiveApplication.policyMixture_policy, PMF.support_bind] at chosen
       obtain ⟨slot, _, member⟩ := Set.mem_iUnion₂.mp chosen
-      unfold sourceServiceTurnFamily ReactiveApplication.turnScheduledPolicy at member
+      unfold serviceTurnFamily ReactiveApplication.turnScheduledPolicy at member
       dsimp only at member
       split at member
       · obtain ⟨unrecorded, fits, other, action, otherTurn, rfl⟩ :=
@@ -248,8 +248,8 @@ def CanonicalSlotsUsed (execution : (application setup leaks).Execution) (who : 
 variable {setup leaks}
 
 /-- At `who`'s turn at an event it has not submitted for, no binding of `who`
-it has submitted for is unfinished: such a binding would be ready too, and on
-the sequentialized graph the turn's event is the only ready event. -/
+it has submitted for is unfinished: such a binding would be ready too, and a
+player acts at most at one ready event (in every dependency mode). -/
 theorem not_pendingBinding_at_turn {horizon : Nat}
     {scheduler : (application setup leaks).Scheduler} {control : (application setup leaks).Control}
     (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
@@ -274,9 +274,13 @@ theorem not_pendingBinding_at_turn {horizon : Nat}
     rw [← current]
     exact entryReady
   have readyEvent := (PublicView.ownTurn?_spec _ who event turn).1
-  have sole := soleReady_of_ready setup control.execution.application
-    ((control.execution.application.publicView_eventReady event).mp readyEvent)
-  have same := sole.2 other readyOther
+  have same : other = event :=
+    (serviceGraph_revealRelaxedOrdered setup .sequential).ready_actor_unique
+      control.execution.application.config.cut
+      ((control.execution.application.publicView_eventReady event).mp readyEvent)
+      ((control.execution.application.publicView_eventReady other).mp readyOther)
+      (PublicView.ownTurn?_spec _ who event turn).2
+      (PublicView.ownTurn?_spec _ who other entryTurn).2
   subst same
   rw [unrecorded] at otherRecorded
   cases otherRecorded

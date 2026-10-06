@@ -57,11 +57,11 @@ theorem opening_available_of_initial_tables (bounds : MessageBounds (graph setup
   have initialized : EventGraphRuntime.State.initial (graph := graph setup)
       (setup.eventInputs initial) ∈
       (initialLaw setup).support := by
-    rw [initialLaw, PMF.support_map]
+    rw [initialLaw, serviceInitialLaw, PMF.support_map]
     exact ⟨initial, supported, rfl⟩
   rw [same]
   exact bounds.initialized_opening_available (initialLaw setup)
-    (by rw [initialLaw, PMF.support_map]; exact setup.initialLaw_support_finite.image _)
+    (serviceInitialLaw_support_finite setup .sequential)
     (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial))
     initialized who input raw fixed
     (runtime setup) leaks (execution.recall who)
@@ -90,10 +90,10 @@ theorem opening_data_covered (bounds : MessageBounds (graph setup))
   rw [same]
   refine ⟨True.intro, ?_⟩
   apply bounds.initial_value_covered (initialLaw setup)
-    (by rw [initialLaw, PMF.support_map]; exact setup.initialLaw_support_finite.image _)
+    (serviceInitialLaw_support_finite setup .sequential)
     (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial))
       _ owner input raw fixed
-  rw [initialLaw, PMF.support_map]
+  rw [initialLaw, serviceInitialLaw, PMF.support_map]
   exact ⟨initial, supported, rfl⟩
 
 end Vegas

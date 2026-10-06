@@ -558,7 +558,8 @@ theorem rosterReach_initial (setup : Setup (Player := Player) (L := L))
       rw [rosterPlan, absent]
       rfl
     · refine ⟨le_rfl, fun event => ?_⟩
-      exact absurd event.isLt (by omega)
+      have inside : event.val < (graph setup).order.eventCount := event.isLt
+      omega
 
 /-- A player's response changes neither the graph, the clock, the activation
 table nor the scheduler recall, and it is recorded with the current view. -/

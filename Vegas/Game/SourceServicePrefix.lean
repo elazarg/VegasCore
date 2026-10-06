@@ -2,6 +2,7 @@
 
 import Vegas.Game.SourceServiceCheckpoint
 import Vegas.Compile.EventGraphReadout
+import Vegas.Game.ServiceObservation
 
 /-! # Reading full source protocol positions from native checkpoints
 
@@ -158,6 +159,28 @@ def sourceServicePrefix? (setup : Setup (Player := Player) (L := L))
     (Revelations.initial setup.context) (outputRef setup.program) rank config.store
     (decodeHistory setup.program (config.history.map
       (setup.eventGraph.fromModeCompletion .sequential)))
+
+/-- The deterministic readout of a configuration of the service graph of any
+dependency mode: completions are decoded in source rank order, whatever order
+they completed in. -/
+def serviceSourcePrefix? (setup : Setup (Player := Player) (L := L))
+    (mode : EventGraph.ExecutionMode) (rank : Nat) (config : (serviceGraph setup mode).Config) :
+    setup.ProtocolState :=
+  decodeSourcePrefix? setup.program
+    (ContextRefs.initial setup.context (outputLayout setup.program)) []
+    (Revelations.initial setup.context) (outputRef setup.program) rank config.store
+    (decodeHistory setup.program (config.rankedHistory.map
+      (setup.eventGraph.fromModeCompletion mode)))
+
+/-- On a reachable configuration of the sequential graph the ranked readout is
+the chronological readout: completions already follow source rank. -/
+theorem serviceSourcePrefix?_sequential (setup : Setup (Player := Player) (L := L))
+    {inputs : (graph setup).Inputs} (rank : Nat) (config : (graph setup).Config)
+    (reachable : config.Reachable inputs) :
+    serviceSourcePrefix? setup .sequential rank config =
+      sourceServicePrefix? setup rank config := by
+  unfold serviceSourcePrefix? sourceServicePrefix?
+  rw [(reachable_rankPrefix setup reachable).rankedHistory_eq]
 
 theorem sourceServicePrefix?_initial (setup : Setup (Player := Player) (L := L))
     (initial : State L setup.context) :

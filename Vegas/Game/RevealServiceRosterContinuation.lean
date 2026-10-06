@@ -222,7 +222,7 @@ theorem sourceReadout_eq_decode (setup : Setup (Player := Player) (L := L))
     (control : (application setup leaks).Control) :
     sourceReadout setup leaks (some control) =
       decodeState? (terminalRefs setup.program) control.execution.application.config.store := by
-  unfold sourceReadout
+  unfold sourceReadout serviceSourceReadout
   rw [Option.bind_some]
   cases decoded : decodeState? (terminalRefs setup.program)
       control.execution.application.config.store with

@@ -216,7 +216,7 @@ theorem initialized_prefix_support
         (fun who => RevealOnly.uniformPolicy who setup.program reveals)))^[count]
           (PMF.pure (ProtocolState.entry setup.program
             (setup.initialConfig initial)))).support := by
-  rw [initialLaw, PMF.bind_map, PMF.support_bind] at supported
+  rw [initialLaw, serviceInitialLaw, PMF.bind_map, PMF.support_bind] at supported
   obtain ⟨initial, initialSupport, reached⟩ := Set.mem_iUnion₂.mp supported
   let profile : BehavioralProfile setup.program :=
     fun who => RevealOnly.uniformPolicy who setup.program reveals

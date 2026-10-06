@@ -111,7 +111,7 @@ private theorem stageChoice_finite (position : Nat) (view : app.EnvironmentView)
 
 instance finiteNature : app.FiniteNature (initialLaw setup) scheduler where
   initial_finite := by
-    rw [initialLaw, PMF.support_map]
+    rw [initialLaw, serviceInitialLaw, PMF.support_map]
     exact setup.initialLaw_support_finite.image _
   scheduler_finite past view := stageChoice_finite _ _
 
@@ -1292,7 +1292,7 @@ theorem prescribed_settlement (original : BehavioralProfile program) (execution 
     (by
       intro event owner payload
       fin_cases event <;> intro incompatible <;> cases incompatible) who
-  unfold sourceServiceAudit
+  unfold sourceServiceAudit serviceSourceAudit
   rw [(runtime setup).serviceAudit_charge, noOmission]
   simp only [Bool.false_eq_true, ↓reduceIte]
   apply app.sampledTrafficAudit_sound

@@ -35,65 +35,95 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
-  (setup : Setup (Player := Player) (L := L))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+
+/-- For each owned event, a law over the owner's turn index at which it makes
+its source decision. -/
+abbrev TurnTiming (setup : Setup (Player := Player) (L := L)) (turns : Nat)
+    (mode : EventGraph.ExecutionMode := .sequential) : Type :=
+  ∀ event who, (serviceGraph setup mode).actor? event = some who → PMF (Fin (turns + 1))
+
+/-- Decide at the first turn: the limiting timing. -/
+def firstTurnTiming (setup : Setup (Player := Player) (L := L)) (turns : Nat)
+    (mode : EventGraph.ExecutionMode := .sequential) : TurnTiming setup turns mode :=
+  fun _ _ _ => PMF.pure 0
+
+/-- Defer the decision with total weight `weight`, uniformly over the turns. -/
+def deferralTiming (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
+    (turns : Nat) (weight : ℝ) (nonnegative : 0 ≤ weight) (bounded : weight ≤ 1) :
+    TurnTiming setup turns mode := fun _ _ _ =>
+  mix weight nonnegative bounded (PMF.uniformOfFintype _) (PMF.pure 0)
+
+/-- The probability that an owned event's owner does not decide at its first
+turn; zero for an event without an owner. -/
+def TurnTiming.deferral {setup : Setup (Player := Player) (L := L)}
+    {mode : EventGraph.ExecutionMode} {turns : Nat} (timing : TurnTiming setup turns mode)
+    (event : (serviceGraph setup mode).EventId) : ℝ :=
+  match owned : (serviceGraph setup mode).actor? event with
+  | none => 0
+  | some who => 1 - (timing event who owned 0).toReal
+
+section Configured
+
+variable (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.ExecutionMode)
+  (deadline : (serviceGraph setup mode).EventId → Nat)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 /-- The opportunity index of `who`'s current input at `event`: the number of its
 recorded turns at `event`, when `event` is its turn now. -/
-def sourceServiceTurn (who : Player) (event : (graph setup).EventId)
-    (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView) : Option Nat :=
+def serviceTurn (who : Player) (event : (serviceGraph setup mode).EventId)
+    (past : List (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (view : (serviceApplication setup mode deadline leaks).PlayerView) : Option Nat :=
   if view.application.publicView.ownTurn? who = some event then
     some (past.countP fun entry =>
       decide (entry.beforeView.application.publicView.ownTurn? who = some event))
   else none
 
-/-- For each owned event, a law over the owner's turn index at which it makes
-its source decision. -/
-abbrev TurnTiming (turns : Nat) : Type :=
-  ∀ event who, (graph setup).actor? event = some who → PMF (Fin (turns + 1))
-
 /-- Make the source decision at the selected turn and remain silent otherwise. -/
-def sourceServiceTurnFamily (bound : (graph setup).EventId → Nat)
+def serviceTurnFamily (bound : (serviceGraph setup mode).EventId → Nat)
     (profile : BehavioralProfile setup.program) (who : Player)
-    (event : (graph setup).EventId) (turns : Nat) (slot : Fin (turns + 1)) :
-    (application setup leaks).Policy :=
-  (application setup leaks).turnScheduledPolicy (sourceServiceTurn setup leaks who event)
-    (some slot) (sourceServiceCanonicalOpportunity setup leaks bound profile who event)
-    (application setup leaks).silentPolicy
+    (event : (serviceGraph setup mode).EventId) (turns : Nat) (slot : Fin (turns + 1)) :
+    (serviceApplication setup mode deadline leaks).Policy :=
+  (serviceApplication setup mode deadline leaks).turnScheduledPolicy
+    (serviceTurn setup mode deadline leaks who event)
+    (some slot) (serviceCanonicalOpportunity setup mode deadline leaks bound profile who event)
+    (serviceApplication setup mode deadline leaks).silentPolicy
 
 /-- The turn-counted prescribed policy: at its own turn an owner follows the
 behavioral realization of the event's timing lottery; otherwise it is silent. -/
-def sourceServiceTurnPolicy (bound : (graph setup).EventId → Nat) (turns : Nat)
-    (timing : TurnTiming setup turns) (profile : BehavioralProfile setup.program) (who : Player) :
-    (application setup leaks).Policy := fun past view =>
+def serviceTurnPolicy (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
+    (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
+    (who : Player) : (serviceApplication setup mode deadline leaks).Policy := fun past view =>
   match view.application.publicView.ownTurn? who with
-  | none => (application setup leaks).silentPolicy past view
+  | none => (serviceApplication setup mode deadline leaks).silentPolicy past view
   | some event =>
-      if owned : (graph setup).actor? event = some who then
-        ((application setup leaks).policyMixture (timing event who owned)
-          (sourceServiceTurnFamily setup leaks bound profile who event turns)).policy past view
-      else (application setup leaks).silentPolicy past view
+      if owned : (serviceGraph setup mode).actor? event = some who then
+        ((serviceApplication setup mode deadline leaks).policyMixture (timing event who owned)
+          (serviceTurnFamily setup mode deadline leaks bound profile who event turns)).policy
+            past view
+      else (serviceApplication setup mode deadline leaks).silentPolicy past view
 
-/-- Decide at the first turn: the limiting timing. -/
-def firstTurnTiming (turns : Nat) : TurnTiming setup turns := fun _ _ _ => PMF.pure 0
+end Configured
 
-/-- Defer the decision with total weight `weight`, uniformly over the turns. -/
-def deferralTiming (turns : Nat) (weight : ℝ) (nonnegative : 0 ≤ weight) (bounded : weight ≤ 1) :
-    TurnTiming setup turns := fun _ _ _ =>
-  mix weight nonnegative bounded (PMF.uniformOfFintype _) (PMF.pure 0)
+variable (setup : Setup (Player := Player) (L := L))
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
-variable {setup}
+/-- The turn index on the default runtime. -/
+abbrev sourceServiceTurn : Player → (graph setup).EventId →
+    List (application setup leaks).PlayerEntry → (application setup leaks).PlayerView →
+      Option Nat :=
+  serviceTurn setup .sequential (rankDeadline setup .sequential) leaks
 
-/-- The probability that an owned event's owner does not decide at its first
-turn; zero for an event without an owner. -/
-def TurnTiming.deferral {turns : Nat} (timing : TurnTiming setup turns)
-    (event : (graph setup).EventId) : ℝ :=
-  match owned : (graph setup).actor? event with
-  | none => 0
-  | some who => 1 - (timing event who owned 0).toReal
+/-- The decision at a selected turn on the default runtime. -/
+abbrev sourceServiceTurnFamily : ((graph setup).EventId → Nat) →
+    BehavioralProfile setup.program → Player → (graph setup).EventId →
+      (turns : Nat) → Fin (turns + 1) → (application setup leaks).Policy :=
+  serviceTurnFamily setup .sequential (rankDeadline setup .sequential) leaks
 
-variable (setup)
+/-- The turn-counted prescribed policy on the default runtime. -/
+abbrev sourceServiceTurnPolicy : ((graph setup).EventId → Nat) → (turns : Nat) →
+    TurnTiming setup turns → BehavioralProfile setup.program → Player →
+      (application setup leaks).Policy :=
+  serviceTurnPolicy setup .sequential (rankDeadline setup .sequential) leaks
 
 /-- An input that is not the player's turn at `event` is not an opportunity. -/
 theorem sourceServiceTurn_of_not_turn (who : Player) (event : (graph setup).EventId)
@@ -101,7 +131,7 @@ theorem sourceServiceTurn_of_not_turn (who : Player) (event : (graph setup).Even
     (view : (application setup leaks).PlayerView)
     (other : view.application.publicView.ownTurn? who ≠ some event) :
     sourceServiceTurn setup leaks who event past view = none := by
-  simp only [sourceServiceTurn, other, ↓reduceIte]
+  simp only [sourceServiceTurn, serviceTurn, other, ↓reduceIte]
 
 /-- At its own turn a player follows the event's timing mixture. -/
 theorem sourceServiceTurnPolicy_turn (bound : (graph setup).EventId → Nat) (turns : Nat)
@@ -114,7 +144,7 @@ theorem sourceServiceTurnPolicy_turn (bound : (graph setup).EventId → Nat) (tu
     sourceServiceTurnPolicy setup leaks bound turns timing profile who past view =
       ((application setup leaks).policyMixture (timing event who owned)
         (sourceServiceTurnFamily setup leaks bound profile who event turns)).policy past view := by
-  simp only [sourceServiceTurnPolicy, serving, owned, ↓reduceDIte]
+  simp only [sourceServiceTurnPolicy, serviceTurnPolicy, serving, owned, ↓reduceDIte]
 
 /-- A player owning no ready event is silent. -/
 theorem sourceServiceTurnPolicy_idle (bound : (graph setup).EventId → Nat) (turns : Nat)
@@ -125,7 +155,7 @@ theorem sourceServiceTurnPolicy_idle (bound : (graph setup).EventId → Nat) (tu
     (idle : view.application.publicView.Idle who) :
     sourceServiceTurnPolicy setup leaks bound turns timing profile who past view =
       (application setup leaks).silentPolicy past view := by
-  simp only [sourceServiceTurnPolicy, PublicView.ownTurn?_eq_none _ who idle]
+  simp only [sourceServiceTurnPolicy, serviceTurnPolicy, PublicView.ownTurn?_eq_none _ who idle]
 
 theorem sourceServiceTurnFamily_finiteSupport (bound : (graph setup).EventId → Nat)
     (finite : setup.program.FiniteBindingTypes)
@@ -144,7 +174,7 @@ theorem sourceServiceTurnPolicy_finiteSupport (bound : (graph setup).EventId →
     ReactiveApplication.Policy.FiniteSupport _
       (sourceServiceTurnPolicy setup leaks bound turns timing profile who) := by
   intro past view
-  unfold sourceServiceTurnPolicy
+  unfold sourceServiceTurnPolicy serviceTurnPolicy
   split
   · exact (application setup leaks).silentPolicy_finiteSupport past view
   · split
@@ -153,8 +183,9 @@ theorem sourceServiceTurnPolicy_finiteSupport (bound : (graph setup).EventId →
         past view
     · exact (application setup leaks).silentPolicy_finiteSupport past view
 
-theorem firstTurnTiming_deferral (turns : Nat) (event : (graph setup).EventId) :
-    (firstTurnTiming setup turns).deferral event = 0 := by
+theorem firstTurnTiming_deferral {mode : EventGraph.ExecutionMode} (turns : Nat)
+    (event : (serviceGraph setup mode).EventId) :
+    (firstTurnTiming setup turns mode).deferral event = 0 := by
   unfold TurnTiming.deferral
   split
   · rfl

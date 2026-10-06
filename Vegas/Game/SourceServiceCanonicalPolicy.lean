@@ -27,24 +27,57 @@ open SourceProgram
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  (setup : Setup (Player := Player) (L := L))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+
+section Configured
+
+variable (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.ExecutionMode)
+  (deadline : (serviceGraph setup mode).EventId → Nat)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 /-- The source compiler's decision at the player's turn, realized by the
 canonical decision. -/
-def sourceServiceCanonicalPolicy (profile : BehavioralProfile setup.program) (who : Player) :
-    (application setup leaks).Policy := fun past view =>
+def serviceCanonicalPolicy (profile : BehavioralProfile setup.program) (who : Player) :
+    (serviceApplication setup mode deadline leaks).Policy := fun past view =>
   if identity : view.application.who = who then
     match view.application.publicView.ownTurn? who with
     | none => PMF.pure ⟨none⟩
     | some event =>
-        if owned : (graph setup).actor? event = some who then
+        if owned : (serviceGraph setup mode).actor? event = some who then
           ((compileEventProfile setup.program profile) who event owned
-            (setup.eventGraph.fromModeObservation .sequential who
+            (setup.eventGraph.fromModeObservation mode who
               (identity ▸ view.application.observation))).map
-            ((runtime setup).canonicalServiceDecision leaks who past view event)
+            ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who past view
+              event)
         else PMF.pure ⟨none⟩
   else PMF.pure ⟨none⟩
+
+/-- One opportunity of the turn-counted policy: silence once the event is
+recorded in the owner's recall or once a fresh call could no longer be
+included before the deadline within `bound event` slots; otherwise make the
+canonical source decision, retaining silence if it emits nothing. -/
+def serviceCanonicalOpportunity (bound : (serviceGraph setup mode).EventId → Nat)
+    (profile : BehavioralProfile setup.program) (who : Player)
+    (event : (serviceGraph setup mode).EventId) :
+    (serviceApplication setup mode deadline leaks).Policy := fun past view =>
+  if (serviceRuntime setup mode deadline).eventRecorded leaks past event then
+    (serviceApplication setup mode deadline leaks).silentPolicy past view
+  else if view.application.publicView.InclusionFitsDeadline (serviceRuntime setup mode deadline)
+      bound event then
+    (serviceCanonicalPolicy setup mode deadline leaks profile who past view).bind fun response =>
+      if response.transmission = none then
+        (serviceApplication setup mode deadline leaks).silentPolicy past view
+      else PMF.pure response
+  else (serviceApplication setup mode deadline leaks).silentPolicy past view
+
+end Configured
+
+variable (setup : Setup (Player := Player) (L := L))
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+
+/-- The canonical source decision on the default runtime. -/
+abbrev sourceServiceCanonicalPolicy : BehavioralProfile setup.program → Player →
+    (application setup leaks).Policy :=
+  serviceCanonicalPolicy setup .sequential (rankDeadline setup .sequential) leaks
 
 theorem sourceServiceCanonicalPolicy_at_event (profile : BehavioralProfile setup.program)
     (who : Player) (execution : (application setup leaks).Execution)
@@ -58,13 +91,13 @@ theorem sourceServiceCanonicalPolicy_at_event (profile : BehavioralProfile setup
           ((graph setup).playerObserve who execution.application.config))).map
         ((runtime setup).canonicalServiceDecision leaks who (execution.recall who)
           (execution.observe (application setup leaks) who) event) := by
-  unfold sourceServiceCanonicalPolicy
+  unfold sourceServiceCanonicalPolicy serviceCanonicalPolicy
   rw [dite_eq_left (show (execution.observe (application setup leaks) who).application.who = who
     from rfl)]
-  change (match execution.application.publicView.ownTurn? who with
-    | none => _
-    | some chosen => _) = _
-  simp only [selected, dite_eq_left owned]
+  have turn : (execution.observe (application setup leaks) who).application.publicView.ownTurn?
+      who = some event := selected
+  rw [turn]
+  simp only [dite_eq_left owned]
   rfl
 
 /-- The local source commitment distribution is retained exactly. -/
@@ -202,20 +235,11 @@ theorem sourceServiceCanonicalPolicy_reveal {Γ : SourceCtx Player L}
   rw [actionLaw, PMF.map_comp]
   rfl
 
-/-- One opportunity of the turn-counted policy: silence once the event is
-recorded in the owner's recall or once a fresh call could no longer be
-included before the deadline within `bound event` slots; otherwise make the
-canonical source decision, retaining silence if it emits nothing. -/
-def sourceServiceCanonicalOpportunity (bound : (graph setup).EventId → Nat)
-    (profile : BehavioralProfile setup.program) (who : Player) (event : (graph setup).EventId) :
-    (application setup leaks).Policy := fun past view =>
-  if (runtime setup).eventRecorded leaks past event then
-    (application setup leaks).silentPolicy past view
-  else if view.application.publicView.InclusionFitsDeadline (runtime setup) bound event then
-    (sourceServiceCanonicalPolicy setup leaks profile who past view).bind fun response =>
-      if response.transmission = none then (application setup leaks).silentPolicy past view
-      else PMF.pure response
-  else (application setup leaks).silentPolicy past view
+/-- One opportunity of the turn-counted policy on the default runtime. -/
+abbrev sourceServiceCanonicalOpportunity : ((graph setup).EventId → Nat) →
+    BehavioralProfile setup.program → Player → (graph setup).EventId →
+      (application setup leaks).Policy :=
+  serviceCanonicalOpportunity setup .sequential (rankDeadline setup .sequential) leaks
 
 theorem sourceServiceCanonicalPolicy_finiteSupport (finite : setup.program.FiniteBindingTypes)
     (profile : BehavioralProfile setup.program) (who : Player) :
@@ -223,7 +247,7 @@ theorem sourceServiceCanonicalPolicy_finiteSupport (finite : setup.program.Finit
       (sourceServiceCanonicalPolicy setup leaks profile who) := by
   intro past view
   have finiteActions := Vegas.toEventGraph_finiteActions setup.program finite
-  unfold sourceServiceCanonicalPolicy
+  unfold sourceServiceCanonicalPolicy serviceCanonicalPolicy
   split
   · split
     · simp
@@ -239,7 +263,7 @@ theorem sourceServiceCanonicalOpportunity_finiteSupport (bound : (graph setup).E
     ReactiveApplication.Policy.FiniteSupport _
       (sourceServiceCanonicalOpportunity setup leaks bound profile who event) := by
   intro past view
-  unfold sourceServiceCanonicalOpportunity
+  unfold sourceServiceCanonicalOpportunity serviceCanonicalOpportunity
   split
   · exact (application setup leaks).silentPolicy_finiteSupport past view
   · split

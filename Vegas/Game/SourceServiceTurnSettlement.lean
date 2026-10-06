@@ -71,25 +71,27 @@ private theorem runRounds_eq_runUntil_never {Principal : Type} [DecidableEq Prin
 
 /-- At a terminal configuration no player has a turn, so the turn-counted
 policy is silent. -/
-theorem sourceServiceTurnPolicy_terminal (bound : (graph setup).EventId → Nat) (turns : Nat)
-    (timing : TurnTiming setup turns) (profile : BehavioralProfile setup.program)
-    (state : EventGraphRuntime.State (graph setup))
-    (terminal : state.config.cut.IsPrefix (graph setup).order.eventCount)
-    (who : Player) (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView)
+theorem sourceServiceTurnPolicy_terminal {mode : EventGraph.ExecutionMode}
+    {deadline : (serviceGraph setup mode).EventId → Nat}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
+    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
+    (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
+    (state : EventGraphRuntime.State (serviceGraph setup mode))
+    (terminal : state.config.cut.IsPrefix (serviceGraph setup mode).order.eventCount)
+    (who : Player) (past : List (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (view : (serviceApplication setup mode deadline leaks).PlayerView)
     (current : view.application.publicView = state.publicView) :
-    sourceServiceTurnPolicy setup leaks bound turns timing profile who past view =
-      (application setup leaks).silentPolicy past view := by
+    serviceTurnPolicy setup mode deadline leaks bound turns timing profile who past view =
+      (serviceApplication setup mode deadline leaks).silentPolicy past view := by
   have idle : view.application.publicView.ownTurn? who = none := by
     cases turn : view.application.publicView.ownTurn? who with
     | none => rfl
     | some event =>
         have ready := (PublicView.ownTurn?_spec _ who event turn).1
         rw [current] at ready
-        have rankEq := (ready_iff_rank setup _ _ terminal event).mp
-          ((State.publicView_eventReady _ event).mp ready)
-        exact absurd rankEq (Nat.ne_of_lt event.isLt)
-  simp only [sourceServiceTurnPolicy, idle]
+        exact absurd ((terminal.2 event).mpr event.isLt)
+          ((State.publicView_eventReady _ event).mp ready).1
+  simp only [serviceTurnPolicy, idle]
 
 /-- From a terminal configuration the turn-counted policy runs as silence, for
 every timing. -/
@@ -221,7 +223,7 @@ theorem sourceServiceTurnPolicy_runToHorizon_bind_within {β : Type}
   | zero =>
       intro rank execution gapEq boundary bounded
       have rankEq : rank = (graph setup).order.eventCount := by
-        have := boundary.ordered.1
+        have : rank ≤ (graph setup).order.eventCount := boundary.ordered.1
         omega
       subst rankEq
       have same : app.runToHorizon scheduler players horizon execution =
@@ -367,7 +369,7 @@ theorem sourceServiceFirstTurn_charge_zero {scheduler : (application setup leaks
     turns profile rfl count within execution reached
   change TerminalAudit.charge _ _
     (some (⟨0, none, execution⟩ : (application setup leaks).Control)) who = 0
-  unfold sourceServiceAudit
+  unfold sourceServiceAudit serviceSourceAudit
   rw [(runtime setup).serviceAudit_charge, noMiss]
   simp only [Bool.false_eq_true, ↓reduceIte]
   apply (application setup leaks).sampledTrafficAudit_sound
@@ -626,30 +628,36 @@ model, the profile's source joint law of typed outcome and realized payoffs
 within the total deferral weight in total variation, for every authentic
 partial audit and every deposit. -/
 theorem sourceServiceClients_settlement_lawError
-    {scheduler : (application setup leaks).Scheduler} {horizon turns : Nat}
-    {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
+    {mode : EventGraph.ExecutionMode} {deadline : (serviceGraph setup mode).EventId → Nat}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
+    (configuration : RankSequential setup mode deadline)
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler} {horizon turns : Nat}
+    {delay bound : (serviceGraph setup mode).EventId → Nat}
+    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks (serviceInitialLaw setup
+      mode) horizon scheduler
       delay bound)
-    (timely : AsyncTimely (runtime setup) delay bound)
-    (timing : TurnTiming setup turns) (original : BehavioralProfile setup.program)
-    (menu : (application setup leaks).ResponseMenu)
-    (covered : ∀ who, menu.Admissible (initialLaw setup) horizon scheduler who
-      (sourceServiceTurnPolicy setup leaks bound turns timing
+    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
+    (timing : TurnTiming setup turns mode) (original : BehavioralProfile setup.program)
+    (menu : (serviceApplication setup mode deadline leaks).ResponseMenu)
+    (covered : ∀ who, menu.Admissible (serviceInitialLaw setup mode) horizon scheduler who
+      (serviceTurnPolicy setup mode deadline leaks bound turns timing
         (sourceServiceClientProfile setup original) who))
-    (sample : List (SettledEvidence setup) → PMF (List (SettledEvidence setup)))
+    (sample : List (SettledEvidence setup mode) → PMF (List (SettledEvidence setup mode)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (utility : State L setup.program.terminalCtx → Player → ℝ) (deposit : Player → ℝ) :
-    let settle := TerminalAudit.settlement (baseUtility setup leaks utility)
-      ((runtime setup).serviceAuditObservation leaks)
-      (sourceServiceAudit setup leaks sample) deposit
+    let settle := TerminalAudit.settlement (serviceBaseUtility setup mode deadline leaks utility)
+      ((serviceRuntime setup mode deadline).serviceAuditObservation leaks)
+      (serviceSourceAudit setup mode deadline leaks sample) deposit
     PMF.WithinTV (∑ event, timing.deferral event)
-      (((menu.information (initialLaw setup) horizon scheduler).runBehavioral
-        (fun who => menu.restrictPolicy (initialLaw setup) horizon scheduler who
-          (sourceServiceTurnPolicy setup leaks bound turns timing
+      (((menu.information (serviceInitialLaw setup mode) horizon scheduler).runBehavioral
+        (fun who => menu.restrictPolicy (serviceInitialLaw setup mode) horizon scheduler who
+          (serviceTurnPolicy setup mode deadline leaks bound turns timing
             (sourceServiceClientProfile setup original) who))
         (2 * horizon + 1)).bind (fun final =>
-          (settle final.state).map fun payoffs => (sourceReadout setup leaks final.state, payoffs)))
+          (settle final.state).map fun payoffs => (serviceSourceReadout setup mode deadline leaks
+            final.state, payoffs)))
       ((setup.run original).map (fun state => (some state, utility state))) := by
+  obtain ⟨rfl, rfl⟩ := configuration
   intro settle
   rw [← sourceServiceClientProfile_run original]
   exact sourceServiceTurnPolicy_settlement_lawError contract timely timing
@@ -694,7 +702,7 @@ theorem geometricTiming_settlement_lawError
     Finset.filter_true_of_mem fun event _ => Nat.zero_le event.val
   have remaining := geometricTiming_remainingDeferral_le setup turns weight nonnegative bounded 0
   rw [all] at remaining
-  exact (sourceServiceClients_settlement_lawError contract timely
+  exact (sourceServiceClients_settlement_lawError ⟨rfl, rfl⟩ contract timely
     (geometricTiming setup turns weight nonnegative bounded) original menu covered sample
     authentic utility deposit).mono remaining
 

@@ -59,7 +59,7 @@ theorem protected_binding_no_miss {horizon : Nat}
   have initialized : initialLaw setup =
       (setup.initialLaw.map setup.eventInputs).map
         (State.initial (graph := graph setup)) := by
-    simp only [initialLaw, PMF.map_comp, Function.comp_def]
+    simp only [initialLaw, serviceInitialLaw, PMF.map_comp, Function.comp_def]
   have rawTrace := trace
   rw [initialized] at rawTrace
   have recorded := (runtime setup).bindingReceipts_history leaks

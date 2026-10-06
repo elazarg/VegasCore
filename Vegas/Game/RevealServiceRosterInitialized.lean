@@ -45,7 +45,7 @@ theorem roster_plan_sourceReadout_law [Finite Player]
       (setup.run profile).map some := by
   let := Fintype.ofFinite Player
   simp_rw [sourceReadout_eq_decode]
-  rw [initialLaw, PMF.bind_map, PMF.map_bind, Setup.run, PMF.map_bind]
+  rw [initialLaw, serviceInitialLaw, PMF.bind_map, PMF.map_bind, Setup.run, PMF.map_bind]
   apply bind_congr_on_support _
   intro initial supported
   exact run_roster_source_suffix_option_law setup leaks rosters timing network profile initial

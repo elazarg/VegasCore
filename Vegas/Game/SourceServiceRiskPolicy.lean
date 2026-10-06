@@ -98,7 +98,7 @@ theorem sourceServiceCanonicalOpportunity_risk_retained
     intro action chosen
     cases (PMF.mem_support_pure_iff _ _).mp chosen
     exact bounds.silence_canonical (runtime setup) leaks who _ _
-  unfold sourceServiceCanonicalOpportunity at supported
+  unfold sourceServiceCanonicalOpportunity serviceCanonicalOpportunity at supported
   split at supported
   · exact silent response supported
   · rename_i unrecorded
@@ -145,14 +145,14 @@ theorem sourceServiceTurnPolicy_risk_retained
     intro action chosen
     cases (PMF.mem_support_pure_iff _ _).mp chosen
     exact bounds.silence_canonical (runtime setup) leaks who _ _
-  unfold sourceServiceTurnPolicy at supported
+  unfold sourceServiceTurnPolicy serviceTurnPolicy at supported
   split at supported
   · exact silent response supported
   · rename_i event turn
     split at supported
     · rw [ReactiveApplication.policyMixture_policy, PMF.support_bind] at supported
       obtain ⟨slot, _, member⟩ := Set.mem_iUnion₂.mp supported
-      unfold sourceServiceTurnFamily ReactiveApplication.turnScheduledPolicy at member
+      unfold serviceTurnFamily ReactiveApplication.turnScheduledPolicy at member
       dsimp only at member
       split at member
       · exact sourceServiceCanonicalOpportunity_risk_retained bounds covered initialCovered

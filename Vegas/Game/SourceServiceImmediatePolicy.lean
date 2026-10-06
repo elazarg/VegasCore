@@ -24,19 +24,34 @@ open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
-  (setup : Setup (Player := Player) (L := L))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+
+section Configured
+
+variable (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.ExecutionMode)
+  (deadline : (serviceGraph setup mode).EventId → Nat)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 /-- Take the protected current source opportunity whenever the owner's actual
 local risk flag is clear, without testing an earlier turn count. -/
-def sourceServiceImmediatePolicy (bound : (graph setup).EventId → Nat)
+def serviceImmediatePolicy (bound : (serviceGraph setup mode).EventId → Nat)
     (profile : BehavioralProfile setup.program) (who : Player) :
-    (application setup leaks).Policy := fun past view =>
-  if (runtime setup).serviceRisk leaks bound who past view = false then
+    (serviceApplication setup mode deadline leaks).Policy := fun past view =>
+  if (serviceRuntime setup mode deadline).serviceRisk leaks bound who past view = false then
     match view.application.publicView.ownTurn? who with
-    | none => (application setup leaks).silentPolicy past view
-    | some event => sourceServiceCanonicalOpportunity setup leaks bound profile who event past view
-  else (application setup leaks).silentPolicy past view
+    | none => (serviceApplication setup mode deadline leaks).silentPolicy past view
+    | some event =>
+        serviceCanonicalOpportunity setup mode deadline leaks bound profile who event past view
+  else (serviceApplication setup mode deadline leaks).silentPolicy past view
+
+end Configured
+
+variable (setup : Setup (Player := Player) (L := L))
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+
+/-- The immediate policy on the default runtime. -/
+abbrev sourceServiceImmediatePolicy : ((graph setup).EventId → Nat) →
+    BehavioralProfile setup.program → Player → (application setup leaks).Policy :=
+  serviceImmediatePolicy setup .sequential (rankDeadline setup .sequential) leaks
 
 variable {setup leaks}
 
@@ -50,7 +65,7 @@ theorem sourceServiceImmediatePolicy_at_event
     (turn : view.application.publicView.ownTurn? who = some event) :
     sourceServiceImmediatePolicy setup leaks bound profile who past view =
       sourceServiceCanonicalOpportunity setup leaks bound profile who event past view := by
-  simp only [sourceServiceImmediatePolicy, clear, ↓reduceIte, turn]
+  simp only [sourceServiceImmediatePolicy, serviceImmediatePolicy, clear, ↓reduceIte, turn]
 
 /-- Every supported response is silence or a current opportunity at clear risk. -/
 theorem sourceServiceImmediatePolicy_cases
@@ -64,7 +79,7 @@ theorem sourceServiceImmediatePolicy_cases
       view.application.publicView.ownTurn? who = some event ∧
       response ∈ (sourceServiceCanonicalOpportunity setup leaks bound profile who event
         past view).support := by
-  unfold sourceServiceImmediatePolicy at chosen
+  unfold sourceServiceImmediatePolicy serviceImmediatePolicy at chosen
   split at chosen
   · rename_i clear
     split at chosen

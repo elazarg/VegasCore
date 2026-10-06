@@ -37,53 +37,83 @@ open Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
-  (setup : Setup (Player := Player) (L := L))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+
+section Configured
+
+variable (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.ExecutionMode)
+  (deadline : (serviceGraph setup mode).EventId → Nat)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 /-- **The client policy.** The turn-counted policy, completed by silence at
 every history where the player's own recorded responses do not all follow
 it. -/
-def sourceServiceClientPolicy (bound : (graph setup).EventId → Nat) (turns : Nat)
-    (timing : TurnTiming setup turns) (profile : BehavioralProfile setup.program)
-    (who : Player) : (application setup leaks).Policy :=
-  (sourceServiceTurnPolicy setup leaks bound turns timing profile who).recover
-    (application setup leaks).silentPolicy
+def serviceClientPolicy (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
+    (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
+    (who : Player) : (serviceApplication setup mode deadline leaks).Policy :=
+  (serviceTurnPolicy setup mode deadline leaks bound turns timing profile who).recover
+    (serviceApplication setup mode deadline leaks).silentPolicy
 
-variable {setup leaks}
+end Configured
+
+variable (setup : Setup (Player := Player) (L := L))
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+
+/-- The client policy on the default runtime. -/
+abbrev sourceServiceClientPolicy : ((graph setup).EventId → Nat) → (turns : Nat) →
+    TurnTiming setup turns → BehavioralProfile setup.program → Player →
+      (application setup leaks).Policy :=
+  serviceClientPolicy setup .sequential (rankDeadline setup .sequential) leaks
+
+section Configured
+
+variable {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
+  {deadline : (serviceGraph setup mode).EventId → Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
 
 /-- The client policies have the execution law of the turn-counted policies. -/
-theorem sourceServiceClientPolicy_roundsFrom (scheduler : (application setup leaks).Scheduler)
-    (bound : (graph setup).EventId → Nat) (turns : Nat) (timing : TurnTiming setup turns)
+theorem sourceServiceClientPolicy_roundsFrom (scheduler : (serviceApplication setup mode deadline
+    leaks).Scheduler)
+    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat) (timing : TurnTiming setup
+      turns mode)
     (profile : BehavioralProfile setup.program) (count : Nat) :
-    (application setup leaks).roundsFrom (initialLaw setup) scheduler
-        (sourceServiceClientPolicy setup leaks bound turns timing profile) count =
-      (application setup leaks).roundsFrom (initialLaw setup) scheduler
-        (sourceServiceTurnPolicy setup leaks bound turns timing profile) count := by
+    (serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+      scheduler
+        (serviceClientPolicy setup mode deadline leaks bound turns timing profile) count =
+      (serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+        scheduler
+        (serviceTurnPolicy setup mode deadline leaks bound turns timing profile) count := by
   unfold ReactiveApplication.roundsFrom
   congr 1
   funext state
   have completed := ReactiveApplication.Policy.recoverWhere_runRounds
-    (sourceServiceTurnPolicy setup leaks bound turns timing profile) (fun _ => True)
-    (fun _ => (application setup leaks).silentPolicy) scheduler count
-    (ReactiveApplication.Execution.initial (application setup leaks) state) (fun _ _ => .nil)
+    (serviceTurnPolicy setup mode deadline leaks bound turns timing profile) (fun _ => True)
+    (fun _ => (serviceApplication setup mode deadline leaks).silentPolicy) scheduler count
+    (ReactiveApplication.Execution.initial (serviceApplication setup mode deadline leaks) state)
+      (fun _ _ => .nil)
   simp only [ite_true] at completed
   exact completed
 
 /-- Against a unilateral deviation, the other players' client policies have the
 execution law of their turn-counted policies. -/
 theorem sourceServiceClientPolicy_deviation_roundsFrom
-    (scheduler : (application setup leaks).Scheduler) (bound : (graph setup).EventId → Nat)
-    (turns : Nat) (timing : TurnTiming setup turns) (profile : BehavioralProfile setup.program)
-    (who : Player) (alternative : (application setup leaks).Policy) (count : Nat) :
-    (application setup leaks).roundsFrom (initialLaw setup) scheduler
-        (Function.update (sourceServiceClientPolicy setup leaks bound turns timing profile) who
+    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler) (bound : (serviceGraph
+      setup mode).EventId → Nat)
+    (turns : Nat) (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
+    (who : Player) (alternative : (serviceApplication setup mode deadline leaks).Policy) (count :
+      Nat) :
+    (serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+      scheduler
+        (Function.update (serviceClientPolicy setup mode deadline leaks bound turns timing profile)
+          who
           alternative) count =
-      (application setup leaks).roundsFrom (initialLaw setup) scheduler
+      (serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+        scheduler
         (deviatedTurnProfile bound turns timing profile who alternative) count := by
-  have shape : Function.update (sourceServiceClientPolicy setup leaks bound turns timing profile)
+  have shape : Function.update (serviceClientPolicy setup mode deadline leaks bound turns timing
+    profile)
       who alternative = fun player => if player ≠ who then
         (deviatedTurnProfile bound turns timing profile who alternative player).recover
-          (application setup leaks).silentPolicy
+          (serviceApplication setup mode deadline leaks).silentPolicy
       else deviatedTurnProfile bound turns timing profile who alternative player := by
     funext player
     by_cases same : player = who
@@ -97,8 +127,13 @@ theorem sourceServiceClientPolicy_deviation_roundsFrom
   funext state
   exact ReactiveApplication.Policy.recoverWhere_runRounds
     (deviatedTurnProfile bound turns timing profile who alternative) (fun player => player ≠ who)
-    (fun _ => (application setup leaks).silentPolicy) scheduler count
-    (ReactiveApplication.Execution.initial (application setup leaks) state) (fun _ _ => .nil)
+    (fun _ => (serviceApplication setup mode deadline leaks).silentPolicy) scheduler count
+    (ReactiveApplication.Execution.initial (serviceApplication setup mode deadline leaks) state)
+      (fun _ _ => .nil)
+
+end Configured
+
+variable {setup leaks}
 
 section Menu
 
@@ -112,30 +147,36 @@ profile's source joint law of typed outcome and realized payoffs within the
 total deferral weight in total variation, for every authentic partial audit and
 every deposit. -/
 theorem sourceServiceClients_clientPolicy_settlement_lawError
-    {scheduler : (application setup leaks).Scheduler} {horizon turns : Nat}
-    {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
+    {mode : EventGraph.ExecutionMode} {deadline : (serviceGraph setup mode).EventId → Nat}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
+    (configuration : RankSequential setup mode deadline)
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler} {horizon turns : Nat}
+    {delay bound : (serviceGraph setup mode).EventId → Nat}
+    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks (serviceInitialLaw setup
+      mode) horizon scheduler
       delay bound)
-    (timely : AsyncTimely (runtime setup) delay bound)
-    (timing : TurnTiming setup turns) (original : BehavioralProfile setup.program)
-    (menu : (application setup leaks).ResponseMenu)
-    (covered : ∀ who, menu.Admissible (initialLaw setup) horizon scheduler who
-      (sourceServiceClientPolicy setup leaks bound turns timing
+    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
+    (timing : TurnTiming setup turns mode) (original : BehavioralProfile setup.program)
+    (menu : (serviceApplication setup mode deadline leaks).ResponseMenu)
+    (covered : ∀ who, menu.Admissible (serviceInitialLaw setup mode) horizon scheduler who
+      (serviceClientPolicy setup mode deadline leaks bound turns timing
         (sourceServiceClientProfile setup original) who))
-    (sample : List (SettledEvidence setup) → PMF (List (SettledEvidence setup)))
+    (sample : List (SettledEvidence setup mode) → PMF (List (SettledEvidence setup mode)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (utility : State L setup.program.terminalCtx → Player → ℝ) (deposit : Player → ℝ) :
-    let settle := TerminalAudit.settlement (baseUtility setup leaks utility)
-      ((runtime setup).serviceAuditObservation leaks)
-      (sourceServiceAudit setup leaks sample) deposit
+    let settle := TerminalAudit.settlement (serviceBaseUtility setup mode deadline leaks utility)
+      ((serviceRuntime setup mode deadline).serviceAuditObservation leaks)
+      (serviceSourceAudit setup mode deadline leaks sample) deposit
     PMF.WithinTV (∑ event, timing.deferral event)
-      (((menu.information (initialLaw setup) horizon scheduler).runBehavioral
-        (fun who => menu.restrictPolicy (initialLaw setup) horizon scheduler who
-          (sourceServiceClientPolicy setup leaks bound turns timing
+      (((menu.information (serviceInitialLaw setup mode) horizon scheduler).runBehavioral
+        (fun who => menu.restrictPolicy (serviceInitialLaw setup mode) horizon scheduler who
+          (serviceClientPolicy setup mode deadline leaks bound turns timing
             (sourceServiceClientProfile setup original) who))
         (2 * horizon + 1)).bind (fun final =>
-          (settle final.state).map fun payoffs => (sourceReadout setup leaks final.state, payoffs)))
+          (settle final.state).map fun payoffs => (serviceSourceReadout setup mode deadline leaks
+            final.state, payoffs)))
       ((setup.run original).map (fun state => (some state, utility state))) := by
+  obtain ⟨rfl, rfl⟩ := configuration
   intro settle
   let clients := sourceServiceClientProfile setup original
   have physical := menu.run_restrict_eq_finish (initialLaw setup) horizon scheduler
@@ -295,26 +336,34 @@ profile with admitted binding values, each player's client policy is
 admissible in the bounded raw response menu under every scheduler: where its
 own recorded responses all follow the turn-counted policy, its canonical
 decisions fit the bounds; elsewhere it is silent. -/
-theorem sourceServiceClientPolicy_raw_admissible (covered : bounds.CoversBindingValues)
-    (initialCovered : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
-    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
-    (bound : (graph setup).EventId → Nat) (turns : Nat) (timing : TurnTiming setup turns)
-    (profile : BehavioralProfile setup.program)
+theorem sourceServiceClientPolicy_raw_admissible
+    {mode : EventGraph.ExecutionMode} {deadline : (serviceGraph setup mode).EventId → Nat}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
+    (bounds : MessageBounds (serviceGraph setup mode))
+    (configuration : RankSequential setup mode deadline) (covered : bounds.CoversBindingValues)
+    (initialCovered : ∀ state ∈ (serviceInitialLaw setup mode).support,
+      bounds.CandidateValues state)
+    (capacity : (serviceGraph setup mode).order.eventCount ≤ bounds.candidateCount)
+    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
+    (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
     (permitted : ∀ who, (profile who).Admitted setup.program (CommitmentInterface.values _))
-    (horizon : Nat) (scheduler : (application setup leaks).Scheduler) (who : Player) :
-    (bounds.rawMenu (runtime setup) leaks).Admissible (initialLaw setup) horizon scheduler who
-      (sourceServiceClientPolicy setup leaks bound turns timing profile who) := by
+    (horizon : Nat) (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+    (who : Player) :
+    (bounds.rawMenu (serviceRuntime setup mode deadline) leaks).Admissible
+      (serviceInitialLaw setup mode) horizon scheduler who
+      (serviceClientPolicy setup mode deadline leaks bound turns timing profile who) := by
+  obtain ⟨rfl, rfl⟩ := configuration
   intro control trace _ response supported
   by_cases consistent : (sourceServiceTurnPolicy setup leaks bound turns timing profile
     who).Consistent (control.execution.recall who)
-  · rw [sourceServiceClientPolicy, ReactiveApplication.Policy.recover_eq _ _ _ _ consistent]
+  · rw [serviceClientPolicy, ReactiveApplication.Policy.recover_eq _ _ _ _ consistent]
       at supported
     obtain ⟨atTurn, slots⟩ := sourceServiceTurnPolicy_consistent_slots bounds covered
       initialCovered capacity bound turns timing profile permitted trace who consistent
     exact canonicalMenu_in_raw bounds who _ _
       (sourceServiceTurnPolicy_retained_of_slots bounds covered initialCovered capacity bound
         turns timing profile who (permitted who) control trace atTurn slots response supported)
-  · rw [sourceServiceClientPolicy,
+  · rw [serviceClientPolicy,
       ReactiveApplication.Policy.recover_eq_recovery _ _ _ _ consistent] at supported
     exact canonicalMenu_in_raw bounds who _ _
       (bounds.silent_canonical (runtime setup) leaks who _ _ response supported)

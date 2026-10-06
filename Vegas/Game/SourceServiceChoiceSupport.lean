@@ -43,7 +43,8 @@ private theorem finiteBindingTypes_of_outputs :
 /-- The compiler's existing finite binding-value coverage supplies source
 choice finiteness without strengthening the source or native game. -/
 theorem sourceService_finiteBindingTypes (setup : Setup (Player := Player) (L := L))
-    (bounds : MessageBounds (graph setup)) (covered : bounds.CoversBindingValues) :
+    {mode : EventGraph.ExecutionMode} (bounds : MessageBounds (serviceGraph setup mode))
+    (covered : bounds.CoversBindingValues) :
     setup.program.FiniteBindingTypes :=
   finiteBindingTypes_of_outputs setup.program (fun event owner payload kind =>
     bounds.finite_binding_values covered event owner payload kind)

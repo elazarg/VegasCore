@@ -30,6 +30,47 @@ theorem rankPrefix_initial (inputs : graph.Inputs) :
     RankPrefix (Config.initial inputs) := by
   simp [RankPrefix, Config.initial, EventOrder.Cut.empty]
 
+/-- The completions of a configuration sorted by source rank, whatever order
+they completed in. -/
+def Config.rankedHistory (config : graph.Config) : List graph.Completion :=
+  config.history.mergeSort fun left right => decide (left.event.val ≤ right.event.val)
+
+/-- Sorting by rank only reorders the completions. -/
+theorem Config.rankedHistory_perm (config : graph.Config) :
+    config.rankedHistory.Perm config.history :=
+  List.mergeSort_perm _ _
+
+/-- The ranked completions follow source rank. -/
+theorem Config.rankedHistory_pairwise (config : graph.Config) :
+    config.rankedHistory.Pairwise fun left right => left.event.val ≤ right.event.val := by
+  have sorted := List.pairwise_mergeSort
+    (le := fun left right : graph.Completion => decide (left.event.val ≤ right.event.val))
+    (fun _ _ _ first second => by simp only [decide_eq_true_eq] at *; omega)
+    (fun first second => by
+      simp only [Bool.or_eq_true, decide_eq_true_eq]
+      omega) config.history
+  exact sorted.imp fun related => of_decide_eq_true related
+
+/-- A configuration whose completions already follow source rank is its own
+ranked history. -/
+theorem RankPrefix.rankedHistory_eq {config : graph.Config} (ranked : RankPrefix config) :
+    config.rankedHistory = config.history := by
+  have strict : config.history.Pairwise fun left right => left.event.val < right.event.val :=
+    (List.pairwise_map (R := fun left right : graph.EventId => left.val < right.val)).mp
+      ranked.2
+  have distinct : config.history.Pairwise fun left right => left.event.val ≠ right.event.val :=
+    strict.imp Nat.ne_of_lt
+  have : Std.Symm fun left right : graph.Completion => left.event.val ≠ right.event.val :=
+    ⟨fun _ _ different same => different same.symm⟩
+  apply List.Perm.eq_of_pairwise (le := fun left right => left.event.val ≤ right.event.val)
+  · intro left right leftMem rightMem below above
+    by_contra different
+    exact distinct.forall (config.rankedHistory_perm.subset leftMem) rightMem different
+      (Nat.le_antisymm below above)
+  · exact config.rankedHistory_pairwise
+  · exact strict.imp Nat.le_of_lt
+  · exact config.rankedHistory_perm
+
 theorem rankPrefix_step {config next : graph.Config}
     (ordered : RankPrefix config) (event : graph.EventId) (ready : config.cut.Ready event)
     (action : graph.Action event)

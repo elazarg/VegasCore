@@ -30,11 +30,15 @@ variable {Player : Type} [DecidableEq Player]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 /-- The turn-counted clients of a profile, with one player replaced. -/
-abbrev deviatedTurnProfile (bound : (graph setup).EventId → Nat) (turns : Nat)
-    (timing : TurnTiming setup turns) (profile : BehavioralProfile setup.program)
-    (who : Player) (alternative : (application setup leaks).Policy) :
-    Player → (application setup leaks).Policy :=
-  Function.update (sourceServiceTurnPolicy setup leaks bound turns timing profile) who alternative
+abbrev deviatedTurnProfile {mode : EventGraph.ExecutionMode}
+    {deadline : (serviceGraph setup mode).EventId → Nat}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
+    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
+    (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
+    (who : Player) (alternative : (serviceApplication setup mode deadline leaks).Policy) :
+    Player → (serviceApplication setup mode deadline leaks).Policy :=
+  Function.update (serviceTurnPolicy setup mode deadline leaks bound turns timing profile) who
+    alternative
 
 private theorem runRounds_eq_runUntil_never {Principal : Type} [DecidableEq Principal]
     (app : ReactiveApplication Principal) (scheduler : app.Scheduler)
@@ -257,7 +261,7 @@ theorem sourceServiceTurnPolicy_deviation_runToHorizon_bind_within {β : Type}
   | zero =>
       intro rank execution gapEq boundary bounded
       have rankEq : rank = (graph setup).order.eventCount := by
-        have := boundary.ordered.1
+        have : rank ≤ (graph setup).order.eventCount := boundary.ordered.1
         omega
       subst rankEq
       have same : app.runToHorizon scheduler players horizon execution =
@@ -357,17 +361,22 @@ executions after `horizon` rounds from initialization, followed by any common
 kernel, are within the total deferral weight of the deviated first-turn
 profile's. -/
 theorem sourceServiceTurnPolicy_deviation_roundsFrom_bind_within {β : Type}
-    (scheduler : (application setup leaks).Scheduler) {horizon turns : Nat}
-    {bound : (graph setup).EventId → Nat} (timing : TurnTiming setup turns)
+    {mode : EventGraph.ExecutionMode} {deadline : (serviceGraph setup mode).EventId → Nat}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
+    (configuration : RankSequential setup mode deadline)
+    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler) {horizon turns : Nat}
+    {bound : (serviceGraph setup mode).EventId → Nat} (timing : TurnTiming setup turns mode)
     (profile : BehavioralProfile setup.program) (who : Player)
-    (alternative : (application setup leaks).Policy)
-    (readout : (application setup leaks).Execution → PMF β) :
+    (alternative : (serviceApplication setup mode deadline leaks).Policy)
+    (readout : (serviceApplication setup mode deadline leaks).Execution → PMF β) :
     PMF.WithinTV (∑ event, timing.deferral event)
-      (((application setup leaks).roundsFrom (initialLaw setup) scheduler
-        (deviatedTurnProfile bound turns timing profile who alternative) horizon).bind readout)
-      (((application setup leaks).roundsFrom (initialLaw setup) scheduler
-        (deviatedTurnProfile bound turns (firstTurnTiming setup turns) profile who alternative)
-          horizon).bind readout) := by
+      (((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+        scheduler (deviatedTurnProfile bound turns timing profile who alternative) horizon).bind
+          readout)
+      (((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+        scheduler (deviatedTurnProfile bound turns (firstTurnTiming setup turns mode) profile who
+          alternative) horizon).bind readout) := by
+  obtain ⟨rfl, rfl⟩ := configuration
   let app := application setup leaks
   unfold ReactiveApplication.roundsFrom
   rw [PMF.bind_bind, PMF.bind_bind]

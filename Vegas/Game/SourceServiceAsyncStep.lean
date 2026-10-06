@@ -191,7 +191,7 @@ theorem sourceServiceTurnPolicy_eq_phaseProfile (bound : (graph setup).EventId �
   | none =>
       rw [phaseProfile_actorless setup leaks bound turns timing profile event owned]
       have foreign : (graph setup).actor? event ≠ some who := by rw [owned]; simp
-      simp only [sourceServiceTurnPolicy, sole.ownTurn?_foreign foreign]
+      simp only [sourceServiceTurnPolicy, serviceTurnPolicy, sole.ownTurn?_foreign foreign]
   | some owner =>
       rw [phaseProfile_owned setup leaks bound turns timing profile event owner owned]
       by_cases same : who = owner
@@ -204,7 +204,7 @@ theorem sourceServiceTurnPolicy_eq_phaseProfile (bound : (graph setup).EventId �
         have foreign : (graph setup).actor? event ≠ some who := by
           rw [owned]
           exact fun equal => same (Option.some.inj equal).symm
-        simp only [sourceServiceTurnPolicy, sole.ownTurn?_foreign foreign]
+        simp only [sourceServiceTurnPolicy, serviceTurnPolicy, sole.ownTurn?_foreign foreign]
 
 variable {setup leaks}
 
@@ -447,7 +447,7 @@ theorem sourceServiceTurnPolicy_boundaryContinuationWithin
   induction gap with
   | zero =>
       intro rank execution gapEq boundary bounded
-      have within := boundary.ordered.1
+      have within : rank ≤ (graph setup).order.eventCount := boundary.ordered.1
       have rankEq : rank = (graph setup).order.eventCount := by omega
       subst rankEq
       have empty : Finset.univ.filter (fun event : (graph setup).EventId =>
@@ -464,7 +464,7 @@ theorem sourceServiceTurnPolicy_boundaryContinuationWithin
             boundary.ordered reached
           change sourceReadout setup leaks (some ⟨0, none, next⟩) =
             sourceReadout setup leaks (some ⟨0, none, execution⟩)
-          simp only [sourceReadout, Option.bind_some, same])]
+          simp only [sourceReadout, serviceSourceReadout, Option.bind_some, same])]
         exact PMF.map_const _ _
       rw [frozen]
       exact PMF.WithinTV.refl _

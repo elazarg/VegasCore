@@ -124,7 +124,7 @@ theorem sourceService_prefix_state_law
         change (initialLaw setup).map (fun state => sourceServicePrefix? setup 0
           (ReactiveApplication.Execution.initial app state).application.config) =
             setup.behavioralStateStep admission encoded none
-        rw [setup.behavioralStateStep_none, initialLaw, PMF.map_comp]
+        rw [setup.behavioralStateStep_none, initialLaw, serviceInitialLaw, PMF.map_comp]
         congr 1
         funext initial
         exact sourceServicePrefix?_initial setup initial

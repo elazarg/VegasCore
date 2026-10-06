@@ -286,7 +286,7 @@ theorem roster_compiled_prefix_law
   have encoded : (fun who => setup.toProtocolBehavioralPolicy admission who
       (source who) (permitted who)) = profile :=
     funext fun who => (setup.behavioralPolicyEquiv admission who).apply_symm_apply (profile who)
-  rw [← encoded, setup.encoded_prefix_state, encoded, initialLaw,
+  rw [← encoded, setup.encoded_prefix_state, encoded, initialLaw, serviceInitialLaw,
     PMF.bind_map, PMF.map_bind]
   apply bind_congr_on_support _
   intro initial supported

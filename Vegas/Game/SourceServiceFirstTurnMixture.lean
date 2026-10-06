@@ -87,7 +87,7 @@ private theorem turn_none_of_first (owner : Player) (event : (graph setup).Event
     sourceServiceTurn setup leaks owner event before entry.beforeView = none := by
   apply sourceServiceTurn_of_not_turn
   intro turn
-  unfold sourceServiceTurn at first
+  unfold sourceServiceTurn serviceTurn at first
   split at first
   · have counted := Option.some.inj first
     rw [List.countP_eq_zero] at counted
@@ -136,8 +136,8 @@ theorem firstTurn_runUntil_mixture_update {scheduler : (application setup leaks)
       family (current.recall owner) (current.observe app owner) =
         mixture.policy (current.recall owner) (current.observe app owner) := by
     rw [app.policyMixture_policy]
-    cases turn : sourceServiceTurn setup leaks owner event (current.recall owner)
-        (current.observe app owner) with
+    cases turn : serviceTurn setup .sequential (rankDeadline setup .sequential) leaks owner event
+        (current.recall owner) (current.observe app owner) with
     | none =>
         rw [show family (current.recall owner) (current.observe app owner) = _ from
           app.turnScheduledPolicy_of_none _ _ _ _ _ _ turn]
@@ -167,13 +167,15 @@ theorem firstTurn_runUntil_mixture_update {scheduler : (application setup leaks)
             fun action => app.turnScheduledPolicy_selected _ (0 : Fin 1) _ _ _ _ turn
           rw [selected]
           simp only [members]
-          unfold sourceServiceCanonicalOpportunity decidedOpportunity
+          unfold sourceServiceCanonicalOpportunity serviceCanonicalOpportunity decidedOpportunity
           by_cases recorded : (runtime setup).eventRecorded leaks (current.recall owner) event
           · simp only [recorded, ↓reduceIte, PMF.bind_const]
           · by_cases fits : PublicView.InclusionFitsDeadline (runtime setup) bound
                 (current.observe app owner).application.publicView event
             · simp only [recorded, fits, Bool.false_eq_true, ↓reduceIte]
-              rw [policy current same, PMF.bind_map]
+              have policyEq := policy current same
+              simp only [sourceServiceCanonicalPolicy] at policyEq
+              rw [policyEq, PMF.bind_map]
               rfl
             · simp only [recorded, fits, Bool.false_eq_true, ↓reduceIte, PMF.bind_const]
         · have other : ∀ slot : Fin 1, some index ≠ some slot.val := by
@@ -186,12 +188,12 @@ theorem firstTurn_runUntil_mixture_update {scheduler : (application setup leaks)
             exact zero (Option.some.inj equal)
           rw [show family (current.recall owner) (current.observe app owner) = _ from
             app.turnScheduledPolicy_unselected _ _ _ _ _ _ (fun slot chosen => by
-              rw [turn]; exact otherFamily slot chosen)]
+              simp only [turn]; exact otherFamily slot chosen)]
           have members : ∀ action, decidedTurnPolicy setup leaks bound owner event action
               (current.recall owner) (current.observe app owner) =
                 app.silentPolicy (current.recall owner) (current.observe app owner) :=
             fun action => app.turnScheduledPolicy_unselected _ _ _ _ _ _ (fun slot chosen => by
-              rw [turn]; exact other slot)
+              simp only [turn]; exact other slot)
           simp only [members, PMF.bind_const]
           rfl
   let invariant := fun current : app.Execution =>
