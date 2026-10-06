@@ -48,6 +48,7 @@ net payoffs, and charges and forfeits no player on its paths. The native
 equilibrium may depend on the builder. Stage S is the sequentialized graph;
 stage C adds concurrent bindings under the barrier order. The audit backend is
 the authentic partial sampler with conditional coverage until box W closes.
+Players are finitely many throughout.
 
 The earlier target, preservation of every sequential equilibrium of the source
 game with withholding priced by the program's own failure branch, is refuted in
@@ -255,7 +256,8 @@ joint law. It is not pursued.
   composes H with the calendar theorem at the forfeited utility: for a
   well-formed setup, every intended-game equilibrium has an audited bounded raw
   runtime equilibrium with the intended joint law of terminal store and payoff
-  realized as settlement, no charge and no failed reveal on its paths. It is the
+  realized as settlement, no charge and no failed reveal on its paths; pinned
+  in `Paper.lean` with standard axioms. It is the
   calendar runtime only, under the calendar theorem's audit assumptions, and its
   deposit is fixed for the forfeited utility, whose range grows with D times
   the number of reveals. The censored-opening verdict deferred under A1 is not

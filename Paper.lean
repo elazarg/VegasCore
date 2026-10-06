@@ -2,6 +2,7 @@
 
 import Vegas.Game.SourceServiceCompilation
 import Vegas.Game.IntendedPreservation
+import Vegas.Game.IntendedServiceCompilation
 
 /-! # Checked sequential-equilibrium preservation and termination -/
 
@@ -172,5 +173,10 @@ theorem intended_sequential_equilibrium [Fintype Player] [IExpr.ResultTypes L]
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.intended_sequential_equilibrium
+
+/-- info: 'Vegas.SourceServiceSpec.intended_audited_raw_sequentialEquilibrium' depends on
+axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceServiceSpec.intended_audited_raw_sequentialEquilibrium
 
 end Vegas.Paper
