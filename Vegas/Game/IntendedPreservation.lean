@@ -4,6 +4,7 @@ import Vegas.Source.IntendedPlay
 import Vegas.Source.SetupProtocolRecall
 import Vegas.Game.SourceInformation
 import GameTheoryExtensions.Analysis.Protocol.PassageRestrictionExtension
+import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 /-! # Intended-game preservation
 
@@ -34,37 +35,6 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-
-section Support
-
-variable {ι : Type*} [Fintype ι] {E : ExecutionProtocol ι}
-
-/-- Terminal play stays in every set of states closed under legal steps. -/
-private theorem runBehavioralTerminalFrom_support_closed (M : InformationModel E)
-    (certificate : E.WellFoundedHistories) (policies : (i : ι) → M.BehavioralPolicy i)
-    (closed : E.State → Prop)
-    (step : ∀ state joint (legal : E.Legal state joint) target, closed state →
-      target ∈ (E.step state ⟨joint, legal⟩).support → closed target)
-    (history : E.History) (holds : closed history.state) :
-    ∀ final ∈ (M.runBehavioralTerminalFrom certificate policies history).support,
-      closed final.state := by
-  induction history using certificate.induction with
-  | _ current ih =>
-      intro final supported
-      by_cases stopped : E.terminal current.state
-      · rw [InformationModel.runBehavioralTerminalFrom, E.randomizedBackwardLaw_of_terminal stopped,
-          PMF.mem_support_pure_iff] at supported
-        subst supported
-        exact holds
-      · rw [InformationModel.runBehavioralTerminalFrom,
-          E.randomizedBackwardLaw_of_not_terminal stopped, PMF.support_bind] at supported
-        obtain ⟨drawn, _, continued⟩ := Set.mem_iUnion₂.mp supported
-        rw [PMF.mem_support_bindOnSupport_iff] at continued
-        obtain ⟨target, realized, child⟩ := continued
-        exact ih (current.extend drawn.2 realized) ⟨drawn.1, drawn.2, realized⟩
-          (step _ _ drawn.2 _ holds realized) final child
-
-end Support
 
 variable (setup : Setup (Player := Player) (L := L))
 
@@ -271,7 +241,7 @@ theorem deviation_failedReveals_pos [Fintype Player] (wellFormed : setup.WellFor
       have indebted := setup.indebtedState_of_deviation who
         (setup.intendedState_trace wellFormed history.1.trace) draw.1 draw.2
         (chosen.trans offered) notIntended target realized
-      have finalIndebted := runBehavioralTerminalFrom_support_closed model certificate deviating
+      have finalIndebted := model.runBehavioralTerminalFrom_support_closed certificate deviating
         (setup.IndebtedState who) (fun state joint legal target indebted reached =>
           setup.indebtedState_step who _ state joint legal target indebted reached)
         _ indebted final child

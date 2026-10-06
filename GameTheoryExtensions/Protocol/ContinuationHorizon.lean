@@ -23,6 +23,31 @@ variable {Player : Type} [Fintype Player] [DecidableEq Player]
   {E : ExecutionProtocol Player} (M : InformationModel E)
 
 omit [DecidableEq Player] in
+/-- Terminal play stays in every set of states closed under legal steps. -/
+theorem runBehavioralTerminalFrom_support_closed (certificate : E.WellFoundedHistories)
+    (profile : ∀ who, M.BehavioralPolicy who) (closed : E.State → Prop)
+    (step : ∀ state joint (legal : E.Legal state joint) target, closed state →
+      target ∈ (E.step state ⟨joint, legal⟩).support → closed target)
+    (history : E.History) (holds : closed history.state) :
+    ∀ final ∈ (M.runBehavioralTerminalFrom certificate profile history).support,
+      closed final.state := by
+  induction history using certificate.induction with
+  | _ current ih =>
+      intro final supported
+      by_cases stopped : E.terminal current.state
+      · rw [InformationModel.runBehavioralTerminalFrom,
+          E.randomizedBackwardLaw_of_terminal stopped, PMF.mem_support_pure_iff] at supported
+        subst supported
+        exact holds
+      · rw [InformationModel.runBehavioralTerminalFrom,
+          E.randomizedBackwardLaw_of_not_terminal stopped, PMF.support_bind] at supported
+        obtain ⟨drawn, _, continued⟩ := Set.mem_iUnion₂.mp supported
+        rw [PMF.mem_support_bindOnSupport_iff] at continued
+        obtain ⟨target, realized, child⟩ := continued
+        exact ih (current.extend drawn.2 realized) ⟨drawn.1, drawn.2, realized⟩
+          (step _ _ drawn.2 _ holds realized) final child
+
+omit [DecidableEq Player] in
 theorem runBehavioralFrom_remaining
     (profile : ∀ who, M.BehavioralPolicy who) (horizon : Nat)
     (bounded : E.BoundedHorizon horizon) (history : E.History) :

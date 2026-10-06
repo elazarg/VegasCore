@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Game.AsyncIntendedCorrespondence
 import Vegas.Game.AsyncServiceDeposit
 import Vegas.Game.AsyncServiceSpec
 import Vegas.Game.BindingRepairBlock
@@ -15,6 +16,7 @@ import Vegas.Game.DisclosureRealization
 import Vegas.Game.DisclosureRetraction
 import Vegas.Game.EventCompilation
 import Vegas.Game.EventScheduling
+import Vegas.Game.IntendedAuditedOutcome
 import Vegas.Game.IntendedPreservation
 import Vegas.Game.IntendedServiceCompilation
 import Vegas.Game.PurificationEdge
@@ -127,6 +129,7 @@ import Vegas.Game.SourceServiceCoverage
 import Vegas.Game.SourceServiceDecidedCompletion
 import Vegas.Game.SourceServiceDecisionResources
 import Vegas.Game.SourceServiceDecisionSupport
+import Vegas.Game.SourceServiceDecodedDebt
 import Vegas.Game.SourceServiceDisclosure
 import Vegas.Game.SourceServiceDisclosureFactorization
 import Vegas.Game.SourceServiceDisclosureMemory

@@ -783,6 +783,86 @@ theorem indebted_of_deviation (who : Player) : {Γ : SourceCtx Player L} → {O 
           exact Or.inr (indebted_of_deviation who next admission values rest intended.2 joint
             action chosen acts available new after supported)
 
+/-- Every step at which every acting player plays an intended action keeps the
+intended invariant. Players that do not act are unconstrained, since a step
+reads only the actor's choice. -/
+theorem intended_step_of_actors : {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → (state : ProtocolState program) →
+    (joint : Player → Option (OwnAction Player L)) → (target : ProtocolState program) →
+    Intended program state →
+    (∀ who, ProtocolView.actor who program (observe who program state) = some who →
+      ∃ action, joint who = some action ∧
+        action ∈ ProtocolView.intendedAvailable who program (observe who program state)) →
+    target ∈ (step program state joint).support → Intended program target
+  | _, _, .ret _, _, _, _, intended, _, reached => by
+      rw [step, PMF.mem_support_pure_iff] at reached
+      rw [reached]
+      exact intended
+  | _, _, .sample _ fresh _ next, state, joint, target, intended, legal, reached => by
+      cases state with
+      | inl config =>
+          simp only [step, Sum.elim_inl, PMF.support_map, Set.mem_image] at reached
+          obtain ⟨value, supported, rfl⟩ := reached
+          exact intended_entry next _ (intended.1.sample fresh value) (intended.2 value supported)
+      | inr rest =>
+          simp only [step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
+          obtain ⟨after, supported, rfl⟩ := reached
+          exact intended_step_of_actors next rest joint after intended legal supported
+  | _, _, .commit (payload := payload) name owner fresh guard next, state, joint, target,
+      intended, legal, reached => by
+      cases state with
+      | inl config =>
+          simp only [step, Sum.elim_inl, PMF.mem_support_pure_iff] at reached
+          subst reached
+          obtain ⟨action, chosen, value, offered, rfl⟩ :=
+            legal owner (by simp [ProtocolView.actor, observe])
+          have accepted := (mem_intendedValues_self guard _ intended.2.1 value).mp offered
+          rw [chosen, OwnAction.binding_commit]
+          exact intended_entry next _ (intended.1.commit fresh guard value accepted)
+            (intended.2.2 value accepted)
+      | inr rest =>
+          simp only [step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
+          obtain ⟨after, supported, rfl⟩ := reached
+          exact intended_step_of_actors next rest joint after intended legal supported
+  | _, _, .reveal published owner name fresh source _ next, state, joint, target, intended,
+      legal, reached => by
+      cases state with
+      | inl config =>
+          simp only [step, Sum.elim_inl, PMF.mem_support_pure_iff] at reached
+          subst reached
+          obtain ⟨action, chosen, opened⟩ := legal owner (by simp [ProtocolView.actor, observe])
+          have same : action = .reveal owner name true := opened
+          subst same
+          rw [chosen]
+          obtain ⟨kept, opening⟩ := intended.1.reveal fresh source
+          refine ⟨?_, intended_entry next _ kept intended.2⟩
+          rw [base_entry]
+          exact opening
+      | inr rest =>
+          simp only [step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
+          obtain ⟨after, supported, rfl⟩ := reached
+          exact ⟨(base_step next rest joint after supported).symm ▸ intended.1,
+            intended_step_of_actors next rest joint after intended.2 legal supported⟩
+
+/-- **Leaving the intended game, one step.** A step from a point of the intended
+game reaches a point of the intended game, unless an acting player chose an
+action the intended game does not offer there or chose nothing. -/
+theorem intended_or_departure {Γ : SourceCtx Player L} {O : Finset VarId}
+    (program : SourceProgram Player L Γ O) (state : ProtocolState program)
+    (joint : Player → Option (OwnAction Player L)) (target : ProtocolState program)
+    (intended : Intended program state) (reached : target ∈ (step program state joint).support) :
+    Intended program target ∨
+      ∃ who, ProtocolView.actor who program (observe who program state) = some who ∧
+        ∀ action, joint who = some action →
+          action ∉ ProtocolView.intendedAvailable who program (observe who program state) := by
+  by_cases all : ∀ who, ProtocolView.actor who program (observe who program state) = some who →
+      ∃ action, joint who = some action ∧
+        action ∈ ProtocolView.intendedAvailable who program (observe who program state)
+  · exact Or.inl (intended_step_of_actors program state joint target intended all reached)
+  · push Not at all
+    obtain ⟨who, acts, departs⟩ := all
+    exact Or.inr ⟨who, acts, fun action chosen offered => departs action chosen offered⟩
+
 /-- **No forfeit in the intended game.** No reveal fails on a terminal store read
 from a point of the intended game. -/
 theorem failedReveals_eq_zero_of_intended (who : Player) :

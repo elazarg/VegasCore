@@ -201,8 +201,14 @@ joint law. It is not pursued.
   rational completion at free sites, keeping prescribed limits and the terminal
   law); `exists_deferralWeights_faster` and `exists_source_timing_rates`
   (deferral rates negligible against given source scales);
-  `runBehavioral_withinTV_of_supported_choices`. No native sequence over the
-  actual runtime is constructed.
+  `runBehavioral_withinTV_of_supported_choices`. The correspondence used for
+  the copied/free split is defined: `CorrespondsIntended` (every state along a
+  native history decodes at its completed prefix to a point of the intended
+  game and every recorded response was canonical; prefix-closed by
+  construction) and `correspondingAgents` (agents at which a corresponding
+  history decides, a function of the information state)
+  ([AsyncIntendedCorrespondence](../Vegas/Game/AsyncIntendedCorrespondence.lean)).
+  No native sequence over the actual runtime is constructed.
 - [ ] **S3. Joint source and traffic law at every native information set.**
   Actual reach weights couple legal source actions, chance, public results,
   original own recall and traffic, including foreign WAIT likelihoods and
@@ -213,6 +219,17 @@ joint law. It is not pursued.
 - [ ] **S4. WAIT comparisons.** At every retained owner input, every whole
   continuation that waits, including later attempts under selective inclusion
   and expiry, is bounded by source comparisons at the same assessment.
+  Partial evidence (forfeit side of the comparisons): the native decoding
+  advances by the source step of the decoded action at every completion
+  (`SourceResidual.step`); from a decoding in the intended game a completion
+  stays in it or is a departure of the event's actor, who is then indebted
+  unless the departure is a failed binding
+  (`SourceResidual.intended_or_departure`); and a decoded debt is paid by a
+  failed reveal on every terminal history of terminal play from it, under any
+  players and any scheduler that completes play
+  (`decoded_indebted_failedReveals`,
+  [SourceServiceDecodedDebt](../Vegas/Game/SourceServiceDecodedDebt.lean)).
+  No WAIT comparison is proved.
 - [ ] **S5. Charged deviations before the first charge.** Every forbidden or
   unprescribed packet is bounded by the deposit times the actual change in
   conditional collection, uniformly over arbitrary later play.
@@ -257,7 +274,15 @@ joint law. It is not pursued.
   mixtures up to a vanishing error and the native observation laws approach the
   perturbed source laws, there is a native sequential equilibrium with the
   source law that agrees with the compiled limit at every copied site. Its
-  premises are not constructed for the actual runtime.
+  premises are not constructed for the actual runtime. Source side for the
+  intended game: `Setup.intended_auditedSource` (every intended SE is the limit
+  of a fully mixed Bayes sequence and is rational for the audited utility of
+  store and collection probabilities, at the intended horizon), with
+  `Setup.auditedUtility_runtime` (the same utility is the audited terminal
+  payoff on the runtime) and `TerminalAudit.clean_of_law_eq` (a law equality on
+  readout and collection probabilities with a charge-free source gives no charge
+  on paths and the joint settlement law)
+  ([IntendedAuditedOutcome](../Vegas/Game/IntendedAuditedOutcome.lean)).
 - [ ] **S9. Validation.** The stage-S theorem is pinned in `Paper.lean` with
   standard axioms, the calendar theorem is derived as its instance, and every
   cited evidence declaration is in its dependency closure.

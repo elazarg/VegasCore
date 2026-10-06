@@ -106,6 +106,51 @@ theorem settlement_clean (base : Outcome → Player → ℝ) (observe : Outcome 
       simp only [quiet verdict supported who, Bool.false_eq_true, ite_false, sub_zero]
     _ = _ := by simp only [← PMF.bind_pure_comp, Function.comp_def, PMF.bind_const]
 
+/-- **Clean settlement from a charge-free law.** Suppose a terminal law and a
+reference law agree on the joint law of a readout and the vector of collection
+probabilities, and the reference charges nobody. Then no outcome in the
+terminal law's support is charged, and its joint law of readout and realized
+settlement is the reference law of readout and base payoff, when the base payoff
+is a function of the readout. -/
+theorem clean_of_law_eq {Readout Source : Type*} (base : Outcome → Player → ℝ)
+    (observe : Outcome → Observation) (audit : Observation → PMF (Player → Bool))
+    (deposit : Player → ℝ) (readout : Outcome → Readout) (value : Readout → Player → ℝ)
+    (baseEq : ∀ outcome, base outcome = value (readout outcome))
+    (law : PMF Outcome) (source : PMF Source) (sourceReadout : Source → Readout)
+    (equal : law.map (fun outcome =>
+        (readout outcome, fun who => charge observe audit outcome who)) =
+      source.map (fun state => (sourceReadout state, (0 : Player → ℝ)))) :
+    (∀ outcome ∈ law.support, ∀ who, charge observe audit outcome who = 0) ∧
+      law.bind (fun outcome => (settlement base observe audit deposit outcome).map
+          (fun payoffs => (readout outcome, payoffs))) =
+        source.map (fun state => (sourceReadout state, value (sourceReadout state))) := by
+  have clean (outcome : Outcome) (supported : outcome ∈ law.support) (who : Player) :
+      charge observe audit outcome who = 0 := by
+    have member : (readout outcome, fun who => charge observe audit outcome who) ∈
+        (law.map (fun outcome =>
+          (readout outcome, fun who => charge observe audit outcome who))).support :=
+      (PMF.mem_support_map_iff _ _ _).mpr ⟨outcome, supported, rfl⟩
+    rw [equal, PMF.mem_support_map_iff] at member
+    obtain ⟨_, _, same⟩ := member
+    exact (congrFun (congrArg Prod.snd same) who).symm
+  refine ⟨clean, ?_⟩
+  calc
+    _ = law.map (fun outcome => (readout outcome, value (readout outcome))) := by
+      rw [← PMF.bind_pure_comp]
+      apply bind_congr_on_support
+      intro outcome supported
+      rw [settlement_clean base observe audit deposit outcome (clean outcome supported),
+        PMF.pure_map, baseEq]
+      rfl
+    _ = (law.map (fun outcome =>
+          (readout outcome, fun who => charge observe audit outcome who))).map
+          (fun pair => (pair.1, value pair.1)) := by
+      rw [PMF.map_comp]
+      rfl
+    _ = _ := by
+      rw [equal, PMF.map_comp]
+      rfl
+
 end GameTheory.Enforcement.TerminalAudit
 
 namespace GameTheory.Protocol.InformationModel.ActionRestriction
