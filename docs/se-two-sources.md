@@ -91,7 +91,7 @@ it.
    information sets are those of `S_exp` minus every history containing a
    withholding.
 
-6. **Concurrent reveals (deferred).** Reveals are ordered because a later
+6. **Concurrent reveals (now a target, checklist box C3).** Reveals are ordered because a later
    owner's withholding choice may depend on earlier opened values. In `S_int`
    there is no such choice, and under the forfeit withholding is strictly
    dominated at every information set whatever the owner knows, so the

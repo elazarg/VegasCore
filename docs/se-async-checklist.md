@@ -45,8 +45,11 @@ Every sequential equilibrium of the intended game has a sequential equilibrium
 of the bounded raw runtime for the forfeit-compiled program under that builder
 that preserves the joint law of initial parameters, public results and realized
 net payoffs, and charges and forfeits no player on its paths. The native
-equilibrium may depend on the builder. Stage S is the sequentialized graph;
-stage C adds concurrent bindings under the barrier order. The audit backend is
+equilibrium may depend on the builder. The end goal is the concurrent stage:
+events run concurrently wherever the game allows (independent commitments
+between public barriers and, under the forfeit pass, independent reveals), or a
+proof that a given concurrency breaks preservation. Stage S, the sequentialized
+graph, is an intermediate level of the tower, not the goal. The audit backend is
 the authentic partial sampler with conditional coverage until box W closes.
 Players are finitely many throughout.
 An author-only observation rule (leaks depend on the observer and the authors
@@ -326,6 +329,13 @@ joint law. It is not pursued.
   commute, without exposing unexecuted foreign values.
 - [ ] **C2. Concurrent theorem.** The target theorem holds for barrier-order
   graphs, pinned with standard axioms.
+- [ ] **C3. Concurrent reveals.** Under the forfeit pass, reveals that the game
+  does not order (no guard or later decision reads one before the other) run
+  concurrently, and the target theorem holds for that graph; or a
+  counterexample meeting the methodology's standard shows it fails.
+- [ ] **C4. Concurrent Nash.** The Nash correspondence for every contract
+  builder, and its intended-game form, hold for the concurrent graph of C2–C3,
+  pinned with standard axioms.
 
 ## W. Operational watcher
 
