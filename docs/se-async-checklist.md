@@ -37,10 +37,10 @@ and records which are closed.
 
 Fix the program of the intended game (every owned commitment holds a value and
 every owned reveal opens; see [two sources](se-two-sources.md)), its initial law
-and utilities, the forfeit pass with a forfeit above the payoff range, the
+and utilities, the forfeit pass with a forfeit strictly above the payoff range, the
 bounded raw runtime, a builder satisfying `AsyncContract` with reaction and
 inclusion bounds that fit every deadline, the observation rule, the audit
-backend and the deposit, before choosing an equilibrium of the intended game.
+backend and a deposit strictly above the deterrence bound, before choosing an equilibrium of the intended game.
 Every sequential equilibrium of the intended game has a sequential equilibrium
 of the bounded raw runtime for the forfeit-compiled program under that builder
 that preserves the joint law of initial parameters, public results and realized
@@ -219,6 +219,10 @@ joint law. It is not pursued.
 - [ ] **S4. WAIT comparisons.** At every retained owner input, every whole
   continuation that waits, including later attempts under selective inclusion
   and expiry, is bounded by source comparisons at the same assessment.
+  Superseded on the current route (owner-approved): under the S8 timing split,
+  waiting at an owner's corresponding turn is chosen by rational completion, so
+  no source comparison is needed; this box applies again only if the route
+  changes.
   Partial evidence (forfeit side of the comparisons): the native decoding
   advances by the source step of the decoded action at every completion
   (`SourceResidual.step`); from a decoding in the intended game a completion
