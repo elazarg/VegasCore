@@ -31,6 +31,7 @@ import GameTheoryExtensions.Analysis.Protocol.PassageRestrictionExtension
 import GameTheoryExtensions.Analysis.Protocol.Perturbation
 import GameTheoryExtensions.Analysis.Protocol.PrescribedCompletion
 import GameTheoryExtensions.Analysis.Protocol.ProportionalBeliefTransport
+import GameTheoryExtensions.Analysis.Protocol.ReachBounds
 import GameTheoryExtensions.Analysis.Protocol.RestrictionExtension
 import GameTheoryExtensions.Analysis.Protocol.RetainedDeviation
 import GameTheoryExtensions.Analysis.Protocol.Sequential
