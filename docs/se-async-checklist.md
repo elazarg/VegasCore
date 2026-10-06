@@ -334,8 +334,13 @@ joint law. It is not pursued.
   concurrently, and the target theorem holds for that graph; or a
   counterexample meeting the methodology's standard shows it fails.
 - [ ] **C4. Concurrent Nash.** The Nash correspondence for every contract
-  builder, and its intended-game form, hold for the concurrent graph of C2–C3,
-  pinned with standard axioms.
+  builder holds for the source game on the concurrent-binding graph of C2, and
+  its intended-game form (through the forfeit pass) on the graph of C3, pinned
+  with standard axioms. With withholding priced only by the program's failure
+  branch, concurrent reveals can let a later revealer condition on an earlier
+  pending opening, so the source-game form is not claimed on the C3 graph.
+  Each event's deadline is a configured duration counted from the moment its
+  prerequisites complete.
 
 ## W. Operational watcher
 
