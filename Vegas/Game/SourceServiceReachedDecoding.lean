@@ -56,6 +56,8 @@ structure SourceResidual (rank : Nat) (config : (graph setup).Config) : Type whe
       (CommitmentInterface.values setup.program) [] (Revelations.initial setup.context)) →
     ∀ who, (residualProfile who).SupportsEffectiveChoices program
       (CommitmentInterface.values program) source.registry source.revelations
+  disclosing : (∀ who, Disclosing setup.program (profile who)) →
+    ∀ who, Disclosing program (residualProfile who)
   lift : ProtocolState program → ProtocolState setup.program
   commutes : ∀ [Fintype Player] state,
     ProtocolState.behavioralStateStep setup.program profile (lift state) =
@@ -103,6 +105,7 @@ def SourceResidual.initial (initial : State L setup.context) :
   admitted := fun admitted => admitted
   effective := fun effective => effective
   supports := fun supported => supported
+  disclosing := fun disclosing => disclosing
   lift := id
   commutes := fun state => by simp only [id_eq, PMF.map_id]
   steps := fun state joint => by simp only [id_eq, PMF.map_id]
@@ -133,7 +136,7 @@ theorem SourceResidual.step {rank : Nat} {before : (graph setup).Config}
           (residual.lift (ProtocolState.entry residual.program residual.source))
           (fun _ => decodeEventAction setup.program event action)).support := by
   obtain ⟨Γ, names, program, residualProfile, source, refs, embedding, refsBefore, aligned,
-    admitted, effective, supports, lift, commutes, steps, injective, transport,
+    admitted, effective, supports, disclosing, lift, commutes, steps, injective, transport,
     checkpoint⟩ := residual
   have atEvent := (ready_iff_rank setup before rank checkpoint.ordered event).mp ready
   have counted := aligned.graphSuffix.countEq
@@ -196,6 +199,7 @@ theorem SourceResidual.step {rank : Nat} {before : (graph setup).Config}
         admitted := fun whole who => admitted whole who,
         effective := fun whole who => effective whole who,
         supports := fun whole who => supports whole who,
+        disclosing := fun whole who => disclosing whole who,
         lift := lift ∘ Sum.inr,
         commutes := fun state => ?_, steps := fun state joint => ?_,
         injective := injective.comp Sum.inr_injective,
@@ -269,6 +273,7 @@ theorem SourceResidual.step {rank : Nat} {before : (graph setup).Config}
         admitted := fun whole who => (admitted whole who).2,
         effective := fun whole who => effective whole who,
         supports := fun whole who => (supports whole who).2,
+        disclosing := fun whole who => disclosing whole who,
         lift := lift ∘ Sum.inr,
         commutes := fun state => ?_, steps := fun state joint => ?_,
         injective := injective.comp Sum.inr_injective,
@@ -352,6 +357,7 @@ theorem SourceResidual.step {rank : Nat} {before : (graph setup).Config}
         admitted := fun whole who => admitted whole who,
         effective := fun whole who => (effective whole who).2,
         supports := fun whole who => (supports whole who).2,
+        disclosing := fun whole who => (disclosing whole who).2,
         lift := lift ∘ Sum.inr,
         commutes := fun state => ?_, steps := fun state joint => ?_,
         injective := injective.comp Sum.inr_injective,

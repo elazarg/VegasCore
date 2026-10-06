@@ -242,14 +242,17 @@ import Vegas.Game.SourceServiceTimedAdmissibility
 import Vegas.Game.SourceServiceTimedBinding
 import Vegas.Game.SourceServiceTimedBindingCheckpoint
 import Vegas.Game.SourceServiceTimedCheckpoint
+import Vegas.Game.SourceServiceTimedCompletion
 import Vegas.Game.SourceServiceTimedContinuation
 import Vegas.Game.SourceServiceTimedDisclosure
 import Vegas.Game.SourceServiceTimedLaw
 import Vegas.Game.SourceServiceTimedMixing
+import Vegas.Game.SourceServiceTimedMixture
 import Vegas.Game.SourceServiceTimedPolicy
 import Vegas.Game.SourceServiceTimedReachability
 import Vegas.Game.SourceServiceTimedSample
 import Vegas.Game.SourceServiceTimedSupport
+import Vegas.Game.SourceServiceTimingInvariance
 import Vegas.Game.SourceServiceTimingPosterior
 import Vegas.Game.SourceServiceTimingRates
 import Vegas.Game.SourceServiceTrafficSound

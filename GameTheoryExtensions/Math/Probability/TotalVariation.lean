@@ -213,4 +213,141 @@ theorem WithinTV.of_bind_point (timing : PMF ι) (index : ι)
     funext fun _ => by ring, expect_const_mul] at lower
   exact abs_le.mpr ⟨by linarith, by linarith⟩
 
+/-- Any two laws are within one of each other. -/
+theorem withinTV_one (μ ν : PMF α) : WithinTV 1 μ ν := fun event => by
+  have first := eventMass_bounded μ event
+  have second := eventMass_bounded ν event
+  rw [abs_of_nonneg ENNReal.toReal_nonneg] at first second
+  exact abs_le.mpr ⟨by linarith [ENNReal.toReal_nonneg (a := μ.toOuterMeasure event)],
+    by linarith [ENNReal.toReal_nonneg (a := ν.toOuterMeasure event)]⟩
+
+/-- A common start law with kernels whose closeness varies with the start: the
+laws are within the expected error. -/
+theorem WithinTV.bind_right_expect (μ : PMF α) {first second : α → PMF β} (error : α → ℝ)
+    (integrable : PayoffIntegrable μ error)
+    (close : ∀ a ∈ μ.support, WithinTV (error a) (first a) (second a)) :
+    WithinTV (expect μ error) (μ.bind first) (μ.bind second) := fun event => by
+  rw [toReal_toOuterMeasure_bind, toReal_toOuterMeasure_bind,
+    ← expect_sub (payoffIntegrable_toReal_toOuterMeasure μ first event)
+      (payoffIntegrable_toReal_toOuterMeasure μ second event)]
+  have differenceIntegrable : PayoffIntegrable μ fun a =>
+      ((first a).toOuterMeasure event).toReal - ((second a).toOuterMeasure event).toReal :=
+    payoffIntegrable_of_bounded μ _ (C := 2) fun a =>
+      (abs_sub _ _).trans (by
+        linarith [eventMass_bounded (first a) event, eventMass_bounded (second a) event])
+  have upper := expect_mono (fun a member => (abs_le.mp (close a member event)).2)
+    differenceIntegrable integrable
+  have lower := expect_mono (fun a member => by linarith [(abs_le.mp (close a member event)).1])
+    (payoffIntegrable_neg integrable) differenceIntegrable
+  rw [expect_neg] at lower
+  exact abs_le.mpr ⟨by linarith, upper⟩
+
+/-- **Residual of a dominated law.** If a law on `Option γ` puts at most `ν c` on
+each `some c`, then `ν` is that law with its `none` branch replaced by some
+residual law on `γ`. -/
+theorem exists_residual_of_le {γ : Type*} (π : PMF (Option γ)) (ν : PMF γ)
+    (dominated : ∀ c, π (some c) ≤ ν c) :
+    ∃ residual : PMF γ, π.bind (fun outcome => outcome.elim residual PMF.pure) = ν := by
+  classical
+  have optionSum (f : Option γ → ENNReal) : ∑' outcome, f outcome = f none + ∑' c, f (some c) := by
+    rw [ENNReal.tsum_eq_add_tsum_ite none]
+    congr 1
+    symm
+    convert Function.Injective.tsum_eq (Option.some_injective γ) (f := fun outcome =>
+      if outcome = none then (0 : ENNReal) else f outcome) ?_ using 1
+    · simp
+    · exact tsum_congr fun outcome => by split_ifs <;> rfl
+    · intro outcome member
+      cases outcome with
+      | none => simp at member
+      | some c => exact ⟨c, rfl⟩
+  have split : π none + ∑' c, π (some c) = 1 := by
+    rw [← optionSum (fun outcome => π outcome)]
+    exact π.tsum_coe
+  have someFinite : ∑' c, π (some c) ≠ ⊤ :=
+    ne_top_of_le_ne_top ENNReal.one_ne_top (split ▸ le_add_self)
+  have gap : ∑' c, (ν c - π (some c)) = π none := by
+    have whole : ∑' c, (ν c - π (some c)) + ∑' c, π (some c) = 1 := by
+      rw [← ENNReal.tsum_add]
+      simp only [tsub_add_cancel_of_le (dominated _)]
+      exact ν.tsum_coe
+    rw [← ENNReal.add_sub_cancel_right someFinite (a := ∑' c, (ν c - π (some c))), whole,
+      ← split, ENNReal.add_sub_cancel_right someFinite]
+  have apply (residual : PMF γ) (c : γ) :
+      (π.bind fun outcome => outcome.elim residual PMF.pure) c =
+        π none * residual c + π (some c) := by
+    rw [PMF.bind_apply, optionSum]
+    congr 1
+    rw [tsum_eq_single c fun other different => by
+      simp [PMF.pure_apply, Ne.symm different]]
+    simp [PMF.pure_apply]
+  by_cases empty : π none = 0
+  · refine ⟨ν, PMF.ext fun c => ?_⟩
+    rw [apply, empty, zero_mul, zero_add]
+    have zero : ν c - π (some c) = 0 :=
+      ENNReal.tsum_eq_zero.mp (gap.trans empty) c
+    exact le_antisymm (dominated c) (tsub_eq_zero_iff_le.mp zero)
+  · have finite : π none ≠ ⊤ := PMF.apply_ne_top π none
+    refine ⟨PMF.normalize (fun c => ν c - π (some c)) (gap ▸ empty) (gap ▸ finite),
+      PMF.ext fun c => ?_⟩
+    rw [apply, PMF.normalize_apply, gap, mul_comm, mul_assoc, ENNReal.inv_mul_cancel empty finite,
+      mul_one, tsub_add_cancel_of_le (dominated c)]
+
+/-- **Coupling up to failure.** A start law `μ` reads, through `decode`, either a
+point of `γ` or a failure (`none`), and its successful readouts are dominated
+by the law `ν`. If, after every successful start, the kernel `first` is within
+`error` of `second` at the decoded point, then the two composed laws are within
+the failure probability plus the expected error on success. -/
+theorem WithinTV.bind_of_dominated {γ : Type*} (μ : PMF α) (ν : PMF γ)
+    (decode : α → Option γ) (dominated : ∀ c, (μ.map decode) (some c) ≤ ν c)
+    (first : α → PMF β) (second : γ → PMF β) (error : α → ℝ)
+    (errorNonneg : ∀ a, 0 ≤ error a) (errorAtMostOne : ∀ a, error a ≤ 1)
+    (close : ∀ a ∈ μ.support, ∀ c, decode a = some c → WithinTV (error a) (first a) (second c)) :
+    WithinTV ((((μ.map decode) none).toReal) +
+        expect μ fun a => if (decode a).isSome then error a else 0)
+      (μ.bind first) (ν.bind second) := by
+  classical
+  obtain ⟨residual, rebuilt⟩ := exists_residual_of_le (μ.map decode) ν dominated
+  let joined : Option γ → PMF β := fun outcome => outcome.elim (residual.bind second) second
+  have target : ν.bind second = μ.bind fun a => joined (decode a) := by
+    rw [← rebuilt, PMF.bind_bind, PMF.bind_map]
+    refine bind_congr_on_support _ fun a _ => ?_
+    simp only [Function.comp_apply, joined]
+    cases decode a with
+    | none => rfl
+    | some c => exact PMF.pure_bind _ _
+  let total : α → ℝ := fun a => match decode a with
+    | none => 1
+    | some _ => error a
+  have totalBounded (a : α) : |total a| ≤ 1 := by
+    simp only [total]
+    split
+    · simp
+    · rw [abs_of_nonneg (errorNonneg a)]
+      exact errorAtMostOne a
+  have closeAll := WithinTV.bind_right_expect μ (first := first)
+    (second := fun a => joined (decode a)) total
+    (payoffIntegrable_of_bounded μ _ (C := 1) totalBounded) fun a member => by
+      simp only [total, joined]
+      cases outcome : decode a with
+      | none => exact withinTV_one _ _
+      | some c => exact close a member c outcome
+  rw [target]
+  refine closeAll.mono (le_of_eq ?_)
+  have failure : ((μ.map decode) none).toReal =
+      expect μ fun a => if (decode a).isSome then 0 else 1 := by
+    rw [toReal_map_apply]
+    refine expect_congr_on_support fun a _ => ?_
+    cases decode a <;> simp
+  rw [failure, ← expect_add (payoffIntegrable_of_bounded μ _ (C := 1) fun a => by
+      split <;> simp)
+    (payoffIntegrable_of_bounded μ _ (C := 1) fun a => by
+      split
+      · rw [abs_of_nonneg (errorNonneg a)]
+        exact errorAtMostOne a
+      · simp)]
+  refine expect_congr_on_support fun a _ => ?_
+  simp only [total]
+  cases decode a <;> simp
+
 end PMF

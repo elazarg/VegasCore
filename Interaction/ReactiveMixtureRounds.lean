@@ -2,6 +2,7 @@
 
 import Interaction.ReactivePolicyMixture
 import Interaction.ReactiveStopping
+import Interaction.ReactiveRawRoundTrace
 
 /-! # Policy mixtures and profile agreement through scheduler rounds
 
@@ -160,5 +161,64 @@ theorem runUntil_congr_of_agree (scheduler : app.Scheduler)
         apply preserved execution holds halt next
         simp only [round, dispatch, PMF.support_bind, Set.mem_iUnion]
         exact ⟨command, selected, middle, moved, resumed⟩
+
+/-- Two profiles that agree at every input queried before stopping along legal
+raw histories, where an invariant holds, give the same stopped run from a legal
+raw history with enough remaining scheduler decisions. -/
+theorem runUntil_congr_of_agree_on_traces (initial : PMF app.State) (horizon : Nat)
+    (scheduler : app.Scheduler) (first second : Principal → app.Policy)
+    (stop : app.Execution → Prop) [DecidablePred stop] (invariant : app.Execution → Prop)
+    (agree : ∀ remaining execution,
+      (app.protocol initial horizon scheduler).Trace (some ⟨remaining + 1, none, execution⟩) →
+      invariant execution → ¬ stop execution →
+      ∀ command ∈ (scheduler execution.environmentRecall
+        (execution.observeEnvironment app)).support,
+      ∀ middle ∈ (execution.environmentStep app command).support, ∀ who,
+        command.actor? app = some who →
+          first who (middle.recall who) (middle.observe app who) =
+            second who (middle.recall who) (middle.observe app who))
+    (preserved : ∀ remaining execution,
+      (app.protocol initial horizon scheduler).Trace (some ⟨remaining + 1, none, execution⟩) →
+      invariant execution → ¬ stop execution →
+      ∀ next ∈ (app.round scheduler first execution).support, invariant next) :
+    ∀ (count remaining : Nat) (execution : app.Execution),
+      (app.protocol initial horizon scheduler).Trace
+        (some ⟨remaining + count, none, execution⟩) →
+      invariant execution →
+      app.runUntil scheduler first stop count execution =
+        app.runUntil scheduler second stop count execution := by
+  intro count
+  induction count with
+  | zero => intro _ _ _ _; rfl
+  | succ count ih =>
+      intro remaining execution trace holds
+      by_cases halt : stop execution
+      · simp only [runUntil, halt, ↓reduceIte]
+      · have trace' : (app.protocol initial horizon scheduler).Trace
+            (some ⟨(remaining + count) + 1, none, execution⟩) := by
+          simpa only [Nat.add_assoc] using trace
+        simp only [runUntil, halt, ↓reduceIte, round, dispatch, PMF.bind_bind]
+        apply bind_congr_on_support _
+        intro command selected
+        apply bind_congr_on_support _
+        intro middle moved
+        have sameResponse : app.resume first (command.actor? app) middle =
+            app.resume second (command.actor? app) middle := by
+          cases active : command.actor? app with
+          | none => rfl
+          | some who =>
+              simp only [resume, invoke,
+                agree (remaining + count) execution trace' holds halt command selected middle
+                  moved who active]
+        rw [← sameResponse]
+        apply bind_congr_on_support _
+        intro next resumed
+        have reached : next ∈ (app.round scheduler first execution).support := by
+          simp only [round, dispatch, PMF.support_bind, Set.mem_iUnion]
+          exact ⟨command, selected, middle, moved, resumed⟩
+        obtain ⟨nextTrace⟩ := app.raw_trace_round initial horizon scheduler first
+          (remaining + count) execution next trace' reached
+        exact ih remaining next nextTrace
+          (preserved (remaining + count) execution trace' holds halt next reached)
 
 end Interaction.ReactiveApplication

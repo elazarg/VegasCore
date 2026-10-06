@@ -214,14 +214,25 @@ joint law. It is not pursued.
   construction) and `correspondingAgents` (agents at which a corresponding
   history decides, a function of the information state)
   ([AsyncIntendedCorrespondence](../Vegas/Game/AsyncIntendedCorrespondence.lean)).
-  No native sequence over the actual runtime is constructed.
+  Generic reach bounds for the negligibility argument
+  ([ReachBounds](../GameTheoryExtensions/Analysis/Protocol/ReachBounds.lean)):
+  a history's weight is its predecessor's times its last step
+  (`historyReachWeight_eq_prior_mul`), so a history through a light step is
+  light (`historyReachWeight_le_of_step`), a history whose every step has mass
+  at least `c` weighs at least `c` to the power of the fuel
+  (`pow_fuel_le_historyReachWeight`, with per-player step bounds from
+  `ofReal_prod_mul_le_runBehavioralFrom_one`), and on a finite set the light
+  mass is at most `card · τ / m` times the heavy mass
+  (`sum_light_le_mul_sum_heavy`). No native sequence over the actual runtime is
+  constructed.
 - [ ] **S3. Joint source and traffic law at every native information set.**
   Actual reach weights couple legal source actions, chance, public results,
   original own recall and traffic, including foreign WAIT likelihoods and
   hidden builder history, so that native beliefs are derived, not chosen.
   Partial evidence: `mixed_bob_reach_bound` for the example;
   `bayesBelief_bind_eq_conditional_passage` (beliefs at a site as conditional
-  passage laws, abstract).
+  passage laws, abstract); `bayesBelief_light_le` (a site's Bayes belief of
+  histories whose mass is at most `η` times the rest's is at most `η`, abstract).
 - [ ] **S4. WAIT comparisons.** At every retained owner input, every whole
   continuation that waits, including later attempts under selective inclusion
   and expiry, is bounded by source comparisons at the same assessment.
@@ -259,7 +270,18 @@ joint law. It is not pursued.
   for the other excluded responses;
   `asyncAuditDeposit_covers_gain` fixes the deposit per scheduler. Missing:
   private binding material, guard-passing uncertified capability and other
-  unprescribed packets; coverage is assumed, not derived (box W2).
+  unprescribed packets; coverage is assumed, not derived (box W2). In detail,
+  the settled verdict (`SettledRecord.Permits`) reads a commitment's handle and
+  an opening's certificate and guards only, so at clear sites these excluded
+  responses have no derived charge and fall to `riskOtherExclusionComparisons`:
+  a canonical-handle commitment carrying private material outside the
+  canonical domain or none at all; a certified, guard-passing opening of a
+  candidate other than the accepted one, including a forwarded certificate;
+  packets for events other than the sender's current own turn (not ready,
+  another player's, already settled), permitted while their event is
+  unsettled; second submissions for a recorded event; late packets, permitted
+  when accepted. Pending packets enter the audited traffic but are judged
+  against the final record.
 - [ ] **S6. Rational continuation after a sunk charge.** Once a charge is
   certain, continuations are rational under the remaining utility, and no
   further fine is counted.
@@ -307,6 +329,24 @@ joint law. It is not pursued.
   readout and collection probabilities with a charge-free source gives no charge
   on paths and the joint settlement law)
   ([IntendedAuditedOutcome](../Vegas/Game/IntendedAuditedOutcome.lean)).
+  Timing over canonical content, for the law premise: clients that follow the
+  compiled decisions of a disclosing source profile with effective
+  disclosures and submit whenever an arbitrary timing of their information
+  says so (`timedCanonicalPolicy`) have, under every complete scheduler, the
+  source readout law up to the probability that some event is completed by
+  expiry (`timedCanonical_readout_within`, from every completion boundary
+  `timedCanonical_boundaryContinuationWithin`,
+  [SourceServiceTimingInvariance](../Vegas/Game/SourceServiceTimingInvariance.lean)).
+  Route: an owned phase is the head-law mixture of runs deciding one action
+  with the same timing (`timedCanonical_runUntil_mixture`), each of which
+  completes the event with that action or by expiry
+  (`timed_completion_of_follows`); successful phase outcomes are dominated by
+  the source step and `PMF.WithinTV.bind_of_dominated` adds the phase's expiry
+  probability. Not yet: the collection part of the joint law, a version whose
+  disclosure hypotheses hold only on paths without an expiry (the intended
+  profile discloses but is not effective at views no intended play reaches),
+  the bridge from the component family to these clients, and vanishing expiry
+  mass under rational weights.
 - [ ] **S9. Validation.** The stage-S theorem is pinned in `Paper.lean` with
   standard axioms, the calendar theorem is derived as its instance, and every
   cited evidence declaration is in its dependency closure.

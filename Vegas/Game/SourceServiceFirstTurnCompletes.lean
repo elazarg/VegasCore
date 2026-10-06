@@ -312,7 +312,7 @@ theorem sourceServiceTurnPolicy_firstTurnCompletes [Finite Player]
   have ready : start.application.config.cut.Ready event :=
     (ready_iff_rank setup _ event.val boundary.ordered event).mpr rfl
   obtain ⟨residual⟩ := boundary.sourceResidual (profile := profile)
-  obtain ⟨law, continuation, policy, effectiveLaw⟩ :=
+  obtain ⟨law, continuation, policy, effectiveLaw, _⟩ :=
     SourceResidual.head_law leaks residual event rfl ready
   rw [continuation]
   obtain ⟨startTrace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler

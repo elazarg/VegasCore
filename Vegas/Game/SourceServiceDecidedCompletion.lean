@@ -43,13 +43,6 @@ section Actions
 
 variable {setup}
 
-/-- The decided action is realized by silence: a disclosure of `false`. -/
-def SilentAction (event : (graph setup).EventId) (action : (graph setup).Action event) : Prop :=
-  match nodeView (graph setup) event with
-  | .resolve _ _ _ _ outputEq _ =>
-      (cast (congrArg EventGraph.EventField.Action outputEq) action : Bool) = false
-  | _ => False
-
 /-- The action with which expiry completes an event: failure for a binding,
 `false` for a disclosure. -/
 def ExpiryAction (event : (graph setup).EventId) (action : (graph setup).Action event) : Prop :=
@@ -305,20 +298,19 @@ theorem respond_submit_recall (execution : (application setup leaks).Execution) 
   simp only [ReactiveApplication.Execution.respond, ↓reduceIte]
   rfl
 
-/-- **The first turn decides.** At a legal history where the owner of the
-ready `event` is active within `delay event` slots of readiness, the compiled
-decision for an effective, non-silent action transmits a fresh call that is
-acceptable on the owner's view and realizes the action. -/
-theorem firstTurn_freshCall {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
-    {delay bound : (graph setup).EventId → Nat}
-    (timely : AsyncTimely (runtime setup) delay bound) {remaining : Nat}
-    {owner : Player} {middle : (application setup leaks).Execution}
+/-- **The compiled decision submits.** At a legal history where the owner of
+the ready `event` is active, the compiled decision for an effective, non-silent
+action transmits a call that realizes the action; when a packet included within
+the inclusion bound still meets the deadline, the call is fresh and acceptable
+on the owner's view. -/
+theorem canonicalServiceDecision_submits {horizon : Nat}
+    {scheduler : (application setup leaks).Scheduler} {bound : (graph setup).EventId → Nat}
+    {remaining : Nat} {owner : Player} {middle : (application setup leaks).Execution}
     (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨remaining, some owner, middle⟩))
     (event : (graph setup).EventId) (owned : (graph setup).actor? event = some owner)
     (ready : middle.application.config.cut.Ready event)
     (entered : Nat) (activated : middle.application.activatedAt event = some entered)
-    (early : middle.application.clock ≤ entered + delay event)
     (action : (graph setup).Action event)
     (effective : EffectiveAction middle.application.config event action)
     (loud : ¬ SilentAction event action) :
@@ -334,25 +326,27 @@ theorem firstTurn_freshCall {horizon : Nat} {scheduler : (application setup leak
         ⟨(owner, middle.network.nextSerial owner), app.packet
           (app.submit middle.application owner material) owner
           (middle.network.known owner) material⟩
-      FreshCall setup leaks owner event bound entry message ∧
+      (middle.application.clock - entered + bound event < (runtime setup).deadline event →
+        FreshCall setup leaks owner event bound entry message) ∧
         RealizesAt leaks middle.application.config
           (middle.respond app owner response).application event action entry message := by
   intro app response
   have facts := legalFacts setup leaks horizon scheduler _ trace
-  have deadline : middle.application.clock - entered < (runtime setup).deadline event := by
-    have bounded := timely event (by rw [owned]; rfl)
+  have deadlineOf (fits : middle.application.clock - entered + bound event <
+      (runtime setup).deadline event) :
+      middle.application.clock - entered < (runtime setup).deadline event := by
     omega
-  have fitsView : (middle.observe app owner).application.publicView.InclusionFitsDeadline
-      (runtime setup) bound event := by
-    have bounded := timely event (by rw [owned]; rfl)
+  have fitsViewOf (fits : middle.application.clock - entered + bound event <
+      (runtime setup).deadline event) :
+      (middle.observe app owner).application.publicView.InclusionFitsDeadline
+        (runtime setup) bound event := by
     unfold PublicView.InclusionFitsDeadline
     change (match middle.application.activatedAt event with
       | none => False
       | some entered => middle.application.clock - entered + bound event <
           (runtime setup).deadline event)
     rw [activated]
-    change middle.application.clock - entered + bound event < (runtime setup).deadline event
-    omega
+    exact fits
   have readyView : (middle.observe app owner).application.publicView.EventReady event :=
     (middle.application.publicView_eventReady event).mpr ready
   revert effective loud
@@ -387,9 +381,10 @@ theorem firstTurn_freshCall {horizon : Nat} {scheduler : (application setup leak
         (middle.recall actor) (middle.observe app actor) event payload outputEq codeEq node serial
         selected choice
       change response = _ at decided
-      refine ⟨_, decided, ?_, ?_⟩
-      · refine ⟨⟨_, congrArg ReactiveApplication.Action.transmission decided⟩, rfl, rfl,
-          rfl, readyView, fitsView, ?_⟩
+      refine ⟨_, decided, fun fits => ?_, ?_⟩
+      · have deadline := deadlineOf fits
+        refine ⟨⟨_, congrArg ReactiveApplication.Action.transmission decided⟩, rfl, rfl,
+          rfl, readyView, fitsViewOf fits, ?_⟩
         refine ⟨?_, ?_⟩
         · change (middle.observe app actor).application.publicView.BindingIncludable
             (runtime setup)
@@ -454,9 +449,10 @@ theorem firstTurn_freshCall {horizon : Nat} {scheduler : (application setup leak
         have packet := (runtime setup).windowOpening_packet leaks actor event handle
           ⟨payload, value⟩ middle.application (middle.network.known actor) handleOwner fixed
         exact emitted.trans packet
-      refine ⟨material, decision, ?_, ?_⟩
-      · refine ⟨⟨material, congrArg ReactiveApplication.Action.transmission decision⟩, rfl, rfl,
-          by rw [packetEq]; rfl, readyView, fitsView, ?_⟩
+      refine ⟨material, decision, fun fits => ?_, ?_⟩
+      · have deadline := deadlineOf fits
+        refine ⟨⟨material, congrArg ReactiveApplication.Action.transmission decision⟩, rfl, rfl,
+          by rw [packetEq]; rfl, readyView, fitsViewOf fits, ?_⟩
         change (runtime setup).freshServiceAcceptable middle.application.publicView
           ⟨(actor, middle.network.nextSerial actor), app.packet
             (app.submit middle.application actor material) actor
@@ -509,7 +505,7 @@ private theorem split_take {α : Type} {list before after : List α} {entry : α
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
 /-- A split of a list extended by one element is a split of the old list or
 ends at the new element. -/
-private theorem split_snoc {α : Type} {old before after : List α} {entry last : α}
+theorem split_snoc {α : Type} {old before after : List α} {entry last : α}
     (split : before ++ entry :: after = old ++ [last]) :
     (before = old ∧ entry = last ∧ after = []) ∨
       ∃ rest, after = rest ++ [last] ∧ before ++ entry :: rest = old := by
@@ -888,9 +884,17 @@ theorem DecidedPhase.round {horizon : Nat} {scheduler : (application setup leaks
   have firstDecision (first : sourceServiceTurn setup leaks who event (execution.recall who)
       (middle.observe app who) = some 0) (loud : ¬ SilentAction event action) :=
     let early := first_turn_early contract trace answered owned readyNow first
-    firstTurn_freshCall timely middleTrace event owned readyMiddle early.choose
-      (by rw [sameApp]; exact early.choose_spec.1) (by rw [sameApp]; exact early.choose_spec.2)
-      action effectiveMiddle loud
+    canonicalServiceDecision_submits (bound := bound) middleTrace event owned readyMiddle
+      early.choose (by rw [sameApp]; exact early.choose_spec.1) action effectiveMiddle loud
+  have firstFits (first : sourceServiceTurn setup leaks who event (execution.recall who)
+      (middle.observe app who) = some 0) :
+      middle.application.clock -
+          (first_turn_early contract trace answered owned readyNow first).choose +
+        bound event < (runtime setup).deadline event := by
+    have early := (first_turn_early contract trace answered owned readyNow first).choose_spec.2
+    have bounded := timely event (by rw [owned]; rfl)
+    rw [sameApp]
+    omega
   have fitsFirst (first : sourceServiceTurn setup leaks who event (execution.recall who)
       (middle.observe app who) = some 0) :
       PublicView.InclusionFitsDeadline (runtime setup) bound
@@ -937,7 +941,8 @@ theorem DecidedPhase.round {horizon : Nat} {scheduler : (application setup leaks
         change (runtime setup).submittedEvent? leaks ⟨response.transmission⟩ = _ at submitted
         rw [quiet] at submitted
         cases submitted
-      obtain ⟨material, decision, call, realized⟩ := firstDecision first loud
+      obtain ⟨material, decision, callOf, realized⟩ := firstDecision first loud
+      have call := callOf (firstFits first)
       rw [recallEq] at decision call realized
       have responseEq : response = ⟨some material⟩ := decided.trans decision
       subst responseEq
@@ -957,7 +962,8 @@ theorem DecidedPhase.round {horizon : Nat} {scheduler : (application setup leaks
     rw [recalled] at split
     rcases split_snoc split.symm with ⟨beforeEq, entryEq, _⟩ | ⟨rest, _, oldSplit⟩
     · subst beforeEq entryEq
-      obtain ⟨material, decision, call, _⟩ := firstDecision first loud
+      obtain ⟨material, decision, callOf, _⟩ := firstDecision first loud
+      have call := callOf (firstFits first)
       rw [recallEq] at decision call
       have opening := (application setup leaks).turnScheduledPolicy_selected
         (sourceServiceTurn setup leaks who event) (0 : Fin 1)
@@ -982,7 +988,7 @@ section Completing
 variable {setup leaks}
 
 /-- Steps from equal configurations have the same support. -/
-private theorem mem_step_of_eq {first second : (graph setup).Config} (same : first = second)
+theorem mem_step_of_eq {first second : (graph setup).Config} (same : first = second)
     {event : (graph setup).EventId} (firstReady : first.cut.Ready event)
     (secondReady : second.cut.Ready event) {action : (graph setup).Action event}
     {next : (graph setup).Config} (member : next ∈ (first.step event firstReady action).support) :

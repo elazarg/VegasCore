@@ -54,6 +54,56 @@ theorem policyMixture_posterior_snoc (initial : PMF Index) (policies : Index →
     rfl
   rw [joint, fiberPosterior_snd_bindPairLaw_const]
 
+/-- A response that every member still possible gives with one common positive
+probability cannot update the latent choice. -/
+theorem policyMixture_posterior_snoc_of_likelihood (initial : PMF Index)
+    (policies : Index → app.Policy) (past : List app.PlayerEntry) (entry : app.PlayerEntry)
+    (likelihood : ENNReal)
+    (same : ∀ index ∈ ((app.policyMixture initial policies).posterior past).support,
+      policies index past entry.beforeView entry.action = likelihood)
+    (positive : likelihood ≠ 0) :
+    (app.policyMixture initial policies).posterior (past ++ [entry]) =
+      (app.policyMixture initial policies).posterior past := by
+  set prior := (app.policyMixture initial policies).posterior past
+  rw [Implementation.posterior_snoc]
+  change (fiberPosterior (prior.bind fun index =>
+    (policies index past entry.beforeView).map fun action => (action, index))
+      Prod.fst entry.action).map Prod.snd = prior
+  set joint := prior.bind fun index =>
+    (policies index past entry.beforeView).map fun action => (action, index)
+  have swapped : joint = (bindPairLaw prior fun index => policies index past entry.beforeView).map
+      Prod.swap := by
+    simp only [joint, bindPairLaw, PMF.map_bind, PMF.map_comp]
+    rfl
+  have jointApply (action : app.Action) (index : Index) :
+      joint (action, index) = prior index * policies index past entry.beforeView action := by
+    rw [swapped, show ((action, index) : app.Action × Index) = Prod.swap (index, action) from rfl,
+      pmf_map_apply_of_injective _ Prod.swap_injective, bindPairLaw_apply]
+  have marginal : (joint.map Prod.fst) entry.action = likelihood := by
+    have projected : joint.map Prod.fst =
+        prior.bind fun index => policies index past entry.beforeView := by
+      simp only [joint, PMF.map_bind, PMF.map_comp]
+      exact bind_congr_on_support _ fun _ _ => PMF.map_id _
+    rw [projected, PMF.bind_apply]
+    calc (∑' index, prior index * policies index past entry.beforeView entry.action) =
+          ∑' index, prior index * likelihood := by
+          refine tsum_congr fun index => ?_
+          by_cases member : index ∈ prior.support
+          · rw [same index member]
+          · rw [(PMF.apply_eq_zero_iff _ _).mpr member, zero_mul, zero_mul]
+      _ = likelihood := by rw [ENNReal.tsum_mul_right, prior.tsum_coe, one_mul]
+  have present : entry.action ∈ (joint.map Prod.fst).support := by
+    rw [PMF.mem_support_iff, marginal]
+    exact positive
+  have finite : likelihood ≠ ⊤ := by
+    rw [← marginal]
+    exact PMF.apply_ne_top _ _
+  ext index
+  rw [fiberPosterior_map_snd_apply joint entry.action present index, jointApply, marginal]
+  by_cases member : index ∈ prior.support
+  · rw [same index member, mul_assoc, ENNReal.mul_inv_cancel positive finite, mul_one]
+  · rw [(PMF.apply_eq_zero_iff _ _).mpr member, zero_mul, zero_mul]
+
 /-- A policy family that agrees with one policy at every recorded response
 retains its initial mixing law, including at zero-probability own transcripts. -/
 theorem policyMixture_posterior_of_agree (initial : PMF Index)
