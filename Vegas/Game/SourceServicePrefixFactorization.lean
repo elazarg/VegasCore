@@ -634,23 +634,24 @@ theorem sourceService_prefix_boundary_of_checkpoint [Fintype Player]
   exact sourceService_resolutionEvidence setup leaks bounds rosters
     (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network) _ trace
 
-private def entryObservation (who : Player) {Γ : SourceCtx Player L} {names : Finset VarId}
+/-- The observation at the entry of a source suffix, read from the entry view. -/
+def sourceEntryObservation (who : Player) {Γ : SourceCtx Player L} {names : Finset VarId}
     (program : SourceProgram Player L Γ names) (view : DecisionView who Γ) :
     ProtocolView who program :=
   match program with
   | .ret _ => view
   | .sample _ _ _ _ | .commit _ _ _ _ _ | .reveal _ _ _ _ _ _ _ => .inl view
 
-private theorem observe_entry {Γ : SourceCtx Player L} {names : Finset VarId}
+theorem observe_entry_eq_sourceEntryObservation {Γ : SourceCtx Player L} {names : Finset VarId}
     (program : SourceProgram Player L Γ names) (who : Player) (source : Config Player L Γ) :
     ProtocolState.observe who program (ProtocolState.entry program source) =
-      entryObservation who program (source.view who) := by
+      sourceEntryObservation who program (source.view who) := by
   cases program <;> rfl
 
 /-- The actual typed decoder determines the next source configuration. Its
 joint law supplies both the source marginal and the preceding observation
 factor; the ordered cut is supplied by actual retained-prefix support. -/
-private theorem reconstruct_phase
+theorem reconstruct_service_phase
     {Seed Encoded : Type} (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (focal : Player) {Γ : SourceCtx Player L}
@@ -1105,8 +1106,8 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
           let stepSource := fun config : Config Player L Γ =>
             (L.evalDist distribution (sourcePublicEnv config.state)).map (sampleSuccessor name
               config)
-          let configNoise := fun view => phaseNoise (some (Sum.inr (entryObservation focal next
-            view)))
+          let configNoise := fun view => phaseNoise (some (Sum.inr
+            (sourceEntryObservation focal next view)))
           have phaseJoint : advanced.map (fun point => (decode point.1 point.2,
               (runtime setup).bindingTraffic leaks focal point.2)) =
               ((prior.map source).bind stepSource).bind fun config =>
@@ -1130,9 +1131,10 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
             simp only [block]
             simpa only [stepSource, configNoise, encoded, decode, PMF.bind_bind,
               PMF.bind_map, Option.map_some, ProtocolState.observe, Sum.elim_inr,
-              observe_entry, Function.comp_def] using fact
+              observe_entry_eq_sourceEntryObservation, Function.comp_def] using fact
           obtain ⟨nextSource, nextCheckpoint, nextRegistryEq, nextRevelationsEq, _nextRead,
-            nextMarginal, nextFactor⟩ := reconstruct_phase setup leaks focal tailRefs (offset + 1)
+            nextMarginal, nextFactor⟩ := reconstruct_service_phase setup leaks focal tailRefs
+              (offset + 1)
               nextRegistry nextRevelations advanced encoded
               (Sum.inr_injective.comp (ProtocolState.entry_injective next)) decode (by
                 intro seed final
@@ -1207,8 +1209,8 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
                   (setup.eventGraph.fromModeCompletion .sequential)))
           let stepSource := fun config : Config Player L Γ =>
             (commitKernel profile (config.view owner)).map (commitSuccessor name guard config)
-          let configNoise := fun view => phaseNoise (some (Sum.inr (entryObservation focal next
-            view)))
+          let configNoise := fun view => phaseNoise (some (Sum.inr
+            (sourceEntryObservation focal next view)))
           have phaseJoint : advanced.map (fun point => (decode point.1 point.2,
               (runtime setup).bindingTraffic leaks focal point.2)) =
               ((prior.map source).bind stepSource).bind fun config =>
@@ -1233,9 +1235,10 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
             simp only [block]
             simpa only [stepSource, configNoise, encoded, decode, PMF.bind_bind,
               PMF.bind_map, Option.map_some, ProtocolState.observe, Sum.elim_inr,
-              observe_entry, Function.comp_def] using fact
+              observe_entry_eq_sourceEntryObservation, Function.comp_def] using fact
           obtain ⟨nextSource, nextCheckpoint, nextRegistryEq, nextRevelationsEq, _nextRead,
-            nextMarginal, nextFactor⟩ := reconstruct_phase setup leaks focal tailRefs (offset + 1)
+            nextMarginal, nextFactor⟩ := reconstruct_service_phase setup leaks focal tailRefs
+              (offset + 1)
               nextRegistry nextRevelations advanced encoded
               (Sum.inr_injective.comp (ProtocolState.entry_injective next)) decode (by
                 intro seed final
@@ -1314,8 +1317,8 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
           let stepSource := fun config : Config Player L Γ =>
             (revealKernel profile (config.view owner)).map (revealSuccessor published binding
               config)
-          let configNoise := fun view => phaseNoise (some (Sum.inr (entryObservation focal next
-            view)))
+          let configNoise := fun view => phaseNoise (some (Sum.inr
+            (sourceEntryObservation focal next view)))
           have phaseJoint : advanced.map (fun point => (decode point.1 point.2,
               (runtime setup).bindingTraffic leaks focal point.2)) =
               ((prior.map source).bind stepSource).bind fun config =>
@@ -1340,9 +1343,10 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
             simp only [block]
             simpa only [stepSource, configNoise, encoded, decode, PMF.bind_bind,
               PMF.bind_map, Option.map_some, ProtocolState.observe, Sum.elim_inr,
-              observe_entry, Function.comp_def] using fact
+              observe_entry_eq_sourceEntryObservation, Function.comp_def] using fact
           obtain ⟨nextSource, nextCheckpoint, nextRegistryEq, nextRevelationsEq, _nextRead,
-            nextMarginal, nextFactor⟩ := reconstruct_phase setup leaks focal tailRefs (offset + 1)
+            nextMarginal, nextFactor⟩ := reconstruct_service_phase setup leaks focal tailRefs
+              (offset + 1)
               nextRegistry nextRevelations advanced encoded
               (Sum.inr_injective.comp (ProtocolState.entry_injective next)) decode (by
                 intro seed final

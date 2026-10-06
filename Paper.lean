@@ -6,7 +6,7 @@ import Vegas.Game.IntendedServiceCompilation
 import Vegas.Game.SourceServiceNash
 import Vegas.Game.AsyncServiceNash
 
-/-! # Checked sequential-equilibrium preservation, Nash reflection and termination -/
+/-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
 noncomputable section
 
@@ -220,6 +220,58 @@ theorem source_audited_raw_nash_reflection [Fintype Player] [IExpr.ResultTypes L
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_audited_raw_nash_reflection
+
+open Vegas.SourceProgram Vegas.EventGraphRuntime
+  GameTheory.Protocol GameTheory.Enforcement in
+/-- **Approximate Nash correspondence on the calendar ledger.** Under the
+service assumptions of `source_audited_raw_sequential_equilibrium` (an authentic
+partial audit with positive conditional coverage, and the deposit sized from
+the base utility and that coverage), the compiled raw profile of a source
+profile is an `ε`-Nash equilibrium of the audited bounded raw runtime if and
+only if the source profile is an `ε`-Nash equilibrium of the source protocol
+model, for every `ε`. The forward direction rests on the fact that every
+deviation in the permitted menu has the typed outcome law of a source deviation
+(`Vegas.SourceServiceSpec.exists_source_deviation_law`). -/
+theorem source_audited_raw_nash_iff [Fintype Player] [IExpr.ResultTypes L]
+    {Parameter : Type} (service : SourceServiceSpec Player L)
+    (parameter : State L service.setup.context → Parameter)
+    (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
+    (sample : List (SettledEvidence service.setup) →
+      PMF (List (SettledEvidence service.setup)))
+    (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
+    (probability : Player → ℝ) (positive : ∀ who, 0 < probability who)
+    (coverage : ∀ who actual record, record ∈ actual → record.2.sender = who →
+      record.1.permits record.2 = false →
+      probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
+    (ε : ℝ) (source : Profile service.sourceModel.behavioralSignature) :
+    let raw := service.bounds.rawMenu (runtime service.setup) service.leaks
+    let base := baseUtility service.setup service.leaks
+      (fun state => utility (service.setup.parameterOutcome parameter state))
+    let deposit := rosterAuditDeposit service.setup service.leaks service.bounds service.rosters
+      service.network base (fun owner => min (probability owner) 1)
+    let payoff := TerminalAudit.utility base
+      ((runtime service.setup).serviceAuditObservation service.leaks)
+      (sourceServiceAudit service.setup service.leaks sample) deposit
+    IsεNash ((raw.information (initialLaw service.setup) service.planLength
+        service.scheduler).toBehavioralGameForm service.fuel)
+        (fun history who => payoff history.state who) ε (service.compileProfile source) ↔
+      IsεNash (service.sourceModel.toBehavioralGameForm
+        (instructionCount service.setup.program + 1))
+        (fun final who => (service.setup.protocolReadout final.state).elim 0
+          (fun state => utility (service.setup.parameterOutcome parameter state) who))
+        ε source :=
+  service.isεNash_compileProfile_iff parameter utility sample authentic probability positive
+    coverage ε source
+
+/-- info: 'Vegas.Paper.source_audited_raw_nash_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_audited_raw_nash_iff
+
+/-- info: 'Vegas.SourceServiceSpec.exists_source_deviation_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceServiceSpec.exists_source_deviation_law
 
 open Vegas.SourceProgram Vegas.EventGraphRuntime
   GameTheory.Protocol GameTheory.Enforcement in

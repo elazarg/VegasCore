@@ -186,7 +186,7 @@ theorem openingWindow_focal_coupling (runtime : EventGraphRuntime graph)
               ReactiveApplication.scheduledPolicy, ite_eq_right nextNot]
       · apply waiting <;> simp only [players, app, openingWindowPlayers, ite_eq_right acts]
 
-private theorem bindingTraffic_include_of_handler (runtime : EventGraphRuntime graph)
+theorem bindingTraffic_include_of_handler (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (left right : (runtime.reactiveApplication leaks).Execution) (focal : Player)
     (same : runtime.bindingTraffic leaks focal left = runtime.bindingTraffic leaks focal right)

@@ -8,12 +8,14 @@ The [checklist](docs/se-proof-checklist.md) identifies load-bearing evidence.
 [Paper](Paper.lean) also states
 [intended-game preservation](Vegas/Game/IntendedPreservation.lean), tracked in
 the [arbitrary-builder checklist](docs/se-async-checklist.md).
-It states the reflection of approximate Nash equilibrium from the audited
-calendar runtime ([calendar Nash](Vegas/Game/SourceServiceNash.lean)) and from
-the turn-counted clients of an arbitrary contract builder
-([asynchronous Nash](Vegas/Game/AsyncServiceNash.lean)). Preservation of
-approximate Nash is reduced to a bound on permitted-menu deviations that is
-not yet proved.
+It states the same-slack correspondence of approximate Nash equilibrium on the
+audited calendar runtime, in both directions
+([calendar Nash](Vegas/Game/SourceServiceNash.lean)); its forward direction
+rests on every permitted-menu deviation having the typed outcome law of a source
+deviation ([deviation law](Vegas/Game/SourceServiceDeviationReadout.lean)). It
+also states the reflection of approximate Nash from the turn-counted clients of
+an arbitrary contract builder
+([asynchronous Nash](Vegas/Game/AsyncServiceNash.lean)).
 
 The arbitrary-builder theorem and an operational watcher/reporting refinement
 remain open. The [design and plan](docs/se-schedule-generalization.md) describes

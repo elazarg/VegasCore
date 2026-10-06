@@ -131,6 +131,10 @@ import Vegas.Game.SourceServiceDecidedCompletion
 import Vegas.Game.SourceServiceDecisionResources
 import Vegas.Game.SourceServiceDecisionSupport
 import Vegas.Game.SourceServiceDecodedDebt
+import Vegas.Game.SourceServiceDeviationChoice
+import Vegas.Game.SourceServiceDeviationLaw
+import Vegas.Game.SourceServiceDeviationPhase
+import Vegas.Game.SourceServiceDeviationReadout
 import Vegas.Game.SourceServiceDisclosure
 import Vegas.Game.SourceServiceDisclosureFactorization
 import Vegas.Game.SourceServiceDisclosureMemory

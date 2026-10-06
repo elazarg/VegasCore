@@ -42,6 +42,7 @@ import GameTheoryExtensions.Core.RegularChoice
 import GameTheoryExtensions.Math.Probability.ActionSplitting
 import GameTheoryExtensions.Math.Probability.DeferredChoice
 import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.ObservedChoice
 import GameTheoryExtensions.Math.Probability.PriorityChoice
 import GameTheoryExtensions.Math.Probability.Regularity
 import GameTheoryExtensions.Math.Probability.SiteDraw

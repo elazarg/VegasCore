@@ -31,6 +31,9 @@ Useful existing boundaries are the
 [proportional belief transport](../GameTheoryExtensions/Analysis/Protocol/ProportionalBeliefTransport.lean),
 [menu restriction](../GameTheoryExtensions/Protocol/MenuRestriction.lean),
 [intended game](../Vegas/Source/IntendedGame.lean),
+[choices drawn from an observation-local readout](../GameTheoryExtensions/Math/Probability/ObservedChoice.lean),
+[the owner's information through its own phase](../Vegas/Pending/ReactiveOwnerPhase.lean),
+[permitted deviations phase by phase](../Vegas/Game/SourceServiceDeviationLaw.lean),
 and [depth-free extension](../GameTheoryExtensions/Analysis/Protocol/PassageRestrictionExtension.lean).
 
 Behavioral commutation preserves the typed store and original own recall;

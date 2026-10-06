@@ -2,7 +2,9 @@
 
 import Vegas.Game.SourceServiceCompilation
 import Vegas.Game.SourceServiceInitialRepair
+import Vegas.Game.SourceServiceDeviationReadout
 import GameTheory.Core.UtilityTransfer
+import GameTheory.Core.MixtureSimulation
 
 /-! # Approximate Nash equilibrium on the audited calendar ledger
 
@@ -22,10 +24,13 @@ In the other direction every raw deviation against the compiled profile is
 bounded by a deviation in the permitted menu
 (`Vegas.SourceServiceSpec.exists_menu_deviation_ge`): private response aliases
 are erased exactly, and the fixed binding repair dominates an effective
-deviation by the range-sized deposit. Whether every permitted-menu deviation is
-bounded by a source deviation is not proved here; with that bound as an
-explicit hypothesis, source approximate Nash transfers to the compiled raw
-profile (`Vegas.SourceServiceSpec.isεNash_compileProfile_of_menu_bounds`).
+deviation by the range-sized deposit. Every deviation in the permitted menu
+against the timed profile has exactly the typed outcome law of a source
+deviation (`Vegas.SourceServiceSpec.exists_source_deviation_law`, packaged as
+the mixture simulation `Vegas.SourceServiceSpec.menuSimulation`). Hence the
+compiled raw profile is an approximate Nash equilibrium exactly when the source
+profile is one, with the same slack
+(`Vegas.SourceServiceSpec.isεNash_compileProfile_iff`).
 -/
 
 noncomputable section
@@ -117,10 +122,11 @@ private theorem extendProfile_congr {ι : Type*} {E T : ExecutionProtocol ι}
     InformationModel.ActionRestriction.retainedLaw
   rw [same]
 
-/-- Each player's compiled policy depends only on its own source policy. -/
-theorem compileProfile_congr (source other : Profile service.sourceModel.behavioralSignature)
+/-- Each player's timed calendar policy depends only on its own source
+policy. -/
+theorem timedProfile_congr (source other : Profile service.sourceModel.behavioralSignature)
     (who : Player) (same : source who = other who) :
-    service.compileProfile source who = service.compileProfile other who := by
+    service.timedProfile source who = service.timedProfile other who := by
   have decoded : normalizeDisclosureProfile service.setup.program []
       (Revelations.initial service.setup.context)
       (service.setup.decodeBehavioralProfile (CommitmentInterface.values service.setup.program)
@@ -130,9 +136,14 @@ theorem compileProfile_congr (source other : Profile service.sourceModel.behavio
       (service.setup.decodeBehavioralProfile (CommitmentInterface.values service.setup.program)
         other) who := by
     simp only [normalizeDisclosureProfile, Setup.decodeBehavioralProfile, same]
-  have timed : service.timedProfile source who = service.timedProfile other who :=
-    congrArg (service.menu.restrictPolicy (initialLaw service.setup) service.planLength
-      service.scheduler who) (timedPolicy_congr service _ _ who decoded)
+  exact congrArg (service.menu.restrictPolicy (initialLaw service.setup) service.planLength
+    service.scheduler who) (timedPolicy_congr service _ _ who decoded)
+
+/-- Each player's compiled policy depends only on its own source policy. -/
+theorem compileProfile_congr (source other : Profile service.sourceModel.behavioralSignature)
+    (who : Player) (same : source who = other who) :
+    service.compileProfile source who = service.compileProfile other who := by
+  have timed := service.timedProfile_congr source other who same
   exact congrArg (service.bounds.canonicalRawPolicy (runtime service.setup) service.leaks
     (initialLaw service.setup) service.planLength service.scheduler who)
     (extendProfile_congr service.restriction _ _ _ who timed)
@@ -446,11 +457,11 @@ theorem exists_menu_deviation_ge {Parameter : Type}
         rfl
   exact rawValue.trans_le compared
 
-/-- **Conditional approximate Nash transfer.** If every deviation in the
+/-- **Approximate Nash transfer from a menu bound.** If every deviation in the
 permitted menu against the timed profile is bounded, in base expected payoff,
 by some source deviation, then every source `ε`-Nash equilibrium compiles to an
-`ε`-Nash equilibrium of the audited bounded raw runtime. The menu bound is an
-explicit hypothesis; it is not proved here. -/
+`ε`-Nash equilibrium of the audited bounded raw runtime. The bound holds for
+every source profile (`Vegas.SourceServiceSpec.exists_source_deviation_ge`). -/
 theorem isεNash_compileProfile_of_menu_bounds {Parameter : Type}
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
@@ -522,6 +533,182 @@ theorem isεNash_compileProfile_of_menu_bounds {Parameter : Type}
     refine ⟨nativeIntegrable.hasExpectation, ?_⟩
     rw [extendedExpectedUtility_eq nativeIntegrable, extendedExpectedUtility_eq sourceIntegrable]
     exact EReal.coe_le_coe_iff.mpr (nativeBound.trans menuValue)
+
+omit [Fintype Player] in
+/-- Decoding a unilateral deviation of a source profile decodes the deviating
+coordinate alone. -/
+private theorem decodeBehavioralProfile_update
+    (source : Profile service.sourceModel.behavioralSignature) (who : Player)
+    (policy : BehavioralPolicy who service.setup.program)
+    (allowed : policy.Admitted service.setup.program
+      (CommitmentInterface.values service.setup.program)) :
+    service.setup.decodeBehavioralProfile (CommitmentInterface.values service.setup.program)
+        (Profile.update source who ((service.setup.behavioralPolicyEquiv
+          (CommitmentInterface.values service.setup.program) who) ⟨policy, allowed⟩)) =
+      Function.update (service.setup.decodeBehavioralProfile
+        (CommitmentInterface.values service.setup.program) source) who policy := by
+  funext player
+  by_cases same : player = who
+  · subst player
+    simp only [Setup.decodeBehavioralProfile, Profile.update, Function.update_self,
+      Equiv.symm_apply_apply]
+  · simp only [Setup.decodeBehavioralProfile, Profile.update, Function.update_of_ne same]
+
+/-- **Every permitted deviation is a source deviation.** Against the timed
+calendar profile of any source profile, every deviation of one player within
+the permitted menu has exactly the typed outcome law of a deviation of the same
+player in the source protocol model. -/
+theorem exists_source_deviation_law (source : Profile service.sourceModel.behavioralSignature)
+    (who : Player) (replacement : service.model.BehavioralPolicy who) :
+    ∃ alternative : service.sourceModel.BehavioralPolicy who,
+      (service.model.runBehavioral (Profile.update (service.timedProfile source) who replacement)
+        service.fuel).map (fun final => sourceReadout service.setup service.leaks final.state) =
+      (service.sourceModel.runBehavioral (Profile.update source who alternative)
+        (instructionCount service.setup.program + 1)).map
+          (fun final => service.setup.protocolReadout final.state) := by
+  let admission := CommitmentInterface.values service.setup.program
+  have permitted (player : Player) :
+      (service.setup.decodeBehavioralProfile admission source player).Admitted
+        service.setup.program admission :=
+    ((service.setup.behavioralPolicyEquiv admission player).symm (source player)).2
+  obtain ⟨policy, allowed, law⟩ := sourceServiceDeviation_readout_law service.setup service.leaks
+    service.bounds service.values service.initialValues service.capacity service.rosters
+    service.opportunities.binding service.calendarTiming service.calendarTiming_fullSupport
+    service.network (service.setup.decodeBehavioralProfile admission source) permitted who
+    replacement
+  refine ⟨(service.setup.behavioralPolicyEquiv admission who) ⟨policy, allowed⟩, ?_⟩
+  have readout := service.setup.runBehavioralFrom_readout admission
+    (Profile.update source who ((service.setup.behavioralPolicyEquiv admission who)
+      ⟨policy, allowed⟩)) (instructionCount service.setup.program + 1)
+    (service.setup.executionProtocol admission).initHistory (Nat.le_refl _)
+  rw [service.decodeBehavioralProfile_update source who policy allowed] at readout
+  exact law.trans readout.symm
+
+/-- A fixed source policy of every player, used only to complete a profile
+around one player's strategy. -/
+private def defaultSourcePolicy (who : Player) : service.sourceModel.BehavioralPolicy who :=
+  fun info => PMF.pure (Classical.choice (service.setup.choice_nonempty
+    (CommitmentInterface.values service.setup.program) who info))
+
+/-- **The permitted menu simulates the source protocol model.** A source
+strategy compiles to its timed calendar policy; the compiled profile has the
+source typed outcome law, and every unilateral deviation within the permitted
+menu has the typed outcome law of a source deviation (a point mixture). -/
+def menuSimulation :
+    GameForm.MixtureSimulationOn
+      (service.sourceModel.toBehavioralGameForm (instructionCount service.setup.program + 1))
+      (service.model.toBehavioralGameForm service.fuel)
+      (fun final => service.setup.protocolReadout final.state)
+      (fun final => sourceReadout service.setup service.leaks final.state)
+      (fun _ _ => True) where
+  compileStrategy who strategy :=
+    service.timedProfile (Profile.update service.defaultSourcePolicy who strategy) who
+  honest_law profile := by
+    have same : Profile.map (fun who strategy =>
+        service.timedProfile (Profile.update service.defaultSourcePolicy who strategy) who)
+        profile = service.timedProfile profile := by
+      funext who
+      exact service.timedProfile_congr _ _ who (by simp only [Profile.update,
+        Function.update_self])
+    change (service.model.runBehavioral (Profile.map (fun who strategy =>
+      service.timedProfile (Profile.update service.defaultSourcePolicy who strategy) who)
+        profile) service.fuel).map _ = _
+    rw [same]
+    exact sourceServiceTimedProfile_protocol_law service.setup service.leaks service.bounds
+      service.values service.initialValues service.capacity service.rosters
+      service.opportunities.binding service.calendarTiming service.calendarTiming_fullSupport
+      service.network profile
+  compiled_considered _ _ := trivial
+  deviation_mixture profile who replacement _ := by
+    have same : Profile.map (fun who strategy =>
+        service.timedProfile (Profile.update service.defaultSourcePolicy who strategy) who)
+        profile = service.timedProfile profile := by
+      funext who
+      exact service.timedProfile_congr _ _ who (by simp only [Profile.update,
+        Function.update_self])
+    obtain ⟨alternative, law⟩ := service.exists_source_deviation_law profile who replacement
+    refine ⟨PMF.pure alternative, ?_⟩
+    rw [PMF.pure_bind]
+    change (service.model.runBehavioral (Profile.update (Profile.map (fun who strategy =>
+      service.timedProfile (Profile.update service.defaultSourcePolicy who strategy) who)
+        profile) who replacement) service.fuel).map _ = _
+    rw [same]
+    exact law
+
+/-- **The menu bound.** Every deviation in the permitted menu against the timed
+profile has the base expected payoff of some source deviation. -/
+theorem exists_source_deviation_ge {Parameter : Type}
+    (parameter : State L service.setup.context → Parameter)
+    (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
+    (source : Profile service.sourceModel.behavioralSignature) (who : Player)
+    (alternative : service.model.BehavioralPolicy who) :
+    let base := baseUtility service.setup service.leaks
+      (fun state => utility (service.setup.parameterOutcome parameter state))
+    ∃ deviation : service.sourceModel.BehavioralPolicy who,
+      expect (service.model.runBehavioral
+        (Profile.update (service.timedProfile source) who alternative) service.fuel)
+        (fun final => base final.state who) ≤
+      expect (service.sourceModel.runBehavioral (Profile.update source who deviation)
+        (instructionCount service.setup.program + 1))
+        (fun final => (service.setup.protocolReadout final.state).elim 0
+          (fun state => utility (service.setup.parameterOutcome parameter state) who)) := by
+  intro base
+  obtain ⟨deviation, law⟩ := service.exists_source_deviation_law source who alternative
+  refine ⟨deviation, le_of_eq ?_⟩
+  let value := fun output : Option (State L service.setup.program.terminalCtx) =>
+    output.elim 0 (fun state => utility (service.setup.parameterOutcome parameter state) who)
+  calc
+    _ = expect ((service.model.runBehavioral
+          (Profile.update (service.timedProfile source) who alternative) service.fuel).map
+          (fun final => sourceReadout service.setup service.leaks final.state)) value := by
+      rw [expect_map]
+      rfl
+    _ = expect ((service.sourceModel.runBehavioral (Profile.update source who deviation)
+          (instructionCount service.setup.program + 1)).map
+          (fun final => service.setup.protocolReadout final.state)) value := by
+      rw [law]
+    _ = _ := by
+      rw [expect_map]
+      rfl
+
+/-- **Approximate Nash correspondence on the audited calendar ledger.** With
+an authentic audit sample that observes every forbidden packet with positive
+probability and the deposit sized from the base utility and that observation
+probability, the compiled raw profile of a source profile is an `ε`-Nash
+equilibrium of the audited bounded raw runtime exactly when the source profile
+is an `ε`-Nash equilibrium of the source protocol model, for every `ε`. -/
+theorem isεNash_compileProfile_iff {Parameter : Type}
+    (parameter : State L service.setup.context → Parameter)
+    (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
+    (sample : List (SettledEvidence service.setup) →
+      PMF (List (SettledEvidence service.setup)))
+    (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
+    (probability : Player → ℝ) (positive : ∀ who, 0 < probability who)
+    (coverage : ∀ who actual record, record ∈ actual → record.2.sender = who →
+      record.1.permits record.2 = false →
+      probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
+    (ε : ℝ) (source : Profile service.sourceModel.behavioralSignature) :
+    let base := baseUtility service.setup service.leaks
+      (fun state => utility (service.setup.parameterOutcome parameter state))
+    let deposit := rosterAuditDeposit service.setup service.leaks service.bounds service.rosters
+      service.network base (fun owner => min (probability owner) 1)
+    let payoff := TerminalAudit.utility base
+      ((runtime service.setup).serviceAuditObservation service.leaks)
+      (sourceServiceAudit service.setup service.leaks sample) deposit
+    IsεNash ((service.raw.information (initialLaw service.setup) service.planLength
+        service.scheduler).toBehavioralGameForm service.fuel)
+        (fun history who => payoff history.state who) ε (service.compileProfile source) ↔
+      IsεNash (service.sourceModel.toBehavioralGameForm
+        (instructionCount service.setup.program + 1))
+        (fun final who => (service.setup.protocolReadout final.state).elim 0
+          (fun state => utility (service.setup.parameterOutcome parameter state) who))
+        ε source :=
+  ⟨service.isεNash_of_compileProfile parameter utility sample authentic probability ε source,
+    service.isεNash_compileProfile_of_menu_bounds parameter utility sample authentic probability
+      positive coverage ε source
+      (fun who alternative => service.exists_source_deviation_ge parameter utility source who
+        alternative)⟩
+
 
 end SourceServiceSpec
 
