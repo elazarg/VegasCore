@@ -276,7 +276,19 @@ joint law. It is not pursued.
   mixtures up to a vanishing error and the native observation laws approach the
   perturbed source laws, there is a native sequential equilibrium with the
   source law that agrees with the compiled limit at every copied site. Its
-  premises are not constructed for the actual runtime. Source side for the
+  premises are not constructed for the actual runtime. It is the pinned-tremble
+  case of `exists_sequentialEquilibrium_limit_of_component_comparisons_of_lawError`
+  (same module), which covers sites where the timing is completed: every agent
+  plays a mixture of finitely many fully supported component laws with weights
+  chosen by rational completion (`exists_consistent_component_completion`,
+  [ComponentCompletion](../GameTheoryExtensions/Analysis/Protocol/ComponentCompletion.lean)),
+  so an agent with a waiting and an acting component copies the acting law's
+  content while completion chooses when to act; at every compared site each
+  single choice is negligible, bounded by a source gain mixture, or bounded by
+  the gain of a mixture of the agent's own components at the same index (the
+  latter discharged for a choice trembled inside its component by
+  `withLaw_comparison_gain_le_mix_add`), and both obligations may assume the
+  weights are optimal among component mixtures. Source side for the
   intended game: `Setup.intended_auditedSource` (every intended SE is the limit
   of a fully mixed Bayes sequence and is rational for the audited utility of
   store and collection probabilities, at the intended horizon), with

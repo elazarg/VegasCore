@@ -11,6 +11,7 @@ import GameTheoryExtensions.Analysis.ObservationErasure
 import GameTheoryExtensions.Analysis.ObservationPayoff
 import GameTheoryExtensions.Analysis.Protocol.Bayes
 import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
+import GameTheoryExtensions.Analysis.Protocol.ComponentCompletion
 import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
 import GameTheoryExtensions.Analysis.Protocol.ContinuationDecision
 import GameTheoryExtensions.Analysis.Protocol.CopiedSiteLimit
