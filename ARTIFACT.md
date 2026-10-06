@@ -6,8 +6,8 @@ The [calendar capstone](Vegas/Game/SourceServiceCompilation.lean) and
 [Paper](Paper.lean) state the exact theorem and audit its standard axioms.
 The [checklist](docs/se-proof-checklist.md) identifies load-bearing evidence.
 [Paper](Paper.lean) also states
-[intended-game preservation](Vegas/Game/IntendedPreservation.lean), box H of the
-[arbitrary-builder checklist](docs/se-async-checklist.md).
+[intended-game preservation](Vegas/Game/IntendedPreservation.lean), tracked in
+the [arbitrary-builder checklist](docs/se-async-checklist.md).
 It states the reflection of approximate Nash equilibrium from the audited
 calendar runtime ([calendar Nash](Vegas/Game/SourceServiceNash.lean)) and from
 the turn-counted clients of an arbitrary contract builder

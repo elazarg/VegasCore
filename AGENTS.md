@@ -29,6 +29,9 @@ compatibility. When renaming or refactoring, update all callers and docs.
   only on checked theorems, and the target, boxes and semantics change only with
   the owner's explicit approval. Read `ephemeral/se-async-log.md` (approvals and
   work log) when present, and append to its work log.
+* Plan and checklist labels (box names such as S1 or H, step numbers, question
+  or counterexample tags) never appear in Lean declaration or module names or in
+  docstrings; describe the mathematics instead.
 * Configure required Lean options centrally in lakefile.toml, not with local set_option directives.
 * Do not encode history into code or documentation
 * Never report work as "completed" when it'd not done - e.g., when there are sorry's left that should not be there.
