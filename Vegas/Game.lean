@@ -1,7 +1,13 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Game.AsyncDeviationChoice
+import Vegas.Game.AsyncDeviationForeign
+import Vegas.Game.AsyncDeviationLaw
+import Vegas.Game.AsyncDeviationPhase
+import Vegas.Game.AsyncDeviationReadout
 import Vegas.Game.AsyncIntendedCorrespondence
 import Vegas.Game.AsyncServiceDeposit
+import Vegas.Game.AsyncServiceDeviationBound
 import Vegas.Game.AsyncServiceNash
 import Vegas.Game.AsyncServiceSpec
 import Vegas.Game.BindingRepairBlock

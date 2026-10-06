@@ -714,7 +714,7 @@ theorem DecidedPhase.initial (delay bound : (graph setup).EventId → Nat)
     {start : (application setup leaks).Execution} {owner : Player}
     {event : (graph setup).EventId} (action : (graph setup).Action event)
     (untouched : Untouched setup leaks event start)
-    (submissions : SubmissionsAtTurn setup leaks start) :
+    (submissions : OwnSubmissionsAtTurn setup leaks start owner) :
     DecidedPhase delay bound start owner event action start := by
   have tooLong : ∀ before entry after, start.recall owner = before ++ entry :: after →
       (start.recall owner).length ≤ before.length → False := by
@@ -728,7 +728,7 @@ theorem DecidedPhase.initial (delay bound : (graph setup).EventId → Nat)
   intro before entry after split submitted
   have member : entry ∈ start.recall owner := by rw [split]; simp
   exact (start_entry_unready untouched member
-    (submissions owner entry member event submitted)).elim
+    (submissions entry member event submitted)).elim
 
 /-- A position before the boundary's recall length lies in that recall. -/
 private theorem mem_start_of_short {start execution : List (application setup leaks).PlayerEntry}
@@ -819,14 +819,15 @@ theorem DecidedPhase.round {horizon : Nat} {scheduler : (application setup leaks
     (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨remaining + 1, none, execution⟩))
     (phase : DecidedPhase delay bound start owner event action execution)
-    (submissions : SubmissionsAtTurn setup leaks execution)
+    (submissions : OwnSubmissionsAtTurn setup leaks execution owner)
     (answered : ActivationsAnswered setup leaks execution)
     (same : execution.application.config = start.application.config)
     (ready : start.application.config.cut.Ready event)
     (owned : (graph setup).actor? event = some owner)
     (effective : EffectiveAction start.application.config event action)
-    (reached : next ∈ ((application setup leaks).round scheduler
-      (decidedProfile (leaks := leaks) bound owner event action) execution).support) :
+    {players : Player → (application setup leaks).Policy}
+    (follows : players owner = decidedTurnPolicy setup leaks bound owner event action)
+    (reached : next ∈ ((application setup leaks).round scheduler players execution).support) :
     DecidedPhase delay bound start owner event action next := by
   let app := application setup leaks
   have readyNow : execution.application.config.cut.Ready event := by rw [same]; exact ready
@@ -875,7 +876,7 @@ theorem DecidedPhase.round {horizon : Nat} {scheduler : (application setup leaks
     · rw [ownerRecall]
       exact phase.firstTurn
   subst isOwner
-  simp only [decidedProfile, Function.update_self] at chosen
+  rw [follows] at chosen
   rw [recallEq] at chosen
   obtain ⟨middleTrace⟩ := app.raw_trace_environment (initialLaw setup) horizon scheduler remaining
     execution middle (.activate who) trace selected moved
@@ -913,7 +914,7 @@ theorem DecidedPhase.round {horizon : Nat} {scheduler : (application setup leaks
     · unfold EventGraphRuntime.eventRecorded at recorded
       obtain ⟨entry, member, submitted⟩ := List.any_eq_true.mp recorded
       exact ((sourceServiceTurn_first first).2 entry member
-        (submissions who entry member event (of_decide_eq_true submitted))).elim
+        (submissions entry member event (of_decide_eq_true submitted))).elim
   obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks middle who response
   rw [recallEq] at recalled
   refine ⟨fun player => (phase.recallPrefix player).trans (prefixNext player), ?_, ?_, ?_⟩
@@ -1000,7 +1001,7 @@ private theorem silent_expiry {event : (graph setup).EventId} {action : (graph s
   | sample => exact False.elim
 
 /-- A fresh submission's packet carries the submission's event. -/
-private theorem issued_submittedEvent {entry : (application setup leaks).PlayerEntry}
+theorem issued_submittedEvent {entry : (application setup leaks).PlayerEntry}
     {material : (application setup leaks).Submission}
     (transmission : entry.action.transmission = some material)
     {state : EventGraphRuntime.State (graph setup)} {who : Player}
@@ -1018,7 +1019,7 @@ theorem DecidedPhase.fresh_unique {delay bound : (graph setup).EventId → Nat}
     {start execution : (application setup leaks).Execution} {owner : Player}
     {event : (graph setup).EventId} {action : (graph setup).Action event}
     (phase : DecidedPhase delay bound start owner event action execution)
-    (submissions : SubmissionsAtTurn setup leaks execution)
+    (submissions : OwnSubmissionsAtTurn setup leaks execution owner)
     (untouched : Untouched setup leaks event start)
     {before after before' after' : List (application setup leaks).PlayerEntry}
     {entry entry' : (application setup leaks).PlayerEntry}
@@ -1033,7 +1034,7 @@ theorem DecidedPhase.fresh_unique {delay bound : (graph setup).EventId → Nat}
         sourceServiceTurn setup leaks owner event b e.beforeView = some 0 := by
     intro b e a s submittedHere
     have member : e ∈ execution.recall owner := by rw [s]; simp
-    have turn := submissions owner e member event submittedHere
+    have turn := submissions e member event submittedHere
     refine ⟨turn, ?_⟩
     have long : (start.recall owner).length ≤ b.length := by
       by_contra short
@@ -1070,14 +1071,14 @@ theorem DecidedPhase.complete_round {horizon : Nat}
     (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨remaining + 1, none, execution⟩))
     (phase : DecidedPhase delay bound start owner event action execution)
-    (submissions : SubmissionsAtTurn setup leaks execution)
+    (submissions : OwnSubmissionsAtTurn setup leaks execution owner)
     (answered : ActivationsAnswered setup leaks execution)
     (untouched : Untouched setup leaks event start)
     (same : execution.application.config = start.application.config)
     (ready : start.application.config.cut.Ready event)
     (owned : (graph setup).actor? event = some owner)
-    (reached : next ∈ ((application setup leaks).round scheduler
-      (decidedProfile (leaks := leaks) bound owner event action) execution).support)
+    {players : Player → (application setup leaks).Policy}
+    (reached : next ∈ ((application setup leaks).round scheduler players execution).support)
     (changed : next.application.config ≠ start.application.config) :
     next.application.config ∈ (start.application.config.step event ready action).support := by
   let app := application setup leaks
@@ -1206,16 +1207,14 @@ theorem DecidedPhase.complete_round {horizon : Nat}
                   List.mem_filterMap.mpr ⟨other', otherRecall, emittedOther⟩
                 rw [← facts.inputs owner] at output
                 have inputMember := (List.mem_filter.mp output).1
+                have issuerOwner : otherEnvelope.sender = owner :=
+                  of_decide_eq_true (List.mem_filter.mp output).2
                 obtain ⟨issuer, issuerMember, material, transmission, issuerEmitted, _, _,
                   issuerPacket⟩ := facts.provenance.inputs otherEnvelope inputMember
                 have issuerSubmitted : (runtime setup).submittedEvent? leaks issuer.action =
                     some other := by
                   rw [issued_submittedEvent transmission issuerPacket]
                   exact addressed
-                have issuerTurn := submissions _ issuer issuerMember other issuerSubmitted
-                have issuerOwner : otherEnvelope.sender = owner :=
-                  Option.some.inj ((PublicView.ownTurn?_spec _ _ other issuerTurn).2.symm.trans
-                    owned)
                 rw [issuerOwner] at issuerMember
                 obtain ⟨issuerBefore, issuerAfter, issuerSplit⟩ :=
                   List.mem_iff_append.mp issuerMember
@@ -1262,15 +1261,17 @@ theorem DecidedPhase.runUntil {horizon : Nat} {scheduler : (application setup le
     (untouched : Untouched setup leaks event start)
     (ready : start.application.config.cut.Ready event)
     (owned : (graph setup).actor? event = some owner)
-    (effective : EffectiveAction start.application.config event action) :
+    (effective : EffectiveAction start.application.config event action)
+    {players : Player → (application setup leaks).Policy}
+    (follows : players owner = decidedTurnPolicy setup leaks bound owner event action) :
     ∀ (count remaining : Nat) (execution : (application setup leaks).Execution),
       ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
         (some ⟨remaining + count, none, execution⟩) →
       DecidedPhase delay bound start owner event action execution →
-      SubmissionsAtTurn setup leaks execution → ActivationsAnswered setup leaks execution →
+      OwnSubmissionsAtTurn setup leaks execution owner →
+      ActivationsAnswered setup leaks execution →
       execution.application.config = start.application.config →
-      ∀ stopped ∈ ((application setup leaks).runUntil scheduler
-          (decidedProfile (leaks := leaks) bound owner event action)
+      ∀ stopped ∈ ((application setup leaks).runUntil scheduler players
           (fun final => event ∈ final.application.config.cut.completed) count execution).support,
         stopped.application.config = start.application.config ∨
           stopped.application.config ∈ (start.application.config.step event ready action).support
@@ -1291,15 +1292,17 @@ theorem DecidedPhase.runUntil {horizon : Nat} {scheduler : (application setup le
       · simp only [ReactiveApplication.runUntil, halt, ↓reduceIte] at reached
         obtain ⟨middle, moved, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
         obtain ⟨middleTrace⟩ := app.raw_trace_round (initialLaw setup) horizon scheduler
-          (decidedProfile (leaks := leaks) bound owner event action) (remaining + count) execution
-          middle trace moved
-        have atTurn := decidedProfile_submitsAtTurn leaks bound owner event action
-        have submissions' := round_submissionsAtTurn setup leaks atTurn submissions moved
+          players (remaining + count) execution middle trace moved
+        have atTurn : SubmitsAtTurn setup leaks (players owner) owner := by
+          rw [follows]
+          exact decidedTurnPolicy_submitsAtTurn setup leaks bound owner event action
+        have submissions' := round_ownSubmissionsAtTurn setup leaks atTurn submissions moved
         have answered' := round_activationsAnswered setup leaks answered moved
         by_cases unchanged : middle.application.config = start.application.config
         · exact ih remaining middle middleTrace
             (phase.round (remaining := remaining + count) contract timely trace submissions
-              answered same ready owned effective moved) submissions' answered' unchanged stopped
+              answered same ready owned effective follows moved) submissions' answered' unchanged
+              stopped
             rest
         · have completed := phase.complete_round (remaining := remaining + count) contract timely
             trace submissions answered untouched same ready owned moved unchanged
@@ -1345,6 +1348,49 @@ theorem runUntilHorizon_completes {horizon : Nat}
     rw [terminal]
     exact Finset.mem_univ _
 
+/-- **Decided completion against any other players.** From a completion
+boundary of any players at which the owner has submitted only at its own turns,
+under the asynchronous contract with `delay + bound < deadline`, if the owner
+decides an effective action at its first turn, then whatever the other players
+do every stopped point has completed the event with that action. -/
+theorem decided_completion_of_follows {horizon : Nat}
+    {scheduler : (application setup leaks).Scheduler}
+    {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
+      delay bound)
+    (timely : AsyncTimely (runtime setup) delay bound)
+    {reachers : Player → (application setup leaks).Policy}
+    (event : (graph setup).EventId) (start : (application setup leaks).Execution)
+    (boundary : CompletionBoundary setup leaks scheduler reachers event.val start)
+    (bounded : start.environmentRecall.length ≤ horizon)
+    (ready : start.application.config.cut.Ready event)
+    {owner : Player} (owned : (graph setup).actor? event = some owner)
+    (ownStart : OwnSubmissionsAtTurn setup leaks start owner)
+    (action : (graph setup).Action event)
+    (effective : EffectiveAction start.application.config event action)
+    {players : Player → (application setup leaks).Policy}
+    (follows : players owner = decidedTurnPolicy setup leaks bound owner event action)
+    (stopped : (application setup leaks).Execution)
+    (reached : stopped ∈ ((application setup leaks).runUntilHorizon scheduler players
+      (fun final => event ∈ final.application.config.cut.completed) horizon start).support) :
+    stopped.application.config ∈ (start.application.config.step event ready action).support := by
+  let app := application setup leaks
+  obtain ⟨startTrace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler
+    reachers _ bounded start boundary.supported
+  have answered := roundsFrom_activationsAnswered _ start boundary.supported
+  have untouched := boundary.untouched event rfl
+  have phase := DecidedPhase.initial delay bound action untouched ownStart (owner := owner)
+  rcases DecidedPhase.runUntil contract timely untouched ready owned effective follows
+      (horizon - start.environmentRecall.length) 0 start
+      (by simpa only [Nat.zero_add] using startTrace) phase ownStart answered rfl stopped
+      reached with unchanged | completed
+  · exfalso
+    have notDone : event ∉ stopped.application.config.cut.completed := by
+      rw [unchanged]
+      exact ready.1
+    exact notDone (runUntilHorizon_completes contract.completes bounded startTrace stopped reached)
+  · exact completed
+
 /-- **Decided completion.** From a completion boundary of the turn-counted
 policy, under the asynchronous contract with `delay + bound < deadline`, if the
 owner decides an effective action at its first turn and every other response
@@ -1368,25 +1414,12 @@ theorem decided_completion {horizon : Nat} {scheduler : (application setup leaks
       (decidedProfile (leaks := leaks) bound owner event action)
       (fun final => event ∈ final.application.config.cut.completed) horizon start).support) :
     stopped.application.config ∈ (start.application.config.step event ready action).support := by
-  let app := application setup leaks
-  obtain ⟨startTrace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler
-    (sourceServiceTurnPolicy setup leaks bound turns timing profile) _ bounded start
-    boundary.supported
-  obtain ⟨submissions, answered⟩ := roundsFrom_turnFacts setup leaks
+  obtain ⟨submissions, _⟩ := roundsFrom_turnFacts setup leaks
     (fun who => sourceServiceTurnPolicy_submitsAtTurn setup leaks bound turns timing profile who) _
     start boundary.supported
-  have untouched := boundary.untouched event rfl
-  have phase := DecidedPhase.initial delay bound action untouched submissions (owner := owner)
-  rcases DecidedPhase.runUntil contract timely untouched ready owned effective
-      (horizon - start.environmentRecall.length) 0 start
-      (by simpa only [Nat.zero_add] using startTrace) phase submissions answered rfl stopped
-      reached with unchanged | completed
-  · exfalso
-    have notDone : event ∉ stopped.application.config.cut.completed := by
-      rw [unchanged]
-      exact ready.1
-    exact notDone (runUntilHorizon_completes contract.completes bounded startTrace stopped reached)
-  · exact completed
+  exact decided_completion_of_follows contract timely event start boundary bounded ready owned
+    (submissions.own owner) action effective
+    (by simp only [decidedProfile, Function.update_self]) stopped reached
 
 end Run
 

@@ -89,11 +89,12 @@ private theorem turn_none_of_first (owner : Player) (event : (graph setup).Event
     exact counted entry inPast (decide_eq_true turn)
   · cases first
 
-/-- **First-turn mixture.** From a completion boundary of any players, if the
-source decision at the boundary configuration is `law` compiled to native
-responses, the owner's first-turn family runs as the `law`-mixture of the
-policies deciding one fixed action. -/
-theorem firstTurn_runUntil_mixture {scheduler : (application setup leaks).Scheduler}
+/-- **First-turn mixture against any other players.** From a completion
+boundary of any players, if the source decision at the boundary configuration is
+`law` compiled to native responses, the owner's first-turn family runs, whatever
+the other players do, as the `law`-mixture of the policies deciding one fixed
+action. -/
+theorem firstTurn_runUntil_mixture_update {scheduler : (application setup leaks).Scheduler}
     {players : Player → (application setup leaks).Policy} (event : (graph setup).EventId)
     (execution : (application setup leaks).Execution)
     (boundary : CompletionBoundary setup leaks scheduler players event.val execution)
@@ -106,13 +107,13 @@ theorem firstTurn_runUntil_mixture {scheduler : (application setup leaks).Schedu
           (current.observe (application setup leaks) owner) =
         law.map fun action => (runtime setup).canonicalServiceDecision leaks owner
           (current.recall owner) (current.observe (application setup leaks) owner) event action)
-    (count : Nat) :
+    (others : Player → (application setup leaks).Policy) (count : Nat) :
     (application setup leaks).runUntil scheduler
-        (firstTurnProfile setup leaks bound turns profile event)
+        (Function.update others owner
+          (sourceServiceTurnFamily setup leaks bound profile owner event turns 0))
         (fun final => event ∈ final.application.config.cut.completed) count execution =
       law.bind fun action => (application setup leaks).runUntil scheduler
-        (Function.update (fun _ => (application setup leaks).silentPolicy) owner
-          (decidedTurnPolicy setup leaks bound owner event action))
+        (Function.update others owner (decidedTurnPolicy setup leaks bound owner event action))
         (fun final => event ∈ final.application.config.cut.completed) count execution := by
   let app := application setup leaks
   let stop := fun final : app.Execution => event ∈ final.application.config.cut.completed
@@ -122,12 +123,6 @@ theorem firstTurn_runUntil_mixture {scheduler : (application setup leaks).Schedu
     boundary.supported
   have rankEq := isPrefix_unique ranked boundary.ordered
   subst rankEq
-  have firstEq : firstTurnProfile setup leaks bound turns profile event =
-      Function.update (fun _ => app.silentPolicy) owner family := by
-    unfold firstTurnProfile
-    simp only [owned]
-    rfl
-  rw [firstEq]
   -- The first-turn family agrees with the mixture wherever the configuration is unchanged.
   have agree (current : app.Execution)
       (same : current.application.config = execution.application.config) :
@@ -202,8 +197,8 @@ theorem firstTurn_runUntil_mixture {scheduler : (application setup leaks).Schedu
     · exact same
     · exact (running ((advanced.2 event).mpr (Nat.lt_succ_self _))).elim
   have congruent : app.runUntil scheduler
-      (Function.update (fun _ => app.silentPolicy) owner family) stop count execution =
-      app.runUntil scheduler (Function.update (fun _ => app.silentPolicy) owner mixture.policy)
+      (Function.update others owner family) stop count execution =
+      app.runUntil scheduler (Function.update others owner mixture.policy)
         stop count execution := by
     apply app.runUntil_congr_of_agree scheduler _ _ _ invariant
     · intro current holds running command _ middle moved who active
@@ -226,7 +221,7 @@ theorem firstTurn_runUntil_mixture {scheduler : (application setup leaks).Schedu
       · exact Or.inl (same.trans (sameOf current holds running))
       · exact Or.inr advanced
     · exact ⟨seen, Or.inl rfl⟩
-  change app.runUntil scheduler (Function.update (fun _ => app.silentPolicy) owner family) stop
+  change app.runUntil scheduler (Function.update others owner family) stop
     count execution = _
   rw [congruent, ← app.runUntil_policyMixture scheduler law
     (decidedTurnPolicy setup leaks bound owner event) owner _ stop count execution]
@@ -242,6 +237,40 @@ theorem firstTurn_runUntil_mixture {scheduler : (application setup leaks).Schedu
       (PublicView.ownTurn?_spec _ owner event turn).1
   change (mixture.posterior (execution.recall owner)).bind _ = _
   rw [prior]
+
+/-- **First-turn mixture.** From a completion boundary of any players, if the
+source decision at the boundary configuration is `law` compiled to native
+responses, the owner's first-turn family runs as the `law`-mixture of the
+policies deciding one fixed action. -/
+theorem firstTurn_runUntil_mixture {scheduler : (application setup leaks).Scheduler}
+    {players : Player → (application setup leaks).Policy} (event : (graph setup).EventId)
+    (execution : (application setup leaks).Execution)
+    (boundary : CompletionBoundary setup leaks scheduler players event.val execution)
+    (owner : Player) (owned : (graph setup).actor? event = some owner)
+    (bound : (graph setup).EventId → Nat) (turns : Nat)
+    (profile : BehavioralProfile setup.program) (law : PMF ((graph setup).Action event))
+    (policy : ∀ current : (application setup leaks).Execution,
+      current.application.config = execution.application.config →
+      sourceServiceCanonicalPolicy setup leaks profile owner (current.recall owner)
+          (current.observe (application setup leaks) owner) =
+        law.map fun action => (runtime setup).canonicalServiceDecision leaks owner
+          (current.recall owner) (current.observe (application setup leaks) owner) event action)
+    (count : Nat) :
+    (application setup leaks).runUntil scheduler
+        (firstTurnProfile setup leaks bound turns profile event)
+        (fun final => event ∈ final.application.config.cut.completed) count execution =
+      law.bind fun action => (application setup leaks).runUntil scheduler
+        (Function.update (fun _ => (application setup leaks).silentPolicy) owner
+          (decidedTurnPolicy setup leaks bound owner event action))
+        (fun final => event ∈ final.application.config.cut.completed) count execution := by
+  have firstEq : firstTurnProfile setup leaks bound turns profile event =
+      Function.update (fun _ => (application setup leaks).silentPolicy) owner
+        (sourceServiceTurnFamily setup leaks bound profile owner event turns 0) := by
+    unfold firstTurnProfile
+    simp only [owned]
+  rw [firstEq]
+  exact firstTurn_runUntil_mixture_update event execution boundary owner owned bound turns
+    profile law policy _ count
 
 section Head
 

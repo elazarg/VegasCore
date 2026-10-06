@@ -534,26 +534,6 @@ theorem isεNash_compileProfile_of_menu_bounds {Parameter : Type}
     rw [extendedExpectedUtility_eq nativeIntegrable, extendedExpectedUtility_eq sourceIntegrable]
     exact EReal.coe_le_coe_iff.mpr (nativeBound.trans menuValue)
 
-omit [Fintype Player] in
-/-- Decoding a unilateral deviation of a source profile decodes the deviating
-coordinate alone. -/
-private theorem decodeBehavioralProfile_update
-    (source : Profile service.sourceModel.behavioralSignature) (who : Player)
-    (policy : BehavioralPolicy who service.setup.program)
-    (allowed : policy.Admitted service.setup.program
-      (CommitmentInterface.values service.setup.program)) :
-    service.setup.decodeBehavioralProfile (CommitmentInterface.values service.setup.program)
-        (Profile.update source who ((service.setup.behavioralPolicyEquiv
-          (CommitmentInterface.values service.setup.program) who) ⟨policy, allowed⟩)) =
-      Function.update (service.setup.decodeBehavioralProfile
-        (CommitmentInterface.values service.setup.program) source) who policy := by
-  funext player
-  by_cases same : player = who
-  · subst player
-    simp only [Setup.decodeBehavioralProfile, Profile.update, Function.update_self,
-      Equiv.symm_apply_apply]
-  · simp only [Setup.decodeBehavioralProfile, Profile.update, Function.update_of_ne same]
-
 /-- **Every permitted deviation is a source deviation.** Against the timed
 calendar profile of any source profile, every deviation of one player within
 the permitted menu has exactly the typed outcome law of a deviation of the same
@@ -581,7 +561,7 @@ theorem exists_source_deviation_law (source : Profile service.sourceModel.behavi
     (Profile.update source who ((service.setup.behavioralPolicyEquiv admission who)
       ⟨policy, allowed⟩)) (instructionCount service.setup.program + 1)
     (service.setup.executionProtocol admission).initHistory (Nat.le_refl _)
-  rw [service.decodeBehavioralProfile_update source who policy allowed] at readout
+  rw [service.setup.decodeBehavioralProfile_update _ source who policy allowed] at readout
   exact law.trans readout.symm
 
 /-- A fixed source policy of every player, used only to complete a profile

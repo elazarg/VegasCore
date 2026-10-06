@@ -89,20 +89,6 @@ private theorem receipt_published {execution : (application setup leaks).Executi
         exact List.mem_cons.mpr (Or.inl head.1)
       · exact List.mem_cons_of_mem _ (ih inside)
 
-/-- A submission names the event its emitted packet addresses. -/
-private theorem issued_submittedEvent {entry : (application setup leaks).PlayerEntry}
-    {material : (application setup leaks).Submission}
-    (transmission : entry.action.transmission = some material)
-    {state : EventGraphRuntime.State (graph setup)} {who : Player}
-    {known : List (Message Player (WitnessedPacket (graph setup)))}
-    {message : Message Player (WitnessedPacket (graph setup))}
-    (packet : (application setup leaks).packet state who known material = message.payload) :
-    (runtime setup).submittedEvent? leaks entry.action =
-      message.payload.call.event? (graph setup) := by
-  unfold EventGraphRuntime.submittedEvent?
-  rw [transmission, ← packet]
-  rfl
-
 /-- **The serial at a turn.** Under the asynchronous contract, when `event` is
 `who`'s turn and `who` has not yet submitted for it, `who`'s next serial is the
 number of its distinct identifiers on the ledger. -/

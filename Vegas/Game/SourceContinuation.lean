@@ -33,6 +33,23 @@ def decodeBehavioralProfile
     BehavioralProfile setup.program :=
   fun who => ((setup.behavioralPolicyEquiv admission who).symm (profile who)).1
 
+omit [Fintype Player] in
+/-- Decoding a unilateral deviation decodes the deviating coordinate alone. -/
+theorem decodeBehavioralProfile_update
+    (profile : Profile (setup.informationModel admission).behavioralSignature) (who : Player)
+    (policy : BehavioralPolicy who setup.program)
+    (allowed : policy.Admitted setup.program admission) :
+    setup.decodeBehavioralProfile admission
+        (Profile.update profile who ((setup.behavioralPolicyEquiv admission who)
+          ⟨policy, allowed⟩)) =
+      Function.update (setup.decodeBehavioralProfile admission profile) who policy := by
+  funext player
+  by_cases same : player = who
+  · subst player
+    simp only [decodeBehavioralProfile, Profile.update, Function.update_self,
+      Equiv.symm_apply_apply]
+  · simp only [decodeBehavioralProfile, Profile.update, Function.update_of_ne same]
+
 open Classical in
 /-- The state law of one actual protocol step, with its ordinary terminal
 absorption. It uses the protocol's existing observations and transition. -/

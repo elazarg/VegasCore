@@ -236,13 +236,6 @@ def CanonicalSlotsFresh (execution : (application setup leaks).Execution) (who :
       (serial = execution.application.publicView.bindingCount who ∧
         PendingBinding setup leaks execution who)
 
-/-- Every fresh submission of `who` was made at its own turn at its event. -/
-def OwnSubmissionsAtTurn (execution : (application setup leaks).Execution) (who : Player) :
-    Prop :=
-  ∀ entry ∈ execution.recall who, ∀ event,
-    (runtime setup).submittedEvent? leaks entry.action = some event →
-      entry.beforeView.application.publicView.ownTurn? who = some event
-
 /-- Every prepared slot `who` has used lies below its public binding count, or
 at it while a binding of `who` it has submitted for is unfinished. -/
 def CanonicalSlotsUsed (execution : (application setup leaks).Execution) (who : Player) :

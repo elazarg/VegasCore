@@ -31,7 +31,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 omit [Fintype Player] [IExpr.ResultTypes L] in
 /-- The owner's view after its commitment determines its view before and its
 choice. -/
-private theorem commit_owner_view_reflects {Γ : SourceCtx Player L} {who : Player}
+theorem commit_owner_view_reflects {Γ : SourceCtx Player L} {who : Player}
     {payload : L.Ty} (name : VarId) (guard : SourceGuard L Γ who name payload)
     (left right : Config Player L Γ) (first second : PublicationResult (L.Val payload))
     (same : (commitSuccessor name guard left first).view who =
@@ -51,7 +51,7 @@ private theorem commit_owner_view_reflects {Γ : SourceCtx Player L} {who : Play
 omit [Fintype Player] [IExpr.ResultTypes L] in
 /-- The owner's view after its guarded disclosure determines its view before
 and its choice, which it records in its own history. -/
-private theorem reveal_owner_view_reflects {Γ : SourceCtx Player L} {name : VarId}
+theorem reveal_owner_view_reflects {Γ : SourceCtx Player L} {name : VarId}
     {who : Player} {payload : L.Ty} (published : VarId)
     (selected : HasVar Γ name (.commitment who payload))
     (left right : Config Player L Γ) (first second : Bool)

@@ -74,6 +74,13 @@ def SubmissionsAtTurn (execution : (application setup leaks).Execution) : Prop :
     (runtime setup).submittedEvent? leaks entry.action = some event →
       entry.beforeView.application.publicView.ownTurn? who = some event
 
+/-- Every fresh submission of `who` was made at its own turn at its event. -/
+def OwnSubmissionsAtTurn (execution : (application setup leaks).Execution) (who : Player) :
+    Prop :=
+  ∀ entry ∈ execution.recall who, ∀ event,
+    (runtime setup).submittedEvent? leaks entry.action = some event →
+      entry.beforeView.application.publicView.ownTurn? who = some event
+
 /-- Every recorded activation was answered by its player at the public view
 the scheduler saw. -/
 def ActivationsAnswered (execution : (application setup leaks).Execution) : Prop :=
@@ -313,6 +320,45 @@ theorem round_submissionsAtTurn {scheduler : (application setup leaks).Scheduler
     · rw [app.respond_recall_other middle who player same response, recallEq] at member
       exact valid player entry member event submitted
 
+variable {setup leaks} in
+/-- Submissions at every author's turn are in particular one author's
+submissions at its turns. -/
+theorem SubmissionsAtTurn.own {execution : (application setup leaks).Execution}
+    (valid : SubmissionsAtTurn setup leaks execution) (who : Player) :
+    OwnSubmissionsAtTurn setup leaks execution who :=
+  fun entry member event submitted => valid who entry member event submitted
+
+/-- A round in which `who` submits only at its own turns keeps every recorded
+submission of `who` at its turn, whatever the other players do. -/
+theorem round_ownSubmissionsAtTurn {scheduler : (application setup leaks).Scheduler}
+    {players : Player → (application setup leaks).Policy} {who : Player}
+    (atTurn : SubmitsAtTurn setup leaks (players who) who)
+    {execution next : (application setup leaks).Execution}
+    (valid : OwnSubmissionsAtTurn setup leaks execution who)
+    (reached : next ∈ ((application setup leaks).round scheduler players execution).support) :
+    OwnSubmissionsAtTurn setup leaks next who := by
+  let app := application setup leaks
+  obtain ⟨command, _, middle, moved, cases⟩ := round_cases setup leaks reached
+  have recallEq := app.environmentStep_recall execution middle command moved
+  rcases cases with ⟨_, rfl⟩ | ⟨responder, _, response, chosen, rfl⟩
+  · intro entry member
+    rw [recallEq] at member
+    exact valid entry member
+  · intro entry member event submitted
+    by_cases same : responder = who
+    · subst responder
+      obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks middle who response
+      rw [recalled] at member
+      rcases List.mem_append.mp member with prior | fresh
+      · rw [recallEq] at prior
+        exact valid entry prior event submitted
+      · rw [List.mem_singleton] at fresh
+        subst fresh
+        exact atTurn _ _ response chosen event submitted
+    · rw [app.respond_recall_other middle responder who (fun equal => same equal.symm)
+        response, recallEq] at member
+      exact valid entry member event submitted
+
 /-- Every round answers its activation at the scheduler's public view. -/
 theorem round_activationsAnswered {scheduler : (application setup leaks).Scheduler}
     {players : Player → (application setup leaks).Policy}
@@ -361,6 +407,28 @@ theorem round_activationsAnswered {scheduler : (application setup leaks).Schedul
       exact List.mem_append_right _ (List.mem_singleton_self _)
     · change middle'.application.publicView = execution.application.publicView
       rw [sameApp]
+
+variable {setup leaks} in
+/-- Every activation in completed rounds has an actual response in own recall,
+even if that response was silent or sent a packet for a different event. -/
+theorem roundsFrom_activationsAnswered
+    {scheduler : (application setup leaks).Scheduler}
+    {players : Player → (application setup leaks).Policy} (count : Nat)
+    (execution : (application setup leaks).Execution)
+    (supported : execution ∈ ((application setup leaks).roundsFrom (initialLaw setup) scheduler
+      players count).support) :
+    ActivationsAnswered setup leaks execution := by
+  let app := application setup leaks
+  induction count generalizing execution with
+  | zero =>
+      obtain ⟨state, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      intro entry member
+      cases member
+  | succ count ih =>
+      rw [app.roundsFrom_succ (initialLaw setup) scheduler players count] at supported
+      obtain ⟨prior, priorMem, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+      exact round_activationsAnswered setup leaks (ih prior priorMem) moved
 
 /-- Both facts hold along rounds of players that submit only at their own
 turns, from initialization under every scheduler. -/
