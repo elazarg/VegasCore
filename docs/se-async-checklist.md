@@ -49,6 +49,9 @@ equilibrium may depend on the builder. Stage S is the sequentialized graph;
 stage C adds concurrent bindings under the barrier order. The audit backend is
 the authentic partial sampler with conditional coverage until box W closes.
 Players are finitely many throughout.
+An author-only observation rule (leaks depend on the observer and the authors
+of pending messages, not on their content) is an approved optional hypothesis,
+used only where a proof needs it and named there.
 
 The earlier target, preservation of every sequential equilibrium of the source
 game with withholding priced by the program's own failure branch, is refuted in
