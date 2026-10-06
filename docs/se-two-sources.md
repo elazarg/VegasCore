@@ -66,22 +66,16 @@ it.
 
 ## Open points
 
-1. **Honest guard failure versus withholding.** In `S_exp` a rejected opening
-   and a withholding leave the same typed cells and publication status
-   ([DisclosureAliases](../Vegas/Source/DisclosureAliases.lean)); only the
-   owner's private action history differs. A forfeit keyed on publication
-   failure would fine an honest owner whose opening a guard rejects. Options:
-   - (i) `S_int` requires the guard premise `GuardsAcceptFrom` along every
-     reachable configuration, so honest failure never occurs. Simple, but it
-     restricts the intended games to those whose guards accept honest values.
-   - (ii) `S_exp` distinguishes two failures, *withheld* and *rejected*, and
-     the forfeit applies only to *withheld*. The runtime already separates them
-     publicly (an opening was or was not included). This changes the typed
-     state of the core semantics.
-   - (iii) The forfeit is decided by the compiled contract on expiry, not by
-     the source. No core change, but H stops being a source-to-source theorem.
-
-   Leaning: (ii).
+1. **Honest guard failure (resolved).** A guard reads only public data,
+   existing publications and its author's own commitments (`SourceGuardRead`),
+   all known to the author at the commit. A program of `S_int` is well formed
+   only if, at every reachable commit, the guard is satisfiable given those
+   inputs; this is a hypothesis of H, discharged outside VegasCore. Honest play
+   binds accepted values, so an honest run never fails a guard
+   (`runFrom_successful` under `GuardsAcceptFrom`, which well-formedness
+   discharges). Every failed reveal is then its owner's own deviation, by
+   withholding or by a rejected value, and the forfeit pass forfeits the owner
+   of every failed reveal. No second failure kind is needed.
 2. **Information sets `S_int` lacks.** After another player withholds, `S_exp`
    has continuations with no counterpart in `S_int`. They need a consistent
    assessment chosen by rational completion, as the risk menu does in the

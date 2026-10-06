@@ -131,8 +131,10 @@ joint law. It is not pursued.
   and every sequential equilibrium of it, the forfeit-pass rewriting has a
   sequential equilibrium of the source game with the same joint law and no
   forfeit on its paths. Composed with S8 (and C2), it gives the target theorem.
-  The treatment of honest guard failure is open (see
-  [two sources](se-two-sources.md), open point 1).
+  Hypothesis: the program is well formed, every guard being satisfiable at
+  every reachable commit given its author's inputs (proved outside VegasCore);
+  the forfeit pass forfeits the owner of every failed reveal (see
+  [two sources](se-two-sources.md), point 1).
 
 ## S. Serial stage, every contract builder
 
