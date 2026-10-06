@@ -55,7 +55,7 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds {Parameter : Type}
     {turns : Nat} (timing : TurnTiming service.setup turns)
     (covered : ∀ (source : Profile service.sourceModel.behavioralSignature) who,
       menu.Admissible (initialLaw service.setup) service.horizon service.scheduler who
-        (sourceServiceTurnPolicy service.setup service.leaks service.bound turns timing
+        (sourceServiceClientPolicy service.setup service.leaks service.bound turns timing
           (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
             (CommitmentInterface.values service.setup.program) source)) who))
     (low : Player → ℝ) (spread : ℝ)
@@ -124,8 +124,8 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds {Parameter : Type}
     (CommitmentInterface.values service.setup.program) source
   let stateUtility := fun state : State L service.setup.program.terminalCtx =>
     forfeited (service.setup.parameterOutcome parameter state)
-  have close := sourceServiceClients_settlement_lawError service.contract service.timely timing
-    decoded menu (covered source) sample authentic stateUtility deposit
+  have close := sourceServiceClients_clientPolicy_settlement_lawError service.contract
+    service.timely timing decoded menu (covered source) sample authentic stateUtility deposit
   have readoutLaw : (service.sourceModel.runBehavioral source
       (instructionCount service.setup.program + 1)).map
         (fun final => service.setup.protocolReadout final.state) =

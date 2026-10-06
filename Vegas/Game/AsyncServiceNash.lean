@@ -3,6 +3,7 @@
 import Vegas.Game.AsyncServiceSpec
 import Vegas.Game.SourceServiceTurnSettlement
 import Vegas.Game.SourceServiceDeviationCoupling
+import Vegas.Game.SourceServiceClientPolicy
 import GameTheory.Core.Approximate
 
 /-! # Reflection of approximate Nash under an arbitrary contract builder
@@ -10,7 +11,8 @@ import GameTheory.Core.Approximate
 For a full-source service whose public scheduler satisfies the asynchronous
 contract, the turn-counted clients of a source profile
 (`Vegas.AsyncServiceSpec.clientProfile`) are played in an arbitrary response
-menu that admits them. Their joint law of typed outcome and realized
+menu that admits them; the bounded raw menu does
+(`Vegas.AsyncServiceSpec.rawMenu_admits`). Their joint law of typed outcome and realized
 settlement is within the total deferral weight `δ` of the source law in total
 variation (`Vegas.sourceServiceClients_settlement_lawError`). When every
 realized payoff value lies in an interval of length `R`, expected payoffs are
@@ -51,26 +53,28 @@ abbrev sourceModel := service.setup.informationModel
 
 /-- **The turn-counted clients** of a source profile in a response menu: each
 player follows the turn-counted policy of its disclosure-normalized source
-policy. -/
+policy, completed by silence after its own off-policy responses
+(`Vegas.sourceServiceClientPolicy`). -/
 def clientProfile (menu : (application service.setup service.leaks).ResponseMenu)
     {turns : Nat} (timing : TurnTiming service.setup turns)
     (source : Profile service.sourceModel.behavioralSignature) :
     Profile (menu.information (initialLaw service.setup) service.horizon
       service.scheduler).behavioralSignature := fun who =>
   menu.restrictPolicy (initialLaw service.setup) service.horizon service.scheduler who
-    (sourceServiceTurnPolicy service.setup service.leaks service.bound turns timing
+    (sourceServiceClientPolicy service.setup service.leaks service.bound turns timing
       (sourceServiceClientProfile service.setup
         (service.setup.decodeBehavioralProfile (CommitmentInterface.values service.setup.program)
           source)) who)
 
 omit [Fintype Player] in
-private theorem turnPolicy_congr {turns : Nat} (timing : TurnTiming service.setup turns)
+private theorem clientPolicy_congr {turns : Nat} (timing : TurnTiming service.setup turns)
     (profile other : BehavioralProfile service.setup.program) (who : Player)
     (same : profile who = other who) :
-    sourceServiceTurnPolicy service.setup service.leaks service.bound turns timing profile who =
-      sourceServiceTurnPolicy service.setup service.leaks service.bound turns timing other who := by
-  unfold sourceServiceTurnPolicy sourceServiceTurnFamily sourceServiceCanonicalOpportunity
-    sourceServiceCanonicalPolicy compileEventProfile
+    sourceServiceClientPolicy service.setup service.leaks service.bound turns timing profile who =
+      sourceServiceClientPolicy service.setup service.leaks service.bound turns timing other
+        who := by
+  unfold sourceServiceClientPolicy sourceServiceTurnPolicy sourceServiceTurnFamily
+    sourceServiceCanonicalOpportunity sourceServiceCanonicalPolicy compileEventProfile
   rw [same]
 
 omit [Fintype Player] in
@@ -89,7 +93,7 @@ theorem clientProfile_congr (menu : (application service.setup service.leaks).Re
     simp only [sourceServiceClientProfile, normalizeDisclosureProfile,
       Setup.decodeBehavioralProfile, same]
   exact congrArg (menu.restrictPolicy (initialLaw service.setup) service.horizon
-    service.scheduler who) (turnPolicy_congr service timing _ _ who decoded)
+    service.scheduler who) (clientPolicy_congr service timing _ _ who decoded)
 
 omit [Fintype Player] in
 /-- The clients of a unilateral source deviation are a unilateral deviation of
@@ -122,7 +126,7 @@ private theorem clientProfile_value_close {Parameter : Type}
     {turns : Nat} (timing : TurnTiming service.setup turns)
     (covered : ∀ (source : Profile service.sourceModel.behavioralSignature) who,
       menu.Admissible (initialLaw service.setup) service.horizon service.scheduler who
-        (sourceServiceTurnPolicy service.setup service.leaks service.bound turns timing
+        (sourceServiceClientPolicy service.setup service.leaks service.bound turns timing
           (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
             (CommitmentInterface.values service.setup.program) source)) who))
     (low : Player → ℝ) (range : ℝ)
@@ -168,8 +172,8 @@ private theorem clientProfile_value_close {Parameter : Type}
   let sourceJoint := (service.setup.run decoded).map fun state =>
     (some state, stateUtility state)
   have close : PMF.WithinTV (∑ event, timing.deferral event) nativeJoint sourceJoint :=
-    sourceServiceClients_settlement_lawError service.contract service.timely timing decoded menu
-      (covered source) sample authentic stateUtility deposit
+    sourceServiceClients_clientPolicy_settlement_lawError service.contract service.timely timing
+      decoded menu (covered source) sample authentic stateUtility deposit
   have settled (state : (application service.setup service.leaks).ProtocolState)
       (pair : Option (State L service.setup.program.terminalCtx) × (Player → ℝ))
       (member : pair ∈ ((settle state).map fun payoffs =>
@@ -283,7 +287,7 @@ theorem isεNash_of_clientProfile {Parameter : Type}
     {turns : Nat} (timing : TurnTiming service.setup turns)
     (covered : ∀ (source : Profile service.sourceModel.behavioralSignature) who,
       menu.Admissible (initialLaw service.setup) service.horizon service.scheduler who
-        (sourceServiceTurnPolicy service.setup service.leaks service.bound turns timing
+        (sourceServiceClientPolicy service.setup service.leaks service.bound turns timing
           (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
             (CommitmentInterface.values service.setup.program) source)) who))
     (low : Player → ℝ) (range : ℝ)
@@ -415,7 +419,7 @@ theorem isεNash_clientProfile_of_firstTurn_bounds {Parameter : Type}
     {turns : Nat} (timing : TurnTiming service.setup turns)
     (covered : ∀ (source : Profile service.sourceModel.behavioralSignature) who,
       menu.Admissible (initialLaw service.setup) service.horizon service.scheduler who
-        (sourceServiceTurnPolicy service.setup service.leaks service.bound turns timing
+        (sourceServiceClientPolicy service.setup service.leaks service.bound turns timing
           (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
             (CommitmentInterface.values service.setup.program) source)) who))
     (low : Player → ℝ) (range : ℝ)
@@ -475,17 +479,24 @@ theorem isεNash_clientProfile_of_firstTurn_bounds {Parameter : Type}
   intro who replacement
   let alternative := app.decodePolicy (menu.embedPolicy (initialLaw service.setup)
     service.horizon service.scheduler who replacement)
-  let players := deviatedTurnProfile service.bound turns timing clients who alternative
+  let players := Function.update (sourceServiceClientPolicy service.setup service.leaks
+    service.bound turns timing clients) who alternative
+  let turnPlayers := deviatedTurnProfile service.bound turns timing clients who alternative
+  have completed : app.roundsFrom (initialLaw service.setup) service.scheduler players
+      service.horizon =
+      app.roundsFrom (initialLaw service.setup) service.scheduler turnPlayers service.horizon :=
+    sourceServiceClientPolicy_deviation_roundsFrom service.scheduler service.bound turns timing
+      clients who alternative service.horizon
   have admissible : ∀ player, menu.Admissible (initialLaw service.setup) service.horizon
       service.scheduler player (players player) := by
     intro player
     by_cases same : player = who
     · subst same
       intro control _ _ action member
-      simp only [players, deviatedTurnProfile, Function.update_self] at member
+      simp only [players, Function.update_self] at member
       exact menu.decode_embedPolicy_covered (initialLaw service.setup) service.horizon
         service.scheduler player replacement _ _ action member
-    · simp only [players, deviatedTurnProfile, Function.update_of_ne same]
+    · simp only [players, Function.update_of_ne same]
       exact covered source player
   have restricted : (fun player => menu.restrictPolicy (initialLaw service.setup)
       service.horizon service.scheduler player (players player)) =
@@ -493,10 +504,10 @@ theorem isεNash_clientProfile_of_firstTurn_bounds {Parameter : Type}
     funext player
     by_cases same : player = who
     · subst same
-      simp only [players, deviatedTurnProfile, Function.update_self, Profile.update]
+      simp only [players, Function.update_self, Profile.update]
       exact menu.restrict_decode_embedPolicy (initialLaw service.setup) service.horizon
         service.scheduler player replacement
-    · simp only [players, deviatedTurnProfile, Function.update_of_ne same, Profile.update]
+    · simp only [players, Function.update_of_ne same, Profile.update]
       rfl
   have physical := menu.run_restrict_eq_finish (initialLaw service.setup) service.horizon
     service.scheduler players admissible (2 * service.horizon + 1)
@@ -511,6 +522,7 @@ theorem isεNash_clientProfile_of_firstTurn_bounds {Parameter : Type}
     unfold ReactiveApplication.roundsFrom
     simp only [ReactiveApplication.finish, PMF.map_bind]
     rfl
+  rw [completed] at deviationLaw
   -- The turn-counted and first-turn deviations are close.
   have coupled := sourceServiceTurnPolicy_deviation_roundsFrom_bind_within (horizon :=
     service.horizon) (bound := service.bound) service.scheduler timing clients who alternative
@@ -518,8 +530,8 @@ theorem isεNash_clientProfile_of_firstTurn_bounds {Parameter : Type}
   simp only [PMF.bind_pure] at coupled
   let limit := deviatedTurnProfile service.bound turns (firstTurnTiming service.setup turns)
     clients who alternative
-  have deviationGap : expect (app.roundsFrom (initialLaw service.setup) service.scheduler players
-        service.horizon) (fun execution => payoff (app.finished execution) who) -
+  have deviationGap : expect (app.roundsFrom (initialLaw service.setup) service.scheduler
+        turnPlayers service.horizon) (fun execution => payoff (app.finished execution) who) -
       expect (app.roundsFrom (initialLaw service.setup) service.scheduler limit service.horizon)
         (fun execution => payoff (app.finished execution) who) ≤
       (∑ event, timing.deferral event) * range :=
@@ -567,7 +579,7 @@ theorem isεNash_clientProfile_of_firstTurn_bounds {Parameter : Type}
   have deviationValue : expectedUtility nativeUtility who
       (model.runBehavioral (Profile.update (service.clientProfile menu timing source) who
         replacement) (2 * service.horizon + 1)) =
-      expect (app.roundsFrom (initialLaw service.setup) service.scheduler players
+      expect (app.roundsFrom (initialLaw service.setup) service.scheduler turnPlayers
         service.horizon) (fun execution => payoff (app.finished execution) who) := by
     unfold expectedUtility
     have mapped := congrArg (fun law => expect law (fun state => payoff state who)) deviationLaw

@@ -243,4 +243,33 @@ theorem Policy.recover_canonical_run (players : Principal → app.Policy) (who :
       (players who).recover_eq recovery _ _ consistent
   · simp only [Function.update_of_ne same]
 
+/-- Completing the policies of any set of players changes no execution law from
+an execution where each of their recalls is consistent with its own policy,
+even with arbitrary other players, scheduler, and passive observation rule. -/
+theorem Policy.recoverWhere_runRounds (players : Principal → app.Policy)
+    (focal : Principal → Prop) [DecidablePred focal] (recovery : Principal → app.Policy)
+    (scheduler : app.Scheduler) (count : Nat) (execution : app.Execution)
+    (valid : ∀ who, focal who → (players who).Consistent (execution.recall who)) :
+    app.runRounds scheduler
+        (fun who => if focal who then (players who).recover (recovery who) else players who)
+        count execution =
+      app.runRounds scheduler players count execution := by
+  let repaired := fun who => if focal who then (players who).recover (recovery who)
+    else players who
+  have single (who : Principal) (chosen : focal who) :=
+    (players who).recover_invariant (recovery who) who repaired
+      (by simp only [repaired, chosen, ↓reduceIte])
+  have invariant : app.PolicyInvariant repaired
+      (fun execution => ∀ who, focal who → (players who).Consistent (execution.recall who)) :=
+    ⟨fun execution actor action consistent supported who chosen =>
+      (single who chosen).respond execution actor action (consistent who chosen) supported,
+     fun execution next command consistent reached who chosen =>
+      (single who chosen).environment execution next command (consistent who chosen) reached⟩
+  apply invariant.runRounds_congr players ?_ scheduler count execution valid
+  intro current consistent who
+  by_cases chosen : focal who
+  · simp only [repaired, chosen, ↓reduceIte]
+    exact (players who).recover_eq (recovery who) _ _ (consistent who chosen)
+  · simp only [repaired, chosen, ↓reduceIte]
+
 end Interaction.ReactiveApplication

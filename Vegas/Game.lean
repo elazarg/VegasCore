@@ -9,6 +9,7 @@ import Vegas.Game.AsyncIntendedCorrespondence
 import Vegas.Game.AsyncServiceDeposit
 import Vegas.Game.AsyncServiceDeviationBound
 import Vegas.Game.AsyncServiceNash
+import Vegas.Game.AsyncServiceRawNash
 import Vegas.Game.AsyncServiceSpec
 import Vegas.Game.BindingRepairBlock
 import Vegas.Game.BindingRepairReadout
@@ -129,6 +130,7 @@ import Vegas.Game.SourceServiceCanonicalSlots
 import Vegas.Game.SourceServiceCheckpoint
 import Vegas.Game.SourceServiceChoiceSupport
 import Vegas.Game.SourceServiceCleanContinuation
+import Vegas.Game.SourceServiceClientPolicy
 import Vegas.Game.SourceServiceCompilation
 import Vegas.Game.SourceServiceCompiledExecution
 import Vegas.Game.SourceServiceCompletion

@@ -270,7 +270,7 @@ theorem isεNash_clientProfile {Parameter : Type}
     {turns : Nat} (timing : TurnTiming service.setup turns)
     (covered : ∀ (source : Profile service.sourceModel.behavioralSignature) who,
       menu.Admissible (initialLaw service.setup) service.horizon service.scheduler who
-        (sourceServiceTurnPolicy service.setup service.leaks service.bound turns timing
+        (sourceServiceClientPolicy service.setup service.leaks service.bound turns timing
           (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
             (CommitmentInterface.values service.setup.program) source)) who))
     (low : Player → ℝ) (range : ℝ)
@@ -319,7 +319,7 @@ theorem isεNash_clientProfile_approximate {Parameter : Type}
     {turns : Nat} (timing : TurnTiming service.setup turns)
     (covered : ∀ (source : Profile service.sourceModel.behavioralSignature) who,
       menu.Admissible (initialLaw service.setup) service.horizon service.scheduler who
-        (sourceServiceTurnPolicy service.setup service.leaks service.bound turns timing
+        (sourceServiceClientPolicy service.setup service.leaks service.bound turns timing
           (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
             (CommitmentInterface.values service.setup.program) source)) who))
     (low : Player → ℝ) (range : ℝ)
@@ -380,7 +380,7 @@ theorem intended_clientProfile_isεNash {Parameter : Type}
     {turns : Nat} (timing : TurnTiming service.setup turns)
     (covered : ∀ (source : Profile service.sourceModel.behavioralSignature) who,
       menu.Admissible (initialLaw service.setup) service.horizon service.scheduler who
-        (sourceServiceTurnPolicy service.setup service.leaks service.bound turns timing
+        (sourceServiceClientPolicy service.setup service.leaks service.bound turns timing
           (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
             (CommitmentInterface.values service.setup.program) source)) who))
     (low : Player → ℝ) (spread : ℝ)
