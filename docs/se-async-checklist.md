@@ -59,14 +59,12 @@ joint law. It is not pursued.
 
 ## A. Model
 
-- [ ] **A1. The runtime matches the baseline semantics.** Every operation in
+- [x] **A1. The runtime matches the baseline semantics.** Every operation in
   the semantics table of the [design](se-schedule-generalization.md) is
   implemented as stated; in particular there are no message copies, readiness
   credentials are attached only after prerequisites complete, and packet
   verdicts read only signed content, readiness evidence and the final record.
-  Reopened: the approved packet-verdict change (an authentic opening of an
-  event that expired without accepting it is permitted, as silence) is not yet
-  implemented. Evidence: row by row, for `EventGraphRuntime.reactiveApplication` with an
+  Evidence: row by row, for `EventGraphRuntime.reactiveApplication` with an
   arbitrary deadline configuration and observation rule, under arbitrary player
   responses and every scheduler.
   Readiness: exactly the ready strategic events carry an activation timestamp,
@@ -128,11 +126,14 @@ joint law. It is not pursued.
 ## H. Intended game
 
 - [ ] **H. Intended-game preservation.** For every program of the intended game
-  and every sequential equilibrium of it, the forfeit-pass rewriting has a
+  with finite commitment payload types and a finite initial law, and every
+  sequential equilibrium of it, the forfeit-pass rewriting has a
   sequential equilibrium of the source game with the same joint law and no
   forfeit on its paths. Composed with S8 (and C2), it gives the target theorem.
-  Hypothesis: the program is well formed, every guard being satisfiable at
-  every reachable commit given its author's inputs (proved outside VegasCore);
+  The intended game's commit menus offer only values the guard accepts,
+  judged from the committer's observation. Hypothesis: the program is well
+  formed, every guard being satisfiable at every reachable commit given its
+  author's inputs (proved outside VegasCore);
   the forfeit pass forfeits the owner of every failed reveal (see
   [two sources](se-two-sources.md), point 1).
 

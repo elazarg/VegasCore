@@ -22,7 +22,7 @@ approval (see the [checklist](se-async-checklist.md)). In particular:
 | Binding expiry | Executes source failure. A completed binding with no accepted handle is a public binding omission, derived from the record. |
 | Authorship | A player transmits only fresh envelopes it authors; there are no copies. Delivery and inclusion handle the original envelope, so ledger identifiers are distinct. |
 | Causal evidence | The restricted emitter supplies a readiness credential only after the prerequisites complete. Raw callers cannot choose a credential themselves. |
-| Packet verdict | Read only the signed packet, historical readiness evidence, final public record and receipts. Completed events require an accepting receipt and canonical content, except that an authentic opening of a resolution that expired without accepting an opening is permitted: a censored late opening is silence. |
+| Packet verdict | Read only the signed packet, historical readiness evidence, final public record and receipts. Completed events require an accepting receipt and canonical content. Approved and scheduled with the H-based calendar theorem (box S9): an authentic opening of a resolution that expired without accepting an opening is permitted, so a censored late opening is silence; until then such an opening is forbidden, because the record cannot separate it from an opening sent after expiry. |
 | Enforcement | One capped charge per owner, from authentic partial evidence or a public binding omission. Gameplay continues after a charge or omission. |
 
 An explicit-withholding variant, in which canonical FALSE sends an evidence-free
