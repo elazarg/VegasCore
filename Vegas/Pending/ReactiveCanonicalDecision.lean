@@ -31,11 +31,11 @@ variable {Player : Type} [DecidableEq Player]
 open Classical in
 /-- The audit's canonical prepared slot of `who` when it is fresh, and the
 least fresh prepared slot otherwise. -/
-def canonicalFreshSlot (who : Player) (view : ReactivePlayerView graph) : Option Nat :=
+def canonicalFreshSlot (who : Player) (view : PlayerView graph) : Option Nat :=
   if view.candidates (.prepared (view.publicView.bindingCount who)) = .fresh then
     some (view.publicView.bindingCount who) else reactiveFreshSlot view
 
-theorem canonicalFreshSlot_spec (who : Player) (view : ReactivePlayerView graph) (serial : Nat)
+theorem canonicalFreshSlot_spec (who : Player) (view : PlayerView graph) (serial : Nat)
     (selected : canonicalFreshSlot who view = some serial) :
     view.candidates (.prepared serial) = .fresh := by
   classical
@@ -46,7 +46,7 @@ theorem canonicalFreshSlot_spec (who : Player) (view : ReactivePlayerView graph)
     exact fresh
   · exact reactiveFreshSlot_spec view serial selected
 
-theorem canonicalFreshSlot_canonical (who : Player) (view : ReactivePlayerView graph)
+theorem canonicalFreshSlot_canonical (who : Player) (view : PlayerView graph)
     (fresh : view.candidates (.prepared (view.publicView.bindingCount who)) = .fresh) :
     canonicalFreshSlot who view = some (view.publicView.bindingCount who) := by
   classical
@@ -54,7 +54,7 @@ theorem canonicalFreshSlot_canonical (who : Player) (view : ReactivePlayerView g
   simp only [fresh, ↓reduceIte]
 
 /-- Some slot is chosen whenever a fresh slot exists. -/
-theorem canonicalFreshSlot_isSome (who : Player) (view : ReactivePlayerView graph)
+theorem canonicalFreshSlot_isSome (who : Player) (view : PlayerView graph)
     (serial : Nat) (selected : reactiveFreshSlot view = some serial) :
     ∃ chosen, canonicalFreshSlot who view = some chosen := by
   classical
@@ -67,7 +67,7 @@ theorem canonicalFreshSlot_isSome (who : Player) (view : ReactivePlayerView grap
 def canonicalReactiveDecision (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (event : graph.EventId)
-    (action : graph.Action event) (view : ReactivePlayerView graph) :
+    (action : graph.Action event) (view : PlayerView graph) :
     (runtime.reactiveApplication leaks).Action where
   transmission := match nodeView graph event with
     | .sample .. => none
@@ -97,7 +97,7 @@ def canonicalServiceDecision (runtime : EventGraphRuntime graph)
 theorem canonicalReactiveDecision_eq_of_not_bind (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (event : graph.EventId) (action : graph.Action event)
-    (view : ReactivePlayerView graph)
+    (view : PlayerView graph)
     (notBind : ∀ owner payload outputEq codeEq,
       nodeView graph event ≠ .bind owner payload outputEq codeEq) :
     runtime.canonicalReactiveDecision leaks who event action view =

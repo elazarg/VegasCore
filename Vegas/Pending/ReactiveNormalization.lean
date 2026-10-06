@@ -23,22 +23,22 @@ open Interaction
 variable {Player : Type}
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-def openingEffective (who : Player) (view : ReactivePlayerView graph) : Payload graph → Prop
+def openingEffective (who : Player) (view : PlayerView graph) : Payload graph → Prop
   | .commitment _ (owner, .prepared serial) =>
       owner = who ∧ view.candidates (.prepared serial) = .fresh
   | _ => False
 
 open Classical in
-def Submission.normalizeReactive (who : Player) (view : ReactivePlayerView graph)
+def Submission.normalizeReactive (who : Player) (view : PlayerView graph)
     (submission : Submission graph) : Submission graph :=
   ⟨submission.packet, if openingEffective who view submission.packet then submission.opening
     else none⟩
 
-theorem Submission.normalizeReactive_packet (who : Player) (view : ReactivePlayerView graph)
+theorem Submission.normalizeReactive_packet (who : Player) (view : PlayerView graph)
     (submission : Submission graph) :
     (submission.normalizeReactive who view).packet = submission.packet := rfl
 
-theorem Submission.normalizeReactive_idempotent (who : Player) (view : ReactivePlayerView graph)
+theorem Submission.normalizeReactive_idempotent (who : Player) (view : PlayerView graph)
     (submission : Submission graph) :
     (submission.normalizeReactive who view).normalizeReactive who view =
       submission.normalizeReactive who view := by
@@ -47,12 +47,12 @@ theorem Submission.normalizeReactive_idempotent (who : Player) (view : ReactiveP
   split <;> rfl
 
 /-- No metadata is removed when it can fix a commitment meaning. -/
-theorem Submission.normalizeReactive_effective (who : Player) (view : ReactivePlayerView graph)
+theorem Submission.normalizeReactive_effective (who : Player) (view : PlayerView graph)
     (submission : Submission graph) (effective : openingEffective who view submission.packet) :
     submission.normalizeReactive who view = submission := by
   simp only [normalizeReactive, effective, ↓reduceIte]
 
-theorem Submission.normalizeReactive_none (who : Player) (view : ReactivePlayerView graph)
+theorem Submission.normalizeReactive_none (who : Player) (view : PlayerView graph)
     (packet : Payload graph) :
     (⟨packet, none⟩ : Submission graph).normalizeReactive who view = ⟨packet, none⟩ := by
   simp only [normalizeReactive, ite_self]
@@ -68,7 +68,7 @@ theorem Submission.candidateAfter_opening (who : Player) (event : graph.EventId)
   rfl
 
 theorem Submission.normalizeReactive_candidateAfter (who : Player)
-    (view : ReactivePlayerView graph) (submission : Submission graph)
+    (view : PlayerView graph) (submission : Submission graph)
     (slot : CandidateSlot graph) :
     (submission.normalizeReactive who view).candidateAfter who view.candidates slot =
       submission.candidateAfter who view.candidates slot := by
@@ -110,24 +110,28 @@ theorem Submission.normalizeReactive_register (runtime : EventGraphRuntime graph
           by_cases same : owner = who
           · subst owner
             by_cases fresh : state.candidates.lookup (who, .prepared serial) = .fresh
-            · simp [normalizeReactive, openingEffective, reactiveApplication, fresh]
+            · simp [normalizeReactive, openingEffective, reactiveApplication, State.playerView,
+                fresh]
             · cases material with
-              | none => simp [normalizeReactive, openingEffective, reactiveApplication, fresh]
+              | none =>
+                  simp [normalizeReactive, openingEffective, reactiveApplication,
+                    State.playerView, fresh]
               | some raw =>
-                  simp [normalizeReactive, openingEffective, reactiveApplication, fresh, register,
+                  simp [normalizeReactive, openingEffective, reactiveApplication,
+                    State.playerView, fresh, register,
                     state.candidates.prepare_eq_self_of_not_fresh who (.prepared serial) raw fresh]
           · cases material <;> simp [normalizeReactive, openingEffective, register, same]
   | opening event candidate raw | malformed raw =>
       cases material <;> simp [normalizeReactive, openingEffective, register]
 
-def WitnessedSubmission.normalizeReactive (who : Player) (view : ReactivePlayerView graph)
+def WitnessedSubmission.normalizeReactive (who : Player) (view : PlayerView graph)
     (known : List (Message Player (WitnessedPacket graph)))
     (submission : WitnessedSubmission graph) : WitnessedSubmission graph :=
   ⟨submission.call.normalizeReactive who view,
     submission.evidence.normalize who (submission.call.candidateAfter who view.candidates) known⟩
 
 theorem WitnessedSubmission.normalizeReactive_idempotent
-    (who : Player) (view : ReactivePlayerView graph)
+    (who : Player) (view : PlayerView graph)
     (known : List (Message Player (WitnessedPacket graph)))
     (submission : WitnessedSubmission graph) :
     (submission.normalizeReactive who view known).normalizeReactive who view known =

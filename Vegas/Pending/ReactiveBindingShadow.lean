@@ -45,8 +45,8 @@ def store (memory : BindingShadow graph) (observed : EventGraph.Store graph.layo
 def completion (memory : BindingShadow graph) (entry : graph.Completion) : graph.Completion :=
   ⟨entry.event, (memory.actions entry.event).getD entry.action⟩
 
-def view (memory : BindingShadow graph) (observed : ReactivePlayerView graph) :
-    ReactivePlayerView graph where
+def view (memory : BindingShadow graph) (observed : PlayerView graph) :
+    PlayerView graph where
   who := observed.who
   publicView := observed.publicView
   observation := ⟨observed.observation.completionOrder,
@@ -64,7 +64,7 @@ def view (memory : BindingShadow graph) (observed : ReactivePlayerView graph) :
   cases entry
   rfl
 
-@[simp] theorem view_empty (observed : ReactivePlayerView graph) :
+@[simp] theorem view_empty (observed : PlayerView graph) :
     (empty : BindingShadow graph).view observed = observed := by
   have unchanged : (empty : BindingShadow graph).completion = id :=
     funext completion_empty
@@ -77,10 +77,10 @@ theorem store_available (memory : BindingShadow graph)
     (memory.store observed field).isSome = (observed field).isSome := by
   simp [store]
 
-theorem view_public (memory : BindingShadow graph) (observed : ReactivePlayerView graph) :
+theorem view_public (memory : BindingShadow graph) (observed : PlayerView graph) :
     (memory.view observed).publicView = observed.publicView := rfl
 
-theorem view_order (memory : BindingShadow graph) (observed : ReactivePlayerView graph) :
+theorem view_order (memory : BindingShadow graph) (observed : PlayerView graph) :
     (memory.view observed).observation.completionOrder =
       observed.observation.completionOrder := rfl
 
@@ -113,7 +113,7 @@ private theorem rememberCompletion_store (memory : BindingShadow graph)
     exact congrFun same field
 
 theorem rememberCompletion_unavailable (memory : BindingShadow graph)
-    (observed : ReactivePlayerView graph) (event : graph.EventId)
+    (observed : PlayerView graph) (event : graph.EventId)
     (action : graph.Action event) (value : (graph.outputLayout event).Value)
     (unavailable : observed.observation.store (.inr event) = none)
     (notRecorded : ∀ entry ∈ observed.observation.ownActions, entry.event ≠ event) :
@@ -240,7 +240,7 @@ private theorem submitted_view (state : State graph) (who : Player)
       { (runtime.reactiveApplication leaks).observePlayer state who with
         candidates := submission.call.candidateAfter who
           (fun slot => state.candidates.lookup (who, slot)) } := by
-  dsimp only [reactiveApplication]
+  dsimp only [reactiveApplication, State.playerView]
   simp only [submitStep_config, submitStep_publicView,
     (submission.call.register_facts who state).1,
     (submission.call.register_facts who state).2]
@@ -268,15 +268,15 @@ theorem rememberCandidate_submit_view (memory : BindingShadow graph)
   classical
   dsimp only
   rw [submitted_view, submitted_view]
-  have catalog := congrArg ReactivePlayerView.candidates observed
+  have catalog := congrArg PlayerView.candidates observed
   have frame : ∀ (candidates : CandidateSlot graph → CommitmentCandidate (Raw L)),
       { memory.view ((runtime.reactiveApplication leaks).observePlayer right who) with
         candidates := candidates } =
       { (runtime.reactiveApplication leaks).observePlayer left who with
         candidates := candidates } := fun candidates => congrArg
-          (fun view : ReactivePlayerView graph => { view with candidates := candidates }) observed
+          (fun view : PlayerView graph => { view with candidates := candidates }) observed
   rw [← frame]
-  change ReactivePlayerView.mk who _ _ _ = ReactivePlayerView.mk who _ _ _
+  change PlayerView.mk who _ _ _ = PlayerView.mk who _ _ _
   congr 1
   funext query
   by_cases same : query = .prepared serial

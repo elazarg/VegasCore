@@ -28,16 +28,13 @@ theorem foreign_observed (frame : Frame runtime leaks memory owner original repa
     original.observe (runtime.reactiveApplication leaks) actor =
       repaired.observe (runtime.reactiveApplication leaks) actor := by
   let app := runtime.reactiveApplication leaks
-  have view := congrArg (fun view : PlayerView graph =>
-    (⟨view.who, view.publicView, view.observation, view.candidates⟩ : ReactivePlayerView graph))
-      (frame.views actor different)
   change (⟨original.network.observe actor, app.observePlayer original.application actor,
     original.receipts⟩ : app.PlayerView) =
       ⟨repaired.network.observe actor, app.observePlayer repaired.application actor,
         repaired.receipts⟩
   rw [frame.network, frame.receipts]
   exact congrArg (fun current => (⟨repaired.network.observe actor, current,
-    repaired.receipts⟩ : app.PlayerView)) view
+    repaired.receipts⟩ : app.PlayerView)) (frame.views actor different)
 
 private theorem repairResponse_transport
     (view : (runtime.reactiveApplication leaks).PlayerView)

@@ -93,7 +93,7 @@ private theorem reactiveResolutionPacket_event {owner : Player} (who : Player)
     (binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload))
     (checks : List (EventGraph.GuardCheck (graph setup).layout payload))
     (outputEq : (graph setup).outputLayout event = .publication payload)
-    (action : (graph setup).Action event) (view : ReactivePlayerView (graph setup))
+    (action : (graph setup).Action event) (view : PlayerView (graph setup))
     (packet : Payload (graph setup))
     (sent : reactiveResolutionPacket who event payload binding checks outputEq action view =
       some packet) :
@@ -108,7 +108,7 @@ private theorem reactiveResolutionPacket_event {owner : Player} (who : Player)
 /-- The canonical native decision submits only for its own event. -/
 private theorem submittedEvent_canonicalReactiveDecision (who : Player)
     (event : (graph setup).EventId) (action : (graph setup).Action event)
-    (view : ReactivePlayerView (graph setup)) (other : (graph setup).EventId)
+    (view : PlayerView (graph setup)) (other : (graph setup).EventId)
     (submitted : (runtime setup).submittedEvent? leaks
       ((runtime setup).canonicalReactiveDecision leaks who event action view) = some other) :
     other = event := by

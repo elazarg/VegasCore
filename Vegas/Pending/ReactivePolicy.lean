@@ -27,12 +27,12 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
 open Classical in
-def reactiveFreshSlot (view : ReactivePlayerView graph) : Option Nat :=
+def reactiveFreshSlot (view : PlayerView graph) : Option Nat :=
   if fresh : ∃ serial, view.candidates (.prepared serial) = .fresh then
     some (Nat.find fresh) else none
 
 omit [DecidableEq Player] in
-theorem reactiveFreshSlot_spec (view : ReactivePlayerView graph) (serial : Nat)
+theorem reactiveFreshSlot_spec (view : PlayerView graph) (serial : Nat)
     (selected : reactiveFreshSlot view = some serial) :
     view.candidates (.prepared serial) = .fresh := by
   classical
@@ -54,7 +54,7 @@ def reactiveResolutionPacket {owner : Player} (who : Player) (event : graph.Even
     (payload : L.Ty) (binding : FieldRef graph.layout (.binding owner payload))
     (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
-    (action : graph.Action event) (view : ReactivePlayerView graph) : Option (Payload graph) :=
+    (action : graph.Action event) (view : PlayerView graph) : Option (Payload graph) :=
   let disclose : Bool := cast (congrArg EventField.Action outputEq) action
   if disclose then
     match EventCode.resolveOutput? binding checks true view.observation.store with
@@ -73,7 +73,7 @@ def disclosureSubmission (packet : Payload graph) : WitnessedSubmission graph :=
     | .commitment .. | .malformed .. => .none⟩
 
 /-- Normalization retains the authentic certificate of an owned opening. -/
-theorem disclosureSubmission_normalize_opening (who : Player) (view : ReactivePlayerView graph)
+theorem disclosureSubmission_normalize_opening (who : Player) (view : PlayerView graph)
     (event : graph.EventId)
     (candidate : Handle graph) (raw : Raw L) (owned : candidate.1 = who)
     (verified : view.candidates candidate.2 = .openable raw) :
@@ -87,7 +87,7 @@ theorem disclosureSubmission_normalize_opening (who : Player) (view : ReactivePl
 def reactiveDecision (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (event : graph.EventId)
-    (action : graph.Action event) (view : ReactivePlayerView graph) :
+    (action : graph.Action event) (view : PlayerView graph) :
     (runtime.reactiveApplication leaks).Action where
   transmission := match nodeView graph event with
     | .sample .. => none

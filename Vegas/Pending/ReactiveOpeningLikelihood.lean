@@ -45,13 +45,10 @@ theorem bindingTraffic_opening (runtime : EventGraphRuntime graph)
   have publics := congrArg (fun value => value.2.2.2.2.2) same
   dsimp only [bindingTraffic] at networks receipts environments recalled views publics
   have observed : left.observe app focal = right.observe app focal := by
-    have projected := congrArg (fun view : PlayerView graph =>
-      (⟨view.who, view.publicView, view.observation, view.candidates⟩ :
-        ReactivePlayerView graph)) views
     change ReactiveApplication.PlayerView.mk _ _ _ = _
     rw [networks]
     exact congrArg₂ (fun view receipts =>
-      (⟨right.network.observe focal, view, receipts⟩ : app.PlayerView)) projected receipts
+      (⟨right.network.observe focal, view, receipts⟩ : app.PlayerView)) views receipts
   have emitted : app.packet left.application owner (left.network.known owner)
         (disclosureSubmission (.opening event candidate raw)) =
       app.packet right.application owner (right.network.known owner)

@@ -24,7 +24,7 @@ variable {Player : Type} [DecidableEq Player]
 
 omit [DecidableEq Player] in
 /-- The allocator reads freshness, not the meaning of an already fixed handle. -/
-theorem reactiveFreshSlot_congr (left right : ReactivePlayerView graph)
+theorem reactiveFreshSlot_congr (left right : PlayerView graph)
     (fresh : ∀ serial, left.candidates (.prepared serial) = .fresh ↔
       right.candidates (.prepared serial) = .fresh) :
     reactiveFreshSlot left = reactiveFreshSlot right := by

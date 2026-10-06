@@ -36,16 +36,13 @@ private theorem reactive_input_congr
     (observed : left.application.playerView observer = right.application.playerView observer) :
     (left.recall observer, left.observe (runtime.reactiveApplication leaks) observer) =
       (right.recall observer, right.observe (runtime.reactiveApplication leaks) observer) := by
-  have projected := congrArg (fun view : PlayerView graph =>
-    (⟨view.who, view.publicView, view.observation, view.candidates⟩ :
-      ReactivePlayerView graph)) observed
   apply Prod.ext recall
   change ReactiveApplication.PlayerView.mk (app := runtime.reactiveApplication leaks)
     _ _ _ = _
   rw [network, receipts]
   exact congrArg (fun view =>
     (⟨right.network.observe observer, view, right.receipts⟩ :
-      (runtime.reactiveApplication leaks).PlayerView)) projected
+      (runtime.reactiveApplication leaks).PlayerView)) observed
 
 /-- The complete network state, including earlier leaks, is independent of the
 new handle's private meaning. No foreign-message observation is removed. -/
@@ -122,9 +119,6 @@ theorem reactive_include_commitment_input_congr
             _ _ _ = _
           rw [network, receipts]
           congr 1
-          exact congrArg (fun view : PlayerView graph =>
-            (⟨view.who, view.publicView, view.observation, view.candidates⟩ :
-              ReactivePlayerView graph)) observed
       | some after => simp only [first, second, Option.map_none, Option.map_some] at handled
                       contradiction
   | some before =>
@@ -141,9 +135,6 @@ theorem reactive_include_commitment_input_congr
             _ _ _ = _
           rw [network, receipts]
           congr 1
-          exact congrArg (fun view : PlayerView graph =>
-            (⟨view.who, view.publicView, view.observation, view.candidates⟩ :
-              ReactivePlayerView graph)) handled
 
 /-- Atomic submission followed by inclusion hides the chosen binding meaning
 from every other player's full response input, not merely from the ledger.

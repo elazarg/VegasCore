@@ -30,7 +30,7 @@ theorem reactiveResolutionPacket_opening {owner : Player}
     (binding : FieldRef graph.layout (.binding owner payload))
     (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
-    (action : graph.Action event) (view : ReactivePlayerView graph)
+    (action : graph.Action event) (view : PlayerView graph)
     (discloses : cast (congrArg EventField.Action outputEq) action = true)
     (value : L.Val payload)
     (resolved : EventCode.resolveOutput? binding checks true view.observation.store =
@@ -47,7 +47,7 @@ theorem reactiveResolutionPacket_withhold {owner : Player}
     (binding : FieldRef graph.layout (.binding owner payload))
     (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
-    (action : graph.Action event) (view : ReactivePlayerView graph)
+    (action : graph.Action event) (view : PlayerView graph)
     (withholds : cast (congrArg EventField.Action outputEq) action = false) :
     reactiveResolutionPacket who event payload binding checks outputEq action view = none := by
   simp only [reactiveResolutionPacket, withholds, Bool.false_eq_true, ↓reduceIte]

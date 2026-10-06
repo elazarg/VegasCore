@@ -40,13 +40,10 @@ theorem reactive_response_other_input (runtime : EventGraphRuntime graph)
           (material.call.register execution.application actor) actor observer different
             material.call.packet).trans
               (material.call.register_other execution.application actor observer different)
-        have projected := congrArg (fun view : PlayerView graph =>
-          (⟨view.who, view.publicView, view.observation, view.candidates⟩ :
-            ReactivePlayerView graph)) framed
         change ReactiveApplication.PlayerView.mk (app := runtime.reactiveApplication leaks)
           _ _ _ = _
         exact congrArg (fun observed =>
           (⟨execution.network.observe observer, observed, execution.receipts⟩ :
-            (runtime.reactiveApplication leaks).PlayerView)) projected
+            (runtime.reactiveApplication leaks).PlayerView)) framed
 
 end Vegas.EventGraphRuntime

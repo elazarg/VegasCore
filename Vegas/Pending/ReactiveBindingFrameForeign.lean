@@ -31,7 +31,7 @@ theorem setAccepted (frame : Frame runtime leaks memory owner original repaired)
   refine ⟨frame.past, ?_, frame.lengths, frame.network, frame.service, ?_,
     frame.recall, frame.slots, frame.successful, frame.submissions⟩
   · have application := congrArg ReactiveApplication.PlayerView.application frame.observed
-    have changed := congrArg (fun view : ReactivePlayerView graph =>
+    have changed := congrArg (fun view : PlayerView graph =>
       { view with publicView := { view.publicView with accepted := accepted } }) application
     change (⟨repaired.network.observe owner,
       memory.shadow.view (app.observePlayer { repaired.application with accepted := accepted }

@@ -30,7 +30,7 @@ variable {Player : Type} [DecidableEq Player]
 theorem canonicalReactiveDecision_transmission (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (event : graph.EventId) (choice : graph.Action event)
-    (view : ReactivePlayerView graph) :
+    (view : PlayerView graph) :
     (runtime.canonicalReactiveDecision leaks who event choice view).transmission = none ∨
       ∃ material,
         (runtime.canonicalReactiveDecision leaks who event choice view).transmission =

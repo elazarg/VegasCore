@@ -37,9 +37,7 @@ private theorem response_other_observation
         exact (submitStep_playerView_other (material.call.register execution.application actor)
           actor who different material.call.packet).trans
             (material.call.register_other execution.application actor who different)
-  exact congrArg (fun view : PlayerView graph =>
-    (⟨view.who, view.publicView, view.observation, view.candidates⟩ :
-      ReactivePlayerView graph)) strong
+  exact strong
 
 namespace BindingMemory
 
@@ -153,7 +151,7 @@ theorem activation_inputs (memory : BindingMemory runtime leaks)
     (congrArg ReactiveApplication.PlayerView.receipts observed).symm
   have ownApplication := congrArg ReactiveApplication.PlayerView.application observed
   have publicEq : left.application.publicView = right.application.publicView :=
-    (congrArg ReactivePlayerView.publicView ownApplication).symm
+    (congrArg PlayerView.publicView ownApplication).symm
   have environment : left.observeEnvironment app = right.observeEnvironment app := by
     change (⟨left.network.publicView, left.application.publicView, left.receipts⟩ :
       app.EnvironmentView) =
@@ -185,11 +183,8 @@ theorem activation_inputs (memory : BindingMemory runtime leaks)
       app.observePlayer left.application player, left.receipts⟩ : app.PlayerView) =
         ⟨(right.network.learn actor selected).observe player,
           app.observePlayer right.application player, right.receipts⟩
-    have application := congrArg (fun view : PlayerView graph =>
-      (⟨view.who, view.publicView, view.observation, view.candidates⟩ : ReactivePlayerView graph))
-        (views player own)
     exact congr (congr (congrArg (ReactiveApplication.PlayerView.mk (app := app))
-      (congrArg (fun net => (net.learn actor selected).observe player) network)) application)
+      (congrArg (fun net => (net.learn actor selected).observe player) network)) (views player own))
         receipts
 
 end BindingMemory

@@ -218,8 +218,8 @@ theorem complete_unmodified (frame : Frame runtime leaks memory owner original r
   have application := congrArg ReactiveApplication.PlayerView.application frame.observed
   have reconstructed := memory.shadow.complete_unmodified_observation owner
     original.application.config repaired.application.config
-    (congrArg (fun view : ReactivePlayerView graph => view.observation.store) application)
-    (congrArg (fun view : ReactivePlayerView graph => view.observation.ownActions) application)
+    (congrArg (fun view : PlayerView graph => view.observation.store) application)
+    (congrArg (fun view : PlayerView graph => view.observation.ownActions) application)
     event leftReady rightReady noValue noAction action value
   have nextPublic := complete_publicView original.application repaired.application frame.publicView
     event leftReady rightReady action value
@@ -236,8 +236,8 @@ theorem complete_unmodified (frame : Frame runtime leaks memory owner original r
   have nextApplication : memory.shadow.view (app.observePlayer
       (repaired.application.complete event rightReady action value) owner) =
         app.observePlayer (original.application.complete event leftReady action value) owner := by
-    exact congr (congr (congrArg (ReactivePlayerView.mk owner) nextPublic.symm) nextObservation)
-      (congrArg ReactivePlayerView.candidates application)
+    exact congr (congr (congrArg (PlayerView.mk owner) nextPublic.symm) nextObservation)
+      (congrArg PlayerView.candidates application)
   refine ⟨frame.past, ?_, frame.lengths, frame.network, frame.service, ?_,
     frame.recall, frame.slots, ?_, frame.submissions⟩
   · change (⟨repaired.network.observe owner, memory.shadow.view (app.observePlayer

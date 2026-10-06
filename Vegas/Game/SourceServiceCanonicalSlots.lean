@@ -151,7 +151,7 @@ theorem reactiveResolutionPacket_shape {owner : Player} (who : Player)
     (binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload))
     (checks : List (EventGraph.GuardCheck (graph setup).layout payload))
     (outputEq : (graph setup).outputLayout event = .publication payload)
-    (action : (graph setup).Action event) (view : ReactivePlayerView (graph setup)) :
+    (action : (graph setup).Action event) (view : PlayerView (graph setup)) :
     (∃ candidate raw, reactiveResolutionPacket who event payload binding checks outputEq action
         view = some (.opening event candidate raw)) ∨
       reactiveResolutionPacket who event payload binding checks outputEq action view =

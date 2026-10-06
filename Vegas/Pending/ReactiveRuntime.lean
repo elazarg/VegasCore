@@ -24,13 +24,6 @@ open GameTheory.Math.Probability Interaction
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-/-- The semantic application observation used at an activation. -/
-structure ReactivePlayerView (graph : Vegas.EventGraph Player L) where
-  who : Player
-  publicView : PublicView graph
-  observation : graph.PlayerObservation who
-  candidates : CandidateSlot graph → CommitmentCandidate (Raw L)
-
 def reactiveApplication (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) : ReactiveApplication
       Player where
@@ -38,7 +31,7 @@ def reactiveApplication (runtime : EventGraphRuntime graph)
   Payload := WitnessedPacket graph
   Submission := WitnessedSubmission graph
   EnvironmentCommand := EnvironmentCommand graph
-  LocalObservation := ReactivePlayerView graph
+  LocalObservation := PlayerView graph
   PublicObservation := PublicView graph
   packet state who known submission := submission.emit state who known
   submit state who submission :=
@@ -46,8 +39,7 @@ def reactiveApplication (runtime : EventGraphRuntime graph)
   handle state message := if message.payload.tokenValid then
       handle runtime state ⟨message.id, message.payload.call⟩ else none
   environment := environmentStep runtime
-  observePlayer state who := ⟨who, state.publicView, graph.playerObserve who state.config,
-    fun slot => state.candidates.lookup (who, slot)⟩
+  observePlayer := State.playerView
   observePublic := State.publicView
   observePending := leaks
 

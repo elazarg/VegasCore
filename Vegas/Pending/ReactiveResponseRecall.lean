@@ -56,10 +56,8 @@ theorem response_packet_eq_of_input_eq (runtime : EventGraphRuntime graph)
       submission.emit ((runtime.reactiveApplication leaks).submit right.application who submission)
         who (right.network.known who) := by
   have observed := congrArg ReactiveApplication.PlayerView.application view
-  have whole := reactive_playerView_congr runtime leaks left.application right.application
-    who observed
   have submitted := submit_playerView_congr runtime leaks left.application right.application
-    who submission whole
+    who submission observed
   have candidates := congrArg (fun observed : PlayerView graph => observed.candidates) submitted
   have publics : ((runtime.reactiveApplication leaks).submit left.application who
         submission).publicView =

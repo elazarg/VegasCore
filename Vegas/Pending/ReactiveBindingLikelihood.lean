@@ -168,13 +168,10 @@ theorem silent_window_focal_law (runtime : EventGraphRuntime graph)
         rcases transport with rfl
         exact nextNetworks
       have observed : first.observe app focal = second.observe app focal := by
-        have projected := congrArg (fun view : PlayerView graph =>
-          (⟨view.who, view.publicView, view.observation, view.candidates⟩ :
-            ReactivePlayerView graph)) views
         change ReactiveApplication.PlayerView.mk _ _ _ = _
         rw [nextNetworks]
         exact congrArg₂ (fun view receipts =>
-          (⟨second.network.observe focal, view, receipts⟩ : app.PlayerView)) projected receipts
+          (⟨second.network.observe focal, view, receipts⟩ : app.PlayerView)) views receipts
       have recalledAfter := app.respond_focal_recall_eq first second who focal response
         nextNetworks observed recalled (by
           intro submission transmitted
@@ -263,13 +260,10 @@ theorem binding_silent_window_coupling (runtime : EventGraphRuntime graph)
             owner := by
       cases first <;> exact runtime.submit_playerView_congr leaks _ _ owner _ observed
     have beforeViews : left.observe app owner = right.observe app owner := by
-      have projected := congrArg (fun view : PlayerView graph =>
-        (⟨view.who, view.publicView, view.observation, view.candidates⟩ :
-          ReactivePlayerView graph)) observed
       change ReactiveApplication.PlayerView.mk _ _ _ = _
       rw [networks]
       exact congrArg₂ (fun view receipts =>
-        (⟨right.network.observe owner, view, receipts⟩ : app.PlayerView)) projected receipts
+        (⟨right.network.observe owner, view, receipts⟩ : app.PlayerView)) observed receipts
     have afterRecall := app.respond_focal_recall_eq left right owner owner
       (runtime.reactiveBinding leaks owner event payload first serial) networks beforeViews
         recalled (by

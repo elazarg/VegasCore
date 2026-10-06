@@ -38,7 +38,7 @@ theorem resolutionPacket_allowed {owner : Player} (who : Player) (event : graph.
     (payload : L.Ty) (binding : FieldRef graph.layout (.binding owner payload))
     (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
-    (choice : graph.Action event) (view : ReactivePlayerView graph)
+    (choice : graph.Action event) (view : PlayerView graph)
     (values : ∀ value : L.Val payload, (⟨payload, value⟩ : Raw L) ∈ bounds.values)
     (handles : ∀ field candidate, view.publicView.accepted field = some candidate →
       bounds.AllowsHandle candidate)

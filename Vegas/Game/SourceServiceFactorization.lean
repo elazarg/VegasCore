@@ -237,16 +237,13 @@ theorem source_activation_input_factorization
       congrArg (fun traffic => traffic.2.2.2.1) equal
     have views : first.application.playerView focal = second.application.playerView focal :=
       congrArg (fun traffic => traffic.2.2.2.2.1) equal
-    have projected := congrArg (fun view : EventGraphRuntime.PlayerView (graph setup) =>
-      (⟨view.who, view.publicView, view.observation, view.candidates⟩ :
-        ReactivePlayerView (graph setup))) views
     change (first.recall focal, first.observe app focal) =
       (second.recall focal, second.observe app focal)
     apply Prod.ext recalled
     change ReactiveApplication.PlayerView.mk _ _ _ = _
     rw [sampledNetworks]
     exact congrArg₂ (fun view evidence =>
-      (⟨second.network.observe focal, view, evidence⟩ : app.PlayerView)) projected receipts
+      (⟨second.network.observe focal, view, evidence⟩ : app.PlayerView)) views receipts
   obtain ⟨channel, law⟩ := exists_updated_observation_kernel_of_readout prior source
     (fun seed => (runtime setup).bindingTraffic leaks focal (execution seed))
     observe noise factor (fun _ => PMF.pure Unit.unit)

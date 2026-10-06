@@ -84,7 +84,7 @@ theorem calls_mem (submission : Submission graph) :
   rcases submission with ⟨packet, opening⟩
   cases opening <;> simp [calls, packets_mem, AllowsOpening]
 
-theorem normalize_call_mem (who : Player) (view : ReactivePlayerView graph)
+theorem normalize_call_mem (who : Player) (view : PlayerView graph)
     (submission : Submission graph) (member : submission ∈ bounds.calls) :
     submission.normalizeReactive who view ∈ bounds.calls := by
   classical
@@ -171,7 +171,7 @@ theorem normalize_evidence_mem (who : Player)
             request fact resolved selected).1
           simpa only [EvidenceRequest.canonical, selected, ← original] using member
 
-theorem normalize_submission_mem (who : Player) (view : ReactivePlayerView graph)
+theorem normalize_submission_mem (who : Player) (view : PlayerView graph)
     (known : List (Message Player (WitnessedPacket graph)))
     (submission : WitnessedSubmission graph) (member : submission ∈ bounds.submissions known) :
     submission.normalizeReactive who view known ∈ bounds.submissions known := by

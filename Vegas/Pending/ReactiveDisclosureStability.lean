@@ -80,7 +80,7 @@ theorem reactiveResolutionPacket_eq_of_resolution {owner : Player}
     (binding : FieldRef graph.layout (.binding owner payload))
     (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
-    (action : graph.Action event) (left right : ReactivePlayerView graph)
+    (action : graph.Action event) (left right : PlayerView graph)
     (resolved : EventCode.resolveOutput? binding checks true left.observation.store =
       EventCode.resolveOutput? binding checks true right.observation.store)
     (associated : left.publicView.accepted binding.field =

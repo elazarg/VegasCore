@@ -37,7 +37,7 @@ theorem reactiveResolutionPacket_opening {owner : Player} (who : Player)
     (binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload))
     (checks : List (EventGraph.GuardCheck (graph setup).layout payload))
     (outputEq : (graph setup).outputLayout event = .publication payload)
-    (action : (graph setup).Action event) (view : ReactivePlayerView (graph setup))
+    (action : (graph setup).Action event) (view : PlayerView (graph setup))
     (named : (graph setup).EventId) (candidate : Handle (graph setup)) (raw : Raw L)
     (opened : reactiveResolutionPacket who event payload binding checks outputEq action view =
       some (.opening named candidate raw)) :

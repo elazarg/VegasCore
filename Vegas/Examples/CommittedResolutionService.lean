@@ -1126,7 +1126,7 @@ private theorem silent_completed_bob_view (high : Bool) :
     cases slot with
     | prepared _ => rfl
     | initial input => fin_cases input <;> rfl
-  change (ReactivePlayerView.mk bob _ _ _) = ReactivePlayerView.mk bob _ _ _
+  change (PlayerView.mk bob _ _ _) = PlayerView.mk bob _ _ _
   rw [publicEq, observation, candidates]
 
 /-- Literal silence reaches one full first-Bob input at both initial types.

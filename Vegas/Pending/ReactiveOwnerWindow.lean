@@ -39,13 +39,10 @@ theorem bindingTraffic_owner_response (runtime : EventGraphRuntime graph)
   have views : left.application.playerView owner = right.application.playerView owner :=
     congrArg (fun value => value.2.2.2.2.1) same
   have observed : left.observe app owner = right.observe app owner := by
-    have projected := congrArg (fun view : PlayerView graph =>
-      (⟨view.who, view.publicView, view.observation, view.candidates⟩ :
-        ReactivePlayerView graph)) views
     change ReactiveApplication.PlayerView.mk _ _ _ = _
     rw [networks]
     exact congrArg₂ (fun view evidence =>
-      (⟨right.network.observe owner, view, evidence⟩ : app.PlayerView)) projected receipts
+      (⟨right.network.observe owner, view, evidence⟩ : app.PlayerView)) views receipts
   have packet (submission : WitnessedSubmission graph) :
       app.packet (app.submit left.application owner submission) owner
           (left.network.known owner) submission =
@@ -119,13 +116,10 @@ theorem owner_window_focal_law (runtime : EventGraphRuntime graph)
           have privateViews : before.application.playerView owner =
               after.application.playerView owner :=
             congrArg (fun value => value.2.2.2.2.1) matched
-          have projected := congrArg (fun view : PlayerView graph =>
-            (⟨view.who, view.publicView, view.observation, view.candidates⟩ :
-              ReactivePlayerView graph)) privateViews
           change ReactiveApplication.PlayerView.mk _ _ _ = _
           rw [known]
           exact congrArg₂ (fun view evidence =>
-            (⟨after.network.observe owner, view, evidence⟩ : app.PlayerView)) projected receipts
+            (⟨after.network.observe owner, view, evidence⟩ : app.PlayerView)) privateViews receipts
         rw [recalls, views]
         apply bind_congr_on_support _
         intro response _

@@ -75,7 +75,7 @@ theorem include_binding_input (memory : BindingShadow graph)
   let app := runtime.reactiveApplication leaks
   have application := congrArg ReactiveApplication.PlayerView.application observed
   have visible : left.application.publicView = right.application.publicView :=
-    (congrArg ReactivePlayerView.publicView application).symm
+    (congrArg PlayerView.publicView application).symm
   have receipts : left.receipts = right.receipts :=
     (congrArg ReactiveApplication.PlayerView.receipts observed).symm
   have accepted := congrArg PublicView.accepted visible
@@ -109,8 +109,8 @@ theorem include_binding_input (memory : BindingShadow graph)
     event candidate none found' rightFixed
   have restores := memory.rememberCompletion_observation who left.application.config
     right.application.config
-    (congrArg (fun view : ReactivePlayerView graph => view.observation.store) application)
-    (congrArg (fun view : ReactivePlayerView graph => view.observation.ownActions) application)
+    (congrArg (fun view : PlayerView graph => view.observation.store) application)
+    (congrArg (fun view : PlayerView graph => view.observation.ownActions) application)
     event ready ready' (by
       change (graph.nodes event).actor = some who
       rw [← EventCode.actor_cast outputEq (graph.nodes event), codeEq]
@@ -168,8 +168,8 @@ theorem include_binding_input (memory : BindingShadow graph)
         ((right.includePending app id).application.candidates.lookup (who, slot))) =
         (fun slot => (left.includePending app id).application.candidates.lookup (who, slot)) := by
       rw [leftCandidates, rightCandidates]
-      exact congrArg ReactivePlayerView.candidates application
-    exact congr (congr (congrArg (ReactivePlayerView.mk who) nextPublic.symm)
+      exact congrArg PlayerView.candidates application
+    exact congr (congr (congrArg (PlayerView.mk who) nextPublic.symm)
       nextObservation) catalog
   change (⟨(right.includePending app id).network.observe who,
     memory.view (app.observePlayer (right.includePending app id).application who),

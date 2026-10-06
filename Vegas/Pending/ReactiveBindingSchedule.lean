@@ -68,13 +68,10 @@ theorem bindingTraffic_silent (runtime : EventGraphRuntime graph)
   have publics := congrArg (fun value => value.2.2.2.2.2) same
   dsimp only [bindingTraffic] at networks receipts environments recalled views publics
   have observed : left.observe app focal = right.observe app focal := by
-    have projected := congrArg (fun view : PlayerView graph =>
-      (⟨view.who, view.publicView, view.observation, view.candidates⟩ :
-        ReactivePlayerView graph)) views
     change ReactiveApplication.PlayerView.mk _ _ _ = _
     rw [networks]
     exact congrArg₂ (fun view receipts =>
-      (⟨right.network.observe focal, view, receipts⟩ : app.PlayerView)) projected receipts
+      (⟨right.network.observe focal, view, receipts⟩ : app.PlayerView)) views receipts
   have recalledAfter := app.respond_focal_recall_eq left right actor focal response
     networks observed recalled (by
       intro submission transmitted

@@ -32,7 +32,7 @@ theorem reactiveDecision_binding_eq (runtime : EventGraphRuntime graph)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind owner payload)
     (node : nodeView graph event = .bind owner payload outputEq codeEq)
-    (action : graph.Action event) (view : ReactivePlayerView graph) (serial : Nat)
+    (action : graph.Action event) (view : PlayerView graph) (serial : Nat)
     (allocated : reactiveFreshSlot view = some serial) :
     runtime.reactiveDecision leaks who event action view =
       runtime.reactiveBinding leaks who event payload

@@ -31,14 +31,11 @@ private theorem observed_eq
     (views : left.application.playerView who = right.application.playerView who) :
     left.observe (runtime.reactiveApplication leaks) who =
       right.observe (runtime.reactiveApplication leaks) who := by
-  have projected := congrArg (fun view : PlayerView graph =>
-    (⟨view.who, view.publicView, view.observation, view.candidates⟩ :
-      ReactivePlayerView graph)) views
   change ReactiveApplication.PlayerView.mk (app := runtime.reactiveApplication leaks)
     _ _ _ = _
   rw [network, receipts]
   exact congrArg (fun view => (⟨right.network.observe who, view, right.receipts⟩ :
-    (runtime.reactiveApplication leaks).PlayerView)) projected
+    (runtime.reactiveApplication leaks).PlayerView)) views
 
 private theorem response_other_playerView
     (execution : (runtime.reactiveApplication leaks).Execution) (actor observer : Player)

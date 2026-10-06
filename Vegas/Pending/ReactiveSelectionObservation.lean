@@ -150,7 +150,7 @@ theorem reactive_reserved_nonmatching_playerView (who : Player) (event : graph.E
     (unique : runtime.UniqueEventOutput leaks who event (execution.recall who))
     (response : (runtime.reactiveApplication leaks).Action)
     (audit : (execution.respond (runtime.reactiveApplication leaks) who response).SubmissionAudit
-      (runtime.reactiveApplication leaks) ReactivePlayerView.publicView)
+      (runtime.reactiveApplication leaks) PlayerView.publicView)
     (nonmatching : ∀ material, response.transmission = some material →
       material.call.packet.event? graph ≠ some event) :
     let after := execution.respond (runtime.reactiveApplication leaks) who response
@@ -188,7 +188,7 @@ theorem reactive_reserved_nonmatching_playerView (who : Player) (event : graph.E
       have stillPending := (runtime.reactiveApplication leaks).respond_pending_mono execution
         who response pending
       exact runtime.reactive_include_playerView leaks _ who message.id message
-        (audit.lookup_of_mem (runtime.reactiveApplication leaks) ReactivePlayerView.publicView
+        (audit.lookup_of_mem (runtime.reactiveApplication leaks) PlayerView.publicView
           _ message stillPending)
 
 /-- With a unique older event output, every current raw response has an
@@ -211,9 +211,9 @@ theorem reactive_reserved_playerView_congr (who : Player) (event : graph.EventId
     (leftSerials : left.network.SerialsBeforeNext)
     (rightSerials : right.network.SerialsBeforeNext)
     (leftAudit : (left.respond (runtime.reactiveApplication leaks) who response).SubmissionAudit
-      (runtime.reactiveApplication leaks) ReactivePlayerView.publicView)
+      (runtime.reactiveApplication leaks) PlayerView.publicView)
     (rightAudit : (right.respond (runtime.reactiveApplication leaks) who response).SubmissionAudit
-      (runtime.reactiveApplication leaks) ReactivePlayerView.publicView) :
+      (runtime.reactiveApplication leaks) PlayerView.publicView) :
     let afterLeft := left.respond (runtime.reactiveApplication leaks) who response
     let afterRight := right.respond (runtime.reactiveApplication leaks) who response
     ((afterLeft.environmentStep (runtime.reactiveApplication leaks)
