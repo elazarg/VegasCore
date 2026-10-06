@@ -24,6 +24,8 @@ import Vegas.Source.DisclosureObservation
 import Vegas.Source.HistoryRebase
 import Vegas.Source.DisclosureContinuation
 import Vegas.Source.Honest
+import Vegas.Source.GuardPrediction
+import Vegas.Source.Forfeit
 import Vegas.Source.RevealSequence
 import Vegas.Source.ObservationRecall
 import Vegas.Source.Accounting
@@ -31,5 +33,6 @@ import Vegas.Source.Safety
 import Vegas.Source.ProtocolEvaluation
 import Vegas.Source.SetupProtocolEvaluation
 import Vegas.Source.SetupProtocolBehavioral
+import Vegas.Source.SetupProtocolRecall
 import Vegas.Source.CommitmentEvidence
 import Vegas.Source.Communication

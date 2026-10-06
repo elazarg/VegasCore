@@ -28,6 +28,7 @@ Useful existing boundaries are the
 [whole-continuation enforcement](../GameTheoryExtensions/Analysis/Enforcement.lean),
 [local comparison limit](../GameTheoryExtensions/Analysis/Protocol/LocalSimulationLimit.lean),
 [proportional belief transport](../GameTheoryExtensions/Analysis/Protocol/ProportionalBeliefTransport.lean),
+[menu restriction](../GameTheoryExtensions/Protocol/MenuRestriction.lean),
 and [depth-free extension](../GameTheoryExtensions/Analysis/Protocol/PassageRestrictionExtension.lean).
 
 Behavioral commutation preserves the typed store and original own recall;

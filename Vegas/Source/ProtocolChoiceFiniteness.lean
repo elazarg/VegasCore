@@ -8,7 +8,7 @@ import GameTheoryExtensions.Math.Probability.Support
 Only payload types of fresh commitment instructions must be finite. Initial
 types, public sample results and the ambient information carriers may remain
 infinite. This suffices to complete policies at unreachable information values
-using a uniform law over their existing legal choices.
+using a uniform law over their existing legal choices, which are never empty.
 -/
 
 noncomputable section
@@ -75,5 +75,44 @@ theorem Setup.finite_choice (setup : Setup (Player := Player) (L := L))
       apply Subtype.ext
       exact first.2.trans second.2.symm
   | some view => exact ProtocolView.finite_choice who setup.program finite admission view
+
+/-- Every abstract view has a legal choice: none for a player not on the move,
+a value binding at its own commitment and a withholding at its own reveal. -/
+theorem ProtocolView.exists_menu (who : Player) : {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → (admission : CommitmentInterface program) →
+    (view : ProtocolView who program) →
+      ∃ choice, ProtocolView.menu who program admission view choice
+  | _, _, .ret _, _, _ => ⟨none, by simp [ProtocolView.menu, ProtocolView.actor]⟩
+  | _, _, .sample _ _ _ next, admission, view => by
+      cases view with
+      | inl _ => exact ⟨none, by simp [ProtocolView.menu, ProtocolView.actor]⟩
+      | inr later => exact exists_menu who next admission later
+  | _, _, .commit (payload := payload) name owner _ _ next, admission, view => by
+      cases view with
+      | inl _ =>
+          by_cases own : owner = who
+          · exact ⟨some (.commit owner name payload (.success (L.someValue payload))),
+              by simp [ProtocolView.menu, ProtocolView.actor, ProtocolView.available, own]⟩
+          · exact ⟨none, by simp [ProtocolView.menu, ProtocolView.actor, own]⟩
+      | inr later => exact exists_menu who next (fun site => admission (some site)) later
+  | _, _, .reveal _ owner name _ _ _ next, admission, view => by
+      cases view with
+      | inl _ =>
+          by_cases own : owner = who
+          · exact ⟨some (.reveal owner name false),
+              by simp [ProtocolView.menu, ProtocolView.actor, ProtocolView.available, own]⟩
+          · exact ⟨none, by simp [ProtocolView.menu, ProtocolView.actor, own]⟩
+      | inr later => exact exists_menu who next admission later
+
+/-- Every abstract setup information value has a legal choice. -/
+theorem Setup.choice_nonempty (setup : Setup (Player := Player) (L := L))
+    (admission : CommitmentInterface setup.program) (who : Player)
+    (info : setup.ProtocolView who) :
+    Nonempty ((setup.informationModel admission).Choice who info) := by
+  cases info with
+  | none => exact ⟨⟨none, rfl⟩⟩
+  | some view =>
+      obtain ⟨choice, legal⟩ := ProtocolView.exists_menu who setup.program admission view
+      exact ⟨⟨choice, legal⟩⟩
 
 end Vegas.SourceProgram

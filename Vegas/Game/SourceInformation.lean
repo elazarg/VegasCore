@@ -14,8 +14,11 @@ decision information set has a common depth and is a history antichain,
 without adding observations or requiring independent initial types.
 
 For reveal-only programs, a fair Boolean policy has full support at every
-source choice. Bounded execution then gives finitely many legal histories,
-even when the ambient type or configuration carriers are infinite.
+source choice. In general, with finite fresh-binding alphabets, the uniform law
+over the legal choices at every information value is a fully mixed reference
+(`Vegas.SourceProgram.Setup.uniformReference`). Bounded execution then gives
+finitely many legal histories under a finitely supported setup law, even when
+the ambient type or configuration carriers are infinite.
 -/
 
 noncomputable section
@@ -171,18 +174,43 @@ theorem revealReference_fullyMixed (setup : Setup (Player := Player) (L := L))
       exact RevealOnly.uniformPolicy_support who setup.program reveals admission view choice.1
         choice.2
 
+/-- The uniform law over the legal choices at every information value. -/
+def uniformReference (setup : Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes) (admission : CommitmentInterface setup.program) :
+    (setup.informationModel admission).BehavioralAssessment :=
+  .ofStrategy fun who info =>
+    let := setup.finite_choice finite admission who info
+    let := Fintype.ofFinite ((setup.informationModel admission).Choice who info)
+    let := setup.choice_nonempty admission who info
+    PMF.uniformOfFintype _
+
+theorem uniformReference_fullSupport (setup : Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes) (admission : CommitmentInterface setup.program)
+    (who : Player) (info : setup.ProtocolView who)
+    (choice : (setup.informationModel admission).Choice who info) :
+    choice ∈ ((setup.uniformReference finite admission).strategy who info).support := by
+  let := setup.finite_choice finite admission who info
+  let := Fintype.ofFinite ((setup.informationModel admission).Choice who info)
+  let := setup.choice_nonempty admission who info
+  exact PMF.mem_support_uniformOfFintype choice
+
+theorem uniformReference_fullyMixed (setup : Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes) (admission : CommitmentInterface setup.program) :
+    (setup.uniformReference finite admission).IsFullyMixed :=
+  fun who site choice => setup.uniformReference_fullSupport finite admission who site.1 choice
+
 /-- Finiteness includes every legal source history, regardless of the support
-of a later chosen equilibrium. Correlated private initialization is retained;
-it must be finitely supported. -/
-theorem reveal_finite_history [Finite Player] (setup : Setup (Player := Player) (L := L))
-    (reveals : setup.program.RevealOnly) (admission : CommitmentInterface setup.program)
+of a later chosen equilibrium. Initial parameters, public samples and
+publication payloads need not range over finite types; fresh bindings and the
+setup draw must be finite. Correlated private initialization is retained. -/
+theorem finite_history [Finite Player] (setup : Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes) (admission : CommitmentInterface setup.program)
     [setup.FiniteInitialLaw] :
     Finite (setup.executionProtocol admission).History :=
-  (setup.revealReference_fullyMixed reveals admission).finite_history
+  (setup.uniformReference_fullyMixed finite admission).finite_history
     (setup.protocol_bounded admission)
     (fun who info =>
-      have := setup.finite_choice (RevealOnly.finiteBindingTypes setup.program reveals)
-        admission who info
+      have := setup.finite_choice finite admission who info
       Set.toFinite _)
     (fun draw => setup.protocolStep_support_finite _ draw.1)
 
