@@ -15,7 +15,13 @@ rests on every permitted-menu deviation having the typed outcome law of a source
 deviation ([deviation law](Vegas/Game/SourceServiceDeviationReadout.lean)). It
 also states the reflection of approximate Nash from the turn-counted clients of
 an arbitrary contract builder
-([asynchronous Nash](Vegas/Game/AsyncServiceNash.lean)).
+([asynchronous Nash](Vegas/Game/AsyncServiceNash.lean)), whose forward direction
+is reduced there to a bound on deviations against the first-turn clients. Every
+profile extending an approximate Nash equilibrium of the intended game is one of
+the source game under the forfeit pass
+([intended Nash](Vegas/Game/IntendedNash.lean)), and its compiled raw profile is
+one of the audited calendar runtime
+([intended calendar Nash](Vegas/Game/IntendedServiceNash.lean)).
 
 The arbitrary-builder theorem and an operational watcher/reporting refinement
 remain open. The [design and plan](docs/se-schedule-generalization.md) describes

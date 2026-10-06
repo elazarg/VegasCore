@@ -36,7 +36,7 @@ Unused commit-reveal pairs ("yield") do **not** reproduce that channel. Yield is
 **Player observation.**
 - `ReactiveApplication.Execution.observe` gives a player three things: `network.observe who`, `observePlayer`, and the global `receipts` list.
 - `network.observe who` is `⟨leaked who, ledger⟩`.
-- `observePlayer` is `State.playerView`: the public view (graph public observation, accepted handles, clock, `activatedAt`), the player's own private graph observation, and the player's own candidate catalogue.
+- `observePlayer` is `State.playerView`: the public view (graph public observation, accepted handles, clock, `PublicView.activatedAt`), the player's own private graph observation, and the player's own candidate catalogue.
 - Interaction recall adds the player's own past views, actions and emitted envelopes.
 
 **Leaks.**
@@ -47,7 +47,7 @@ Unused commit-reveal pairs ("yield") do **not** reproduce that channel. Yield is
 **Submission is invisible to others.**
 - `MessageNetwork.submit_observe`: no player's network view changes.
 - `reactiveApplication_submit_publicView`: the public view does not change.
-- The message id `(sender, nextSerial sender)` is assigned at submission, but `nextSerial` and `inputs` are in the *environment* view only, not in any `PlayerView`.
+- The message id `(sender, nextSerial sender)` is assigned at submission, but `MessageNetwork.nextSerial` and `inputs` are in the *environment* view only, not in any `PlayerView`.
 - To confirm: `Submission.register` leaves `config` and other players' candidate catalogues untouched. Its docstring and `register_facts` suggest so.
 
 **The calendar has no builder choices.**
@@ -81,7 +81,7 @@ Unused commit-reveal pairs ("yield") do **not** reproduce that channel. Yield is
 **Conclusion [read/claim].** With leaks off on the calendar, every non-source channel is *charged*. Uncharged non-source behavior changes no other player's view.
 
 Two remarks:
-- **The charge needs audit coverage of unincluded traffic.** With a ledger-only audit, the nonce channel becomes free: send k invisible surplus packets, and the included id shows k. Under leaks off, a real watcher cannot see pending traffic. So either keep the idealized all-traffic backend, or make ledger ids not reveal the submission count. Ethereum account nonces count *included* transactions, so the model's `nextSerial` is stronger than Ethereum here.
+- **The charge needs audit coverage of unincluded traffic.** With a ledger-only audit, the nonce channel becomes free: send k invisible surplus packets, and the included id shows k. Under leaks off, a real watcher cannot see pending traffic. So either keep the idealized all-traffic backend, or make ledger ids not reveal the submission count. Ethereum account nonces count *included* transactions, so the model's `MessageNetwork.nextSerial` is stronger than Ethereum here.
 - **A sunk charge is capped.** After a player is charged, further forbidden packets cost nothing, including the public broadcast. This matters only off path, so it is harmless for Nash but not for sequential equilibrium (§1.5).
 
 ### 1.3 Statements
@@ -129,7 +129,7 @@ Statement: for any permitted-menu profile `π` and player `i`, the readout law o
 - Induct over the finite player set: law(π) = law(timed(dec π)). Then `sourceServiceTimedProfile_protocol_law` gives the source law of `dec π`. That proves outcome-law abstraction.
 
 **3. Raw to menu at an equilibrium (0.5–1.5k lines; the main risk).**
-- **(a) Aliases.** Normalize all players simultaneously. `canonicalRaw_historyLaw` and `ReactiveNormalization.aliasDeviation_historyLaw` are stated against canonical raw opponents, so check that the all-player version is available or is a short corollary.
+- **(a) Aliases.** Normalize all players simultaneously. `canonicalRaw_historyLaw` and `SubmissionNormalization.aliasDeviation_historyLaw` are stated against canonical raw opponents, so check that the all-player version is available or is a short corollary.
 - **(b) Forbidden mass is zero.** Replace `i`'s policy by its fixed repair. It loses at most R base payoff on the histories where `i` sends a forbidden packet (`rosterAuditDeposit_covers_gain` is history-pointwise), and avoids an expected charge of at least ρD > R there.
   - Reuse `sourceService_continuation_settlement_comparison`, `remaining_events_stopped_coupling` at rank 0, and `sourceService_repair_range_settlement_le`, as `exists_menu_deviation_ge` already does.
   - Gap: these assume the opponents *extend a source profile in the permitted menu* (`agrees : … ExtendsProfile source target`). The NE argument needs the repair against arbitrary raw opponents. Charges depend only on own packets (`includeLatest` filters by sender, the audit reads own envelopes), so this should go through, but the Frame/coupling hypotheses must be re-derived. **This is the riskiest step.**
@@ -166,7 +166,7 @@ Nash abstraction is a collusion-freeness statement for the calendar ledger with 
 
 ### 2.1 Extra uncharged capacity [read/claim]
 
-For each owned event e with roster `r_e`, the owner chooses the visit at which to submit its single permitted packet (resolutions may also stay silent, but that outcome is public). Each later roster member j samples, independently at each of its activations, whether the packet is pending, with the leak kernel's probability.
+For each owned event e with roster r(e), the owner chooses the visit at which to submit its single permitted packet (resolutions may also stay silent, but that outcome is public). Each later roster member j samples, independently at each of its activations, whether the packet is pending, with the leak kernel's probability.
 
 | Property | Value |
 | --- | --- |
