@@ -31,18 +31,16 @@ open Interaction EventGraph GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-/-- The existing prescribed decision, with withheld publications settled by
-the service's expiry and private response aliases normalized. -/
+/-- The existing prescribed decision with private response aliases
+normalized. A withheld publication sends nothing and is settled by expiry. -/
 def serviceDecision (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)
     (event : graph.EventId) (choice : graph.Action event) :
     (runtime.reactiveApplication leaks).Action :=
-  let response := runtime.reactiveDecision leaks who event choice view.application
-  match response.transmission with
-  | some ⟨⟨.withhold _, _⟩, _⟩ => ⟨none⟩
-  | _ => (runtime.reactiveNormalization leaks).action who past view response
+  (runtime.reactiveNormalization leaks).action who past view
+    (runtime.reactiveDecision leaks who event choice view.application)
 
 theorem serviceDecision_binding (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))

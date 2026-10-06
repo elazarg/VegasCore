@@ -3,6 +3,7 @@
 import Vegas.Source.PrivateInputs
 import Vegas.Pending.PrivateInputs
 import Vegas.Examples.PrivateValueAuction
+import Vegas.Compile.EventGraphAssembly
 
 /-! # Private valuations require no protocol actions
 

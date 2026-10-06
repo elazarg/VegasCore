@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveMonitoring
-import Vegas.Pending.EventPublicBarrier
+import Vegas.Pending.EventOpponentFrame
 import Vegas.Pending.ReactiveRuntime
 import Vegas.Pending.ReactiveServiceEvaluation
 

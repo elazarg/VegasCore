@@ -14,12 +14,7 @@ import Vegas.Game.DisclosureProfileComparison
 import Vegas.Game.DisclosureRealization
 import Vegas.Game.DisclosureRetraction
 import Vegas.Game.EventCompilation
-import Vegas.Game.EventMessageStrategic
-import Vegas.Game.EventMessages
 import Vegas.Game.EventScheduling
-import Vegas.Game.EventServiceEdge
-import Vegas.Game.ParameterOutcomes
-import Vegas.Game.PendingCompositions
 import Vegas.Game.PurificationEdge
 import Vegas.Game.RevealService
 import Vegas.Game.RevealServiceActions

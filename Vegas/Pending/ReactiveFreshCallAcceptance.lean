@@ -45,7 +45,6 @@ theorem freshServiceEnvelope.acceptable {view : PublicView graph}
   cases packet with
   | commitment event candidate => exact ⟨conforming.1, conforming.2.2.2⟩
   | opening event candidate raw => exact conforming
-  | withhold event => exact conforming
   | malformed raw => exact conforming
 
 /-- An acceptable fresh call carries the readiness token of its event. -/
@@ -74,7 +73,6 @@ theorem freshServiceAcceptable.tokenValid {view : PublicView graph}
       | sample _ _ _ _ =>
           simp only [freshServiceAcceptable, freshServiceEnvelope, node] at conforming
           exact conforming.2.2.2.2.elim
-  | withhold actual => exact conforming.elim
   | malformed raw => exact conforming.elim
 
 /-- A packet acceptable on the public view its author saw is accepted at a
@@ -155,7 +153,6 @@ theorem freshServiceAcceptable_accepted (state : State graph) (view : PublicView
       | sample _ _ _ _ =>
           simp only [freshServiceAcceptable, freshServiceEnvelope, node] at conforming
           exact conforming.2.2.2.2.elim
-  | withhold actual => exact conforming.elim
   | malformed raw => exact conforming.elim
 
 end Vegas.EventGraphRuntime

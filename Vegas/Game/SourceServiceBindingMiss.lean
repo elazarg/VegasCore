@@ -41,7 +41,6 @@ private theorem acceptable_binding_commitment
       cases Option.some.inj addressed
       simp only [freshServiceAcceptable, freshServiceEnvelope, node] at acceptable
       exact acceptable.2.2.2.2.elim
-  | withhold other => exact acceptable.elim
   | malformed raw => exact acceptable.elim
 
 /-- An actually recorded conforming protected binding call with a unique own
@@ -198,10 +197,6 @@ theorem new_binding_miss_expiry
                   rw [installed, Function.update_self] at absent
                   cases absent
               | opening addressed candidate raw =>
-                  cases Option.some.inj named
-                  simp only [handle, node] at handled
-                  split at handled <;> simp_all
-              | withhold addressed =>
                   cases Option.some.inj named
                   simp only [handle, node] at handled
                   split at handled <;> simp_all

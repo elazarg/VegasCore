@@ -79,7 +79,7 @@ private theorem submission_candidate_other (state : State graph) (sender observe
                   CommitmentCandidates.lookup_prepare_other _ _ _ _ _ apart]
       · cases slot <;> cases opening <;>
           simp [Submission.register, submitStep, owned]
-  | opening | withhold | malformed => cases opening <;> rfl
+  | opening | malformed => cases opening <;> rfl
 
 theorem submittedCandidateSlots_respond (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -169,7 +169,7 @@ private theorem candidateRecall_handle (runtime : EventGraphRuntime graph)
             issued)
       rw [candidates, CommitmentCandidates.lookup_freeze_other _ _ _ different]
       exact valid who serial absent
-  | opening event candidate raw | withhold event =>
+  | opening event candidate raw =>
       rw [(handle_resolution_tables runtime _ _ _ (by intros; simp) accepted).2]
       exact valid who serial absent
   | malformed raw => simp [handle] at accepted

@@ -19,11 +19,11 @@ it, with its content checked against the record:
 * an opening carries its exact certificate, and the event's guards accept the
   opened value on the settled public store.
 
-A withholding packet for a settled event, and every malformed packet, is
-forbidden. Equivocation needs no separate rule: of two packets of one author
-for one event the contract accepts at most one, and the other is forbidden once
-the event settles. The same holds for an opening sent after its owner withheld:
-it was not accepted, so it is forbidden whenever it was sent.
+Every malformed packet is forbidden. Equivocation needs no separate rule: of
+two packets of one author for one event the contract accepts at most one, and
+the other is forbidden once the event settles. The same holds for an opening
+sent after its owner withheld: it was not accepted, so it is forbidden whenever
+it was sent.
 -/
 
 noncomputable section
@@ -80,7 +80,7 @@ def SettledContent (record : SettledRecord graph)
   | .opening _ _ _ =>
       certifiedOpening message.payload = true ∧
         record.view.openingGuardsAccepted message.payload = true
-  | .withhold _ | .malformed _ => False
+  | .malformed _ => False
 
 /-- **The settled verdict.** A packet for an unsettled event is permitted; a
 packet for a settled event is permitted when the record accepted it and its

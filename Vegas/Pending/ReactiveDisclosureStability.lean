@@ -28,7 +28,7 @@ theorem handle_accepted_of_present (runtime : EventGraphRuntime graph)
   rcases message with ⟨id, packet⟩
   cases packet with
   | malformed raw => simp [handle] at handled
-  | opening event chosen raw | withhold event =>
+  | opening event chosen raw =>
       rw [(handle_resolution_tables runtime state next _ (by intros; simp) handled).1]
   | commitment event chosen =>
       have tables := (handle_commitment_tables runtime state next id event chosen handled).2.1

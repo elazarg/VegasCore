@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.EventService
+import Vegas.Pending.ServicePlan
 import Vegas.Pending.EventProgress
 
 /-! # A bounded completion contract for event service

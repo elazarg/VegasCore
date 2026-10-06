@@ -225,7 +225,7 @@ theorem handle_associationInvariant (runtime : EventGraphRuntime graph)
   rcases message with ⟨id, packet⟩
   cases packet with
   | malformed raw => simp [handle] at accepted
-  | opening event candidate raw | withhold event =>
+  | opening event candidate raw =>
       exact valid.transport
         (handle_resolution_tables runtime state next _ (by intros; simp) accepted).1
         (fun queried fixed =>

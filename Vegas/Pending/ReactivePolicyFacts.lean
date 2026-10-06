@@ -18,19 +18,15 @@ theorem reactiveResolutionPacket_event {owner : Player} (who : Player) (event : 
     (payload : L.Ty) (binding : FieldRef graph.layout (.binding owner payload))
     (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
-    (action : graph.Action event) (view : ReactivePlayerView graph) :
-    (reactiveResolutionPacket who event payload binding checks outputEq action
-      view).event? graph =
-      some event := by
-  dsimp only [reactiveResolutionPacket]
-  split
-  · split
-    · split
-      · split <;> rfl
-      · rfl
-    · rfl
-    · rfl
-  · rfl
+    (action : graph.Action event) (view : ReactivePlayerView graph) (packet : Payload graph)
+    (sent : reactiveResolutionPacket who event payload binding checks outputEq action view =
+      some packet) :
+    packet.event? graph = some event := by
+  dsimp only [reactiveResolutionPacket] at sent
+  repeat' split at sent
+  all_goals first
+    | cases sent; rfl
+    | cases sent
 
 theorem reactiveDecision_transmission (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -46,8 +42,12 @@ theorem reactiveDecision_transmission (runtime : EventGraphRuntime graph)
     | none => exact Or.inl rfl
     | some serial => exact Or.inr ⟨_, rfl, rfl⟩
   · rename_i owner payload binding checks outputEq codeEq nodeEq
-    exact Or.inr ⟨_, rfl,
-      reactiveResolutionPacket_event who event payload binding checks outputEq action view⟩
+    cases sent : reactiveResolutionPacket who event payload binding checks outputEq action view with
+    | none => exact Or.inl rfl
+    | some packet =>
+        exact Or.inr ⟨_, rfl,
+          reactiveResolutionPacket_event who event payload binding checks outputEq action view
+            packet sent⟩
 
 /-- No second submission for an event, regardless of how often
 the scheduler activates the player. -/

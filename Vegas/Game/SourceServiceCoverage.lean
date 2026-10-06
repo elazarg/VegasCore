@@ -280,7 +280,7 @@ theorem sourceServiceOpportunity_reveal_covered
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) false) = ⟨none⟩ := by
         simp only [serviceDecision, reactiveDecision, node, reactiveResolutionPacket,
           cast_cast, cast_eq, Bool.false_eq_true, ↓reduceIte,
-          disclosureSubmission_normalize_withhold]
+          Option.map_none]
         rfl
       rw [silent, ite_eq_left rfl] at supported
       change response ∈ sourceServiceActions setup leaks bounds rosters owner

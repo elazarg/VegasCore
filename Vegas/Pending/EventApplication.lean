@@ -2,10 +2,13 @@
 
 import Vegas.EventGraph.Validation
 import Interaction.CommitmentCandidates
-import Interaction.MessageApplication
-import Interaction.MessageApplicationFiniteness
+import Interaction.MessagePool
+import GameTheoryExtensions.Math.Probability.Support
+import GameTheory.Math.Probability.Mixture
+import GameTheory.Math.Probability.Product
+import GameTheoryExtensions.Math.Probability.Expectation
 
-/-! # Event-addressed pending-message application
+/-! # Event-addressed runtime contract
 
 This is the source-independent runtime core for one fixed `EventGraph`.
 Packets address stable events, readiness comes from the graph cut, and each
@@ -159,11 +162,10 @@ structure PlayerView (graph : Vegas.EventGraph Player L) where
   candidates : CandidateSlot graph → CommitmentCandidate (Raw L)
 
 /-- Public packets retain malformed, premature, and competing
-traffic in the shared message pool even when inclusion has no state effect. -/
+traffic in the network even when inclusion has no state effect. -/
 inductive Payload (graph : Vegas.EventGraph Player L) where
   | commitment (event : graph.EventId) (handle : Handle graph)
   | opening (event : graph.EventId) (handle : Handle graph) (raw : Raw L)
-  | withhold (event : graph.EventId)
   | malformed (raw : Raw L)
 
 namespace Payload
@@ -172,7 +174,6 @@ namespace Payload
 def event? (graph : Vegas.EventGraph Player L) : Payload graph → Option graph.EventId
   | .commitment event _ => some event
   | .opening event _ _ => some event
-  | .withhold event => some event
   | .malformed _ => none
 
 end Payload
@@ -477,7 +478,7 @@ def submitStep (state : State graph) (who : Player) (packet : Payload graph) : S
   { state with candidates := match packet with
     | .commitment _ candidate =>
         if candidate.1 = who then state.candidates.freeze candidate else state.candidates
-    | .opening _ _ _ | .withhold _ | .malformed _ => state.candidates }
+    | .opening _ _ _ | .malformed _ => state.candidates }
 
 @[simp] theorem submitStep_config (state : State graph) (who : Player) (packet : Payload graph) :
     (submitStep state who packet).config = state.config := by
@@ -523,7 +524,7 @@ binding result; every prepared candidate retains its value. -/
         · simp only [submitStep, owned, ↓reduceIte, State.bindingResult,
             CommitmentCandidates.lookup_freeze_other _ _ _ same]
       · simp only [submitStep, owned, ↓reduceIte]
-  | opening event selected raw | withhold event | malformed raw => rfl
+  | opening event selected raw | malformed raw => rfl
 
 /-- Submission cannot alter a meaning that was already fixed. -/
 theorem submitStep_lookup_of_not_fresh (state : State graph) (who : Player)
@@ -562,7 +563,7 @@ theorem submitStep_playerView_other (state : State graph) (who observer : Player
   simp only [submitStep_config, submitStep_publicView, submitStep_remembered]
   rw [catalogue]
 
-/-- An authenticated commitment is fixed before the pool can expose it. -/
+/-- An authenticated commitment is fixed before the network can expose it. -/
 theorem submitStep_commitment_fixed (state : State graph) (who : Player)
     (event : graph.EventId) (slot : CandidateSlot graph) :
     (submitStep state who (.commitment event (who, slot))).candidates.lookup
@@ -614,27 +615,6 @@ private def acceptResolution (state : State graph) (event : graph.EventId)
     cast (congrArg EventField.Value outputEq.symm) result
   pure (state.complete event ready action value)
 
-/-- Interpret a canonical withholding packet. A privately remembered `true`
-is retained only when owner-local prevalidation gives it exactly the canonical
-`false` output; otherwise withholding is recorded as the graph action `false`. -/
-private def withholdingAction (state : State graph) (event : graph.EventId)
-    (owner : Player) (payload : L.Ty)
-    (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (GuardCheck graph.layout payload))
-    (outputEq : graph.outputLayout event = .publication payload) : Bool :=
-  match state.remembered event with
-  | none => false
-  | some remembered =>
-      match cast (congrArg EventField.Action outputEq) remembered with
-      | false => false
-      | true =>
-          if EventCode.resolveOutput? binding checks true
-                (graph.playerStore owner state.config.store) =
-              EventCode.resolveOutput? binding checks false
-                (graph.playerStore owner state.config.store) then
-            true
-          else false
-
 omit [DecidableEq Player] in
 private theorem State.publicView_complete_action_irrel (state : State graph)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
@@ -674,30 +654,6 @@ private theorem acceptResolution_publicView_congr (state : State graph)
         (cast (congrArg EventField.Action outputEq.symm) left)
         (cast (congrArg EventField.Action outputEq.symm) right)
         (cast (congrArg EventField.Value outputEq.symm) value))
-
-private theorem withholdingAction_output (state : State graph)
-    (event : graph.EventId) (owner : Player) (payload : L.Ty)
-    (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (GuardCheck graph.layout payload))
-    (outputEq : graph.outputLayout event = .publication payload) :
-    EventCode.resolveOutput? binding checks
-        (withholdingAction state event owner payload binding checks outputEq)
-        state.config.store =
-      EventCode.resolveOutput? binding checks false state.config.store := by
-  cases remembered : state.remembered event with
-  | none => simp [withholdingAction, remembered]
-  | some action =>
-      cases actionEq : cast (congrArg EventField.Action outputEq) action with
-      | false => simp [withholdingAction, remembered, actionEq]
-      | true =>
-          simp only [withholdingAction, remembered, actionEq]
-          split
-          · rename_i localEq
-            exact (EventCode.resolveOutput?_playerStore (graph := graph) binding checks
-                state.config.store true).symm.trans
-              (localEq.trans (EventCode.resolveOutput?_playerStore (graph := graph) binding checks
-                state.config.store false))
-          · rfl
 
 private theorem acceptBinding_publicView_replaceRemembered (state : State graph)
     (memory : RememberedActions graph) (event : graph.EventId)
@@ -891,8 +847,8 @@ private theorem resolveOutput?_false_eq_failure_of_ready (state : State graph)
   exact read
 
 /-- Event-addressed packet inclusion. Rejected packets remain observable in
-the shared message pool and receipt history, but this function changes no
-application state for them. -/
+the network and receipt history, but this function changes no contract state
+for them. -/
 def handle (runtime : EventGraphRuntime graph) (state : State graph)
     (message : Message Player (Payload graph)) : Option (State graph) := by
   classical
@@ -938,18 +894,6 @@ def handle (runtime : EventGraphRuntime graph) (state : State graph)
           | .bind .. | .sample .. => none
         else none
       else none
-  | .withhold event =>
-      if ready : state.config.cut.Ready event then
-        if timely : state.WithinDeadline runtime event then
-          match nodeView graph event with
-          | .resolve owner payload binding checks outputEq _codeEq =>
-              if sender : message.sender = owner then
-                let disclose := withholdingAction state event owner payload binding checks outputEq
-                acceptResolution state event ready owner payload binding checks outputEq disclose
-              else none
-          | .bind .. | .sample .. => none
-        else none
-      else none
 
 /-- Freezing a packet's handle at transmission agrees with immediate
 inclusion; a missing opening already denotes failure in the handler. -/
@@ -959,7 +903,6 @@ inclusion; a missing opening already denotes failure in the handler. -/
       handle runtime state ⟨(who, serial), packet⟩ := by
   classical
   cases packet with
-  | withhold event => rfl
   | malformed raw => rfl
   | commitment event candidate =>
       by_cases owned : candidate.1 = who
@@ -1037,71 +980,6 @@ theorem handle_opening_eq
       simpa [Raw.as?] using typed
     subst decoded
     simp [stored, acceptResolution, resolved]
-
-/-- A withholding packet without an application-side remembered intention
-executes the failure branch. Reactive memory is separate from this table. -/
-theorem handle_withhold_unremembered_eq
-    (runtime : EventGraphRuntime graph) (state : State graph)
-    (id : MessageId Player) (event : graph.EventId)
-    (owner : Player) (payload : L.Ty)
-    (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (GuardCheck graph.layout payload))
-    (outputEq : graph.outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
-      (graph.nodes event) = .resolve owner payload binding checks)
-    (view : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
-    (ready : state.config.cut.Ready event) (timely : state.WithinDeadline runtime event)
-    (sender : id.1 = owner) (remembered : state.remembered event = none) :
-    handle runtime state ⟨id, .withhold event⟩ =
-      some (state.complete event ready
-        (cast (congrArg EventField.Action outputEq.symm) false)
-        (cast (congrArg EventField.Value outputEq.symm)
-          (PublicationResult.failure : PublicationResult (L.Val payload)))) := by
-  have resolved := resolveOutput?_false_eq_failure_of_ready state event ready
-    owner payload binding checks outputEq codeEq
-  simp [handle, ready, timely, view, Message.sender, sender, withholdingAction,
-    remembered, acceptResolution, resolved]
-
-/-- Canonical failure traffic preserves the owner's original disclosure
-decision, even when that decision was `true` and local validation rejected it. -/
-theorem handle_withhold_eq
-    (runtime : EventGraphRuntime graph) (state : State graph)
-    (id : MessageId Player) (event : graph.EventId)
-    (owner : Player) (payload : L.Ty)
-    (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (GuardCheck graph.layout payload))
-    (outputEq : graph.outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
-      (graph.nodes event) = .resolve owner payload binding checks)
-    (view : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
-    (ready : state.config.cut.Ready event)
-    (timely : state.WithinDeadline runtime event)
-    (sender : id.1 = owner) (disclose : Bool)
-    (remembered : state.remembered event = some
-      (cast (congrArg EventField.Action outputEq.symm) disclose))
-    (resolved : EventCode.resolveOutput? binding checks disclose state.config.store =
-      some .failure) :
-    handle runtime state ⟨id, .withhold event⟩ =
-      some (state.complete event ready
-        (cast (congrArg EventField.Action outputEq.symm) disclose)
-        (cast (congrArg EventField.Value outputEq.symm)
-          (PublicationResult.failure : PublicationResult (L.Val payload)))) := by
-  have actionEq : withholdingAction state event owner payload binding checks outputEq =
-      disclose := by
-    cases disclose with
-    | false => simp [withholdingAction, remembered]
-    | true =>
-        have falseResult := resolveOutput?_false_eq_failure_of_ready state event ready
-          owner payload binding checks outputEq codeEq
-        have localEq : EventCode.resolveOutput? binding checks true
-            (graph.playerStore owner state.config.store) =
-          EventCode.resolveOutput? binding checks false
-            (graph.playerStore owner state.config.store) := by
-          rw [EventCode.resolveOutput?_playerStore, EventCode.resolveOutput?_playerStore,
-            resolved, falseResult]
-        simp [withholdingAction, remembered, localEq]
-  simp [handle, ready, timely, view, Message.sender, sender,
-    actionEq, acceptResolution, resolved]
 
 private theorem handle_commitment_config_step
     (runtime : EventGraphRuntime graph) (state next : State graph)
@@ -1183,46 +1061,6 @@ private theorem handle_opening_config_step
     · simp [handle, ready, timely] at accepted
   · simp [handle, ready] at accepted
 
-private theorem handle_withhold_config_step
-    (runtime : EventGraphRuntime graph) (state next : State graph)
-    (id : MessageId Player) (event : graph.EventId)
-    (accepted : handle runtime state ⟨id, .withhold event⟩ = some next) :
-    ∃ (ready : state.config.cut.Ready event) (action : graph.Action event),
-      next.config ∈ (state.config.step event ready action).support ∧
-        next.clock = state.clock ∧
-        next.activatedAt = State.refreshActivated next.config state.clock state.activatedAt ∧
-        next.remembered = state.remembered := by
-  by_cases ready : state.config.cut.Ready event
-  · by_cases timely : state.WithinDeadline runtime event
-    · cases view : nodeView graph event with
-      | bind owner payload outputEq codeEq =>
-          simp [handle, ready, timely, view] at accepted
-      | sample payload law outputEq codeEq =>
-          simp [handle, ready, timely, view] at accepted
-      | resolve owner payload binding checks outputEq codeEq =>
-          simp only [handle, dite_eq_left ready, dite_eq_left timely, view] at accepted
-          split at accepted
-          · simp_all only [exists_true_left]
-            let disclose := withholdingAction state event owner payload binding checks outputEq
-            unfold acceptResolution at accepted
-            cases resultEq : EventCode.resolveOutput? binding checks disclose
-                state.config.store with
-            | none =>
-                dsimp only [disclose] at resultEq
-                simp only [resultEq, Option.pure_def, Option.bind_eq_bind,
-                  Option.bind_none, reduceCtorEq] at accepted
-            | some result =>
-                dsimp only [disclose] at resultEq
-                simp only [resultEq, Option.pure_def, Option.bind_eq_bind,
-                  Option.bind_some, Option.some.injEq] at accepted
-                subst next
-                refine ⟨cast (congrArg EventField.Action outputEq.symm) disclose, ?_⟩
-                exact ⟨resolve_complete_mem_step state event ready owner payload binding checks
-                  outputEq codeEq disclose result resultEq, rfl, rfl, rfl⟩
-          · simp_all only [reduceCtorEq]
-    · simp [handle, ready, timely] at accepted
-  · simp [handle, ready] at accepted
-
 /-- Commitment acceptance freezes exactly its addressed handle and installs
 that handle at its event. Authentication binds it to the packet sender. -/
 theorem handle_commitment_tables (runtime : EventGraphRuntime graph)
@@ -1287,30 +1125,6 @@ theorem handle_resolution_tables (runtime : EventGraphRuntime graph)
               · simp_all only [reduceCtorEq]
         · simp [handle, ready, timely] at accepted
       · simp [handle, ready] at accepted
-  | withhold event =>
-      by_cases ready : state.config.cut.Ready event
-      · by_cases timely : state.WithinDeadline runtime event
-        · cases view : nodeView graph event with
-          | bind owner payload outputEq codeEq =>
-              simp [handle, ready, timely, view] at accepted
-          | sample payload law outputEq codeEq =>
-              simp [handle, ready, timely, view] at accepted
-          | resolve owner payload binding checks outputEq codeEq =>
-              simp only [handle, dite_eq_left ready, dite_eq_left timely, view] at accepted
-              split at accepted
-              · unfold acceptResolution at accepted
-                cases resolved : EventCode.resolveOutput? binding checks
-                    (withholdingAction state event owner payload binding checks outputEq)
-                    state.config.store with
-                | none => simp [resolved] at accepted
-                | some result =>
-                    simp only [resolved, Option.pure_def, Option.bind_eq_bind,
-                      Option.bind_some, Option.some.injEq] at accepted
-                    subst next
-                    exact ⟨rfl, rfl⟩
-              · simp_all only [reduceCtorEq]
-        · simp [handle, ready, timely] at accepted
-      · simp [handle, ready] at accepted
 
 /-- Every accepted player packet performs exactly one semantic graph step at
 its stable event address. The witness action is the original action retained
@@ -1331,10 +1145,6 @@ theorem handle_config_mem_step (runtime : EventGraphRuntime graph)
   | opening event candidate raw =>
       obtain ⟨ready, action, member, _, _⟩ :=
         handle_opening_config_step runtime state next id event candidate raw accepted
-      exact ⟨event, rfl, ready, action, member⟩
-  | withhold event =>
-      obtain ⟨ready, action, member, _, _⟩ :=
-        handle_withhold_config_step runtime state next id event accepted
       exact ⟨event, rfl, ready, action, member⟩
 
 /-- Every accepted packet preserves the clock and refreshes activation metadata
@@ -1357,10 +1167,6 @@ theorem handle_clock_activated (runtime : EventGraphRuntime graph)
       obtain ⟨_, _, _, clockEq, activatedEq, _⟩ :=
         handle_opening_config_step runtime state next id event candidate raw accepted
       exact ⟨clockEq, activatedEq⟩
-  | withhold event =>
-      obtain ⟨_, _, _, clockEq, activatedEq, _⟩ :=
-        handle_withhold_config_step runtime state next id event accepted
-      exact ⟨clockEq, activatedEq⟩
 
 /-- Packet acceptance never overwrites a player's privately sampled action. -/
 theorem handle_remembered (runtime : EventGraphRuntime graph)
@@ -1377,10 +1183,6 @@ theorem handle_remembered (runtime : EventGraphRuntime graph)
   | opening event candidate raw =>
       obtain ⟨_, _, _, _, _, memory⟩ :=
         handle_opening_config_step runtime state next id event candidate raw accepted
-      exact memory
-  | withhold event =>
-      obtain ⟨_, _, _, _, _, memory⟩ :=
-        handle_withhold_config_step runtime state next id event accepted
       exact memory
 
 /-- Replacing the private remembered-action cache cannot change the public
@@ -1462,52 +1264,6 @@ theorem handle_publicView_replaceRemembered (runtime : EventGraphRuntime graph)
               · simp [handle, Message.sender, ready, timely, replacedTimely, view,
                   senderEq, ownerEq]
             · simp [handle, Message.sender, ready, timely, replacedTimely, view, senderEq]
-        · have replacedLate :
-              ¬State.WithinDeadline runtime { state with remembered := memory } event := by
-            simpa [State.WithinDeadline] using timely
-          simp [handle, ready, timely, replacedLate]
-      · simp [handle, ready]
-  | withhold event =>
-      by_cases ready : state.config.cut.Ready event
-      · by_cases timely : State.WithinDeadline runtime state event
-        · have replacedTimely :
-              State.WithinDeadline runtime { state with remembered := memory } event := by
-            simpa [State.WithinDeadline] using timely
-          cases view : nodeView graph event with
-          | bind owner payload outputEq =>
-              simp [handle, ready, timely, replacedTimely, view]
-          | sample payload law outputEq codeEq =>
-              simp [handle, ready, timely, replacedTimely, view]
-          | resolve owner payload binding checks outputEq codeEq =>
-              by_cases senderEq : sender.1 = owner
-              · simp only [handle, dite_eq_left ready, dite_eq_left replacedTimely, view,
-                  Message.sender, senderEq, dite_eq_left timely]
-                let left := withholdingAction { state with remembered := memory }
-                  event owner payload binding checks outputEq
-                let right := withholdingAction state event owner payload binding checks outputEq
-                have resultEq :
-                    EventCode.resolveOutput? binding checks left state.config.store =
-                      EventCode.resolveOutput? binding checks right state.config.store := by
-                  exact (withholdingAction_output
-                    { state with remembered := memory } event owner payload binding checks
-                    outputEq).trans
-                    (withholdingAction_output state event owner payload binding checks
-                      outputEq).symm
-                calc
-                  Option.map State.publicView
-                      (acceptResolution { state with remembered := memory }
-                        event ready owner payload binding checks outputEq left) =
-                    Option.map State.publicView
-                      (acceptResolution state event ready owner payload binding checks
-                        outputEq left) :=
-                          acceptResolution_publicView_replaceRemembered state memory event
-                            ready owner payload binding checks outputEq left
-                  _ = Option.map State.publicView
-                      (acceptResolution state event ready owner payload binding checks
-                        outputEq right) :=
-                          acceptResolution_publicView_congr state event ready owner payload
-                            binding checks outputEq left right resultEq
-              · simp [handle, Message.sender, ready, timely, replacedTimely, view, senderEq]
         · have replacedLate :
               ¬State.WithinDeadline runtime { state with remembered := memory } event := by
             simpa [State.WithinDeadline] using timely
@@ -1727,8 +1483,8 @@ theorem environmentStep_expire_bind_eq
     simp only [dite_eq_left due, viewEq]
 
 omit [DecidableEq Player] in
-/-- Once a ready resolution deadline is due, expiry is exactly its canonical
-withholding step, which is total and stores publication failure. -/
+/-- Once a ready resolution deadline is due, expiry executes source FALSE,
+which is total and stores publication failure. -/
 theorem environmentStep_expire_resolve_eq
     (runtime : EventGraphRuntime graph) (state : State graph)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
@@ -1762,7 +1518,7 @@ theorem environmentStep_expire_resolve_eq
 omit [DecidableEq Player] in
 /-- A supported expiry command either stutters or performs exactly one graph
 step at its addressed event. The stutter cases are not-ready, unactivated,
-not-due, or sample events; ready resolution reads make withholding total. -/
+not-due, or sample events; ready resolution reads make FALSE execution total. -/
 theorem environmentStep_expire_config_eq_or_mem_step
     (runtime : EventGraphRuntime graph) (state next : State graph)
     (event : graph.EventId)
@@ -1953,22 +1709,6 @@ theorem environmentStep_expire_config_activated
     subst next
     exact ⟨rfl, Or.inl ⟨rfl, rfl⟩⟩
 
-/-- Shared pending-message application instance. Transport, pools, receipts,
-and policy histories come from `Interaction.MessageApplication`. -/
-def application (runtime : EventGraphRuntime graph) : MessageApplication Player where
-  Application := State graph
-  Payload := Payload graph
-  PrivateCommand := PrivateCommand graph
-  EnvironmentCommand := EnvironmentCommand graph
-  PlayerView := PlayerView graph
-  EnvironmentView := PublicView graph
-  privateStep := privateStep
-  submitStep := submitStep
-  environmentStep := environmentStep runtime
-  handle := handle runtime
-  observePlayer := State.playerView
-  observeEnvironment := State.publicView
-
 omit [DecidableEq Player] in
 /-- Only a sample execution randomizes, and graph chance laws are exact finite
 tables, so every environment step is finitely supported. -/
@@ -1987,10 +1727,6 @@ theorem environmentStep_support_finite (runtime : EventGraphRuntime graph) (stat
         · simp
       · simp
   | _ => simp [environmentStep]
-
-theorem application_finiteEnvironment (runtime : EventGraphRuntime graph) :
-    runtime.application.FiniteEnvironment :=
-  runtime.environmentStep_support_finite
 
 end EventGraphRuntime
 end Vegas

@@ -93,14 +93,17 @@ private theorem reactiveResolutionPacket_event {owner : Player} (who : Player)
     (binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload))
     (checks : List (EventGraph.GuardCheck (graph setup).layout payload))
     (outputEq : (graph setup).outputLayout event = .publication payload)
-    (action : (graph setup).Action event) (view : ReactivePlayerView (graph setup)) :
-    Payload.event? (graph setup)
-      (reactiveResolutionPacket who event payload binding checks outputEq action view) =
-        some event := by
-  unfold reactiveResolutionPacket
-  dsimp only
-  repeat' split
-  all_goals rfl
+    (action : (graph setup).Action event) (view : ReactivePlayerView (graph setup))
+    (packet : Payload (graph setup))
+    (sent : reactiveResolutionPacket who event payload binding checks outputEq action view =
+      some packet) :
+    Payload.event? (graph setup) packet = some event := by
+  unfold reactiveResolutionPacket at sent
+  dsimp only at sent
+  repeat' split at sent
+  all_goals first
+    | cases sent; rfl
+    | cases sent
 
 /-- The canonical native decision submits only for its own event. -/
 private theorem submittedEvent_canonicalReactiveDecision (who : Player)
@@ -121,11 +124,16 @@ private theorem submittedEvent_canonicalReactiveDecision (who : Player)
           simp only [Option.map_some, Payload.event?, Option.some.injEq]
           exact fun same => same.symm
   | resolve owner payload binding checks outputEq codeEq =>
-      intro submitted
-      change (reactiveResolutionPacket who event payload binding checks outputEq action
-        view).event? (graph setup) = some other at submitted
-      rw [reactiveResolutionPacket_event] at submitted
-      exact (Option.some.inj submitted).symm
+      cases sent : reactiveResolutionPacket who event payload binding checks outputEq action
+          view with
+      | none => simp [sent]
+      | some packet =>
+          intro submitted
+          simp only [sent, Option.map_some] at submitted
+          change packet.event? (graph setup) = some other at submitted
+          rw [reactiveResolutionPacket_event setup who event payload binding checks outputEq
+            action view packet sent] at submitted
+          exact (Option.some.inj submitted).symm
 
 /-- A canonical compiled decision submits only for its own event. -/
 theorem submittedEvent_canonicalServiceDecision (who : Player)
@@ -139,20 +147,16 @@ theorem submittedEvent_canonicalServiceDecision (who : Player)
   apply submittedEvent_canonicalReactiveDecision setup leaks who event action view.application
     other
   unfold EventGraphRuntime.canonicalServiceDecision at submitted
-  dsimp only at submitted
-  split at submitted
-  · simp [EventGraphRuntime.submittedEvent?] at submitted
-  · rename_i transmission _
-    revert submitted
-    rcases (runtime setup).canonicalReactiveDecision leaks who event action view.application
-      with
-      ⟨_ | material⟩
-    · simp [EventGraphRuntime.submittedEvent?, ReactiveApplication.SubmissionNormalization.action]
-    · intro submitted
-      simpa [EventGraphRuntime.submittedEvent?,
-        ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
-        WitnessedSubmission.normalizeReactive, Submission.normalizeReactive_packet]
-        using submitted
+  revert submitted
+  rcases (runtime setup).canonicalReactiveDecision leaks who event action view.application
+    with
+    ⟨_ | material⟩
+  · simp [EventGraphRuntime.submittedEvent?, ReactiveApplication.SubmissionNormalization.action]
+  · intro submitted
+    simpa [EventGraphRuntime.submittedEvent?,
+      ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
+      WitnessedSubmission.normalizeReactive, Submission.normalizeReactive_packet]
+      using submitted
 
 theorem sourceServiceCanonicalPolicy_submitsAtTurn (profile : BehavioralProfile setup.program)
     (who : Player) :
@@ -424,7 +428,7 @@ theorem respond_candidate_fixed (execution : (application setup leaks).Execution
           · simp only [same, ↓reduceIte]
             exact CommitmentCandidates.lookup_prepare_eq_of_not_fresh _ _ _ _ _ fixed
           · simp only [same, ↓reduceIte]
-      | opening | withhold | malformed => rfl
+      | opening | malformed => rfl
     rw [← registered] at fixed ⊢
     unfold submitStep
     split
@@ -471,10 +475,6 @@ theorem environmentStep_candidate_fixed (execution next : (application setup lea
                     accepted).1]
                   exact CommitmentCandidates.lookup_freeze_eq_of_not_fresh _ _ _ fixed
               | opening event candidate raw =>
-                  rw [call] at accepted
-                  rw [(handle_resolution_tables (runtime setup) _ state _
-                    (by intros; simp) accepted).2]
-              | withhold event =>
                   rw [call] at accepted
                   rw [(handle_resolution_tables (runtime setup) _ state _
                     (by intros; simp) accepted).2]

@@ -633,7 +633,7 @@ theorem canonicalServiceDecision_silent (who : Player)
       simp only [EventGraphRuntime.canonicalServiceDecision,
         EventGraphRuntime.canonicalReactiveDecision, node,
         reactiveResolutionPacket, cast_cast, cast_eq, Bool.false_eq_true, ↓reduceIte,
-        disclosureSubmission_normalize_withhold]
+        Option.map_none]
       rfl
   | bind => exact False.elim
   | sample => exact False.elim

@@ -187,7 +187,7 @@ theorem serviceDecision_effectiveDisclosure (runtime : EventGraphRuntime graph)
               owner).application.observation.store = some PublicationResult.failure at resolved
           simp only [effectiveDisclosure, result, serviceDecision, reactiveDecision, node,
             reactiveResolutionPacket, cast_cast, cast_eq, ↓reduceIte,
-            Bool.false_eq_true, resolved, disclosureSubmission_normalize_withhold]
+            Bool.false_eq_true, resolved, Option.map_none]
 
 /-- A real mixed binding response followed by reserved inclusion preserves the
 whole binding distribution. Receipt success is independent of its hidden value.

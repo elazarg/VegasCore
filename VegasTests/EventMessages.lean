@@ -7,9 +7,7 @@ import VegasTests.SourceSemantics
 /-! # Native compiled-event message integration
 
 The mixed source fixture is executed through native commitment and opening
-handlers followed by the dependent chance command.  A separate application
-trace checks that message delivery alone remains observational and does not
-complete an event.
+handlers followed by the dependent chance command.
 -/
 
 namespace VegasTests.EventMessages
@@ -24,11 +22,8 @@ private abbrev graph := VegasTests.SourceSemantics.mixedInitial.eventGraph
 private def runtime : EventGraphRuntime graph where
   deadline _ := 10
 
-private abbrev app := runtime.application
-
-private def initial : app.State :=
-  MessageApplication.State.initial app <|
-    EventGraphRuntime.State.initial VegasTests.SourceSemantics.mixedInitial.eventInputs
+private def initial : EventGraphRuntime.State graph :=
+  EventGraphRuntime.State.initial VegasTests.SourceSemantics.mixedInitial.eventInputs
 
 private abbrev choiceEvent : graph.EventId := ⟨0, by decide⟩
 private abbrev choiceReveal : graph.EventId := ⟨1, by decide⟩
@@ -47,7 +42,7 @@ private def choiceRaw (value : Option Bool) : EventGraphRuntime.Raw simpleExpr :
 private def seedRaw : EventGraphRuntime.Raw simpleExpr := ⟨.bool, true⟩
 
 private def prepared : EventGraphRuntime.State graph :=
-  EventGraphRuntime.privateStep initial.application .alice
+  EventGraphRuntime.privateStep initial .alice
     (.prepare 0 (choiceRaw none))
 
 private def commitment : Message TestPlayer (EventGraphRuntime.Payload graph) :=
@@ -87,26 +82,6 @@ private theorem handle_commitment :
     choiceHandle .alice (.option .bool) rfl rfl rfl choiceReady choiceTimely rfl rfl rfl
     choiceUnused]
   simp [bound, preparedResult]
-
-private def deliveryOnly : List app.Action := [
-  .privateCommand .alice (.prepare 0 (choiceRaw none)),
-  .submit .alice (.commitment choiceEvent choiceHandle),
-  .deliver .alice (.alice, 0)]
-
-/-- Delivery exposes the pending commitment to the recipient but does not
-install the binding output. Inclusion is the application transition. -/
-example :
-    (app.run deliveryOnly initial).map
-        (fun state => state.application.config.outputs choiceEvent) =
-      PMF.pure none := by
-  simp only [deliveryOnly, MessageApplication.run, MessageApplication.step, app,
-    EventGraphRuntime.application, PMF.pure_bind, PMF.bind_pure,
-    PMF.pure_map]
-  change PMF.pure
-    ((EventGraphRuntime.State.initial
-      VegasTests.SourceSemantics.mixedInitial.eventInputs).config.outputs choiceEvent) =
-        PMF.pure none
-  rfl
 
 private def choiceOpening : Message TestPlayer (EventGraphRuntime.Payload graph) :=
   ⟨(.alice, 1), .opening choiceReveal choiceHandle (choiceRaw none)⟩

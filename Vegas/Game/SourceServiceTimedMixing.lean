@@ -91,7 +91,7 @@ private theorem nonbinding_silence
       refine Finset.mem_image.mpr ⟨false, Finset.mem_univ _, ?_⟩
       simp only [serviceDecision, reactiveDecision, node, reactiveResolutionPacket,
         cast_cast, cast_eq, Bool.false_eq_true, ↓reduceIte,
-        disclosureSubmission_normalize_withhold]
+        Option.map_none]
       rfl
 
 omit [Fintype Player] in

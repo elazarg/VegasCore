@@ -7,8 +7,8 @@ Section A treats canonical FALSE as the baseline of the
 [plan](se-schedule-generalization.md#target-and-fixed-semantics) does: packet-free
 expiry, lawful and uncharged. It also gives each owner a raw withholding action R
 that the contract accepts, executing FALSE, and the settled verdict forbids. The
-baseline has no withholding call: the contract rejects such a packet, so R would
-stay unaccepted and could not complete the event or create Bob's firstR and
+baseline has no withholding call: the packet language has no withholding payload,
+so R does not exist and could not complete the event or create Bob's firstR and
 lateR inputs. Section A's tables, comparisons and equilibrium are therefore
 evidence for the variant with an accepted, forbidden withholding call; they must
 be rederived without R before they count for the baseline. Section B does not
@@ -161,7 +161,7 @@ and their guards are empty. FALSE leaves Bob's decision available. `ret []` omit
 built-in payoff expressions, not terminal publications; [parameterGame](../Vegas/Source/InitialState.lean)
 supports utilities of θ and both public outcomes. θ has no opening certificate.
 Same raw requests pair all prepared candidates, genuine known IDs and emitted
-certificates, by [candidate updates](../Vegas/Pending/EventPlayerAction.lean) and
+certificates, by [candidate updates](../Vegas/Pending/EventSubmission.lean) and
 `WitnessedSubmission.emit_local` in [OpeningEvidence](../Vegas/Pending/OpeningEvidence.lean).
 Pair the entire public scheduler past as well as its current view.
 

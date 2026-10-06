@@ -50,7 +50,7 @@ def PublicView.openingGuardsAccepted (view : PublicView graph)
           (raw.as? payload).any fun value =>
             GuardCheck.allAccepted? checks view.observation.store (.success value) = some true
       | .bind .. | .sample .. => false
-  | .commitment .. | .withhold .. | .malformed .. => false
+  | .commitment .. | .malformed .. => false
 
 omit [IExpr.ResultTypes L] in
 private theorem raw_eq_of_typed (raw : Raw L) (payload : L.Ty) (value : L.Val payload)

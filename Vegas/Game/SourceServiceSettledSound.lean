@@ -46,7 +46,7 @@ def PendingContent (state : EventGraphRuntime.State (graph setup))
   | .opening _ _ _ =>
       certifiedOpening message.payload = true ∧
         state.publicView.openingGuardsAccepted message.payload = true
-  | .withhold _ | .malformed _ => False
+  | .malformed _ => False
 
 /-- A retained packet is on track, or accepted with the content the record
 accepts. -/
@@ -75,7 +75,6 @@ theorem pendingContent_of_fresh (state : EventGraphRuntime.State (graph setup))
   | opening event candidate raw =>
       unfold EventGraphRuntime.freshServiceEnvelope at fresh
       exact ⟨fresh.2.2.1, fresh.2.2.2.1⟩
-  | withhold event => exact fresh.elim
   | malformed raw => exact fresh.elim
 
 /-- The settled content of a packet for a completed event survives every later
@@ -98,7 +97,6 @@ theorem settledContent_step {before after : EventGraphRuntime.State (graph setup
   rcases message with ⟨id, ⟨call, evidence, token⟩⟩
   cases call with
   | malformed raw => exact content.elim
-  | withhold actual => exact content.elim
   | commitment actual candidate =>
       change some actual = some event at named
       cases Option.some.inj named
@@ -142,7 +140,6 @@ theorem settledContent_of_pending (before after : EventGraphRuntime.State (graph
   rcases message with ⟨id, ⟨call, evidence, token⟩⟩
   cases call with
   | malformed raw => exact pending.elim
-  | withhold actual => exact pending.elim
   | commitment actual candidate =>
       change some actual = some event at named
       cases Option.some.inj named
@@ -186,7 +183,6 @@ theorem pendingContent_congr {first second : EventGraphRuntime.State (graph setu
       unfold PublicView.openingGuardsAccepted at pending ⊢
       rw [same]
       exact pending
-  | withhold event => simp only [call] at pending
   | malformed raw => simp only [call] at pending
 
 /-- A conforming packet meets the inclusion deadline with no slack. -/
@@ -208,7 +204,6 @@ theorem fresh_fits (view : PublicView (graph setup))
         change some actual = some event at named
         cases Option.some.inj named
         exact fresh.2.1
-    | withhold actual => exact fresh.elim
     | malformed raw => exact fresh.elim
   unfold PublicView.InclusionFitsDeadline
   cases activated : view.activatedAt event with

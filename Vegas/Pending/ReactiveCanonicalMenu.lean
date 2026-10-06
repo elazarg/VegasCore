@@ -42,11 +42,14 @@ theorem canonicalReactiveDecision_transmission (runtime : EventGraphRuntime grap
     | none => exact Or.inl rfl
     | some serial => exact Or.inr ⟨_, rfl, rfl⟩
   · rename_i owner payload binding checks outputEq codeEq nodeEq
-    exact Or.inr ⟨_, rfl,
-      reactiveResolutionPacket_event who event payload binding checks outputEq choice view⟩
+    cases sent : reactiveResolutionPacket who event payload binding checks outputEq choice view with
+    | none => exact Or.inl (by simp only [Option.map_none])
+    | some packet =>
+        exact Or.inr ⟨_, by simp only [Option.map_some]; rfl,
+          reactiveResolutionPacket_event who event payload binding checks outputEq choice view
+            packet sent⟩
 
-/-- Withholding normalizes to silence; every other canonical decision names
-exactly its decision event. -/
+/-- A canonical decision is silent or names exactly its decision event. -/
 theorem canonicalServiceDecision_cases (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -68,9 +71,6 @@ theorem canonicalServiceDecision_cases (runtime : EventGraphRuntime graph)
           (⟨transmission⟩ : (runtime.reactiveApplication leaks).Action)) emitted
     obtain ⟨⟨packet, opening⟩, evidence⟩ := material
     cases packet with
-    | withhold other =>
-        left
-        simp only [canonicalServiceDecision, same]
     | commitment other candidate | opening other candidate raw | malformed raw =>
         right
         simp only [canonicalServiceDecision, same]
@@ -148,9 +148,6 @@ theorem canonicalServiceDecision_available (who : Player)
   | some material =>
       obtain ⟨⟨packet, opening⟩, evidence⟩ := material
       cases packet with
-      | withhold other =>
-          rw [bounds.menu_mem]
-          exact ⟨trivial, rfl⟩
       | commitment other candidate | opening other candidate raw | malformed raw =>
           rw [menu, ReactiveApplication.SubmissionNormalization.menu_mem]
           exact ⟨_, available, rfl⟩
@@ -424,8 +421,9 @@ theorem canonical_resolution_retained (who : Player)
     (timely : view.application.publicView.WithinDeadline runtime event)
     (unsent : runtime.eventRecorded leaks past event = false)
     (choice : Bool)
-    (allowed : bounds.AllowsPacket (reactiveResolutionPacket who event payload binding checks
-      outputEq (cast (congrArg EventField.Action outputEq.symm) choice) view.application)) :
+    (allowed : ∀ packet, reactiveResolutionPacket who event payload binding checks outputEq
+      (cast (congrArg EventField.Action outputEq.symm) choice) view.application = some packet →
+        bounds.AllowsPacket packet) :
     runtime.canonicalServiceDecision leaks who past view event
         (cast (congrArg EventField.Action outputEq.symm) choice) ∈
       bounds.canonicalActions runtime leaks who past view := by
@@ -435,12 +433,21 @@ theorem canonical_resolution_retained (who : Player)
   · simp only [canonicalChoices, node]
     exact Finset.mem_image.mpr ⟨choice, Finset.mem_univ _, rfl⟩
   · apply bounds.canonicalServiceDecision_available runtime leaks who past view
-    simp only [canonicalReactiveDecision, node]
+    cases sent : reactiveResolutionPacket who event payload binding checks outputEq
+        (cast (congrArg EventField.Action outputEq.symm) choice) view.application with
+    | none =>
+      simp only [canonicalReactiveDecision, node, sent, Option.map_none]
+      exact (ReactiveApplication.ResponseMenu.fromSubmissions_mem
+        (app := runtime.reactiveApplication leaks)
+        (fun _ past view => bounds.submissions
+          (ReactiveApplication.ResponseMenu.knownPackets past view)) who past view _).mpr trivial
+    | some packet =>
+    simp only [canonicalReactiveDecision, node, sent, Option.map_some]
     apply (ReactiveApplication.ResponseMenu.fromSubmissions_mem
       (app := runtime.reactiveApplication leaks)
       (fun _ past view => bounds.submissions
         (ReactiveApplication.ResponseMenu.knownPackets past view)) who past view _).mpr
-    have rawAllowed := bounds.disclosureSubmission_allowed _ [] allowed
+    have rawAllowed := bounds.disclosureSubmission_allowed _ [] (allowed packet sent)
     have normalized := (bounds.submissions_mem _ _).mp
       (bounds.normalize_submission_mem who view.application _ _
         ((bounds.submissions_mem _ _).mpr rawAllowed))

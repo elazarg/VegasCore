@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.EventApplication
-import Interaction.MessageApplicationLaws
 
 /-! # Reachability and activation invariants for event applications
 
@@ -400,72 +399,6 @@ theorem State.Invariant.activatedAt_eq_some_of_ready_actor
   | none => simp [activated] at present
   | some entered => exact ⟨entered, rfl⟩
 
-/-- The complete native message transition preserves the event-runtime
-invariant, including rejected and missing inclusions. -/
-theorem applicationStep_invariant {inputs : graph.Inputs}
-    (runtime : EventGraphRuntime graph)
-    (state next : (application runtime).State)
-    (action : (application runtime).Action)
-    (invariant : state.application.Invariant inputs)
-    (member : next ∈ ((application runtime).step state action).support) :
-    next.application.Invariant inputs := by
-  exact (application runtime).step_application_invariant
-    (State.Invariant inputs)
-    (fun application who command hinvariant =>
-      privateStep_invariant application hinvariant who command)
-    (fun application _ _ hinvariant => hinvariant.copy rfl rfl rfl)
-    (fun application message result hinvariant accepted =>
-      handle_invariant runtime application result message hinvariant accepted)
-    (fun application command result hinvariant supported =>
-      environmentStep_invariant runtime application result command hinvariant supported)
-    state next action invariant member
-
-/-- Runtime reachability survives arbitrary finite message-machine paths. -/
-theorem applicationRun_invariant {inputs : graph.Inputs}
-    (runtime : EventGraphRuntime graph)
-    (state next : runtime.application.State) (actions : List runtime.application.Action)
-    (invariant : state.application.Invariant inputs)
-    (member : next ∈ (runtime.application.run actions state).support) :
-    next.application.Invariant inputs := by
-  exact runtime.application.run_application_invariant (State.Invariant inputs)
-    (fun current who command holds => privateStep_invariant current holds who command)
-    (fun _ _ _ holds => holds.copy rfl rfl rfl)
-    (fun current message result holds accepted =>
-      handle_invariant runtime current result message holds accepted)
-    (fun current command result holds supported =>
-      environmentStep_invariant runtime current result command holds supported)
-    state next actions invariant member
-
-/-- No native message action can undo a completed graph event. -/
-theorem applicationStep_completed_subset (runtime : EventGraphRuntime graph)
-    (state next : (application runtime).State)
-    (action : (application runtime).Action)
-    (member : next ∈ ((application runtime).step state action).support) :
-    state.application.config.cut.completed ⊆
-      next.application.config.cut.completed := by
-  cases action with
-  | privateCommand who command =>
-      simp only [MessageApplication.step, PMF.mem_support_pure_iff _ _] at member
-      subst next
-      exact privateStep_completed_subset state.application who command
-  | submit who payload | deliver who id =>
-      simp only [MessageApplication.step, PMF.mem_support_pure_iff _ _] at member
-      subst next
-      exact Finset.Subset.rfl
-  | «include» id =>
-      simp only [MessageApplication.step, PMF.mem_support_pure_iff _ _] at member
-      subst next
-      apply (application runtime).includePending_application_invariant
-        (fun current => state.application.config.cut.completed ⊆
-          current.config.cut.completed)
-      · intro current message result subset accepted
-        exact subset.trans (handle_completed_subset runtime current result message accepted)
-      · exact Finset.Subset.rfl
-  | environment command =>
-      simp only [MessageApplication.step, PMF.support_map, Set.mem_image] at member
-      obtain ⟨result, supported, rfl⟩ := member
-      exact environmentStep_completed_subset runtime state.application result command supported
-
 /-! ## A call takes effect at most once
 
 The contract keeps no record of rejected identifiers: a rejected call changes
@@ -529,36 +462,6 @@ theorem handle_eq_none_after_accepted (runtime : EventGraphRuntime graph)
     (accepted : handle runtime state message = some next) :
     handle runtime next message = none :=
   handle_eq_none_of_accepted runtime state next next message accepted Finset.Subset.rfl
-
-/-- No finite native message path undoes a completed event. -/
-theorem applicationRun_completed_subset (runtime : EventGraphRuntime graph)
-    (state next : runtime.application.State) (actions : List runtime.application.Action)
-    (member : next ∈ (runtime.application.run actions state).support) :
-    state.application.config.cut.completed ⊆ next.application.config.cut.completed := by
-  exact runtime.application.run_application_invariant
-    (fun current => state.application.config.cut.completed ⊆ current.config.cut.completed)
-    (fun current who command subset =>
-      subset.trans (privateStep_completed_subset current who command))
-    (fun current who payload subset => by
-      change _ ⊆ (submitStep current who payload).config.cut.completed
-      rw [submitStep_config]
-      exact subset)
-    (fun current message result subset accepted =>
-      subset.trans (handle_completed_subset runtime current result message accepted))
-    (fun current command result subset supported =>
-      subset.trans (environmentStep_completed_subset runtime current result command supported))
-    state next actions Finset.Subset.rfl member
-
-/-- A call accepted once is rejected at every state reached afterwards by any
-finite native message path, including further inclusions of it. -/
-theorem handle_eq_none_after_accepted_run (runtime : EventGraphRuntime graph)
-    (state : State graph) (message : Message Player (Payload graph))
-    (start final : runtime.application.State) (actions : List runtime.application.Action)
-    (accepted : handle runtime state message = some start.application)
-    (member : final ∈ (runtime.application.run actions start).support) :
-    handle runtime final.application message = none :=
-  handle_eq_none_of_accepted runtime state start.application final.application message accepted
-    (applicationRun_completed_subset runtime start final actions member)
 
 end EventGraphRuntime
 end Vegas

@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.EventReplayEnvironment
+import Vegas.Pending.EventPrivateObservation
+import Vegas.Pending.EventHandleObservation
 
 /-! # Deadline expiry introduces no private-data-dependent observation -/
 
@@ -109,48 +110,5 @@ theorem environmentStep_expire_playerView_congr
     subst leftNext
     subst rightNext
     exact views
-
-/-- Expiring the same event preserves native replay without a hypothesis
-about either resulting public observation. -/
-theorem NativeReplay.environmentExpire
-    (runtime : EventGraphRuntime graph) (focal : Player) (event : graph.EventId)
-    {left right leftNext rightNext : runtime.application.PolicyExecution}
-    (replay : NativeReplay runtime focal left right)
-    (leftSupported : leftNext ∈ (runtime.application.environmentPolicyStep left
-      (.application (.expire event))).support)
-    (rightSupported : rightNext ∈ (runtime.application.environmentPolicyStep right
-      (.application (.expire event))).support) :
-    NativeReplay runtime focal leftNext rightNext := by
-  have nativeSupport (before after : runtime.application.PolicyExecution)
-      (supported : after ∈ (runtime.application.environmentPolicyStep before
-        (.application (.expire event))).support) :
-      after.native.application ∈
-        (environmentStep runtime before.native.application (.expire event)).support := by
-    have native : after.native ∈
-        ((runtime.application.environmentPolicyStep before
-          (.application (.expire event))).map MessageInterface.PolicyExecution.native).support := by
-      rw [PMF.support_map]
-      exact ⟨after, supported, rfl⟩
-    rw [runtime.application.environmentStep_native] at native
-    simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
-      MessageApplication.step, PMF.support_map, Set.mem_image] at native
-    obtain ⟨next, nextSupported, equal⟩ := native
-    rw [← equal]
-    exact nextSupported
-  have views := environmentStep_expire_playerView_congr runtime focal event
-    left.native.application right.native.application leftNext.native.application
-    rightNext.native.application replay.publicView replay.observation replay.remembered
-    replay.candidates (nativeSupport left leftNext leftSupported)
-    (nativeSupport right rightNext rightSupported)
-  apply replay.environmentExpire_of_result runtime focal event leftSupported rightSupported
-  · exact congrArg PlayerView.publicView views
-  · have observed := congrArg
-      (fun view : PlayerView graph =>
-        (view.observation.completionOrder, view.observation.store,
-          view.observation.ownActions)) views
-    apply PlayerObservation.ext graph
-    · exact congrArg Prod.fst observed
-    · exact congrArg (fun value => value.2.1) observed
-    · exact congrArg (fun value => value.2.2) observed
 
 end Vegas.EventGraphRuntime

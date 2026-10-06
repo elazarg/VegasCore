@@ -145,7 +145,7 @@ section Decision
 
 variable {setup leaks}
 
-/-- A resolution packet is an opening or a withholding of its event. -/
+/-- A resolution sends an opening of its event or nothing. -/
 theorem reactiveResolutionPacket_shape {owner : Player} (who : Player)
     (event : (graph setup).EventId) (payload : L.Ty)
     (binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload))
@@ -153,9 +153,9 @@ theorem reactiveResolutionPacket_shape {owner : Player} (who : Player)
     (outputEq : (graph setup).outputLayout event = .publication payload)
     (action : (graph setup).Action event) (view : ReactivePlayerView (graph setup)) :
     (∃ candidate raw, reactiveResolutionPacket who event payload binding checks outputEq action
-        view = .opening event candidate raw) ∨
+        view = some (.opening event candidate raw)) ∨
       reactiveResolutionPacket who event payload binding checks outputEq action view =
-        .withhold event := by
+        none := by
   unfold reactiveResolutionPacket
   dsimp only
   repeat' split

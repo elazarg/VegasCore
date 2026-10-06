@@ -233,7 +233,7 @@ theorem serviceDecision_resolution_traffic
       have quiet : response = ⟨none⟩ := by
         simp only [response, serviceDecision, reactiveDecision, node, reactiveResolutionPacket,
           cast_cast, cast_eq, Bool.false_eq_true, ↓reduceIte,
-          disclosureSubmission_normalize_withhold]
+          Option.map_none]
         rfl
       rw [quiet, app.trafficStep_silent]
       exact fun _ member => (List.not_mem_nil member).elim

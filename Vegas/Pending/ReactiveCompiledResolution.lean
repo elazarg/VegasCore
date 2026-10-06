@@ -46,13 +46,13 @@ theorem serviceDecision_resolution_cases
         ⟨some ⟨⟨.opening event candidate ⟨payload, value⟩, none⟩, evidence⟩⟩ := by
   let action := cast (congrArg EventField.Action outputEq.symm) choice
   have shape : reactiveResolutionPacket who event payload binding checks outputEq action
-      view.application = .withhold event ∨
+      view.application = none ∨
       ∃ candidate value, EventCode.resolveOutput? binding checks true
           view.application.observation.store = some (.success value) ∧
         view.application.publicView.accepted binding.field = some candidate ∧
         candidate.1 = who ∧
         reactiveResolutionPacket who event payload binding checks outputEq action
-          view.application = .opening event candidate ⟨payload, value⟩ := by
+          view.application = some (.opening event candidate ⟨payload, value⟩) := by
     cases choice with
     | false =>
         exact Or.inl (by simp only [reactiveResolutionPacket, action, cast_cast, cast_eq,
@@ -84,8 +84,7 @@ theorem serviceDecision_resolution_cases
   change runtime.serviceDecision leaks who past view event action = _ ∨ _
   rcases shape with withheld | ⟨candidate, value, result, associated, owned, packet⟩
   · left
-    simp only [serviceDecision, reactiveDecision, node, withheld,
-      disclosureSubmission_normalize_withhold]
+    simp only [serviceDecision, reactiveDecision, node, withheld, Option.map_none]
     rfl
   · let first := WitnessedSubmission.normalizeReactive who view.application []
       (disclosureSubmission (.opening event candidate ⟨payload, value⟩))
@@ -93,8 +92,9 @@ theorem serviceDecision_resolution_cases
         (ReactiveApplication.ResponseMenu.knownPackets past view)).evidence
     refine Or.inr ⟨candidate, value, evidence, result, associated, owned, ?_⟩
     change runtime.serviceDecision leaks who past view event action = _
-    simp only [serviceDecision, reactiveDecision, node, packet, disclosureSubmission,
-      WitnessedSubmission.normalizeReactive, Submission.normalizeReactive_none]
+    simp only [serviceDecision, reactiveDecision, node, packet, Option.map_some,
+      disclosureSubmission, WitnessedSubmission.normalizeReactive,
+      Submission.normalizeReactive_none]
     simp only [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
       evidence, first, disclosureSubmission, WitnessedSubmission.normalizeReactive,
       Submission.normalizeReactive_none]

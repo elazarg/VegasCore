@@ -1,8 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ReactiveBindingBlock
 import Vegas.Pending.ReactiveBindingAllocation
-import Vegas.Pending.EventReplayInitialization
+import Vegas.Pending.EventInitialObservation
+import Vegas.Pending.EventBindingInvariant
 
 /-! # Candidate catalogues represented by completed bindings
 

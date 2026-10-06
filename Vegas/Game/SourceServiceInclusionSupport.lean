@@ -137,7 +137,7 @@ private theorem environment_openable_origin
                   rw [(handle_commitment_tables (runtime setup) _ state message.id event
                     selected accepted).1] at opened
                   exact (CommitmentCandidates.lookup_freeze_openable_iff ..).mp opened
-              | opening event handle value | withhold event =>
+              | opening event handle value =>
                   have tables := handle_resolution_tables (runtime setup) _ state _
                     (by intros; simp [packet]) accepted
                   simpa only [tables.2] using opened

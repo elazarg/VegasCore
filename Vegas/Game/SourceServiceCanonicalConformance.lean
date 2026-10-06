@@ -40,7 +40,7 @@ theorem reactiveResolutionPacket_opening {owner : Player} (who : Player)
     (action : (graph setup).Action event) (view : ReactivePlayerView (graph setup))
     (named : (graph setup).EventId) (candidate : Handle (graph setup)) (raw : Raw L)
     (opened : reactiveResolutionPacket who event payload binding checks outputEq action view =
-      .opening named candidate raw) :
+      some (.opening named candidate raw)) :
     (cast (congrArg EventGraph.EventField.Action outputEq) action : Bool) = true ∧
       ∃ value, EventGraph.EventCode.resolveOutput? binding checks true view.observation.store =
           some (.success value) ∧

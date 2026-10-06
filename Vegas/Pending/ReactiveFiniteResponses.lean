@@ -40,7 +40,6 @@ def AllowsHandle (handle : Handle graph) : Prop :=
 def AllowsPacket : Payload graph → Prop
   | .commitment _ handle => bounds.AllowsHandle handle
   | .opening _ handle raw => bounds.AllowsHandle handle ∧ raw ∈ bounds.values
-  | .withhold _ => True
   | .malformed raw => raw ∈ bounds.values
 
 def AllowsOpening : Option (Raw L) → Prop
@@ -66,7 +65,7 @@ def packets : Finset (Payload graph) := by
   exact ((Finset.univ ×ˢ bounds.handles).image fun pair => .commitment pair.1 pair.2) ∪
     (((Finset.univ ×ˢ bounds.handles) ×ˢ bounds.values).image fun pair =>
       .opening pair.1.1 pair.1.2 pair.2) ∪
-    (Finset.univ.image Payload.withhold) ∪ (bounds.values.image Payload.malformed)
+    (bounds.values.image Payload.malformed)
 
 theorem packets_mem (packet : Payload graph) :
     packet ∈ bounds.packets ↔ bounds.AllowsPacket packet := by

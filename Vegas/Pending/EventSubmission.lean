@@ -1,185 +1,128 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.EventApplication
-import Interaction.MessageApplicationPolicies
 
-/-! # Event-addressed reserved submission selection
+/-! # Submissions with private opening data
 
-The native event service selects the newest still-pending packet that is both
-authored by the event owner and addressed to the requested event. Later
-traffic for another event or author is ignored rather than consuming the
-reserved inclusion opportunity.
+A submission supplies its hidden opening data at the same decision as its
+public envelope; the envelope alone enters the network. Registration is
+implemented by the contract's private preparation step, which is not a
+strategic position.
 -/
 
 noncomputable section
 
 namespace Vegas.EventGraphRuntime
 
-open Interaction
+open GameTheory.Math.Probability Interaction
 
 variable {Player : Type} [DecidableEq Player]
-variable {L : IExpr} [R : IExpr.ResultTypes L]
-variable {graph : Vegas.EventGraph Player L}
+  {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-namespace Payload
+/-- Private opening data is interpreted only for an authored commitment to a
+prepared-slot handle. It cannot change a meaning fixed by an earlier submission. -/
+structure Submission (graph : Vegas.EventGraph Player L) where
+  packet : Payload graph
+  opening : Option (Raw L)
 
-/-- The public author and stable event address expected at one reserved
-inclusion opportunity. -/
-def Matches (event : graph.EventId) (owner : Player)
-    (message : Message Player (Payload graph)) : Prop :=
-  message.sender = owner ∧ message.payload.event? graph = some event
 
-instance (event : graph.EventId) (owner : Player)
-    (message : Message Player (Payload graph)) :
-    Decidable (Matches event owner message) := by
-  unfold Matches
-  infer_instance
+/-- Register opening data only for a fresh handle owned by the sender. Initial
+handles and foreign handles cannot acquire meanings through this operation. -/
+def Submission.register (submission : Submission graph) (state : State graph)
+    (who : Player) : State graph :=
+  match submission.packet, submission.opening with
+  | .commitment _ (owner, .prepared serial), some raw =>
+      if owner = who then
+        { state with candidates := state.candidates.prepare who (.prepared serial) raw }
+      else state
+  | _, _ => state
 
-end Payload
+/-- A submission affects just its authenticated candidate, fixing fresh
+prepared slots to their supplied value and all other fresh slots to failure. -/
+def Submission.candidateAfter (submission : Submission graph) (who : Player)
+    (candidates : CandidateSlot graph → CommitmentCandidate (Raw L))
+    (query : CandidateSlot graph) : CommitmentCandidate (Raw L) :=
+  match submission.packet with
+  | .commitment _ (owner, slot) =>
+      if owner = who ∧ query = slot then
+        match candidates query with
+        | .fresh => match slot, submission.opening with
+          | .prepared _, some raw => .openable raw
+          | _, _ => .unopenable
+        | fixed => fixed
+      else candidates query
+  | _ => candidates query
 
-/-- Select the rightmost element satisfying a decidable public predicate. -/
-private def latestWhere? {α : Type} (predicate : α → Bool) : List α → Option α
-  | [] => none
-  | item :: rest =>
-      match latestWhere? predicate rest with
-      | some latest => some latest
-      | none => if predicate item then some item else none
+theorem Submission.candidateAfter_eq (submission : Submission graph) (who : Player)
+    (state : State graph) (query : CandidateSlot graph) :
+    (submitStep (submission.register state who) who submission.packet).candidates.lookup
+        (who, query) =
+      submission.candidateAfter who (fun slot => state.candidates.lookup (who, slot)) query := by
+  rcases submission with ⟨packet, opening⟩
+  cases packet with
+  | commitment event handle =>
+      rcases handle with ⟨owner, slot⟩
+      by_cases owned : owner = who
+      · subst owner
+        by_cases same : query = slot
+        · subst query
+          cases meaning : state.candidates.lookup (who, slot) <;>
+            cases slot <;> cases opening <;>
+              simp_all [Submission.register, submitStep, Submission.candidateAfter,
+                CommitmentCandidates.prepare, CommitmentCandidates.freeze,
+                CommitmentCandidates.lookup]
+        · cases meaning : state.candidates.lookup (who, slot) <;>
+            cases slot <;> cases opening <;>
+              simp_all [Submission.register, submitStep, Submission.candidateAfter,
+                CommitmentCandidates.prepare, CommitmentCandidates.freeze,
+                CommitmentCandidates.lookup]
+      · cases slot <;> cases opening <;>
+          simp [Submission.register, submitStep, Submission.candidateAfter, owned]
+  | opening event handle raw | malformed raw => rfl
 
-private theorem latestWhere?_some {α : Type} (predicate : α → Bool) :
-    ∀ {items : List α} {selected : α},
-      latestWhere? predicate items = some selected →
-        selected ∈ items ∧ predicate selected = true := by
-  intro items
-  induction items with
-  | nil => simp [latestWhere?]
-  | cons item rest ih =>
-      intro selected found
-      simp only [latestWhere?] at found
-      cases tail : latestWhere? predicate rest with
-      | some latest =>
-          simp only [tail] at found
-          cases found
-          obtain ⟨member, matching⟩ := ih tail
-          exact ⟨List.mem_cons_of_mem item member, matching⟩
-      | none =>
-          simp only [tail] at found
-          by_cases matching : predicate item = true
-          · simp only [matching, ↓reduceIte, Option.some.injEq] at found
-            subst selected
-            exact ⟨List.mem_cons_self, matching⟩
-          · have falseEq : predicate item = false := Bool.eq_false_of_not_eq_true matching
-            simp [falseEq] at found
+/-- Lowering describes the implementation of registration, not strategic
+intermediate positions or a program supplied by the player. -/
+def Submission.registrationCommand (submission : Submission graph) (who : Player) :
+    Option (PrivateCommand graph) :=
+  match submission.packet, submission.opening with
+  | .commitment _ (owner, .prepared serial), some raw =>
+      if owner = who then some (.prepare serial raw) else none
+  | _, _ => none
 
-private theorem latestWhere?_append_matching {α : Type} (predicate : α → Bool)
-    (items : List α) (item : α) (matching : predicate item = true) :
-    latestWhere? predicate (items ++ [item]) = some item := by
-  induction items with
-  | nil => simp [latestWhere?, matching]
-  | cons head tail ih => simp [latestWhere?, ih]
+theorem Submission.register_eq (submission : Submission graph) (who : Player)
+    (state : State graph) :
+    submission.register state who =
+      match submission.registrationCommand who with
+      | none => state
+      | some command => privateStep state who command := by
+  rcases submission with ⟨packet, opening⟩
+  cases packet with
+  | commitment event candidate =>
+      rcases candidate with ⟨owner, slot⟩
+      cases slot <;> cases opening <;>
+        simp only [Submission.register, Submission.registrationCommand]
+      split <;> rfl
+  | opening event candidate raw | malformed raw => rfl
 
-private theorem latestWhere?_exists_of_mem {α : Type} (predicate : α → Bool)
-    (items : List α) (item : α) (member : item ∈ items) (matching : predicate item = true) :
-    ∃ selected, latestWhere? predicate items = some selected := by
-  induction items with
-  | nil => contradiction
-  | cons head tail ih =>
-      cases found : latestWhere? predicate tail with
-      | some selected => exact ⟨selected, by simp [latestWhere?, found]⟩
-      | none =>
-          rcases List.mem_cons.mp member with rfl | inTail
-          · exact ⟨item, by simp [latestWhere?, found, matching]⟩
-          · obtain ⟨selected, present⟩ := ih inTail
-            rw [found] at present
-            contradiction
+theorem Submission.register_facts (submission : Submission graph) (who : Player)
+    (state : State graph) :
+    (submission.register state who).config = state.config ∧
+      (submission.register state who).remembered = state.remembered ∧
+      (submission.register state who).publicView = state.publicView := by
+  rcases submission with ⟨packet, opening⟩
+  cases packet with
+  | commitment event candidate =>
+      rcases candidate with ⟨owner, slot⟩
+      cases slot <;> cases opening <;>
+        by_cases same : owner = who <;> simp [Submission.register, State.publicView, same]
+  | opening event candidate raw | malformed raw => exact ⟨rfl, rfl, rfl⟩
 
-private theorem latestWhere?_append_nonmatching {α : Type} (predicate : α → Bool)
-    (items : List α) (item : α) (nonmatching : predicate item = false) :
-    latestWhere? predicate (items ++ [item]) = latestWhere? predicate items := by
-  induction items with
-  | nil => simp [latestWhere?, nonmatching]
-  | cons head tail ih => simp [latestWhere?, ih]
-
-/-- The newest matching pending packet for one owner and stable event
-address. -/
-def latestEventSubmission? (pool : MessagePool Player (Payload graph))
-    (event : graph.EventId) (owner : Player) :
-    Option (Message Player (Payload graph)) :=
-  latestWhere? (fun message => decide (Payload.Matches event owner message)) pool.pending
-
-/-- A reserved event opportunity either includes the selected matching packet
-or waits when no such packet is pending. -/
-def latestEventSubmissionCommand (runtime : EventGraphRuntime graph)
-    (event : graph.EventId) (owner : Player)
-    (view : runtime.application.EnvironmentObservation) :
-    runtime.application.EnvironmentPolicyCommand :=
-  match latestEventSubmission? view.pool event owner with
-  | some message => .include message.id
-  | none => .wait
-
-/-- Any matching pending envelope ensures that the reserved selector returns
-a packet, even in the presence of unrelated traffic. -/
-theorem latestEventSubmission?_exists (pool : MessagePool Player (Payload graph))
-    (event : graph.EventId) (owner : Player)
-    (message : Message Player (Payload graph)) (pending : message ∈ pool.pending)
-    (matching : Payload.Matches event owner message) :
-    ∃ selected, latestEventSubmission? pool event owner = some selected :=
-  latestWhere?_exists_of_mem _ pool.pending message pending (decide_eq_true matching)
-
-/-- Every selected envelope is pending and has the requested author and event
-address. -/
-theorem latestEventSubmission?_spec
-    (pool : MessagePool Player (Payload graph))
-    (event : graph.EventId) (owner : Player)
-    (message : Message Player (Payload graph))
-    (selected : latestEventSubmission? pool event owner = some message) :
-    message ∈ pool.pending ∧ message.sender = owner ∧
-      message.payload.event? graph = some event := by
-  have found := latestWhere?_some
-    (fun candidate => decide (Payload.Matches event owner candidate)) selected
-  have matching : Payload.Matches event owner message := of_decide_eq_true found.2
-  exact ⟨found.1, matching.1, matching.2⟩
-
-/-- Appending a matching packet makes it the newest selected
-submission. -/
-theorem latestEventSubmission?_append_matching
-    (pool : MessagePool Player (Payload graph))
-    (event : graph.EventId) (owner : Player)
-    (message : Message Player (Payload graph))
-    (matching : Payload.Matches event owner message) :
-    latestEventSubmission? { pool with pending := pool.pending ++ [message] }
-      event owner = some message := by
-  apply latestWhere?_append_matching
-  exact decide_eq_true matching
-
-/-- An unrelated later packet cannot consume or change the reserved event
-selection. -/
-theorem latestEventSubmission?_append_nonmatching
-    (pool : MessagePool Player (Payload graph))
-    (event : graph.EventId) (owner : Player)
-    (message : Message Player (Payload graph))
-    (unrelated : ¬ Payload.Matches event owner message) :
-    latestEventSubmission? { pool with pending := pool.pending ++ [message] }
-        event owner =
-      latestEventSubmission? pool event owner := by
-  apply latestWhere?_append_nonmatching
-  exact decide_eq_false unrelated
-
-/-- An inclusion command names an actually pending envelope with exactly the
-requested public author and event address. -/
-theorem latestEventSubmissionCommand_include
-    (runtime : EventGraphRuntime graph) (event : graph.EventId) (owner : Player)
-    (view : runtime.application.EnvironmentObservation)
-    (id : MessageId Player)
-    (command : runtime.latestEventSubmissionCommand event owner view = .include id) :
-    ∃ message, message.id = id ∧ message ∈ view.pool.pending ∧
-      message.sender = owner ∧ message.payload.event? graph = some event := by
-  unfold latestEventSubmissionCommand at command
-  cases selected : latestEventSubmission? view.pool event owner with
-  | none => simp [selected] at command
-  | some message =>
-      simp only [selected, MessageInterface.EnvironmentPolicyCommand.include.injEq] at command
-      subst id
-      have spec := latestEventSubmission?_spec view.pool event owner message selected
-      exact ⟨message, rfl, spec.1, spec.2.1, spec.2.2⟩
+theorem Submission.register_other (submission : Submission graph) (state : State graph)
+    (actor observer : Player) (different : observer ≠ actor) :
+    (submission.register state actor).playerView observer = state.playerView observer := by
+  rw [submission.register_eq]
+  cases registration : submission.registrationCommand actor with
+  | none => rfl
+  | some command => exact privateStep_playerView_other state actor observer different command
 
 end Vegas.EventGraphRuntime

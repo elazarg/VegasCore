@@ -91,7 +91,7 @@ theorem Submission.normalizeReactive_candidateAfter (who : Player)
                   simp_all [normalizeReactive, openingEffective, candidateAfter]
               · simp [normalizeReactive, openingEffective, fresh, candidateAfter, same]
           · simp [normalizeReactive, openingEffective, owned, candidateAfter]
-  | opening | withhold | malformed => rfl
+  | opening | malformed => rfl
 
 theorem Submission.normalizeReactive_register (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
@@ -117,7 +117,7 @@ theorem Submission.normalizeReactive_register (runtime : EventGraphRuntime graph
                   simp [normalizeReactive, openingEffective, reactiveApplication, fresh, register,
                     state.candidates.prepare_eq_self_of_not_fresh who (.prepared serial) raw fresh]
           · cases material <;> simp [normalizeReactive, openingEffective, register, same]
-  | opening event candidate raw | withhold event | malformed raw =>
+  | opening event candidate raw | malformed raw =>
       cases material <;> simp [normalizeReactive, openingEffective, register]
 
 def WitnessedSubmission.normalizeReactive (who : Player) (view : ReactivePlayerView graph)

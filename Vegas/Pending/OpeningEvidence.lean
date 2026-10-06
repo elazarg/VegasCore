@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.EventPlayerAction
+import Vegas.Pending.EventSubmission
 
 /-! # Transferable evidence attached to native calls
 
@@ -84,11 +84,6 @@ theorem WitnessedPacket.tokenValid_of_event (call : Payload graph)
     (handle : Handle graph) (raw : Raw L) (evidence : Option (OpeningFact graph)) :
     (WitnessedPacket.mk (.opening event handle raw) evidence (some ⟨event⟩)).tokenValid =
       true :=
-  tokenValid_of_event _ evidence event rfl
-
-@[simp] theorem WitnessedPacket.tokenValid_withhold (event : graph.EventId)
-    (evidence : Option (OpeningFact graph)) :
-    (WitnessedPacket.mk (.withhold event) evidence (some ⟨event⟩)).tokenValid = true :=
   tokenValid_of_event _ evidence event rfl
 
 @[simp] theorem WitnessedPacket.tokenValid_none (call : Payload graph)

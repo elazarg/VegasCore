@@ -193,27 +193,29 @@ private theorem retained_resolutionPacket_allowed
     (binding : EventGraph.FieldRef (graph setup).layout (.binding who payload))
     (checks : List (EventGraph.GuardCheck (graph setup).layout payload))
     (outputEq : (graph setup).outputLayout event = .publication payload)
-    (choice : (graph setup).Action event) :
-    bounds.AllowsPacket (reactiveResolutionPacket who event payload binding checks outputEq
-      choice (execution.observe (application setup leaks) who).application) := by
-  dsimp only [reactiveResolutionPacket]
-  split
-  · split
+    (choice : (graph setup).Action event) (packet : Payload (graph setup))
+    (sent : reactiveResolutionPacket who event payload binding checks outputEq
+      choice (execution.observe (application setup leaks) who).application = some packet) :
+    bounds.AllowsPacket packet := by
+  dsimp only [reactiveResolutionPacket] at sent
+  split at sent
+  · split at sent
     · rename_i value resolved
-      split
+      split at sent
       · rename_i candidate accepted
-        split
-        · refine ⟨handles binding.field candidate accepted, ?_⟩
+        split at sent
+        · cases sent
+          refine ⟨handles binding.field candidate accepted, ?_⟩
           apply bounds.resolved_value_covered execution.application valid values binding checks
             value
           change EventGraph.EventCode.resolveOutput? binding checks true
             ((graph setup).playerStore who execution.application.config.store) = _ at resolved
           rwa [EventGraph.EventCode.resolveOutput?_playerStore] at resolved
-        · trivial
-      · trivial
-    · trivial
-    · trivial
-  · trivial
+        · cases sent
+      · cases sent
+    · cases sent
+    · cases sent
+  · cases sent
 
 /-- Local decision admission depends on the actual bounded record and its
 selected canonical slot, rather than on how the history reached that record. -/

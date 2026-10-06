@@ -57,12 +57,12 @@ theorem source_initial_traffic_eq
       (EventGraphRuntime.State.initial_invariant
         (graph := graph setup) (setup.eventInputs right)).reachable
       first.ordered second.ordered first.agrees second.agrees first.history second.history same
-  have paired := NativeReplay.initial (runtime setup) focal
-    (setup.eventInputs left) (setup.eventInputs right) observed
   have publics : (EventGraphRuntime.State.initial (graph := graph setup)
         (setup.eventInputs left)).publicView =
       (EventGraphRuntime.State.initial (graph := graph setup)
-        (setup.eventInputs right)).publicView := paired.publicView
+        (setup.eventInputs right)).publicView :=
+    EventGraphRuntime.State.initial_publicView_eq_of_observation (graph := graph setup) focal
+      (setup.eventInputs left) (setup.eventInputs right) observed
   have candidates := EventGraphRuntime.State.initial_candidates_eq_of_observation
     (graph := graph setup) focal (setup.eventInputs left) (setup.eventInputs right) observed
   have views : (EventGraphRuntime.State.initial (graph := graph setup)

@@ -5,7 +5,6 @@ import VegasTests.EventCompilation
 import VegasTests.EventGraph
 import VegasTests.EventGraphReadout
 import VegasTests.EventMessages
-import VegasTests.EventSequential
 import VegasTests.EventStrategies
 import VegasTests.Honest
 import VegasTests.Language

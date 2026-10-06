@@ -30,7 +30,7 @@ def Payload.bindingEvidence : Payload graph → List (EventGraph.CommitmentEvide
         | some value => [⟨owner, payload, binding, value⟩]
         | none => []
     | .bind .. | .sample .. => []
-  | .commitment .. | .withhold .. | .malformed .. => []
+  | .commitment .. | .malformed .. => []
 
 theorem reactiveEvidenceInvariant (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -60,7 +60,7 @@ theorem handle_bindingEvidence (runtime : EventGraphRuntime graph)
     (handle_store_of_some runtime state next message accepted)
   rcases message with ⟨id, packet⟩
   cases packet with
-  | commitment | withhold | malformed => simp [Payload.bindingEvidence] at decoded
+  | commitment | malformed => simp [Payload.bindingEvidence] at decoded
   | opening event candidate raw =>
       cases node : nodeView graph event with
       | sample | bind => simp [Payload.bindingEvidence, node] at decoded

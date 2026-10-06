@@ -129,7 +129,7 @@ theorem guarded_reveal_silent_service
       have silent : response = ⟨none⟩ := by
         simp only [response, serviceDecision, reactiveDecision, node, reactiveResolutionPacket,
           cast_cast, cast_eq, Bool.false_eq_true, ↓reduceIte,
-          disclosureSubmission_normalize_withhold]
+          Option.map_none]
         rfl
       have lawEq : law = app.silentPolicy (execution.recall owner)
           (execution.observe app owner) := by
@@ -228,7 +228,6 @@ theorem guarded_reveal_silent_service
             ⟨payload, value⟩ true) := by
         dsimp only [response, serviceDecision]
         rw [original]
-        rfl
       obtain ⟨evidence, shape⟩ := (runtime setup).normalized_reveal_response leaks owner
         (execution.recall owner) (execution.observe app owner) event candidate ⟨payload, value⟩
       have responseEq := canonical.trans shape

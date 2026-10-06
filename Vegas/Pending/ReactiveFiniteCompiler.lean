@@ -41,22 +41,25 @@ theorem resolutionPacket_allowed {owner : Player} (who : Player) (event : graph.
     (choice : graph.Action event) (view : ReactivePlayerView graph)
     (values : ∀ value : L.Val payload, (⟨payload, value⟩ : Raw L) ∈ bounds.values)
     (handles : ∀ field candidate, view.publicView.accepted field = some candidate →
-      bounds.AllowsHandle candidate) :
-    bounds.AllowsPacket (reactiveResolutionPacket who event payload binding checks
-      outputEq choice view) := by
-  dsimp only [reactiveResolutionPacket]
-  split
-  · split
+      bounds.AllowsHandle candidate)
+    (packet : Payload graph)
+    (sent : reactiveResolutionPacket who event payload binding checks outputEq choice view =
+      some packet) :
+    bounds.AllowsPacket packet := by
+  dsimp only [reactiveResolutionPacket] at sent
+  split at sent
+  · split at sent
     · rename_i value resolved
-      split
+      split at sent
       · rename_i candidate accepted
-        split
-        · exact ⟨handles binding.field candidate accepted, values value⟩
-        · trivial
-      · trivial
-    · trivial
-    · trivial
-  · trivial
+        split at sent
+        · cases sent
+          exact ⟨handles binding.field candidate accepted, values value⟩
+        · cases sent
+      · cases sent
+    · cases sent
+    · cases sent
+  · cases sent
 
 variable [Fintype Player]
 
@@ -112,11 +115,15 @@ theorem reactiveDecision_available (runtime : EventGraphRuntime graph)
   | resolve owner payload binding checks outputEq codeEq =>
       have typed := values event
       rw [outputEq] at typed
-      simp only [reactiveDecision, node]
+      cases sent : reactiveResolutionPacket who event payload binding checks outputEq choice
+          view.application with
+      | none => simp only [reactiveDecision, node, sent, Option.map_none]
+      | some packet =>
+      simp only [reactiveDecision, node, sent, Option.map_some]
       rw [bounds.submissions_mem]
       have allowed := bounds.disclosureSubmission_allowed _ []
         (bounds.resolutionPacket_allowed who event payload binding checks outputEq choice
-          view.application typed handles)
+          view.application typed handles packet sent)
       have normalized := (bounds.submissions_mem _ _).mp
         (bounds.normalize_submission_mem who view.application _ _
           ((bounds.submissions_mem _ _).mpr allowed))

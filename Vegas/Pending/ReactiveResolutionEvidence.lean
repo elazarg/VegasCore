@@ -136,7 +136,7 @@ theorem serviceDecision_resolutionEvidence
           | false =>
               simp only [serviceDecision, reactiveDecision, node, reactiveResolutionPacket,
                 cast_cast, cast_eq, Bool.false_eq_true, ↓reduceIte,
-                disclosureSubmission_normalize_withhold] at submitted
+                Option.map_none] at submitted
               cases submitted
         subst disclose
         have canonical := runtime.serviceDecision_successful_opening leaks execution recalled

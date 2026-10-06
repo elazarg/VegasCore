@@ -15,9 +15,9 @@ hidden history.
 
 The [canonical client](../Vegas/Pending/ReactiveCanonicalDecision.lean) implements
 source FALSE or failed validation by silence followed by
-ordinary FALSE expiry. A raw explicit withholding call also executes FALSE, but
-the [final-record audit](../Vegas/Pending/ReactiveSettledVerdict.lean) forbids its
-settled packet. Packet-free resolution expiry is not a binding-omission charge.
+ordinary FALSE expiry. The contract has no withholding packet, so silence is
+the only way to withhold. Packet-free resolution expiry is not a
+binding-omission charge.
 WAIT therefore need not represent a deviation from the source prescription.
 
 A runtime compiler result needs three kinds of evidence: executable source

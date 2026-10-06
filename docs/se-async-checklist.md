@@ -63,10 +63,8 @@ sampler with conditional coverage until box W closes.
   (`environmentStep_expire_resolve_eq`); and the audit charges only a traffic
   verdict or a public binding omission read from the record
   (`serviceAudit_charge`, `PublicView.missedBinding`), so an expired resolution
-  is never charged. Divergence: the contract still accepts an explicit
-  withholding call, which executes FALSE and whose packet the settled verdict
-  forbids (`SettledRecord.SettledContent`), instead of rejecting it. The remaining
-  rows have not been checked against the implementation one by one.
+  is never charged. The remaining rows have not been checked against the
+  implementation one by one.
 - [x] **A2. A non-calendar builder satisfies the contract.** Evidence: the
   fixed linear scheduler of
   [CommittedResolutionService](../Vegas/Examples/CommittedResolutionService.lean)

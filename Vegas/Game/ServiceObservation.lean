@@ -2,7 +2,7 @@
 
 import Vegas.Game.ServiceInformation
 import Vegas.Compile.EventGraphPolicyBacktranslation
-import Vegas.Pending.EventReplayInitialization
+import Vegas.Pending.EventInitialObservation
 
 /-! # Reconstructing native checkpoint observations
 

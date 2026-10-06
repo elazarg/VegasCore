@@ -46,7 +46,7 @@ theorem Submission.register_playerView_congr (submission : Submission graph)
                   (left.playerView_observation_eq right who views)
                   (congrArg PlayerView.remembered views) (congrArg PlayerView.candidates views)
               · simpa only [Submission.register, ite_eq_right same] using views
-  | opening event candidate raw | withhold event | malformed raw =>
+  | opening event candidate raw | malformed raw =>
       cases opening <;> exact views
 
 theorem submit_playerView_congr (runtime : EventGraphRuntime graph)

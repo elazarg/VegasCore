@@ -100,7 +100,6 @@ theorem State.openingGuardsAccepted_congr (first second : State graph)
   rcases packet with ⟨call, evidence, token⟩
   cases call with
   | commitment _ _ => rfl
-  | withhold _ => rfl
   | malformed _ => rfl
   | opening actual candidate raw =>
       cases Option.some.inj named

@@ -50,7 +50,7 @@ def freshServiceEnvelope (view : PublicView graph)
             view.accepted binding.field = some candidate ∧ raw.ty = payload ∧
             message.payload.token = some ⟨event⟩
         | .bind .. | .sample .. => False)
-  | .withhold .. | .malformed .. => False
+  | .malformed .. => False
 
 open Classical in
 /-- A published envelope keeps its author's serial. The checker does not
@@ -137,7 +137,7 @@ theorem freshServiceEnvelope_ready (view : PublicView graph)
   | opening event candidate raw =>
       simp only [freshServiceEnvelope, call] at permitted
       exact ⟨event, rfl, permitted.1⟩
-  | withhold event | malformed =>
+  | malformed =>
       simp only [freshServiceEnvelope, call] at permitted
 
 /-- Every conforming fresh call names a ready event whose actor is its sender. -/
@@ -175,7 +175,7 @@ theorem freshServiceEnvelope_owned (view : PublicView graph)
           have actor := congrArg EventCode.actor codeEq
           rw [EventCode.actor_cast outputEq (graph.nodes event)] at actor
           exact ⟨event, rfl, permitted.1, authored ▸ actor⟩
-  | withhold event | malformed =>
+  | malformed =>
       simp only [freshServiceEnvelope, call] at permitted
 
 /-- While one event is the only ready event, every conforming fresh call names
@@ -231,7 +231,7 @@ theorem freshServiceEnvelope_binding_shape
       change some actual = some event at named
       cases Option.some.inj named
       simp only [freshServiceEnvelope, node, and_false] at permitted
-  | withhold actual | malformed =>
+  | malformed =>
       simp only [freshServiceEnvelope] at permitted
 
 /-- A public canonical binding remains acceptable for every private opening
@@ -313,7 +313,7 @@ theorem freshServiceEnvelope_resolution_shape
             exact congrArg some certified
       refine ⟨candidate, raw, authored, owned, associated, typed, ?_, guards⟩
       rw [evidenceEq, tokened]
-  | withhold actual | malformed =>
+  | malformed =>
       simp only [freshServiceEnvelope] at permitted
 
 /-- Submission normalization cannot hide another public evidence choice under

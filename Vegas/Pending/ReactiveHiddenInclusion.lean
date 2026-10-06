@@ -101,48 +101,6 @@ theorem reactive_include_binding_hidden_congr
   exact handle_commitment_playerView_congr runtime left.application right.application who
     id event candidate (views who different)
 
-/-- Withholding remains coupled even when the hidden owner's remembered
-intention and binding meaning differ. Its source-visible result is failure. -/
-theorem reactive_include_withhold_hidden_congr
-    (left right : (runtime.reactiveApplication leaks).Execution) (hidden : Player)
-    (network : left.network = right.network) (receipts : left.receipts = right.receipts)
-    (publicEq : left.application.publicView = right.application.publicView)
-    (views : ∀ who, who ≠ hidden →
-      left.application.playerView who = right.application.playerView who)
-    (recall : ∀ who, who ≠ hidden → left.recall who = right.recall who)
-    (id : MessageId Player) (event : graph.EventId) (evidence : Option (OpeningFact graph))
-    {token : Option (ReadinessToken graph)}
-    (found : left.network.lookup id = some ⟨id, ⟨.withhold event, evidence, token⟩⟩) :
-    let first := left.includePending (runtime.reactiveApplication leaks) id
-    let second := right.includePending (runtime.reactiveApplication leaks) id
-    first.network = second.network ∧ first.receipts = second.receipts ∧
-      (∀ who, who ≠ hidden →
-        first.application.playerView who = second.application.playerView who) ∧
-      (∀ who, who ≠ hidden → first.recall who = second.recall who) := by
-  have ready : left.application.config.cut.Ready event ↔
-      right.application.config.cut.Ready event := by
-    rw [← State.publicView_eventReady, ← State.publicView_eventReady, publicEq]
-  have clockEq : left.application.clock = right.application.clock :=
-    congrArg PublicView.clock publicEq
-  have activatedEq : left.application.activatedAt = right.application.activatedAt :=
-    congrArg PublicView.activatedAt publicEq
-  have timely : left.application.WithinDeadline runtime event ↔
-      right.application.WithinDeadline runtime event := by
-    unfold State.WithinDeadline
-    rw [clockEq, activatedEq]
-  have decision : (handle runtime left.application ⟨id, .withhold event⟩).isSome =
-      (handle runtime right.application ⟨id, .withhold event⟩).isSome := by
-    apply Bool.eq_iff_iff.mpr
-    rw [handle_withhold_isSome_iff, handle_withhold_isSome_iff, ready, timely]
-  apply include_hidden_congr runtime leaks left right hidden network receipts
-    views recall id ⟨.withhold event, evidence, token⟩ found decision
-  intro who different
-  by_cases authored : id.1 = who
-  · exact handle_playerView_congr_of_sender runtime left.application right.application who
-      ⟨id, .withhold event⟩ (views who different) authored
-  · exact handle_withhold_playerView_congr_of_sender_ne runtime left.application right.application
-      who id event (views who different) authored
-
 omit [DecidableEq Player] in
 private theorem checks_public_congr {payload : L.Ty}
     (checks : List (GuardCheck graph.layout payload)) (left right : Store graph.layout)

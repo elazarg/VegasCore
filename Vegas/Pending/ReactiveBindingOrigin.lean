@@ -74,7 +74,7 @@ private theorem acceptedRecall_handle (execution : (runtime.reactiveApplication 
         exact List.mem_filterMap.mpr ⟨entry, by simpa only [owner] using member, emitted⟩
       · rw [Function.update_of_ne (fun equal => same (Sum.inr.inj equal))] at associated
         exact valid current handle associated
-  | opening event candidate raw | withhold event =>
+  | opening event candidate raw =>
       apply valid.copy runtime leaks
       · exact (handle_resolution_tables runtime execution.application next _
           (by intros; simp) handled).1

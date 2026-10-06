@@ -76,7 +76,7 @@ theorem candidateValues_submit (state : State graph) (who : Player)
                   · exact valid candidate raw previous
                   · simpa only [AllowsOpening, same] using allowed
                 · simpa only [Submission.register, owned, ↓reduceIte] using valid
-    | opening | withhold | malformed => exact valid
+    | opening | malformed => exact valid
   intro candidate raw opened
   cases packet : material.packet with
   | commitment event selected =>
@@ -85,7 +85,7 @@ theorem candidateValues_submit (state : State graph) (who : Player)
       · exact registered candidate raw
           ((CommitmentCandidates.lookup_freeze_openable_iff ..).mp opened)
       · exact registered candidate raw opened
-  | opening | withhold | malformed =>
+  | opening | malformed =>
       exact registered candidate raw (by simpa only [submitStep, packet] using opened)
 
 theorem candidateValues_handle (runtime : EventGraphRuntime graph)
@@ -98,7 +98,7 @@ theorem candidateValues_handle (runtime : EventGraphRuntime graph)
       intro candidate raw opened
       rw [(handle_commitment_tables runtime state next id event selected accepted).1] at opened
       exact valid candidate raw ((CommitmentCandidates.lookup_freeze_openable_iff ..).mp opened)
-  | opening event candidate raw | withhold event =>
+  | opening event candidate raw =>
       have tables := handle_resolution_tables runtime state next _ (by intros; simp) accepted
       simpa only [CandidateValues, tables.2] using valid
   | malformed raw => simp only [handle] at accepted; contradiction

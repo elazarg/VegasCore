@@ -39,7 +39,7 @@ theorem reactiveResolutionPacket_opening {owner : Player}
     (associated : view.publicView.accepted binding.field = some candidate)
     (owned : candidate.1 = who) :
     reactiveResolutionPacket who event payload binding checks outputEq action view =
-      .opening event candidate ⟨payload, value⟩ := by
+      some (.opening event candidate ⟨payload, value⟩) := by
   simp only [reactiveResolutionPacket, discloses, ↓reduceIte, resolved, associated, owned]
 
 theorem reactiveResolutionPacket_withhold {owner : Player}
@@ -49,8 +49,7 @@ theorem reactiveResolutionPacket_withhold {owner : Player}
     (outputEq : graph.outputLayout event = .publication payload)
     (action : graph.Action event) (view : ReactivePlayerView graph)
     (withholds : cast (congrArg EventField.Action outputEq) action = false) :
-    reactiveResolutionPacket who event payload binding checks outputEq action view =
-      .withhold event := by
+    reactiveResolutionPacket who event payload binding checks outputEq action view = none := by
   simp only [reactiveResolutionPacket, withholds, Bool.false_eq_true, ↓reduceIte]
 
 /-- A successfully validated publication has authentic opening material in a
@@ -71,7 +70,7 @@ theorem reactiveResolutionPacket_provenance (runtime : EventGraphRuntime graph)
       state.candidates.lookup candidate = .openable ⟨payload, value⟩ ∧
       reactiveResolutionPacket owner event payload binding checks outputEq action
         ((runtime.reactiveApplication leaks).observePlayer state owner) =
-          .opening event candidate ⟨payload, value⟩ := by
+          some (.opening event candidate ⟨payload, value⟩) := by
   have stored : binding.get? state.config.store = some (.success value) := by
     unfold EventCode.resolveOutput? at resolved
     cases bound : binding.get? state.config.store with
@@ -101,36 +100,37 @@ theorem reactiveResolutionSubmission_normal (runtime : EventGraphRuntime graph)
     (action : graph.Action event) :
     let view := (runtime.reactiveApplication leaks).observePlayer state owner
     let packet := reactiveResolutionPacket owner event payload binding checks outputEq action view
-    (disclosureSubmission packet).normalizeReactive owner view [] =
-      disclosureSubmission packet := by
+    packet.map (fun sent => (disclosureSubmission sent).normalizeReactive owner view []) =
+      packet.map disclosureSubmission := by
   let view := (runtime.reactiveApplication leaks).observePlayer state owner
-  change (disclosureSubmission (reactiveResolutionPacket owner event payload binding checks
-    outputEq action view)).normalizeReactive owner view [] =
-      disclosureSubmission (reactiveResolutionPacket owner event payload binding checks
-        outputEq action view)
+  change (reactiveResolutionPacket owner event payload binding checks outputEq action
+    view).map (fun sent => (disclosureSubmission sent).normalizeReactive owner view []) =
+      (reactiveResolutionPacket owner event payload binding checks outputEq action
+        view).map disclosureSubmission
   have localResult : EventCode.resolveOutput? binding checks true view.observation.store =
       EventCode.resolveOutput? binding checks true state.config.store := by
     exact EventCode.resolveOutput?_playerStore binding checks state.config.store true
   cases discloses : cast (congrArg EventField.Action outputEq) action with
   | false =>
       simp only [reactiveResolutionPacket, discloses, Bool.false_eq_true, ↓reduceIte,
-        disclosureSubmission_normalize_withhold]
+        Option.map_none]
   | true =>
       cases resolved : EventCode.resolveOutput? binding checks true state.config.store with
       | none =>
           simp only [reactiveResolutionPacket, discloses, ↓reduceIte, localResult, resolved,
-            disclosureSubmission_normalize_withhold]
+            Option.map_none]
       | some result =>
           cases result with
           | failure =>
               simp only [reactiveResolutionPacket, discloses, ↓reduceIte, localResult, resolved,
-                disclosureSubmission_normalize_withhold]
+                Option.map_none]
           | success value =>
               obtain ⟨candidate, _associated, owned, verified, packet⟩ :=
                 reactiveResolutionPacket_provenance runtime leaks state valid owner event payload
                   binding checks outputEq action discloses value resolved
               dsimp only [view]
-              simp only [packet]
+              simp only [packet, Option.map_some]
+              apply congrArg some
               apply disclosureSubmission_normalize_opening owner _ event candidate
                 ⟨payload, value⟩ owned
               change state.candidates.lookup (owner, candidate.2) = _
@@ -166,7 +166,7 @@ theorem reactiveDecision_opening_law (runtime : EventGraphRuntime graph)
       binding checks outputEq action discloses value resolved
   refine ⟨candidate, ?_, ?_⟩
   · simp only [reactiveDecision, node]
-    rw [reactiveResolutionSubmission_normal runtime leaks state valid, packet]
+    rw [reactiveResolutionSubmission_normal runtime leaks state valid, packet, Option.map_some]
   · exact handle_opening_eq runtime state id event candidate owner payload binding checks
       outputEq codeEq node ready timely sender owned associated value verified stored
       (.success value) resolved

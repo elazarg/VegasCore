@@ -8,17 +8,6 @@ import Interaction.CommunicationKnowledge
 import Interaction.CommunicationProtocol
 import Interaction.DeferredObservation
 import Interaction.IdealCommitments
-import Interaction.MessageApplication
-import Interaction.MessageApplicationAuthorship
-import Interaction.MessageApplicationFiniteness
-import Interaction.MessageApplicationLaws
-import Interaction.MessageApplicationLocality
-import Interaction.MessageApplicationPending
-import Interaction.MessageApplicationPolicies
-import Interaction.MessageApplicationPolicyInvariant
-import Interaction.MessageApplicationPolicyLaws
-import Interaction.MessageApplicationSubmissionOrigin
-import Interaction.MessageApplicationWirePolicy
 import Interaction.MessageInvariant
 import Interaction.MessageLedgerCount
 import Interaction.MessageMonitoring
@@ -28,8 +17,6 @@ import Interaction.MessageNetworkCounters
 import Interaction.MessageNetworkIdentity
 import Interaction.MessageNetworkInvariant
 import Interaction.MessagePool
-import Interaction.MessagePoolCounters
-import Interaction.MessagePoolFreshness
 import Interaction.MessagePublication
 import Interaction.MessagePublishedObservation
 import Interaction.MessageRetention
@@ -113,4 +100,3 @@ import Interaction.ScheduledChoicePosterior
 import Interaction.ScheduledOpening
 import Interaction.ScheduledOpeningPosterior
 import Interaction.ScheduledOpeningSupport
-import Interaction.TransactionalInclusion

@@ -55,7 +55,7 @@ theorem acceptedHandles_handle (runtime : EventGraphRuntime graph)
         exact packet
       · rw [Function.update_of_ne current] at stored
         exact valid field handle stored
-  | opening event candidate raw | withhold event =>
+  | opening event candidate raw =>
       have tables := handle_resolution_tables runtime state next _ (by intros; simp) accepted
       simpa only [AcceptedHandles, tables.1] using valid
   | malformed raw => simp [handle] at accepted

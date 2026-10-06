@@ -71,7 +71,7 @@ theorem serviceDecision_successful_opening
     (execution.recall owner) (execution.observe app owner) at known
   have view : (execution.observe app owner).application =
       app.observePlayer execution.application owner := rfl
-  simp only [serviceDecision, view, reactiveDecision, node, packet, normalized]
+  simp only [serviceDecision, view, reactiveDecision, node, packet, Option.map_some, normalized]
   change (⟨some ((disclosureSubmission (.opening event candidate
       ⟨payload, value⟩)).normalizeReactive
           owner

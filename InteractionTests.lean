@@ -1,9 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import InteractionTests.CoalitionChannel
 import InteractionTests.Commitment
 import InteractionTests.CommitmentCandidates
-import InteractionTests.MessageApplication
 import InteractionTests.Pending
 import InteractionTests.PendingPriority
 import InteractionTests.ReactiveImplementation

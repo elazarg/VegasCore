@@ -204,7 +204,7 @@ theorem sourceServiceOpportunity_reveal
           ⟨none⟩ := by
       simp only [serviceDecision, reactiveDecision, node, reactiveResolutionPacket,
         cast_cast, cast_eq, Bool.false_eq_true, ↓reduceIte,
-        disclosureSubmission_normalize_withhold]
+        Option.map_none]
       rfl
     rw [Function.comp_apply, silent]
     rfl

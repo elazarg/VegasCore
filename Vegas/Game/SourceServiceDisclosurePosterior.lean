@@ -62,7 +62,7 @@ theorem failed_disclosure_response
   cases intention <;>
     simp only [serviceDecision, reactiveDecision, node, reactiveResolutionPacket,
       cast_cast, cast_eq, localResult, Bool.false_eq_true, ↓reduceIte] <;>
-    rw [disclosureSubmission_normalize_withhold] <;> rfl
+    rw [Option.map_none] <;> rfl
 
 /-- The posterior over original intentions after the physical silent response
 is the original law. In particular, no artificial resampling or erasure of the

@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.EventGraph.ResolutionProvenance
 import Vegas.Game.RevealServiceCollection
 import Vegas.Game.RevealServiceCompletion
 import Vegas.Compile.EventGraphReadout

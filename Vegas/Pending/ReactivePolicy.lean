@@ -1,7 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveNormalization
-import Vegas.Pending.EventPolicies
+import Vegas.EventGraph.NormalizedPolicy
+import Vegas.Pending.EventPublicState
 import Interaction.ReactiveRecovery
 import Interaction.ReactiveImplementation
 
@@ -53,31 +54,23 @@ def reactiveResolutionPacket {owner : Player} (who : Player) (event : graph.Even
     (payload : L.Ty) (binding : FieldRef graph.layout (.binding owner payload))
     (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
-    (action : graph.Action event) (view : ReactivePlayerView graph) : Payload graph :=
+    (action : graph.Action event) (view : ReactivePlayerView graph) : Option (Payload graph) :=
   let disclose : Bool := cast (congrArg EventField.Action outputEq) action
   if disclose then
     match EventCode.resolveOutput? binding checks true view.observation.store with
     | some (.success value) => match view.publicView.accepted binding.field with
-      | some handle => if handle.1 = who then .opening event handle ⟨payload, value⟩
-          else .withhold event
-      | none => .withhold event
-    | some .failure | none => .withhold event
-  else .withhold event
+      | some handle => if handle.1 = who then some (.opening event handle ⟨payload, value⟩)
+          else none
+      | none => none
+    | some .failure | none => none
+  else none
 
-/-- Request the owned opening witness carried by a disclosure. Withholding
-supplies no evidence; a false opening claim still fails certificate issuance. -/
+/-- Request the owned opening witness carried by a disclosure. Other packets
+supply no evidence; a false opening claim still fails certificate issuance. -/
 def disclosureSubmission (packet : Payload graph) : WitnessedSubmission graph :=
   ⟨⟨packet, none⟩, match packet with
     | .opening _ candidate raw => .owned ⟨candidate, raw⟩
-    | .commitment .. | .withhold .. | .malformed .. => .none⟩
-
-@[simp] theorem disclosureSubmission_normalize_withhold (who : Player)
-    (view : ReactivePlayerView graph) (known : List (Message Player (WitnessedPacket graph)))
-    (event : graph.EventId) :
-    (disclosureSubmission (.withhold event)).normalizeReactive who view known =
-      disclosureSubmission (.withhold event) := by
-  simp only [disclosureSubmission, WitnessedSubmission.normalizeReactive,
-    Submission.normalizeReactive_none, EvidenceRequest.normalize_none]
+    | .commitment .. | .malformed .. => .none⟩
 
 /-- Normalization retains the authentic certificate of an owned opening. -/
 theorem disclosureSubmission_normalize_opening (who : Player) (view : ReactivePlayerView graph)
@@ -106,8 +99,8 @@ def reactiveDecision (runtime : EventGraphRuntime graph)
             | .failure => none
             | .success value => some ⟨payload, value⟩⟩, .none⟩
     | .resolve _owner payload binding checks outputEq _codeEq =>
-        some ((disclosureSubmission (reactiveResolutionPacket who event payload
-          binding checks outputEq action view)).normalizeReactive who view [])
+        (reactiveResolutionPacket who event payload binding checks outputEq action view).map
+          fun packet => (disclosureSubmission packet).normalizeReactive who view []
 
 open Classical in
 /-- Binding recall uses the value that actually took effect. A failed

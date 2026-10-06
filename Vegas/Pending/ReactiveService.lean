@@ -2,6 +2,7 @@
 
 import Vegas.Pending.ReactiveRuntime
 import Interaction.ReactivePublication
+import Vegas.Pending.ServicePlan
 
 /-! # Reserved service with one owner activation
 

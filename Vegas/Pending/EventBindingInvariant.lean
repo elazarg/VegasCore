@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.EventAssociationInvariant
-import Interaction.MessageApplicationPolicyLaws
 
 /-! # Binding-handle provenance for the event pending runtime
 
@@ -462,22 +461,6 @@ theorem handle_bindingInvariant (runtime : EventGraphRuntime graph)
       | resolve resolveOwner resolvePayload binding checks outputEq codeEq =>
           rw [outputEq] at bindingEq
           cases bindingEq
-  | withhold event =>
-      obtain ⟨completed, _, ready, action, member⟩ :=
-        handle_config_mem_step runtime state next ⟨id, .withhold event⟩ accepted
-      have completedEq : completed = event := by simp_all [Payload.event?]
-      subst completed
-      obtain ⟨acceptedEq, candidatesEq⟩ := handle_resolution_tables runtime state next
-        ⟨id, .withhold event⟩ (by simp) accepted
-      apply bindingInvariant_of_nonbinding_step invariant event ready action member
-        acceptedEq candidatesEq
-      intro owner payload bindingEq
-      cases view : nodeView graph event with
-      | bind => simp [handle, ready, view] at accepted
-      | sample => simp [handle, ready, view] at accepted
-      | resolve resolveOwner resolvePayload binding checks outputEq codeEq =>
-          rw [outputEq] at bindingEq
-          cases bindingEq
 
 omit [DecidableEq Player] in
 /-- Every supported environment command preserves binding provenance. -/
@@ -586,80 +569,5 @@ theorem submitStep_bindingInvariant (state : State graph)
   rw [submitStep_lookup_of_not_fresh state who packet candidate]
   · exact meaning
   · simp [meaning]
-
-/-- Every native message-application action preserves binding provenance. -/
-theorem applicationStep_bindingInvariant (runtime : EventGraphRuntime graph)
-    (state next : (application runtime).State)
-    (action : (application runtime).Action)
-    (invariant : state.application.BindingInvariant)
-    (member : next ∈ ((application runtime).step state action).support) :
-    next.application.BindingInvariant := by
-  exact (application runtime).step_application_invariant
-    State.BindingInvariant
-    (fun application who command hinvariant =>
-      privateStep_bindingInvariant application hinvariant who command)
-    (fun application who packet hinvariant =>
-      submitStep_bindingInvariant application hinvariant who packet)
-    (fun application message result hinvariant accepted =>
-      handle_bindingInvariant runtime application result message hinvariant accepted)
-    (fun application command result hinvariant supported =>
-      environmentStep_bindingInvariant runtime application result command hinvariant supported)
-    state next action invariant member
-
-/-- A finite native action trace preserves binding provenance. -/
-theorem run_bindingInvariant (runtime : EventGraphRuntime graph)
-    (actions : List (application runtime).Action)
-    (state next : (application runtime).State)
-    (invariant : state.application.BindingInvariant)
-    (member : next ∈ ((application runtime).run actions state).support) :
-    next.application.BindingInvariant := by
-  exact (application runtime).run_application_invariant State.BindingInvariant
-    (fun application who command hinvariant =>
-      privateStep_bindingInvariant application hinvariant who command)
-    (fun application who packet hinvariant =>
-      submitStep_bindingInvariant application hinvariant who packet)
-    (fun application message result hinvariant accepted =>
-      handle_bindingInvariant runtime application result message hinvariant accepted)
-    (fun application command result hinvariant supported =>
-      environmentStep_bindingInvariant runtime application result command hinvariant supported)
-    state next actions invariant member
-
-/-- Arbitrary player and environment policies preserve binding provenance
-through every supported native service prefix. -/
-theorem runPolicies_bindingInvariant (runtime : EventGraphRuntime graph)
-    (players : Player → (application runtime).PlayerPolicy)
-    (environment : (application runtime).EnvironmentPolicy)
-    (schedule : List (@MessageApplication.Invocation Player))
-    (execution next : (application runtime).PolicyExecution)
-    (invariant : execution.native.application.BindingInvariant)
-    (member : next ∈
-      ((application runtime).runPolicies players environment schedule execution).support) :
-    next.native.application.BindingInvariant := by
-  exact (application runtime).runPolicies_application_invariant State.BindingInvariant
-    (fun application who command hinvariant =>
-      privateStep_bindingInvariant application hinvariant who command)
-    (fun application who packet hinvariant =>
-      submitStep_bindingInvariant application hinvariant who packet)
-    (fun application message result hinvariant accepted =>
-      handle_bindingInvariant runtime application result message hinvariant accepted)
-    (fun application command result hinvariant supported =>
-      environmentStep_bindingInvariant runtime application result command hinvariant supported)
-    players environment schedule execution next invariant member
-
-/-- Every supported policy run from the native initial state has binding
-provenance, independently of the chosen policies and schedule. -/
-theorem runPolicies_initial_bindingInvariant (runtime : EventGraphRuntime graph)
-    (inputs : graph.Inputs)
-    (players : Player → (application runtime).PlayerPolicy)
-    (environment : (application runtime).EnvironmentPolicy)
-    (schedule : List (@MessageApplication.Invocation Player))
-    (next : (application runtime).PolicyExecution)
-    (member : next ∈ ((application runtime).runPolicies players environment schedule
-      (MessageApplication.PolicyExecution.initial (application runtime)
-        (MessageApplication.State.initial (application runtime)
-          (State.initial inputs)))).support) :
-    next.native.application.BindingInvariant := by
-  exact runPolicies_bindingInvariant runtime players environment schedule _ next
-    (State.initial_bindingInvariant inputs) member
 
 end Vegas.EventGraphRuntime
