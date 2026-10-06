@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ReactiveObservedState
+import Vegas.Pending.ReactiveStateInvariant
+import Vegas.Pending.EventHandleObservation
 import Vegas.Pending.EventExpiryObservation
 
 /-! # Owner-local submission and maintenance laws -/

@@ -101,7 +101,6 @@ import Vegas.Pending.ReactiveHiddenResponse
 import Vegas.Pending.ReactiveInitialValues
 import Vegas.Pending.ReactiveMonitoring
 import Vegas.Pending.ReactiveNormalization
-import Vegas.Pending.ReactiveObservedState
 import Vegas.Pending.ReactiveOffTurnRepair
 import Vegas.Pending.ReactiveOffTurnWindow
 import Vegas.Pending.ReactiveOpeningConformance
