@@ -261,8 +261,10 @@ joint law. It is not pursued.
 - [ ] **S8. Composition.** The retained game is the risk menu
   (`Vegas/Pending/ReactiveRiskMenu.lean`). At every site whose history still
   corresponds to a history of the intended game, whatever the timing so far,
-  play copies the compiled equilibrium of the intended game; at every other
-  site play is free, chosen by rational completion. H and S1–S7 compose into
+  play copies the decision content of the compiled equilibrium of the intended
+  game (what to submit), while the timing (submit now or wait) is chosen by
+  rational completion; an information set is copied when it contains such a
+  history. At every other site play is free, chosen by rational completion. H and S1–S7 compose into
   the target theorem for stage S, with the joint law and no charge or forfeit
   on paths.
   Partial evidence: `exists_sequentialEquilibrium_limit_of_copied_comparisons_of_lawError`
