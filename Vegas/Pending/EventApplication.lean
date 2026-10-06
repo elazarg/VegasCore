@@ -12,9 +12,9 @@ import GameTheoryExtensions.Math.Probability.Expectation
 
 This is the source-independent runtime core for one fixed `EventGraph`.
 Packets address stable events, readiness comes from the graph cut, and each
-strategic event has its own activation time. Candidate meanings and remembered
-actions are private semantic state; public views expose only handles and the
-graph's public observation.
+strategic event has its own activation time. Candidate meanings are private
+semantic state; public views expose only handles and the graph's public
+observation.
 -/
 
 noncomputable section
@@ -77,23 +77,17 @@ names. Non-binding fields permanently carry `none`. -/
 abbrev AcceptedHandles (graph : Vegas.EventGraph Player L) :=
   graph.Field → Option (Handle graph)
 
-/-- Private sample-once memory. The public application transition never
-exposes this table. -/
-abbrev RememberedActions (graph : Vegas.EventGraph Player L) :=
-  (event : graph.EventId) → Option (graph.Action event)
-
 /-- Runtime application state. `config` is the semantic EventGraph state; its
 binding values and original actions are exposed only through graph projections. -/
 structure State (graph : Vegas.EventGraph Player L) where
   config : graph.Config
   accepted : AcceptedHandles graph
   candidates : CommitmentCandidates Player (CandidateSlot graph) (Raw L)
-  remembered : RememberedActions graph
   clock : Nat
   activatedAt : graph.EventId → Option Nat
 
-/-- Public application projection. Candidate meanings, hidden binding values,
-and remembered actions are absent. -/
+/-- Public application projection. Candidate meanings and hidden binding values
+are absent. -/
 structure PublicView (graph : Vegas.EventGraph Player L) where
   observation : graph.PublicObservation
   accepted : AcceptedHandles graph
@@ -152,13 +146,12 @@ theorem PublicView.readinessToken?_event {graph : Vegas.EventGraph Player L}
     (issued : view.readinessToken? event = some token) : token.event = event := by
   rw [((view.readinessToken?_eq_some_iff event token).mp issued).1]
 
-/-- Authenticated player projection. Unfinished remembered choices and this
-player's candidate catalogue are private additions to `playerObserve`. -/
+/-- Authenticated player projection. This player's candidate catalogue is the
+private addition to `playerObserve`. -/
 structure PlayerView (graph : Vegas.EventGraph Player L) where
   who : Player
   publicView : PublicView graph
   observation : graph.PlayerObservation who
-  remembered : (event : graph.EventId) → Option (graph.Action event)
   candidates : CandidateSlot graph → CommitmentCandidate (Raw L)
 
 /-- Public packets retain malformed, premature, and competing
@@ -195,11 +188,9 @@ theorem PublicView.tokenFor_eq_some {graph : Vegas.EventGraph Player L}
   rw [tokenFor, named, Option.bind_some]
   exact (view.readinessToken?_eq_some_iff event ⟨event⟩).mpr ⟨rfl, issued⟩
 
-/-- Authenticated private actions prepare arbitrary candidates or remember a
-typed graph action. Remembering is first-write and owner-checked. -/
+/-- Authenticated private actions prepare arbitrary candidates. -/
 inductive PrivateCommand (graph : Vegas.EventGraph Player L) where
   | prepare (serial : Nat) (raw : Raw L)
-  | remember (event : graph.EventId) (action : graph.Action event)
 
 /-- Public environment operations are separate: clocks do not automatically
 sample or expire events. Expiry tests the current clock. -/
@@ -281,7 +272,6 @@ def initial (inputs : graph.Inputs) : State graph :=
   { config
     accepted := initialAccepted
     candidates := initialCandidates inputs
-    remembered := fun _ => none
     clock := 0
     activatedAt := refreshActivated config 0 (fun _ => none) }
 
@@ -367,8 +357,6 @@ def playerView (state : State graph) (who : Player) : PlayerView graph where
   who
   publicView := state.publicView
   observation := graph.playerObserve who state.config
-  remembered := fun event =>
-    if graph.actor? event = some who then state.remembered event else none
   candidates := fun slot => state.candidates.lookup (who, slot)
 
 /-- Complete one deterministic event and refresh all event-relative clocks. -/
@@ -402,35 +390,23 @@ def WithinDeadline (runtime : EventGraphRuntime graph) (state : State graph)
 
 end State
 
-/-- A private preparation changes only the authenticated candidate catalogue.
-Remembering a choice is first-write and restricted to the event's actor. -/
+/-- A private preparation changes only the authenticated candidate catalogue. -/
 def privateStep (state : State graph) (who : Player) :
     PrivateCommand graph → State graph
   | .prepare serial raw =>
       { state with candidates :=
           state.candidates.prepare who (.prepared serial) raw }
-  | .remember event action =>
-      if _owned : graph.actor? event = some who then
-        match state.remembered event with
-        | some _ => state
-        | none => { state with remembered := Function.update state.remembered event (some action) }
-      else state
 
-/-- Private candidate preparation and remembering expose no application data
+/-- Private candidate preparation exposes no application data
 to the environment. Authentication restricts whose catalogue can be changed. -/
 theorem privateStep_publicView (state : State graph) (who : Player)
     (command : PrivateCommand graph) :
     (privateStep state who command).publicView = state.publicView := by
   cases command with
   | prepare => rfl
-  | remember event action =>
-      by_cases owned : graph.actor? event = some who
-      · rw [privateStep, dite_eq_left owned]
-        cases state.remembered event <;> rfl
-      · rw [privateStep, dite_eq_right owned]
 
 /-- Private commands by one player do not change another player's application
-observation, including its authenticated candidate catalogue and choice cache. -/
+observation, including its authenticated candidate catalogue. -/
 theorem privateStep_playerView_other (state : State graph) (who observer : Player)
     (different : observer ≠ who) (command : PrivateCommand graph) :
     (privateStep state who command).playerView observer = state.playerView observer := by
@@ -448,29 +424,6 @@ theorem privateStep_playerView_other (state : State graph) (who observer : Playe
         exact different (congrArg Prod.fst same)
       rw [candidates]
       rfl
-  | remember event action =>
-      by_cases owned : graph.actor? event = some who
-      · rw [privateStep, dite_eq_left owned]
-        cases cached : state.remembered event with
-        | some prior => rfl
-        | none =>
-            have memory : (fun query =>
-                if graph.actor? query = some observer then
-                  Function.update state.remembered event (some action) query else none) =
-                fun query => if graph.actor? query = some observer then
-                  state.remembered query else none := by
-              funext query
-              by_cases same : query = event
-              · subst query
-                have other : graph.actor? event ≠ some observer := by
-                  rw [owned]
-                  simpa only [ne_eq, Option.some.injEq] using different.symm
-                simp only [other, ↓reduceIte]
-              · rw [Function.update_of_ne same]
-            dsimp only [State.playerView, State.publicView]
-            rw [memory]
-      · rw [privateStep, dite_eq_right owned]
-
 /-- An authored commitment fixes its own handle before transmission.
 Foreign references cannot reserve another player's candidate slots. A fresh
 authored handle becomes permanently unopenable; prepared meanings are retained. -/
@@ -486,11 +439,6 @@ def submitStep (state : State graph) (who : Player) (packet : Payload graph) : S
 
 @[simp] theorem submitStep_accepted (state : State graph) (who : Player) (packet : Payload graph) :
     (submitStep state who packet).accepted = state.accepted := by
-  cases packet <;> simp [submitStep]
-
-@[simp] theorem submitStep_remembered (state : State graph) (who : Player)
-    (packet : Payload graph) :
-    (submitStep state who packet).remembered = state.remembered := by
   cases packet <;> simp [submitStep]
 
 @[simp] theorem submitStep_clock (state : State graph) (who : Player) (packet : Payload graph) :
@@ -560,7 +508,7 @@ theorem submitStep_playerView_other (state : State graph) (who observer : Player
     (submitStep state who packet).playerView observer = state.playerView observer := by
   have catalogue := funext (submitStep_lookup_other state who observer different packet)
   unfold State.playerView
-  simp only [submitStep_config, submitStep_publicView, submitStep_remembered]
+  simp only [submitStep_config, submitStep_publicView]
   rw [catalogue]
 
 /-- An authenticated commitment is fixed before the network can expose it. -/
@@ -570,17 +518,12 @@ theorem submitStep_commitment_fixed (state : State graph) (who : Player)
       (who, slot) ≠ .fresh := by
   simpa [submitStep] using state.candidates.lookup_freeze_ne_fresh (who, slot)
 
-/-- Private preparation and choice recall do not alter accepted handles. -/
+/-- Private preparation does not alter accepted handles. -/
 theorem privateStep_accepted (state : State graph) (who : Player)
     (command : PrivateCommand graph) :
     (privateStep state who command).accepted = state.accepted := by
   cases command with
   | prepare => rfl
-  | remember event action =>
-      by_cases owned : graph.actor? event = some who
-      · rw [privateStep, dite_eq_left owned]
-        cases state.remembered event <;> rfl
-      · rw [privateStep, dite_eq_right owned]
 
 /-- Install a binding handle and complete the bind with the immutable meaning
 already associated with that handle. Wrong-typed and unprepared candidates
@@ -654,36 +597,6 @@ private theorem acceptResolution_publicView_congr (state : State graph)
         (cast (congrArg EventField.Action outputEq.symm) left)
         (cast (congrArg EventField.Action outputEq.symm) right)
         (cast (congrArg EventField.Value outputEq.symm) value))
-
-private theorem acceptBinding_publicView_replaceRemembered (state : State graph)
-    (memory : RememberedActions graph) (event : graph.EventId)
-    (ready : state.config.cut.Ready event) (owner : Player) (payload : L.Ty)
-    (outputEq : graph.outputLayout event = .binding owner payload)
-    (handle : Handle graph) :
-    State.publicView (acceptBinding { state with remembered := memory }
-        event ready owner payload outputEq handle) =
-      State.publicView (acceptBinding state event ready owner payload outputEq handle) := by
-  rfl
-
-omit [DecidableEq Player] in
-private theorem acceptResolution_publicView_replaceRemembered (state : State graph)
-    (memory : RememberedActions graph) (event : graph.EventId)
-    (ready : state.config.cut.Ready event) (owner : Player) (payload : L.Ty)
-    (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (GuardCheck graph.layout payload))
-    (outputEq : graph.outputLayout event = .publication payload) (disclose : Bool) :
-    Option.map State.publicView
-        (acceptResolution { state with remembered := memory }
-          event ready owner payload binding checks outputEq disclose) =
-      Option.map State.publicView
-        (acceptResolution state event ready owner payload binding checks
-          outputEq disclose) := by
-  cases result : EventCode.resolveOutput? binding checks disclose state.config.store with
-  | none => simp [acceptResolution, result]
-  | some value =>
-      simp only [acceptResolution, result, bind, pure, Option.bind_some,
-        Option.map_some]
-      rfl
 
 /-- A node viewed through its output field. This performs the dependent
 transport from `Vegas.EventGraph.nodes` once, so every handler sees the same typed
@@ -988,8 +901,7 @@ private theorem handle_commitment_config_step
     ∃ (ready : state.config.cut.Ready event) (action : graph.Action event),
       next.config ∈ (state.config.step event ready action).support ∧
         next.clock = state.clock ∧
-        next.activatedAt = State.refreshActivated next.config state.clock state.activatedAt ∧
-        next.remembered = state.remembered := by
+        next.activatedAt = State.refreshActivated next.config state.clock state.activatedAt := by
   by_cases ready : state.config.cut.Ready event
   · by_cases timely : state.WithinDeadline runtime event
     · cases view : nodeView graph event with
@@ -1009,7 +921,7 @@ private theorem handle_commitment_config_step
               | .fresh | .unopenable => .failure
             refine ⟨cast (congrArg EventField.Action outputEq.symm) result, ?_⟩
             exact ⟨bind_complete_mem_step state event ready owner payload outputEq codeEq result,
-              rfl, rfl, rfl⟩
+              rfl, rfl⟩
           · simp_all only [reduceCtorEq]
     · simp [handle, ready, timely] at accepted
   · simp [handle, ready] at accepted
@@ -1022,8 +934,7 @@ private theorem handle_opening_config_step
     ∃ (ready : state.config.cut.Ready event) (action : graph.Action event),
       next.config ∈ (state.config.step event ready action).support ∧
         next.clock = state.clock ∧
-        next.activatedAt = State.refreshActivated next.config state.clock state.activatedAt ∧
-        next.remembered = state.remembered := by
+        next.activatedAt = State.refreshActivated next.config state.clock state.activatedAt := by
   by_cases ready : state.config.cut.Ready event
   · by_cases timely : state.WithinDeadline runtime event
     · cases view : nodeView graph event with
@@ -1055,7 +966,7 @@ private theorem handle_opening_config_step
                     subst next
                     refine ⟨cast (congrArg EventField.Action outputEq.symm) true, ?_⟩
                     exact ⟨resolve_complete_mem_step state event ready owner payload binding
-                      checks outputEq codeEq true result resultEq, rfl, rfl, rfl⟩
+                      checks outputEq codeEq true result resultEq, rfl, rfl⟩
               · simp [stored] at accepted
           · simp_all only [reduceCtorEq]
     · simp [handle, ready, timely] at accepted
@@ -1160,115 +1071,13 @@ theorem handle_clock_activated (runtime : EventGraphRuntime graph)
   cases packet with
   | malformed raw => simp [handle] at accepted
   | commitment event candidate =>
-      obtain ⟨_, _, _, clockEq, activatedEq, _⟩ :=
+      obtain ⟨_, _, _, clockEq, activatedEq⟩ :=
         handle_commitment_config_step runtime state next id event candidate accepted
       exact ⟨clockEq, activatedEq⟩
   | opening event candidate raw =>
-      obtain ⟨_, _, _, clockEq, activatedEq, _⟩ :=
+      obtain ⟨_, _, _, clockEq, activatedEq⟩ :=
         handle_opening_config_step runtime state next id event candidate raw accepted
       exact ⟨clockEq, activatedEq⟩
-
-/-- Packet acceptance never overwrites a player's privately sampled action. -/
-theorem handle_remembered (runtime : EventGraphRuntime graph)
-    (state next : State graph) (message : Message Player (Payload graph))
-    (accepted : handle runtime state message = some next) :
-    next.remembered = state.remembered := by
-  rcases message with ⟨id, packet⟩
-  cases packet with
-  | malformed raw => simp [handle] at accepted
-  | commitment event candidate =>
-      obtain ⟨_, _, _, _, _, memory⟩ :=
-        handle_commitment_config_step runtime state next id event candidate accepted
-      exact memory
-  | opening event candidate raw =>
-      obtain ⟨_, _, _, _, _, memory⟩ :=
-        handle_opening_config_step runtime state next id event candidate raw accepted
-      exact memory
-
-/-- Replacing the private remembered-action cache cannot change the public
-result of applying any pending packet. Rejected original `true` actions remain
-available to the owner as ghost recall without becoming ledger information. -/
-theorem handle_publicView_replaceRemembered (runtime : EventGraphRuntime graph)
-    (state : State graph) (memory : RememberedActions graph)
-    (message : Message Player (Payload graph)) :
-    Option.map State.publicView
-        (handle runtime { state with remembered := memory } message) =
-      Option.map State.publicView (handle runtime state message) := by
-  rcases message with ⟨sender, payload⟩
-  cases payload with
-  | malformed raw => rfl
-  | commitment event candidate =>
-      by_cases ready : state.config.cut.Ready event
-      · by_cases timely : State.WithinDeadline runtime state event
-        · have replacedTimely :
-              State.WithinDeadline runtime { state with remembered := memory } event := by
-            simpa [State.WithinDeadline] using timely
-          cases view : nodeView graph event <;>
-            try { simp [handle, Message.sender, ready, timely, replacedTimely, view] }
-          case bind owner payload outputEq codeEq =>
-            by_cases senderEq : sender.1 = owner
-            · by_cases ownerEq : candidate.1 = owner
-              · by_cases vacant : state.accepted (.inr event) = none
-                · by_cases unused : state.HandleUnused candidate
-                  · have replacedUnused :
-                        ({ state with remembered := memory }).HandleUnused candidate := by
-                      simpa only [State.HandleUnused] using unused
-                    simpa [handle, Message.sender, ready, timely, replacedTimely,
-                      view, senderEq, ownerEq, vacant, unused, replacedUnused] using
-                      congrArg some (acceptBinding_publicView_replaceRemembered
-                        state memory event ready owner payload outputEq candidate)
-                  · have replacedUsed :
-                        ¬({ state with remembered := memory }).HandleUnused candidate := by
-                      simpa only [State.HandleUnused] using unused
-                    simp [handle, Message.sender, ready, timely, replacedTimely, view,
-                      senderEq, ownerEq, vacant, unused, replacedUsed]
-                · simp [handle, Message.sender, ready, timely, replacedTimely, view, senderEq,
-                    ownerEq, vacant]
-              · simp [handle, Message.sender, ready, timely, replacedTimely, view,
-                  senderEq, ownerEq]
-            · simp [handle, Message.sender, ready, timely, replacedTimely, view, senderEq]
-        · have replacedLate :
-              ¬State.WithinDeadline runtime { state with remembered := memory } event := by
-            simpa [State.WithinDeadline] using timely
-          simp [handle, ready, timely, replacedLate]
-      · simp [handle, ready]
-  | opening event candidate raw =>
-      by_cases ready : state.config.cut.Ready event
-      · by_cases timely : State.WithinDeadline runtime state event
-        · have replacedTimely :
-              State.WithinDeadline runtime { state with remembered := memory } event := by
-            simpa [State.WithinDeadline] using timely
-          cases view : nodeView graph event <;>
-            try { simp [handle, Message.sender, ready, timely, replacedTimely, view] }
-          case resolve owner payload binding checks outputEq codeEq =>
-            by_cases senderEq : sender.1 = owner
-            · by_cases ownerEq : candidate.1 = owner
-              · by_cases associated : state.accepted binding.field = some candidate
-                · by_cases verified : state.candidates.verify candidate raw = true
-                  · simp only [handle, dite_eq_left ready, dite_eq_left replacedTimely, view,
-                      Message.sender, senderEq, ownerEq, associated, verified,
-                      dite_eq_ite, dite_eq_left timely]
-                    cases typed : raw.as? payload with
-                    | none => rfl
-                    | some value =>
-                      by_cases stored :
-                          binding.get? state.config.store = some (.success value)
-                      · simpa [stored] using
-                          acceptResolution_publicView_replaceRemembered state memory
-                            event ready owner payload binding checks outputEq true
-                      · simp [stored]
-                  · simp [handle, Message.sender, ready, timely, replacedTimely, view, senderEq,
-                      ownerEq, associated, verified]
-                · simp [handle, Message.sender, ready, timely, replacedTimely, view, senderEq,
-                    ownerEq, associated]
-              · simp [handle, Message.sender, ready, timely, replacedTimely, view,
-                  senderEq, ownerEq]
-            · simp [handle, Message.sender, ready, timely, replacedTimely, view, senderEq]
-        · have replacedLate :
-              ¬State.WithinDeadline runtime { state with remembered := memory } event := by
-            simpa [State.WithinDeadline] using timely
-          simp [handle, ready, timely, replacedLate]
-      · simp [handle, ready]
 
 /-- A sample command runs the retained chance kernel once when the addressed
 event is ready. Other event kinds stutter. -/
@@ -1312,51 +1121,6 @@ def environmentStep (runtime : EventGraphRuntime graph) (state : State graph) :
   | .advanceClock => PMF.pure { state with clock := state.clock + 1 }
   | .executeSample event => executeSample state event
   | .expire event => PMF.pure (expire runtime state event)
-
-omit [DecidableEq Player] in
-/-- Environment application operations cannot write a player's action cache. -/
-theorem environmentStep_remembered (runtime : EventGraphRuntime graph)
-    (before after : State graph) (command : EnvironmentCommand graph)
-    (member : after ∈ (environmentStep runtime before command).support) :
-    after.remembered = before.remembered := by
-  cases command with
-  | advanceClock =>
-      simp only [environmentStep, PMF.mem_support_pure_iff _ _] at member
-      subst after
-      rfl
-  | executeSample event =>
-      change after ∈ (executeSample before event).support at member
-      unfold executeSample at member
-      split at member
-      · cases view : nodeView graph event with
-        | bind | resolve =>
-            simp only [view, PMF.mem_support_pure_iff _ _] at member
-            subst after
-            rfl
-        | sample =>
-            simp only [view, PMF.support_map, Set.mem_image] at member
-            obtain ⟨config, _, rfl⟩ := member
-            rfl
-      · simp only [PMF.mem_support_pure_iff _ _] at member
-        subst after
-        rfl
-  | expire event =>
-      change after ∈ (PMF.pure (expire runtime before event)).support at member
-      rw [PMF.mem_support_pure_iff _ _] at member
-      subst after
-      unfold expire
-      split
-      · split
-        · rfl
-        · split
-          · cases nodeView graph event with
-            | bind | sample => rfl
-            | resolve owner payload binding checks outputEq codeEq =>
-                unfold acceptResolution
-                cases resolved : EventCode.resolveOutput? binding checks false
-                    before.config.store <;> simp only [resolved] <;> rfl
-          · rfl
-      · rfl
 
 omit [DecidableEq Player] in
 /-- Environment service never changes commitment admission tables. -/

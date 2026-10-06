@@ -48,23 +48,64 @@ sampler with conditional coverage until box W closes.
 
 ## A. Model
 
-- [ ] **A1. The runtime matches the baseline semantics.** Every operation in
+- [x] **A1. The runtime matches the baseline semantics.** Every operation in
   the semantics table of the [design](se-schedule-generalization.md) is
   implemented as stated; in particular there are no message copies, readiness
   credentials are attached only after prerequisites complete, and packet
   verdicts read only signed content, readiness evidence and the final record.
-  Partial evidence: readiness credentials and the final-record verdict are
-  implemented; players transmit only fresh envelopes they author, and ledger
-  and pending identifiers stay distinct on every history
-  (`ReactiveApplication.idsDistinct_history`). Silent withholding is
-  implemented: a canonical resolution response is silence or the successful
-  authentic opening (`serviceDecision_resolution_cases`); resolution expiry
-  executes source FALSE with publication failure
-  (`environmentStep_expire_resolve_eq`); and the audit charges only a traffic
-  verdict or a public binding omission read from the record
-  (`serviceAudit_charge`, `PublicView.missedBinding`), so an expired resolution
-  is never charged. The remaining rows have not been checked against the
-  implementation one by one.
+  Evidence: row by row, for `EventGraphRuntime.reactiveApplication` with an
+  arbitrary deadline configuration and observation rule, under arbitrary player
+  responses and every scheduler.
+  Readiness: exactly the ready strategic events carry an activation timestamp,
+  none in the future, at every initialized history
+  (`reactive_history_invariant`); a timestamp is set to the clock of the
+  transition in which its event becomes ready and is never restarted
+  (`reactive_transition_activationStart`); it is kept until the event completes
+  (`reactive_respond_progress`, `reactive_environment_progress`). The state has
+  no grant cursor (`EventGraphRuntime.State`).
+  Clock: a response never moves the clock (`reactive_respond_clock`) and a
+  scheduler command moves it by one exactly for `EnvironmentCommand.advanceClock`
+  (`reactive_environmentStep_clock`); the source runtime's deadline is the
+  event index plus one (`runtime_deadline`).
+  Binding: acceptance records the submitted handle and its immutable typed
+  meaning, failure for an unprepared or wrong-typed candidate
+  (`handle_commitment_eq`, `submitStep_commitment_fixed`,
+  `handle_lookup_of_not_fresh`); the environment sees the same envelope for
+  every private meaning (`reactiveBinding_observation`).
+  Resolution: canonical FALSE is silence
+  (`canonicalServiceDecision_resolution_false`); TRUE whose owner-local
+  validation fails is silence (`canonicalServiceDecision_resolution_unvalidated`);
+  TRUE whose validation succeeds emits the opening of the owner's accepted
+  handle with the validated value and its authentic certificate
+  (`history_canonicalServiceDecision_resolution_validated`). The packet
+  language (`EventGraphRuntime.Payload`) has no withholding payload.
+  Silence: a silent response transmits nothing (`trafficStep_silent`);
+  resolution expiry executes source FALSE with publication failure
+  (`environmentStep_expire_resolve_eq`) and changes no public binding omission
+  (`missedBinding_expire_of_not_binding`, `missedBindingBy_expire_of_not_binding`),
+  and a charge needs a traffic verdict or such an omission
+  (`serviceAudit_charge`).
+  Binding expiry: executes source failure (`environmentStep_expire_bind_eq`)
+  and, without an accepted handle, produces the public omission read from the
+  record (`missedBinding_expire`, `State.publicView_missedBinding`).
+  Authorship: every envelope in the network is a fresh emission recorded in its
+  author's recall (`history_provenance`, `trafficStep_submit`), and pending and
+  ledger identifiers stay distinct (`idsDistinct_history`).
+  Causal evidence: every emitted packet carries exactly the token issued by the
+  public view recorded with its response, so a present token means the
+  prerequisites had completed in that view (`history_emissionTokens`,
+  `history_emission_token_issued`, `history_network_tokens`); inclusion rejects
+  a missing or foreign token (`reactiveApplication_handle_of_not_tokenValid`).
+  Packet verdict: the audit's verdict depends on the traffic only through the
+  signed envelopes and otherwise only on the settled record of final public view
+  and receipts (`sourceServiceAudit_congr`); a packet of a completed event is
+  permitted only with an accepting receipt and settled content
+  (`SettledRecord.permits_eq_false_of_settled`, `SettledRecord.permits_of_accepted`).
+  Enforcement: one charge per owner, from the sampled authentic traffic or a
+  public binding omission (`serviceAudit_charge`,
+  `serviceAudit_charge_of_omission`), collected only at settlement
+  (`settlementAudit_charge_unsettled`), while play continues and the omission
+  persists (`reactiveMissedBindingInvariant`).
 - [x] **A2. A non-calendar builder satisfies the contract.** Evidence: the
   fixed linear scheduler of
   [CommittedResolutionService](../Vegas/Examples/CommittedResolutionService.lean)

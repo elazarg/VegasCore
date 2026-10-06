@@ -79,6 +79,10 @@ abbrev graph (setup : Setup (Player := Player) (L := L)) := setup.eventGraph.seq
 def runtime (setup : Setup (Player := Player) (L := L)) : EventGraphRuntime (graph setup) where
   deadline event := event.val + 1
 
+/-- The configured deadline of an event is its index plus one. -/
+theorem runtime_deadline (setup : Setup (Player := Player) (L := L))
+    (event : (graph setup).EventId) : (runtime setup).deadline event = event.val + 1 := rfl
+
 theorem runtime_deadline_pos (setup : Setup (Player := Player) (L := L))
     (event : (graph setup).EventId) : 0 < (runtime setup).deadline event := Nat.zero_lt_succ _
 

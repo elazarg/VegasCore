@@ -577,7 +577,7 @@ private theorem respond_clock (execution : (application setup leaks).Execution) 
   cases transmission with
   | none => rfl
   | some submission =>
-      have visible := submission.call.register_facts who execution.application |>.2.2
+      have visible := submission.call.register_facts who execution.application |>.2
       change (submitStep (submission.call.register execution.application who) who
         submission.call.packet).clock = execution.application.clock
       rw [submitStep_clock]

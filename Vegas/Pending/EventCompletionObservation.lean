@@ -53,7 +53,6 @@ theorem State.acceptHandle_playerView_congr (left right : State graph) (focal : 
     · exact congrArg Prod.fst observationEq
     · exact congrArg (fun value => value.2.1) observationEq
     · exact congrArg (fun value => value.2.2) observationEq
-  have rememberedEq := congrArg PlayerView.remembered views
   have candidatesEq := candidates_accept_observe_congr left.candidates right.candidates
     focal candidate (congrArg PlayerView.candidates views)
   have acceptedEq := congrArg PublicView.accepted publicEq
@@ -72,9 +71,6 @@ theorem State.complete_playerView_congr (left right : State graph) (focal : Play
     (publicEq : left.publicView = right.publicView)
     (observationEq : graph.playerObserve focal left.config =
       graph.playerObserve focal right.config)
-    (rememberedEq : (fun query => if graph.actor? query = some focal then
-      left.remembered query else none) =
-      fun query => if graph.actor? query = some focal then right.remembered query else none)
     (candidatesEq : (fun slot => left.candidates.lookup (focal, slot)) =
       fun slot => right.candidates.lookup (focal, slot))
     (event : graph.EventId) (leftReady : left.config.cut.Ready event)
@@ -107,9 +103,9 @@ theorem State.complete_playerView_congr (left right : State graph) (focal : Play
     unfold State.publicView State.complete
     congr 1
   unfold State.playerView
-  change PlayerView.mk focal _ _ _ _ = PlayerView.mk focal _ _ _ _
+  change PlayerView.mk focal _ _ _ = PlayerView.mk focal _ _ _
   rw [nextPublic]
   dsimp only [State.complete]
-  rw [observed, rememberedEq, candidatesEq]
+  rw [observed, candidatesEq]
 
 end Vegas.EventGraphRuntime

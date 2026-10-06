@@ -82,7 +82,7 @@ private theorem binding_public_view (runtime : EventGraphRuntime graph)
         execution.application.publicView := by
   change (submitStep (Submission.register _ execution.application owner) owner _).publicView = _
   rw [submitStep_publicView]
-  exact (Submission.register_facts _ owner execution.application).2.2
+  exact (Submission.register_facts _ owner execution.application).2
 
 /-- Paired submissions extend an existing hidden-owner frame. Foreign recall is
 retained exactly; the owner's distinct actions and private meanings remain distinct. -/

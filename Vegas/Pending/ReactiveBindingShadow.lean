@@ -243,7 +243,7 @@ private theorem submitted_view (state : State graph) (who : Player)
   dsimp only [reactiveApplication]
   simp only [submitStep_config, submitStep_publicView,
     (submission.call.register_facts who state).1,
-    (submission.call.register_facts who state).2.2]
+    (submission.call.register_facts who state).2]
   congr 1
   funext slot
   exact submission.call.candidateAfter_eq who state slot

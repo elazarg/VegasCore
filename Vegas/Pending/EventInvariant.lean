@@ -177,7 +177,7 @@ theorem initial_invariant (inputs : graph.Inputs) :
 
 end State
 
-/-- Principal-local preparation and recall do not affect the graph execution,
+/-- Principal-local preparation does not affect the graph execution,
 clock, or activation frontier. -/
 theorem privateStep_invariant {inputs : graph.Inputs} (state : State graph)
     (invariant : state.Invariant inputs) (who : Player)
@@ -186,11 +186,6 @@ theorem privateStep_invariant {inputs : graph.Inputs} (state : State graph)
   cases command with
   | prepare serial raw =>
       apply invariant.copy <;> rfl
-  | remember event action =>
-      by_cases owned : graph.actor? event = some who
-      · cases remembered : state.remembered event
-        <;> apply invariant.copy <;> simp [privateStep, owned, remembered]
-      · apply invariant.copy <;> simp [privateStep, owned]
 
 /-- Private commands leave every graph/service timing field unchanged. -/
 theorem privateStep_facts (state : State graph) (who : Player)
@@ -200,11 +195,6 @@ theorem privateStep_facts (state : State graph) (who : Player)
       (privateStep state who command).activatedAt = state.activatedAt := by
   cases command with
   | prepare serial raw => exact ⟨rfl, rfl, rfl⟩
-  | remember event action =>
-      by_cases owned : graph.actor? event = some who
-      · cases remembered : state.remembered event <;>
-          simp [privateStep, owned, remembered]
-      · simp [privateStep, owned]
 
 /-- Private commands cannot undo any completed event. -/
 theorem privateStep_completed_subset (state : State graph) (who : Player)

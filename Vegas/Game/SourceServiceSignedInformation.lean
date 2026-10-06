@@ -6,9 +6,8 @@ import Interaction.ReactiveSubmissionSerial
 
 /-! # One witnessed signed breach classifies a native information site
 
-Every legal initialized response history retains the same empty application
-intention table. Own recall reconstructs the sender counter and, together with
-the current view, the known packets. The same submission therefore emits the
+Own recall reconstructs the sender counter and, together with the current
+view, the known packets. The same submission therefore emits the
 same entire signed envelope at every hidden history of one information site.
 
 A constructor breach witnessed at one such history consequently supplies the
@@ -28,20 +27,6 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-
-/-- The reactive application never writes the intention table, including
-arbitrary raw deviations and commands from the scheduler. -/
-theorem sourceService_history_remembered_empty
-    {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
-    {control : (application setup leaks).Control}
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-      (some control)) :
-    control.execution.application.remembered = fun _ => none := by
-  exact ((runtime setup).reactiveRememberedInvariant leaks
-    (fun table => table = fun _ => none)).history (initialLaw setup) horizon scheduler (by
-      intro state supported
-      obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
-      rfl) trace
 
 /-- Actual own recall and current view determine the entire next signed
 envelope, including sender serial, even for arbitrary private material. -/
@@ -70,10 +55,8 @@ theorem sourceService_response_envelope_eq
     app.history_inputRecall (initialLaw setup) horizon scheduler rightTrace
   have known := (runtime setup).known_eq_of_input_eq leaks left right who leftRecall rightRecall
     past view
-  have remembered := (sourceService_history_remembered_empty setup leaks leftTrace).trans
-    (sourceService_history_remembered_empty setup leaks rightTrace).symm
   have packet := (runtime setup).response_packet_eq_of_input_eq leaks left right who material
-    view remembered known
+    view known
   have leftSerial : left.SerialRecall app :=
     app.serialRecall_history scheduler (initialLaw setup) horizon leftTrace
   have rightSerial : right.SerialRecall app :=

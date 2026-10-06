@@ -14,46 +14,6 @@ variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [IExpr.ResultTypes L]
 variable {graph : Vegas.EventGraph Player L}
 
-private def focalWithholdingAction (state : State graph) (event : graph.EventId)
-    (focal : Player) (payload : L.Ty)
-    (binding : FieldRef graph.layout (.binding focal payload))
-    (checks : List (GuardCheck graph.layout payload))
-    (outputEq : graph.outputLayout event = .publication payload) : Bool :=
-  match state.remembered event with
-  | none => false
-  | some remembered =>
-      match cast (congrArg EventField.Action outputEq) remembered with
-      | false => false
-      | true =>
-          if EventCode.resolveOutput? binding checks true
-                (graph.playerStore focal state.config.store) =
-              EventCode.resolveOutput? binding checks false
-                (graph.playerStore focal state.config.store) then true else false
-
-private theorem focalWithholdingAction_output (state : State graph)
-    (event : graph.EventId) (owner : Player) (payload : L.Ty)
-    (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (GuardCheck graph.layout payload))
-    (outputEq : graph.outputLayout event = .publication payload) :
-    EventCode.resolveOutput? binding checks
-        (focalWithholdingAction state event owner payload binding checks outputEq)
-        state.config.store =
-      EventCode.resolveOutput? binding checks false state.config.store := by
-  cases remembered : state.remembered event with
-  | none => simp [focalWithholdingAction, remembered]
-  | some action =>
-      cases actionEq : cast (congrArg EventField.Action outputEq) action with
-      | false => simp [focalWithholdingAction, remembered, actionEq]
-      | true =>
-          simp only [focalWithholdingAction, remembered, actionEq]
-          split
-          · rename_i localEq
-            exact (EventCode.resolveOutput?_playerStore (graph := graph) binding checks
-                state.config.store true).symm.trans
-              (localEq.trans (EventCode.resolveOutput?_playerStore (graph := graph) binding checks
-                state.config.store false))
-          · rfl
-
 omit [DecidableEq Player] in
 private theorem focalReadFields_cast {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {left right : EventField Player L}
@@ -114,8 +74,8 @@ private theorem Raw.eq_mk_of_as?_eq_some (raw : Raw L) (payload : L.Ty)
   · contradiction
 
 /-- Handling the same focal-authored packet has the same focal observation in
-two states with equal focal views. Foreign candidate meanings, remembered
-actions, binding values, and supplied graph actions need not agree. -/
+two states with equal focal views. Foreign candidate meanings, binding values,
+and supplied graph actions need not agree. -/
 theorem handle_playerView_congr_of_sender
     (runtime : EventGraphRuntime graph) (left right : State graph) (focal : Player)
     (message : Message Player (Payload graph))
@@ -135,10 +95,6 @@ theorem handle_playerView_congr_of_sender
     · exact congrArg Prod.fst observed
     · exact congrArg (fun value => value.2.1) observed
     · exact congrArg (fun value => value.2.2) observed
-  have rememberedEq : (fun event => if graph.actor? event = some focal then
-      left.remembered event else none) =
-    fun event => if graph.actor? event = some focal then right.remembered event else none :=
-    congrArg PlayerView.remembered views
   have candidatesEq : (fun slot => left.candidates.lookup (focal, slot)) =
       fun slot => right.candidates.lookup (focal, slot) :=
     congrArg PlayerView.candidates views
@@ -210,7 +166,7 @@ theorem handle_playerView_congr_of_sender
                         dsimp only [leftValue, rightValue, leftResult, rightResult]
                         rw [resultEq]
                       have completed := State.complete_playerView_congr left right focal
-                        publicEq observationEq rememberedEq candidatesEq event leftReady
+                        publicEq observationEq candidatesEq event leftReady
                         rightReady leftAction rightAction leftValue rightValue
                         (fun _ => valueEq) (fun _ => actionEq)
                       have accepted := State.acceptHandle_playerView_congr
@@ -356,7 +312,7 @@ theorem handle_playerView_congr_of_sender
                                 let resultValue : (graph.outputLayout event).Value :=
                                   cast (congrArg EventField.Value outputEq.symm) result
                                 have completed := State.complete_playerView_congr left right focal
-                                  publicEq observationEq rememberedEq candidatesEq event leftReady
+                                  publicEq observationEq candidatesEq event leftReady
                                   rightReady action action resultValue resultValue
                                   (fun _ => rfl) (fun _ => rfl)
                                 rw [handle_opening_eq runtime left id event (focal, slot) focal
@@ -442,7 +398,6 @@ theorem handle_commitment_playerView_congr
     · exact congrArg Prod.fst observed
     · exact congrArg (fun value => value.2.1) observed
     · exact congrArg (fun value => value.2.2) observed
-  have rememberedEq := congrArg PlayerView.remembered views
   have candidatesEq := congrArg PlayerView.candidates views
   have acceptedEq : left.accepted = right.accepted :=
     congrArg PublicView.accepted publicEq
@@ -491,7 +446,7 @@ theorem handle_commitment_playerView_congr
                   let rightValue : (graph.outputLayout event).Value :=
                     cast (congrArg EventField.Value outputEq.symm) rightResult
                   have completed := State.complete_playerView_congr left right focal
-                    publicEq observationEq rememberedEq candidatesEq event leftReady rightReady
+                    publicEq observationEq candidatesEq event leftReady rightReady
                     leftAction rightAction leftValue rightValue (by
                       intro visible
                       exfalso

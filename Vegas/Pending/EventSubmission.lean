@@ -107,7 +107,6 @@ theorem Submission.register_eq (submission : Submission graph) (who : Player)
 theorem Submission.register_facts (submission : Submission graph) (who : Player)
     (state : State graph) :
     (submission.register state who).config = state.config ∧
-      (submission.register state who).remembered = state.remembered ∧
       (submission.register state who).publicView = state.publicView := by
   rcases submission with ⟨packet, opening⟩
   cases packet with
@@ -115,7 +114,7 @@ theorem Submission.register_facts (submission : Submission graph) (who : Player)
       rcases candidate with ⟨owner, slot⟩
       cases slot <;> cases opening <;>
         by_cases same : owner = who <;> simp [Submission.register, State.publicView, same]
-  | opening event candidate raw | malformed raw => exact ⟨rfl, rfl, rfl⟩
+  | opening event candidate raw | malformed raw => exact ⟨rfl, rfl⟩
 
 theorem Submission.register_other (submission : Submission graph) (state : State graph)
     (actor observer : Player) (different : observer ≠ actor) :

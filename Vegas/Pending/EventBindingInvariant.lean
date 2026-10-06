@@ -271,9 +271,9 @@ private theorem bindingInvariant_of_nonbinding_step
           action output different
   exact (ref.get?_congr _ _ storeEq).symm.trans stored
 
-/-- Private remembering preserves binding provenance. Preparation also
-preserves it because every handle already backing a success is permanently
-openable and candidate meanings are write-once. -/
+/-- Private preparation preserves binding provenance: every handle already
+backing a success is permanently openable and candidate meanings are
+write-once. -/
 theorem privateStep_bindingInvariant (state : State graph)
     (invariant : state.BindingInvariant) (who : Player)
     (command : PrivateCommand graph) :
@@ -293,11 +293,6 @@ theorem privateStep_bindingInvariant (state : State graph)
       · exact candidate
       · rw [candidate]
         simp
-  | remember event action =>
-      by_cases owned : graph.actor? event = some who
-      · cases remembered : state.remembered event
-        <;> apply invariant.copy <;> simp [privateStep, owned, remembered]
-      · apply invariant.copy <;> simp [privateStep, owned]
 
 namespace State
 

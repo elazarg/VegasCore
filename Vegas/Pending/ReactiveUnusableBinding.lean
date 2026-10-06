@@ -91,7 +91,7 @@ theorem rawBinding_reserved_config
     rw [submitStep_config, (call.register_facts who execution.application).1]
   have publicEq : submitted.application.publicView = execution.application.publicView := by
     change (submitStep (call.register execution.application who) who call.packet).publicView = _
-    rw [submitStep_publicView, (call.register_facts who execution.application).2.2]
+    rw [submitStep_publicView, (call.register_facts who execution.application).2]
   have accepted := congrArg PublicView.accepted publicEq
   have submittedReady : submitted.application.config.cut.Ready event := by rwa [configEq]
   have submittedTimely : submitted.application.WithinDeadline runtime event := by

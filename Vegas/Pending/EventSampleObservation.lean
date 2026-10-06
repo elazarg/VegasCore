@@ -117,7 +117,6 @@ theorem environmentStep_sample_hidden_congr
     apply congrArg some
     exact State.complete_playerView_congr left right who publicEq
       (left.playerView_observation_eq right who (views who ordinary))
-      (congrArg PlayerView.remembered (views who ordinary))
       (congrArg PlayerView.candidates (views who ordinary)) event leftReady rightReady
       _ _ _ _ (fun _ => rfl) (fun _ => rfl)
 

@@ -56,26 +56,6 @@ theorem privateStep_other_playerView (state : State graph) (owner observer : Pla
       simp only [privateStep, State.playerView]
       rw [candidates]
       rfl
-  | remember event action =>
-      by_cases owned : graph.actor? event = some owner
-      · rw [privateStep, dite_eq_left owned]
-        cases cached : state.remembered event with
-        | some prior => rfl
-        | none =>
-            have memory :
-                (fun query => if graph.actor? query = some observer then
-                  Function.update state.remembered event (some action) query else none) =
-                (fun query => if graph.actor? query = some observer then
-                  state.remembered query else none) := by
-              funext query
-              by_cases same : query = event
-              · subst query
-                simp [owned, Ne.symm different]
-              · simp [Function.update_of_ne same]
-            simp only [State.playerView]
-            rw [memory]
-            rfl
-      · rw [privateStep, dite_eq_right owned]
 
 /-- Private commands do not advance the semantic event configuration. -/
 theorem privateStep_config (state : State graph) (owner : Player)
@@ -83,23 +63,14 @@ theorem privateStep_config (state : State graph) (owner : Player)
     (privateStep state owner command).config = state.config := by
   cases command with
   | prepare => rfl
-  | remember event action =>
-      by_cases owned : graph.actor? event = some owner
-      · rw [privateStep, dite_eq_left owned]
-        cases state.remembered event <;> rfl
-      · rw [privateStep, dite_eq_right owned]
 
 /-- Equal authenticated focal views remain equal after applying the same
-focal private command. Foreign candidate meanings and remembered actions are
-not compared. -/
+focal private command. Foreign candidate meanings are not compared. -/
 theorem privateStep_focal_playerView_congr
     (left right : State graph) (focal : Player) (command : PrivateCommand graph)
     (publicEq : left.publicView = right.publicView)
     (observationEq : graph.playerObserve focal left.config =
       graph.playerObserve focal right.config)
-    (rememberedEq : (fun event => if graph.actor? event = some focal then
-      left.remembered event else none) = fun event =>
-        if graph.actor? event = some focal then right.remembered event else none)
     (candidatesEq : (fun slot => left.candidates.lookup (focal, slot)) =
       fun slot => right.candidates.lookup (focal, slot)) :
     (privateStep left focal command).playerView focal =
@@ -120,33 +91,6 @@ theorem privateStep_focal_playerView_congr
           right.candidates.lookup_prepare_other focal (.prepared serial) raw
             (focal, slot) same,
           congrFun candidatesEq slot]
-  | remember event action =>
-      by_cases owned : graph.actor? event = some focal
-      · have cachedEq : left.remembered event = right.remembered event := by
-          have atEvent := congrFun rememberedEq event
-          simpa [State.playerView, owned] using atEvent
-        rw [privateStep, dite_eq_left owned, privateStep, dite_eq_left owned]
-        cases leftCached : left.remembered event with
-        | none =>
-            have rightCached : right.remembered event = none := cachedEq.symm.trans leftCached
-            simp only [rightCached]
-            unfold State.playerView
-            congr 1
-            funext query
-            by_cases same : query = event
-            · subst query
-              simp [owned]
-            · simp only
-              rw [Function.update_of_ne same, Function.update_of_ne same]
-              exact congrFun rememberedEq query
-        | some prior =>
-            have rightCached : right.remembered event = some prior := cachedEq.symm.trans leftCached
-            simp only [rightCached]
-            unfold State.playerView
-            congr 1
-      · rw [privateStep, dite_eq_right owned, privateStep, dite_eq_right owned]
-        unfold State.playerView
-        congr 1
 
 
 end Vegas.EventGraphRuntime

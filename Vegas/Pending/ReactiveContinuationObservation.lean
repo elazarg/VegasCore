@@ -44,7 +44,7 @@ theorem Submission.register_playerView_congr (submission : Submission graph)
                 exact privateStep_focal_playerView_congr left right who (.prepare serial raw)
                   (congrArg PlayerView.publicView views)
                   (left.playerView_observation_eq right who views)
-                  (congrArg PlayerView.remembered views) (congrArg PlayerView.candidates views)
+                  (congrArg PlayerView.candidates views)
               · simpa only [Submission.register, ite_eq_right same] using views
   | opening event candidate raw | malformed raw =>
       cases opening <;> exact views
@@ -58,12 +58,11 @@ theorem submit_playerView_congr (runtime : EventGraphRuntime graph)
   have registered := submission.call.register_playerView_congr left right who views
   have publicEq := congrArg PlayerView.publicView registered
   have observed := State.playerView_observation_eq _ _ who registered
-  have remembered := congrArg PlayerView.remembered registered
   have candidates := submitStep_candidates_congr _ _ who submission.call.packet
     (congrArg PlayerView.candidates registered)
   change (submitStep _ who _).playerView who = (submitStep _ who _).playerView who
   unfold State.playerView
-  simp only [submitStep_publicView, submitStep_config, submitStep_remembered]
+  simp only [submitStep_publicView, submitStep_config]
   congr 1
 
 /-- The emitted packet depends on the sender's own view only: its candidate
@@ -136,7 +135,6 @@ theorem maintenance_playerView_congr (runtime : EventGraphRuntime graph)
       (environmentStep runtime right command).map (fun next => next.playerView who) := by
   have publicEq : left.publicView = right.publicView := congrArg PlayerView.publicView views
   have observed := left.playerView_observation_eq right who views
-  have remembered := congrArg PlayerView.remembered views
   have candidates := congrArg PlayerView.candidates views
   cases command with
   | executeSample event => exact (maintenance event rfl).elim
@@ -153,7 +151,7 @@ theorem maintenance_playerView_congr (runtime : EventGraphRuntime graph)
       obtain ⟨a, ha⟩ := (environmentStep runtime left (.expire event)).support_nonempty
       obtain ⟨b, hb⟩ := (environmentStep runtime right (.expire event)).support_nonempty
       have same := environmentStep_expire_playerView_congr runtime who event left right a b
-        publicEq observed remembered candidates ha hb
+        publicEq observed candidates ha hb
       simp only [environmentStep, PMF.mem_support_pure_iff _ _] at ha hb
       subst a
       subst b

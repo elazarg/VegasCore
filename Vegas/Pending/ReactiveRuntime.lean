@@ -115,7 +115,7 @@ theorem reactiveApplication_submit_publicView (runtime : EventGraphRuntime graph
   change (submitStep (submission.call.register state who) who
     submission.call.packet).publicView = _
   rw [submitStep_publicView]
-  exact (Submission.register_facts _ who state).2.2
+  exact (Submission.register_facts _ who state).2
 
 theorem reactiveApplication_packet_token (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -281,7 +281,7 @@ theorem reactiveBinding_observation (runtime : EventGraphRuntime graph)
           execution.application.publicView := by
     change (submitStep (Submission.register _ execution.application who) who _).publicView = _
     rw [submitStep_publicView]
-    exact (Submission.register_facts _ who execution.application).2.2
+    exact (Submission.register_facts _ who execution.application).2
   change ReactiveApplication.EnvironmentView.mk (app := (runtime.reactiveApplication leaks)) _
     (execution.respond (runtime.reactiveApplication leaks) who
       (runtime.reactiveBinding leaks who event payload first serial)).application.publicView _ =

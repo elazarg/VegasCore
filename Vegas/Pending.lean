@@ -82,11 +82,13 @@ import Vegas.Pending.ReactiveCandidateBudget
 import Vegas.Pending.ReactiveCandidateRealization
 import Vegas.Pending.ReactiveCanonicalDecision
 import Vegas.Pending.ReactiveCanonicalMenu
+import Vegas.Pending.ReactiveCanonicalResolution
 import Vegas.Pending.ReactiveCompiledMenu
 import Vegas.Pending.ReactiveCompiledResolution
 import Vegas.Pending.ReactiveContinuationObservation
 import Vegas.Pending.ReactiveDisclosure
 import Vegas.Pending.ReactiveDisclosureStability
+import Vegas.Pending.ReactiveEmissionTokens
 import Vegas.Pending.ReactiveEntryStability
 import Vegas.Pending.ReactiveEvidence
 import Vegas.Pending.ReactiveFiniteCompiler

@@ -2,15 +2,20 @@
 
 import Vegas.Game.SourceServiceCanonicalConformance
 
-/-! # Prescribed fresh calls carry the audit's serial
+/-! # Prescribed fresh calls carry the send-time conformance serial
 
-A fresh call carries its author's next serial, and the audit expects the
-number of distinct identifiers of that author already on the ledger
-(`Interaction.Message.distinctAuthoredCount`). Under the asynchronous contract,
-on the support of the turn-counted policy, deferral trembles included and
-whatever everyone else does, the two agree at every fresh call
-(`Vegas.sourceServiceTurnPolicy_serial`), so every prescribed fresh call is
-permitted by the audit (`Vegas.sourceServiceTurnPolicy_permittedServiceEnvelope`).
+A fresh call carries its author's next serial, and the send-time conformance
+rule (`Vegas.EventGraphRuntime.permittedServiceEnvelope`) expects the number of
+distinct identifiers of that author already on the ledger
+(`Interaction.Message.distinctAuthoredCount`). That rule is a proof device, not
+the audit: the settled verdict (`Vegas.EventGraphRuntime.SettledRecord.permits`)
+reads no send-time ledger and counts the author's bindings settled before the
+event (`Vegas.EventGraphRuntime.PublicView.bindingCountBefore`). Under the
+asynchronous contract, on the support of the turn-counted policy, deferral
+trembles included and whatever everyone else does, serial and ledger count
+agree at every fresh call (`Vegas.sourceServiceTurnPolicy_serial`), so every
+prescribed fresh call passes the send-time rule
+(`Vegas.sourceServiceTurnPolicy_permittedServiceEnvelope`).
 
 Each earlier fresh call of the owner was for an event that has completed by
 the time of the next one: on the sequentialized graph the turn's event is the
@@ -56,7 +61,7 @@ def OneCallPerEvent (execution : (application setup leaks).Execution) (who : Pla
       first.emitted = some firstMessage → second.emitted = some secondMessage →
       firstMessage.id = secondMessage.id
 
-/-- Every fresh call of `who` carried the audit's serial: the number of
+/-- Every fresh call of `who` carried the send-time serial: the number of
 distinct identifiers of `who` on the ledger it saw. -/
 def FreshCallsCounted (execution : (application setup leaks).Execution) (who : Player) :
     Prop :=
@@ -410,7 +415,7 @@ theorem serialFacts_roundsFrom {horizon : Nat}
       rw [show horizon - count = (horizon - (count + 1)) + 1 by omega] at trace
       exact serialFacts_round contract follows trace atTurn valid conform calls once counted moved
 
-/-- **Prescribed fresh calls carry the audit's serial.** Under the asynchronous
+/-- **Prescribed fresh calls carry the send-time serial.** Under the asynchronous
 contract, in every profile in which `who` follows the turn-counted policy,
 deferral trembles included and whatever everyone else does, every fresh
 submission of `who` within the horizon carries the number of distinct
@@ -435,10 +440,10 @@ theorem sourceServiceTurnPolicy_serial {horizon : Nat}
   (serialFacts_roundsFrom contract players who timing profile follows count bounded execution
     reached).2.2 entry member material message fresh emitted
 
-/-- **Prescribed fresh calls are permitted by the audit.** Under the
+/-- **Prescribed fresh calls pass the send-time conformance rule.** Under the
 asynchronous contract, in every profile in which `who` follows the
 turn-counted policy, deferral trembles included and whatever everyone else
-does, every fresh submission of `who` within the horizon passes the audit's
+does, every fresh submission of `who` within the horizon passes the send-time
 per-packet rule on the view and ledger it was made from. -/
 theorem sourceServiceTurnPolicy_permittedServiceEnvelope {horizon : Nat}
     {scheduler : (application setup leaks).Scheduler} {delay bound : (graph setup).EventId → Nat}

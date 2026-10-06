@@ -3,11 +3,11 @@
 import Vegas.Pending.ReactiveStateInvariant
 import Vegas.Pending.EventHandleObservation
 
-/-! # Observable application transitions without a strategic scratch cache
+/-! # Observable application transitions
 
-Reactive responses never alter the application intention table. Its
-initial value remains fixed, so the actual reactive observation suffices for
-the existing owner-local packet-handling law.
+The reactive local observation carries exactly the authenticated player
+projection of the application state. The actual reactive observation therefore
+suffices for the existing owner-local packet-handling law.
 -/
 
 noncomputable section
@@ -19,55 +19,30 @@ open GameTheory.Math.Probability Interaction
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-theorem reactiveRememberedInvariant (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (property : RememberedActions graph → Prop) : (runtime.reactiveApplication leaks).Invariant
-      (fun state => property state.remembered) where
-  submit state who material fixed := by
-    change property
-      (submitStep (material.call.register state who) who material.call.packet).remembered
-    rw [submitStep_remembered, (material.call.register_facts who state).2.1]
-    exact fixed
-  handle state message next fixed accepted := by
-    rw [handle_remembered runtime state next ⟨message.id, message.payload.call⟩
-      (reactiveHandle_call accepted)]
-    exact fixed
-  environment state command next fixed reached := by
-    rw [environmentStep_remembered runtime state next command reached]
-    exact fixed
-
-def ReactivePlayerView.withRemembered (view : ReactivePlayerView graph)
-    (table : RememberedActions graph) : PlayerView graph where
+/-- The authenticated player projection carried by a reactive observation. -/
+def ReactivePlayerView.toPlayerView (view : ReactivePlayerView graph) : PlayerView graph where
   who := view.who
   publicView := view.publicView
   observation := view.observation
-  remembered event := if graph.actor? event = some view.who then table event else none
   candidates := view.candidates
 
 theorem reactive_playerView_congr (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (left right : State graph) (who : Player)
     (views : (runtime.reactiveApplication leaks).observePlayer left who =
-      (runtime.reactiveApplication leaks).observePlayer right who)
-    (remembered : left.remembered = right.remembered) :
-    left.playerView who = right.playerView who := by
-  have same := congrArg (fun view => view.withRemembered left.remembered) views
-  calc
-    left.playerView who = ReactivePlayerView.withRemembered
-        ((runtime.reactiveApplication leaks).observePlayer left who) left.remembered := rfl
-    _ = ReactivePlayerView.withRemembered
-        ((runtime.reactiveApplication leaks).observePlayer right who) left.remembered := same
-    _ = right.playerView who := by rw [remembered]; rfl
+      (runtime.reactiveApplication leaks).observePlayer right who) :
+    left.playerView who = right.playerView who :=
+  congrArg ReactivePlayerView.toPlayerView views
 
 theorem reactive_handle_observation (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (left right : State graph) (who : Player) (message : Message Player (Payload graph))
     (views : (runtime.reactiveApplication leaks).observePlayer left who =
       (runtime.reactiveApplication leaks).observePlayer right who)
-    (remembered : left.remembered = right.remembered) (sender : message.sender = who) :
+    (sender : message.sender = who) :
     (handle runtime left message).map (fun state => state.playerView who) =
       (handle runtime right message).map (fun state => state.playerView who) :=
   handle_playerView_congr_of_sender runtime left right who message
-    (reactive_playerView_congr runtime leaks left right who views remembered) sender
+    (reactive_playerView_congr runtime leaks left right who views) sender
 
 end Vegas.EventGraphRuntime

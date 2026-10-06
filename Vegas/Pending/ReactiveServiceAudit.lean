@@ -50,16 +50,23 @@ theorem PublicView.missedBindingBy_clear (view : PublicView graph)
 /-- A graph without binding events has no binding to omit. -/
 theorem PublicView.missedBindingBy_of_publications (view : PublicView graph)
     (publications : ∀ event owner payload, graph.outputLayout event ≠ .binding owner payload)
-    (who : Player) : view.missedBindingBy who = false := by
-  apply view.missedBindingBy_clear
-  intro event
-  unfold PublicView.missedBinding
-  split
-  · rename_i owner payload layout
-    exact (publications event owner payload layout).elim
-  · rfl
-  · rfl
-  · rfl
+    (who : Player) : view.missedBindingBy who = false :=
+  view.missedBindingBy_clear
+    (fun event => view.missedBinding_of_not_binding event (publications event)) who
+
+/-- **An expired resolution is never charged as an omission.** Expiry of a
+non-binding event leaves every player's public binding-omission verdict
+unchanged. -/
+theorem missedBindingBy_expire_of_not_binding (runtime : EventGraphRuntime graph)
+    (state next : State graph) (event : graph.EventId)
+    (notBinding : ∀ owner payload, graph.outputLayout event ≠ .binding owner payload)
+    (reached : next ∈ (environmentStep runtime state (.expire event)).support)
+    (who : Player) :
+    next.publicView.missedBindingBy who = state.publicView.missedBindingBy who := by
+  classical
+  apply Bool.eq_iff_iff.mpr
+  simp only [PublicView.missedBindingBy, decide_eq_true_eq,
+    missedBinding_expire_of_not_binding runtime state next event notBinding reached]
 
 /-- The contract's settled record at an execution: its public view and the
 receipts of every inclusion. -/

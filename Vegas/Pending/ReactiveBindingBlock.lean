@@ -86,7 +86,7 @@ theorem reactiveBinding_reserved_config (runtime : EventGraphRuntime graph)
   have publicEq : submitted.application.publicView = execution.application.publicView := by
     change (submitStep (Submission.register _ execution.application owner) owner _).publicView = _
     rw [submitStep_publicView]
-    exact (Submission.register_facts _ owner execution.application).2.2
+    exact (Submission.register_facts _ owner execution.application).2
   have acceptedEq : submitted.application.accepted = execution.application.accepted :=
     congrArg PublicView.accepted publicEq
   have clockEq : submitted.application.clock = execution.application.clock :=

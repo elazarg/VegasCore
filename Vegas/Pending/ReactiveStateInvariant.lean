@@ -31,7 +31,7 @@ theorem reactive_respond_application (runtime : EventGraphRuntime graph)
       exact ⟨(submitStep_config _ who material.call.packet).trans
         (material.call.register_facts who execution.application).1,
         (submitStep_publicView _ who material.call.packet).trans
-          (material.call.register_facts who execution.application).2.2⟩
+          (material.call.register_facts who execution.application).2⟩
 
 theorem reactiveStateInvariant (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -43,10 +43,10 @@ theorem reactiveStateInvariant (runtime : EventGraphRuntime graph)
         (material.call.register_facts who state).1
     · exact congrArg PublicView.clock
         ((submitStep_publicView _ who material.call.packet).trans
-          (material.call.register_facts who state).2.2)
+          (material.call.register_facts who state).2)
     · exact congrArg PublicView.activatedAt
         ((submitStep_publicView _ who material.call.packet).trans
-          (material.call.register_facts who state).2.2)
+          (material.call.register_facts who state).2)
   handle state message next valid accepted :=
     handle_invariant runtime state next ⟨message.id, message.payload.call⟩ valid
       (reactiveHandle_call accepted)
@@ -70,18 +70,19 @@ theorem reactiveStoreInvariant (runtime : EventGraphRuntime graph)
   environment state command next stored supported :=
     environmentStep_store_of_some runtime state next command supported field value stored
 
-/-- Every initialized native history retains a configuration reachable by
-the original graph rules from a supported setup. This allows arbitrary player
-responses, scheduling, and passive observations. It asserts legality of game
-effects, not equality of strategy spaces or equilibrium outcomes. -/
-theorem reactive_history_graph_reachable (runtime : EventGraphRuntime graph)
+/-- Every initialized native history satisfies the runtime invariant of some
+supported setup: its configuration is reachable by the original graph rules,
+exactly the ready strategic events carry an activation timestamp, and no
+timestamp lies in the future. This allows arbitrary player responses,
+scheduling, and passive observations. -/
+theorem reactive_history_invariant (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler) {state}
     (trace : ((runtime.reactiveApplication leaks).protocol
       (inputs.map State.initial) horizon scheduler).Trace state) :
     ReactiveApplication.stateInvariant (fun state : State graph =>
-      ∃ setup ∈ inputs.support, state.config.Reachable setup) state := by
+      ∃ setup ∈ inputs.support, state.Invariant setup) state := by
   let preserved : (runtime.reactiveApplication leaks).Invariant
       (fun state : State graph => ∃ setup ∈ inputs.support, state.Invariant setup) := {
     submit := by
@@ -96,10 +97,24 @@ theorem reactive_history_graph_reachable (runtime : EventGraphRuntime graph)
       rintro state command next ⟨setup, supported, valid⟩ reached
       exact ⟨setup, supported,
         (runtime.reactiveStateInvariant leaks setup).environment state command next valid reached⟩ }
-  have valid := preserved.history (inputs.map State.initial) horizon scheduler (by
+  exact preserved.history (inputs.map State.initial) horizon scheduler (by
     intro state supported
     obtain ⟨setup, chosen, rfl⟩ := PMF.support_map .. ▸ supported
     exact ⟨setup, chosen, State.initial_invariant setup⟩) trace
+
+/-- Every initialized native history retains a configuration reachable by
+the original graph rules from a supported setup. This allows arbitrary player
+responses, scheduling, and passive observations. It asserts legality of game
+effects, not equality of strategy spaces or equilibrium outcomes. -/
+theorem reactive_history_graph_reachable (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (inputs : PMF graph.Inputs) (horizon : Nat)
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler) {state}
+    (trace : ((runtime.reactiveApplication leaks).protocol
+      (inputs.map State.initial) horizon scheduler).Trace state) :
+    ReactiveApplication.stateInvariant (fun state : State graph =>
+      ∃ setup ∈ inputs.support, state.config.Reachable setup) state := by
+  have valid := runtime.reactive_history_invariant leaks inputs horizon scheduler trace
   cases state with
   | none => trivial
   | some control =>

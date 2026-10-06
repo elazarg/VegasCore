@@ -288,7 +288,7 @@ theorem repairResponse_include_input (who : Player) (memory : BindingMemory runt
   have publicEq : before.application.publicView = left.application.publicView := by
     change (submitStep (originalCall.register left.application who) who
       originalCall.packet).publicView = _
-    rw [submitStep_publicView, (originalCall.register_facts who left.application).2.2]
+    rw [submitStep_publicView, (originalCall.register_facts who left.application).2]
   have beforeReady : before.application.config.cut.Ready event := by rwa [configEq]
   have beforeTimely : before.application.WithinDeadline runtime event := by
     unfold State.WithinDeadline

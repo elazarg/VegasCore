@@ -196,7 +196,7 @@ theorem handle_opening_unrepaired_congr
       result rightResolved, Option.map_some, Option.map_some]
   apply congrArg some
   exact State.complete_playerView_congr left right focal publicEq observed
-    (congrArg PlayerView.remembered views) (congrArg PlayerView.candidates views)
+    (congrArg PlayerView.candidates views)
     event ready rightReady _ _ _ _ (fun _ => rfl) (fun _ => rfl)
 
 /-- Including the same valid opening of an unrepaired binding preserves the

@@ -58,7 +58,7 @@ theorem bindingTraffic_sample_result
     rfl
   have complete := State.complete_playerView_congr left.application right.application focal
     publics (left.application.playerView_observation_eq right.application focal views)
-    (congrArg PlayerView.remembered views) (congrArg PlayerView.candidates views)
+    (congrArg PlayerView.candidates views)
     event leftReady rightReady
     (cast (congrArg EventField.Action outputEq.symm) PUnit.unit)
     (cast (congrArg EventField.Action outputEq.symm) PUnit.unit)

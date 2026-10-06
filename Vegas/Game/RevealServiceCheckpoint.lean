@@ -54,7 +54,6 @@ structure PublicCheckpoint (setup : Setup (Player := Player) (L := L))
     (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial)).accepted
   candidates : execution.application.candidates =
     (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial)).candidates
-  remembered : execution.application.remembered = fun _ => none
   timely : ∀ event, event.val = rank → ((graph setup).actor? event).isSome = true →
     execution.application.WithinDeadline (runtime setup) event
   reveals : setup.program.RevealOnly
@@ -110,7 +109,6 @@ theorem checkpoint_initial (setup : Setup (Player := Player) (L := L))
     binding := EventGraphRuntime.State.initial_bindingInvariant _
     accepted := rfl
     candidates := rfl
-    remembered := rfl
     pending := ?_
     leaked := rfl
     inputs := ?_
@@ -241,7 +239,6 @@ theorem Checkpoint.respond_recall_eq {setup : Setup (Player := Player) (L := L)}
     (graph setup).publicObserve nativeRight.application.config at publicViews
   apply respond_recall_eq_of_input_eq (runtime setup) leaks nativeLeft nativeRight who response
     leftCheckpoint.recall rightCheckpoint.recall past views
-    (leftCheckpoint.remembered.trans rightCheckpoint.remembered.symm)
   rw [leftCheckpoint.counters, rightCheckpoint.counters, publicViews]
   rfl
 
@@ -387,10 +384,9 @@ theorem Checkpoint.reveal_response [Fintype Player]
     rw [applicationEq]
     cases sourceChoice setup leaks response <;> rfl
   have tables : next.application.accepted = execution.application.accepted ∧
-      next.application.candidates = execution.application.candidates ∧
-      next.application.remembered = execution.application.remembered := by
+      next.application.candidates = execution.application.candidates := by
     rw [applicationEq]
-    cases sourceChoice setup leaks response <;> exact ⟨rfl, rfl, rfl⟩
+    cases sourceChoice setup leaks response <;> exact ⟨rfl, rfl⟩
   have supported : next ∈ ((runtime setup).runInteractionPlan leaks players
       ((runtime setup).idleNetwork leaks) suffix submitted).support := by
     rw [show (runtime setup).runInteractionPlan leaks players
@@ -462,8 +458,7 @@ theorem Checkpoint.reveal_response [Fintype Player]
     invariant := progressed.invariant
     binding := ?_
     accepted := tables.1.trans checkpoint.accepted
-    candidates := tables.2.1.trans checkpoint.candidates
-    remembered := tables.2.2.trans checkpoint.remembered
+    candidates := tables.2.trans checkpoint.candidates
     pending := networkClean.1
     leaked := networkClean.2.2.1.trans checkpoint.leaked
     inputs := networkClean.2.1
@@ -480,7 +475,7 @@ theorem Checkpoint.reveal_response [Fintype Player]
     activated := actualCalendar.2 }
   · rw [configEq]
     exact checkpoint.ordered.complete_at event ready eventRank
-  · exact boundAfter.copy configEq tables.1 tables.2.1
+  · exact boundAfter.copy configEq tables.1 tables.2
   · intro successor nextRank actor
     rw [applicationEq]
     exact settlement_successor_timely setup execution.application checkpoint.invariant

@@ -2,7 +2,13 @@
 
 import Interaction.ReactiveProtocol
 
-/-! # Application invariants at every canonical reactive history -/
+/-! # Application invariants at every canonical reactive history
+
+An invariant is a predicate every application operation preserves; a step
+relation relates every application state to its successor. Both lift from the
+application's submit, handle and environment operations to every protocol
+transition.
+-/
 
 noncomputable section
 
@@ -20,6 +26,16 @@ structure Invariant (predicate : app.State → Prop) : Prop where
     predicate next
   environment : ∀ state command next, predicate state →
     next ∈ (app.environment state command).support → predicate next
+
+/-- A relation between an application state and its successor that every
+application operation establishes. Passive observation, silence and scheduler
+bookkeeping leave the state unchanged, so the relation must be reflexive. -/
+structure StepRelation (relation : app.State → app.State → Prop) : Prop where
+  refl : ∀ state, relation state state
+  submit : ∀ state who material, relation state (app.submit state who material)
+  handle : ∀ state message next, app.handle state message = some next → relation state next
+  environment : ∀ state command next,
+    next ∈ (app.environment state command).support → relation state next
 
 variable [DecidableEq Principal] {app} {predicate : app.State → Prop}
 
@@ -108,5 +124,74 @@ theorem Invariant.history (invariant : app.Invariant predicate)
   | _, .extend prior joint _ reached =>
       invariant.transition initial horizon scheduler setup _ _ joint
         (invariant.history initial horizon scheduler setup prior) reached
+
+variable {relation : app.State → app.State → Prop}
+
+theorem StepRelation.respond (step : app.StepRelation relation)
+    (execution : app.Execution) (who : Principal) (action : app.Action) :
+    relation execution.application (execution.respond app who action).application := by
+  rcases action with ⟨transmission⟩
+  cases transmission with
+  | none => exact step.refl _
+  | some material => exact step.submit execution.application who material
+
+theorem StepRelation.includePending (step : app.StepRelation relation)
+    (execution : app.Execution) (id : MessageId Principal) :
+    relation execution.application (execution.includePending app id).application := by
+  unfold Execution.includePending MessageNetwork.includePending
+  cases found : execution.network.lookup id with
+  | none => exact step.refl _
+  | some message =>
+      change relation execution.application
+        ((app.handle execution.application message).getD execution.application)
+      cases accepted : app.handle execution.application message with
+      | none => exact step.refl _
+      | some next => exact step.handle execution.application message next accepted
+
+theorem StepRelation.environmentStep (step : app.StepRelation relation)
+    (execution next : app.Execution) (command : app.Command)
+    (reached : next ∈ (execution.environmentStep app command).support) :
+    relation execution.application next.application := by
+  cases command with
+  | wait =>
+      simp only [Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      exact step.refl _
+  | activate who =>
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
+      exact step.refl _
+  | «include» id =>
+      simp only [Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      exact step.includePending execution id
+  | application command =>
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
+      exact step.environment execution.application command state changed
+
+/-- Every protocol transition between initialized states relates the
+application states, under arbitrary responses and scheduler choices. -/
+theorem StepRelation.transition (step : app.StepRelation relation)
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (before after : app.Control) (joint : Principal → Option app.Action)
+    (reached : some after ∈ (app.transition initial horizon scheduler (some before)
+      joint).support) :
+    relation before.execution.application after.execution.application := by
+  rcases before with ⟨remaining, current, execution⟩
+  cases current with
+  | some who =>
+      cases Option.some.inj ((PMF.mem_support_pure_iff _ _).mp reached)
+      exact step.respond execution who _
+  | none =>
+      cases remaining with
+      | zero =>
+          cases Option.some.inj ((PMF.mem_support_pure_iff _ _).mp reached)
+          exact step.refl _
+      | succ remaining =>
+          obtain ⟨command, _, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+          obtain ⟨next, supported, same⟩ := PMF.support_map .. ▸ moved
+          cases Option.some.inj same
+          exact step.environmentStep execution next command supported
 
 end Interaction.ReactiveApplication

@@ -50,7 +50,6 @@ theorem response_packet_eq_of_input_eq (runtime : EventGraphRuntime graph)
     (submission : WitnessedSubmission graph)
     (view : left.observe (runtime.reactiveApplication leaks) who =
       right.observe (runtime.reactiveApplication leaks) who)
-    (remembered : left.application.remembered = right.application.remembered)
     (known : left.network.known who = right.network.known who) :
     submission.emit ((runtime.reactiveApplication leaks).submit left.application who submission)
         who (left.network.known who) =
@@ -58,7 +57,7 @@ theorem response_packet_eq_of_input_eq (runtime : EventGraphRuntime graph)
         who (right.network.known who) := by
   have observed := congrArg ReactiveApplication.PlayerView.application view
   have whole := reactive_playerView_congr runtime leaks left.application right.application
-    who observed remembered
+    who observed
   have submitted := submit_playerView_congr runtime leaks left.application right.application
     who submission whole
   have candidates := congrArg (fun observed : PlayerView graph => observed.candidates) submitted
@@ -86,7 +85,6 @@ theorem respond_recall_eq_of_input_eq (runtime : EventGraphRuntime graph)
     (past : left.recall who = right.recall who)
     (view : left.observe (runtime.reactiveApplication leaks) who =
       right.observe (runtime.reactiveApplication leaks) who)
-    (remembered : left.application.remembered = right.application.remembered)
     (serial : left.network.nextSerial who = right.network.nextSerial who) :
     (left.respond (runtime.reactiveApplication leaks) who response).recall who =
       (right.respond (runtime.reactiveApplication leaks) who response).recall who := by
@@ -96,7 +94,7 @@ theorem respond_recall_eq_of_input_eq (runtime : EventGraphRuntime graph)
   | none => simp only [ReactiveApplication.Execution.respond, ↓reduceIte, past, view]
   | some submission =>
       have packet := response_packet_eq_of_input_eq runtime leaks left right who submission
-        view remembered known
+        view known
       simp only [ReactiveApplication.Execution.respond, MessageNetwork.submit, ↓reduceIte]
       change left.recall who ++ [⟨left.observe _ who, _,
         some ⟨(who, left.network.nextSerial who),

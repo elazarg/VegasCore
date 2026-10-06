@@ -39,7 +39,7 @@ theorem reactive_respond_progress (runtime : EventGraphRuntime graph)
           (submitStep (submission.call.register execution.application who) who
             submission.call.packet) =
             execution.application.publicView := by
-        rw [submitStep_publicView, facts.2.2]
+        rw [submitStep_publicView, facts.2]
       have configEq := (submitStep_config
         (submission.call.register execution.application who) who submission.call.packet).trans
           facts.1
@@ -73,6 +73,63 @@ def reactiveTicks (runtime : EventGraphRuntime graph)
       (runtime.reactiveApplication leaks).Command → Nat
   | .application .advanceClock => 1
   | _ => 0
+
+/-- A player response never moves the clock. -/
+theorem reactive_respond_clock (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
+    (action : (runtime.reactiveApplication leaks).Action) :
+    (execution.respond (runtime.reactiveApplication leaks) who action).application.clock =
+      execution.application.clock := by
+  rcases action with ⟨transmission⟩
+  cases transmission with
+  | none => rfl
+  | some material =>
+      exact congrArg PublicView.clock
+        (runtime.reactiveApplication_submit_publicView leaks execution.application who material)
+
+/-- **Only explicit clock commands advance time.** Every scheduler command
+moves the clock by its tick count: one for the application's `EnvironmentCommand.advanceClock`,
+zero for activation, inclusion, waiting, sampling and expiry. No invariant is
+assumed. -/
+theorem reactive_environmentStep_clock (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (execution next : (runtime.reactiveApplication leaks).Execution)
+    (command : (runtime.reactiveApplication leaks).Command)
+    (reached : next ∈ (execution.environmentStep (runtime.reactiveApplication leaks)
+      command).support) :
+    next.application.clock = execution.application.clock + runtime.reactiveTicks leaks command := by
+  cases command with
+  | wait =>
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      rfl
+  | activate who =>
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
+      rfl
+  | «include» id =>
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      change (execution.includePending (runtime.reactiveApplication leaks) id).application.clock =
+        execution.application.clock + 0
+      unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
+      cases found : execution.network.lookup id with
+      | none => rfl
+      | some message =>
+          change (((runtime.reactiveApplication leaks).handle execution.application
+            message).getD execution.application).clock = _
+          cases accepted : (runtime.reactiveApplication leaks).handle execution.application
+              message with
+          | none => rfl
+          | some state =>
+              exact (handle_clock_activated runtime execution.application state
+                ⟨message.id, message.payload.call⟩ (reactiveHandle_call accepted)).1
+  | application command =>
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
+      have clock := environmentStep_clock runtime execution.application state command changed
+      cases command <;> simpa [reactiveTicks, EnvironmentCommand.clockTicks] using clock
 
 theorem reactive_include_progress (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))

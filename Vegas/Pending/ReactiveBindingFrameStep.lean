@@ -253,7 +253,6 @@ theorem complete_unmodified (frame : Frame runtime leaks memory owner original r
       frame.publicView
       (original.application.playerView_observation_eq repaired.application who
         (frame.views who different))
-      (congrArg PlayerView.remembered (frame.views who different))
       (congrArg PlayerView.candidates (frame.views who different)) event leftReady rightReady
       action action value value (fun _ => rfl) (fun _ => rfl)
   · exact Config.bindingRefines_complete frame.successful event leftReady rightReady action action

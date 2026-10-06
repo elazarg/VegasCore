@@ -79,7 +79,7 @@ theorem executionHandles_respond (runtime : EventGraphRuntime graph)
       change bounds.AcceptedHandles
         (submitStep (material.call.register execution.application who) who material.call.packet)
       have same := congrArg PublicView.accepted
-        (material.call.register_facts who execution.application).2.2
+        (material.call.register_facts who execution.application).2
       change (material.call.register execution.application who).accepted =
         execution.application.accepted at same
       simpa only [AcceptedHandles, submitStep_accepted, same] using valid.1

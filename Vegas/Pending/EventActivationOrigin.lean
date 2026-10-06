@@ -5,8 +5,10 @@ import Vegas.Pending.ServicePlan
 /-! # Activation origins and deadline protection
 
 A live activation timestamp is either retained from before a transition or
-created no earlier than its entry clock. An activation at most one tick old is
-still within its deadline under a feasible deadline configuration.
+created no earlier than its entry clock. A single transition is exact: it
+keeps a timestamp or stamps a newly activated event with the clock at which it
+starts. An activation at most one tick old is still within its deadline under
+a feasible deadline configuration.
 -/
 
 noncomputable section
@@ -67,6 +69,74 @@ theorem activationOrigin_of_refreshEq {before after : State graph}
   intro event entered value unfinished
   rw [activated] at value
   exact activationOrigin_refresh before after.config event entered value unfinished
+
+/-- One transition starts timers exactly: an event's activation timestamp is
+either kept, or, for an event that had none, it is the clock at which the
+transition starts. -/
+def ActivationStart (before after : State graph) : Prop :=
+  ∀ event entered, after.activatedAt event = some entered →
+    before.activatedAt event = some entered ∨
+      (before.activatedAt event = none ∧ entered = before.clock)
+
+omit [DecidableEq Player] in
+theorem activationStart_of_activatedEq {before after : State graph}
+    (activatedEq : after.activatedAt = before.activatedAt) :
+    ActivationStart before after := by
+  intro event entered activated
+  exact Or.inl (by simpa only [activatedEq] using activated)
+
+omit [DecidableEq Player] in
+theorem activationStart_of_refreshEq {before after : State graph}
+    (activated : after.activatedAt =
+      refreshActivated after.config before.clock before.activatedAt) :
+    ActivationStart before after := by
+  intro event entered value
+  rw [activated] at value
+  unfold refreshActivated at value
+  split at value
+  · cases actor : graph.actor? event with
+    | none => simp [actor] at value
+    | some owner =>
+        rw [actor] at value
+        cases prior : before.activatedAt event with
+        | none =>
+            have same : before.clock = entered := by simpa [prior] using value
+            exact Or.inr ⟨rfl, same.symm⟩
+        | some priorEntered =>
+            have same : priorEntered = entered := by simpa [prior] using value
+            exact Or.inl (congrArg some same)
+  · simp at value
+
+omit [DecidableEq Player] in
+/-- A newly started timer reads the clock at which its transition starts. -/
+theorem ActivationStart.started {before after : State graph}
+    (start : ActivationStart before after) (event : graph.EventId) (entered : Nat)
+    (absent : before.activatedAt event = none)
+    (activated : after.activatedAt event = some entered) : entered = before.clock := by
+  rcases start event entered activated with kept | ⟨_, started⟩
+  · rw [absent] at kept
+    cases kept
+  · exact started
+
+omit [DecidableEq Player] in
+/-- A running timer is never restarted: while the successor still carries a
+timestamp, it is the original one. -/
+theorem ActivationStart.kept {before after : State graph}
+    (start : ActivationStart before after) (event : graph.EventId) (entered later : Nat)
+    (running : before.activatedAt event = some entered)
+    (activated : after.activatedAt event = some later) : later = entered := by
+  rcases start event later activated with kept | ⟨absent, _⟩
+  · exact Option.some.inj (kept.symm.trans running)
+  · rw [running] at absent
+    cases absent
+
+omit [DecidableEq Player] in
+theorem ActivationStart.activationOrigin {before after : State graph}
+    (start : ActivationStart before after) : ActivationOrigin before after := by
+  intro event entered activated _
+  rcases start event entered activated with kept | ⟨_, started⟩
+  · exact Or.inl kept
+  · exact Or.inr started.ge
 
 omit [DecidableEq Player] in
 theorem ActivationOrigin.trans {before middle after : State graph}

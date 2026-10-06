@@ -71,7 +71,6 @@ theorem source_initial_traffic_eq
         (setup.eventInputs right)).playerView focal := by
     unfold EventGraphRuntime.State.playerView
     rw [publics, observed, candidates]
-    rfl
   unfold EventGraphRuntime.bindingTraffic
   dsimp only [ReactiveApplication.Execution.initial]
   rw [views, publics]
@@ -578,7 +577,6 @@ theorem guarded_opening_handler_focal
     congrArg (fun read => read.2.2.2.2.1) same
   exact EventGraphRuntime.State.complete_playerView_congr left.application right.application focal
     publics (left.application.playerView_observation_eq right.application focal views)
-      (congrArg EventGraphRuntime.PlayerView.remembered views)
       (congrArg EventGraphRuntime.PlayerView.candidates views) event leftReady rightReady
         _ _ _ _ (fun _ => rfl) (fun _ => rfl)
 

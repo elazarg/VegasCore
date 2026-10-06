@@ -46,6 +46,38 @@ def sourceServiceAudit
       (fun traffic => (record, traffic.envelope))
       (fun evidence => evidence.2.sender) (fun evidence => evidence.1.permits evidence.2) sample
 
+omit [Fintype Player] in
+/-- **The verdict reads only signed envelopes and the settled record.** Two
+audit observations with the same settled record (final public view and
+receipts) and the same sequence of signed envelopes receive the same verdict
+law; the public view and ledger recorded at each transmission are never read. -/
+theorem sourceServiceAudit_congr
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (sample : List (SettledEvidence setup) → PMF (List (SettledEvidence setup)))
+    (left right : List (application setup leaks).TrafficRecord ×
+      Option (SettledRecord (graph setup)))
+    (records : left.2 = right.2)
+    (envelopes : left.1.map ReactiveApplication.TrafficRecord.envelope =
+      right.1.map ReactiveApplication.TrafficRecord.envelope) :
+    sourceServiceAudit setup leaks sample left = sourceServiceAudit setup leaks sample right := by
+  obtain ⟨leftTraffic, leftRecord⟩ := left
+  obtain ⟨rightTraffic, rightRecord⟩ := right
+  change leftRecord = rightRecord at records
+  subst records
+  change leftTraffic.map _ = rightTraffic.map _ at envelopes
+  cases leftRecord with
+  | none => rfl
+  | some record =>
+      have projected (traffic : List (application setup leaks).TrafficRecord) :
+          traffic.map (fun entry => ((record, entry.envelope) : SettledEvidence setup)) =
+            (traffic.map ReactiveApplication.TrafficRecord.envelope).map
+              (fun envelope => ((record, envelope) : SettledEvidence setup)) := by
+        rw [List.map_map]
+        rfl
+      simp only [sourceServiceAudit, serviceAudit, ReactiveApplication.sampledTrafficAudit]
+      rw [projected leftTraffic, projected rightTraffic, envelopes]
+
 /-- Soundness is over all retained histories, independently of the compiled
 equilibrium. Partial monitoring needs authenticity but no positive coverage
 assumption for this direction. -/

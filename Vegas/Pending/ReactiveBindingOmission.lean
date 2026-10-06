@@ -81,6 +81,49 @@ theorem missedBinding_expire (runtime : EventGraphRuntime graph) (state next : S
   cases (PMF.mem_support_pure_iff _ _).mp reached
   exact state.missedBinding_complete event ready _ _ owner payload outputEq absent
 
+/-- Only bindings can be omitted. -/
+theorem PublicView.missedBinding_of_not_binding (view : PublicView graph)
+    (event : graph.EventId)
+    (notBinding : ∀ owner payload, graph.outputLayout event ≠ .binding owner payload) :
+    view.missedBinding event = false := by
+  unfold missedBinding
+  split
+  · rename_i owner payload layout
+    exact (notBinding owner payload layout).elim
+  · rfl
+  · rfl
+  · rfl
+
+/-- **Expiry of a non-binding event is not a miss.** Expiring a resolution
+(or stuttering on any other non-binding event) leaves every public binding
+omission unchanged: it neither creates nor erases one. -/
+theorem missedBinding_expire_of_not_binding (runtime : EventGraphRuntime graph)
+    (state next : State graph) (event : graph.EventId)
+    (notBinding : ∀ owner payload, graph.outputLayout event ≠ .binding owner payload)
+    (reached : next ∈ (environmentStep runtime state (.expire event)).support)
+    (query : graph.EventId) :
+    next.publicView.missedBinding query = state.publicView.missedBinding query := by
+  classical
+  cases kind : graph.outputLayout query with
+  | binding owner payload =>
+      have different : query ≠ event := by
+        rintro rfl
+        exact notBinding owner payload kind
+      have accepted := (environmentStep_tables runtime state next _ reached).1
+      have completed : query ∈ next.config.cut.completed ↔
+          query ∈ state.config.cut.completed := by
+        rcases environmentStep_expire_config_eq_or_mem_step runtime state next event reached
+          with same | ⟨ready, action, member⟩
+        · rw [same]
+        · rw [state.config.step_cut event ready action next.config member,
+            EventOrder.Cut.mem_complete]
+          simp [different]
+      apply Bool.eq_iff_iff.mpr
+      rw [next.publicView_missedBinding query owner payload kind,
+        state.publicView_missedBinding query owner payload kind, completed, accepted]
+  | publicData payload | privateInput owner payload | publication payload =>
+      simp only [PublicView.missedBinding, kind]
+
 /-- Native submissions, packet handling, public chance and service commands
 cannot erase a completed binding omission, even after further deviations. -/
 theorem reactiveMissedBindingInvariant [DecidableEq Player] (runtime : EventGraphRuntime graph)

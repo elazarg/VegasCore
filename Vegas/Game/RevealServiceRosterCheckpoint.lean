@@ -122,10 +122,9 @@ theorem PublicCheckpoint.reveal_endpoint
   change next.application.config = execution.application.config.complete event ready action result
     at configEq
   have tables : next.application.accepted = execution.application.accepted ∧
-      next.application.candidates = execution.application.candidates ∧
-      next.application.remembered = execution.application.remembered := by
+      next.application.candidates = execution.application.candidates := by
     rw [applicationEq]
-    cases disclose <;> exact ⟨rfl, rfl, rfl⟩
+    cases disclose <;> exact ⟨rfl, rfl⟩
   let initialAccepted :=
     (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial)).accepted
   have acceptedCandidate : initialAccepted (refs.get selected).field = some candidate := by
@@ -200,10 +199,9 @@ theorem PublicCheckpoint.reveal_endpoint
     history := history
     ordered := ?_
     invariant := nextInvariant
-    binding := boundAfter.copy configEq tables.1 tables.2.1
+    binding := boundAfter.copy configEq tables.1 tables.2
     accepted := tables.1.trans checkpoint.accepted
-    candidates := tables.2.1.trans checkpoint.candidates
-    remembered := tables.2.2.trans checkpoint.remembered
+    candidates := tables.2.trans checkpoint.candidates
     timely := ?_
     reveals := checkpoint.reveals
     covered := checkpoint.covered.cons setup.program (cell := .publication payload)

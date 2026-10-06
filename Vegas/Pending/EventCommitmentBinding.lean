@@ -28,10 +28,6 @@ theorem privateStep_lookup_of_not_fresh (state : State graph) (who : Player)
   | prepare serial raw =>
       exact state.candidates.lookup_prepare_eq_of_not_fresh
         candidate who (.prepared serial) raw fixed
-  | remember event action =>
-      by_cases owned : graph.actor? event = some who
-      · cases cached : state.remembered event <;> simp [privateStep, owned, cached]
-      · simp [privateStep, owned]
 
 theorem handle_lookup_of_not_fresh (runtime : EventGraphRuntime graph)
     (state next : State graph) (message : Message Player (Payload graph))

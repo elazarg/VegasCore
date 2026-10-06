@@ -23,72 +23,72 @@ open GameTheory.Math.Probability Interaction
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
+/-- Every operation of the reactive application starts timers exactly: a
+timestamp is kept, or a newly activated event is stamped with the clock at the
+operation. This covers arbitrary submissions, inclusions and environment
+commands. -/
+theorem reactiveActivationStart (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :
+    (runtime.reactiveApplication leaks).StepRelation State.ActivationStart where
+  refl _ := State.activationStart_of_activatedEq rfl
+  submit state who material := State.activationStart_of_activatedEq
+    (congrArg PublicView.activatedAt
+      (runtime.reactiveApplication_submit_publicView leaks state who material))
+  handle state message next accepted := State.activationStart_of_refreshEq
+    (handle_clock_activated runtime state next ⟨message.id, message.payload.call⟩
+      (reactiveHandle_call accepted)).2
+  environment state command next reached := by
+    cases command with
+    | advanceClock =>
+        simp only [reactiveApplication, environmentStep, PMF.mem_support_pure_iff _ _]
+          at reached
+        subst next
+        exact State.activationStart_of_activatedEq rfl
+    | executeSample event =>
+        obtain ⟨_, stutter | changed⟩ :=
+          runtime.environmentStep_executeSample_config_activated state next event reached
+        · exact State.activationStart_of_activatedEq stutter.2
+        · obtain ⟨_, _, _, activated⟩ := changed
+          exact State.activationStart_of_refreshEq activated
+    | expire event =>
+        obtain ⟨_, stutter | changed⟩ :=
+          runtime.environmentStep_expire_config_activated state next event reached
+        · exact State.activationStart_of_activatedEq stutter.2
+        · obtain ⟨_, _, _, activated⟩ := changed
+          exact State.activationStart_of_refreshEq activated
+
+/-- **Exact timer start over histories.** In every transition of the reactive
+protocol, under arbitrary player responses and every scheduler, an event that
+had no activation timestamp and has one afterwards is stamped with the clock at
+which the transition starts, and a running timestamp is never replaced. -/
+theorem reactive_transition_activationStart (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (initial : PMF (State graph)) (horizon : Nat)
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    (before after : (runtime.reactiveApplication leaks).Control)
+    (joint : Player → Option (runtime.reactiveApplication leaks).Action)
+    (reached : some after ∈ ((runtime.reactiveApplication leaks).transition initial horizon
+      scheduler (some before) joint).support) :
+    State.ActivationStart before.execution.application after.execution.application :=
+  (runtime.reactiveActivationStart leaks).transition initial horizon scheduler before after
+    joint reached
+
 theorem reactive_respond_activationOrigin (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (action : (runtime.reactiveApplication leaks).Action) :
     State.ActivationOrigin execution.application
       (execution.respond (runtime.reactiveApplication leaks) who action).application :=
-  State.activationOrigin_of_activatedEq
-    (congrArg PublicView.activatedAt (runtime.reactive_respond_application
-      leaks execution who action).2)
+  ((runtime.reactiveActivationStart leaks).respond execution who action).activationOrigin
 
 theorem reactive_environment_activationOrigin (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (execution next : (runtime.reactiveApplication leaks).Execution)
     (command : (runtime.reactiveApplication leaks).Command)
     (supported : next ∈ (execution.environmentStep (runtime.reactiveApplication leaks)
-      command).support) : State.ActivationOrigin execution.application next.application := by
-  cases command with
-  | wait =>
-      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at supported
-      cases (PMF.mem_support_pure_iff _ _).mp supported
-      exact State.activationOrigin_of_activatedEq rfl
-  | activate who =>
-      obtain ⟨updated, selected, rfl⟩ := PMF.support_map .. ▸ supported
-      obtain ⟨observed, _, rfl⟩ := PMF.support_map .. ▸ selected
-      exact State.activationOrigin_of_activatedEq rfl
-  | «include» id =>
-      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at supported
-      cases (PMF.mem_support_pure_iff _ _).mp supported
-      unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
-      cases found : execution.network.lookup id with
-      | none => exact State.activationOrigin_of_activatedEq rfl
-      | some message =>
-          change State.ActivationOrigin execution.application
-            (((runtime.reactiveApplication leaks).handle execution.application
-              message).getD execution.application)
-          cases accepted : (runtime.reactiveApplication leaks).handle execution.application
-              message with
-          | none => exact State.activationOrigin_of_activatedEq rfl
-          | some state =>
-              exact State.activationOrigin_of_refreshEq (handle_clock_activated runtime
-                execution.application state ⟨message.id, message.payload.call⟩
-                (reactiveHandle_call accepted)).2
-  | application command =>
-      obtain ⟨updated, selected, rfl⟩ := PMF.support_map .. ▸ supported
-      obtain ⟨state, reached, rfl⟩ := PMF.support_map .. ▸ selected
-      cases command with
-      | advanceClock =>
-          change state ∈ (environmentStep runtime execution.application .advanceClock).support
-            at reached
-          simp only [environmentStep, PMF.mem_support_pure_iff _ _] at reached
-          subst state
-          exact State.activationOrigin_of_activatedEq rfl
-      | executeSample event =>
-          obtain ⟨_, stutter | changed⟩ :=
-            runtime.environmentStep_executeSample_config_activated
-              execution.application state event reached
-          · exact State.activationOrigin_of_activatedEq stutter.2
-          · obtain ⟨_, _, _, activated⟩ := changed
-            exact State.activationOrigin_of_refreshEq activated
-      | expire event =>
-          obtain ⟨_, stutter | changed⟩ :=
-            runtime.environmentStep_expire_config_activated
-              execution.application state event reached
-          · exact State.activationOrigin_of_activatedEq stutter.2
-          · obtain ⟨_, _, _, activated⟩ := changed
-            exact State.activationOrigin_of_refreshEq activated
+      command).support) : State.ActivationOrigin execution.application next.application :=
+  ((runtime.reactiveActivationStart leaks).environmentStep execution next command
+    supported).activationOrigin
 
 theorem reactive_dispatch_activationOrigin (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))

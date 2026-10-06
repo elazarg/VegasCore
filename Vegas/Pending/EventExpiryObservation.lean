@@ -16,16 +16,13 @@ variable {L : IExpr} [IExpr.ResultTypes L]
 variable {graph : Vegas.EventGraph Player L}
 
 /-- Expiry is determined by public readiness and clock metadata. Its failure
-completion is independent of hidden candidates and private cached actions. -/
+completion is independent of hidden candidates. -/
 theorem environmentStep_expire_playerView_congr
     (runtime : EventGraphRuntime graph) (focal : Player) (event : graph.EventId)
     (left right leftNext rightNext : State graph)
     (publicEq : left.publicView = right.publicView)
     (observationEq : graph.playerObserve focal left.config =
       graph.playerObserve focal right.config)
-    (rememberedEq : (fun query => if graph.actor? query = some focal then
-      left.remembered query else none) =
-      fun query => if graph.actor? query = some focal then right.remembered query else none)
     (candidatesEq : (fun slot => left.candidates.lookup (focal, slot)) =
       fun slot => right.candidates.lookup (focal, slot))
     (leftSupported : leftNext ∈ (environmentStep runtime left (.expire event)).support)
@@ -79,7 +76,7 @@ theorem environmentStep_expire_playerView_congr
               subst leftNext
               subst rightNext
               exact State.complete_playerView_congr left right focal publicEq observationEq
-                rememberedEq candidatesEq event leftReady rightReady _ _ _ _
+                candidatesEq event leftReady rightReady _ _ _ _
                 (fun _ => rfl) (fun _ => rfl)
           | resolve owner payload binding checks outputEq codeEq =>
               rw [environmentStep_expire_resolve_eq runtime left event leftReady entered
@@ -91,7 +88,7 @@ theorem environmentStep_expire_playerView_congr
               subst leftNext
               subst rightNext
               exact State.complete_playerView_congr left right focal publicEq observationEq
-                rememberedEq candidatesEq event leftReady rightReady _ _ _ _
+                candidatesEq event leftReady rightReady _ _ _ _
                 (fun _ => rfl) (fun _ => rfl)
         · have rightNotDue : ¬runtime.deadline event ≤ right.clock - entered := by
             rw [← clockEq]; exact due
