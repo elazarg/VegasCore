@@ -26,14 +26,18 @@ def BarrierOrdered (graph : Vegas.EventGraph Player L) : Prop :=
     (barrierOrder graph.outputLayout).predecessors event ⊆ graph.order.predecessors event
 
 omit [DecidableEq Player] R in
-private theorem ordering_symm (left right : EventField Player L)
+/-- Barrier relatedness of two fields is symmetric. -/
+theorem EventField.barrierRelated_symm (left right : EventField Player L)
     (ordered : left.IsPublic ∨ right.IsPublic ∨ left.SameBindingOwner right) :
     right.IsPublic ∨ left.IsPublic ∨ right.SameBindingOwner left := by
   cases left <;> cases right <;>
     simp_all [EventField.IsPublic, EventField.SameBindingOwner]
 
 omit [DecidableEq Player] in
-private theorem visible_requires_order {Field : Type} [DecidableEq Field]
+/-- Every field visible to the actor of a node is barrier related to the
+node's output: it is public, the output is public, or both are bindings of the
+actor. -/
+theorem EventCode.barrierRelated_of_visible {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {output : EventField Player L}
     (code : EventCode layout output) (who : Player)
     (actor : code.actor = some who) (other : EventField Player L)
@@ -50,11 +54,21 @@ private theorem visible_requires_order {Field : Type} [DecidableEq Field]
   | sample => simp [EventCode.actor] at actor
 
 omit [DecidableEq Player] in
-private theorem actor_output_visible {Field : Type} [DecidableEq Field]
+/-- A node's output is visible to its actor. -/
+theorem EventCode.output_visible_of_actor {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {output : EventField Player L}
     (code : EventCode layout output) (who : Player) (actor : code.actor = some who) :
     output.VisibleTo who := by
   cases code <;> simp_all [EventCode.actor, EventField.VisibleTo]
+
+omit [DecidableEq Player] in
+/-- A node without an actor is a chance node with a public output. -/
+theorem EventCode.output_public_of_actor_none
+    {Field : Type} [DecidableEq Field]
+    {layout : Field → EventField Player L} {output : EventField Player L}
+    (code : EventCode layout output) (ownerless : code.actor = none) :
+    output.IsPublic := by
+  cases code <;> simp_all [EventCode.actor, EventField.IsPublic]
 
 namespace BarrierOrdered
 
@@ -87,7 +101,8 @@ theorem visible_predecessor (ordered : graph.BarrierOrdered)
     other ∈ graph.order.predecessors event := by
   apply ordered event
   exact (mem_barrierOrder graph.outputLayout other event).2
-    ⟨earlier, visible_requires_order (graph.nodes event) who actor _ (graph.nodes other) visible⟩
+    ⟨earlier, EventCode.barrierRelated_of_visible (graph.nodes event) who actor _
+      (graph.nodes other) visible⟩
 
 /-- At a ready strategic event, each visible output is available precisely
 when its producer is earlier in the source ranking. -/
@@ -105,14 +120,17 @@ theorem ready_visible_iff (ordered : graph.BarrierOrdered) (cut : graph.order.Cu
     · have isPredecessor : event ∈ graph.order.predecessors other := by
         apply ordered other
         exact (mem_barrierOrder graph.outputLayout event other).2
-          ⟨later, ordering_symm _ _
-            (visible_requires_order (graph.nodes event) who actor _ (graph.nodes other) visible)⟩
+          ⟨later, EventField.barrierRelated_symm _ _
+            (EventCode.barrierRelated_of_visible (graph.nodes event) who actor _
+              (graph.nodes other) visible)⟩
       exact ready.1 (cut.predecessor_closed completed isPredecessor)
   · intro earlier
     exact ready.2 (ordered.visible_predecessor actor earlier visible)
 
 omit [DecidableEq Player] in
-private theorem actor_output_public_or_binding {Field : Type} [DecidableEq Field]
+/-- A strategic node's output is public or a binding of its actor. -/
+theorem _root_.Vegas.EventGraph.EventCode.output_public_or_binding_of_actor
+    {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {output : EventField Player L}
     (code : EventCode layout output) (who : Player) (actor : code.actor = some who) :
     output.IsPublic ∨ ∃ payload, output = .binding who payload := by
@@ -131,10 +149,10 @@ theorem ready_actor_unique (ordered : graph.BarrierOrdered)
     (ready : cut.Ready event) (otherReady : cut.Ready other)
     (actor : graph.actor? event = some who) (otherActor : graph.actor? other = some who) :
     other = event := by
-  rcases actor_output_public_or_binding (graph.nodes event) who actor with
+  rcases EventCode.output_public_or_binding_of_actor (graph.nodes event) who actor with
     isPublic | ⟨payload, binding⟩
   · exact ordered.ready_public_unique cut isPublic ready otherReady
-  rcases actor_output_public_or_binding (graph.nodes other) who otherActor with
+  rcases EventCode.output_public_or_binding_of_actor (graph.nodes other) who otherActor with
     otherPublic | ⟨otherPayload, otherBinding⟩
   · exact (ordered.ready_public_unique cut otherPublic otherReady ready).symm
   have forward : (graph.outputLayout other).SameBindingOwner (graph.outputLayout event) := by
@@ -234,7 +252,7 @@ theorem BarrierOrdered.informationDiscipline {graph : Vegas.EventGraph Player L}
         have facts : prior.val < event.val ∧ graph.actor? prior = some who := by
           simpa [prefixSchema, actor] using member
         exact ordered.visible_predecessor actor facts.1
-          (actor_output_visible (graph.nodes prior) who facts.2)
+          (EventCode.output_visible_of_actor (graph.nodes prior) who facts.2)
   ready_own_history_exact := by
     intro cut event who ready actor
     ext prior
@@ -244,13 +262,13 @@ theorem BarrierOrdered.informationDiscipline {graph : Vegas.EventGraph Player L}
     constructor
     · rintro ⟨earlier, owned⟩
       exact ⟨(ordered.ready_visible_iff cut ready actor
-        (actor_output_visible (graph.nodes prior) who owned)).mpr earlier, owned⟩
+        (EventCode.output_visible_of_actor (graph.nodes prior) who owned)).mpr earlier, owned⟩
     · rintro ⟨completed, owned⟩
       exact ⟨(ordered.ready_visible_iff cut ready actor
-        (actor_output_visible (graph.nodes prior) who owned)).mp completed, owned⟩
+        (EventCode.output_visible_of_actor (graph.nodes prior) who owned)).mp completed, owned⟩
   same_owner_ordered := by
     intro earlier later who before earlierActor laterActor
     exact ordered.visible_predecessor laterActor before
-      (actor_output_visible (graph.nodes earlier) who earlierActor)
+      (EventCode.output_visible_of_actor (graph.nodes earlier) who earlierActor)
 
 end Vegas.EventGraph

@@ -89,13 +89,6 @@ omit [DecidableEq Player] in
     simp only [normalizeProfile, GameTheory.Profile.update_same]
   · simp only [normalizeProfile, GameTheory.Profile.update_of_ne _ _ same]
 
-omit [DecidableEq Player] in
-private theorem actor_output_visible {Field : Type} [DecidableEq Field]
-    {layout : Field → EventField Player L} {output : EventField Player L}
-    (code : EventCode layout output) (who : Player) (actor : code.actor = some who) :
-    output.VisibleTo who := by
-  cases code <;> simp_all [EventCode.actor, EventField.VisibleTo]
-
 /-- At a ready strategic event, normalization changes only completion-order
 metadata.  The barrier information certificate says the retained store and
 own actions are exactly the canonical logical observation. -/
@@ -143,7 +136,7 @@ theorem BarrierOrdered.simultaneous_foreign_hidden
           (barrierOrder_public_prior graph.outputLayout after isPublic)
       exact otherReady.1 (eventReady.2 predecessor)
   have visibleForeign : (graph.outputLayout other).VisibleTo foreign :=
-    actor_output_visible (graph.nodes other) foreign otherActor
+    EventCode.output_visible_of_actor (graph.nodes other) foreign otherActor
   intro visibleWho
   change (graph.outputLayout other).VisibleTo who at visibleWho
   cases kind : graph.outputLayout other <;>

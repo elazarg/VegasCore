@@ -367,12 +367,48 @@ joint law. It is not pursued.
 - [ ] **C1. Information commutation.** Under the barrier order and an adaptive
   public order, native information and pending traffic of independent bindings
   commute, without exposing unexecuted foreign values.
+  Partial evidence (ideal graph execution, no message runtime): scheduler
+  independence is stated once for every profile that is
+  `EventGraph.ReadyIndependent` (distinct ready events have different actors,
+  and completing one leaves the other's normalized kernel unchanged), with
+  `ReadyIndependent.runPolicies_store_eq_canonical`; every profile is ready
+  independent on a barrier-ordered graph (`BarrierOrdered.readyIndependent`).
 - [ ] **C2. Concurrent theorem.** The target theorem holds for barrier-order
   graphs, pinned with standard axioms.
+  Partial evidence: the service base has a mode-generic graph
+  (`serviceGraph setup mode`) and runtime with a configured per-event deadline
+  duration, counted by the runtime from the clock at which the event became
+  ready (`serviceRuntime setup mode deadline`); the default `graph setup` and
+  `runtime setup` are its sequential instance with `rankDeadline`
+  (`graph_eq_serviceGraph`, `runtime_eq_serviceRuntime`), so every existing
+  statement is unchanged. In every mode a ready event is its actor's turn
+  (`serviceOwnTurn?_of_ready`); a ready public event is the only ready event in
+  every mode that keeps reveal dependencies (`soleReady_of_ready_public`) and a
+  ready sample is in every mode (`soleReady_of_ready_public_data`). The Nash and
+  SE chains are still stated for the default sequential runtime only.
 - [ ] **C3. Concurrent reveals.** Under the forfeit pass, reveals that the game
   does not order (no guard or later decision reads one before the other) run
   concurrently, and the target theorem holds for that graph; or a
   counterexample meeting the methodology's standard shows it fails.
+  Partial evidence (graph layer): the reveal-relaxed order drops exactly the
+  direct dependency between two reveals of different owners when the later
+  does not read the earlier (`EventGraph.IndependentReveals`,
+  `EventGraph.RevealRelaxedOrdered`), as the dependency mode
+  `ExecutionMode.concurrentReveals` (`withMode_revealRelaxedOrdered`). Its
+  information certificate: distinct ready events have different actors
+  (`RevealRelaxedOrdered.ready_pair_actors`,
+  `RevealRelaxedOrdered.ready_actor_unique`); a ready
+  public event coexists only with independent reveals
+  (`RevealRelaxedOrdered.ready_public_pair`); at every ready event that is not
+  a reveal the visible fields are exactly the source-prefix fields
+  (`RevealRelaxedOrdered.ready_fields_exact`,
+  `RevealRelaxedOrdered.normalizeObservation_eq_logical`), and own history is
+  exact at every ready event (`RevealRelaxedOrdered.ready_own_history_exact`).
+  Every adaptive public scheduler gives a profile whose reveal kernels ignore
+  the observation (`EventGraph.ObliviousAtPublications`, for example one that
+  always opens) the canonical terminal store law of the original graph
+  (`EventGraph.runPolicies_concurrentReveals_store`); canonical execution of
+  every mode has the original graph's law (`runPolicies_withMode_store`).
 - [ ] **C4. Concurrent Nash.** The Nash correspondence for every contract
   builder holds for the source game on the concurrent-binding graph of C2, and
   its intended-game form (through the forfeit pass) on the graph of C3, pinned
@@ -381,6 +417,12 @@ joint law. It is not pursued.
   pending opening, so the source-game form is not claimed on the C3 graph.
   Each event's deadline is a configured duration counted from the moment its
   prerequisites complete.
+  Partial evidence: on the ideal graph execution, compiled profiles are
+  `ε`-Nash under every adaptive public scheduler of the concurrent-binding
+  graph exactly when the source profile is `ε`-Nash in the source game
+  (`Vegas.Paper.concurrent_event_nash_iff`, from
+  `Setup.eventGame_approximate_nash_iff`, standard axioms). No message runtime,
+  builder or audit is involved.
 
 ## W. Operational watcher
 

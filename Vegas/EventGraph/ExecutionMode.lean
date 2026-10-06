@@ -134,5 +134,25 @@ theorem runPolicies_withMode_store (graph : Vegas.EventGraph Player L)
       simp [withMode]
   | sequential =>
       simpa using graph.canonical_fromSequential_store_law profile inputs
+  | concurrentReveals =>
+      -- Both graphs have the same sequential specialization; canonical
+      -- execution of either agrees with canonical execution of that.
+      let relaxedGraph := graph.withMode .concurrentReveals
+      let serial := relaxedGraph.toModeProfile .sequential profile
+      have relaxedLaw := relaxedGraph.canonical_fromSequential_store_law serial inputs
+      rw [fromModeProfile_toModeProfile] at relaxedLaw
+      have baseLaw := graph.canonical_fromSequential_store_law serial inputs
+      have sameProfile : graph.fromModeProfile .sequential serial =
+          graph.fromModeProfile .concurrentReveals profile := by
+        funext who event actor observation
+        simp only [serial, fromModeProfile, fromModePolicy, toModeProfile, toModePolicy]
+        congr 1
+        apply PlayerObservation.ext relaxedGraph
+        · rfl
+        · rfl
+        · simp only [fromModeObservation, toModeObservation, List.map_map]
+          rfl
+      rw [← relaxedLaw, ← sameProfile]
+      exact baseLaw
 
 end Vegas.EventGraph

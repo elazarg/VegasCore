@@ -222,48 +222,6 @@ theorem bind_eq_of_semanticKey_map_eq
   bind_eq_of_map_eq left right graph.semanticKey graph.semanticKey same
     leftNext rightNext congruent
 
-omit [DecidableEq Player] in
-private theorem EventCode.output_public_of_actor_none
-    {Field : Type} [DecidableEq Field]
-    {layout : Field → EventField Player L} {output : EventField Player L}
-    (code : EventCode layout output) (ownerless : code.actor = none) :
-    output.IsPublic := by
-  cases code <;> simp_all [EventCode.actor, EventField.IsPublic]
-
-/-- Distinct simultaneously ready events in a public-barrier graph are both
-strategic, have owners, and those owners differ. A public chance/resolution
-event is comparable with every other event and therefore cannot coexist. -/
-theorem BarrierOrdered.ready_pair_actors
-    (ordered : graph.BarrierOrdered) {config : graph.Config}
-    {left right : graph.EventId} (leftReady : config.cut.Ready left)
-    (rightReady : config.cut.Ready right) (different : left ≠ right) :
-    ∃ leftOwner rightOwner,
-      graph.actor? left = some leftOwner ∧
-      graph.actor? right = some rightOwner ∧ leftOwner ≠ rightOwner := by
-  have strategic (event other : graph.EventId) (eventReady : config.cut.Ready event)
-      (otherReady : config.cut.Ready other) (different : event ≠ other) :
-      ∃ owner, graph.actor? event = some owner := by
-    cases actor : graph.actor? event with
-    | some owner => exact ⟨owner, rfl⟩
-    | none =>
-        have isPublic := EventCode.output_public_of_actor_none
-          (graph.nodes event) (by simpa [EventGraph.actor?] using actor)
-        rcases lt_or_gt_of_ne (Fin.val_ne_of_ne different) with before | after
-        · have predecessor : event ∈ graph.order.predecessors other := by
-            exact ordered other
-              (barrierOrder_public_prior graph.outputLayout before isPublic)
-          exact False.elim (eventReady.1 (otherReady.2 predecessor))
-        · have predecessor : other ∈ graph.order.predecessors event := by
-            exact ordered event
-              (barrierOrder_public_event graph.outputLayout after isPublic)
-          exact False.elim (otherReady.1 (eventReady.2 predecessor))
-  obtain ⟨leftOwner, leftActor⟩ := strategic left right leftReady rightReady different
-  obtain ⟨rightOwner, rightActor⟩ :=
-    strategic right left rightReady leftReady different.symm
-  exact ⟨leftOwner, rightOwner, leftActor, rightActor,
-    ordered.informationDiscipline.ready_actor_ne leftReady rightReady different
-      leftActor rightActor⟩
-
 /-- Every result of the two-event policy kernel has the deterministic cut
 obtained by completing the two selected events. -/
 theorem policyStepThen_result_cut
@@ -299,8 +257,8 @@ theorem policyStepThen_result_cut
 
 /-- The normalized two-event diamond preserves the complete semantic key, not
 only its store/recall component. -/
-theorem BarrierOrdered.policyStepThen_map_semanticKey_comm
-    (ordered : graph.BarrierOrdered) (profile : graph.BehavioralProfile)
+theorem ReadyIndependent.policyStepThen_map_semanticKey_comm
+    {profile : graph.BehavioralProfile} (independent : graph.ReadyIndependent profile)
     (config : graph.Config) (left right : graph.EventId)
     (leftReady : config.cut.Ready left) (rightReady : config.cut.Ready right)
     (different : left ≠ right) (leftOwner rightOwner : Player)
@@ -314,7 +272,7 @@ theorem BarrierOrdered.policyStepThen_map_semanticKey_comm
     leftOwner rightOwner leftActor rightActor
   let rightLaw := policyStepThen profile config right left rightReady leftReady
     different.symm rightOwner leftOwner rightActor leftActor
-  have recall := ordered.policyStepThen_map_storeRecall_comm profile config left right
+  have recall := independent.policyStepThen_map_storeRecall_comm config left right
     leftReady rightReady different leftOwner rightOwner leftActor rightActor
   have leftRewrite : leftLaw.map graph.semanticKey =
       (leftLaw.map (storeRecall graph)).map

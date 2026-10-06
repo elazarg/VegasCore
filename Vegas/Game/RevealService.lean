@@ -74,12 +74,55 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
+/-- The compiled event graph under a dependency mode. -/
+abbrev serviceGraph (setup : Setup (Player := Player) (L := L))
+    (mode : EventGraph.ExecutionMode) : EventGraph Player L :=
+  setup.eventGraph.withMode mode
+
+/-- The default service graph: the sequential specialization of the compiled
+graph, which is its sequential mode. -/
 abbrev graph (setup : Setup (Player := Player) (L := L)) := setup.eventGraph.sequentialize
 
+theorem graph_eq_serviceGraph (setup : Setup (Player := Player) (L := L)) :
+    graph setup = serviceGraph setup .sequential := rfl
+
+/-- The service graph of every mode keeps the public-barrier dependencies except
+possibly those between independent reveals. -/
+theorem serviceGraph_revealRelaxedOrdered (setup : Setup (Player := Player) (L := L))
+    (mode : EventGraph.ExecutionMode) : (serviceGraph setup mode).RevealRelaxedOrdered :=
+  setup.eventGraph.withMode_revealRelaxedOrdered (toEventGraph_barrierOrdered setup.program) mode
+
+/-- The service graph of every mode that keeps the dependencies between reveals
+is barrier ordered. -/
+theorem serviceGraph_barrierOrdered (setup : Setup (Player := Player) (L := L))
+    {mode : EventGraph.ExecutionMode} (keepsReveals : mode ≠ .concurrentReveals) :
+    (serviceGraph setup mode).BarrierOrdered :=
+  setup.eventGraph.withMode_barrierOrdered (toEventGraph_barrierOrdered setup.program)
+    mode keepsReveals
+
+/-- Deadline durations that grow with source rank: an event may stay ready for
+its index plus one clock ticks. The fixed calendar needs them increasing. -/
+abbrev rankDeadline (setup : Setup (Player := Player) (L := L))
+    (mode : EventGraph.ExecutionMode) (event : (serviceGraph setup mode).EventId) : Nat :=
+  event.val + 1
+
+/-- The service runtime of a dependency mode with a configured deadline duration
+per event. The runtime counts each duration from the clock at which the event
+became ready (`EventGraphRuntime.State.WithinDeadline`). -/
+def serviceRuntime (setup : Setup (Player := Player) (L := L))
+    (mode : EventGraph.ExecutionMode)
+    (deadline : (serviceGraph setup mode).EventId → Nat) :
+    EventGraphRuntime (serviceGraph setup mode) where
+  deadline := deadline
+
+/-- The default service runtime: the sequential graph with `rankDeadline`. -/
 def runtime (setup : Setup (Player := Player) (L := L)) : EventGraphRuntime (graph setup) where
   deadline event := event.val + 1
 
-/-- The configured deadline of an event is its index plus one. -/
+theorem runtime_eq_serviceRuntime (setup : Setup (Player := Player) (L := L)) :
+    runtime setup = serviceRuntime setup .sequential (rankDeadline setup .sequential) := rfl
+
+/-- The configured deadline of the default runtime is the event's index plus one. -/
 theorem runtime_deadline (setup : Setup (Player := Player) (L := L))
     (event : (graph setup).EventId) : (runtime setup).deadline event = event.val + 1 := rfl
 
@@ -95,14 +138,57 @@ theorem soleReady_of_ready (setup : Setup (Player := Player) (L := L))
     setup.eventGraph.sequentialize_ready_unique state.config.cut
       ((state.publicView_eventReady other).mp otherReady) ready⟩
 
+/-- In every dependency mode a ready event is its actor's turn: a player acts
+at most at one ready event. -/
+theorem serviceOwnTurn?_of_ready (setup : Setup (Player := Player) (L := L))
+    {mode : EventGraph.ExecutionMode}
+    (state : EventGraphRuntime.State (serviceGraph setup mode))
+    {event : (serviceGraph setup mode).EventId}
+    (ready : state.config.cut.Ready event) {who : Player}
+    (owned : (serviceGraph setup mode).actor? event = some who) :
+    state.publicView.ownTurn? who = some event :=
+  state.publicView.ownTurn?_of_ownTurn who event
+    ⟨(state.publicView_eventReady event).mpr ready, owned, fun other otherReady otherActor =>
+      (serviceGraph_revealRelaxedOrdered setup mode).ready_actor_unique state.config.cut
+          ready ((state.publicView_eventReady other).mp otherReady) owned otherActor⟩
+
 /-- A ready event is its actor's turn. -/
 theorem ownTurn?_of_ready (setup : Setup (Player := Player) (L := L))
     (state : EventGraphRuntime.State (graph setup)) {event : (graph setup).EventId}
     (ready : state.config.cut.Ready event) {who : Player}
     (owned : (graph setup).actor? event = some who) :
     state.publicView.ownTurn? who = some event :=
-  state.publicView.ownTurn?_of_ownTurn who event
-    ((soleReady_of_ready setup state ready).ownTurn owned)
+  serviceOwnTurn?_of_ready (mode := .sequential) setup state ready owned
+
+/-- In every dependency mode that keeps the dependencies between reveals, a
+ready public event is the only ready event. -/
+theorem soleReady_of_ready_public (setup : Setup (Player := Player) (L := L))
+    {mode : EventGraph.ExecutionMode} (keepsReveals : mode ≠ .concurrentReveals)
+    (state : EventGraphRuntime.State (serviceGraph setup mode))
+    {event : (serviceGraph setup mode).EventId}
+    (ready : state.config.cut.Ready event)
+    (isPublic : ((serviceGraph setup mode).outputLayout event).IsPublic) :
+    state.publicView.SoleReady event :=
+  ⟨(state.publicView_eventReady event).mpr ready, fun other otherReady =>
+    (serviceGraph_barrierOrdered setup keepsReveals).ready_public_unique state.config.cut
+      isPublic ready ((state.publicView_eventReady other).mp otherReady)⟩
+
+/-- In every dependency mode, a ready public event that is not a reveal, such
+as a sample, is the only ready event. -/
+theorem soleReady_of_ready_public_data (setup : Setup (Player := Player) (L := L))
+    {mode : EventGraph.ExecutionMode}
+    (state : EventGraphRuntime.State (serviceGraph setup mode))
+    {event : (serviceGraph setup mode).EventId}
+    (ready : state.config.cut.Ready event)
+    (isPublic : ((serviceGraph setup mode).outputLayout event).IsPublic)
+    (notPublication : ¬ ((serviceGraph setup mode).outputLayout event).IsPublication) :
+    state.publicView.SoleReady event := by
+  refine ⟨(state.publicView_eventReady event).mpr ready, fun other otherReady => ?_⟩
+  by_contra different
+  exact notPublication ((serviceGraph_revealRelaxedOrdered setup mode
+    ).ready_public_pair_publications state.config.cut ready
+      ((state.publicView_eventReady other).mp otherReady) (Ne.symm different)
+      (Or.inl isPublic)).1
 
 /-- While an event is ready, every player other than its actor is idle. -/
 theorem idle_of_ready (setup : Setup (Player := Player) (L := L))

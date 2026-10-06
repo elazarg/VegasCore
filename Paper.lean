@@ -9,6 +9,8 @@ import Vegas.Game.IntendedServiceNash
 import Vegas.Game.IntendedAsyncNash
 import Vegas.Game.AsyncServiceDeviationBound
 import Vegas.Game.AsyncServiceRawNash
+import Vegas.Game.EventCompilation
+import Vegas.EventGraph.RevealRelaxedScheduling
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -703,6 +705,44 @@ theorem intended_async_first_turn_nash [Fintype Player] [IExpr.ResultTypes L]
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.intended_async_first_turn_nash
+
+open Vegas.SourceProgram in
+/-- **Approximate Nash correspondence on the concurrent event graph.** The
+compiled event graph keeps only the public-barrier dependencies: every public
+event waits for all earlier events and all later events wait for it, while
+commitments of different owners between two public events complete in any
+order. For a setup with finite commitment payload types and a finite initial
+law, every adaptive public scheduler of that graph, every utility of the public
+source result and every `ε`, the compiled profile of a source profile is an
+`ε`-Nash equilibrium of the scheduled graph execution exactly when the source
+profile is an `ε`-Nash equilibrium of the source game. This is the ideal graph
+execution, without the message runtime, builder or audit. -/
+theorem concurrent_event_nash_iff [IExpr.ResultTypes L]
+    (setup : Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
+    (scheduler : setup.eventGraph.PublicScheduler)
+    (utility : PublicOutcome setup.program → Player → ℝ)
+    (ε : ℝ) (profile : BehavioralProfile setup.program) :
+    IsεNash (setup.eventGame scheduler)
+        (fun outcome who => utility (setup.eventPublicOutcome outcome) who)
+        ε (compileEventProfile setup.program profile) ↔
+      IsεNash setup.gameForm utility ε profile :=
+  setup.eventGame_approximate_nash_iff finite scheduler utility ε profile
+
+/-- info: 'Vegas.Paper.concurrent_event_nash_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.concurrent_event_nash_iff
+
+/-- info: 'Vegas.SourceProgram.Setup.eventGame_approximate_nash_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.eventGame_approximate_nash_iff
+
+/-- info: 'Vegas.EventGraph.runPolicies_concurrentReveals_store' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraph.runPolicies_concurrentReveals_store
 
 /-- info: 'Vegas.AsyncServiceSpec.isεNash_clientProfile_approximate' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

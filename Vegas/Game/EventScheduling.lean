@@ -66,7 +66,8 @@ def eventSchedulingSimulation (ordered : graph.BarrierOrdered) (finite : graph.F
           Config.store =
         (graph.runPolicies graph.canonicalScheduler
           (graph.normalizeProfile profile) initial).map Config.store :=
-            ordered.runPolicies_store_eq_canonical profile scheduler initial
+            (ordered.readyIndependent profile).runPolicies_store_eq_canonical scheduler
+              initial
       _ = (graph.runPolicies graph.canonicalScheduler profile initial).map
           Config.store := by
             rw [← graph.runPolicies_canonical_normalize_eq profile initial]

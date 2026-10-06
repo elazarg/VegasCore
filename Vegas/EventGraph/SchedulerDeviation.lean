@@ -133,7 +133,8 @@ theorem BarrierOrdered.runPolicies_update_store_eq_canonical
     (graph.normalizeProfile sigma) who (graph.replayPolicy scheduler who tau)
   have sameScheduler := congrArg (fun law : PMF graph.Config => law.map Config.store)
     (graph.runPolicies_update_replay_eq scheduler sigma who tau inputs)
-  have erased := ordered.runPolicies_store_eq_canonical replayed scheduler.toPublic inputs
+  have erased := (ordered.readyIndependent replayed).runPolicies_store_eq_canonical
+    scheduler.toPublic inputs
   have fixed : graph.normalizeProfile replayed = replayed := by
     simp only [replayed, normalizeProfile_update, normalizeProfile_idempotent,
       normalizePolicy_replayPolicy]

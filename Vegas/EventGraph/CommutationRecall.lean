@@ -42,12 +42,11 @@ theorem InformationDiscipline.ready_actor_ne
   · exact rightReady.1 (leftReady.2
       (discipline.same_owner_ordered earlier rightActor leftActor))
 
-/-- Swapping two simultaneously ready fixed completions preserves every
+/-- Swapping two completions of events with different actors preserves every
 player's filtered original-action history. -/
-theorem ownCompletions_complete_comm
-    (discipline : graph.InformationDiscipline schema) (config : graph.Config)
-    {left right : graph.EventId} (leftReady : config.cut.Ready left)
-    (rightReady : config.cut.Ready right) (different : left ≠ right)
+theorem ownCompletions_complete_comm (config : graph.Config)
+    {left right : graph.EventId}
+    (actorsDiffer : ∀ who, graph.actor? left = some who → graph.actor? right ≠ some who)
     (leftAction : graph.Action left) (rightAction : graph.Action right) :
     (fun who => graph.ownCompletions who
       (config.history ++ [⟨left, leftAction⟩, ⟨right, rightAction⟩])) =
@@ -56,10 +55,7 @@ theorem ownCompletions_complete_comm
   funext who
   simp only [ownCompletions, List.filter_append, List.filter_cons, List.filter_nil]
   by_cases leftOwned : graph.actor? left = some who
-  · have rightNotOwned : graph.actor? right ≠ some who := by
-      intro rightOwned
-      exact (discipline.ready_actor_ne leftReady rightReady different
-        leftOwned rightOwned) rfl
+  · have rightNotOwned : graph.actor? right ≠ some who := actorsDiffer who leftOwned
     simp [leftOwned, rightNotOwned]
   · by_cases rightOwned : graph.actor? right = some who
     · simp [leftOwned, rightOwned]
@@ -103,21 +99,21 @@ private theorem stepThen_map_storeRecall
   rw [stepThen_history firstReady secondReady different firstAction secondAction result member]
   rfl
 
-/-- Fixed actions at distinct simultaneously ready events commute after
-projecting to both the typed store and all players' original-action recall. -/
-theorem stepThen_map_storeRecall_comm
-    (discipline : graph.InformationDiscipline schema) (config : graph.Config)
+/-- Fixed actions at distinct simultaneously ready events with different actors
+commute after projecting to both the typed store and all players'
+original-action recall. -/
+theorem stepThen_map_storeRecall_comm (config : graph.Config)
     (left right : graph.EventId)
     (leftReady : config.cut.Ready left) (rightReady : config.cut.Ready right)
     (different : left ≠ right)
+    (actorsDiffer : ∀ who, graph.actor? left = some who → graph.actor? right ≠ some who)
     (leftAction : graph.Action left) (rightAction : graph.Action right) :
     (stepThen config left right leftReady rightReady different
       leftAction rightAction).map (storeRecall graph) =
     (stepThen config right left rightReady leftReady different.symm
       rightAction leftAction).map (storeRecall graph) := by
   rw [stepThen_map_storeRecall, stepThen_map_storeRecall]
-  have recallEq := ownCompletions_complete_comm discipline config leftReady rightReady
-    different leftAction rightAction
+  have recallEq := ownCompletions_complete_comm config actorsDiffer leftAction rightAction
   rw [stepThen_map_store_comm config left right leftReady rightReady different
     leftAction rightAction, recallEq]
 

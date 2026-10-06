@@ -212,8 +212,8 @@ private theorem normalizedThenCanonical_insert_second
 
 /-- Local confluence: choosing any ready event and then reverting to canonical
 scheduling has exactly the canonical semantic-state law. -/
-theorem BarrierOrdered.normalizedThenCanonical_eq
-    (ordered : graph.BarrierOrdered) (profile : graph.BehavioralProfile)
+theorem ReadyIndependent.normalizedThenCanonical_eq
+    {profile : graph.BehavioralProfile} (independent : graph.ReadyIndependent profile)
     (config : graph.Config) (event : graph.EventId)
     (ready : config.cut.Ready event) :
     graph.normalizedThenCanonical profile config event ready =
@@ -238,7 +238,7 @@ theorem BarrierOrdered.normalizedThenCanonical_eq
       · subst event
         exact (canonicalContinuation_step profile config canonical canonicalReady least).symm
       · obtain ⟨eventOwner, canonicalOwner, eventActor, canonicalActor, ownerNe⟩ :=
-          ordered.ready_pair_actors ready canonicalReady same
+          independent.ready_pair_actors ready canonicalReady same
         let eventThenCanonical := policyStepThen profile config event canonical ready
           canonicalReady same eventOwner canonicalOwner eventActor canonicalActor
         let canonicalThenEvent := policyStepThen profile config canonical event
@@ -283,7 +283,7 @@ theorem BarrierOrdered.normalizedThenCanonical_eq
             insertEvent
         have diamond : eventThenCanonical.map graph.semanticKey =
             canonicalThenEvent.map graph.semanticKey := by
-          exact ordered.policyStepThen_map_semanticKey_comm profile config event canonical
+          exact independent.policyStepThen_map_semanticKey_comm config event canonical
             ready canonicalReady same eventOwner canonicalOwner eventActor canonicalActor
         have continuationEq :
             eventThenCanonical.bind (graph.canonicalContinuation profile) =
@@ -311,8 +311,8 @@ theorem canonicalContinuation_terminal (profile : graph.BehavioralProfile)
 
 /-- The actual normalized runner under any adaptive public scheduler has the
 canonical semantic continuation law once fuel covers the unfinished events. -/
-theorem BarrierOrdered.runPlan_normalized_semantic_eq_canonical
-    (ordered : graph.BarrierOrdered) (profile : graph.BehavioralProfile)
+theorem ReadyIndependent.runPlan_normalized_semantic_eq_canonical
+    {profile : graph.BehavioralProfile} (independent : graph.ReadyIndependent profile)
     (scheduler : graph.PublicScheduler) (fuel : Nat) (config : graph.Config)
     (enough : config.remaining ≤ fuel) :
     (graph.runPlan
@@ -334,7 +334,7 @@ theorem BarrierOrdered.runPlan_normalized_semantic_eq_canonical
         intro selected _
         have ready : current.cut.Ready selected.1 :=
           (EventOrder.Cut.mem_enabled _ _).mp selected.2
-        have localLaw := ordered.normalizedThenCanonical_eq profile current selected.1 ready
+        have localLaw := independent.normalizedThenCanonical_eq current selected.1 ready
         split
         · rename_i owner actor
           rw [PMF.bind_map, Function.comp_def]
@@ -360,8 +360,8 @@ theorem BarrierOrdered.runPlan_normalized_semantic_eq_canonical
 /-- Full honest scheduling law: after normalizing completion-order metadata in
 every player policy, any adaptive public scheduler has the same terminal typed
 store law as the canonical scheduler. -/
-theorem BarrierOrdered.runPolicies_store_eq_canonical
-    (ordered : graph.BarrierOrdered) (profile : graph.BehavioralProfile)
+theorem ReadyIndependent.runPolicies_store_eq_canonical
+    {profile : graph.BehavioralProfile} (independent : graph.ReadyIndependent profile)
     (scheduler : graph.PublicScheduler) (inputs : graph.Inputs) :
     (graph.runPolicies scheduler (graph.normalizeProfile profile) inputs).map
         Config.store =
@@ -370,7 +370,7 @@ theorem BarrierOrdered.runPolicies_store_eq_canonical
   have enough : (Config.initial inputs : graph.Config).remaining ≤
       graph.order.eventCount := by
     simp [Config.remaining, Config.initial]
-  have semanticEq := ordered.runPlan_normalized_semantic_eq_canonical profile scheduler
+  have semanticEq := independent.runPlan_normalized_semantic_eq_canonical scheduler
     graph.order.eventCount (Config.initial inputs) enough
   have initialRemaining : (Config.initial inputs : graph.Config).remaining =
       graph.order.eventCount := by

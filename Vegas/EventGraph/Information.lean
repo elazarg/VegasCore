@@ -357,20 +357,17 @@ structure InformationDiscipline (schema : graph.LogicalSchema) : Prop where
     graph.actor? earlier = some who → graph.actor? later = some who →
       earlier ∈ graph.order.predecessors later
 
-namespace InformationDiscipline
+variable {graph} {schema : graph.LogicalSchema}
 
-variable {graph : Vegas.EventGraph Player L} {schema : graph.LogicalSchema}
-
-/-- At a ready strategic event, restricting the actual player store to the
-declared logical fields removes no visible value. Early public information and
-undeclared own bindings are excluded by `ready_fields_exact`. -/
-theorem logicalObserve_store (discipline : graph.InformationDiscipline schema)
-    (config : graph.Config) (event : graph.EventId) (who : Player)
-    (ready : config.cut.Ready event) (actor : graph.actor? event = some who) :
+/-- When the declared fields of an event are exactly the fields visible at the
+current cut, restricting the actual player store to them removes no visible
+value. -/
+theorem logicalObserve_store_of_fields_exact (config : graph.Config)
+    (event : graph.EventId) (who : Player)
+    (fieldsExact : graph.visibleFields who config.cut = schema.fields event) :
     (graph.logicalObserve schema event who (graph.playerObserve who config)).store =
       (graph.playerObserve who config).store := by
   funext field
-  have fieldsExact := discipline.ready_fields_exact config.cut event who ready actor
   have membership : field ∈ schema.fields event ↔
       graph.FieldAvailable config.cut field ∧ graph.fieldVisibleTo who field := by
     rw [← fieldsExact]
@@ -390,13 +387,14 @@ theorem logicalObserve_store (discipline : graph.InformationDiscipline schema)
       simp [playerObserve, playerStore, visible, absent]
     · simp [playerObserve, playerStore, visible]
 
-/-- At a ready strategic event, selecting declared own actions filters no
-actual own completion out. Original dependent actions, including a resolving
-`true` whose output failed, are retained verbatim. -/
-theorem logicalObserve_ownActions
-    (discipline : graph.InformationDiscipline schema)
-    (config : graph.Config) (event : graph.EventId) (who : Player)
-    (ready : config.cut.Ready event) (actor : graph.actor? event = some who) :
+/-- When the declared own history of an event is exactly the completed own
+events, selecting declared own actions filters no actual own completion out.
+Original dependent actions, including a resolving `true` whose output failed,
+are retained verbatim. -/
+theorem logicalObserve_ownActions_of_history_exact (config : graph.Config)
+    (event : graph.EventId) (who : Player)
+    (exactHistory : (schema.ownHistory event).toFinset =
+      graph.completedOwnEvents who config.cut) :
     (graph.logicalObserve schema event who (graph.playerObserve who config)).ownActions =
       (graph.playerObserve who config).ownActions := by
   unfold logicalObserve playerObserve declaredOwnActions
@@ -411,9 +409,33 @@ theorem logicalObserve_ownActions
     of_decide_eq_true memberFiltered.2
   have inOwned : completion.event ∈ graph.completedOwnEvents who config.cut := by
     simp [completedOwnEvents, completed, owned]
-  have exactHistory := discipline.ready_own_history_exact config.cut event who ready actor
   rw [← exactHistory] at inOwned
   simpa using inOwned
+
+namespace InformationDiscipline
+
+/-- At a ready strategic event, restricting the actual player store to the
+declared logical fields removes no visible value. Early public information and
+undeclared own bindings are excluded by `ready_fields_exact`. -/
+theorem logicalObserve_store (discipline : graph.InformationDiscipline schema)
+    (config : graph.Config) (event : graph.EventId) (who : Player)
+    (ready : config.cut.Ready event) (actor : graph.actor? event = some who) :
+    (graph.logicalObserve schema event who (graph.playerObserve who config)).store =
+      (graph.playerObserve who config).store :=
+  logicalObserve_store_of_fields_exact config event who
+    (discipline.ready_fields_exact config.cut event who ready actor)
+
+/-- At a ready strategic event, selecting declared own actions filters no
+actual own completion out. Original dependent actions, including a resolving
+`true` whose output failed, are retained verbatim. -/
+theorem logicalObserve_ownActions
+    (discipline : graph.InformationDiscipline schema)
+    (config : graph.Config) (event : graph.EventId) (who : Player)
+    (ready : config.cut.Ready event) (actor : graph.actor? event = some who) :
+    (graph.logicalObserve schema event who (graph.playerObserve who config)).ownActions =
+      (graph.playerObserve who config).ownActions :=
+  logicalObserve_ownActions_of_history_exact config event who
+    (discipline.ready_own_history_exact config.cut event who ready actor)
 
 end InformationDiscipline
 

@@ -38,8 +38,9 @@ theorem scheduled_terminalState_law
   rw [← canonical_terminalState_law program profile state]
   apply pmf_map_injective (f := some) (Option.some_injective _)
   rw [terminalOutcomes_map_decode, terminalOutcomes_map_decode]
-  have storeLaw := (toEventGraph_barrierOrdered program).runPolicies_store_eq_canonical
-    (compileEventProfile program profile) scheduler (encodeInputs state)
+  have storeLaw := ((toEventGraph_barrierOrdered program).readyIndependent
+    (compileEventProfile program profile)).runPolicies_store_eq_canonical scheduler
+    (encodeInputs state)
   simp only [normalizeProfile_compileEventProfile] at storeLaw
   rw [storeLaw]
 

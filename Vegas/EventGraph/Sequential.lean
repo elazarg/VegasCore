@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.EventGraph.BarrierInformation
+import Vegas.EventGraph.RevealRelaxation
 
 /-! # Sequential dependency specialization
 
@@ -102,11 +102,30 @@ def sequentialize (graph : Vegas.EventGraph Player L) : Vegas.EventGraph Player 
         exact graph.order.predecessor_lt (graph.reads_available event (.inr producer) read)
   payoffs := graph.payoffs
 
-/-- Dependency constraint used by an EventGraph execution. -/
+/-- Dependency constraint used by an EventGraph execution: the graph's own
+dependencies, the total source ranking, or the graph's dependencies without the
+direct ones between independent reveals. -/
 inductive ExecutionMode where
   | concurrent
   | sequential
+  | concurrentReveals
   deriving DecidableEq, Repr
+
+/-- The graph's dependencies of an event, without those on reveals it is
+independent of. -/
+def revealRelaxedPredecessors (graph : Vegas.EventGraph Player L)
+    (event : graph.EventId) : Finset graph.EventId := by
+  classical
+  exact (graph.order.predecessors event).filter fun prior =>
+    ¬ graph.IndependentReveals prior event
+
+omit [DecidableEq Player] in
+theorem mem_revealRelaxedPredecessors (graph : Vegas.EventGraph Player L)
+    (prior event : graph.EventId) :
+    prior ∈ graph.revealRelaxedPredecessors event ↔
+      prior ∈ graph.order.predecessors event ∧ ¬ graph.IndependentReveals prior event := by
+  classical
+  simp [revealRelaxedPredecessors]
 
 /-- Apply an execution mode by changing only the graph's dependency order. -/
 def withMode (graph : Vegas.EventGraph Player L)
@@ -117,11 +136,15 @@ def withMode (graph : Vegas.EventGraph Player L)
     predecessors := fun event => match mode with
       | .concurrent => graph.order.predecessors event
       | .sequential => (EventOrder.sequential graph.order.eventCount).predecessors event
+      | .concurrentReveals => graph.revealRelaxedPredecessors event
     predecessor_lt := by
       intro event predecessor member
       cases mode with
       | concurrent => exact graph.order.predecessor_lt member
-      | sequential => exact (EventOrder.sequential.mem_predecessors predecessor event).1 member }
+      | sequential => exact (EventOrder.sequential.mem_predecessors predecessor event).1 member
+      | concurrentReveals =>
+          exact graph.order.predecessor_lt
+            ((graph.mem_revealRelaxedPredecessors predecessor event).1 member).1 }
   inputLayout := graph.inputLayout
   outputLayout := graph.outputLayout
   nodes := graph.nodes
@@ -136,6 +159,13 @@ def withMode (graph : Vegas.EventGraph Player L)
             apply (EventOrder.sequential.mem_predecessors producer event).2
             exact graph.order.predecessor_lt
               (graph.reads_available event (.inr producer) read)
+    | concurrentReveals =>
+        cases field with
+        | inl => trivial
+        | inr producer =>
+            exact (graph.mem_revealRelaxedPredecessors producer event).2
+              ⟨graph.reads_available event (.inr producer) read,
+                fun independent => independent.2.2.1 read⟩
   payoffs := graph.payoffs
 
 omit [DecidableEq Player] in
@@ -221,13 +251,37 @@ theorem sequentialize_barrierOrdered (graph : Vegas.EventGraph Player L) :
   exact (EventOrder.sequential.mem_predecessors predecessor event).2
     ((mem_barrierOrder graph.outputLayout predecessor event).1 member).1
 
-/-- Required public barriers survive either dependency mode. -/
+/-- Required public barriers survive every dependency mode that keeps the
+dependencies between reveals. -/
 theorem withMode_barrierOrdered (graph : Vegas.EventGraph Player L)
-    (ordered : graph.BarrierOrdered) (mode : ExecutionMode) :
+    (ordered : graph.BarrierOrdered) (mode : ExecutionMode)
+    (keepsReveals : mode ≠ .concurrentReveals) :
     (graph.withMode mode).BarrierOrdered := by
   cases mode with
   | concurrent => exact ordered
   | sequential => exact graph.sequentialize_barrierOrdered
+  | concurrentReveals => exact absurd rfl keepsReveals
+
+omit [DecidableEq Player] in
+@[simp] theorem withMode_concurrentReveals_predecessors (graph : Vegas.EventGraph Player L)
+    (prior event : graph.EventId) :
+    prior ∈ (graph.withMode .concurrentReveals).order.predecessors event ↔
+      prior ∈ graph.order.predecessors event ∧ ¬ graph.IndependentReveals prior event :=
+  graph.mem_revealRelaxedPredecessors prior event
+
+/-- Every dependency mode keeps the public-barrier dependencies except possibly
+those between independent reveals. -/
+theorem withMode_revealRelaxedOrdered (graph : Vegas.EventGraph Player L)
+    (ordered : graph.BarrierOrdered) (mode : ExecutionMode) :
+    (graph.withMode mode).RevealRelaxedOrdered := by
+  cases mode with
+  | concurrentReveals =>
+      intro event prior member dependent
+      exact (graph.mem_revealRelaxedPredecessors prior event).2
+        ⟨ordered event member, dependent⟩
+  | concurrent | sequential =>
+      exact BarrierOrdered.revealRelaxedOrdered
+        (graph.withMode_barrierOrdered ordered _ (by simp))
 
 omit [DecidableEq Player] in
 /-- The sequential specialization admits at most one ready event. -/
