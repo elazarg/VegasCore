@@ -146,6 +146,48 @@ theorem aliasDeviation_historyLaw
             control.remaining control.actor
       · cases observed
 
+/-- At the initial history a raw whole-policy deviation against canonical
+opponents has the normalized final-state law of its alias-erased deviation,
+whose private memory starts from the empty own recall. -/
+theorem aliasDeviation_initialLaw
+    (source : ∀ who,
+      ((normal.menu raw).information initial horizon scheduler).BehavioralPolicy who)
+    (who : Principal)
+    (alternative : (raw.information initial horizon scheduler).BehavioralPolicy who) :
+    (((raw.information initial horizon scheduler).runBehavioral
+      (GameTheory.Profile.update
+        (sig := (raw.information initial horizon scheduler).behavioralSignature)
+        (fun player => normal.canonicalPolicy raw stable closed initial horizon scheduler
+          player (source player)) who alternative) (2 * horizon + 1)).map History.state).map
+            normal.state =
+      (((normal.menu raw).information initial horizon scheduler).runBehavioral
+        (GameTheory.Profile.update
+          (sig := ((normal.menu raw).information initial horizon scheduler).behavioralSignature)
+            source who (normal.aliasDeviation raw initial horizon scheduler who
+              [] alternative)) (2 * horizon + 1)).map History.state := by
+  have left := raw.run_eq_finish initial horizon scheduler
+    (GameTheory.Profile.update
+      (sig := (raw.information initial horizon scheduler).behavioralSignature)
+      (fun player => normal.canonicalPolicy raw stable closed initial horizon scheduler
+        player (source player)) who alternative) (2 * horizon + 1)
+    (raw.protocol initial horizon scheduler).initHistory le_rfl
+  have right := (normal.menu raw).run_eq_finish initial horizon scheduler
+    (GameTheory.Profile.update
+      (sig := ((normal.menu raw).information initial horizon scheduler).behavioralSignature)
+        source who (normal.aliasDeviation raw initial horizon scheduler who [] alternative))
+    (2 * horizon + 1) ((normal.menu raw).protocol initial horizon scheduler).initHistory le_rfl
+  refine (congrArg (PMF.map normal.state) left).trans (Eq.trans ?_ right.symm)
+  change (app.finish initial horizon scheduler _ none).map normal.state =
+    app.finish initial horizon scheduler _ none
+  simp only [finish, PMF.map_bind]
+  apply bind_congr_on_support _
+  intro drawn _
+  have law := normal.aliasDeviation_finish raw stable closed initial horizon scheduler source who
+    alternative (Execution.initial app drawn) (app.initial_inputRecall drawn) horizon none
+  simp only [SubmissionNormalization.state, Option.map_some, execution_initial] at law
+  simp only [finish, resume, PMF.pure_bind, PMF.map_comp] at law ⊢
+  exact law
+
 theorem canonical_context_value
     (source : ((normal.menu raw).information initial horizon scheduler).BehavioralAssessment)
     (target : (raw.information initial horizon scheduler).BehavioralAssessment)

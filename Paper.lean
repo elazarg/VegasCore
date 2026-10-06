@@ -3,8 +3,10 @@
 import Vegas.Game.SourceServiceCompilation
 import Vegas.Game.IntendedPreservation
 import Vegas.Game.IntendedServiceCompilation
+import Vegas.Game.SourceServiceNash
+import Vegas.Game.AsyncServiceNash
 
-/-! # Checked sequential-equilibrium preservation and termination -/
+/-! # Checked sequential-equilibrium preservation, Nash reflection and termination -/
 
 noncomputable section
 
@@ -178,5 +180,99 @@ theorem intended_sequential_equilibrium [Fintype Player] [IExpr.ResultTypes L]
 axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.SourceServiceSpec.intended_audited_raw_sequentialEquilibrium
+
+open Vegas.SourceProgram Vegas.EventGraphRuntime
+  GameTheory.Protocol GameTheory.Enforcement in
+/-- **Reflection of approximate Nash on the calendar ledger.** If the compiled
+raw profile of a source profile is an `ε`-Nash equilibrium of the audited
+bounded raw runtime, then the source profile is an `ε`-Nash equilibrium of the
+source protocol model, with the same `ε`. The compiled profile plays each
+player's source policy on the roster calendar with timing weight one half and
+gives it canonical raw response names (`Vegas.SourceServiceSpec.compileProfile`). -/
+theorem source_audited_raw_nash_reflection [Fintype Player] [IExpr.ResultTypes L]
+    {Parameter : Type} (service : SourceServiceSpec Player L)
+    (parameter : State L service.setup.context → Parameter)
+    (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
+    (sample : List (SettledEvidence service.setup) →
+      PMF (List (SettledEvidence service.setup)))
+    (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
+    (probability : Player → ℝ) (ε : ℝ)
+    (source : Profile service.sourceModel.behavioralSignature) :
+    let raw := service.bounds.rawMenu (runtime service.setup) service.leaks
+    let base := baseUtility service.setup service.leaks
+      (fun state => utility (service.setup.parameterOutcome parameter state))
+    let deposit := rosterAuditDeposit service.setup service.leaks service.bounds service.rosters
+      service.network base (fun owner => min (probability owner) 1)
+    let payoff := TerminalAudit.utility base
+      ((runtime service.setup).serviceAuditObservation service.leaks)
+      (sourceServiceAudit service.setup service.leaks sample) deposit
+    IsεNash ((raw.information (initialLaw service.setup) service.planLength
+        service.scheduler).toBehavioralGameForm service.fuel)
+        (fun history who => payoff history.state who) ε (service.compileProfile source) →
+      IsεNash (service.sourceModel.toBehavioralGameForm
+        (instructionCount service.setup.program + 1))
+        (fun final who => (service.setup.protocolReadout final.state).elim 0
+          (fun state => utility (service.setup.parameterOutcome parameter state) who))
+        ε source :=
+  service.isεNash_of_compileProfile parameter utility sample authentic probability ε source
+
+/-- info: 'Vegas.Paper.source_audited_raw_nash_reflection' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_audited_raw_nash_reflection
+
+open Vegas.SourceProgram Vegas.EventGraphRuntime
+  GameTheory.Protocol GameTheory.Enforcement in
+/-- **Reflection of approximate Nash under an arbitrary contract builder.**
+For a full-source service whose public scheduler satisfies the asynchronous
+contract, if the turn-counted clients of a source profile are an `ε`-Nash
+equilibrium of a response menu that admits every profile's clients, for the
+audited payoff with any deposit, then the source profile is an
+`(ε + 2 * δ * R)`-Nash equilibrium of the source protocol model. Here `δ` is
+the total deferral weight of the turn timing and every realized payoff value,
+charged or not, lies in an interval of length `R`. -/
+theorem async_client_nash_reflection [Fintype Player] [IExpr.ResultTypes L]
+    {Parameter : Type} (service : AsyncServiceSpec Player L)
+    (parameter : State L service.setup.context → Parameter)
+    (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
+    (sample : List (SettledEvidence service.setup) →
+      PMF (List (SettledEvidence service.setup)))
+    (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
+    (deposit : Player → ℝ) (menu : (application service.setup service.leaks).ResponseMenu)
+    {turns : Nat} (timing : TurnTiming service.setup turns)
+    (covered : ∀ (source : Profile service.sourceModel.behavioralSignature) who,
+      menu.Admissible (initialLaw service.setup) service.horizon service.scheduler who
+        (sourceServiceTurnPolicy service.setup service.leaks service.bound turns timing
+          (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
+            (CommitmentInterface.values service.setup.program) source)) who))
+    (low : Player → ℝ) (range : ℝ)
+    (within : ∀ who (output : Option (State L service.setup.program.terminalCtx))
+      (charged : Bool),
+      low who ≤ output.elim 0 (fun state => utility (service.setup.parameterOutcome parameter
+          state) who) - (if charged then deposit who else 0) ∧
+        output.elim 0 (fun state => utility (service.setup.parameterOutcome parameter
+          state) who) - (if charged then deposit who else 0) ≤ low who + range)
+    (ε : ℝ) (source : Profile service.sourceModel.behavioralSignature) :
+    let base := baseUtility service.setup service.leaks
+      (fun state => utility (service.setup.parameterOutcome parameter state))
+    let payoff := TerminalAudit.utility base
+      ((runtime service.setup).serviceAuditObservation service.leaks)
+      (sourceServiceAudit service.setup service.leaks sample) deposit
+    IsεNash ((menu.information (initialLaw service.setup) service.horizon
+        service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
+        (fun history who => payoff history.state who) ε
+        (service.clientProfile menu timing source) →
+      IsεNash (service.sourceModel.toBehavioralGameForm
+        (instructionCount service.setup.program + 1))
+        (fun final who => (service.setup.protocolReadout final.state).elim 0
+          (fun state => utility (service.setup.parameterOutcome parameter state) who))
+        (ε + 2 * (∑ event, timing.deferral event) * range) source :=
+  service.isεNash_of_clientProfile parameter utility sample authentic deposit menu timing covered
+    low range within ε source
+
+/-- info: 'Vegas.Paper.async_client_nash_reflection' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.async_client_nash_reflection
 
 end Vegas.Paper

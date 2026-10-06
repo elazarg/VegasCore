@@ -138,6 +138,20 @@ theorem trace_runRounds (players : Principal → app.Policy)
     (menu.admissible_of_covered initial horizon scheduler players covered) remaining count
     execution next trace supported
 
+/-- Initialization from a supported state is a legal history of every menu. -/
+theorem trace_initial (state : app.State) (supported : state ∈ initial.support) :
+    Nonempty ((menu.protocol initial horizon scheduler).Trace
+      (some ⟨horizon, none, Execution.initial app state⟩)) := by
+  refine ⟨.extend .start (fun _ => none) ?_ ?_⟩
+  · constructor
+    · change ¬False
+      trivial
+    · intro who
+      simp [protocol, actor]
+  · change _ ∈ (initial.map _).support
+    rw [PMF.support_map]
+    exact ⟨state, supported, rfl⟩
+
 theorem trace_roundsFrom_of_admissible (players : Principal → app.Policy)
     (admissible : ∀ who, menu.Admissible initial horizon scheduler who (players who))
     (count : Nat) (bounded : count ≤ horizon) (execution : app.Execution)
@@ -145,18 +159,7 @@ theorem trace_roundsFrom_of_admissible (players : Principal → app.Policy)
     Nonempty ((menu.protocol initial horizon scheduler).Trace
       (some ⟨horizon - count, none, execution⟩)) := by
   obtain ⟨state, stateMem, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
-  have start : Nonempty ((menu.protocol initial horizon scheduler).Trace
-      (some ⟨horizon, none, Execution.initial app state⟩)) := by
-    refine ⟨.extend .start (fun _ => none) ?_ ?_⟩
-    · constructor
-      · change ¬False
-        trivial
-      · intro who
-        simp [protocol, actor]
-    · change _ ∈ (initial.map _).support
-      rw [PMF.support_map]
-      exact ⟨state, stateMem, rfl⟩
-  obtain ⟨trace⟩ := start
+  obtain ⟨trace⟩ := menu.trace_initial initial horizon scheduler state stateMem
   exact menu.trace_runRounds_of_admissible initial horizon scheduler players admissible
     (horizon - count) count (Execution.initial app state) execution
     (by simpa only [Nat.sub_add_cancel bounded] using trace) reached

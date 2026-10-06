@@ -12,6 +12,7 @@ import Vegas.Source.InitialState
 import Vegas.Source.PrivateInputs
 import Vegas.Source.Purification
 import Vegas.Source.ValueBinding
+import Vegas.Source.ValueBindingAdmission
 import Vegas.Source.ValueBindingContinuation
 import Vegas.Source.Disclosure
 import Vegas.Source.DisclosureAliases

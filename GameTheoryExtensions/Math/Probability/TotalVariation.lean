@@ -84,6 +84,88 @@ theorem WithinTV.bind_right {error : ℝ} (μ : PMF α) {first second : α → P
     expect_const_mul] at lower
   exact abs_le.mpr ⟨by linarith, upper⟩
 
+/-- The probability of an event is the expectation of its indicator. -/
+private theorem toReal_toOuterMeasure_eq_expect (μ : PMF α) (event : Set α) [DecidablePred
+    (· ∈ event)] : (μ.toOuterMeasure event).toReal =
+      expect μ (fun a => if a ∈ event then 1 else 0) := by
+  have law := toReal_toOuterMeasure_bind μ PMF.pure event
+  rw [PMF.bind_pure] at law
+  rw [law]
+  apply expect_congr_on_support
+  intro a _
+  rw [PMF.toOuterMeasure_pure_apply]
+  split <;> simp
+
+/-- Laws within `error` in total variation have expectations within
+`error * range` of a payoff whose values on both supports lie in an interval
+of length `range`. -/
+theorem WithinTV.expect_sub_le {error : ℝ} {μ ν : PMF α} (close : WithinTV error μ ν)
+    (f : α → ℝ) (low range : ℝ)
+    (bounded : ∀ a, a ∈ μ.support ∨ a ∈ ν.support → low ≤ f a ∧ f a ≤ low + range) :
+    expect μ f - expect ν f ≤ error * range := by
+  classical
+  let event : Set α := {a | ν a < μ a}
+  let gap : α → ℝ := fun a => f a - low - range * if a ∈ event then 1 else 0
+  have size (a : α) (member : a ∈ μ.support ∨ a ∈ ν.support) :
+      |f a| ≤ |low| + |range| := by
+    obtain ⟨lower, upper⟩ := bounded a member
+    exact abs_le.mpr ⟨by linarith [neg_abs_le low, abs_nonneg range],
+      by linarith [le_abs_self low, le_abs_self range]⟩
+  have integrable (law : PMF α) (inside : ∀ a ∈ law.support, a ∈ μ.support ∨ a ∈ ν.support) :
+      PayoffIntegrable law f :=
+    payoffIntegrable_of_bounded_on_support law f fun a member => size a (inside a member)
+  have indicatorIntegrable (law : PMF α) :
+      PayoffIntegrable law (fun a => if a ∈ event then (1 : ℝ) else 0) :=
+    payoffIntegrable_of_bounded law _ (C := 1) fun a => by split <;> simp
+  have gapIntegrable (law : PMF α) (inside : ∀ a ∈ law.support, a ∈ μ.support ∨ a ∈ ν.support) :
+      PayoffIntegrable law gap :=
+    payoffIntegrable_sub (payoffIntegrable_sub (integrable law inside)
+      (payoffIntegrable_constant law low)) (payoffIntegrable_const_mul (indicatorIntegrable law))
+  have μInside : ∀ a ∈ μ.support, a ∈ μ.support ∨ a ∈ ν.support := fun a member => Or.inl member
+  have νInside : ∀ a ∈ ν.support, a ∈ μ.support ∨ a ∈ ν.support := fun a member => Or.inr member
+  have expand (law : PMF α) (inside : ∀ a ∈ law.support, a ∈ μ.support ∨ a ∈ ν.support) :
+      expect law gap = expect law f - low - range * (law.toOuterMeasure event).toReal := by
+    rw [toReal_toOuterMeasure_eq_expect, ← expect_const_mul,
+      expect_sub (payoffIntegrable_sub (integrable law inside)
+        (payoffIntegrable_constant law low)) (payoffIntegrable_const_mul (indicatorIntegrable law)),
+      expect_sub (integrable law inside) (payoffIntegrable_constant law low), expect_constant]
+  have pointwise (a : α) : (μ a).toReal * gap a ≤ (ν a).toReal * gap a := by
+    by_cases inEvent : a ∈ event
+    · have larger : ν a < μ a := inEvent
+      have member : a ∈ μ.support := (PMF.mem_support_iff μ a).mpr (ne_of_gt
+        (lt_of_le_of_lt (show (0 : ENNReal) ≤ ν a from zero_le) larger))
+      have nonpositive : gap a ≤ 0 := by
+        have upper := (bounded a (Or.inl member)).2
+        simp only [gap, inEvent, ↓reduceIte, mul_one]
+        linarith
+      have ordered : (ν a).toReal ≤ (μ a).toReal :=
+        (ENNReal.toReal_le_toReal (ν.apply_ne_top a) (μ.apply_ne_top a)).mpr larger.le
+      nlinarith
+    · have smaller : μ a ≤ ν a := not_lt.mp inEvent
+      have ordered : (μ a).toReal ≤ (ν a).toReal :=
+        (ENNReal.toReal_le_toReal (μ.apply_ne_top a) (ν.apply_ne_top a)).mpr smaller
+      by_cases member : a ∈ ν.support
+      · have nonnegative : 0 ≤ gap a := by
+          have lower := (bounded a (Or.inr member)).1
+          simp only [gap, inEvent, ↓reduceIte, mul_zero, sub_zero]
+          linarith
+        nlinarith
+      · have zero : ν a = 0 := (PMF.apply_eq_zero_iff ν a).mpr member
+        have alsoZero : μ a = 0 :=
+          le_antisymm (zero ▸ smaller) (show (0 : ENNReal) ≤ μ a from zero_le)
+        simp only [zero, alsoZero, ENNReal.toReal_zero, zero_mul, le_refl]
+  have compared : expect μ gap ≤ expect ν gap :=
+    Summable.tsum_le_tsum pointwise (gapIntegrable μ μInside).summable
+      (gapIntegrable ν νInside).summable
+  rw [expand μ μInside, expand ν νInside] at compared
+  have massGap := (abs_le.mp (close event)).2
+  rcases le_or_gt 0 range with nonnegative | negative
+  · have scaled := mul_le_mul_of_nonneg_left massGap nonnegative
+    linarith
+  · obtain ⟨a, member⟩ := μ.support_nonempty
+    have inside := bounded a (Or.inl member)
+    linarith [inside.1, inside.2]
+
 /-- A lottery that takes the branch at `index` with probability at least
 `1 - error` is within `error` of that branch. -/
 theorem WithinTV.of_bind_point (timing : PMF ι) (index : ι)

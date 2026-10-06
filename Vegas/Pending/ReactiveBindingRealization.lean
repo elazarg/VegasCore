@@ -73,4 +73,50 @@ theorem retainedPolicy_runFrom
   simp only [ReactiveApplication.Implementation.run, PMF.map_bind, PMF.map_comp]
   rfl
 
+/-- From the initial history, the retained policy with the empty reference
+recall realizes the repair runner from every initial execution, with private
+memory starting at the empty recall. -/
+theorem retainedPolicy_initialLaw
+    (initial : PMF (runtime.reactiveApplication leaks).State) (horizon : Nat)
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    (source : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
+    (target : ∀ who, (larger.information initial horizon scheduler).BehavioralPolicy who)
+    (agrees : (included.actionRestriction initial horizon scheduler).ExtendsProfile source target)
+    (who : Player) (policy : (runtime.reactiveApplication leaks).Policy)
+    (fuel : Nat) (enough : 2 * horizon + 1 ≤ fuel) :
+    let app := runtime.reactiveApplication leaks
+    let players := Function.update (larger.decodeProfile initial horizon scheduler target)
+      who policy
+    let strategy := retainedImplementation runtime leaks menu who [] policy
+    ((menu.information initial horizon scheduler).runBehavioral
+      (Function.update source who
+        (retainedPolicy runtime leaks menu initial horizon scheduler who [] policy))
+      fuel).map History.state =
+        initial.bind fun state =>
+          (strategy.runJoint who players scheduler horizon
+            (ReactiveApplication.Execution.initial app state) (atRecall runtime leaks [])).map
+              (fun next => app.finished next.1) := by
+  intro app players strategy
+  have law := included.runFrom_restrictPolicy_finish initial horizon scheduler source target agrees
+    who strategy.policy (retainedImplementation_policy_available runtime leaks menu who [] policy)
+    fuel (menu.protocol initial horizon scheduler).initHistory enough
+  change ((menu.information initial horizon scheduler).runBehavioralFrom
+    (Function.update source who
+      (retainedPolicy runtime leaks menu initial horizon scheduler who [] policy))
+    fuel (menu.protocol initial horizon scheduler).initHistory).map History.state = _ at law
+  rw [InformationModel.runBehavioral, law]
+  change initial.bind (fun state => (app.runRounds scheduler
+    (Function.update (larger.decodeProfile initial horizon scheduler target) who strategy.policy)
+    horizon (ReactiveApplication.Execution.initial app state)).map app.finished) = _
+  apply bind_congr_on_support _
+  intro state _
+  have realized := strategy.realize who players scheduler horizon
+    (ReactiveApplication.Execution.initial app state)
+  have empty : (ReactiveApplication.Execution.initial app state).recall who = [] := rfl
+  rw [empty, retainedImplementation_posterior_prefix runtime leaks menu who [] [] policy le_rfl,
+    PMF.pure_bind] at realized
+  simp only [players, Function.update_idem] at realized
+  rw [← realized, ReactiveApplication.Implementation.run, PMF.map_comp]
+  rfl
+
 end Vegas.EventGraphRuntime.BindingMemory
