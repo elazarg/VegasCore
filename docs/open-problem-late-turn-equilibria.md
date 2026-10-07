@@ -1,9 +1,9 @@
 # Open problem: sequential equilibria with late sends and leaked openings
 
-Status: open. This note states the question self-containedly so that it can be
-worked on independently of the rest of the project. Answers are welcome in
-either direction: a proof, or a counterexample meeting the standard in the last
-section.
+Status: variant 1 is false (verified counterexample below); corrected
+positive versions are stated after it. This note states the question
+self-containedly so that it can be worked on independently of the rest of the
+project.
 
 ## Background in one paragraph
 
@@ -110,6 +110,45 @@ both inclusion sites, every assessment checked is rejected.
   inclusion site (late turns, values of `v`, failure sets, downstream listeners)
   and one unknown per tilt ratio and per indifferent type's mixture. Whether it
   is always solvable is the crux.
+
+**Counterexample to variant 1 (verified twice, independently).** Game `G*`:
+types `t = (v, s)`, `v in {0, 1}` with `P(v = 1) = 9/20`, `s in {A, B, C}` uniform
+and independent; `R = 2`, `D = 6 = 3R`, `c = 3 > R`, `q = 99/100`, `k = 2`; one
+listener activated between `L1` and `L2`, who learns `v` from a pending opening.
+After a success the listener plays the safe answer `m` (worth `2/5` to it) or a
+guess `g_i` (worth `[s = i]`); the sender gets `R/2` under `m`, and under any
+guess types `A, B` get `R` and type `C` gets `0`. After a failure the listener
+gets `[a = v]` and the sender gets `(R, 0, 0)` under `f1` and `(0, R, 0)` under
+`f0`, over `(A, B, C)`. The intended SE is unique (the listener plays `m`). In
+every SE of the full game the outcome differs:
+1. every success answer acts on the sender along the single direction
+   `(1, 1, -1)`;
+2. whatever the listener does at the no-leak failure set, the leak splits `A`
+   from `B` in some class `v`, so two of its types strictly prefer opposite late
+   turns;
+3. the cross ratio of the beliefs at the two inclusion sites tends to `0`, so one
+   site has a belief on a face of the simplex, for every tremble tilt;
+4. on a face the largest belief is at least `1/2 > 2/5`, the listener guesses,
+   and type `(v, A)` gains `qR - (1 - q)(D + c) = 189/100 > 1 = R/2` by
+   deferring.
+
+The intended outcome remains a Nash and weak-PBE outcome of `G*`; only
+Kreps-Wilson consistency excludes it. Two types per class always escape (one
+reward direction lines them up), and richer designs whose rewards do not lie on
+one line also escape (three types, three late turns, two listeners). The same
+game refutes every margin `D > R`, `c >= 0` once `q` is close enough to `1`.
+
+**Positive results (proved on paper, not mechanized).**
+- If `q(D - R) <= (1 - q)c` (with `D >= 2R`), deferring never pays and a
+  preserving SE exists, leaks or not.
+- If pending late openings are never observed, a preserving SE exists for every
+  `k`, `D >= 2R`, `c >= 0`.
+- With leaks and one listener, a reward-richness condition on the listener's
+  answers suffices.
+
+Checkers: [`g_star_verification.py`](../scripts/experiments/g_star_verification.py),
+[`three_type_counterexample.py`](../scripts/experiments/three_type_counterexample.py),
+[`late_turn_search.py`](../scripts/experiments/late_turn_search.py).
 
 ## Abstract version (a candidate formulation, possibly too strong)
 

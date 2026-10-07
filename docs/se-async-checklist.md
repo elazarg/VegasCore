@@ -52,6 +52,13 @@ proof that a given concurrency breaks preservation. Stage S, the sequentialized
 graph, is an intermediate level of the tower, not the goal. The audit backend is
 the authentic partial sampler with conditional coverage until box W closes.
 Players are finitely many throughout.
+
+**Refuted as stated for arbitrary builders (owner decision pending).** The
+sequential-equilibrium form of this target fails for builders that may include
+late openings with probability near one when pending openings can leak, for
+every forfeit and deposit margin: see the verified counterexample `G*` in
+[the late-turn note](open-problem-late-turn-equilibria.md). The Nash forms
+(box C4) are unaffected.
 An author-only observation rule (leaks depend on the observer and the authors
 of pending messages, not on their content) is an approved optional hypothesis,
 used only where a proof needs it and named there.
