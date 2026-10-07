@@ -2,6 +2,7 @@
 
 import Vegas.Game.AsyncOpeningDeviationBound
 import Vegas.Game.IntendedAsyncNash
+import Vegas.Game.IntendedOpeningExtension
 
 /-! # Approximate Nash equilibria of the intended game for opening clients
 
@@ -145,6 +146,87 @@ theorem intended_openingClientProfile_isεNash {Parameter : Type}
       (serviceGraph_revealRelaxedOrdered service.setup service.mode) wellFormed parameter utility
       forfeit range sample deposit nonnegative intended source agrees
       (service.openingClients_opensEffectively source disclosing) who alternative)
+
+/-- **Intended approximate Nash equilibria for opening clients, existentially.**
+Every `ε`-Nash equilibrium of the intended game extends to a source profile
+that discloses at every reveal (`Vegas.SourceProgram.Setup.openingExtension`),
+and the turn-counted clients of that extension are an `(ε + 2 * δ * R)`-Nash
+equilibrium of every admitting response menu, in every dependency mode, with
+the intended joint law of outcome and settlement within `δ`. -/
+theorem intended_openingExtension_isεNash {Parameter : Type}
+    (wellFormed : service.setup.WellFormed)
+    (parameter : State L service.setup.context → Parameter)
+    (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
+    (forfeit : ℝ) (range : ∀ high low who, utility high who - utility low who ≤ forfeit)
+    (sample : List (SettledEvidence service.setup service.mode) →
+      PMF (List (SettledEvidence service.setup service.mode)))
+    (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
+    (deposit : Player → ℝ) (nonnegative : ∀ who, 0 ≤ deposit who)
+    (menu : (serviceApplication service.setup service.mode service.deadline
+      service.leaks).ResponseMenu)
+    {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
+    (covered : ∀ (source : Profile service.sourceModel.behavioralSignature) who,
+      menu.Admissible (serviceInitialLaw service.setup service.mode) service.horizon
+        service.scheduler who
+        (serviceClientPolicy service.setup service.mode service.deadline service.leaks
+          service.bound turns timing
+          (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
+            (CommitmentInterface.values service.setup.program) source)) who))
+    (low : Player → ℝ) (spread : ℝ)
+    (within : ∀ who (output : Option (State L service.setup.program.terminalCtx))
+      (charged : Bool),
+      low who ≤ output.elim 0 (fun state => forfeitUtility service.setup.program forfeit utility
+          (service.setup.parameterOutcome parameter state) who) -
+            (if charged then deposit who else 0) ∧
+        output.elim 0 (fun state => forfeitUtility service.setup.program forfeit utility
+          (service.setup.parameterOutcome parameter state) who) -
+            (if charged then deposit who else 0) ≤ low who + spread)
+    (intended : Profile service.setup.intendedModel.behavioralSignature)
+    (ε : ℝ)
+    (equilibrium : IsεNash (service.setup.intendedModel.toBehavioralGameForm
+        (instructionCount service.setup.program + 1))
+      (fun final who => (service.setup.protocolReadout final.state).elim 0
+        (fun state => utility (service.setup.parameterOutcome parameter state) who)) ε
+      intended) :
+    let forfeited := forfeitUtility service.setup.program forfeit utility
+    let base := serviceBaseUtility service.setup service.mode service.deadline service.leaks
+      (fun state => forfeited (service.setup.parameterOutcome parameter state))
+    let payoff := TerminalAudit.utility base
+      ((serviceRuntime service.setup service.mode service.deadline).serviceAuditObservation
+        service.leaks)
+      (serviceSourceAudit service.setup service.mode service.deadline service.leaks sample) deposit
+    let settle := TerminalAudit.settlement base
+      ((serviceRuntime service.setup service.mode service.deadline).serviceAuditObservation
+        service.leaks)
+      (serviceSourceAudit service.setup service.mode service.deadline service.leaks sample) deposit
+    ∃ source : Profile service.sourceModel.behavioralSignature,
+      service.setup.intendedRestriction.ExtendsProfile intended source ∧
+      (∀ player, Disclosing service.setup.program
+        (service.setup.decodeBehavioralProfile (CommitmentInterface.values service.setup.program)
+          source player)) ∧
+      IsεNash ((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
+          service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
+          (fun history who => payoff history.state who)
+          (ε + 2 * (∑ event, timing.deferral event) * spread)
+          (service.clientProfile menu timing source) ∧
+        PMF.WithinTV (∑ event, timing.deferral event)
+          (((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
+            service.scheduler).runBehavioral (service.clientProfile menu timing source)
+              (2 * service.horizon + 1)).bind (fun final =>
+                (settle final.state).map fun payoffs =>
+                  (serviceSourceReadout service.setup service.mode service.deadline service.leaks
+                    final.state, payoffs)))
+          ((service.setup.intendedModel.runBehavioral intended
+              (instructionCount service.setup.program + 1)).map
+            (fun final => (service.setup.protocolReadout final.state,
+              fun who => (service.setup.protocolReadout final.state).elim 0
+                (fun state => utility (service.setup.parameterOutcome parameter state) who)))) :=
+  ⟨service.setup.openingExtension intended, service.setup.openingExtension_extends intended,
+    service.setup.openingExtension_disclosing intended,
+    service.intended_openingClientProfile_isεNash wellFormed parameter utility forfeit range
+      sample authentic deposit nonnegative menu timing covered low spread within intended
+      (service.setup.openingExtension intended) (service.setup.openingExtension_extends intended)
+      (service.setup.openingExtension_disclosing intended) ε equilibrium⟩
 
 end AsyncServiceSpec
 

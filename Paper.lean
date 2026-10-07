@@ -757,9 +757,9 @@ open Vegas.SourceProgram Vegas.EventGraphRuntime
 dependency mode.** For a well-formed setup with finite commitment payload types
 and a finite initial law, a forfeit no smaller than the payoff range, every
 authentic audit and every nonnegative deposit, and every scheduler satisfying
-the asynchronous contract, the turn-counted clients of a source profile that
-discloses at every reveal and extends an `ε`-Nash equilibrium of the intended
-game are an `(ε + 2 * δ * R)`-Nash equilibrium of the audited bounded raw ledger
+the asynchronous contract, every `ε`-Nash equilibrium of the intended game
+extends to a source profile that discloses at every reveal, whose turn-counted
+clients are an `(ε + 2 * δ * R)`-Nash equilibrium of the audited bounded raw ledger
 under the forfeit pass, and their joint law of typed outcome and realized
 settlement is within `δ` in total variation of the intended joint law of
 terminal store and payoff.
@@ -789,11 +789,7 @@ theorem intended_opening_client_nash [Fintype Player] [IExpr.ResultTypes L]
           (service.setup.parameterOutcome parameter state) who) -
             (if charged then deposit who else 0) ≤ low who + spread)
     (intended : Profile service.setup.intendedModel.behavioralSignature)
-    (source : Profile service.sourceModel.behavioralSignature)
-    (agrees : service.setup.intendedRestriction.ExtendsProfile intended source)
-    (disclosing : ∀ player, Disclosing service.setup.program
-      (service.setup.decodeBehavioralProfile (CommitmentInterface.values service.setup.program)
-        source player)) (ε : ℝ)
+    (ε : ℝ)
     (equilibrium : IsεNash (service.setup.intendedModel.toBehavioralGameForm
         (instructionCount service.setup.program + 1))
       (fun final who => (service.setup.protocolReadout final.state).elim 0
@@ -810,28 +806,33 @@ theorem intended_opening_client_nash [Fintype Player] [IExpr.ResultTypes L]
       ((serviceRuntime service.setup service.mode service.deadline).serviceAuditObservation
         service.leaks)
       (serviceSourceAudit service.setup service.mode service.deadline service.leaks sample) deposit
-    IsεNash ((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
-      service.horizon
-        service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
-        (fun history who => payoff history.state who)
-        (ε + 2 * (∑ event, timing.deferral event) * spread)
-        (service.clientProfile service.rawMenu timing source) ∧
-      PMF.WithinTV (∑ event, timing.deferral event)
-        (((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
-          service.horizon
-          service.scheduler).runBehavioral (service.clientProfile service.rawMenu timing source)
-            (2 * service.horizon + 1)).bind (fun final =>
-              (settle final.state).map fun payoffs =>
-                (serviceSourceReadout service.setup service.mode service.deadline service.leaks
-                  final.state, payoffs)))
-        ((service.setup.intendedModel.runBehavioral intended
-            (instructionCount service.setup.program + 1)).map
-          (fun final => (service.setup.protocolReadout final.state,
-            fun who => (service.setup.protocolReadout final.state).elim 0
-              (fun state => utility (service.setup.parameterOutcome parameter state) who)))) :=
-  service.intended_openingClientProfile_isεNash wellFormed parameter utility forfeit range
+    ∃ source : Profile service.sourceModel.behavioralSignature,
+      service.setup.intendedRestriction.ExtendsProfile intended source ∧
+      (∀ player, Disclosing service.setup.program
+        (service.setup.decodeBehavioralProfile (CommitmentInterface.values service.setup.program)
+          source player)) ∧
+      IsεNash ((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
+        service.horizon
+          service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
+          (fun history who => payoff history.state who)
+          (ε + 2 * (∑ event, timing.deferral event) * spread)
+          (service.clientProfile service.rawMenu timing source) ∧
+        PMF.WithinTV (∑ event, timing.deferral event)
+          (((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
+            service.horizon
+            service.scheduler).runBehavioral (service.clientProfile service.rawMenu timing source)
+              (2 * service.horizon + 1)).bind (fun final =>
+                (settle final.state).map fun payoffs =>
+                  (serviceSourceReadout service.setup service.mode service.deadline service.leaks
+                    final.state, payoffs)))
+          ((service.setup.intendedModel.runBehavioral intended
+              (instructionCount service.setup.program + 1)).map
+            (fun final => (service.setup.protocolReadout final.state,
+              fun who => (service.setup.protocolReadout final.state).elim 0
+                (fun state => utility (service.setup.parameterOutcome parameter state) who)))) :=
+  service.intended_openingExtension_isεNash wellFormed parameter utility forfeit range
     sample authentic deposit nonnegative service.rawMenu timing (service.rawMenu_admits timing)
-    low spread within intended source agrees disclosing ε equilibrium
+    low spread within intended ε equilibrium
 
 /-- info: 'Vegas.Paper.intended_opening_client_nash' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -842,6 +843,16 @@ theorem intended_opening_client_nash [Fintype Player] [IExpr.ResultTypes L]
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.AsyncServiceSpec.intended_openingClientProfile_isεNash
+
+/-- info: 'Vegas.AsyncServiceSpec.intended_openingExtension_isεNash' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.AsyncServiceSpec.intended_openingExtension_isεNash
+
+/-- info: 'Vegas.SourceProgram.Setup.openingExtension_disclosing' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.openingExtension_disclosing
 
 /-- info: 'Vegas.AsyncServiceSpec.openingFirstTurn_deviation_bound' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

@@ -444,7 +444,7 @@ joint law. It is not pursued.
   `asyncDeviation_withheld_readout`), and a withheld disclosure is a failed
   reveal of the deviator (`DeviatorWithheld.failedReveals_pos`). The SE chain
   is not yet carried to this graph.
-- [ ] **C4. Concurrent Nash.** The Nash correspondence for every contract
+- [x] **C4. Concurrent Nash.** The Nash correspondence for every contract
   builder holds for the source game on the concurrent-binding graph of C2, and
   its intended-game form (through the forfeit pass) on the graph of C3, pinned
   with standard axioms. With withholding priced only by the program's failure
@@ -452,12 +452,16 @@ joint law. It is not pursued.
   pending opening, so the source-game form is not claimed on the C3 graph.
   Each event's deadline is a configured duration counted from the moment its
   prerequisites complete.
-  Not yet checked: the pinned intended form assumes the decoded source profile discloses at every reveal, and the existence of such an extension for every intended profile is not yet proved. Evidence: the source-game form on every barrier-ordered service graph, the
+  Evidence: the source-game form on every barrier-ordered service graph, the
   concurrent-binding graph included, is the five asynchronous Nash pins (see
   C2). The intended-game form in every dependency mode, the concurrent-reveal
   mode included, is `Vegas.Paper.intended_opening_client_nash` (from
+  `AsyncServiceSpec.intended_openingExtension_isεNash` and
   `AsyncServiceSpec.intended_openingClientProfile_isεNash`, standard axioms),
-  for the approved client of the intended game: it opens each of its
+  with no existence premise: every intended `ε`-Nash equilibrium extends to a
+  source profile that discloses at every reveal (`Setup.openingExtension`,
+  `Setup.openingExtension_extends`, `Setup.openingExtension_disclosing`), whose
+  clients are the approved client of the intended game: it opens each of its
   disclosures from its own stored commitment, without decoding the rest of its
   view or waiting for another opening, so its source profile discloses at every
   reveal (`Disclosing`; its first-turn clients open effectively,

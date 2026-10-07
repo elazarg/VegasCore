@@ -30,6 +30,7 @@ import Vegas.Game.EventScheduling
 import Vegas.Game.IntendedAsyncNash
 import Vegas.Game.IntendedAuditedOutcome
 import Vegas.Game.IntendedNash
+import Vegas.Game.IntendedOpeningExtension
 import Vegas.Game.IntendedOpeningNash
 import Vegas.Game.IntendedPreservation
 import Vegas.Game.IntendedServiceCompilation
