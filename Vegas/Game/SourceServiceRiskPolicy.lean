@@ -23,45 +23,56 @@ open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {mode : EventGraph.ExecutionMode} {deadline : (serviceGraph setup mode).EventId → Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
 
 /-- At a clear legal risk-menu history, the actual record and the owner's
 canonical slot admit every timely unsent source decision. -/
 theorem sourceServiceCanonicalPolicy_risk_retained
-    (bounds : MessageBounds (graph setup)) (covered : bounds.CoversBindingValues)
-    (initialCovered : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
-    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
-    (bound : (graph setup).EventId → Nat) (profile : BehavioralProfile setup.program)
+    (bounds : MessageBounds (serviceGraph setup mode)) (covered : bounds.CoversBindingValues)
+    (initialCovered : ∀ state ∈ (serviceInitialLaw setup mode).support,
+        bounds.CandidateValues state)
+    (capacity : (serviceGraph setup mode).order.eventCount ≤ bounds.candidateCount)
+    (bound : (serviceGraph setup mode).EventId → Nat) (profile : BehavioralProfile setup.program)
     (who : Player)
     (permitted : (profile who).Admitted setup.program (CommitmentInterface.values _))
-    {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
-    (control : (application setup leaks).Control)
-    (trace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup) horizon
+    {horizon : Nat} {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    (control : (serviceApplication setup mode deadline leaks).Control)
+    (trace : ((bounds.riskMenu (serviceRuntime setup mode deadline) leaks bound).protocol
+        (serviceInitialLaw setup mode) horizon
       scheduler).Trace (some control))
-    (clear : (runtime setup).serviceRisk leaks bound who (control.execution.recall who)
-      (control.execution.observe (application setup leaks) who) = false)
-    (event : (graph setup).EventId)
+    (clear : (serviceRuntime setup mode deadline).serviceRisk leaks bound who
+        (control.execution.recall who)
+      (control.execution.observe (serviceApplication setup mode deadline leaks) who) = false)
+    (event : (serviceGraph setup mode).EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
-    (timely : control.execution.application.publicView.WithinDeadline (runtime setup) event)
-    (unsent : (runtime setup).eventRecorded leaks (control.execution.recall who) event = false)
-    (response : (application setup leaks).Action)
-    (supported : response ∈ (sourceServiceCanonicalPolicy setup leaks profile who
+    (timely : control.execution.application.publicView.WithinDeadline
+        (serviceRuntime setup mode deadline) event)
+    (unsent : (serviceRuntime setup mode deadline).eventRecorded leaks
+        (control.execution.recall who) event = false)
+    (response : (serviceApplication setup mode deadline leaks).Action)
+    (supported : response ∈ (serviceCanonicalPolicy setup mode deadline leaks profile who
       (control.execution.recall who)
-      (control.execution.observe (application setup leaks) who)).support) :
-    response ∈ bounds.canonicalActions (runtime setup) leaks who (control.execution.recall who)
-      (control.execution.observe (application setup leaks) who) := by
-  have persistentClear := ((runtime setup).serviceRisk_clear_iff leaks bound who _ _).mp clear |>.1
+      (control.execution.observe (serviceApplication setup mode deadline leaks) who)).support) :
+    response ∈ bounds.canonicalActions (serviceRuntime setup mode deadline) leaks who
+        (control.execution.recall who)
+      (control.execution.observe (serviceApplication setup mode deadline leaks) who) := by
+  have persistentClear :=
+      ((serviceRuntime setup mode deadline).serviceRisk_clear_iff leaks bound who _ _).mp clear |>.1
   obtain ⟨counted, _, selected⟩ := riskCanonicalSlot_resources bounds bound capacity control trace
     who persistentClear event turn unsent
-  have rawTrace := (bounds.riskMenu (runtime setup) leaks bound).toRawTrace (initialLaw setup)
+  have rawTrace := (bounds.riskMenu (serviceRuntime setup mode deadline) leaks bound).toRawTrace
+      (serviceInitialLaw setup mode)
     horizon scheduler trace
   have facts := legalFacts setup leaks horizon scheduler control rawTrace
-  have boundedTrace := (bounds.riskMenu_in_raw (runtime setup) leaks bound).trace
-    (initialLaw setup) horizon scheduler trace
-  have values := bounds.candidateValues_raw_history (runtime setup) leaks (initialLaw setup)
+  have boundedTrace := (bounds.riskMenu_in_raw
+      (serviceRuntime setup mode deadline) leaks bound).trace
+    (serviceInitialLaw setup mode) horizon scheduler trace
+  have values := bounds.candidateValues_raw_history (serviceRuntime setup mode deadline) leaks
+      (serviceInitialLaw setup mode)
     horizon scheduler initialCovered boundedTrace
-  rw [initialLaw_eq_inputs] at boundedTrace
-  have handles := bounds.executionHandles_raw_history (runtime setup) leaks
+  rw [serviceInitialLaw_eq_inputs] at boundedTrace
+  have handles := bounds.executionHandles_raw_history (serviceRuntime setup mode deadline) leaks
     (setup.initialLaw.map setup.eventInputs) horizon scheduler boundedTrace
   exact sourceServiceCanonicalPolicy_retained_of_resources bounds covered profile who permitted
     control.execution facts.binding values handles.1 event turn timely unsent counted selected
@@ -70,35 +81,40 @@ theorem sourceServiceCanonicalPolicy_risk_retained
 /-- A guarded source opportunity at a clear risk-menu history is silence or
 an admitted canonical decision. Its protection gate implies the deadline gate. -/
 theorem sourceServiceCanonicalOpportunity_risk_retained
-    (bounds : MessageBounds (graph setup)) (covered : bounds.CoversBindingValues)
-    (initialCovered : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
-    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
-    (bound : (graph setup).EventId → Nat) (profile : BehavioralProfile setup.program)
+    (bounds : MessageBounds (serviceGraph setup mode)) (covered : bounds.CoversBindingValues)
+    (initialCovered : ∀ state ∈ (serviceInitialLaw setup mode).support,
+        bounds.CandidateValues state)
+    (capacity : (serviceGraph setup mode).order.eventCount ≤ bounds.candidateCount)
+    (bound : (serviceGraph setup mode).EventId → Nat) (profile : BehavioralProfile setup.program)
     (who : Player)
     (permitted : (profile who).Admitted setup.program (CommitmentInterface.values _))
-    {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
-    (control : (application setup leaks).Control)
-    (trace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup) horizon
+    {horizon : Nat} {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    (control : (serviceApplication setup mode deadline leaks).Control)
+    (trace : ((bounds.riskMenu (serviceRuntime setup mode deadline) leaks bound).protocol
+        (serviceInitialLaw setup mode) horizon
       scheduler).Trace (some control))
-    (clear : (runtime setup).serviceRisk leaks bound who (control.execution.recall who)
-      (control.execution.observe (application setup leaks) who) = false)
-    (event : (graph setup).EventId)
+    (clear : (serviceRuntime setup mode deadline).serviceRisk leaks bound who
+        (control.execution.recall who)
+      (control.execution.observe (serviceApplication setup mode deadline leaks) who) = false)
+    (event : (serviceGraph setup mode).EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
-    (response : (application setup leaks).Action)
-    (supported : response ∈ (sourceServiceCanonicalOpportunity setup leaks bound profile who
+    (response : (serviceApplication setup mode deadline leaks).Action)
+    (supported : response ∈ (serviceCanonicalOpportunity setup mode deadline leaks bound profile who
       event (control.execution.recall who)
-      (control.execution.observe (application setup leaks) who)).support) :
-    response ∈ bounds.canonicalActions (runtime setup) leaks who (control.execution.recall who)
-      (control.execution.observe (application setup leaks) who) := by
-  have silent : ∀ action ∈ ((application setup leaks).silentPolicy
+      (control.execution.observe (serviceApplication setup mode deadline leaks) who)).support) :
+    response ∈ bounds.canonicalActions (serviceRuntime setup mode deadline) leaks who
+        (control.execution.recall who)
+      (control.execution.observe (serviceApplication setup mode deadline leaks) who) := by
+  have silent : ∀ action ∈ ((serviceApplication setup mode deadline leaks).silentPolicy
       (control.execution.recall who)
-      (control.execution.observe (application setup leaks) who)).support,
-      action ∈ bounds.canonicalActions (runtime setup) leaks who (control.execution.recall who)
-        (control.execution.observe (application setup leaks) who) := by
+      (control.execution.observe (serviceApplication setup mode deadline leaks) who)).support,
+      action ∈ bounds.canonicalActions (serviceRuntime setup mode deadline) leaks who
+          (control.execution.recall who)
+        (control.execution.observe (serviceApplication setup mode deadline leaks) who) := by
     intro action chosen
     cases (PMF.mem_support_pure_iff _ _).mp chosen
-    exact bounds.silence_canonical (runtime setup) leaks who _ _
-  unfold sourceServiceCanonicalOpportunity serviceCanonicalOpportunity at supported
+    exact bounds.silence_canonical (serviceRuntime setup mode deadline) leaks who _ _
+  unfold serviceCanonicalOpportunity at supported
   split at supported
   · exact silent response supported
   · rename_i unrecorded
@@ -118,34 +134,41 @@ theorem sourceServiceCanonicalOpportunity_risk_retained
 /-- Every prescribed deferral timing is locally admitted while this owner's
 full risk flag is clear, regardless of other owners' legal raw branches. -/
 theorem sourceServiceTurnPolicy_risk_retained
-    (bounds : MessageBounds (graph setup)) (covered : bounds.CoversBindingValues)
-    (initialCovered : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
-    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
-    (bound : (graph setup).EventId → Nat) (turns : Nat) (timing : TurnTiming setup turns)
+    (bounds : MessageBounds (serviceGraph setup mode)) (covered : bounds.CoversBindingValues)
+    (initialCovered : ∀ state ∈ (serviceInitialLaw setup mode).support,
+        bounds.CandidateValues state)
+    (capacity : (serviceGraph setup mode).order.eventCount ≤ bounds.candidateCount)
+    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
+        (timing : TurnTiming setup turns mode)
     (profile : BehavioralProfile setup.program) (who : Player)
     (permitted : (profile who).Admitted setup.program (CommitmentInterface.values _))
-    {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
-    (control : (application setup leaks).Control)
-    (trace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup) horizon
+    {horizon : Nat} {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    (control : (serviceApplication setup mode deadline leaks).Control)
+    (trace : ((bounds.riskMenu (serviceRuntime setup mode deadline) leaks bound).protocol
+        (serviceInitialLaw setup mode) horizon
       scheduler).Trace (some control))
-    (clear : (runtime setup).serviceRisk leaks bound who (control.execution.recall who)
-      (control.execution.observe (application setup leaks) who) = false)
-    (response : (application setup leaks).Action)
-    (supported : response ∈ (sourceServiceTurnPolicy setup leaks bound turns timing profile who
+    (clear : (serviceRuntime setup mode deadline).serviceRisk leaks bound who
+        (control.execution.recall who)
+      (control.execution.observe (serviceApplication setup mode deadline leaks) who) = false)
+    (response : (serviceApplication setup mode deadline leaks).Action)
+    (supported : response ∈
+        (serviceTurnPolicy setup mode deadline leaks bound turns timing profile who
       (control.execution.recall who)
-      (control.execution.observe (application setup leaks) who)).support) :
-    response ∈ bounds.riskActions (runtime setup) leaks bound who (control.execution.recall who)
-      (control.execution.observe (application setup leaks) who) := by
-  rw [bounds.riskActions_of_clear (runtime setup) leaks bound who _ _ clear]
-  have silent : ∀ action ∈ ((application setup leaks).silentPolicy
+      (control.execution.observe (serviceApplication setup mode deadline leaks) who)).support) :
+    response ∈ bounds.riskActions (serviceRuntime setup mode deadline) leaks bound who
+        (control.execution.recall who)
+      (control.execution.observe (serviceApplication setup mode deadline leaks) who) := by
+  rw [bounds.riskActions_of_clear (serviceRuntime setup mode deadline) leaks bound who _ _ clear]
+  have silent : ∀ action ∈ ((serviceApplication setup mode deadline leaks).silentPolicy
       (control.execution.recall who)
-      (control.execution.observe (application setup leaks) who)).support,
-      action ∈ bounds.canonicalActions (runtime setup) leaks who (control.execution.recall who)
-        (control.execution.observe (application setup leaks) who) := by
+      (control.execution.observe (serviceApplication setup mode deadline leaks) who)).support,
+      action ∈ bounds.canonicalActions (serviceRuntime setup mode deadline) leaks who
+          (control.execution.recall who)
+        (control.execution.observe (serviceApplication setup mode deadline leaks) who) := by
     intro action chosen
     cases (PMF.mem_support_pure_iff _ _).mp chosen
-    exact bounds.silence_canonical (runtime setup) leaks who _ _
-  unfold sourceServiceTurnPolicy serviceTurnPolicy at supported
+    exact bounds.silence_canonical (serviceRuntime setup mode deadline) leaks who _ _
+  unfold serviceTurnPolicy at supported
   split at supported
   · exact silent response supported
   · rename_i event turn

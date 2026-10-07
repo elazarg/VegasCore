@@ -126,21 +126,6 @@ abbrev runtime (setup : Setup (Player := Player) (L := L)) : EventGraphRuntime (
 theorem runtime_eq_serviceRuntime (setup : Setup (Player := Player) (L := L)) :
     runtime setup = serviceRuntime setup .sequential (rankDeadline setup .sequential) := rfl
 
-/-- A runtime configuration is the default one: the sequential dependency mode
-with rank deadlines. -/
-structure RankSequential (setup : Setup (Player := Player) (L := L))
-    (mode : EventGraph.ExecutionMode) (deadline : (serviceGraph setup mode).EventId → Nat) :
-    Prop where
-  sequential : mode = .sequential
-  rank : deadline = rankDeadline setup mode
-
-/-- The default configuration is barrier ordered. -/
-theorem RankSequential.barrierOrdered {setup : Setup (Player := Player) (L := L)}
-    {mode : EventGraph.ExecutionMode} {deadline : (serviceGraph setup mode).EventId → Nat}
-    (configuration : RankSequential setup mode deadline) :
-    (serviceGraph setup mode).BarrierOrdered :=
-  serviceGraph_barrierOrdered setup (by rw [configuration.sequential]; decide)
-
 /-- The configured deadline of the default runtime is the event's index plus one. -/
 theorem runtime_deadline (setup : Setup (Player := Player) (L := L))
     (event : (graph setup).EventId) : (runtime setup).deadline event = event.val + 1 := rfl

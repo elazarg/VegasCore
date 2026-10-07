@@ -26,20 +26,21 @@ open SourceProgram Interaction EventGraphRuntime EventGraph
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {mode : EventGraph.ExecutionMode} {deadline : (serviceGraph setup mode).EventId → Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
 
-private def guardVerdict (event : (graph setup).EventId)
-    (packet : WitnessedPacket (graph setup)) (verdict : Bool)
-    (state : EventGraphRuntime.State (graph setup)) : Prop :=
-  (∀ predecessor ∈ (graph setup).order.predecessors event,
+private def guardVerdict (event : (serviceGraph setup mode).EventId)
+    (packet : WitnessedPacket (serviceGraph setup mode)) (verdict : Bool)
+    (state : EventGraphRuntime.State (serviceGraph setup mode)) : Prop :=
+  (∀ predecessor ∈ (serviceGraph setup mode).order.predecessors event,
     predecessor ∈ state.config.cut.completed) ∧
     state.publicView.openingGuardsAccepted packet = verdict
 
 private theorem guardVerdict_step
-    {before after : EventGraphRuntime.State (graph setup)}
-    (step : ContractStep before after) (event : (graph setup).EventId)
-    (packet : WitnessedPacket (graph setup))
-    (named : packet.call.event? (graph setup) = some event)
+    {before after : EventGraphRuntime.State (serviceGraph setup mode)}
+    (step : ContractStep before after) (event : (serviceGraph setup mode).EventId)
+    (packet : WitnessedPacket (serviceGraph setup mode))
+    (named : packet.call.event? (serviceGraph setup mode) = some event)
     (verdict : Bool) (held : guardVerdict event packet verdict before) :
     guardVerdict event packet verdict after := by
   refine ⟨fun predecessor member => step.completed_mono (held.1 predecessor member), ?_⟩
@@ -48,32 +49,36 @@ private theorem guardVerdict_step
   exact held.2
 
 private theorem guardVerdict_respond
-    (execution : (application setup leaks).Execution) (responder : Player)
-    (response : (application setup leaks).Action) (event : (graph setup).EventId)
-    (packet : WitnessedPacket (graph setup)) (verdict : Bool)
+    (execution : (serviceApplication setup mode deadline leaks).Execution) (responder : Player)
+    (response : (serviceApplication setup mode deadline leaks).Action) (event :
+        (serviceGraph setup mode).EventId)
+    (packet : WitnessedPacket (serviceGraph setup mode)) (verdict : Bool)
     (held : guardVerdict event packet verdict execution.application) :
     guardVerdict event packet verdict
-      (execution.respond (application setup leaks) responder response).application := by
+      (execution.respond
+          (serviceApplication setup mode deadline leaks) responder response).application := by
   obtain ⟨configEq, publicEq⟩ :=
-    (runtime setup).reactive_respond_application leaks execution responder response
+    (serviceRuntime setup mode deadline).reactive_respond_application leaks execution responder
+        response
   refine ⟨fun predecessor member => configEq ▸ held.1 predecessor member, ?_⟩
   rw [publicEq]
   exact held.2
 
-private def guardVerdictAtState (event : (graph setup).EventId)
-    (packet : WitnessedPacket (graph setup)) (verdict : Bool) :
-    (application setup leaks).ProtocolState → Prop
+private def guardVerdictAtState (event : (serviceGraph setup mode).EventId)
+    (packet : WitnessedPacket (serviceGraph setup mode)) (verdict : Bool) :
+    (serviceApplication setup mode deadline leaks).ProtocolState → Prop
   | none => False
   | some control => guardVerdict event packet verdict control.execution.application
 
 private theorem guardVerdictAtState_transition
-    {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
-    (event : (graph setup).EventId) (packet : WitnessedPacket (graph setup))
-    (named : packet.call.event? (graph setup) = some event) (verdict : Bool)
-    (before after : (application setup leaks).ProtocolState)
-    (joint : Player → Option (application setup leaks).Action)
+    {horizon : Nat} {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    (event : (serviceGraph setup mode).EventId) (packet : WitnessedPacket (serviceGraph setup mode))
+    (named : packet.call.event? (serviceGraph setup mode) = some event) (verdict : Bool)
+    (before after : (serviceApplication setup mode deadline leaks).ProtocolState)
+    (joint : Player → Option (serviceApplication setup mode deadline leaks).Action)
     (held : guardVerdictAtState event packet verdict before)
-    (reached : after ∈ ((application setup leaks).transition (initialLaw setup) horizon
+    (reached : after ∈ ((serviceApplication setup mode deadline leaks).transition
+        (serviceInitialLaw setup mode) horizon
       scheduler before joint).support) : guardVerdictAtState event packet verdict after := by
   cases before with
   | none => exact held.elim
@@ -90,17 +95,21 @@ private theorem guardVerdictAtState_transition
               obtain ⟨command, _, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
               obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
               exact guardVerdict_step
-                (contractStep_environment (runtime setup) leaks execution next command supported)
+                (contractStep_environment
+                    (serviceRuntime setup mode deadline) leaks execution next command supported)
                 event packet named verdict held
 
 private theorem guardVerdictAtState_reaches
-    {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
+    {horizon : Nat} {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
     {first last :
-      ((application setup leaks).protocol (initialLaw setup) horizon scheduler).History}
+      ((serviceApplication setup mode deadline leaks).protocol
+          (serviceInitialLaw setup mode) horizon scheduler).History}
     {fuel : Nat}
-    (path : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).ReachesWithin
-      fuel first last) (event : (graph setup).EventId) (packet : WitnessedPacket (graph setup))
-    (named : packet.call.event? (graph setup) = some event) (verdict : Bool)
+    (path : ((serviceApplication setup mode deadline leaks).protocol
+        (serviceInitialLaw setup mode) horizon scheduler).ReachesWithin
+      fuel first last) (event : (serviceGraph setup mode).EventId) (packet : WitnessedPacket
+          (serviceGraph setup mode))
+    (named : packet.call.event? (serviceGraph setup mode) = some event) (verdict : Bool)
     (held : guardVerdictAtState event packet verdict first.state) :
     guardVerdictAtState event packet verdict last.state := by
   induction path with
@@ -112,17 +121,20 @@ private theorem guardVerdictAtState_reaches
 it is fixed under arbitrary later player responses and scheduler commands.
 The final event need not yet be completed. -/
 theorem ready_openingGuardsAccepted_reaches
-    {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
+    {horizon : Nat} {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
     {first last :
-      ((application setup leaks).protocol (initialLaw setup) horizon scheduler).History}
+      ((serviceApplication setup mode deadline leaks).protocol
+          (serviceInitialLaw setup mode) horizon scheduler).History}
     {fuel : Nat}
-    (path : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).ReachesWithin
+    (path : ((serviceApplication setup mode deadline leaks).protocol
+        (serviceInitialLaw setup mode) horizon scheduler).ReachesWithin
       fuel first last)
-    (before after : (application setup leaks).Control)
+    (before after : (serviceApplication setup mode deadline leaks).Control)
     (firstState : first.state = some before) (lastState : last.state = some after)
-    (event : (graph setup).EventId) (ready : before.execution.application.config.cut.Ready event)
-    (packet : WitnessedPacket (graph setup))
-    (named : packet.call.event? (graph setup) = some event) :
+    (event : (serviceGraph setup mode).EventId)
+        (ready : before.execution.application.config.cut.Ready event)
+    (packet : WitnessedPacket (serviceGraph setup mode))
+    (named : packet.call.event? (serviceGraph setup mode) = some event) :
     after.execution.application.publicView.openingGuardsAccepted packet =
       before.execution.application.publicView.openingGuardsAccepted packet := by
   have initial : guardVerdictAtState event packet
@@ -137,29 +149,35 @@ theorem ready_openingGuardsAccepted_reaches
 continuation, even when the opening is certified and has an accepting receipt.
 Certification is unrestricted because guard failure alone suffices. -/
 theorem guardFailingOpening_forbidden_reaches
-    {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
+    {horizon : Nat} {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
     {first last :
-      ((application setup leaks).protocol (initialLaw setup) horizon scheduler).History}
+      ((serviceApplication setup mode deadline leaks).protocol
+          (serviceInitialLaw setup mode) horizon scheduler).History}
     {fuel : Nat}
-    (path : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).ReachesWithin
+    (path : ((serviceApplication setup mode deadline leaks).protocol
+        (serviceInitialLaw setup mode) horizon scheduler).ReachesWithin
       fuel first last)
-    (before after : (application setup leaks).Control)
+    (before after : (serviceApplication setup mode deadline leaks).Control)
     (firstState : first.state = some before) (lastState : last.state = some after)
-    (event : (graph setup).EventId) (ready : before.execution.application.config.cut.Ready event)
-    (message : Message Player (WitnessedPacket (graph setup)))
-    (candidate : Handle (graph setup)) (raw : Raw L)
+    (event : (serviceGraph setup mode).EventId)
+        (ready : before.execution.application.config.cut.Ready event)
+    (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
+    (candidate : Handle (serviceGraph setup mode)) (raw : Raw L)
     (opened : message.payload.call = .opening event candidate raw)
     (rejected : before.execution.application.publicView.openingGuardsAccepted message.payload =
       false)
     (complete : after.execution.application.config.cut.Terminal) :
-    ¬ ((runtime setup).settledRecord leaks after.execution).SettledContent message ∧
-      ((runtime setup).settledRecord leaks after.execution).permits message = false := by
-  have named : message.payload.call.event? (graph setup) = some event := by
+    ¬ ((serviceRuntime setup mode deadline).settledRecord leaks after.execution).SettledContent
+        message ∧
+      ((serviceRuntime setup mode deadline).settledRecord leaks after.execution).permits message =
+          false := by
+  have named : message.payload.call.event? (serviceGraph setup mode) = some event := by
     rw [opened]
     rfl
   have guarded := ready_openingGuardsAccepted_reaches path before after firstState lastState
     event ready message.payload named
-  have contentFails : ¬ ((runtime setup).settledRecord leaks after.execution).SettledContent
+  have contentFails : ¬
+      ((serviceRuntime setup mode deadline).settledRecord leaks after.execution).SettledContent
       message := by
     intro content
     unfold SettledRecord.SettledContent at content
@@ -181,39 +199,46 @@ variable [Fintype Player]
 opening under every later behavioral policy. Complete play supplies the final
 forbidden verdict from the actual ready prefix and preserved guard fields. -/
 theorem guardFailingOpening_collection_continuation
-    (menu : (application setup leaks).ResponseMenu) (horizon : Nat)
-    (scheduler : (application setup leaks).Scheduler)
-    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
+    (menu : (serviceApplication setup mode deadline leaks).ResponseMenu) (horizon : Nat)
+    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+    (completes : CompletesPlay (serviceRuntime setup mode deadline) leaks
+        (serviceInitialLaw setup mode) horizon scheduler)
     (service : EvidenceReportService
-      (SettledRecord (graph setup) × Message Player (WitnessedPacket (graph setup))))
+      (SettledRecord (serviceGraph setup mode) × Message Player (WitnessedPacket
+          (serviceGraph setup mode))))
     (observationRate deliveryRate : Player → ℝ)
     (delivery_nonnegative : ∀ who, 0 ≤ deliveryRate who)
     (coverage : FinalForbiddenEvidenceCoverage service observationRate deliveryRate)
     (profile : ∀ player,
-      (menu.information (initialLaw setup) horizon scheduler).BehavioralPolicy player)
-    (fuel : Nat) (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
+      (menu.information (serviceInitialLaw setup mode) horizon scheduler).BehavioralPolicy player)
+    (fuel : Nat) (history : (menu.protocol
+        (serviceInitialLaw setup mode) horizon scheduler).History)
     (long : 2 * horizon + 1 ≤ history.trace.length + fuel)
-    (before : (application setup leaks).Control) (current : history.state = some before)
-    (record : (application setup leaks).TrafficRecord)
-    (present : record ∈ (application setup leaks).stateTraffic history.state)
-    (event : (graph setup).EventId) (ready : before.execution.application.config.cut.Ready event)
-    (candidate : Handle (graph setup)) (raw : Raw L)
+    (before : (serviceApplication setup mode deadline leaks).Control) (current : history.state =
+        some before)
+    (record : (serviceApplication setup mode deadline leaks).TrafficRecord)
+    (present : record ∈ (serviceApplication setup mode deadline leaks).stateTraffic history.state)
+    (event : (serviceGraph setup mode).EventId)
+        (ready : before.execution.application.config.cut.Ready event)
+    (candidate : Handle (serviceGraph setup mode)) (raw : Raw L)
     (opened : record.envelope.payload.call = .opening event candidate raw)
     (rejected : before.execution.application.publicView.openingGuardsAccepted
       record.envelope.payload = false) :
     observationRate record.envelope.sender * deliveryRate record.envelope.sender ≤
-      expect ((menu.information (initialLaw setup) horizon scheduler).runBehavioralFrom
+      expect ((menu.information (serviceInitialLaw setup mode) horizon scheduler).runBehavioralFrom
         profile fuel history)
-        (fun final => TerminalAudit.charge ((runtime setup).serviceAuditObservation leaks)
-          ((runtime setup).serviceAudit leaks fun settled =>
-            (application setup leaks).sampledTrafficAudit
+        (fun final => TerminalAudit.charge
+            ((serviceRuntime setup mode deadline).serviceAuditObservation leaks)
+          ((serviceRuntime setup mode deadline).serviceAudit leaks fun settled =>
+            (serviceApplication setup mode deadline leaks).sampledTrafficAudit
               (fun traffic => (settled, traffic.envelope)) (fun evidence => evidence.2.sender)
               (fun evidence => evidence.1.permits evidence.2) service.sample)
           final.state record.envelope.sender) := by
-  let app := application setup leaks
-  let model := menu.information (initialLaw setup) horizon scheduler
-  let protocol := menu.protocol (initialLaw setup) horizon scheduler
-  apply (runtime setup).settledPacket_collection_continuation leaks menu (initialLaw setup)
+  let app := serviceApplication setup mode deadline leaks
+  let model := menu.information (serviceInitialLaw setup mode) horizon scheduler
+  let protocol := menu.protocol (serviceInitialLaw setup mode) horizon scheduler
+  apply (serviceRuntime setup mode deadline).settledPacket_collection_continuation leaks menu
+      (serviceInitialLaw setup mode)
     horizon scheduler service observationRate deliveryRate delivery_nonnegative coverage
     profile fuel history record present
   intro final supported after finalState
@@ -221,18 +246,20 @@ theorem guardFailingOpening_collection_continuation
     rcases protocol.runRandomizedFor_terminal_or_length (model.randomizedChooser profile)
         fuel history final supported with terminal | length
     · exact terminal
-    · have traceBound := app.trace_bound (initialLaw setup) horizon scheduler
-        (menu.toRawTrace (initialLaw setup) horizon scheduler final.trace)
+    · have traceBound := app.trace_bound (serviceInitialLaw setup mode) horizon scheduler
+        (menu.toRawTrace (serviceInitialLaw setup mode) horizon scheduler final.trace)
       rw [menu.toRawTrace_length] at traceBound
       have exhausted : app.rank horizon final.state = 0 := by omega
       exact (app.rank_zero horizon final.state).mp exhausted
-  have rawTrace : (app.protocol (initialLaw setup) horizon scheduler).Trace (some after) :=
-    finalState ▸ menu.toRawTrace (initialLaw setup) horizon scheduler final.trace
+  have rawTrace : (app.protocol (serviceInitialLaw setup mode) horizon scheduler).Trace
+      (some after) :=
+    finalState ▸ menu.toRawTrace (serviceInitialLaw setup mode) horizon scheduler final.trace
   have complete := completes after rawTrace (finalState ▸ stopped)
   have path := protocol.runRandomizedFor_reachesWithin (model.randomizedChooser profile)
     fuel history final supported
   exact (guardFailingOpening_forbidden_reaches
-    (menu.reaches_raw (initialLaw setup) horizon scheduler path) before after current finalState
+    (menu.reaches_raw
+        (serviceInitialLaw setup mode) horizon scheduler path) before after current finalState
     event ready record.envelope candidate raw opened rejected complete).2
 
 end Vegas

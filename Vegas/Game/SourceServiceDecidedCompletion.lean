@@ -300,13 +300,6 @@ theorem serviceInitialLaw_eq_inputs :
   rw [PMF.map_comp]
   rfl
 
-/-- The initial law of the default runtime is the image of initial inputs. -/
-theorem initialLaw_eq_inputs {setup : Setup (Player := Player) (L := L)} :
-    initialLaw setup =
-      (setup.initialLaw.map setup.eventInputs).map
-        (EventGraphRuntime.State.initial (graph := graph setup)) :=
-  serviceInitialLaw_eq_inputs
-
 /-- The entry a fresh submission appends to its author's recall. -/
 theorem respond_submit_recall (execution : (serviceApplication setup mode deadline leaks).Execution)
     (who : Player) (material : (serviceApplication setup mode deadline leaks).Submission) :

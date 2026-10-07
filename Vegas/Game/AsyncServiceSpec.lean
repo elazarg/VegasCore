@@ -15,7 +15,7 @@ that leave room before every configured deadline. It has no rosters and no
 activation opportunities: the contract's opportunity clause replaces them.
 
 The fixed roster calendar is one instance (`Vegas.SourceServiceSpec.toAsync`),
-on the sequential graph with rank deadlines (`Vegas.RankSequential`), with the
+on the sequential graph with rank deadlines (`Vegas.rankDeadline`), with the
 plan length as horizon, reaction bound `event.val` and inclusion bound zero
 (`Vegas.rosterScheduler_asyncContract`).
 -/
@@ -91,9 +91,6 @@ theorem completes : CompletesPlay (serviceRuntime service.setup service.mode ser
       service.scheduler :=
   service.contract.completes
 
-/-- The service runs the sequential dependency mode with rank deadlines. -/
-abbrev RankSequential : Prop := Vegas.RankSequential service.setup service.mode service.deadline
-
 end AsyncServiceSpec
 
 namespace SourceServiceSpec
@@ -123,9 +120,6 @@ def toAsync : AsyncServiceSpec Player L where
   leaksFinite := service.leaksFinite
   schedulerFinite := ReactiveApplication.FiniteNature.scheduler_finite
     (initial := initialLaw service.setup)
-
-/-- The calendar instance runs the sequential mode with rank deadlines. -/
-theorem toAsync_rankSequential : service.toAsync.RankSequential := ⟨rfl, rfl⟩
 
 @[simp] theorem toAsync_horizon : service.toAsync.horizon = service.planLength := rfl
 

@@ -28,79 +28,97 @@ open Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {mode : EventGraph.ExecutionMode} {deadline : (serviceGraph setup mode).EventId → Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
 
 /-- The actual immediate continuation from a legal clear active owner prefix
 has no owner risk or miss and permits every actual owner packet at each supported
 scheduler boundary. Earlier prefix packets are included in the conclusion. -/
 theorem sourceServiceImmediatePolicy_clean_continuation
-    (bounds : MessageBounds (graph setup)) (covered : bounds.CoversBindingValues)
-    (initialCovered : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
-    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
-    {horizon remaining : Nat} {scheduler : (application setup leaks).Scheduler}
-    {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
+    (bounds : MessageBounds (serviceGraph setup mode)) (covered : bounds.CoversBindingValues)
+    (initialCovered : ∀ state ∈ (serviceInitialLaw setup mode).support,
+        bounds.CandidateValues state)
+    (capacity : (serviceGraph setup mode).order.eventCount ≤ bounds.candidateCount)
+    {horizon remaining : Nat} {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {delay bound : (serviceGraph setup mode).EventId → Nat}
+    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+        (serviceInitialLaw setup mode) horizon scheduler
       delay bound)
-    (timely : AsyncTimely (runtime setup) delay bound)
-    (players : Player → (application setup leaks).Policy) (who : Player)
+    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
+    (players : Player → (serviceApplication setup mode deadline leaks).Policy) (who : Player)
     (profile : BehavioralProfile setup.program)
     (permitted : (profile who).Admitted setup.program (CommitmentInterface.values _))
-    (follows : players who = sourceServiceImmediatePolicy setup leaks bound profile who)
-    (execution : (application setup leaks).Execution)
-    (trace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup) horizon
+    (follows : players who = serviceImmediatePolicy setup mode deadline leaks bound profile who)
+    (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (trace : ((bounds.riskMenu (serviceRuntime setup mode deadline) leaks bound).protocol
+        (serviceInitialLaw setup mode) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩))
-    (clear : (runtime setup).serviceRisk leaks bound who (execution.recall who)
-      (execution.observe (application setup leaks) who) = false)
-    (response : (application setup leaks).Action)
-    (chosen : response ∈ (sourceServiceImmediatePolicy setup leaks bound profile who
-      (execution.recall who) (execution.observe (application setup leaks) who)).support)
-    (count : Nat) (within : count ≤ remaining) (next : (application setup leaks).Execution)
-    (reached : next ∈ ((application setup leaks).runRounds scheduler players count
-      (execution.respond (application setup leaks) who response)).support) :
-    (runtime setup).serviceRisk leaks bound who (next.recall who)
-        (next.observe (application setup leaks) who) = false ∧
+    (clear : (serviceRuntime setup mode deadline).serviceRisk leaks bound who (execution.recall who)
+      (execution.observe (serviceApplication setup mode deadline leaks) who) = false)
+    (response : (serviceApplication setup mode deadline leaks).Action)
+    (chosen : response ∈ (serviceImmediatePolicy setup mode deadline leaks bound profile who
+      (execution.recall who) (execution.observe
+          (serviceApplication setup mode deadline leaks) who)).support)
+    (count : Nat) (within : count ≤ remaining) (next :
+        (serviceApplication setup mode deadline leaks).Execution)
+    (reached : next ∈
+        ((serviceApplication setup mode deadline leaks).runRounds scheduler players count
+      (execution.respond (serviceApplication setup mode deadline leaks) who response)).support) :
+    (serviceRuntime setup mode deadline).serviceRisk leaks bound who (next.recall who)
+        (next.observe (serviceApplication setup mode deadline leaks) who) = false ∧
       next.application.publicView.missedBindingBy who = false ∧
-      (∀ record ∈ (application setup leaks).executionTraffic next, record.envelope.sender = who →
-        ((runtime setup).settledRecord leaks next).permits record.envelope = true) := by
-  let app := application setup leaks
-  let menu := bounds.riskMenu (runtime setup) leaks bound
+      (∀ record ∈ (serviceApplication setup mode deadline leaks).executionTraffic next,
+          record.envelope.sender = who →
+        ((serviceRuntime setup mode deadline).settledRecord leaks next).permits record.envelope =
+            true) := by
+  let app := serviceApplication setup mode deadline leaks
+  let menu := bounds.riskMenu (serviceRuntime setup mode deadline) leaks bound
   let start := execution.respond app who response
-  have components := ((runtime setup).serviceRisk_clear_iff leaks bound who _ _).mp clear
+  have components :=
+      ((serviceRuntime setup mode deadline).serviceRisk_clear_iff leaks bound who _ _).mp clear
   obtain ⟨atTurn, slots⟩ := riskCanonicalSlots_history bounds bound _ trace who components.1
-  have rawTrace := menu.toRawTrace (initialLaw setup) horizon scheduler trace
+  have rawTrace := menu.toRawTrace (serviceInitialLaw setup mode) horizon scheduler trace
   have turned := sourceServiceImmediatePolicy_bindingTurnsRecorded_respond rawTrace atTurn slots
     clear response chosen
   have available := sourceServiceImmediatePolicy_risk_retained bounds covered initialCovered
     capacity bound profile who permitted _ trace response chosen
-  obtain ⟨menuStart⟩ := menu.trace_respond (initialLaw setup) horizon scheduler remaining execution
+  obtain ⟨menuStart⟩ := menu.trace_respond
+      (serviceInitialLaw setup mode) horizon scheduler remaining execution
     who response trace available
-  have supportedStart := menu.roundSupported_uniform (initialLaw setup) horizon scheduler menuStart
+  have supportedStart := menu.roundSupported_uniform
+      (serviceInitialLaw setup mode) horizon scheduler menuStart
   have answered := roundsFrom_activationsAnswered start.environmentRecall.length start
     supportedStart.2
-  have traceStart := menu.toRawTrace (initialLaw setup) horizon scheduler menuStart
-  have persistentClear : (runtime setup).persistentServiceRisk leaks bound who (start.recall who)
+  have traceStart := menu.toRawTrace (serviceInitialLaw setup mode) horizon scheduler menuStart
+  have persistentClear :
+      (serviceRuntime setup mode deadline).persistentServiceRisk leaks bound who (start.recall who)
       (start.observe app who) = false :=
-    ((runtime setup).persistentServiceRisk_respond_protected leaks bound execution who response
+    ((serviceRuntime setup mode deadline).persistentServiceRisk_respond_protected leaks bound
+        execution who response
       (sourceServiceImmediatePolicy_submissionFits chosen) components.2).trans components.1
-  have clearStart := (runtime setup).serviceRisk_clear leaks bound who (start.recall who)
+  have clearStart := (serviceRuntime setup mode deadline).serviceRisk_clear leaks bound who
+      (start.recall who)
     (start.observe app who) persistentClear
     (recordedBindings_currentOpportunity_clear contract timely traceStart answered who turned)
   obtain ⟨atStart, slotsStart, callsStart, conformStart, onceStart, goodStart⟩ :=
     sourceServiceImmediatePolicy_packetFacts_after_prefix_response bounds contract who profile
       execution trace clear response chosen
-  have traceBudget : (app.protocol (initialLaw setup) horizon scheduler).Trace
+  have traceBudget : (app.protocol (serviceInitialLaw setup mode) horizon scheduler).Trace
       (some ⟨(remaining - count) + count, none, start⟩) := by
     simpa only [Nat.sub_add_cancel within] using traceStart
   obtain ⟨_, _, clearNext, _, _, _, _, _, goodNext⟩ :=
     sourceServiceImmediatePolicy_continuationFacts_runRounds contract timely players who profile
       follows count start next traceBudget answered turned clearStart atStart slotsStart callsStart
       conformStart onceStart goodStart reached
-  have noMiss := ((runtime setup).persistentServiceRisk_clear_iff leaks bound who _ _).mp
-    (((runtime setup).serviceRisk_clear_iff leaks bound who _ _).mp clearNext).1 |>.1.1
+  have noMiss :=
+      ((serviceRuntime setup mode deadline).persistentServiceRisk_clear_iff leaks bound who _ _).mp
+    (((serviceRuntime setup mode deadline).serviceRisk_clear_iff leaks bound who _ _).mp
+        clearNext).1 |>.1.1
   refine ⟨clearNext, noMiss, ?_⟩
-  obtain ⟨nextTrace⟩ := app.raw_trace_runRounds (initialLaw setup) horizon scheduler players
+  obtain ⟨nextTrace⟩ := app.raw_trace_runRounds
+      (serviceInitialLaw setup mode) horizon scheduler players
     (remaining - count) count start next traceBudget reached
-  have inputs := app.stateTraffic_inputs (initialLaw setup) horizon scheduler nextTrace
+  have inputs := app.stateTraffic_inputs (serviceInitialLaw setup mode) horizon scheduler nextTrace
   change (app.executionTraffic next).map ReactiveApplication.TrafficRecord.envelope =
     next.network.inputs at inputs
   intro record member authored
@@ -113,40 +131,47 @@ theorem sourceServiceImmediatePolicy_clean_continuation
 /-- Authentic sampling collects zero owner charge throughout the actual
 immediate continuation, including at the final remaining-round boundary. -/
 theorem sourceServiceImmediatePolicy_audit_clear_after_prefix_response
-    (bounds : MessageBounds (graph setup)) (covered : bounds.CoversBindingValues)
-    (initialCovered : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
-    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
-    {horizon remaining : Nat} {scheduler : (application setup leaks).Scheduler}
-    {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
+    (bounds : MessageBounds (serviceGraph setup mode)) (covered : bounds.CoversBindingValues)
+    (initialCovered : ∀ state ∈ (serviceInitialLaw setup mode).support,
+        bounds.CandidateValues state)
+    (capacity : (serviceGraph setup mode).order.eventCount ≤ bounds.candidateCount)
+    {horizon remaining : Nat} {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {delay bound : (serviceGraph setup mode).EventId → Nat}
+    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+        (serviceInitialLaw setup mode) horizon scheduler
       delay bound)
-    (timely : AsyncTimely (runtime setup) delay bound)
-    (players : Player → (application setup leaks).Policy) (who : Player)
+    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
+    (players : Player → (serviceApplication setup mode deadline leaks).Policy) (who : Player)
     (profile : BehavioralProfile setup.program)
     (permitted : (profile who).Admitted setup.program (CommitmentInterface.values _))
-    (follows : players who = sourceServiceImmediatePolicy setup leaks bound profile who)
-    (execution : (application setup leaks).Execution)
-    (trace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup) horizon
+    (follows : players who = serviceImmediatePolicy setup mode deadline leaks bound profile who)
+    (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (trace : ((bounds.riskMenu (serviceRuntime setup mode deadline) leaks bound).protocol
+        (serviceInitialLaw setup mode) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩))
-    (clear : (runtime setup).serviceRisk leaks bound who (execution.recall who)
-      (execution.observe (application setup leaks) who) = false)
-    (response : (application setup leaks).Action)
-    (chosen : response ∈ (sourceServiceImmediatePolicy setup leaks bound profile who
-      (execution.recall who) (execution.observe (application setup leaks) who)).support)
-    (count : Nat) (within : count ≤ remaining) (next : (application setup leaks).Execution)
-    (reached : next ∈ ((application setup leaks).runRounds scheduler players count
-      (execution.respond (application setup leaks) who response)).support)
-    (sample : List (SettledEvidence setup) → PMF (List (SettledEvidence setup)))
+    (clear : (serviceRuntime setup mode deadline).serviceRisk leaks bound who (execution.recall who)
+      (execution.observe (serviceApplication setup mode deadline leaks) who) = false)
+    (response : (serviceApplication setup mode deadline leaks).Action)
+    (chosen : response ∈ (serviceImmediatePolicy setup mode deadline leaks bound profile who
+      (execution.recall who) (execution.observe
+          (serviceApplication setup mode deadline leaks) who)).support)
+    (count : Nat) (within : count ≤ remaining) (next :
+        (serviceApplication setup mode deadline leaks).Execution)
+    (reached : next ∈
+        ((serviceApplication setup mode deadline leaks).runRounds scheduler players count
+      (execution.respond (serviceApplication setup mode deadline leaks) who response)).support)
+    (sample : List (SettledEvidence setup mode) → PMF (List (SettledEvidence setup mode)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual) :
-    TerminalAudit.charge ((runtime setup).serviceAuditObservation leaks)
-      (sourceServiceAudit setup leaks sample) (some ⟨remaining - count, none, next⟩) who = 0 := by
+    TerminalAudit.charge ((serviceRuntime setup mode deadline).serviceAuditObservation leaks)
+      (serviceSourceAudit setup mode deadline leaks sample) (some ⟨remaining - count, none,
+          next⟩) who = 0 := by
   obtain ⟨_, noMiss, permits⟩ := sourceServiceImmediatePolicy_clean_continuation bounds covered
     initialCovered capacity contract timely players who profile permitted follows execution trace
     clear response chosen count within next reached
-  unfold sourceServiceAudit serviceSourceAudit
-  rw [(runtime setup).serviceAudit_charge, noMiss]
+  unfold serviceSourceAudit
+  rw [(serviceRuntime setup mode deadline).serviceAudit_charge, noMiss]
   simp only [Bool.false_eq_true, ↓reduceIte]
-  apply (application setup leaks).sampledTrafficAudit_sound
+  apply (serviceApplication setup mode deadline leaks).sampledTrafficAudit_sound
   · exact authentic _
   · exact permits
 

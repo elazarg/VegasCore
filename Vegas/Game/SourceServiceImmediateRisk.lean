@@ -176,33 +176,34 @@ theorem sourceServiceFirstTurn_no_miss {horizon : Nat}
         moved nextTrace calls conform once atTurn
 
 
-section Sequential
-
-variable {setup : Setup (Player := Player) (L := L)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+section Generic
 
 /-- Recorded earlier binding turns and answered activations protect every
 unrecorded binding opportunity at an actual scheduler boundary. -/
 theorem recordedBindings_currentOpportunity_clear {horizon : Nat}
-    {scheduler : (application setup leaks).Scheduler}
-    {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {delay bound : (serviceGraph setup mode).EventId → Nat}
+    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+        (serviceInitialLaw setup mode) horizon scheduler
       delay bound)
-    (timely : AsyncTimely (runtime setup) delay bound)
-    {remaining : Nat} {execution : (application setup leaks).Execution}
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
+    {remaining : Nat} {execution : (serviceApplication setup mode deadline leaks).Execution}
+    (trace : ((serviceApplication setup mode deadline leaks).protocol
+        (serviceInitialLaw setup mode) horizon scheduler).Trace
       (some ⟨remaining, none, execution⟩))
     (answered : ActivationsAnswered setup leaks execution) (who : Player)
     (turned : BindingTurnsRecorded setup leaks execution who) :
-    (runtime setup).firstUnprotectedBindingOpportunity leaks bound who (execution.recall who)
-      (execution.observe (application setup leaks) who) = false := by
-  let app := application setup leaks
+    (serviceRuntime setup mode deadline).firstUnprotectedBindingOpportunity leaks bound who
+        (execution.recall who)
+      (execution.observe (serviceApplication setup mode deadline leaks) who) = false := by
+  let app := serviceApplication setup mode deadline leaks
   apply Bool.eq_false_of_not_eq_true
   intro risky
   obtain ⟨_, event, owner, payload, turn, binding, unrecorded, unprotected⟩ :=
-    ((runtime setup).firstUnprotectedBindingOpportunity_iff leaks bound who _ _).mp risky
+    ((serviceRuntime setup mode deadline).firstUnprotectedBindingOpportunity_iff leaks bound who _
+        _).mp risky
   have turnActual : execution.application.publicView.ownTurn? who = some event := turn
-  have first : sourceServiceTurn setup leaks who event (execution.recall who)
+  have first : serviceTurn setup mode deadline leaks who event (execution.recall who)
       (execution.observe app who) = some 0 := by
     change (if execution.application.publicView.ownTurn? who = some event then
       some ((execution.recall who).countP fun entry =>
@@ -224,43 +225,54 @@ theorem recordedBindings_currentOpportunity_clear {horizon : Nat}
 /-- An immediate response at clear risk keeps prior binding turns recorded,
 records a fresh current binding turn, and adds no private opportunity risk. -/
 theorem immediatePolicy_recallFacts_respond {horizon remaining : Nat}
-    {scheduler : (application setup leaks).Scheduler}
-    {bound : (graph setup).EventId → Nat} {profile : BehavioralProfile setup.program}
-    {middle : (application setup leaks).Execution} {who : Player}
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {bound : (serviceGraph setup mode).EventId → Nat} {profile : BehavioralProfile setup.program}
+    {middle : (serviceApplication setup mode deadline leaks).Execution} {who : Player}
+    (trace : ((serviceApplication setup mode deadline leaks).protocol
+        (serviceInitialLaw setup mode) horizon scheduler).Trace
       (some ⟨remaining, some who, middle⟩))
     (atTurn : OwnSubmissionsAtTurn setup leaks middle who)
     (slots : CanonicalSlotsUsed setup leaks middle who)
     (turned : BindingTurnsRecorded setup leaks middle who)
-    (clear : (runtime setup).serviceRisk leaks bound who (middle.recall who)
-      (middle.observe (application setup leaks) who) = false)
-    (response : (application setup leaks).Action)
-    (chosen : response ∈ (sourceServiceImmediatePolicy setup leaks bound profile who
-      (middle.recall who) (middle.observe (application setup leaks) who)).support) :
-    BindingTurnsRecorded setup leaks (middle.respond (application setup leaks) who response) who ∧
-      (runtime setup).recalledBindingOpportunityRisk leaks bound who
-        ((middle.respond (application setup leaks) who response).recall who) = false := by
-  let app := application setup leaks
-  have components := ((runtime setup).serviceRisk_clear_iff leaks bound who _ _).mp clear
-  have recallClear := ((runtime setup).persistentServiceRisk_clear_iff leaks bound who _ _).mp
+    (clear : (serviceRuntime setup mode deadline).serviceRisk leaks bound who (middle.recall who)
+      (middle.observe (serviceApplication setup mode deadline leaks) who) = false)
+    (response : (serviceApplication setup mode deadline leaks).Action)
+    (chosen : response ∈ (serviceImmediatePolicy setup mode deadline leaks bound profile who
+      (middle.recall who) (middle.observe
+          (serviceApplication setup mode deadline leaks) who)).support) :
+    BindingTurnsRecorded setup leaks (middle.respond
+        (serviceApplication setup mode deadline leaks) who response) who ∧
+      (serviceRuntime setup mode deadline).recalledBindingOpportunityRisk leaks bound who
+        ((middle.respond
+            (serviceApplication setup mode deadline leaks) who response).recall who) = false := by
+  let app := serviceApplication setup mode deadline leaks
+  have components :=
+      ((serviceRuntime setup mode deadline).serviceRisk_clear_iff leaks bound who _ _).mp clear
+  have recallClear :=
+      ((serviceRuntime setup mode deadline).persistentServiceRisk_clear_iff leaks bound who _ _).mp
     components.1 |>.2
-  have nextClear := ((runtime setup).recalledBindingOpportunityRisk_respond_clear leaks bound
+  have nextClear :=
+      ((serviceRuntime setup mode deadline).recalledBindingOpportunityRisk_respond_clear leaks bound
     middle who response components.2).trans recallClear
   refine ⟨?_, nextClear⟩
   obtain ⟨_, recalled, _⟩ := respond_recall_self setup leaks middle who response
   intro entry member event owner payload turn binding
   rw [recalled] at member
   rcases List.mem_append.mp member with old | new
-  · exact (runtime setup).eventRecorded_respond_of_recorded leaks middle who who response event
+  · exact (serviceRuntime setup mode deadline).eventRecorded_respond_of_recorded leaks middle who
+      who response event
       (turned entry old event owner payload turn binding)
   · cases List.mem_singleton.mp new
     change middle.application.publicView.ownTurn? who = some event at turn
-    by_cases recorded : (runtime setup).eventRecorded leaks (middle.recall who) event = true
-    · exact (runtime setup).eventRecorded_respond_of_recorded leaks middle who who response event
+    by_cases recorded : (serviceRuntime setup mode deadline).eventRecorded leaks
+        (middle.recall who) event = true
+    · exact (serviceRuntime setup mode deadline).eventRecorded_respond_of_recorded leaks middle
+        who who response event
         recorded
-    · have unrecorded : (runtime setup).eventRecorded leaks (middle.recall who) event = false :=
+    · have unrecorded : (serviceRuntime setup mode deadline).eventRecorded leaks
+        (middle.recall who) event = false :=
         Bool.eq_false_of_not_eq_true recorded
-      cases node : nodeView (graph setup) event with
+      cases node : nodeView (serviceGraph setup mode) event with
       | sample sampled law outputEq codeEq =>
           rw [outputEq] at binding
           cases binding
@@ -277,5 +289,5 @@ theorem immediatePolicy_recallFacts_respond {horizon remaining : Nat}
             chosen
           exact recordedAfter
 
-end Sequential
+end Generic
 end Vegas

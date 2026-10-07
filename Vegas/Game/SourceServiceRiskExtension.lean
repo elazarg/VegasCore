@@ -198,7 +198,6 @@ each classified excluded packet without independence or a continuation-fuel
 premise. The other comparison requires one legal continuation shared across
 the belief's hidden histories. Both remain hypotheses. -/
 theorem risk_sequentialEquilibrium_extends
-    (configuration : service.RankSequential)
     (utility : State L service.setup.program.terminalCtx → Player → ℝ)
     (backend : EvidenceReportService (SettledEvidence service.setup service.mode))
     (observationRate deliveryRate : Player → ℝ)
@@ -305,7 +304,6 @@ theorem risk_sequentialEquilibrium_extends
             change actor = some who at active
             subst actor
             exact auditableServiceChoice_collection_committed service.setup service.leaks
-              configuration
               effective count scheduler service.completes backend targetProfile
               (restriction.history history.1) who remaining execution current
               (restriction.site who site).1 action observed breach observationRate deliveryRate
@@ -314,7 +312,7 @@ theorem risk_sequentialEquilibrium_extends
         obtain ⟨past, view, _response, observed, _, _, _, clear⟩ :=
           service.riskRestriction_extra_clear who site action extra
         obtain ⟨alternative, _fixed, clean⟩ := sourceServiceImmediateComparator_clean_lower
-          configuration service.bounds service.values service.initialValues service.capacity
+          service.bounds service.values service.initialValues service.capacity
             service.contract
           service.timely reference who (permitted who) sourceCertificate sourceProfile site past
           view observed clear sample backend.sample_authentic (fun final => base final.state who)

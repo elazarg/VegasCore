@@ -131,7 +131,6 @@ omit [Fintype Player] in
 record. The current-opportunity classes use the checked ordinal and public
 guard persistence results; constructor breaches need no readiness premise. -/
 theorem auditableServicePacket_forbidden_reaches
-    (configuration : RankSequential setup mode deadline)
     {horizon : Nat} {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
     {first last :
       ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
@@ -148,14 +147,16 @@ theorem auditableServicePacket_forbidden_reaches
     (complete : after.execution.application.config.cut.Terminal) :
     ((serviceRuntime setup mode deadline).settledRecord leaks after.execution).permits message =
       false := by
-  obtain ⟨rfl, rfl⟩ := configuration
   rcases classified with signed | ⟨event, turn, noncanonical | guarded⟩
-  · exact signed.forbidden (runtime setup) leaks after.execution complete
+  · exact signed.forbidden (serviceRuntime setup mode deadline) leaks after.execution complete
   · obtain ⟨candidate, committed, different⟩ := noncanonical
     have ready := (before.execution.application.publicView_eventReady event).mp
       ((before.execution.application.publicView.ownTurn?_spec who event turn).1)
+    have owned : (serviceGraph setup mode).actor? event = some message.sender := by
+      rw [authored]
+      exact (before.execution.application.publicView.ownTurn?_spec who event turn).2
     apply (noncanonicalCommitment_forbidden_reaches path before after firstState lastState
-      event ready message candidate committed ?_ complete).2
+      event ready message owned candidate committed ?_ complete).2
     simpa only [authored] using different
   · obtain ⟨candidate, raw, opened, rejected⟩ := guarded
     have ready := (before.execution.application.publicView_eventReady event).mp
@@ -169,7 +170,6 @@ traffic and gives the final-record backend's collection bound under arbitrary
 later policies. No hidden-history uniformity, packet-verdict or fuel premise
 is supplied by the caller. -/
 theorem auditableServiceChoice_collection_committed
-    (configuration : RankSequential setup mode deadline)
     (menu : (serviceApplication setup mode deadline leaks).ResponseMenu)
     (horizon : Nat) (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
     (completes : CompletesPlay (serviceRuntime setup mode deadline) leaks (serviceInitialLaw setup
@@ -200,12 +200,11 @@ theorem auditableServiceChoice_collection_committed
         (fun final => TerminalAudit.charge ((serviceRuntime setup mode
           deadline).serviceAuditObservation leaks)
           (serviceSourceAudit setup mode deadline leaks backend.sample) final.state who) := by
-  obtain ⟨rfl, rfl⟩ := configuration
   classical
-  let app := application setup leaks
+  let app := serviceApplication setup mode deadline leaks
   obtain ⟨past, view, response, inputEq, chosen, material, sent, auditable⟩ := classified
   have observedInput : info = app.observe who history.state :=
-    observed.symm.trans (menu.info (initialLaw setup) horizon scheduler who
+    observed.symm.trans (menu.info (serviceInitialLaw setup mode) horizon scheduler who
       history.trace)
   rw [current] at observedInput
   simp only [ReactiveApplication.observe, ↓reduceIte] at observedInput
@@ -222,15 +221,15 @@ theorem auditableServiceChoice_collection_committed
         rfl
   have selected : choice.1 = some ⟨some material⟩ :=
     chosen.trans (congrArg some responseEq)
-  have rawTrace : (app.protocol (initialLaw setup) horizon scheduler).Trace
+  have rawTrace : (app.protocol (serviceInitialLaw setup mode) horizon scheduler).Trace
       (some ⟨remaining, some who, execution⟩) :=
-    current ▸ menu.toRawTrace (initialLaw setup) horizon scheduler history.trace
+    current ▸ menu.toRawTrace (serviceInitialLaw setup mode) horizon scheduler history.trace
   rw [localServiceEnvelope_actual setup leaks rawTrace who material] at auditable
   apply settledPacket_collection_committed setup leaks menu horizon scheduler completes backend
     profile history who remaining execution current info choice observed material selected ?_
     observationRate deliveryRate delivery_nonnegative coverage
   intro fuel final path control finalState complete
-  exact auditableServicePacket_forbidden_reaches setup leaks ⟨rfl, rfl⟩ path
+  exact auditableServicePacket_forbidden_reaches setup leaks path
     ⟨remaining, some who, execution⟩ control current finalState who _ rfl auditable complete
 
 end Vegas

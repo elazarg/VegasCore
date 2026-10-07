@@ -45,6 +45,8 @@ def serviceImmediatePolicy (bound : (serviceGraph setup mode).EventId → Nat)
 
 end Configured
 
+section Sequential
+
 variable (setup : Setup (Player := Player) (L := L))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
@@ -53,55 +55,69 @@ abbrev sourceServiceImmediatePolicy : ((graph setup).EventId → Nat) →
     BehavioralProfile setup.program → Player → (application setup leaks).Policy :=
   serviceImmediatePolicy setup .sequential (rankDeadline setup .sequential) leaks
 
-variable {setup leaks}
+end Sequential
+
+variable {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
+  {deadline : (serviceGraph setup mode).EventId → Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
+
 
 /-- At a clear own turn, the immediate policy is the current canonical
 opportunity even if earlier silent responses already saw that event. -/
 theorem sourceServiceImmediatePolicy_at_event
-    {bound : (graph setup).EventId → Nat} {profile : BehavioralProfile setup.program}
-    {who : Player} {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView} {event : (graph setup).EventId}
-    (clear : (runtime setup).serviceRisk leaks bound who past view = false)
+    {bound : (serviceGraph setup mode).EventId → Nat} {profile : BehavioralProfile setup.program}
+    {who : Player} {past : List (serviceApplication setup mode deadline leaks).PlayerEntry}
+    {view : (serviceApplication setup mode deadline leaks).PlayerView} {event :
+        (serviceGraph setup mode).EventId}
+    (clear : (serviceRuntime setup mode deadline).serviceRisk leaks bound who past view = false)
     (turn : view.application.publicView.ownTurn? who = some event) :
-    sourceServiceImmediatePolicy setup leaks bound profile who past view =
-      sourceServiceCanonicalOpportunity setup leaks bound profile who event past view := by
-  simp only [sourceServiceImmediatePolicy, serviceImmediatePolicy, clear, ↓reduceIte, turn]
+    serviceImmediatePolicy setup mode deadline leaks bound profile who past view =
+      serviceCanonicalOpportunity setup mode deadline leaks bound profile who event past view := by
+  simp only [serviceImmediatePolicy, clear, ↓reduceIte, turn]
 
 /-- Every supported response is silence or a current opportunity at clear risk. -/
 theorem sourceServiceImmediatePolicy_cases
-    {bound : (graph setup).EventId → Nat} {profile : BehavioralProfile setup.program}
-    {who : Player} {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView} {response : (application setup leaks).Action}
-    (chosen : response ∈ (sourceServiceImmediatePolicy setup leaks bound profile who
+    {bound : (serviceGraph setup mode).EventId → Nat} {profile : BehavioralProfile setup.program}
+    {who : Player} {past : List (serviceApplication setup mode deadline leaks).PlayerEntry}
+    {view : (serviceApplication setup mode deadline leaks).PlayerView} {response :
+        (serviceApplication setup mode deadline leaks).Action}
+    (chosen : response ∈ (serviceImmediatePolicy setup mode deadline leaks bound profile who
       past view).support) :
     response = ⟨none⟩ ∨ ∃ event,
-      (runtime setup).serviceRisk leaks bound who past view = false ∧
+      (serviceRuntime setup mode deadline).serviceRisk leaks bound who past view = false ∧
       view.application.publicView.ownTurn? who = some event ∧
-      response ∈ (sourceServiceCanonicalOpportunity setup leaks bound profile who event
+      response ∈ (serviceCanonicalOpportunity setup mode deadline leaks bound profile who event
         past view).support := by
-  unfold sourceServiceImmediatePolicy serviceImmediatePolicy at chosen
+  unfold serviceImmediatePolicy at chosen
   split at chosen
   · rename_i clear
     split at chosen
-    · exact Or.inl ((application setup leaks).silentPolicy_cases past view response chosen)
+    · exact Or.inl
+        ((serviceApplication setup mode deadline leaks).silentPolicy_cases past view response
+            chosen)
     · rename_i event turn
       exact Or.inr ⟨event, clear, turn, chosen⟩
-  · exact Or.inl ((application setup leaks).silentPolicy_cases past view response chosen)
+  · exact Or.inl
+      ((serviceApplication setup mode deadline leaks).silentPolicy_cases past view response chosen)
 
 /-- Every actual immediate submission is an unsent protected canonical source
 decision at the current own turn. -/
 theorem sourceServiceImmediatePolicy_submission
-    {bound : (graph setup).EventId → Nat} {profile : BehavioralProfile setup.program}
-    {who : Player} {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView} {response : (application setup leaks).Action}
-    (chosen : response ∈ (sourceServiceImmediatePolicy setup leaks bound profile who
+    {bound : (serviceGraph setup mode).EventId → Nat} {profile : BehavioralProfile setup.program}
+    {who : Player} {past : List (serviceApplication setup mode deadline leaks).PlayerEntry}
+    {view : (serviceApplication setup mode deadline leaks).PlayerView} {response :
+        (serviceApplication setup mode deadline leaks).Action}
+    (chosen : response ∈ (serviceImmediatePolicy setup mode deadline leaks bound profile who
       past view).support)
-    {material : (application setup leaks).Submission}
+    {material : (serviceApplication setup mode deadline leaks).Submission}
     (submits : response.transmission = some material) :
     ∃ event action, view.application.publicView.ownTurn? who = some event ∧
-      (runtime setup).eventRecorded leaks past event = false ∧
-      view.application.publicView.InclusionFitsDeadline (runtime setup) bound event ∧
-      response = (runtime setup).canonicalServiceDecision leaks who past view event action := by
+      (serviceRuntime setup mode deadline).eventRecorded leaks past event = false ∧
+      view.application.publicView.InclusionFitsDeadline
+          (serviceRuntime setup mode deadline) bound event ∧
+      response =
+          (serviceRuntime setup mode deadline).canonicalServiceDecision leaks who past view event
+              action := by
   rcases sourceServiceImmediatePolicy_cases chosen with silent | ⟨event, _, turn, member⟩
   · rw [silent] at submits
     cases submits
@@ -113,9 +129,9 @@ theorem sourceServiceImmediatePolicy_submission
 
 /-- An immediate response names only the current own event. -/
 theorem sourceServiceImmediatePolicy_submitsAtTurn
-    (bound : (graph setup).EventId → Nat) (profile : BehavioralProfile setup.program)
+    (bound : (serviceGraph setup mode).EventId → Nat) (profile : BehavioralProfile setup.program)
     (who : Player) :
-    SubmitsAtTurn setup leaks (sourceServiceImmediatePolicy setup leaks bound profile who)
+    SubmitsAtTurn setup leaks (serviceImmediatePolicy setup mode deadline leaks bound profile who)
       who := by
   intro past view response chosen event named
   rcases sourceServiceImmediatePolicy_cases chosen with silent | ⟨other, _, _, member⟩
@@ -126,12 +142,13 @@ theorem sourceServiceImmediatePolicy_submitsAtTurn
 
 /-- Every supported immediate response satisfies the first-submission discipline. -/
 theorem sourceServiceImmediatePolicy_firstSubmission
-    {bound : (graph setup).EventId → Nat} {profile : BehavioralProfile setup.program}
-    {who : Player} {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView} {response : (application setup leaks).Action}
-    (chosen : response ∈ (sourceServiceImmediatePolicy setup leaks bound profile who
+    {bound : (serviceGraph setup mode).EventId → Nat} {profile : BehavioralProfile setup.program}
+    {who : Player} {past : List (serviceApplication setup mode deadline leaks).PlayerEntry}
+    {view : (serviceApplication setup mode deadline leaks).PlayerView} {response :
+        (serviceApplication setup mode deadline leaks).Action}
+    (chosen : response ∈ (serviceImmediatePolicy setup mode deadline leaks bound profile who
       past view).support) :
-    (runtime setup).firstSubmission leaks past response = true := by
+    (serviceRuntime setup mode deadline).firstSubmission leaks past response = true := by
   cases transmission : response.transmission with
   | none =>
       simp only [EventGraphRuntime.firstSubmission, EventGraphRuntime.submittedEvent?,
@@ -140,19 +157,22 @@ theorem sourceServiceImmediatePolicy_firstSubmission
       obtain ⟨event, action, _, unrecorded, _, decision⟩ :=
         sourceServiceImmediatePolicy_submission chosen transmission
       rw [decision]
-      exact (runtime setup).canonicalServiceDecision_firstSubmission leaks who past view event
+      exact (serviceRuntime setup mode deadline).canonicalServiceDecision_firstSubmission leaks
+          who past view event
         action unrecorded
 
 /-- Every named immediate submission passes its protected inclusion gate. -/
 theorem sourceServiceImmediatePolicy_submissionFits
-    {bound : (graph setup).EventId → Nat} {profile : BehavioralProfile setup.program}
-    {who : Player} {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView} {response : (application setup leaks).Action}
-    (chosen : response ∈ (sourceServiceImmediatePolicy setup leaks bound profile who
+    {bound : (serviceGraph setup mode).EventId → Nat} {profile : BehavioralProfile setup.program}
+    {who : Player} {past : List (serviceApplication setup mode deadline leaks).PlayerEntry}
+    {view : (serviceApplication setup mode deadline leaks).PlayerView} {response :
+        (serviceApplication setup mode deadline leaks).Action}
+    (chosen : response ∈ (serviceImmediatePolicy setup mode deadline leaks bound profile who
       past view).support)
-    (event : (graph setup).EventId)
-    (named : (runtime setup).submittedEvent? leaks response = some event) :
-    view.application.publicView.InclusionFitsDeadline (runtime setup) bound event := by
+    (event : (serviceGraph setup mode).EventId)
+    (named : (serviceRuntime setup mode deadline).submittedEvent? leaks response = some event) :
+    view.application.publicView.InclusionFitsDeadline
+        (serviceRuntime setup mode deadline) bound event := by
   obtain ⟨material, transmission⟩ : ∃ material, response.transmission = some material := by
     cases sent : response.transmission with
     | none => simp only [EventGraphRuntime.submittedEvent?, sent] at named; cases named
@@ -166,21 +186,23 @@ theorem sourceServiceImmediatePolicy_submissionFits
 
 /-- An actual fresh immediate envelope conforms on its actual before-view. -/
 theorem sourceServiceImmediatePolicy_freshServiceEnvelope {horizon remaining : Nat}
-    {scheduler : (application setup leaks).Scheduler}
-    {bound : (graph setup).EventId → Nat} {profile : BehavioralProfile setup.program}
-    {middle : (application setup leaks).Execution} {who : Player}
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {bound : (serviceGraph setup mode).EventId → Nat} {profile : BehavioralProfile setup.program}
+    {middle : (serviceApplication setup mode deadline leaks).Execution} {who : Player}
+    (trace : ((serviceApplication setup mode deadline leaks).protocol
+        (serviceInitialLaw setup mode) horizon scheduler).Trace
       (some ⟨remaining, some who, middle⟩))
     (atTurn : OwnSubmissionsAtTurn setup leaks middle who)
     (slots : CanonicalSlotsUsed setup leaks middle who)
-    {response : (application setup leaks).Action}
-    (chosen : response ∈ (sourceServiceImmediatePolicy setup leaks bound profile who
-      (middle.recall who) (middle.observe (application setup leaks) who)).support)
-    (material : (application setup leaks).Submission)
+    {response : (serviceApplication setup mode deadline leaks).Action}
+    (chosen : response ∈ (serviceImmediatePolicy setup mode deadline leaks bound profile who
+      (middle.recall who) (middle.observe
+          (serviceApplication setup mode deadline leaks) who)).support)
+    (material : (serviceApplication setup mode deadline leaks).Submission)
     (submits : response.transmission = some material) :
-    (runtime setup).freshServiceEnvelope middle.application.publicView
-      ⟨(who, middle.network.nextSerial who), (application setup leaks).packet
-        ((application setup leaks).submit middle.application who material) who
+    (serviceRuntime setup mode deadline).freshServiceEnvelope middle.application.publicView
+      ⟨(who, middle.network.nextSerial who), (serviceApplication setup mode deadline leaks).packet
+        ((serviceApplication setup mode deadline leaks).submit middle.application who material) who
         (middle.network.known who) material⟩ := by
   obtain ⟨event, action, turn, unrecorded, fits, decision⟩ :=
     sourceServiceImmediatePolicy_submission chosen submits
@@ -191,42 +213,50 @@ theorem sourceServiceImmediatePolicy_freshServiceEnvelope {horizon remaining : N
 /-- At a clear unrecorded binding turn, the immediate response emits and records
 its actual protected commitment, regardless of the number of earlier deferrals. -/
 theorem sourceServiceImmediatePolicy_binding_call {horizon remaining : Nat}
-    {scheduler : (application setup leaks).Scheduler}
-    {bound : (graph setup).EventId → Nat} {profile : BehavioralProfile setup.program}
-    {middle : (application setup leaks).Execution} {who : Player}
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {bound : (serviceGraph setup mode).EventId → Nat} {profile : BehavioralProfile setup.program}
+    {middle : (serviceApplication setup mode deadline leaks).Execution} {who : Player}
+    (trace : ((serviceApplication setup mode deadline leaks).protocol
+        (serviceInitialLaw setup mode) horizon scheduler).Trace
       (some ⟨remaining, some who, middle⟩))
     (atTurn : OwnSubmissionsAtTurn setup leaks middle who)
     (slots : CanonicalSlotsUsed setup leaks middle who)
-    (clear : (runtime setup).serviceRisk leaks bound who (middle.recall who)
-      (middle.observe (application setup leaks) who) = false)
-    (event : (graph setup).EventId) (payload : L.Ty)
-    (outputEq : (graph setup).outputLayout event = .binding who payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload)
-    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
+    (clear : (serviceRuntime setup mode deadline).serviceRisk leaks bound who (middle.recall who)
+      (middle.observe (serviceApplication setup mode deadline leaks) who) = false)
+    (event : (serviceGraph setup mode).EventId) (payload : L.Ty)
+    (outputEq : (serviceGraph setup mode).outputLayout event = .binding who payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode (serviceGraph setup mode).layout) outputEq)
+      ((serviceGraph setup mode).nodes event) = .bind who payload)
+    (node : nodeView (serviceGraph setup mode) event = .bind who payload outputEq codeEq)
     (turn : middle.application.publicView.ownTurn? who = some event)
-    (unrecorded : (runtime setup).eventRecorded leaks (middle.recall who) event = false)
-    (response : (application setup leaks).Action)
-    (chosen : response ∈ (sourceServiceImmediatePolicy setup leaks bound profile who
-      (middle.recall who) (middle.observe (application setup leaks) who)).support) :
+    (unrecorded : (serviceRuntime setup mode deadline).eventRecorded leaks
+        (middle.recall who) event = false)
+    (response : (serviceApplication setup mode deadline leaks).Action)
+    (chosen : response ∈ (serviceImmediatePolicy setup mode deadline leaks bound profile who
+      (middle.recall who) (middle.observe
+          (serviceApplication setup mode deadline leaks) who)).support) :
     ∃ material, response = ⟨some material⟩ ∧
-      let app := application setup leaks
-      let message : Message Player (WitnessedPacket (graph setup)) :=
+      let app := serviceApplication setup mode deadline leaks
+      let message : Message Player (WitnessedPacket (serviceGraph setup mode)) :=
         ⟨(who, middle.network.nextSerial who), app.packet
           (app.submit middle.application who material) who (middle.network.known who) material⟩
       let entry : app.PlayerEntry := ⟨middle.observe app who, response, some message⟩
       FreshCall setup leaks who event bound entry message ∧
         message.payload.call = .commitment event
           (who, .prepared (middle.application.publicView.bindingCount who)) ∧
-        (runtime setup).eventRecorded leaks ((middle.respond app who response).recall who)
+        (serviceRuntime setup mode deadline).eventRecorded leaks
+            ((middle.respond app who response).recall who)
           event = true := by
-  have fits : middle.application.publicView.InclusionFitsDeadline (runtime setup) bound
+  have fits : middle.application.publicView.InclusionFitsDeadline
+      (serviceRuntime setup mode deadline) bound
       event := by
     by_contra unprotected
-    have currentClear := ((runtime setup).serviceRisk_clear_iff leaks bound who _ _).mp clear |>.2
-    have risky := ((runtime setup).firstUnprotectedBindingOpportunity_iff leaks bound who
-      (middle.recall who) (middle.observe (application setup leaks) who)).mpr
+    have currentClear :=
+        ((serviceRuntime setup mode deadline).serviceRisk_clear_iff leaks bound who _ _).mp clear
+            |>.2
+    have risky :=
+        ((serviceRuntime setup mode deadline).firstUnprotectedBindingOpportunity_iff leaks bound who
+      (middle.recall who) (middle.observe (serviceApplication setup mode deadline leaks) who)).mpr
         ⟨rfl, event, who, payload, turn, outputEq, unrecorded, unprotected⟩
     rw [currentClear] at risky
     cases risky
@@ -238,21 +268,26 @@ theorem sourceServiceImmediatePolicy_binding_call {horizon remaining : Nat}
 canonical slots. Environment and foreign response closures require no policy
 restriction and are supplied separately. -/
 theorem sourceServiceImmediatePolicy_canonicalSlots_respond {horizon remaining : Nat}
-    {scheduler : (application setup leaks).Scheduler}
-    {bound : (graph setup).EventId → Nat} {profile : BehavioralProfile setup.program}
-    {middle : (application setup leaks).Execution} {who : Player}
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {bound : (serviceGraph setup mode).EventId → Nat} {profile : BehavioralProfile setup.program}
+    {middle : (serviceApplication setup mode deadline leaks).Execution} {who : Player}
+    (trace : ((serviceApplication setup mode deadline leaks).protocol
+        (serviceInitialLaw setup mode) horizon scheduler).Trace
       (some ⟨remaining, some who, middle⟩))
     (atTurn : OwnSubmissionsAtTurn setup leaks middle who)
     (slots : CanonicalSlotsUsed setup leaks middle who)
-    {response : (application setup leaks).Action}
-    (chosen : response ∈ (sourceServiceImmediatePolicy setup leaks bound profile who
-      (middle.recall who) (middle.observe (application setup leaks) who)).support) :
-    OwnSubmissionsAtTurn setup leaks (middle.respond (application setup leaks) who response) who ∧
-      CanonicalSlotsUsed setup leaks (middle.respond (application setup leaks) who response)
+    {response : (serviceApplication setup mode deadline leaks).Action}
+    (chosen : response ∈ (serviceImmediatePolicy setup mode deadline leaks bound profile who
+      (middle.recall who) (middle.observe
+          (serviceApplication setup mode deadline leaks) who)).support) :
+    OwnSubmissionsAtTurn setup leaks (middle.respond
+        (serviceApplication setup mode deadline leaks) who response) who ∧
+      CanonicalSlotsUsed setup leaks (middle.respond
+          (serviceApplication setup mode deadline leaks) who response)
         who := by
-  let app := application setup leaks
-  have appEq := (runtime setup).reactive_respond_application leaks middle who response
+  let app := serviceApplication setup mode deadline leaks
+  have appEq :=
+      (serviceRuntime setup mode deadline).reactive_respond_application leaks middle who response
   obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks middle who response
   refine ⟨?_, ?_⟩
   · intro entry member event named
@@ -262,7 +297,8 @@ theorem sourceServiceImmediatePolicy_canonicalSlots_respond {horizon remaining :
     · cases List.mem_singleton.mp new
       exact sourceServiceImmediatePolicy_submitsAtTurn _ _ who _ _ response chosen event named
   · intro serial used
-    rw [(runtime setup).submittedCandidateSlots_respond leaks middle who response] at used
+    rw [(serviceRuntime setup mode deadline).submittedCandidateSlots_respond leaks middle who
+        response] at used
     rw [appEq.2]
     rcases List.mem_append.mp used with old | new
     · rcases slots serial old with lower | ⟨equal, other, payload, layout, unfinished, recorded⟩
@@ -270,9 +306,11 @@ theorem sourceServiceImmediatePolicy_canonicalSlots_respond {horizon remaining :
       · refine Or.inr ⟨equal, other, payload, layout, ?_, ?_⟩
         · rw [appEq.1]
           exact unfinished
-        · exact (runtime setup).eventRecorded_respond_of_recorded leaks middle who who response
+        · exact (serviceRuntime setup mode deadline).eventRecorded_respond_of_recorded leaks
+            middle who who response
             other recorded
-    · have slot : (runtime setup).responseCandidateSlot leaks response = some serial :=
+    · have slot : (serviceRuntime setup mode deadline).responseCandidateSlot leaks response =
+        some serial :=
         Option.mem_toList.mp new
       obtain ⟨material, submits⟩ : ∃ material, response.transmission = some material := by
         unfold EventGraphRuntime.responseCandidateSlot at slot
@@ -308,41 +346,47 @@ variable [Fintype Player]
 /-- The immediate policy is locally admitted at every actual legal risk-menu
 history, including histories with earlier deferrals or foreign raw responses. -/
 theorem sourceServiceImmediatePolicy_risk_retained
-    (bounds : MessageBounds (graph setup)) (covered : bounds.CoversBindingValues)
-    (initialCovered : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
-    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
-    (bound : (graph setup).EventId → Nat) (profile : BehavioralProfile setup.program)
+    (bounds : MessageBounds (serviceGraph setup mode)) (covered : bounds.CoversBindingValues)
+    (initialCovered : ∀ state ∈ (serviceInitialLaw setup mode).support,
+        bounds.CandidateValues state)
+    (capacity : (serviceGraph setup mode).order.eventCount ≤ bounds.candidateCount)
+    (bound : (serviceGraph setup mode).EventId → Nat) (profile : BehavioralProfile setup.program)
     (who : Player)
     (permitted : (profile who).Admitted setup.program (CommitmentInterface.values _))
-    {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
-    (control : (application setup leaks).Control)
-    (trace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup) horizon
+    {horizon : Nat} {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    (control : (serviceApplication setup mode deadline leaks).Control)
+    (trace : ((bounds.riskMenu (serviceRuntime setup mode deadline) leaks bound).protocol
+        (serviceInitialLaw setup mode) horizon
       scheduler).Trace (some control))
-    (response : (application setup leaks).Action)
-    (chosen : response ∈ (sourceServiceImmediatePolicy setup leaks bound profile who
+    (response : (serviceApplication setup mode deadline leaks).Action)
+    (chosen : response ∈ (serviceImmediatePolicy setup mode deadline leaks bound profile who
       (control.execution.recall who)
-      (control.execution.observe (application setup leaks) who)).support) :
-    response ∈ bounds.riskActions (runtime setup) leaks bound who (control.execution.recall who)
-      (control.execution.observe (application setup leaks) who) := by
+      (control.execution.observe (serviceApplication setup mode deadline leaks) who)).support) :
+    response ∈ bounds.riskActions (serviceRuntime setup mode deadline) leaks bound who
+        (control.execution.recall who)
+      (control.execution.observe (serviceApplication setup mode deadline leaks) who) := by
   rcases sourceServiceImmediatePolicy_cases chosen with rfl | ⟨event, clear, turn, member⟩
-  · exact bounds.canonicalActions_subset_risk (runtime setup) leaks bound who _ _
-      (bounds.silence_canonical (runtime setup) leaks who _ _)
-  · rw [bounds.riskActions_of_clear (runtime setup) leaks bound who _ _ clear]
+  · exact bounds.canonicalActions_subset_risk
+      (serviceRuntime setup mode deadline) leaks bound who _ _
+      (bounds.silence_canonical (serviceRuntime setup mode deadline) leaks who _ _)
+  · rw [bounds.riskActions_of_clear (serviceRuntime setup mode deadline) leaks bound who _ _ clear]
     exact sourceServiceCanonicalOpportunity_risk_retained bounds covered initialCovered capacity
       bound profile who permitted control trace clear event turn response member
 
 /-- The local coverage gives a policy admission certificate on every legal
 decision history of the finite risk menu. -/
 theorem sourceServiceImmediatePolicy_risk_admissible
-    (bounds : MessageBounds (graph setup)) (covered : bounds.CoversBindingValues)
-    (initialCovered : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
-    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
-    (bound : (graph setup).EventId → Nat) (profile : BehavioralProfile setup.program)
+    (bounds : MessageBounds (serviceGraph setup mode)) (covered : bounds.CoversBindingValues)
+    (initialCovered : ∀ state ∈ (serviceInitialLaw setup mode).support,
+        bounds.CandidateValues state)
+    (capacity : (serviceGraph setup mode).order.eventCount ≤ bounds.candidateCount)
+    (bound : (serviceGraph setup mode).EventId → Nat) (profile : BehavioralProfile setup.program)
     (who : Player)
     (permitted : (profile who).Admitted setup.program (CommitmentInterface.values _))
-    (horizon : Nat) (scheduler : (application setup leaks).Scheduler) :
-    (bounds.riskMenu (runtime setup) leaks bound).Admissible (initialLaw setup) horizon scheduler
-      who (sourceServiceImmediatePolicy setup leaks bound profile who) := by
+    (horizon : Nat) (scheduler : (serviceApplication setup mode deadline leaks).Scheduler) :
+    (bounds.riskMenu (serviceRuntime setup mode deadline) leaks bound).Admissible
+        (serviceInitialLaw setup mode) horizon scheduler
+      who (serviceImmediatePolicy setup mode deadline leaks bound profile who) := by
   intro control trace _ response chosen
   exact sourceServiceImmediatePolicy_risk_retained bounds covered initialCovered capacity bound
     profile who permitted control trace response chosen

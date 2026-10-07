@@ -403,8 +403,14 @@ joint law. It is not pursued.
   (`sourceServiceClients_settlement_lawError`) and the asynchronous Nash pins
   (`async_client_nash_correspondence` and the four related pins) take
   `(serviceGraph service.setup service.mode).BarrierOrdered` instead of the
-  default configuration. The SE chain (`risk_sequentialEquilibrium_extends`)
-  still assumes the default configuration (`RankSequential`).
+  default configuration. The extension of an audited risk-menu equilibrium to
+  the complete effective runtime (`risk_sequentialEquilibrium_extends`) holds in
+  every dependency mode with any configured deadlines, the concurrent-binding
+  and concurrent-reveal graphs included: its collection bounds for noncanonical
+  commitment handles use that an owner has at most one ready event
+  (`noncanonicalCommitment_forbidden_reaches`), and its clean comparator uses
+  the readiness of a recorded own turn at the current state
+  (`sourceServiceImmediatePolicy_bindingTurnsRecorded_respond`).
 - [ ] **C3. Concurrent reveals.** Under the forfeit pass, reveals that the game
   does not order (no guard or later decision reads one before the other) run
   concurrently, and the target theorem holds for that graph; or a
