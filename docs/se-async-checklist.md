@@ -55,6 +55,11 @@ Players are finitely many throughout.
 An author-only observation rule (leaks depend on the observer and the authors
 of pending messages, not on their content) is an approved optional hypothesis,
 used only where a proof needs it and named there.
+A builder that does not react to unincluded late packets (the scheduler's
+commands other than including a pending packet sent outside its protected
+window do not depend on that packet or on its absence) is an approved
+hypothesis of the sequential-equilibrium theorem for arbitrary builders,
+named where used.
 
 The earlier target, preservation of every sequential equilibrium of the source
 game with withholding priced by the program's own failure branch, is refuted in
