@@ -116,7 +116,7 @@ types `t = (v, s)`, `v in {0, 1}` with `P(v = 1) = 9/20`, `s in {A, B, C}` unifo
 and independent; `R = 2`, `D = 6 = 3R`, `c = 3 > R`, `q = 99/100`, `k = 2`; one
 listener activated between `L1` and `L2`, who learns `v` from a pending opening.
 After a success the listener plays the safe answer `m` (worth `2/5` to it) or a
-guess `g_i` (worth `[s = i]`); the sender gets `R/2` under `m`, and under any
+guess of `s` (worth 1 if correct); the sender gets `R/2` under `m`, and under any
 guess types `A, B` get `R` and type `C` gets `0`. After a failure the listener
 gets `[a = v]` and the sender gets `(R, 0, 0)` under `f1` and `(0, R, 0)` under
 `f0`, over `(A, B, C)`. The intended SE is unique (the listener plays `m`). In
