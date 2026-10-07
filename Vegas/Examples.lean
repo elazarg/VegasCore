@@ -2,4 +2,5 @@
 
 import Vegas.Examples.CommitRevealAuction
 import Vegas.Examples.CommittedResolutionService
+import Vegas.Examples.LateLeak
 import Vegas.Examples.PrivateValueAuction

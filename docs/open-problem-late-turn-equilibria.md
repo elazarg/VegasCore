@@ -1,7 +1,8 @@
 # Open problem: sequential equilibria with late sends and leaked openings
 
-Status: variant 1 is false (verified counterexample below); corrected
-positive versions are stated after it. This note states the question
+Status: variant 1 is false (counterexample below, mechanized in Lean as
+`Vegas.Paper.late_leak_intended_outcome_not_preserved`); corrected positive
+versions are stated after it. This note states the question
 self-containedly so that it can be worked on independently of the rest of the
 project.
 
@@ -145,6 +146,16 @@ game refutes every margin `D > R`, `c >= 0` once `q` is close enough to `1`.
   `k`, `D >= 2R`, `c >= 0`.
 - With leaks and one listener, a reward-richness condition on the listener's
   answers suffices.
+
+Lean proof: [the late-turn example](../Vegas/Examples/LateLeak/Game.lean) defines `G*` and
+its intended game as finite information models, and
+`Vegas.Paper.late_leak_intended_outcome_not_preserved` proves, with standard
+axioms, that the intended game has a sequential equilibrium, that all its
+sequential equilibria have the intended outcome law, and that no sequential
+equilibrium of `G*` has it. The four steps are
+`lateLeak_sender_success_value`, `lateLeak_opposite_preferences`,
+`lateLeak_consistent_face` and `lateLeak_rational_guesses` with
+`lateLeak_defer_first` and `lateLeak_defer_second`.
 
 Checkers: [`g_star_verification.py`](../scripts/experiments/g_star_verification.py),
 [`three_type_counterexample.py`](../scripts/experiments/three_type_counterexample.py),

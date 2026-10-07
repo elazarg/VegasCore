@@ -534,13 +534,34 @@ joint law. It is not pursued.
 
 ## I. Impossibility
 
-- [ ] **I1. Mechanized counterexample.** The counterexample `G*` of
+- [x] **I1. Mechanized counterexample.** The counterexample `G*` of
   [the late-turn note](open-problem-late-turn-equilibria.md) is stated and proved
   in Lean: a finite game with the late-turn structure in which the intended
   game has a sequential equilibrium whose outcome no sequential equilibrium of
   the full game reproduces, for the stated margins; pinned with standard axioms.
   Optionally, its realization by the bounded raw runtime under an admissible
   builder and leak rule.
+  Evidence: `Vegas.Paper.late_leak_intended_outcome_not_preserved` (from
+  `lateLeak_intended_outcome_not_preserved`, standard axioms) on the game of
+  [the late-turn example](../Vegas/Examples/LateLeak/Game.lean), with `R = 2`,
+  `D = 6`, `c = 3`, `q = 99/100`, `P(v = 1) = 9/20` and a uniform label. The
+  intended game (the sender's menu at the protected turn is opening only) has a
+  sequential equilibrium (`lateLeakIntendedAssessment_isSequentialEquilibrium`),
+  and every sequential equilibrium of it has the intended outcome law
+  (`lateLeak_intended_outcome`: every type opens at the protected turn and the
+  listener answers safely). No sequential equilibrium of the late-turn game has
+  that law (`lateLeak_no_intended_equilibrium`), by the note's four steps: one
+  reward direction (`lateLeak_sender_success_value`); opposite strict late-turn
+  preferences in some class for every listener mixture
+  (`lateLeak_opposite_preferences`, with `lateLeak_rational_leaked_failure`);
+  a face of the belief simplex at an inclusion set for every consistent
+  assessment, under the library's Kreps-Wilson consistency with arbitrary
+  type- and turn-dependent trembles (`lateLeak_consistent_face`); and the
+  listener guessing there (`lateLeak_rational_guesses`), so that type `(v, A)`
+  gains by deferring (`lateLeak_defer_first`, `lateLeak_defer_second`).
+  Sequential equilibrium is the library predicate on the game's information
+  model, with whole-policy rationality on terminal play.
+  Not done: the optional realization by the bounded raw runtime.
 
 ## W. Operational watcher
 

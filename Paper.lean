@@ -12,6 +12,7 @@ import Vegas.Game.AsyncServiceDeviationBound
 import Vegas.Game.AsyncServiceRawNash
 import Vegas.Game.EventCompilation
 import Vegas.EventGraph.RevealRelaxedScheduling
+import Vegas.Examples.LateLeak.Preservation
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -951,6 +952,41 @@ axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms GameTheory.Protocol.InformationModel.ActionRestriction.isεNash_extends_of_debt
+
+
+/-- **Late sends with leaked openings break sequential-equilibrium
+preservation.** In the late-turn game a sender of type `(v, s)` (`P(v = 1) =
+9/20`, label uniform over three values) opens at a protected turn or sends at
+one of two late turns, where an opening is included by a content-blind coin of
+probability `99/100`; a listener sees an opening still pending between the late
+turns, then answers. With reward scale `2`, forfeit `6` and drop charge `3`,
+the intended game (only the protected turn) has a sequential equilibrium; all
+its sequential equilibria have the intended outcome law, in which every type
+opens at the protected turn and the listener answers safely; and no sequential
+equilibrium of the late-turn game has that law. -/
+theorem late_leak_intended_outcome_not_preserved :
+    (∃ A : (lateLeakModel false).BehavioralAssessment,
+      A.IsSequentialEquilibrium (lateLeak_antichain false) (lateLeak_terminates false)
+        (lateLeakPayoff false)) ∧
+    (∀ A : (lateLeakModel false).BehavioralAssessment,
+      A.IsSequentialEquilibrium (lateLeak_antichain false) (lateLeak_terminates false)
+          (lateLeakPayoff false) →
+        lateLeakOutcomeLaw false A.strategy = lateLeakIntendedOutcome) ∧
+    ∀ A : (lateLeakModel true).BehavioralAssessment,
+      A.IsSequentialEquilibrium (lateLeak_antichain true) (lateLeak_terminates true)
+          (lateLeakPayoff true) →
+        lateLeakOutcomeLaw true A.strategy ≠ lateLeakIntendedOutcome :=
+  lateLeak_intended_outcome_not_preserved
+
+/-- info: 'Vegas.Paper.late_leak_intended_outcome_not_preserved' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.late_leak_intended_outcome_not_preserved
+
+/-- info: 'Vegas.lateLeak_intended_outcome_not_preserved' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.lateLeak_intended_outcome_not_preserved
 
 end Vegas.Paper
 
