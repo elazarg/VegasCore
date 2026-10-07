@@ -41,7 +41,7 @@ private theorem clearCanonicalResponse_packetFacts
     (conform : FreshCallsConform setup leaks middle who)
     (once : OneCallPerEvent setup leaks middle who)
     (response : (serviceApplication setup mode deadline leaks).Action)
-    (member : response ∈ bounds.canonicalActions (serviceRuntime setup mode deadline) leaks who
+    (member : response ∈ bounds.clearActions (serviceRuntime setup mode deadline) leaks who
       (middle.recall who) (middle.observe (serviceApplication setup mode deadline leaks) who))
     (clear : (serviceRuntime setup mode deadline).persistentServiceRisk leaks bound who
       ((middle.respond (serviceApplication setup mode deadline leaks) who response).recall who)
@@ -55,20 +55,34 @@ private theorem clearCanonicalResponse_packetFacts
           (serviceApplication setup mode deadline leaks) who response) who := by
   let app := serviceApplication setup mode deadline leaks
   apply ownerCallFacts_respond middle who response calls conform once
-  · exact bounds.canonicalActions_firstSubmission
+  · exact bounds.clearActions_firstSubmission
       (serviceRuntime setup mode deadline) leaks who _ _ response member
   · intro material submitted
-    obtain ⟨event, action, turn, _, _, timely, unrecorded, _, decided⟩ :=
-      bounds.canonicalActions_submission
-          (serviceRuntime setup mode deadline) leaks who _ _ response member material
-        submitted
-    have fresh := canonicalSlot_fresh_of_used trace who atTurn slots event turn unrecorded
-    exact canonicalServiceDecision_freshServiceEnvelope trace event turn timely fresh action
-      material (by rw [← decided]; exact submitted)
+    rcases bounds.clearActions_cases (serviceRuntime setup mode deadline) leaks who _ _ response
+        member with member | ⟨_, conformant⟩
+    · obtain ⟨event, action, turn, _, _, timely, unrecorded, _, decided⟩ :=
+        bounds.canonicalActions_submission
+            (serviceRuntime setup mode deadline) leaks who _ _ response member material
+          submitted
+      have fresh := canonicalSlot_fresh_of_used trace who atTurn slots event turn unrecorded
+      exact canonicalServiceDecision_freshServiceEnvelope trace event turn timely fresh action
+        material (by rw [← decided]; exact submitted)
+    · obtain ⟨other, sent, _, fresh⟩ := conformantResponse_actual trace who response conformant
+      rw [submitted] at sent
+      cases Option.some.inj sent
+      exact fresh
   · intro event submitted
-    have owned := (bounds.canonical_submitted_event
-        (serviceRuntime setup mode deadline) leaks who _ _ response member
-      event submitted).2.1
+    have owned : (serviceGraph setup mode).actor? event = some who := by
+      rcases bounds.clearActions_cases (serviceRuntime setup mode deadline) leaks who _ _
+          response member with member | ⟨_, conformant⟩
+      · exact (bounds.canonical_submitted_event
+          (serviceRuntime setup mode deadline) leaks who _ _ response member
+          event submitted).2.1
+      · obtain ⟨named, submittedNamed, _, owned, _⟩ :=
+          conformantResponse_turn trace who response conformant
+        rw [submitted, Option.some.injEq] at submittedNamed
+        subst named
+        exact owned
     obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks middle who response
     let entry : app.PlayerEntry := ⟨middle.observe app who, response, emitted⟩
     have entryMember : entry ∈ (middle.respond app who response).recall who := by

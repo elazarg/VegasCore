@@ -13,10 +13,12 @@ every later policy. Bounded terminal play supplies the remaining continuation
 fuel and the complete-play contract supplies the final settled record.
 
 The authentic backend covers signed packets forbidden by the final record,
-with observation and conditional report-delivery bounds. The packet's final
-forbiddenness remains an explicit operational obligation over actual reachable
-complete records. No payoff comparison, send-time evidence, certain monitoring,
-caller-supplied traffic or continuation-fuel premise is used.
+with observation and conditional report-delivery bounds. That every reachable
+complete record after the commitment forbids some actual packet of the
+committer remains an explicit operational obligation; the forbidden packet may
+be the committed one or another. No payoff comparison, send-time evidence,
+certain monitoring, caller-supplied traffic or continuation-fuel premise is
+used.
 -/
 
 noncomputable section
@@ -33,10 +35,11 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 open Classical in
-/-- An actual active history committing a packet forbidden at every reachable
-complete record has the backend's collection bound under arbitrary later
-behavioral policies. Actual emission, persistence and fuel are derived. -/
-theorem settledPacket_collection_committed
+/-- An actual active history whose commitment leaves every reachable complete
+record forbidding some actual packet of the committer has the backend's
+collection bound under arbitrary later behavioral policies. Actual emission,
+persistence and fuel are derived. -/
+theorem forbiddenTraffic_collection_committed
     (menu : (serviceApplication setup mode deadline leaks).ResponseMenu)
     (horizon : Nat) (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
     (completes : CompletesPlay (serviceRuntime setup mode deadline) leaks
@@ -54,20 +57,19 @@ theorem settledPacket_collection_committed
       history.trace = info)
     (material : (serviceApplication setup mode deadline leaks).Submission)
     (selected : choice.1 = some ⟨some material⟩)
-    (forbidden : ∀ fuel
-      (final : ((serviceApplication setup mode deadline leaks).protocol
+    (charged : ∀ fuel
+      (next final : ((serviceApplication setup mode deadline leaks).protocol
           (serviceInitialLaw setup mode) horizon scheduler).History),
+      next.state = some ⟨remaining, none,
+        execution.respond (serviceApplication setup mode deadline leaks) who ⟨some material⟩⟩ →
       ((serviceApplication setup mode deadline leaks).protocol
-          (serviceInitialLaw setup mode) horizon scheduler).ReachesWithin fuel
-        (menu.toRawHistory (serviceInitialLaw setup mode) horizon scheduler history) final →
+          (serviceInitialLaw setup mode) horizon scheduler).ReachesWithin fuel next final →
       ∀ control, final.state = some control → control.execution.application.config.cut.Terminal →
-        ((serviceRuntime setup mode deadline).settledRecord leaks control.execution).permits
-          (⟨(who, execution.network.nextSerial who),
-              (serviceApplication setup mode deadline leaks).packet
-            ((serviceApplication setup mode deadline leaks).submit execution.application who
-                material) who
-              (execution.network.known who) material⟩ :
-                Message Player (WitnessedPacket (serviceGraph setup mode))) = false)
+        ∃ record ∈ (serviceApplication setup mode deadline leaks).executionTraffic
+            control.execution,
+          record.envelope.sender = who ∧
+          ((serviceRuntime setup mode deadline).settledRecord leaks control.execution).permits
+            record.envelope = false)
     (observationRate deliveryRate : Player → ℝ)
     (delivery_nonnegative : ∀ player, 0 ≤ deliveryRate player)
     (coverage : FinalForbiddenEvidenceCoverage backend observationRate deliveryRate) :
@@ -163,11 +165,10 @@ theorem settledPacket_collection_committed
       have enough : 2 * horizon + 1 ≤ next.trace.length + fuel := by
         dsimp only [fuel]
         omega
-      apply (serviceRuntime setup mode deadline).settledPacket_collection_continuation leaks menu
-          (serviceInitialLaw setup mode)
-        horizon scheduler backend observationRate deliveryRate delivery_nonnegative coverage
-        updated fuel next record present
-      intro final finalSupported control finalState
+      apply (serviceRuntime setup mode deadline).forbiddenTraffic_collection_continuation leaks
+        menu (serviceInitialLaw setup mode) horizon scheduler backend observationRate deliveryRate
+        delivery_nonnegative coverage updated fuel next who
+      intro final finalSupported
       have stopped : app.terminal final.state := by
         rcases protocol.runRandomizedFor_terminal_or_length (model.randomizedChooser updated)
             fuel next final finalSupported with terminal | terminalLength
@@ -177,16 +178,27 @@ theorem settledPacket_collection_committed
           rw [menu.toRawTrace_length] at bound
           have exhausted : app.rank horizon final.state = 0 := by omega
           exact (app.rank_zero horizon final.state).mp exhausted
-      have terminalTrace : (app.protocol (serviceInitialLaw setup mode) horizon scheduler).Trace
-          (some control) :=
-        finalState ▸ menu.toRawTrace (serviceInitialLaw setup mode) horizon scheduler final.trace
-      have complete := completes control terminalTrace (finalState ▸ stopped)
       have suffix := protocol.runRandomizedFor_reachesWithin (model.randomizedChooser updated)
         fuel next final finalSupported
-      exact forbidden (1 + fuel) (menu.toRawHistory
-          (serviceInitialLaw setup mode) horizon scheduler final)
-        (menu.reaches_raw (serviceInitialLaw setup mode) horizon scheduler
-            (path.trans suffix)) control
-        finalState complete
+      have kept : record ∈ app.stateTraffic final.state := by
+        have persists := (menu.trafficAudit_reaches (serviceInitialLaw setup mode) horizon
+          scheduler suffix).subset
+        rw [menu.trafficAudit_eq_stateTraffic, menu.trafficAudit_eq_stateTraffic] at persists
+        exact persists present
+      cases finalState : final.state with
+      | none =>
+          rw [finalState] at kept
+          exact (List.not_mem_nil kept).elim
+      | some control =>
+          refine ⟨control, rfl, ?_⟩
+          have terminalTrace : (app.protocol (serviceInitialLaw setup mode) horizon
+              scheduler).Trace (some control) :=
+            finalState ▸ menu.toRawTrace (serviceInitialLaw setup mode) horizon scheduler
+              final.trace
+          have complete := completes control terminalTrace (finalState ▸ stopped)
+          exact charged fuel (menu.toRawHistory (serviceInitialLaw setup mode) horizon scheduler
+              next) (menu.toRawHistory (serviceInitialLaw setup mode) horizon scheduler final)
+            nextState (menu.reaches_raw (serviceInitialLaw setup mode) horizon scheduler suffix)
+            control finalState complete
 
 end Vegas

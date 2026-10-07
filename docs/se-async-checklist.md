@@ -266,22 +266,35 @@ joint law. It is not pursued.
   information site in the risk-menu restriction;
   `sequential_equilibrium_extends_of_local_collection` and
   `risk_sequentialEquilibrium_extends` extend an audited risk-menu equilibrium
-  to the complete effective runtime, given backend coverage and a comparison
-  for the other excluded responses;
-  `asyncAuditDeposit_covers_gain` fixes the deposit per scheduler. Missing:
-  private binding material, guard-passing uncertified capability and other
-  unprescribed packets; coverage is assumed, not derived (box W2). In detail,
-  the settled verdict (`SettledRecord.Permits`) reads a commitment's handle and
-  an opening's certificate and guards only, so at clear sites these excluded
-  responses have no derived charge and fall to `riskOtherExclusionComparisons`:
-  a canonical-handle commitment carrying private material outside the
-  canonical domain or none at all; a certified, guard-passing opening of a
-  candidate other than the accepted one, including a forwarded certificate;
-  packets for events other than the sender's current own turn (not ready,
-  another player's, already settled), permitted while their event is
-  unsettled; second submissions for a recorded event; late packets, permitted
-  when accepted. Pending packets enter the audited traffic but are judged
-  against the final record.
+  to the complete effective runtime;
+  `asyncAuditDeposit_covers_gain` fixes the deposit per scheduler.
+  Every excluded response is now charged, so the extension
+  `risk_sequentialEquilibrium_extends` has backend coverage as its only
+  hypothesis (box W2). At a clear site the risk menu keeps the canonical
+  responses and every conformant first submission
+  (`MessageBounds.clearActions`, `EventGraphRuntime.ConformantResponse`: the
+  envelope that own recall and view reconstruct, `EventGraphRuntime.localEnvelope`
+  and `localEnvelope_actual`, passes the public send-time check, whatever its
+  private material); every excluded response transmits and is not such a
+  submission (`AsyncServiceSpec.riskRestriction_extra_charged`). Committing it
+  dooms its author (`respond_doomed`): a failed send-time check is a breach
+  (`doomed_of_breach`), and a second call for a recorded event leaves two
+  identifiers for one event (`recalled_call_emitted`). Doom persists to every
+  complete settlement, which then forbids some actual packet of the author
+  (`doomedAt_forbidden_reaches`), and final-record coverage bounds the
+  collection under arbitrary later policies
+  (`doomingServiceChoice_collection_committed`, through
+  `forbiddenTraffic_collection_committed` and
+  `EventGraphRuntime.forbiddenTraffic_collection_continuation`), in every
+  dependency mode
+  ([SourceServiceDoomedCollection](../Vegas/Game/SourceServiceDoomedCollection.lean),
+  [SourceServiceConformantResponse](../Vegas/Game/SourceServiceConformantResponse.lean)).
+  Not checked: conformant first submissions with noncanonical private material
+  (a canonical-handle commitment carrying material outside the canonical
+  domain or none at all) are no longer excluded but retained, so they carry no
+  charge and their comparison moves to the retained game (S8, the forfeit side
+  of S4). Pending packets enter the audited traffic but are judged against the
+  final record.
 - [ ] **S6. Rational continuation after a sunk charge.** Once a charge is
   certain, continuations are rational under the remaining utility, and no
   further fine is counted.
@@ -347,6 +360,22 @@ joint law. It is not pursued.
   profile discloses but is not effective at views no intended play reaches),
   the bridge from the component family to these clients, and vanishing expiry
   mass under rational weights.
+  Pooled completion and composition: agents in one pool share a weight vector
+  (`exists_consistent_pooled_completion`, rational for the sum of its
+  members' conditional continuation gains, so a part within error of the best
+  for every member is near-optimal for each, `pooled_member_le_of_common_best`);
+  `PooledLimitCertificate` bundles the pools, components and obligations of
+  `exists_sequentialEquilibrium_limit_of_pooled_comparisons_of_lawError` for one
+  source sequence. Given such a certificate on the risk-menu model for every
+  fully mixed Bayes sequence converging to an intended sequential equilibrium,
+  `AsyncServiceSpec.intended_effective_sequentialEquilibrium_of_certificate`
+  and `AsyncServiceSpec.intended_raw_sequentialEquilibrium_of_certificate`
+  ([AsyncIntendedComposition](../Vegas/Game/AsyncIntendedComposition.lean))
+  give sequential equilibria of the complete effective and the bounded raw
+  runtimes, under the audited forfeited payoff, with the intended joint law of
+  readout and settlement and no charge on their paths, in every dependency mode;
+  their only other runtime hypothesis is backend coverage. The certificate
+  itself is not constructed.
 - [ ] **S9. Validation.** The stage-S theorem is pinned in `Paper.lean` with
   standard axioms, the calendar theorem is derived as its instance, and every
   cited evidence declaration is in its dependency closure.

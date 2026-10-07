@@ -2,7 +2,10 @@
 
 import Vegas.Pending.ReactiveCanonicalMenu
 import Vegas.Pending.ReactiveServiceAudit
+import Vegas.Pending.ReactiveServiceConformance
+import Vegas.Pending.EvidenceNormalization
 import Interaction.ReactiveMenuRestriction
+import Interaction.ReactiveSubmissionSerial
 
 /-! # A candidate continuation menu after locally visible service risk
 
@@ -15,8 +18,11 @@ Each recorded before-view is tested against the recall prefix preceding it,
 so a protected pending submission stays clear.
 
 Persistent risk and the current opportunity are separate. Environment commands
-can change the current opportunity without changing own recall. The menu is
-canonical when both are clear and otherwise admits every bounded effective response.
+can change the current opportunity without changing own recall. When both are
+clear the menu admits the canonical responses and every first submission whose
+envelope, computed from own recall and view, passes the public send-time check,
+whatever its private material; otherwise it admits every bounded effective
+response.
 Resolution withholding does not itself trigger expansion: it is represented
 by silence and is not a binding opportunity. No trigger reads hidden execution
 state, an unsampled packet, or a watcher verdict.
@@ -646,26 +652,130 @@ theorem serviceRisk_clear_before_respond
   apply runtime.serviceRisk_clear leaks bound who _ _ _ split.2
   simp only [persistentServiceRisk, beforePublic, beforeSubmitted, split.1, Bool.false_or]
 
+/-- The signed envelope a submission would carry, computed from the owner's
+recall and current view: the next own serial, the call, the requested evidence
+as the owner can resolve it, and the token the public view issues for the
+call. -/
+def localEnvelope (who : Player)
+    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (material : (runtime.reactiveApplication leaks).Submission) :
+    Message Player (WitnessedPacket graph) :=
+  ⟨(who, (runtime.reactiveApplication leaks).submissionCount past),
+    ⟨material.call.packet,
+      material.evidence.resolve who (material.call.candidateAfter who view.application.candidates)
+        (ReactiveApplication.ResponseMenu.knownPackets past view),
+      view.application.publicView.tokenFor material.call.packet⟩⟩
+
+/-- A first submission whose envelope passes the public send-time check at the
+current view. Its private material is unrestricted. -/
+def ConformantResponse (who : Player)
+    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (response : (runtime.reactiveApplication leaks).Action) : Prop :=
+  ∃ material, response.transmission = some material ∧
+    runtime.firstSubmission leaks past response = true ∧
+    runtime.freshServiceEnvelope view.application.publicView
+      (runtime.localEnvelope leaks who past view material)
+
 namespace MessageBounds
 
 variable [Fintype Player] (bounds : MessageBounds graph)
 
-/-- Candidate menu: canonical actions while clear, all bounded effective actions
-at a first unprotected binding opportunity or after persistent own risk. -/
+open Classical in
+/-- The bounded effective responses that are conformant first submissions. -/
+def conformantActions (who : Player)
+    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (view : (runtime.reactiveApplication leaks).PlayerView) :
+    Finset (runtime.reactiveApplication leaks).Action :=
+  ((bounds.menu runtime leaks).actions who past view).filter
+    (runtime.ConformantResponse leaks who past view)
+
+theorem mem_conformantActions (who : Player)
+    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (response : (runtime.reactiveApplication leaks).Action) :
+    response ∈ bounds.conformantActions runtime leaks who past view ↔
+      response ∈ (bounds.menu runtime leaks).actions who past view ∧
+        runtime.ConformantResponse leaks who past view response := by
+  classical
+  simp only [conformantActions, Finset.mem_filter]
+
+open Classical in
+/-- The menu at a clear site: canonical responses and conformant first
+submissions. -/
+def clearActions (who : Player)
+    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (view : (runtime.reactiveApplication leaks).PlayerView) :
+    Finset (runtime.reactiveApplication leaks).Action :=
+  bounds.canonicalActions runtime leaks who past view ∪
+    bounds.conformantActions runtime leaks who past view
+
+/-- A clear-site response is canonical, or a bounded effective conformant first
+submission. -/
+theorem clearActions_cases (who : Player)
+    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (response : (runtime.reactiveApplication leaks).Action)
+    (member : response ∈ bounds.clearActions runtime leaks who past view) :
+    response ∈ bounds.canonicalActions runtime leaks who past view ∨
+      (response ∈ (bounds.menu runtime leaks).actions who past view ∧
+        runtime.ConformantResponse leaks who past view response) := by
+  classical
+  rcases Finset.mem_union.mp member with canonical | conformant
+  · exact Or.inl canonical
+  · exact Or.inr ((bounds.mem_conformantActions runtime leaks who past view response).mp
+      conformant)
+
+theorem canonicalActions_subset_clear (who : Player)
+    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (view : (runtime.reactiveApplication leaks).PlayerView) :
+    bounds.canonicalActions runtime leaks who past view ⊆
+      bounds.clearActions runtime leaks who past view := by
+  classical
+  exact Finset.subset_union_left
+
+theorem clearActions_effective (who : Player)
+    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (view : (runtime.reactiveApplication leaks).PlayerView) :
+    bounds.clearActions runtime leaks who past view ⊆
+      (bounds.menu runtime leaks).actions who past view := by
+  classical
+  intro response member
+  rcases bounds.clearActions_cases runtime leaks who past view response member with
+    canonical | ⟨effective, _⟩
+  · exact bounds.canonicalActions_effective runtime leaks who past view canonical
+  · exact effective
+
+/-- Every clear-site response is a first submission. -/
+theorem clearActions_firstSubmission (who : Player)
+    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (response : (runtime.reactiveApplication leaks).Action)
+    (member : response ∈ bounds.clearActions runtime leaks who past view) :
+    runtime.firstSubmission leaks past response = true := by
+  rcases bounds.clearActions_cases runtime leaks who past view response member with
+    canonical | ⟨_, _, _, first, _⟩
+  · exact bounds.canonicalActions_firstSubmission runtime leaks who past view response canonical
+  · exact first
+
+/-- Candidate menu: canonical responses and conformant first submissions while
+clear, all bounded effective actions at a first unprotected binding opportunity
+or after persistent own risk. -/
 def riskActions (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView) :
     Finset (runtime.reactiveApplication leaks).Action :=
   if runtime.serviceRisk leaks bound who past view then
     (bounds.menu runtime leaks).actions who past view
-  else bounds.canonicalActions runtime leaks who past view
+  else bounds.clearActions runtime leaks who past view
 
 theorem riskActions_of_clear (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)
     (clear : runtime.serviceRisk leaks bound who past view = false) :
     bounds.riskActions runtime leaks bound who past view =
-      bounds.canonicalActions runtime leaks who past view := by
+      bounds.clearActions runtime leaks who past view := by
   simp only [riskActions, clear, Bool.false_eq_true, ↓reduceIte]
 
 theorem riskActions_of_risk (who : Player)
@@ -708,7 +818,7 @@ theorem riskActions_after_opportunity
   exact runtime.recalledBindingOpportunityRisk_respond_of_opportunity leaks bound execution who
     response risky
 
-/-- A clear owner waiting for a recorded event still has the canonical menu,
+/-- A clear owner waiting for a recorded event still has the clear menu,
 including when that event's protected window has since closed. -/
 theorem riskActions_recorded_of_persistentClear (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -717,7 +827,7 @@ theorem riskActions_recorded_of_persistentClear (who : Player)
     (event : graph.EventId) (selected : view.application.publicView.ownTurn? who = some event)
     (recorded : runtime.eventRecorded leaks past event = true) :
     bounds.riskActions runtime leaks bound who past view =
-      bounds.canonicalActions runtime leaks who past view :=
+      bounds.clearActions runtime leaks who past view :=
   bounds.riskActions_of_clear runtime leaks bound who past view
     (runtime.serviceRisk_clear leaks bound who past view persistentClear
       (runtime.firstUnprotectedBindingOpportunity_recorded leaks bound who past view event
@@ -731,7 +841,7 @@ theorem riskActions_effective (who : Player)
   unfold riskActions
   split
   · exact Finset.Subset.refl _
-  · exact bounds.canonicalActions_effective runtime leaks who past view
+  · exact bounds.clearActions_effective runtime leaks who past view
 
 theorem canonicalActions_subset_risk (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -741,7 +851,7 @@ theorem canonicalActions_subset_risk (who : Player)
   unfold riskActions
   split
   · exact bounds.canonicalActions_effective runtime leaks who past view
-  · exact Finset.Subset.refl _
+  · exact bounds.canonicalActions_subset_clear runtime leaks who past view
 
 theorem riskActions_no_second_submission (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -752,8 +862,9 @@ theorem riskActions_no_second_submission (who : Player)
     (member : response ∈ bounds.riskActions runtime leaks bound who past view) :
     runtime.submittedEvent? leaks response ≠ some event := by
   rw [bounds.riskActions_of_clear runtime leaks bound who past view clear] at member
-  exact bounds.canonical_no_second_submission runtime leaks who past view event recorded
-    response member
+  intro named
+  have first := bounds.clearActions_firstSubmission runtime leaks who past view response member
+  simp only [firstSubmission, named, recorded, Bool.not_true, Bool.false_eq_true] at first
 
 def riskMenu : (runtime.reactiveApplication leaks).ResponseMenu where
   actions := bounds.riskActions runtime leaks bound
@@ -761,7 +872,8 @@ def riskMenu : (runtime.reactiveApplication leaks).ResponseMenu where
     unfold riskActions
     split
     · exact (bounds.menu runtime leaks).nonempty who past view
-    · exact bounds.canonicalActions_nonempty runtime leaks who past view
+    · exact (bounds.canonicalActions_nonempty runtime leaks who past view).mono
+        (bounds.canonicalActions_subset_clear runtime leaks who past view)
 
 theorem riskMenu_in_effective :
     (bounds.riskMenu runtime leaks bound).IncludedIn (bounds.menu runtime leaks) :=

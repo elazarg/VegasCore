@@ -159,6 +159,7 @@ theorem sourceServiceTurnPolicy_risk_retained
         (control.execution.recall who)
       (control.execution.observe (serviceApplication setup mode deadline leaks) who) := by
   rw [bounds.riskActions_of_clear (serviceRuntime setup mode deadline) leaks bound who _ _ clear]
+  apply bounds.canonicalActions_subset_clear (serviceRuntime setup mode deadline) leaks who
   have silent : ∀ action ∈ ((serviceApplication setup mode deadline leaks).silentPolicy
       (control.execution.recall who)
       (control.execution.observe (serviceApplication setup mode deadline leaks) who)).support,

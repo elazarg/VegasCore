@@ -370,6 +370,7 @@ theorem sourceServiceImmediatePolicy_risk_retained
       (serviceRuntime setup mode deadline) leaks bound who _ _
       (bounds.silence_canonical (serviceRuntime setup mode deadline) leaks who _ _)
   · rw [bounds.riskActions_of_clear (serviceRuntime setup mode deadline) leaks bound who _ _ clear]
+    apply bounds.canonicalActions_subset_clear (serviceRuntime setup mode deadline) leaks who
     exact sourceServiceCanonicalOpportunity_risk_retained bounds covered initialCovered capacity
       bound profile who permitted control trace clear event turn response member
 

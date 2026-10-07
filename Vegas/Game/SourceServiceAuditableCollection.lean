@@ -3,6 +3,7 @@
 import Vegas.Game.SourceServiceNoncanonicalBinding
 import Vegas.Game.SourceServiceGuardFailure
 import Vegas.Game.SourceServiceSignedCollection
+import Vegas.Game.SourceServiceConformantResponse
 import Interaction.ReactiveLocalContinuation
 import Interaction.ReactiveSubmissionSerial
 import Vegas.Pending.EvidenceNormalization
@@ -47,19 +48,6 @@ def AuditableServicePacket (view : PublicView (serviceGraph setup mode)) (who : 
         ∃ candidate raw, message.payload.call = .opening event candidate raw ∧
           view.openingGuardsAccepted message.payload = false)
 
-/-- Compute the actual next envelope using only the player's own recall,
-observed candidate meanings, known packets and public readiness tokens. -/
-def localServiceEnvelope (who : Player)
-    (past : List (serviceApplication setup mode deadline leaks).PlayerEntry)
-    (view : (serviceApplication setup mode deadline leaks).PlayerView)
-    (material : (serviceApplication setup mode deadline leaks).Submission) :
-    Message Player (WitnessedPacket (serviceGraph setup mode)) :=
-  ⟨(who, (serviceApplication setup mode deadline leaks).submissionCount past),
-    ⟨material.call.packet,
-      material.evidence.resolve who (material.call.candidateAfter who view.application.candidates)
-        (ReactiveApplication.ResponseMenu.knownPackets past view),
-      view.application.publicView.tokenFor material.call.packet⟩⟩
-
 /-- A predicate on the real local response input, with no quantification over
 hidden executions. Silence is not classified as signed evidence. -/
 def auditableServiceResponse (who : Player)
@@ -69,49 +57,7 @@ def auditableServiceResponse (who : Player)
     Prop :=
   ∃ material, response.transmission = some material ∧
     AuditableServicePacket setup view.application.publicView who
-      (localServiceEnvelope setup leaks who past view material)
-
-/-- Legal own recall and observation reconstruct the entire actual envelope.
-This uses neither a prescribed source policy nor a hidden intention table. -/
-theorem localServiceEnvelope_actual
-    {horizon : Nat} {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {control : (serviceApplication setup mode deadline leaks).Control}
-    (trace : ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup
-      mode) horizon scheduler).Trace
-      (some control)) (who : Player) (material : (serviceApplication setup mode deadline
-        leaks).Submission) :
-    localServiceEnvelope setup leaks who (control.execution.recall who)
-      (control.execution.observe (serviceApplication setup mode deadline leaks) who) material =
-      (⟨(who, control.execution.network.nextSerial who), (serviceApplication setup mode deadline
-        leaks).packet
-        ((serviceApplication setup mode deadline leaks).submit control.execution.application who
-          material) who
-          (control.execution.network.known who) material⟩ :
-            Message Player (WitnessedPacket (serviceGraph setup mode))) := by
-  let app := serviceApplication setup mode deadline leaks
-  have input : control.execution.InputRecall app :=
-    app.history_inputRecall (serviceInitialLaw setup mode) horizon scheduler trace
-  have serial : control.execution.SerialRecall app :=
-    app.serialRecall_history scheduler (serviceInitialLaw setup mode) horizon trace
-  have known : ReactiveApplication.ResponseMenu.knownPackets (control.execution.recall who)
-      (control.execution.observe app who) = control.execution.network.known who :=
-    (app.known_from_recall control.execution who input).symm
-  unfold localServiceEnvelope
-  rw [← serial who, known]
-  apply congrArg (Message.mk (who, control.execution.network.nextSerial who))
-  change WitnessedPacket.mk _ _ _ = material.emit
-    (app.submit control.execution.application who material) who
-      (control.execution.network.known who)
-  rw [WitnessedSubmission.emit_eq_resolve,
-    (serviceRuntime setup mode deadline).reactiveApplication_submit_publicView leaks]
-  have candidates : (fun slot => (app.submit control.execution.application who
-      material).candidates.lookup (who, slot)) =
-      material.call.candidateAfter who
-        (control.execution.observe app who).application.candidates := by
-    funext slot
-    exact material.call.candidateAfter_eq who control.execution.application slot
-  rw [candidates]
-  rfl
+      ((serviceRuntime setup mode deadline).localEnvelope leaks who past view material)
 
 variable [Fintype Player]
 
@@ -224,12 +170,33 @@ theorem auditableServiceChoice_collection_committed
   have rawTrace : (app.protocol (serviceInitialLaw setup mode) horizon scheduler).Trace
       (some ⟨remaining, some who, execution⟩) :=
     current ▸ menu.toRawTrace (serviceInitialLaw setup mode) horizon scheduler history.trace
-  rw [localServiceEnvelope_actual setup leaks rawTrace who material] at auditable
-  apply settledPacket_collection_committed setup leaks menu horizon scheduler completes backend
+  rw [localEnvelope_actual rawTrace who material] at auditable
+  apply forbiddenTraffic_collection_committed setup leaks menu horizon scheduler completes backend
     profile history who remaining execution current info choice observed material selected ?_
     observationRate deliveryRate delivery_nonnegative coverage
-  intro fuel final path control finalState complete
+  intro fuel next final nextState path control finalState complete
+  have present : (⟨execution.application.publicView, execution.network.ledger,
+      ⟨(who, execution.network.nextSerial who), app.packet
+        (app.submit execution.application who material) who
+          (execution.network.known who) material⟩⟩ : app.TrafficRecord) ∈
+      app.stateTraffic next.state := by
+    rw [nextState]
+    exact (serviceRuntime setup mode deadline).signed_response_traffic leaks execution who
+      material rawTrace
+  have kept := (app.stateTraffic_reaches (serviceInitialLaw setup mode) horizon scheduler
+    path).subset present
+  rw [finalState] at kept
+  refine ⟨_, kept, rfl, ?_⟩
+  have classified : AuditableServicePacket setup
+      (execution.respond app who ⟨some material⟩).application.publicView who
+      ⟨(who, execution.network.nextSerial who), app.packet
+        (app.submit execution.application who material) who
+          (execution.network.known who) material⟩ := by
+    rw [((serviceRuntime setup mode deadline).reactive_respond_application leaks execution who
+      ⟨some material⟩).2]
+    exact auditable
   exact auditableServicePacket_forbidden_reaches setup leaks path
-    ⟨remaining, some who, execution⟩ control current finalState who _ rfl auditable complete
+    ⟨remaining, none, execution.respond app who ⟨some material⟩⟩ control nextState finalState
+    who _ rfl classified complete
 
 end Vegas

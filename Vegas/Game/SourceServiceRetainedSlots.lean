@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceServiceCanonicalSlots
-import Vegas.Pending.ReactiveCanonicalMenu
+import Vegas.Game.SourceServiceConformantResponse
 
 /-! # Canonical slots on every retained service history
 
@@ -40,7 +39,7 @@ theorem retainedCanonicalSlots_respond {horizon remaining : Nat}
         ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
         horizon scheduler).Trace (some ⟨remaining, some who, middle⟩))
     {response : (serviceApplication setup mode deadline leaks).Action}
-    (member : response ∈ bounds.canonicalActions (serviceRuntime setup mode deadline) leaks who
+    (member : response ∈ bounds.clearActions (serviceRuntime setup mode deadline) leaks who
       (middle.recall who) (middle.observe (serviceApplication setup mode deadline leaks) who))
     (atTurn : OwnSubmissionsAtTurn setup leaks middle who)
     (valid : CanonicalSlotsUsed setup leaks middle who) :
@@ -77,6 +76,21 @@ theorem retainedCanonicalSlots_respond {horizon remaining : Nat}
       split at slot
       · exact ⟨_, ‹_›⟩
       · cases slot
+    rcases bounds.clearActions_cases (serviceRuntime setup mode deadline) leaks who _ _ response
+        member with member | ⟨_, conformant⟩
+    swap
+    · obtain ⟨event, submitted, _, _, ready, _, slots⟩ :=
+        conformantResponse_turn trace who response conformant
+      obtain ⟨equal, payload, layout⟩ := slots serial slot
+      refine Or.inr ⟨equal, event, payload, layout, ?_, ?_⟩
+      · rw [appEq.1]
+        exact ready.1
+      · rw [recalled]
+        unfold EventGraphRuntime.eventRecorded
+        rw [List.any_append]
+        simp only [List.any_cons, List.any_nil, Bool.or_false]
+        rw [submitted]
+        simp
     obtain ⟨event, action, turn, owned, _, _, unrecorded, _, rfl⟩ :=
       bounds.canonicalActions_submission (serviceRuntime setup mode deadline) leaks who _ _ response
           member material submits
@@ -103,7 +117,7 @@ made at its owner's own ready turn. -/
 theorem retainedOwnSubmissionsAtTurn_respond
     (middle : (serviceApplication setup mode deadline leaks).Execution) (who : Player)
     (response : (serviceApplication setup mode deadline leaks).Action)
-    (member : response ∈ bounds.canonicalActions (serviceRuntime setup mode deadline) leaks who
+    (member : response ∈ bounds.clearActions (serviceRuntime setup mode deadline) leaks who
       (middle.recall who) (middle.observe (serviceApplication setup mode deadline leaks) who))
     (atTurn : OwnSubmissionsAtTurn setup leaks middle who) :
     OwnSubmissionsAtTurn setup leaks
@@ -115,8 +129,22 @@ theorem retainedOwnSubmissionsAtTurn_respond
   · exact atTurn entry old event submitted
   · rw [List.mem_singleton] at new
     subst new
-    exact (bounds.canonical_submitted_event (serviceRuntime setup mode deadline) leaks who _ _
+    rcases bounds.clearActions_cases (serviceRuntime setup mode deadline) leaks who _ _ response
+        member with member | ⟨_, conformant⟩
+    · exact (bounds.canonical_submitted_event (serviceRuntime setup mode deadline) leaks who _ _
             response member event submitted).1
+    · obtain ⟨material, sent, _, fresh⟩ := conformant
+      obtain ⟨named, addressed, ready, owned⟩ :=
+        (serviceRuntime setup mode deadline).freshServiceEnvelope_owned _ _ fresh
+      change material.call.packet.event? (serviceGraph setup mode) = some named at addressed
+      have same : named = event := by
+        simp only [EventGraphRuntime.submittedEvent?, sent, addressed,
+          Option.some.injEq] at submitted
+        exact submitted
+      subst named
+      change (serviceGraph setup mode).actor? event = some who at owned
+      exact serviceOwnTurn?_of_ready setup middle.application
+        ((middle.application.publicView_eventReady event).mp ready) owned
 
 /-- One arbitrary scheduler round preserves the owner's canonical-slot and
 submission-turn invariants whenever its response policy uses retained actions. -/
@@ -150,7 +178,8 @@ theorem retainedCanonicalSlots_round {horizon remaining : Nat}
     rw [active] at middleTrace
     by_cases same : responder = who
     · subst responder
-      have member := covered _ _ response chosen
+      have member := bounds.canonicalActions_subset_clear (serviceRuntime setup mode deadline)
+        leaks who _ _ (covered _ _ response chosen)
       exact ⟨retainedOwnSubmissionsAtTurn_respond bounds middle who response member atMiddle,
         retainedCanonicalSlots_respond bounds middleTrace member atMiddle validMiddle⟩
     · have different : who ≠ responder := fun equal => same equal.symm

@@ -47,11 +47,18 @@ theorem signedContentBreach_risk_excluded
   rw [bounds.riskActions_of_clear (runtime setup) leaks bound who _ _ clear] at member
   have persistentClear := ((runtime setup).serviceRisk_clear_iff leaks bound who _ _).mp clear |>.1
   obtain ⟨atTurn, slots⟩ := riskCanonicalSlots_history bounds bound _ trace who persistentClear
+  have rawTrace := (bounds.riskMenu (runtime setup) leaks bound).toRawTrace (initialLaw setup)
+    horizon scheduler trace
+  rcases bounds.clearActions_cases (runtime setup) leaks who _ _ response member with
+    member | ⟨_, conformant⟩
+  swap
+  · obtain ⟨other, sent, _, conform⟩ := conformantResponse_actual rawTrace who response conformant
+    rw [transmission] at sent
+    cases Option.some.inj sent
+    exact breach.not_freshServiceEnvelope (runtime setup) execution.application.publicView conform
   obtain ⟨event, action, turn, _, _, timely, unrecorded, _, decided⟩ :=
     bounds.canonicalActions_submission (runtime setup) leaks who _ _ response member material
       transmission
-  have rawTrace := (bounds.riskMenu (runtime setup) leaks bound).toRawTrace (initialLaw setup)
-    horizon scheduler trace
   have fresh := canonicalSlot_fresh_of_used rawTrace who atTurn slots event turn unrecorded
   have conform := canonicalServiceDecision_freshServiceEnvelope rawTrace event turn timely fresh
     action material (by rw [← decided]; exact transmission)

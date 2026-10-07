@@ -274,6 +274,8 @@ private theorem consistentSlots_transition (covered : bounds.CoversBindingValues
             have member := sourceServiceTurnPolicy_retained_of_slots bounds covered initialCovered
               capacity bound turns timing profile player (permitted player)
               ⟨remaining, some player, execution⟩ prior atTurn slots _ consistent.2
+            replace member := bounds.canonicalActions_subset_clear
+              (serviceRuntime setup mode deadline) leaks player _ _ member
             have rawTrace := (bounds.rawMenu (serviceRuntime setup mode deadline) leaks).toRawTrace
                 (serviceInitialLaw setup mode) horizon scheduler prior
             exact ⟨retainedOwnSubmissionsAtTurn_respond bounds execution player _ member atTurn,

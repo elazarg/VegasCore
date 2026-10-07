@@ -5,6 +5,7 @@ import Vegas.Game.AsyncDeviationForeign
 import Vegas.Game.AsyncDeviationLaw
 import Vegas.Game.AsyncDeviationPhase
 import Vegas.Game.AsyncDeviationReadout
+import Vegas.Game.AsyncIntendedComposition
 import Vegas.Game.AsyncIntendedCorrespondence
 import Vegas.Game.AsyncOpeningDeviationBound
 import Vegas.Game.AsyncServiceDeposit

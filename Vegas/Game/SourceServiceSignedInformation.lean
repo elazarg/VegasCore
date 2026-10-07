@@ -127,9 +127,9 @@ theorem auditableBreachAtSite_of_signed_witness
     current ▸ menu.toRawTrace (serviceInitialLaw service.setup service.mode) service.horizon
       service.scheduler
       witness.1.trace
-  refine ⟨execution.recall who, execution.observe app who, ⟨some material⟩, input, selected,
-    material, rfl, Or.inl ?_⟩
-  rw [localServiceEnvelope_actual service.setup service.leaks rawTrace who material]
+  refine Or.inl ⟨execution.recall who, execution.observe app who, ⟨some material⟩, input,
+    selected, material, rfl, Or.inl ?_⟩
+  rw [localEnvelope_actual rawTrace who material]
   exact breach
 
 end AsyncServiceSpec
