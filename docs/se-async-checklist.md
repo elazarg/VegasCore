@@ -53,12 +53,17 @@ graph, is an intermediate level of the tower, not the goal. The audit backend is
 the authentic partial sampler with conditional coverage until box W closes.
 Players are finitely many throughout.
 
-**Refuted as stated for arbitrary builders (owner decision pending).** The
+**Refuted as stated for arbitrary builders (owner decision: recorded as an
+impossibility).** The
 sequential-equilibrium form of this target fails for builders that may include
 late openings with probability near one when pending openings can leak, for
 every forfeit and deposit margin: see the verified counterexample `G*` in
 [the late-turn note](open-problem-late-turn-equilibria.md). The Nash forms
 (box C4) are unaffected.
+The sequential-equilibrium headline is the fixed-calendar theorem and its
+intended-game composition; the boxes of section S below remain as the record
+of the arbitrary-builder route and are not pursued further. Box I1 tracks the
+mechanized impossibility.
 An author-only observation rule (leaks depend on the observer and the authors
 of pending messages, not on their content) is an approved optional hypothesis,
 used only where a proof needs it and named there.
@@ -526,6 +531,16 @@ joint law. It is not pursued.
   graph exactly when the source profile is `ε`-Nash in the source game
   (`Vegas.Paper.concurrent_event_nash_iff`, from
   `Setup.eventGame_approximate_nash_iff`, standard axioms).
+
+## I. Impossibility
+
+- [ ] **I1. Mechanized counterexample.** The counterexample `G*` of
+  [the late-turn note](open-problem-late-turn-equilibria.md) is stated and proved
+  in Lean: a finite game with the late-turn structure in which the intended
+  game has a sequential equilibrium whose outcome no sequential equilibrium of
+  the full game reproduces, for the stated margins; pinned with standard axioms.
+  Optionally, its realization by the bounded raw runtime under an admissible
+  builder and leak rule.
 
 ## W. Operational watcher
 
