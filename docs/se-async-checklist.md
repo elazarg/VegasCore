@@ -60,10 +60,6 @@ commands other than including a pending packet sent outside its protected
 window do not depend on that packet or on its absence) is an approved
 hypothesis of the sequential-equilibrium theorem for arbitrary builders,
 named where used.
-Private openings (an opening packet, while pending, is never selected by the
-observation rule for another player, as when reveals are sent through private
-orderflow) is an approved hypothesis of the same theorem, named where used;
-removing it is tracked as box P1.
 
 The earlier target, preservation of every sequential equilibrium of the source
 game with withholding priced by the program's own failure branch, is refuted in
@@ -523,15 +519,6 @@ joint law. It is not pursued.
   graph exactly when the source profile is `ε`-Nash in the source game
   (`Vegas.Paper.concurrent_event_nash_iff`, from
   `Setup.eventGame_approximate_nash_iff`, standard axioms).
-
-## P. Hypotheses to remove
-
-- [ ] **P1. Leaked pending openings.** The arbitrary-builder sequential
-  equilibrium theorem holds without the private-openings hypothesis, by a
-  construction whose deferral trembles at protected turns may depend on private
-  information. Evidence that this is plausible:
-  `scripts/experiments/late_turn_leak_probe.py` (a preserving equilibrium with
-  type-tilted trembles where uniform trembles fail).
 
 ## W. Operational watcher
 
