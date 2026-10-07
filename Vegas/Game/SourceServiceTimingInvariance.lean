@@ -1,7 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceTimedMixture
-import Vegas.Game.SourceServiceFirstTurnCompletes
+import Vegas.Game.SourceServiceDecidedCompletion
+import Vegas.Game.ServiceChancePhase
 import Vegas.Game.SourceServiceSiteBridge
 
 /-! # Timing changes the source law only through expiry
@@ -218,8 +219,10 @@ theorem timedCanonical_boundaryContinuationWithin [Finite Player]
                 phase.map (fun stopped => stopped.application.config) =
                   execution.application.config.step event ready action := by
               unfold phase ReactiveApplication.runUntilHorizon
-              exact sample_runUntil scheduler players event owned execution.application.config
-                rank boundary.ordered ready action _ execution rfl finishes
+              exact chance_runUntil scheduler players event owned execution.application.config
+                (fun cut other eventReady otherReady =>
+                  ready_unique (setup := setup) cut otherReady eventReady)
+                ready action _ execution rfl finishes
             have notExpired (stopped : app.Execution) : ¬ PhaseExpired stopped := by
               rintro ⟨expired, expiring, _⟩
               revert expiring

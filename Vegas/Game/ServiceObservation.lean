@@ -21,7 +21,7 @@ open SourceProgram
 open Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  (setup : Setup (Player := Player) (L := L))
+  (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
 
 /-- Every reachable sequential graph history follows source rank. -/
 theorem reachable_rankPrefix {inputs : (graph setup).Inputs}
@@ -52,12 +52,12 @@ the sequential order used by the service. -/
 theorem checkpoint_visible_coverage {Γ : SourceCtx Player L}
     (refs : ContextRefs (graphLayout setup.program) Γ) (offset : Nat)
     (covered : refs.CoversPrefix setup.program offset)
-    (config : (graph setup).Config) (ordered : config.cut.IsPrefix offset)
-    (who : Player) (field : (graph setup).Field)
+    (config : (serviceGraph setup mode).Config) (ordered : config.cut.IsPrefix offset)
+    (who : Player) (field : (serviceGraph setup mode).Field)
     (absent : ¬ refs.CoversVisible who field) :
-    (graph setup).playerStore who config.store field = none := by
-  by_cases visible : (graph setup).fieldVisibleTo who field
-  · rw [(graph setup).playerStore_of_visible who config.store field visible]
+    (serviceGraph setup mode).playerStore who config.store field = none := by
+  by_cases visible : (serviceGraph setup mode).fieldVisibleTo who field
+  · rw [(serviceGraph setup mode).playerStore_of_visible who config.store field visible]
     cases field with
     | inl input =>
         obtain ⟨name, cell, source, found⟩ := covered.1 input
@@ -86,26 +86,26 @@ theorem checkpoint_visible_coverage {Γ : SourceCtx Player L}
           cases output : config.outputs event with
           | none => rfl
           | some value => simp [output] at unavailable
-  · exact (graph setup).playerStore_of_hidden who config.store field visible
+  · exact (serviceGraph setup mode).playerStore_of_hidden who config.store field visible
 
 theorem checkpoint_playerStore {Γ : SourceCtx Player L}
     (refs : ContextRefs (graphLayout setup.program) Γ) (offset : Nat)
     (covered : refs.CoversPrefix setup.program offset)
-    (config : (graph setup).Config) (ordered : config.cut.IsPrefix offset)
+    (config : (serviceGraph setup mode).Config) (ordered : config.cut.IsPrefix offset)
     (source : State L Γ) (agree : refs.Agrees source config.store) (who : Player) :
-    (graph setup).playerStore who config.store =
+    (serviceGraph setup mode).playerStore who config.store =
       encodeObservationStore who refs (sourceObserve who source) := by
   symm
-  exact encodeObservationStore_eq_playerStore (graph := graph setup) who refs source
+  exact encodeObservationStore_eq_playerStore (graph := serviceGraph setup mode) who refs source
     config.store agree (checkpoint_visible_coverage setup refs offset covered config ordered who)
 
 /-- Filtering chronological identities commutes with selecting one owner's
 original completion actions. -/
 theorem ownCompletions_eventIds (who : Player)
-    (history : List (graph setup).Completion) :
-    ((graph setup).ownCompletions who history).map EventGraph.Completion.event =
+    (history : List (serviceGraph setup mode).Completion) :
+    ((serviceGraph setup mode).ownCompletions who history).map EventGraph.Completion.event =
       (history.map EventGraph.Completion.event).filter
-        (fun event => (graph setup).actor? event = some who) := by
+        (fun event => (serviceGraph setup mode).actor? event = some who) := by
   simp only [EventGraph.ownCompletions, List.filter_map]
   rfl
 
@@ -113,20 +113,21 @@ theorem ownCompletions_eventIds (who : Player)
 history and the public event identities; execution-mode conversion loses none
 of those actions. -/
 theorem ownCompletions_eq_of_decoded_eq (who : Player)
-    (left right : List (graph setup).Completion)
+    (left right : List (serviceGraph setup mode).Completion)
     (order : left.map EventGraph.Completion.event = right.map EventGraph.Completion.event)
     (decoded : decodeHistory setup.program
-        (left.map (setup.eventGraph.fromModeCompletion .sequential)) who =
+        (left.map (setup.eventGraph.fromModeCompletion mode)) who =
       decodeHistory setup.program
-        (right.map (setup.eventGraph.fromModeCompletion .sequential)) who) :
-    (graph setup).ownCompletions who left = (graph setup).ownCompletions who right := by
-  let fromMode := setup.eventGraph.fromModeCompletion .sequential
-  have encoding (history : List (graph setup).Completion) :
+        (right.map (setup.eventGraph.fromModeCompletion mode)) who) :
+    (serviceGraph setup mode).ownCompletions who left = (serviceGraph setup mode).ownCompletions who
+    right := by
+  let fromMode := setup.eventGraph.fromModeCompletion mode
+  have encoding (history : List (serviceGraph setup mode).Completion) :
       encodeCompletions? setup.program
-          (((graph setup).ownCompletions who history).map EventGraph.Completion.event)
+          (((serviceGraph setup mode).ownCompletions who history).map EventGraph.Completion.event)
           (decodeHistory setup.program (history.map fromMode) who) =
-        some (((graph setup).ownCompletions who history).map fromMode) := by
-    rw [ownCompletions_from_sequential setup]
+        some (((serviceGraph setup mode).ownCompletions who history).map fromMode) := by
+    rw [ownCompletions_fromModeCompletion setup]
     let own := setup.eventGraph.ownCompletions who (history.map fromMode)
     have strategic : ∀ completion ∈ own, ∃ sourceAction,
         decodeEventAction setup.program completion.event completion.action = some sourceAction := by
@@ -144,25 +145,58 @@ theorem ownCompletions_eq_of_decoded_eq (who : Player)
     change encodeCompletions? setup.program (own.map EventGraph.Completion.event)
       (decodeCompletions setup.program own) = some own at restored
     have ids : own.map EventGraph.Completion.event =
-        ((graph setup).ownCompletions who history).map EventGraph.Completion.event := by
+        ((serviceGraph setup mode).ownCompletions who history).map EventGraph.Completion.event := by
       change (setup.eventGraph.ownCompletions who (history.map fromMode)).map _ = _
-      rw [← ownCompletions_from_sequential setup]
+      rw [← ownCompletions_fromModeCompletion setup]
       rw [List.map_map]
       rfl
     rw [ids] at restored
     exact restored
-  have ids : ((graph setup).ownCompletions who left).map EventGraph.Completion.event =
-      ((graph setup).ownCompletions who right).map EventGraph.Completion.event := by
+  have ids : ((serviceGraph setup mode).ownCompletions who left).map EventGraph.Completion.event =
+      ((serviceGraph setup mode).ownCompletions who right).map EventGraph.Completion.event := by
     rw [ownCompletions_eventIds, ownCompletions_eventIds, order]
   have first := encoding left
   rw [ids, decoded] at first
   have mapped := Option.some.inj (first.symm.trans (encoding right))
-  have restored := congrArg (List.map (setup.eventGraph.toModeCompletion .sequential)) mapped
+  have restored := congrArg (List.map (setup.eventGraph.toModeCompletion mode)) mapped
   simpa [fromMode, List.map_map, Function.comp_def] using restored
 
-/-- At genuine source-ranked checkpoints, equal source views determine the
-entire native semantic observation, including original owner actions. No
-independence between players' initialized secrets is required. -/
+/-- At source checkpoints with the same completion order, equal source views
+determine the entire native semantic observation, including original owner
+actions. No independence between players' initialized secrets is required. -/
+theorem checkpoint_playerObservation_eq_of_order {Γ : SourceCtx Player L}
+    (refs : ContextRefs (graphLayout setup.program) Γ) (offset : Nat)
+    (covered : refs.CoversPrefix setup.program offset) (who : Player)
+    (left right : Config Player L Γ)
+    (nativeLeft nativeRight : (serviceGraph setup mode).Config)
+    (order : nativeLeft.history.map EventGraph.Completion.event =
+      nativeRight.history.map EventGraph.Completion.event)
+    (leftPrefix : nativeLeft.cut.IsPrefix offset)
+    (rightPrefix : nativeRight.cut.IsPrefix offset)
+    (leftStore : refs.Agrees left.state nativeLeft.store)
+    (rightStore : refs.Agrees right.state nativeRight.store)
+    (leftHistory : decodeHistory setup.program
+        (nativeLeft.history.map (setup.eventGraph.fromModeCompletion mode)) = left.history)
+    (rightHistory : decodeHistory setup.program
+        (nativeRight.history.map (setup.eventGraph.fromModeCompletion mode)) = right.history)
+    (same : left.view who = right.view who) :
+    (serviceGraph setup mode).playerObserve who nativeLeft =
+      (serviceGraph setup mode).playerObserve who nativeRight := by
+  apply EventGraph.PlayerObservation.ext (serviceGraph setup mode)
+  · exact order
+  · change (serviceGraph setup mode).playerStore who nativeLeft.store =
+      (serviceGraph setup mode).playerStore who nativeRight.store
+    rw [checkpoint_playerStore setup refs offset covered nativeLeft leftPrefix left.state
+      leftStore who, checkpoint_playerStore setup refs offset covered nativeRight rightPrefix
+      right.state rightStore who]
+    exact congrArg (encodeObservationStore who refs) (congrArg Prod.fst same)
+  · apply ownCompletions_eq_of_decoded_eq setup who _ _ order
+    rw [leftHistory, rightHistory]
+    exact congrArg Prod.snd same
+
+/-- At genuine source-ranked checkpoints of the sequential graph, equal source
+views determine the entire native semantic observation: there the completion
+order is the source rank order. -/
 theorem checkpoint_playerObservation_eq {Γ : SourceCtx Player L}
     (refs : ContextRefs (graphLayout setup.program) Γ) (offset : Nat)
     (covered : refs.CoversPrefix setup.program offset) (who : Player)
@@ -181,40 +215,30 @@ theorem checkpoint_playerObservation_eq {Γ : SourceCtx Player L}
         (nativeRight.history.map (setup.eventGraph.fromModeCompletion .sequential)) = right.history)
     (same : left.view who = right.view who) :
     (graph setup).playerObserve who nativeLeft =
-      (graph setup).playerObserve who nativeRight := by
-  have order : nativeLeft.history.map EventGraph.Completion.event =
-      nativeRight.history.map EventGraph.Completion.event :=
-    (checkpoint_completionOrder setup nativeLeft leftReachable offset leftPrefix).trans
-      (checkpoint_completionOrder setup nativeRight rightReachable offset rightPrefix).symm
-  apply EventGraph.PlayerObservation.ext (graph setup)
-  · exact order
-  · change (graph setup).playerStore who nativeLeft.store =
-      (graph setup).playerStore who nativeRight.store
-    rw [checkpoint_playerStore setup refs offset covered nativeLeft leftPrefix left.state
-      leftStore who, checkpoint_playerStore setup refs offset covered nativeRight rightPrefix
-      right.state rightStore who]
-    exact congrArg (encodeObservationStore who refs) (congrArg Prod.fst same)
-  · apply ownCompletions_eq_of_decoded_eq setup who _ _ order
-    rw [leftHistory, rightHistory]
-    exact congrArg Prod.snd same
+      (graph setup).playerObserve who nativeRight :=
+  checkpoint_playerObservation_eq_of_order setup refs offset covered who left right nativeLeft
+    nativeRight ((checkpoint_completionOrder setup nativeLeft leftReachable offset
+      leftPrefix).trans (checkpoint_completionOrder setup nativeRight rightReachable offset
+        rightPrefix).symm) leftPrefix rightPrefix leftStore rightStore leftHistory rightHistory
+    same
 
 /-- Initial candidate catalogues expose no additional distinctions once the
 current semantic observation and preservation of the catalogue are known. -/
 theorem checkpoint_candidates_eq (who : Player)
-    (left right : EventGraphRuntime.State (graph setup))
+    (left right : EventGraphRuntime.State (serviceGraph setup mode))
     (leftCandidates : left.candidates =
       (EventGraphRuntime.State.initial left.config.inputs).candidates)
     (rightCandidates : right.candidates =
       (EventGraphRuntime.State.initial right.config.inputs).candidates)
-    (same : (graph setup).playerObserve who left.config =
-      (graph setup).playerObserve who right.config) :
+    (same : (serviceGraph setup mode).playerObserve who left.config =
+      (serviceGraph setup mode).playerObserve who right.config) :
     (fun slot => left.candidates.lookup (who, slot)) =
       fun slot => right.candidates.lookup (who, slot) := by
   rw [leftCandidates, rightCandidates]
   apply EventGraphRuntime.State.initial_candidates_eq_of_observation
-  apply EventGraph.PlayerObservation.ext (graph setup)
+  apply EventGraph.PlayerObservation.ext (serviceGraph setup mode)
   · rfl
-  · apply (graph setup).playerStore_congr
+  · apply (serviceGraph setup mode).playerStore_congr
     intro field visible
     cases field with
     | inl input =>
@@ -228,10 +252,11 @@ the service's public fields. The source execution induction must establish
 the stated clock, activation, ledger, leak, and receipt equalities.
 Own response recall is deliberately absent. -/
 theorem checkpoint_observe_eq
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (who : Player) (left right : (application setup leaks).Execution)
-    (same : (graph setup).playerObserve who left.application.config =
-      (graph setup).playerObserve who right.application.config)
+    {deadline : (serviceGraph setup mode).EventId → Nat}
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+    (who : Player) (left right : (serviceApplication setup mode deadline leaks).Execution)
+    (same : (serviceGraph setup mode).playerObserve who left.application.config =
+      (serviceGraph setup mode).playerObserve who right.application.config)
     (leftCandidates : left.application.candidates =
       (EventGraphRuntime.State.initial left.application.config.inputs).candidates)
     (rightCandidates : right.application.candidates =
@@ -242,7 +267,8 @@ theorem checkpoint_observe_eq
     (ledger : left.network.ledger = right.network.ledger)
     (leaked : left.network.leaked who = right.network.leaked who)
     (receipts : left.receipts = right.receipts) :
-    left.observe (application setup leaks) who = right.observe (application setup leaks) who := by
+    left.observe (serviceApplication setup mode deadline leaks) who = right.observe
+        (serviceApplication setup mode deadline leaks) who := by
   have candidates := checkpoint_candidates_eq setup who left.application right.application
     leftCandidates rightCandidates same
   have publicObservation := EventGraph.publicObserve_eq_of_playerObserve_eq who
@@ -253,12 +279,12 @@ theorem checkpoint_observe_eq
   change ReactiveApplication.PlayerView.mk
       ⟨left.network.leaked who, left.network.ledger⟩
       ⟨who, left.application.publicView,
-        (graph setup).playerObserve who left.application.config,
+        (serviceGraph setup mode).playerObserve who left.application.config,
         fun slot => left.application.candidates.lookup (who, slot)⟩ left.receipts =
     ReactiveApplication.PlayerView.mk
       ⟨right.network.leaked who, right.network.ledger⟩
       ⟨who, right.application.publicView,
-        (graph setup).playerObserve who right.application.config,
+        (serviceGraph setup mode).playerObserve who right.application.config,
         fun slot => right.application.candidates.lookup (who, slot)⟩ right.receipts
   rw [leaked, ledger, publicView, same, candidates, receipts]
 

@@ -306,7 +306,7 @@ theorem TimedPhase.complete_round {horizon : Nat}
                 phase.submitted before entry after split submitted
               rw [emittedEq] at emittedP
               cases Option.some.inj emittedP
-              exact include_realized execution facts.stable start.application.config same named
+              exact include_realized execution facts.eventStable start.application.config same named
                 ready owner owned action entry member seen message senderEq realized state
                 accepted
   | application command =>
@@ -437,7 +437,7 @@ theorem timed_completion_of_follows {horizon : Nat}
   let app := application setup leaks
   obtain ⟨startTrace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler
     reachers _ bounded start boundary.supported
-  have untouched := boundary.untouched event rfl
+  have untouched := boundary.untouched event le_rfl
   rcases TimedPhase.runUntil ready owned effective follows
       (horizon - start.environmentRecall.length) 0 start
       (by simpa only [Nat.zero_add] using startTrace)

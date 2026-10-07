@@ -188,7 +188,7 @@ theorem timedCanonical_runUntil_mixture {horizon : Nat}
     rintro ⟨turn, _⟩
     have inRecall : entry ∈ start.recall owner :=
       entryMember.subset (List.mem_append_right _ (List.mem_singleton_self _))
-    exact boundary.untouched event rfl owner entry inRecall
+    exact boundary.untouched event le_rfl owner entry inRecall
       (PublicView.ownTurn?_spec _ owner event turn).1
   have congruent : app.runUntil scheduler (Function.update others owner client) stop count start =
       app.runUntil scheduler (Function.update others owner mixture.policy) stop count start := by

@@ -32,13 +32,14 @@ variable {Player : Type} [DecidableEq Player]
 
 section Content
 
-variable (setup : Setup (Player := Player) (L := L))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+variable (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
+  {deadline : (serviceGraph setup mode).EventId → Nat}
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 /-- The content a packet will settle with if accepted at this state is what the
 record accepts. -/
-def PendingContent (state : EventGraphRuntime.State (graph setup))
-    (message : Message Player (WitnessedPacket (graph setup))) : Prop :=
+def PendingContent (state : EventGraphRuntime.State (serviceGraph setup mode))
+    (message : Message Player (WitnessedPacket (serviceGraph setup mode))) : Prop :=
   match message.payload.call with
   | .commitment _ candidate =>
       message.payload.evidence = none ∧
@@ -50,27 +51,29 @@ def PendingContent (state : EventGraphRuntime.State (graph setup))
 
 /-- A retained packet is on track, or accepted with the content the record
 accepts. -/
-def SettledGood (execution : (application setup leaks).Execution)
-    (message : Message Player (WitnessedPacket (graph setup))) : Prop :=
-  ∃ event, message.payload.call.event? (graph setup) = some event ∧
+def SettledGood (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (message : Message Player (WitnessedPacket (serviceGraph setup mode))) : Prop :=
+  ∃ event, message.payload.call.event? (serviceGraph setup mode) = some event ∧
     ((execution.application.config.cut.Ready event ∧ (message.id, true) ∉ execution.receipts ∧
         PendingContent setup execution.application message) ∨
       ((message.id, true) ∈ execution.receipts ∧
         event ∈ execution.application.config.cut.completed ∧
-        ((runtime setup).settledRecord leaks execution).SettledContent message))
+        ((serviceRuntime setup mode deadline).settledRecord leaks execution).SettledContent
+        message))
 
 variable {setup leaks}
 
 /-- A conforming packet's content is what the record accepts. -/
-theorem pendingContent_of_fresh (state : EventGraphRuntime.State (graph setup))
-    (message : Message Player (WitnessedPacket (graph setup)))
-    (fresh : (runtime setup).freshServiceEnvelope state.publicView message) :
+theorem pendingContent_of_fresh (state : EventGraphRuntime.State (serviceGraph setup mode))
+    (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
+    (fresh : (serviceRuntime setup mode deadline).freshServiceEnvelope state.publicView message) :
     PendingContent setup state message := by
   rcases message with ⟨id, ⟨call, evidence, token⟩⟩
   cases call with
   | commitment event candidate =>
-      obtain ⟨_, canonical, empty, _⟩ := ((runtime setup).freshServiceEnvelope_binding_iff
-        state.publicView id event candidate evidence token).mp fresh
+      obtain ⟨_, canonical, empty, _⟩ :=
+          ((serviceRuntime setup mode deadline).freshServiceEnvelope_binding_iff state.publicView id
+              event candidate evidence token).mp fresh
       exact ⟨empty, canonical⟩
   | opening event candidate raw =>
       unfold EventGraphRuntime.freshServiceEnvelope at fresh
@@ -79,15 +82,18 @@ theorem pendingContent_of_fresh (state : EventGraphRuntime.State (graph setup))
 
 /-- The settled content of a packet for a completed event survives every later
 contract step. -/
-theorem settledContent_step {before after : EventGraphRuntime.State (graph setup)}
+theorem settledContent_step {before after : EventGraphRuntime.State (serviceGraph setup mode)}
     (step : ContractStep before after)
     (beforeReceipts afterReceipts : List (MessageId Player × Bool))
-    (message : Message Player (WitnessedPacket (graph setup))) (event : (graph setup).EventId)
-    (named : message.payload.call.event? (graph setup) = some event)
+    (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
+    (event : (serviceGraph setup mode).EventId)
+    (named : message.payload.call.event? (serviceGraph setup mode) = some event)
     (completed : event ∈ before.config.cut.completed)
-    (content : (⟨before.publicView, beforeReceipts⟩ : SettledRecord (graph setup)).SettledContent
-      message) :
-    (⟨after.publicView, afterReceipts⟩ : SettledRecord (graph setup)).SettledContent message := by
+    (content :
+        (⟨before.publicView, beforeReceipts⟩ : SettledRecord
+        (serviceGraph setup mode)).SettledContent message) :
+    (⟨after.publicView, afterReceipts⟩ : SettledRecord (serviceGraph setup mode)).SettledContent
+    message := by
   obtain ⟨rest, extended⟩ := step.order_extends
   have member : event ∈ before.publicView.observation.completionOrder :=
     (before.config.history_exact event).mpr completed
@@ -117,14 +123,16 @@ theorem settledContent_step {before after : EventGraphRuntime.State (graph setup
 
 /-- Accepting a packet whose pending content the record accepts settles that
 content. -/
-theorem settledContent_of_pending (before after : EventGraphRuntime.State (graph setup))
+theorem settledContent_of_pending (before after : EventGraphRuntime.State (serviceGraph setup mode))
     (receipts : List (MessageId Player × Bool))
-    (message : Message Player (WitnessedPacket (graph setup))) (event : (graph setup).EventId)
-    (named : message.payload.call.event? (graph setup) = some event)
-    (ready : before.config.cut.Ready event) (action : (graph setup).Action event)
+    (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
+    (event : (serviceGraph setup mode).EventId)
+    (named : message.payload.call.event? (serviceGraph setup mode) = some event)
+    (ready : before.config.cut.Ready event) (action : (serviceGraph setup mode).Action event)
     (member : after.config ∈ (before.config.step event ready action).support)
     (pending : PendingContent setup before message) :
-    (⟨after.publicView, receipts⟩ : SettledRecord (graph setup)).SettledContent message := by
+    (⟨after.publicView, receipts⟩ : SettledRecord (serviceGraph setup mode)).SettledContent
+    message := by
   have orderEq : after.publicView.observation.completionOrder =
       before.publicView.observation.completionOrder ++ [event] := by
     change after.config.history.map Completion.event =
@@ -158,19 +166,20 @@ theorem settledContent_of_pending (before after : EventGraphRuntime.State (graph
       exact guarded
 
 /-- A good packet is permitted by the settled record. -/
-theorem SettledGood.permits {execution : (application setup leaks).Execution}
-    {message : Message Player (WitnessedPacket (graph setup))}
+theorem SettledGood.permits {execution : (serviceApplication setup mode deadline leaks).Execution}
+    {message : Message Player (WitnessedPacket (serviceGraph setup mode))}
     (good : SettledGood setup leaks execution message) :
-    ((runtime setup).settledRecord leaks execution).permits message = true := by
+    ((serviceRuntime setup mode deadline).settledRecord leaks execution).permits message =
+    true := by
   obtain ⟨event, named, ⟨ready, _, _⟩ | ⟨accepted, _, content⟩⟩ := good
   · exact SettledRecord.permits_of_unsettled _ message event named fun inside =>
       ready.1 ((execution.application.config.history_exact event).mp inside)
   · exact SettledRecord.permits_of_accepted _ message event named accepted content
 
 /-- Pending content reads only the public observation. -/
-theorem pendingContent_congr {first second : EventGraphRuntime.State (graph setup)}
+theorem pendingContent_congr {first second : EventGraphRuntime.State (serviceGraph setup mode)}
     (same : second.publicView.observation = first.publicView.observation)
-    {message : Message Player (WitnessedPacket (graph setup))}
+    {message : Message Player (WitnessedPacket (serviceGraph setup mode))}
     (pending : PendingContent setup first message) : PendingContent setup second message := by
   unfold PendingContent at pending ⊢
   cases call : message.payload.call with
@@ -185,15 +194,102 @@ theorem pendingContent_congr {first second : EventGraphRuntime.State (graph setu
       exact pending
   | malformed raw => simp only [call] at pending
 
+/-- Pending content is kept when another event, ready together with the
+packet's event of the packet's author, completes: the author's binding count is
+unchanged, and the event's guards do not read the completed output. -/
+theorem pendingContent_of_other_step
+    {before after : EventGraphRuntime.State (serviceGraph setup mode)}
+    {message : Message Player (WitnessedPacket (serviceGraph setup mode))}
+    {event other : (serviceGraph setup mode).EventId}
+    (named : message.payload.call.event? (serviceGraph setup mode) = some event)
+    (owned : (serviceGraph setup mode).actor? event = some message.sender)
+    (ready : before.config.cut.Ready event) (otherReady : before.config.cut.Ready other)
+    (different : other ≠ event) {action : (serviceGraph setup mode).Action other}
+    (member : after.config ∈ (before.config.step other otherReady action).support)
+    (pending : PendingContent setup before message) : PendingContent setup after message := by
+  have historyEq := before.config.step_history other otherReady action _ member
+  have orderEq : after.publicView.observation.completionOrder =
+      before.publicView.observation.completionOrder ++ [other] := by
+    change after.config.history.map EventGraph.Completion.event = _
+    rw [historyEq, List.map_append, List.map_singleton]
+    rfl
+  unfold PendingContent at pending ⊢
+  cases call : message.payload.call with
+  | commitment actual candidate =>
+      simp only [call] at pending ⊢
+      refine ⟨pending.1, pending.2.trans ?_⟩
+      have foreign : bindingOwnedBy (serviceGraph setup mode) message.sender other = false := by
+        obtain ⟨otherOwner, eventOwner, otherActor, eventActor, owners⟩ :=
+          (serviceGraph_revealRelaxedOrdered setup mode).ready_pair_actors otherReady ready
+            different
+        rw [owned] at eventActor
+        unfold bindingOwnedBy
+        cases kind : (serviceGraph setup mode).outputLayout other with
+        | binding owner payload =>
+            have actorIs := (serviceGraph setup mode).actor?_of_outputLayout_binding kind
+            rw [otherActor] at actorIs
+            simp only [decide_eq_false_iff_not]
+            intro same
+            exact owners ((Option.some.inj actorIs).trans
+              (same.trans (Option.some.inj eventActor)))
+        | publicData _ => rfl
+        | privateInput _ _ => rfl
+        | publication _ => rfl
+      rw [PublicView.bindingCount_eq_countP, PublicView.bindingCount_eq_countP, orderEq,
+        List.countP_append]
+      simp [foreign]
+  | opening actual candidate raw =>
+      simp only [call] at pending ⊢
+      refine ⟨pending.1, ?_⟩
+      have actualEq : actual = event := by
+        change Payload.event? (serviceGraph setup mode) message.payload.call = some event at named
+        rw [call] at named
+        exact Option.some.inj named
+      subst actualEq
+      have guards := pending.2
+      unfold PublicView.openingGuardsAccepted at guards ⊢
+      rw [call] at guards ⊢
+      dsimp only at guards ⊢
+      cases node : nodeView (serviceGraph setup mode) actual with
+      | resolve owner payload binding checks outputEq codeEq =>
+          rw [node] at guards
+          dsimp only at guards ⊢
+          have unread := EventGraph.output_not_mem_reads_of_ready ready otherReady
+          have agree : EventGraph.Store.AgreeOn before.publicView.observation.store
+              after.publicView.observation.store (EventGraph.GuardCheck.listReadFields checks) := by
+            intro field read
+            have inNode : field ∈ ((serviceGraph setup mode).nodes actual).readFields := by
+              rw [← EventGraph.EventCode.readFields_cast outputEq
+                ((serviceGraph setup mode).nodes actual), codeEq]
+              exact Finset.mem_insert_of_mem read
+            change (serviceGraph setup mode).publicStore before.config.store field =
+              (serviceGraph setup mode).publicStore after.config.store field
+            unfold EventGraph.publicStore
+            rcases EventGraphRuntime.step_store_eq_or_output member field with same | ⟨fieldEq, _⟩
+            · rw [same]
+            · subst fieldEq
+              exact (unread inNode).elim
+          simp only [EventGraph.GuardCheck.allAccepted?_congr checks _ _ _ agree] at guards
+          exact guards
+      | bind _ _ _ _ =>
+          rw [node] at guards
+          exact guards
+      | sample _ _ _ _ =>
+          rw [node] at guards
+          exact guards
+  | malformed raw => simp only [call] at pending
+
 /-- A conforming packet meets the inclusion deadline with no slack. -/
-theorem fresh_fits (view : PublicView (graph setup))
-    (message : Message Player (WitnessedPacket (graph setup))) (event : (graph setup).EventId)
-    (named : message.payload.call.event? (graph setup) = some event)
-    (fresh : (runtime setup).freshServiceEnvelope view message) :
-    view.InclusionFitsDeadline (runtime setup) (fun _ => 0) event := by
+theorem fresh_fits (view : PublicView (serviceGraph setup mode))
+    (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
+    (event : (serviceGraph setup mode).EventId)
+    (named : message.payload.call.event? (serviceGraph setup mode) = some event)
+    (fresh : (serviceRuntime setup mode deadline).freshServiceEnvelope view message) :
+    view.InclusionFitsDeadline (serviceRuntime setup mode deadline) (fun _ => 0) event := by
   have deadline : match view.activatedAt event with
       | none => False
-      | some entered => view.clock - entered < (runtime setup).deadline event := by
+      | some entered => view.clock - entered < (serviceRuntime setup mode deadline).deadline
+          event := by
     rcases message with ⟨id, ⟨call, evidence, token⟩⟩
     cases call with
     | commitment actual candidate =>
@@ -215,15 +311,16 @@ theorem fresh_fits (view : PublicView (graph setup))
       simpa only [Nat.add_zero] using deadline
 
 /-- A submission names the event its emitted packet addresses. -/
-theorem submittedEvent_of_issued {entry : (application setup leaks).PlayerEntry}
-    {material : (application setup leaks).Submission}
+theorem submittedEvent_of_issued
+    {entry : (serviceApplication setup mode deadline leaks).PlayerEntry}
+    {material : (serviceApplication setup mode deadline leaks).Submission}
     (transmission : entry.action.transmission = some material)
-    {state : EventGraphRuntime.State (graph setup)} {who : Player}
-    {known : List (Message Player (WitnessedPacket (graph setup)))}
-    {message : Message Player (WitnessedPacket (graph setup))}
-    (packet : (application setup leaks).packet state who known material = message.payload) :
-    (runtime setup).submittedEvent? leaks entry.action =
-      message.payload.call.event? (graph setup) := by
+    {state : EventGraphRuntime.State (serviceGraph setup mode)} {who : Player}
+    {known : List (Message Player (WitnessedPacket (serviceGraph setup mode)))}
+    {message : Message Player (WitnessedPacket (serviceGraph setup mode))}
+    (packet : (serviceApplication setup mode deadline leaks).packet state who known material =
+        message.payload) : (serviceRuntime setup mode deadline).submittedEvent? leaks entry.action =
+      message.payload.call.event? (serviceGraph setup mode) := by
   unfold EventGraphRuntime.submittedEvent?
   rw [transmission, ← packet]
   rfl
@@ -232,27 +329,30 @@ theorem submittedEvent_of_issued {entry : (application setup leaks).PlayerEntry}
 packet before its event can complete in any other way, when every fresh call
 conforms on the view its author saw and each player submits once per event, the
 event of every emitted packet completes only by accepting that packet. -/
-theorem retained_accepted {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
-    (inclusion : ProtectedInclusion (runtime setup) leaks (initialLaw setup) horizon scheduler
-      (fun _ => 0))
-    {control : (application setup leaks).Control}
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-      (some control))
+theorem retained_accepted {horizon : Nat}
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    (inclusion : ProtectedInclusion (serviceRuntime setup mode deadline) leaks
+        (serviceInitialLaw setup mode) horizon scheduler (fun _ => 0))
+    {control : (serviceApplication setup mode deadline leaks).Control}
+    (trace :
+        ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
+        horizon scheduler).Trace (some control))
     (conform : ∀ who, FreshCallsConform setup leaks control.execution who)
     (once : ∀ who, OneCallPerEvent setup leaks control.execution who)
-    (message : Message Player (WitnessedPacket (graph setup)))
-    (emitted : Emitted setup leaks control.execution message) (event : (graph setup).EventId)
-    (named : message.payload.call.event? (graph setup) = some event)
+    (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
+    (emitted : Emitted setup leaks control.execution message)
+    (event : (serviceGraph setup mode).EventId)
+    (named : message.payload.call.event? (serviceGraph setup mode) = some event)
     (completed : event ∈ control.execution.application.config.cut.completed) :
     (message.id, true) ∈ control.execution.receipts := by
-  let app := application setup leaks
+  let app := serviceApplication setup mode deadline leaks
   have facts := legalFacts setup leaks _ _ control trace
   have issued := facts.provenance.inputs message emitted
   obtain ⟨entry, entryMember, material, transmission, entryEmitted, state, known, packet⟩ := issued
   have fresh := conform message.sender entry entryMember material message transmission
     entryEmitted
   obtain ⟨freshEvent, freshNamed, readyView, owned⟩ :=
-    (runtime setup).freshServiceEnvelope_owned _ message fresh
+    (serviceRuntime setup mode deadline).freshServiceEnvelope_owned _ message fresh
   rw [named] at freshNamed
   cases Option.some.inj freshNamed
   obtain ⟨earlier, later, split⟩ := List.mem_iff_append.mp entryMember
@@ -263,12 +363,14 @@ theorem retained_accepted {horizon : Nat} {scheduler : (application setup leaks)
       addressed := named
       ready := readyView
       fits := fresh_fits _ message event named fresh
-      conforming := EventGraphRuntime.freshServiceEnvelope.acceptable (runtime setup) fresh }
-  have entryEvent : (runtime setup).submittedEvent? leaks entry.action = some event := by
+      conforming := EventGraphRuntime.freshServiceEnvelope.acceptable
+          (serviceRuntime setup mode deadline) fresh }
+  have entryEvent : (serviceRuntime setup mode deadline).submittedEvent? leaks entry.action = some
+      event := by
     rw [submittedEvent_of_issued transmission packet]
     exact named
   have sole : ∀ other ∈ earlier ++ later,
-      ¬ EmitsOtherFor (runtime setup) leaks other event message.id := by
+      ¬ EmitsOtherFor (serviceRuntime setup mode deadline) leaks other event message.id := by
     intro other otherMember ⟨otherEnvelope, emittedOther, otherAuthor, otherAddressed,
       differentId⟩
     have otherRecall : other ∈ control.execution.recall message.sender := by
@@ -283,7 +385,8 @@ theorem retained_accepted {horizon : Nat} {scheduler : (application setup leaks)
     obtain ⟨issuer, issuerMember, _, issuerTransmission, issuerEmitted, _, _, issuerPacket⟩ :=
       facts.provenance.inputs otherEnvelope envelopeMember
     rw [otherAuthor] at issuerMember
-    have issuerEvent : (runtime setup).submittedEvent? leaks issuer.action = some event := by
+    have issuerEvent : (serviceRuntime setup mode deadline).submittedEvent? leaks issuer.action =
+        some event := by
       rw [submittedEvent_of_issued issuerTransmission issuerPacket]
       exact otherAddressed
     exact differentId (once message.sender issuer issuerMember entry entryMember event _ _
@@ -297,13 +400,15 @@ end Content
 
 section Retained
 
-variable (setup : Setup (Player := Player) (L := L))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+variable (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
+  {deadline : (serviceGraph setup mode).EventId → Nat}
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 /-- What retained play keeps at every history: each fresh call conformed on the
 view its author saw, each player submitted once per event, and every emitted
 packet is good. -/
-structure RetainedFacts (execution : (application setup leaks).Execution) : Prop where
+structure RetainedFacts (execution : (serviceApplication setup mode deadline leaks).Execution) :
+    Prop where
   conform : ∀ who, FreshCallsConform setup leaks execution who
   once : ∀ who, OneCallPerEvent setup leaks execution who
   good : ∀ message, Emitted setup leaks execution message →
@@ -311,8 +416,9 @@ structure RetainedFacts (execution : (application setup leaks).Execution) : Prop
 
 variable {setup leaks}
 
-theorem retainedFacts_initial (state : (application setup leaks).State) :
-    RetainedFacts setup leaks (ReactiveApplication.Execution.initial (application setup leaks)
+theorem retainedFacts_initial (state : (serviceApplication setup mode deadline leaks).State) :
+    RetainedFacts setup leaks
+        (ReactiveApplication.Execution.initial (serviceApplication setup mode deadline leaks)
       state) where
   conform who entry member := by
     simp [ReactiveApplication.Execution.initial] at member
@@ -322,14 +428,16 @@ theorem retainedFacts_initial (state : (application setup leaks).State) :
     simp [Emitted, ReactiveApplication.Execution.initial, MessageNetwork.empty] at emitted
 
 /-- A response keeps a packet good: it changes no contract state or receipt. -/
-theorem SettledGood.respond {execution : (application setup leaks).Execution}
-    {message : Message Player (WitnessedPacket (graph setup))}
+theorem SettledGood.respond {execution : (serviceApplication setup mode deadline leaks).Execution}
+    {message : Message Player (WitnessedPacket (serviceGraph setup mode))}
     (good : SettledGood setup leaks execution message) (who : Player)
-    (action : (application setup leaks).Action) :
-    SettledGood setup leaks (execution.respond (application setup leaks) who action) message := by
-  obtain ⟨configEq, publicEq⟩ := (runtime setup).reactive_respond_application leaks execution
-    who action
-  have receiptsEq := (application setup leaks).respond_receipts execution who action
+    (action : (serviceApplication setup mode deadline leaks).Action) :
+    SettledGood setup leaks
+        (execution.respond (serviceApplication setup mode deadline leaks) who action) message := by
+  obtain ⟨configEq, publicEq⟩ := (serviceRuntime setup mode deadline).reactive_respond_application
+      leaks execution who action
+  have receiptsEq := (serviceApplication setup mode deadline leaks).respond_receipts execution
+      who action
   obtain ⟨event, named, ⟨ready, unaccepted, pending⟩ | ⟨accepted, completed, content⟩⟩ := good
   · refine ⟨event, named, Or.inl ⟨configEq ▸ ready, receiptsEq ▸ unaccepted, ?_⟩⟩
     exact pendingContent_congr (congrArg PublicView.observation publicEq) pending
@@ -339,19 +447,26 @@ theorem SettledGood.respond {execution : (application setup leaks).Execution}
     exact content
 
 /-- A scheduler command keeps a retained packet good. -/
-theorem SettledGood.environment {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
-    (inclusion : ProtectedInclusion (runtime setup) leaks (initialLaw setup) horizon scheduler
-      (fun _ => 0))
-    {execution next : (application setup leaks).Execution}
-    {command : (application setup leaks).Command} (facts : SettledFacts setup leaks execution)
-    (reached : next ∈ (execution.environmentStep (application setup leaks) command).support)
+theorem SettledGood.environment {horizon : Nat}
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    (inclusion : ProtectedInclusion (serviceRuntime setup mode deadline) leaks
+        (serviceInitialLaw setup mode) horizon scheduler (fun _ => 0))
+    {execution next : (serviceApplication setup mode deadline leaks).Execution}
+    {command : (serviceApplication setup mode deadline leaks).Command}
+    (facts : SettledFacts setup leaks execution)
+    (reached : next ∈
+        (execution.environmentStep (serviceApplication setup mode deadline leaks) command).support)
     {remaining : Nat}
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-      (some ⟨remaining, command.actor? (application setup leaks), next⟩))
+    (trace :
+        ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
+        horizon scheduler).Trace
+        (some ⟨remaining, command.actor? (serviceApplication setup mode deadline leaks), next⟩))
     (conform : ∀ who, FreshCallsConform setup leaks next who)
     (once : ∀ who, OneCallPerEvent setup leaks next who)
-    {message : Message Player (WitnessedPacket (graph setup))}
+    {message : Message Player (WitnessedPacket (serviceGraph setup mode))}
     (emitted : Emitted setup leaks execution message)
+    (owned : ∀ event, message.payload.call.event? (serviceGraph setup mode) = some event →
+      (serviceGraph setup mode).actor? event = some message.sender)
     (good : SettledGood setup leaks execution message) :
     SettledGood setup leaks next message := by
   obtain ⟨inputsEq, _, _⟩ := environmentStep_shape setup leaks execution next command reached
@@ -359,9 +474,10 @@ theorem SettledGood.environment {horizon : Nat} {scheduler : (application setup 
     unfold Emitted at emitted ⊢
     rw [inputsEq]
     exact emitted
-  have step := contractStep_environment (runtime setup) leaks execution next command reached
-  have prefixOf := (application setup leaks).environmentStep_receipts_prefix execution next
-    command reached
+  have step := contractStep_environment (serviceRuntime setup mode deadline) leaks execution next
+      command reached
+  have prefixOf := (serviceApplication setup mode deadline leaks).environmentStep_receipts_prefix
+      execution next command reached
   obtain ⟨event, named, ⟨ready, unaccepted, pending⟩ | ⟨accepted, completed, content⟩⟩ := good
   · rcases step with ⟨configEq, _, _, _⟩ | ⟨other, otherReady, action, member⟩
     · by_cases acceptedNow : (message.id, true) ∈ next.receipts
@@ -375,12 +491,31 @@ theorem SettledGood.environment {horizon : Nat} {scheduler : (application setup 
         exact (ready.1 acceptedCompleted).elim
       · have observationEq : next.application.publicView.observation =
             execution.application.publicView.observation := by
-          change (graph setup).publicObserve next.application.config =
-            (graph setup).publicObserve execution.application.config
+          change (serviceGraph setup mode).publicObserve next.application.config =
+            (serviceGraph setup mode).publicObserve execution.application.config
           rw [configEq]
         exact ⟨event, named, Or.inl ⟨configEq ▸ ready, acceptedNow,
           pendingContent_congr observationEq pending⟩⟩
-    · cases ready_unique _ otherReady ready
+    · by_cases same : other = event
+      swap
+      · refine ⟨event, named, Or.inl ⟨?_, fun acceptedNow => ?_, ?_⟩⟩
+        · rw [execution.application.config.step_cut other otherReady action _ member]
+          exact ready.after_complete otherReady (Ne.symm same)
+        · obtain ⟨after, handled, applicationEq⟩ :=
+            newly_accepted facts reached emitted unaccepted acceptedNow
+          obtain ⟨_, acceptedEvent, acceptedNamed, _, acceptedCompleted, _⟩ :=
+            accepted_inclusion execution.application after message handled
+          rw [named] at acceptedNamed
+          cases Option.some.inj acceptedNamed
+          rw [← applicationEq, execution.application.config.step_cut other otherReady action _
+            member, EventOrder.Cut.mem_complete] at acceptedCompleted
+          rcases acceptedCompleted with equal | old
+          · exact same equal.symm
+          · exact ready.1 old
+        · exact pendingContent_of_other_step named (owned event named) ready otherReady same
+            member pending
+      have reversed : event = other := same.symm
+      subst reversed
       have completedNext : event ∈ next.application.config.cut.completed := by
         rw [execution.application.config.step_cut event otherReady action
           next.application.config member]
@@ -390,7 +525,8 @@ theorem SettledGood.environment {horizon : Nat} {scheduler : (application setup 
       obtain ⟨after, handled, applicationEq⟩ :=
         newly_accepted facts reached emitted unaccepted acceptedNow
       obtain ⟨stepEvent, stepNamed, stepReady, stepAction, stepMember⟩ := handle_config_mem_step
-        (runtime setup) execution.application after _ (reactiveHandle_call handled)
+        (serviceRuntime setup mode deadline) execution.application after _
+        (reactiveHandle_call handled)
       have sameEvent : stepEvent = event := Option.some.inj (stepNamed.symm.trans named)
       subst stepEvent
       refine ⟨event, named, Or.inr ⟨acceptedNow, completedNext, ?_⟩⟩
@@ -404,16 +540,18 @@ theorem SettledGood.environment {horizon : Nat} {scheduler : (application setup 
 
 /-- A response that keeps the recall of every other player and appends one
 entry to the responder's. -/
-theorem respond_recall_cases (execution : (application setup leaks).Execution) (who : Player)
-    (action : (application setup leaks).Action) (observer : Player)
-    (entry : (application setup leaks).PlayerEntry)
-    (member : entry ∈ (execution.respond (application setup leaks) who action).recall observer) :
-    entry ∈ execution.recall observer ∨
-      (observer = who ∧ entry.beforeView = execution.observe (application setup leaks) who ∧
-        entry.action = action ∧
-        ∀ material, action.transmission = some material →
-          entry.emitted = some ⟨(who, execution.network.nextSerial who),
-            (application setup leaks).packet ((application setup leaks).submit
+theorem respond_recall_cases (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (who : Player) (action : (serviceApplication setup mode deadline leaks).Action)
+    (observer : Player) (entry : (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (member : entry ∈
+        (execution.respond (serviceApplication setup mode deadline leaks) who action).recall
+        observer) : entry ∈ execution.recall observer ∨
+    (observer = who ∧ entry.beforeView = execution.observe
+        (serviceApplication setup mode deadline leaks) who ∧ entry.action = action ∧ ∀ material,
+        action.transmission = some material → entry.emitted = some
+        ⟨(who, execution.network.nextSerial who),
+        (serviceApplication setup mode deadline leaks).packet
+        ((serviceApplication setup mode deadline leaks).submit
               execution.application who material) who (execution.network.known who) material⟩) := by
   by_cases same : observer = who
   · subst observer
@@ -436,52 +574,57 @@ theorem respond_recall_cases (execution : (application setup leaks).Execution) (
           cases submitted
           rfl
   · left
-    have recallEq := (application setup leaks).respond_recall_other execution who observer same
-      action
+    have recallEq := (serviceApplication setup mode deadline leaks).respond_recall_other execution
+        who observer same action
     rw [recallEq] at member
     exact member
 
 /-- A first submission names an event no earlier own entry submitted for. -/
-theorem unrecorded_of_firstSubmission (past : List (application setup leaks).PlayerEntry)
-    (response : (application setup leaks).Action) (event : (graph setup).EventId)
-    (first : (runtime setup).firstSubmission leaks past response = true)
-    (submitted : (runtime setup).submittedEvent? leaks response = some event) :
-    ∀ entry ∈ past, (runtime setup).submittedEvent? leaks entry.action ≠ some event := by
+theorem unrecorded_of_firstSubmission
+    (past : List (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (response : (serviceApplication setup mode deadline leaks).Action)
+    (event : (serviceGraph setup mode).EventId)
+    (first : (serviceRuntime setup mode deadline).firstSubmission leaks past response = true)
+    (submitted : (serviceRuntime setup mode deadline).submittedEvent? leaks response = some event) :
+    ∀ entry ∈ past, (serviceRuntime setup mode deadline).submittedEvent? leaks entry.action ≠ some
+        event := by
   intro entry member recorded
-  have found : (runtime setup).eventRecorded leaks past event = true :=
+  have found : (serviceRuntime setup mode deadline).eventRecorded leaks past event = true :=
     List.any_eq_true.mpr ⟨entry, member, decide_eq_true recorded⟩
-  rw [(runtime setup).firstSubmission_false_of_recorded leaks past event found response
-    submitted] at first
+  rw [(serviceRuntime setup mode deadline).firstSubmission_false_of_recorded leaks past event found
+          response submitted] at first
   cases first
 
 /-- **Retained play keeps its facts.** Under a scheduler with protected
 inclusion, a response menu whose fresh submissions conform on the current
 public view and submit once per event keeps the retained facts at every
 history. -/
-theorem retainedFacts_history {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
-    (inclusion : ProtectedInclusion (runtime setup) leaks (initialLaw setup) horizon scheduler
-      (fun _ => 0))
-    (menu : (application setup leaks).ResponseMenu)
+theorem retainedFacts_history {horizon : Nat}
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    (inclusion : ProtectedInclusion (serviceRuntime setup mode deadline) leaks
+        (serviceInitialLaw setup mode) horizon scheduler (fun _ => 0))
+    (menu : (serviceApplication setup mode deadline leaks).ResponseMenu)
     (fresh : ∀ {remaining who execution},
-      (menu.protocol (initialLaw setup) horizon scheduler).Trace
-        (some ⟨remaining, some who, execution⟩) →
-      ∀ response ∈ menu.actions who (execution.recall who)
-        (execution.observe (application setup leaks) who),
-      ∀ material, response.transmission = some material →
-        (runtime setup).freshServiceEnvelope execution.application.publicView
-          ⟨(who, execution.network.nextSerial who),
-            (application setup leaks).packet ((application setup leaks).submit
-              execution.application who material) who (execution.network.known who) material⟩)
+        (menu.protocol (serviceInitialLaw setup mode) horizon scheduler).Trace
+        (some ⟨remaining, some who, execution⟩) → ∀ response ∈ menu.actions who
+        (execution.recall who)
+        (execution.observe (serviceApplication setup mode deadline leaks) who), ∀ material,
+        response.transmission = some material →
+        (serviceRuntime setup mode deadline).freshServiceEnvelope execution.application.publicView
+        ⟨(who, execution.network.nextSerial who),
+        (serviceApplication setup mode deadline leaks).packet
+        ((serviceApplication setup mode deadline leaks).submit execution.application who material)
+        who (execution.network.known who) material⟩)
     (first : ∀ who past view response, response ∈ menu.actions who past view →
-      (runtime setup).firstSubmission leaks past response = true) :
-    ∀ {state} (_ : (menu.protocol (initialLaw setup) horizon scheduler).Trace state),
-      ReactiveApplication.serviceInvariant (RetainedFacts setup leaks) state
+        (serviceRuntime setup mode deadline).firstSubmission leaks past response = true) : ∀ {state}
+    (_ : (menu.protocol (serviceInitialLaw setup mode) horizon scheduler).Trace state),
+    ReactiveApplication.serviceInvariant (RetainedFacts setup leaks) state
   | _, .start => trivial
   | _, .extend (source := before) prior joint legal reached => by
-      let app := application setup leaks
+      let app := serviceApplication setup mode deadline leaks
       have valid := retainedFacts_history inclusion menu fresh first prior
-      have rawPrior := menu.toRawTrace (initialLaw setup) horizon scheduler prior
-      have rawNext := menu.toRawTrace (initialLaw setup) horizon scheduler
+      have rawPrior := menu.toRawTrace (serviceInitialLaw setup mode) horizon scheduler prior
+      have rawNext := menu.toRawTrace (serviceInitialLaw setup mode) horizon scheduler
         (.extend prior joint legal reached)
       cases before with
       | none =>
@@ -490,7 +633,7 @@ theorem retainedFacts_history {horizon : Nat} {scheduler : (application setup le
       | some control =>
           rcases control with ⟨remaining, actor, execution⟩
           change RetainedFacts setup leaks execution at valid
-          have facts := settledFacts_history (initialLaw setup) _ _ rawPrior
+          have facts := settledFacts_history (serviceInitialLaw setup mode) _ _ rawPrior
           cases actor with
           | some who =>
               obtain ⟨response, choice, member⟩ : ∃ response, joint who = some response ∧
@@ -509,8 +652,9 @@ theorem retainedFacts_history {horizon : Nat} {scheduler : (application setup le
               simp only [choice, Option.getD_some]
               change RetainedFacts setup leaks (execution.respond app who response)
               have firstSubmitted := first who _ _ response member
-              obtain ⟨configEq, publicEq⟩ := (runtime setup).reactive_respond_application leaks
-                execution who response
+              obtain ⟨configEq, publicEq⟩ :=
+                  (serviceRuntime setup mode deadline).reactive_respond_application leaks execution
+                  who response
               refine ⟨fun observer entry entryMember material message transmission emitted => ?_,
                 fun observer => ?_, fun message emitted => ?_⟩
               · rcases respond_recall_cases execution who response observer entry entryMember with
@@ -524,7 +668,8 @@ theorem retainedFacts_history {horizon : Nat} {scheduler : (application setup le
               · intro first firstMember second secondMember event firstMessage secondMessage
                   firstEvent secondEvent firstEmitted secondEmitted
                 have submittedOf : ∀ entry : app.PlayerEntry,
-                    (runtime setup).submittedEvent? leaks entry.action = some event →
+                    (serviceRuntime setup mode deadline).submittedEvent? leaks entry.action =
+                    some event →
                     ∃ material, entry.action.transmission = some material := by
                   intro entry submitted
                   rcases entry with ⟨view, ⟨transmission⟩, emittedOption⟩
@@ -555,7 +700,7 @@ theorem retainedFacts_history {horizon : Nat} {scheduler : (application setup le
                 · exact (valid.good message prior).respond who response
                 · have fresh := freshNew material submitted
                   obtain ⟨event, named, readyView⟩ :=
-                    (runtime setup).freshServiceEnvelope_ready _ _ fresh
+                    (serviceRuntime setup mode deadline).freshServiceEnvelope_ready _ _ fresh
                   refine ⟨event, named, Or.inl ⟨?_, ?_, ?_⟩⟩
                   · change (execution.respond app who response).application.config.cut.Ready
                       event
@@ -597,9 +742,33 @@ theorem retainedFacts_history {horizon : Nat} {scheduler : (application setup le
                     unfold Emitted at emitted ⊢
                     rw [← inputsEq]
                     exact emitted
+                  have owned : ∀ event,
+                      message.payload.call.event? (serviceGraph setup mode) = some event →
+                      (serviceGraph setup mode).actor? event = some message.sender := by
+                    intro event named
+                    have legal := legalFacts setup leaks horizon scheduler _ rawPrior
+                    obtain ⟨issuer, issuerMember, material, transmission, issuerEmitted, _, _, _⟩ :=
+                      legal.provenance.inputs message emittedBefore
+                    have conforming := valid.conform message.sender issuer issuerMember material
+                      message transmission issuerEmitted
+                    obtain ⟨named', namedEq, _, actor⟩ :=
+                      (serviceRuntime setup mode deadline).freshServiceEnvelope_owned _ message
+                        conforming
+                    rw [named] at namedEq
+                    cases Option.some.inj namedEq
+                    exact actor
                   exact (valid.good message emittedBefore).environment inclusion facts supported
-                    rawNext conform once emittedBefore
+                    rawNext conform once emittedBefore owned
 
+
+
+
+section Sequential
+
+variable (setup : Setup (Player := Player) (L := L))
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+
+variable {setup} {leaks}
 /-- In the retained source service a fresh submission conforms on the public
 view its author sees. -/
 theorem sourceService_fresh_response [Fintype Player] (bounds : MessageBounds (graph setup))
@@ -680,6 +849,7 @@ theorem sourceService_fresh_response [Fintype Player] (bounds : MessageBounds (g
   exact (((runtime setup).permittedServiceEnvelope_unpublished_iff _ _ _ unpublished).mp
     permitted).2
 
+
 /-- **The settled record permits every retained packet.** At every history of
 the retained source service, including off-path and intermediate histories,
 every transmitted packet is permitted by the contract's current record. -/
@@ -715,6 +885,7 @@ theorem sourceService_history_settled [Fintype Player] (bounds : MessageBounds (
     exact List.mem_map.mpr ⟨record, member, rfl⟩
   exact (retained.good _ emitted).permits
 
+end Sequential
 end Retained
 
 end Vegas

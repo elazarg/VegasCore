@@ -90,6 +90,7 @@ import Vegas.Pending.ReactiveDisclosure
 import Vegas.Pending.ReactiveDisclosureStability
 import Vegas.Pending.ReactiveEmissionTokens
 import Vegas.Pending.ReactiveEntryStability
+import Vegas.Pending.ReactiveEventStability
 import Vegas.Pending.ReactiveEvidence
 import Vegas.Pending.ReactiveFiniteCompiler
 import Vegas.Pending.ReactiveFiniteResponses

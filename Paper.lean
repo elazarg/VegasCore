@@ -289,11 +289,12 @@ audited payoff with any deposit, then the source profile is an
 `(ε + 2 * δ * R)`-Nash equilibrium of the source protocol model. Here `δ` is
 the total deferral weight of the turn timing and every realized payoff value,
 charged or not, lies in an interval of length `R`.
-The service runs the sequential dependency mode with rank deadlines
-(`Vegas.RankSequential`). -/
+The service graph is barrier ordered, as in the sequential and the
+concurrent-binding dependency modes (`Vegas.serviceGraph_barrierOrdered`), with
+any configured deadlines. -/
 theorem async_client_nash_reflection [Fintype Player] [IExpr.ResultTypes L]
     {Parameter : Type} (service : AsyncServiceSpec Player L)
-    (configuration : service.RankSequential)
+    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
     (sample : List (SettledEvidence service.setup service.mode) →
@@ -332,7 +333,7 @@ theorem async_client_nash_reflection [Fintype Player] [IExpr.ResultTypes L]
         (fun final who => (service.setup.protocolReadout final.state).elim 0
           (fun state => utility (service.setup.parameterOutcome parameter state) who))
         (ε + 2 * (∑ event, timing.deferral event) * range) source :=
-  service.isεNash_of_clientProfile configuration parameter utility sample authentic deposit menu
+  service.isεNash_of_clientProfile ordered parameter utility sample authentic deposit menu
     timing covered
     low range within ε source
 
@@ -468,11 +469,12 @@ clients (`Vegas.sourceServiceClientPolicy_raw_admissible`). The forward
 direction rests on the fact that every native policy of one player against the
 first-turn clients has the typed outcome law of a source deviation whose
 bindings may fail (`Vegas.asyncDeviation_readout_law`).
-The service runs the sequential dependency mode with rank deadlines
-(`Vegas.RankSequential`). -/
+The service graph is barrier ordered, as in the sequential and the
+concurrent-binding dependency modes (`Vegas.serviceGraph_barrierOrdered`), with
+any configured deadlines. -/
 theorem async_client_nash_correspondence [Fintype Player] [IExpr.ResultTypes L]
     {Parameter : Type} (service : AsyncServiceSpec Player L)
-    (configuration : service.RankSequential)
+    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
     (sample : List (SettledEvidence service.setup service.mode) →
@@ -515,7 +517,7 @@ theorem async_client_nash_correspondence [Fintype Player] [IExpr.ResultTypes L]
         (fun final who => (service.setup.protocolReadout final.state).elim 0
           (fun state => utility (service.setup.parameterOutcome parameter state) who))
         (ε + 2 * (∑ event, timing.deferral event) * range) source) :=
-  service.isεNash_rawClientProfile_approximate configuration parameter utility sample authentic
+  service.isεNash_rawClientProfile_approximate ordered parameter utility sample authentic
     deposit
     nonnegative timing low range within ε source
 
@@ -536,11 +538,12 @@ profile extending an `ε`-Nash equilibrium of the intended game are an
 forfeit pass, and their joint law of typed outcome and realized settlement is
 within `δ` in total variation of the intended joint law of terminal store and
 payoff.
-The service runs the sequential dependency mode with rank deadlines
-(`Vegas.RankSequential`). -/
+The service graph is barrier ordered, as in the sequential and the
+concurrent-binding dependency modes (`Vegas.serviceGraph_barrierOrdered`), with
+any configured deadlines. -/
 theorem intended_async_client_nash [Fintype Player] [IExpr.ResultTypes L]
     {Parameter : Type} (service : AsyncServiceSpec Player L)
-    (configuration : service.RankSequential)
+    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (wellFormed : service.setup.WellFormed)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
@@ -597,7 +600,7 @@ theorem intended_async_client_nash [Fintype Player] [IExpr.ResultTypes L]
           (fun final => (service.setup.protocolReadout final.state,
             fun who => (service.setup.protocolReadout final.state).elim 0
               (fun state => utility (service.setup.parameterOutcome parameter state) who)))) :=
-  service.intended_rawClientProfile_isεNash configuration wellFormed parameter utility forfeit range
+  service.intended_rawClientProfile_isεNash ordered wellFormed parameter utility forfeit range
     sample authentic deposit nonnegative timing low spread within intended source agrees ε
     equilibrium
 
@@ -617,11 +620,12 @@ bounded raw ledger exactly when the source profile is an `ε`-Nash equilibrium
 of the source protocol model, for every `ε`. Realized payoffs need only lie in
 some bounded interval. This is `async_client_nash_correspondence` at deferral
 weight zero.
-The service runs the sequential dependency mode with rank deadlines
-(`Vegas.RankSequential`). -/
+The service graph is barrier ordered, as in the sequential and the
+concurrent-binding dependency modes (`Vegas.serviceGraph_barrierOrdered`), with
+any configured deadlines. -/
 theorem async_first_turn_nash_iff [Fintype Player] [IExpr.ResultTypes L]
     {Parameter : Type} (service : AsyncServiceSpec Player L)
-    (configuration : service.RankSequential)
+    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
     (sample : List (SettledEvidence service.setup service.mode) →
@@ -654,7 +658,7 @@ theorem async_first_turn_nash_iff [Fintype Player] [IExpr.ResultTypes L]
         (fun final who => (service.setup.protocolReadout final.state).elim 0
           (fun state => utility (service.setup.parameterOutcome parameter state) who))
         ε source :=
-  service.isεNash_firstTurnClientProfile_iff configuration parameter utility sample authentic
+  service.isεNash_firstTurnClientProfile_iff ordered parameter utility sample authentic
     deposit
     nonnegative turns low range within ε source
 
@@ -675,11 +679,12 @@ audited bounded raw ledger under the forfeit pass, with the same `ε`, and their
 joint law of typed outcome and realized settlement is the intended joint law of
 terminal store and payoff. This is `intended_async_client_nash` at deferral
 weight zero.
-The service runs the sequential dependency mode with rank deadlines
-(`Vegas.RankSequential`). -/
+The service graph is barrier ordered, as in the sequential and the
+concurrent-binding dependency modes (`Vegas.serviceGraph_barrierOrdered`), with
+any configured deadlines. -/
 theorem intended_async_first_turn_nash [Fintype Player] [IExpr.ResultTypes L]
     {Parameter : Type} (service : AsyncServiceSpec Player L)
-    (configuration : service.RankSequential)
+    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (wellFormed : service.setup.WellFormed)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
@@ -736,7 +741,7 @@ theorem intended_async_first_turn_nash [Fintype Player] [IExpr.ResultTypes L]
           (fun final => (service.setup.protocolReadout final.state,
             fun who => (service.setup.protocolReadout final.state).elim 0
               (fun state => utility (service.setup.parameterOutcome parameter state) who))) :=
-  service.intended_firstTurnClientProfile_isεNash configuration wellFormed parameter utility forfeit
+  service.intended_firstTurnClientProfile_isεNash ordered wellFormed parameter utility forfeit
     range sample authentic deposit nonnegative turns low spread within intended source
     agrees ε equilibrium
 
@@ -808,10 +813,10 @@ theorem concurrent_event_nash_iff [IExpr.ResultTypes L]
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.AsyncServiceSpec.firstTurn_deviation_bound
 
-/-- info: 'Vegas.sourceServiceTurnPolicy_deviation_roundsFrom_bind_within' depends on axioms:
+/-- info: 'Vegas.deviatedTurnProfile_roundsFrom_bind_within' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.sourceServiceTurnPolicy_deviation_roundsFrom_bind_within
+#print axioms Vegas.deviatedTurnProfile_roundsFrom_bind_within
 
 /-- info: 'Vegas.AsyncServiceSpec.isεNash_clientProfile_of_firstTurn_bounds' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

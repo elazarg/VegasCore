@@ -213,4 +213,63 @@ theorem scheduledPolicy_before (offset : Nat) {slots : Nat}
   exact app.turnScheduledPolicy_of_none _ selected opening waiting past view
     (by simp only [countFrom, Nat.not_le.mpr before, ↓reduceIte])
 
+/-- Two mixtures with one initial law have the same posterior on a recall
+where, at every entry, either their members respond alike index by index, or
+each family responds without using the latent choice. -/
+theorem policyMixture_posterior_congr (initial : PMF Index) (first second : Index → app.Policy)
+    (past : List app.PlayerEntry)
+    (step : ∀ (before : List app.PlayerEntry) (entry : app.PlayerEntry),
+      before ++ [entry] <+: past →
+        (∀ index, first index before entry.beforeView = second index before entry.beforeView) ∨
+          ((∃ law, ∀ index, first index before entry.beforeView = law) ∧
+            ∃ law, ∀ index, second index before entry.beforeView = law)) :
+    (app.policyMixture initial first).posterior past =
+      (app.policyMixture initial second).posterior past := by
+  induction past using List.reverseRecOn with
+  | nil => rfl
+  | append_singleton past entry ih =>
+      have earlier := ih fun before earlier member =>
+        step before earlier (member.trans (List.prefix_append _ _))
+      rcases step past entry (List.prefix_refl _) with alike | ⟨⟨firstLaw, firstSame⟩,
+          ⟨secondLaw, secondSame⟩⟩
+      · rw [Implementation.posterior_snoc, Implementation.posterior_snoc, earlier]
+        change (fiberPosterior (((app.policyMixture initial second).posterior past).bind
+          (fun index => (first index past entry.beforeView).map fun action => (action, index)))
+            Prod.fst entry.action).map Prod.snd =
+          (fiberPosterior (((app.policyMixture initial second).posterior past).bind
+          (fun index => (second index past entry.beforeView).map fun action => (action, index)))
+            Prod.fst entry.action).map Prod.snd
+        simp only [alike]
+      · rw [app.policyMixture_posterior_snoc initial first past entry firstLaw firstSame,
+          app.policyMixture_posterior_snoc initial second past entry secondLaw secondSame, earlier]
+
+/-- **A mixture dispatched to one region.** Members that respond as a family
+inside a region of inputs and as one common policy outside it, where the family
+does not use the latent choice, realize that common policy, provided it
+responds inside the region as the family's mixture. -/
+theorem policyMixture_policy_of_region (initial : PMF Index)
+    (member family : Index → app.Policy) (client : app.Policy)
+    (region : List app.PlayerEntry → app.PlayerView → Prop)
+    (inside : ∀ index past view, region past view → member index past view = family index past view)
+    (outside : ∀ index past view, ¬ region past view → member index past view = client past view)
+    (familyOutside : ∀ past view, ¬ region past view →
+      ∃ law, ∀ index, family index past view = law)
+    (atRegion : ∀ past view, region past view →
+      client past view = (app.policyMixture initial family).policy past view)
+    (past : List app.PlayerEntry) (view : app.PlayerView) :
+    (app.policyMixture initial member).policy past view = client past view := by
+  classical
+  have posteriors := app.policyMixture_posterior_congr initial member family past
+    fun before entry _ => by
+      by_cases within : region before entry.beforeView
+      · exact Or.inl fun index => inside index before entry.beforeView within
+      · exact Or.inr ⟨⟨client before entry.beforeView, fun index =>
+          outside index before entry.beforeView within⟩,
+          familyOutside before entry.beforeView within⟩
+  rw [app.policyMixture_policy, posteriors]
+  by_cases within : region past view
+  · simp only [inside _ _ _ within]
+    rw [← app.policyMixture_policy, atRegion past view within]
+  · simp only [outside _ _ _ within, PMF.bind_const]
+
 end Interaction.ReactiveApplication

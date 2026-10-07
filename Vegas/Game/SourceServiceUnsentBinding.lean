@@ -619,7 +619,7 @@ theorem exists_bindingSource_step (profile : BehavioralProfile service.setup.pro
           (execution.application.complete (embedding.event ⟨0, by simp [eventCount]⟩) ready
             (cast (congrArg EventGraph.EventField.Action outputEq.symm) value)
             (cast (congrArg EventGraph.EventField.Value outputEq.symm) value)).config = _
-        unfold sourceServicePrefix?
+        unfold sourceServicePrefix? serviceSourcePrefix?
         rw [transport 1, decodeSourcePrefix?_commit]
         exact congrArg (fun decoded => (Option.map Sum.inr decoded).map lift) recovered
       refine ⟨?_, ?_, ?_⟩

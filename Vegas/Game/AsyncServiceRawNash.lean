@@ -50,7 +50,6 @@ abbrev rawMenu : (serviceApplication service.setup service.mode service.deadline
 timing and every source profile, each player's client policy is admissible in
 the bounded raw response menu. -/
 theorem rawMenu_admits {turns : Nat}
-    (configuration : service.RankSequential)
     (timing : TurnTiming service.setup turns service.mode)
     (source : Profile service.sourceModel.behavioralSignature) (who : Player) :
     service.rawMenu.Admissible (serviceInitialLaw service.setup service.mode) service.horizon
@@ -59,7 +58,7 @@ theorem rawMenu_admits {turns : Nat}
         turns timing
         (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
           (CommitmentInterface.values service.setup.program) source)) who) :=
-  sourceServiceClientPolicy_raw_admissible service.bounds configuration service.values
+  sourceServiceClientPolicy_raw_admissible service.bounds service.values
     service.initialValues
     service.capacity service.bound turns timing _
     (normalized_sourceService_admitted service.setup _ fun player =>
@@ -76,7 +75,7 @@ equilibrium of the clients there comes from a source `(ε + 2 * δ * R)`-Nash
 equilibrium. Here `δ` is the total deferral weight of the turn timing and every
 realized payoff value, charged or not, lies in an interval of length `R`. -/
 theorem isεNash_rawClientProfile_approximate {Parameter : Type}
-    (configuration : service.RankSequential)
+    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
     (sample : List (SettledEvidence service.setup service.mode) →
@@ -119,9 +118,9 @@ theorem isεNash_rawClientProfile_approximate {Parameter : Type}
         (fun final who => (service.setup.protocolReadout final.state).elim 0
           (fun state => utility (service.setup.parameterOutcome parameter state) who))
         (ε + 2 * (∑ event, timing.deferral event) * range) source) :=
-  service.isεNash_clientProfile_approximate configuration parameter utility sample authentic
+  service.isεNash_clientProfile_approximate ordered parameter utility sample authentic
     deposit nonnegative
-    service.rawMenu timing (service.rawMenu_admits configuration timing) low range within ε source
+    service.rawMenu timing (service.rawMenu_admits timing) low range within ε source
 
 /-- **Intended approximate Nash equilibria on the bounded raw ledger, for
 every contract builder.** For a well-formed setup, a forfeit no smaller than
@@ -132,7 +131,7 @@ response menu under the forfeit pass, and their joint law of typed outcome and
 realized settlement is within `δ` in total variation of the intended joint law
 of terminal store and payoff. -/
 theorem intended_rawClientProfile_isεNash {Parameter : Type}
-    (configuration : service.RankSequential)
+    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (wellFormed : service.setup.WellFormed)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
@@ -189,9 +188,9 @@ theorem intended_rawClientProfile_isεNash {Parameter : Type}
           (fun final => (service.setup.protocolReadout final.state,
             fun who => (service.setup.protocolReadout final.state).elim 0
               (fun state => utility (service.setup.parameterOutcome parameter state) who)))) :=
-  service.intended_clientProfile_isεNash configuration wellFormed parameter utility forfeit range
+  service.intended_clientProfile_isεNash ordered wellFormed parameter utility forfeit range
     sample
-    authentic deposit nonnegative service.rawMenu timing (service.rawMenu_admits configuration
+    authentic deposit nonnegative service.rawMenu timing (service.rawMenu_admits
       timing) low
     spread within intended source agrees ε equilibrium
 
@@ -203,7 +202,7 @@ equilibrium of the bounded raw response menu for the audited payoff exactly when
 the source profile is an `ε`-Nash equilibrium of the source protocol model, for
 every `ε`. Realized payoffs need only lie in some bounded interval. -/
 theorem isεNash_firstTurnClientProfile_iff {Parameter : Type}
-    (configuration : service.RankSequential)
+    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
     (sample : List (SettledEvidence service.setup service.mode) →
@@ -237,7 +236,7 @@ theorem isεNash_firstTurnClientProfile_iff {Parameter : Type}
           (fun state => utility (service.setup.parameterOutcome parameter state) who))
         ε source := by
   intro base payoff
-  have approximate := service.isεNash_rawClientProfile_approximate configuration parameter utility
+  have approximate := service.isεNash_rawClientProfile_approximate ordered parameter utility
     sample
     authentic deposit nonnegative (firstTurnTiming service.setup turns service.mode) low range
       within ε source
@@ -253,7 +252,7 @@ a source profile extending an `ε`-Nash equilibrium of the intended game are an
 with the same `ε`, and their joint law of typed outcome and realized settlement
 is the intended joint law of terminal store and payoff. -/
 theorem intended_firstTurnClientProfile_isεNash {Parameter : Type}
-    (configuration : service.RankSequential)
+    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (wellFormed : service.setup.WellFormed)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
@@ -311,7 +310,7 @@ theorem intended_firstTurnClientProfile_isεNash {Parameter : Type}
             fun who => (service.setup.protocolReadout final.state).elim 0
               (fun state => utility (service.setup.parameterOutcome parameter state) who))) := by
   intro forfeited base payoff settle
-  have approximate := service.intended_rawClientProfile_isεNash configuration wellFormed parameter
+  have approximate := service.intended_rawClientProfile_isεNash ordered wellFormed parameter
     utility
     forfeit range sample authentic deposit nonnegative (firstTurnTiming service.setup turns
       service.mode) low

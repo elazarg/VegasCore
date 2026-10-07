@@ -26,68 +26,78 @@ open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
-  (setup : Setup (Player := Player) (L := L))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+  (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
+  {deadline : (serviceGraph setup mode).EventId → Nat}
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 /-- Every earlier own binding turn has a submitted call naming that event in
 the owner's current actual recall. This does not assert successful inclusion. -/
-def BindingTurnsRecorded (execution : (application setup leaks).Execution) (who : Player) : Prop :=
-  ∀ entry ∈ execution.recall who, ∀ event owner payload,
+def BindingTurnsRecorded (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (who : Player) : Prop := ∀ entry ∈ execution.recall who, ∀ event owner payload,
     entry.beforeView.application.publicView.ownTurn? who = some event →
-      (graph setup).outputLayout event = .binding owner payload →
-        (runtime setup).eventRecorded leaks (execution.recall who) event = true
+    (serviceGraph setup mode).outputLayout event = .binding owner payload →
+    (serviceRuntime setup mode deadline).eventRecorded leaks (execution.recall who) event = true
 
 variable {setup leaks}
 
 private theorem bindingTurnsRecorded_environment
-    {execution next : (application setup leaks).Execution}
-    {command : (application setup leaks).Command} (who : Player)
+    {execution next : (serviceApplication setup mode deadline leaks).Execution}
+    {command : (serviceApplication setup mode deadline leaks).Command} (who : Player)
     (valid : BindingTurnsRecorded setup leaks execution who)
-    (moved : next ∈ (execution.environmentStep (application setup leaks) command).support) :
+    (moved : next ∈
+        (execution.environmentStep (serviceApplication setup mode deadline leaks)
+        command).support) :
     BindingTurnsRecorded setup leaks next who := by
   unfold BindingTurnsRecorded
-  rw [(application setup leaks).environmentStep_recall execution next command moved]
+  rw [(serviceApplication setup mode deadline leaks).environmentStep_recall execution next
+          command moved]
   exact valid
 
 private theorem bindingTurnsRecorded_respond_other
-    (execution : (application setup leaks).Execution) (actor who : Player)
-    (response : (application setup leaks).Action) (different : who ≠ actor)
+    (execution : (serviceApplication setup mode deadline leaks).Execution) (actor who : Player)
+    (response : (serviceApplication setup mode deadline leaks).Action) (different : who ≠ actor)
     (valid : BindingTurnsRecorded setup leaks execution who) :
     BindingTurnsRecorded setup leaks
-      (execution.respond (application setup leaks) actor response) who := by
+      (execution.respond (serviceApplication setup mode deadline leaks) actor response) who := by
   unfold BindingTurnsRecorded
-  rw [(application setup leaks).respond_recall_other execution actor who different response]
+  rw [(serviceApplication setup mode deadline leaks).respond_recall_other execution actor who
+          different response]
   exact valid
 
 private theorem firstTurn_recallFacts_round {horizon remaining : Nat}
-    {scheduler : (application setup leaks).Scheduler}
-    {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
-      delay bound)
-    (timely : AsyncTimely (runtime setup) delay bound)
-    {players : Player → (application setup leaks).Policy} {who : Player} {turns : Nat}
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {delay bound : (serviceGraph setup mode).EventId → Nat}
+    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+        (serviceInitialLaw setup mode) horizon scheduler delay bound)
+    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
+    {players : Player → (serviceApplication setup mode deadline leaks).Policy} {who : Player}
+    {turns : Nat}
     {profile : BehavioralProfile setup.program}
     (follows : players who =
-      sourceServiceTurnPolicy setup leaks bound turns (firstTurnTiming setup turns) profile who)
-    {execution next : (application setup leaks).Execution}
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-      (some ⟨remaining + 1, none, execution⟩))
+      serviceTurnPolicy setup mode deadline leaks bound turns (firstTurnTiming setup turns mode)
+          profile who)
+    {execution next : (serviceApplication setup mode deadline leaks).Execution}
+    (trace :
+        ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
+        horizon scheduler).Trace (some ⟨remaining + 1, none, execution⟩))
     (answered : ActivationsAnswered setup leaks execution)
     (atTurn : OwnSubmissionsAtTurn setup leaks execution who)
     (slots : CanonicalSlotsUsed setup leaks execution who)
     (valid : BindingTurnsRecorded setup leaks execution who)
-    (clear : (runtime setup).recalledBindingOpportunityRisk leaks bound who
+    (clear : (serviceRuntime setup mode deadline).recalledBindingOpportunityRisk leaks bound who
       (execution.recall who) = false)
-    (reached : next ∈ ((application setup leaks).round scheduler players execution).support) :
+    (reached : next ∈
+        ((serviceApplication setup mode deadline leaks).round scheduler players
+        execution).support) :
     BindingTurnsRecorded setup leaks next who ∧
-      (runtime setup).recalledBindingOpportunityRisk leaks bound who
+      (serviceRuntime setup mode deadline).recalledBindingOpportunityRisk leaks bound who
         (next.recall who) = false := by
-  let app := application setup leaks
+  let app := serviceApplication setup mode deadline leaks
   obtain ⟨command, selected, middle, moved, cases⟩ := round_cases setup leaks reached
   have recallEq := app.environmentStep_recall execution middle command moved
   have validMiddle := bindingTurnsRecorded_environment who valid moved
-  have clearMiddle : (runtime setup).recalledBindingOpportunityRisk leaks bound who
-      (middle.recall who) = false := by rw [recallEq]; exact clear
+  have clearMiddle : (serviceRuntime setup mode deadline).recalledBindingOpportunityRisk leaks bound
+      who (middle.recall who) = false := by rw [recallEq]; exact clear
   rcases cases with ⟨_, rfl⟩ | ⟨responder, active, response, chosen, rfl⟩
   · exact ⟨validMiddle, clearMiddle⟩
   · by_cases same : responder = who
@@ -99,26 +109,30 @@ private theorem firstTurn_recallFacts_round {horizon remaining : Nat}
         | wait | «include» _ | application _ => cases active
       subst commandEq
       have appEq := activation_application setup leaks execution middle who moved
-      obtain ⟨middleTrace⟩ := app.raw_trace_environment (initialLaw setup) horizon scheduler
-        remaining execution middle (.activate who) trace selected moved
-      change ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-        (some ⟨remaining, some who, middle⟩) at middleTrace
+      obtain ⟨middleTrace⟩ := app.raw_trace_environment (serviceInitialLaw setup mode) horizon
+          scheduler remaining execution middle (.activate who) trace selected moved
+      change
+          ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
+              horizon scheduler).Trace (some ⟨remaining, some who, middle⟩) at middleTrace
       have atMiddle : OwnSubmissionsAtTurn setup leaks middle who := by
         unfold OwnSubmissionsAtTurn
         rw [recallEq]
         exact atTurn
       have slotsMiddle := canonicalSlotsUsed_environment moved who slots
-      have dichotomy (event : (graph setup).EventId) (owner : Player) (payload : L.Ty)
+      have dichotomy (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
           (turn : middle.application.publicView.ownTurn? who = some event)
-          (binding : (graph setup).outputLayout event = .binding owner payload) :
-          (runtime setup).eventRecorded leaks (middle.recall who) event = true ∨
-            (sourceServiceTurn setup leaks who event (middle.recall who)
+          (binding : (serviceGraph setup mode).outputLayout event = .binding owner payload) :
+          (serviceRuntime setup mode deadline).eventRecorded leaks (middle.recall who) event =
+          true ∨
+          (serviceTurn setup mode deadline leaks who event (middle.recall who)
               (middle.observe app who) = some 0 ∧
-                middle.application.publicView.InclusionFitsDeadline (runtime setup) bound
+              middle.application.publicView.InclusionFitsDeadline
+              (serviceRuntime setup mode deadline) bound
                   event) := by
-        by_cases recorded : (runtime setup).eventRecorded leaks (middle.recall who) event = true
+        by_cases recorded : (serviceRuntime setup mode deadline).eventRecorded leaks
+            (middle.recall who) event = true
         · exact Or.inl recorded
-        · have first : sourceServiceTurn setup leaks who event (middle.recall who)
+        · have first : serviceTurn setup mode deadline leaks who event (middle.recall who)
               (middle.observe app who) = some 0 := by
             change (if middle.application.publicView.ownTurn? who = some event then
               some ((middle.recall who).countP fun entry =>
@@ -134,39 +148,42 @@ private theorem firstTurn_recallFacts_round {horizon remaining : Nat}
             rw [← appEq]
             exact (middle.application.publicView_eventReady event).mp
               (PublicView.ownTurn?_spec _ who event turn).1
-          have firstBefore : sourceServiceTurn setup leaks who event (execution.recall who)
+          have firstBefore : serviceTurn setup mode deadline leaks who event (execution.recall who)
               (middle.observe app who) = some 0 := by rw [← recallEq]; exact first
           have fits :=
             firstTurn_inclusionFits contract timely trace answered owned ready firstBefore
           refine Or.inr ⟨first, ?_⟩
           rw [appEq]
           exact fits
-      have opportunityClear : (runtime setup).firstUnprotectedBindingOpportunity leaks bound who
+      have opportunityClear :
+          (serviceRuntime setup mode deadline).firstUnprotectedBindingOpportunity leaks bound who
           (middle.recall who) (middle.observe app who) = false := by
         apply Bool.eq_false_of_not_eq_true
         intro risky
         obtain ⟨_, event, owner, payload, turn, binding, unrecorded, unprotected⟩ :=
-          ((runtime setup).firstUnprotectedBindingOpportunity_iff leaks bound who _ _).mp risky
+          ((serviceRuntime setup mode deadline).firstUnprotectedBindingOpportunity_iff leaks bound
+              who _ _).mp risky
         rcases dichotomy event owner payload turn binding with recorded | ⟨_, fits⟩
         · rw [unrecorded] at recorded
           cases recorded
         · exact unprotected fits
-      have nextClear := ((runtime setup).recalledBindingOpportunityRisk_respond_clear leaks bound
-        middle who response opportunityClear).trans clearMiddle
+      have nextClear :=
+          ((serviceRuntime setup mode deadline).recalledBindingOpportunityRisk_respond_clear leaks
+              bound middle who response opportunityClear).trans clearMiddle
       refine ⟨?_, nextClear⟩
       obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks middle who response
       intro entry member event owner payload turn binding
       rw [recalled] at member
       rcases List.mem_append.mp member with old | new
-      · exact (runtime setup).eventRecorded_respond_of_recorded leaks middle who who response event
-          (validMiddle entry old event owner payload turn binding)
+      · exact (serviceRuntime setup mode deadline).eventRecorded_respond_of_recorded leaks middle
+            who who response event (validMiddle entry old event owner payload turn binding)
       · cases List.mem_singleton.mp new
         change middle.application.publicView.ownTurn? who = some event at turn
         rcases dichotomy event owner payload turn binding with recorded | ⟨first, fits⟩
-        · exact (runtime setup).eventRecorded_respond_of_recorded leaks middle who who response
-            event recorded
+        · exact (serviceRuntime setup mode deadline).eventRecorded_respond_of_recorded leaks middle
+              who who response event recorded
         · rw [follows] at chosen
-          cases node : nodeView (graph setup) event with
+          cases node : nodeView (serviceGraph setup mode) event with
           | sample sampled law outputEq codeEq =>
               rw [outputEq] at binding
               cases binding
@@ -192,38 +209,44 @@ private theorem firstTurn_recallFacts_round {horizon remaining : Nat}
 opportunity. Every earlier own binding turn has already recorded its event.
 No restriction is imposed on any foreign policy. -/
 theorem sourceServiceFirstTurn_recallFacts {horizon : Nat}
-    {scheduler : (application setup leaks).Scheduler}
-    {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
-      delay bound)
-    (timely : AsyncTimely (runtime setup) delay bound)
-    (players : Player → (application setup leaks).Policy) (who : Player)
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {delay bound : (serviceGraph setup mode).EventId → Nat}
+    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+        (serviceInitialLaw setup mode) horizon scheduler delay bound)
+    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
+    (players : Player → (serviceApplication setup mode deadline leaks).Policy) (who : Player)
     (turns : Nat) (profile : BehavioralProfile setup.program)
     (follows : players who =
-      sourceServiceTurnPolicy setup leaks bound turns (firstTurnTiming setup turns) profile who)
-    (count : Nat) (within : count ≤ horizon) (execution : (application setup leaks).Execution)
-    (reached : execution ∈ ((application setup leaks).roundsFrom (initialLaw setup) scheduler
-      players count).support) :
+      serviceTurnPolicy setup mode deadline leaks bound turns (firstTurnTiming setup turns mode)
+          profile who)
+    (count : Nat) (within : count ≤ horizon)
+    (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (reached : execution ∈
+        ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+        scheduler players count).support) :
     BindingTurnsRecorded setup leaks execution who ∧
-      (runtime setup).recalledBindingOpportunityRisk leaks bound who (execution.recall who) =
+      (serviceRuntime setup mode deadline).recalledBindingOpportunityRisk leaks bound who
+      (execution.recall who) =
         false := by
-  let app := application setup leaks
+  let app := serviceApplication setup mode deadline leaks
   induction count generalizing execution with
   | zero =>
       obtain ⟨state, _, supported⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       cases (PMF.mem_support_pure_iff _ _).mp supported
-      refine ⟨?_, (runtime setup).recalledBindingOpportunityRisk_nil leaks bound who⟩
+      refine
+          ⟨?_, (serviceRuntime setup mode deadline).recalledBindingOpportunityRisk_nil leaks
+              bound who⟩
       intro entry member
       cases member
   | succ count ih =>
-      rw [app.roundsFrom_succ (initialLaw setup) scheduler players count] at reached
+      rw [app.roundsFrom_succ (serviceInitialLaw setup mode) scheduler players count] at reached
       obtain ⟨prior, priorMem, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨valid, clear⟩ := ih (by omega) prior priorMem
       have answered := roundsFrom_activationsAnswered count prior priorMem
       obtain ⟨atTurn, slots⟩ := canonicalSlots_roundsFrom scheduler players who
-        (firstTurnTiming setup turns) profile follows count prior priorMem
-      obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler players count
-        (by omega) prior priorMem
+        (firstTurnTiming setup turns mode) profile follows count prior priorMem
+      obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup mode) horizon scheduler
+          players count (by omega) prior priorMem
       rw [show horizon - count = (horizon - (count + 1)) + 1 by omega] at trace
       exact firstTurn_recallFacts_round contract timely follows trace answered atTurn slots valid
         clear moved
@@ -231,20 +254,21 @@ theorem sourceServiceFirstTurn_recallFacts {horizon : Nat}
 /-- The current actual private recall is also clear at a pending activation,
 not only after a completed scheduler round. -/
 theorem sourceServiceFirstTurn_recallFacts_roundSupported {horizon : Nat}
-    {scheduler : (application setup leaks).Scheduler}
-    {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
-      delay bound)
-    (timely : AsyncTimely (runtime setup) delay bound)
-    (players : Player → (application setup leaks).Policy) (who : Player)
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {delay bound : (serviceGraph setup mode).EventId → Nat}
+    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+        (serviceInitialLaw setup mode) horizon scheduler delay bound)
+    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
+    (players : Player → (serviceApplication setup mode deadline leaks).Policy) (who : Player)
     (turns : Nat) (profile : BehavioralProfile setup.program)
     (follows : players who =
-      sourceServiceTurnPolicy setup leaks bound turns (firstTurnTiming setup turns) profile who)
-    (control : (application setup leaks).Control)
-    (reached : (application setup leaks).RoundSupported (initialLaw setup) horizon scheduler
-      players (some control)) :
+      serviceTurnPolicy setup mode deadline leaks bound turns (firstTurnTiming setup turns mode)
+          profile who)
+    (control : (serviceApplication setup mode deadline leaks).Control)
+    (reached : (serviceApplication setup mode deadline leaks).RoundSupported
+        (serviceInitialLaw setup mode) horizon scheduler players (some control)) :
     BindingTurnsRecorded setup leaks control.execution who ∧
-      (runtime setup).recalledBindingOpportunityRisk leaks bound who
+      (serviceRuntime setup mode deadline).recalledBindingOpportunityRisk leaks bound who
         (control.execution.recall who) = false := by
   obtain ⟨remaining, actor, execution⟩ := control
   cases actor with
@@ -260,7 +284,8 @@ theorem sourceServiceFirstTurn_recallFacts_roundSupported {horizon : Nat}
       obtain ⟨valid, clear⟩ := sourceServiceFirstTurn_recallFacts contract timely players who turns
         profile follows count (by omega) prior priorMem
       refine ⟨bindingTurnsRecorded_environment who valid moved, ?_⟩
-      rw [(application setup leaks).environmentStep_recall prior execution command moved]
+      rw [(serviceApplication setup mode deadline leaks).environmentStep_recall prior execution
+              command moved]
       exact clear
 
 end Vegas

@@ -222,6 +222,32 @@ theorem runUntilHorizon_stopped
   · right
     omega
 
+/-- Two stopping rules that agree along runs keeping an invariant stop those
+runs alike. -/
+theorem runUntil_stop_congr (first second : app.Execution → Prop) [DecidablePred first]
+    [DecidablePred second] (invariant : app.Execution → Prop)
+    (agree : ∀ execution, invariant execution → (first execution ↔ second execution))
+    (preserved : ∀ execution, invariant execution → ¬ first execution →
+      ∀ next ∈ (app.round scheduler players execution).support, invariant next) :
+    ∀ (count : Nat) (execution : app.Execution), invariant execution →
+      app.runUntil scheduler players first count execution =
+        app.runUntil scheduler players second count execution := by
+  intro count
+  induction count with
+  | zero => intro _ _; rfl
+  | succ count ih =>
+      intro execution holds
+      by_cases halt : first execution
+      · rw [app.runUntil_of_stop scheduler players first _ execution halt,
+          app.runUntil_of_stop scheduler players second _ execution
+            ((agree execution holds).mp halt)]
+      · have running : ¬ second execution := fun stopped =>
+          halt ((agree execution holds).mpr stopped)
+        simp only [runUntil, halt, running, ↓reduceIte]
+        apply bind_congr_on_support _
+        intro next reached
+        exact ih next (preserved execution holds halt next reached)
+
 section Finite
 
 variable {app scheduler players} [app.FiniteEnvironment]

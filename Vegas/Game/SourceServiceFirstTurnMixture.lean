@@ -11,7 +11,7 @@ it is silent. Since the configuration does not change before the event
 completes, the kernel is the same at whichever input the first turn falls, so
 the owner's policy is a behavioral mixture over source actions of the policies
 that decide one fixed action at the first turn
-(`Vegas.firstTurn_runUntil_mixture`). The source side has the matching
+(`Vegas.firstTurn_runUntil_mixture_update`). The source side has the matching
 decomposition: the continuation from the boundary draws the head action and
 continues from the configuration completed with it
 (`Vegas.SourceResidual.head_law`).
@@ -27,40 +27,46 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
-  (setup : Setup (Player := Player) (L := L))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+  (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
+  {deadline : (serviceGraph setup mode).EventId → Nat}
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 /-- The owner's response with its source action fixed: the canonical compiled
 decision when it transmits and a fresh call still fits the deadline within the
 inclusion bound, and silence when the decision is silent, too late, or the event is
 already recorded in the owner's own recall. -/
-def decidedOpportunity (bound : (graph setup).EventId → Nat) (owner : Player)
-    (event : (graph setup).EventId) (action : (graph setup).Action event) :
-    (application setup leaks).Policy := fun past view =>
-  if (runtime setup).eventRecorded leaks past event then
-    (application setup leaks).silentPolicy past view
-  else if view.application.publicView.InclusionFitsDeadline (runtime setup) bound event then
-    if ((runtime setup).canonicalServiceDecision leaks owner past view event
-        action).transmission = none then (application setup leaks).silentPolicy past view
-    else PMF.pure ((runtime setup).canonicalServiceDecision leaks owner past view event action)
-  else (application setup leaks).silentPolicy past view
+def decidedOpportunity (bound : (serviceGraph setup mode).EventId → Nat) (owner : Player)
+    (event : (serviceGraph setup mode).EventId) (action : (serviceGraph setup mode).Action event) :
+    (serviceApplication setup mode deadline leaks).Policy := fun past view =>
+  if (serviceRuntime setup mode deadline).eventRecorded leaks past event then
+    (serviceApplication setup mode deadline leaks).silentPolicy past view
+  else if view.application.publicView.InclusionFitsDeadline (serviceRuntime setup mode deadline)
+      bound event then if
+      ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks owner past view event
+          action).transmission = none then
+      (serviceApplication setup mode deadline leaks).silentPolicy past view else PMF.pure
+      ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks owner past view
+          event action)
+  else (serviceApplication setup mode deadline leaks).silentPolicy past view
 
 /-- Decide `action` at the first turn at `event`, and stay silent at every other
 input. -/
-def decidedTurnPolicy (bound : (graph setup).EventId → Nat) (owner : Player)
-    (event : (graph setup).EventId) (action : (graph setup).Action event) :
-    (application setup leaks).Policy :=
-  (application setup leaks).turnScheduledPolicy (sourceServiceTurn setup leaks owner event)
-    (some (0 : Fin 1)) (decidedOpportunity setup leaks bound owner event action)
-    (application setup leaks).silentPolicy
+def decidedTurnPolicy (bound : (serviceGraph setup mode).EventId → Nat) (owner : Player)
+    (event : (serviceGraph setup mode).EventId) (action : (serviceGraph setup mode).Action event) :
+    (serviceApplication setup mode deadline leaks).Policy :=
+  (serviceApplication setup mode deadline leaks).turnScheduledPolicy
+  (serviceTurn setup mode deadline leaks owner event) (some (0 : Fin 1))
+  (decidedOpportunity setup leaks bound owner event action)
+  (serviceApplication setup mode deadline leaks).silentPolicy
 
 variable {setup}
 
 /-- An action that the compiled decision realizes: a disclosure of `true` only
 when the publication succeeds on the configuration. -/
-def EffectiveAction (config : (graph setup).Config) (event : (graph setup).EventId)
-    (action : (graph setup).Action event) : Prop :=
-  match nodeView (graph setup) event with
+def EffectiveAction (config : (serviceGraph setup mode).Config)
+    (event : (serviceGraph setup mode).EventId)
+    (action : (serviceGraph setup mode).Action event) : Prop :=
+  match nodeView (serviceGraph setup mode) event with
   | .resolve _ _ binding checks outputEq _ =>
       (cast (congrArg EventGraph.EventField.Action outputEq) action : Bool) = true →
         ∃ value, EventGraph.EventCode.resolveOutput? binding checks true config.store =
@@ -68,8 +74,9 @@ def EffectiveAction (config : (graph setup).Config) (event : (graph setup).Event
   | _ => True
 
 /-- An action realized by silence: a disclosure of `false`. -/
-def SilentAction (event : (graph setup).EventId) (action : (graph setup).Action event) : Prop :=
-  match nodeView (graph setup) event with
+def SilentAction (event : (serviceGraph setup mode).EventId)
+    (action : (serviceGraph setup mode).Action event) : Prop :=
+  match nodeView (serviceGraph setup mode) event with
   | .resolve _ _ _ _ outputEq _ =>
       (cast (congrArg EventGraph.EventField.Action outputEq) action : Bool) = false
   | _ => False
@@ -78,16 +85,17 @@ variable {leaks}
 
 /-- Before its first turn at `event`, an owner's recorded entries were not
 turns at `event`, so a first-turn family is silent at all of them. -/
-private theorem turn_none_of_first (owner : Player) (event : (graph setup).EventId)
-    (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView)
-    (first : sourceServiceTurn setup leaks owner event past view = some 0)
-    (before : List (application setup leaks).PlayerEntry)
-    (entry : (application setup leaks).PlayerEntry) (member : before ++ [entry] <+: past) :
-    sourceServiceTurn setup leaks owner event before entry.beforeView = none := by
+private theorem turn_none_of_first (owner : Player) (event : (serviceGraph setup mode).EventId)
+    (past : List (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (view : (serviceApplication setup mode deadline leaks).PlayerView)
+    (first : serviceTurn setup mode deadline leaks owner event past view = some 0)
+    (before : List (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (entry : (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (member : before ++ [entry] <+: past) :
+    serviceTurn setup mode deadline leaks owner event before entry.beforeView = none := by
   apply sourceServiceTurn_of_not_turn
   intro turn
-  unfold sourceServiceTurn serviceTurn at first
+  unfold serviceTurn at first
   split at first
   · have counted := Option.some.inj first
     rw [List.countP_eq_zero] at counted
@@ -95,6 +103,11 @@ private theorem turn_none_of_first (owner : Player) (event : (graph setup).Event
       member.subset (List.mem_append_right _ (List.mem_singleton_self _))
     exact counted entry inPast (decide_eq_true turn)
   · cases first
+
+section Sequential
+
+variable {setup : Setup (Player := Player) (L := L)}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 /-- **First-turn mixture against any other players.** From a completion
 boundary of any players, if the source decision at the boundary configuration is
@@ -242,45 +255,10 @@ theorem firstTurn_runUntil_mixture_update {scheduler : (application setup leaks)
     intro turn
     have entryMember : entry ∈ execution.recall owner :=
       member.subset (List.mem_append_right _ (List.mem_singleton_self _))
-    exact boundary.untouched event rfl owner entry entryMember
+    exact boundary.untouched event le_rfl owner entry entryMember
       (PublicView.ownTurn?_spec _ owner event turn).1
   change (mixture.posterior (execution.recall owner)).bind _ = _
   rw [prior]
-
-/-- **First-turn mixture.** From a completion boundary of any players, if the
-source decision at the boundary configuration is `law` compiled to native
-responses, the owner's first-turn family runs as the `law`-mixture of the
-policies deciding one fixed action. -/
-theorem firstTurn_runUntil_mixture {scheduler : (application setup leaks).Scheduler}
-    {players : Player → (application setup leaks).Policy} (event : (graph setup).EventId)
-    (execution : (application setup leaks).Execution)
-    (boundary : CompletionBoundary setup leaks scheduler players event.val execution)
-    (owner : Player) (owned : (graph setup).actor? event = some owner)
-    (bound : (graph setup).EventId → Nat) (turns : Nat)
-    (profile : BehavioralProfile setup.program) (law : PMF ((graph setup).Action event))
-    (policy : ∀ current : (application setup leaks).Execution,
-      current.application.config = execution.application.config →
-      sourceServiceCanonicalPolicy setup leaks profile owner (current.recall owner)
-          (current.observe (application setup leaks) owner) =
-        law.map fun action => (runtime setup).canonicalServiceDecision leaks owner
-          (current.recall owner) (current.observe (application setup leaks) owner) event action)
-    (count : Nat) :
-    (application setup leaks).runUntil scheduler
-        (firstTurnProfile setup leaks bound turns profile event)
-        (fun final => event ∈ final.application.config.cut.completed) count execution =
-      law.bind fun action => (application setup leaks).runUntil scheduler
-        (Function.update (fun _ => (application setup leaks).silentPolicy) owner
-          (decidedTurnPolicy setup leaks bound owner event action))
-        (fun final => event ∈ final.application.config.cut.completed) count execution := by
-  have firstEq : firstTurnProfile setup leaks bound turns profile event =
-      Function.update (fun _ => (application setup leaks).silentPolicy) owner
-        (sourceServiceTurnFamily setup leaks bound profile owner event turns 0) := by
-    unfold firstTurnProfile
-    simp only [owned]
-  rw [firstEq]
-  exact firstTurn_runUntil_mixture_update event execution boundary owner owned bound turns
-    profile law policy _ count
-
 section Head
 
 variable [Finite Player] (leaks) {profile : BehavioralProfile setup.program}
@@ -326,6 +304,7 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
           fun state => (ProtocolState.continuationLaw setup.program profile (lift state)).map
             some := by
     unfold sourceContinuation
+    simp only [sourceServicePrefix?] at decoded
     rw [decoded]
     change (ProtocolState.continuationLaw setup.program profile (lift _)).map some = _
     rw [← sourceStep_continuation setup.program profile, commutes, PMF.bind_map, PMF.map_bind]
@@ -337,7 +316,7 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
         some state) :
       sourceContinuation setup profile (rank + 1) next =
         (ProtocolState.continuationLaw setup.program profile (lift state)).map some := by
-    unfold sourceContinuation sourceServicePrefix?
+    unfold sourceContinuation serviceSourcePrefix?
     rw [transport 1, read]
     rfl
   cases program with
@@ -452,7 +431,8 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
           residualProfile refs source embedding refsBefore rank aligned current
           (by rw [sameConfig]; exact checkpoint.agrees)
           (by rw [sameConfig]; exact checkpoint.history) (by rw [sameConfig]; exact ready)
-        rw [law, PMF.map_comp]
+        rw [show sourceServiceCanonicalPolicy setup leaks = serviceCanonicalPolicy setup .sequential
+          (rankDeadline setup .sequential) leaks from rfl, law, PMF.map_comp]
         rfl
       · intro _ action _
         unfold EffectiveAction
@@ -532,7 +512,8 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
           profile residualProfile refs source embedding refsBefore rank aligned current
           (by rw [sameConfig]; exact checkpoint.agrees)
           (by rw [sameConfig]; exact checkpoint.history) (by rw [sameConfig]; exact ready)
-        rw [law, PMF.map_comp]
+        rw [show sourceServiceCanonicalPolicy setup leaks = serviceCanonicalPolicy setup .sequential
+          (rankDeadline setup .sequential) leaks from rfl, law, PMF.map_comp]
         rfl
       · intro effectiveWhole action member
         unfold EffectiveAction
@@ -561,5 +542,7 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
         exact (disclosing disclosingWhole owner).1 rfl (source.view owner) chosen
 
 end Head
+
+end Sequential
 
 end Vegas

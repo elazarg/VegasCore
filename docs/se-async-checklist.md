@@ -193,7 +193,7 @@ joint law. It is not pursued.
   `eventCount * weight` in the menu's information model, and
   `geometricTiming_deferral_tendsto` makes it vanish. The route couples the
   turn-counted run with its first-turn limit as laws of whole executions
-  (`sourceServiceTurnPolicy_runToHorizon_bind_within`), so charged binding
+  (`serviceTurnPolicy_roundsFrom_bind_within`), so charged binding
   omissions and resolutions expired by deferral lie inside the error, and the
   first-turn limit's joint law is exact (`sourceServiceFirstTurn_settlement_law`:
   no public binding omission by `sourceServiceFirstTurn_no_miss`, permitted packets by
@@ -392,13 +392,19 @@ joint law. It is not pursued.
   (`serviceApplication`, `serviceInitialLaw`, `serviceSourceReadout`,
   `serviceBaseUtility`, `serviceSourceAudit`, `serviceCanonicalPolicy`,
   `serviceTurnPolicy`, `serviceClientPolicy`), the default names being their
-  sequential instances. The source-prefix decoder reads completions in rank
-  order (`serviceSourcePrefix?`, `EventGraph.Config.rankedHistory`) and agrees
-  with the chronological decoder on reachable sequential configurations
-  (`serviceSourcePrefix?_sequential`). The asynchronous Nash pins take a
-  service with its configuration and still assume the default configuration
-  (`RankSequential`: sequential mode with rank deadlines); the Nash and SE
-  chains below them are still proved for that configuration only.
+  sequential instances. Each owner's completions keep source rank in every
+  mode, so the source-prefix decoder reads the chronological history
+  (`serviceSourcePrefix?`). On every barrier-ordered graph, with any configured
+  deadlines, one deviation against the first-turn clients has the exact law of
+  a source deviation (`asyncDeviation_deviationLaw`, `asyncDeviation_readout_law`;
+  a maximal run of commitments is one phase, `asyncDeviation_block_factorization`)
+  and the first-turn clients have the source law (`Vegas.honestLaw`,
+  `firstTurn_readout_law`), so the settlement law
+  (`sourceServiceClients_settlement_lawError`) and the asynchronous Nash pins
+  (`async_client_nash_correspondence` and the four related pins) take
+  `(serviceGraph service.setup service.mode).BarrierOrdered` instead of the
+  default configuration. The SE chain (`risk_sequentialEquilibrium_extends`)
+  still assumes the default configuration (`RankSequential`).
 - [ ] **C3. Concurrent reveals.** Under the forfeit pass, reveals that the game
   does not order (no guard or later decision reads one before the other) run
   concurrently, and the target theorem holds for that graph; or a
@@ -435,7 +441,14 @@ joint law. It is not pursued.
   graph exactly when the source profile is `ε`-Nash in the source game
   (`Vegas.Paper.concurrent_event_nash_iff`, from
   `Setup.eventGame_approximate_nash_iff`, standard axioms). No message runtime,
-  builder or audit is involved.
+  builder or audit is involved. With the message runtime: the five asynchronous
+  Nash pins hold on every barrier-ordered service graph, so the source-game form
+  is pinned on the concurrent-binding graph (any configured deadlines; see C2).
+  The intended-game form on the concurrent-reveal graph is open: there the
+  compiled client of a later reveal decodes its whole source-prefix view, which
+  is unavailable while an earlier independent reveal is pending, and then
+  withholds; so the turn-counted clients do not realize the intended law under
+  schedulers that activate the later revealer first.
 
 ## W. Operational watcher
 

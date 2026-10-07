@@ -221,4 +221,72 @@ theorem runUntil_congr_of_agree_on_traces (initial : PMF app.State) (horizon : N
         exact ih remaining next nextTrace
           (preserved (remaining + count) execution trace' holds halt next reached)
 
+/-- **One decision drawn in advance.** A player's policy that, at the first
+input of some kind (`first`, which never recurs along the player's own recall),
+responds as the `law`-mixture of the members' responses, and everywhere else as
+every member does, runs as the `law`-mixture of the runs of the members, from a
+legal raw history whose own recall has no such input yet. The invariant carries
+whatever the caller needs to identify the response at the first input. -/
+theorem runUntil_mixture_at_first (initial : PMF app.State) (horizon : Nat)
+    (scheduler : app.Scheduler) (others : Principal → app.Policy) (owner : Principal)
+    (client : app.Policy) (law : PMF Index) (member : Index → app.Policy)
+    (first : List app.PlayerEntry → app.PlayerView → Prop)
+    (once : ∀ past view, first past view → ∀ before entry, before ++ [entry] <+: past →
+      ¬ first before entry.beforeView)
+    (away : ∀ index past view, ¬ first past view → member index past view = client past view)
+    (stop : app.Execution → Prop) [DecidablePred stop] (invariant : app.Execution → Prop)
+    (atFirst : ∀ remaining execution,
+      (app.protocol initial horizon scheduler).Trace (some ⟨remaining + 1, none, execution⟩) →
+      invariant execution → ¬ stop execution →
+      ∀ command ∈ (scheduler execution.environmentRecall
+        (execution.observeEnvironment app)).support,
+      ∀ middle ∈ (execution.environmentStep app command).support,
+        command.actor? app = some owner →
+        first (middle.recall owner) (middle.observe app owner) →
+        client (middle.recall owner) (middle.observe app owner) =
+          law.bind fun index => member index (middle.recall owner) (middle.observe app owner))
+    (preserved : ∀ remaining execution,
+      (app.protocol initial horizon scheduler).Trace (some ⟨remaining + 1, none, execution⟩) →
+      invariant execution → ¬ stop execution →
+      ∀ next ∈ (app.round scheduler (Function.update others owner client) execution).support,
+        invariant next)
+    (count remaining : Nat) (execution : app.Execution)
+    (trace : (app.protocol initial horizon scheduler).Trace
+      (some ⟨remaining + count, none, execution⟩))
+    (holds : invariant execution)
+    (clean : ∀ before entry, before ++ [entry] <+: execution.recall owner →
+      ¬ first before entry.beforeView) :
+    app.runUntil scheduler (Function.update others owner client) stop count execution =
+      law.bind fun index =>
+        app.runUntil scheduler (Function.update others owner (member index)) stop count
+          execution := by
+  classical
+  let mixture := app.policyMixture law member
+  have prior (past : List app.PlayerEntry)
+      (fresh : ∀ before entry, before ++ [entry] <+: past → ¬ first before entry.beforeView) :
+      mixture.posterior past = law :=
+    app.policyMixture_posterior_of_agree law member client past
+      fun before entry prefixed index => away index before entry.beforeView
+        (fresh before entry prefixed)
+  have congruent := app.runUntil_congr_of_agree_on_traces initial horizon scheduler
+    (Function.update others owner client) (Function.update others owner mixture.policy) stop
+    invariant (by
+      intro remaining current currentTrace currentHolds running command selected middle moved
+        who active
+      by_cases isOwner : who = owner
+      · subst isOwner
+        simp only [Function.update_self]
+        rw [app.policyMixture_policy]
+        by_cases firstNow : first (middle.recall who) (middle.observe app who)
+        · rw [prior _ (once _ _ firstNow)]
+          exact atFirst remaining current currentTrace currentHolds running command selected
+            middle moved active firstNow
+        · simp only [away _ _ _ firstNow, PMF.bind_const]
+      · simp only [Function.update_of_ne isOwner]) preserved count remaining execution trace
+    holds
+  rw [congruent, ← app.runUntil_policyMixture scheduler law member owner others stop count
+    execution]
+  change (mixture.posterior (execution.recall owner)).bind _ = _
+  rw [prior _ clean]
+
 end Interaction.ReactiveApplication

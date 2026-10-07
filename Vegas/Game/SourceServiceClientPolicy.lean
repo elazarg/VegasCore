@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceTurnSettlement
-import Vegas.Game.SourceServiceDeviationCoupling
 import Vegas.Game.SourceServiceRetainedPolicy
 import Interaction.ReactiveRecovery
 
@@ -140,21 +139,20 @@ section Menu
 variable [Fintype Player]
 
 /-- **Honest execution of the client policies, for every source profile.**
-Under the asynchronous contract with `delay + bound < deadline`, for every turn
-timing and every source profile, the client policies of the profile's
-turn-counted clients, restricted to a response menu that admits them, have the
-profile's source joint law of typed outcome and realized payoffs within the
-total deferral weight in total variation, for every authentic partial audit and
-every deposit. -/
+On a barrier-ordered graph, under the asynchronous contract with
+`delay + bound < deadline`, for every turn timing and every source profile, the
+client policies of the profile's turn-counted clients, restricted to a response
+menu that admits them, have the profile's source joint law of typed outcome and
+realized payoffs within the total deferral weight in total variation, for every
+authentic partial audit and every deposit. -/
 theorem sourceServiceClients_clientPolicy_settlement_lawError
     {mode : EventGraph.ExecutionMode} {deadline : (serviceGraph setup mode).EventId → Nat}
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
-    (configuration : RankSequential setup mode deadline)
+    (ordered : (serviceGraph setup mode).BarrierOrdered)
     {scheduler : (serviceApplication setup mode deadline leaks).Scheduler} {horizon turns : Nat}
     {delay bound : (serviceGraph setup mode).EventId → Nat}
-    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks (serviceInitialLaw setup
-      mode) horizon scheduler
-      delay bound)
+    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+      (serviceInitialLaw setup mode) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
     (timing : TurnTiming setup turns mode) (original : BehavioralProfile setup.program)
     (menu : (serviceApplication setup mode deadline leaks).ResponseMenu)
@@ -176,79 +174,82 @@ theorem sourceServiceClients_clientPolicy_settlement_lawError
           (settle final.state).map fun payoffs => (serviceSourceReadout setup mode deadline leaks
             final.state, payoffs)))
       ((setup.run original).map (fun state => (some state, utility state))) := by
-  obtain ⟨rfl, rfl⟩ := configuration
   intro settle
+  let app := serviceApplication setup mode deadline leaks
   let clients := sourceServiceClientProfile setup original
-  have physical := menu.run_restrict_eq_finish (initialLaw setup) horizon scheduler
-    (sourceServiceClientPolicy setup leaks bound turns timing clients) covered (2 * horizon + 1)
-    (menu.protocol (initialLaw setup) horizon scheduler).initHistory le_rfl
-  have states : ((menu.information (initialLaw setup) horizon scheduler).runBehavioral
-      (fun who => menu.restrictPolicy (initialLaw setup) horizon scheduler who
-        (sourceServiceClientPolicy setup leaks bound turns timing clients who))
+  have physical := menu.run_restrict_eq_finish (serviceInitialLaw setup mode) horizon scheduler
+    (serviceClientPolicy setup mode deadline leaks bound turns timing clients) covered
+    (2 * horizon + 1) (menu.protocol (serviceInitialLaw setup mode) horizon scheduler).initHistory
+    le_rfl
+  have states : ((menu.information (serviceInitialLaw setup mode) horizon scheduler).runBehavioral
+      (fun who => menu.restrictPolicy (serviceInitialLaw setup mode) horizon scheduler who
+        (serviceClientPolicy setup mode deadline leaks bound turns timing clients who))
       (2 * horizon + 1)).map (fun final => final.state) =
-        (initialLaw setup).bind (fun state =>
-          ((application setup leaks).runRounds scheduler
-            (sourceServiceClientPolicy setup leaks bound turns timing clients) horizon
-            (ReactiveApplication.Execution.initial (application setup leaks) state)).map
-              (application setup leaks).finished) := by
+        (serviceInitialLaw setup mode).bind (fun state =>
+          (app.runRounds scheduler
+            (serviceClientPolicy setup mode deadline leaks bound turns timing clients) horizon
+            (ReactiveApplication.Execution.initial app state)).map app.finished) := by
     rw [InformationModel.runBehavioral]
     exact physical
-  have native : ((menu.information (initialLaw setup) horizon scheduler).runBehavioral
-      (fun who => menu.restrictPolicy (initialLaw setup) horizon scheduler who
-        (sourceServiceClientPolicy setup leaks bound turns timing clients who))
+  have native : ((menu.information (serviceInitialLaw setup mode) horizon scheduler).runBehavioral
+      (fun who => menu.restrictPolicy (serviceInitialLaw setup mode) horizon scheduler who
+        (serviceClientPolicy setup mode deadline leaks bound turns timing clients who))
       (2 * horizon + 1)).bind (fun final =>
-        (settle final.state).map fun payoffs => (sourceReadout setup leaks final.state, payoffs)) =
-      ((application setup leaks).roundsFrom (initialLaw setup) scheduler
-        (sourceServiceClientPolicy setup leaks bound turns timing clients) horizon).bind
-          (fun execution => (settle ((application setup leaks).finished execution)).map
-            fun payoffs => (sourceReadout setup leaks
-              ((application setup leaks).finished execution), payoffs)) := by
-    have joint := congrArg (fun law : PMF (application setup leaks).ProtocolState =>
+        (settle final.state).map fun payoffs =>
+          (serviceSourceReadout setup mode deadline leaks final.state, payoffs)) =
+      (app.roundsFrom (serviceInitialLaw setup mode) scheduler
+        (serviceClientPolicy setup mode deadline leaks bound turns timing clients) horizon).bind
+          (fun execution => (settle (app.finished execution)).map
+            fun payoffs => (serviceSourceReadout setup mode deadline leaks
+              (app.finished execution), payoffs)) := by
+    have joint := congrArg (fun law : PMF app.ProtocolState =>
       law.bind fun final =>
-        (settle final).map fun payoffs => (sourceReadout setup leaks final, payoffs)) states
+        (settle final).map fun payoffs =>
+          (serviceSourceReadout setup mode deadline leaks final, payoffs)) states
     simp only [PMF.bind_map, PMF.bind_bind] at joint
     refine joint.trans ?_
     unfold ReactiveApplication.roundsFrom
     simp only [PMF.bind_bind, Function.comp_def]
     rfl
-  change PMF.WithinTV _ (((menu.information (initialLaw setup) horizon scheduler).runBehavioral
-      (fun who => menu.restrictPolicy (initialLaw setup) horizon scheduler who
-        (sourceServiceClientPolicy setup leaks bound turns timing clients who))
-      (2 * horizon + 1)).bind (fun final =>
-        (settle final.state).map fun payoffs => (sourceReadout setup leaks final.state, payoffs)))
-    _
   rw [native, sourceServiceClientPolicy_roundsFrom, ← sourceServiceClientProfile_run original]
-  exact sourceServiceTurnPolicy_execution_settlement_lawError contract timely timing clients
-    (sourceServiceClientProfile_effective original) sample authentic utility deposit
+  exact sourceServiceTurnPolicy_execution_settlement_lawError ordered contract timely timing
+    clients (sourceServiceClientProfile_effective original) sample authentic utility deposit
 
-variable (bounds : MessageBounds (graph setup))
+variable {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
+  {deadline : (serviceGraph setup mode).EventId → Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
+  (bounds : MessageBounds (serviceGraph setup mode))
 
 /-- The invariant of a consistent client: its submissions were made at its own
 turns and its used prepared slots stay canonical. -/
-private abbrev ConsistentSlots (bound : (graph setup).EventId → Nat) (turns : Nat)
-    (timing : TurnTiming setup turns) (profile : BehavioralProfile setup.program)
-    (execution : (application setup leaks).Execution) : Prop :=
-  ∀ who, (sourceServiceTurnPolicy setup leaks bound turns timing profile who).Consistent
+private abbrev ConsistentSlots (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
+    (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
+    (execution : (serviceApplication setup mode deadline leaks).Execution) : Prop :=
+  ∀ who, (serviceTurnPolicy setup mode deadline leaks bound turns timing profile who).Consistent
       (execution.recall who) →
     OwnSubmissionsAtTurn setup leaks execution who ∧ CanonicalSlotsUsed setup leaks execution who
 
 private theorem consistentSlots_transition (covered : bounds.CoversBindingValues)
-    (initialCovered : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
-    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
-    (bound : (graph setup).EventId → Nat) (turns : Nat) (timing : TurnTiming setup turns)
+    (initialCovered : ∀ state ∈ (serviceInitialLaw setup mode).support,
+        bounds.CandidateValues state)
+    (capacity : (serviceGraph setup mode).order.eventCount ≤ bounds.candidateCount)
+    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
+    (timing : TurnTiming setup turns mode)
     (profile : BehavioralProfile setup.program)
     (permitted : ∀ who, (profile who).Admitted setup.program (CommitmentInterface.values _))
-    {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
-    (before after : (application setup leaks).ProtocolState)
-    (prior : ((bounds.rawMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
-      scheduler).Trace before)
-    (joint : Player → Option (application setup leaks).Action)
+    {horizon : Nat} {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    (before after : (serviceApplication setup mode deadline leaks).ProtocolState)
+    (prior :
+        ((bounds.rawMenu (serviceRuntime setup mode deadline) leaks).protocol
+        (serviceInitialLaw setup mode) horizon scheduler).Trace before)
+    (joint : Player → Option (serviceApplication setup mode deadline leaks).Action)
     (valid : ReactiveApplication.serviceInvariant
       (ConsistentSlots bound turns timing profile) before)
-    (reached : after ∈ ((application setup leaks).transition (initialLaw setup) horizon
-      scheduler before joint).support) :
+    (reached : after ∈
+        ((serviceApplication setup mode deadline leaks).transition (serviceInitialLaw setup mode)
+        horizon scheduler before joint).support) :
     ReactiveApplication.serviceInvariant (ConsistentSlots bound turns timing profile) after := by
-  let app := application setup leaks
+  let app := serviceApplication setup mode deadline leaks
   cases before with
   | none =>
       obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ reached
@@ -264,7 +265,7 @@ private theorem consistentSlots_transition (covered : bounds.CoversBindingValues
           · subst same
             obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks execution player
               ((joint player).getD ⟨none⟩)
-            change (sourceServiceTurnPolicy setup leaks bound turns timing profile
+            change (serviceTurnPolicy setup mode deadline leaks bound turns timing profile
               player).Consistent ((execution.respond app player
                 ((joint player).getD ⟨none⟩)).recall player) at consistent
             rw [recalled, ReactiveApplication.Policy.consistent_snoc_iff] at consistent
@@ -272,13 +273,13 @@ private theorem consistentSlots_transition (covered : bounds.CoversBindingValues
             have member := sourceServiceTurnPolicy_retained_of_slots bounds covered initialCovered
               capacity bound turns timing profile player (permitted player)
               ⟨remaining, some player, execution⟩ prior atTurn slots _ consistent.2
-            have rawTrace := (bounds.rawMenu (runtime setup) leaks).toRawTrace (initialLaw setup)
-              horizon scheduler prior
+            have rawTrace := (bounds.rawMenu (serviceRuntime setup mode deadline) leaks).toRawTrace
+                (serviceInitialLaw setup mode) horizon scheduler prior
             exact ⟨retainedOwnSubmissionsAtTurn_respond bounds execution player _ member atTurn,
               retainedCanonicalSlots_respond bounds rawTrace member atTurn slots⟩
           · have recallEq := app.respond_recall_other execution who player same
               ((joint who).getD ⟨none⟩)
-            change (sourceServiceTurnPolicy setup leaks bound turns timing profile
+            change (serviceTurnPolicy setup mode deadline leaks bound turns timing profile
               player).Consistent ((execution.respond app who ((joint who).getD ⟨none⟩)).recall
                 player) at consistent
             rw [recallEq] at consistent
@@ -297,7 +298,7 @@ private theorem consistentSlots_transition (covered : bounds.CoversBindingValues
               obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
               intro player consistent
               have recallEq := app.environmentStep_recall execution next command supported
-              change (sourceServiceTurnPolicy setup leaks bound turns timing profile
+              change (serviceTurnPolicy setup mode deadline leaks bound turns timing profile
                 player).Consistent (next.recall player) at consistent
               rw [recallEq] at consistent
               obtain ⟨atTurn, slots⟩ := valid player consistent
@@ -311,19 +312,23 @@ a player whose recorded responses all follow the turn-counted policy has
 submitted only at its own turns, and its used prepared slots stay canonical,
 whatever bounded responses the other players gave. -/
 theorem sourceServiceTurnPolicy_consistent_slots (covered : bounds.CoversBindingValues)
-    (initialCovered : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
-    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
-    (bound : (graph setup).EventId → Nat) (turns : Nat) (timing : TurnTiming setup turns)
+    (initialCovered : ∀ state ∈ (serviceInitialLaw setup mode).support,
+        bounds.CandidateValues state)
+    (capacity : (serviceGraph setup mode).order.eventCount ≤ bounds.candidateCount)
+    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
+    (timing : TurnTiming setup turns mode)
     (profile : BehavioralProfile setup.program)
     (permitted : ∀ who, (profile who).Admitted setup.program (CommitmentInterface.values _))
-    {horizon : Nat} {scheduler : (application setup leaks).Scheduler} :
-    ∀ {state} (_trace : ((bounds.rawMenu (runtime setup) leaks).protocol (initialLaw setup)
-      horizon scheduler).Trace state),
-      ReactiveApplication.serviceInvariant (fun execution => ∀ who,
-        (sourceServiceTurnPolicy setup leaks bound turns timing profile who).Consistent
-          (execution.recall who) →
-        OwnSubmissionsAtTurn setup leaks execution who ∧
-          CanonicalSlotsUsed setup leaks execution who) state
+    {horizon : Nat} {scheduler : (serviceApplication setup mode deadline leaks).Scheduler} :
+    ∀ {state}
+        (_trace :
+            ((bounds.rawMenu (serviceRuntime setup mode deadline) leaks).protocol
+            (serviceInitialLaw setup mode) horizon scheduler).Trace state),
+        ReactiveApplication.serviceInvariant
+        (fun execution => ∀ who,
+            (serviceTurnPolicy setup mode deadline leaks bound turns timing profile who).Consistent
+            (execution.recall who) → OwnSubmissionsAtTurn setup leaks execution who ∧
+            CanonicalSlotsUsed setup leaks execution who) state
   | _, .start => trivial
   | _, .extend prior joint _ reached =>
       consistentSlots_transition bounds covered initialCovered capacity bound turns timing profile
@@ -337,10 +342,7 @@ admissible in the bounded raw response menu under every scheduler: where its
 own recorded responses all follow the turn-counted policy, its canonical
 decisions fit the bounds; elsewhere it is silent. -/
 theorem sourceServiceClientPolicy_raw_admissible
-    {mode : EventGraph.ExecutionMode} {deadline : (serviceGraph setup mode).EventId → Nat}
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
-    (bounds : MessageBounds (serviceGraph setup mode))
-    (configuration : RankSequential setup mode deadline) (covered : bounds.CoversBindingValues)
+    (covered : bounds.CoversBindingValues)
     (initialCovered : ∀ state ∈ (serviceInitialLaw setup mode).support,
       bounds.CandidateValues state)
     (capacity : (serviceGraph setup mode).order.eventCount ≤ bounds.candidateCount)
@@ -352,9 +354,8 @@ theorem sourceServiceClientPolicy_raw_admissible
     (bounds.rawMenu (serviceRuntime setup mode deadline) leaks).Admissible
       (serviceInitialLaw setup mode) horizon scheduler who
       (serviceClientPolicy setup mode deadline leaks bound turns timing profile who) := by
-  obtain ⟨rfl, rfl⟩ := configuration
   intro control trace _ response supported
-  by_cases consistent : (sourceServiceTurnPolicy setup leaks bound turns timing profile
+  by_cases consistent : (serviceTurnPolicy setup mode deadline leaks bound turns timing profile
     who).Consistent (control.execution.recall who)
   · rw [serviceClientPolicy, ReactiveApplication.Policy.recover_eq _ _ _ _ consistent]
       at supported
@@ -366,7 +367,8 @@ theorem sourceServiceClientPolicy_raw_admissible
   · rw [serviceClientPolicy,
       ReactiveApplication.Policy.recover_eq_recovery _ _ _ _ consistent] at supported
     exact canonicalMenu_in_raw bounds who _ _
-      (bounds.silent_canonical (runtime setup) leaks who _ _ response supported)
+      (bounds.silent_canonical (serviceRuntime setup mode deadline) leaks who _ _ response
+          supported)
 
 end Menu
 

@@ -26,37 +26,43 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
-  {setup : Setup (Player := Player) (L := L)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  (bounds : MessageBounds (graph setup))
+  {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
+  {deadline : (serviceGraph setup mode).EventId → Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
+  (bounds : MessageBounds (serviceGraph setup mode))
 
 /-- A retained response keeps every used prepared slot below the public
 count, except the count slot of a submitted unfinished binding. -/
 theorem retainedCanonicalSlots_respond {horizon remaining : Nat}
-    {scheduler : (application setup leaks).Scheduler}
-    {middle : (application setup leaks).Execution} {who : Player}
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-      (some ⟨remaining, some who, middle⟩))
-    {response : (application setup leaks).Action}
-    (member : response ∈ bounds.canonicalActions (runtime setup) leaks who
-      (middle.recall who) (middle.observe (application setup leaks) who))
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {middle : (serviceApplication setup mode deadline leaks).Execution} {who : Player}
+    (trace :
+        ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
+        horizon scheduler).Trace (some ⟨remaining, some who, middle⟩))
+    {response : (serviceApplication setup mode deadline leaks).Action}
+    (member : response ∈ bounds.canonicalActions (serviceRuntime setup mode deadline) leaks who
+      (middle.recall who) (middle.observe (serviceApplication setup mode deadline leaks) who))
     (atTurn : OwnSubmissionsAtTurn setup leaks middle who)
     (valid : CanonicalSlotsUsed setup leaks middle who) :
-    CanonicalSlotsUsed setup leaks (middle.respond (application setup leaks) who response)
+    CanonicalSlotsUsed setup leaks
+        (middle.respond (serviceApplication setup mode deadline leaks) who response)
       who := by
-  let app := application setup leaks
-  have appEq := (runtime setup).reactive_respond_application leaks middle who response
+  let app := serviceApplication setup mode deadline leaks
+  have appEq := (serviceRuntime setup mode deadline).reactive_respond_application leaks middle
+      who response
   obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks middle who response
   have recordedMono : ∀ event,
-      (runtime setup).eventRecorded leaks (middle.recall who) event = true →
-        (runtime setup).eventRecorded leaks ((middle.respond app who response).recall who)
+      (serviceRuntime setup mode deadline).eventRecorded leaks (middle.recall who) event = true →
+        (serviceRuntime setup mode deadline).eventRecorded leaks
+        ((middle.respond app who response).recall who)
           event = true := by
     intro event recorded
     rw [recalled]
     unfold EventGraphRuntime.eventRecorded at recorded ⊢
     rw [List.any_append, recorded, Bool.true_or]
   intro serial used
-  rw [(runtime setup).submittedCandidateSlots_respond leaks middle who response] at used
+  rw [(serviceRuntime setup mode deadline).submittedCandidateSlots_respond leaks middle who
+          response] at used
   rw [appEq.2]
   rcases List.mem_append.mp used with old | new
   · rcases valid serial old with lower | ⟨equal, other, payload, layout, unfinished, recorded⟩
@@ -64,16 +70,16 @@ theorem retainedCanonicalSlots_respond {horizon remaining : Nat}
     · refine Or.inr ⟨equal, other, payload, layout, ?_, recordedMono other recorded⟩
       rw [appEq.1]
       exact unfinished
-  · have slot : (runtime setup).responseCandidateSlot leaks response = some serial :=
-      Option.mem_toList.mp new
+  · have slot : (serviceRuntime setup mode deadline).responseCandidateSlot leaks response = some
+        serial := Option.mem_toList.mp new
     obtain ⟨material, submits⟩ : ∃ material, response.transmission = some material := by
       unfold EventGraphRuntime.responseCandidateSlot at slot
       split at slot
       · exact ⟨_, ‹_›⟩
       · cases slot
     obtain ⟨event, action, turn, owned, _, _, unrecorded, _, rfl⟩ :=
-      bounds.canonicalActions_submission (runtime setup) leaks who _ _ response member
-        material submits
+      bounds.canonicalActions_submission (serviceRuntime setup mode deadline) leaks who _ _ response
+          member material submits
     have fresh := canonicalSlot_fresh_of_used trace who atTurn valid event turn unrecorded
     have canonical := canonicalFreshSlot_canonical who (middle.observe app who).application fresh
     obtain ⟨selected, ⟨payload, layout⟩, named⟩ := canonicalServiceDecision_candidateSlot who
@@ -95,13 +101,13 @@ theorem retainedCanonicalSlots_respond {horizon remaining : Nat}
 /-- Recording a retained response preserves the fact that each submission was
 made at its owner's own ready turn. -/
 theorem retainedOwnSubmissionsAtTurn_respond
-    (middle : (application setup leaks).Execution) (who : Player)
-    (response : (application setup leaks).Action)
-    (member : response ∈ bounds.canonicalActions (runtime setup) leaks who
-      (middle.recall who) (middle.observe (application setup leaks) who))
+    (middle : (serviceApplication setup mode deadline leaks).Execution) (who : Player)
+    (response : (serviceApplication setup mode deadline leaks).Action)
+    (member : response ∈ bounds.canonicalActions (serviceRuntime setup mode deadline) leaks who
+      (middle.recall who) (middle.observe (serviceApplication setup mode deadline leaks) who))
     (atTurn : OwnSubmissionsAtTurn setup leaks middle who) :
     OwnSubmissionsAtTurn setup leaks
-      (middle.respond (application setup leaks) who response) who := by
+      (middle.respond (serviceApplication setup mode deadline leaks) who response) who := by
   obtain ⟨_, recalled, _⟩ := respond_recall_self setup leaks middle who response
   intro entry present event submitted
   rw [recalled] at present
@@ -109,24 +115,27 @@ theorem retainedOwnSubmissionsAtTurn_respond
   · exact atTurn entry old event submitted
   · rw [List.mem_singleton] at new
     subst new
-    exact (bounds.canonical_submitted_event (runtime setup) leaks who _ _ response member event
-      submitted).1
+    exact (bounds.canonical_submitted_event (serviceRuntime setup mode deadline) leaks who _ _
+            response member event submitted).1
 
 /-- One arbitrary scheduler round preserves the owner's canonical-slot and
 submission-turn invariants whenever its response policy uses retained actions. -/
 theorem retainedCanonicalSlots_round {horizon remaining : Nat}
-    {scheduler : (application setup leaks).Scheduler}
-    {players : Player → (application setup leaks).Policy} {who : Player}
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode deadline leaks).Policy} {who : Player}
     (covered : ∀ past view response, response ∈ (players who past view).support →
-      response ∈ bounds.canonicalActions (runtime setup) leaks who past view)
-    {execution next : (application setup leaks).Execution}
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-      (some ⟨remaining + 1, none, execution⟩))
+      response ∈ bounds.canonicalActions (serviceRuntime setup mode deadline) leaks who past view)
+    {execution next : (serviceApplication setup mode deadline leaks).Execution}
+    (trace :
+        ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
+        horizon scheduler).Trace (some ⟨remaining + 1, none, execution⟩))
     (atTurn : OwnSubmissionsAtTurn setup leaks execution who)
     (valid : CanonicalSlotsUsed setup leaks execution who)
-    (reached : next ∈ ((application setup leaks).round scheduler players execution).support) :
+    (reached : next ∈
+        ((serviceApplication setup mode deadline leaks).round scheduler players
+        execution).support) :
     OwnSubmissionsAtTurn setup leaks next who ∧ CanonicalSlotsUsed setup leaks next who := by
-  let app := application setup leaks
+  let app := serviceApplication setup mode deadline leaks
   obtain ⟨command, selected, middle, moved, cases⟩ := round_cases setup leaks reached
   have recallEq := app.environmentStep_recall execution middle command moved
   have atMiddle : OwnSubmissionsAtTurn setup leaks middle who := by
@@ -136,8 +145,8 @@ theorem retainedCanonicalSlots_round {horizon remaining : Nat}
   have validMiddle := canonicalSlotsUsed_environment moved who valid
   rcases cases with ⟨_, rfl⟩ | ⟨responder, active, response, chosen, rfl⟩
   · exact ⟨atMiddle, validMiddle⟩
-  · obtain ⟨middleTrace⟩ := app.raw_trace_environment (initialLaw setup) horizon scheduler
-      remaining execution middle command trace selected moved
+  · obtain ⟨middleTrace⟩ := app.raw_trace_environment (serviceInitialLaw setup mode) horizon
+        scheduler remaining execution middle command trace selected moved
     rw [active] at middleTrace
     by_cases same : responder = who
     · subst responder
@@ -152,16 +161,17 @@ theorem retainedCanonicalSlots_round {horizon remaining : Nat}
 
 /-- Retained-policy rounds preserve the canonical-slot and submission-turn
 invariants under every scheduler, allowing bindings to complete by expiry. -/
-theorem retainedCanonicalSlots_roundsFrom (scheduler : (application setup leaks).Scheduler)
-    (players : Player → (application setup leaks).Policy) (who : Player)
-    (covered : ∀ past view response, response ∈ (players who past view).support →
-      response ∈ bounds.canonicalActions (runtime setup) leaks who past view)
-    (count : Nat) (execution : (application setup leaks).Execution)
-    (reached : execution ∈ ((application setup leaks).roundsFrom (initialLaw setup) scheduler
-      players count).support) :
-    OwnSubmissionsAtTurn setup leaks execution who ∧
+theorem retainedCanonicalSlots_roundsFrom
+    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+    (players : Player → (serviceApplication setup mode deadline leaks).Policy) (who : Player)
+    (covered : ∀ past view response, response ∈ (players who past view).support → response ∈
+        bounds.canonicalActions (serviceRuntime setup mode deadline) leaks who past view)
+    (count : Nat) (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (reached : execution ∈
+        ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+        scheduler players count).support) : OwnSubmissionsAtTurn setup leaks execution who ∧
       CanonicalSlotsUsed setup leaks execution who := by
-  let app := application setup leaks
+  let app := serviceApplication setup mode deadline leaks
   induction count generalizing execution with
   | zero =>
       obtain ⟨state, _, supported⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
@@ -170,31 +180,34 @@ theorem retainedCanonicalSlots_roundsFrom (scheduler : (application setup leaks)
       · cases member
       · cases used
   | succ count ih =>
-      rw [app.roundsFrom_succ (initialLaw setup) scheduler players count] at reached
+      rw [app.roundsFrom_succ (serviceInitialLaw setup mode) scheduler players count] at reached
       obtain ⟨prior, priorMem, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨atTurn, valid⟩ := ih prior priorMem
-      obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialLaw setup) (count + 1) scheduler
-        players count (Nat.le_succ count) prior priorMem
+      obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup mode) (count + 1)
+          scheduler players count (Nat.le_succ count) prior priorMem
       rw [show count + 1 - count = 0 + 1 by omega] at trace
       exact retainedCanonicalSlots_round bounds covered trace atTurn valid moved
 
 /-- Every legal canonical-menu history has the owner's submission-turn and
 used-slot invariants, including pending activations and off-path histories. -/
 theorem retainedCanonicalSlots_history {horizon : Nat}
-    {scheduler : (application setup leaks).Scheduler}
-    (control : (application setup leaks).Control)
-    (trace : ((bounds.canonicalMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
-      scheduler).Trace (some control)) (who : Player) :
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    (control : (serviceApplication setup mode deadline leaks).Control)
+    (trace :
+        ((bounds.canonicalMenu (serviceRuntime setup mode deadline) leaks).protocol
+        (serviceInitialLaw setup mode) horizon scheduler).Trace (some control)) (who : Player) :
     OwnSubmissionsAtTurn setup leaks control.execution who ∧
       CanonicalSlotsUsed setup leaks control.execution who := by
-  let app := application setup leaks
-  let menu := bounds.canonicalMenu (runtime setup) leaks
+  let app := serviceApplication setup mode deadline leaks
+  let menu := bounds.canonicalMenu (serviceRuntime setup mode deadline) leaks
   have covered : ∀ past view response,
       response ∈ (menu.uniformResponses who past view).support →
-        response ∈ bounds.canonicalActions (runtime setup) leaks who past view := by
+        response ∈ bounds.canonicalActions (serviceRuntime setup mode deadline) leaks who past
+            view := by
     intro past view response supported
     exact (menu.uniformResponses_support who past view response).mp supported
-  have supported := menu.roundSupported_uniform (initialLaw setup) horizon scheduler trace
+  have supported := menu.roundSupported_uniform (serviceInitialLaw setup mode) horizon
+      scheduler trace
   obtain ⟨remaining, actor, execution⟩ := control
   cases actor with
   | none =>
@@ -213,20 +226,22 @@ theorem retainedCanonicalSlots_history {horizon : Nat}
 /-- Slots at or above the binding count are fresh on every retained history,
 except the count slot of an unfinished submitted binding. -/
 theorem retainedCanonicalSlotsFresh_history {horizon : Nat}
-    {scheduler : (application setup leaks).Scheduler}
-    (control : (application setup leaks).Control)
-    (trace : ((bounds.canonicalMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
-      scheduler).Trace (some control)) (who : Player) :
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    (control : (serviceApplication setup mode deadline leaks).Control)
+    (trace :
+        ((bounds.canonicalMenu (serviceRuntime setup mode deadline) leaks).protocol
+        (serviceInitialLaw setup mode) horizon scheduler).Trace (some control)) (who : Player) :
     CanonicalSlotsFresh setup leaks control.execution who := by
   obtain ⟨_, valid⟩ := retainedCanonicalSlots_history bounds control trace who
-  have rawTrace := (bounds.canonicalMenu (runtime setup) leaks).toRawTrace (initialLaw setup)
-    horizon scheduler trace
-  rw [initialLaw_eq_inputs] at rawTrace
-  have candidates : (runtime setup).CandidateRecall leaks control.execution :=
-    (runtime setup).candidateRecall_history leaks _ horizon scheduler rawTrace
+  have rawTrace := (bounds.canonicalMenu (serviceRuntime setup mode deadline) leaks).toRawTrace
+      (serviceInitialLaw setup mode) horizon scheduler trace
+  rw [serviceInitialLaw_eq_inputs] at rawTrace
+  have candidates : (serviceRuntime setup mode deadline).CandidateRecall leaks control.execution :=
+    (serviceRuntime setup mode deadline).candidateRecall_history leaks _ horizon scheduler rawTrace
   intro serial above
   by_cases used : serial ∈
-      (runtime setup).submittedCandidateSlots leaks (control.execution.recall who)
+      (serviceRuntime setup mode deadline).submittedCandidateSlots leaks
+      (control.execution.recall who)
   · rcases valid serial used with lower | pending
     · omega
     · exact Or.inr pending
@@ -235,18 +250,20 @@ theorem retainedCanonicalSlotsFresh_history {horizon : Nat}
 /-- At every retained unrecorded own turn the counted slot is fresh, including
 after any number of earlier binding misses. -/
 theorem retainedCanonicalSlot_fresh_at_turn {horizon : Nat}
-    {scheduler : (application setup leaks).Scheduler}
-    (control : (application setup leaks).Control)
-    (trace : ((bounds.canonicalMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
-      scheduler).Trace (some control)) (who : Player) (event : (graph setup).EventId)
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    (control : (serviceApplication setup mode deadline leaks).Control)
+    (trace :
+        ((bounds.canonicalMenu (serviceRuntime setup mode deadline) leaks).protocol
+        (serviceInitialLaw setup mode) horizon scheduler).Trace (some control)) (who : Player)
+    (event : (serviceGraph setup mode).EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
-    (unrecorded : (runtime setup).eventRecorded leaks (control.execution.recall who) event =
-      false) :
+    (unrecorded : (serviceRuntime setup mode deadline).eventRecorded leaks
+        (control.execution.recall who) event = false) :
     control.execution.application.candidates.lookup
       (who, .prepared (control.execution.application.publicView.bindingCount who)) = .fresh := by
   obtain ⟨atTurn, valid⟩ := retainedCanonicalSlots_history bounds control trace who
-  have rawTrace := (bounds.canonicalMenu (runtime setup) leaks).toRawTrace (initialLaw setup)
-    horizon scheduler trace
+  have rawTrace := (bounds.canonicalMenu (serviceRuntime setup mode deadline) leaks).toRawTrace
+      (serviceInitialLaw setup mode) horizon scheduler trace
   exact canonicalSlot_fresh_of_used rawTrace who atTurn valid event turn unrecorded
 
 omit [Fintype Player] in
@@ -255,22 +272,23 @@ history where the owner's submissions were made at its own turns and its used
 prepared slots stay canonical, the counted slot at an unrecorded own turn is
 fresh, below the candidate count, and selected by the canonical decision. -/
 theorem canonicalSlot_resources_of_used {horizon : Nat}
-    {scheduler : (application setup leaks).Scheduler}
-    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
-    {control : (application setup leaks).Control}
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-      (some control))
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    (capacity : (serviceGraph setup mode).order.eventCount ≤ bounds.candidateCount)
+    {control : (serviceApplication setup mode deadline leaks).Control}
+    (trace :
+        ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
+        horizon scheduler).Trace (some control))
     (who : Player) (atTurn : OwnSubmissionsAtTurn setup leaks control.execution who)
     (valid : CanonicalSlotsUsed setup leaks control.execution who)
-    (event : (graph setup).EventId)
+    (event : (serviceGraph setup mode).EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
-    (unrecorded : (runtime setup).eventRecorded leaks (control.execution.recall who) event =
-      false) :
+    (unrecorded : (serviceRuntime setup mode deadline).eventRecorded leaks
+        (control.execution.recall who) event = false) :
     control.execution.application.publicView.bindingCount who < bounds.candidateCount ∧
       control.execution.application.candidates.lookup
         (who, .prepared (control.execution.application.publicView.bindingCount who)) = .fresh ∧
       canonicalFreshSlot who
-        (control.execution.observe (application setup leaks) who).application =
+        (control.execution.observe (serviceApplication setup mode deadline leaks) who).application =
           some (control.execution.application.publicView.bindingCount who) := by
   classical
   have fresh := canonicalSlot_fresh_of_used trace who atTurn valid event turn unrecorded
@@ -291,23 +309,26 @@ theorem canonicalSlot_resources_of_used {horizon : Nat}
 /-- One prepared slot per source event supplies every retained unrecorded
 canonical decision, despite skipped slots after earlier expiries. -/
 theorem retainedCanonicalSlot_resources {horizon : Nat}
-    {scheduler : (application setup leaks).Scheduler}
-    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
-    (control : (application setup leaks).Control)
-    (trace : ((bounds.canonicalMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
-      scheduler).Trace (some control)) (who : Player) (event : (graph setup).EventId)
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    (capacity : (serviceGraph setup mode).order.eventCount ≤ bounds.candidateCount)
+    (control : (serviceApplication setup mode deadline leaks).Control)
+    (trace :
+        ((bounds.canonicalMenu (serviceRuntime setup mode deadline) leaks).protocol
+        (serviceInitialLaw setup mode) horizon scheduler).Trace (some control)) (who : Player)
+    (event : (serviceGraph setup mode).EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
-    (unrecorded : (runtime setup).eventRecorded leaks (control.execution.recall who) event =
-      false) :
+    (unrecorded : (serviceRuntime setup mode deadline).eventRecorded leaks
+        (control.execution.recall who) event = false) :
     control.execution.application.publicView.bindingCount who < bounds.candidateCount ∧
       control.execution.application.candidates.lookup
         (who, .prepared (control.execution.application.publicView.bindingCount who)) = .fresh ∧
       canonicalFreshSlot who
-        (control.execution.observe (application setup leaks) who).application =
+        (control.execution.observe (serviceApplication setup mode deadline leaks) who).application =
           some (control.execution.application.publicView.bindingCount who) := by
   obtain ⟨atTurn, valid⟩ := retainedCanonicalSlots_history bounds control trace who
   exact canonicalSlot_resources_of_used bounds capacity
-    ((bounds.canonicalMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon
-      scheduler trace) who atTurn valid event turn unrecorded
+    ((bounds.canonicalMenu (serviceRuntime setup mode deadline) leaks).toRawTrace
+        (serviceInitialLaw setup mode) horizon scheduler trace) who atTurn valid event turn
+    unrecorded
 
 end Vegas

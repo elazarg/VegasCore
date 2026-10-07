@@ -618,7 +618,7 @@ theorem exists_revealSource_step (profile : BehavioralProfile service.setup.prog
             (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose)
             (cast (congrArg EventGraph.EventField.Value outputEq.symm)
               (disclosureResult published binding source disclose))).config = _
-        unfold sourceServicePrefix?
+        unfold sourceServicePrefix? serviceSourcePrefix?
         rw [transport 1, decodeSourcePrefix?_reveal]
         exact congrArg (fun decoded => (Option.map Sum.inr decoded).map lift) recovered
       refine ⟨?_, ?_, ?_⟩

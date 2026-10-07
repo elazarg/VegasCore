@@ -36,7 +36,7 @@ Useful existing boundaries are the
 [the owner's information through its own phase](../Vegas/Pending/ReactiveOwnerPhase.lean),
 [permitted deviations phase by phase](../Vegas/Game/SourceServiceDeviationLaw.lean),
 [whole-policy deviations under a restriction](../GameTheoryExtensions/Analysis/Protocol/RetainedDeviation.lean),
-[the first-turn coupling against one deviator](../Vegas/Game/SourceServiceDeviationCoupling.lean),
+[the first-turn coupling against one deviator](../Vegas/Game/ServiceTimingCoupling.lean),
 [one deviator against an arbitrary builder, phase by phase](../Vegas/Game/AsyncDeviationLaw.lean),
 and [depth-free extension](../GameTheoryExtensions/Analysis/Protocol/PassageRestrictionExtension.lean).
 

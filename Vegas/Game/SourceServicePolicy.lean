@@ -125,7 +125,7 @@ theorem sourceServicePolicy_commit {Γ : SourceCtx Player L} {openNames : Finset
     change decodeCompletions setup.program
       (((graph setup).ownCompletions owner execution.application.config.history).map
         (setup.eventGraph.fromModeCompletion .sequential)) = _
-    rw [ownCompletions_from_sequential]
+    rw [ownCompletions_fromModeCompletion]
     exact congrFun history owner
   rw [ownHistory] at law
   have decoded := decodeObservation?_playerStore_eq_some (graph := graph setup)
@@ -194,7 +194,7 @@ theorem sourceServicePolicy_reveal {Γ : SourceCtx Player L} {openNames : Finset
     change decodeCompletions setup.program
       (((graph setup).ownCompletions owner execution.application.config.history).map
         (setup.eventGraph.fromModeCompletion .sequential)) = _
-    rw [ownCompletions_from_sequential]
+    rw [ownCompletions_fromModeCompletion]
     exact congrFun history owner
   rw [ownHistory] at law
   have decoded := decodeObservation?_playerStore_eq_some (graph := graph setup)

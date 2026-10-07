@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceServiceFirstTurnCompletes
+import Vegas.Game.SourceServiceDecidedCompletion
 
 /-! # The completion bridge for every scheduler
 
@@ -28,10 +28,9 @@ the round evaluator at the completion time
 Every initial execution is a completion boundary of rank zero
 (`Vegas.initial_completionBoundary`), so approximate boundary continuations
 bound the distance of the whole initialized native readout from the source law
-(`Vegas.initializedReadout_within`). For the turn-counted policy this is the
-total deferral weight (`Vegas.sourceServiceTurnPolicy_initialized_lawError`),
-in the per-outcome form of the initialized-law premise of the library's
-sequential-equilibrium limit lemma with a vanishing law error.
+(`Vegas.initializedReadout_within`), in the per-outcome form of the
+initialized-law premise of the library's sequential-equilibrium limit lemma
+with a vanishing law error.
 -/
 
 noncomputable section
@@ -356,7 +355,7 @@ theorem initialLaw_bind_sourceContinuation (profile : BehavioralProfile setup.pr
   rw [initialLaw, serviceInitialLaw, PMF.bind_map, Setup.run, PMF.map_bind]
   congr 1
   funext initial
-  simp only [Function.comp_apply, sourceContinuation, sourceServicePrefix?_initial,
+  simp only [Function.comp_apply, sourceContinuation, serviceSourcePrefix?_initial,
     Setup.continuationLaw, ProtocolState.continuationLaw_entry]
   rfl
 
@@ -428,46 +427,6 @@ theorem initializedReadout_lawError {scheduler : (application setup leaks).Sched
       (setup.executionProtocol admission).initHistory (Nat.le_refl _)
   rw [sourceLaw]
   exact (initializedReadout_within menu covered within).apply outcome
-
-/-- **The turn-counted policy's initialized law error.** Under the asynchronous
-contract with `delay + bound < deadline`, for players admissible for a
-response menu that follow the turn-counted policy of a source profile with
-effective disclosures, every typed outcome's native probability is within the
-total deferral weight of its source probability. -/
-theorem sourceServiceTurnPolicy_initialized_lawError
-    {scheduler : (application setup leaks).Scheduler} {horizon turns : Nat}
-    {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
-      delay bound)
-    (timely : AsyncTimely (runtime setup) delay bound)
-    (timing : TurnTiming setup turns) (profile : BehavioralProfile setup.program)
-    (effective : ∀ who, (profile who).EffectiveDisclosures setup.program []
-      (Revelations.initial setup.context))
-    (menu : (application setup leaks).ResponseMenu)
-    (covered : ∀ who, menu.Admissible (initialLaw setup) horizon scheduler who
-      (sourceServiceTurnPolicy setup leaks bound turns timing profile who))
-    (admission : CommitmentInterface setup.program)
-    (source : Profile (setup.informationModel admission).behavioralSignature)
-    (sameRun : setup.run profile = setup.run (setup.decodeBehavioralProfile admission source))
-    (outcome : Option (State L setup.program.terminalCtx)) :
-    |((((menu.information (initialLaw setup) horizon scheduler).runBehavioral
-        (fun who => menu.restrictPolicy (initialLaw setup) horizon scheduler who
-          (sourceServiceTurnPolicy setup leaks bound turns timing profile who))
-        (2 * horizon + 1)).map (fun final => sourceReadout setup leaks final.state))
-          outcome).toReal -
-      ((((setup.informationModel admission).runBehavioral source
-        (instructionCount setup.program + 1)).map
-          (fun final => setup.protocolReadout final.state)) outcome).toReal| ≤
-      ∑ event, timing.deferral event := by
-  have bound := initializedReadout_lawError menu covered
-    (sourceServiceTurnPolicy_boundaryContinuationWithin
-      (sourceServiceTurnPolicy_firstTurnCompletes contract timely timing profile effective))
-    admission source sameRun outcome
-  have all : Finset.univ.filter (fun event : (graph setup).EventId => 0 ≤ event.val) =
-      Finset.univ :=
-    Finset.filter_true_of_mem fun event _ => Nat.zero_le event.val
-  simpa only [all] using bound
-
 end Initialized
 
 end Vegas

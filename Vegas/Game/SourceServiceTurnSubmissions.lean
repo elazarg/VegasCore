@@ -27,24 +27,30 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
-  (setup : Setup (Player := Player) (L := L))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+  (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
+  {deadline : (serviceGraph setup mode).EventId → Nat}
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 /-- One round: a scheduler command, its environment step, and the response of
 the activated player, if any. -/
-theorem round_cases {scheduler : (application setup leaks).Scheduler}
-    {players : Player → (application setup leaks).Policy}
-    {execution next : (application setup leaks).Execution}
-    (reached : next ∈ ((application setup leaks).round scheduler players execution).support) :
+theorem round_cases {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode deadline leaks).Policy}
+    {execution next : (serviceApplication setup mode deadline leaks).Execution}
+    (reached : next ∈
+        ((serviceApplication setup mode deadline leaks).round scheduler players
+        execution).support) :
     ∃ command ∈ (scheduler execution.environmentRecall
-        (execution.observeEnvironment (application setup leaks))).support,
-      ∃ middle ∈ (execution.environmentStep (application setup leaks) command).support,
-        (command.actor? (application setup leaks) = none ∧ next = middle) ∨
-          ∃ who, command.actor? (application setup leaks) = some who ∧
-            ∃ response ∈ (players who (middle.recall who)
-                (middle.observe (application setup leaks) who)).support,
-              next = middle.respond (application setup leaks) who response := by
-  let app := application setup leaks
+        (execution.observeEnvironment (serviceApplication setup mode deadline leaks))).support,
+      ∃ middle ∈
+          (execution.environmentStep (serviceApplication setup mode deadline leaks)
+              command).support,
+          (command.actor? (serviceApplication setup mode deadline leaks) = none ∧ next = middle) ∨ ∃
+          who, command.actor? (serviceApplication setup mode deadline leaks) = some who ∧ ∃ response
+          ∈ (players who (middle.recall who)
+              (middle.observe (serviceApplication setup mode deadline leaks) who)).support,
+              next = middle.respond (serviceApplication setup mode deadline leaks) who
+                  response := by
+  let app := serviceApplication setup mode deadline leaks
   obtain ⟨command, selected, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
   refine ⟨command, selected, middle, moved, ?_⟩
@@ -63,48 +69,47 @@ theorem round_cases {scheduler : (application setup leaks).Scheduler}
 
 /-- A policy submits fresh packets only for the event that is its player's
 own turn. -/
-def SubmitsAtTurn (policy : (application setup leaks).Policy) (who : Player) : Prop :=
-  ∀ past view response, response ∈ (policy past view).support →
-    ∀ event, (runtime setup).submittedEvent? leaks response = some event →
-      view.application.publicView.ownTurn? who = some event
+def SubmitsAtTurn (policy : (serviceApplication setup mode deadline leaks).Policy) (who : Player) :
+    Prop := ∀ past view response, response ∈ (policy past view).support → ∀ event,
+    (serviceRuntime setup mode deadline).submittedEvent? leaks response = some event →
+    view.application.publicView.ownTurn? who = some event
 
 /-- Every recorded fresh submission was for its author's own turn. -/
-def SubmissionsAtTurn (execution : (application setup leaks).Execution) : Prop :=
-  ∀ who, ∀ entry ∈ execution.recall who, ∀ event,
-    (runtime setup).submittedEvent? leaks entry.action = some event →
-      entry.beforeView.application.publicView.ownTurn? who = some event
+def SubmissionsAtTurn (execution : (serviceApplication setup mode deadline leaks).Execution) :
+    Prop := ∀ who, ∀ entry ∈ execution.recall who, ∀ event,
+    (serviceRuntime setup mode deadline).submittedEvent? leaks entry.action = some event →
+    entry.beforeView.application.publicView.ownTurn? who = some event
 
 /-- Every fresh submission of `who` was made at its own turn at its event. -/
-def OwnSubmissionsAtTurn (execution : (application setup leaks).Execution) (who : Player) :
-    Prop :=
-  ∀ entry ∈ execution.recall who, ∀ event,
-    (runtime setup).submittedEvent? leaks entry.action = some event →
-      entry.beforeView.application.publicView.ownTurn? who = some event
+def OwnSubmissionsAtTurn (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (who : Player) : Prop := ∀ entry ∈ execution.recall who, ∀ event,
+    (serviceRuntime setup mode deadline).submittedEvent? leaks entry.action = some event →
+    entry.beforeView.application.publicView.ownTurn? who = some event
 
 /-- Every recorded activation was answered by its player at the public view
 the scheduler saw. -/
-def ActivationsAnswered (execution : (application setup leaks).Execution) : Prop :=
-  ∀ entry ∈ execution.environmentRecall, ∀ who, entry.command = .activate who →
-    ∃ answer ∈ execution.recall who,
-      answer.beforeView.application.publicView = entry.beforeView.application
+def ActivationsAnswered (execution : (serviceApplication setup mode deadline leaks).Execution) :
+    Prop := ∀ entry ∈ execution.environmentRecall, ∀ who, entry.command = .activate who → ∃ answer ∈
+    execution.recall who, answer.beforeView.application.publicView = entry.beforeView.application
 
 theorem silentPolicy_submitsAtTurn (who : Player) :
-    SubmitsAtTurn setup leaks (application setup leaks).silentPolicy who := by
+    SubmitsAtTurn setup leaks (serviceApplication setup mode deadline leaks).silentPolicy who := by
   intro past view response chosen event submitted
-  obtain rfl := (application setup leaks).silentPolicy_cases past view response chosen
+  obtain rfl := (serviceApplication setup mode deadline leaks).silentPolicy_cases past view
+      response chosen
   simp [EventGraphRuntime.submittedEvent?] at submitted
 
 /-- The packet a resolution decision prepares names its event. -/
 private theorem reactiveResolutionPacket_event {owner : Player} (who : Player)
-    (event : (graph setup).EventId) (payload : L.Ty)
-    (binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload))
-    (checks : List (EventGraph.GuardCheck (graph setup).layout payload))
-    (outputEq : (graph setup).outputLayout event = .publication payload)
-    (action : (graph setup).Action event) (view : PlayerView (graph setup))
-    (packet : Payload (graph setup))
+    (event : (serviceGraph setup mode).EventId) (payload : L.Ty)
+    (binding : EventGraph.FieldRef (serviceGraph setup mode).layout (.binding owner payload))
+    (checks : List (EventGraph.GuardCheck (serviceGraph setup mode).layout payload))
+    (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
+    (action : (serviceGraph setup mode).Action event) (view : PlayerView (serviceGraph setup mode))
+    (packet : Payload (serviceGraph setup mode))
     (sent : reactiveResolutionPacket who event payload binding checks outputEq action view =
       some packet) :
-    Payload.event? (graph setup) packet = some event := by
+    Payload.event? (serviceGraph setup mode) packet = some event := by
   unfold reactiveResolutionPacket at sent
   dsimp only at sent
   repeat' split at sent
@@ -114,15 +119,16 @@ private theorem reactiveResolutionPacket_event {owner : Player} (who : Player)
 
 /-- The canonical native decision submits only for its own event. -/
 private theorem submittedEvent_canonicalReactiveDecision (who : Player)
-    (event : (graph setup).EventId) (action : (graph setup).Action event)
-    (view : PlayerView (graph setup)) (other : (graph setup).EventId)
-    (submitted : (runtime setup).submittedEvent? leaks
-      ((runtime setup).canonicalReactiveDecision leaks who event action view) = some other) :
+    (event : (serviceGraph setup mode).EventId) (action : (serviceGraph setup mode).Action event)
+    (view : PlayerView (serviceGraph setup mode)) (other : (serviceGraph setup mode).EventId)
+    (submitted : (serviceRuntime setup mode deadline).submittedEvent? leaks
+      ((serviceRuntime setup mode deadline).canonicalReactiveDecision leaks who event action view) =
+      some other) :
     other = event := by
   unfold EventGraphRuntime.submittedEvent? EventGraphRuntime.canonicalReactiveDecision
     at submitted
   revert submitted
-  cases nodeView (graph setup) event with
+  cases nodeView (serviceGraph setup mode) event with
   | sample => simp
   | bind owner payload outputEq codeEq =>
       cases canonicalFreshSlot who view with
@@ -137,25 +143,28 @@ private theorem submittedEvent_canonicalReactiveDecision (who : Player)
       | some packet =>
           intro submitted
           simp only [sent, Option.map_some] at submitted
-          change packet.event? (graph setup) = some other at submitted
+          change packet.event? (serviceGraph setup mode) = some other at submitted
           rw [reactiveResolutionPacket_event setup who event payload binding checks outputEq
             action view packet sent] at submitted
           exact (Option.some.inj submitted).symm
 
 /-- A canonical compiled decision submits only for its own event. -/
 theorem submittedEvent_canonicalServiceDecision (who : Player)
-    (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView) (event : (graph setup).EventId)
-    (action : (graph setup).Action event) (other : (graph setup).EventId)
-    (submitted : (runtime setup).submittedEvent? leaks
-      ((runtime setup).canonicalServiceDecision leaks who past view event action) =
-        some other) :
+    (past : List (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (view : (serviceApplication setup mode deadline leaks).PlayerView)
+    (event : (serviceGraph setup mode).EventId)
+    (action : (serviceGraph setup mode).Action event) (other : (serviceGraph setup mode).EventId)
+    (submitted : (serviceRuntime setup mode deadline).submittedEvent? leaks
+      ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who past view event
+          action) = some other) :
     other = event := by
-  apply submittedEvent_canonicalReactiveDecision setup leaks who event action view.application
+  apply submittedEvent_canonicalReactiveDecision (deadline := deadline) setup leaks who event action
+    view.application
     other
   unfold EventGraphRuntime.canonicalServiceDecision at submitted
   revert submitted
-  rcases (runtime setup).canonicalReactiveDecision leaks who event action view.application
+  rcases (serviceRuntime setup mode deadline).canonicalReactiveDecision leaks who event action
+      view.application
     with
     ⟨_ | material⟩
   · simp [EventGraphRuntime.submittedEvent?, ReactiveApplication.SubmissionNormalization.action]
@@ -167,9 +176,10 @@ theorem submittedEvent_canonicalServiceDecision (who : Player)
 
 theorem sourceServiceCanonicalPolicy_submitsAtTurn (profile : BehavioralProfile setup.program)
     (who : Player) :
-    SubmitsAtTurn setup leaks (sourceServiceCanonicalPolicy setup leaks profile who) who := by
+    SubmitsAtTurn setup leaks (serviceCanonicalPolicy setup mode deadline leaks profile who)
+        who := by
   intro past view response chosen event submitted
-  unfold sourceServiceCanonicalPolicy serviceCanonicalPolicy at chosen
+  unfold serviceCanonicalPolicy at chosen
   split at chosen
   · rename_i identity
     split at chosen
@@ -190,12 +200,12 @@ theorem sourceServiceCanonicalPolicy_submitsAtTurn (profile : BehavioralProfile 
     subst chosen
     simp [EventGraphRuntime.submittedEvent?] at submitted
 
-theorem sourceServiceCanonicalOpportunity_submitsAtTurn (bound : (graph setup).EventId → Nat)
-    (profile : BehavioralProfile setup.program) (who : Player) (event : (graph setup).EventId) :
-    SubmitsAtTurn setup leaks
-      (sourceServiceCanonicalOpportunity setup leaks bound profile who event) who := by
+theorem sourceServiceCanonicalOpportunity_submitsAtTurn
+    (bound : (serviceGraph setup mode).EventId → Nat) (profile : BehavioralProfile setup.program)
+    (who : Player) (event : (serviceGraph setup mode).EventId) : SubmitsAtTurn setup leaks
+      (serviceCanonicalOpportunity setup mode deadline leaks bound profile who event) who := by
   intro past view response chosen other submitted
-  unfold sourceServiceCanonicalOpportunity serviceCanonicalOpportunity at chosen
+  unfold serviceCanonicalOpportunity at chosen
   split at chosen
   · exact silentPolicy_submitsAtTurn setup leaks who past view response chosen other submitted
   · split at chosen
@@ -212,14 +222,15 @@ theorem sourceServiceCanonicalOpportunity_submitsAtTurn (bound : (graph setup).E
         submitted
 
 theorem turnScheduledPolicy_submitsAtTurn
-    (turn : List (application setup leaks).PlayerEntry →
-      (application setup leaks).PlayerView → Option Nat)
+    (turn : List (serviceApplication setup mode deadline leaks).PlayerEntry →
+      (serviceApplication setup mode deadline leaks).PlayerView → Option Nat)
     {slots : Nat} (selected : Option (Fin slots))
-    (opening waiting : (application setup leaks).Policy) (who : Player)
+    (opening waiting : (serviceApplication setup mode deadline leaks).Policy) (who : Player)
     (openingAt : SubmitsAtTurn setup leaks opening who)
     (waitingAt : SubmitsAtTurn setup leaks waiting who) :
     SubmitsAtTurn setup leaks
-      ((application setup leaks).turnScheduledPolicy turn selected opening waiting) who := by
+      ((serviceApplication setup mode deadline leaks).turnScheduledPolicy turn selected opening
+          waiting) who := by
   intro past view response chosen event submitted
   unfold ReactiveApplication.turnScheduledPolicy at chosen
   split at chosen
@@ -229,22 +240,24 @@ theorem turnScheduledPolicy_submitsAtTurn
     · exact waitingAt past view response chosen event submitted
 
 theorem policyMixture_submitsAtTurn {Index : Type} (initial : PMF Index)
-    (policies : Index → (application setup leaks).Policy) (who : Player)
+    (policies : Index → (serviceApplication setup mode deadline leaks).Policy) (who : Player)
     (each : ∀ index, SubmitsAtTurn setup leaks (policies index) who) :
     SubmitsAtTurn setup leaks
-      ((application setup leaks).policyMixture initial policies).policy who := by
+      ((serviceApplication setup mode deadline leaks).policyMixture initial policies).policy
+      who := by
   intro past view response chosen event submitted
   rw [ReactiveApplication.policyMixture_policy, PMF.support_bind] at chosen
   obtain ⟨index, _, member⟩ := Set.mem_iUnion₂.mp chosen
   exact each index past view response member event submitted
 
-theorem sourceServiceTurnPolicy_submitsAtTurn (bound : (graph setup).EventId → Nat)
-    (turns : Nat) (timing : TurnTiming setup turns)
+theorem sourceServiceTurnPolicy_submitsAtTurn (bound : (serviceGraph setup mode).EventId → Nat)
+    (turns : Nat) (timing : TurnTiming setup turns mode)
     (profile : BehavioralProfile setup.program) (who : Player) :
-    SubmitsAtTurn setup leaks (sourceServiceTurnPolicy setup leaks bound turns timing profile who)
+    SubmitsAtTurn setup leaks
+        (serviceTurnPolicy setup mode deadline leaks bound turns timing profile who)
       who := by
   intro past view response chosen event submitted
-  unfold sourceServiceTurnPolicy serviceTurnPolicy at chosen
+  unfold serviceTurnPolicy at chosen
   split at chosen
   · exact silentPolicy_submitsAtTurn setup leaks who past view response chosen event submitted
   · split at chosen
@@ -259,17 +272,19 @@ theorem sourceServiceTurnPolicy_submitsAtTurn (bound : (graph setup).EventId →
 
 /-- Deciding a fixed action at the first turn submits only for that event,
 and only at an input where it is the owner's turn. -/
-theorem decidedTurnPolicy_submitsAtTurn (bound : (graph setup).EventId → Nat) (owner : Player)
-    (event : (graph setup).EventId)
-    (action : (graph setup).Action event) :
-    SubmitsAtTurn setup leaks (decidedTurnPolicy setup leaks bound owner event action) owner := by
+theorem decidedTurnPolicy_submitsAtTurn (bound : (serviceGraph setup mode).EventId → Nat)
+    (owner : Player) (event : (serviceGraph setup mode).EventId)
+    (action : (serviceGraph setup mode).Action event) :
+    SubmitsAtTurn setup leaks
+        (decidedTurnPolicy (deadline := deadline) setup leaks bound owner event
+      action) owner := by
   intro past view response chosen other submitted
   unfold decidedTurnPolicy ReactiveApplication.turnScheduledPolicy at chosen
   dsimp only at chosen
   split at chosen
   · rename_i first
     have turn : view.application.publicView.ownTurn? owner = some event := by
-      unfold sourceServiceTurn serviceTurn at first
+      unfold serviceTurn at first
       split at first
       · assumption
       · cases first
@@ -292,14 +307,17 @@ theorem decidedTurnPolicy_submitsAtTurn (bound : (graph setup).EventId → Nat) 
 
 /-- A round of players that submit only at their own turns keeps every
 recorded submission at its author's turn. -/
-theorem round_submissionsAtTurn {scheduler : (application setup leaks).Scheduler}
-    {players : Player → (application setup leaks).Policy}
+theorem round_submissionsAtTurn
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode deadline leaks).Policy}
     (atTurn : ∀ who, SubmitsAtTurn setup leaks (players who) who)
-    {execution next : (application setup leaks).Execution}
+    {execution next : (serviceApplication setup mode deadline leaks).Execution}
     (valid : SubmissionsAtTurn setup leaks execution)
-    (reached : next ∈ ((application setup leaks).round scheduler players execution).support) :
+    (reached : next ∈
+        ((serviceApplication setup mode deadline leaks).round scheduler players
+        execution).support) :
     SubmissionsAtTurn setup leaks next := by
-  let app := application setup leaks
+  let app := serviceApplication setup mode deadline leaks
   obtain ⟨command, _, middle, moved, cases⟩ := round_cases setup leaks reached
   have recallEq := app.environmentStep_recall execution middle command moved
   rcases cases with ⟨_, rfl⟩ | ⟨who, _, response, chosen, rfl⟩
@@ -323,21 +341,24 @@ theorem round_submissionsAtTurn {scheduler : (application setup leaks).Scheduler
 variable {setup leaks} in
 /-- Submissions at every author's turn are in particular one author's
 submissions at its turns. -/
-theorem SubmissionsAtTurn.own {execution : (application setup leaks).Execution}
+theorem SubmissionsAtTurn.own {execution : (serviceApplication setup mode deadline leaks).Execution}
     (valid : SubmissionsAtTurn setup leaks execution) (who : Player) :
     OwnSubmissionsAtTurn setup leaks execution who :=
   fun entry member event submitted => valid who entry member event submitted
 
 /-- A round in which `who` submits only at its own turns keeps every recorded
 submission of `who` at its turn, whatever the other players do. -/
-theorem round_ownSubmissionsAtTurn {scheduler : (application setup leaks).Scheduler}
-    {players : Player → (application setup leaks).Policy} {who : Player}
+theorem round_ownSubmissionsAtTurn
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode deadline leaks).Policy} {who : Player}
     (atTurn : SubmitsAtTurn setup leaks (players who) who)
-    {execution next : (application setup leaks).Execution}
+    {execution next : (serviceApplication setup mode deadline leaks).Execution}
     (valid : OwnSubmissionsAtTurn setup leaks execution who)
-    (reached : next ∈ ((application setup leaks).round scheduler players execution).support) :
+    (reached : next ∈
+        ((serviceApplication setup mode deadline leaks).round scheduler players
+        execution).support) :
     OwnSubmissionsAtTurn setup leaks next who := by
-  let app := application setup leaks
+  let app := serviceApplication setup mode deadline leaks
   obtain ⟨command, _, middle, moved, cases⟩ := round_cases setup leaks reached
   have recallEq := app.environmentStep_recall execution middle command moved
   rcases cases with ⟨_, rfl⟩ | ⟨responder, _, response, chosen, rfl⟩
@@ -360,13 +381,16 @@ theorem round_ownSubmissionsAtTurn {scheduler : (application setup leaks).Schedu
       exact valid entry member event submitted
 
 /-- Every round answers its activation at the scheduler's public view. -/
-theorem round_activationsAnswered {scheduler : (application setup leaks).Scheduler}
-    {players : Player → (application setup leaks).Policy}
-    {execution next : (application setup leaks).Execution}
+theorem round_activationsAnswered
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode deadline leaks).Policy}
+    {execution next : (serviceApplication setup mode deadline leaks).Execution}
     (valid : ActivationsAnswered setup leaks execution)
-    (reached : next ∈ ((application setup leaks).round scheduler players execution).support) :
+    (reached : next ∈
+        ((serviceApplication setup mode deadline leaks).round scheduler players
+        execution).support) :
     ActivationsAnswered setup leaks next := by
-  let app := application setup leaks
+  let app := serviceApplication setup mode deadline leaks
   obtain ⟨command, selected, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   have recorded := app.dispatch_environmentRecall players command execution next dispatched
   obtain ⟨middle', moved', resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
@@ -412,13 +436,14 @@ variable {setup leaks} in
 /-- Every activation in completed rounds has an actual response in own recall,
 even if that response was silent or sent a packet for a different event. -/
 theorem roundsFrom_activationsAnswered
-    {scheduler : (application setup leaks).Scheduler}
-    {players : Player → (application setup leaks).Policy} (count : Nat)
-    (execution : (application setup leaks).Execution)
-    (supported : execution ∈ ((application setup leaks).roundsFrom (initialLaw setup) scheduler
-      players count).support) :
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode deadline leaks).Policy} (count : Nat)
+    (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (supported : execution ∈
+        ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+        scheduler players count).support) :
     ActivationsAnswered setup leaks execution := by
-  let app := application setup leaks
+  let app := serviceApplication setup mode deadline leaks
   induction count generalizing execution with
   | zero =>
       obtain ⟨state, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
@@ -426,18 +451,19 @@ theorem roundsFrom_activationsAnswered
       intro entry member
       cases member
   | succ count ih =>
-      rw [app.roundsFrom_succ (initialLaw setup) scheduler players count] at supported
+      rw [app.roundsFrom_succ (serviceInitialLaw setup mode) scheduler players count] at supported
       obtain ⟨prior, priorMem, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
       exact round_activationsAnswered setup leaks (ih prior priorMem) moved
 
 /-- Both facts hold along rounds of players that submit only at their own
 turns, from initialization under every scheduler. -/
-theorem roundsFrom_turnFacts {scheduler : (application setup leaks).Scheduler}
-    {players : Player → (application setup leaks).Policy}
+theorem roundsFrom_turnFacts {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode deadline leaks).Policy}
     (atTurn : ∀ who, SubmitsAtTurn setup leaks (players who) who) (count : Nat)
-    (execution : (application setup leaks).Execution)
-    (supported : execution ∈ ((application setup leaks).roundsFrom (initialLaw setup) scheduler
-      players count).support) :
+    (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (supported : execution ∈
+        ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+        scheduler players count).support) :
     SubmissionsAtTurn setup leaks execution ∧ ActivationsAnswered setup leaks execution := by
   induction count generalizing execution with
   | zero =>
@@ -456,14 +482,15 @@ theorem roundsFrom_turnFacts {scheduler : (application setup leaks).Scheduler}
         round_activationsAnswered setup leaks answered moved⟩
 
 /-- Rounds of players that submit only at their own turns keep both facts. -/
-theorem runRounds_turnFacts {scheduler : (application setup leaks).Scheduler}
-    {players : Player → (application setup leaks).Policy}
+theorem runRounds_turnFacts {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode deadline leaks).Policy}
     (atTurn : ∀ who, SubmitsAtTurn setup leaks (players who) who) (count : Nat)
-    (execution next : (application setup leaks).Execution)
+    (execution next : (serviceApplication setup mode deadline leaks).Execution)
     (submissions : SubmissionsAtTurn setup leaks execution)
     (answered : ActivationsAnswered setup leaks execution)
-    (reached : next ∈ ((application setup leaks).runRounds scheduler players count
-      execution).support) :
+    (reached : next ∈
+        ((serviceApplication setup mode deadline leaks).runRounds scheduler players count
+        execution).support) :
     SubmissionsAtTurn setup leaks next ∧ ActivationsAnswered setup leaks next := by
   induction count generalizing execution with
   | zero =>
@@ -475,11 +502,13 @@ theorem runRounds_turnFacts {scheduler : (application setup leaks).Scheduler}
         (round_activationsAnswered setup leaks answered moved) rest
 
 /-- A response never changes a candidate whose meaning is fixed. -/
-theorem respond_candidate_fixed (execution : (application setup leaks).Execution)
-    (who : Player) (response : (application setup leaks).Action)
-    (handle : Handle (graph setup))
+theorem respond_candidate_fixed
+    (execution : (serviceApplication setup mode deadline leaks).Execution) (who : Player)
+    (response : (serviceApplication setup mode deadline leaks).Action)
+    (handle : Handle (serviceGraph setup mode))
     (fixed : execution.application.candidates.lookup handle ≠ .fresh) :
-    (execution.respond (application setup leaks) who response).application.candidates.lookup
+    (execution.respond (serviceApplication setup mode deadline leaks) who
+        response).application.candidates.lookup
       handle = execution.application.candidates.lookup handle := by
   rcases response with ⟨_ | material⟩
   · rfl
@@ -506,10 +535,12 @@ theorem respond_candidate_fixed (execution : (application setup leaks).Execution
     all_goals rfl
 
 /-- An environment step never changes a candidate whose meaning is fixed. -/
-theorem environmentStep_candidate_fixed (execution next : (application setup leaks).Execution)
-    (command : (application setup leaks).Command)
-    (moved : next ∈ (execution.environmentStep (application setup leaks) command).support)
-    (handle : Handle (graph setup))
+theorem environmentStep_candidate_fixed
+    (execution next : (serviceApplication setup mode deadline leaks).Execution)
+    (command : (serviceApplication setup mode deadline leaks).Command)
+    (moved : next ∈
+        (execution.environmentStep (serviceApplication setup mode deadline leaks) command).support)
+    (handle : Handle (serviceGraph setup mode))
     (fixed : execution.application.candidates.lookup handle ≠ .fresh) :
     next.application.candidates.lookup handle =
       execution.application.candidates.lookup handle := by
@@ -527,10 +558,11 @@ theorem environmentStep_candidate_fixed (execution next : (application setup lea
       cases found : execution.network.lookup id with
       | none => rfl
       | some message =>
-          change (((application setup leaks).handle execution.application
+          change (((serviceApplication setup mode deadline leaks).handle execution.application
             message).getD execution.application).candidates.lookup
               handle = _
-          cases reactiveAccepted : (application setup leaks).handle execution.application
+          cases reactiveAccepted : (serviceApplication setup mode deadline leaks).handle
+              execution.application
               message with
           | none => rfl
           | some state =>
@@ -539,12 +571,12 @@ theorem environmentStep_candidate_fixed (execution next : (application setup lea
               cases call : message.payload.call with
               | commitment event candidate =>
                   rw [call] at accepted
-                  rw [(handle_commitment_tables (runtime setup) _ state _ event candidate
-                    accepted).1]
+                  rw [(handle_commitment_tables (serviceRuntime setup mode deadline) _ state _ event
+                          candidate accepted).1]
                   exact CommitmentCandidates.lookup_freeze_eq_of_not_fresh _ _ _ fixed
               | opening event candidate raw =>
                   rw [call] at accepted
-                  rw [(handle_resolution_tables (runtime setup) _ state _
+                  rw [(handle_resolution_tables (serviceRuntime setup mode deadline) _ state _
                     (by intros; simp) accepted).2]
               | malformed raw =>
                   rw [call] at accepted
@@ -553,14 +585,15 @@ theorem environmentStep_candidate_fixed (execution next : (application setup lea
       obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ moved
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
       change state.candidates.lookup handle = _
-      rw [(environmentStep_tables (runtime setup) _ state command changed).2]
+      rw [(environmentStep_tables (serviceRuntime setup mode deadline) _ state command changed).2]
 
 /-- A round never changes a candidate whose meaning is fixed. -/
-theorem round_candidate_fixed {scheduler : (application setup leaks).Scheduler}
-    {players : Player → (application setup leaks).Policy}
-    {execution next : (application setup leaks).Execution}
-    (reached : next ∈ ((application setup leaks).round scheduler players execution).support)
-    (handle : Handle (graph setup))
+theorem round_candidate_fixed {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode deadline leaks).Policy}
+    {execution next : (serviceApplication setup mode deadline leaks).Execution}
+    (reached : next ∈
+        ((serviceApplication setup mode deadline leaks).round scheduler players execution).support)
+    (handle : Handle (serviceGraph setup mode))
     (fixed : execution.application.candidates.lookup handle ≠ .fresh) :
     next.application.candidates.lookup handle =
       execution.application.candidates.lookup handle := by

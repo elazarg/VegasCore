@@ -2,7 +2,6 @@
 
 import Vegas.Game.AsyncServiceSpec
 import Vegas.Game.SourceServiceTurnSettlement
-import Vegas.Game.SourceServiceDeviationCoupling
 import Vegas.Game.SourceServiceClientPolicy
 import GameTheory.Core.Approximate
 
@@ -23,7 +22,7 @@ equilibrium (`Vegas.AsyncServiceSpec.isεNash_of_clientProfile`).
 
 In the forward direction, the turn-counted clients against any native policy of
 one player are within `δ` of the first-turn clients against it
-(`Vegas.sourceServiceTurnPolicy_deviation_roundsFrom_bind_within`). Hence, if
+(`Vegas.deviatedTurnProfile_roundsFrom_bind_within`). Hence, if
 every native policy against the first-turn clients is bounded in audited
 expected payoff by a source deviation, every source `ε`-Nash equilibrium has
 clients that are an `(ε + 2 * δ * R)`-Nash equilibrium of every admitting menu
@@ -125,7 +124,7 @@ theorem clientProfile_update (menu : (serviceApplication service.setup service.m
 the total deferral weight times the payoff range of the source expected
 payoff, in both directions, and both expectations are of integrable payoffs. -/
 private theorem clientProfile_value_close {Parameter : Type}
-    (configuration : service.RankSequential)
+    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
     (sample : List (SettledEvidence service.setup service.mode) →
@@ -187,7 +186,7 @@ private theorem clientProfile_value_close {Parameter : Type}
   let sourceJoint := (service.setup.run decoded).map fun state =>
     (some state, stateUtility state)
   have close : PMF.WithinTV (∑ event, timing.deferral event) nativeJoint sourceJoint :=
-    sourceServiceClients_clientPolicy_settlement_lawError configuration service.contract
+    sourceServiceClients_clientPolicy_settlement_lawError ordered service.contract
       service.timely timing
       decoded menu (covered source) sample authentic stateUtility deposit
   have settled (state : (serviceApplication service.setup service.mode service.deadline
@@ -307,7 +306,7 @@ equilibrium of the source protocol model, where `δ` is the total deferral
 weight of the turn timing and every realized payoff value, charged or not,
 lies in an interval of length `R`. -/
 theorem isεNash_of_clientProfile {Parameter : Type}
-    (configuration : service.RankSequential)
+    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
     (sample : List (SettledEvidence service.setup service.mode) →
@@ -353,10 +352,10 @@ theorem isεNash_of_clientProfile {Parameter : Type}
     native who (service.clientProfile menu timing (Profile.update source who alternative) who)
   rw [service.clientProfile_update] at compared
   obtain ⟨honestNative, honestSource, honestAbove, honestBelow⟩ :=
-    service.clientProfile_value_close configuration
+    service.clientProfile_value_close ordered
     parameter utility sample authentic deposit menu timing covered low range within source who
   obtain ⟨deviationNative, deviationSource, deviationAbove, deviationBelow⟩ :=
-    service.clientProfile_value_close configuration parameter utility sample authentic deposit menu
+    service.clientProfile_value_close ordered parameter utility sample authentic deposit menu
       timing
       covered low range within (Profile.update source who alternative) who
   let nativeUtility := fun (history : (menu.protocol (serviceInitialLaw service.setup service.mode)
@@ -452,9 +451,9 @@ an `(ε + 2 * δ * R)`-Nash equilibrium of every admitting response menu, where 
 is the total deferral weight of the turn timing and every realized payoff
 value, charged or not, lies in an interval of length `R`. The turn-counted
 clients against a deviation are within `δ` of the first-turn clients against it
-in total variation (`Vegas.sourceServiceTurnPolicy_deviation_roundsFrom_bind_within`). -/
+in total variation (`Vegas.deviatedTurnProfile_roundsFrom_bind_within`). -/
 theorem isεNash_clientProfile_of_firstTurn_bounds {Parameter : Type}
-    (configuration : service.RankSequential)
+    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
     (sample : List (SettledEvidence service.setup service.mode) →
@@ -588,9 +587,9 @@ theorem isεNash_clientProfile_of_firstTurn_bounds {Parameter : Type}
     rfl
   rw [completed] at deviationLaw
   -- The turn-counted and first-turn deviations are close.
-  have coupled := sourceServiceTurnPolicy_deviation_roundsFrom_bind_within configuration (horizon :=
-    service.horizon) (bound := service.bound) service.scheduler timing clients who alternative
-    (fun execution => PMF.pure execution)
+  have coupled := deviatedTurnProfile_roundsFrom_bind_within
+    (serviceInitialLaw service.setup service.mode) service.scheduler service.horizon service.bound
+    timing clients who alternative (fun execution => PMF.pure execution)
   simp only [PMF.bind_pure] at coupled
   let limit := deviatedTurnProfile service.bound turns (firstTurnTiming service.setup turns
     service.mode)
@@ -615,7 +614,7 @@ theorem isεNash_clientProfile_of_firstTurn_bounds {Parameter : Type}
     firstBound
   obtain ⟨sourceHonest, sourceDeviation, sourceCompared⟩ := equilibrium who deviation
   -- Honest closeness.
-  have honestClose := service.clientProfile_value_close configuration parameter utility sample
+  have honestClose := service.clientProfile_value_close ordered parameter utility sample
     authentic
     deposit menu timing covered low range within source who
   obtain ⟨honestIntegrable, sourceIntegrable, _, honestBelow⟩ := honestClose

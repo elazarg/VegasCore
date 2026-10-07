@@ -38,36 +38,36 @@ variable {Player : Type} [DecidableEq Player]
 /-- Correlated initial draws with the same source view have identical native
 traffic projections, including the genuine owned initial candidate catalogue. -/
 theorem source_initial_traffic_eq
-    (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
+    {deadline : (serviceGraph setup mode).EventId → Nat}
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
     (focal : Player) (left right : State L setup.context)
     (same : (setup.initialConfig left).view focal = (setup.initialConfig right).view focal) :
-    (runtime setup).bindingTraffic leaks focal
-        (ReactiveApplication.Execution.initial (application setup leaks)
-          (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs left))) =
-      (runtime setup).bindingTraffic leaks focal
-        (ReactiveApplication.Execution.initial (application setup leaks)
-          (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs right))) := by
-  have first := SourceCheckpoint.initial setup left
-  have second := SourceCheckpoint.initial setup right
-  have observed := checkpoint_playerObservation_eq setup _ 0
-    (ContextRefs.initial_coversPrefix setup.program) focal _ _ _ _
-      (EventGraphRuntime.State.initial_invariant
-        (graph := graph setup) (setup.eventInputs left)).reachable
-      (EventGraphRuntime.State.initial_invariant
-        (graph := graph setup) (setup.eventInputs right)).reachable
-      first.ordered second.ordered first.agrees second.agrees first.history second.history same
-  have publics : (EventGraphRuntime.State.initial (graph := graph setup)
+    (serviceRuntime setup mode deadline).bindingTraffic leaks focal
+        (ReactiveApplication.Execution.initial (serviceApplication setup mode deadline leaks)
+          (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
+              (setup.eventInputs left))) =
+      (serviceRuntime setup mode deadline).bindingTraffic leaks focal
+        (ReactiveApplication.Execution.initial (serviceApplication setup mode deadline leaks)
+          (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
+              (setup.eventInputs right))) := by
+  have first := SourceCheckpoint.initial (mode := mode) setup left
+  have second := SourceCheckpoint.initial (mode := mode) setup right
+  have observed := checkpoint_playerObservation_eq_of_order setup _ 0
+    (ContextRefs.initial_coversPrefix setup.program) focal _ _ _ _ (by rfl) first.ordered
+    second.ordered first.agrees second.agrees first.history second.history same
+  have publics : (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
         (setup.eventInputs left)).publicView =
-      (EventGraphRuntime.State.initial (graph := graph setup)
+      (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
         (setup.eventInputs right)).publicView :=
-    EventGraphRuntime.State.initial_publicView_eq_of_observation (graph := graph setup) focal
-      (setup.eventInputs left) (setup.eventInputs right) observed
+    EventGraphRuntime.State.initial_publicView_eq_of_observation (graph := serviceGraph setup mode)
+        focal (setup.eventInputs left) (setup.eventInputs right) observed
   have candidates := EventGraphRuntime.State.initial_candidates_eq_of_observation
-    (graph := graph setup) focal (setup.eventInputs left) (setup.eventInputs right) observed
-  have views : (EventGraphRuntime.State.initial (graph := graph setup)
+    (graph := serviceGraph setup mode) focal (setup.eventInputs left)
+    (setup.eventInputs right) observed
+  have views : (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
         (setup.eventInputs left)).playerView focal =
-      (EventGraphRuntime.State.initial (graph := graph setup)
+      (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
         (setup.eventInputs right)).playerView focal := by
     unfold EventGraphRuntime.State.playerView
     rw [publics, observed, candidates]
@@ -79,24 +79,26 @@ theorem source_initial_traffic_eq
 independence assumption on private types, and original and effective histories
 are paired only at initialization, before any intention can be erased. -/
 theorem source_initial_memory_factorization
-    (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
+    {deadline : (serviceGraph setup mode).EventId → Nat}
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
     (focal : Player) :
     ∃ noise : DecisionView focal setup.context → PMF _,
       setup.initialLaw.map (fun initial =>
         ((setup.initialConfig initial, setup.initialConfig initial),
-          (runtime setup).bindingTraffic leaks focal
-            (ReactiveApplication.Execution.initial (application setup leaks)
-              (EventGraphRuntime.State.initial (graph := graph setup)
+          (serviceRuntime setup mode deadline).bindingTraffic leaks focal
+            (ReactiveApplication.Execution.initial (serviceApplication setup mode deadline leaks)
+              (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
                 (setup.eventInputs initial))))) =
       (setup.initialLaw.map fun initial =>
         (setup.initialConfig initial, setup.initialConfig initial)).bind fun pair =>
           (noise (pair.1.view focal)).map fun extra => (pair, extra) := by
   classical
   let read := fun initial : State L setup.context =>
-    (runtime setup).bindingTraffic leaks focal
-      (ReactiveApplication.Execution.initial (application setup leaks)
-        (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial)))
+    (serviceRuntime setup mode deadline).bindingTraffic leaks focal
+      (ReactiveApplication.Execution.initial (serviceApplication setup mode deadline leaks)
+        (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
+            (setup.eventInputs initial)))
   let noise := fun view : DecisionView focal setup.context =>
     if present : ∃ initial ∈ setup.initialLaw.support,
         (setup.initialConfig initial).view focal = view then
@@ -120,34 +122,36 @@ The carried source configuration is proof data; the native application still
 performs the specified command, including its public effects and service recall. -/
 theorem source_maintenance_factorization
     {Seed Source View : Type}
-    (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
+    {deadline : (serviceGraph setup mode).EventId → Nat}
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
     (focal : Player) (prior : PMF Seed) (source : Seed → Source)
     (observe : Source → View)
-    (execution : Seed → (application setup leaks).Execution)
+    (execution : Seed → (serviceApplication setup mode deadline leaks).Execution)
     (noise : View → PMF _)
     (factor : prior.map (fun seed => (source seed,
-        (runtime setup).bindingTraffic leaks focal (execution seed))) =
+        (serviceRuntime setup mode deadline).bindingTraffic leaks focal (execution seed))) =
       (prior.map source).bind fun config =>
         (noise (observe config)).map fun extra => (config, extra))
-    (command : EnvironmentCommand (graph setup))
+    (command : EnvironmentCommand (serviceGraph setup mode))
     (maintenance : ∀ event, command ≠ .executeSample event) :
     ∃ nextNoise : View → PMF _,
       (prior.bind fun seed =>
-        ((execution seed).environmentStep (application setup leaks) (.application command)).map
-          fun final => (source seed, (runtime setup).bindingTraffic leaks focal final)) =
+        ((execution seed).environmentStep (serviceApplication setup mode deadline leaks)
+            (.application command)).map fun final =>
+        (source seed, (serviceRuntime setup mode deadline).bindingTraffic leaks focal final)) =
       (prior.map source).bind fun config =>
         (nextNoise (observe config)).map fun extra => (config, extra) := by
   obtain ⟨nextNoise, law⟩ := exists_updated_observation_kernel_of_readout prior source
-    (fun seed => (runtime setup).bindingTraffic leaks focal (execution seed))
+    (fun seed => (serviceRuntime setup mode deadline).bindingTraffic leaks focal (execution seed))
     observe noise factor (fun _ => PMF.pure Unit.unit)
     (fun config _ => config) observe
-    (fun seed _ => ((execution seed).environmentStep (application setup leaks)
-      (.application command)).map ((runtime setup).bindingTraffic leaks focal))
+    (fun seed _ => ((execution seed).environmentStep (serviceApplication setup mode deadline leaks)
+      (.application command)).map ((serviceRuntime setup mode deadline).bindingTraffic leaks focal))
     (fun _ _ _ _ _ _ _ _ same => same)
     (fun left _ _ _ right _ _ _ _ same =>
-      (runtime setup).bindingTraffic_maintenance leaks (execution left) (execution right)
-        focal same command maintenance)
+      (serviceRuntime setup mode deadline).bindingTraffic_maintenance leaks (execution left)
+      (execution right) focal same command maintenance)
   exact ⟨nextNoise, by simpa only [PMF.pure_bind, PMF.pure_map,
     PMF.bind_pure, PMF.map_id, PMF.map_comp, Function.comp_def] using law⟩
 
@@ -155,36 +159,38 @@ theorem source_maintenance_factorization
 law while retaining all passive samples and all players' previous responses. -/
 theorem source_silent_factorization
     {Seed : Type*} {Γ : SourceCtx Player L}
-    (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
+    {deadline : (serviceGraph setup mode).EventId → Nat}
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
     (focal : Player) (prior : PMF Seed) (source : Seed → Config Player L Γ)
-    (execution : Seed → (application setup leaks).Execution)
-    (recalled : ∀ seed ∈ prior.support, (execution seed).InputRecall (application setup leaks))
+    (execution : Seed → (serviceApplication setup mode deadline leaks).Execution)
+    (recalled : ∀ seed ∈ prior.support, (execution seed).InputRecall
+        (serviceApplication setup mode deadline leaks))
     (noise : DecisionView focal Γ → PMF _)
     (factor : prior.map (fun seed => (source seed,
-        (runtime setup).bindingTraffic leaks focal (execution seed))) =
+        (serviceRuntime setup mode deadline).bindingTraffic leaks focal (execution seed))) =
       (prior.map source).bind fun config =>
         (noise (config.view focal)).map fun extra => (config, extra))
-    (network : (runtime setup).NetworkPolicy leaks) (roster : List Player) :
+    (network : (serviceRuntime setup mode deadline).NetworkPolicy leaks) (roster : List Player) :
     ∃ nextNoise : DecisionView focal Γ → PMF _,
       (prior.bind fun seed =>
-        ((runtime setup).runInteractionPlan leaks
-          (fun _ => (application setup leaks).silentPolicy) network
+        ((serviceRuntime setup mode deadline).runInteractionPlan leaks
+          (fun _ => (serviceApplication setup mode deadline leaks).silentPolicy) network
           (roster.map ServiceInstruction.player) (execution seed)).map fun final =>
-            (source seed, (runtime setup).bindingTraffic leaks focal final)) =
+            (source seed, (serviceRuntime setup mode deadline).bindingTraffic leaks focal final)) =
       (prior.map source).bind fun config =>
         (nextNoise (config.view focal)).map fun extra => (config, extra) := by
   obtain ⟨nextNoise, law⟩ := exists_updated_observation_kernel_of_readout prior source
-    (fun seed => (runtime setup).bindingTraffic leaks focal (execution seed))
+    (fun seed => (serviceRuntime setup mode deadline).bindingTraffic leaks focal (execution seed))
     (fun config => config.view focal) noise factor (fun _ => PMF.pure Unit.unit)
     (fun config _ => config) (fun config => config.view focal)
-    (fun seed _ => ((runtime setup).runInteractionPlan leaks
-      (fun _ => (application setup leaks).silentPolicy) network
+    (fun seed _ => ((serviceRuntime setup mode deadline).runInteractionPlan leaks
+      (fun _ => (serviceApplication setup mode deadline leaks).silentPolicy) network
       (roster.map ServiceInstruction.player) (execution seed)).map
-        ((runtime setup).bindingTraffic leaks focal))
+        ((serviceRuntime setup mode deadline).bindingTraffic leaks focal))
     (fun _ _ _ _ _ _ _ _ same => same)
     (fun left leftSupport _ _ right rightSupport _ _ _ same =>
-      (runtime setup).silent_window_focal_law leaks network roster focal
+      (serviceRuntime setup mode deadline).silent_window_focal_law leaks network roster focal
         (execution left) (execution right) (recalled left leftSupport)
         (recalled right rightSupport) same)
   exact ⟨nextNoise, by simpa only [PMF.pure_bind, PMF.pure_map,
@@ -196,28 +202,32 @@ The same network sample is used on each coupled branch; no observer receives
 another player's sample or any of the auxiliary proof projection. -/
 theorem source_activation_input_factorization
     {Seed Source View : Type}
-    (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
+    {deadline : (serviceGraph setup mode).EventId → Nat}
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
     (focal : Player) (prior : PMF Seed) (source : Seed → Source)
     (observe : Source → View)
-    (execution : Seed → (application setup leaks).Execution)
+    (execution : Seed → (serviceApplication setup mode deadline leaks).Execution)
     (noise : View → PMF _)
     (factor : prior.map (fun seed => (source seed,
-        (runtime setup).bindingTraffic leaks focal (execution seed))) =
+        (serviceRuntime setup mode deadline).bindingTraffic leaks focal (execution seed))) =
       (prior.map source).bind fun config =>
         (noise (observe config)).map fun extra => (config, extra)) :
     ∃ channel : View → PMF
-        (List (application setup leaks).PlayerEntry × (application setup leaks).PlayerView),
+        (List (serviceApplication setup mode deadline leaks).PlayerEntry ×
+            (serviceApplication setup mode deadline leaks).PlayerView),
       (prior.bind fun seed =>
-        ((execution seed).environmentStep (application setup leaks) (.activate focal)).map
-          fun final => (source seed,
-            (final.recall focal, final.observe (application setup leaks) focal))) =
+        ((execution seed).environmentStep (serviceApplication setup mode deadline leaks)
+            (.activate focal)).map fun final =>
+        (source seed,
+            (final.recall focal, final.observe (serviceApplication setup mode deadline leaks)
+            focal))) =
       (prior.map source).bind fun config =>
         (channel (observe config)).map fun input => (config, input) := by
-  let app := application setup leaks
+  let app := serviceApplication setup mode deadline leaks
   have coupled (left right : app.Execution)
-      (same : (runtime setup).bindingTraffic leaks focal left =
-        (runtime setup).bindingTraffic leaks focal right) :
+      (same : (serviceRuntime setup mode deadline).bindingTraffic leaks focal left =
+        (serviceRuntime setup mode deadline).bindingTraffic leaks focal right) :
       (left.environmentStep app (.activate focal)).map
           (fun final => (final.recall focal, final.observe app focal)) =
         (right.environmentStep app (.activate focal)).map
@@ -229,7 +239,8 @@ theorem source_activation_input_factorization
     intro sample _supported
     let first := left.sampledActivation app focal sample
     let second := right.sampledActivation app focal sample
-    have equal := (runtime setup).bindingTraffic_activation leaks left right focal focal same sample
+    have equal := (serviceRuntime setup mode deadline).bindingTraffic_activation leaks left right
+        focal focal same sample
     have sampledNetworks : first.network = second.network := congrArg Prod.fst equal
     have receipts : first.receipts = second.receipts :=
       congrArg (fun traffic => traffic.2.1) equal
@@ -245,7 +256,7 @@ theorem source_activation_input_factorization
     exact congrArg₂ (fun view evidence =>
       (⟨second.network.observe focal, view, evidence⟩ : app.PlayerView)) views receipts
   obtain ⟨channel, law⟩ := exists_updated_observation_kernel_of_readout prior source
-    (fun seed => (runtime setup).bindingTraffic leaks focal (execution seed))
+    (fun seed => (serviceRuntime setup mode deadline).bindingTraffic leaks focal (execution seed))
     observe noise factor (fun _ => PMF.pure Unit.unit)
     (fun config _ => config) observe
     (fun seed _ => ((execution seed).environmentStep app (.activate focal)).map

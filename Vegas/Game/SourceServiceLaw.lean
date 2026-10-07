@@ -127,7 +127,7 @@ theorem sourceService_prefix_state_law
         rw [setup.behavioralStateStep_none, initialLaw, serviceInitialLaw, PMF.map_comp]
         congr 1
         funext initial
-        exact sourceServicePrefix?_initial setup initial
+        exact serviceSourcePrefix?_initial setup initial
     | succ rank ih =>
         have inside : rank < (graph setup).order.eventCount := by
           change rank < eventCount setup.program
@@ -177,11 +177,19 @@ theorem decodeSourcePrefix?_terminal_readout
       exact ih _ _ _ _
 
 omit [Fintype Player] in
+theorem serviceSourcePrefix?_terminal_readout
+    (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.ExecutionMode)
+    (config : (serviceGraph setup mode).Config) :
+    setup.protocolReadout (serviceSourcePrefix? setup mode (eventCount setup.program) config) =
+      decodeState? (terminalRefs setup.program) config.store :=
+  decodeSourcePrefix?_terminal_readout setup.program _ _ _ _ _ _
+
+omit [Fintype Player] in
 theorem sourceServicePrefix?_terminal_readout
     (setup : Setup (Player := Player) (L := L)) (config : (graph setup).Config) :
     setup.protocolReadout (sourceServicePrefix? setup (eventCount setup.program) config) =
       decodeState? (terminalRefs setup.program) config.store :=
-  decodeSourcePrefix?_terminal_readout setup.program _ _ _ _ _ _
+  serviceSourcePrefix?_terminal_readout setup .sequential config
 
 omit [Fintype Player] in
 /-- The whole physical service has the typed outcome law of its effective

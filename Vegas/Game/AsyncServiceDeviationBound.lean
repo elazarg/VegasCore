@@ -113,7 +113,7 @@ typed outcome law is that of a source deviation whose bindings may fail
 (`Vegas.asyncDeviation_readout_law`); failure buys nothing, and charges only
 lower the payoff. -/
 theorem firstTurn_deviation_bound {Parameter : Type}
-    (configuration : service.RankSequential)
+    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
     (sample : List (SettledEvidence service.setup service.mode) →
@@ -158,7 +158,7 @@ theorem firstTurn_deviation_bound {Parameter : Type}
     cases outcome with
     | none => simp [value]
     | some state => exact (valueBound _).trans (le_abs_self _)
-  obtain ⟨policy, law⟩ := asyncDeviation_readout_law service.setup service.leaks configuration
+  obtain ⟨policy, law⟩ := asyncDeviation_readout_law service.setup service.leaks ordered
     service.contract service.timely turns decoded who alternative
   let native := ((app.roundsFrom (serviceInitialLaw service.setup service.mode) service.scheduler
     (deviatedTurnProfile service.bound turns (firstTurnTiming service.setup turns service.mode)
@@ -276,7 +276,7 @@ response menu that admits every profile's clients, for the audited payoff. Here
 `δ` is the total deferral weight of the turn timing and every realized payoff
 value, charged or not, lies in an interval of length `R`. -/
 theorem isεNash_clientProfile {Parameter : Type}
-    (configuration : service.RankSequential)
+    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
     (sample : List (SettledEvidence service.setup service.mode) →
@@ -317,11 +317,11 @@ theorem isεNash_clientProfile {Parameter : Type}
         (fun history who => payoff history.state who)
         (ε + 2 * (∑ event, timing.deferral event) * range)
         (service.clientProfile menu timing source) :=
-  service.isεNash_clientProfile_of_firstTurn_bounds configuration parameter utility sample
+  service.isεNash_clientProfile_of_firstTurn_bounds ordered parameter utility sample
     authentic deposit
     menu timing covered low range within ε source
-    (fun who alternative => service.firstTurn_deviation_bound configuration parameter utility
-      sample deposit
+    (fun who alternative => service.firstTurn_deviation_bound ordered
+      parameter utility sample deposit
       nonnegative (service.bounded_of_within parameter utility deposit low range within) source
       who alternative)
 
@@ -332,7 +332,7 @@ that are an `(ε + 2 * δ * R)`-Nash equilibrium of every admitting response men
 for the audited payoff, and conversely a native `ε`-Nash equilibrium of the
 clients comes from a source `(ε + 2 * δ * R)`-Nash equilibrium. -/
 theorem isεNash_clientProfile_approximate {Parameter : Type}
-    (configuration : service.RankSequential)
+    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
     (sample : List (SettledEvidence service.setup service.mode) →
@@ -382,10 +382,10 @@ theorem isεNash_clientProfile_approximate {Parameter : Type}
         (fun final who => (service.setup.protocolReadout final.state).elim 0
           (fun state => utility (service.setup.parameterOutcome parameter state) who))
         (ε + 2 * (∑ event, timing.deferral event) * range) source) :=
-  ⟨service.isεNash_clientProfile configuration parameter utility sample authentic deposit
+  ⟨service.isεNash_clientProfile ordered parameter utility sample authentic deposit
     nonnegative menu
       timing covered low range within ε source,
-    service.isεNash_of_clientProfile configuration parameter utility sample authentic deposit menu
+    service.isεNash_of_clientProfile ordered parameter utility sample authentic deposit menu
       timing
       covered low range within ε source⟩
 
@@ -398,7 +398,7 @@ forfeit pass, and their joint law of typed outcome and realized settlement is
 within `δ` in total variation of the intended joint law of terminal store and
 payoff. -/
 theorem intended_clientProfile_isεNash {Parameter : Type}
-    (configuration : service.RankSequential)
+    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (wellFormed : service.setup.WellFormed)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
@@ -462,11 +462,12 @@ theorem intended_clientProfile_isεNash {Parameter : Type}
           (fun final => (service.setup.protocolReadout final.state,
             fun who => (service.setup.protocolReadout final.state).elim 0
               (fun state => utility (service.setup.parameterOutcome parameter state) who)))) :=
-  service.intended_clientProfile_isεNash_of_firstTurn_bounds configuration wellFormed parameter
+  service.intended_clientProfile_isεNash_of_firstTurn_bounds ordered wellFormed parameter
     utility forfeit
     range sample authentic deposit menu timing covered low spread within intended source agrees ε
-    equilibrium (fun who alternative => service.firstTurn_deviation_bound configuration parameter
-      (forfeitUtility service.setup.program forfeit utility) sample deposit nonnegative
+    equilibrium (fun who alternative => service.firstTurn_deviation_bound
+      ordered parameter (forfeitUtility service.setup.program forfeit utility)
+      sample deposit nonnegative
       (service.bounded_of_within parameter _ deposit low spread within) source who alternative)
 
 end AsyncServiceSpec

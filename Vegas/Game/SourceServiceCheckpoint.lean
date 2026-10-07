@@ -29,54 +29,53 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 /-- The semantic part of a public source boundary, valid for all source
 constructors and arbitrary outstanding deferred guards. -/
 structure SourceCheckpoint (setup : Setup (Player := Player) (L := L))
-    {Γ : SourceCtx Player L} (source : Config Player L Γ)
-    (refs : ContextRefs (graph setup).layout Γ) (rank : Nat)
-    (native : (graph setup).Config) : Prop where
+    {mode : EventGraph.ExecutionMode} {Γ : SourceCtx Player L} (source : Config Player L Γ)
+    (refs : ContextRefs (serviceGraph setup mode).layout Γ) (rank : Nat)
+    (native : (serviceGraph setup mode).Config) : Prop where
   agrees : refs.Agrees source.state native.store
   history : decodeHistory setup.program
-    (native.history.map (setup.eventGraph.fromModeCompletion .sequential)) = source.history
+    (native.history.map (setup.eventGraph.fromModeCompletion mode)) = source.history
   ordered : native.cut.IsPrefix rank
 
 theorem SourceCheckpoint.initial (setup : Setup (Player := Player) (L := L))
-    (initial : State L setup.context) :
-    SourceCheckpoint setup (setup.initialConfig initial)
-      (ContextRefs.initial setup.context (outputLayout setup.program)) 0
-      (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial)).config :=
-  ⟨initial_agrees setup initial, initial_history setup initial,
-    EventOrder.Cut.empty_isPrefix _⟩
+    {mode : EventGraph.ExecutionMode} (initial : State L setup.context) : SourceCheckpoint setup
+    (setup.initialConfig initial) (ContextRefs.initial setup.context (outputLayout setup.program)) 0
+    (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
+        (setup.eventInputs initial)).config :=
+    ⟨initial_agrees setup initial, initial_history setup initial, EventOrder.Cut.empty_isPrefix _⟩
 
 private theorem complete_source_history (setup : Setup (Player := Player) (L := L))
-    (native : EventGraphRuntime.State (graph setup))
-    (event : (graph setup).EventId) (ready : native.config.cut.Ready event)
-    (action : (graph setup).Action event) (value : ((graph setup).outputLayout event).Value) :
-    decodeHistory setup.program
-      ((native.complete event ready action value).config.history.map
-        (setup.eventGraph.fromModeCompletion .sequential)) =
+    {mode : EventGraph.ExecutionMode} (native : EventGraphRuntime.State (serviceGraph setup mode))
+    (event : (serviceGraph setup mode).EventId) (ready : native.config.cut.Ready event)
+    (action : (serviceGraph setup mode).Action event)
+    (value : ((serviceGraph setup mode).outputLayout event).Value) : decodeHistory setup.program
+    ((native.complete event ready action value).config.history.map
+        (setup.eventGraph.fromModeCompletion mode)) =
       match decodeEventAction setup.program event action with
       | none => decodeHistory setup.program
-          (native.config.history.map (setup.eventGraph.fromModeCompletion .sequential))
+          (native.config.history.map (setup.eventGraph.fromModeCompletion mode))
       | some sourceAction => Function.update
           (decodeHistory setup.program
-            (native.config.history.map (setup.eventGraph.fromModeCompletion .sequential)))
+            (native.config.history.map (setup.eventGraph.fromModeCompletion mode)))
           (sourceActionOwner sourceAction)
           (decodeHistory setup.program
-            (native.config.history.map (setup.eventGraph.fromModeCompletion .sequential))
+            (native.config.history.map (setup.eventGraph.fromModeCompletion mode))
               (sourceActionOwner sourceAction) ++ [sourceAction]) := by
   change decodeHistory setup.program
-    ((native.config.history ++ [(⟨event, action⟩ : (graph setup).Completion)]).map
-      (setup.eventGraph.fromModeCompletion .sequential)) = _
+    ((native.config.history ++ [(⟨event, action⟩ : (serviceGraph setup mode).Completion)]).map
+      (setup.eventGraph.fromModeCompletion mode)) = _
   rw [List.map_append, List.map_singleton]
   exact decodeHistory_append_completion setup.program _ event action
 
 theorem SourceCheckpoint.sample
-    {setup : Setup (Player := Player) (L := L)}
+    {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
     {Γ : SourceCtx Player L} {source : Config Player L Γ}
-    {refs : ContextRefs (graph setup).layout Γ} {rank : Nat}
-    {native : EventGraphRuntime.State (graph setup)}
+    {refs : ContextRefs (serviceGraph setup mode).layout Γ} {rank : Nat}
+    {native : EventGraphRuntime.State (serviceGraph setup mode)}
     (checkpoint : SourceCheckpoint setup source refs rank native.config)
-    {payload : L.Ty} (name : VarId) (event : (graph setup).EventId)
+    {payload : L.Ty} (name : VarId) (event : (serviceGraph setup mode).EventId)
     (eventRank : event.val = rank) (ready : native.config.cut.Ready event)
-    (outputEq : (graph setup).outputLayout event = .publicData payload)
+    (outputEq : (serviceGraph setup mode).outputLayout event = .publicData payload)
     (before : ∀ {readName cell} (ref : HasVar Γ readName cell),
       FieldBefore event (refs.get ref).field)
     (decoded : decodeEventAction setup.program event
@@ -93,16 +92,16 @@ theorem SourceCheckpoint.sample
   rfl
 
 theorem SourceCheckpoint.commit
-    {setup : Setup (Player := Player) (L := L)}
+    {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
     {Γ : SourceCtx Player L} {source : Config Player L Γ}
-    {refs : ContextRefs (graph setup).layout Γ} {rank : Nat}
-    {native : EventGraphRuntime.State (graph setup)}
+    {refs : ContextRefs (serviceGraph setup mode).layout Γ} {rank : Nat}
+    {native : EventGraphRuntime.State (serviceGraph setup mode)}
     (checkpoint : SourceCheckpoint setup source refs rank native.config)
     {owner : Player} {payload : L.Ty} (name : VarId)
     (guard : SourceGuard L Γ owner name payload)
-    (event : (graph setup).EventId) (eventRank : event.val = rank)
+    (event : (serviceGraph setup mode).EventId) (eventRank : event.val = rank)
     (ready : native.config.cut.Ready event)
-    (outputEq : (graph setup).outputLayout event = .binding owner payload)
+    (outputEq : (serviceGraph setup mode).outputLayout event = .binding owner payload)
     (before : ∀ {readName cell} (ref : HasVar Γ readName cell),
       FieldBefore event (refs.get ref).field)
     (choice : PublicationResult (L.Val payload))
@@ -120,16 +119,16 @@ theorem SourceCheckpoint.commit
   rfl
 
 theorem SourceCheckpoint.reveal
-    {setup : Setup (Player := Player) (L := L)}
+    {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
     {Γ : SourceCtx Player L} {source : Config Player L Γ}
-    {refs : ContextRefs (graph setup).layout Γ} {rank : Nat}
-    {native : EventGraphRuntime.State (graph setup)}
+    {refs : ContextRefs (serviceGraph setup mode).layout Γ} {rank : Nat}
+    {native : EventGraphRuntime.State (serviceGraph setup mode)}
     (checkpoint : SourceCheckpoint setup source refs rank native.config)
     {name : VarId} {owner : Player} {payload : L.Ty} (published : VarId)
     (binding : HasVar Γ name (.commitment owner payload))
-    (event : (graph setup).EventId) (eventRank : event.val = rank)
+    (event : (serviceGraph setup mode).EventId) (eventRank : event.val = rank)
     (ready : native.config.cut.Ready event)
-    (outputEq : (graph setup).outputLayout event = .publication payload)
+    (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
     (before : ∀ {readName cell} (ref : HasVar Γ readName cell),
       FieldBefore event (refs.get ref).field)
     (disclose : Bool)
@@ -150,30 +149,33 @@ theorem SourceCheckpoint.reveal
 /-- A supported result of the runtime's actual public-sampling transition
 is precisely a supported original source sample and its new checkpoint. -/
 theorem SourceCheckpoint.sample_environment
-    {setup : Setup (Player := Player) (L := L)}
+    {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
+    {deadline : (serviceGraph setup mode).EventId → Nat}
     {Γ : SourceCtx Player L} {source : Config Player L Γ}
-    {refs : ContextRefs (graph setup).layout Γ} {rank : Nat}
-    {native : EventGraphRuntime.State (graph setup)}
+    {refs : ContextRefs (serviceGraph setup mode).layout Γ} {rank : Nat}
+    {native : EventGraphRuntime.State (serviceGraph setup mode)}
     (checkpoint : SourceCheckpoint setup source refs rank native.config)
     {payload : L.Ty} (name : VarId) (law : L.DistExpr (SourcePublicCtx L Γ) payload)
-    (event : (graph setup).EventId) (eventRank : event.val = rank)
+    (event : (serviceGraph setup mode).EventId) (eventRank : event.val = rank)
     (ready : native.config.cut.Ready event)
-    (outputEq : (graph setup).outputLayout event = .publicData payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .sample payload (compilePublicDist refs law))
-    (node : nodeView (graph setup) event =
+    (outputEq : (serviceGraph setup mode).outputLayout event = .publicData payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode (serviceGraph setup mode).layout) outputEq)
+      ((serviceGraph setup mode).nodes event) = .sample payload (compilePublicDist refs law))
+    (node : nodeView (serviceGraph setup mode) event =
       .sample payload (compilePublicDist refs law) outputEq codeEq)
     (before : ∀ {readName cell} (ref : HasVar Γ readName cell),
       FieldBefore event (refs.get ref).field)
     (decoded : decodeEventAction setup.program event
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) PUnit.unit) = none)
-    (after : EventGraphRuntime.State (graph setup))
-    (supported : after ∈ (environmentStep (runtime setup) native (.executeSample event)).support) :
+    (after : EventGraphRuntime.State (serviceGraph setup mode))
+    (supported : after ∈
+        (environmentStep (serviceRuntime setup mode deadline) native
+        (.executeSample event)).support) :
     ∃ value ∈ (L.evalDist law (sourcePublicEnv source.state)).support,
       SourceCheckpoint setup (sampleSuccessor name source value)
         (refs.cons (name := name) ⟨.inr event, outputEq⟩) (rank + 1) after.config := by
-  rw [source_sample_environment (runtime setup) native event ready outputEq refs law codeEq node
-    source.state checkpoint.agrees, PMF.support_map] at supported
+  rw [source_sample_environment (serviceRuntime setup mode deadline) native event ready outputEq
+          refs law codeEq node source.state checkpoint.agrees, PMF.support_map] at supported
   obtain ⟨value, member, rfl⟩ := supported
   exact ⟨value, member,
     checkpoint.sample name event eventRank ready outputEq before decoded value⟩

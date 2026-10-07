@@ -421,7 +421,7 @@ theorem roster_boundaryContinuationLaw (focal : Player) :
             have supported := boundary.supported
             rw [position] at supported
             exact approx.roster_visited_touched current first others rosterEq later execution
-              supported (boundary.untouched current rfl)
+              supported (boundary.untouched current le_rfl)
     · have rankEq : rank = current.val + 1 := isPrefix_unique boundary.ordered advanced
       subst rankEq
       have finished : current ∈ execution.application.config.cut.completed :=

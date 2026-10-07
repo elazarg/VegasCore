@@ -272,48 +272,61 @@ end Selection
 runtime invariant, envelope provenance, input recall, retention of known
 envelopes, and receipts for published envelopes. -/
 theorem roster_trace_facts (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (horizon : Nat) (scheduler : (application setup leaks).Scheduler)
-    {control : (application setup leaks).Control}
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-      (some control)) :
+    {mode : EventGraph.ExecutionMode}
+    {deadline : (serviceGraph setup mode).EventId → Nat}
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+    (horizon : Nat) (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+    {control : (serviceApplication setup mode deadline leaks).Control}
+    (trace :
+        ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
+        horizon scheduler).Trace (some control)) :
     (∃ inputs, control.execution.application.Invariant inputs) ∧
-      control.execution.Provenance (application setup leaks) ∧
-      control.execution.InputRecall (application setup leaks) ∧
+      control.execution.Provenance (serviceApplication setup mode deadline leaks) ∧
+      control.execution.InputRecall (serviceApplication setup mode deadline leaks) ∧
       control.execution.network.PendingOrPublished ∧
-      control.execution.ReceiptsSound (application setup leaks) (fun _ => True) := by
-  let preserved : (application setup leaks).Invariant
-      (fun state : EventGraphRuntime.State (graph setup) => ∃ inputs, state.Invariant inputs) := {
+      control.execution.ReceiptsSound (serviceApplication setup mode deadline leaks)
+          (fun _ => True) := by
+  let preserved : (serviceApplication setup mode deadline leaks).Invariant
+      (fun state : EventGraphRuntime.State (serviceGraph setup mode) => ∃ inputs, state.Invariant
+          inputs) := {
     submit := by
       rintro state who material ⟨inputs, valid⟩
-      exact ⟨inputs, ((runtime setup).reactiveStateInvariant leaks inputs).submit state who
-        material valid⟩
+      exact ⟨inputs,
+              ((serviceRuntime setup mode deadline).reactiveStateInvariant leaks inputs).submit
+              state who material valid⟩
     handle := by
       rintro state message next ⟨inputs, valid⟩ accepted
-      exact ⟨inputs, ((runtime setup).reactiveStateInvariant leaks inputs).handle state message
-        next valid accepted⟩
+      exact ⟨inputs,
+              ((serviceRuntime setup mode deadline).reactiveStateInvariant leaks inputs).handle
+              state message next valid accepted⟩
     environment := by
       rintro state command next ⟨inputs, valid⟩ reached
-      exact ⟨inputs, ((runtime setup).reactiveStateInvariant leaks inputs).environment state
-        command next valid reached⟩ }
-  have receipts : (application setup leaks).ServiceInvariant scheduler
-      (fun execution => execution.ReceiptsSound (application setup leaks) (fun _ => True)) :=
+      exact ⟨inputs,
+              ((serviceRuntime setup mode deadline).reactiveStateInvariant leaks inputs).environment
+              state command next valid reached⟩ }
+  have receipts : (serviceApplication setup mode deadline leaks).ServiceInvariant scheduler
+      (fun execution => execution.ReceiptsSound (serviceApplication setup mode deadline leaks)
+          (fun _ => True)) :=
     { respond := fun execution who action valid =>
-        (application setup leaks).receiptsSound_respond _ execution who action valid
+        (serviceApplication setup mode deadline leaks).receiptsSound_respond _ execution who
+        action valid
       environment := fun execution next command valid _ reached =>
-        (application setup leaks).receiptsSound_environmentStep _ execution next command valid
-          (fun _ _ _ => trivial) reached }
+        (serviceApplication setup mode deadline leaks).receiptsSound_environmentStep _ execution
+        next command valid (fun _ _ _ => trivial) reached }
   refine ⟨?_, ?_, ?_, ?_, ?_⟩
-  · exact preserved.history (initialLaw setup) horizon scheduler (by
+  · exact preserved.history (serviceInitialLaw setup mode) horizon scheduler (by
       intro state supported
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact ⟨_, State.initial_invariant _⟩) trace
-  · exact (application setup leaks).history_provenance (initialLaw setup) horizon scheduler trace
-  · exact (application setup leaks).history_inputRecall (initialLaw setup) horizon scheduler trace
-  · exact (application setup leaks).pendingOrPublished_history scheduler (initialLaw setup)
-      horizon trace
-  · exact receipts.history (initialLaw setup) horizon
-      (fun state _ => (application setup leaks).receiptsSound_initial _ state) trace
+  · exact (serviceApplication setup mode deadline leaks).history_provenance
+        (serviceInitialLaw setup mode) horizon scheduler trace
+  · exact (serviceApplication setup mode deadline leaks).history_inputRecall
+        (serviceInitialLaw setup mode) horizon scheduler trace
+  · exact (serviceApplication setup mode deadline leaks).pendingOrPublished_history scheduler
+        (serviceInitialLaw setup mode) horizon trace
+  · exact receipts.history (serviceInitialLaw setup mode) horizon
+      (fun state _ => (serviceApplication setup mode deadline leaks).receiptsSound_initial _
+          state) trace
 
 /-! ## Graph steps of the application -/
 

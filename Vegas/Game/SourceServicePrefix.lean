@@ -151,44 +151,31 @@ theorem decodeSourcePrefix?_terminal
       obtain ⟨nextState, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
       exact ih _ _ _ _ nextState read
 
-/-- The deterministic readout into the original initialized source protocol. -/
-def sourceServicePrefix? (setup : Setup (Player := Player) (L := L))
-    (rank : Nat) (config : (graph setup).Config) : setup.ProtocolState :=
-  decodeSourcePrefix? setup.program
-    (ContextRefs.initial setup.context (outputLayout setup.program)) []
-    (Revelations.initial setup.context) (outputRef setup.program) rank config.store
-    (decodeHistory setup.program (config.history.map
-      (setup.eventGraph.fromModeCompletion .sequential)))
-
 /-- The deterministic readout of a configuration of the service graph of any
-dependency mode: completions are decoded in source rank order, whatever order
-they completed in. -/
+dependency mode into the original initialized source protocol. Each owner's
+completions keep source rank in every mode, so the chronological completions
+decode to the source history. -/
 def serviceSourcePrefix? (setup : Setup (Player := Player) (L := L))
     (mode : EventGraph.ExecutionMode) (rank : Nat) (config : (serviceGraph setup mode).Config) :
     setup.ProtocolState :=
   decodeSourcePrefix? setup.program
     (ContextRefs.initial setup.context (outputLayout setup.program)) []
     (Revelations.initial setup.context) (outputRef setup.program) rank config.store
-    (decodeHistory setup.program (config.rankedHistory.map
+    (decodeHistory setup.program (config.history.map
       (setup.eventGraph.fromModeCompletion mode)))
 
-/-- On a reachable configuration of the sequential graph the ranked readout is
-the chronological readout: completions already follow source rank. -/
-theorem serviceSourcePrefix?_sequential (setup : Setup (Player := Player) (L := L))
-    {inputs : (graph setup).Inputs} (rank : Nat) (config : (graph setup).Config)
-    (reachable : config.Reachable inputs) :
-    serviceSourcePrefix? setup .sequential rank config =
-      sourceServicePrefix? setup rank config := by
-  unfold serviceSourcePrefix? sourceServicePrefix?
-  rw [(reachable_rankPrefix setup reachable).rankedHistory_eq]
+/-- The readout on the default sequential graph. -/
+abbrev sourceServicePrefix? (setup : Setup (Player := Player) (L := L)) :
+    Nat → (graph setup).Config → setup.ProtocolState :=
+  serviceSourcePrefix? setup .sequential
 
-theorem sourceServicePrefix?_initial (setup : Setup (Player := Player) (L := L))
-    (initial : State L setup.context) :
-    sourceServicePrefix? setup 0
-        (EventGraphRuntime.State.initial (graph := graph setup)
-          (setup.eventInputs initial)).config =
+theorem serviceSourcePrefix?_initial (setup : Setup (Player := Player) (L := L))
+    {mode : EventGraph.ExecutionMode} (initial : State L setup.context) : serviceSourcePrefix? setup
+    mode 0
+    (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
+        (setup.eventInputs initial)).config =
       some (ProtocolState.entry setup.program (setup.initialConfig initial)) := by
-  unfold sourceServicePrefix?
+  unfold serviceSourcePrefix?
   rw [initial_history setup initial]
   exact decodeSourcePrefix?_zero_of_agrees setup.program _ _ (setup.initialConfig initial) _
     (initial_agrees setup initial)
@@ -196,16 +183,18 @@ theorem sourceServicePrefix?_initial (setup : Setup (Player := Player) (L := L))
 /-- A semantic runtime checkpoint supplies the readout identity directly;
 there is no additional posterior or source-state equality premise. -/
 theorem SourceCheckpoint.decode
-    {setup : Setup (Player := Player) (L := L)}
+    {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    {source : Config Player L Γ} {refs : ContextRefs (graph setup).layout Γ} {rank : Nat}
-    {native : (graph setup).Config}
+    {source : Config Player L Γ} {refs : ContextRefs (serviceGraph setup mode).layout Γ}
+    {rank : Nat}
+    {native : (serviceGraph setup mode).Config}
     (checkpoint : SourceCheckpoint setup source refs rank native)
-    (outputs : ∀ event, EventGraph.FieldRef (graph setup).layout (outputLayout program event)) :
+    (outputs : ∀ event, EventGraph.FieldRef (serviceGraph setup mode).layout
+        (outputLayout program event)) :
     decodeSourcePrefix? program refs source.registry source.revelations outputs 0 native.store
       (decodeHistory setup.program (native.history.map
-        (setup.eventGraph.fromModeCompletion .sequential))) =
+        (setup.eventGraph.fromModeCompletion mode))) =
       some (ProtocolState.entry program source) := by
   rw [checkpoint.history]
   exact decodeSourcePrefix?_zero_of_agrees program refs outputs source native.store
@@ -214,19 +203,19 @@ theorem SourceCheckpoint.decode
 /-- Locate the actual semantic checkpoint in the existing source protocol's
 sum of positions. This carries the deferred registry through the static
 prefix and imposes no strategy, posterior, or native-memory restriction. -/
-def SourcePrefixCheckpoint (setup : Setup (Player := Player) (L := L)) :
-    {Γ : SourceCtx Player L} → {openNames : Finset VarId} →
-    (program : SourceProgram Player L Γ openNames) → ContextRefs (graph setup).layout Γ →
-    Registry Γ → Revelations Γ →
-    (∀ event, EventGraph.FieldRef (graph setup).layout (outputLayout program event)) →
-    Nat → Nat → ProtocolState program → (graph setup).Config → Prop
+def SourcePrefixCheckpoint (setup : Setup (Player := Player) (L := L))
+    {mode : EventGraph.ExecutionMode} : {Γ : SourceCtx Player L} → {openNames : Finset VarId} →
+    (program : SourceProgram Player L Γ openNames) → ContextRefs (serviceGraph setup mode).layout
+    Γ → Registry Γ → Revelations Γ →
+    (∀ event, EventGraph.FieldRef (serviceGraph setup mode).layout (outputLayout program event)) →
+    Nat → Nat → ProtocolState program → (serviceGraph setup mode).Config → Prop
   | _, _, program, refs, registry, revelations, _, offset, 0, state, native =>
       ∃ source, state = ProtocolState.entry program source ∧ source.registry = registry ∧
         @source.revelations = @revelations ∧ SourceCheckpoint setup source refs offset native
   | _, _, .ret _, _, _, _, _, _, _ + 1, _, _ => False
   | _, _, .sample (payload := payload) _ _ _ next,
       refs, registry, revelations, outputs, offset, count + 1, state, native =>
-      let headRef : EventGraph.FieldRef (graph setup).layout (.publicData payload) := by
+      let headRef : EventGraph.FieldRef (serviceGraph setup mode).layout (.publicData payload) := by
         simpa [outputLayout, eventCount] using outputs ⟨0, by simp [eventCount]⟩
       match state with
       | .inl _ => False
@@ -234,7 +223,8 @@ def SourcePrefixCheckpoint (setup : Setup (Player := Player) (L := L)) :
           revelations.weaken (fun tail => outputs tail.succ) (offset + 1) count rest native
   | _, _, .commit (payload := payload) name owner _ guard next,
       refs, registry, revelations, outputs, offset, count + 1, state, native =>
-      let headRef : EventGraph.FieldRef (graph setup).layout (.binding owner payload) := by
+      let headRef : EventGraph.FieldRef (serviceGraph setup mode).layout
+          (.binding owner payload) := by
         simpa [outputLayout, eventCount] using outputs ⟨0, by simp [eventCount]⟩
       let nextRegistry :=
         { owner := owner, subject := name, payload := payload, source := HasVar.here,
@@ -245,7 +235,8 @@ def SourcePrefixCheckpoint (setup : Setup (Player := Player) (L := L)) :
           revelations.weaken (fun tail => outputs tail.succ) (offset + 1) count rest native
   | _, _, .reveal (payload := payload) _ _ _ _ selected _ next,
       refs, registry, revelations, outputs, offset, count + 1, state, native =>
-      let headRef : EventGraph.FieldRef (graph setup).layout (.publication payload) := by
+      let headRef : EventGraph.FieldRef (serviceGraph setup mode).layout
+          (.publication payload) := by
         simpa [outputLayout, eventCount] using outputs ⟨0, by simp [eventCount]⟩
       match state with
       | .inl _ => False
@@ -256,19 +247,17 @@ def SourcePrefixCheckpoint (setup : Setup (Player := Player) (L := L)) :
 /-- All related full-syntax prefixes decode to their actual original source
 protocol state. Missing-field and excessive-prefix fallbacks are unreachable
 on these concrete semantic checkpoints. -/
-theorem SourcePrefixCheckpoint.decode {setup : Setup (Player := Player) (L := L)} :
-    ∀ {Γ : SourceCtx Player L} {openNames : Finset VarId}
-      (program : SourceProgram Player L Γ openNames)
-      (refs : ContextRefs (graph setup).layout Γ) (registry : Registry Γ)
-      (revelations : Revelations Γ)
-      (outputs : ∀ event, EventGraph.FieldRef (graph setup).layout
-        (outputLayout program event))
-      (offset count : Nat) (state : ProtocolState program) (native : (graph setup).Config),
-      SourcePrefixCheckpoint setup program refs registry revelations outputs
-        offset count state native →
-      decodeSourcePrefix? program refs registry revelations outputs count native.store
-        (decodeHistory setup.program (native.history.map
-          (setup.eventGraph.fromModeCompletion .sequential))) = some state := by
+theorem SourcePrefixCheckpoint.decode {setup : Setup (Player := Player) (L := L)}
+    {mode : EventGraph.ExecutionMode} : ∀ {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    (program : SourceProgram Player L Γ openNames)
+    (refs : ContextRefs (serviceGraph setup mode).layout Γ) (registry : Registry Γ)
+    (revelations : Revelations Γ)
+    (outputs : ∀ event, EventGraph.FieldRef (serviceGraph setup mode).layout
+        (outputLayout program event)) (offset count : Nat) (state : ProtocolState program)
+    (native : (serviceGraph setup mode).Config), SourcePrefixCheckpoint setup program refs registry
+    revelations outputs offset count state native → decodeSourcePrefix? program refs registry
+    revelations outputs count native.store (decodeHistory setup.program (native.history.map
+          (setup.eventGraph.fromModeCompletion mode))) = some state := by
   intro Γ openNames program refs registry revelations outputs offset count
   induction count generalizing Γ openNames program refs registry revelations outputs offset with
   | zero =>
@@ -303,14 +292,15 @@ theorem SourcePrefixCheckpoint.decode {setup : Setup (Player := Player) (L := L)
 /-- The same actual native checkpoint cannot decode to two source states.
 This does not identify native histories with source histories. -/
 theorem SourcePrefixCheckpoint.state_unique {setup : Setup (Player := Player) (L := L)}
-    {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    {mode : EventGraph.ExecutionMode} {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (refs : ContextRefs (graph setup).layout Γ) (registry : Registry Γ)
+    (refs : ContextRefs (serviceGraph setup mode).layout Γ) (registry : Registry Γ)
     (revelations : Revelations Γ)
-    (outputs : ∀ event, EventGraph.FieldRef (graph setup).layout (outputLayout program event))
-    (offset count : Nat) (left right : ProtocolState program) (native : (graph setup).Config)
-    (first : SourcePrefixCheckpoint setup program refs registry revelations outputs
-      offset count left native)
+    (outputs : ∀ event, EventGraph.FieldRef (serviceGraph setup mode).layout
+        (outputLayout program event)) (offset count : Nat) (left right : ProtocolState program)
+    (native : (serviceGraph setup mode).Config)
+    (first : SourcePrefixCheckpoint setup program refs registry revelations outputs offset count
+        left native)
     (second : SourcePrefixCheckpoint setup program refs registry revelations outputs
       offset count right native) : left = right := by
   have firstRead := SourcePrefixCheckpoint.decode program refs registry revelations outputs

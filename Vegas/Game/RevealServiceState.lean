@@ -26,47 +26,45 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- Arbitrarily correlated initialized source states are encoded exactly in
 the actual sequential runtime's initial store. -/
-theorem initial_agrees (setup : Setup (Player := Player) (L := L))
+theorem initial_agrees (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
     (initial : State L setup.context) :
     (ContextRefs.initial setup.context (outputLayout setup.program)).Agrees initial
-      (EventGraphRuntime.State.initial (graph := graph setup)
+      (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
         (setup.eventInputs initial)).config.store := by
   apply ContextRefs.initial_agrees
   intro input
   rfl
 
 theorem initial_history (setup : Setup (Player := Player) (L := L))
-    (initial : State L setup.context) :
-    decodeHistory setup.program
-      ((EventGraphRuntime.State.initial (graph := graph setup)
+    {mode : EventGraph.ExecutionMode} (initial : State L setup.context) : decodeHistory
+    setup.program
+    ((EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
         (setup.eventInputs initial)).config.history.map
-          (setup.eventGraph.fromModeCompletion .sequential)) = fun _ => [] := rfl
+        (setup.eventGraph.fromModeCompletion mode)) = fun _ => [] := rfl
 
 /-- Native completion appends exactly the source reveal choice to the owner's
 source history. Extra native response names remain in native recall and are
 not mistaken for extra source decisions. -/
 theorem complete_reveal_history (setup : Setup (Player := Player) (L := L))
-    {Γ : SourceCtx Player L} {name : VarId} {owner : Player} {payload : L.Ty}
-    (published : VarId) (selected : HasVar Γ name (.commitment owner payload))
-    (source : Config Player L Γ) (native : EventGraphRuntime.State (graph setup))
+    {mode : EventGraph.ExecutionMode} {Γ : SourceCtx Player L} {name : VarId} {owner : Player}
+    {payload : L.Ty} (published : VarId) (selected : HasVar Γ name (.commitment owner payload))
+    (source : Config Player L Γ) (native : EventGraphRuntime.State (serviceGraph setup mode))
     (history : decodeHistory setup.program
-      (native.config.history.map (setup.eventGraph.fromModeCompletion .sequential)) =
-        source.history)
-    (event : (graph setup).EventId) (ready : native.config.cut.Ready event)
-    (action : (graph setup).Action event) (value : ((graph setup).outputLayout event).Value)
-    (disclose : Bool)
-    (decoded : decodeEventAction setup.program event action =
-      some (.reveal owner name disclose)) :
+        (native.config.history.map (setup.eventGraph.fromModeCompletion mode)) = source.history)
+    (event : (serviceGraph setup mode).EventId) (ready : native.config.cut.Ready event)
+    (action : (serviceGraph setup mode).Action event)
+    (value : ((serviceGraph setup mode).outputLayout event).Value) (disclose : Bool)
+    (decoded : decodeEventAction setup.program event action = some (.reveal owner name disclose)) :
     decodeHistory setup.program
-      ((native.complete event ready action value).config.history.map
-        (setup.eventGraph.fromModeCompletion .sequential)) =
+    ((native.complete event ready action value).config.history.map
+        (setup.eventGraph.fromModeCompletion mode)) =
       (revealSuccessor published selected source disclose).history := by
   change decodeHistory setup.program
-    ((native.config.history ++ [(⟨event, action⟩ : (graph setup).Completion)]).map
-      (setup.eventGraph.fromModeCompletion .sequential)) = _
+    ((native.config.history ++ [(⟨event, action⟩ : (serviceGraph setup mode).Completion)]).map
+      (setup.eventGraph.fromModeCompletion mode)) = _
   rw [List.map_append, List.map_singleton]
   change decodeHistory setup.program
-    (native.config.history.map (setup.eventGraph.fromModeCompletion .sequential) ++
+    (native.config.history.map (setup.eventGraph.fromModeCompletion mode) ++
       [⟨event, action⟩]) = _
   rw [decodeHistory_append_completion, decoded, history]
   rfl

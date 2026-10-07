@@ -80,7 +80,7 @@ theorem SourceResidual.decode {rank : Nat} {config : (graph setup).Config}
     (residual : SourceResidual setup profile rank config) :
     sourceServicePrefix? setup rank config =
       some (residual.lift (ProtocolState.entry residual.program residual.source)) := by
-  unfold sourceServicePrefix?
+  unfold sourceServicePrefix? serviceSourcePrefix?
   have read := residual.transport 0
   simp only [Nat.add_zero] at read
   rw [read, residual.checkpoint.decode residual.program residual.embedding.ref]
@@ -396,17 +396,26 @@ theorem SourceResidual.configStep {rank : Nat} {before after : (graph setup).Con
 
 variable (setup)
 
+section Generic
+
+variable (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
+  {deadline : (serviceGraph setup mode).EventId → Nat}
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+
 /-- One scheduler round changes the configuration by one configuration step:
 the scheduler's command steps the graph and a response keeps the
 configuration. -/
 theorem round_configStep
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (scheduler : (application setup leaks).Scheduler)
-    (players : Player → (application setup leaks).Policy)
-    (execution next : (application setup leaks).Execution)
-    (reached : next ∈ ((application setup leaks).round scheduler players execution).support) :
+    {deadline : (serviceGraph setup mode).EventId → Nat}
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+    (players : Player → (serviceApplication setup mode deadline leaks).Policy)
+    (execution next : (serviceApplication setup mode deadline leaks).Execution)
+    (reached : next ∈
+        ((serviceApplication setup mode deadline leaks).round scheduler players
+        execution).support) :
     ConfigStep setup execution.application.config next.application.config := by
-  let app := application setup leaks
+  let app := serviceApplication setup mode deadline leaks
   obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
   have step := environmentStep_configStep setup leaks execution middle command moved
@@ -423,9 +432,12 @@ theorem round_configStep
         change next ∈ (app.invoke players who middle).support at resumed
         rw [ReactiveApplication.invoke, PMF.support_map] at resumed
         obtain ⟨response, _, rfl⟩ := resumed
-        exact ((runtime setup).reactive_respond_application leaks middle who response).1
+        exact ((serviceRuntime setup mode deadline).reactive_respond_application leaks middle who
+                response).1
   rw [kept]
   exact step
+
+end Generic
 
 /-- **Scheduler-generic decoding.** Every execution reached by rounds of any
 players under any scheduler from the initial law has a source residual at its
@@ -495,6 +507,7 @@ theorem CompletionBoundary.terminal_continuation
   obtain ⟨residual⟩ := boundary.sourceResidual (profile := profile)
   have decoded := residual.decode
   have stopped := decodeSourcePrefix?_terminal setup.program _ _ _ _ _ _ _ decoded
+  simp only [sourceServicePrefix?] at decoded
   have readout := sourceServicePrefix?_terminal_readout setup execution.application.config
   unfold sourceContinuation
   rw [Setup.continuationLaw_terminal setup profile _ (by rw [decoded]; exact stopped)]

@@ -35,59 +35,53 @@ variable {Player : Type} [DecidableEq Player]
 
 section Ranked
 
-variable (setup : Setup (Player := Player) (L := L))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+variable (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
+  {deadline : (serviceGraph setup mode).EventId → Nat}
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 /-- No recorded response has seen `event` ready. -/
-def Untouched (event : (graph setup).EventId)
-    (execution : (application setup leaks).Execution) : Prop :=
+def Untouched (event : (serviceGraph setup mode).EventId)
+    (execution : (serviceApplication setup mode deadline leaks).Execution) : Prop :=
   ∀ who, ∀ entry ∈ execution.recall who,
     ¬ entry.beforeView.application.publicView.EventReady event
 
 /-- Every recorded response saw only events of rank at most `bound` ready. -/
-def ReadySeen (bound : Nat) (execution : (application setup leaks).Execution) : Prop :=
-  ∀ who, ∀ entry ∈ execution.recall who, ∀ event : (graph setup).EventId,
+def ReadySeen (bound : Nat) (execution : (serviceApplication setup mode deadline leaks).Execution) :
+    Prop := ∀ who, ∀ entry ∈ execution.recall who, ∀ event : (serviceGraph setup mode).EventId,
     entry.beforeView.application.publicView.EventReady event → event.val ≤ bound
 
 /-- A configuration step either stutters or completes one ready event. -/
-def ConfigStep (before after : (graph setup).Config) : Prop :=
+def ConfigStep (before after : (serviceGraph setup mode).Config) : Prop :=
   after = before ∨ ∃ event, ∃ (ready : before.cut.Ready event)
-    (action : (graph setup).Action event), after ∈ (before.step event ready action).support
+    (action : (serviceGraph setup mode).Action event), after ∈
+    (before.step event ready action).support
 
 variable {setup}
 
-/-- At a completed prefix a configuration step stutters or extends the prefix
-by exactly one event. -/
-theorem ConfigStep.prefix {before after : (graph setup).Config}
-    (step : ConfigStep setup before after) (rank : Nat) (ordered : before.cut.IsPrefix rank) :
-    after = before ∨ after.cut.IsPrefix (rank + 1) := by
-  rcases step with same | ⟨event, ready, action, member⟩
-  · exact Or.inl same
-  · right
-    have rankEq := (ready_iff_rank setup before rank ordered event).mp ready
-    rw [before.step_cut event ready action after member]
-    exact ordered.complete_at event ready rankEq
 
 /-- A cut is a prefix of at most one length. -/
-theorem isPrefix_unique {cut : (graph setup).order.Cut} {first second : Nat}
+theorem isPrefix_unique {cut : (serviceGraph setup mode).order.Cut} {first second : Nat}
     (left : cut.IsPrefix first) (right : cut.IsPrefix second) : first = second := by
   by_contra different
   rcases Nat.lt_or_gt_of_ne different with lower | upper
-  · have inside : first < (graph setup).order.eventCount := by have := right.1; omega
+  · have inside : first < (serviceGraph setup mode).order.eventCount := by have := right.1; omega
     have completed := (right.2 ⟨first, inside⟩).mpr lower
     exact Nat.lt_irrefl _ ((left.2 ⟨first, inside⟩).mp completed)
-  · have inside : second < (graph setup).order.eventCount := by have := left.1; omega
+  · have inside : second < (serviceGraph setup mode).order.eventCount := by have := left.1; omega
     have completed := (left.2 ⟨second, inside⟩).mpr upper
     exact Nat.lt_irrefl _ ((right.2 ⟨second, inside⟩).mp completed)
 
 variable (setup)
 
 /-- One scheduler command changes the configuration by one step. -/
-theorem environmentStep_configStep (execution next : (application setup leaks).Execution)
-    (command : (application setup leaks).Command)
-    (reached : next ∈ (execution.environmentStep (application setup leaks) command).support) :
+theorem environmentStep_configStep
+    (execution next : (serviceApplication setup mode deadline leaks).Execution)
+    (command : (serviceApplication setup mode deadline leaks).Command)
+    (reached : next ∈
+        (execution.environmentStep (serviceApplication setup mode deadline leaks)
+        command).support) :
     ConfigStep setup execution.application.config next.application.config := by
-  have ofGraph : ∀ {after : EventGraphRuntime.State (graph setup)},
+  have ofGraph : ∀ {after : EventGraphRuntime.State (serviceGraph setup mode)},
       GraphStep execution.application after →
         ConfigStep setup execution.application.config after.config := by
     intro after step
@@ -103,9 +97,10 @@ theorem environmentStep_configStep (execution next : (application setup leaks).E
           rw [member]
           exact Or.inl rfl
       | executeSample event =>
-          exact ofGraph (graphStep_executeSample (runtime setup) _ _ event member)
+          exact ofGraph
+              (graphStep_executeSample (serviceRuntime setup mode deadline) _ _ event member)
       | expire event =>
-          exact ofGraph (graphStep_expire (runtime setup) _ _ event member)
+          exact ofGraph (graphStep_expire (serviceRuntime setup mode deadline) _ _ event member)
   | activate who =>
       unfold ReactiveApplication.Execution.environmentStep at reached
       rw [PMF.support_map] at reached
@@ -124,8 +119,60 @@ theorem environmentStep_configStep (execution next : (application setup leaks).E
       rw [PMF.support_map] at reached
       obtain ⟨updated, supported, rfl⟩ := reached
       cases (PMF.mem_support_pure_iff _ _).mp supported
-      exact ofGraph (graphStep_includePending (runtime setup) leaks execution id)
+      exact ofGraph
+          (graphStep_includePending (serviceRuntime setup mode deadline) leaks execution id)
 
+
+
+
+/-- An execution where the events of rank below `rank` have completed, no
+recorded response has seen the event of rank `rank` ready, and which the
+players reach by complete rounds from initialization. -/
+structure CompletionBoundary (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+    (players : Player → (serviceApplication setup mode deadline leaks).Policy) (rank : Nat)
+    (execution : (serviceApplication setup mode deadline leaks).Execution) : Prop where
+  supported : execution ∈
+      ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+          scheduler players execution.environmentRecall.length).support
+  ordered : execution.application.config.cut.IsPrefix rank
+  untouched : ∀ event : (serviceGraph setup mode).EventId, rank ≤ event.val →
+    Untouched setup leaks event execution
+
+/-- From every completion boundary within the horizon, the players' run to the
+horizon has the source continuation law of the configuration's typed prefix. -/
+def BoundaryContinuationLaw (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+    (horizon : Nat) (players : Player → (serviceApplication setup mode deadline leaks).Policy)
+    (profile : BehavioralProfile setup.program) : Prop := ∀ rank
+    (execution : (serviceApplication setup mode deadline leaks).Execution), CompletionBoundary setup
+    leaks scheduler players rank execution → execution.environmentRecall.length ≤ horizon →
+    ((serviceApplication setup mode deadline leaks).runToHorizon scheduler players horizon
+        execution).map
+    (fun final => serviceSourceReadout setup mode deadline leaks
+        ((serviceApplication setup mode deadline leaks).finished final)) =
+    (setup.continuationLaw profile
+        (serviceSourcePrefix? setup mode rank execution.application.config)).map some
+
+end Ranked
+
+section Sequential
+
+variable (setup : Setup (Player := Player) (L := L))
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+
+variable {setup}
+/-- At a completed prefix a configuration step stutters or extends the prefix
+by exactly one event. -/
+theorem ConfigStep.prefix {before after : (graph setup).Config}
+    (step : ConfigStep setup before after) (rank : Nat) (ordered : before.cut.IsPrefix rank) :
+    after = before ∨ after.cut.IsPrefix (rank + 1) := by
+  rcases step with same | ⟨event, ready, action, member⟩
+  · exact Or.inl same
+  · right
+    have rankEq := (ready_iff_rank setup before rank ordered event).mp ready
+    rw [before.step_cut event ready action after member]
+    exact ordered.complete_at event ready rankEq
+
+variable (setup)
 /-- One scheduler round from a completed prefix: every new response sees only
 the current event ready, and the prefix grows by at most one event. -/
 theorem round_prefix (scheduler : (application setup leaks).Scheduler)
@@ -182,6 +229,7 @@ theorem round_prefix (scheduler : (application setup leaks).Scheduler)
     rw [recallEq] at member
     exact seen observer entry member
 
+
 /-- Every execution reached by complete rounds from initialization has a
 completed prefix, and its recorded responses saw nothing beyond it. -/
 theorem roundsFrom_ranked (scheduler : (application setup leaks).Scheduler)
@@ -209,6 +257,7 @@ theorem roundsFrom_ranked (scheduler : (application setup leaks).Scheduler)
       · exact ⟨rank, by rw [same]; exact ordered, nextSeen⟩
       · exact ⟨rank + 1, advanced, fun who entry member event readyView =>
           (nextSeen who entry member event readyView).trans (Nat.le_succ _)⟩
+
 
 /-- Rounds stopped at the completion of the current event keep the recorded
 views below the next event, and stop at its completion or earlier. -/
@@ -243,32 +292,7 @@ theorem runUntil_completion_prefix (scheduler : (application setup leaks).Schedu
           cases (PMF.mem_support_pure_iff _ _).mp rest
           exact ⟨middleSeen, Or.inr advanced⟩
 
-/-- An execution where the events of rank below `rank` have completed, no
-recorded response has seen the event of rank `rank` ready, and which the
-players reach by complete rounds from initialization. -/
-structure CompletionBoundary (scheduler : (application setup leaks).Scheduler)
-    (players : Player → (application setup leaks).Policy) (rank : Nat)
-    (execution : (application setup leaks).Execution) : Prop where
-  supported : execution ∈ ((application setup leaks).roundsFrom (initialLaw setup) scheduler
-    players execution.environmentRecall.length).support
-  ordered : execution.application.config.cut.IsPrefix rank
-  untouched : ∀ event : (graph setup).EventId, event.val = rank →
-    Untouched setup leaks event execution
-
-/-- From every completion boundary within the horizon, the players' run to the
-horizon has the source continuation law of the configuration's typed prefix. -/
-def BoundaryContinuationLaw (scheduler : (application setup leaks).Scheduler) (horizon : Nat)
-    (players : Player → (application setup leaks).Policy)
-    (profile : BehavioralProfile setup.program) : Prop :=
-  ∀ rank (execution : (application setup leaks).Execution),
-    CompletionBoundary setup leaks scheduler players rank execution →
-    execution.environmentRecall.length ≤ horizon →
-    ((application setup leaks).runToHorizon scheduler players horizon execution).map
-        (fun final => sourceReadout setup leaks ((application setup leaks).finished final)) =
-      (setup.continuationLaw profile
-        (sourceServicePrefix? setup rank execution.application.config)).map some
-
-end Ranked
+end Sequential
 
 variable [Fintype Player]
 

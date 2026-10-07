@@ -18,6 +18,7 @@ import Vegas.EventGraph.ObservationStep
 import Vegas.EventGraph.Validation
 import Vegas.EventGraph.Barriers
 import Vegas.EventGraph.BarrierInformation
+import Vegas.EventGraph.BarrierBlocks
 import Vegas.EventGraph.RevealRelaxation
 import Vegas.EventGraph.RevealRelaxedScheduling
 import Vegas.EventGraph.Recall

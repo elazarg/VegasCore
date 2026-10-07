@@ -125,63 +125,72 @@ abbrev sourceServiceTurnPolicy : ((graph setup).EventId → Nat) → (turns : Na
       (application setup leaks).Policy :=
   serviceTurnPolicy setup .sequential (rankDeadline setup .sequential) leaks
 
+section Generic
+
+variable (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
+  {deadline : (serviceGraph setup mode).EventId → Nat}
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+
 /-- An input that is not the player's turn at `event` is not an opportunity. -/
-theorem sourceServiceTurn_of_not_turn (who : Player) (event : (graph setup).EventId)
-    (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView)
+theorem sourceServiceTurn_of_not_turn (who : Player) (event : (serviceGraph setup mode).EventId)
+    (past : List (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (view : (serviceApplication setup mode deadline leaks).PlayerView)
     (other : view.application.publicView.ownTurn? who ≠ some event) :
-    sourceServiceTurn setup leaks who event past view = none := by
-  simp only [sourceServiceTurn, serviceTurn, other, ↓reduceIte]
+    serviceTurn setup mode deadline leaks who event past view = none := by
+  simp only [serviceTurn, other, ↓reduceIte]
 
 /-- At its own turn a player follows the event's timing mixture. -/
-theorem sourceServiceTurnPolicy_turn (bound : (graph setup).EventId → Nat) (turns : Nat)
-    (timing : TurnTiming setup turns)
+theorem sourceServiceTurnPolicy_turn (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
+    (timing : TurnTiming setup turns mode)
     (profile : BehavioralProfile setup.program) (who : Player)
-    (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView) (event : (graph setup).EventId)
-    (owned : (graph setup).actor? event = some who)
+    (past : List (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (view : (serviceApplication setup mode deadline leaks).PlayerView)
+    (event : (serviceGraph setup mode).EventId)
+    (owned : (serviceGraph setup mode).actor? event = some who)
     (serving : view.application.publicView.ownTurn? who = some event) :
-    sourceServiceTurnPolicy setup leaks bound turns timing profile who past view =
-      ((application setup leaks).policyMixture (timing event who owned)
-        (sourceServiceTurnFamily setup leaks bound profile who event turns)).policy past view := by
-  simp only [sourceServiceTurnPolicy, serviceTurnPolicy, serving, owned, ↓reduceDIte]
+    serviceTurnPolicy setup mode deadline leaks bound turns timing profile who past view =
+      ((serviceApplication setup mode deadline leaks).policyMixture (timing event who owned)
+        (serviceTurnFamily setup mode deadline leaks bound profile who event turns)).policy past
+        view := by
+  simp only [serviceTurnPolicy, serving, owned, ↓reduceDIte]
 
 /-- A player owning no ready event is silent. -/
-theorem sourceServiceTurnPolicy_idle (bound : (graph setup).EventId → Nat) (turns : Nat)
-    (timing : TurnTiming setup turns)
+theorem sourceServiceTurnPolicy_idle (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
+    (timing : TurnTiming setup turns mode)
     (profile : BehavioralProfile setup.program) (who : Player)
-    (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView)
+    (past : List (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (view : (serviceApplication setup mode deadline leaks).PlayerView)
     (idle : view.application.publicView.Idle who) :
-    sourceServiceTurnPolicy setup leaks bound turns timing profile who past view =
-      (application setup leaks).silentPolicy past view := by
-  simp only [sourceServiceTurnPolicy, serviceTurnPolicy, PublicView.ownTurn?_eq_none _ who idle]
+    serviceTurnPolicy setup mode deadline leaks bound turns timing profile who past view =
+      (serviceApplication setup mode deadline leaks).silentPolicy past view := by
+  simp only [serviceTurnPolicy, PublicView.ownTurn?_eq_none _ who idle]
 
-theorem sourceServiceTurnFamily_finiteSupport (bound : (graph setup).EventId → Nat)
+theorem sourceServiceTurnFamily_finiteSupport (bound : (serviceGraph setup mode).EventId → Nat)
     (finite : setup.program.FiniteBindingTypes)
-    (profile : BehavioralProfile setup.program) (who : Player) (event : (graph setup).EventId)
+    (profile : BehavioralProfile setup.program) (who : Player)
+    (event : (serviceGraph setup mode).EventId)
     (turns : Nat) (slot : Fin (turns + 1)) :
     ReactiveApplication.Policy.FiniteSupport _
-      (sourceServiceTurnFamily setup leaks bound profile who event turns slot) :=
-  (application setup leaks).turnScheduledPolicy_finiteSupport _ _
+      (serviceTurnFamily setup mode deadline leaks bound profile who event turns slot) :=
+  (serviceApplication setup mode deadline leaks).turnScheduledPolicy_finiteSupport _ _
     (sourceServiceCanonicalOpportunity_finiteSupport setup leaks bound finite profile who event)
-    (application setup leaks).silentPolicy_finiteSupport
+    (serviceApplication setup mode deadline leaks).silentPolicy_finiteSupport
 
-theorem sourceServiceTurnPolicy_finiteSupport (bound : (graph setup).EventId → Nat)
-    (turns : Nat) (timing : TurnTiming setup turns)
+theorem sourceServiceTurnPolicy_finiteSupport (bound : (serviceGraph setup mode).EventId → Nat)
+    (turns : Nat) (timing : TurnTiming setup turns mode)
     (finite : setup.program.FiniteBindingTypes) (profile : BehavioralProfile setup.program)
     (who : Player) :
     ReactiveApplication.Policy.FiniteSupport _
-      (sourceServiceTurnPolicy setup leaks bound turns timing profile who) := by
+      (serviceTurnPolicy setup mode deadline leaks bound turns timing profile who) := by
   intro past view
-  unfold sourceServiceTurnPolicy serviceTurnPolicy
+  unfold serviceTurnPolicy
   split
-  · exact (application setup leaks).silentPolicy_finiteSupport past view
+  · exact (serviceApplication setup mode deadline leaks).silentPolicy_finiteSupport past view
   · split
-    · exact (application setup leaks).policyMixture_finiteSupport _
+    · exact (serviceApplication setup mode deadline leaks).policyMixture_finiteSupport _
         (sourceServiceTurnFamily_finiteSupport setup leaks bound finite profile who _ turns)
         past view
-    · exact (application setup leaks).silentPolicy_finiteSupport past view
+    · exact (serviceApplication setup mode deadline leaks).silentPolicy_finiteSupport past view
 
 theorem firstTurnTiming_deferral {mode : EventGraph.ExecutionMode} (turns : Nat)
     (event : (serviceGraph setup mode).EventId) :
@@ -192,7 +201,7 @@ theorem firstTurnTiming_deferral {mode : EventGraph.ExecutionMode} (turns : Nat)
   · simp [firstTurnTiming]
 
 theorem deferralTiming_deferral_le (turns : Nat) (weight : ℝ) (nonnegative : 0 ≤ weight)
-    (bounded : weight ≤ 1) (event : (graph setup).EventId) :
+    (bounded : weight ≤ 1) (event : (serviceGraph setup mode).EventId) :
     (deferralTiming setup turns weight nonnegative bounded).deferral event ≤ weight := by
   unfold TurnTiming.deferral
   split
@@ -204,11 +213,13 @@ theorem deferralTiming_deferral_le (turns : Nat) (weight : ℝ) (nonnegative : 0
     nlinarith
 
 theorem deferralTiming_fullSupport (turns : Nat) (weight : ℝ) (nonnegative : 0 ≤ weight)
-    (bounded : weight ≤ 1) (positive : 0 < weight) (event : (graph setup).EventId)
-    (who : Player) (owned : (graph setup).actor? event = some who) :
+    (bounded : weight ≤ 1) (positive : 0 < weight) (event : (serviceGraph setup mode).EventId)
+    (who : Player) (owned : (serviceGraph setup mode).actor? event = some who) :
     FullSupport (deferralTiming setup turns weight nonnegative bounded event who owned) := by
   intro slot
   exact mem_support_mix_left weight nonnegative bounded positive
     (PMF.mem_support_uniformOfFintype slot)
+
+end Generic
 
 end Vegas

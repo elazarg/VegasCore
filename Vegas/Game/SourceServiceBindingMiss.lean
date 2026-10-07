@@ -18,19 +18,20 @@ open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
-  {setup : Setup (Player := Player) (L := L)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
+  {deadline : (serviceGraph setup mode).EventId → Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
 
 private theorem acceptable_binding_commitment
-    {event : (graph setup).EventId} {who : Player} {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
-    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
-    (view : PublicView (graph setup))
-    (message : Message Player (WitnessedPacket (graph setup)))
-    (addressed : message.payload.call.event? (graph setup) = some event)
-    (acceptable : (runtime setup).freshServiceAcceptable view message) :
+    {event : (serviceGraph setup mode).EventId} {who : Player} {payload : L.Ty}
+    {outputEq : (serviceGraph setup mode).outputLayout event = .binding who payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (serviceGraph setup mode).layout) outputEq)
+      ((serviceGraph setup mode).nodes event) = .bind who payload}
+    (node : nodeView (serviceGraph setup mode) event = .bind who payload outputEq codeEq)
+    (view : PublicView (serviceGraph setup mode))
+    (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
+    (addressed : message.payload.call.event? (serviceGraph setup mode) = some event)
+    (acceptable : (serviceRuntime setup mode deadline).freshServiceAcceptable view message) :
     ∃ candidate, message.payload.call = .commitment event candidate := by
   rcases message with ⟨id, ⟨packet, evidence, token⟩⟩
   cases packet with
@@ -46,29 +47,32 @@ private theorem acceptable_binding_commitment
 /-- An actually recorded conforming protected binding call with a unique own
 identifier cannot become a public omission. Foreign responses are unrestricted. -/
 theorem owner_recorded_binding_no_miss {horizon : Nat}
-    {scheduler : (application setup leaks).Scheduler} {bound : (graph setup).EventId → Nat}
-    (inclusion : ProtectedInclusion (runtime setup) leaks (initialLaw setup) horizon scheduler
-      bound)
-    {control : (application setup leaks).Control}
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-      (some control))
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {bound : (serviceGraph setup mode).EventId → Nat}
+    (inclusion : ProtectedInclusion (serviceRuntime setup mode deadline) leaks
+        (serviceInitialLaw setup mode) horizon scheduler bound)
+    {control : (serviceApplication setup mode deadline leaks).Control}
+    (trace :
+        ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
+        horizon scheduler).Trace (some control))
     (who : Player)
     (calls : OwnFreshCalls setup leaks bound control.execution who)
     (conforming : FreshCallsConform setup leaks control.execution who)
     (once : OneCallPerEvent setup leaks control.execution who)
     (atTurn : OwnSubmissionsAtTurn setup leaks control.execution who)
-    (event : (graph setup).EventId) (payload : L.Ty)
-    (outputEq : (graph setup).outputLayout event = .binding who payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload)
-    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
-    (recorded : (runtime setup).eventRecorded leaks (control.execution.recall who) event = true) :
+    (event : (serviceGraph setup mode).EventId) (payload : L.Ty)
+    (outputEq : (serviceGraph setup mode).outputLayout event = .binding who payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode (serviceGraph setup mode).layout) outputEq)
+      ((serviceGraph setup mode).nodes event) = .bind who payload)
+    (node : nodeView (serviceGraph setup mode) event = .bind who payload outputEq codeEq)
+    (recorded : (serviceRuntime setup mode deadline).eventRecorded leaks
+        (control.execution.recall who) event = true) :
     control.execution.application.publicView.missedBinding event = false := by
-  let app := application setup leaks
+  let app := serviceApplication setup mode deadline leaks
   have facts := legalFacts setup leaks horizon scheduler control trace
   obtain ⟨entry, member, submitted⟩ := List.any_eq_true.mp recorded
-  have named : (runtime setup).submittedEvent? leaks entry.action = some event :=
-    of_decide_eq_true submitted
+  have named : (serviceRuntime setup mode deadline).submittedEvent? leaks entry.action = some
+      event := of_decide_eq_true submitted
   obtain ⟨material, transmission⟩ : ∃ material, entry.action.transmission = some material := by
     cases sent : entry.action.transmission with
     | none => simp only [EventGraphRuntime.submittedEvent?, sent] at named; cases named
@@ -84,12 +88,13 @@ theorem owner_recorded_binding_no_miss {horizon : Nat}
     addressed := addressed
     ready := (PublicView.ownTurn?_spec _ who event (atTurn entry member event named)).1
     fits := fits
-    conforming := EventGraphRuntime.freshServiceEnvelope.acceptable (runtime setup) conform }
+    conforming := EventGraphRuntime.freshServiceEnvelope.acceptable
+        (serviceRuntime setup mode deadline) conform }
   obtain ⟨candidate, commitment⟩ := acceptable_binding_commitment node
     entry.beforeView.application.publicView message addressed call.conforming
   obtain ⟨earlier, later, split⟩ := List.mem_iff_append.mp member
   have sole : ∀ other ∈ earlier ++ later,
-      ¬ EmitsOtherFor (runtime setup) leaks other event message.id := by
+      ¬ EmitsOtherFor (serviceRuntime setup mode deadline) leaks other event message.id := by
     intro other inside ⟨packet, emittedOther, authorOther, addressedOther, different⟩
     have otherMember : other ∈ control.execution.recall who := by
       rw [split]
@@ -104,11 +109,12 @@ theorem owner_recorded_binding_no_miss {horizon : Nat}
       facts.provenance.inputs packet (List.mem_filter.mp output).1
     have author : packet.sender = who := authorOther.trans authored
     rw [author] at issuerMember
-    have issuerEvent : (runtime setup).submittedEvent? leaks issuer.action = some event := by
+    have issuerEvent : (serviceRuntime setup mode deadline).submittedEvent? leaks issuer.action =
+        some event := by
       unfold EventGraphRuntime.submittedEvent?
       rw [issuerTransmission]
       change (app.packet issuerState packet.sender issuerKnown issuerMaterial).call.event?
-        (graph setup) = some event
+        (serviceGraph setup mode) = some event
       rw [issuerPacket]
       exact addressedOther
     exact different (once issuer issuerMember entry member event packet message issuerEvent
@@ -117,11 +123,12 @@ theorem owner_recorded_binding_no_miss {horizon : Nat}
     (nodeView_bind_actor outputEq codeEq) earlier later entry message split call commitment sole).2
 
 private theorem newly_completed_event
-    {before after : EventGraphRuntime.State (graph setup)}
-    {event addressed : (graph setup).EventId}
+    {before after : EventGraphRuntime.State (serviceGraph setup mode)}
+    {event addressed : (serviceGraph setup mode).EventId}
     (unfinished : event ∉ before.config.cut.completed)
     (finished : event ∈ after.config.cut.completed)
-    (ready : before.config.cut.Ready addressed) (action : (graph setup).Action addressed)
+    (ready : before.config.cut.Ready addressed)
+    (action : (serviceGraph setup mode).Action addressed)
     (stepped : after.config ∈ (before.config.step addressed ready action).support) :
     event = addressed := by
   rw [before.config.step_cut addressed ready action after.config stepped] at finished
@@ -129,20 +136,22 @@ private theorem newly_completed_event
 
 /-- A new binding omission can only be created by a due explicit expiry. -/
 theorem new_binding_miss_expiry
-    {before after : (application setup leaks).Execution}
-    (command : (application setup leaks).Command)
+    {before after : (serviceApplication setup mode deadline leaks).Execution}
+    (command : (serviceApplication setup mode deadline leaks).Command)
     (binding : before.application.BindingInvariant)
-    (reached : after ∈ (before.environmentStep (application setup leaks) command).support)
-    (event : (graph setup).EventId) (who : Player) (payload : L.Ty)
-    (outputEq : (graph setup).outputLayout event = .binding who payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload)
-    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
+    (reached : after ∈
+        (before.environmentStep (serviceApplication setup mode deadline leaks) command).support)
+    (event : (serviceGraph setup mode).EventId) (who : Player) (payload : L.Ty)
+    (outputEq : (serviceGraph setup mode).outputLayout event = .binding who payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode (serviceGraph setup mode).layout) outputEq)
+      ((serviceGraph setup mode).nodes event) = .bind who payload)
+    (node : nodeView (serviceGraph setup mode) event = .bind who payload outputEq codeEq)
     (clear : before.application.publicView.missedBinding event = false)
     (missing : after.application.publicView.missedBinding event = true) :
     command = .application (.expire event) ∧ before.application.config.cut.Ready event ∧
       ∃ entered, before.application.activatedAt event = some entered ∧
-        (runtime setup).deadline event ≤ before.application.clock - entered := by
+        (serviceRuntime setup mode deadline).deadline event ≤ before.application.clock -
+        entered := by
   obtain ⟨completed, absent⟩ :=
     (after.application.publicView_missedBinding event who payload outputEq).mp missing
   have unfinished : event ∉ before.application.config.cut.completed := by
@@ -156,7 +165,8 @@ theorem new_binding_miss_expiry
     cases selected : before.application.accepted (.inr event) with
     | none => exact recorded selected
     | some candidate =>
-        have kept := (runtime setup).reactiveAssociationInvariant leaks (.inr event) candidate
+        have kept := (serviceRuntime setup mode deadline).reactiveAssociationInvariant leaks
+            (.inr event) candidate
         have associated := (kept.environmentStep before after command ⟨binding, selected⟩ reached).2
         rw [absent] at associated
         cases associated
@@ -177,7 +187,8 @@ theorem new_binding_miss_expiry
       | none => simp only [found] at completed; exact (unfinished completed).elim
       | some message =>
           simp only [found] at completed absent
-          cases accepted : (application setup leaks).handle before.application message with
+          cases accepted : (serviceApplication setup mode deadline leaks).handle before.application
+              message with
           | none =>
               simp only [accepted, Option.getD_none] at completed
               exact (unfinished completed).elim
@@ -185,15 +196,17 @@ theorem new_binding_miss_expiry
               simp only [accepted, Option.getD_some] at completed absent
               have handled := reactiveHandle_call accepted
               obtain ⟨addressed, named, ready, action, stepped⟩ :=
-                handle_config_mem_step (runtime setup) before.application next _ handled
+                handle_config_mem_step (serviceRuntime setup mode deadline) before.application next
+                    _ handled
               have same := newly_completed_event unfinished completed ready action stepped
               subst addressed
               rcases message with ⟨identifier, ⟨packet, evidence, token⟩⟩
               cases packet with
               | commitment addressed candidate =>
                   cases Option.some.inj named
-                  have installed := (handle_commitment_tables (runtime setup) before.application
-                    next identifier event candidate handled).2.1
+                  have installed :=
+                      (handle_commitment_tables (serviceRuntime setup mode deadline)
+                          before.application next identifier event candidate handled).2.1
                   rw [installed, Function.update_self] at absent
                   cases absent
               | opening addressed candidate raw =>
@@ -203,21 +216,23 @@ theorem new_binding_miss_expiry
               | malformed raw => simp only [Payload.event?, reduceCtorEq] at named
   | application command =>
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
-      change state ∈ (EventGraphRuntime.environmentStep (runtime setup)
+      change state ∈ (EventGraphRuntime.environmentStep (serviceRuntime setup mode deadline)
         before.application command).support at changed
       cases command with
       | advanceClock =>
           cases (PMF.mem_support_pure_iff _ _).mp changed
           exact (unfinished completed).elim
       | executeSample addressed =>
-          rcases (environmentStep_executeSample_config_activated (runtime setup)
+          rcases
+              (environmentStep_executeSample_config_activated (serviceRuntime setup mode deadline)
               before.application state addressed changed).2 with
             unchanged | ⟨ready, action, stepped, _⟩
           · rw [unchanged.1] at completed
             exact (unfinished completed).elim
           · have same := newly_completed_event unfinished completed ready action stepped
             subst addressed
-            have silent := environmentStep_executeSample_of_nonsample (runtime setup)
+            have silent := environmentStep_executeSample_of_nonsample
+                (serviceRuntime setup mode deadline)
               before.application event ready (fun _ _ _ _ impossible => by
                 rw [node] at impossible
                 cases impossible)
@@ -225,7 +240,7 @@ theorem new_binding_miss_expiry
             subst state
             exact (unfinished completed).elim
       | expire addressed =>
-          rcases environmentStep_expire_config_eq_or_mem_step (runtime setup)
+          rcases environmentStep_expire_config_eq_or_mem_step (serviceRuntime setup mode deadline)
               before.application state addressed changed with unchanged | ⟨ready, action, stepped⟩
           · rw [unchanged] at completed
             exact (unfinished completed).elim
@@ -234,15 +249,16 @@ theorem new_binding_miss_expiry
             refine ⟨rfl, ready, ?_⟩
             cases activated : before.application.activatedAt event with
             | none =>
-                rw [environmentStep_expire_of_not_activated (runtime setup)
+                rw [environmentStep_expire_of_not_activated (serviceRuntime setup mode deadline)
                   before.application event ready activated, PMF.mem_support_pure_iff] at changed
                 subst state
                 exact (unfinished completed).elim
             | some entered =>
                 refine ⟨entered, rfl, ?_⟩
                 by_contra notDue
-                rw [environmentStep_expire_of_not_due (runtime setup) before.application
-                  event ready entered activated notDue, PMF.mem_support_pure_iff] at changed
+                rw [environmentStep_expire_of_not_due (serviceRuntime setup mode deadline)
+                        before.application event ready entered activated notDue,
+                        PMF.mem_support_pure_iff] at changed
                 subst state
                 exact (unfinished completed).elim
 

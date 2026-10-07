@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceServiceFirstTurnCompletes
+import Vegas.Game.SourceServiceDecidedCompletion
 
 /-! # Geometric deferral of the turn-counted decision
 
@@ -17,13 +17,11 @@ reached turn before the last decides with conditional probability
 is at most `weight` (`Vegas.geometricTiming_deferral_le`), so every per-turn
 deferral probability vanishes with it.
 
-The first-turn premises hold for every timing
-(`Vegas.sourceServiceTurnPolicy_firstTurnCompletes`), and the chained step law
-uses a timing only through its deferral weights
-(`Vegas.sourceServiceTurnPolicy_boundaryContinuationWithin`), so under the asynchronous
-contract the geometric policy is within `eventCount * weight` of the source
-continuation (`Vegas.geometricTiming_boundaryContinuationWithin`), and this
-error vanishes along any weights tending to zero
+A turn timing changes the law of the clients' runs by at most its total
+deferral weight (`Vegas.serviceTurnPolicy_roundsFrom_bind_within`), so the
+geometric policy costs at most `eventCount * weight`
+(`Vegas.geometricTiming_remainingDeferral_le`), and this error vanishes along
+any weights tending to zero
 (`Vegas.geometricTiming_deferral_tendsto`). The weights can be chosen to vanish
 faster than any given positive sequence, such as the source's own trembles
 (`Vegas.exists_deferralWeights_faster`).
@@ -239,33 +237,6 @@ theorem geometricTiming_deferral_tendsto (turns : Nat) (weight : ℕ → ℝ)
 
 variable {setup}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-
-/-- **Approximate continuation law of the geometric policy.** Under the
-asynchronous contract with `delay + bound < deadline`, for every source profile
-with effective disclosures, the geometric turn-counted policy runs from every
-completion boundary within the horizon within `eventCount * weight` of the
-source continuation. -/
-theorem geometricTiming_boundaryContinuationWithin [Finite Player]
-    {scheduler : (application setup leaks).Scheduler} {horizon turns : Nat}
-    {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
-      delay bound)
-    (timely : AsyncTimely (runtime setup) delay bound)
-    (weight : ℝ) (nonnegative : 0 ≤ weight) (bounded : weight ≤ 1)
-    (profile : BehavioralProfile setup.program)
-    (effective : ∀ who, (profile who).EffectiveDisclosures setup.program []
-      (Revelations.initial setup.context)) :
-    BoundaryContinuationWithin setup leaks scheduler horizon
-      (sourceServiceTurnPolicy setup leaks bound turns
-        (geometricTiming setup turns weight nonnegative bounded) profile) profile
-      (fun _ => (graph setup).order.eventCount * weight) := by
-  intro rank execution boundary within
-  exact (sourceServiceTurnPolicy_boundaryContinuationWithin
-    (sourceServiceTurnPolicy_firstTurnCompletes contract timely
-      (geometricTiming setup turns weight nonnegative bounded) profile effective)
-    rank execution boundary within).mono
-    (geometricTiming_remainingDeferral_le setup turns weight nonnegative bounded rank)
-
 /-- **Deferral weights vanishing faster than a given sequence.** For every
 positive sequence, such as the smallest tremble of a source perturbation
 sequence, some weights in `(0, 1)` tend to zero and are eventually negligible

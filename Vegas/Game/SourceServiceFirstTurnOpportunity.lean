@@ -22,29 +22,33 @@ open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
-  {setup : Setup (Player := Player) (L := L)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
+  {deadline : (serviceGraph setup mode).EventId → Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
 
 /-- The first ready own turn is protected under the reaction and inclusion
 budget. The view may be the freshly sampled activation view: only its first
 turn count is needed, while the clock and readiness come from the actual raw
 scheduler boundary. -/
 theorem firstTurn_inclusionFits {horizon : Nat}
-    {scheduler : (application setup leaks).Scheduler}
-    {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
-      delay bound)
-    (timely : AsyncTimely (runtime setup) delay bound)
-    {remaining : Nat} {execution : (application setup leaks).Execution}
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-      (some ⟨remaining, none, execution⟩))
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {delay bound : (serviceGraph setup mode).EventId → Nat}
+    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+        (serviceInitialLaw setup mode) horizon scheduler delay bound)
+    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
+    {remaining : Nat} {execution : (serviceApplication setup mode deadline leaks).Execution}
+    (trace :
+        ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
+        horizon scheduler).Trace (some ⟨remaining, none, execution⟩))
     (answered : ActivationsAnswered setup leaks execution)
-    {owner : Player} {event : (graph setup).EventId}
-    (owned : (graph setup).actor? event = some owner)
+    {owner : Player} {event : (serviceGraph setup mode).EventId}
+    (owned : (serviceGraph setup mode).actor? event = some owner)
     (ready : execution.application.config.cut.Ready event)
-    {view : (application setup leaks).PlayerView}
-    (first : sourceServiceTurn setup leaks owner event (execution.recall owner) view = some 0) :
-    execution.application.publicView.InclusionFitsDeadline (runtime setup) bound event := by
+    {view : (serviceApplication setup mode deadline leaks).PlayerView}
+    (first : serviceTurn setup mode deadline leaks owner event (execution.recall owner) view =
+        some 0) :
+    execution.application.publicView.InclusionFitsDeadline (serviceRuntime setup mode deadline)
+        bound event := by
   obtain ⟨inputs, invariant⟩ := (roster_trace_facts setup leaks horizon scheduler trace).1
   obtain ⟨entered, activated⟩ := invariant.activatedAt_eq_some_of_ready_actor event ready
     (by rw [owned]; rfl)
@@ -57,7 +61,7 @@ theorem firstTurn_inclusionFits {horizon : Nat}
   change (match execution.application.activatedAt event with
     | none => False
     | some started => execution.application.clock - started + bound event <
-        (runtime setup).deadline event)
+        (serviceRuntime setup mode deadline).deadline event)
   rw [activated]
   omega
 

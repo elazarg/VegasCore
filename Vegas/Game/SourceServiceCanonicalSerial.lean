@@ -18,9 +18,10 @@ prescribed fresh call passes the send-time rule
 (`Vegas.sourceServiceTurnPolicy_permittedServiceEnvelope`).
 
 Each earlier fresh call of the owner was for an event that has completed by
-the time of the next one: on the sequentialized graph the turn's event is the
-only ready event. Such a call fits its deadline within the inclusion bound and
-is the owner's only identifier for its event, so protected inclusion settles
+the time of the next one: an owner acts at most at one ready event, and an
+event the owner saw ready and that is unfinished is still ready. Such a call
+fits its deadline within the inclusion bound and is the owner's only identifier
+for its event, so protected inclusion settles
 it, and an event completes only together with its acceptance. Its identifier is
 then on the ledger, and copies on the ledger do not count twice.
 -/
@@ -35,46 +36,47 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
-  (setup : Setup (Player := Player) (L := L))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+  (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
+  {deadline : (serviceGraph setup mode).EventId → Nat}
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 section Invariant
 
 /-- Every fresh call of `who` emitted its own packet addressed to the event it
 submitted for, early enough to be included before the deadline within
 `bound`. -/
-def OwnFreshCalls (bound : (graph setup).EventId → Nat)
-    (execution : (application setup leaks).Execution) (who : Player) : Prop :=
+def OwnFreshCalls (bound : (serviceGraph setup mode).EventId → Nat)
+    (execution : (serviceApplication setup mode deadline leaks).Execution) (who : Player) : Prop :=
   ∀ entry ∈ execution.recall who, ∀ material,
     entry.action.transmission = some material →
     ∃ event message, entry.emitted = some message ∧ message.sender = who ∧
-      message.payload.call.event? (graph setup) = some event ∧
-      (runtime setup).submittedEvent? leaks entry.action = some event ∧
-      entry.beforeView.application.publicView.InclusionFitsDeadline (runtime setup) bound event
+      message.payload.call.event? (serviceGraph setup mode) = some event ∧
+      (serviceRuntime setup mode deadline).submittedEvent? leaks entry.action = some event ∧
+      entry.beforeView.application.publicView.InclusionFitsDeadline
+          (serviceRuntime setup mode deadline) bound event
 
 /-- Two fresh calls of `who` for one event emitted the same identifier. -/
-def OneCallPerEvent (execution : (application setup leaks).Execution) (who : Player) : Prop :=
-  ∀ first ∈ execution.recall who, ∀ second ∈ execution.recall who,
-    ∀ event (firstMessage secondMessage : Message Player (WitnessedPacket (graph setup))),
-      (runtime setup).submittedEvent? leaks first.action = some event →
-      (runtime setup).submittedEvent? leaks second.action = some event →
-      first.emitted = some firstMessage → second.emitted = some secondMessage →
-      firstMessage.id = secondMessage.id
+def OneCallPerEvent (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (who : Player) : Prop := ∀ first ∈ execution.recall who, ∀ second ∈ execution.recall who, ∀
+    event (firstMessage secondMessage : Message Player (WitnessedPacket (serviceGraph setup mode))),
+    (serviceRuntime setup mode deadline).submittedEvent? leaks first.action = some event →
+    (serviceRuntime setup mode deadline).submittedEvent? leaks second.action = some event →
+    first.emitted = some firstMessage → second.emitted = some secondMessage → firstMessage.id =
+    secondMessage.id
 
 /-- Every fresh call of `who` carried the send-time serial: the number of
 distinct identifiers of `who` on the ledger it saw. -/
-def FreshCallsCounted (execution : (application setup leaks).Execution) (who : Player) :
-    Prop :=
-  ∀ entry ∈ execution.recall who, ∀ material message,
-    entry.action.transmission = some material → entry.emitted = some message →
-      message.id.2 = Message.distinctAuthoredCount entry.beforeView.messages.ledger
-        message.sender
+def FreshCallsCounted (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (who : Player) : Prop := ∀ entry ∈ execution.recall who, ∀ material message,
+    entry.action.transmission = some material → entry.emitted = some message → message.id.2 =
+    Message.distinctAuthoredCount entry.beforeView.messages.ledger message.sender
 
 variable {setup leaks}
 
 /-- A receipt names an identifier on the ledger. -/
-private theorem receipt_published {execution : (application setup leaks).Execution}
-    (sound : execution.ReceiptsSound (application setup leaks) (fun _ => True))
+private theorem receipt_published
+    {execution : (serviceApplication setup mode deadline leaks).Execution}
+    (sound : execution.ReceiptsSound (serviceApplication setup mode deadline leaks) (fun _ => True))
     {id : MessageId Player} {accepted : Bool} (receipt : (id, accepted) ∈ execution.receipts) :
     id ∈ execution.network.ledger.map Message.id := by
   unfold ReactiveApplication.Execution.ReceiptsSound at sound
@@ -93,24 +95,28 @@ private theorem receipt_published {execution : (application setup leaks).Executi
 `who`'s turn and `who` has not yet submitted for it, `who`'s next serial is the
 number of its distinct identifiers on the ledger. -/
 theorem nextSerial_eq_distinctAuthoredCount {horizon remaining : Nat}
-    {scheduler : (application setup leaks).Scheduler} {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
-      delay bound)
-    {actor : Option Player} {who : Player} {middle : (application setup leaks).Execution}
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-      (some ⟨remaining, actor, middle⟩))
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {delay bound : (serviceGraph setup mode).EventId → Nat}
+    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+        (serviceInitialLaw setup mode) horizon scheduler delay bound)
+    {actor : Option Player} {who : Player}
+    {middle : (serviceApplication setup mode deadline leaks).Execution}
+    (trace :
+        ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
+        horizon scheduler).Trace (some ⟨remaining, actor, middle⟩))
     (atTurn : OwnSubmissionsAtTurn setup leaks middle who)
     (calls : OwnFreshCalls setup leaks bound middle who)
     (once : OneCallPerEvent setup leaks middle who)
     (conform : FreshCallsConform setup leaks middle who)
-    (event : (graph setup).EventId)
+    (event : (serviceGraph setup mode).EventId)
     (turn : middle.application.publicView.ownTurn? who = some event)
-    (unrecorded : (runtime setup).eventRecorded leaks (middle.recall who) event = false) :
+    (unrecorded : (serviceRuntime setup mode deadline).eventRecorded leaks (middle.recall who)
+        event = false) :
     middle.network.nextSerial who = Message.distinctAuthoredCount middle.network.ledger who := by
-  let app := application setup leaks
+  let app := serviceApplication setup mode deadline leaks
   have facts := legalFacts setup leaks horizon scheduler _ trace
   have issuedAll : middle.SerialsIssued app :=
-    app.serialsIssued_history scheduler (initialLaw setup) horizon trace
+    app.serialsIssued_history scheduler (serviceInitialLaw setup mode) horizon trace
   symm
   apply Message.distinctAuthoredCount_eq_of_serials
   · intro message member authored
@@ -135,22 +141,20 @@ theorem nextSerial_eq_distinctAuthoredCount {horizon remaining : Nat}
     have owned := (PublicView.ownTurn?_spec _ who other otherTurn).2
     have different : other ≠ event := by
       rintro rfl
-      have recorded : (runtime setup).eventRecorded leaks (middle.recall who) other = true :=
-        List.any_eq_true.mpr ⟨entry, member, decide_eq_true submittedOther⟩
+      have recorded : (serviceRuntime setup mode deadline).eventRecorded leaks (middle.recall who)
+          other = true := List.any_eq_true.mpr ⟨entry, member, decide_eq_true submittedOther⟩
       rw [unrecorded] at recorded
       cases recorded
     have completed : other ∈ middle.application.config.cut.completed := by
       by_contra unfinished
-      have current := (entry_view_current setup leaks middle facts.stable who entry member other
-        readyThen unfinished).1
-      have readyOther : middle.application.publicView.EventReady other := by
-        unfold PublicView.EventReady at readyThen ⊢
-        rw [← current]
-        exact readyThen
-      have readyEvent := (PublicView.ownTurn?_spec _ who event turn).1
-      have sole := soleReady_of_ready setup middle.application
-        ((middle.application.publicView_eventReady event).mp readyEvent)
-      exact different (sole.2 other readyOther)
+      obtain ⟨extra, order, _, _, _⟩ := facts.eventStable who entry member other readyThen
+        unfinished
+      have readyOther := ready_of_eventReady_extends order readyThen unfinished
+      have readyEvent := (middle.application.publicView_eventReady event).mp
+        (PublicView.ownTurn?_spec _ who event turn).1
+      exact different ((serviceGraph_revealRelaxedOrdered setup mode).ready_actor_unique
+        middle.application.config.cut readyEvent readyOther
+        (PublicView.ownTurn?_spec _ who event turn).2 owned)
     obtain ⟨earlier, later, split⟩ := List.mem_iff_append.mp member
     have call : FreshCall setup leaks who other bound entry message :=
       { fresh := ⟨material, transmission⟩
@@ -159,10 +163,11 @@ theorem nextSerial_eq_distinctAuthoredCount {horizon remaining : Nat}
         addressed := addressed
         ready := readyThen
         fits := fits
-        conforming := EventGraphRuntime.freshServiceEnvelope.acceptable (runtime setup)
-          (conform entry member material message transmission emitted) }
+        conforming := EventGraphRuntime.freshServiceEnvelope.acceptable
+            (serviceRuntime setup mode deadline)
+            (conform entry member material message transmission emitted) }
     have sole : ∀ other' ∈ earlier ++ later,
-        ¬ EmitsOtherFor (runtime setup) leaks other' other message.id := by
+        ¬ EmitsOtherFor (serviceRuntime setup mode deadline) leaks other' other message.id := by
       intro other' otherMember ⟨otherEnvelope, emittedOther, otherAuthor, otherAddressed,
         differentId⟩
       have otherRecall : other' ∈ middle.recall who := by
@@ -179,7 +184,8 @@ theorem nextSerial_eq_distinctAuthoredCount {horizon remaining : Nat}
       have senderWho : otherEnvelope.sender = who := by
         rw [otherAuthor, identified]
       rw [senderWho] at issuerMember
-      have issuerEvent : (runtime setup).submittedEvent? leaks issuer.action = some other := by
+      have issuerEvent : (serviceRuntime setup mode deadline).submittedEvent? leaks issuer.action =
+          some other := by
         rw [issued_submittedEvent issuerTransmission issuerPacket]
         exact otherAddressed
       exact differentId (once issuer issuerMember entry member other _ _ issuerEvent
@@ -194,25 +200,30 @@ theorem nextSerial_eq_distinctAuthoredCount {horizon remaining : Nat}
 /-- One round keeps `who`'s fresh calls addressed, timely, one per event and
 counted, when `who` follows the turn-counted policy. -/
 theorem serialFacts_round {horizon remaining : Nat}
-    {scheduler : (application setup leaks).Scheduler} {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
-      delay bound)
-    {players : Player → (application setup leaks).Policy} {who : Player}
-    {turns : Nat} {timing : TurnTiming setup turns} {profile : BehavioralProfile setup.program}
-    (follows : players who = sourceServiceTurnPolicy setup leaks bound turns timing profile who)
-    {execution next : (application setup leaks).Execution}
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-      (some ⟨remaining + 1, none, execution⟩))
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {delay bound : (serviceGraph setup mode).EventId → Nat}
+    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+        (serviceInitialLaw setup mode) horizon scheduler delay bound)
+    {players : Player → (serviceApplication setup mode deadline leaks).Policy} {who : Player}
+    {turns : Nat} {timing : TurnTiming setup turns mode} {profile : BehavioralProfile setup.program}
+    (follows : players who = serviceTurnPolicy setup mode deadline leaks bound turns timing
+        profile who)
+    {execution next : (serviceApplication setup mode deadline leaks).Execution}
+    (trace :
+        ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
+        horizon scheduler).Trace (some ⟨remaining + 1, none, execution⟩))
     (atTurn : OwnSubmissionsAtTurn setup leaks execution who)
     (valid : CanonicalSlotsUsed setup leaks execution who)
     (conform : FreshCallsConform setup leaks execution who)
     (calls : OwnFreshCalls setup leaks bound execution who)
     (once : OneCallPerEvent setup leaks execution who)
     (counted : FreshCallsCounted setup leaks execution who)
-    (reached : next ∈ ((application setup leaks).round scheduler players execution).support) :
+    (reached : next ∈
+        ((serviceApplication setup mode deadline leaks).round scheduler players
+        execution).support) :
     OwnFreshCalls setup leaks bound next who ∧ OneCallPerEvent setup leaks next who ∧
       FreshCallsCounted setup leaks next who := by
-  let app := application setup leaks
+  let app := serviceApplication setup mode deadline leaks
   have conformNext := freshCallsConform_round follows trace atTurn valid conform reached
   obtain ⟨command, selected, middle, moved, cases⟩ := round_cases setup leaks reached
   have recallEq := app.environmentStep_recall execution middle command moved
@@ -238,8 +249,8 @@ theorem serialFacts_round {horizon remaining : Nat}
     exact counted
   rcases cases with ⟨_, rfl⟩ | ⟨responder, active, response, chosen, rfl⟩
   · exact ⟨callsMiddle, onceMiddle, countedMiddle⟩
-  · obtain ⟨middleTrace⟩ := app.raw_trace_environment (initialLaw setup) horizon scheduler
-      remaining execution middle command trace selected moved
+  · obtain ⟨middleTrace⟩ := app.raw_trace_environment (serviceInitialLaw setup mode) horizon
+        scheduler remaining execution middle command trace selected moved
     rw [active] at middleTrace
     by_cases same : responder = who
     · subst responder
@@ -280,7 +291,7 @@ theorem serialFacts_round {horizon remaining : Nat}
         obtain ⟨event, action, turn, unrecorded, fits, _⟩ :=
           sourceServiceTurnPolicy_submission chosen rfl
         have recalled := respond_submit_recall middle who material
-        let message : Message Player (WitnessedPacket (graph setup)) :=
+        let message : Message Player (WitnessedPacket (serviceGraph setup mode)) :=
           ⟨(who, middle.network.nextSerial who), app.packet
             (app.submit middle.application who material) who (middle.network.known who)
             material⟩
@@ -292,14 +303,14 @@ theorem serialFacts_round {horizon remaining : Nat}
           exact List.mem_append_right _ (List.mem_singleton_self _)
         have entryConform := conformNext entry entryMember material message rfl rfl
         obtain ⟨named, namedAddressed, namedReady, namedActor⟩ :=
-          (runtime setup).freshServiceEnvelope_owned _ message entryConform
+          (serviceRuntime setup mode deadline).freshServiceEnvelope_owned _ message entryConform
         have namedTurn : middle.application.publicView.ownTurn? who = some named :=
-          ownTurn?_of_ready setup middle.application
+          serviceOwnTurn?_of_ready setup middle.application
             ((middle.application.publicView_eventReady named).mp namedReady) namedActor
         have namedIs : named = event := Option.some.inj (namedTurn.symm.trans turn)
         subst namedIs
-        have entryEvent : (runtime setup).submittedEvent? leaks entry.action = some named :=
-          namedAddressed
+        have entryEvent : (serviceRuntime setup mode deadline).submittedEvent? leaks entry.action =
+            some named := namedAddressed
         refine ⟨?_, ?_, ?_⟩
         · intro current member currentMaterial submits
           rw [recalled] at member
@@ -311,10 +322,12 @@ theorem serialFacts_round {horizon remaining : Nat}
         · intro first firstMember second secondMember shared firstMessage secondMessage
             firstEvent secondEvent firstEmitted secondEmitted
           have absent : ∀ old ∈ middle.recall who,
-              (runtime setup).submittedEvent? leaks old.action ≠ some named := by
+              (serviceRuntime setup mode deadline).submittedEvent? leaks old.action ≠ some
+              named := by
             intro old oldMember oldEvent
-            have recorded : (runtime setup).eventRecorded leaks (middle.recall who) named =
-                true := List.any_eq_true.mpr ⟨old, oldMember, decide_eq_true oldEvent⟩
+            have recorded : (serviceRuntime setup mode deadline).eventRecorded leaks
+                (middle.recall who) named = true := List.any_eq_true.mpr
+                ⟨old, oldMember, decide_eq_true oldEvent⟩
             rw [unrecorded] at recorded
             cases recorded
           rw [recalled] at firstMember secondMember
@@ -368,18 +381,22 @@ variable {setup leaks}
 follows the turn-counted policy, for every count of rounds within the
 horizon. -/
 theorem serialFacts_roundsFrom {horizon : Nat}
-    {scheduler : (application setup leaks).Scheduler} {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
-      delay bound)
-    (players : Player → (application setup leaks).Policy) (who : Player)
-    {turns : Nat} (timing : TurnTiming setup turns) (profile : BehavioralProfile setup.program)
-    (follows : players who = sourceServiceTurnPolicy setup leaks bound turns timing profile who)
-    (count : Nat) (bounded : count ≤ horizon) (execution : (application setup leaks).Execution)
-    (reached : execution ∈ ((application setup leaks).roundsFrom (initialLaw setup) scheduler
-      players count).support) :
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {delay bound : (serviceGraph setup mode).EventId → Nat}
+    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+        (serviceInitialLaw setup mode) horizon scheduler delay bound)
+    (players : Player → (serviceApplication setup mode deadline leaks).Policy) (who : Player)
+    {turns : Nat} (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
+    (follows : players who = serviceTurnPolicy setup mode deadline leaks bound turns timing
+        profile who)
+    (count : Nat) (bounded : count ≤ horizon)
+    (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (reached : execution ∈
+        ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+        scheduler players count).support) :
     OwnFreshCalls setup leaks bound execution who ∧ OneCallPerEvent setup leaks execution who ∧
       FreshCallsCounted setup leaks execution who := by
-  let app := application setup leaks
+  let app := serviceApplication setup mode deadline leaks
   induction count generalizing execution with
   | zero =>
       obtain ⟨state, _, supported⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
@@ -396,8 +413,8 @@ theorem serialFacts_roundsFrom {horizon : Nat}
         fun entry member material message fresh emitted =>
           sourceServiceTurnPolicy_freshServiceEnvelope scheduler players who timing profile
             follows count prior priorMem entry member material fresh message emitted
-      obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler players
-        count (by omega) prior priorMem
+      obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup mode) horizon scheduler
+          players count (by omega) prior priorMem
       rw [show horizon - count = (horizon - (count + 1)) + 1 by omega] at trace
       exact serialFacts_round contract follows trace atTurn valid conform calls once counted moved
 
@@ -407,19 +424,24 @@ deferral trembles included and whatever everyone else does, every fresh
 submission of `who` within the horizon carries the number of distinct
 identifiers of `who` on the ledger it saw. -/
 theorem sourceServiceTurnPolicy_serial {horizon : Nat}
-    {scheduler : (application setup leaks).Scheduler} {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
-      delay bound)
-    (players : Player → (application setup leaks).Policy) (who : Player)
-    {turns : Nat} (timing : TurnTiming setup turns) (profile : BehavioralProfile setup.program)
-    (follows : players who = sourceServiceTurnPolicy setup leaks bound turns timing profile who)
-    (count : Nat) (bounded : count ≤ horizon) (execution : (application setup leaks).Execution)
-    (reached : execution ∈ ((application setup leaks).roundsFrom (initialLaw setup) scheduler
-      players count).support)
-    (entry : (application setup leaks).PlayerEntry) (member : entry ∈ execution.recall who)
-    (material : (application setup leaks).Submission)
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {delay bound : (serviceGraph setup mode).EventId → Nat}
+    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+        (serviceInitialLaw setup mode) horizon scheduler delay bound)
+    (players : Player → (serviceApplication setup mode deadline leaks).Policy) (who : Player)
+    {turns : Nat} (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
+    (follows : players who = serviceTurnPolicy setup mode deadline leaks bound turns timing
+        profile who)
+    (count : Nat) (bounded : count ≤ horizon)
+    (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (reached : execution ∈
+        ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+        scheduler players count).support)
+    (entry : (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (member : entry ∈ execution.recall who)
+    (material : (serviceApplication setup mode deadline leaks).Submission)
     (fresh : entry.action.transmission = some material)
-    (message : Message Player (WitnessedPacket (graph setup)))
+    (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
     (emitted : entry.emitted = some message) :
     message.id.2 = Message.distinctAuthoredCount entry.beforeView.messages.ledger
       message.sender :=
@@ -432,23 +454,28 @@ turn-counted policy, deferral trembles included and whatever everyone else
 does, every fresh submission of `who` within the horizon passes the send-time
 per-packet rule on the view and ledger it was made from. -/
 theorem sourceServiceTurnPolicy_permittedServiceEnvelope {horizon : Nat}
-    {scheduler : (application setup leaks).Scheduler} {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
-      delay bound)
-    (players : Player → (application setup leaks).Policy) (who : Player)
-    {turns : Nat} (timing : TurnTiming setup turns) (profile : BehavioralProfile setup.program)
-    (follows : players who = sourceServiceTurnPolicy setup leaks bound turns timing profile who)
-    (count : Nat) (bounded : count ≤ horizon) (execution : (application setup leaks).Execution)
-    (reached : execution ∈ ((application setup leaks).roundsFrom (initialLaw setup) scheduler
-      players count).support)
-    (entry : (application setup leaks).PlayerEntry) (member : entry ∈ execution.recall who)
-    (material : (application setup leaks).Submission)
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {delay bound : (serviceGraph setup mode).EventId → Nat}
+    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+        (serviceInitialLaw setup mode) horizon scheduler delay bound)
+    (players : Player → (serviceApplication setup mode deadline leaks).Policy) (who : Player)
+    {turns : Nat} (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
+    (follows : players who = serviceTurnPolicy setup mode deadline leaks bound turns timing
+        profile who)
+    (count : Nat) (bounded : count ≤ horizon)
+    (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (reached : execution ∈
+        ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+        scheduler players count).support)
+    (entry : (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (member : entry ∈ execution.recall who)
+    (material : (serviceApplication setup mode deadline leaks).Submission)
     (fresh : entry.action.transmission = some material)
-    (message : Message Player (WitnessedPacket (graph setup)))
+    (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
     (emitted : entry.emitted = some message) :
-    (runtime setup).permittedServiceEnvelope entry.beforeView.application.publicView
-      entry.beforeView.messages.ledger message = true :=
-  ((runtime setup).permittedServiceEnvelope_iff _ _ _).mpr (Or.inr
+    (serviceRuntime setup mode deadline).permittedServiceEnvelope
+    entry.beforeView.application.publicView entry.beforeView.messages.ledger message = true :=
+  ((serviceRuntime setup mode deadline).permittedServiceEnvelope_iff _ _ _).mpr (Or.inr
     ⟨sourceServiceTurnPolicy_serial contract players who timing profile follows count bounded
         execution reached entry member material fresh message emitted,
       sourceServiceTurnPolicy_freshServiceEnvelope scheduler players who timing profile follows
