@@ -197,7 +197,7 @@ theorem markedDeparture_evidence (watcher owner : Player)
     (terminal : execution.application.config.cut.Terminal) :
     departureEvidence setup leaks watcher owner execution := by
   obtain ⟨message, place, authored, facts, emitted, condemned⟩ := marked
-  exact ⟨message, place, authored, condemned.forbidden facts terminal emitted⟩
+  exact ⟨message, place, authored, condemned.1.forbidden facts terminal emitted⟩
 
 omit [Fintype Player] in
 private theorem nonmatching_submission_wait (owner : Player)
@@ -246,6 +246,7 @@ theorem reserved_observation_departure_lower (owner watcher : Player) (different
     (facts : SettledFacts setup leaks before)
     (sound : ((runtime setup).packetEvidence leaks).Sound before)
     (binding : before.application.BindingInvariant)
+    (kept : ActivationKept before.application)
     (publications : ∀ event owner payload,
       (graph setup).outputLayout event ≠ .binding owner payload)
     (pendingPublished : ∀ message ∈ before.network.pending,
@@ -279,7 +280,7 @@ theorem reserved_observation_departure_lower (owner watcher : Player) (different
     ⟨settledFacts_respond before facts owner _,
       List.mem_append_right _ (List.mem_singleton_self _),
       condemned_of_unacceptable before facts sound binding publications owner submission
-        departure⟩
+        departure, activationKept_respond before owner _ kept⟩
   have persistent := markedDeparture_persistent setup leaks watcher owner players
   have heldPersistent := condemnedFacts_persistent message players
   change ((leaks watcher submitted.network.pending).toOuterMeasure

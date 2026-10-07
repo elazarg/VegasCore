@@ -108,7 +108,10 @@ theorem sourceService_repair_settlement_le {Parameter : Type}
     · obtain ⟨record, present, author, breach⟩ := traffic
       obtain ⟨trace⟩ := realized pair supported
       obtain ⟨other, otherPresent, sameAuthor, forbidden⟩ :=
-        settled_breach_of_sendTime_breach (initialLaw setup) _ _ trace
+        settled_breach_of_sendTime_breach (initialLaw setup) _ _
+          (fun state member => by
+            obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ member
+            exact activationKept_initial _) trace
           (finished pair supported) record present breach
       have lowerCharge : rate ≤ TerminalAudit.charge observe audit (some pair.1) who :=
         (runtime setup).serviceAudit_charge_from_record leaks

@@ -16,7 +16,7 @@ namespace GameTheory.Protocol.InformationModel
 
 open ExecutionProtocol GameTheory.Math.Probability
 
-variable {Player : Type} {E : ExecutionProtocol Player} (M : InformationModel E)
+variable {Player : Type*} {E : ExecutionProtocol Player} (M : InformationModel E)
 
 open Classical in
 /-- The information history encountered by a complete continuation, when one

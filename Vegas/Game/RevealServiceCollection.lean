@@ -271,7 +271,11 @@ theorem watched_commit_collection (bounds : MessageBounds (graph setup))
       (scheduler setup leaks watcher) raw)
     (((runtime setup).packetEvidence leaks).history_sound (initialLaw setup)
       (horizon setup watcher) (scheduler setup leaks watcher) raw)
-    binding (reveal_publications setup reveals) pendingPublished knownPublished departure
+    binding ((activationKeptInvariant setup leaks).history (initialLaw setup)
+      (horizon setup watcher) (scheduler setup leaks watcher) (fun state member => by
+        obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ member
+        exact activationKept_initial _) raw)
+    (reveal_publications setup reveals) pendingPublished knownPublished departure
     (scheduler setup leaks watcher) rest.length
   let final := (((runtime setup).interactionStep leaks players ((runtime setup).idleNetwork leaks)
     (.includeLatest event owner)
