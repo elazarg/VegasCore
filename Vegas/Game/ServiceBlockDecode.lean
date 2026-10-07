@@ -299,7 +299,7 @@ theorem assignChain_assemble (drawn : Player → Prop) [DecidablePred drawn] :
 configuration that complete only bindings, complete the same events and agree
 on their actions, leave the same store and the same own completions of every
 player. -/
-theorem config_eq_of_reaches (ordered : (serviceGraph setup mode).BarrierOrdered)
+theorem config_eq_of_reaches (relaxed : (serviceGraph setup mode).RevealRelaxedOrdered)
     {start left right : (serviceGraph setup mode).Config}
     (leftReach : ConfigReaches setup start left) (rightReach : ConfigReaches setup start right)
     (fresh : ∀ event, event ∉ start.cut.completed →
@@ -312,7 +312,7 @@ theorem config_eq_of_reaches (ordered : (serviceGraph setup mode).BarrierOrdered
     left.store = right.store ∧ ∀ owner,
       (serviceGraph setup mode).ownCompletions owner left.history =
         (serviceGraph setup mode).ownCompletions owner right.history := by
-  have view (owner : Player) := playerView_eq_of_reaches ordered leftReach rightReach owner fresh
+  have view (owner : Player) := playerView_eq_of_reaches relaxed leftReach rightReach owner fresh
     (fun event _ _ => sameCompleted event)
     (fun completion member _ _ notStart => sameActions completion member notStart)
   refine ⟨?_, fun owner => (view owner).2⟩
@@ -401,7 +401,7 @@ def deviatorChoices (drawn : Player → Prop) [DecidablePred drawn] (who : Playe
   | _ + 1, _, _, .sample _ _ _ _, prefixed, _, _ => prefixed.elim
   | _ + 1, _, _, .reveal _ _ _ _ _ _ _, prefixed, _, _ => prefixed.elim
 
-/-- **The block decodes to its source configuration.** On a barrier-ordered
+/-- **The block decodes to its source configuration.** On a reveal-relaxed
 graph, a run from the start of a block of bindings that has completed exactly
 the block, every drawn owner with its assigned action, decodes through the
 leading commitments to the source configuration in which every drawn owner
@@ -409,7 +409,7 @@ takes its assigned choice and every other owner, which is `who`, its choices
 read from `who`'s masked store.
 The induction follows a configuration `virtual` that completes the block's
 events below the current rank in source order with the run's actions. -/
-theorem blockDecode (ordered : (serviceGraph setup mode).BarrierOrdered) {low high : Nat}
+theorem blockDecode (relaxed : (serviceGraph setup mode).RevealRelaxedOrdered) {low high : Nat}
     (drawn : Player → Prop) [DecidablePred drawn] (who : Player)
     (undrawn : ∀ player, ¬ drawn player → player = who)
     (wholeProfile : BehavioralProfile setup.program)
@@ -454,7 +454,7 @@ theorem blockDecode (ordered : (serviceGraph setup mode).BarrierOrdered) {low hi
         checkpoint virtualReach virtualFinal lowOffset offsetEnd
       simp only [Nat.add_zero] at offsetEnd
       subst offsetEnd
-      have same := config_eq_of_reaches ordered virtualReach finalReach
+      have same := config_eq_of_reaches relaxed virtualReach finalReach
         (fun event notStart done => by
           have lower : low ≤ event.val :=
             Nat.le_of_not_gt fun below => notStart ((startPrefix.2 event).mpr below)

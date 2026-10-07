@@ -74,6 +74,61 @@ theorem BlockEnd.sealed (ordered : (serviceGraph setup mode).BarrierOrdered) {lo
   · exact below
   · exact (running done).elim
 
+/-- On a reveal-relaxed graph a block of events that are not publications,
+ending at a public event or at the end of the graph, is sealed. -/
+theorem BlockEnd.sealed_relaxed (relaxed : (serviceGraph setup mode).RevealRelaxedOrdered)
+    {low high : Nat} (wall : BlockEnd setup mode high)
+    (plain : ∀ event : (serviceGraph setup mode).EventId, low ≤ event.val → event.val < high →
+      ¬ ((serviceGraph setup mode).outputLayout event).IsPublication) :
+    BlockSealed setup mode low high := by
+  intro cut within running event ready
+  rcases relaxed.ready_lt_of_within within wall.2 plain ready with below | done
+  · exact below
+  · exact (running done).elim
+
+/-- The end of a block of reveals: an event that is not a publication, or the
+end of the graph. -/
+def RevealBlockEnd (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.ExecutionMode)
+    (high : Nat) : Prop :=
+  high ≤ (serviceGraph setup mode).order.eventCount ∧
+    ∀ event : (serviceGraph setup mode).EventId, event.val = high →
+      ¬ ((serviceGraph setup mode).outputLayout event).IsPublication
+
+/-- On a reveal-relaxed graph a block of publications, ending at an event that
+is not a publication or at the end of the graph, is sealed. -/
+theorem RevealBlockEnd.sealed (relaxed : (serviceGraph setup mode).RevealRelaxedOrdered)
+    {low high : Nat} (wall : RevealBlockEnd setup mode high)
+    (publications : ∀ event : (serviceGraph setup mode).EventId, low ≤ event.val →
+      event.val < high → ((serviceGraph setup mode).outputLayout event).IsPublication) :
+    BlockSealed setup mode low high := by
+  intro cut within running event ready
+  rcases relaxed.ready_lt_of_within_publications within wall.2 publications ready with
+    below | done
+  · exact below
+  · exact (running done).elim
+
+/-- A block of bindings has no publication. -/
+theorem plain_of_bindings {low high : Nat}
+    (bindings : ∀ event : (serviceGraph setup mode).EventId, low ≤ event.val →
+      event.val < high → ∃ owner payload outputEq codeEq,
+        EventGraphRuntime.nodeView (serviceGraph setup mode) event =
+          .bind owner payload outputEq codeEq) :
+    ∀ event : (serviceGraph setup mode).EventId, low ≤ event.val → event.val < high →
+      ¬ ((serviceGraph setup mode).outputLayout event).IsPublication := by
+  intro event lower upper
+  obtain ⟨_, _, outputEq, _, _⟩ := bindings event lower upper
+  rw [outputEq]
+  simp [EventGraph.EventField.IsPublication]
+
+/-- A sample is ready alone on a reveal-relaxed graph. -/
+theorem sample_alone (relaxed : (serviceGraph setup mode).RevealRelaxedOrdered)
+    {event : (serviceGraph setup mode).EventId} {payload : L.Ty}
+    (outputEq : (serviceGraph setup mode).outputLayout event = .publicData payload) :
+    ∀ (cut : (serviceGraph setup mode).order.Cut) other, cut.Ready event → cut.Ready other →
+      other = event := fun cut _ ready otherReady =>
+  relaxed.ready_alone_of_not_publication cut (by rw [outputEq]; trivial)
+    (by rw [outputEq]; simp [EventGraph.EventField.IsPublication]) ready otherReady
+
 /-- An event ready alone at its prefix is a sealed block of its own. -/
 theorem sealed_of_alone {event : (serviceGraph setup mode).EventId}
     (alone : ∀ (cut : (serviceGraph setup mode).order.Cut) other, cut.Ready event →

@@ -879,4 +879,23 @@ theorem encodeObservationStore_decodeObservation?_eq_playerStore_of_prefix
   exact encodeObservationStore_eq_playerStore_of_prefix whole refs offset covered
     config ordered state refsAgree who
 
+
+omit R in
+/-- A missing publication leaves the observation undecodable. -/
+theorem decodeObservation?_eq_none_of_publication {Field : Type}
+    {layout : Field → Vegas.EventGraph.EventField Player L}
+    {Γ : SourceCtx Player L} (refs : ContextRefs layout Γ) (who : Player)
+    (store : Vegas.EventGraph.Store layout) {name : VarId} {payload : L.Ty}
+    (ref : HasVar Γ name (.publication payload)) (missing : (refs.get ref).get? store = none) :
+    decodeObservation? who refs store = none := by
+  induction Γ with
+  | nil => nomatch ref
+  | cons entry Γ ih =>
+      obtain ⟨entryName, cell⟩ := entry
+      cases ref with
+      | here => simp [decodeObservation?, missing]
+      | there ref =>
+          have tail := ih refs.tail ref missing
+          cases cell <;> simp [decodeObservation?, tail]
+
 end Vegas

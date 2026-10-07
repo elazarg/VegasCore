@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.ServiceDecidedBinding
+import Vegas.Game.ServiceDecisionPhase
 import Vegas.Game.SourceServiceFirstTurnBinding
 
 /-! # First-turn clients with decisions drawn in advance

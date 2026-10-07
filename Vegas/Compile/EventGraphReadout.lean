@@ -112,6 +112,25 @@ theorem decodeState?_isSome_of_available {Field : Type}
   obtain ⟨state, decoded, _⟩ := exists_decodeState_agrees refs store available
   simp [decoded]
 
+omit [DecidableEq Player] R in
+/-- Full-state decoding succeeds when every referenced field is present. -/
+theorem decodeState?_isSome_of_refs {Field : Type}
+    {layout : Field → Vegas.EventGraph.EventField Player L}
+    {Γ : SourceCtx Player L} (refs : ContextRefs layout Γ)
+    (store : Vegas.EventGraph.Store layout)
+    (available : ∀ {name cell} (ref : HasVar Γ name cell), ((refs.get ref).get? store).isSome) :
+    (decodeState? refs store).isSome := by
+  induction Γ with
+  | nil => rfl
+  | cons entry Γ ih =>
+      obtain ⟨entryName, cell⟩ := entry
+      have tail := ih refs.tail fun ref => available (.there ref)
+      have head := available (HasVar.here : HasVar ((entryName, cell) :: Γ) entryName cell)
+      rw [Option.isSome_iff_exists] at tail head
+      obtain ⟨tailState, tailEq⟩ := tail
+      obtain ⟨headValue, headEq⟩ := head
+      cases cell <;> simp_all [decodeState?, ContextRefs.tail]
+
 /-- Decode one terminal compiled configuration to its exact typed source
 state. Totality follows from terminal store availability, not from a default. -/
 def terminalState {Γ : SourceCtx Player L} {openNames : Finset VarId}

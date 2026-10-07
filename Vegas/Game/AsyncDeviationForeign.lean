@@ -587,8 +587,7 @@ disclosure of `true` transmits the certified opening of the accepted handle with
 the bound value. -/
 theorem decidedReveal_response {horizon : Nat} {scheduler :
     (serviceApplication setup mode deadline leaks).Scheduler}
-    {delay bound : (serviceGraph setup mode).EventId → Nat} {start :
-        (serviceApplication setup mode deadline leaks).Execution}
+    {bound : (serviceGraph setup mode).EventId → Nat}
     {event : (serviceGraph setup mode).EventId} {owner : Player} {payload : L.Ty}
     {binding : EventGraph.FieldRef (serviceGraph setup mode).layout (.binding owner payload)}
     {checks : List (EventGraph.GuardCheck (serviceGraph setup mode).layout payload)}
@@ -597,10 +596,11 @@ theorem decidedReveal_response {horizon : Nat} {scheduler :
       ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks}
     (node : nodeView
         (serviceGraph setup mode) event = .resolve owner payload binding checks outputEq codeEq)
-    (value : L.Val payload) {n : Nat} {current :
+    (value : L.Val payload) {remaining : Nat} {current :
         (serviceApplication setup mode deadline leaks).Execution}
-    (run : DecidedRun horizon scheduler delay bound start owner event
-      (cast (congrArg EventGraph.EventField.Action outputEq.symm) true) (n + 1) current)
+    (trace : ((serviceApplication setup mode deadline leaks).protocol
+      (serviceInitialLaw setup mode) horizon scheduler).Trace
+        (some ⟨remaining + 1, none, current⟩))
     (ready : current.application.config.cut.Ready event)
     (resolved : EventGraph.EventCode.resolveOutput? binding checks true
       current.application.config.store = some (.success value))
@@ -630,13 +630,11 @@ theorem decidedReveal_response {horizon : Nat} {scheduler :
   intro app active
   have owned :
       (serviceGraph setup mode).actor? event = some owner := nodeView_resolve_actor outputEq codeEq
-  obtain ⟨remaining, ⟨trace⟩⟩ := run.trace
-  rw [show remaining + (n + 1) = (remaining + n) + 1 by omega] at trace
   have moved : active ∈ (current.environmentStep app (.activate owner)).support := by
     rw [ReactiveApplication.Execution.activation_samples, PMF.support_map]
     exact ⟨sample, sampled, rfl⟩
   obtain ⟨activeTrace⟩ := app.raw_trace_environment (serviceInitialLaw setup mode) horizon scheduler
-    (remaining + n) current active (.activate owner) trace selected moved
+    remaining current active (.activate owner) trace selected moved
   have facts := legalFacts setup leaks horizon scheduler _ activeTrace
   have stored := EventGraph.EventCode.binding_success_of_resolve_success binding checks true
     active.application.config.store value resolved
@@ -909,12 +907,16 @@ theorem decidedReveal_readout_congr {horizon : Nat}
                 (serviceRuntime setup mode deadline)
                 bound event := publics ▸ fits
             obtain ⟨value, leftResolved, rightResolved⟩ := published rfl
+            obtain ⟨leftRemaining, ⟨leftTrace⟩⟩ := leftRun.trace
+            rw [show leftRemaining + (n + 1) = (leftRemaining + n) + 1 by omega] at leftTrace
+            obtain ⟨rightRemaining, ⟨rightTrace⟩⟩ := rightRun.trace
+            rw [show rightRemaining + (n + 1) = (rightRemaining + n) + 1 by omega] at rightTrace
             obtain ⟨leftHandle, leftMaterial, leftAssociated, leftPolicy, leftPacket⟩ :=
-              decidedReveal_response node value leftRun leftNow
+              decidedReveal_response node value leftTrace leftNow
                 (by rw [leftSame]; exact leftResolved) selected sample sampled first unrecorded
                 fits
             obtain ⟨rightHandle, rightMaterial, rightAssociated, rightPolicy, rightPacket⟩ :=
-              decidedReveal_response node value rightRun rightNow
+              decidedReveal_response node value rightTrace rightNow
                 (by rw [rightSame]; exact rightResolved) rightSelected sample rightSampled
                 rightFirst rightUnrecorded rightFits
             have handles : leftHandle = rightHandle := by

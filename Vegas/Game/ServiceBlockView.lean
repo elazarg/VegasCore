@@ -10,7 +10,7 @@ A run of rounds changes the configuration only by completing ready events, one
 at a time (`Vegas.ConfigReaches`). Along such a run the history only grows, a
 completed event keeps its output, and a completed binding stores exactly the
 value its action binds (`Vegas.ConfigReaches.binding_output`). On a
-barrier-ordered graph one owner's bindings complete in source order
+reveal-relaxed graph one owner's bindings complete in source order
 (`Vegas.ConfigReaches.binding_order`), and while one of its bindings is ready
 exactly its earlier bindings have completed (`Vegas.binding_completed_iff`).
 -/
@@ -163,16 +163,23 @@ private theorem sameBindingOwner_symm {left right : EventGraph.EventField Player
     (same : left.SameBindingOwner right) : right.SameBindingOwner left := by
   cases left <;> cases right <;> simp_all [EventGraph.EventField.SameBindingOwner]
 
+omit [DecidableEq Player] [IExpr.ResultTypes L] in
+/-- A field sharing a binding owner is a binding, not a publication. -/
+theorem not_publication_of_sameBindingOwner {left right : EventGraph.EventField Player L}
+    (same : left.SameBindingOwner right) : ¬ left.IsPublication := by
+  cases left <;> cases right <;> simp_all [EventGraph.EventField.SameBindingOwner,
+    EventGraph.EventField.IsPublication]
+
 /-- A run of rounds followed by one more step. -/
 theorem ConfigReaches.trans_single {before middle after : (serviceGraph setup mode).Config}
     (reach : ConfigReaches setup before middle) (step : ConfigStep setup middle after) :
     ConfigReaches setup before after :=
   Relation.ReflTransGen.tail reach step
 
-/-- **One owner's bindings complete in source order.** On a barrier-ordered
+/-- **One owner's bindings complete in source order.** On a reveal-relaxed
 graph, among the completions a run appends, a binding precedes every later
 binding of the same owner in rank. -/
-theorem ConfigReaches.binding_order (ordered : (serviceGraph setup mode).BarrierOrdered)
+theorem ConfigReaches.binding_order (relaxed : (serviceGraph setup mode).RevealRelaxedOrdered)
     {before after : (serviceGraph setup mode).Config} (reach : ConfigReaches setup before after) :
     (after.history.drop before.history.length).Pairwise fun first second =>
       ((serviceGraph setup mode).outputLayout first.event).SameBindingOwner
@@ -203,12 +210,13 @@ theorem ConfigReaches.binding_order (ordered : (serviceGraph setup mode).Barrier
           omega
         have barrier := EventGraph.barrierOrder_same_owner (serviceGraph setup mode).outputLayout
           lower (sameBindingOwner_symm sameOwner)
-        exact ready.1 (middle.cut.predecessor_closed firstDone (ordered first.event barrier))
+        exact ready.1 (middle.cut.predecessor_closed firstDone
+          (relaxed.keeps barrier (Or.inr (not_publication_of_sameBindingOwner sameOwner))))
 
 /-- **While a binding is ready, exactly its owner's earlier bindings have
-completed.** On a barrier-ordered graph, at a cut where a binding of `owner` is
+completed.** On a reveal-relaxed graph, at a cut where a binding of `owner` is
 ready, another binding of `owner` has completed exactly when it is earlier. -/
-theorem binding_completed_iff (ordered : (serviceGraph setup mode).BarrierOrdered)
+theorem binding_completed_iff (relaxed : (serviceGraph setup mode).RevealRelaxedOrdered)
     {cut : (serviceGraph setup mode).order.Cut} {event other : (serviceGraph setup mode).EventId}
     (ready : cut.Ready event) {owner : Player} {payload otherPayload : L.Ty}
     (outputEq : (serviceGraph setup mode).outputLayout event = .binding owner payload)
@@ -220,13 +228,15 @@ theorem binding_completed_iff (ordered : (serviceGraph setup mode).BarrierOrdere
     rcases Nat.lt_or_ge event.val other.val with lower | upper
     · have barrier := EventGraph.barrierOrder_same_owner (serviceGraph setup mode).outputLayout
         lower (by rw [outputEq, otherEq]; rfl)
-      exact ready.1 (cut.predecessor_closed done (ordered other barrier))
+      exact ready.1 (cut.predecessor_closed done (relaxed.keeps barrier
+        (Or.inl (by rw [outputEq]; simp [EventGraph.EventField.IsPublication]))))
     · have same : other = event := Fin.ext (by omega)
       exact ready.1 (same ▸ done)
   · intro lower
     have barrier := EventGraph.barrierOrder_same_owner (serviceGraph setup mode).outputLayout
       lower (by rw [outputEq, otherEq]; rfl)
-    exact ready.2 (ordered event barrier)
+    exact ready.2 (relaxed.keeps barrier
+      (Or.inl (by rw [otherEq]; simp [EventGraph.EventField.IsPublication])))
 
 /-- Two completions of one event in a history are equal. -/
 theorem completion_eq_of_event {config : (serviceGraph setup mode).Config}
@@ -276,7 +286,7 @@ end ConfigReaches
 configuration that complete only bindings, complete the same bindings of
 `owner` and agree on the actions of those, leave `owner` the same masked store
 and the same own completions. -/
-theorem playerView_eq_of_reaches (ordered : (serviceGraph setup mode).BarrierOrdered)
+theorem playerView_eq_of_reaches (relaxed : (serviceGraph setup mode).RevealRelaxedOrdered)
     {start left right : (serviceGraph setup mode).Config}
     (leftReach : ConfigReaches setup start left) (rightReach : ConfigReaches setup start right)
     (owner : Player)
@@ -391,7 +401,7 @@ theorem playerView_eq_of_reaches (ordered : (serviceGraph setup mode).BarrierOrd
             nodeView (serviceGraph setup mode) event = .bind actor payload outputEq codeEq) :
         (appended.filter ownOf).Pairwise fun first second =>
           first.event.val < second.event.val := by
-      have order := reach.binding_order ordered
+      have order := reach.binding_order relaxed
       rw [split, List.drop_left] at order
       refine (order.filter ownOf).imp_of_mem ?_
       intro first second firstMember secondMember before

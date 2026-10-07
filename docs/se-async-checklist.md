@@ -428,6 +428,22 @@ joint law. It is not pursued.
   always opens) the canonical terminal store law of the original graph
   (`EventGraph.runPolicies_concurrentReveals_store`); canonical execution of
   every mode has the original graph's law (`runPolicies_withMode_store`).
+  Partial evidence (runtime, Nash level): on every reveal-relaxed service graph
+  (every mode, `serviceGraph_revealRelaxedOrdered`) a run of disclosures is one
+  phase, sealed by the next non-publication event (`RevealBlockEnd.sealed`,
+  `ConcurrentPhaseEnds`). First-turn clients of a source profile that opens
+  effectively (`BehavioralPolicy.OpensEffectively`) have the source outcome
+  law (`openingFirstTurn_readout_law`): each honest owner opens its disclosure
+  from its own stored commitment (`serviceCanonicalPolicy_reveal_opening`) and
+  the block decodes to the open chain (`revealBlockDecode`,
+  `honest_revealBlock_law`). Against one deviator the deviator's traffic, gated
+  by withholding (`DeviatorWithheld`), is congruent across a block
+  (`openedBlock_readout_congr`) and factors through its view of the open chain
+  (`asyncDeviation_revealBlock_factorization`); phase by phase the gated law is
+  dominated by a source deviation (`asyncDeviation_withholdLaw`,
+  `asyncDeviation_withheld_readout`), and a withheld disclosure is a failed
+  reveal of the deviator (`DeviatorWithheld.failedReveals_pos`). The SE chain
+  is not yet carried to this graph.
 - [ ] **C4. Concurrent Nash.** The Nash correspondence for every contract
   builder holds for the source game on the concurrent-binding graph of C2, and
   its intended-game form (through the forfeit pass) on the graph of C3, pinned
@@ -436,19 +452,29 @@ joint law. It is not pursued.
   pending opening, so the source-game form is not claimed on the C3 graph.
   Each event's deadline is a configured duration counted from the moment its
   prerequisites complete.
+  Not yet checked: the pinned intended form assumes the decoded source profile discloses at every reveal, and the existence of such an extension for every intended profile is not yet proved. Evidence: the source-game form on every barrier-ordered service graph, the
+  concurrent-binding graph included, is the five asynchronous Nash pins (see
+  C2). The intended-game form in every dependency mode, the concurrent-reveal
+  mode included, is `Vegas.Paper.intended_opening_client_nash` (from
+  `AsyncServiceSpec.intended_openingClientProfile_isεNash`, standard axioms),
+  for the approved client of the intended game: it opens each of its
+  disclosures from its own stored commitment, without decoding the rest of its
+  view or waiting for another opening, so its source profile discloses at every
+  reveal (`Disclosing`; its first-turn clients open effectively,
+  `AsyncServiceSpec.openingClients_opensEffectively`). Every native deviation
+  against these clients is bounded by a source deviation under the forfeit
+  (`AsyncServiceSpec.openingFirstTurn_deviation_bound`): along runs without
+  withholding the typed outcome is dominated by a source deviation's; a
+  withheld disclosure is a failed reveal, whose forfeit leaves at most the least
+  payoff; failure buys nothing; and the deviator's debt makes the retained
+  conditional in the intended game at least as good
+  (`ActionRestriction.expect_deviation_le_retained`), which extends to a source
+  deviation with the same forfeited payoff.
   Partial evidence: on the ideal graph execution, compiled profiles are
   `ε`-Nash under every adaptive public scheduler of the concurrent-binding
   graph exactly when the source profile is `ε`-Nash in the source game
   (`Vegas.Paper.concurrent_event_nash_iff`, from
-  `Setup.eventGame_approximate_nash_iff`, standard axioms). No message runtime,
-  builder or audit is involved. With the message runtime: the five asynchronous
-  Nash pins hold on every barrier-ordered service graph, so the source-game form
-  is pinned on the concurrent-binding graph (any configured deadlines; see C2).
-  The intended-game form on the concurrent-reveal graph is open: there the
-  compiled client of a later reveal decodes its whole source-prefix view, which
-  is unavailable while an earlier independent reveal is pending, and then
-  withholds; so the turn-counted clients do not realize the intended law under
-  schedulers that activate the later revealer first.
+  `Setup.eventGame_approximate_nash_iff`, standard axioms).
 
 ## W. Operational watcher
 

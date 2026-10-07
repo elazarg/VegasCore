@@ -796,17 +796,14 @@ theorem blockRound_readout_congr {horizon leftRemaining rightRemaining : Nat}
       exact sameMarks
 
 /-- Inside an unfinished block, every ready event is a block event. -/
-theorem WithinBlock.ready_mem (ordered : (serviceGraph setup mode).BarrierOrdered)
-    {low high : Nat} (wall : BlockEnd setup mode high)
+theorem WithinBlock.ready_mem {low high : Nat} (sealed : BlockSealed setup mode low high)
     {execution : (serviceApplication setup mode deadline leaks).Execution}
     (inside : WithinBlock low high execution) (running : ¬ BlockDone high execution)
     {event : (serviceGraph setup mode).EventId}
     (ready : execution.application.config.cut.Ready event) :
     low ≤ event.val ∧ event.val < high := by
-  refine ⟨Nat.le_of_not_gt fun below => ready.1 (inside.within.1 event below), ?_⟩
-  rcases ordered.ready_lt_of_within inside.within wall.2 ready with below | done
-  · exact below
-  · exact (running done).elim
+  exact ⟨Nat.le_of_not_gt fun below => ready.1 (inside.within.1 event below),
+    sealed _ inside.within running event ready⟩
 
 /-- **A decided block run.** Facts along a block run of the block's players,
 with `count` rounds still to run: a raw trace, the run inside the block, and
@@ -823,8 +820,8 @@ structure DecidedBlock (horizon : Nat)
   slots : ∀ owner, owner ≠ who → CanonicalSlotsUsed setup leaks execution owner
 
 /-- A round of the block's players keeps the decided block run. -/
-theorem DecidedBlock.round (ordered : (serviceGraph setup mode).BarrierOrdered)
-    {low high : Nat} (wall : BlockEnd setup mode high) {horizon : Nat}
+theorem DecidedBlock.round {low high : Nat} (sealed : BlockSealed setup mode low high)
+    {horizon : Nat}
     {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
     (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
     (profile : BehavioralProfile setup.program) {who : Player}
@@ -851,16 +848,16 @@ theorem DecidedBlock.round (ordered : (serviceGraph setup mode).BarrierOrdered)
         exact assignedTurnPolicy_submitsAtTurn bound turns profile owner assignment)
       trace (run.own owner honest) (run.slots owner honest) reached
   exact ⟨⟨remaining, ⟨nextTrace⟩⟩,
-    round_within (wall.sealed ordered) scheduler _ execution next run.inside running reached,
+    round_within sealed scheduler _ execution next run.inside running reached,
     fun owner honest => (canonical owner honest).1, fun owner honest => (canonical owner honest).2⟩
 
-/-- **A block of decided bindings.** On a barrier-ordered graph, in a block of
+/-- **A block of decided bindings.** In a sealed block of
 bindings every one of whose events owned by another player than the deviator
 is assigned on both sides, the block's players stopped once the block is done
 give, from two decided block runs with equal readouts, equal laws of the
 readout, whatever the assigned values. -/
-theorem decidedBlock_readout_congr (ordered : (serviceGraph setup mode).BarrierOrdered)
-    {low high : Nat} (wall : BlockEnd setup mode high) {horizon : Nat}
+theorem decidedBlock_readout_congr {low high : Nat} (sealed : BlockSealed setup mode low high)
+    {horizon : Nat}
     (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
     (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
     (profile : BehavioralProfile setup.program) (who : Player)
@@ -901,13 +898,12 @@ theorem decidedBlock_readout_congr (ordered : (serviceGraph setup mode).BarrierO
     rw [show rightRemaining + (n + 1) = (rightRemaining + n) + 1 by omega] at rightTrace
     exact blockRound_readout_congr scheduler bound turns profile who deviation leftAssignment
       rightAssignment same leftTrace rightTrace
-      (fun event ready => leftRun.inside.ready_mem ordered wall running ready) bindings
+      (fun event ready => leftRun.inside.ready_mem sealed running ready) bindings
       leftAssigned rightAssigned leftRun.own leftRun.slots rightRun.own rightRun.slots
   · intro n left leftRun running next reached
-    exact leftRun.round ordered wall bound turns profile deviation leftAssignment running reached
+    exact leftRun.round sealed bound turns profile deviation leftAssignment running reached
   · intro n right rightRun running next reached
-    exact rightRun.round ordered wall bound turns profile deviation rightAssignment running
-      reached
+    exact rightRun.round sealed bound turns profile deviation rightAssignment running reached
 
 end Block
 

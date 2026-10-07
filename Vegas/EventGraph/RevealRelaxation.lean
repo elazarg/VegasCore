@@ -204,6 +204,16 @@ theorem ready_pair_actors (relaxed : graph.RevealRelaxedOrdered)
       exact rightReady.1 (leftReady.2 (relaxed left right member
         (IndependentReveals.not_of_not_publication_left rightNotPublication)))
 
+/-- A ready public event that is not a publication is ready alone. -/
+theorem ready_alone_of_not_publication (relaxed : graph.RevealRelaxedOrdered)
+    (cut : graph.order.Cut) {event other : graph.EventId}
+    (isPublic : (graph.outputLayout event).IsPublic)
+    (plain : ¬ (graph.outputLayout event).IsPublication)
+    (ready : cut.Ready event) (otherReady : cut.Ready other) : other = event := by
+  by_contra different
+  exact plain (relaxed.ready_public_pair_publications cut ready otherReady
+    (Ne.symm different) (Or.inl isPublic)).1
+
 /-- Each player acts at most at one ready event. -/
 theorem ready_actor_unique (relaxed : graph.RevealRelaxedOrdered)
     (cut : graph.order.Cut) {event other : graph.EventId} {who : Player}

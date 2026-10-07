@@ -474,6 +474,40 @@ theorem isεNash_extends_of_debt [Finite T.History] {fuel : ℕ}
       (fun history => sourceUtility history who) (fun history => targetUtility history who)
       (fun history => matching history who) (forfeits who))
 
+omit [Fintype ι] [DecidableEq ι] in
+/-- Updating one player of a profile with a policy, and of an extension of the
+profile with an extension of that policy, keeps the extension. -/
+theorem ExtendsProfile.update {source : (i : ι) → M.BehavioralPolicy i}
+    {target : (i : ι) → N.BehavioralPolicy i} (agrees : restriction.ExtendsProfile source target)
+    [DecidableEq ι] (who : ι) (deviation : M.BehavioralPolicy who)
+    (extension : N.BehavioralPolicy who)
+    (extended : ∀ original : M.InformationSite who,
+      extension (restriction.information who original.1) =
+        (deviation original.1).map (restriction.choice who original.1)) :
+    restriction.ExtendsProfile (Function.update source who deviation)
+      (Function.update target who extension) := by
+  intro player original
+  rcases eq_or_ne player who with rfl | different
+  · simp only [Function.update_self]
+    exact extended original
+  · simp only [Function.update_of_ne different]
+    exact agrees player original
+
+omit [Fintype ι] [DecidableEq ι] in
+/-- Updating one player of a profile with a policy keeps an extension of the
+profile an extension, once that player plays the extension of the updated
+profile. -/
+theorem ExtendsProfile.update_extendProfile {source : (i : ι) → M.BehavioralPolicy i}
+    {target : (i : ι) → N.BehavioralPolicy i} (agrees : restriction.ExtendsProfile source target)
+    [DecidableEq ι] (who : ι) (deviation : M.BehavioralPolicy who) :
+    restriction.ExtendsProfile (Function.update source who deviation)
+      (Function.update target who
+        (restriction.extendProfile (Function.update source who deviation) target who)) :=
+  agrees.update who deviation _ fun original => by
+    have extended := restriction.extendProfile_extends (Function.update source who deviation)
+      target who original
+    simpa only [Function.update_self] using extended
+
 end GameTheory.Protocol.InformationModel.ActionRestriction
 
 namespace GameTheory.Protocol.InformationModel

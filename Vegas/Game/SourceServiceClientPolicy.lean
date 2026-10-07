@@ -139,22 +139,23 @@ section Menu
 variable [Fintype Player]
 
 /-- **Honest execution of the client policies, for every source profile.**
-On a barrier-ordered graph, under the asynchronous contract with
-`delay + bound < deadline`, for every turn timing and every source profile, the
-client policies of the profile's turn-counted clients, restricted to a response
+Under the asynchronous contract with `delay + bound < deadline`, for every turn
+timing and every source profile whose clients' first-turn limit has its source
+outcome law, the client policies of the profile's turn-counted clients, restricted to a response
 menu that admits them, have the profile's source joint law of typed outcome and
 realized payoffs within the total deferral weight in total variation, for every
 authentic partial audit and every deposit. -/
 theorem sourceServiceClients_clientPolicy_settlement_lawError
     {mode : EventGraph.ExecutionMode} {deadline : (serviceGraph setup mode).EventId → Nat}
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
-    (ordered : (serviceGraph setup mode).BarrierOrdered)
     {scheduler : (serviceApplication setup mode deadline leaks).Scheduler} {horizon turns : Nat}
     {delay bound : (serviceGraph setup mode).EventId → Nat}
     (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
       (serviceInitialLaw setup mode) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
     (timing : TurnTiming setup turns mode) (original : BehavioralProfile setup.program)
+    (terminal : FirstTurnSourceLaw setup mode deadline leaks horizon scheduler bound turns
+      (sourceServiceClientProfile setup original))
     (menu : (serviceApplication setup mode deadline leaks).ResponseMenu)
     (covered : ∀ who, menu.Admissible (serviceInitialLaw setup mode) horizon scheduler who
       (serviceClientPolicy setup mode deadline leaks bound turns timing
@@ -212,8 +213,8 @@ theorem sourceServiceClients_clientPolicy_settlement_lawError
     simp only [PMF.bind_bind, Function.comp_def]
     rfl
   rw [native, sourceServiceClientPolicy_roundsFrom, ← sourceServiceClientProfile_run original]
-  exact sourceServiceTurnPolicy_execution_settlement_lawError ordered contract timely timing
-    clients (sourceServiceClientProfile_effective original) sample authentic utility deposit
+  exact sourceServiceTurnPolicy_execution_settlement_lawError contract timely timing
+    clients terminal sample authentic utility deposit
 
 variable {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
   {deadline : (serviceGraph setup mode).EventId → Nat}

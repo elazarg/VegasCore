@@ -7,7 +7,7 @@ import Vegas.Game.ServiceTimingCoupling
 
 Against the first-turn clients of a source profile, one player follows an
 arbitrary native policy while the scheduler satisfies the asynchronous
-contract. On a barrier-ordered graph, a maximal run of commitments between two
+contract. On a reveal-relaxed graph, a maximal run of commitments between two
 public events forms a block of bindings. Through such a block, the decoded
 source state and the deviator's traffic have the joint law of the source
 protocol in which the deviator follows behavioral kernels at its commitments of
@@ -99,7 +99,7 @@ theorem blockMarks_start (who : Player) {low high : Nat}
   · rfl
 
 /-- **One deviating player through a block of commitments.** On a
-barrier-ordered graph, under the asynchronous contract with
+reveal-relaxed graph, under the asynchronous contract with
 `delay + bound < deadline`, against the first-turn clients of a source profile
 one player follows an arbitrary native policy. From completion boundaries at
 the start `low` of a block of bindings ending at a public event or at the end
@@ -107,7 +107,8 @@ of the graph, the run until the block is done has, jointly with the deviator's
 traffic, the decoded law of the block's commitments in which every other owner
 follows its source kernel and the deviator follows behavioral kernels; the
 deviator's traffic again factors through its new source view. -/
-theorem asyncDeviation_block_factorization (ordered : (serviceGraph setup mode).BarrierOrdered)
+theorem asyncDeviation_block_factorization
+    (relaxed : (serviceGraph setup mode).RevealRelaxedOrdered)
     {low high : Nat} (wall : BlockEnd setup mode high) {horizon : Nat}
     {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
     {delay bound : (serviceGraph setup mode).EventId → Nat}
@@ -216,12 +217,14 @@ theorem asyncDeviation_block_factorization (ordered : (serviceGraph setup mode).
     have start := boundary seed supported
     have done := runUntil_blockDone_of_trace _ contract.completes high _ _ final trace reached
     have reach := runUntil_configReaches scheduler _ _ _ _ final reached
-    have inside := runUntil_within (wall.sealed ordered) scheduler _ _ _ final
+    have inside := runUntil_within (BlockEnd.sealed_relaxed relaxed wall
+        (plain_of_bindings bindings))
+      scheduler _ _ _ final
       (start.withinBlock lowHigh)
       reached
     have finalPrefix : final.application.config.cut.IsPrefix high :=
       inside.within.isPrefix wall.1 done
-    refine blockDecode ordered (· ≠ who) who (fun _ undrawn => not_not.mp undrawn)
+    refine blockDecode relaxed (· ≠ who) who (fun _ undrawn => not_not.mp undrawn)
       wholeProfile (execution seed).application.config
       final.application.config reach start.ordered finalPrefix bindings drawn ?_ count program
       profile prefixed refs embedding refsBefore low (source seed) (aligned seed)
@@ -236,7 +239,9 @@ theorem asyncDeviation_block_factorization (ordered : (serviceGraph setup mode).
     have ownerIs : nodeOwner = owner := Option.some.inj
       ((nodeView_bind_actor nodeEq nodeCode).symm.trans owned)
     subst ownerIs
-    have phase := BindingPhase.runUntil contract timely nodeEq (start.untouched event lower)
+    have facts := binding_decision_facts nodeEq action
+    have phase := DecidedEventPhase.runUntil contract timely facts.1 facts.2.1 facts.2.2.1
+      (start.untouched event lower)
       (players := blockPlayers bound turns wholeProfile who deviation drawn)
       (by
         simp only [blockPlayers, Function.update_of_ne honest]
@@ -246,12 +251,12 @@ theorem asyncDeviation_block_factorization (ordered : (serviceGraph setup mode).
         simp only [blockPlayers, Function.update_of_ne honest]
         exact assignedTurnPolicy_submitsAtTurn bound turns wholeProfile nodeOwner drawn)
       (BlockDone high) _ 0 _ (by simpa only [Nat.zero_add] using trace)
-      (BindingPhase.initial bound action (start.untouched event lower)
+      (DecidedEventPhase.initial bound action (start.untouched event lower)
         (ownSlots nodeOwner honest).1
         (fun completed => Nat.lt_irrefl _ (Nat.lt_of_lt_of_le
           ((start.ordered.2 event).mp completed) lower)))
       (ownSlots nodeOwner honest).1 answered final reached
-    exact ⟨action, assigned, phase.completed (done event upper)⟩
+    exact ⟨action, assigned, phase.binding_completed nodeEq (done event upper)⟩
   -- The law of the deviator's choices and traffic is the same for every draw.
   have congruent (left : Seed) (leftSupported : left ∈ prior.support)
       (right : Seed) (rightSupported : right ∈ prior.support)
@@ -272,7 +277,9 @@ theorem asyncDeviation_block_factorization (ordered : (serviceGraph setup mode).
         congrArg (fun value => value.2.2.1) same]
     unfold decided ReactiveApplication.runUntilHorizon
     rw [counts]
-    apply decidedBlock_readout_congr ordered wall scheduler bound turns wholeProfile who deviation
+    apply decidedBlock_readout_congr
+      (BlockEnd.sealed_relaxed relaxed wall
+          (plain_of_bindings bindings)) scheduler bound turns wholeProfile who deviation
       bindings leftDrawn rightDrawn (drawnAssigns left leftDrawn leftMember)
       (drawnAssigns right rightDrawn rightMember)
     · exact ⟨⟨0, ⟨by rw [Nat.zero_add, ← counts]; exact leftTrace⟩⟩,
@@ -322,7 +329,7 @@ theorem asyncDeviation_block_factorization (ordered : (serviceGraph setup mode).
               pair.2) := by
     obtain ⟨⟨trace⟩, ownSlots, answered⟩ := startFacts seed supported
     have start := boundary seed supported
-    have predraw := blockPlayers_runUntil_predraw ordered wall contract timely turns wholeProfile
+    have predraw := blockPlayers_runUntil_predraw relaxed wall contract timely turns wholeProfile
       who deviation (execution seed) start.ordered start.untouched
       (fun owner honest => (ownSlots owner honest).1) answered bindings count program profile
       prefixed refs embedding refsBefore low (source seed) (aligned seed)

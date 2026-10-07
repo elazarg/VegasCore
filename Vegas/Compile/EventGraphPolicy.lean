@@ -213,7 +213,7 @@ def compilePolicyTable {Field : Type}
           if same : owner = who then
             match decodeObservation? who refs store with
             | some observation => policy.1 same (observation, history)
-            | none => PMF.pure false
+            | none => PMF.pure true
           else PMF.pure false)
         (compilePolicyTable next (refs.cons headRef)
           (fun tail => outputs (Fin.succ tail)) who policy.2) event store history
@@ -304,11 +304,12 @@ theorem compilePolicyTable_reveal_of_decode {Field : Type}
   change (if same' : owner = who then
       match decodeObservation? who refs store with
       | some observation => policy.1 same' (observation, history)
-      | none => PMF.pure false
+      | none => PMF.pure true
     else PMF.pure false) = _
   simp [same, decoded]
 
-/-- A malformed reveal view refuses disclosure. -/
+/-- A reveal view that cannot be decoded attempts the opening; the runtime sends
+it only when the owner's own stored commitment opens. -/
 theorem compilePolicyTable_reveal_of_decode_none {Field : Type}
     {layout : Field → Vegas.EventGraph.EventField Player L}
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
@@ -330,11 +331,11 @@ theorem compilePolicyTable_reveal_of_decode_none {Field : Type}
         (.reveal (payload := payload) published owner name fresh selected unresolved next)
         refs outputs who policy
         ⟨0, Nat.zero_lt_succ (eventCount next)⟩ store history =
-      PMF.pure false := by
+      PMF.pure true := by
   change (if same' : owner = who then
       match decodeObservation? who refs store with
       | some observation => policy.1 same' (observation, history)
-      | none => PMF.pure false
+      | none => PMF.pure true
     else PMF.pure false) = _
   simp [same, decoded]
 

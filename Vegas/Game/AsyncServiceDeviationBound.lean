@@ -317,9 +317,11 @@ theorem isεNash_clientProfile {Parameter : Type}
         (fun history who => payoff history.state who)
         (ε + 2 * (∑ event, timing.deferral event) * range)
         (service.clientProfile menu timing source) :=
-  service.isεNash_clientProfile_of_firstTurn_bounds ordered parameter utility sample
+  service.isεNash_clientProfile_of_firstTurn_bounds parameter utility sample
     authentic deposit
     menu timing covered low range within ε source
+    (firstTurn_readout_law service.setup service.leaks ordered service.contract service.timely
+      turns _ (sourceServiceClientProfile_effective _))
     (fun who alternative => service.firstTurn_deviation_bound ordered
       parameter utility sample deposit
       nonnegative (service.bounded_of_within parameter utility deposit low range within) source
@@ -462,9 +464,11 @@ theorem intended_clientProfile_isεNash {Parameter : Type}
           (fun final => (service.setup.protocolReadout final.state,
             fun who => (service.setup.protocolReadout final.state).elim 0
               (fun state => utility (service.setup.parameterOutcome parameter state) who)))) :=
-  service.intended_clientProfile_isεNash_of_firstTurn_bounds ordered wellFormed parameter
+  service.intended_clientProfile_isεNash_of_firstTurn_bounds wellFormed parameter
     utility forfeit
-    range sample authentic deposit menu timing covered low spread within intended source agrees ε
+    range sample authentic deposit menu timing covered low spread within intended source agrees
+    (firstTurn_readout_law service.setup service.leaks ordered service.contract service.timely
+      turns _ (sourceServiceClientProfile_effective _)) ε
     equilibrium (fun who alternative => service.firstTurn_deviation_bound
       ordered parameter (forfeitUtility service.setup.program forfeit utility)
       sample deposit nonnegative

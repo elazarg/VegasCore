@@ -24,6 +24,7 @@ import Vegas.Source.DisclosurePosterior
 import Vegas.Source.DisclosureObservation
 import Vegas.Source.HistoryRebase
 import Vegas.Source.DisclosureContinuation
+import Vegas.Source.DisclosureOpening
 import Vegas.Source.Honest
 import Vegas.Source.GuardPrediction
 import Vegas.Source.Forfeit

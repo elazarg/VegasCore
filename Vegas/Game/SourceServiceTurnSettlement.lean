@@ -134,21 +134,19 @@ variable {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.Executio
   {deadline : (serviceGraph setup mode).EventId → Nat}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
 
-/-- **The first-turn limit's exact settlement law.** On a barrier-ordered
-graph, under the asynchronous contract with `delay + bound < deadline`, for
-every source profile with effective disclosures, the first-turn profile's
+/-- **The first-turn limit's exact settlement law.** Under the asynchronous
+contract with `delay + bound < deadline`, for every source profile whose
+first-turn clients have its source outcome law, the first-turn profile's
 executions after `horizon` rounds have the source joint law of typed outcome
 and realized payoffs, for every authentic partial audit and every deposit. -/
-theorem sourceServiceFirstTurn_settlement_law [Finite Player]
-    (ordered : (serviceGraph setup mode).BarrierOrdered)
+theorem sourceServiceFirstTurn_settlement_law
     {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
     {horizon turns : Nat} {delay bound : (serviceGraph setup mode).EventId → Nat}
     (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
       (serviceInitialLaw setup mode) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
     (profile : BehavioralProfile setup.program)
-    (effective : ∀ who, (profile who).EffectiveDisclosures setup.program []
-      (Revelations.initial setup.context))
+    (terminal : FirstTurnSourceLaw setup mode deadline leaks horizon scheduler bound turns profile)
     (sample : List (SettledEvidence setup mode) → PMF (List (SettledEvidence setup mode)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (utility : State L setup.program.terminalCtx → Player → ℝ) (deposit : Player → ℝ) :
@@ -178,8 +176,7 @@ theorem sourceServiceFirstTurn_settlement_law [Finite Player]
       deposit (app.finished execution)
       (sourceServiceFirstTurn_charge_zero contract timely profile sample authentic horizon le_rfl
         execution reached), PMF.pure_map]
-  have terminal := firstTurn_readout_law setup leaks ordered contract timely turns profile
-    effective
+  unfold FirstTurnSourceLaw at terminal
   have joint := congrArg (PMF.map (fun state : Option (State L setup.program.terminalCtx) =>
     (state, fun who => state.elim 0 (fun final => utility final who)))) terminal
   simp only [PMF.map_comp, Function.comp_def, Option.elim_some] at joint
@@ -187,23 +184,21 @@ theorem sourceServiceFirstTurn_settlement_law [Finite Player]
 
 /-! ## The settlement law of the turn-counted policy -/
 
-/-- **The turn-counted policy's settlement law on executions.** On a
-barrier-ordered graph, under the asynchronous contract with
-`delay + bound < deadline`, for every turn timing and every source profile with
-effective disclosures, the turn-counted profile's executions after `horizon`
+/-- **The turn-counted policy's settlement law on executions.** Under the
+asynchronous contract with `delay + bound < deadline`, for every turn timing and
+every source profile whose first-turn clients have its source outcome law, the
+turn-counted profile's executions after `horizon`
 rounds have the source joint law of typed outcome and realized payoffs within
 the total deferral weight in total variation, for every authentic partial audit
 and every deposit. -/
-theorem sourceServiceTurnPolicy_execution_settlement_lawError [Finite Player]
-    (ordered : (serviceGraph setup mode).BarrierOrdered)
+theorem sourceServiceTurnPolicy_execution_settlement_lawError
     {scheduler : (serviceApplication setup mode deadline leaks).Scheduler} {horizon turns : Nat}
     {delay bound : (serviceGraph setup mode).EventId → Nat}
     (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
       (serviceInitialLaw setup mode) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
     (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
-    (effective : ∀ who, (profile who).EffectiveDisclosures setup.program []
-      (Revelations.initial setup.context))
+    (terminal : FirstTurnSourceLaw setup mode deadline leaks horizon scheduler bound turns profile)
     (sample : List (SettledEvidence setup mode) → PMF (List (SettledEvidence setup mode)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (utility : State L setup.program.terminalCtx → Player → ℝ) (deposit : Player → ℝ) :
@@ -219,7 +214,7 @@ theorem sourceServiceTurnPolicy_execution_settlement_lawError [Finite Player]
               fun payoffs => (serviceSourceReadout setup mode deadline leaks
                 ((serviceApplication setup mode deadline leaks).finished execution), payoffs)))
       ((setup.run profile).map (fun state => (some state, utility state))) := by
-  rw [← sourceServiceFirstTurn_settlement_law ordered contract timely profile effective sample
+  rw [← sourceServiceFirstTurn_settlement_law contract timely profile terminal sample
     authentic utility deposit]
   exact serviceTurnPolicy_roundsFrom_bind_within (serviceInitialLaw setup mode) scheduler horizon
     bound timing profile _
@@ -270,8 +265,9 @@ theorem sourceServiceClients_honestExecution [Finite Player]
     sourceServiceTurnPolicy_owner_settled contract players who timing
       (sourceServiceClientProfile setup original) follows count within execution reached⟩
   rw [← sourceServiceClientProfile_run original]
-  exact sourceServiceTurnPolicy_execution_settlement_lawError ordered contract timely timing
-    (sourceServiceClientProfile setup original) (sourceServiceClientProfile_effective original)
+  exact sourceServiceTurnPolicy_execution_settlement_lawError contract timely timing
+    (sourceServiceClientProfile setup original) (firstTurn_readout_law setup leaks ordered contract
+      timely turns _ (sourceServiceClientProfile_effective original))
     sample authentic utility deposit
 
 variable [Fintype Player]
@@ -348,8 +344,9 @@ theorem sourceServiceTurnPolicy_settlement_lawError
     simp only [PMF.bind_bind, Function.comp_def]
     rfl
   rw [native]
-  exact sourceServiceTurnPolicy_execution_settlement_lawError ordered contract timely timing
-    profile effective sample authentic utility deposit
+  exact sourceServiceTurnPolicy_execution_settlement_lawError contract timely timing
+    profile (firstTurn_readout_law setup leaks ordered contract timely turns profile effective)
+    sample authentic utility deposit
 
 /-- **Honest execution with realized settlement, for every source profile.**
 On a barrier-ordered graph, under the asynchronous contract with

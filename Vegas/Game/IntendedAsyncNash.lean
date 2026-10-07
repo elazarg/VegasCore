@@ -44,7 +44,6 @@ response menu under the forfeit pass, and their joint law of typed outcome and
 realized settlement is within `δ` in total variation of the intended joint law
 of terminal store and payoff. -/
 theorem intended_clientProfile_isεNash_of_firstTurn_bounds {Parameter : Type}
-    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (wellFormed : service.setup.WellFormed)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
@@ -73,7 +72,11 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds {Parameter : Type}
             (if charged then deposit who else 0) ≤ low who + spread)
     (intended : Profile service.setup.intendedModel.behavioralSignature)
     (source : Profile service.sourceModel.behavioralSignature)
-    (agrees : service.setup.intendedRestriction.ExtendsProfile intended source) (ε : ℝ)
+    (agrees : service.setup.intendedRestriction.ExtendsProfile intended source)
+    (terminal : FirstTurnSourceLaw service.setup service.mode service.deadline service.leaks
+      service.horizon service.scheduler service.bound turns
+      (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
+        (CommitmentInterface.values service.setup.program) source))) (ε : ℝ)
     (equilibrium : IsεNash (service.setup.intendedModel.toBehavioralGameForm
         (instructionCount service.setup.program + 1))
       (fun final who => (service.setup.protocolReadout final.state).elim 0
@@ -128,15 +131,16 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds {Parameter : Type}
   obtain ⟨sourceNash, _, sourceLaw⟩ := service.setup.intended_isεNash_preserved
     (sourceService_finiteBindingTypes service.setup service.bounds service.values)
     wellFormed parameter utility forfeit range intended source agrees ε equilibrium
-  refine ⟨service.isεNash_clientProfile_of_firstTurn_bounds ordered parameter forfeited
+  refine ⟨service.isεNash_clientProfile_of_firstTurn_bounds parameter forfeited
     sample authentic
-    deposit menu timing covered low spread within ε source firstTurn sourceNash, ?_⟩
+    deposit menu timing covered low spread within ε source terminal firstTurn sourceNash, ?_⟩
   let decoded := service.setup.decodeBehavioralProfile
     (CommitmentInterface.values service.setup.program) source
   let stateUtility := fun state : State L service.setup.program.terminalCtx =>
     forfeited (service.setup.parameterOutcome parameter state)
-  have close := sourceServiceClients_clientPolicy_settlement_lawError ordered service.contract
-    service.timely timing decoded menu (covered source) sample authentic stateUtility deposit
+  have close := sourceServiceClients_clientPolicy_settlement_lawError service.contract
+    service.timely timing decoded terminal menu (covered source) sample authentic stateUtility
+    deposit
   have readoutLaw : (service.sourceModel.runBehavioral source
       (instructionCount service.setup.program + 1)).map
         (fun final => service.setup.protocolReadout final.state) =

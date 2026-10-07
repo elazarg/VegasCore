@@ -938,9 +938,10 @@ theorem asyncDeviation_deviationLaw [Fintype Player]
           (BlockEnd.sealed ordered wall) wall.1 (execution point.val.1) (boundary _ supported)
           (bounded _ supported) _ reached done
         exact ⟨nextBoundary, nextBounded⟩
-      obtain ⟨policy, configNoise, law⟩ := asyncDeviation_block_factorization ordered wall
-        contract timely turns wholeProfile who deviation bindings program profile count prefixed
-        refs embedding refsBefore rfl prior source execution aligned checkpoint boundary bounded
+      obtain ⟨policy, configNoise, law⟩ := asyncDeviation_block_factorization
+        ordered.revealRelaxedOrdered wall contract timely turns wholeProfile who deviation bindings
+        program profile count prefixed refs embedding refsBefore rfl prior source execution
+        aligned checkpoint boundary bounded
         noise factor
       refine DeviationLaw.phase setup leaks horizon scheduler players wholeProfile who program
         profile refs embedding (commitTail count program prefixed).tail

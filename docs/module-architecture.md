@@ -38,6 +38,7 @@ Useful existing boundaries are the
 [whole-policy deviations under a restriction](../GameTheoryExtensions/Analysis/Protocol/RetainedDeviation.lean),
 [the first-turn coupling against one deviator](../Vegas/Game/ServiceTimingCoupling.lean),
 [one deviator against an arbitrary builder, phase by phase](../Vegas/Game/AsyncDeviationLaw.lean),
+[one deviator up to withholding on a reveal-relaxed graph](../Vegas/Game/AsyncWithholdLaw.lean),
 and [depth-free extension](../GameTheoryExtensions/Analysis/Protocol/PassageRestrictionExtension.lean).
 
 Behavioral commutation preserves the typed store and original own recall;

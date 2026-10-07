@@ -33,7 +33,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 variable (setup : Setup (Player := Player) (L := L))
 
 /-- The deviator's debt is absorbing in the source model. -/
-private theorem indebted_localStep (who : Player)
+theorem indebted_localStep (who : Player)
     (history : (setup.executionProtocol (CommitmentInterface.values setup.program)).History)
     (choices : ∀ i, (setup.informationModel (CommitmentInterface.values setup.program)).Choice i
       ((setup.informationModel (CommitmentInterface.values setup.program)).infoOf i
@@ -55,7 +55,7 @@ private theorem indebted_localStep (who : Player)
 
 /-- An additional choice of the deviator from an intended history leaves it
 indebted. -/
-private theorem indebted_of_extra (wellFormed : setup.WellFormed) (who : Player)
+theorem indebted_of_extra (wellFormed : setup.WellFormed) (who : Player)
     (original : setup.intendedProtocol.History)
     (choices : ∀ i, (setup.informationModel (CommitmentInterface.values setup.program)).Choice i
       ((setup.informationModel (CommitmentInterface.values setup.program)).infoOf i

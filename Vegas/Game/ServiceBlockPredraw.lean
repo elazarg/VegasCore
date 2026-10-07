@@ -9,7 +9,7 @@ In a block of binding events, the players satisfying a predicate `drawn`
 follow their first-turn clients. Each such owner's commitment in the block
 follows its source kernel at its view, and its view there is its view at the
 block's start together with its own earlier commitments in the block: the other
-players' commitments are hidden from it, and on a barrier-ordered graph its own
+players' commitments are hidden from it, and on a reveal-relaxed graph its own
 earlier bindings have completed exactly when one of its later bindings is
 ready.
 
@@ -169,12 +169,12 @@ structure PredrawRun (bound : (serviceGraph setup mode).EventId → Nat)
   inside : WithinBlock low high execution
   phase : ∀ event owner action, assignment event = some action →
     (serviceGraph setup mode).actor? event = some owner → drawn owner →
-      BindingPhase bound start owner event action execution
+      DecidedEventPhase bound start owner event action execution
   own : ∀ owner, drawn owner → OwnSubmissionsAtTurn setup leaks execution owner
   answered : ActivationsAnswered setup leaks execution
 
 /-- **Drawing a block's commitments in advance.** From the start of a block of
-bindings, on a barrier-ordered graph under the asynchronous contract with
+bindings, on a reveal-relaxed graph under the asynchronous contract with
 `delay + bound < deadline`, the block's players with some commitments already
 drawn run, until the block is done, as the mixture over the remaining draws of
 `Vegas.assignChain` of the block's players with all of them drawn. The policies
@@ -182,7 +182,7 @@ of the players not drawn are arbitrary. The induction follows the leading
 commitments of a residual program at the block's current rank `offset`, together
 with a configuration `virtual` that completes the block's events below `offset`
 in source order with the drawn actions. -/
-theorem drawnPlayers_runUntil_predraw (ordered : (serviceGraph setup mode).BarrierOrdered)
+theorem drawnPlayers_runUntil_predraw (relaxed : (serviceGraph setup mode).RevealRelaxedOrdered)
     {low high : Nat} (wall : BlockEnd setup mode high) {horizon : Nat}
     {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
     {delay bound : (serviceGraph setup mode).EventId → Nat}
@@ -319,7 +319,7 @@ theorem drawnPlayers_runUntil_predraw (ordered : (serviceGraph setup mode).Barri
                 inside := ⟨startPrefix.within lowHigh,
                   fun other above => startUntouched other (Nat.le_trans lowHigh above)⟩
                 phase := fun other otherOwner action assigned _ honest =>
-                  BindingPhase.initial bound action
+                  DecidedEventPhase.initial bound action
                     (startUntouched other (assignedRange other action assigned).1)
                     (startOwn otherOwner honest)
                     (fun done => Nat.lt_irrefl _ (Nat.lt_of_lt_of_le
@@ -341,7 +341,8 @@ theorem drawnPlayers_runUntil_predraw (ordered : (serviceGraph setup mode).Barri
               refine
                 { reach := run.reach.trans_single
                     (round_configStep setup leaks scheduler _ execution next reached)
-                  inside := round_within (wall.sealed ordered) scheduler _ execution next run.inside
+                  inside := round_within (BlockEnd.sealed_relaxed relaxed wall
+                    (plain_of_bindings bindings)) scheduler _ execution next run.inside
                     running
                     reached
                   phase := ?_
@@ -359,8 +360,9 @@ theorem drawnPlayers_runUntil_predraw (ordered : (serviceGraph setup mode).Barri
               have ownerIs : nodeOwner = otherOwner := Option.some.inj
                 ((nodeView_bind_actor nodeEq nodeCode).symm.trans otherOwned)
               subst ownerIs
+              have facts := binding_decision_facts nodeEq action
               exact (run.phase other nodeOwner action assigned otherOwned honest).round contract
-                timely nodeEq executionTrace
+                timely facts.1 facts.2.1 facts.2.2.1 executionTrace
                 (run.own nodeOwner honest) run.answered (startUntouched other lower)
                 (players := drawnPlayers bound turns wholeProfile drawn others assignment)
                 (by
@@ -399,7 +401,7 @@ theorem drawnPlayers_runUntil_predraw (ordered : (serviceGraph setup mode).Barri
                 rw [← sameApp]
                 exact (middle.application.publicView_eventReady event).mp
                   (PublicView.ownTurn?_spec _ owner event turn).1
-              obtain ⟨storeEq, ownEq⟩ := playerView_eq_of_reaches ordered run.reach reachVirtual
+              obtain ⟨storeEq, ownEq⟩ := playerView_eq_of_reaches relaxed run.reach reachVirtual
                 owner
                 (fun other notStart done => by
                   have lower : low ≤ other.val :=
@@ -411,14 +413,14 @@ theorem drawnPlayers_runUntil_predraw (ordered : (serviceGraph setup mode).Barri
                       omega
                   exact bindings other lower upper)
                 (fun other otherPayload otherEq => by
-                  rw [binding_completed_iff ordered readyNow outputEq otherEq,
+                  rw [binding_completed_iff relaxed readyNow outputEq otherEq,
                     checkpoint.ordered.2 other, eventRank])
                 (fun completion member otherPayload otherEq notStart => by
                   have done : completion.event ∈ execution.application.config.cut.completed :=
                     (execution.application.config.history_exact _).mp (List.mem_map_of_mem member)
                   have below : completion.event.val < offset := by
                     rw [← eventRank]
-                    exact (binding_completed_iff ordered readyNow outputEq otherEq).mp done
+                    exact (binding_completed_iff relaxed readyNow outputEq otherEq).mp done
                   have lower : low ≤ completion.event.val :=
                     Nat.le_of_not_gt fun under => notStart ((startPrefix.2 _).mpr under)
                   have otherOwned :=
@@ -426,7 +428,7 @@ theorem drawnPlayers_runUntil_predraw (ordered : (serviceGraph setup mode).Barri
                   obtain ⟨action, assigned, inVirtual⟩ := assignedOld completion.event owner lower
                     below otherOwned own
                   have inRun := (run.phase completion.event owner action assigned otherOwned
-                    own).completed done
+                    own).binding_completed otherEq done
                   have same := completion_eq_of_event inRun member rfl
                   rw [← same]
                   exact inVirtual)
@@ -516,7 +518,7 @@ theorem drawnPlayers_runUntil_predraw (ordered : (serviceGraph setup mode).Barri
 /-- **Drawing a block's commitments in advance, against one deviator.** The
 case of `Vegas.drawnPlayers_runUntil_predraw` in which every player but one
 deviator is drawn. -/
-theorem blockPlayers_runUntil_predraw (ordered : (serviceGraph setup mode).BarrierOrdered)
+theorem blockPlayers_runUntil_predraw (relaxed : (serviceGraph setup mode).RevealRelaxedOrdered)
     {low high : Nat} (wall : BlockEnd setup mode high) {horizon : Nat}
     {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
     {delay bound : (serviceGraph setup mode).EventId → Nat}
@@ -568,7 +570,7 @@ theorem blockPlayers_runUntil_predraw (ordered : (serviceGraph setup mode).Barri
           (blockPlayers bound turns wholeProfile who deviation picked) (BlockDone high)
           rounds start := by
   simp only [blockPlayers_eq_drawnPlayers]
-  exact drawnPlayers_runUntil_predraw ordered wall contract timely turns wholeProfile (· ≠ who)
+  exact drawnPlayers_runUntil_predraw relaxed wall contract timely turns wholeProfile (· ≠ who)
     (fun _ => deviation) start startPrefix startUntouched startOwn startAnswered bindings count
     program profile prefixed refs embedding refsBefore offset source aligned virtual checkpoint
     reachVirtual lowOffset offsetEnd assignment assignedRange assignedOld rounds remaining trace

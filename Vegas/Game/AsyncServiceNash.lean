@@ -124,7 +124,6 @@ theorem clientProfile_update (menu : (serviceApplication service.setup service.m
 the total deferral weight times the payoff range of the source expected
 payoff, in both directions, and both expectations are of integrable payoffs. -/
 private theorem clientProfile_value_close {Parameter : Type}
-    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
     (sample : List (SettledEvidence service.setup service.mode) →
@@ -147,7 +146,11 @@ private theorem clientProfile_value_close {Parameter : Type}
           state) who) - (if charged then deposit who else 0) ∧
         output.elim 0 (fun state => utility (service.setup.parameterOutcome parameter
           state) who) - (if charged then deposit who else 0) ≤ low who + range)
-    (source : Profile service.sourceModel.behavioralSignature) (who : Player) :
+    (source : Profile service.sourceModel.behavioralSignature)
+    (terminal : FirstTurnSourceLaw service.setup service.mode service.deadline service.leaks
+      service.horizon service.scheduler service.bound turns
+      (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
+        (CommitmentInterface.values service.setup.program) source))) (who : Player) :
     let base := serviceBaseUtility service.setup service.mode service.deadline service.leaks
       (fun state => utility (service.setup.parameterOutcome parameter state))
     let payoff := TerminalAudit.utility base
@@ -186,9 +189,9 @@ private theorem clientProfile_value_close {Parameter : Type}
   let sourceJoint := (service.setup.run decoded).map fun state =>
     (some state, stateUtility state)
   have close : PMF.WithinTV (∑ event, timing.deferral event) nativeJoint sourceJoint :=
-    sourceServiceClients_clientPolicy_settlement_lawError ordered service.contract
+    sourceServiceClients_clientPolicy_settlement_lawError service.contract
       service.timely timing
-      decoded menu (covered source) sample authentic stateUtility deposit
+      decoded terminal menu (covered source) sample authentic stateUtility deposit
   have settled (state : (serviceApplication service.setup service.mode service.deadline
     service.leaks).ProtocolState)
       (pair : Option (State L service.setup.program.terminalCtx) × (Player → ℝ))
@@ -352,12 +355,16 @@ theorem isεNash_of_clientProfile {Parameter : Type}
     native who (service.clientProfile menu timing (Profile.update source who alternative) who)
   rw [service.clientProfile_update] at compared
   obtain ⟨honestNative, honestSource, honestAbove, honestBelow⟩ :=
-    service.clientProfile_value_close ordered
-    parameter utility sample authentic deposit menu timing covered low range within source who
+    service.clientProfile_value_close
+    parameter utility sample authentic deposit menu timing covered low range within source
+    (firstTurn_readout_law service.setup service.leaks ordered service.contract service.timely
+      turns _ (sourceServiceClientProfile_effective _)) who
   obtain ⟨deviationNative, deviationSource, deviationAbove, deviationBelow⟩ :=
-    service.clientProfile_value_close ordered parameter utility sample authentic deposit menu
+    service.clientProfile_value_close parameter utility sample authentic deposit menu
       timing
-      covered low range within (Profile.update source who alternative) who
+      covered low range within (Profile.update source who alternative)
+      (firstTurn_readout_law service.setup service.leaks ordered service.contract service.timely
+        turns _ (sourceServiceClientProfile_effective _)) who
   let nativeUtility := fun (history : (menu.protocol (serviceInitialLaw service.setup service.mode)
     service.horizon
       service.scheduler).History) (who : Player) => payoff history.state who
@@ -443,7 +450,8 @@ private theorem auditedPayoff_within {Parameter : Type}
     linarith
 
 /-- **Approximate Nash transfer from the first-turn bound.** Under the
-asynchronous contract, suppose every native policy of one player against the
+asynchronous contract, for a source profile whose clients' first-turn limit has
+its source outcome law, suppose every native policy of one player against the
 first-turn clients of a source profile has audited expected payoff at most that
 of some source deviation of the same player. Then, if the source profile is an
 `ε`-Nash equilibrium of the source protocol model, its turn-counted clients are
@@ -453,7 +461,6 @@ value, charged or not, lies in an interval of length `R`. The turn-counted
 clients against a deviation are within `δ` of the first-turn clients against it
 in total variation (`Vegas.deviatedTurnProfile_roundsFrom_bind_within`). -/
 theorem isεNash_clientProfile_of_firstTurn_bounds {Parameter : Type}
-    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
     (sample : List (SettledEvidence service.setup service.mode) →
@@ -476,7 +483,11 @@ theorem isεNash_clientProfile_of_firstTurn_bounds {Parameter : Type}
           state) who) - (if charged then deposit who else 0) ∧
         output.elim 0 (fun state => utility (service.setup.parameterOutcome parameter
           state) who) - (if charged then deposit who else 0) ≤ low who + range)
-    (ε : ℝ) (source : Profile service.sourceModel.behavioralSignature) :
+    (ε : ℝ) (source : Profile service.sourceModel.behavioralSignature)
+    (terminal : FirstTurnSourceLaw service.setup service.mode service.deadline service.leaks
+      service.horizon service.scheduler service.bound turns
+      (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
+        (CommitmentInterface.values service.setup.program) source))) :
     let base := serviceBaseUtility service.setup service.mode service.deadline service.leaks
       (fun state => utility (service.setup.parameterOutcome parameter state))
     let payoff := TerminalAudit.utility base
@@ -614,9 +625,9 @@ theorem isεNash_clientProfile_of_firstTurn_bounds {Parameter : Type}
     firstBound
   obtain ⟨sourceHonest, sourceDeviation, sourceCompared⟩ := equilibrium who deviation
   -- Honest closeness.
-  have honestClose := service.clientProfile_value_close ordered parameter utility sample
+  have honestClose := service.clientProfile_value_close parameter utility sample
     authentic
-    deposit menu timing covered low range within source who
+    deposit menu timing covered low range within source terminal who
   obtain ⟨honestIntegrable, sourceIntegrable, _, honestBelow⟩ := honestClose
   have finiteHistory := service.setup.finite_history
     (sourceService_finiteBindingTypes service.setup service.bounds service.values)
