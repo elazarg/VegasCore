@@ -532,6 +532,20 @@ joint law. It is not pursued.
   (`Vegas.Paper.concurrent_event_nash_iff`, from
   `Setup.eventGame_approximate_nash_iff`, standard axioms).
 
+## R. Timed release (proposed, awaiting approval)
+
+- [ ] **R1. Timed-release semantics.** The optional mode of the
+  [design](se-schedule-generalization.md) (section "Optional timed-release
+  mode") is implemented in the runtime as stated, off by default, with the
+  baseline and every existing pin unchanged.
+- [ ] **R2. Sequential equilibrium with timed release.** For every builder
+  satisfying `AsyncContract`, `AsyncTimely` and `BlindToLatePackets`, every
+  finitely branching observation rule, and every program whose reveals all use
+  the timed-release mode with a release delay meeting the stated condition,
+  every sequential equilibrium of the intended game has a sequential
+  equilibrium of the bounded raw runtime with the intended joint law and no
+  charge on its paths; pinned with standard axioms.
+
 ## I. Impossibility
 
 - [x] **I1. Mechanized counterexample.** The counterexample `G*` of
