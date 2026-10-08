@@ -291,4 +291,5 @@ import Vegas.Game.SourceServiceTurnSubmissions
 import Vegas.Game.SourceServiceUnsentBinding
 import Vegas.Game.SourceServiceWaiting
 import Vegas.Game.SourceStateKernel
+import Vegas.Game.ProbabilisticServiceObstruction
 import Vegas.Game.ValueBindingEdge

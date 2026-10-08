@@ -32,6 +32,12 @@ import Vegas.Examples.LateLeak.CompleteObservationProtectedPosterior
 import Vegas.Examples.LateLeak.CompleteObservationCostPreservation
 import Vegas.Examples.LateLeak.ObservationAdvantage
 import GameTheoryExtensions.Analysis.Protocol.PublicationFailureObstruction
+import Vegas.Game.ProbabilisticServiceObstruction
+import Vegas.Examples.CommittedResolutionBobAudit
+import Vegas.Examples.CommittedResolutionBobDecision
+import Vegas.Examples.CommittedResolutionBobFailure
+import Vegas.Examples.CommittedResolutionBobReadout
+import Vegas.Pending.EventResolutionEnvironment
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -1268,3 +1274,33 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.lateLeak_partial_observation_opposite_preferences
+
+/-- info: 'Vegas.service_behavioral_outage_not_realized' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.service_behavioral_outage_not_realized
+
+/-- info: 'Vegas.Examples.CommittedResolutionBobAudit.canonical_bob_audit_clear' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommittedResolutionBobAudit.canonical_bob_audit_clear
+
+/-- info: 'Vegas.EventGraphRuntime.environmentStep_resolution_no_success' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.environmentStep_resolution_no_success
+
+/-- info: 'Vegas.Examples.CommittedResolutionBobDecision.bob_continuation_current_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommittedResolutionBobDecision.bob_continuation_current_law
+
+/-- info: 'Vegas.Examples.CommittedResolutionBobFailure.bob_failed_response_at_horizon' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommittedResolutionBobFailure.bob_failed_response_at_horizon
+
+/-- info: 'Vegas.Examples.CommittedResolutionBobReadout.bob_continuation_readout_eq' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommittedResolutionBobReadout.bob_continuation_readout_eq

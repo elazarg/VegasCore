@@ -174,3 +174,4 @@ import Vegas.Pending.ReactiveUnusableBinding
 import Vegas.Pending.RevealEvidence
 import Vegas.Pending.RevealTranscript
 import Vegas.Pending.ServicePlan
+import Vegas.Pending.EventResolutionEnvironment

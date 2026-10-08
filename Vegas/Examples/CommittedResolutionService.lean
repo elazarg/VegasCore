@@ -1606,4 +1606,14 @@ theorem bob_activation_phase (control : app.Control)
   change 2 - entered < 3
   omega
 
+/-- Bob's unique RAW decision always has five physical rounds left, including
+its protected inclusion and final expiry. -/
+theorem bob_activation_remaining (control : app.Control)
+    (trace : (app.protocol (initialLaw setup) horizon scheduler).Trace (some control))
+    (active : control.actor = some bob) : control.remaining = 5 := by
+  have accounted := (resources_history trace).1
+  have cursor := (bob_activation_phase control trace active).1
+  change control.remaining + control.execution.environmentRecall.length = 16 at accounted
+  omega
+
 end Vegas.Examples.CommittedResolutionService

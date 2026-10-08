@@ -99,9 +99,57 @@ The probability statements are formalized in
 - `global_outage_totalVariation_lower_bound` covers the initial unrecovered
   outage lottery with an arbitrary normal branch.
 
-The targeted `lake --wfail build` passes for this module. They are
-probability obstructions, not a checked compiler impossibility result or a
-change to `AsyncContract`.
+The targeted `lake --wfail build` passes for this module.
+
+## The obstruction in the actual compiled runtime
+
+The probability argument now has a checked native compiler instantiation in
+[ProbabilisticServiceObstruction.lean](../Vegas/Game/ProbabilisticServiceObstruction.lean).
+It keeps the compiled graph, private initialization, pending observations,
+RAW response menus, packet handling and typed readout. The only backend
+change is an explicit probabilistic controller: at each physical opportunity,
+with probability $\rho$ it records a no-service wait; otherwise it invokes an
+arbitrary ordinary public scheduler. A wait consumes the physical opportunity
+without changing the application. It does not erase or hide any packet.
+This modified backend does not satisfy the original sure-delivery contract.
+
+The checked native round decomposition is
+`ReactiveApplication.waitOutageScheduler_round` in
+[ReactiveOutage.lean](../Interaction/ReactiveOutage.lean).
+Its initialization-law bound is used directly by the compiler result.
+For every nonempty source program, dependency mode, configured deadlines,
+pending observation rule, public normal controller, finite physical horizon
+$N$, and native behavioral profile in any actual response menu,
+
+$$
+d_{\mathrm{TV}}\!\left(
+ \operatorname{law}(\text{native typed readout}),
+ \operatorname{law}(\mathrm{some}(\text{source terminal state}))
+\right)\ge\rho^N.
+$$
+
+`service_behavioral_outage_totalVariation_lower_bound` proves that statement
+from the actual initialization law and native continuation evaluator. The
+source terminal law is arbitrary, so it includes the law of every source SE.
+`service_behavioral_outage_not_realized` rules out exact equality whenever
+$\rho>0$. It quantifies over every native behavioral profile, including every
+SE, PBE and Nash profile; it does not assume a client strategy, particular
+beliefs, an audit charge, or a convenient initialized history.
+
+The distinguishing event is that no complete typed outcome exists at the
+physical horizon. Every source terminal law has such an outcome, even when
+its logical publication result is failure. Repeated outage rounds leave the
+nonempty compiled program unfinished. Deposits and alternative RAW actions
+cannot complete a graph without a service operation on those rounds.
+
+This is an exact-law obstruction for an explicit close probabilistic backend.
+It does not prove impossibility under the unchanged `AsyncContract`, nor
+claim that every blockchain has this conditional outage floor. An operational
+application must justify that floor against all its available recovery paths.
+The physical budget is separate from the source's fixed logical horizon:
+allowing unbounded physical waiting would require a different execution and
+equilibrium model. Any finite increase of $N$ can reduce this lower bound,
+but cannot make it zero.
 
 ## Small physical error can still remove a selected exact equilibrium
 

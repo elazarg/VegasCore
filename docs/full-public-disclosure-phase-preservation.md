@@ -14,6 +14,9 @@ sequential-equilibrium definitions or to an actual Vegas source-to-runtime
 adapter. It preserves the initialized outcome of every source Nash equilibrium,
 and therefore of every source weak PBE or SE. It does not preserve all of a
 selected source assessment's off-path responses or beliefs.
+The extension below also allows correlated private receiver information
+under a full-support joint prior, and slot reliabilities depending on the
+publicly disclosed immutable value.
 
 ## Source game and runtime comparison
 
@@ -646,19 +649,439 @@ preserves the source equilibrium's initialized joint outcome and payoff law.
 This gives exact SE outcome preservation for the fixed finite disclosure phase,
 with any finite number of different type-independent slot reliabilities.
 
+## Correlated private receiver information with full joint support
+
+The finite-opportunity theorem extends when the receiver also has a private
+type, provided the joint prior has full support. This section states the
+additional hypotheses and supplies the modified auxiliary game and Bayes
+calculations. It is a paper theorem, like the preceding general phase result.
+
+Let the sender type be $i\in I$ and the receiver type be $j\in J$, with
+nonempty finite type sets and joint prior
+
+$$
+\pi_{ij}>0\quad\text{for every }(i,j)\in I\times J.
+$$
+
+Nature privately tells the sender $i$ and the receiver $j$. Put
+$\pi_i=\sum_j\pi_{ij}$ and $\kappa_{ij}=\pi_{ij}/\pi_i$.
+The immutable emitted value is $v(i)$. The receiver's success menu may be
+$A_{v,j}$ and its failure menu $B_j$, all finite and nonempty. Sender and
+receiver base payoffs are $u^S_{ij}(a),u^F_{ij}(b)$ and
+$r^S_{ij}(a),r^F_{ij}(b)$ respectively. Uniformly assume
+
+$$
+0\le u^S_{ij}(a),u^F_{ij}(b)\le R,
+\qquad D>R,\qquad c\ge0.
+$$
+
+Keep all preceding timing and observation hypotheses. In particular, each
+slot's conditional inclusion probability $q_t\in[0,1]$ is independent of
+**both** private types. The receiver makes no earlier decision or public
+announcement, and the sender receives no additional signal about $j$ or
+the inclusion kernel while waiting. Thus at every pre-emission sender
+information set with type $i$, its belief about $j$ remains
+$\kappa_{ij}$. Allowing a slot's reliability to depend on $j$ is not covered
+by this extension.
+
+### Source equilibrium and emitted-message replies
+
+Every source Bayesian Nash equilibrium opens at every sender type. A
+successful reply gives nonnegative payoff for every $j$, whereas lawful
+withholding gives payoff at most $R-D<0$. Each sender type has positive
+probability, so any positive withholding probability admits a strictly
+profitable contingent unilateral deviation.
+
+Consequently every reached receiver observation $(v,j)$ has posterior
+
+$$
+\pi(i\mid v,j)
+=\frac{\mathbf 1_{v(i)=v}\pi_{ij}}
+       {\sum_{\ell:v(\ell)=v}\pi_{\ell j}}.
+$$
+
+Fix the selected source equilibrium's success reply lotteries
+$\beta^*_{v,j}$. Bayesian Nash optimality makes each a best response to this
+posterior. Independently choose a failure reply $\beta^F_{v,j}$ maximizing
+the receiver's failure payoff under the same posterior. Such a reply exists
+by finiteness. It is used after an emitted packet fails; full public
+observation still reveals $v$ there.
+
+Define the sender's conditional expected success and emitted-failure base
+payoffs by
+
+$$
+S_i=\sum_j\kappa_{ij}\sum_a\beta^*_{v(i),j}(a)u^S_{ij}(a),
+\qquad
+F_i=\sum_j\kappa_{ij}\sum_b\beta^F_{v(i),j}(b)u^F_{ij}(b).
+$$
+
+For a receiver no-emission reply family $\beta^0=(\beta^0_j)_{j\in J}$,
+write
+
+$$
+W_i(\beta^0)=\sum_j\kappa_{ij}\sum_b\beta^0_j(b)u^F_{ij}(b).
+$$
+
+All three conditional base payoffs lie in $[0,R]$. Therefore
+
+$$
+V_{it}=q_tS_i+(1-q_t)(F_i-D-c),
+\qquad
+m_{it}(\beta^0)=W_i(\beta^0)-D-V_{it}
+$$
+
+obey precisely the same reliability ranking, cutoff comparisons and
+protected-turn bounds as before. In particular,
+$S_i-F_i+D+c\ge D-R+c>0$.
+
+### The auxiliary receiver chooses a complete contingent reply plan
+
+Retain the suffix-record slots $t_1<\cdots<t_r$. For each positive integer
+$K$, give the selector actions $(i,z_1,\ldots,z_r)\in I\times\{0,1\}^r$.
+The receiver's pure auxiliary actions are complete plans
+$b=(b_j)_{j\in J}\in\prod_j B_j$. Define auxiliary payoffs by
+
+$$
+U_{\mathrm{selector}}(i,z,b)
+=\sum_{k=1}^rK^{r-k}z_k
+ \left(\sum_j\kappa_{ij}u^F_{ij}(b_j)-D-V_{i,t_k}\right),
+$$
+
+$$
+U_{\mathrm{receiver}}(i,z,b)
+=\sum_j\kappa_{ij}r^F_{ij}(b_j).
+$$
+
+This is an ordinary finite normal-form game. A receiver strategy mixed over
+whole plans can correlate its prescriptions at different private types.
+Only one private type is realized, so its coordinate marginals
+$\beta^{0,K}_j$ give exactly the same expected payoffs against every
+selector action. This follows from linearity of the displayed sums; no
+independence between those unused coordinates is needed.
+
+The selector optimizes its flags **after** averaging the receiver's
+lottery and $j$ conditional on the chosen $i$. Its best payoff for type $i$
+is therefore
+
+$$
+H_i^K=\sum_{k=1}^rK^{r-k}
+             \bigl(m_{i,t_k}(\beta^{0,K})\bigr)^+,
+$$
+
+not an average of private-type-specific positive parts. Take auxiliary
+Nash equilibria, project the selector strategy to a type law $w^K$, and
+pass to a convergent subsequence
+$(w^K,\beta^{0,K})\to(w,\beta^0)$.
+
+At any projected law $w$, receiver type $j$ has probability
+
+$$
+P_j(w)=\sum_iw_i\kappa_{ij}
+       \ge\min_i\kappa_{ij}>0.
+$$
+
+Receiver plan optimality thus implies that its reply at every $j$ is
+optimal against weights $w_i\kappa_{ij}$. Indeed, replacing just one
+coordinate of a plan is an available unilateral deviation, and its
+payoff change is $P_j(w)$ times the conditional payoff change. The same
+component optimality holds in the compact limit: the finite payoff
+inequalities are continuous, and the denominator stays uniformly positive.
+Consequently $\beta^0_j$ is a best response to the posterior
+
+$$
+\widehat w_i^{\,j}
+=\frac{w_i\kappa_{ij}}{\sum_\ell w_\ell\kappa_{\ell j}}
+$$
+
+at a no-emission observation of receiver type $j$.
+
+The selector support argument is unchanged. Let $k_*$ be the first record
+whose limiting maximum $\max_i m_{i,t_{k_*}}(\beta^0)$ is positive.
+Then $w$ is supported on the types with positive margin at that record,
+and those types have first cutoff exactly $k_*$. For a type outside this
+set, all earlier margins are strictly negative, its normalized
+$k_*$-term tends to zero, and later terms vanish. A positive reference
+type has normalized selector payoff bounded away from zero. If there is
+no positive record maximum, all types send at each record. These are
+exactly the support and cutoff facts used in the existing calibration.
+
+### The same sender calibration is one consistent assessment
+
+Use the previously specified emission factors $\delta_t$, residual
+no-emission factors $p_i$, protected deferral $d_i$, and conditional send
+probabilities $a_{it}$, now using the marginal prior $\pi_i$. The
+calibration depends on $i$ only, because the sender does not know $j$.
+It gives emission likelihood $\delta_t$ and no-emission likelihood $p_i$
+conditional on $i$, with normalized weights $\pi_i p_i$ tending to $w_i$.
+
+For each receiver type $j$, slot $t$ and emitted value $v$, success and
+failure have joint type weights respectively
+
+$$
+\mathbf 1_{v(i)=v}\,\pi_{ij}\delta_tq_t,
+\qquad
+\mathbf 1_{v(i)=v}\,\pi_{ij}\delta_t(1-q_t).
+$$
+
+Whenever the corresponding chance branch exists, its conditional
+posterior is exactly $\pi(i\mid v,j)$. Protected success has weights
+$\mathbf 1_{v(i)=v}\pi_{ij}(1-d_i)$, so its posterior tends to the
+source posterior. At no emission, conditional weights are $\pi_{ij}p_i$.
+Writing these as $(\pi_i p_i)\kappa_{ij}$ shows that their posterior
+tends to $\widehat w^{\,j}$. Its denominator is positive by full joint
+support. Sender information sets retain exactly $\kappa_{ij}$ throughout
+the same sequence, since the sender's own choices depend only on $i$ and
+there is no earlier receiver action.
+
+Perturb every receiver reply coordinate at every legal information set to
+full support. Together with the calibrated fully mixed sender policy,
+this is one global fully mixed sequence. It proves consistency of all
+receiver and sender beliefs. At $q_t=0$ or $1$, chance-impossible
+success or failure observations are omitted as before.
+
+Receiver success replies are optimal by source Bayesian Nash optimality;
+emitted-failure replies by the choice of $\beta^F$; no-emission replies by
+the auxiliary plan argument. Sender continuation comparisons use the
+conditional averages $S_i,F_i,W_i$ and therefore give the same optimal
+record/nonrecord policy. Protected opening is optimal against every
+whole timing continuation, since $V_{it}\le S_i$ and $W_i-D<S_i$.
+Thus the limit assessment is an SE.
+
+Initialized play always opens at the protected turn. For every type pair
+and receiver action its law is
+
+$$
+\Pr(i,j,\mathrm{success},a)
+=\pi_{ij}\beta^*_{v(i),j}(a),
+$$
+
+exactly the selected source Bayesian Nash outcome. It preserves the joint
+law of both private types, value, publication result, receiver answer and
+both realized payoffs. The target may choose different off-path source
+failure replies and beliefs; no assessment embedding is claimed.
+
+Full joint support is a substantive hypothesis of this extension. With
+zeros in the prior, a limiting selector law can assign zero probability
+to some receiver private types. Its auxiliary best-response conditions
+then need not determine replies at those types, while smaller-order
+global trembles can still reach their no-emission information sets. The
+argument above does not resolve those additional posterior scales and
+does not claim preservation for arbitrary correlated priors with zeros.
+
+## Inclusion probability may depend on the disclosed value
+
+The strongest version of the phase theorem allows $q_t(v)\in[0,1]$:
+inclusion reliability may depend on the chosen slot and the emitted
+immutable value. Conditional on that value it must be independent of the
+remaining sender type and of the receiver's private type. Keep the full
+joint support and other hypotheses of the private-information extension.
+Values have no additional aliases or private representations affecting
+inclusion. The value is disclosed on both possible terminal branches of
+an actual emission, before the receiver answers.
+
+The following modifies the selector and calibrates different value classes
+on different emission scales while aligning their no-emission probabilities.
+This is still a paper theorem; it is not a runtime adapter or a checked
+general phase-equilibrium declaration.
+
+### Value-specific records and one auxiliary selector
+
+Keep the source replies, conditional averages $S_i,F_i,W_i$ and receiver
+response plans from the previous section. Set
+
+$$
+V_{it}=q_t(v(i))S_i+(1-q_t(v(i)))(F_i-D-c),
+\qquad m_{it}(b)=W_i(b)-D-V_{it}.
+$$
+
+For every value $v$ in the image of $v(i)$, form its strict suffix-record
+slots
+
+$$
+t_{v,1}<\cdots<t_{v,r_v},
+\qquad q_{t_{v,k}}(v)>q_\ell(v)
+\text{ for every }\ell>t_{v,k}.
+$$
+
+The last slot is always a record. Equal reliabilities are handled by
+waiting for their last occurrence. A type $i$ ranks transmissions by this
+value-specific reliability list, and its record margins strictly increase.
+Prescribe waiting at nonrecords, and sending at each record with
+$m_{i,t_{v,k}}\le0$. Define its first strict cutoff $\tau_i$ as before,
+with $\tau_i=r_v+1$ when no record margin is positive.
+
+For each positive integer $K$, let the selector choose $i$ together with
+one binary flag for each record of its value. Give it payoff
+
+$$
+\sum_{k=1}^{r_{v(i)}}K^{n-t_{v(i),k}}
+  z_km_{i,t_{v(i),k}}(b).
+$$
+
+The receiver chooses a complete plan $b=(b_j)$ and gets
+$\sum_j\kappa_{ij}r^F_{ij}(b_j)$. This finite game has a Nash equilibrium.
+Project the selector strategy to a type law and take a compact subsequence
+$(w^K,\beta^{0,K})\to(w,\beta^0)$. Receiver component optimality under
+$w_i\kappa_{ij}$ follows exactly as in the preceding extension.
+
+The record powers prioritize actual earlier slots. The selector's best
+payoff at each type is
+
+$$
+H_i^K=\sum_{k=1}^{r_{v(i)}}K^{n-t_{v(i),k}}
+ \bigl(m_{i,t_{v(i),k}}(\beta^{0,K})\bigr)^+.
+$$
+
+For each value separately, let $k_v$ be the first record with
+
+$$
+\max_{i:v(i)=v}m_{i,t_{v,k_v}}(\beta^0)>0,
+$$
+
+if one exists. Then, within that value, $w$ is supported on the types
+having positive margin at this record. To prove this, compare an outside
+type $i$ with a positive-margin type $i'$ of the **same value**. All earlier
+margins of $i$ are strictly negative. After division by
+$K^{n-t_{v,k_v}}$, its higher-priority terms are eventually zero, its
+current term tends to zero, and its later terms vanish. The corresponding
+normalized payoff of $i'$ is bounded away from zero. Hence $i$ eventually
+has strictly lower selector payoff than an available action and cannot
+retain selector weight.
+
+The comparison is within a value class; it does not assume a single global
+earliest positive cutoff across all values. A value class may have no
+limiting selector mass at all. When $k_v$ exists, any type with positive
+selector mass in that class has cutoff exactly $k_v$, and all its types
+have $\tau_i\ge k_v$. When $k_v$ does not exist, every type in that class
+has $\tau_i=r_v+1$ and sends at all its records.
+
+### Aligning all no-emission posteriors
+
+Let $M=4n+3$, and choose $\varepsilon\downarrow0$. For a value with an
+earliest positive record $k_v$, set
+
+$$
+\delta_{t_{v,k}}(v)
+=\varepsilon^{M+4(k-k_v)+2}.
+$$
+
+At each nonrecord slot, use the exponent of its next record plus one.
+For types of that value, set
+
+$$
+p_i=\begin{cases}
+\varepsilon^M(w_i/\pi_i+\varepsilon),&\tau_i=k_v,\\
+\varepsilon^{M+4(\tau_i-k_v)},&\tau_i>k_v.
+\end{cases}
+$$
+
+For a value with no positive record maximum, use instead
+
+$$
+\delta_{t_{v,k}}(v)
+=\varepsilon^{M-4r_v-2+4k},
+\qquad
+p_i=\varepsilon^M(w_i/\pi_i+\varepsilon),
+$$
+
+again assigning a nonrecord the exponent of its next record plus one.
+All exponents are positive since $r_v\le n$. Define
+
+$$
+d_i=\sum_{t=1}^n\delta_t(v(i))+p_i,
+\qquad
+a_{it}=\frac{\delta_t(v(i))}
+ {\sum_{\ell=t}^n\delta_\ell(v(i))+p_i}.
+$$
+
+For sufficiently small $\varepsilon$, all probabilities are strictly
+between zero and one, and $d_i\to0$. The same telescoping identity gives
+conditional emission likelihood $\delta_t(v(i))$ and no-emission
+likelihood $p_i$.
+
+The probability orders give the prescribed continuation exactly in the
+limit. A type at cutoff $k_v$ has $p_i$ of order $\varepsilon^M$ when
+$w_i>0$, or $\varepsilon^{M+1}$ when $w_i=0$. Either dominates its cutoff
+record factor $\varepsilon^{M+2}$, and is negligible compared with any
+earlier record factor. For a later cutoff, its $p_i$ exponent lies two
+units above the preceding record's exponent and two below its cutoff
+record's exponent. A no-cutoff type sends at the final record as well.
+For a value with no positive record maximum, the final record factor is
+$\varepsilon^{M-2}$, which dominates $p_i$. Every nonrecord factor is
+negligible relative to its following record, so it waits.
+
+The local selector support property ensures the common global limit
+
+$$
+\frac{\pi_i p_i}{\varepsilon^M}\longrightarrow w_i
+\quad\text{for every }i.
+$$
+
+For later-cutoff types, $w_i=0$ and the exponent of $p_i$ is at least
+$M+4$. For earliest-cutoff and no-positive-cutoff types, the displayed
+limit follows directly from their formula. Thus the differently scaled
+value classes still produce a single no-emission type law $w$.
+
+### Posterior cancellation and outcome preservation
+
+At any emitted slot $t$ with disclosed value $v$ and receiver type $j$,
+successful and unsuccessful joint weights are
+
+$$
+\mathbf 1_{v(i)=v}\pi_{ij}\delta_t(v)q_t(v),
+\qquad
+\mathbf 1_{v(i)=v}\pi_{ij}\delta_t(v)(1-q_t(v)).
+$$
+
+Within the observation $(v,j)$, both the emission factor and the actual
+resolution probability cancel. Every chance-possible emitted posterior
+is therefore exactly the original $\pi(i\mid v,j)$. At no emission,
+
+$$
+\frac{\pi_{ij}p_i}{\varepsilon^M}
+\longrightarrow w_i\kappa_{ij},
+$$
+
+so the posterior is the same auxiliary conditional law
+$\widehat w^{\,j}$. Full joint support keeps its denominator positive.
+Protected posteriors converge to the source posteriors, and sender beliefs
+remain $\kappa_{ij}$. Perturbing receiver replies to full support again
+gives one common global consistency sequence.
+
+At $q_t(v)=0$, there is no successful emitted history for that value and
+slot; at $q_t(v)=1$, there is no failed emitted history. Neither imposes
+an artificial belief obligation. Value-specific strict records, including
+the last record of an all-zero or all-one reliability list, retain the
+same ordering and calibration arguments. The case of no late slots is
+the source comparison itself.
+
+Receiver rationality follows from the three posterior calculations.
+Sender rationality follows from its value-specific cutoff policy and the
+same bounds $V_{it}\le S_i$ and $W_i-D<S_i$. Initialized play has joint
+law $\pi_{ij}\beta^*_{v(i),j}(a)$ on protected success, exactly the chosen
+source Bayesian Nash outcome, including both private types and realized
+payoffs. This proves the payload-dependent reliability extension without
+copying the source assessment's off-path failure behavior.
+
 ## What this does and does not establish
 
 This is a close model of one immutable-value opening phase with lawful source
 withholding and full public observation. It allows arbitrary receiver failure
 preferences, finite drop charges and any finite number of late inclusion
-probabilities, including zero and one. It does not require the direct last-send margin used
+probabilities, including zero and one.
+The extensions allow correlated private receiver types under full joint
+support and reliabilities depending on the disclosed value.
+It does not require the direct last-send margin used
 by the simpler uniform-tremble construction in
 [the actual-runtime late-opening analysis](actual-runtime-late-opening-analysis.md).
 
 It does not establish a general source-language compiler theorem. Strategic
 binding-value choices, several interacting phases,
-hidden-type-dependent inclusion laws, extra runtime actions, aliases, retries, private
-receiver information, and genuinely intermediate receiver decisions need
+inclusion laws depending on the residual sender type beyond the disclosed
+value or on the receiver's private type, extra runtime actions, aliases, retries,
+correlated priors outside the full-joint-support extension, and genuinely
+intermediate receiver decisions need
 additional arguments. In particular, a large common failure forfeit cancels
 when comparing two different values within the same late submission; this
 proof fixes the immutable value before the phase.

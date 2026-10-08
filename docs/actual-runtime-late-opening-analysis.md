@@ -1,5 +1,10 @@
 # Late openings in the actual Vegas runtime
 
+See [the standard-runtime status](standard-runtime-se-status.md) for the
+distinction between the checked calendar SE theorem, asynchronous Nash
+correspondence, narrower SE comparisons, and the still-open general audited
+asynchronous SE question.
+
 The checked `LateLeak` impossibility theorem does not yet imply an
 impossibility theorem for the actual Vegas compiler on a fully observed public
 mempool. Its distinguishing feature is that a failed opening sent at the first
@@ -34,10 +39,18 @@ failure preferences. With a failure forfeit larger than the sender's base
 payoff range, it implements every source Nash outcome by a target SE, hence
 every source PBE and SE outcome. Its protected opening succeeds surely; its
 later transmissions need not. It is not yet a checked compiler theorem.
+The strongest paper version also permits correlated private receiver types
+with full joint support and inclusion probabilities depending on the disclosed
+value. A [restricted composition proof](public-reset-phase-se-preservation.md)
+covers genuine public subgames already present in the source; it does not
+introduce automatic disclosure of withheld secrets.
 
 If even protected honest publication has unavoidable failure before the fixed
 horizon, [the probabilistic-runtime analysis](probabilistic-runtime-preservation.md)
 gives a different obstruction: exact publication-law preservation is impossible.
+This now has a checked instantiation for every native behavioral strategy of
+every nonempty compiled program under an explicit probabilistic public
+controller, retaining the actual initialization and typed readout.
 It also explains why a highly reliable service does not, by itself, guarantee
 a nearby exact equilibrium for each source equilibrium.
 
@@ -60,6 +73,24 @@ under every later raw player policy. Its `mixed_bob_reach_bound` quantifies
 over all raw policies, including noncanonical action aliases. These are actual
 execution facts; they are not a complete compiler SE theorem or a complete
 actual-runtime SE counterexample.
+
+The final Bob decision also has checked adapters over every legal RAW prefix:
+[BobAudit](../Vegas/Examples/CommittedResolutionBobAudit.lean) proves that the
+canonical response succeeds and has zero owner audit charge even after dirty
+Alice traffic; [BobFailure](../Vegas/Examples/CommittedResolutionBobFailure.lean)
+proves that an incorrect or silent response fails by the actual horizon.
+[BobDecision](../Vegas/Examples/CommittedResolutionBobDecision.lean) reduces
+the entire native behavioral continuation to its current response lottery
+and the actual passive physical suffix.
+[BobReadout](../Vegas/Examples/CommittedResolutionBobReadout.lean) proves
+complete typed readout existence at that horizon and identifies the entire
+source state for continuations with the same Bob result.
+[Forfeit](../Vegas/Examples/CommittedResolutionForfeit.lean) computes the
+ordinary compiled own-failure utility on those states. These supply execution
+and payoff ingredients for a native sequential incentive proof; they do not
+yet supply its belief-local capstone or a general compiler theorem. The
+concrete service's pending observation rule is still `pure ∅`, with stale
+packets subsequently exposed in the public ledger.
 
 An important feature of this example is its command after Alice's expiry.
 `MessageNetwork.includePending` appends the stale packet to the public ledger even when the

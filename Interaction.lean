@@ -96,6 +96,7 @@ import Interaction.ReactiveSchedulerRefinement
 import Interaction.ReactiveServiceInvariant
 import Interaction.ReactiveStopping
 import Interaction.ReactiveSurvival
+import Interaction.ReactiveOutage
 import Interaction.ReactiveSubmissionAudit
 import Interaction.ReactiveSubmissionSerial
 import Interaction.ReactiveTrafficAudit
