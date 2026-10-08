@@ -45,7 +45,7 @@ scale and every fixed audit charge above half that scale by choosing sufficientl
 reliable late inclusion. This settles a uniform-order negative for that
 abstract family. A separately reviewed
 [full native counterexample](native-late-action-analysis.md) supplies a paper
-embedding with stronger deposit thresholds and complete raw menus. Its Lean
+embedding with explicit native deposit bounds and complete raw menus. Its Lean
 formalization remains outstanding. Collateral chosen for a fully known service
 is a pedagogic contrast.
 [Collateral and service quantifiers](quantifier-orders.md) gives the exact
@@ -113,7 +113,13 @@ full bounded raw menu, private observation and all-history service promises;
 it also satisfies author-only sampling and the optional late-packet erasure
 condition. This is reviewed mathematics about an actual runtime configuration,
 not a checked native theorem or a claim about every blockchain game. Its
-SE-consistency obstruction supplies no PBE impossibility result.
+SE-consistency obstruction supplies no PBE impossibility result. In fact,
+the [same native fixture has a preserving weak PBE](native-weak-pbe.md)
+for every late inclusion probability strictly between zero and one, under
+Bayes' rule only at positively reached information sets. That construction
+retains all dirty histories and merged information sets. It uses separately
+coherent off-path beliefs for the two players; it supplies no common SE
+tremble witness or general PBE preservation theorem.
 
 Accepted late actions require separate analysis. With one late opportunity to
 open an immutable value, a complete paper positive permits inclusion chances
@@ -244,6 +250,7 @@ small errors in that metric.
 | Native protected play | How do actual opaque envelopes and source-public openings couple serial runtime observations? | [Native serial analysis](native-observation-criterion.md) |
 | Actual first-ready execution | Does the intended mandatory-action source preserve SE with adaptive native waits and full private recall? | [Reviewed protected proof](native-protected-execution.md) |
 | Full native late actions | Can two late sends of the same immutable opening defeat every preserving SE, even with the full raw menu? | [Reviewed native counterexample](native-late-action-analysis.md) |
+| Native SE versus weak PBE | Does that exact full raw game preserve the selected source law under Bayes only at positive-reach decisions? | [Reviewed weak-PBE construction](native-weak-pbe.md) |
 | Concrete proof obligations | Which checked APIs apply, which adaptive adapters remain unformalized, and what prevents a full raw-menu conclusion? | [Foundation map](native-foundation-obligations.md) |
 | Accepted late actions | When does a late opening's gain scale with failure risk, and when can rare failures change successful posteriors? | [Admission risk and information](admission-information-boundary.md) |
 | Multi-phase late openings | Can accepted late fixed-value openings compose across a whole program while old secrets persist? | [Serial late-opening theorems](serial-late-release.md) |

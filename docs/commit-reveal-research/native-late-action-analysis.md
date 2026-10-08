@@ -249,9 +249,9 @@ likewise forbidden. Such a deviation yields at most `1-K_B < 0`, whereas
 quietly waiting for the protected answer choice gives a nonnegative reward.
 At his actual answer binding, a correct fresh handle and a typed registered
 answer has a protected, free continuation. An unopenable or wrong-typed
-binding either leads to a failed reveal and `D`, or requires another
-emitted, forever-forbidden packet to repair a still-empty private catalogue
-entry, incurring `K_B`. Both continuations have utility below zero. Once a
+binding fixes its selected candidate to failure; later registration cannot
+change that immutable meaning, and its failed reveal loses `D`. This has
+utility below zero. Once a
 typed answer is bound, eventually opening it successfully is strictly
 better than allowing its reveal to fail or emitting a forbidden replacement.
 Its owner may postpone a protected clock-three opening to a still-live
@@ -415,9 +415,16 @@ That maximum is strictly below one. The source has the stated SE, but no
 SE of this full finite raw target has its joint initial-parameter, result
 and net-utility law. This refutes an existential forward preservation
 claim for this builder family with the full raw response menu. It does
-not assert that the target has no SE, or that every
-public-mempool game lacks SE. Its failure branch and all raw histories
+not assert that the target has no SE, or that every public-mempool game
+lacks SE. Its failure branch and all raw histories
 remain part of the finite target.
+
+For a numerical example, take `R=1`, `D=K_A=K_B=2`, `lambda=1/2`
+and `q=24/25`. These satisfy both thresholds. Alice's source reward is
+`1/2`; the first-send deviation bound is
+`(24/25)(3/4)-(1/25)4=14/25>1/2`.
+Thus this fixture fails at 96% sole-opening inclusion, with both deposits
+equal to two reward units and a 4% late failure probability.
 
 The more general authentic sampler that observes all actual traffic with
 fixed probability `alpha>0` and observes none otherwise gives a coverage
@@ -449,7 +456,8 @@ its quantification over arbitrary environment views and command recalls.
 This needs the following total extension of the finite schedule, rather
 than an assumption about its initialized paths.
 
-Use the length of the public command recall as the stage index. At the final Alice lottery, form the
+Use the length of the public command recall as the stage index. At the final
+Alice lottery, form the
 finite set `S` of pending identifiers with at least one proper public
 Alice-opening envelope. Its eligibility test also reads public readiness
 and the deadline. If `n=|S|>0`, choose each identifier with probability
@@ -473,21 +481,131 @@ the required mixture identities on every view, not merely legal views.
 
 Thus neither the approved author-only observation restriction nor this
 particular late-packet erasure restriction by itself removes the mechanism.
-Complete pending observation `lambda=1`, immediate resolution between the two late turns,
+Complete pending observation `lambda=1`, immediate resolution between the
+two late turns,
 a single late callback, or different opportunities for the receiver are
 outside this calculation.
 
 The contradiction uses joint off-path SE consistency. It does not prove
 PBE impossibility: a weaker notion requiring Bayes' rule only at positively
 reached information sets has additional freedom at both late-success records.
-A full native PBE construction, including every raw continuation, is a
-separate question.
+For `K_A>R` and the other baseline bounds, the
+[reviewed full native weak-PBE construction](native-weak-pbe.md) preserves
+the same selected source law for every `0<q<1`. It covers every raw
+continuation and uses Bayes' rule only at positive-reach information sets.
+Stronger PBE conventions remain separate questions.
+
+## Smaller sender deposit
+
+For this same finite native configuration, the negative can be strengthened
+to `K_A>R/2`, keeping `D>max(R,1)` and `K_B>1`. No runtime assumption is
+added. The stronger local comparisons use Bob's rational answer after a
+successful late opening, including histories where his earlier raw response
+has already made his own audit charge unavoidable.
+
+The relevant Alice histories have her protected silence, no earlier
+forbidden Alice packet, and an unresolved `A` throughout Bob's clock-one
+observation. Consequently Bob cannot already have completed `B` there. If
+his observation response was silent, his canonical prepared slot zero is
+still fresh. If he emitted any raw packet, that packet could not have been
+accepted at an owned ready event: `B` and `C` are unready, and he cannot act
+as the owner of `A`. His packet is permanently forbidden, so under the
+complete audit `K_B` is the same sunk deduction on every continuation.
+
+Private preparation cannot exhaust Bob's resources. Every earlier response
+can prepare or freeze at most its one authored commitment handle. Initially
+all prepared slots are fresh. The bound `candidateCount>=H` therefore
+leaves a fresh prepared slot at the live clock-three binding choice. After
+Alice succeeds, Bob can bind typed Safe to that slot and subsequently open
+it at an available protected `C` callback. This is an actual full raw move,
+even when its handle has a noncanonical serial:
+
+- `Submission.register` and `Submission.candidateAfter_eq` fix the supplied
+  typed value before its commitment is transmitted.
+- `handle_commitment_eq`, or equivalently
+  `freshServiceAcceptable_accepted`, accepts the owned, unused handle at a
+  ready binding within its deadline. The handler imposes no canonical
+  serial requirement.
+- The stored value is Safe, the selected handle belongs to Bob, the resolve
+  node has no guard checks, and the matching owned opening fact and issued
+  `C` token give the conditions of `handle_opening_eq`.
+
+These are the declarations in
+[EventSubmission.lean](../../Vegas/Pending/EventSubmission.lean),
+[ReactiveFreshCallAcceptance.lean](../../Vegas/Pending/ReactiveFreshCallAcceptance.lean)
+and [EventApplication.lean](../../Vegas/Pending/EventApplication.lean).
+The noncanonical binding is itself an audit offense, but adds no charge
+after Bob's earlier forbidden packet. When no earlier charge exists, use
+the still-fresh canonical slot zero instead. Thus Bob can obtain `2/5`
+minus his already sunk charge with no failed reveal.
+
+An answer binding is immutable, including a binding with no supplied
+opening material. The authored commitment freezes that candidate to
+unopenable; a later registration cannot fill or change it. In particular,
+accepting an empty handle does not grant a delayed logical answer choice.
+A wrong-branch bit guess after Alice's success gives Bob zero gross; an
+unopenable or wrong-typed binding, or permanently declining its reveal,
+also loses `D`. Both are strictly worse than the Safe fallback. At this
+live binding choice no Alice decision remains, so signalling cannot create
+a further reward. Bob's eventual successful answer is consequently Safe
+or a label guess, irrespective of his earlier raw observation response or
+poisoned candidate slots. A delayed opening publishes that same answer.
+
+For Alice's labels A and B, every such success gives at least `R/2`. For
+label C, gross reward always lies in `[0,R/2]`, on every success or failure.
+Let `delta=1-q`. The local comparisons on these late histories are therefore
+
+| Alice label | Sole proper send, or hold its pending opening | An extra or permanently forbidden packet | Never submit after first silence |
+| --- | ---: | ---: | ---: |
+| A or B | at least `qR/2-delta(D+K_A)` | at most `R-K_A` | at most `R-D` |
+| C | at least `-delta(D+K_A)` | at most `R/2-K_A` | exactly `-D` |
+
+The single margin
+
+`delta(D+K_A+R/2) < min(D,K_A)-R/2`                     (5)
+
+makes every required comparison strict. It is feasible for every fixed
+`K_A>R/2`. Hence the same uniform relative-likelihood bounds, cross identity
+(2), opposite timing preferences (3), and profitable root deviation (4)
+apply. The resulting sufficient builder threshold is
+
+`q > max((D+K_A+R-min(D,K_A))/(D+K_A+R/2),`
+`        (D+K_A+R/2)/(D+K_A+(1+lambda)R/2))`.
+
+Both terms are strictly below one. Thus for every such fixed collateral,
+some builder in this explicit native family has no preserving full raw SE.
+
+The success floor was established only for these relevant late histories.
+It is not asserted at an arbitrary post-protected history where Bob has
+already irrevocably selected a bad answer. The hypothetical preserved joint
+law itself forces Alice's initialized proper protected opening and excludes
+initialized audit offenses. This supplies the root reward `R/2`; the proof
+does not need an independent universal floor on all post-protected raw
+continuations.
+
+There is also a partial-audit version for the exact all-traffic-or-none
+sampler with a fixed probability `alpha`. Assume `alpha K_B>1` and
+`alpha K_A>R/2`. After a forbidden Bob observation packet his expected
+traffic charge is `alpha K_B` under every later accepted-binding strategy.
+Omitting the binding can only increase that charge via the public omission
+branch. The Safe fallback and wrong-answer comparison therefore retain
+the same sunk deduction. Replace the extra-packet bounds in the table by
+`R-alpha K_A` and `R/2-alpha K_A`, keep the conservative sole-opening bounds,
+and impose
+
+`delta(D+K_A+R/2) < min(D,alpha K_A)-R/2`,              (6)
+
+together with (4). A `q<1` satisfying both again exists. This smaller-deposit
+variant is not derived from arbitrary conditional coverage alone: such an
+audit can change its collection probability with later packet content, so
+the dirty Bob fallback need not have the same sunk expected charge.
 
 Status: the complete paper proof passed independent mathematical review,
 independent native source/scheduler/resource review, and the coordinating
 review. The reviews include the full raw-menu comparisons, relative rare-site
 likelihood bounds, universal raw-history contract promises, and all-view
-late-packet erasure identity. No new Lean theorem, checked native
+late-packet erasure identity. They also cover the smaller-deposit corollary,
+its fresh-handle fallback and its exact partial-audit accounting. No new Lean theorem, checked native
 counterexample or adopted-semantics change is claimed. Remaining Lean
 formalization obligations are the exact source setup and value-coverage
 instances, padded scheduler contract and finite-nature instances, public

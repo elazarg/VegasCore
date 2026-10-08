@@ -134,8 +134,11 @@ boundary a complete paper negative. With fixed forfeit and sufficiently large
 deposits, two late sends of one immutable opening permit a public timely
 contract builder with no preserving SE. Full raw menus and the optional
 author-only observation and late-packet erasure hypotheses are included.
-The contradiction comes from globally consistent off-path beliefs, so it
-does not settle PBE. A broad positive for the same contract class cannot be
+The contradiction comes from globally consistent off-path beliefs. The
+[same full native fixture preserves weak PBE](native-weak-pbe.md), where
+Bayes' rule is required only at positive-reach decisions; stronger PBE
+conventions and general PBE preservation remain separate questions.
+A broad SE positive for the same contract class cannot be
 obtained merely by completing the protected proof's formal adapters; it needs
 a further substantive public service or settlement property.
 
@@ -328,8 +331,9 @@ Second, use the full-menu native counterexample to test proposed public
 service properties. Determine whether a property excludes its timing and
 settlement mechanism and whether a blockchain-like service could supply it.
 Any positive must still give a source-equivalent continuation or a valid
-incentive argument for every additional action. Investigating the same
-fixture's weak PBE is a separate concrete question.
+incentive argument for every additional action. The reviewed same-fixture
+weak PBE suggests testing its label-support and single-agent continuation
+arguments on guarded native programs with several interacting phases.
 
 Third, add an explicit utility comparison to whichever information/action
 interface succeeds. Exact preservation under declared time indifference and

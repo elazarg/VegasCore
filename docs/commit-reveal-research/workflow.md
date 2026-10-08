@@ -4,6 +4,12 @@ The deliverable is a collection of useful conditional results about ledger
 interfaces, organized so that a reader can reconstruct each model from its
 statement. It is not a replacement specification for the compiler.
 
+The [full native negative](native-late-action-analysis.md) and
+[same-fixture weak PBE](native-weak-pbe.md) are reviewed paper constructions.
+Their distinction locates a concrete off-path consistency issue. Their native
+formalization is outside the current math-only phase; the next mathematical
+questions concern larger native programs and explicit public service repairs.
+
 The [native research agenda](native-research-agenda.md) directs the concrete
 wave: accepted late actions and real settlement, independent full-menu review,
 and integration of the reviewed protected native proof. Allocate remaining

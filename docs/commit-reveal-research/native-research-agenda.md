@@ -55,9 +55,17 @@ full-menu paper proof; the declared contract alone cannot supply that positive.
 
 | Work | Share | Useful deliverable |
 | --- | --- | --- |
-| Actual late actions and settlement boundary | 60% | Test a same-fixture weak PBE, sharper fixed-deposit bounds, and concrete public service properties that could exclude the reviewed native counterexample. |
+| Actual late actions and settlement boundary | 60% | Test the reviewed weak-PBE and deposit arguments on guarded multi-phase programs, and concrete public service properties that could exclude the native SE counterexample. |
 | Independent concrete review | 30% | Check the entire native action space, admissible builder on every legal history, actual observations and global belief consistency. |
 | Protected proof integration and concrete cross-checks | 10% | Maintain the reviewed first-ready result and compare every claimed native premise with its declaration. |
+
+The [same-fixture weak PBE](native-weak-pbe.md) has a reviewed full-menu paper
+construction for every late inclusion probability in (0,1). The native
+SE-negative [smaller-deposit corollary](native-late-action-analysis.md#smaller-sender-deposit)
+requires only a sender charge above half its reward range. Concrete follow-up
+should test these exact arguments on guarded multi-phase programs and test
+public service properties against the two-late mechanism. These results do
+not create a general PBE theorem or alter the SE target.
 
 The general observation-transfer, consistent-completion and terminal-audit
 machinery already supplies substantial foundations. The reviewed full-menu
