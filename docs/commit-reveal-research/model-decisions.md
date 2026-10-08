@@ -158,6 +158,33 @@ after success. This is a pointwise theorem with uniform collateral, rather
 than a robust complete policy under unspecified service laws. Native readiness
 credentials do not by themselves retain callback time or this classification.
 
+There is also a meaningful simplification to test. If the protocol stops and
+settles at its first publication failure, an unaccepted opaque binding value
+has no later payoff-relevant use. The
+[late-binding erasure theorem](late-binding-erasure.md) then permits fresh
+value choices at late callbacks as well as fixed-value openings, with any
+positive public success lower bound and phase-independent loss accounting.
+This is a proposed failure policy for mandatory-success sources; it does not
+implement arbitrary source recovery or lawful withholding continuations.
+
+Without stopping, ignoring attempted values in terminal utility is weaker
+than erasing them from the future game. Actual private registration retains
+transferable opening evidence even for a candidate never admitted. Future
+packets and choices may therefore differ. The resulting failure of the
+erasure adapter is concrete, but does not itself prove native nonpreservation.
+
+The fixed source horizon can help with whole-game reliability once actual
+conditional stage guarantees are supplied. With continuation probability at
+least q_k at every compatible service history, completion probability is at
+least the product of the q_k; no independence between checkpoints is needed.
+The [exogenous-abort analysis](exogenous-abort-preservation.md) makes the
+resulting failure branch explicit. Source-independent service and abort utility
+unaffected by source actions preserve exact SE, while source-law equality holds
+conditional on completion. Unconditional readout error is its abort mass.
+This is a useful weaker outcome target, not a redefinition of the research's
+principal unconditional preservation goal. Real failure settlement, inclusion
+selection and extra submission choices still need their own arguments.
+
 ## What two simple producer models add
 
 The [honest-producer candidates](honest-producer-models.md) separate production,

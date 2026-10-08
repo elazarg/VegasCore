@@ -171,5 +171,21 @@ If a weakening survives, record the broader candidate and the new proof task.
     from late callbacks that select fresh values, and state which utility
     readout the negative examples use.
 
+19. Test the [failed-binding continuation erasure](late-binding-erasure.md)
+    against native recovery menus and transferable candidate evidence. The
+    paper theorem retains actual private recall through an ancillary-record
+    lift; terminal payoff independence is insufficient. Compare the absorbing
+    first-failure settlement variation with sources that genuinely need
+    recovery, and identify which raw actions still require deterrence before
+    failure. Do not treat the missing erasure adapter as a native impossibility.
+
+20. Test the [delivery-conditioned exact-SE theorem](exogenous-abort-preservation.md)
+    against a genuine exogenous outage model and actual settlement. Its stage
+    bounds aggregate without independence, but admission must not reweight
+    source actions or later public source coins. Immutable initial wealth may
+    affect abort utility; action-dependent paid fees and changing balances
+    cannot be hidden in that extension. State the weaker outcome target and
+    every additional physical action excluded from the adapter.
+
 These tasks are mathematical and parallelizable. Formalization, deployment
 claims and changes to project semantics require separate work.
