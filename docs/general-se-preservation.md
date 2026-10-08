@@ -17,7 +17,7 @@ This analysis does not change the target, boxes, or semantics in the
 | One finite deposit vector extends every source SE through a structural restriction | Checked | Requires clean matching and uniform actual collection after excluded actions |
 | Positive collection for every finite pure plan gives a uniform mixture bound | Checked | Behavioral protocol realization and pure-plan positivity remain to be supplied |
 | Bounded public stochastic scheduling preserves every source SE | Paper proof | General protocol constructor and its two inductions are not mechanized |
-| Honest off-path disclosure can prevent SE and weak-PBE preservation while allowing Nash preservation | Paper proof | Fully specified finite game, not yet a library protocol instantiation |
+| Matching only equilibrium-path behavior does not imply SE or weak-PBE preservation | Paper proof | Hypothetical information-changing compiler; not a Vegas runtime counterexample |
 | A profitable comparison is finitely punishable by a sound transcript audit iff it has positive mass outside clean transcripts | Checked | One comparison and a fixed evidence interface |
 | Arbitrary-source weak-PBE preservation through a clean restriction | Paper proof | Requires finite perfect recall and a separate completion/repair construction |
 | A general public-mempool compiler theorem | Open | Its source-information and collection adapters are not supplied |
@@ -236,19 +236,23 @@ source failure action does not justify randomly replacing a selected success
 action by failure. Admission uncertainty can be modeled by an explicit source
 chance kernel, but then the source game being preserved is different.
 
-## Necessary boundaries and PBE
+## Information correspondence and PBE
 
 On-path information fidelity alone is insufficient. A general adapter must
 control information on legitimate off-path continuations too, or prove that
 added information leaves the required continuation choices optimal. The
 [honest disclosure example](honest-disclosure-preservation-boundary.md) has a
 source SE where both sender types choose Out. A legitimate off-path In choice
-keeps the bit private in the source but discloses it in the runtime. A receiver
-then has a strictly better informed response, which makes the true-bit sender
+keeps the bit private in the source but discloses it in a hypothetical target.
+A receiver then has a strictly better informed response, which makes the true-bit sender
 enter. Every target SE and compatible-belief weak PBE has entry probability
 9/20. The source entry probability is zero. A target Nash equilibrium still
 implements Out. This complete two-player example is a paper proof, with exact
-consistency witnesses and a quantitative outcome gap.
+consistency witnesses and a quantitative outcome gap. Its target deliberately
+changes legitimate source information; it is not an implementation produced
+by the Vegas compiler. The result refutes a theorem based only on matching
+equilibrium paths. It supplies no additional impossibility for our opaque,
+causally ordered commit/reveal interface.
 
 Thus weakening SE to weak PBE cannot generally repair this information defect.
 Weak PBE here means sequential rationality and Bayes updating at reached

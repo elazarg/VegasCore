@@ -1,12 +1,19 @@
-# Honest off-path disclosure can prevent SE preservation
+# Counterexample to checking only equilibrium-path compiler behavior
 
-This is Codex's analysis of a boundary for a general preservation theorem.
+This is Codex's analysis of an insufficient compiler correctness condition.
 Matching a selected source equilibrium's honest on-path execution is
 insufficient. Information correspondence must also constrain legitimate source
 continuations that the selected equilibrium does not take. The following finite
-game gives an exact example. Its source assessment is a sequential equilibrium;
-the corresponding outcome cannot be implemented by any target sequential
-equilibrium or weak PBE. Nash can implement that outcome.
+game gives an exact example with a hypothetical information-changing target.
+Its source assessment is a sequential equilibrium; the corresponding outcome
+cannot be implemented by any sequential equilibrium or weak PBE of that target.
+Nash can implement that outcome.
+
+**This is not a nonpreservation result for the Vegas runtime.** The hypothetical
+target deliberately reveals a source-private bit during a legitimate move.
+It models a compiler that gets the selected equilibrium path right but changes
+the information available after another allowed source choice. Its purpose is
+to refute on-path-only correctness as a sufficient SE preservation premise.
 
 The example and its consistency witness below are a mathematical proof, not an
 instantiation of the repository's protocol SE predicate. The checked generic
@@ -30,8 +37,8 @@ permitted preference specification, and prevents a sender type from secretly
 having a different incentive in the source assessment.
 
 In the **source**, the receiver observes `In` but does not learn `v`. Its two
-decision histories belong to one information set. In the **target**, executing
-the same legitimate `In` move discloses `v` to the receiver before it chooses.
+decision histories belong to one information set. In the **hypothetical target**,
+executing the same legitimate `In` move discloses `v` to the receiver before it chooses.
 The receiver therefore has two singleton information sets. Neither game has
 extra moves, scheduling risk, fees, penalties, or strategically controlled
 nature. Both are finite games with perfect recall and the same payoffs.
@@ -202,6 +209,30 @@ example: `In` is an allowed source move, and its target execution is faithful.
 Forfeiting collateral just because a sender takes `In` would change that
 legitimate move's payoff. A general timing-enforcement theorem must first have
 the information/payoff correspondence needed for all such source continuations.
+
+## Relation to the commit/reveal runtime
+
+For a program that keeps the sender's value private until the receiver commits
+its guess, an opaque commitment and preserved causal prerequisites rule out
+the hypothetical target's clean early disclosure. Relaxing only reveal-to-reveal
+dependencies does not remove the dependency on the receiver's commitment.
+The example does not show a failure of those mechanisms.
+
+A sender can still emit an early raw opening without the required readiness
+credential. That action is outside the faithful source interface. It belongs
+to the separate enforcement obligation: establish a forbidden final verdict,
+actual conditional collection, and a sufficient incremental cost. Classifying
+a packet as forbidden is not itself a proof that its sender is deterred. The
+[signed collection adapter](../Vegas/Game/SourceServiceSignedCollection.lean)
+uses explicit evidence observation and report-delivery coverage premises.
+
+The [late-opening counterexample](open-problem-late-turn-equilibria.md) is a
+different result. There the reveal is already ready and may validly be sent;
+the sender chooses a late admission lottery, and pending contents can be
+observed even on a branch where publication subsequently fails. Its obstruction
+involves timing choices, costs, and consistent off-path beliefs, rather than
+executing a legitimate reveal before its prerequisites. It must be evaluated
+under its own parameters and runtime embedding obligations.
 
 ## Existing checked boundaries
 
