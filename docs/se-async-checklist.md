@@ -53,13 +53,18 @@ graph, is an intermediate level of the tower, not the goal. The audit backend is
 the authentic partial sampler with conditional coverage until box W closes.
 Players are finitely many throughout.
 
-**Refuted as stated for arbitrary builders (owner decision: recorded as an
-impossibility).** The
-sequential-equilibrium form of this target fails for builders that may include
-late openings with probability near one when pending openings can leak, for
-every forfeit and deposit margin: see the verified counterexample `G*` in
-[the late-turn note](open-problem-late-turn-equilibria.md). The Nash forms
-(box C4) are unaffected.
+**Quantifier order (owner decision).** The forfeit, charge and deposit are fixed
+before, and independently of, the builder: a builder's late-inclusion
+probabilities are known only after the fact and cannot be deposited against in
+advance. Under this order the sequential-equilibrium form of this target is
+refuted for the abstract late-turn game: for every forfeit and deposit margin
+some builder whose late openings land with probability near one, with pending
+openings visible, admits no preserving equilibrium (the verified counterexample
+`G*` of [the late-turn note](open-problem-late-turn-equilibria.md), mechanized
+for every margin). Its realization by the bounded raw runtime is box I2. The
+builder-first order, in which the deposit may depend on a lower bound on the
+builder's late-failure probability, is a separate positive target, box I3.
+The Nash forms (box C4) are unaffected.
 The sequential-equilibrium headline is the fixed-calendar theorem and its
 intended-game composition; the boxes of section S below remain as the record
 of the arbitrary-builder route and are not pursued further. Box I1 tracks the
@@ -581,6 +586,17 @@ joint law. It is not pursued.
   Sequential equilibrium is the library predicate on the game's information
   model, with whole-policy rationality on terminal play.
   Not done: the optional realization by the bounded raw runtime.
+- [ ] **I2. Runtime realization of the impossibility.** For every finite
+  forfeit, charge and deposit, some builder satisfying `AsyncContract`,
+  `AsyncTimely` and `BlindToLatePackets`, with a valid observation rule, makes
+  the bounded raw runtime admit no sequential equilibrium with the intended
+  outcome of some well-formed program; pinned with standard axioms.
+- [ ] **I3. Builder-first preservation.** For every builder satisfying
+  `AsyncContract` and `AsyncTimely` whose late sends fail with probability at
+  least some known positive bound, and an audit collecting every dead envelope
+  with positive probability, a deposit depending on that bound makes every
+  intended sequential equilibrium preserved by the bounded raw runtime, with the
+  intended joint law and no charge on paths; pinned with standard axioms.
 
 ## W. Operational watcher
 
