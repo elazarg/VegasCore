@@ -167,7 +167,7 @@ pull `pull` of the listener's answers after the two inclusions and the pull
 `leak` of what the leak changes after a failure: labels `A` and `B` move
 together under `pull` and apart under `leak`, and label `C` moves against
 `pull`. -/
-private def labelPreference (pull leak : ℝ) : LateLeakLabel → ℝ
+def lateLeakLabelPreference (pull leak : ℝ) : LateLeakLabel → ℝ
   | .a => pull + leak
   | .b => pull - leak
   | .c => -pull
@@ -175,24 +175,24 @@ private def labelPreference (pull leak : ℝ) : LateLeakLabel → ℝ
 /-- A nonzero leak pull gives one label a strict preference for the first late
 turn and another a strict preference for the second, whatever the other
 pull. -/
-private theorem opposite_labels (pull leak : ℝ) (separates : leak ≠ 0) :
-    ∃ sender holder, 0 < labelPreference pull leak sender ∧
-      labelPreference pull leak holder < 0 := by
+theorem lateLeak_opposite_label_preferences (pull leak : ℝ) (separates : leak ≠ 0) :
+    ∃ sender holder, 0 < lateLeakLabelPreference pull leak sender ∧
+      lateLeakLabelPreference pull leak holder < 0 := by
   rcases lt_or_gt_of_ne separates with negative | positive
   · rcases lt_trichotomy pull 0 with below | zero | above
-    · exact ⟨.c, .a, by simp only [labelPreference]; linarith,
-        by simp only [labelPreference]; linarith⟩
-    · exact ⟨.b, .a, by simp only [labelPreference]; linarith,
-        by simp only [labelPreference]; linarith⟩
-    · exact ⟨.b, .c, by simp only [labelPreference]; linarith,
-        by simp only [labelPreference]; linarith⟩
+    · exact ⟨.c, .a, by simp only [lateLeakLabelPreference]; linarith,
+        by simp only [lateLeakLabelPreference]; linarith⟩
+    · exact ⟨.b, .a, by simp only [lateLeakLabelPreference]; linarith,
+        by simp only [lateLeakLabelPreference]; linarith⟩
+    · exact ⟨.b, .c, by simp only [lateLeakLabelPreference]; linarith,
+        by simp only [lateLeakLabelPreference]; linarith⟩
   · rcases lt_trichotomy pull 0 with below | zero | above
-    · exact ⟨.c, .b, by simp only [labelPreference]; linarith,
-        by simp only [labelPreference]; linarith⟩
-    · exact ⟨.a, .b, by simp only [labelPreference]; linarith,
-        by simp only [labelPreference]; linarith⟩
-    · exact ⟨.a, .c, by simp only [labelPreference]; linarith,
-        by simp only [labelPreference]; linarith⟩
+    · exact ⟨.c, .b, by simp only [lateLeakLabelPreference]; linarith,
+        by simp only [lateLeakLabelPreference]; linarith⟩
+    · exact ⟨.a, .b, by simp only [lateLeakLabelPreference]; linarith,
+        by simp only [lateLeakLabelPreference]; linarith⟩
+    · exact ⟨.a, .c, by simp only [lateLeakLabelPreference]; linarith,
+        by simp only [lateLeakLabelPreference]; linarith⟩
 
 /-- Every answer after a success acts on the sender along one direction, so a
 type's preference for the first late turn over the second is its label's
@@ -203,7 +203,7 @@ private theorem send_preference (profile : LateLeakProfile G late) (secret : Lat
         .firstDropped -
       lateLeakSendValue profile (lateLeakStatePayoff G .sender) secret .secondIncluded
         .secondDropped =
-      labelPreference
+      lateLeakLabelPreference
         (lateLeakInclusionProb G * (lateLeakSafeProb profile (.secondSuccess secret.1) -
           lateLeakSafeProb profile (.firstSuccess secret.1)) * (G.reward / 2))
         ((1 - lateLeakInclusionProb G) * (lateLeakBitOneProb profile (.leakedFailure secret.1) -
@@ -211,7 +211,7 @@ private theorem send_preference (profile : LateLeakProfile G late) (secret : Lat
   rw [lateLeak_first_send_value, lateLeak_second_send_value]
   obtain ⟨bit, label⟩ := secret
   cases label <;>
-    simp only [labelPreference, lateLeakGuessGain, lateLeakBitOneGain, lateLeakBitZeroGain,
+    simp only [lateLeakLabelPreference, lateLeakGuessGain, lateLeakBitOneGain, lateLeakBitZeroGain,
       ite_true, ite_false, reduceCtorEq] <;>
     ring
 
@@ -244,7 +244,7 @@ theorem lateLeak_opposite_preferences (reward_pos : 0 < G.reward)
       rw [lateLeak_rational_leaked_failure rational (lateLeakLeakedFailureSite G true) true rfl]
       simp only [↓reduceIte]
       exact mul_ne_zero (mul_ne_zero dropped (sub_ne_zero.mpr (Ne.symm sure))) reward_pos.ne'
-  obtain ⟨sender, holder, prefers, avoids⟩ := opposite_labels _ _ separates
+  obtain ⟨sender, holder, prefers, avoids⟩ := lateLeak_opposite_label_preferences _ _ separates
   refine ⟨bit, sender, holder, ?_, ?_⟩
   · have identity := send_preference A.strategy (bit, sender)
     linarith

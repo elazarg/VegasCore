@@ -12,3 +12,10 @@ import Vegas.Examples.LateLeak.OutcomeSeparation
 import Vegas.Examples.LateLeak.ObservableOutcomeSeparation
 import Vegas.Examples.LateLeak.PenaltyPreservation
 import Vegas.Examples.LateLeak.CalibratedPenaltyPreservation
+import Vegas.Examples.LateLeak.CompleteObservation
+import Vegas.Examples.LateLeak.CompleteObservationPosterior
+import Vegas.Examples.LateLeak.CompleteObservationValue
+import Vegas.Examples.LateLeak.CompleteObservationPreservation
+import Vegas.Examples.LateLeak.CompleteObservationProtectedPosterior
+import Vegas.Examples.LateLeak.CompleteObservationCostPreservation
+import Vegas.Examples.LateLeak.ObservationAdvantage

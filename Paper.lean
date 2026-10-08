@@ -20,6 +20,18 @@ import Vegas.Examples.LateLeak.CalibratedPenaltyPreservation
 import Interaction.ReactiveSurvival
 import Vegas.Game.ServiceRosterProtection
 import GameTheoryExtensions.Analysis.PositiveCollection
+import GameTheoryExtensions.Analysis.DisclosureReliability
+import Interaction.ReactiveCompleteObservation
+import Vegas.Examples.CommittedResolutionRecovery
+import Vegas.Examples.CommittedResolutionReadout
+import Vegas.Examples.CommittedResolutionBobService
+import Vegas.Examples.LateLeak.CompleteObservationPosterior
+import Vegas.Examples.LateLeak.CompleteObservationValue
+import Vegas.Examples.LateLeak.CompleteObservationPreservation
+import Vegas.Examples.LateLeak.CompleteObservationProtectedPosterior
+import Vegas.Examples.LateLeak.CompleteObservationCostPreservation
+import Vegas.Examples.LateLeak.ObservationAdvantage
+import GameTheoryExtensions.Analysis.Protocol.PublicationFailureObstruction
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -1191,3 +1203,68 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms GameTheory.GameForm.exists_positive_mixed_collection_floor
+
+/-- info: 'GameTheory.DisclosureReliability.exists_uniform_reliability_forfeit' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.DisclosureReliability.exists_uniform_reliability_forfeit
+
+/-- info: 'Interaction.ReactiveApplication.complete_decision_submitted_visible' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.ReactiveApplication.complete_decision_submitted_visible
+
+/-- info: 'Vegas.Examples.CommittedResolutionRecovery.initialized_clean_recovery' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommittedResolutionRecovery.initialized_clean_recovery
+
+/-- info: 'Vegas.lateOpeningPublicCanonical_consistent_public_beliefs' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.lateOpeningPublicCanonical_consistent_public_beliefs
+
+/-- info: 'Vegas.lateOpeningPublic_sender_context_best_response' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.lateOpeningPublic_sender_context_best_response
+
+/-- info: 'Vegas.Examples.CommittedResolutionReadout.bob_success_true' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommittedResolutionReadout.bob_success_true
+
+/-- info: 'Vegas.lateOpeningPublic_exists_sequential_equilibrium' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.lateOpeningPublic_exists_sequential_equilibrium
+
+/-- info: 'GameTheory.Protocol.PublicationFailure.outageRun_totalVariation_lower_bound' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.Protocol.PublicationFailure.outageRun_totalVariation_lower_bound
+
+/-- info: 'Vegas.lateOpeningPublic_preserves_intended_sequential_equilibria' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.lateOpeningPublic_preserves_intended_sequential_equilibria
+
+/-- info: 'Vegas.lateOpeningPublic_twice_reward_preserves_sequential_equilibria' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.lateOpeningPublic_twice_reward_preserves_sequential_equilibria
+
+/-- info: 'Vegas.lateOpeningPublic_outcome_of_cost_gap' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.lateOpeningPublic_outcome_of_cost_gap
+
+/-- info: 'Vegas.Examples.CommittedResolutionBobService.canonical_bob_round' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommittedResolutionBobService.canonical_bob_round
+
+/-- info: 'Vegas.lateLeak_partial_observation_opposite_preferences' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.lateLeak_partial_observation_opposite_preferences

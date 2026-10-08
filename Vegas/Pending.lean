@@ -26,6 +26,7 @@ import Vegas.Pending.ReactiveAliasEquilibrium
 import Vegas.Pending.ReactiveAssociationEvidence
 import Vegas.Pending.ReactiveAssociationPersistence
 import Vegas.Pending.ReactiveAsyncContract
+import Vegas.Pending.ReactiveAsyncRefinement
 import Vegas.Pending.ReactiveBinding
 import Vegas.Pending.ReactiveBindingAllocation
 import Vegas.Pending.ReactiveBindingAuditStep

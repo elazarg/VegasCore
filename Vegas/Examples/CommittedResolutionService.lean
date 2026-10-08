@@ -1580,4 +1580,30 @@ theorem mixed_bob_reach_bound :
     have products := mul_le_mul hi lo (le_of_lt positive) uNonneg
     nlinarith
 
+/-- Bob's unique activation is a ready, timely opportunity under every legal
+RAW prefix. Earlier Alice submissions do not alter its phase or clock. -/
+theorem bob_activation_phase (control : app.Control)
+    (trace : (app.protocol (initialLaw setup) horizon scheduler).Trace (some control))
+    (active : control.actor = some bob) :
+    control.execution.environmentRecall.length = 11 ∧
+      control.execution.application.clock = 2 ∧ control.execution.recall bob = [] ∧
+      control.execution.application.config.cut.Ready bobEvent ∧
+      control.execution.application.WithinDeadline (runtime setup) bobEvent := by
+  have origin := response_origin control trace bob active
+  have clocked : control.execution.application.clock = 2 := origin.1.2 rfl
+  have cursor : control.execution.environmentRecall.length = 11 := origin.2.1 clocked
+  have recalled : control.execution.recall bob = [] :=
+    List.eq_nil_of_length_eq_zero (origin.2.2 (by rw [cursor]; decide))
+  have phase := cut_history control trace
+  have ordered : control.execution.application.config.cut.IsPrefix 2 := by
+    simpa [cutSchedule, cursor] using phase.2.1
+  have ready := (ready_iff_rank setup _ 2 ordered bobEvent).mpr rfl
+  obtain ⟨entered, activated⟩ := phase.1.choose_spec.1.activatedAt_eq_some_of_ready_actor
+    bobEvent ready (by rfl)
+  refine ⟨cursor, clocked, recalled, ready, ?_⟩
+  unfold EventGraphRuntime.State.WithinDeadline
+  rw [activated, clocked]
+  change 2 - entered < 3
+  omega
+
 end Vegas.Examples.CommittedResolutionService

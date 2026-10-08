@@ -6,6 +6,7 @@ import Interaction.Communication
 import Interaction.CommunicationBounded
 import Interaction.CommunicationKnowledge
 import Interaction.CommunicationProtocol
+import Interaction.CompletePendingObservation
 import Interaction.DeferredObservation
 import Interaction.IdealCommitments
 import Interaction.MessageInvariant
@@ -36,6 +37,7 @@ import Interaction.ReactiveApplication
 import Interaction.ReactiveAuditCollection
 import Interaction.ReactiveAuthorization
 import Interaction.ReactiveBayes
+import Interaction.ReactiveCompleteObservation
 import Interaction.ReactiveDecisionInformation
 import Interaction.ReactiveErasure
 import Interaction.ReactiveEvaluation
@@ -90,6 +92,7 @@ import Interaction.ReactiveRounds
 import Interaction.ReactiveRoundsFiniteness
 import Interaction.ReactiveScheduleClock
 import Interaction.ReactiveScheduleEvaluation
+import Interaction.ReactiveSchedulerRefinement
 import Interaction.ReactiveServiceInvariant
 import Interaction.ReactiveStopping
 import Interaction.ReactiveSurvival

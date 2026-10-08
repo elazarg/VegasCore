@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheoryExtensions.Analysis.Enforcement
+import GameTheoryExtensions.Analysis.DisclosureReliability
 import GameTheoryExtensions.Analysis.EnforcementLimits
 import GameTheoryExtensions.Analysis.EnforcementSynthesis
 import GameTheoryExtensions.Analysis.FailureEnforcement
@@ -32,6 +33,7 @@ import GameTheoryExtensions.Analysis.Protocol.PassageRestrictionExtension
 import GameTheoryExtensions.Analysis.Protocol.Perturbation
 import GameTheoryExtensions.Analysis.Protocol.PrescribedCompletion
 import GameTheoryExtensions.Analysis.Protocol.ProportionalBeliefTransport
+import GameTheoryExtensions.Analysis.Protocol.PublicationFailureObstruction
 import GameTheoryExtensions.Analysis.Protocol.ReachBounds
 import GameTheoryExtensions.Analysis.Protocol.RestrictionExtension
 import GameTheoryExtensions.Analysis.Protocol.RetainedDeviation
