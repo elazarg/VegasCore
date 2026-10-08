@@ -91,7 +91,7 @@ fresh openings therefore succeed with probability `2q/(1 + q)`.
 **Packets and charges.** Each activation emits at most one packet. A packet
 without an accepting receipt is forbidden. This covers a dropped opening, an
 extra opening and any raw signal. The audit charges the owner `c` at most
-once, and the failure forfeit is `D`. The listener pays `c_L` for its own raw
+once, and the failure forfeit is `D`. The listener pays c_L for its own raw
 packet.
 
 **Leak.** As in `G*`, the listener's observe-only activation shows a pending
@@ -116,7 +116,7 @@ Negative verdicts combine a reduction certificate with the four steps of the
     bounds that relax information sets or by exact vertex enumeration where
     sites are shared; or
   - payoff-equivalent through sites where the listener's answer is pinned.
-    For example, after a failure in which `v` is known, the answer `f_v` is
+    For example, after a failure in which `v` is known, the answer f(v) is
     strictly best at every belief.
 - **The core is `G*`.** At every pure listener behaviour, the values of the
   four core plans (open at `P`, `L1`, `L2`, or never) equal those of the
@@ -154,7 +154,7 @@ when the listener plays `m` after every success. At `G*` this is
 send at `L1`, and type-independent trembles keep the prior at every success
 site. The assessment is:
 
-- the listener plays `m` at every success site, `f_v` when it knows `v`, and
+- the listener plays `m` at every success site, f(v) when it knows `v`, and
   `f0` at the uninformative failure;
 - the sender opens at `P`, at `L1`, retries, and opens at `L2` when it holds.
 
@@ -177,7 +177,7 @@ over sending only at `L1`, over all listener behaviours, is
 
 **Free talk after the leaked drop.** Under T1, after a dropped `L1` opening
 the sender may talk at `L2` for free, since the charge is certain. The talk
-reaches only sites where `v` is already known and `f_v` is strictly best. It
+reaches only sites where `v` is already known and f(v) is strictly best. It
 is therefore payoff-equivalent to silence, and the reduction applies. This
 holds for binary and ternary alphabets.
 
@@ -236,7 +236,7 @@ is charged `c` and uses up the cap.
       three types of a class. Comparing the types `C` with `A` or `B` shows
       that for `c > 0` this option is a core option. Equal costs at `c = 0`
       force the same conclusion. Both core options must then give the same
-      answer at the uninformative failure as at the leaked failure, `f_v`.
+      answer at the uninformative failure as at the leaked failure, f(v).
       That cannot hold for both values of `v`.
 
     This chain-case argument is a paper argument; the script asserts its
@@ -246,7 +246,7 @@ is charged `c` and uses up the cap.
 
 ### 3. Contract constraints
 
-`contract_checks` enumerates explicit traces. These cover every raw sender
+The script's contract check enumerates explicit traces. These cover every raw sender
 emission (nothing, an opening, or a signal at `P`, `L1` and `L2`, including
 after completion), the listener's raw packet, and every scheduler outcome.
 It checks the following for T1 and T2, with owner-only and author-blind
