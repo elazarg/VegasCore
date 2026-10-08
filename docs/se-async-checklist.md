@@ -649,6 +649,24 @@ joint law. It is not pursued.
   leak draws that are private to the observer, the kernel read off the
   builder); the collection adapters at rate α·δ for late sends, forbidden
   envelopes and missed bindings; and a late-failure predicate on builders.
+  Since then: the expansion lets each player see its own view of every draw
+  (`GameTheory.Protocol.PublicScheduler.view`), so pending-packet leaks whose
+  law reads public data are covered, with beliefs projecting through the fiber
+  mass (`GameTheory.Protocol.PublicScheduler.fiberMass_congr`). Nonterminal
+  source decision fibers are checked
+  (`Vegas.SourceProgram.Setup.decision_allNonterminal`). The late-failure floor
+  is `Vegas.EventGraphRuntime.LateSendsFailAtLeast` (a packet sent for an
+  event after an earlier activation at which it was ready ends without an
+  accepting receipt with conditional probability at least δ, under every
+  continuation), and such a send is collected with expected probability at
+  least α·δ under every continuation
+  (`Vegas.EventGraphRuntime.lateSend_collection_continuation`, standard
+  axioms). Still not done: the first-opportunity retained menu with the
+  deposit theorem's matching, soundness, forbidden-envelope and
+  missed-binding collection bounds, and the realization of that retained
+  model as the expansion (public projection and its recoverability in the
+  source language; kernel and views from the builder and the observation
+  rule).
 
 ## W. Operational watcher
 

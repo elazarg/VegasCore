@@ -125,6 +125,7 @@ import Vegas.Game.SourceChoiceCompletion
 import Vegas.Game.SourceCommitBlock
 import Vegas.Game.SourceContinuation
 import Vegas.Game.SourceInformation
+import Vegas.Game.SourceSiteNonterminal
 import Vegas.Game.SourceLocalContinuation
 import Vegas.Game.SourceLocalPolicy
 import Vegas.Game.SourcePrefixKernel

@@ -95,6 +95,8 @@ import Vegas.Pending.ReactiveEventStability
 import Vegas.Pending.ReactiveEvidence
 import Vegas.Pending.ReactiveFiniteCompiler
 import Vegas.Pending.ReactiveFiniteResponses
+import Vegas.Pending.ReactiveLateFailure
+import Vegas.Pending.ReactiveLateCollection
 import Vegas.Pending.ReactiveFreshCallAcceptance
 import Vegas.Pending.ReactiveGuardConformance
 import Vegas.Pending.ReactiveGuardedResponse

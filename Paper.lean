@@ -4,6 +4,8 @@ import Vegas.Game.SourceServiceCompilation
 import Vegas.Game.IntendedPreservation
 import Vegas.Game.IntendedServiceCompilation
 import GameTheoryExtensions.Analysis.Protocol.PublicScheduling
+import Vegas.Game.SourceSiteNonterminal
+import Vegas.Pending.ReactiveLateCollection
 import Vegas.Game.SourceServiceNash
 import Vegas.Game.AsyncServiceNash
 import Vegas.Game.IntendedServiceNash
@@ -219,10 +221,12 @@ axioms: [propext, Classical.choice, Quot.sound] -/
 open GameTheory.Protocol in
 /-- **Sequential equilibrium under bounded public scheduling.** A finite source
 game with decision recall is expanded by a public scheduler: before every
-source transition a fixed number of public tokens is drawn from a kernel that
-reads only a public projection of the source history, the transcript so far
-and the pending count; waits are chance moves, and a ready state offers the
-source menus. If every decision fiber of the source is nonterminal, and every
+source transition a fixed number of tokens is drawn from a kernel that reads
+only a public projection of the source history, the transcript so far and the
+pending count, and each player observes its own view of every token (a public
+part and, for instance, a private leak drawn from the same public data); waits
+are chance moves, and a ready state offers the source menus. If every decision
+fiber of the source is nonterminal, and every
 player can recover from its information at each of its decisions the public
 projections of all prefixes and the actors they fix, then every sequential
 equilibrium of the source model has a sequential equilibrium of the expansion
@@ -232,7 +236,7 @@ expansion. The scheduler's likelihood is constant on every information fiber
 and cancels in Bayes' rule, so beliefs are the source beliefs transported
 along the transcript. -/
 theorem public_scheduling_sequential_equilibrium {ι : Type} [Fintype ι] [DecidableEq ι]
-    {E : ExecutionProtocol ι} {Pub Token : Type} (S : PublicScheduler E Pub Token)
+    {E : ExecutionProtocol ι} {Pub Token View : Type} (S : PublicScheduler E Pub Token View)
     (M : InformationModel E) [Finite E.History] {bound : ℕ} (bounded : E.BoundedHorizon bound)
     (sourceRecall : M.DecisionRecall)
     (nonterminal : ∀ i (site : M.InformationSite i), site.AllNonterminal)
@@ -268,6 +272,21 @@ theorem public_scheduling_sequential_equilibrium {ι : Type} [Fintype ι] [Decid
 axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms GameTheory.Protocol.PublicScheduler.expanded_sequentialEquilibrium
+
+/-- info: 'Vegas.SourceProgram.Setup.decision_allNonterminal' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.decision_allNonterminal
+
+/-- info: 'Vegas.EventGraphRuntime.deadPacket_collection_continuation' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.deadPacket_collection_continuation
+
+/-- info: 'Vegas.EventGraphRuntime.lateSend_collection_continuation' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.lateSend_collection_continuation
 
 open Vegas.SourceProgram Vegas.EventGraphRuntime
   GameTheory.Protocol GameTheory.Enforcement in

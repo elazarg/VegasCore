@@ -427,7 +427,19 @@ scheduler of the [public-scheduling note](public-scheduling-se-preservation.md)
 `Vegas.Paper.public_scheduling_sequential_equilibrium` with standard axioms.
 Its hypotheses are the source model's decision recall, nonterminal decision
 fibers, recoverability of the public projection and of the actors from every
-player's information at its decisions, and finitely supported draws.
+player's information at its decisions, and finitely supported draws. Each
+player sees its own view of every draw, so a leak shown to one observer is
+covered when its law reads only public data. Nonterminal decision fibers hold
+for the source model (`Vegas.SourceProgram.Setup.decision_allNonterminal`).
+The late-failure floor is `Vegas.EventGraphRuntime.LateSendsFailAtLeast`:
+every packet an owner sends for its event after an earlier activation at which
+the event was already ready ends without an accepting receipt with conditional
+probability at least $\delta$, under every behavioral continuation. With it,
+a late send is collected with probability at least $\alpha\delta$ under every
+continuation (`Vegas.EventGraphRuntime.lateSend_collection_continuation`, from
+the general `Vegas.EventGraphRuntime.deadPacket_collection_continuation`:
+coverage at rate $\alpha$ of every packet forbidden by the final record, times
+the probability that the packet stays dead).
 
 **Unproved:**
 
@@ -435,13 +447,14 @@ player's information at its decisions, and finitely supported draws.
   submits once, at its first activation with the event ready, and is silent
   afterwards) is the expansion of the source model by a public scheduler in the
   sense above, with a public projection of the source view that the source
-  language proves recoverable; this includes deriving the per-draw kernel from
-  the builder's commands and the observation rule, and the typed-readout and
-  payoff identities on erased histories;
-- the pure-plan collection adapters: that every excluded raw action (a late
-  send, a forbidden envelope, a missed binding) is collected with probability
-  at least $\alpha\delta$ under every continuation, in the form the deposit
-  theorem needs;
+  language proves recoverable; this includes deriving the per-draw kernel and
+  the per-player views from the builder's commands and the observation rule,
+  and the typed-readout and payoff identities on erased histories;
+- the remaining collection adapters in the deposit theorem's form: the
+  first-opportunity retained menu as a restriction of the raw menu, its
+  soundness (no charge on retained histories) and payoff matching, and the
+  bounds for the other excluded actions (forbidden envelopes through coverage,
+  missed bindings through the certain public charge);
 - an actual watcher that achieves $\alpha$ for buried envelopes (the current
   backend is the idealized traffic sampler);
 - inputs where late inclusion is sure ($\delta=0$). These give clean

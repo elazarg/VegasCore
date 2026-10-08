@@ -198,18 +198,26 @@ every stage draws exactly `draws` public tokens, so an adaptive delay of at
 most `draws` slots is encoded by padding with idle tokens, and the proceed
 instruction is the exhaustion of the budget. A scheduler
 `GameTheory.Protocol.PublicScheduler` is a public projection `pub` of source
-histories, the budget `draws`, and a kernel reading the projection of the
-current source history, the transcript so far and the pending count. The
-expanded protocol `PublicScheduler.protocol` has states (source history,
-transcript, pending count); a wait is a chance move appending one token, a
-ready state offers exactly the source menus and runs the source transition.
-The expanded information model `PublicScheduler.model` gives every player its
-source information with the transcript and the pending count.
+histories, the budget `draws`, a kernel reading the projection of the current
+source history, the transcript so far and the pending count, and a per-player
+`view` of each drawn token. The expanded protocol `PublicScheduler.protocol`
+has states (source history, transcript, pending count); a wait is a chance
+move appending one token, a ready state offers exactly the source menus and
+runs the source transition. The expanded information model
+`PublicScheduler.model` gives every player its source information with its
+own view of the transcript and the pending count. A token may carry a public
+part and private parts, one per player, all drawn from the same public data:
+a pending-packet leak shown to one observer is such a private part, and its
+law reads only the public projection. The public case is the view that is the
+identity for every player.
 
 The theorem `PublicScheduler.expanded_sequentialEquilibrium` takes a finite
 source model with a horizon and decision recall and assumes:
 
-- every decision fiber of the source is nonterminal (`AllNonterminal`);
+- every decision fiber of the source is nonterminal (`AllNonterminal`; the
+  source model satisfies this,
+  `Vegas.SourceProgram.Setup.decision_allNonterminal`, because the view fixes
+  the instruction position);
 - public prefix recoverability: two source histories in one decision fiber
   have the same sequence of public projections of all their prefixes
   (`PublicScheduler.pubTrace`);
@@ -224,8 +232,10 @@ of the expansion. The proof follows the sections above: reach weights factor
 as source weight times scheduler likelihood
 (`PublicScheduler.historyReachWeight_lift`), the likelihood is constant on
 every decision fiber (`likelihood_congr`) and the transcript replays over every
-history of the source fiber (`exists_replay`), so Bayes beliefs project
-(`bayesBelief_lift_map`, through
+history of the source fiber (`exists_replay`), a bijection between the fiber
+histories over any two histories of the source fiber (`fiberEquiv`), so the
+total scheduler mass over each source history is the same (`fiberMass_congr`)
+and Bayes beliefs project (`bayesBelief_lift_map`, through
 `InformationModel.bayesBelief_projection_of_proportional_reach`); erased
 terminal continuations are the source continuations (`erase_terminalLaw`),
 also after a local replacement at a decision (`lift_withLaw_agree`), which

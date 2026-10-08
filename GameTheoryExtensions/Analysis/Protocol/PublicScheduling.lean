@@ -14,16 +14,18 @@ only a public projection of the source history, the transcript so far and the
 number of draws still pending. Waits leave the source history unchanged and
 offer no player a choice; a ready state offers exactly the source menus and
 runs the source transition. Every player observes its source information
-together with the public transcript and the pending count.
+together with its own view of every drawn token (a public part and, for
+instance, a private leak drawn from the same public data) and the pending
+count.
 
 `GameTheory.Protocol.PublicScheduler.expanded_sequentialEquilibrium` lifts
 every sequential equilibrium of the source model to one of the expansion with
 the same law of erased terminal histories. The lift plays the source law at
 every expanded decision; its beliefs are the source Bayes beliefs transported
-along the fixed serialization of the transcript. The public projection must be
-recoverable from every player's information at every decision (the two
-hypotheses `recoverable` and `actors`), so that the scheduler's likelihood is
-constant on every source information set and cancels in Bayes' rule.
+along the transcript. The public projection must be recoverable from every
+player's information at every decision (the two hypotheses `recoverable` and
+`actors`), so that the total scheduler mass over each source history of a
+fiber is the same and cancels in Bayes' rule.
 -/
 
 noncomputable section
@@ -40,21 +42,23 @@ source histories, the number of public draws before each source transition,
 and the kernel of each draw, which reads the public projection of the current
 source history, the public transcript so far and the number of draws still
 pending. -/
-structure PublicScheduler (E : ExecutionProtocol ι) (Pub Token : Type) where
+structure PublicScheduler (E : ExecutionProtocol ι) (Pub Token View : Type) where
   /-- The public projection the scheduler reads. -/
   pub : E.History → Pub
   /-- The number of public draws before each source transition. -/
   draws : ℕ
-  /-- The kernel of one public draw. -/
+  /-- The kernel of one draw; it reads only public data. -/
   kernel : Pub → List Token → ℕ → PMF Token
+  /-- What each player observes of a drawn token. -/
+  view : ι → Token → View
 
 namespace PublicScheduler
 
-variable {Pub Token : Type} (S : PublicScheduler E Pub Token)
+variable {Pub Token View : Type} (S : PublicScheduler E Pub Token View)
 
 /-- An expanded state: the source history so far, the public transcript, and
 the number of public draws still pending before the next source transition. -/
-structure State (_S : PublicScheduler E Pub Token) where
+structure State (_S : PublicScheduler E Pub Token View) where
   /-- The source history so far. -/
   source : E.History
   /-- The public transcript so far. -/
@@ -228,23 +232,26 @@ theorem boundedHorizon {bound : ℕ} (bounded : E.BoundedHorizon bound) :
 
 variable (M : InformationModel E)
 
-/-- Every player observes its source information, the public transcript and
-the pending count; a transition reports the new values of all three. -/
+/-- Every player observes its source information, its view of the transcript
+and the pending count; a transition reports the new values of all three. -/
 def signals : InfoSignals S.protocol where
-  PublicSignal := List Token × ℕ
-  PrivateSignal i := M.InfoState i
-  initialPublic := ([], S.draws)
-  initialPrivate i := M.infoOf i E.initHistory.trace
-  publicSignal event := (event.target.transcript, event.target.pending)
-  privateSignal i event := M.infoOf i event.target.source.trace
-  InfoState i := M.InfoState i × List Token × ℕ
-  initInfo _ priv pub := (priv, pub.1, pub.2)
-  pushInfo _ _ _ priv pub := (priv, pub.1, pub.2)
+  PublicSignal := ℕ
+  PrivateSignal i := M.InfoState i × List View
+  initialPublic := S.draws
+  initialPrivate i := (M.infoOf i E.initHistory.trace, [])
+  publicSignal event := event.target.pending
+  privateSignal i event :=
+    (M.infoOf i event.target.source.trace, event.target.transcript.map (S.view i))
+  InfoState i := M.InfoState i × List View × ℕ
+  initInfo _ priv pub := (priv.1, priv.2, pub)
+  pushInfo _ _ _ priv pub := (priv.1, priv.2, pub)
 
 /-- The expanded information of a history is the source information of its
-source history with the public transcript and pending count. -/
+source history with the player's view of the transcript and the pending
+count. -/
 theorem infoOf_eq (i : ι) : ∀ {s : S.State} (trace : S.protocol.Trace s),
-    (S.signals M).infoOf i trace = (M.infoOf i s.source.trace, s.transcript, s.pending)
+    (S.signals M).infoOf i trace =
+      (M.infoOf i s.source.trace, s.transcript.map (S.view i), s.pending)
   | _, .start => rfl
   | _, .extend _ _ _ _ => rfl
 
@@ -255,12 +262,12 @@ def menu (i : ι) : (S.signals M).InfoState i → Set (Option (E.Action i))
   | (_, _, _ + 1) => {none}
 
 /-- The menu at a ready information value is the source menu. -/
-@[simp] theorem menu_ready (i : ι) (info : M.InfoState i) (τ : List Token) :
+@[simp] theorem menu_ready (i : ι) (info : M.InfoState i) (τ : List View) :
     S.menu M i (info, τ, 0) = M.menu i info :=
   rfl
 
 /-- The menu while a draw is pending is silence. -/
-@[simp] theorem menu_waiting (i : ι) (info : M.InfoState i) (τ : List Token) (p : ℕ) :
+@[simp] theorem menu_waiting (i : ι) (info : M.InfoState i) (τ : List View) (p : ℕ) :
     S.menu M i (info, τ, p + 1) = {none} :=
   rfl
 
@@ -287,13 +294,13 @@ def model : InformationModel S.protocol where
               false_and]
 
 /-- Choices at a ready information value are source choices. -/
-theorem choice_ready (i : ι) (info : M.InfoState i) (τ : List Token) :
+theorem choice_ready (i : ι) (info : M.InfoState i) (τ : List View) :
     (S.model M).Choice i (info, τ, 0) = M.Choice i info :=
   rfl
 
-instance (i : ι) [DecidableEq (M.InfoState i)] [DecidableEq Token] :
+instance (i : ι) [DecidableEq (M.InfoState i)] [DecidableEq View] :
     DecidableEq ((S.model M).InfoState i) :=
-  inferInstanceAs (DecidableEq (M.InfoState i × List Token × ℕ))
+  inferInstanceAs (DecidableEq (M.InfoState i × List View × ℕ))
 
 /-! ## Case analysis on expanded histories -/
 
@@ -435,35 +442,35 @@ theorem eq_of_state_eq : ∀ (n : ℕ) (x y : S.protocol.History), x.trace.lengt
 /-! ## Lifting source policies -/
 
 /-- A source choice as an expanded choice at a ready information value. -/
-def liftChoice (i : ι) (info : M.InfoState i) (τ : List Token) (choice : M.Choice i info) :
+def liftChoice (i : ι) (info : M.InfoState i) (τ : List View) (choice : M.Choice i info) :
     (S.model M).Choice i (info, τ, 0) :=
   ⟨choice.1, choice.2⟩
 
 /-- An expanded choice at a ready information value as a source choice. -/
-def unliftChoice (i : ι) (info : M.InfoState i) (τ : List Token)
+def unliftChoice (i : ι) (info : M.InfoState i) (τ : List View)
     (choice : (S.model M).Choice i (info, τ, 0)) : M.Choice i info :=
   ⟨choice.1, choice.2⟩
 
-@[simp] theorem liftChoice_val (i : ι) (info : M.InfoState i) (τ : List Token)
+@[simp] theorem liftChoice_val (i : ι) (info : M.InfoState i) (τ : List View)
     (choice : M.Choice i info) : (S.liftChoice M i info τ choice).1 = choice.1 :=
   rfl
 
-@[simp] theorem liftChoice_unliftChoice (i : ι) (info : M.InfoState i) (τ : List Token)
+@[simp] theorem liftChoice_unliftChoice (i : ι) (info : M.InfoState i) (τ : List View)
     (choice : (S.model M).Choice i (info, τ, 0)) :
     S.liftChoice M i info τ (S.unliftChoice M i info τ choice) = choice :=
   rfl
 
-@[simp] theorem unliftChoice_liftChoice (i : ι) (info : M.InfoState i) (τ : List Token)
+@[simp] theorem unliftChoice_liftChoice (i : ι) (info : M.InfoState i) (τ : List View)
     (choice : M.Choice i info) :
     S.unliftChoice M i info τ (S.liftChoice M i info τ choice) = choice :=
   rfl
 
-theorem liftChoice_injective (i : ι) (info : M.InfoState i) (τ : List Token) :
+theorem liftChoice_injective (i : ι) (info : M.InfoState i) (τ : List View) :
     Function.Injective (S.liftChoice M i info τ) :=
   fun _ _ same => Subtype.ext (congrArg Subtype.val same)
 
 /-- The silent choice while a draw is pending. -/
-def idle (i : ι) (info : M.InfoState i) (τ : List Token) (p : ℕ) :
+def idle (i : ι) (info : M.InfoState i) (τ : List View) (p : ℕ) :
     (S.model M).Choice i (info, τ, p + 1) :=
   ⟨none, rfl⟩
 
@@ -474,12 +481,12 @@ def liftPolicy (i : ι) (policy : M.BehavioralPolicy i) : (S.model M).Behavioral
   | (info, τ, p + 1) => PMF.pure (S.idle M i info τ p)
 
 @[simp] theorem liftPolicy_ready (i : ι) (policy : M.BehavioralPolicy i) (info : M.InfoState i)
-    (τ : List Token) :
+    (τ : List View) :
     S.liftPolicy M i policy (info, τ, 0) = (policy info).map (S.liftChoice M i info τ) :=
   rfl
 
 @[simp] theorem liftPolicy_waiting (i : ι) (policy : M.BehavioralPolicy i)
-    (info : M.InfoState i) (τ : List Token) (p : ℕ) :
+    (info : M.InfoState i) (τ : List View) (p : ℕ) :
     S.liftPolicy M i policy (info, τ, p + 1) = PMF.pure (S.idle M i info τ p) :=
   rfl
 
@@ -489,7 +496,7 @@ def liftProfile (profile : ∀ i, M.BehavioralPolicy i) : ∀ i, (S.model M).Beh
 
 /-- The lifted law at a ready value, forgetting legality, is the source law. -/
 theorem liftPolicy_map_val (i : ι) (policy : M.BehavioralPolicy i) (info : M.InfoState i)
-    (τ : List Token) :
+    (τ : List View) :
     (S.liftPolicy M i policy (info, τ, 0)).map Subtype.val = (policy info).map Subtype.val := by
   rw [liftPolicy_ready, PMF.map_comp]
   rfl
@@ -771,7 +778,7 @@ theorem erase_mem (who : ι) (site : (S.model M).InformationSite who)
 
 theorem transcript_mem (who : ι) (site : (S.model M).InformationSite who)
     (x : (S.model M).InformationHistory who site.1) :
-    x.1.state.transcript = site.1.2.1 := by
+    x.1.state.transcript.map (S.view who) = site.1.2.1 := by
   have := x.2
   rw [show (S.model M).infoOf who x.1.trace = (S.signals M).infoOf who x.1.trace from rfl,
     S.infoOf_eq] at this
@@ -827,7 +834,7 @@ theorem liftProfile_fullSupport (profile : ∀ i, M.BehavioralPolicy i)
 
 /-- The expanded own-play record read off a source history and a transcript:
 each own source move, stamped with the transcript at its stage. -/
-def stampedOwnPlay (i : ι) (τ : List Token) :
+def stampedOwnPlay (i : ι) (τ : List View) :
     ∀ {s : E.State}, E.Trace s → List ((S.model M).InfoState i × E.Action i)
   | _, .start => []
   | _, .extend prior joint _ _ =>
@@ -838,15 +845,15 @@ def stampedOwnPlay (i : ι) (τ : List Token) :
       | none => stampedOwnPlay i τ prior
 
 /-- Appending a token after every stage read so far changes no stamp. -/
-theorem stampedOwnPlay_append (i : ι) (τ : List Token) (token : Token) :
+theorem stampedOwnPlay_append (i : ι) (τ : List View) (seen : View) :
     ∀ {s : E.State} (trace : E.Trace s), S.draws * trace.length ≤ τ.length →
-      S.stampedOwnPlay M i (τ ++ [token]) trace = S.stampedOwnPlay M i τ trace
+      S.stampedOwnPlay M i (τ ++ [seen]) trace = S.stampedOwnPlay M i τ trace
   | _, .start, _ => rfl
   | _, .extend prior joint legal realized, bound => by
       have shorter : S.draws * prior.length ≤ τ.length := by
         simp only [Trace.length] at bound
         nlinarith
-      have ih := stampedOwnPlay_append i τ token prior shorter
+      have ih := stampedOwnPlay_append i τ seen prior shorter
       rcases choice : joint i with _ | action
       · simp only [stampedOwnPlay, choice, ih]
       · simp only [stampedOwnPlay, choice, ih]
@@ -855,7 +862,8 @@ theorem stampedOwnPlay_append (i : ι) (τ : List Token) (token : Token) :
 
 /-- The own-play record of an expanded history is the stamped source record. -/
 theorem ownPlay_lift (i : ι) : ∀ {s : S.State} (trace : S.protocol.Trace s),
-    (S.model M).ownPlay i trace = S.stampedOwnPlay M i s.transcript s.source.trace
+    (S.model M).ownPlay i trace =
+      S.stampedOwnPlay M i (s.transcript.map (S.view i)) s.source.trace
   | _, .start => rfl
   | _, .extend (source := before) prior joint legal realized => by
       have ih := ownPlay_lift i prior
@@ -866,7 +874,7 @@ theorem ownPlay_lift (i : ι) : ∀ {s : S.State} (trace : S.protocol.Trace s),
       cases p with
       | zero =>
           obtain ⟨reached, realized', rfl⟩ := (S.mem_step_ready h τ ⟨joint, legal⟩ _).mp realized
-          have info : (S.model M).infoOf i prior = (M.infoOf i h.trace, τ, 0) :=
+          have info : (S.model M).infoOf i prior = (M.infoOf i h.trace, τ.map (S.view i), 0) :=
             S.infoOf_eq M i prior
           dsimp only [History.extend]
           rw [InfoSignals.ownPlay_extend]
@@ -874,6 +882,7 @@ theorem ownPlay_lift (i : ι) : ∀ {s : S.State} (trace : S.protocol.Trace s),
           · simp only [stampedOwnPlay, choice, ih]
           · simp only [stampedOwnPlay, choice, ih, info]
             rw [List.take_of_length_le]
+            rw [List.length_map]
             omega
       | succ p =>
           obtain ⟨token, _, rfl⟩ := (S.mem_step_waiting h τ p ⟨joint, legal⟩ _).mp realized
@@ -881,7 +890,8 @@ theorem ownPlay_lift (i : ι) : ∀ {s : S.State} (trace : S.protocol.Trace s),
           dsimp only
           rw [InfoSignals.ownPlay_extend]
           change (S.model M).ownPlay i prior = _
-          rw [ih, S.stampedOwnPlay_append]
+          rw [ih, List.map_append, List.map_singleton, S.stampedOwnPlay_append]
+          rw [List.length_map]
           nlinarith
 
 /-- Source histories with the same own play and the same public transcript
@@ -890,7 +900,7 @@ every stage, so the stamps fall at the same stages. -/
 theorem stampedOwnPlay_congr
     (actors : ∀ i (h h' : E.History), S.pub h = S.pub h' →
       (E.active h.state i ↔ E.active h'.state i))
-    (i : ι) (τ : List Token) :
+    (i : ι) (τ : List View) :
     ∀ {s : E.State} (trace : E.Trace s) {s' : E.State} (trace' : E.Trace s'),
       M.ownPlay i trace = M.ownPlay i trace' → S.pubTrace trace = S.pubTrace trace' →
       S.stampedOwnPlay M i τ trace = S.stampedOwnPlay M i τ trace'
@@ -983,6 +993,137 @@ theorem erase_reaches_extend {x y : S.protocol.History} (ready : x.state.pending
           exact ⟨joint, legal, reached', realized', S.erase_reaches ⟨fuel, rest⟩⟩
       | succ p => exact absurd ready (by simp)
 
+/-! ## Replaying over the source fiber -/
+
+/-- The histories of a decision fiber of the expansion over one source
+history. -/
+def fiberOver (who : ι) (site : (S.model M).InformationSite who) (h : E.History) :
+    Set ((S.model M).InformationHistory who site.1) :=
+  {x | S.erase x.1 = h}
+
+/-- The replay of an expanded history over a nonterminal source history with
+the same public transcript. -/
+noncomputable def replay (x : S.protocol.History) (h' : E.History)
+    (running : ¬ E.terminal h'.state)
+    (pubs : S.pubTrace h'.trace = S.pubTrace (S.erase x).trace) : S.protocol.History :=
+  Classical.choose (S.exists_replay x.trace.length x rfl h' running pubs)
+
+theorem replay_state (x : S.protocol.History) (h' : E.History)
+    (running : ¬ E.terminal h'.state)
+    (pubs : S.pubTrace h'.trace = S.pubTrace (S.erase x).trace) :
+    (S.replay x h' running pubs).state = ⟨h', x.state.transcript, x.state.pending⟩ :=
+  Classical.choose_spec (S.exists_replay x.trace.length x rfl h' running pubs)
+
+theorem erase_replay (x : S.protocol.History) (h' : E.History)
+    (running : ¬ E.terminal h'.state)
+    (pubs : S.pubTrace h'.trace = S.pubTrace (S.erase x).trace) :
+    S.erase (S.replay x h' running pubs) = h' := by
+  change (S.replay x h' running pubs).state.source = h'
+  rw [S.replay_state]
+
+/-- The replay of a fiber history over a history of the underlying source
+fiber lies in the same decision fiber of the expansion. -/
+theorem infoOf_replay (who : ι) (site : (S.model M).InformationSite who)
+    (x : (S.model M).InformationHistory who site.1)
+    (h' : M.InformationHistory who (S.sourceSite M who site).1)
+    (running : ¬ E.terminal h'.1.state)
+    (pubs : S.pubTrace h'.1.trace = S.pubTrace (S.erase x.1).trace) :
+    (S.model M).infoOf who (S.replay x.1 h'.1 running pubs).trace = site.1 := by
+  rw [show (S.model M).infoOf who (S.replay x.1 h'.1 running pubs).trace =
+    (S.signals M).infoOf who (S.replay x.1 h'.1 running pubs).trace from rfl, S.infoOf_eq,
+    S.replay_state]
+  dsimp only
+  rw [h'.2, S.transcript_mem M who site x, S.pending_mem M who site x]
+  rfl
+
+/-- The public transcript of a fiber history's source history is that of any
+history of the underlying source fiber. -/
+theorem pubTrace_fiberOver (who : ι) (site : (S.model M).InformationSite who)
+    {h h' : M.InformationHistory who (S.sourceSite M who site).1}
+    (pubs : S.pubTrace h'.1.trace = S.pubTrace h.1.trace) (x : S.fiberOver M who site h.1) :
+    S.pubTrace h'.1.trace = S.pubTrace (S.erase x.1.1).trace :=
+  pubs.trans (congrArg (fun g : E.History => S.pubTrace g.trace)
+    (x.2 : S.erase x.1.1 = h.1)).symm
+
+/-- Replaying over another history of the underlying source fiber stays in
+the decision fiber of the expansion. -/
+noncomputable def replayFiber (who : ι) (site : (S.model M).InformationSite who)
+    {h h' : M.InformationHistory who (S.sourceSite M who site).1}
+    (running : ¬ E.terminal h'.1.state) (pubs : S.pubTrace h'.1.trace = S.pubTrace h.1.trace)
+    (x : S.fiberOver M who site h.1) : S.fiberOver M who site h'.1 :=
+  ⟨⟨S.replay x.1.1 h'.1 running (S.pubTrace_fiberOver M who site pubs x),
+    S.infoOf_replay M who site x.1 h' running (S.pubTrace_fiberOver M who site pubs x)⟩,
+    S.erase_replay x.1.1 h'.1 running (S.pubTrace_fiberOver M who site pubs x)⟩
+
+theorem replayFiber_state (who : ι) (site : (S.model M).InformationSite who)
+    {h h' : M.InformationHistory who (S.sourceSite M who site).1}
+    (running : ¬ E.terminal h'.1.state) (pubs : S.pubTrace h'.1.trace = S.pubTrace h.1.trace)
+    (x : S.fiberOver M who site h.1) :
+    (S.replayFiber M who site running pubs x).1.1.state =
+      ⟨h'.1, x.1.1.state.transcript, x.1.1.state.pending⟩ := by
+  change (S.replay x.1.1 h'.1 running (S.pubTrace_fiberOver M who site pubs x)).state = _
+  exact S.replay_state _ _ _ _
+
+theorem replayFiber_replayFiber (who : ι) (site : (S.model M).InformationSite who)
+    {h h' : M.InformationHistory who (S.sourceSite M who site).1}
+    (running : ¬ E.terminal h.1.state) (running' : ¬ E.terminal h'.1.state)
+    (pubs : S.pubTrace h'.1.trace = S.pubTrace h.1.trace)
+    (pubs' : S.pubTrace h.1.trace = S.pubTrace h'.1.trace)
+    (x : S.fiberOver M who site h.1) :
+    S.replayFiber M who site running pubs' (S.replayFiber M who site running' pubs x) = x := by
+  apply Subtype.ext
+  apply Subtype.ext
+  apply S.eq_of_state_eq _ _ _ rfl
+  rw [S.replayFiber_state, S.replayFiber_state]
+  have erased : x.1.1.state.source = h.1 := x.2
+  change (⟨h.1, x.1.1.state.transcript, x.1.1.state.pending⟩ : S.State) =
+    ⟨x.1.1.state.source, x.1.1.state.transcript, x.1.1.state.pending⟩
+  rw [erased]
+
+/-- Replay is a bijection between the fiber histories over two histories of
+the underlying source fiber. -/
+noncomputable def fiberEquiv (who : ι) (site : (S.model M).InformationSite who)
+    (nonterminal : ∀ i (site : M.InformationSite i), site.AllNonterminal)
+    (recoverable : ∀ i (site : M.InformationSite i)
+      (h h' : M.InformationHistory i site.1), S.pubTrace h.1.trace = S.pubTrace h'.1.trace)
+    (h h' : M.InformationHistory who (S.sourceSite M who site).1) :
+    S.fiberOver M who site h.1 ≃ S.fiberOver M who site h'.1 where
+  toFun := S.replayFiber M who site (nonterminal who _ h') (recoverable who _ h' h)
+  invFun := S.replayFiber M who site (nonterminal who _ h) (recoverable who _ h h')
+  left_inv := S.replayFiber_replayFiber M who site _ _ _ _
+  right_inv := S.replayFiber_replayFiber M who site _ _ _ _
+
+/-- The scheduler mass of the fiber histories over one source history: the
+sum of their likelihoods. -/
+noncomputable def fiberMass (who : ι) (site : (S.model M).InformationSite who) (h : E.History) :
+    ℝ≥0∞ :=
+  ∑' x : S.fiberOver M who site h, S.likelihood x.1.1.trace
+
+/-- The fiber mass is the same over every history of the underlying source
+fiber. -/
+theorem fiberMass_congr (who : ι) (site : (S.model M).InformationSite who)
+    (nonterminal : ∀ i (site : M.InformationSite i), site.AllNonterminal)
+    (recoverable : ∀ i (site : M.InformationSite i)
+      (h h' : M.InformationHistory i site.1), S.pubTrace h.1.trace = S.pubTrace h'.1.trace)
+    (h h' : M.InformationHistory who (S.sourceSite M who site).1) :
+    S.fiberMass M who site h.1 = S.fiberMass M who site h'.1 := by
+  unfold fiberMass
+  rw [← Equiv.tsum_eq (S.fiberEquiv M who site nonterminal recoverable h h')]
+  apply tsum_congr
+  intro x
+  have state : ((S.fiberEquiv M who site nonterminal recoverable h h') x).1.1.state =
+      ⟨h'.1, x.1.1.state.transcript, x.1.1.state.pending⟩ :=
+    S.replayFiber_state M who site (nonterminal who _ h') (recoverable who _ h' h) x
+  symm
+  apply S.likelihood_congr _ _ _ rfl
+  · change S.pubTrace
+        ((S.fiberEquiv M who site nonterminal recoverable h h') x).1.1.state.source.trace =
+      S.pubTrace x.1.1.state.source.trace
+    rw [state]
+    exact S.pubTrace_fiberOver M who site (recoverable who _ h' h) x
+  · rw [state]
+  · rw [state]
+
 /-! ## One-step masses and the reach-weight factorization -/
 
 variable [Fintype ι]
@@ -1054,7 +1195,8 @@ theorem behavioralJoint_lift_apply (profile : ∀ i, M.BehavioralPolicy i) {h : 
   rw [behavioralJoint_apply_eq_prod, behavioralJoint_apply_eq_prod]
   apply Finset.prod_congr rfl
   intro i _
-  have info : (S.model M).infoOf i trace = (M.infoOf i h.trace, τ, 0) := S.infoOf_eq M i trace
+  have info : (S.model M).infoOf i trace = (M.infoOf i h.trace, τ.map (S.view i), 0) :=
+    S.infoOf_eq M i trace
   change ((S.liftPolicy M i (profile i) ((S.model M).infoOf i trace)).map Subtype.val) _ = _
   rw [info, S.liftPolicy_map_val]
 
@@ -1139,10 +1281,11 @@ theorem historyReachWeight_lift (profile : ∀ i, M.BehavioralPolicy i) :
 /-- **Bayes beliefs project.** Under a fully mixed source profile, the Bayes
 belief of the lifted profile at a decision site of the expansion, pushed to
 source histories, is the source Bayes belief at the underlying source site:
-the scheduler likelihood is constant on the fiber and cancels. The source
-fibers must be nonterminal and the public transcript recoverable from every
-player's information at its decisions. -/
-theorem bayesBelief_lift_map (profile : ∀ i, M.BehavioralPolicy i)
+over every history of the source fiber the fiber histories carry the same
+total scheduler mass, which cancels. The source fibers must be nonterminal and
+the public transcript recoverable from every player's information at its
+decisions. -/
+theorem bayesBelief_lift_map [Finite S.protocol.History] (profile : ∀ i, M.BehavioralPolicy i)
     (full : ∀ i (site : M.InformationSite i) (choice : M.Choice i site.1),
       choice ∈ (profile i site.1).support)
     (antichainM : M.DecisionInformationAntichain)
@@ -1159,46 +1302,37 @@ theorem bayesBelief_lift_map (profile : ∀ i, M.BehavioralPolicy i)
         (M.informationMass_pos_of_fullSupport profile full who _) := by
   classical
   obtain ⟨witness, _, _⟩ := site.2
+  have scalePositive : 0 < S.fiberMass M who site (S.erase witness.1) := by
+    rw [fiberMass]
+    exact (S.likelihood_pos witness.1.trace).trans_le
+      (ENNReal.le_tsum (f := fun x : S.fiberOver M who site (S.erase witness.1) =>
+        S.likelihood x.1.1.trace) ⟨witness, rfl⟩)
+  have scaleFinite : S.fiberMass M who site (S.erase witness.1) ≠ ⊤ := by
+    have : Fintype (S.fiberOver M who site (S.erase witness.1)) := Fintype.ofFinite _
+    rw [fiberMass, tsum_fintype]
+    exact ENNReal.sum_ne_top.mpr fun x _ =>
+      ne_top_of_le_ne_top ENNReal.one_ne_top (S.likelihood_le_one _)
   refine InformationModel.bayesBelief_projection_of_proportional_reach (S.model M) M
     (S.liftProfile M profile) profile S.erase who site (S.sourceSite M who site)
     (fun x member => S.erase_mem M who site ⟨x, member⟩)
-    (S.likelihood witness.1.trace) ?_ (S.likelihood_pos _).ne'
-    (ne_top_of_le_ne_top ENNReal.one_ne_top (S.likelihood_le_one _))
+    (S.fiberMass M who site (S.erase witness.1)) ?_ scalePositive.ne' scaleFinite
     (antichainN who site) (antichainM who _) _ _
   intro history
-  have running : ¬ E.terminal history.1.state := nonterminal who _ history
-  have pubs : S.pubTrace history.1.trace = S.pubTrace (S.erase witness.1).trace :=
-    recoverable who (S.sourceSite M who site) history (S.eraseHistory M who site witness)
-  obtain ⟨y, same⟩ := S.exists_replay witness.1.trace.length witness.1 rfl history.1 running pubs
-  have member : (S.model M).infoOf who y.trace = site.1 := by
-    rw [show (S.model M).infoOf who y.trace = (S.signals M).infoOf who y.trace from rfl,
-      S.infoOf_eq, same]
-    dsimp only
-    rw [history.2, S.transcript_mem M who site witness, S.pending_mem M who site witness]
-    rfl
-  have weight : (S.model M).historyReachWeight (S.liftProfile M profile) y =
-      M.historyReachWeight profile history.1 * S.likelihood witness.1.trace := by
-    rw [S.historyReachWeight_lift M profile _ y rfl]
-    congr 1
-    · change M.historyReachWeight profile y.state.source = _
-      rw [same]
-    · exact S.likelihood_congr _ y witness.1 rfl
-        (by change S.pubTrace y.state.source.trace = _; rw [same]; exact pubs)
-        (by rw [same, S.transcript_mem M who site witness])
-        (by rw [same, S.pending_mem M who site witness])
-  rw [tsum_eq_single ⟨y, member⟩]
-  · rw [ite_eq_left (by change y.state.source = history.1; rw [same]), weight, mul_comm]
-  · intro other different
-    rw [ite_eq_right]
-    intro erased
-    apply different
-    apply Subtype.ext
-    apply S.eq_of_state_eq other.1.trace.length other.1 y rfl
-    rw [same]
-    change (⟨other.1.state.source, other.1.state.transcript, other.1.state.pending⟩ : S.State) = _
-    rw [S.transcript_mem M who site other, S.pending_mem M who site other,
-      ← S.transcript_mem M who site witness, ← S.pending_mem M who site witness]
-    exact congrArg (fun h : E.History => (⟨h, _, _⟩ : S.State)) erased
+  have summand (x : (S.model M).InformationHistory who site.1) :
+      (if S.erase x.1 = history.1 then
+          (S.model M).historyReachWeight (S.liftProfile M profile) x.1 else 0) =
+        M.historyReachWeight profile history.1 *
+          (S.fiberOver M who site history.1).indicator (fun x => S.likelihood x.1.trace) x := by
+    rw [Set.indicator_apply]
+    change _ = _ * if S.erase x.1 = history.1 then S.likelihood x.1.trace else 0
+    split_ifs with erased
+    · rw [S.historyReachWeight_lift M profile _ x.1 rfl, erased]
+    · rw [mul_zero]
+  rw [tsum_congr summand, ENNReal.tsum_mul_left, ← tsum_subtype]
+  change _ = M.historyReachWeight profile history.1 * S.fiberMass M who site history.1
+  rw [S.fiberMass_congr M who site nonterminal recoverable history
+    (S.eraseHistory M who site witness), mul_comm]
+  rfl
 
 /-! ## The erased terminal law -/
 
@@ -1301,7 +1435,7 @@ variable [DecidableEq ι]
 
 /-- A decision site of the expansion presented by its source information,
 transcript and decision witness. -/
-abbrev readySite (who : ι) (info : M.InfoState who) (τ : List Token)
+abbrev readySite (who : ι) (info : M.InfoState who) (τ : List View)
     (witness : (S.model M).IsDecisionInfo who (info, τ, 0)) : (S.model M).InformationSite who :=
   ⟨(info, τ, 0), witness⟩
 
@@ -1310,9 +1444,9 @@ omit [Fintype ι] in
 cone of every history of that site, with the lift of the source profile whose
 local law at the underlying source site is replaced by the unlifted law. The
 source site is never revisited after acting there, by decision recall. -/
-theorem lift_withLaw_agree [∀ i, DecidableEq (M.InfoState i)] [DecidableEq Token]
+theorem lift_withLaw_agree [∀ i, DecidableEq (M.InfoState i)] [DecidableEq View]
     (recall : M.DecisionRecall) (profile : ∀ i, M.BehavioralPolicy i) (who : ι)
-    (info : M.InfoState who) (τ : List Token)
+    (info : M.InfoState who) (τ : List View)
     (witness : (S.model M).IsDecisionInfo who (info, τ, 0))
     (law : PMF ((S.model M).Choice who (info, τ, 0)))
     (x : (S.model M).InformationHistory who (S.readySite M who info τ witness).1) :
@@ -1338,7 +1472,7 @@ theorem lift_withLaw_agree [∀ i, DecidableEq (M.InfoState i)] [DecidableEq Tok
   by_cases same : y = x.1
   · obtain rfl := same
     have infoEq : M.infoOf i x.1.state.source.trace = info := S.erase_mem M i _ x
-    rw [show x.1.state.transcript = τ from S.transcript_mem M i _ x,
+    rw [show x.1.state.transcript.map (S.view i) = τ from S.transcript_mem M i _ x,
       show x.1.state.pending = 0 from S.pending_mem M i _ x, infoEq,
       InformationModel.BehavioralPolicy.withLaw_self, liftPolicy_ready,
       InformationModel.BehavioralPolicy.withLaw_self, PMF.map_comp]
@@ -1361,8 +1495,8 @@ theorem lift_withLaw_agree [∀ i, DecidableEq (M.InfoState i)] [DecidableEq Tok
     have differentInfo : M.infoOf i y.state.source.trace ≠ info := by
       rw [← eraseInfo]
       exact recall.infoOf_ne_after_step i legal realized active rest
-    have differentSite : (M.infoOf i y.state.source.trace, y.state.transcript, y.state.pending) ≠
-        (info, τ, 0) := fun equal => differentInfo (congrArg Prod.fst equal)
+    have differentSite : (M.infoOf i y.state.source.trace, y.state.transcript.map (S.view i),
+        y.state.pending) ≠ (info, τ, 0) := fun equal => differentInfo (congrArg Prod.fst equal)
     rw [InformationModel.BehavioralPolicy.withLaw_of_ne _ _ _ differentSite]
     cases y.state.pending with
     | zero =>
@@ -1400,11 +1534,11 @@ theorem finite_history [Finite ι] [Finite E.History] {bound : ℕ} (bounded : E
     rw [show (S.model M).infoOf i trace = (S.signals M).infoOf i trace from rfl, S.infoOf_eq]
     cases p with
     | zero =>
-        have : Finite ((S.model M).Choice i (M.infoOf i h.trace, τ, 0)) :=
+        have : Finite ((S.model M).Choice i (M.infoOf i h.trace, τ.map (S.view i), 0)) :=
           M.finite_choice_of_nonterminal h running i
         exact Set.toFinite _
     | succ p =>
-        change (PMF.pure (S.idle M i (M.infoOf i h.trace) τ p)).support.Finite
+        change (PMF.pure (S.idle M i (M.infoOf i h.trace) (τ.map (S.view i)) p)).support.Finite
         rw [PMF.support_pure]
         exact Set.finite_singleton _
   have steps : ∀ {state : S.State}
@@ -1440,7 +1574,7 @@ theorem finite_history [Finite ι] [Finite E.History] {bound : ℕ} (bounded : E
 assessment, erased to source outcomes, is the source continuation law at the
 underlying source site under the source assessment, for any pair of local
 replacement policies that agree, lifted, on every continuation. -/
-theorem lift_assessmentLaw
+theorem lift_assessmentLaw [Finite S.protocol.History]
     {bound : ℕ} (bounded : E.BoundedHorizon bound) (recall : M.DecisionRecall)
     (nonterminal : ∀ i (site : M.InformationSite i), site.AllNonterminal)
     (recoverable : ∀ i (site : M.InformationSite i)
@@ -1450,7 +1584,7 @@ theorem lift_assessmentLaw
     (assessment : M.BehavioralAssessment) (full : assessment.IsFullyMixed)
     (bayes : InformationModel.BehavioralAssessment.IsBayesConsistent M assessment
       recall.decisionInformationAntichain)
-    (who : ι) (info : M.InfoState who) (τ : List Token)
+    (who : ι) (info : M.InfoState who) (τ : List View)
     (witness : (S.model M).IsDecisionInfo who (info, τ, 0))
     (policyN : (S.model M).BehavioralPolicy who) (policyM : M.BehavioralPolicy who)
     (agree : ∀ x : (S.model M).InformationHistory who (S.readySite M who info τ witness).1,
@@ -1517,7 +1651,8 @@ theorem lift_assessmentLaw
 fully mixed Bayes-consistent source assessment, every local deviation at a
 decision site of the expansion has exactly the gain of the corresponding local
 deviation at the underlying source site. -/
-theorem localComparison [∀ i, DecidableEq (M.InfoState i)] [DecidableEq Token]
+theorem localComparison [∀ i, DecidableEq (M.InfoState i)] [DecidableEq View]
+    [Finite S.protocol.History]
     {bound : ℕ} (bounded : E.BoundedHorizon bound) (recall : M.DecisionRecall)
     (nonterminal : ∀ i (site : M.InformationSite i), site.AllNonterminal)
     (recoverable : ∀ i (site : M.InformationSite i)
