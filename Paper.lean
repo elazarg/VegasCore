@@ -3,6 +3,7 @@
 import Vegas.Game.SourceServiceCompilation
 import Vegas.Game.IntendedPreservation
 import Vegas.Game.IntendedServiceCompilation
+import GameTheoryExtensions.Analysis.Protocol.PublicScheduling
 import Vegas.Game.SourceServiceNash
 import Vegas.Game.AsyncServiceNash
 import Vegas.Game.IntendedServiceNash
@@ -214,6 +215,59 @@ theorem intended_sequential_equilibrium [Fintype Player] [IExpr.ResultTypes L]
 axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.SourceServiceSpec.intended_audited_raw_sequentialEquilibrium
+
+open GameTheory.Protocol in
+/-- **Sequential equilibrium under bounded public scheduling.** A finite source
+game with decision recall is expanded by a public scheduler: before every
+source transition a fixed number of public tokens is drawn from a kernel that
+reads only a public projection of the source history, the transcript so far
+and the pending count; waits are chance moves, and a ready state offers the
+source menus. If every decision fiber of the source is nonterminal, and every
+player can recover from its information at each of its decisions the public
+projections of all prefixes and the actors they fix, then every sequential
+equilibrium of the source model has a sequential equilibrium of the expansion
+by any finitely supported scheduler with the same law of erased terminal
+histories, whose strategy plays the source law at every decision of the
+expansion. The scheduler's likelihood is constant on every information fiber
+and cancels in Bayes' rule, so beliefs are the source beliefs transported
+along the transcript. -/
+theorem public_scheduling_sequential_equilibrium {ι : Type} [Fintype ι] [DecidableEq ι]
+    {E : ExecutionProtocol ι} {Pub Token : Type} (S : PublicScheduler E Pub Token)
+    (M : InformationModel E) [Finite E.History] {bound : ℕ} (bounded : E.BoundedHorizon bound)
+    (sourceRecall : M.DecisionRecall)
+    (nonterminal : ∀ i (site : M.InformationSite i), site.AllNonterminal)
+    (recoverable : ∀ i (site : M.InformationSite i)
+      (h h' : M.InformationHistory i site.1), S.pubTrace h.1.trace = S.pubTrace h'.1.trace)
+    (actors : ∀ i (h h' : E.History), S.pub h = S.pub h' →
+      (E.active h.state i ↔ E.active h'.state i))
+    (finiteKernel : ∀ pub τ p, (S.kernel pub τ p).support.Finite)
+    {Outcome : Type*} (observe : E.History → Outcome) (utility : Outcome → ι → ℝ)
+    (source : M.BehavioralAssessment)
+    (equilibrium : source.IsSequentialEquilibrium sourceRecall.decisionInformationAntichain
+      bounded.wellFoundedHistories (fun i h => utility (observe h) i)) :
+    ∃ target : (S.model M).BehavioralAssessment,
+      target.IsSequentialEquilibrium
+        (S.decisionRecall M sourceRecall recoverable actors).decisionInformationAntichain
+        (S.boundedHorizon bounded).wellFoundedHistories
+        (fun i x => utility (observe (S.erase x)) i) ∧
+      ((S.model M).runBehavioralTerminalFrom (S.boundedHorizon bounded).wellFoundedHistories
+          target.strategy S.protocol.initHistory).map (fun x => observe (S.erase x)) =
+        (M.runBehavioralTerminalFrom bounded.wellFoundedHistories source.strategy
+          E.initHistory).map observe ∧
+      ∀ i (site : (S.model M).InformationSite i),
+        target.strategy i site.1 = S.liftProfile M source.strategy i site.1 :=
+  S.expanded_sequentialEquilibrium M bounded sourceRecall nonterminal recoverable actors
+    finiteKernel observe utility source equilibrium
+
+/-- info: 'Vegas.Paper.public_scheduling_sequential_equilibrium' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.public_scheduling_sequential_equilibrium
+
+/-- info: 'GameTheory.Protocol.PublicScheduler.expanded_sequentialEquilibrium' depends on
+axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.Protocol.PublicScheduler.expanded_sequentialEquilibrium
 
 open Vegas.SourceProgram Vegas.EventGraphRuntime
   GameTheory.Protocol GameTheory.Enforcement in

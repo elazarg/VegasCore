@@ -420,10 +420,28 @@ The composition is:
 The single-phase sharper bound $q(D-R)\le(1-q)c$ from the
 [late-turn note](open-problem-late-turn-equilibria.md) is an instance.
 
+**Checked:** the public-scheduling theorem, for the abstract bounded public
+scheduler of the [public-scheduling note](public-scheduling-se-preservation.md)
+(section "The checked expansion"):
+`GameTheory.Protocol.PublicScheduler.expanded_sequentialEquilibrium`, pinned as
+`Vegas.Paper.public_scheduling_sequential_equilibrium` with standard axioms.
+Its hypotheses are the source model's decision recall, nonterminal decision
+fibers, recoverability of the public projection and of the actors from every
+player's information at its decisions, and finitely supported draws.
+
 **Unproved:**
 
-- the public-scheduling theorem in Lean;
-- the protocol realization and pure-plan collection adapters;
+- the realization: that the first-opportunity retained runtime (every owner
+  submits once, at its first activation with the event ready, and is silent
+  afterwards) is the expansion of the source model by a public scheduler in the
+  sense above, with a public projection of the source view that the source
+  language proves recoverable; this includes deriving the per-draw kernel from
+  the builder's commands and the observation rule, and the typed-readout and
+  payoff identities on erased histories;
+- the pure-plan collection adapters: that every excluded raw action (a late
+  send, a forbidden envelope, a missed binding) is collected with probability
+  at least $\alpha\delta$ under every continuation, in the form the deposit
+  theorem needs;
 - an actual watcher that achieves $\alpha$ for buried envelopes (the current
   backend is the idealized traffic sampler);
 - inputs where late inclusion is sure ($\delta=0$). These give clean

@@ -33,6 +33,7 @@ import GameTheoryExtensions.Analysis.Protocol.PassageRestrictionExtension
 import GameTheoryExtensions.Analysis.Protocol.Perturbation
 import GameTheoryExtensions.Analysis.Protocol.PrescribedCompletion
 import GameTheoryExtensions.Analysis.Protocol.ProportionalBeliefTransport
+import GameTheoryExtensions.Analysis.Protocol.PublicScheduling
 import GameTheoryExtensions.Analysis.Protocol.PublicationFailureObstruction
 import GameTheoryExtensions.Analysis.Protocol.ReachBounds
 import GameTheoryExtensions.Analysis.Protocol.RestrictionExtension

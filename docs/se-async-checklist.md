@@ -632,6 +632,23 @@ joint law. It is not pursued.
   with positive probability, a deposit depending on that bound makes every
   intended sequential equilibrium preserved by the bounded raw runtime, with the
   intended joint law and no charge on paths; pinned with standard axioms.
+  Partial evidence: the public-scheduling step is checked for an abstract
+  bounded public scheduler: `Vegas.Paper.public_scheduling_sequential_equilibrium`
+  (the instance of `GameTheory.Protocol.PublicScheduler.expanded_sequentialEquilibrium`,
+  standard axioms). For a finite source model with decision recall, nonterminal
+  decision fibers, a public projection recoverable together with the actors
+  from every player's information at its decisions, and finitely supported
+  draws, every source sequential equilibrium has a sequential equilibrium of
+  the expansion (a fixed number of public draws before each source transition,
+  waits as chance) with the same erased terminal law, playing the source law
+  at every expanded decision. The intended deposit is (U - L)/(α·δ), fixed
+  before the builder: U - L is the spread of forfeited utility, α the audit's
+  collection rate, δ the builder's late-failure floor. Not done: realizing the
+  first-opportunity retained runtime as that expansion (the public projection
+  and its recoverability in the source language, nonterminal source fibers,
+  leak draws that are private to the observer, the kernel read off the
+  builder); the collection adapters at rate α·δ for late sends, forbidden
+  envelopes and missed bindings; and a late-failure predicate on builders.
 
 ## W. Operational watcher
 

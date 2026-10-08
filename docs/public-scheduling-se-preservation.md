@@ -1,9 +1,12 @@
 # Sequential equilibrium under public stochastic scheduling
 
 Analysis by Codex. This document gives a mathematical construction of a useful
-source-to-runtime adapter and identifies its missing Lean implementation. The
-general preservation theorem below is a paper proof, not a checked Vegas
-capstone. It does not change the asynchronous target, checklist, or semantics.
+source-to-runtime adapter. The general preservation theorem below is now
+checked for the bounded public scheduler of the section "The checked
+expansion" (`GameTheory.Protocol.PublicScheduler.expanded_sequentialEquilibrium`,
+pinned as `Vegas.Paper.public_scheduling_sequential_equilibrium`); the
+realization of a Vegas runtime as such an expansion remains compiler work. It
+does not change the asynchronous target, checklist, or semantics.
 
 The positive class is larger than a fixed calendar: delays can be random,
 correlated across phases, and adapt to earlier public results. The decisive
@@ -187,6 +190,53 @@ These are two distinct adapters: a prefix reach-weight argument establishes
 consistency; a continuation argument establishes incentives. An initialized
 outcome coupling by itself establishes neither.
 
+## The checked expansion
+
+[PublicScheduling](../GameTheoryExtensions/Analysis/Protocol/PublicScheduling.lean)
+mechanizes the constructor of the previous sections with one simplification:
+every stage draws exactly `draws` public tokens, so an adaptive delay of at
+most `draws` slots is encoded by padding with idle tokens, and the proceed
+instruction is the exhaustion of the budget. A scheduler
+`GameTheory.Protocol.PublicScheduler` is a public projection `pub` of source
+histories, the budget `draws`, and a kernel reading the projection of the
+current source history, the transcript so far and the pending count. The
+expanded protocol `PublicScheduler.protocol` has states (source history,
+transcript, pending count); a wait is a chance move appending one token, a
+ready state offers exactly the source menus and runs the source transition.
+The expanded information model `PublicScheduler.model` gives every player its
+source information with the transcript and the pending count.
+
+The theorem `PublicScheduler.expanded_sequentialEquilibrium` takes a finite
+source model with a horizon and decision recall and assumes:
+
+- every decision fiber of the source is nonterminal (`AllNonterminal`);
+- public prefix recoverability: two source histories in one decision fiber
+  have the same sequence of public projections of all their prefixes
+  (`PublicScheduler.pubTrace`);
+- the projection fixes the actors: equal projections give the same active
+  players;
+- every draw has finite support.
+
+It concludes that every sequential equilibrium of the source model has a
+sequential equilibrium of the expansion with the same law of erased terminal
+histories, whose strategy is the lift of the source strategy at every decision
+of the expansion. The proof follows the sections above: reach weights factor
+as source weight times scheduler likelihood
+(`PublicScheduler.historyReachWeight_lift`), the likelihood is constant on
+every decision fiber (`likelihood_congr`) and the transcript replays over every
+history of the source fiber (`exists_replay`), so Bayes beliefs project
+(`bayesBelief_lift_map`, through
+`InformationModel.bayesBelief_projection_of_proportional_reach`); erased
+terminal continuations are the source continuations (`erase_terminalLaw`),
+also after a local replacement at a decision (`lift_withLaw_agree`), which
+gives every local comparison exactly (`localComparison`); and
+`InformationModel.exists_sequentialEquilibrium_limit_of_local_comparisons`
+assembles the lifted Bayes assessments of the source consistency sequence into
+the expanded equilibrium. Decision recall of the expansion is derived from the
+source's (`PublicScheduler.decisionRecall`), which is where the actor
+hypothesis is used: the stamps of a player's own moves must fall at the same
+stages along every history of a fiber.
+
 ## What the existing Lean APIs establish
 
 The owning layers already provide the following reusable results.
@@ -221,13 +271,18 @@ The owning layers already provide the following reusable results.
   supply these inputs with zero errors. Its hypotheses are interfaces to
   discharge, not operational assumptions that a backend gets for free.
 
-No current theorem assembles a general bounded public scheduler constructor,
-derives its protocol reach weights, and proves these source continuation
-identities. The fixed calendar supplies its own detailed phase and posterior
-proofs. [SchedulerReplayLaw](../Vegas/EventGraph/SchedulerReplayLaw.lean) handles
-deterministic public event scheduling, not this stochastic assessment adapter.
+The constructor, its reach weights and the continuation identities are now
+the checked expansion above. The fixed calendar supplies its own detailed phase
+and posterior proofs. [SchedulerReplayLaw](../Vegas/EventGraph/SchedulerReplayLaw.lean)
+handles deterministic public event scheduling, not this stochastic assessment
+adapter.
 
-The smallest useful new formal work is therefore:
+The four items below were the plan for that work; the first three are done in
+the checked expansion and the fourth is its preservation theorem. What remains
+is the realization: a Vegas retained runtime presented as
+`PublicScheduler.model` of the source model, with the projection, kernel and
+budget read off the builder and the observation rule, and the source language's
+proof of the recoverability hypotheses.
 
 1. A protocol-history serialization/erasure interface for bounded public phases,
    with primitive wait/logical-step clauses and source-public prefix recovery.
@@ -240,8 +295,9 @@ The smallest useful new formal work is therefore:
    Bayes/local-optimality APIs. No equilibrium existence or local optimality at
    copied sites should appear as new backend hypotheses.
 
-All four remain unimplemented for the general public constructor. The paper
-proof above specifies their mathematics; it is not a claim of checked evidence.
+All four are implemented for the general public constructor in
+[PublicScheduling](../GameTheoryExtensions/Analysis/Protocol/PublicScheduling.lean).
+The realization of a runtime as that constructor is not.
 
 The next formal lemma can be made particularly concrete. Build the expanded
 protocol with state consisting of a source `ExecutionProtocol.History`, the
