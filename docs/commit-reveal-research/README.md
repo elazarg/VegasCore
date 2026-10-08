@@ -226,6 +226,11 @@ small errors in that metric.
 
 [The research workflow](workflow.md) specifies independent tasks, handoffs,
 review obligations and the next mathematical questions.
+[The native research agenda](native-research-agenda.md) directs approximately
+80% of current mathematical effort to protected execution and late actions in
+the actual runtime, with the remaining effort reserved for independent review
+and concrete foundational gaps. It fixes the intended-source scope and keeps
+alternative runtime proposals separate.
 [The annotated literature](literature.md) records relevant primary sources
 without treating them as proofs about this project's ledger.
 

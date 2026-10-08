@@ -4,6 +4,12 @@ The deliverable is a collection of useful conditional results about ledger
 interfaces, organized so that a reader can reconstruct each model from its
 statement. It is not a replacement specification for the compiler.
 
+The [native research agenda](native-research-agenda.md) directs the concrete
+wave: approximately 45% accepted late actions and real settlement, 35% protected
+execution with actual adaptive observations, and 20% independent review and
+necessary foundational bridges. Reallocate according to the stated blockers;
+another general interface is useful only when it discharges a concrete need.
+
 ## Required result card
 
 Every proposed result must supply these fields, in ordinary language before
