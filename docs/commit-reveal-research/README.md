@@ -50,6 +50,10 @@ statement, model reminder and obligations for the two orders.
 [Miner behavior and player knowledge](miner-assumptions.md) distinguishes
 pointwise preservation, a common policy and Bayesian uncertainty about the
 service, and reviews what standard consensus assumptions actually supply.
+[Runtime choices and scope](model-decisions.md) recommends a small research
+interface and separates details proved irrelevant, effects quantitatively
+bounded, and aspects deliberately excluded. It makes no change to the adopted
+model.
 
 A finite deposit is not automatically an affordable deposit. Each result
 must state the available capital and whether play begins after funding, or
@@ -110,6 +114,11 @@ small errors in that metric.
 | Integration | Which candidates have proofs, which are contrasts, and what assumptions distinguish them? | [Interface and result catalog](catalog.md) |
 | Collateral and service | What fails when collateral is fixed before the builder, and what can hold when it is chosen for a known service? | [Quantifier orders](quantifier-orders.md) |
 | Miner behavior and knowledge | Which service properties are public, what can independent miners choose, and do players know the scheduler law? | [Miner assumptions](miner-assumptions.md) |
+| Model choices | Which details can be omitted without losing the intended conclusion, and which omissions limit its scope? | [Runtime choices and scope](model-decisions.md) |
+| Observation abstraction | When can the full remembered private or public runtime view be retained physically but ignored by a preserving policy? | [Observation abstraction](observation-abstraction.md) |
+| Honest producer candidates | What follows from sufficient capacity or simple fee maximization, without modeling a miner economy? | [Two producer models](honest-producer-models.md) |
+| Costs and scope | Which utility changes cancel, which yield approximate rationality, and what do participation and capital assumptions exclude? | [Costs and omissions](costs-and-scope.md) |
+| Auditable fee policy | Can we enforce a public bidding rule without fixing the numerical payment, and which priority and signaling effects remain? | [Fee policies](fee-policy.md) |
 
 [The research workflow](workflow.md) specifies independent tasks, handoffs,
 review obligations and the next mathematical questions.

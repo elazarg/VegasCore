@@ -38,6 +38,38 @@ Some rows describe transport, some describe enforcement, and some describe the
 entire mathematical game. They can be combined only after their actions,
 observations, costs and failure rules have been shown compatible.
 
+## Simplifications and small producer tests
+
+These results clarify model choices without introducing a new adopted runtime.
+The [decision note](model-decisions.md) explains which details can be erased,
+which can be bounded, and which remain outside a theorem's scope.
+
+| Candidate | Model reminder | Result and scope |
+| --- | --- | --- |
+| Full remembered auxiliary observations | Finite chance-only processing; source menus, logical kernels and utilities unchanged at every runtime record. Each player's full auxiliary replay channel is constant across its compatible hidden source histories. | Paper exact forward SE preservation, with retained secrets and correlated private observations. One common consistency sequence; whole adaptive policies covered. No extra submissions, fees, strategic producer or coalition guarantee. [Proof and failures](observation-abstraction.md). |
+| Discounted bounded public waiting | Post-funding additive utility; fixed logical settlement horizon; bounded extra physical wait and terminal fees/financing bills. No new menus, private signals or admission choices. | Paper exact logical-law and consistency preservation, with regret at most twice the uniform utility error. Strict pure all-site margins larger than that error give exact SE. Entry, nonlinear cash utility and raw actions are separate. [Bound and counterexamples](costs-and-scope.md). |
+| Enough block capacity with delivery and finality bounds | Every permitted workload fits; work-conserving blocks have bounded gaps; plaintext reaches all observers within a public bound. | Paper inclusion bound and complete-observation lemma when physical emission cutoff precedes the irreversible decision by enough slack. Restricted single-phase application under its separate assumptions; no general sequence theorem. [Model and limits](honest-producer-models.md#candidate-one-enough-capacity-and-bounded-delivery). |
+| One-slot fee-maximizing production | Independent competing load; fixed-fee independent opening identifiers; bounded but unequal observer delays; restricted scheduled observations and an explicitly collectible terminal audit. | Paper mandatory-opening negative at high late reliability and the stated forfeit/audit thresholds, with actual accepted-call fees. Producers need no collusion. Not a native theorem, unrestricted bidding model or lawful-refusal negative. [Complete interface and proof](honest-producer-models.md#candidate-two-one-opening-slot-and-maximum-fee-revenue). |
+
+Source-independent runtime information can still predict costs or the loss of
+an action. The observation-channel theorem therefore needs execution and utility
+conditions as well as secrecy. Its tests use the full remembered record: two
+individually uninformative packets can jointly disclose a hidden value. A fixed
+cash fee also need not cancel under nonlinear utility over wealth. These are
+complete finite counterexamples in the linked notes, not warnings inferred from
+a hypothetical native attack.
+
+**Auditable public fee policy.** The fixed bid in the producer comparison is a
+restricted assumption, not an implication of auditability. A public bidding
+rule can permit variable actual fees. If every first fee-rule departure has
+authentic persistent evidence and fresh collection probability at least alpha
+under every later policy, additive base rewards in [L,U] and retained total
+fees at most F give the conditional bound K>=(U-L+F)/alpha. This is a paper
+incentive lemma; structural source fidelity, funding and consistent completion
+are additional requirements. It covers included departures, not merely dropped
+packets. Controlled bids can also generate new signaling equilibria even with
+identical inclusion. [Policy, proof and scope](fee-policy.md).
+
 ## A checked boundary for the asynchronous comparison
 
 The settle-late game has a machine-checked uniform-order impossibility. Fix

@@ -26,6 +26,12 @@ any technical notation:
 7. **Proof status and boundary.** Give a proof or counterexample, its independent
    review status, the missing adapters, and the precise relationship to the
    existing runtime.
+8. **Deliberate omissions.** State which aspects are proved irrelevant, bounded
+   as an approximation, or excluded from the game. Identify the consequences
+   for participation, fees and capital, producer incentives, coalitions,
+   external channels, computation, and resource/finality assumptions as relevant.
+   Put material exclusions beside the theorem statement, not solely in a
+   distant model description.
 
 The same vocabulary must accompany a result even if its interface appeared
 earlier. Avoid relying on internal declaration names or unexplained labels
@@ -113,11 +119,10 @@ If a weakening survives, record the broader candidate and the new proof task.
 9. If higher reliability requires larger collateral, do the resulting cost and
    regret errors still vanish? The fixed-bounded-payoff noise theorem cannot
    simply be reused with deposits growing without bound.
-10. Under which primitive bounds does choosing collateral for a known builder
-    preserve SE? Distinguish this from the checked settle-late impossibility
-    when collateral is fixed before the builder. In parallel, test a native
-    embedding of that negative comparison and prove collection/gain bounds for
-    the positive order. Added native actions can change equilibrium existence;
+10. Under which public collection/gain bounds does collateral chosen before
+    the selected builder preserve SE? Treat exact-builder calculations as
+    contrasts. In parallel, test a native embedding of the checked settle-late
+    negative comparison. Added native actions can change equilibrium existence;
     an abstract embedding alone does not preserve a negative conclusion.
 11. State a public miner/service class and distinguish pointwise preservation
     from a common policy and Bayesian hidden-service preservation. Test whether
@@ -125,6 +130,25 @@ If a weakening survives, record the broader candidate and the new proof task.
     standard honest-miner transaction-selection model realizes its mechanics.
     Constants depend only on public properties and precede the selected builder;
     exact-builder calculations are contrasts rather than deployment targets.
+12. Derive the actual retained runtime's full remembered observation channel
+    from its primitive kernels. Test the replay-channel criterion in
+    [observation abstraction](observation-abstraction.md), including correlated
+    private leak samples, receipts and timing while old secrets persist.
+13. Test the [simple producer candidates](honest-producer-models.md) against
+    native menus, sender identifiers, observable arrival times and settlement
+    evidence. Keep their service lemmas separate from a full SE adapter; an
+    enforced physical emission cutoff is not supplied by a logical horizon.
+14. Combine the successful information/action interface with the
+    [bounded-cost comparison](costs-and-scope.md). State whether the output is
+    exact SE under canceling utility costs, approximate sequential rationality,
+    or exact strict-margin preservation. Do not erase fee-dependent information
+    or opportunities as a terminal payoff perturbation.
+15. Establish which [public fee rules](fee-policy.md) can be audited and
+    collected upon, including successful high-priority departures. A canonical
+    bid can depend on public state while the actual payment varies. Account for
+    permitted fee signaling and priority actions; do not infer a fixed-fee action
+    space from fee auditability or lift the producer negative by merely adding
+    a bidding menu.
 
 These tasks are mathematical and parallelizable. Formalization, deployment
 claims and changes to project semantics require separate work.
