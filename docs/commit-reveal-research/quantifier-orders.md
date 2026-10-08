@@ -5,6 +5,14 @@ abstract preservation question. It leaves a different positive question when
 collateral may depend on a known builder. Neither statement alone settles the
 full compiled runtime. This document keeps those scopes separate.
 
+The primary project question chooses collateral before the selected builder,
+using only public service properties. The fixed-builder calculation below is
+a pedagogic contrast. A publicly uniform bound can sometimes turn that
+calculation into a constants-before-builder result for a restricted class;
+the bound itself then requires justification.
+[Miner behavior and player knowledge](miner-assumptions.md) distinguishes this
+uniformity from what players know about the service.
+
 ## The finite game behind the checked negative
 
 Nature gives the sender a bit and an independent, uniformly distributed

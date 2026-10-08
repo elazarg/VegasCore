@@ -51,6 +51,16 @@ It does not cover audit charges at or below half the reward scale, nor does it
 refute choosing collateral after fixing a known service.
 [Exact quantifiers and the remaining positive direction](quantifier-orders.md).
 
+Exact knowledge of the selected service is a separate issue. The current
+fixed-scheduler model evaluates a specified chance process. A new paper
+extension of the negative comparison allows a hidden independently drawn
+inclusion rate, with any finite common prior above the bad threshold, provided
+no pre-inclusion observation reveals that rate. The positive public-bound
+comparison and the restricted public-delay proof also have hidden-service
+versions. None of these adopts a miner model; the common-policy and Bayesian
+preservation questions remain distinct.
+[Player knowledge, miner assumptions and proofs](miner-assumptions.md).
+
 ## Positive statements with their scopes
 
 **Collateral for the known settle-late builder.** Keep the finite comparison's

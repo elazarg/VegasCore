@@ -38,14 +38,18 @@ The compiler, deadlines, fee policy and deposits must be chosen before selecting
 the source equilibrium. A mathematical result must state whether it applies
 to every service obeying the interface or just one constructed service.
 
-The order of choosing collateral and service is a separate question. The
+The primary target chooses collateral before selecting the builder, using
+only the program and public service properties. The
 checked settle-late comparison defeats every fixed forfeit above the reward
 scale and every fixed audit charge above half that scale by choosing sufficiently
 reliable late inclusion. This settles a uniform-order negative for that
 abstract family. Embedding it into the full compiled runtime remains open;
-collateral chosen for a known service is a different preservation question.
+collateral chosen for a fully known service is a pedagogic contrast.
 [Collateral and service quantifiers](quantifier-orders.md) gives the exact
 statement, model reminder and obligations for the two orders.
+[Miner behavior and player knowledge](miner-assumptions.md) distinguishes
+pointwise preservation, a common policy and Bayesian uncertainty about the
+service, and reviews what standard consensus assumptions actually supply.
 
 A finite deposit is not automatically an affordable deposit. Each result
 must state the available capital and whether play begins after funding, or
@@ -105,6 +109,7 @@ small errors in that metric.
 | Preservation and robustness | Which quantifiers and error measures are useful? What does noise preserve, and which exact claims fail? | [Preservation and robustness](preservation-and-robustness.md) |
 | Integration | Which candidates have proofs, which are contrasts, and what assumptions distinguish them? | [Interface and result catalog](catalog.md) |
 | Collateral and service | What fails when collateral is fixed before the builder, and what can hold when it is chosen for a known service? | [Quantifier orders](quantifier-orders.md) |
+| Miner behavior and knowledge | Which service properties are public, what can independent miners choose, and do players know the scheduler law? | [Miner assumptions](miner-assumptions.md) |
 
 [The research workflow](workflow.md) specifies independent tasks, handoffs,
 review obligations and the next mathematical questions.

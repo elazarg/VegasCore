@@ -119,6 +119,12 @@ If a weakening survives, record the broader candidate and the new proof task.
     embedding of that negative comparison and prove collection/gain bounds for
     the positive order. Added native actions can change equilibrium existence;
     an abstract embedding alone does not preserve a negative conclusion.
+11. State a public miner/service class and distinguish pointwise preservation
+    from a common policy and Bayesian hidden-service preservation. Test whether
+    the negative comparison survives unknown inclusion rates and whether a
+    standard honest-miner transaction-selection model realizes its mechanics.
+    Constants depend only on public properties and precede the selected builder;
+    exact-builder calculations are contrasts rather than deployment targets.
 
 These tasks are mathematical and parallelizable. Formalization, deployment
 claims and changes to project semantics require separate work.
