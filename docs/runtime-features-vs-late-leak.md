@@ -330,8 +330,8 @@ If it is at the leaked-success site, deferring to `L1` pays exactly when
 `lambda > (1 - q)(R + 2(D + c))/(qR)`. Hence there is no preserving SE for
 `lambda` in `(10/99, 1)` at `G*`. At `lambda = 1` (complete observation) a
 preserving SE is found, which serves as the positive control. The range
-`lambda <= 10/99` is undecided, and the leak was not combined with the other
-features.
+`lambda <= 10/99` is undecided here; the last section decides it and
+combines the leak with the other features.
 
 ## Parameter points
 
@@ -393,3 +393,145 @@ owner's next opportunity, which makes retries informed. Alternatively, it
 could guarantee that public evidence of any dropped opening reaches every
 later decision maker. A theorem stated for every blind builder with a finite
 deposit cannot hold if the native embedding goes through.
+
+## Combined, with a valid leak rule
+
+The sections above mostly keep the selective leak of G*, which is not a
+stateless observation rule. This section replaces it by a valid rule and puts
+every non-restoring feature into one game. The checks are in
+[`runtime_leak_combined.py`](../scripts/experiments/runtime_leak_combined.py),
+which reuses the engine above (exact fractions, an assert for every claim).
+
+### Configuration
+
+- **Builder.** The settle-late builder T2: one inclusion step for all late
+  packets, after the sender's last late activation. Between L1 and L2 the
+  builder activates the listener k times; these activations are
+  observe-only, because the listener's answer event is not ready. The
+  schedule is fixed and blind to late packets, and non-owner packets are
+  never included for the sender's event. The script checks the erasure
+  identity and the inclusion laws q and 2q/(1+q) with up to three listener
+  packets.
+- **Leak rule.** At every activation of a player, each pending opening of
+  the sender is seen independently with probability lambda; every other
+  pending packet is seen surely (the sender's raw signals by the listener,
+  the listener's packets by the sender). The rule depends only on the
+  observer and the pending pool. A dropped opening stays pending, so the
+  listener may also see it when it answers. A pending L1 opening is
+  therefore seen before L2 with probability alpha = 1 - (1 - lambda)^k;
+  after a dropped L1 opening v is known with probability
+  a = alpha + (1 - alpha) lambda, after a dropped L2 opening with
+  probability lambda.
+- **Features, all at once.** The blind retry (a second opening at L2); raw
+  signals at P, at L1 (also after a protected opening) and at L2, under the
+  capped escrow, so a signal after a certain charge is free; the listener's
+  raw packets at each observe-only activation (cost c_L, visible to the
+  sender at L2); the contract's activation and readiness constraints.
+- **Ledger.** The ledger shows the serial of the included opening, so a
+  signal sent before an opening is visible after a success even under a rule
+  that hides signals.
+
+### The extended argument
+
+The certificate has five premises, all checked by the script.
+
+1. Every extra option at every sender information set after a silent
+   deferral is strictly worse than a fixed core continuation, at every
+   member of the set, for every listener behaviour. The retry shares answer
+   sites with waiting, so it is compared by the exact coupled minimum, which
+   is affine across sites.
+2. Opening at L2 beats never opening.
+3. The L1-minus-L2 gap has the G* form, as a polynomial identity in the
+   listener's whole behaviour (mid packets included, free simplex
+   coordinates). C's gap is minus the mean of A's and B's, and the
+   e-coefficients are kappa_1 = K(1 - theta) and kappa_0 = K theta with
+   K = (1 - q) alpha (1 - lambda) R, where theta is the averaged f1
+   probability at the uninformative failure.
+4. Every path of every type to a success site where the L1 opening was seen
+   before L2 passes the silent deferral and the L1 opening; these sites are
+   disjoint from the L2 success sites; the listener's sites record its own
+   history. Message factors therefore cancel in belief ratios, and the cross
+   ratio puts, for a class at once, either all L1-seen success sites or all
+   L2 success sites on a face. Random type- and node-dependent tilts
+   illustrate the dichotomy.
+5. A face at the L2 success sites lets (v, A) defer profitably (the G*
+   hypothesis). A face at the L1-seen success sites makes the listener
+   guess there.
+
+The listener's best escape is a choice of theta. A class with kappa_v > 0
+needs a face; a class with kappa_v = 0 escapes only with all answers m. The
+deviating type, the better of A and B in a face class, then has failure
+weight at least W* = min(max(a, 1 - a), a + (1 - a)/2). No SE has the
+intended outcome iff the escape value
+
+q(alpha R + (1 - alpha) R/2) + (1 - q) R W* - (1 - q)(D + c)
+
+exceeds R/2. At or below R/2 the script builds the escape explicitly (face
+at S1s with a guess, uniform Sm beliefs by deferral tilts, theta 0 or 1/2
+with the class-1 types scaled by 11/9 so that the mixed failure answer is a
+best reply) and verifies it by the full Kreps-Wilson check in the combined
+game.
+
+### Verdicts at G*'s margins
+
+At R = 2, D = 6, c = 3, q = 99/100 with lambda = 1/2 and k = 1, no SE has
+the intended outcome: the escape value is 141/100 > 1, and the extras are
+dominated above R/2 + (1 - q)(1 - lambda)R/q = 100/99 (signals) and 157/199
+(blind retry). The same holds at every grid point with c = 3, 6 or 12
+(q from 99/100 to 9999/10000).
+
+**The leak window is closed both ways.** With k = 1 the boundary is the root
+of (1 - q) lambda^2 - (2 - q) lambda + 2(1 - q)(D + c)/R = 0, about 0.0892
+at G*. A preserving SE is constructed and verified at lambda = 1/20 and
+89/1000; the certificate applies at 9/100 and 1/10. More observe-only
+activations restore the obstruction for every lambda < 1: at lambda = 1/20,
+k = 2 and k = 3 give no SE; at lambda = 1/100 the threshold is k = 10
+(checked by the tree without listener packets), at lambda = 1/1000 it is
+k = 95 by the closed form. The deterministic rule (lambda = 1) is complete
+observation, and a preserving SE is verified there.
+
+**The signal window is mostly an SE region.** In the signal escape nobody
+opens at L1: type (1, A) (and for theta = 1/2 also (0, B)) signals at L1 and
+opens at L2, the listener guesses at the signal site and plays m at every
+core site, with tilts making those beliefs interior. It works for
+R/2 - (1 - q)D <= c <= R/2 + (1 - q)(1 - lambda)(1 - alpha)R/q and is
+verified at c = 1, 501/500 and 201/200 (D = 6, q = 99/100), and at c = 1 with
+q = 999/1000 and D = 6 or 60. Between that bound (199/198) and the signal
+threshold (100/99) the question is undecided.
+
+**The retry window.** The double send supports a pooling SE at c = 1/100
+(q = 99/100) and at c = 0 (q = 999/1000). Between that and R/2 - (1 - q)D
+neither the certificate nor a construction applies; this range is
+undecided.
+
+### Margins fixed first, builder chosen afterwards
+
+The deposit, hence the forfeit D and the charge c, is fixed before the
+builder. Take the builder family T2, lambda = 1/2, k = 1, with the inclusion
+probability q chosen after the margins. As q tends to 1, the signal
+threshold R/2 + (1 - q)(1 - lambda)R/q tends to R/2; the retry threshold
+tends to 3R/8 (computed: 0.7503 at q = 9999/10000 for D = 3 and 6, 0.7801
+for D = 600); the two G* hypotheses hold for q near 1 whenever D > R and
+c >= 0 (as in the mechanized theorem for every margin); and the escape value
+tends to R/2 + alpha R/2 > R/2. Hence **for every fixed D > R and c > R/2,
+some admissible builder in this family has no SE preserving the intended
+outcome.** The script certifies this at q between 99/100 and 9999/10000 for
+(D, c) in {(3, 11/10), (3, 3), (6, 3), (60, 2), (60, 30), (600, 101/100),
+(21/10, 1001/1000)}.
+
+For c <= R/2 the family gives no counterexample at the tested points: at
+c = R/2 the signal escape is a verified SE for q = 999/1000, and near c = 0
+the retry pooling is. Whether some other builder defeats a charge in
+(0, R/2] is open. The obstruction needs the charge to exceed what a signal
+can buy, R/2, because the ledger's serial carries a signal to every success
+site.
+
+### Limits
+
+These are finite comparison games, not Lean theorems. The face dichotomy
+(sampled, not enumerated), the escape-weight case analysis over theta, and
+the claim that the retry and signal thresholds stay below c along q -> 1
+(the retry limit 3R/8 is computed, not derived in closed form) are paper
+arguments whose premises the script asserts. Malformed or wrong-event
+packets, aliases, several listeners, and a native embedding into the
+compiled source program are not modeled.
