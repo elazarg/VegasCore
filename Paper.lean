@@ -965,28 +965,92 @@ its sequential equilibria have the intended outcome law, in which every type
 opens at the protected turn and the listener answers safely; and no sequential
 equilibrium of the late-turn game has that law. -/
 theorem late_leak_intended_outcome_not_preserved :
-    (∃ A : (lateLeakModel false).BehavioralAssessment,
-      A.IsSequentialEquilibrium (lateLeak_antichain false) (lateLeak_terminates false)
-        (lateLeakPayoff false)) ∧
-    (∀ A : (lateLeakModel false).BehavioralAssessment,
-      A.IsSequentialEquilibrium (lateLeak_antichain false) (lateLeak_terminates false)
-          (lateLeakPayoff false) →
-        lateLeakOutcomeLaw false A.strategy = lateLeakIntendedOutcome) ∧
-    ∀ A : (lateLeakModel true).BehavioralAssessment,
-      A.IsSequentialEquilibrium (lateLeak_antichain true) (lateLeak_terminates true)
-          (lateLeakPayoff true) →
-        lateLeakOutcomeLaw true A.strategy ≠ lateLeakIntendedOutcome :=
-  lateLeak_intended_outcome_not_preserved
+    (∃ A : (lateLeakModel .sample false).BehavioralAssessment,
+      A.IsSequentialEquilibrium (lateLeak_antichain .sample false)
+        (lateLeak_terminates .sample false) (lateLeakPayoff .sample false)) ∧
+    (∀ A : (lateLeakModel .sample false).BehavioralAssessment,
+      A.IsSequentialEquilibrium (lateLeak_antichain .sample false)
+          (lateLeak_terminates .sample false) (lateLeakPayoff .sample false) →
+        lateLeakOutcomeLaw .sample false A.strategy = lateLeakIntendedOutcome) ∧
+    ∀ A : (lateLeakModel .sample true).BehavioralAssessment,
+      A.IsSequentialEquilibrium (lateLeak_antichain .sample true)
+          (lateLeak_terminates .sample true) (lateLeakPayoff .sample true) →
+        lateLeakOutcomeLaw .sample true A.strategy ≠ lateLeakIntendedOutcome :=
+  lateLeak_intended_outcome_not_preserved _ LateLeakParameters.sample_deferralPays
 
 /-- info: 'Vegas.Paper.late_leak_intended_outcome_not_preserved' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.late_leak_intended_outcome_not_preserved
 
+/-- **Late-sending margins that break preservation.** For every reward scale
+`R`, forfeit `D`, drop charge `c` and inclusion probability `q` in `(0, 1)` of
+the late-turn game with the prior and listener payoffs above, if `R > 0`,
+sending at the last late turn strictly beats never sending
+(`q (D - R) > (1 - q) c`) and the full guess reward beats the safe answer at
+the protected turn (`q R - (1 - q) (D + c) > R/2`), then the intended game has
+a sequential equilibrium, all its sequential equilibria have the intended
+outcome law, and no sequential equilibrium of the late-turn game has that
+law. -/
+theorem late_leak_not_preserved_when_deferral_pays (G : LateLeakParameters)
+    (pays : G.DeferralPays) :
+    (∃ A : (lateLeakModel G false).BehavioralAssessment,
+      A.IsSequentialEquilibrium (lateLeak_antichain G false) (lateLeak_terminates G false)
+        (lateLeakPayoff G false)) ∧
+    (∀ A : (lateLeakModel G false).BehavioralAssessment,
+      A.IsSequentialEquilibrium (lateLeak_antichain G false) (lateLeak_terminates G false)
+          (lateLeakPayoff G false) →
+        lateLeakOutcomeLaw G false A.strategy = lateLeakIntendedOutcome) ∧
+    ∀ A : (lateLeakModel G true).BehavioralAssessment,
+      A.IsSequentialEquilibrium (lateLeak_antichain G true) (lateLeak_terminates G true)
+          (lateLeakPayoff G true) →
+        lateLeakOutcomeLaw G true A.strategy ≠ lateLeakIntendedOutcome :=
+  lateLeak_intended_outcome_not_preserved G pays
+
+/-- info: 'Vegas.Paper.late_leak_not_preserved_when_deferral_pays' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.late_leak_not_preserved_when_deferral_pays
+
 /-- info: 'Vegas.lateLeak_intended_outcome_not_preserved' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.lateLeak_intended_outcome_not_preserved
+
+/-- **No forfeit or drop-charge margin restores preservation.** For every
+reward scale `R > 0`, forfeit `D > R` and drop charge `c ≥ 0`, the explicit
+inclusion threshold `max (c / (D - R + c)) ((D + c + R/2) / (D + c + R))` is
+below one, and for every inclusion probability `q` in `(0, 1)` above it, the
+late-turn game with parameters `R`, `D`, `c` and `q` loses the intended
+outcome: the intended game has a sequential equilibrium, all its sequential
+equilibria have the intended outcome law, and no sequential equilibrium of the
+late-turn game has that law. -/
+theorem late_leak_not_preserved_for_every_margin (R D c : ℝ) (reward_pos : 0 < R)
+    (margin : R < D) (charge : 0 ≤ c) :
+    lateLeakInclusionThreshold R D c < 1 ∧
+    ∀ q : Set.Ioo (0 : ℝ) 1, lateLeakInclusionThreshold R D c < q →
+      (∃ A : (lateLeakModel ⟨R, D, c, q⟩ false).BehavioralAssessment,
+        A.IsSequentialEquilibrium (lateLeak_antichain ⟨R, D, c, q⟩ false)
+          (lateLeak_terminates ⟨R, D, c, q⟩ false) (lateLeakPayoff ⟨R, D, c, q⟩ false)) ∧
+      (∀ A : (lateLeakModel ⟨R, D, c, q⟩ false).BehavioralAssessment,
+        A.IsSequentialEquilibrium (lateLeak_antichain ⟨R, D, c, q⟩ false)
+            (lateLeak_terminates ⟨R, D, c, q⟩ false) (lateLeakPayoff ⟨R, D, c, q⟩ false) →
+          lateLeakOutcomeLaw ⟨R, D, c, q⟩ false A.strategy = lateLeakIntendedOutcome) ∧
+      ∀ A : (lateLeakModel ⟨R, D, c, q⟩ true).BehavioralAssessment,
+        A.IsSequentialEquilibrium (lateLeak_antichain ⟨R, D, c, q⟩ true)
+            (lateLeak_terminates ⟨R, D, c, q⟩ true) (lateLeakPayoff ⟨R, D, c, q⟩ true) →
+          lateLeakOutcomeLaw ⟨R, D, c, q⟩ true A.strategy ≠ lateLeakIntendedOutcome :=
+  lateLeak_not_preserved_for_every_margin R D c reward_pos margin charge
+
+/-- info: 'Vegas.Paper.late_leak_not_preserved_for_every_margin' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.late_leak_not_preserved_for_every_margin
+
+/-- info: 'Vegas.lateLeak_not_preserved_for_every_margin' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.lateLeak_not_preserved_for_every_margin
 
 end Vegas.Paper
 

@@ -6,19 +6,24 @@ import Vegas.Examples.LateLeak.Consistency
 
 Suppose a sequential equilibrium of the late-turn game has the intended
 outcome: every type opens at the protected turn and the listener answers
-safely.
+safely. Each step uses only part of the hypothesis that deferring pays.
 
 * Every answer after a success acts on the sender along one direction, so the
   sender's late-turn values depend on the listener only through its safe
-  probabilities and its bit guesses after failures.
+  probabilities and its bit guesses after failures. This holds for all
+  parameters.
+* When `q (D - R) > (1 - q) c` and `R ≥ 0`, sending at the second late turn
+  strictly beats never sending.
 * Whatever the listener answers after an unseen failure, the leak after a
   first-turn failure separates labels `A` and `B` in some class of the
   committed bit, so two types of that class strictly prefer opposite late
-  turns, for every choice of the listener's answers after successes.
+  turns, for every choice of the listener's answers after successes. This
+  needs `R > 0` and `q < 1`.
 * Kreps-Wilson consistency then forces a belief leaving out one label at one
-  of the two inclusion sets of that class.
-* There the listener guesses, and type `(v, A)` gains `189/100 > 1` by
-  deferring to that turn, contradicting rationality at the protected turn.
+  of the two inclusion sets of that class, for every inclusion probability.
+* There the listener guesses, and type `(v, A)` gets at least
+  `q R - (1 - q) (D + c)` by deferring to that turn. When this exceeds `R/2`,
+  its value at the protected turn, deferring contradicts rationality there.
 -/
 
 noncomputable section
@@ -27,22 +32,24 @@ namespace Vegas
 
 open GameTheory GameTheory.Protocol GameTheory.Math.Probability
 
-variable {late : Bool}
+variable {G : LateLeakParameters} {late : Bool}
 
 /-! ## Outcome laws -/
 
 /-- The law of the final state of play from the initial state. -/
-def lateLeakOutcomeLaw (late : Bool) (profile : LateLeakProfile late) : PMF LateLeakState :=
-  ((lateLeakModel late).runBehavioralTerminalFrom (lateLeak_terminates late) profile
-    (lateLeakExecution late).initHistory).map ExecutionProtocol.History.state
+def lateLeakOutcomeLaw (G : LateLeakParameters) (late : Bool)
+    (profile : LateLeakProfile G late) : PMF LateLeakState :=
+  ((lateLeakModel G late).runBehavioralTerminalFrom (lateLeak_terminates G late) profile
+    (lateLeakExecution G late).initHistory).map ExecutionProtocol.History.state
 
 /-- The intended outcome: every type opens at the protected turn and the
 listener gives the safe answer. -/
 def lateLeakIntendedOutcome : PMF LateLeakState :=
   lateLeakPrior.map fun secret => .finished secret .protectedOpen .safe
 
-theorem lateLeakOutcomeLaw_eq (late : Bool) (profile : LateLeakProfile late) :
-    lateLeakOutcomeLaw late profile = (lateLeakFlow profile)^[5] (PMF.pure .initial) :=
+theorem lateLeakOutcomeLaw_eq (G : LateLeakParameters) (late : Bool)
+    (profile : LateLeakProfile G late) :
+    lateLeakOutcomeLaw G late profile = (lateLeakFlow profile)^[5] (PMF.pure .initial) :=
   lateLeak_terminal_map_state _ profile _
 
 theorem lateLeakIntendedOutcome_apply (secret : LateLeakType) :
@@ -53,16 +60,16 @@ theorem lateLeakIntendedOutcome_apply (secret : LateLeakType) :
 
 /-- The outcome law's mass on a type opening at the protected turn and the
 listener answering safely. -/
-theorem lateLeakOutcomeLaw_protected_safe (profile : LateLeakProfile late)
+theorem lateLeakOutcomeLaw_protected_safe (profile : LateLeakProfile G late)
     (secret : LateLeakType) :
-    (lateLeakOutcomeLaw late profile (.finished secret .protectedOpen .safe)).toReal =
+    (lateLeakOutcomeLaw G late profile (.finished secret .protectedOpen .safe)).toReal =
       (lateLeakPrior secret).toReal *
         (lateLeakOpenProb profile (.protectedTurn secret) *
           lateLeakSafeProb profile (.protectedSuccess secret.1)) := by
   classical
   let target : LateLeakState := .finished secret .protectedOpen .safe
   let indicator : LateLeakState → ℝ := fun state => if target = state then 1 else 0
-  have read : (lateLeakOutcomeLaw late profile target).toReal =
+  have read : (lateLeakOutcomeLaw G late profile target).toReal =
       lateLeakValue profile indicator (0 + 5) .initial := by
     rw [lateLeakValue, ← lateLeakOutcomeLaw_eq, expect_ite_eq, mul_one]
   have answer (other : LateLeakType) (resolution : LateLeakResolution) :
@@ -105,8 +112,8 @@ theorem lateLeakOutcomeLaw_protected_safe (profile : LateLeakProfile late)
 
 /-- An outcome law equal to the intended one forces opening at the protected
 turn and the safe answer there. -/
-theorem lateLeak_intended_law_forces (profile : LateLeakProfile late)
-    (same : lateLeakOutcomeLaw late profile = lateLeakIntendedOutcome) (secret : LateLeakType) :
+theorem lateLeak_intended_law_forces (profile : LateLeakProfile G late)
+    (same : lateLeakOutcomeLaw G late profile = lateLeakIntendedOutcome) (secret : LateLeakType) :
     lateLeakOpenProb profile (.protectedTurn secret) = 1 ∧
       lateLeakSafeProb profile (.protectedSuccess secret.1) = 1 := by
   have mass := lateLeakOutcomeLaw_protected_safe profile secret
@@ -126,116 +133,158 @@ theorem lateLeak_intended_law_forces (profile : LateLeakProfile late)
 
 /-! ## Opposite preferences -/
 
-theorem lateLeak_first_send_value (profile : LateLeakProfile late) (secret : LateLeakType) :
-    lateLeakSendValue profile (lateLeakStatePayoff .sender) secret .firstIncluded .firstDropped =
-      99 / 100 * (lateLeakSafeProb profile (.firstSuccess secret.1) +
-          (1 - lateLeakSafeProb profile (.firstSuccess secret.1)) * lateLeakGuessGain secret.2) +
-        1 / 100 * (lateLeakBitOneProb profile (.leakedFailure secret.1) *
-            lateLeakBitOneGain secret.2 +
-          (1 - lateLeakBitOneProb profile (.leakedFailure secret.1)) *
-            lateLeakBitZeroGain secret.2 - 9) := by
+theorem lateLeak_first_send_value (profile : LateLeakProfile G late) (secret : LateLeakType) :
+    lateLeakSendValue profile (lateLeakStatePayoff G .sender) secret .firstIncluded .firstDropped =
+      lateLeakInclusionProb G *
+          (lateLeakSafeProb profile (.firstSuccess secret.1) * (G.reward / 2) +
+            (1 - lateLeakSafeProb profile (.firstSuccess secret.1)) *
+              lateLeakGuessGain G secret.2) +
+        (1 - lateLeakInclusionProb G) *
+          (lateLeakBitOneProb profile (.leakedFailure secret.1) * lateLeakBitOneGain G secret.2 +
+            (1 - lateLeakBitOneProb profile (.leakedFailure secret.1)) *
+              lateLeakBitZeroGain G secret.2 - G.forfeit - G.dropCharge) := by
   rw [lateLeakSendValue, lateLeak_sender_success_value profile secret .firstIncluded rfl,
     lateLeak_sender_failure_value profile secret .firstDropped rfl]
-  simp only [lateLeakSignal, LateLeakResolution.droppedLate, ite_true, lateLeakInclusionProb]
-  ring
+  simp only [lateLeakSignal, LateLeakResolution.droppedLate, ite_true]
 
-theorem lateLeak_second_send_value (profile : LateLeakProfile late) (secret : LateLeakType) :
-    lateLeakSendValue profile (lateLeakStatePayoff .sender) secret .secondIncluded
+theorem lateLeak_second_send_value (profile : LateLeakProfile G late) (secret : LateLeakType) :
+    lateLeakSendValue profile (lateLeakStatePayoff G .sender) secret .secondIncluded
         .secondDropped =
-      99 / 100 * (lateLeakSafeProb profile (.secondSuccess secret.1) +
-          (1 - lateLeakSafeProb profile (.secondSuccess secret.1)) * lateLeakGuessGain secret.2) +
-        1 / 100 * (lateLeakBitOneProb profile .silentFailure * lateLeakBitOneGain secret.2 +
-          (1 - lateLeakBitOneProb profile .silentFailure) * lateLeakBitZeroGain secret.2 - 9) := by
+      lateLeakInclusionProb G *
+          (lateLeakSafeProb profile (.secondSuccess secret.1) * (G.reward / 2) +
+            (1 - lateLeakSafeProb profile (.secondSuccess secret.1)) *
+              lateLeakGuessGain G secret.2) +
+        (1 - lateLeakInclusionProb G) *
+          (lateLeakBitOneProb profile .silentFailure * lateLeakBitOneGain G secret.2 +
+            (1 - lateLeakBitOneProb profile .silentFailure) * lateLeakBitZeroGain G secret.2 -
+              G.forfeit - G.dropCharge) := by
   rw [lateLeakSendValue, lateLeak_sender_success_value profile secret .secondIncluded rfl,
     lateLeak_sender_failure_value profile secret .secondDropped rfl]
-  simp only [lateLeakSignal, LateLeakResolution.droppedLate, ite_true, lateLeakInclusionProb]
-  ring
+  simp only [lateLeakSignal, LateLeakResolution.droppedLate, ite_true]
+
+/-- A label's preference for the first late turn over the second, given the
+pull `pull` of the listener's answers after the two inclusions and the pull
+`leak` of what the leak changes after a failure: labels `A` and `B` move
+together under `pull` and apart under `leak`, and label `C` moves against
+`pull`. -/
+private def labelPreference (pull leak : ℝ) : LateLeakLabel → ℝ
+  | .a => pull + leak
+  | .b => pull - leak
+  | .c => -pull
+
+/-- A nonzero leak pull gives one label a strict preference for the first late
+turn and another a strict preference for the second, whatever the other
+pull. -/
+private theorem opposite_labels (pull leak : ℝ) (separates : leak ≠ 0) :
+    ∃ sender holder, 0 < labelPreference pull leak sender ∧
+      labelPreference pull leak holder < 0 := by
+  rcases lt_or_gt_of_ne separates with negative | positive
+  · rcases lt_trichotomy pull 0 with below | zero | above
+    · exact ⟨.c, .a, by simp only [labelPreference]; linarith,
+        by simp only [labelPreference]; linarith⟩
+    · exact ⟨.b, .a, by simp only [labelPreference]; linarith,
+        by simp only [labelPreference]; linarith⟩
+    · exact ⟨.b, .c, by simp only [labelPreference]; linarith,
+        by simp only [labelPreference]; linarith⟩
+  · rcases lt_trichotomy pull 0 with below | zero | above
+    · exact ⟨.c, .b, by simp only [labelPreference]; linarith,
+        by simp only [labelPreference]; linarith⟩
+    · exact ⟨.a, .b, by simp only [labelPreference]; linarith,
+        by simp only [labelPreference]; linarith⟩
+    · exact ⟨.a, .c, by simp only [labelPreference]; linarith,
+        by simp only [labelPreference]; linarith⟩
+
+/-- Every answer after a success acts on the sender along one direction, so a
+type's preference for the first late turn over the second is its label's
+preference under one pull from the listener's safe answers and one from the
+leak. -/
+private theorem send_preference (profile : LateLeakProfile G late) (secret : LateLeakType) :
+    lateLeakSendValue profile (lateLeakStatePayoff G .sender) secret .firstIncluded
+        .firstDropped -
+      lateLeakSendValue profile (lateLeakStatePayoff G .sender) secret .secondIncluded
+        .secondDropped =
+      labelPreference
+        (lateLeakInclusionProb G * (lateLeakSafeProb profile (.secondSuccess secret.1) -
+          lateLeakSafeProb profile (.firstSuccess secret.1)) * (G.reward / 2))
+        ((1 - lateLeakInclusionProb G) * (lateLeakBitOneProb profile (.leakedFailure secret.1) -
+          lateLeakBitOneProb profile .silentFailure) * G.reward) secret.2 := by
+  rw [lateLeak_first_send_value, lateLeak_second_send_value]
+  obtain ⟨bit, label⟩ := secret
+  cases label <;>
+    simp only [labelPreference, lateLeakGuessGain, lateLeakBitOneGain, lateLeakBitZeroGain,
+      ite_true, ite_false, reduceCtorEq] <;>
+    ring
 
 /-- **Opposite strict preferences.** In every sequentially rational assessment
-two types of one class strictly prefer opposite late turns. -/
-theorem lateLeak_opposite_preferences {A : (lateLeakModel true).BehavioralAssessment}
-    (rational : A.IsSequentiallyRational (lateLeak_terminates true) (lateLeakPayoff true)) :
+two types of one class strictly prefer opposite late turns, when the reward
+scale is positive. -/
+theorem lateLeak_opposite_preferences (reward_pos : 0 < G.reward)
+    {A : (lateLeakModel G true).BehavioralAssessment}
+    (rational : A.IsSequentiallyRational (lateLeak_terminates G true) (lateLeakPayoff G true)) :
     ∃ bit sender holder,
-      lateLeakSendValue A.strategy (lateLeakStatePayoff .sender) (bit, sender) .secondIncluded
+      lateLeakSendValue A.strategy (lateLeakStatePayoff G .sender) (bit, sender) .secondIncluded
           .secondDropped <
-        lateLeakSendValue A.strategy (lateLeakStatePayoff .sender) (bit, sender) .firstIncluded
+        lateLeakSendValue A.strategy (lateLeakStatePayoff G .sender) (bit, sender) .firstIncluded
           .firstDropped ∧
-      lateLeakSendValue A.strategy (lateLeakStatePayoff .sender) (bit, holder) .firstIncluded
+      lateLeakSendValue A.strategy (lateLeakStatePayoff G .sender) (bit, holder) .firstIncluded
           .firstDropped <
-        lateLeakSendValue A.strategy (lateLeakStatePayoff .sender) (bit, holder) .secondIncluded
+        lateLeakSendValue A.strategy (lateLeakStatePayoff G .sender) (bit, holder) .secondIncluded
           .secondDropped := by
-  simp only [lateLeak_first_send_value, lateLeak_second_send_value]
-  have θ0 := lateLeakBitOneProb_nonneg A.strategy .silentFailure
-  have θ1 := lateLeakBitOneProb_le_one A.strategy .silentFailure
-  by_cases unsure : lateLeakBitOneProb A.strategy .silentFailure < 1
-  · have leaked := lateLeak_rational_leaked_failure rational (lateLeakLeakedFailureSite true)
-      true rfl
-    have f0 := lateLeakSafeProb_nonneg A.strategy (.firstSuccess true)
-    have f1 := lateLeakSafeProb_le_one A.strategy (.firstSuccess true)
-    have s0 := lateLeakSafeProb_nonneg A.strategy (.secondSuccess true)
-    have s1 := lateLeakSafeProb_le_one A.strategy (.secondSuccess true)
-    by_cases low : 99 / 100 * (lateLeakSafeProb A.strategy (.secondSuccess true) -
-        lateLeakSafeProb A.strategy (.firstSuccess true)) +
-        1 / 50 * (1 - lateLeakBitOneProb A.strategy .silentFailure) ≤ 0
-    · refine ⟨true, .c, .b, ?_, ?_⟩ <;>
-        norm_num [leaked, lateLeakGuessGain, lateLeakBitOneGain, lateLeakBitZeroGain] <;>
-        linarith
-    by_cases high : 0 ≤ 99 / 100 * (lateLeakSafeProb A.strategy (.secondSuccess true) -
-        lateLeakSafeProb A.strategy (.firstSuccess true)) -
-        1 / 50 * (1 - lateLeakBitOneProb A.strategy .silentFailure)
-    · refine ⟨true, .a, .c, ?_, ?_⟩ <;>
-        norm_num [leaked, lateLeakGuessGain, lateLeakBitOneGain, lateLeakBitZeroGain] <;>
-        linarith
-    · refine ⟨true, .a, .b, ?_, ?_⟩ <;>
-        norm_num [leaked, lateLeakGuessGain, lateLeakBitOneGain, lateLeakBitZeroGain] <;>
-        linarith
-  · have sure : lateLeakBitOneProb A.strategy .silentFailure = 1 := by linarith
-    have leaked := lateLeak_rational_leaked_failure rational (lateLeakLeakedFailureSite false)
-      false rfl
-    have f0 := lateLeakSafeProb_nonneg A.strategy (.firstSuccess false)
-    have f1 := lateLeakSafeProb_le_one A.strategy (.firstSuccess false)
-    have s0 := lateLeakSafeProb_nonneg A.strategy (.secondSuccess false)
-    have s1 := lateLeakSafeProb_le_one A.strategy (.secondSuccess false)
-    by_cases low : 99 / 100 * (lateLeakSafeProb A.strategy (.secondSuccess false) -
-        lateLeakSafeProb A.strategy (.firstSuccess false)) + 1 / 50 ≤ 0
-    · refine ⟨false, .c, .a, ?_, ?_⟩ <;>
-        norm_num [leaked, sure, lateLeakGuessGain, lateLeakBitOneGain, lateLeakBitZeroGain] <;>
-        linarith
-    by_cases high : 0 ≤ 99 / 100 * (lateLeakSafeProb A.strategy (.secondSuccess false) -
-        lateLeakSafeProb A.strategy (.firstSuccess false)) - 1 / 50
-    · refine ⟨false, .b, .c, ?_, ?_⟩ <;>
-        norm_num [leaked, sure, lateLeakGuessGain, lateLeakBitOneGain, lateLeakBitZeroGain] <;>
-        linarith
-    · refine ⟨false, .b, .a, ?_, ?_⟩ <;>
-        norm_num [leaked, sure, lateLeakGuessGain, lateLeakBitOneGain, lateLeakBitZeroGain] <;>
-        linarith
+  have dropped : (1 - lateLeakInclusionProb G) ≠ 0 :=
+    (sub_pos.mpr (lateLeakInclusionProb_lt_one G)).ne'
+  obtain ⟨bit, separates⟩ : ∃ bit, (1 - lateLeakInclusionProb G) *
+      (lateLeakBitOneProb A.strategy (.leakedFailure bit) -
+        lateLeakBitOneProb A.strategy .silentFailure) * G.reward ≠ 0 := by
+    by_cases sure : lateLeakBitOneProb A.strategy .silentFailure = 1
+    · refine ⟨false, ?_⟩
+      rw [lateLeak_rational_leaked_failure rational (lateLeakLeakedFailureSite G false) false rfl,
+        sure]
+      exact mul_ne_zero (mul_ne_zero dropped (by norm_num)) reward_pos.ne'
+    · refine ⟨true, ?_⟩
+      rw [lateLeak_rational_leaked_failure rational (lateLeakLeakedFailureSite G true) true rfl]
+      simp only [↓reduceIte]
+      exact mul_ne_zero (mul_ne_zero dropped (sub_ne_zero.mpr (Ne.symm sure))) reward_pos.ne'
+  obtain ⟨sender, holder, prefers, avoids⟩ := opposite_labels _ _ separates
+  refine ⟨bit, sender, holder, ?_, ?_⟩
+  · have identity := send_preference A.strategy (bit, sender)
+    linarith
+  · have identity := send_preference A.strategy (bit, holder)
+    linarith
 
 /-! ## Deferring after a guessing listener -/
 
-private theorem deferred_gain (profile : LateLeakProfile late) (bit : Bool)
-    (failure : LateLeakSignal) :
-    1 < 99 / 100 * (0 + (1 - 0) * lateLeakGuessGain (bit, LateLeakLabel.a).2) +
-      1 / 100 * (lateLeakBitOneProb profile failure * lateLeakBitOneGain (bit, LateLeakLabel.a).2 +
-        (1 - lateLeakBitOneProb profile failure) * lateLeakBitZeroGain (bit, LateLeakLabel.a).2 -
-          9) := by
-  have b0 := lateLeakBitOneProb_nonneg profile failure
-  have b1 := lateLeakBitOneProb_le_one profile failure
-  norm_num [lateLeakGuessGain, lateLeakBitOneGain, lateLeakBitZeroGain]
-  linarith
-
 /-- The value of the protected turn when its type opens there. -/
-private theorem protected_value_of_open (profile : LateLeakProfile late) (secret : LateLeakType)
+private theorem protected_value_of_open (profile : LateLeakProfile G late) (secret : LateLeakType)
     (opens : lateLeakOpenProb profile (.protectedTurn secret) = 1) :
-    lateLeakProtectedValue profile (lateLeakStatePayoff .sender) secret =
-      lateLeakAnswerValue profile (lateLeakStatePayoff .sender) secret .protectedOpen := by
+    lateLeakProtectedValue profile (lateLeakStatePayoff G .sender) secret =
+      lateLeakAnswerValue profile (lateLeakStatePayoff G .sender) secret .protectedOpen := by
   rw [lateLeakProtectedValue, opens]
   ring
 
+/-- If the listener guesses after a late inclusion of a type `(v, A)` that
+opens at the protected turn, and the safe answer follows its protected
+opening, deferring to that late turn pays when `q R - (1 - q) (D + c) > R/2`. -/
+private theorem deferral_pays (pays : G.DeferralPays) (profile : LateLeakProfile G late)
+    (bit : Bool) (failure : LateLeakSignal)
+    (safe : lateLeakSafeProb profile (.protectedSuccess bit) = 1) :
+    lateLeakSafeProb profile (.protectedSuccess bit) * (G.reward / 2) +
+        (1 - lateLeakSafeProb profile (.protectedSuccess bit)) * G.reward <
+      lateLeakInclusionProb G * G.reward +
+        (1 - lateLeakInclusionProb G) *
+          (lateLeakBitOneProb profile failure * G.reward - G.forfeit - G.dropCharge) := by
+  rw [safe]
+  have leak : 0 ≤ (1 - lateLeakInclusionProb G) * (lateLeakBitOneProb profile failure * G.reward) :=
+    mul_nonneg (sub_nonneg.mpr (lateLeakInclusionProb_lt_one G).le)
+      (mul_nonneg (lateLeakBitOneProb_nonneg profile failure) pays.reward_pos.le)
+  have margin := pays.guess_beats_safe
+  nlinarith
+
 /-- If the listener guesses after a first-turn inclusion, type `(v, A)` gains
 by deferring to the first late turn. -/
-theorem lateLeak_defer_first {A : (lateLeakModel true).BehavioralAssessment}
-    (rational : A.IsSequentiallyRational (lateLeak_terminates true) (lateLeakPayoff true))
-    (same : lateLeakOutcomeLaw true A.strategy = lateLeakIntendedOutcome) (bit : Bool)
+theorem lateLeak_defer_first (pays : G.DeferralPays)
+    {A : (lateLeakModel G true).BehavioralAssessment}
+    (rational : A.IsSequentiallyRational (lateLeak_terminates G true) (lateLeakPayoff G true))
+    (same : lateLeakOutcomeLaw G true A.strategy = lateLeakIntendedOutcome) (bit : Bool)
     (guessing : lateLeakSafeProb A.strategy (.firstSuccess bit) = 0) : False := by
   let secret : LateLeakType := (bit, .a)
   obtain ⟨opens, safe⟩ := lateLeak_intended_law_forces A.strategy same secret
@@ -243,26 +292,28 @@ theorem lateLeak_defer_first {A : (lateLeakModel true).BehavioralAssessment}
     ⟨false, rfl, rfl⟩
   let deviation := lateLeakCommitOpen wait (.firstLate secret) true ⟨true, rfl⟩
   have optimal := lateLeak_sender_rational rational
-    (lateLeakSenderSite true (lateLeakTypeHistory true secret) rfl)
+    (lateLeakSenderSite G true (lateLeakTypeHistory G true secret) rfl)
     (state := .protectedTurn secret) rfl deviation
   rw [show (5 : ℕ) = 1 + 4 from rfl, lateLeakValue_protectedTurn, lateLeakValue_protectedTurn,
     protected_value_of_open _ _ opens, lateLeak_sender_success_value _ _ _ rfl, lateLeakSignal,
-    safe, lateLeakProtectedValue, lateLeakFirstValue,
+    lateLeakProtectedValue, lateLeakFirstValue,
     lateLeakOpenProb_update_commit_of_ne _ _ _ _ _ _ (by simp),
     lateLeakOpenProb_update_commit_self, lateLeakOpenProb_update_commit_self,
     lateLeakSendValue_update_sender, lateLeak_first_send_value] at optimal
   simp only [Bool.false_eq_true, ite_false, ite_true, zero_mul, sub_zero, one_mul, zero_add,
     sub_self, add_zero] at optimal
   rw [show (secret.1) = bit from rfl, guessing] at optimal
-  have gain := deferred_gain A.strategy bit (.leakedFailure bit)
-  norm_num [lateLeakGuessGain] at optimal gain ⊢
+  simp only [secret, lateLeakGuessGain, lateLeakBitOneGain, lateLeakBitZeroGain,
+    reduceCtorEq, ite_true, ite_false] at optimal
+  have gain := deferral_pays pays A.strategy bit (.leakedFailure bit) safe
   linarith
 
 /-- If the listener guesses after a second-turn inclusion, type `(v, A)` gains
 by deferring to the second late turn. -/
-theorem lateLeak_defer_second {A : (lateLeakModel true).BehavioralAssessment}
-    (rational : A.IsSequentiallyRational (lateLeak_terminates true) (lateLeakPayoff true))
-    (same : lateLeakOutcomeLaw true A.strategy = lateLeakIntendedOutcome) (bit : Bool)
+theorem lateLeak_defer_second (pays : G.DeferralPays)
+    {A : (lateLeakModel G true).BehavioralAssessment}
+    (rational : A.IsSequentiallyRational (lateLeak_terminates G true) (lateLeakPayoff G true))
+    (same : lateLeakOutcomeLaw G true A.strategy = lateLeakIntendedOutcome) (bit : Bool)
     (guessing : lateLeakSafeProb A.strategy (.secondSuccess bit) = 0) : False := by
   let secret : LateLeakType := (bit, .a)
   obtain ⟨opens, safe⟩ := lateLeak_intended_law_forces A.strategy same secret
@@ -271,11 +322,11 @@ theorem lateLeak_defer_second {A : (lateLeakModel true).BehavioralAssessment}
   let hold := lateLeakCommitOpen wait (.firstLate secret) false ⟨false, rfl⟩
   let deviation := lateLeakCommitOpen hold (.secondLate secret) true ⟨true, rfl⟩
   have optimal := lateLeak_sender_rational rational
-    (lateLeakSenderSite true (lateLeakTypeHistory true secret) rfl)
+    (lateLeakSenderSite G true (lateLeakTypeHistory G true secret) rfl)
     (state := .protectedTurn secret) rfl deviation
   rw [show (5 : ℕ) = 1 + 4 from rfl, lateLeakValue_protectedTurn, lateLeakValue_protectedTurn,
     protected_value_of_open _ _ opens, lateLeak_sender_success_value _ _ _ rfl, lateLeakSignal,
-    safe, lateLeakProtectedValue, lateLeakFirstValue, lateLeakSecondValue,
+    lateLeakProtectedValue, lateLeakFirstValue, lateLeakSecondValue,
     lateLeakOpenProb_update_commit_of_ne _ _ _ _ _ _ (by simp),
     lateLeakOpenProb_update_commit_of_ne _ _ _ _ _ _ (by simp),
     lateLeakOpenProb_update_commit_self,
@@ -286,32 +337,35 @@ theorem lateLeak_defer_second {A : (lateLeakModel true).BehavioralAssessment}
   simp only [Bool.false_eq_true, ite_false, ite_true, zero_mul, sub_zero, one_mul, zero_add,
     sub_self, add_zero] at optimal
   rw [show (secret.1) = bit from rfl, guessing] at optimal
-  have gain := deferred_gain A.strategy bit .silentFailure
-  norm_num [lateLeakGuessGain] at optimal gain ⊢
+  simp only [secret, lateLeakGuessGain, lateLeakBitOneGain, lateLeakBitZeroGain,
+    reduceCtorEq, ite_true, ite_false] at optimal
+  have gain := deferral_pays pays A.strategy bit .silentFailure safe
   linarith
 
 /-- **No sequential equilibrium of the late-turn game has the intended
-outcome law.** -/
-theorem lateLeak_no_intended_equilibrium (A : (lateLeakModel true).BehavioralAssessment)
-    (equilibrium : A.IsSequentialEquilibrium (lateLeak_antichain true) (lateLeak_terminates true)
-      (lateLeakPayoff true)) :
-    lateLeakOutcomeLaw true A.strategy ≠ lateLeakIntendedOutcome := by
+outcome law**, when deferring pays: `R > 0`, `q (D - R) > (1 - q) c` and
+`q R - (1 - q) (D + c) > R/2`. -/
+theorem lateLeak_no_intended_equilibrium (pays : G.DeferralPays)
+    (A : (lateLeakModel G true).BehavioralAssessment)
+    (equilibrium : A.IsSequentialEquilibrium (lateLeak_antichain G true)
+      (lateLeak_terminates G true) (lateLeakPayoff G true)) :
+    lateLeakOutcomeLaw G true A.strategy ≠ lateLeakIntendedOutcome := by
   intro same
   obtain ⟨rational, consistent⟩ := equilibrium
   obtain ⟨bit, sender, holder, senderPrefers, holderPrefers⟩ :=
-    lateLeak_opposite_preferences rational
-  have sends := (lateLeak_rational_first_turn rational (bit, sender)).1 senderPrefers
-  have holds := (lateLeak_rational_first_turn rational (bit, holder)).2 holderPrefers
-  have holderSends := lateLeak_rational_second_sends rational (bit, holder)
+    lateLeak_opposite_preferences pays.reward_pos rational
+  have sends := (lateLeak_rational_first_turn pays rational (bit, sender)).1 senderPrefers
+  have holds := (lateLeak_rational_first_turn pays rational (bit, holder)).2 holderPrefers
+  have holderSends := lateLeak_rational_second_sends pays rational (bit, holder)
   rcases lateLeak_consistent_face consistent bit sender holder sends holds holderSends with
     zero | zero
-  · have reward := lateLeak_guess_reward_zero A (lateLeakFirstSuccessSite bit) (.firstSuccess bit)
-      rfl rfl _ (bit, holder) .firstIncluded rfl zero
-    exact lateLeak_defer_first rational same bit
+  · have reward := lateLeak_guess_reward_zero A (lateLeakFirstSuccessSite G bit)
+      (.firstSuccess bit) rfl rfl _ (bit, holder) .firstIncluded rfl zero
+    exact lateLeak_defer_first pays rational same bit
       (lateLeak_rational_guesses rational _ _ rfl rfl _ reward)
-  · have reward := lateLeak_guess_reward_zero A (lateLeakSecondSuccessSite bit)
+  · have reward := lateLeak_guess_reward_zero A (lateLeakSecondSuccessSite G bit)
       (.secondSuccess bit) rfl rfl _ (bit, sender) .secondIncluded rfl zero
-    exact lateLeak_defer_second rational same bit
+    exact lateLeak_defer_second pays rational same bit
       (lateLeak_rational_guesses rational _ _ rfl rfl _ reward)
 
 end Vegas

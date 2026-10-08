@@ -541,10 +541,15 @@ joint law. It is not pursued.
   the full game reproduces, for the stated margins; pinned with standard axioms.
   Optionally, its realization by the bounded raw runtime under an admissible
   builder and leak rule.
-  Evidence: `Vegas.Paper.late_leak_intended_outcome_not_preserved` (from
-  `lateLeak_intended_outcome_not_preserved`, standard axioms) on the game of
-  [the late-turn example](../Vegas/Examples/LateLeak/Game.lean), with `R = 2`,
-  `D = 6`, `c = 3`, `q = 99/100`, `P(v = 1) = 9/20` and a uniform label. The
+  Evidence: `Vegas.Paper.late_leak_intended_outcome_not_preserved` (the
+  instance of `lateLeak_intended_outcome_not_preserved`, standard axioms) on the
+  game of [the late-turn example](../Vegas/Examples/LateLeak/Game.lean), with
+  `R = 2`, `D = 6`, `c = 3`, `q = 99/100`, `P(v = 1) = 9/20` and a uniform
+  label. The same proof covers every parameter choice with `R > 0`,
+  `q(D - R) > (1 - q)c` and `qR - (1 - q)(D + c) > R/2`
+  (`Vegas.Paper.late_leak_not_preserved_when_deferral_pays`), and so every
+  `D > R`, `c >= 0` once `q` exceeds an explicit threshold below one
+  (`Vegas.Paper.late_leak_not_preserved_for_every_margin`). The
   intended game (the sender's menu at the protected turn is opening only) has a
   sequential equilibrium (`lateLeakIntendedAssessment_isSequentialEquilibrium`),
   and every sequential equilibrium of it has the intended outcome law

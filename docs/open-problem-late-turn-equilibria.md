@@ -1,7 +1,9 @@
 # Open problem: sequential equilibria with late sends and leaked openings
 
-Status: variant 1 is false (counterexample below, mechanized in Lean as
-`Vegas.Paper.late_leak_intended_outcome_not_preserved`); corrected positive
+Status: variants 1 and 2 are false (counterexample below, mechanized in Lean
+as `Vegas.Paper.late_leak_intended_outcome_not_preserved`, and for every
+margin `D > R`, `c >= 0` as
+`Vegas.Paper.late_leak_not_preserved_for_every_margin`); corrected positive
 versions are stated after it. This note states the question
 self-containedly so that it can be worked on independently of the rest of the
 project.
@@ -147,15 +149,30 @@ game refutes every margin `D > R`, `c >= 0` once `q` is close enough to `1`.
 - With leaks and one listener, a reward-richness condition on the listener's
   answers suffices.
 
-Lean proof: [the late-turn example](../Vegas/Examples/LateLeak/Game.lean) defines `G*` and
-its intended game as finite information models, and
-`Vegas.Paper.late_leak_intended_outcome_not_preserved` proves, with standard
-axioms, that the intended game has a sequential equilibrium, that all its
-sequential equilibria have the intended outcome law, and that no sequential
-equilibrium of `G*` has it. The four steps are
-`lateLeak_sender_success_value`, `lateLeak_opposite_preferences`,
-`lateLeak_consistent_face` and `lateLeak_rational_guesses` with
-`lateLeak_defer_first` and `lateLeak_defer_second`.
+Lean proof: [the late-turn example](../Vegas/Examples/LateLeak/Game.lean)
+defines the game and its intended game as finite information models for
+arbitrary parameters `R`, `D`, `c` and `q in (0, 1)`, with the prior and the
+listener's payoffs of `G*`. With standard axioms,
+`Vegas.Paper.late_leak_not_preserved_when_deferral_pays` proves that the
+intended game has a sequential equilibrium, that all its sequential equilibria
+have the intended outcome law, and that no sequential equilibrium of the full
+game has it, whenever `R > 0`, `q(D - R) > (1 - q)c` and
+`qR - (1 - q)(D + c) > R/2`. No other condition on the parameters is used,
+and each step uses only part of it: the single reward direction
+(`lateLeak_sender_success_value`) holds for all parameters; sending at `L2`
+beats never (`lateLeak_send_beats_withhold`) uses `q(D - R) > (1 - q)c` and
+`R >= 0`; the opposite strict preferences for every listener mixture
+(`lateLeak_opposite_preferences`) use `R > 0` and `q < 1`; the face of the
+simplex (`lateLeak_consistent_face`) holds for every `q in (0, 1)`; the
+listener's guess on a face (`lateLeak_rational_guesses`) depends only on the
+listener's payoffs; and the profitable deferral (`lateLeak_defer_first`,
+`lateLeak_defer_second`) uses `qR - (1 - q)(D + c) > R/2` and `R >= 0`.
+`Vegas.Paper.late_leak_not_preserved_for_every_margin` derives the variant-2
+statement: for every `R > 0`, `D > R` and `c >= 0` the threshold
+`max(c / (D - R + c), (D + c + R/2) / (D + c + R))` is below 1, and both
+conditions hold for every `q` above it. The bound `c >= 0` is used only for
+this explicit threshold. `Vegas.Paper.late_leak_intended_outcome_not_preserved`
+is the instance `R = 2`, `D = 6`, `c = 3`, `q = 99/100`.
 
 Checkers: [`g_star_verification.py`](../scripts/experiments/g_star_verification.py),
 [`three_type_counterexample.py`](../scripts/experiments/three_type_counterexample.py),

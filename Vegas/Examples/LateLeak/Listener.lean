@@ -17,22 +17,22 @@ namespace Vegas
 
 open GameTheory GameTheory.Protocol GameTheory.Math.Probability
 
-variable {late : Bool}
+variable {G : LateLeakParameters} {late : Bool}
 
 /-- The listener's expected payoff from one answer at an information set. -/
-def lateLeakAnswerReward (A : (lateLeakModel late).BehavioralAssessment)
-    (site : (lateLeakModel late).InformationSite .listener) (answer : LateLeakAnswer) : ℝ :=
+def lateLeakAnswerReward (A : (lateLeakModel G late).BehavioralAssessment)
+    (site : (lateLeakModel G late).InformationSite .listener) (answer : LateLeakAnswer) : ℝ :=
   expect (A.belief .listener site) fun history =>
-    lateLeakStatePayoff .listener (lateLeakAnswered history.1.state (some (.reply answer)))
+    lateLeakStatePayoff G .listener (lateLeakAnswered history.1.state (some (.reply answer)))
 
-theorem lateLeakListenerDecision_expectedReward (late : Bool)
-    (site : (lateLeakModel late).InformationSite .listener) (signal : LateLeakSignal)
+theorem lateLeakListenerDecision_expectedReward (G : LateLeakParameters) (late : Bool)
+    (site : (lateLeakModel G late).InformationSite .listener) (signal : LateLeakSignal)
     (at_signal : site.1 = .asked signal)
-    (base : (lateLeakModel late).BehavioralPolicy .listener)
-    (A : (lateLeakModel late).BehavioralAssessment)
-    (choice : (lateLeakModel late).Choice .listener site.1) (answer : LateLeakAnswer)
+    (base : (lateLeakModel G late).BehavioralPolicy .listener)
+    (A : (lateLeakModel G late).BehavioralAssessment)
+    (choice : (lateLeakModel G late).Choice .listener site.1) (answer : LateLeakAnswer)
     (same : choice.1 = some (.reply answer)) :
-    (lateLeakListenerDecision late site signal at_signal base).expectedReward A choice =
+    (lateLeakListenerDecision G late site signal at_signal base).expectedReward A choice =
       lateLeakAnswerReward A site answer := by
   simp only [InformationModel.ContinuationDecision.expectedReward,
     InformationModel.ContinuationDecision.posterior, expect_map, lateLeakAnswerReward]
@@ -41,9 +41,9 @@ theorem lateLeakListenerDecision_expectedReward (late : Bool)
   simp only [Function.comp_apply, lateLeakListenerDecision, same]
 
 /-- A supported answer is at least as good as every other answer. -/
-theorem lateLeak_listener_support_maximal {A : (lateLeakModel late).BehavioralAssessment}
-    (rational : A.IsSequentiallyRational (lateLeak_terminates late) (lateLeakPayoff late))
-    (site : (lateLeakModel late).InformationSite .listener) (signal : LateLeakSignal)
+theorem lateLeak_listener_support_maximal {A : (lateLeakModel G late).BehavioralAssessment}
+    (rational : A.IsSequentiallyRational (lateLeak_terminates G late) (lateLeakPayoff G late))
+    (site : (lateLeakModel G late).InformationSite .listener) (signal : LateLeakSignal)
     (at_signal : site.1 = .asked signal) (answer other : LateLeakAnswer)
     (fitsAnswer : answer.fits signal) (fitsOther : other.fits signal)
     (supported : lateLeakReplyLaw A.strategy signal (some (.reply answer)) ≠ 0) :
@@ -51,7 +51,7 @@ theorem lateLeak_listener_support_maximal {A : (lateLeakModel late).BehavioralAs
   rcases site with ⟨info, decision⟩
   change info = .asked signal at at_signal
   subst at_signal
-  let problem := lateLeakListenerDecision late ⟨.asked signal, decision⟩ signal rfl
+  let problem := lateLeakListenerDecision G late ⟨.asked signal, decision⟩ signal rfl
     (A.strategy .listener)
   have maximal := problem.rational_support_maximal A
     ((A.isSequentiallyRational_iff_with _ _).mp rational)
@@ -64,8 +64,8 @@ theorem lateLeak_listener_support_maximal {A : (lateLeakModel late).BehavioralAs
   exact maximal
 
 /-- An answer paying the same at every compatible state has that reward. -/
-theorem lateLeak_answerReward_const (A : (lateLeakModel late).BehavioralAssessment)
-    (site : (lateLeakModel late).InformationSite .listener) (signal : LateLeakSignal)
+theorem lateLeak_answerReward_const (A : (lateLeakModel G late).BehavioralAssessment)
+    (site : (lateLeakModel G late).InformationSite .listener) (signal : LateLeakSignal)
     (at_signal : site.1 = .asked signal) (answer : LateLeakAnswer) (value : ℝ)
     (each : ∀ secret resolution, lateLeakSignal secret resolution = signal →
       lateLeakListenerPayoff secret resolution answer = value) :
@@ -79,7 +79,7 @@ theorem lateLeak_answerReward_const (A : (lateLeakModel late).BehavioralAssessme
   rw [state_eq]
   exact each secret resolution signal_eq
 
-theorem lateLeakReplyLaw_bitZero (profile : LateLeakProfile late) (signal : LateLeakSignal)
+theorem lateLeakReplyLaw_bitZero (profile : LateLeakProfile G late) (signal : LateLeakSignal)
     (failed : signal.success = false) :
     (lateLeakReplyLaw profile signal (some (.reply (.failure false)))).toReal =
       1 - lateLeakBitOneProb profile signal := by
@@ -100,9 +100,9 @@ theorem lateLeakReplyLaw_bitZero (profile : LateLeakProfile late) (signal : Late
 
 /-- After a failed opening it saw pending, the listener guesses the bit it
 saw. -/
-theorem lateLeak_rational_leaked_failure {A : (lateLeakModel late).BehavioralAssessment}
-    (rational : A.IsSequentiallyRational (lateLeak_terminates late) (lateLeakPayoff late))
-    (site : (lateLeakModel late).InformationSite .listener) (bit : Bool)
+theorem lateLeak_rational_leaked_failure {A : (lateLeakModel G late).BehavioralAssessment}
+    (rational : A.IsSequentiallyRational (lateLeak_terminates G late) (lateLeakPayoff G late))
+    (site : (lateLeakModel G late).InformationSite .listener) (bit : Bool)
     (at_signal : site.1 = .asked (.leakedFailure bit)) :
     lateLeakBitOneProb A.strategy (.leakedFailure bit) = if bit then 1 else 0 := by
   have reward (guess : Bool) : lateLeakAnswerReward A site (.failure guess) =
@@ -145,10 +145,10 @@ theorem lateLeak_success_signal_label {secret other : LateLeakType}
 
 /-- The reward of guessing a label is the belief of the only compatible history
 with that label. -/
-theorem lateLeak_guess_reward_eq (A : (lateLeakModel late).BehavioralAssessment)
-    (site : (lateLeakModel late).InformationSite .listener) (signal : LateLeakSignal)
+theorem lateLeak_guess_reward_eq (A : (lateLeakModel G late).BehavioralAssessment)
+    (site : (lateLeakModel G late).InformationSite .listener) (signal : LateLeakSignal)
     (at_signal : site.1 = .asked signal) (success : signal.success = true)
-    (history : (lateLeakModel late).InformationHistory .listener site.1)
+    (history : (lateLeakModel G late).InformationHistory .listener site.1)
     (secret : LateLeakType) (resolution : LateLeakResolution)
     (state_eq : history.1.state = .answering secret resolution) :
     lateLeakAnswerReward A site (.guess secret.2) = (A.belief .listener site history).toReal := by
@@ -166,7 +166,7 @@ theorem lateLeak_guess_reward_eq (A : (lateLeakModel late).BehavioralAssessment)
       ⟨other.1, other.2.trans at_signal⟩
   have succeeded : otherResolution.succeeded = true :=
     lateLeak_succeeded_of_signal other_signal success
-  change lateLeakStatePayoff .listener (lateLeakAnswered other.1.state _) = _
+  change lateLeakStatePayoff G .listener (lateLeakAnswered other.1.state _) = _
   rw [other_state]
   simp only [lateLeakAnswered, lateLeakReplyOf, lateLeakStatePayoff, lateLeakListenerPayoff,
     succeeded, ite_true]
@@ -184,10 +184,10 @@ theorem lateLeak_guess_reward_eq (A : (lateLeakModel late).BehavioralAssessment)
 
 /-- The reward of guessing a label vanishes when the belief leaves out the only
 compatible history with that label. -/
-theorem lateLeak_guess_reward_zero (A : (lateLeakModel late).BehavioralAssessment)
-    (site : (lateLeakModel late).InformationSite .listener) (signal : LateLeakSignal)
+theorem lateLeak_guess_reward_zero (A : (lateLeakModel G late).BehavioralAssessment)
+    (site : (lateLeakModel G late).InformationSite .listener) (signal : LateLeakSignal)
     (at_signal : site.1 = .asked signal) (success : signal.success = true)
-    (history : (lateLeakModel late).InformationHistory .listener site.1)
+    (history : (lateLeakModel G late).InformationHistory .listener site.1)
     (secret : LateLeakType) (resolution : LateLeakResolution)
     (state_eq : history.1.state = .answering secret resolution)
     (zero : A.belief .listener site history = 0) :
@@ -196,8 +196,8 @@ theorem lateLeak_guess_reward_zero (A : (lateLeakModel late).BehavioralAssessmen
     zero, ENNReal.toReal_zero]
 
 /-- The safe answer is worth `2/5` after every success. -/
-theorem lateLeak_safe_reward (A : (lateLeakModel late).BehavioralAssessment)
-    (site : (lateLeakModel late).InformationSite .listener) (signal : LateLeakSignal)
+theorem lateLeak_safe_reward (A : (lateLeakModel G late).BehavioralAssessment)
+    (site : (lateLeakModel G late).InformationSite .listener) (signal : LateLeakSignal)
     (at_signal : site.1 = .asked signal) (success : signal.success = true) :
     lateLeakAnswerReward A site .safe = 2 / 5 := by
   apply lateLeak_answerReward_const A site _ at_signal
@@ -205,8 +205,8 @@ theorem lateLeak_safe_reward (A : (lateLeakModel late).BehavioralAssessment)
   simp [lateLeakListenerPayoff, lateLeak_succeeded_of_signal signal_eq success]
 
 /-- After a success the three label guesses are worth one in total. -/
-theorem lateLeak_guess_rewards_total (A : (lateLeakModel late).BehavioralAssessment)
-    (site : (lateLeakModel late).InformationSite .listener) (signal : LateLeakSignal)
+theorem lateLeak_guess_rewards_total (A : (lateLeakModel G late).BehavioralAssessment)
+    (site : (lateLeakModel G late).InformationSite .listener) (signal : LateLeakSignal)
     (at_signal : site.1 = .asked signal) (success : signal.success = true) :
     lateLeakAnswerReward A site (.guess .a) + lateLeakAnswerReward A site (.guess .b) +
       lateLeakAnswerReward A site (.guess .c) = 1 := by
@@ -220,9 +220,9 @@ theorem lateLeak_guess_rewards_total (A : (lateLeakModel late).BehavioralAssessm
       ⟨history.1, history.2.trans at_signal⟩
   have succeeded : resolution.succeeded = true :=
     lateLeak_succeeded_of_signal signal_eq success
-  change lateLeakStatePayoff .listener (lateLeakAnswered history.1.state _) +
-    lateLeakStatePayoff .listener (lateLeakAnswered history.1.state _) +
-    lateLeakStatePayoff .listener (lateLeakAnswered history.1.state _) = 1
+  change lateLeakStatePayoff G .listener (lateLeakAnswered history.1.state _) +
+    lateLeakStatePayoff G .listener (lateLeakAnswered history.1.state _) +
+    lateLeakStatePayoff G .listener (lateLeakAnswered history.1.state _) = 1
   rw [state_eq]
   rcases secret with ⟨bit, own⟩
   cases own <;> simp [lateLeakAnswered, lateLeakReplyOf, lateLeakStatePayoff,
@@ -237,9 +237,9 @@ theorem lateLeak_guess_fits {signal : LateLeakSignal} (success : signal.success 
   simpa [LateLeakAnswer.fits] using success
 
 /-- After a success, a belief leaving out one label makes the listener guess. -/
-theorem lateLeak_rational_guesses {A : (lateLeakModel late).BehavioralAssessment}
-    (rational : A.IsSequentiallyRational (lateLeak_terminates late) (lateLeakPayoff late))
-    (site : (lateLeakModel late).InformationSite .listener) (signal : LateLeakSignal)
+theorem lateLeak_rational_guesses {A : (lateLeakModel G late).BehavioralAssessment}
+    (rational : A.IsSequentiallyRational (lateLeak_terminates G late) (lateLeakPayoff G late))
+    (site : (lateLeakModel G late).InformationSite .listener) (signal : LateLeakSignal)
     (at_signal : site.1 = .asked signal) (success : signal.success = true)
     (label : LateLeakLabel) (unlikely : lateLeakAnswerReward A site (.guess label) = 0) :
     lateLeakSafeProb A.strategy signal = 0 := by

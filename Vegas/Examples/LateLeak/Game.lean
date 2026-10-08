@@ -10,7 +10,7 @@ probability `9/20`, and an independent label `s` drawn uniformly from three
 values. The sender can open `v` at a protected turn, where the opening is
 always included, or wait. Having waited, it can send the opening at a first or
 a second late turn, or never. A late opening is included with probability
-`q = 99/100` by a coin independent of everything else.
+`q`, strictly between zero and one, by a coin independent of everything else.
 
 A listener is activated between the two late turns and sees every opening
 pending at that moment. An opening sent at the first late turn is still
@@ -19,7 +19,7 @@ After the opening resolves the listener answers. After a successful opening it
 plays a safe answer, worth `2/5` to it, or guesses the label, worth one when
 correct. After a failure it guesses the bit and is paid when correct.
 
-With reward scale `R = 2`, forfeit `D = 6` and drop charge `c = 3`, the sender
+With reward scale `R`, forfeit `D` and drop charge `c`, the sender
 gets `R/2` under the safe answer; under any label guess, labels `A` and `B` get
 `R` and label `C` gets nothing. After a failure the sender gets `R` under the
 bit guess `1` if its label is `A`, and `R` under the bit guess `0` if its label
@@ -28,7 +28,8 @@ late opening it sent was dropped.
 
 The intended game is the same game in which the sender can only open at the
 protected turn. Both games share states, information and payoffs; they differ
-only in the sender's menu at the protected turn.
+only in the sender's menu at the protected turn. The prior and the listener's
+payoffs are fixed; the parameters `R`, `D`, `c` and `q` are arbitrary.
 -/
 
 noncomputable section
@@ -36,6 +37,21 @@ noncomputable section
 namespace Vegas
 
 open GameTheory GameTheory.Protocol GameTheory.Math.Probability
+
+/-- The parameters of the late-turn game: the sender's reward scale `R`, the
+forfeit `D` on a failed opening, the charge `c` on a dropped late opening, and
+the inclusion probability `q` of a late opening. -/
+structure LateLeakParameters where
+  /-- The reward scale `R`. -/
+  reward : ℝ
+  /-- The forfeit `D` charged when the opening fails. -/
+  forfeit : ℝ
+  /-- The charge `c` on a late opening that was sent and dropped. -/
+  dropCharge : ℝ
+  /-- The inclusion probability `q` of a late opening. -/
+  inclusion : Set.Ioo (0 : ℝ) 1
+
+variable {G : LateLeakParameters}
 
 /-- The sender owns the committed value; the listener answers. -/
 inductive LateLeakRole
@@ -182,28 +198,54 @@ def lateLeakPrior : PMF LateLeakType :=
     rw [this]
     norm_num)
 
-/-- The content-blind inclusion coin of a late opening: `q = 99/100`. -/
-def lateLeakInclusion : PMF Bool :=
-  PMF.ofFintype (fun included => ((if included then 99 / 100 else 1 / 100 : NNReal) : ENNReal))
+/-- The inclusion probability `q` of a late opening. -/
+def lateLeakInclusionProb (G : LateLeakParameters) : ℝ := G.inclusion
+
+theorem lateLeakInclusionProb_pos (G : LateLeakParameters) : 0 < lateLeakInclusionProb G :=
+  G.inclusion.2.1
+
+theorem lateLeakInclusionProb_lt_one (G : LateLeakParameters) : lateLeakInclusionProb G < 1 :=
+  G.inclusion.2.2
+
+/-- The margins under which deferring the opening pays. The reward scale is
+positive; sending at the second late turn strictly beats never sending,
+`q (D - R) > (1 - q) c`; and the full reward `R` that a guessing listener pays
+after a late inclusion beats the safe answer's `R/2` at the protected turn,
+`q R - (1 - q) (D + c) > R/2`. -/
+structure LateLeakParameters.DeferralPays (G : LateLeakParameters) : Prop where
+  reward_pos : 0 < G.reward
+  send_beats_withhold :
+    (1 - lateLeakInclusionProb G) * G.dropCharge < lateLeakInclusionProb G * (G.forfeit - G.reward)
+  guess_beats_safe :
+    G.reward / 2 < lateLeakInclusionProb G * G.reward -
+      (1 - lateLeakInclusionProb G) * (G.forfeit + G.dropCharge)
+
+/-- The content-blind inclusion coin of a late opening: included with
+probability `q`. -/
+def lateLeakInclusion (G : LateLeakParameters) : PMF Bool :=
+  PMF.ofFintype (fun included =>
+      ENNReal.ofReal (if included then lateLeakInclusionProb G else 1 - lateLeakInclusionProb G))
     (by
-      rw [← ENNReal.ofNNReal_finsetSum, ENNReal.coe_eq_one]
       simp only [Fintype.sum_bool, ite_true, Bool.false_eq_true, ite_false]
-      norm_num)
+      rw [← ENNReal.ofReal_add (lateLeakInclusionProb_pos G).le
+          (sub_nonneg.mpr (lateLeakInclusionProb_lt_one G).le),
+        add_sub_cancel, ENNReal.ofReal_one])
 
 /-- The successor law of a state given the mover's contribution. -/
-def lateLeakAdvance : LateLeakState → Option LateLeakMove → PMF LateLeakState
+def lateLeakAdvance (G : LateLeakParameters) :
+    LateLeakState → Option LateLeakMove → PMF LateLeakState
   | .initial, _ => lateLeakPrior.map .protectedTurn
   | .protectedTurn secret, choice =>
       PMF.pure (if choice = some (.opening true) then .answering secret .protectedOpen
         else .firstLate secret)
   | .firstLate secret, choice =>
       if choice = some (.opening true) then
-        lateLeakInclusion.map fun included =>
+        (lateLeakInclusion G).map fun included =>
           .answering secret (if included then .firstIncluded else .firstDropped)
       else PMF.pure (.secondLate secret)
   | .secondLate secret, choice =>
       if choice = some (.opening true) then
-        lateLeakInclusion.map fun included =>
+        (lateLeakInclusion G).map fun included =>
           .answering secret (if included then .secondIncluded else .secondDropped)
       else PMF.pure (.answering secret .withheld)
   | .answering secret resolution, choice =>
@@ -235,14 +277,14 @@ def lateLeakDefaultMove : LateLeakState → LateLeakMove
 
 /-- The execution protocol. -/
 @[reducible]
-def lateLeakExecution (late : Bool) : ExecutionProtocol LateLeakRole where
+def lateLeakExecution (G : LateLeakParameters) (late : Bool) : ExecutionProtocol LateLeakRole where
   State := LateLeakState
   Action _ := LateLeakMove
   init := .initial
   active state who := state.actor = some who
   available state who := {move | some move ∈ lateLeakMenu late (lateLeakView who state)}
   terminal state := state.IsFinished
-  step state joint := lateLeakAdvance state (joint.1 state.mover)
+  step state joint := lateLeakAdvance G state (joint.1 state.mover)
   progress state running := by
     refine ⟨fun who => if state.actor = some who then some (lateLeakDefaultMove state) else none,
       fun who => ?_⟩
@@ -263,7 +305,8 @@ def lateLeakExecution (late : Bool) : ExecutionProtocol LateLeakRole where
 /-- Each player's view is emitted as its private signal and replaces its
 information state. -/
 @[reducible]
-def lateLeakSignals (late : Bool) : InfoSignals (lateLeakExecution late) where
+def lateLeakSignals (G : LateLeakParameters) (late : Bool) :
+    InfoSignals (lateLeakExecution G late) where
   PublicSignal := Unit
   PrivateSignal _ := LateLeakView
   initialPublic := ()
@@ -274,16 +317,17 @@ def lateLeakSignals (late : Bool) : InfoSignals (lateLeakExecution late) where
   initInfo _ signal _ := signal
   pushInfo _ _ _ signal _ := signal
 
-theorem lateLeak_infoOf (late : Bool) (who : LateLeakRole) :
-    ∀ {state : LateLeakState} (trace : (lateLeakExecution late).Trace state),
-      (lateLeakSignals late).infoOf who trace = lateLeakView who state
+theorem lateLeak_infoOf (G : LateLeakParameters) (late : Bool) (who : LateLeakRole) :
+    ∀ {state : LateLeakState} (trace : (lateLeakExecution G late).Trace state),
+      (lateLeakSignals G late).infoOf who trace = lateLeakView who state
   | _, .start => rfl
   | _, .extend _ _ _ _ => rfl
 
 /-- The information model. -/
 @[reducible]
-def lateLeakModel (late : Bool) : InformationModel (lateLeakExecution late) where
-  toInfoSignals := lateLeakSignals late
+def lateLeakModel (G : LateLeakParameters) (late : Bool) :
+    InformationModel (lateLeakExecution G late) where
+  toInfoSignals := lateLeakSignals G late
   menu _ view := lateLeakMenu late view
   menu_adequate who state trace choice := by
     rw [lateLeak_infoOf]
@@ -291,29 +335,32 @@ def lateLeakModel (late : Bool) : InformationModel (lateLeakExecution late) wher
       simp [lateLeakView, lateLeakMenu, LegalOption, LateLeakState.actor]
 
 instance (late : Bool) (who : LateLeakRole) :
-    DecidableEq ((lateLeakModel late).InfoState who) :=
+    DecidableEq ((lateLeakModel G late).InfoState who) :=
   inferInstanceAs (DecidableEq LateLeakView)
 
 /-- The sender's payoff at a final state, before charges. -/
-def lateLeakSenderBase (label : LateLeakLabel) (resolution : LateLeakResolution)
+def lateLeakSenderBase (G : LateLeakParameters) (label : LateLeakLabel)
+    (resolution : LateLeakResolution)
     (answer : LateLeakAnswer) : ℝ :=
   if resolution.succeeded then
     match answer with
-    | .safe => 1
-    | .guess _ => if label = .c then 0 else 2
+    | .safe => G.reward / 2
+    | .guess _ => if label = .c then 0 else G.reward
     | .failure _ => 0
   else
     match answer with
-    | .failure true => if label = .a then 2 else 0
-    | .failure false => if label = .b then 2 else 0
+    | .failure true => if label = .a then G.reward else 0
+    | .failure false => if label = .b then G.reward else 0
     | _ => 0
 
-/-- The sender's payoff: base utility, minus the forfeit `6` on a failed
-opening, minus the drop charge `3` on a dropped late opening. -/
-def lateLeakSenderPayoff (secret : LateLeakType) (resolution : LateLeakResolution)
+/-- The sender's payoff: base utility, minus the forfeit `D` on a failed
+opening, minus the drop charge `c` on a dropped late opening. -/
+def lateLeakSenderPayoff (G : LateLeakParameters) (secret : LateLeakType)
+    (resolution : LateLeakResolution)
     (answer : LateLeakAnswer) : ℝ :=
-  lateLeakSenderBase secret.2 resolution answer -
-    (if resolution.succeeded then 0 else 6) - (if resolution.droppedLate then 3 else 0)
+  lateLeakSenderBase G secret.2 resolution answer -
+    (if resolution.succeeded then 0 else G.forfeit) -
+      (if resolution.droppedLate then G.dropCharge else 0)
 
 /-- The listener's payoff: `2/5` for the safe answer, one for a correct guess. -/
 def lateLeakListenerPayoff (secret : LateLeakType) (resolution : LateLeakResolution)
@@ -329,16 +376,16 @@ def lateLeakListenerPayoff (secret : LateLeakType) (resolution : LateLeakResolut
     | _ => 0
 
 /-- Payoffs at a state; only final states pay. -/
-def lateLeakStatePayoff : LateLeakRole → LateLeakState → ℝ
-  | .sender, .finished secret resolution answer => lateLeakSenderPayoff secret resolution answer
+def lateLeakStatePayoff (G : LateLeakParameters) : LateLeakRole → LateLeakState → ℝ
+  | .sender, .finished secret resolution answer => lateLeakSenderPayoff G secret resolution answer
   | .listener, .finished secret resolution answer =>
       lateLeakListenerPayoff secret resolution answer
   | _, _ => 0
 
 /-- Payoffs on histories. -/
-def lateLeakPayoff (late : Bool) (who : LateLeakRole)
-    (history : (lateLeakExecution late).History) : ℝ :=
-  lateLeakStatePayoff who history.state
+def lateLeakPayoff (G : LateLeakParameters) (late : Bool) (who : LateLeakRole)
+    (history : (lateLeakExecution G late).History) : ℝ :=
+  lateLeakStatePayoff G who history.state
 
 /-! ## Tree structure -/
 
@@ -368,34 +415,34 @@ def lateLeakLastJoint (state : LateLeakState) : LateLeakRole → Option LateLeak
 
 private theorem joint_eq_of_legal {late : Bool} {source : LateLeakState}
     {joint : LateLeakRole → Option LateLeakMove}
-    (legal : (lateLeakExecution late).Legal source joint) :
+    (legal : (lateLeakExecution G late).Legal source joint) :
     joint = fun who => if source.actor = some who then joint who else none := by
   funext who
   by_cases acting : source.actor = some who
   · simp [acting]
   · simp only [acting, ite_false]
-    exact LegalOption.eq_none_of_inactive (E := lateLeakExecution late) (joint who)
-      ((lateLeakExecution late).legalOption_of_legal legal who) acting
+    exact LegalOption.eq_none_of_inactive (E := lateLeakExecution G late) (joint who)
+      ((lateLeakExecution G late).legalOption_of_legal legal who) acting
 
 theorem lateLeak_mover_choice_of_legal {late : Bool} {source : LateLeakState}
     {joint : LateLeakRole → Option LateLeakMove}
-    (legal : (lateLeakExecution late).Legal source joint) {who : LateLeakRole}
+    (legal : (lateLeakExecution G late).Legal source joint) {who : LateLeakRole}
     (acting : source.actor = some who) :
     ∃ move, joint who = some move ∧ some move ∈ lateLeakMenu late (lateLeakView who source) := by
-  obtain ⟨move, chosen⟩ := LegalOption.exists_eq_some_of_active (E := lateLeakExecution late)
-    (joint who) ((lateLeakExecution late).legalOption_of_legal legal who) acting
-  have option := (lateLeakExecution late).legalOption_of_legal legal who
+  obtain ⟨move, chosen⟩ := LegalOption.exists_eq_some_of_active (E := lateLeakExecution G late)
+    (joint who) ((lateLeakExecution G late).legalOption_of_legal legal who) acting
+  have option := (lateLeakExecution G late).legalOption_of_legal legal who
   rw [chosen] at option
   exact ⟨move, chosen, option.2⟩
 
 /-- A realized transition comes from the parent state by the last joint. -/
 theorem lateLeak_step_parent {late : Bool} {source target : LateLeakState}
     {joint : LateLeakRole → Option LateLeakMove}
-    (legal : (lateLeakExecution late).Legal source joint)
-    (realized : target ∈ ((lateLeakExecution late).step source ⟨joint, legal⟩).support) :
+    (legal : (lateLeakExecution G late).Legal source joint)
+    (realized : target ∈ ((lateLeakExecution G late).step source ⟨joint, legal⟩).support) :
     source = lateLeakParent target ∧ joint = lateLeakLastJoint target := by
   have shape := joint_eq_of_legal legal
-  change target ∈ (lateLeakAdvance source (joint source.mover)).support at realized
+  change target ∈ (lateLeakAdvance G source (joint source.mover)).support at realized
   cases source with
   | initial =>
       rw [lateLeakAdvance, PMF.support_map] at realized
@@ -474,14 +521,14 @@ theorem lateLeak_step_parent {late : Bool} {source target : LateLeakState}
 
 theorem lateLeak_initial_not_reached {late : Bool} (source : LateLeakState)
     (joint : LateLeakRole → Option LateLeakMove)
-    (legal : (lateLeakExecution late).Legal source joint) :
-    LateLeakState.initial ∉ ((lateLeakExecution late).step source ⟨joint, legal⟩).support := by
+    (legal : (lateLeakExecution G late).Legal source joint) :
+    LateLeakState.initial ∉ ((lateLeakExecution G late).step source ⟨joint, legal⟩).support := by
   intro reached
   have parent := (lateLeak_step_parent legal reached).1
   cases source with
   | initial =>
       change LateLeakState.initial ∈
-        (lateLeakAdvance .initial (joint LateLeakState.initial.mover)).support at reached
+        (lateLeakAdvance G .initial (joint LateLeakState.initial.mover)).support at reached
       rw [lateLeakAdvance, PMF.support_map] at reached
       obtain ⟨_, _, impossible⟩ := reached
       cases impossible
@@ -489,7 +536,8 @@ theorem lateLeak_initial_not_reached {late : Bool} (source : LateLeakState)
   | _ => cases parent
 
 /-- Every reachable state has exactly one history. -/
-theorem lateLeak_treeShaped (late : Bool) : (lateLeakExecution late).IsTreeShaped :=
+theorem lateLeak_treeShaped (G : LateLeakParameters) (late : Bool) :
+    (lateLeakExecution G late).IsTreeShaped :=
   ExecutionProtocol.isTreeShaped_of_predecessor_unique
     (fun source joint legal => lateLeak_initial_not_reached source joint legal)
     (fun firstLegal secondLegal firstRealized secondRealized => by
@@ -499,22 +547,22 @@ theorem lateLeak_treeShaped (late : Bool) : (lateLeakExecution late).IsTreeShape
 
 /-- Histories are determined by the state they reach. -/
 theorem lateLeak_history_eq_of_state_eq {late : Bool}
-    {first second : (lateLeakExecution late).History} (same : first.state = second.state) :
+    {first second : (lateLeakExecution G late).History} (same : first.state = second.state) :
     first = second := by
   rcases first with ⟨state, firstTrace⟩
   rcases second with ⟨secondState, secondTrace⟩
   change state = secondState at same
   subst same
-  have := (lateLeak_treeShaped late state).allEq firstTrace secondTrace
+  have := (lateLeak_treeShaped G late state).allEq firstTrace secondTrace
   subst this
   rfl
 
-theorem lateLeak_state_injective (late : Bool) :
-    Function.Injective (fun history : (lateLeakExecution late).History => history.state) :=
+theorem lateLeak_state_injective (G : LateLeakParameters) (late : Bool) :
+    Function.Injective (fun history : (lateLeakExecution G late).History => history.state) :=
   fun _ _ same => lateLeak_history_eq_of_state_eq same
 
-instance (late : Bool) : Finite (lateLeakExecution late).History :=
-  Finite.of_injective _ (lateLeak_state_injective late)
+instance (late : Bool) : Finite (lateLeakExecution G late).History :=
+  Finite.of_injective _ (lateLeak_state_injective G late)
 
 /-- The number of transitions from the initial state. -/
 def lateLeakDepth : LateLeakState → ℕ
@@ -531,12 +579,12 @@ def lateLeakDepth : LateLeakState → ℕ
   | .finished _ .firstDropped _ => 4
   | .finished _ _ _ => 5
 
-theorem lateLeak_trace_length (late : Bool) :
-    ∀ {state : LateLeakState} (trace : (lateLeakExecution late).Trace state),
+theorem lateLeak_trace_length (G : LateLeakParameters) (late : Bool) :
+    ∀ {state : LateLeakState} (trace : (lateLeakExecution G late).Trace state),
       trace.length = lateLeakDepth state
   | _, .start => rfl
   | _, .extend (target := target) prior joint legal realized => by
-      have earlier := lateLeak_trace_length late prior
+      have earlier := lateLeak_trace_length G late prior
       obtain ⟨rfl, -⟩ := lateLeak_step_parent legal realized
       rw [ExecutionProtocol.Trace.length, earlier]
       have reached := lateLeak_initial_not_reached _ joint legal
@@ -546,17 +594,19 @@ theorem lateLeak_trace_length (late : Bool) :
       | finished secret resolution answer => cases resolution <;> rfl
       | _ => rfl
 
-theorem lateLeak_bounded (late : Bool) : (lateLeakExecution late).BoundedHorizon 5 := by
+theorem lateLeak_bounded (G : LateLeakParameters) (late : Bool) :
+    (lateLeakExecution G late).BoundedHorizon 5 := by
   intro state trace enough
-  rw [lateLeak_trace_length late trace] at enough
+  rw [lateLeak_trace_length G late trace] at enough
   cases state with
   | finished => trivial
   | answering secret resolution => cases resolution <;> simp [lateLeakDepth] at enough
   | _ => simp [lateLeakDepth] at enough
 
 /-- Every play stops within five transitions. -/
-theorem lateLeak_terminates (late : Bool) : (lateLeakExecution late).WellFoundedHistories :=
-  (lateLeak_bounded late).wellFoundedHistories
+theorem lateLeak_terminates (G : LateLeakParameters) (late : Bool) :
+    (lateLeakExecution G late).WellFoundedHistories :=
+  (lateLeak_bounded G late).wellFoundedHistories
 
 /-- The depth of the decision states with a given view. -/
 def lateLeakViewDepth : LateLeakView → ℕ
@@ -579,14 +629,14 @@ private theorem depth_eq_viewDepth (late : Bool) (who : LateLeakRole) (state : L
 
 /-- Histories in one decision information set have a common depth, so none
 continues to another. -/
-theorem lateLeak_antichain (late : Bool) :
-    (lateLeakModel late).DecisionInformationAntichain := by
+theorem lateLeak_antichain (G : LateLeakParameters) (late : Bool) :
+    (lateLeakModel G late).DecisionInformationAntichain := by
   intro who site first second joint legal reached realized fuel path
   obtain ⟨_, _, move, menu⟩ := site.2
-  have depthOf (history : (lateLeakModel late).InformationHistory who site.1) :
+  have depthOf (history : (lateLeakModel G late).InformationHistory who site.1) :
       history.1.trace.length = lateLeakViewDepth site.1 := by
     have view : lateLeakView who history.1.state = site.1 := by
-      rw [← lateLeak_infoOf late who history.1.trace]
+      rw [← lateLeak_infoOf G late who history.1.trace]
       exact history.2
     rw [lateLeak_trace_length, depth_eq_viewDepth late who _ move (by rw [view]; exact menu),
       view]
