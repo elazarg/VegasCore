@@ -11,6 +11,10 @@ the target, semantics, or boxes in the
 The [general preservation analysis](general-se-preservation.md) states the
 checked finite-deposit theorem for all source SEs, the public stochastic
 scheduling paper theorem, and the remaining source-to-runtime adapters.
+The separate [weak-PBE paper theorem](weak-pbe-restriction-preservation.md)
+extends arbitrary source weak PBE through a clean finite perfect-recall
+restriction, under robust collection bounds; its completion and repair adapters
+remain unmechanized.
 
 An abstract language remains viable. The strongest supported design is an
 abstract game compiled through a specified information and execution service.

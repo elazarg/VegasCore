@@ -44,7 +44,7 @@ coordinate can be erased without changing the nonpreservation conclusion.
 Consider the assessment in which both sender types choose `Out`, the receiver
 guesses `0` after `In`, and its belief there is `Pr(v = 1 | In) = 9/20`.
 
-Write `x_v` for the sender's probability of `In`, and `y` for the receiver's
+Write $x_v$ for the sender's probability of `In`, and `y` for the receiver's
 probability of guess `1`. A sender type's continuation value is
 
 ```
@@ -64,8 +64,8 @@ most once. The assessment is sequentially rational at every information set.
 
 Consistency has an explicit common fully mixed witness. For natural `n`, put
 `epsilon_n = 1/(n + 2)`. At each sender information set, choose `In` with
-probability `epsilon_n`; after `In`, choose guess `1` with probability
-`epsilon_n`. Every legal action has positive probability, and these strategies
+probability $\varepsilon_n$; after `In`, choose guess `1` with probability
+$\varepsilon_n$. Every legal action has positive probability, and these strategies
 converge to the stated pure strategy profile. Bayes' rule at the receiver gives
 
 ```
@@ -100,7 +100,7 @@ type 1: In;   type 0: Out;   receiver: guess the disclosed bit.
 
 This assessment is itself a target SE. For example, let type `1` choose
 `In` with probability `1 - epsilon_n`, type `0` choose `In` with probability
-`epsilon_n`, and the receiver at each information set guess the correct bit
+$\varepsilon_n$, and the receiver at each information set guess the correct bit
 with probability `1 - epsilon_n`. The strategies are fully mixed and converge
 to the stated profile; all decision beliefs are their uniquely compatible
 singleton beliefs. This proves target consistency. The target therefore has an
@@ -122,8 +122,8 @@ in the payoff units above: the best continuation's value minus the prescribed
 continuation's value is at most `epsilon`. This is a local sequential criterion,
 not an ex-ante approximate-Nash criterion weighted by the site's reach.
 
-Suppose `0 <= epsilon < 1/2`. Let `y_1` be the receiver's probability of
-guessing `1` after learning `v = 1`, and let `x_1` be that sender type's
+Suppose `0 <= epsilon < 1/2`. Let $y_1$ be the receiver's probability of
+guessing `1` after learning `v = 1`, and let $x_1$ be that sender type's
 probability of `In`. The receiver's regret bound gives
 
 ```
@@ -156,9 +156,9 @@ all-`Out`, let the receiver guess `1` with probability `1/2` after learning
 regret is `1/2`; the true-type sender can improve from `1/2` to `1` and hence
 also has regret `1/2`. All other decision regrets are zero. This assessment is
 consistent: both sender types can tremble into `In` with probability
-`epsilon_n`, the true-type receiver can keep its already fully mixed response,
+$\varepsilon_n$, the true-type receiver can keep its already fully mixed response,
 and the false-type receiver can tremble to guess `1` with probability
-`epsilon_n`. Their Bayes beliefs remain the compatible singleton beliefs.
+$\varepsilon_n$. Their Bayes beliefs remain the compatible singleton beliefs.
 Thus a consistent assessment with regret at most `1/2` can preserve the source
 law. The numerical threshold concerns this game and these utility scales.
 

@@ -19,7 +19,8 @@ This analysis does not change the target, boxes, or semantics in the
 | Bounded public stochastic scheduling preserves every source SE | Paper proof | General protocol constructor and its two inductions are not mechanized |
 | Honest off-path disclosure can prevent SE and weak-PBE preservation while allowing Nash preservation | Paper proof | Fully specified finite game, not yet a library protocol instantiation |
 | A profitable comparison is finitely punishable by a sound transcript audit iff it has positive mass outside clean transcripts | Checked | One comparison and a fixed evidence interface |
-| Arbitrary-source weak-PBE preservation or a general public-mempool compiler theorem | Open | Neither follows from the SE capstone |
+| Arbitrary-source weak-PBE preservation through a clean restriction | Paper proof | Requires finite perfect recall and a separate completion/repair construction |
+| A general public-mempool compiler theorem | Open | Its source-information and collection adapters are not supplied |
 
 ## The checked general enforcement theorem
 
@@ -262,6 +263,25 @@ weak-PBE preservation has not been established by the new SE capstone: an
 arbitrary source weak PBE need not satisfy its consistency premise. Conversely,
 the SE capstone does give a target weak PBE for every source SE, since its
 target assessment is an SE.
+
+There is now a separate
+[weak-PBE restriction preservation paper theorem](weak-pbe-restriction-preservation.md)
+for finite perfect-recall games under the same clean matching and robust
+collection bounds. At a new information set, perfect recall prevents the
+acting player from later returning to one of its own copied sets. Freeze
+fully supported raw lotteries at copied sites into chance, solve the remaining
+new-site games, and take a strategy/belief limit. Then install the source's
+possibly inconsistent off-path beliefs at copied sites. New-site full-policy
+rationality survives the replacement. At copied sites, a direct first-departure
+repair bounds every whole-policy deviation; it does not use a one-shot
+principle with arbitrary off-path beliefs. Reached Bayes beliefs transport
+through clean execution.
+
+This proves more on paper than the SE capstone alone implies, but the new
+weak-PBE completion and repair adapters are not Lean-checked. Stronger PBE
+definitions imposing relations between off-path beliefs need separate analysis.
+The honest-disclosure counterexample still applies because its legitimate
+information refinement fails the clean structural premise.
 
 There is also a sharp checked audit boundary. For a single strictly profitable
 comparison, a sound final-transcript audit can deter it with a finite penalty
