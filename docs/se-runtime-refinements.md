@@ -182,6 +182,11 @@ generalize the calendar to arbitrary adaptive or probabilistic scheduling.
 
 ## What remains to obtain a realistic compiler theorem
 
+The [general preservation analysis](general-se-preservation.md) packages the
+checked no-clock audit extension with deposits chosen before every source SE.
+It separates the public stochastic scheduling adapter from raw enforcement
+and gives an honest off-path information counterexample to weaker adapters.
+
 The economic result supports bounded-risk enforcement as a real alternative
 to requiring secret pending packets. The probability result supports computing
 a whole-game bound from conditional backend premises. The calendar result

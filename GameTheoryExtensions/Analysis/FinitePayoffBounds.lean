@@ -35,6 +35,19 @@ def upper (payoff : Outcome → Value) : Value :=
 theorem lower_le (payoff : Outcome → Value) (outcome : Outcome) : lower payoff ≤ payoff outcome :=
   Finset.min'_le _ _ (Finset.mem_image_of_mem payoff (Finset.mem_univ outcome))
 
+/-- Strict pointwise lower bounds stay strict at the finite minimum. -/
+theorem lt_lower_iff (payoff : Outcome → Value) (bound : Value) :
+    bound < lower payoff ↔ ∀ outcome, bound < payoff outcome := by
+  constructor
+  · intro strict outcome
+    exact strict.trans_le (lower_le payoff outcome)
+  · intro strict
+    unfold lower
+    obtain ⟨outcome, _, same⟩ := Finset.mem_image.mp
+      (Finset.min'_mem (Finset.univ.image payoff) (Finset.univ_nonempty.image payoff))
+    rw [← same]
+    exact strict outcome
+
 theorem le_upper (payoff : Outcome → Value) (outcome : Outcome) : payoff outcome ≤ upper payoff :=
   Finset.le_max' _ _ (Finset.mem_image_of_mem payoff (Finset.mem_univ outcome))
 

@@ -19,6 +19,7 @@ import Vegas.Examples.LateLeak.PenaltyPreservation
 import Vegas.Examples.LateLeak.CalibratedPenaltyPreservation
 import Interaction.ReactiveSurvival
 import Vegas.Game.ServiceRosterProtection
+import GameTheoryExtensions.Analysis.PositiveCollection
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -1180,3 +1181,13 @@ theorem late_leak_equilibrium_result_total_variation_gap
 #print axioms Interaction.ReactiveApplication.runUntil_eventProbability_ge_pow
 
 end Vegas.Paper
+
+/-- info: 'GameTheory.Enforcement.exists_positive_collection_floor' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.Enforcement.exists_positive_collection_floor
+
+/-- info: 'GameTheory.GameForm.exists_positive_mixed_collection_floor' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.GameForm.exists_positive_mixed_collection_floor

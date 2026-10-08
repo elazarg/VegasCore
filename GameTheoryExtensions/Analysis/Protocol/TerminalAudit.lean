@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheoryExtensions.Analysis.Protocol.RestrictionExtension
+import GameTheory.Analysis.Protocol.SequentialPerturbation
+import GameTheoryExtensions.Analysis.Protocol.LocalizedEnforcement
 import GameTheoryExtensions.Analysis.ObservableEnforcement
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Support
@@ -176,9 +177,6 @@ theorem sequential_equilibrium_extends_of_terminal_audit
     (sourceCertificate : E.WellFoundedHistories) (targetCertificate : T.WellFoundedHistories)
     (reference : N.BehavioralAssessment) (referenceMixed : reference.IsFullyMixed)
     (decisionRecall : N.DecisionRecall)
-    (depth : ∀ who, M.InformationSite who → Nat)
-    (clock : ∀ who site, InformationSite.CommonDepth N (restriction.site who site)
-      (depth who site))
     (sourcePayoff : E.History → Player → ℝ) (base : T.History → Player → ℝ)
     (observe : T.History → Observation) (audit : Observation → PMF (Player → Bool))
     (matching : ∀ history who, base (restriction.history history) who = sourcePayoff history who)
@@ -232,14 +230,21 @@ theorem sequential_equilibrium_extends_of_terminal_audit
     rw [← collection_probability]
     exact collection profile who site action extra history
   obtain ⟨target, equilibrium, agrees, beliefs, laws, _payoffs⟩ :=
-    restriction.sequential_equilibrium_extends sourceAntichain sourceCertificate
-      targetCertificate reference referenceMixed decisionRecall depth clock
+    restriction.sequential_equilibrium_extends_of_local_collection sourceAntichain
+      sourceCertificate targetCertificate reference referenceMixed decisionRecall
       (fun who history => sourcePayoff history who) (fun who history => base history who)
-      (fun who history => charge observe audit history who)
-      (fun who history => matching history who) (fun who history => sound history who)
-      lower upper detection deposit deposit_nonnegative (fun who history => source_lower history
-          who)
-      (fun who history => target_upper history who) sufficient collects source sourceEquilibrium
+      (fun who history => charge observe audit history who) deposit
+      (fun who history => by rw [sound, zero_mul, sub_zero]; exact matching history who)
+      (fun _ _ _ => True) (fun who _ => lower who) (fun who _ => upper who)
+      (fun who _ => detection who) deposit_nonnegative
+      (fun who _ _ _ _ => sufficient who)
+      (fun _ who _ _ _ _ _ final _ => target_upper final who)
+      (fun profile who site action extra _ history =>
+        collects profile who site action extra history)
+      (fun sourceProfile _ _ who _ _ _ _ _ => ⟨sourceProfile who,
+        fun _ _ final _ => ⟨by rw [matching]; exact source_lower final who, sound final who⟩⟩)
+      (fun _ _ _ _ _ _ _ excluded _ => (excluded trivial).elim)
+      source sourceEquilibrium
   refine ⟨target, equilibrium, agrees, beliefs, laws, ?_, ?_⟩
   · rw [← laws, PMF.bind_map]
     calc
@@ -258,5 +263,67 @@ theorem sequential_equilibrium_extends_of_terminal_audit
     rw [← laws, PMF.support_map] at supported
     obtain ⟨original, _, rfl⟩ := supported
     exact sound original who
+
+/-- One finite nonnegative deposit vector preserves every source SE when each
+excluded action has positive conditional collection under all remaining play. -/
+theorem exists_deposits_preserving_sequential_equilibria
+    (sourceAntichain : M.DecisionInformationAntichain)
+    (sourceCertificate : E.WellFoundedHistories) (targetCertificate : T.WellFoundedHistories)
+    (fallback : ∀ who, N.Policy who)
+    (decisionRecall : N.DecisionRecall)
+    (sourcePayoff : E.History → Player → ℝ) (base : T.History → Player → ℝ)
+    (observe : T.History → Observation) (audit : Observation → PMF (Player → Bool))
+    (matching : ∀ history who, base (restriction.history history) who = sourcePayoff history who)
+    (sound : ∀ history who, charge observe audit (restriction.history history) who = 0)
+    (lower upper detection : Player → ℝ)
+    (source_lower : ∀ history who, lower who ≤ sourcePayoff history who)
+    (target_upper : ∀ history who, base history who ≤ upper who)
+    (positive : ∀ who, 0 < detection who)
+    (collection : ∀ (profile : ∀ who, N.BehavioralPolicy who) who
+      (site : M.InformationSite who)
+      (action : N.Choice who (restriction.site who site).1),
+      action ∉ Set.range (restriction.choice who site.1) →
+      ∀ history : M.InformationHistory who site.1,
+        detection who ≤ (((((N.runBehavioralTerminalFrom targetCertificate
+          (Profile.update (sig := N.behavioralSignature) profile who
+            ((profile who).commit (restriction.site who site).1 action))
+          (restriction.history history.1)).map observe).bind audit).map
+            (fun verdict => verdict who)) true).toReal) :
+    ∃ deposit : Player → ℝ, (∀ who, 0 ≤ deposit who) ∧
+      ∀ source : M.BehavioralAssessment,
+        source.IsSequentialEquilibrium sourceAntichain sourceCertificate
+          (fun who history => sourcePayoff history who) →
+        ∃ target : N.BehavioralAssessment,
+          target.IsSequentialEquilibrium decisionRecall.decisionInformationAntichain
+            targetCertificate (fun who history => utility base observe audit deposit history who) ∧
+          restriction.ExtendsProfile source.strategy target.strategy ∧
+          (∀ who site, target.belief who (restriction.site who site) =
+            (source.belief who site).map (restriction.informationHistory who site)) ∧
+          (M.runBehavioralTerminalFrom sourceCertificate source.strategy E.initHistory).map
+              restriction.history =
+            N.runBehavioralTerminalFrom targetCertificate target.strategy T.initHistory ∧
+          (M.runBehavioralTerminalFrom sourceCertificate source.strategy E.initHistory).map
+              (fun history => (restriction.history history, sourcePayoff history)) =
+            (N.runBehavioralTerminalFrom targetCertificate target.strategy T.initHistory).bind
+              (fun history => (settlement base observe audit deposit history).map
+                (fun payoffs => (history, payoffs))) ∧
+          ∀ history ∈ (N.runBehavioralTerminalFrom targetCertificate target.strategy
+              T.initHistory).support, ∀ who, charge observe audit history who = 0 := by
+  obtain ⟨reference, referenceMixed, _, _, _⟩ :=
+    N.exists_uniformTremble_locallyOptimal_bayesAssessment fallback
+      decisionRecall.actsOnceWhereItMatters decisionRecall.decisionInformationAntichain
+      1 zero_lt_one le_rfl (fun _ _ => 0) targetCertificate
+  let deposit : Player → ℝ := fun who => max 0 ((upper who - lower who) / detection who)
+  have nonnegative (who : Player) : 0 ≤ deposit who := le_max_left _ _
+  have sufficient (who : Player) : upper who - detection who * deposit who ≤ lower who := by
+    have bound : (upper who - lower who) / detection who ≤ deposit who := le_max_right _ _
+    have multiplied := (div_le_iff₀ (positive who)).mp bound
+    nlinarith [multiplied]
+  refine ⟨deposit, nonnegative, ?_⟩
+  intro source equilibrium
+  exact restriction.sequential_equilibrium_extends_of_terminal_audit
+    sourceAntichain sourceCertificate targetCertificate reference referenceMixed decisionRecall
+    sourcePayoff base observe audit matching sound lower upper detection deposit nonnegative
+    source_lower target_upper sufficient collection source equilibrium
 
 end GameTheory.Protocol.InformationModel.ActionRestriction

@@ -35,6 +35,8 @@ Useful existing boundaries are the
 [choices drawn from an observation-local readout](../GameTheoryExtensions/Math/Probability/ObservedChoice.lean),
 [conditional survival through bounded adaptive opportunities](../GameTheoryExtensions/Math/Probability/Survival.lean),
 [survival in scheduler rounds and bounded stopping](../Interaction/ReactiveSurvival.lean),
+[positive collection over finite contingent plans](../GameTheoryExtensions/Analysis/PositiveCollection.lean),
+[finite-deposit SE extension under a terminal audit](../GameTheoryExtensions/Analysis/Protocol/TerminalAudit.lean),
 [the owner's information through its own phase](../Vegas/Pending/ReactiveOwnerPhase.lean),
 [permitted deviations phase by phase](../Vegas/Game/SourceServiceDeviationLaw.lean),
 [whole-policy deviations under a restriction](../GameTheoryExtensions/Analysis/Protocol/RetainedDeviation.lean),

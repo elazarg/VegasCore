@@ -8,6 +8,10 @@ the target, semantics, or boxes in the
 **paper proof** means an argument supplied here but not mechanized;
 **conjecture** identifies work still needed.
 
+The [general preservation analysis](general-se-preservation.md) states the
+checked finite-deposit theorem for all source SEs, the public stochastic
+scheduling paper theorem, and the remaining source-to-runtime adapters.
+
 An abstract language remains viable. The strongest supported design is an
 abstract game compiled through a specified information and execution service.
 The negative result limits particular service contracts; it does not say that
