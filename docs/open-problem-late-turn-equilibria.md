@@ -178,6 +178,90 @@ Checkers: [`g_star_verification.py`](../scripts/experiments/g_star_verification.
 [`three_type_counterexample.py`](../scripts/experiments/three_type_counterexample.py),
 [`late_turn_search.py`](../scripts/experiments/late_turn_search.py).
 
+## Timed release
+
+A *timed-release* reveal is an ideal construct that timed commitments
+(Boneh-Naor) can implement. The commitment carries validated recovery material.
+A service transition publishes the value no later than a fixed delay after the
+commitment, and the delay is chosen so that this never happens before the
+reveal is ready. The reveal cannot fail, and the runtime gives the owner no
+opening action. The test keeps the types, prior, payoffs and listener of `G*`
+(`R = 2`, `D = 6`, `c = 3`, `q = 99/100`, the leak rule, a content-blind
+builder) and places the reveal in this mode. Consistency is Kreps-Wilson with
+arbitrary type- and node-dependent trembles, and all arithmetic is exact.
+
+**Without owner opening the reveal obstruction disappears. It returns at the
+commitment if the commitment can be sent late and its leaked material can be
+recovered.**
+- *Commitment given, as in `G*`:* the sender has no decision. The listener's
+  only information sets are on path with the prior belief, where the safe
+  answer `m` is the unique best reply. The intended outcome is the unique SE
+  outcome.
+- *Protected commitment that the sender may omit* (forfeit `D`, nothing
+  learned): omission is strictly dominated whenever `D > R/2`, so the intended
+  outcome is again the unique SE outcome.
+- *Commitment with a protected turn and two late turns* under the inclusion and
+  leak rules of `G*`, where a dropped binding costs `D + c`:
+  - If the listener can recover `v` from a pending commitment it saw before it
+    answers, the game is `G*` with "commit" in place of "open". The sender's
+    plan values coincide with the independent encoding of `G*`. Whenever
+    `q(D - R) > (1 - q)c` and `qR - (1 - q)(D + c) > R/2`, the mechanized
+    theorem therefore applies and no SE has the intended outcome. At `G*`'s
+    parameters this is the verdict. Recovery by any holder of the material is
+    what a timed commitment provides.
+  - If the dropped material cannot be recovered before the listener answers,
+    and the listener only sees that a binding was pending, a preserving SE
+    exists. In it the listener plays `m` after every success and `f0` after
+    every failure, and trembles are type-independent. The sender's payoffs then
+    do not depend on `v`. This construction needs all types to agree on sending
+    versus never at a late turn: `q(D - R/2) >= (1 - q)c` or
+    `q(D + R/2) < (1 - q)c`.
+
+So timed release removes the obstruction exactly when no strategic timing
+remains before the value becomes recoverable. That holds when commitments are
+protected, or when leaked material stays sealed until after every dependent
+decision.
+
+**Early opening by the owner is harmless in `G*` and deterred by a charge above
+`R`.** In this variant the owner may also send an early opening as a raw
+network packet. It can go at a protected early turn, before the listener's
+activation (where it leaks), or after it. The audit sees every signed envelope
+and charges `c'` for an early opening at settlement, whether or not it was
+included.
+- With `c' > R` (the spread of the sender's base utility), every early opening
+  is strictly dominated whatever the listener does. The intended outcome is
+  then the unique SE outcome, and the bound is strict: `c' = R` does not give
+  domination.
+- As a control, with `c' = 0` a preserving SE still exists, because the value
+  is published anyway and the listener of `G*` acts only afterwards. The early
+  opening is then a pure timing signal, and type-independent trembles keep the
+  prior belief at every opening site. Some consistent completions fail (a tilt
+  that puts a point mass after an early inclusion makes the listener guess, and
+  `(1, A)` then opens), so the existence is a real choice of assessment.
+- The answer changes when a decision comes between the opening and the release.
+  As a control, the listener takes an interim action at activation (listener
+  gets `[y = v]`, sender gets `g[y = 1]`). The intended outcome is then an SE
+  outcome if and only if `g <= c'`. With `c' = 0` and `g > 0` no SE has it,
+  because the opening makes `v = 1` public and `(1, A)` gains `g - c'`.
+
+**Parameters.** The grid had `R = 2`, `D in {3, 6, 12}`, `c in {0, 1, 3, 6}`
+and `q in {1/2, 9/10, 99/100, 999/1000, 9999/10000}`, 60 points in all.
+- The given and protected-commitment verdicts hold at every point.
+- With recoverable late commitments, 41 points satisfy the theorem's hypothesis
+  and have no preserving SE. These include every point with `q >= 99/100`.
+  At 17 points the structured search finds an exactly verified preserving SE;
+  these are all points with `q = 1/2` and those with `q = 9/10, D = 12` or
+  `q = 9/10, D = c = 6`. Two points are undecided:
+  `(D, c, q) = (3, 6, 9/10)` and `(6, 3, 9/10)`.
+- With opaque late commitments, the construction applies at 58 points. It does
+  not apply at `(3, 3, 1/2)` and `(6, 6, 1/2)`, which are undecided there.
+- The early-opening verdicts hold at every point. With `c' = 0` and with
+  `c' = R + 1/100` the intended outcome survives. In the interim control
+  (`g in {R/4, R}`) it survives at `c' = g` and fails at `c' = 0` and at
+  `c' = g - 1/100`.
+
+Checker: [`timed_release_probe.py`](../scripts/experiments/timed_release_probe.py).
+
 ## Abstract version (a candidate formulation, possibly too strong)
 
 Let `Gamma` be a finite extensive-form game with perfect recall, `Gamma°` the
