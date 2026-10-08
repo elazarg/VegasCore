@@ -109,6 +109,16 @@ known and its classification is recoverable by every later strategic player.
 That extra public information is not established by native readiness tokens.
 Both are reviewed paper results for explicitly restricted interfaces.
 
+The [many-decision delivery theorem](delivery-control-preservation.md) removes
+the one-callback restriction for immutable openings. The owner may send, wait,
+retry and privately learn about service conditions. If publication failure
+ends play with the same nonpositive owner utility after every route, all
+retained private types can share a delivery-maximizing policy. One global
+consistency construction supplies its off-path beliefs. Protected initialized
+play then implements the exact source law without any late-success floor.
+Successful retry charges and mode-dependent failed-packet penalties are outside
+this result; the actual settled audit distinguishes accepted packet identifiers.
+
 [Late binding with failure erasure](late-binding-erasure.md) extends the
 success-bound result to a late callback that chooses a fresh value. It requires
 a common continuation projection preserving every future menu, observation,
@@ -184,6 +194,7 @@ small errors in that metric.
 | Native protected play | How do actual opaque envelopes and source-public openings couple serial runtime observations? | [Native serial analysis](native-observation-criterion.md) |
 | Accepted late actions | When does a late opening's gain scale with failure risk, and when can rare failures change successful posteriors? | [Admission risk and information](admission-information-boundary.md) |
 | Multi-phase late openings | Can accepted late fixed-value openings compose across a whole program while old secrets persist? | [Serial late-opening theorems](serial-late-release.md) |
+| Several delivery decisions | Can waits, retransmissions and private service learning share a type-independent rational completion? | [Immutable openings with delivery control](delivery-control-preservation.md) |
 | Late value choices | When can an unaccepted private binding value be ignored without changing later strategic possibilities? | [Failure erasure and absorbing settlement](late-binding-erasure.md) |
 | Physical outages | Can rationality remain exact while the outcome claim explicitly allows noncompletion? | [Exogenous abort and delivery-conditioned preservation](exogenous-abort-preservation.md) |
 

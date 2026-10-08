@@ -187,5 +187,15 @@ If a weakening survives, record the broader candidate and the new proof task.
     cannot be hidden in that extension. State the weaker outcome target and
     every additional physical action excluded from the adapter.
 
+21. Test the [many-decision immutable delivery theorem](delivery-control-preservation.md)
+    against actual unsuccessful and duplicate packet accounting. Its uniform
+    conditional control comparisons hold even at vanishing-reach information
+    sets; source-independent service dynamics must hold across retained private
+    types, not just inside one source information set. Compare a uniform
+    absorbing missed-publication forfeit with the existing per-packet audit,
+    and distinguish a law-dependent optimal completion from an explicit
+    common delivery-dominating policy. Source withholding, recovery and extra
+    secret-bearing packets remain separate adapter obligations.
+
 These tasks are mathematical and parallelizable. Formalization, deployment
 claims and changes to project semantics require separate work.

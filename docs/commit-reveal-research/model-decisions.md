@@ -167,6 +167,23 @@ positive public success lower bound and phase-independent loss accounting.
 This is a proposed failure policy for mandatory-success sources; it does not
 implement arbitrary source recovery or lawful withholding continuations.
 
+For immutable openings, a stronger
+[delivery-control result](delivery-control-preservation.md) permits many waits,
+sends and retries, including private learning about service conditions. It
+requires route-independent failure utility and no charges on successful
+transport, so every retained private type ranks delivery policies by success
+probability. Failure must end payoff-relevant play. The proof needs no positive
+late-success floor. A single policy across unspecified service laws needs an
+additional operational dominance property; noncolluding miners alone do not
+supply it.
+
+This identifies a concrete accounting question rather than another scheduler
+state variable. The current audit accepts a particular packet identifier;
+another identifier for the same opening can be forbidden even when the
+opening succeeded. Free authentic retries and a uniform missed-publication
+forfeit are a separate candidate accounting convention. They have not been
+adopted, and arbitrary early or secret-bearing packets still need a proof.
+
 Without stopping, ignoring attempted values in terminal utility is weaker
 than erasing them from the future game. Actual private registration retains
 transferable opening evidence even for a candidate never admitted. Future
