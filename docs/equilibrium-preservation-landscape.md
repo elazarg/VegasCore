@@ -369,3 +369,8 @@ commitments can implement part of that service. The general theorem must
 derive the needed information and incentive properties from operational
 rules, while keeping those rules in the backend contract rather than in every
 source program.
+
+The [blockchain target analysis](blockchain-se-preservation-target.md) identifies
+concrete confidential-ledger candidates, explains what the fixed program
+horizon contributes to conditional inclusion bounds, and states a more precise
+sharpness goal than necessity of every service component.
