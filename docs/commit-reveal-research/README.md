@@ -255,6 +255,7 @@ small errors in that metric.
 | Accepted late actions | When does a late opening's gain scale with failure risk, and when can rare failures change successful posteriors? | [Admission risk and information](admission-information-boundary.md) |
 | Multi-phase late openings | Can accepted late fixed-value openings compose across a whole program while old secrets persist? | [Serial late-opening theorems](serial-late-release.md) |
 | Several delivery decisions | Can waits, retransmissions and private service learning share a type-independent rational completion? | [Immutable openings with delivery control](delivery-control-preservation.md) |
+| Quitting and communication | What does absorbing settlement buy, and can public messages at bindings represent pending-traffic signals? | [Settlement and public-message candidates](quitting-and-public-messages.md) |
 | Late value choices | When can an unaccepted private binding value be ignored without changing later strategic possibilities? | [Failure erasure and absorbing settlement](late-binding-erasure.md) |
 | Physical outages | Can rationality remain exact while the outcome claim explicitly allows noncompletion? | [Exogenous abort and delivery-conditioned preservation](exogenous-abort-preservation.md) |
 | Controlled whole-game delivery | Can send, wait and retry remain rational without surely successful admission, with a whole-game reliability guarantee? | [Value-blind service and completion](whole-game-delivery-preservation.md) |
