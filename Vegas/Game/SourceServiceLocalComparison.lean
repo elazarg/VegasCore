@@ -61,11 +61,8 @@ structure SourceServiceSpec (Player : Type) [DecidableEq Player] (L : IExpr)
   initialFinite : setup.FiniteInitialLaw
   /-- The leak rule branches finitely. -/
   leaksFinite : leaks.FiniteSupport
-  /-- The network policy branches finitely. -/
-  networkFinite : network.FiniteSupport
 
 attribute [instance] SourceServiceSpec.initialFinite SourceServiceSpec.leaksFinite
-  SourceServiceSpec.networkFinite
 
 /-- The position of an actual activation of `who`: its event, its slot in that
 event's roster, and the event's readiness. -/
@@ -103,6 +100,9 @@ def before : List (ServiceInstruction (graph setup)) :=
 /-- The instructions left in the current event's phase. -/
 def tail : List (ServiceInstruction (graph setup)) :=
   phase.visits.map ServiceInstruction.player ++ rosterPhaseEnding setup phase.event
+
+theorem tail_no_wire : ServiceInstruction.wire ∉ phase.tail := by
+  simp [tail, rosterPhaseEnding_no_wire]
 
 /-- The service plan after the current event's phase. -/
 def later : List (ServiceInstruction (graph setup)) :=

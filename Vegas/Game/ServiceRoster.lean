@@ -32,6 +32,12 @@ def rosterBlock (setup : Setup (Player := Player) (L := L))
     | some owner => [.includeLatest event owner]) ++
       List.replicate (event.val + 1) .tick ++ [.expire event]
 
+theorem rosterBlock_no_wire (setup : Setup (Player := Player) (L := L))
+    (rosters : (graph setup).EventId → List Player) (event : (graph setup).EventId) :
+    ServiceInstruction.wire ∉ rosterBlock setup rosters event := by
+  unfold rosterBlock
+  cases (graph setup).actor? event <;> simp
+
 def rosterPlanPrefix (setup : Setup (Player := Player) (L := L))
     (rosters : (graph setup).EventId → List Player) (rank : Nat) :
     List (ServiceInstruction (graph setup)) :=
@@ -41,6 +47,13 @@ def rosterPlan (setup : Setup (Player := Player) (L := L))
     (rosters : (graph setup).EventId → List Player) : List (ServiceInstruction (graph setup)) :=
   (List.finRange (graph setup).order.eventCount).flatMap (rosterBlock setup rosters)
 
+theorem rosterPlan_no_wire (setup : Setup (Player := Player) (L := L))
+    (rosters : (graph setup).EventId → List Player) :
+    ServiceInstruction.wire ∉ rosterPlan setup rosters := by
+  intro member
+  obtain ⟨event, _, inside⟩ := List.mem_flatMap.mp member
+  exact rosterBlock_no_wire setup rosters event inside
+
 def rosterScheduler (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
@@ -49,13 +62,31 @@ def rosterScheduler (setup : Setup (Player := Player) (L := L))
     | none => PMF.pure .wait
     | some instruction => (runtime setup).interactionInstruction leaks network past view instruction
 
-/-- A finitely supported prior, leak rule, and network policy make all of the
-roster service's nature branch finitely. -/
+/-- The reserved roster's command law is independent of the discretionary
+network policy, at every scheduler history and environment view. -/
+theorem rosterScheduler_network_independent (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (rosters : (graph setup).EventId → List Player)
+    (left right : (runtime setup).NetworkPolicy leaks) :
+    rosterScheduler setup leaks rosters left = rosterScheduler setup leaks rosters right := by
+  funext past view
+  unfold rosterScheduler
+  split
+  · rfl
+  · rename_i instruction selected
+    apply (runtime setup).interactionInstruction_network_independent
+    intro same
+    have member := List.mem_of_getElem? selected
+    rw [same] at member
+    exact rosterPlan_no_wire setup rosters member
+
+/-- A finitely supported prior and leak rule make all of the roster service's
+nature branch finitely. The roster never calls its network policy. -/
 instance rosterScheduler_finiteNature (setup : Setup (Player := Player) (L := L))
     [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     [leaks.FiniteSupport] (rosters : (graph setup).EventId → List Player)
-    (network : (runtime setup).NetworkPolicy leaks) [network.FiniteSupport] :
+    (network : (runtime setup).NetworkPolicy leaks) :
     (application setup leaks).FiniteNature (initialLaw setup)
       (rosterScheduler setup leaks rosters network) where
   initial_finite := by
@@ -65,7 +96,12 @@ instance rosterScheduler_finiteNature (setup : Setup (Player := Player) (L := L)
     unfold rosterScheduler
     split
     · simp
-    · exact (runtime setup).interactionInstruction_support_finite leaks network past view _
+    · rename_i instruction selected
+      apply (runtime setup).interactionInstruction_support_finite_of_not_wire
+      intro same
+      have member := List.mem_of_getElem? selected
+      rw [same] at member
+      exact rosterPlan_no_wire setup rosters member
 
 /-- Every event actor has an activation at its own event. The compiler theorems
 assume this coverage: without it an owner could never bind or open, so a source
@@ -122,12 +158,6 @@ theorem rosterBlock_actors (setup : Setup (Player := Player) (L := L))
   unfold rosterBlock
   cases (graph setup).actor? event <;> simp [instructionActor]
 
-theorem rosterBlock_no_wire (setup : Setup (Player := Player) (L := L))
-    (rosters : (graph setup).EventId → List Player) (event : (graph setup).EventId) :
-    ServiceInstruction.wire ∉ rosterBlock setup rosters event := by
-  unfold rosterBlock
-  cases (graph setup).actor? event <;> simp
-
 theorem rosterPlanPrefix_succ (setup : Setup (Player := Player) (L := L))
     (rosters : (graph setup).EventId → List Player) (event : (graph setup).EventId) :
     rosterPlanPrefix setup rosters (event.val + 1) =
@@ -148,6 +178,12 @@ def rosterPhaseEnding (setup : Setup (Player := Player) (L := L))
     | none => [.sample event]
     | some owner => [.includeLatest event owner]) ++
     List.replicate (event.val + 1) .tick ++ [.expire event]
+
+theorem rosterPhaseEnding_no_wire (setup : Setup (Player := Player) (L := L))
+    (event : (graph setup).EventId) :
+    ServiceInstruction.wire ∉ rosterPhaseEnding setup event := by
+  unfold rosterPhaseEnding
+  cases (graph setup).actor? event <;> simp
 
 theorem rosterBlock_eq_ending (setup : Setup (Player := Player) (L := L))
     (rosters : (graph setup).EventId → List Player) (event : (graph setup).EventId) :

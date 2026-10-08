@@ -110,6 +110,7 @@ import Vegas.Game.ServiceRevealLaw
 import Vegas.Game.ServiceRevealTail
 import Vegas.Game.ServiceRevealVirtual
 import Vegas.Game.ServiceRoster
+import Vegas.Game.ServiceRosterProtection
 import Vegas.Game.ServiceRosterAsync
 import Vegas.Game.ServiceRosterClock
 import Vegas.Game.ServiceRosterCounts

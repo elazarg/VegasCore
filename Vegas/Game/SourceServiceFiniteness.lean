@@ -10,7 +10,7 @@ import Vegas.Compile.EventGraphDeviation
 The timed compilation of a source profile branches finitely: fresh binding
 values are finite because the service covers them, the timing draw ranges over
 finitely many slots, and silence is a single response.
-With the service's finitely branching prior, leak rule and network, every phase
+With the service's finitely branching prior and leak rule, every reserved phase
 of the actual service therefore has a finitely supported law, and so do the
 source continuations it is compared with.
 -/
@@ -106,8 +106,8 @@ theorem phaseLaw_support_finite {who : Player}
     (phase : DecisionPhase service.setup service.leaks service.rosters who execution)
     (response : (application service.setup service.leaks).Action) :
     (approx.phaseLaw phase response).support.Finite :=
-  (runtime service.setup).runInteractionPlan_support_finite service.leaks
-    approx.players_finiteSupport service.network _ _
+  (runtime service.setup).runInteractionPlan_support_finite_of_no_wire service.leaks
+    approx.players_finiteSupport service.network phase.tail phase.tail_no_wire _
 
 theorem phaseConfigLaw_support_finite {who : Player}
     {execution : (application service.setup service.leaks).Execution}

@@ -87,6 +87,29 @@ def interactionInstruction (runtime : EventGraphRuntime graph)
   | .tick => PMF.pure (.application .advanceClock)
   | .expire event => PMF.pure (.application (.expire event))
 
+/-- A reserved instruction does not consult the discretionary network policy.
+This equality preserves the actual command, not just its actor or effect. -/
+theorem interactionInstruction_network_independent (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (left right : runtime.NetworkPolicy leaks)
+    (history : List (runtime.reactiveApplication leaks).EnvironmentEntry)
+    (view : (runtime.reactiveApplication leaks).EnvironmentView)
+    (instruction : ServiceInstruction graph) (reserved : instruction ≠ .wire) :
+    runtime.interactionInstruction leaks left history view instruction =
+      runtime.interactionInstruction leaks right history view instruction := by
+  cases instruction <;> simp_all [interactionInstruction]
+
+/-- A reserved instruction branches finitely without any restriction on the
+discretionary network policy, because it never calls that policy. -/
+theorem interactionInstruction_support_finite_of_not_wire (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (network : runtime.NetworkPolicy leaks)
+    (history : List (runtime.reactiveApplication leaks).EnvironmentEntry)
+    (view : (runtime.reactiveApplication leaks).EnvironmentView)
+    (instruction : ServiceInstruction graph) (reserved : instruction ≠ .wire) :
+    (runtime.interactionInstruction leaks network history view instruction).support.Finite := by
+  cases instruction <;> simp_all [interactionInstruction]
+
 /-- Only network opportunities randomize a service instruction. -/
 theorem interactionInstruction_support_finite (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))

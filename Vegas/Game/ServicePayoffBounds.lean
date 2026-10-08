@@ -25,7 +25,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
   (network : (runtime setup).NetworkPolicy leaks)
-  [setup.FiniteInitialLaw] [leaks.FiniteSupport] [network.FiniteSupport]
+  [setup.FiniteInitialLaw] [leaks.FiniteSupport]
 
 local instance : Nonempty ((bounds.menu (runtime setup) leaks).protocol (initialLaw setup)
     (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).History :=

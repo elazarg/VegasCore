@@ -95,7 +95,7 @@ variable (setup : Setup (Player := Player) (L := L))
 /-- On the roster calendar the deposit is the calendar's deposit. -/
 theorem rosterAuditDeposit_eq_async [setup.FiniteInitialLaw] [leaks.FiniteSupport]
     (rosters : (graph setup).EventId → List Player)
-    (network : (runtime setup).NetworkPolicy leaks) [network.FiniteSupport]
+    (network : (runtime setup).NetworkPolicy leaks)
     (base : (application setup leaks).ProtocolState → Player → ℝ)
     (probability : Player → ℝ) (who : Player) :
     rosterAuditDeposit setup leaks bounds rosters network base probability who =

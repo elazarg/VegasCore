@@ -34,7 +34,7 @@ theorem sourceService_continuation_settlement_comparison {Parameter : Type}
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
     (opportunities : BindingOpportunities setup rosters)
-    (network : (runtime setup).NetworkPolicy leaks) [network.FiniteSupport]
+    (network : (runtime setup).NetworkPolicy leaks)
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (sample : List (SettledEvidence setup) → PMF (List (SettledEvidence setup)))

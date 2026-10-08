@@ -35,7 +35,6 @@ theorem sourceService_audited_raw_equilibrium_extends {Parameter Observation : T
     (rosters : (graph setup).EventId → List Player)
     (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    [network.FiniteSupport]
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (sample : List (SettledEvidence setup) →
