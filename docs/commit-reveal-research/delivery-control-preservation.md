@@ -349,6 +349,94 @@ or an observation-dependent abort reward violates this condition. Making
 every failure payoff negative is insufficient to derive a common
 delivery-maximizing policy when its magnitude changes with the route.
 
+## A cost variant with a common optimal delivery policy
+
+**Different accounting interface.** Keep the fixed -D_i failure baseline,
+protected source binding/Open menus, serial choice frontier and operational
+information assumptions. Permit nonnegative operational delivery deductions.
+Settle each process's deductions by its resolution and subtract them on both
+success and abort. Already incurred bills remain paid on every later route;
+later logical actions cannot change their amounts. Protected binding/Open
+transport incurs no new deduction. Costs depend only on p, v and operational
+history. A public cap B_i bounds cumulative deductions on every legal
+whole-game history. Fix that cap, D_i and the cost interface before selecting
+the service. Provision source funding, D_i and B_i before play without
+changing menus; affordability is an additional premise, not a consequence
+of the proof.
+This permits off-path successful fees; initialized protected play still has
+zero added cost. It is not the original zero-cost theorem's interface.
+
+Fix one operational policy pi_0, independent of retained logical private
+types. It may depend on the specified service unless one policy is declared
+for the whole class. At a control site compare it with one present action a
+followed by pi_0. Conditional on a complete underlying service state x at that site,
+let q_0(x), q_a(x) be eventual success probabilities and c_0(x), c_a(x)
+be expected additional deductions before resolution. Earlier accumulated
+deductions C_i are sunk and cancel from this comparison. Write
+Delta q=q_0-q_a and Delta c=c_0-c_a.
+
+**Endpoint lemma.** For a fixed posterior over operational state, pi_0 is
+optimal in this one-shot comparison for every source continuation value
+V in [0,R_i] exactly when
+
+\[
+D_i\Delta q\ge\Delta c,
+\qquad
+(D_i+R_i)\Delta q\ge\Delta c.                 \tag{5}
+\]
+
+Here q and c are averaged at that posterior. Its gain is
+Delta q(V+D_i)-Delta c, an affine function of V; nonnegativity throughout
+the interval is equivalent to nonnegativity at both endpoints. The assertion
+is uniform over the whole interval; for a fixed source whose values occupy
+only part of it, these tests can be stronger than necessary.
+
+**Paper preservation corollary.** Suppose (5) holds for every present action
+at every legal control site, pointwise in every compatible hidden service
+state x. The same pi_0 then supplies exact forward SE preservation in this
+cost variant. A pi_0 satisfying these inequalities across an entire service
+class supplies its common complete behavioral policy.
+
+To prove the statement, use type-independent full-support perturbations of
+pi_0, the source consistency sequence and vanishing root deferrals. The same
+successful-prefix coupling and one common compact subsequence give globally
+consistent beliefs with source projection mu. At the limit, each hidden
+source history has successful continuation S_i(h) in [0,R_i]. The pointwise
+endpoint inequalities applied at V=S_i(h), then averaged over the full
+belief, prove every actual one-shot control comparison. Perfect recall gives
+whole-policy optimality. No auxiliary maximum-probability policy is assumed
+to remain optimal automatically after adding costs.
+
+At a protected root with previously incurred bills C_i, Open yields
+S_i(h)-C_i. Defer yields qS_i(h)-(1-q)D_i-C_i-c, with c>=0, and hence no
+more than Open. At a genuine binding decision, past bills are independent
+of the new value and future prescribed protected transport is free, so the
+source comparison holds after cancelling those bills. Initialized play uses
+protected actions and incurs no bills, preserving its source utility law.
+
+Pointwise (5) is a sufficient belief-uniform condition. The weaker version
+can instead be checked at the actual operational posteriors obtained from
+the specified global perturbation sequence and its common limiting beliefs.
+Those posteriors cannot be selected independently or asserted to remain
+unchanged by adding the new cost process.
+
+If q_0>=q_a, it suffices that the extra expected cost satisfies
+Delta c<=D_i Delta q; the lower endpoint is then the stricter test. For a
+single Send/Never comparison with Send probability q, a charge c only when
+Send fails, and no other deductions, this reduces to
+
+\[
+D_i q\ge(1-q)c.
+\]
+
+A public conditional q>=q_min>0 makes D_i q_min>=(1-q_min)c sufficient
+for that two-action comparison. This is not a retry theorem: all Wait,
+retransmission and successful-charge comparisons still need (5) at every
+legal site. Nor does it prove that the actual final audit has the required
+incremental accounting. Source-dependent invoices, future changes to past
+charges, bankruptcy menus and action-dependent protected costs require
+additional adapters or a different source analysis.
+
 ## A common policy under an additional delivery property
 
 The general controller can depend on the actual service kernel. There is a
@@ -450,11 +538,19 @@ that the actual charged-retry runtime preserves it.
 - **Knowledge boundary:** General off-path controllers can depend on the
   service; a declared pathwise delivery-dominating policy gives a common
   whole strategy, including under specified independent service priors.
+- **Cost corollary:** A type-independent policy satisfying both endpoint
+  comparisons permits nonnegative incremental transport deductions with
+  protected transport free. The public whole-game cost cap and funded budget
+  are fixed before selecting the service; actual native accounting adapters
+  remain absent.
 - **Excluded effects:** General source withholding, late bindings, arbitrary
-  messages, mode-dependent audit, fees, capital feasibility, outside utility,
-  producer incentives, coalitions, capacity/finality implementation and
-  post-abort strategic play. No full native adapter is claimed.
+  messages, capital feasibility, outside utility, producer incentives,
+  coalitions, capacity/finality implementation and post-abort strategic play.
+  The main theorem excludes fees and mode-dependent audit; the separate cost
+  corollary covers only deductions meeting its incremental accounting and
+  endpoint conditions. No full native adapter is claimed.
 - **Review:** Root and independent mathematical reviews accepted the auxiliary
   agent construction, conditional regret, full consistency, type-independent
-  posterior factorization, utility extension and common-policy corollary.
+  posterior factorization, utility extension, common-policy corollary and
+  delivery-cost endpoint corollary.
   Native assembly and machine checking are absent.

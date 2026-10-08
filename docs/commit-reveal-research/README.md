@@ -68,7 +68,7 @@ probability. Convenient but incompatible off-path beliefs are insufficient.
 
 ## The most useful current proof route
 
-The research now separates two proof obligations that can be combined for the
+The research separates two proof obligations that can be combined for the
 same finite implementation game. First, show that source decisions retain their
 menus, conditional logical transitions and utilities, and that the entire
 remembered runtime record adds no information within a source information set.
@@ -118,6 +118,10 @@ consistency construction supplies its off-path beliefs. Protected initialized
 play then implements the exact source law without any late-success floor.
 Successful retry charges and mode-dependent failed-packet penalties are outside
 this result; the actual settled audit distinguishes accepted packet identifiers.
+A separate cost corollary permits bounded operational deductions when one
+policy is optimal at both extremes of the source continuation-payoff range,
+at every legal delivery site. It requires actual settled, irrevocable bills
+and free initialized protected transport, not an average fee estimate.
 
 [Late binding with failure erasure](late-binding-erasure.md) extends the
 success-bound result to a late callback that chooses a fresh value. It requires
@@ -136,6 +140,26 @@ delivery; the unconditional readout includes its actual abort mass. Conditional
 checkpoint guarantees bound whole-game failure by a product or a union bound,
 without independent checkpoints. These stronger exogeneity and payoff
 conditions are separate from merely having a high completion probability.
+
+[Controlled whole-game delivery](whole-game-delivery-preservation.md) adds
+finite Send/Wait/Retry choices and removes guaranteed protected inclusion.
+Its stronger interface makes the entire mechanical service independent of
+logical data and transports every source action through the same process.
+Every physical abort gives each player the same utility no greater than any
+source outcome. A globally completion-maximizing transport policy then
+supports exact SE, the exact delivered source law, and at least any declared
+fallback's whole-game completion guarantee. This permits realistic kinds of
+delivery risk without claiming that ordinary blockchain service or the
+current audit satisfies these conditions. Lawful source withholding remains
+distinct from a physical abort.
+
+For persistent serial jobs with exogenous opportunities and monotone
+eligibility, always submitting at the first eligible callback works across
+the whole stated service class without knowing its inclusion law. The same
+note proves that corollary and gives a two-stage counterexample to charging
+only the player whose stage fails. A player may deliberately shift failure
+to another stage; making every abort payoff low does not by itself align its
+delivery choices.
 
 Two source classes must remain separate:
 
@@ -160,12 +184,13 @@ about **all** source equilibria needs an appropriate reflection theorem or
 a separate proof of that property in the target; forward implementation alone
 does not exclude additional runtime equilibria.
 
-There are three different stronger or weaker questions:
+These stronger or weaker questions have different conclusions:
 
 | Target | Required conclusion |
 | --- | --- |
 | Copy a selected assessment | Its strategies and beliefs are recovered at corresponding decisions, including off-path ones. |
 | Reflect all target equilibria | Every target equilibrium produces an outcome permitted by a source equilibrium. |
+| Exact rationality with physical abort | The target assessment is an exact SE; the source law matches conditional on completion, and the unconditional law includes explicitly bounded abort mass. |
 | Approximate sequential preservation | There is a target assessment with exactly consistent beliefs, uniformly small gains from changing an entire continuation, and a nearby logical outcome law. |
 
 Logical-law error is measured in total variation: the largest probability
@@ -197,6 +222,7 @@ small errors in that metric.
 | Several delivery decisions | Can waits, retransmissions and private service learning share a type-independent rational completion? | [Immutable openings with delivery control](delivery-control-preservation.md) |
 | Late value choices | When can an unaccepted private binding value be ignored without changing later strategic possibilities? | [Failure erasure and absorbing settlement](late-binding-erasure.md) |
 | Physical outages | Can rationality remain exact while the outcome claim explicitly allows noncompletion? | [Exogenous abort and delivery-conditioned preservation](exogenous-abort-preservation.md) |
+| Controlled whole-game delivery | Can send, wait and retry remain rational without surely successful admission, with a whole-game reliability guarantee? | [Value-blind service and completion](whole-game-delivery-preservation.md) |
 
 [The research workflow](workflow.md) specifies independent tasks, handoffs,
 review obligations and the next mathematical questions.

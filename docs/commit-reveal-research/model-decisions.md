@@ -143,7 +143,7 @@ counterexample uses attempted-value-dependent failure utility, which is not a
 proved native payoff adapter. These restrictions belong in the result, rather
 than in a general assertion about public mempools.
 
-That positive now composes across a finite mandatory-opening program in the
+That positive composes across a finite mandatory-opening program in the
 [serial late-opening proof](serial-late-release.md). It uses protected bindings,
 one late callback per immutable opening, uniform success/loss bounds and a
 public failure marker. A single global consistency sequence couples all
@@ -177,6 +177,14 @@ late-success floor. A single policy across unspecified service laws needs an
 additional operational dominance property; noncolluding miners alone do not
 supply it.
 
+A separate cost variant permits bounded delivery bills if one operational
+policy wins at both ends of the source continuation-payoff range, at every
+legal control state. Settled prior bills must remain sunk on every later
+route, and initialized protected transport has no added cost. The resulting
+all-site comparison is more informative than declaring all fees harmless or
+requiring every off-path retry to be free. It does not establish that a global
+terminal audit or a fee market realizes the required accounting.
+
 This identifies a concrete accounting question rather than another scheduler
 state variable. The current audit accepts a particular packet identifier;
 another identifier for the same opening can be forbidden even when the
@@ -201,6 +209,35 @@ conditional on completion. Unconditional readout error is its abort mass.
 This is a useful weaker outcome target, not a redefinition of the research's
 principal unconditional preservation goal. Real failure settlement, inclusion
 selection and extra submission choices still need their own arguments.
+
+The [controlled-delivery theorem](whole-game-delivery-preservation.md) addresses
+those submission choices in a stronger candidate interface. It removes surely
+successful protected submission and allows finite Send/Wait/Retry controls.
+Mechanical service must ignore all logical values and actions, and every
+physical abort must give each player the same utility no greater than any
+source payoff. Under those conditions, one policy maximizing whole-game
+completion supports exact SE and the exact source law conditional on delivery.
+It attains at least a declared fallback's completion guarantee; its choice
+may depend on the actual service law or a specified independent service prior.
+
+This is a meaningful probabilistic alternative, with material boundaries.
+Lawful source withholding needs the same transport process as opening;
+certain completion by silent FALSE does not meet that interface. Uniform low
+abort utility may require escrow loss by innocent participants, particularly
+when a source outcome pays less than a refund. A live, funded settlement
+mechanism must realize that utility: a permanent chain halt cannot execute
+an on-chain penalty. The theorem supplies no general raw-message adapter or
+claim that a standard chain has value-blind admission. These are explicit
+operational and accounting questions for a possible execution layer.
+
+The same note proves a common policy for a more specific service: persistent
+serial jobs, idempotent copies and exogenous opportunities whose availability
+is monotone in earlier readiness and submission. First eligible submission
+then maximizes completion pathwise, so players need not know an exact miner
+law. Those are additional service properties, not consequences of
+noncollusion. Its two-stage negative also shows why a low but owner-dependent
+failure settlement is insufficient: one player can improve its payoff by
+delivering late enough to make another player's stage fail.
 
 ## What two simple producer models add
 

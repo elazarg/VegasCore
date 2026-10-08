@@ -196,6 +196,25 @@ If a weakening survives, record the broader candidate and the new proof task.
     and distinguish a law-dependent optimal completion from an explicit
     common delivery-dominating policy. Source withholding, recovery and extra
     secret-bearing packets remain separate adapter obligations.
+    Its cost variant needs endpoint comparisons over the full source payoff
+    range at every control site, a public funding cap, and phase-settled bills
+    that cannot be erased or changed by later choices. A successful audit charge
+    is not automatically an operational deduction with these properties.
+
+22. Test the [controlled whole-game delivery theorem](whole-game-delivery-preservation.md)
+    against a finite execution layer with no sure inclusion. Prove a common
+    mechanical projection covering every canonical logical action, actual low
+    abort settlement for all players, and a public fallback's conditional stage
+    bounds. Native silent withholding has a different transport law and is
+    not covered automatically. Distinguish service-specific global completion
+    maximization, a common dominating policy, and Bayesian control under a
+    specified independent prior. Keep delivered-law preservation separate
+    from the principal unconditional target, and test utility or admission
+    weakenings with full source/target games.
+    The persistent-job corollary supplies a common first-submission policy
+    under explicit all-history monotone opportunities. Test those mechanics
+    rather than inferring them from miner honesty. The owner-dependent abort
+    counterexample identifies failure shifting as a separate utility issue.
 
 These tasks are mathematical and parallelizable. Formalization, deployment
 claims and changes to project semantics require separate work.
