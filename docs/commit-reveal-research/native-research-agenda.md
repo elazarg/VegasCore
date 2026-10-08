@@ -49,19 +49,23 @@ budget. The protected restriction has a reviewed paper proof in
 [native protected execution](native-protected-execution.md). The
 [foundation map](native-foundation-obligations.md) identifies existing APIs for
 its adaptive stopped-prefix construction. Prioritize full-menu late-action
-accounting because it determines whether the general positive target is possible.
+accounting and the concrete properties a broader positive would need. The
+[native two-late counterexample](native-late-action-analysis.md) has a reviewed
+full-menu paper proof; the declared contract alone cannot supply that positive.
 
 | Work | Share | Useful deliverable |
 | --- | --- | --- |
-| Actual accepted late actions and settlement | 60% | A preserving construction or complete native counterexample; failing that, a proved concrete boundary with its remaining embedding obligations. |
+| Actual late actions and settlement boundary | 60% | Test a same-fixture weak PBE, sharper fixed-deposit bounds, and concrete public service properties that could exclude the reviewed native counterexample. |
 | Independent concrete review | 30% | Check the entire native action space, admissible builder on every legal history, actual observations and global belief consistency. |
 | Protected proof integration and concrete cross-checks | 10% | Maintain the reviewed first-ready result and compare every claimed native premise with its declaration. |
 
 The general observation-transfer, consistent-completion and terminal-audit
-machinery already supplies substantial foundations. The largest uncertainty is
-whether the implemented runtime satisfies their premises, especially for extra
-actions the audit accepts. Another family of alternative interfaces would not
-by itself resolve that uncertainty.
+machinery already supplies substantial foundations. The reviewed full-menu
+negative shows that the contract and its accepted late actions do not suffice
+for a general SE extension. The largest uncertainty is which concrete public
+service or settlement property supports a useful positive without excluding
+physically possible communication. Another family of alternative interfaces
+would help only if its native relationship is proved.
 
 ## Protected execution handoff
 

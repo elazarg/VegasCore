@@ -128,8 +128,9 @@ If a weakening survives, record the broader candidate and the new proof task.
    simply be reused with deposits growing without bound.
 10. Under which public collection/gain bounds does collateral chosen before
     the selected builder preserve SE? Treat exact-builder calculations as
-    contrasts. In parallel, test a native embedding of the checked settle-late
-    negative comparison. Added native actions can change equilibrium existence;
+    contrasts. Use the [reviewed full native negative](native-late-action-analysis.md)
+    to identify which additional public properties could support a positive.
+    Its checked embedding remains a formalization task. Added native actions can change equilibrium existence;
     an abstract embedding alone does not preserve a negative conclusion.
 11. State a public miner/service class and distinguish pointwise preservation
     from a common policy and Bayesian hidden-service preservation. Test whether

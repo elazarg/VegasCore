@@ -84,9 +84,13 @@ an attractive late deviation in any purported preserving equilibrium.
 lambda=1, and a theorem for an independently specified different builder are
 outside this checked conclusion. Malformed and wrong-event packets, aliases
 and the complete native action space are not covered. Adding actions can
-restore equilibrium implementation, so the missing native embedding must
-control their incentives and observations, not merely reproduce this game's
-paths. [Comparison scope](../runtime-features-vs-late-leak.md#limits).
+restore equilibrium implementation, so a native embedding must control their
+incentives and observations, not merely reproduce this game's paths.
+[Comparison scope](../runtime-features-vs-late-leak.md#limits).
+The [reviewed native construction](native-late-action-analysis.md) does this
+for an explicit three-instruction source and the complete bounded raw menu,
+with stronger fixed charge bounds. It has a paper proof; its exact source,
+scheduler, menu and belief identities remain to be formalized in Lean.
 
 ## Two orders of quantification
 
@@ -95,7 +99,7 @@ source equilibrium. They differ in whether the service is already known.
 
 | Order | Required preservation claim | Present status |
 | --- | --- | --- |
-| Collateral before service | Choose one finite collateral configuration that works for every builder in the declared class. | Refuted in the settle-late family for D>R and c>R/2. A native compiler impossibility still needs its embedding. |
+| Collateral before service | Choose one finite collateral configuration that works for every builder in the declared class. | Checked negative in the settle-late family for D>R and c>R/2; reviewed full native paper negative with D>max(R,1), K_A>R and K_B>1. Native formalization remains outstanding. |
 | Service before collateral | For each known builder satisfying stated bounds, choose a finite collateral configuration that works for every selected source SE. | The fixed-q comparison below has a paper bound forcing the intended law in every target SE. General compiled-runtime preservation remains open. |
 
 For fixed collateral, the builder can make 1-q small enough that expected

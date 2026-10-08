@@ -472,8 +472,11 @@ infinite-game argument or a justified finite abstraction.
 | Fixed-deadline probabilistic publication | A policy-independent positive failure floor precludes an all-success exact logical law. | Elementary event proof; actual native outage obstruction checked. Not absence of target SE. |
 | Fresh or additive collateral | Additional faults can have genuine additional cost. | Candidate repair; finite reserves, refusal, caps, and evidence must be specified. Does not repair information-changing lawful aliases. |
 
-The broad source-to-blockchain SE and PBE questions remain open in the current
-implementation. This note identifies sufficient components and distinct failure
-mechanisms. It does not infer a universal public-mempool impossibility from
-the failure of one compiler, nor a general positive theorem from a local
-collateral comparison.
+The [reviewed native two-late construction](native-late-action-analysis.md)
+refutes uniform SE preservation over the declared timely contract builders
+with fixed collateral above its stated thresholds, at paper level. It controls
+the full bounded raw menu and actual capped settlement. General positive
+results need a further public service or settlement property; native PBE
+preservation remains a separate question. This is a concrete compiler/runtime
+boundary, not a universal public-mempool impossibility or a general positive
+theorem inferred from a local collateral comparison.

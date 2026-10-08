@@ -127,7 +127,17 @@ for every scheduler obeying the declared timely service contract. The
 [API map](native-foundation-obligations.md) separates checked ingredients
 from the adaptive adapters proved on paper. No additional general foundation
 is needed for this restricted paper result; its full-menu extension is the
-substantive remaining question.
+substantive boundary.
+
+The [full native counterexample](native-late-action-analysis.md) gives that
+boundary a complete paper negative. With fixed forfeit and sufficiently large
+deposits, two late sends of one immutable opening permit a public timely
+contract builder with no preserving SE. Full raw menus and the optional
+author-only observation and late-packet erasure hypotheses are included.
+The contradiction comes from globally consistent off-path beliefs, so it
+does not settle PBE. A broad positive for the same contract class cannot be
+obtained merely by completing the protected proof's formal adapters; it needs
+a further substantive public service or settlement property.
 
 Not every additional implementation choice needs a charge. The
 [compositional theorem](universal-preservation-criterion.md) permits genuine
@@ -314,11 +324,12 @@ identities have paper proofs. Formalizing those native adapters is separate
 from the current mathematical question; new foundational research needs a
 specific reported gap.
 
-Second, analyze the target's permitted timing and submission actions under
-public service properties. A preservation route needs a source-equivalent
-continuation or an enforceable additional-collection argument. A negative route
-needs the full native menus, observations and settlement audit, not just an
-embedded bad subgame.
+Second, use the full-menu native counterexample to test proposed public
+service properties. Determine whether a property excludes its timing and
+settlement mechanism and whether a blockchain-like service could supply it.
+Any positive must still give a source-equivalent continuation or a valid
+incentive argument for every additional action. Investigating the same
+fixture's weak PBE is a separate concrete question.
 
 Third, add an explicit utility comparison to whichever information/action
 interface succeeds. Exact preservation under declared time indifference and

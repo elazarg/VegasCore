@@ -82,6 +82,7 @@ latter.
 | Compositional exact preservation | Finite perfect-recall source; bounded sure runtime processing; source actions may have uncharged implementation aliases. Every alias preserves conditional logical execution and utility. One fixed full-support alias rule makes the full remembered observation channel equal across each source information set. Excluded raw actions satisfy the actual structural, soundness and uniform first-departure collection premises. | Paper clean-game constructor plus checked audit-extension theorem; collateral depends on public utility and collection bounds before the builder and equilibrium. Exact forward implementation, not reflection or a native RAW instantiation. [Proof and local necessity test](universal-preservation-criterion.md). |
 | Protected serial native play | Canonical value-only opaque bindings; effective openings; every instruction waits for its serial predecessors. Source decisions occur once at protected opportunities; other activations offer silence. Actual pending packets, private samples, receipts and own recall remain observable. | Paper exact SE preservation with retained secrets, lawful source withholding and nonuniform bounded waits. Actual public input coupling supplies the information argument. Late sends, retries, malformed packets and the guarded-intention adapter remain outside the result. [Primitive argument](native-observation-criterion.md). |
 | Actual first-ready native restriction | Well-formed intended mandatory-action source; every legal guard-accepting commitment value is available. The actual serial runtime keeps its adaptive clock and activation commands, private catalogues, pending samples and complete recall. Owners use canonical packets at their first ready responses; all other physical responses offer only silence. | Independently reviewed paper exact SE preservation and initialized joint parameter/result/net-payoff law for every declared timely contract scheduler. One copied policy works across that class. Adaptive stopped-prefix replay and local continuation adapters are proved on paper, with checked ingredients identified separately. This is a strict physical restriction, not preservation in the full raw menu; late sends, retries and other extra packets remain excluded. [Proof and exact scope](native-protected-execution.md), [API and remaining-obligation map](native-foundation-obligations.md). |
+| Full native raw menu with two late openings | Actual serial program: Alice opens an immutable initial bit, Bob binds and opens an answer. Alice also knows an uncertified private label. Native candidate preparation, malformed calls, aliases, evidence, extra identifiers and every bounded raw response are available. Fixed D>max(R,1), K_A>R, K_B>1; authentic complete traffic audit, or its explicitly bounded partial-coverage variant. | Independently reviewed paper negative. For every fixed collateral configuration above those thresholds and partial pending-observation probability in (0,1), an explicit sufficiently reliable late builder admits no SE preserving the selected source joint parameter/result/net-payoff law. The builder satisfies the all-history timely contract and optional all-view late-packet blindness; leaks are author-only. Remaining tasks are Lean formalization. Not target-SE nonexistence, PBE impossibility or a deployed-chain theorem. [Native construction and proof](native-late-action-analysis.md). |
 | One late fixed-value opening | Finite sender types, one immutable disclosure, protected Open or Defer followed by one Send/Never choice; receiver acts only after resolution. Sender gross reward in [0,R], failure forfeit D and additional failed-send charge c. Type-blind success/failure channels beyond the disclosed value. | Paper exact source-outcome implementation if q_min D-(1-q_min)c>R for a public lower success bound. Includes q=1 and q approaching one; no failure floor. D is intrinsic if withholding is lawful, and funding/costs are explicit exclusions. [Complete consistent construction](admission-information-boundary.md#a-complete-one-late-disclosure-positive). |
 | Serial late immutable openings across a whole program | Finite serial mandatory-opening source with correlated retained secrets; protected opaque binding choices. Each opening has one late Send/Never callback. Successful prefixes preserve source chance; first failure is publicly marked. Gross reward is bounded by R_i and total failure deductions by N_i D_i+K_i. | Reviewed paper exact forward SE preservation when D_i>R_i and D_i[1-N_i(1-q_min)]>R_i+(1-q_min)K_i. Constants precede the builder; no failure floor, and full off-path consistency is proved using actual entry priors. One physical callback and clean/dirty information separation are substantive restrictions. [Theorem and proof](serial-late-release.md#paper-preservation-theorem). |
 | The same serial interface with reconstructible exact success odds | At the callback, the owner knows exact scalar odds q(p,v); after success every later strategic player recovers the recorded callback state p, late route and public v. The other menus, loss bounds and omissions remain those of the serial interface. | Reviewed paper preservation for all q in [0,1] if D_i>R_i and D_i²-(N_i+1)R_iD_i-R_iK_i>=0. Reliable callbacks copy Send; unreliable routes receive arbitrary rational completion and cannot profit at the protected root. No native public-odds adapter or common policy under unspecified laws. [Separate theorem](serial-late-release.md#a-second-interface-publicly-reconstructible-success-odds). |
@@ -129,10 +130,17 @@ above half that scale. For each pending-observation probability strictly
 between zero and one, every sufficiently high late-inclusion probability below one
 admits no target SE with the intended outcome law. The game includes blind
 retries, raw signals, a listener packet and visible inclusion serials. This is
-a checked abstract game, not yet an embedding into the full compiled runtime.
+a checked abstract game; its native embedding is not yet machine checked.
 It does not cover audit charges at or below half the reward scale, nor does it
 refute choosing collateral after fixing a known service.
 [Exact quantifiers and the remaining positive direction](quantifier-orders.md).
+
+The [native two-late proof](native-late-action-analysis.md) separately constructs
+the source setup, full bounded raw menu, public scheduler and actual settlement
+at paper level. Its stronger deposit bounds control all extra native packets;
+its likelihood proof allows arbitrary type-dependent deferral trembles. This
+settles the mathematical native obstruction for that explicit configuration,
+while leaving the owner's checked proof obligations unchanged.
 
 Exact knowledge of the selected service is a separate issue. The current
 fixed-scheduler model evaluates a specified chance process. A new paper
@@ -241,6 +249,14 @@ in the [robustness track](preservation-and-robustness.md). Collection and timing
 conditions are examined in the [service track](service-and-enforcement.md).
 
 ## A concrete next theorem to pursue
+
+The [reviewed protected restriction](native-protected-execution.md) and
+[full native negative](native-late-action-analysis.md) locate the current
+mathematical boundary. Further work should test which concrete public service
+or settlement properties exclude the two-late mechanism, and whether the same
+native fixture has a preserving weak PBE. Neither question calls for another
+general equilibrium-existence framework. A proposed runtime change must be
+identified as a separate interface before making a positive claim about it.
 
 The most useful combined target is a **finite source-compatible dispatch
 interface with an explicit extension to additional submissions**:

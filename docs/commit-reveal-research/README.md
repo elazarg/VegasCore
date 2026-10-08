@@ -43,8 +43,11 @@ only the program and public service properties. The
 checked settle-late comparison defeats every fixed forfeit above the reward
 scale and every fixed audit charge above half that scale by choosing sufficiently
 reliable late inclusion. This settles a uniform-order negative for that
-abstract family. Embedding it into the full compiled runtime remains open;
-collateral chosen for a fully known service is a pedagogic contrast.
+abstract family. A separately reviewed
+[full native counterexample](native-late-action-analysis.md) supplies a paper
+embedding with stronger deposit thresholds and complete raw menus. Its Lean
+formalization remains outstanding. Collateral chosen for a fully known service
+is a pedagogic contrast.
 [Collateral and service quantifiers](quantifier-orders.md) gives the exact
 statement, model reminder and obligations for the two orders.
 [Miner behavior and player knowledge](miner-assumptions.md) distinguishes
@@ -99,6 +102,18 @@ declared timely contract scheduler. Its adaptive adapters remain unformalized,
 and deferral, retries and other raw actions are still outside this theorem.
 The [foundation map](native-foundation-obligations.md) identifies the checked
 APIs and remaining concrete extension obligations.
+
+The [two-late native counterexample](native-late-action-analysis.md) shows why
+that restriction cannot simply be extended to every timely contract builder.
+For a three-instruction source with one immutable initial opening, fixed
+forfeit and sufficiently large fixed deposits, it constructs a finite public
+builder whose sufficiently reliable late admission admits no SE preserving
+the selected joint parameter/result/net-payoff law. The proof includes the
+full bounded raw menu, private observation and all-history service promises;
+it also satisfies author-only sampling and the optional late-packet erasure
+condition. This is reviewed mathematics about an actual runtime configuration,
+not a checked native theorem or a claim about every blockchain game. Its
+SE-consistency obstruction supplies no PBE impossibility result.
 
 Accepted late actions require separate analysis. With one late opportunity to
 open an immutable value, a complete paper positive permits inclusion chances
@@ -228,6 +243,7 @@ small errors in that metric.
 | Compositional preservation | Which full observation, logical-execution and extra-action obligations combine into an SE theorem? | [Compositional criterion](universal-preservation-criterion.md) |
 | Native protected play | How do actual opaque envelopes and source-public openings couple serial runtime observations? | [Native serial analysis](native-observation-criterion.md) |
 | Actual first-ready execution | Does the intended mandatory-action source preserve SE with adaptive native waits and full private recall? | [Reviewed protected proof](native-protected-execution.md) |
+| Full native late actions | Can two late sends of the same immutable opening defeat every preserving SE, even with the full raw menu? | [Reviewed native counterexample](native-late-action-analysis.md) |
 | Concrete proof obligations | Which checked APIs apply, which adaptive adapters remain unformalized, and what prevents a full raw-menu conclusion? | [Foundation map](native-foundation-obligations.md) |
 | Accepted late actions | When does a late opening's gain scale with failure risk, and when can rare failures change successful posteriors? | [Admission risk and information](admission-information-boundary.md) |
 | Multi-phase late openings | Can accepted late fixed-value openings compose across a whole program while old secrets persist? | [Serial late-opening theorems](serial-late-release.md) |

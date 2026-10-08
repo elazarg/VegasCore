@@ -417,7 +417,10 @@ which diverges for fixed lambda>0. Its expected failure deductions are only
 (D+c)(1-q), with finite D,c. The inspected retry-law generalization gives
 the same conclusion for honest one-slot fee selection; the existing
 fixed-rate comparison is machine checked. These are restricted interface
-results. The native full action, timestamp and audit embedding is unproved.
+results. An embedding of that fee-maximizing producer interface remains
+unproved. The separate [native two-late construction](native-late-action-analysis.md)
+has a reviewed paper proof including its actual full raw actions, observations
+and settled audit; it does not inherit the producer interface or its fee model.
 
 The mathematical reason is subtle. Failed-packet observation influences
 different types' strict timing preferences, even when their payoff
@@ -452,9 +455,10 @@ activations, forwarded proofs and rejected packet observations cannot be
 discarded without proofs. A constant number of source events does not bound
 or normalize those physical decisions.
 
-A two-live-opportunity native test needs a different argument. Either its
-observation slack and full completion prove that successful replies can be
-kept source-faithful, or an actual full-menu counterexample must control the
-extra channels and the final audit. Clean acceptance alone decides neither
-case. General multi-phase preservation with retained correlated private
-state remains outside both restricted positive theorems here.
+The [two-live-opportunity native test](native-late-action-analysis.md) has
+a complete reviewed paper counterexample controlling the extra channels and
+the final audit. It fixes one immutable initial opening and allows the entire
+bounded raw menu; no late private value is inserted into the utility interface.
+Its source setup, universal scheduler and native Bayesian identities remain
+Lean formalization tasks. General multi-phase preservation with retained
+correlated private state remains outside both restricted positives here.

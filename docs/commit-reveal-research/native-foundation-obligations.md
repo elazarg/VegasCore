@@ -204,7 +204,7 @@ about the larger retained and raw menus.
 | Adaptive bounded first-ready channel | The native paper construction supplies normalization and the complete source-fiber coupling; checked roster laws and atomic observation facts supply ingredients. | High formalization value: implement (1) and (2) on actual variable-length histories. No further general paper bridge is missing. |
 | Original continuation and zero settlement from every clean prefix | The native paper checkpoint/acceptance construction supplies the conditional law and conformance induction; semantic, first-turn and settlement declarations supply checked ingredients. | High formalization value: implement adaptive prefix-relative readout and audit soundness, including every legal intended source alternative. |
 | One globally consistent restricted assessment | Existing Bayesian compactness and local-simulation theorem suffice once the preceding evidence is supplied. | Low need for new theory; instantiate rather than invent another equilibrium completion theorem. |
-| Extension through accepted late moves | An accepted late packet can be uncharged. Neither exclusion nor source-equivalent continuation is automatic. | Highest substantive uncertainty: analyze actual late choices and utility at every relevant information set. |
+| Extension through accepted late moves | An accepted late packet can be uncharged. The [native two-late paper negative](native-late-action-analysis.md) rules out a general full-menu extension under the declared contract and its fixed deposit thresholds. | Highest concrete priority: identify further public service or settlement properties supporting a positive, and distinguish SE from weaker PBE. |
 | Excluded raw moves and one-time charges | Existing signed exclusion, collection and raw alias APIs cover important classes. Uniform collection must be checked for each excluded class. | High: keep arbitrary later play in the quantifier, and distinguish an uncharged first departure from an already collected penalty. |
 | Concurrent genuine choices | Typed completion commutation exists, but current serial channel proof does not settle information or timing opportunities. | Separate later extension; do not count serial success as general concurrency preservation. |
 
@@ -248,6 +248,9 @@ obligation map and direct paper stopped-prefix adapter, including the explicit
 initialized-law premise. The concrete
 [protected execution note](native-protected-execution.md) received independent
 mathematical acceptance of its complete restricted-game paper construction.
-Its adaptive formal adapter, the full raw extension and the native negative
-remain separate tasks. No Lean code, build, adopted checklist or runtime
+Its adaptive formal adapter remains unformalized. The
+[native negative](native-late-action-analysis.md) has a reviewed full-menu paper
+construction, with remaining obligations explicitly identified as Lean
+formalization. The declared contract alone therefore supplies no general
+SE extension. No Lean code, build, adopted checklist or runtime
 semantics is changed by this note.
