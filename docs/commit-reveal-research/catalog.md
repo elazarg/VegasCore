@@ -38,7 +38,32 @@ Some rows describe transport, some describe enforcement, and some describe the
 entire mathematical game. They can be combined only after their actions,
 observations, costs and failure rules have been shown compatible.
 
+## A checked boundary for the asynchronous comparison
+
+The settle-late game has a machine-checked uniform-order impossibility. Fix
+a positive reward scale, a forfeit above that scale and a capped audit charge
+above half that scale. For each pending-observation probability strictly
+between zero and one, every sufficiently high late-inclusion probability below one
+admits no target SE with the intended outcome law. The game includes blind
+retries, raw signals, a listener packet and visible inclusion serials. This is
+a checked abstract game, not yet an embedding into the full compiled runtime.
+It does not cover audit charges at or below half the reward scale, nor does it
+refute choosing collateral after fixing a known service.
+[Exact quantifiers and the remaining positive direction](quantifier-orders.md).
+
 ## Positive statements with their scopes
+
+**Collateral for the known settle-late builder.** Keep the finite comparison's
+signals, blind retry, listener packet and partial pending observation. Fix
+its sole-opening inclusion probability q<1 before choosing collateral. Equal
+forfeit and capped audit amounts D=c=K with K>R/(1-q) force the intended law in
+every target SE and weak PBE. Any deferred continuation risks at least one of
+the two deductions with probability 1-q; sufficiently large K makes its value
+negative, while protected opening and silence have nonnegative value. This is
+a complete paper proof for the same abstract game as the checked uniform-order
+negative, not a native-runtime theorem. Both deductions need funding, and costs
+of that capital are outside the game's utility.
+[Proof, sharper bound and quantifier distinction](quantifier-orders.md#a-positive-paper-argument-for-the-same-fixed-q-comparison).
 
 **Exact public dispatch.** For a finite perfect-recall game retaining private information,
 suppose players retain exactly their source menus and observations. Insert

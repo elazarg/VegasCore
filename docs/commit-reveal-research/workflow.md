@@ -113,6 +113,12 @@ If a weakening survives, record the broader candidate and the new proof task.
 9. If higher reliability requires larger collateral, do the resulting cost and
    regret errors still vanish? The fixed-bounded-payoff noise theorem cannot
    simply be reused with deposits growing without bound.
+10. Under which primitive bounds does choosing collateral for a known builder
+    preserve SE? Distinguish this from the checked settle-late impossibility
+    when collateral is fixed before the builder. In parallel, test a native
+    embedding of that negative comparison and prove collection/gain bounds for
+    the positive order. Added native actions can change equilibrium existence;
+    an abstract embedding alone does not preserve a negative conclusion.
 
 These tasks are mathematical and parallelizable. Formalization, deployment
 claims and changes to project semantics require separate work.

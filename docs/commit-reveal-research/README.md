@@ -38,6 +38,15 @@ The compiler, deadlines, fee policy and deposits must be chosen before selecting
 the source equilibrium. A mathematical result must state whether it applies
 to every service obeying the interface or just one constructed service.
 
+The order of choosing collateral and service is a separate question. The
+checked settle-late comparison defeats every fixed forfeit above the reward
+scale and every fixed audit charge above half that scale by choosing sufficiently
+reliable late inclusion. This settles a uniform-order negative for that
+abstract family. Embedding it into the full compiled runtime remains open;
+collateral chosen for a known service is a different preservation question.
+[Collateral and service quantifiers](quantifier-orders.md) gives the exact
+statement, model reminder and obligations for the two orders.
+
 A finite deposit is not automatically an affordable deposit. Each result
 must state the available capital and whether play begins after funding, or
 whether participation and refusal to fund are additional choices. Locked
@@ -95,6 +104,7 @@ small errors in that metric.
 | Service and enforcement | Which delivery, finality, attribution, collateral and cost guarantees suffice? What survives after a charge is sunk? | [Service and enforcement](service-and-enforcement.md) |
 | Preservation and robustness | Which quantifiers and error measures are useful? What does noise preserve, and which exact claims fail? | [Preservation and robustness](preservation-and-robustness.md) |
 | Integration | Which candidates have proofs, which are contrasts, and what assumptions distinguish them? | [Interface and result catalog](catalog.md) |
+| Collateral and service | What fails when collateral is fixed before the builder, and what can hold when it is chosen for a known service? | [Quantifier orders](quantifier-orders.md) |
 
 [The research workflow](workflow.md) specifies independent tasks, handoffs,
 review obligations and the next mathematical questions.
