@@ -44,6 +44,11 @@ their outcomes differ from the specified source outcome.
 | Exact Nash preservation against all bounded raw deviations | Checked | First-turn clients, every contract builder, barrier-ordered modes |
 | Nash preservation with concurrent reveals | Checked | Opening clients in every dependency mode; timing error is quantified |
 | Intended SE preservation by the calendar service | Checked | The specified finite calendar, observations, enforcement and well-formedness assumptions |
+| Finite penalties preserve every late-leak SE outcome | Checked | R>=0, D>R/2 and (1-q)(D+c)>R/2; visible dropped disclosures remain |
+| These penalties also force every weak-PBE outcome | Checked | Sequential rationality and on-path Bayes consistency suffice in the same finite game |
+| Whole-run conditional survival bound | Checked | Pointwise survival floors multiply over bounded adaptive opportunities |
+| Late-leak full-state approximation gap | Checked | Every exact target SE is at least 267/2000 away at the sample parameters |
+| Late-leak approximation gap after erasing timing | Checked | At least 3/2000 for the joint initial-type, success/failure and answer law |
 | Intended outcome preservation by arbitrary late-leak protocols | False, checked | The finite late-leak family under the two deferral margins |
 | Weak PBE preserves the late-leak intended outcome | Paper proof | Explicit assessment below |
 | Bonanno PBE or common-CPS PBE repairs that example | False, paper proof | Their coherent plausibility conditions retain the obstruction |
@@ -65,6 +70,9 @@ headline about Nash preservation on an arbitrary builder.
 The checked SE result is
 [`SourceServiceSpec.audited_raw_sequentialEquilibrium_preserved`](../Vegas/Game/SourceServiceCompilation.lean).
 Physical implementation of its service assumptions is an additional task.
+The calendar does not require finite support of its unused network policy;
+its reserved scheduler never invokes that policy. The checked refinements and
+their limitations are detailed in [runtime refinements](se-runtime-refinements.md).
 
 ## The negative family and finite penalties
 
@@ -104,12 +112,20 @@ Consequently
 D>R/2,\qquad (1-\bar q)(D+c)>R/2
 \]
 
-suffice for a preserving SE in G*, even with leaks. Complete the finite
-deferral subgame sequentially. Implement its conditional type law by tilting
-the vanishing initial deferral probabilities. Protected success retains the
-original posterior and safe reply, and every root deferral is strictly worse
-than its protected value R/2 regardless of the off-path completion. This is a
-paper proof, not a new runtime capstone.
+suffice for a preserving SE in G*, even with leaks. In fact, with R>=0 these
+costs force **every** target SE to have the intended outcome; existence follows
+from the finite perfect-recall SE theorem. Both statements are checked in
+[CalibratedPenaltyPreservation](../Vegas/Examples/LateLeak/CalibratedPenaltyPreservation.lean).
+Labels A/B always obtain at least R/2 from protected opening and strictly less
+from deferring. Label C obtains at least zero protected, but strictly negative
+payoff from every deferred policy. Bayes consistency then forces the safe
+protected reply. The checked finite-charge corollary uses c=R/[2(1-q)] for
+any fixed q<1 and D>R/2. This remains a theorem for the isolated finite game,
+rather than a general asynchronous compiler capstone. Its outcome conclusion
+uses only sequential rationality and on-path Bayes consistency, so it also
+holds for every weak PBE under these cost bounds. This is checked as
+`lateLeak_outcome_preserved_of_rational_bayes`; the separate weak-PBE
+construction below covers weaker costs and remains a paper proof.
 
 For a more general isolated terminal-response family with base payoffs in
 [0,R], c >= 0, and distinguishable protected and late response sites, the
@@ -226,7 +242,7 @@ the cited papers provide the definitions, rather than a theorem about G*.
 
 ## Approximation does not automatically escape the obstruction
 
-There is a quantitative paper strengthening of the checked negative result.
+There is a quantitative strengthening of the checked negative result.
 Assume R > 0, D > R and c >= 0, and set `g = qR-(1-q)(D+c)` and
 `alpha = 2(1-g/R)`. Under the negative margins,
 g > R/2 and 0 < alpha < 1. The existing face argument applies to every target SE,
@@ -245,7 +261,11 @@ distance from the intended joint law is at least
 even when timing is erased and the readout retains only initial type,
 success/failure, and answer. The full timing-sensitive law has the stronger
 bound `pi_min(1-alpha)`. At the checked sample these are respectively
-3/2000 and 267/2000. These bounds are not Lean theorems yet.
+3/2000 and 267/2000. Both bounds are checked in
+[ObservableOutcomeSeparation](../Vegas/Examples/LateLeak/ObservableOutcomeSeparation.lean)
+and [OutcomeSeparation](../Vegas/Examples/LateLeak/OutcomeSeparation.lean), respectively.
+The coarser readout retains initial type; this is not a bound on only the
+marginal answer law.
 
 More generally, in a fixed finite game, consistent assessments form a compact
 set, and continuation regret is continuous. An excluded outcome law is a
@@ -357,10 +377,11 @@ optimality at rare information sets.
 
 ## Proposed research priorities
 
-The next useful checked results are the explicit weak-PBE construction, the
-qualitative-plausibility negative, the approximation gap, and the isolated
-sealed-admission positive. Together they distinguish the solution concepts
-and test the backend's information contract before a universal claim.
+Further useful theorem candidates are the explicit weak-PBE construction, the
+qualitative-plausibility negative, and the isolated sealed-admission positive.
+Together with the checked penalty and approximation results they distinguish
+the solution concepts and test the backend's information contract before a
+universal claim.
 
 In parallel, the highest-value general theorem candidates are weak-PBE
 preservation with concrete belief-support/completion adapters, and exact SE

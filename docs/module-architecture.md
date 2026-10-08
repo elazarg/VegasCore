@@ -33,6 +33,8 @@ Useful existing boundaries are the
 [menu restriction](../GameTheoryExtensions/Protocol/MenuRestriction.lean),
 [intended game](../Vegas/Source/IntendedGame.lean),
 [choices drawn from an observation-local readout](../GameTheoryExtensions/Math/Probability/ObservedChoice.lean),
+[conditional survival through bounded adaptive opportunities](../GameTheoryExtensions/Math/Probability/Survival.lean),
+[survival in scheduler rounds and bounded stopping](../Interaction/ReactiveSurvival.lean),
 [the owner's information through its own phase](../Vegas/Pending/ReactiveOwnerPhase.lean),
 [permitted deviations phase by phase](../Vegas/Game/SourceServiceDeviationLaw.lean),
 [whole-policy deviations under a restriction](../GameTheoryExtensions/Analysis/Protocol/RetainedDeviation.lean),

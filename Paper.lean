@@ -13,6 +13,12 @@ import Vegas.Game.AsyncServiceRawNash
 import Vegas.Game.EventCompilation
 import Vegas.EventGraph.RevealRelaxedScheduling
 import Vegas.Examples.LateLeak.Preservation
+import Vegas.Examples.LateLeak.OutcomeSeparation
+import Vegas.Examples.LateLeak.ObservableOutcomeSeparation
+import Vegas.Examples.LateLeak.PenaltyPreservation
+import Vegas.Examples.LateLeak.CalibratedPenaltyPreservation
+import Interaction.ReactiveSurvival
+import Vegas.Game.ServiceRosterProtection
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -1052,5 +1058,125 @@ theorem late_leak_not_preserved_for_every_margin (R D c : ℝ) (reward_pos : 0 <
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.lateLeak_not_preserved_for_every_margin
 
-end Vegas.Paper
+/-- Every sequential equilibrium of the sample late-leak game is separated
+from the intended full terminal-state law by at least 267/2000 in total
+variation. This quantifies the obstruction; it is not a chain-wide claim. -/
+theorem late_leak_equilibrium_total_variation_gap
+    {A : (lateLeakModel LateLeakParameters.sample true).BehavioralAssessment}
+    (equilibrium : A.IsSequentialEquilibrium (lateLeak_antichain LateLeakParameters.sample true)
+      (lateLeak_terminates LateLeakParameters.sample true)
+      (lateLeakPayoff LateLeakParameters.sample true))
+    {error : ℝ}
+    (close : PMF.WithinTV error (lateLeakOutcomeLaw LateLeakParameters.sample true A.strategy)
+      lateLeakIntendedOutcome) :
+    (267 / 2000 : ℝ) ≤ error :=
+  lateLeak_sample_totalVariation_lower_bound equilibrium close
 
+/-- info: 'Vegas.Paper.late_leak_equilibrium_total_variation_gap' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.late_leak_equilibrium_total_variation_gap
+
+/-- info: 'Vegas.lateLeak_equilibrium_totalVariation_lower_bound' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.lateLeak_equilibrium_totalVariation_lower_bound
+
+/-- info: 'GameTheory.Math.Probability.eventProbability_foldl_ge_prod' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.Math.Probability.eventProbability_foldl_ge_prod
+
+/-- info: 'Interaction.ReactiveApplication.runRounds_eventProbability_ge_pow' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.ReactiveApplication.runRounds_eventProbability_ge_pow
+
+/-- info: 'Vegas.rosterScheduler_activation_fits' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.rosterScheduler_activation_fits
+
+/-- info: 'Vegas.rosterScheduler_network_independent' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.rosterScheduler_network_independent
+
+/-- With fixed late inclusion below one, sufficiently large failure costs
+preserve the intended law even with visible dropped openings. A target SE
+exists, and every target SE has that law. -/
+theorem late_leak_outcome_preserved_by_failure_costs (G : LateLeakParameters)
+    (reward : 0 ≤ G.reward) (never : G.reward / 2 < G.forfeit)
+    (attempt : G.reward / 2 < (1 - lateLeakInclusionProb G) * (G.forfeit + G.dropCharge)) :
+    (∃ A : (lateLeakModel G true).BehavioralAssessment,
+      A.IsSequentialEquilibrium (lateLeak_antichain G true)
+        (lateLeak_terminates G true) (lateLeakPayoff G true)) ∧
+    ∀ A : (lateLeakModel G true).BehavioralAssessment,
+      A.IsSequentialEquilibrium (lateLeak_antichain G true)
+        (lateLeak_terminates G true) (lateLeakPayoff G true) →
+      lateLeakOutcomeLaw G true A.strategy = lateLeakIntendedOutcome := by
+  obtain ⟨assessment, equilibrium, _⟩ :=
+    lateLeak_preserving_equilibrium_of_half_reward_costs reward never attempt
+  exact ⟨⟨assessment, equilibrium⟩,
+    lateLeak_outcome_preserved_of_half_reward_costs reward never attempt⟩
+
+/-- info: 'Vegas.Paper.late_leak_outcome_preserved_by_failure_costs' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.late_leak_outcome_preserved_by_failure_costs
+
+/-- info: 'Vegas.lateLeak_exists_preserving_dropCharge' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.lateLeak_exists_preserving_dropCharge
+
+/-- info: 'Vegas.lateLeak_exists_preserving_dropCharge_of_half_reward' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.lateLeak_exists_preserving_dropCharge_of_half_reward
+
+/-- info: 'Vegas.lateLeak_outcome_preserved_of_rational_bayes' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.lateLeak_outcome_preserved_of_rational_bayes
+
+/-- info: 'Vegas.lateLeak_sequentialEquilibrium_preserved_of_half_reward_costs' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.lateLeak_sequentialEquilibrium_preserved_of_half_reward_costs
+
+/-- info: 'Vegas.lateLeak_exists_preserving_forfeit_without_dropCharge' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.lateLeak_exists_preserving_forfeit_without_dropCharge
+
+/-- The late-leak gap survives erasing every transmission-timing detail.
+This law retains initial type, success/failure and the listener's answer. -/
+theorem late_leak_equilibrium_result_total_variation_gap
+    {A : (lateLeakModel LateLeakParameters.sample true).BehavioralAssessment}
+    (equilibrium : A.IsSequentialEquilibrium (lateLeak_antichain LateLeakParameters.sample true)
+      (lateLeak_terminates LateLeakParameters.sample true)
+      (lateLeakPayoff LateLeakParameters.sample true))
+    {error : ℝ}
+    (close : PMF.WithinTV error
+      (lateLeakResultLaw LateLeakParameters.sample true A.strategy)
+      lateLeakIntendedResultLaw) :
+    (3 / 2000 : ℝ) ≤ error :=
+  lateLeak_sample_result_totalVariation_lower_bound equilibrium close
+
+/-- info: 'Vegas.Paper.late_leak_equilibrium_result_total_variation_gap' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.late_leak_equilibrium_result_total_variation_gap
+
+/-- info: 'Vegas.lateLeak_equilibrium_result_not_preserved' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.lateLeak_equilibrium_result_not_preserved
+
+/-- info: 'Interaction.ReactiveApplication.runUntil_eventProbability_ge_pow' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.ReactiveApplication.runUntil_eventProbability_ge_pow
+
+end Vegas.Paper

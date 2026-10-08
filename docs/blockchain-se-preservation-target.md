@@ -148,6 +148,11 @@ conditional lower bound suffices by iterated conditioning. Failure means joint
 failure of all usable routes, not independent failure of one route that the
 player can bypass. This is a mathematical lemma conditional on the operational
 hypothesis, not a property inferred from blockchain consensus.
+The product bound and its instantiation in the existing reactive-round runtime
+are checked in [Survival](../GameTheoryExtensions/Math/Probability/Survival.lean)
+and [ReactiveSurvival](../Interaction/ReactiveSurvival.lean). Their pointwise
+premises range over complete execution states, so they suffice for adaptive
+recall-based policies without an independence assumption.
 Such a bound can be exponentially small in N. It proves existence of a finite
 collateral requirement, not practical affordability. A bound for the remaining
 window of the first affected event is often more useful than one for the entire
@@ -238,6 +243,10 @@ Finite failure caps can compensate for leaks. Additional fees or attributable
 penalties can compensate for greater delivery success. Some games have no
 profitable use for the extra information. The proposed architecture is a
 sufficient design direction, not an established minimal characterization.
+In the finite late-leak family, preservation with visible disclosures is checked
+under `R >= 0`, `D > R/2` and `(1-q)(D+c) > R/2`: every target SE has the intended
+law, and such an SE exists. See the scope and proof discussion in
+[runtime refinements](se-runtime-refinements.md).
 
 A useful necessity theorem instead fixes a game class, payoff range,
 deviation model and available enforcement, then shows that dropping a

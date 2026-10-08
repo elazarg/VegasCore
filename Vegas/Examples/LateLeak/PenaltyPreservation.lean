@@ -203,9 +203,11 @@ private theorem protected_guess_reward (A : (lateLeakModel G true).BehavioralAss
   rw [reward]
   linarith
 
-theorem lateLeak_rational_protected_safe {A : (lateLeakModel G true).BehavioralAssessment}
-    (equilibrium : A.IsSequentialEquilibrium (lateLeak_antichain G true)
-      (lateLeak_terminates G true) (lateLeakPayoff G true))
+/-- Rationality and Bayes' rule on the protected path suffice to force the safe reply. -/
+theorem lateLeak_rational_bayes_protected_safe {A : (lateLeakModel G true).BehavioralAssessment}
+    (rational : A.IsSequentiallyRational (lateLeak_terminates G true) (lateLeakPayoff G true))
+    (bayes : InformationModel.BehavioralAssessment.IsBayesConsistent
+      (lateLeakModel G true) A (lateLeak_antichain G true))
     (opens : ∀ secret, lateLeakOpenProb A.strategy (.protectedTurn secret) = 1)
     (bit : Bool) : lateLeakReplyLaw A.strategy (.protectedSuccess bit) =
       PMF.pure (some (.reply .safe)) := by
@@ -222,7 +224,6 @@ theorem lateLeak_rational_protected_safe {A : (lateLeakModel G true).BehavioralA
       (lateLeakOpenedHistory G true (bit, .a))
     rw [weight]
     exact pos_iff_ne_zero.mpr (lateLeakPrior_ne_zero _)
-  have bayes := equilibrium.2.isBayesConsistent (lateLeak_antichain G true)
   have uniform (label other : LateLeakLabel) :
       A.belief .listener site (protectedMember (G := G) (bit, label)) =
         A.belief .listener site (protectedMember (G := G) (bit, other)) := by
@@ -243,13 +244,22 @@ theorem lateLeak_rational_protected_safe {A : (lateLeakModel G true).BehavioralA
   cases answer with
   | safe => rfl
   | guess label =>
-      have maximal := lateLeak_listener_support_maximal equilibrium.1 site _ rfl
+      have maximal := lateLeak_listener_support_maximal rational site _ rfl
         (.guess label) .safe fits rfl ((PMF.mem_support_iff _ _).mp supported)
       have guess := protected_guess_reward A bit site.2 uniform label
       change lateLeakAnswerReward A site (.guess label) = 1 / 3 at guess
       rw [lateLeak_safe_reward A site _ rfl rfl, guess] at maximal
       norm_num at maximal
   | failure bit => simp [LateLeakAnswer.fits, LateLeakSignal.success] at fits
+
+theorem lateLeak_rational_protected_safe {A : (lateLeakModel G true).BehavioralAssessment}
+    (equilibrium : A.IsSequentialEquilibrium (lateLeak_antichain G true)
+      (lateLeak_terminates G true) (lateLeakPayoff G true))
+    (opens : ∀ secret, lateLeakOpenProb A.strategy (.protectedTurn secret) = 1)
+    (bit : Bool) : lateLeakReplyLaw A.strategy (.protectedSuccess bit) =
+      PMF.pure (some (.reply .safe)) :=
+  lateLeak_rational_bayes_protected_safe equilibrium.1
+    (equilibrium.2.isBayesConsistent (lateLeak_antichain G true)) opens bit
 
 theorem lateLeak_intended_law_of_protected (profile : LateLeakProfile G true)
     (opens : ∀ secret, lateLeakOpenProb profile (.protectedTurn secret) = 1)
