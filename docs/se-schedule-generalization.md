@@ -46,30 +46,72 @@ in the sense of Boneh and Naor (CRYPTO 2000) implement: a commitment whose value
 anyone can recover by a sequential computation of a known length, with a proof
 that recovery yields the committed value.
 
+The construct has two delay constants, as in Boneh and Naor: a privacy delay
+t, before which nobody can recover anything from material first transmitted
+at a given moment, and a recovery bound T, within which the service's forced
+opening of an accepted binding finishes; t is at most T. Sealing arguments use
+t and feasibility arguments use T; a single delay cannot play both roles.
+
 | Operation | Meaning |
 | --- | --- |
 | Binding | The commitment carries recovery material and a proof, checked by the contract, that forced opening yields a value of the binding's payload type accepted by its guards. |
-| Release | A service transition completes the reveal by publishing the recovered value. A reveal in this mode cannot fail. |
-| Owner opening | Not an action of the runtime in this mode. An opening packet sent by the owner is a forbidden packet, charged by the audit with an expected charge strictly above the base-utility range `R`. |
-| Release delay | The recovery delay `T` is counted from the earliest moment the material can be observed (its first transmission, not its inclusion). The compiler chooses `T` so that no decision whose source counterpart precedes the reveal can be taken after the material becomes recoverable. |
-| Dropped commitment | A commitment that is never included costs its owner only the binding-omission charge; no further charge depends on the dropped material. |
+| Release | For a binding that completed with an accepted handle, a service transition completes the reveal by publishing the recovered value at the reveal's position, which the compiler places at the binding's deadline plus T. Such a reveal cannot fail. |
+| Failed binding | A binding that completes without an accepted handle (never sent, or sent late and never included) fails its reveal at the binding's completion, and the failure continuation runs from there. Its owner pays the binding omission and the forfeit of the forfeit pass; no further charge depends on the dropped material. |
+| Owner opening | Not an action of the runtime in this mode. An opening packet sent by the owner is a forbidden raw packet. Under the capped escrow it is charged by the one capped charge c, not by a separate charge: the deterrence condition is a condition on c (next paragraph). |
+| Sealing delay | The compiler chooses t so that (i) every decision whose source counterpart precedes the reveal is taken before the protected turn plus t, and (ii) the whole failure continuation after a binding omission, up to its last decision deadline, completes before the first late turn plus t. Both bounds are fixed by the program and its deadline configuration before the builder is chosen. |
 
-The conditions come from the exact tests of the late-leak game
-([open problem](open-problem-late-turn-equilibria.md), section "Timed release"):
-- the counterexample at the reveal disappears when the reveal is a release;
-- if late commitments' recovery material could be force-opened before a later
-  decision, the same counterexample reappears at the commitment, hence the
-  release delay counted from first transmission;
-- an early opening packet is dominated once its expected charge exceeds `R`
-  (equality is not enough);
-- with sealed material, a preserving equilibrium needs every type to agree on
-  sending versus never at a late commitment turn, which holds when a dropped
-  commitment carries no charge beyond its omission.
+The conditions come from the exact tests of the late-leak game under the
+settle-late builder family ([open problem](open-problem-late-turn-equilibria.md),
+section "Timed release"; `scripts/experiments/timed_release_settle_late_probe.py`).
+They are checks at sampled parameters, not theorems. Verdicts marked
+"pending" await the probe's full run; the ones stated as final have been
+checked.
+- With material sealed through the failure continuation (condition (ii)), a
+  preserving sequential equilibrium exists (final) at D = 6, c = 3 for every
+  tested builder (inclusion probability from 1/2 to 999/1000, leak
+  probability 1/2 and 1/20, one or two listener activations) and at
+  D = 3, c = 11/10 for inclusion probabilities up to 99/100, under the capped
+  escrow, with junk signals, the blind retry, owner opening packets, listener
+  packets and the ledger serial available. Pending: the remaining margins
+  (c = 1, c = 1/10, D = 60) and per-packet charging. Sending versus never
+  needs no condition: a never-sent binding is a charged omission, so every
+  type prefers a late commitment to none.
+- If the material of a dropped late commitment is recoverable before the
+  failure answer, the settle-late obstruction returns at the commitment: the
+  subtrees after a deferral are those of the mechanized settle-late game
+  (commit for open), and the probe certifies that no preserving equilibrium
+  exists at four margins with D > R and c > R/2 once the builder's inclusion
+  probability is close to 1 (the mechanized theorem states this for every such
+  margin on its own protected path). This is the case whenever the reveal of
+  an omitted binding is resolved at the release position (the failure answer
+  then follows the release, which follows the recovery bound), for every
+  choice of t, T, D and c; hence the fail-fast row.
+- An owner opening before an interim decision worth g to the owner is deterred
+  exactly when the cheapest verifiable opening costs at least g: the capped
+  charge c under the capped escrow, the opening's own charge or the remaining
+  deposit under per-packet charging. The necessity direction is an exact
+  argument (final); the sufficiency at the threshold is pending (checked so
+  far at g = R/2 with c = 3, and refuted at c = 99/100). A junk packet before
+  the opening makes the bundle no cheaper under either escrow. The general
+  condition is c > R, R the range of the owner's base utility over every
+  decision between the material's availability and the release.
+- Under the capped escrow the charge is sunk once a late commitment is
+  dropped, so an opening of a dropped commitment is free at the failure; its
+  gain is at most (1 - q) a R (the failure answer's swing R times the
+  probability a that the listener saw the commitment) against an expected
+  charge q c, and deferring pays only above q = (D + c + R/2)/(D + c + R).
+  No builder of the family profits from it when c (D + c + R/2) >= R^2/4,
+  which c >= R/2 implies (exact bookkeeping, final); what the probe finds
+  below that bound is pending.
 
 Implementation obligations outside the ideal model: the cryptographic
 construction and its validity proof for typed, guarded payloads; a recovery
-service that actually runs (liveness); the cost and timing bounds of recovery on
-the target chain; and off-network disclosure, which stays outside the model.
+service that actually runs and publishes at the position (liveness); the
+values of t and T on the target chain, including the gap between the
+adversary's fastest sequential hardware and the service's; a schedule in which
+the failure continuation fits inside t and no dependent decision falls between
+the protected turn plus t and the release; and off-network disclosure, which
+stays outside the model.
 
 ## Checked boundary
 

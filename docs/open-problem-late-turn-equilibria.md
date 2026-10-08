@@ -182,10 +182,12 @@ Checkers: [`g_star_verification.py`](../scripts/experiments/g_star_verification.
 
 A *timed-release* reveal is an ideal construct that timed commitments
 (Boneh-Naor) can implement. The commitment carries validated recovery material.
-A service transition publishes the value no later than a fixed delay after the
-commitment, and the delay is chosen so that this never happens before the
-reveal is ready. The reveal cannot fail, and the runtime gives the owner no
-opening action. The test keeps the types, prior, payoffs and listener of `G*`
+A service transition publishes the value of an accepted commitment at the
+reveal's position, placed at the binding's deadline plus the recovery bound T;
+nobody recovers anything from material first transmitted at a given moment
+before a privacy delay t has passed (t at most T). Such a reveal cannot fail,
+and the runtime gives the owner no opening action. The first test keeps the
+types, prior, payoffs and listener of `G*`
 (`R = 2`, `D = 6`, `c = 3`, `q = 99/100`, the leak rule, a content-blind
 builder) and places the reveal in this mode. Consistency is Kreps-Wilson with
 arbitrary type- and node-dependent trembles, and all arithmetic is exact.
@@ -220,7 +222,9 @@ recovered.**
 So timed release removes the obstruction exactly when no strategic timing
 remains before the value becomes recoverable. That holds when commitments are
 protected, or when leaked material stays sealed until after every dependent
-decision.
+decision, the failure answer included: a rule that seals the material only
+until the reveal's own position does not cover the failure branch, where the
+listener answers after the dropped commitment has been exposed.
 
 **Early opening by the owner is harmless in `G*` and deterred by a charge above
 `R`.** In this variant the owner may also send an early opening as a raw
@@ -261,6 +265,71 @@ and `q in {1/2, 9/10, 99/100, 999/1000, 9999/10000}`, 60 points in all.
   `c' = g - 1/100`.
 
 Checker: [`timed_release_probe.py`](../scripts/experiments/timed_release_probe.py).
+
+**Under the settle-late builder family, constants first.** The second test
+places the commitment in the combined late-leak runtime of the
+[runtime-features note](runtime-features-vs-late-leak.md) (section "Combined,
+with a valid leak rule"): the settle-late builder with k observe-only listener
+activations between the late commitment turns, the stateless leak rule (a
+pending commitment seen with probability lambda per activation, every other
+pending packet surely), the blind retry, junk signals, listener packets and
+the ledger serial, all under the owner's quantifier order: R, D, c, t, T and
+the escrow are fixed first, the builder (q, lambda, k) afterwards. The owner
+keeps its opening packets as raw packets: after a protected commitment it has
+activations before the listener's first one (a junk signal, then an opening),
+and after a late commitment it may open at the second late turn. A never-sent
+binding is a charged omission. Two escrows: the capped escrow (one charge c
+per owner) and per-packet charging (c per signal, drop or omission, c' per
+opening, capped by the deposit). Negative verdicts port the five-premise
+certificate of the combined note to the commitment game; positive verdicts
+are explicit assessments passing the full Kreps-Wilson check, with the
+subtree after a first raw packet pruned when its best conceivable value is at
+most the node's equilibrium value, verified exactly (such a subtree's
+listener sites are its own, so any sequential equilibrium of it glues in
+without making the packet a better reply).
+
+- *Recoverable dropped material* (t too small for the failure branch, or the
+  reveal of an omitted binding resolved at the release position): the
+  subtrees after a deferral are those of the mechanized settle-late game,
+  commit for open, when the material is recoverable at the observe-only
+  activation, and the certificate applies as well when it is recoverable only
+  at the failure answer. No SE has the intended outcome at `R = 2`, `D = 6`,
+  `c = 3`, `q = 99/100`, `lambda = 1/2`, `k = 1` under either escrow (escape
+  value 141/100), and for `(D, c)` in {(3, 11/10), (6, 3), (60, 30),
+  (21/10, 1001/1000)} at some `q` between 99/100 and 9999/10000. Resolving
+  the failure at the release position makes the failure answer follow the
+  release, which follows the recovery bound, so no choice of t, T, D or c
+  seals the material there.
+- *Sealed material* (fail-fast failure, t beyond the failure continuation):
+  the probe's grid is `(D, c)` in {(6, 3), (3, 11/10), (6, 1), (60, 30),
+  (6, 1/10)}, `q` in {1/2, 9/10, 99/100, 999/1000}, `lambda` in
+  {1/2, 1/20}, `k` in {1, 2}, under both escrows. Final so far: a preserving
+  SE with type-independent trembles at every `(6, 3)` point and at
+  `(3, 11/10)` for `q` up to 99/100 under the capped escrow. The listener
+  answers `m` after every success and `f0` after every opaque failure; every
+  type commits at the first late turn off path; the retry, the junk signals
+  and the late opening are never strictly better. The remaining grid points
+  are pending.
+- *Early opening before an interim decision* (listener action at its first
+  activation worth g to the owner): with the junk-then-opening bundle
+  available, no SE has the intended outcome when the cheapest verifiable
+  opening costs less than g (exact argument, final): `c < g` under the
+  capped escrow, `min(c', deposit) < g` under per-packet charging. That the
+  outcome survives at the threshold is pending (checked at `g = R/2` with
+  `c = 3`; refuted at `c = 99/100`); the grid is `g in {R/4, R/2, R}` at the
+  threshold and 1/100 below it. The junk packet does not make the bundle
+  cheaper under either escrow.
+- *Opening of a dropped commitment under the capped escrow*: the drop sinks
+  the charge, so the opening costs `q c` in expectation and gains at most
+  `(1 - q) a R` at the failure answer, `a` the probability that the listener
+  saw the commitment; deferring itself pays only above
+  `q = (D + c + R/2)/(D + c + R)`, and the listener's mixed failure answer
+  removes the gain when `q c / ((1 - q) a R) >= 1/2`. No builder of the family
+  has a window when `c (D + c + R/2) >= R^2/4`, so `c >= R/2` suffices (exact
+  bookkeeping, final). What the probe finds at `c = 1/10` (constructions at
+  `q = 9/10` and `99/100`, the open window at `q = 22/25`) is pending.
+
+Checker: [`timed_release_settle_late_probe.py`](../scripts/experiments/timed_release_settle_late_probe.py).
 
 ## Abstract version (a candidate formulation, possibly too strong)
 
