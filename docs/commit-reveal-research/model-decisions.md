@@ -117,6 +117,18 @@ a content-inspecting scheduler and correlated private packet samples. The
 restricted game retains one protected source decision per event and makes
 other activations forced silence. Its full RAW extension remains unproved.
 
+For the well-formed intended mandatory-action source, the
+[reviewed native construction](native-protected-execution.md) proves that
+restriction's SE preservation using adaptive bounded stopped-prefix replay.
+It retains actual private candidate catalogues and full recall, covers all
+source commitment values, and derives canonical acceptance and zero net
+deductions separately from the inclusion guarantee. One copied policy works
+for every scheduler obeying the declared timely service contract. The
+[API map](native-foundation-obligations.md) separates checked ingredients
+from the adaptive adapters proved on paper. No additional general foundation
+is needed for this restricted paper result; its full-menu extension is the
+substantive remaining question.
+
 Not every additional implementation choice needs a charge. The
 [compositional theorem](universal-preservation-criterion.md) permits genuine
 aliases when each preserves conditional logical execution and a fixed
@@ -296,10 +308,11 @@ makes that requirement explicit.
 
 ## Next mathematical handoffs
 
-First, test the actual retained runtime against the replay-channel criterion,
-including remembered private leak samples and receipt metadata while old
-secrets remain. If it fails, exhibit the observation that defeats it; do not
-hide that observation by weakening the player's recall.
+First, use the reviewed actual first-ready construction as the protected
+baseline. Its full remembered observation coupling and local continuation
+identities have paper proofs. Formalizing those native adapters is separate
+from the current mathematical question; new foundational research needs a
+specific reported gap.
 
 Second, analyze the target's permitted timing and submission actions under
 public service properties. A preservation route needs a source-equivalent

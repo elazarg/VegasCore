@@ -5,10 +5,11 @@ interfaces, organized so that a reader can reconstruct each model from its
 statement. It is not a replacement specification for the compiler.
 
 The [native research agenda](native-research-agenda.md) directs the concrete
-wave: approximately 45% accepted late actions and real settlement, 35% protected
-execution with actual adaptive observations, and 20% independent review and
-necessary foundational bridges. Reallocate according to the stated blockers;
-another general interface is useful only when it discharges a concrete need.
+wave: accepted late actions and real settlement, independent full-menu review,
+and integration of the reviewed protected native proof. Allocate remaining
+effort entirely to those concrete questions. Reallocate to foundations only
+when an identified mathematical bridge is missing; another general interface
+is useful only when it discharges that need.
 
 ## Required result card
 
@@ -156,8 +157,10 @@ If a weakening survives, record the broader candidate and the new proof task.
     space from fee auditability or lift the producer negative by merely adding
     a bidding menu.
 
-16. Instantiate the [compositional constructor](universal-preservation-criterion.md)
-    on a single fully specified native restriction. Classify every raw action
+16. Use the [reviewed first-ready native restriction](native-protected-execution.md)
+    as the intended-source baseline. Its adaptive information and continuation
+    arguments are paper proofs; the [API map](native-foundation-obligations.md)
+    identifies their checked ingredients and unformalized adapters. Classify every raw action
     as a source action, a proved harmless implementation choice, or an action
     with a separate incentive proof. Check audit soundness on every retained
     history, including failed late sends; accepted-call correctness alone does

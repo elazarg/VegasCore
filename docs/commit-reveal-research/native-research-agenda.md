@@ -15,10 +15,11 @@ actions; these target deviations are not silently made lawful source choices.
 A source that permits withholding with its own continuation payoffs is a
 different preservation question and must be identified separately.
 
-The target uses the actual signed-packet runtime. A player can prepare private
-candidates, respond when activated, submit packets or remain silent, and retain
-its complete private observations and action history. The builder reads its
-public environment history, chooses activations, inclusion, clock advances and
+The target uses the actual signed-packet runtime. A player can fix a private
+candidate atomically while submitting its handle, respond when activated,
+submit packets or remain silent, and retain its complete private observations
+and action history. There is no separate private staging action. The builder
+reads its public environment history, chooses activations, inclusion, clock advances and
 completion operations. The asynchronous contract gives owner opportunities,
 protects a sole owner-authored packet identifier within its inclusion window,
 and requires all events to finish within the configured execution. It does not
@@ -41,17 +42,20 @@ it cannot establish the concurrent claim without an additional argument.
 
 ## Allocation and reasons
 
-Allocate approximately **80% of mathematical attention to concrete runtime
-questions and 20% to review and foundational bridges requested by those
-questions**. This is an estimate of useful effort, not a promised elapsed-time
-budget. Within it, prioritize late-action accounting slightly ahead of protected
-execution because it determines whether the full positive target is possible.
+Allocate **100% of the remaining mathematical attention to concrete runtime
+questions and their independent review, with no standalone foundational
+invention**. This is an estimate of useful effort, not a promised elapsed-time
+budget. The protected restriction has a reviewed paper proof in
+[native protected execution](native-protected-execution.md). The
+[foundation map](native-foundation-obligations.md) identifies existing APIs for
+its adaptive stopped-prefix construction. Prioritize full-menu late-action
+accounting because it determines whether the general positive target is possible.
 
-| Work | Initial share | Useful deliverable |
+| Work | Share | Useful deliverable |
 | --- | --- | --- |
-| Actual accepted late actions and settlement | 45% | A preserving construction or complete native counterexample; failing that, a proved concrete boundary with its remaining embedding obligations. |
-| Protected serial execution | 35% | A native prefix-coupling and SE proof with actual menus, candidate realization, private recall and zero settlement; identify any assumptions not supplied by declarations. |
-| Independent review and necessary foundations | 20% | Check both proofs against actual signatures and global belief consistency; prove a missing general bridge only when a concrete argument needs it. |
+| Actual accepted late actions and settlement | 60% | A preserving construction or complete native counterexample; failing that, a proved concrete boundary with its remaining embedding obligations. |
+| Independent concrete review | 30% | Check the entire native action space, admissible builder on every legal history, actual observations and global belief consistency. |
+| Protected proof integration and concrete cross-checks | 10% | Maintain the reviewed first-ready result and compare every claimed native premise with its declaration. |
 
 The general observation-transfer, consistent-completion and terminal-audit
 machinery already supplies substantial foundations. The largest uncertainty is

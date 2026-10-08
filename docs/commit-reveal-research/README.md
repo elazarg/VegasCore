@@ -90,6 +90,16 @@ pending plaintext; it does not require a payload-blind scheduler. The
 [native serial analysis](native-observation-criterion.md) proves the restricted
 paper result and identifies the missing adapters for extra actions.
 
+[Native protected execution](native-protected-execution.md) gives a reviewed
+paper proof on an explicit first-ready restriction of the actual serial
+runtime for the intended mandatory-action source. Its adaptive bounded
+stopped-prefix coupling retains the real private catalogues and full recall;
+it adds no visible scheduler counter. The copied policy works for every
+declared timely contract scheduler. Its adaptive adapters remain unformalized,
+and deferral, retries and other raw actions are still outside this theorem.
+The [foundation map](native-foundation-obligations.md) identifies the checked
+APIs and remaining concrete extension obligations.
+
 Accepted late actions require separate analysis. With one late opportunity to
 open an immutable value, a complete paper positive permits inclusion chances
 approaching one, including certainty; it needs no uniform lower bound on
@@ -217,6 +227,8 @@ small errors in that metric.
 | Auditable fee policy | Can we enforce a public bidding rule without fixing the numerical payment, and which priority and signaling effects remain? | [Fee policies](fee-policy.md) |
 | Compositional preservation | Which full observation, logical-execution and extra-action obligations combine into an SE theorem? | [Compositional criterion](universal-preservation-criterion.md) |
 | Native protected play | How do actual opaque envelopes and source-public openings couple serial runtime observations? | [Native serial analysis](native-observation-criterion.md) |
+| Actual first-ready execution | Does the intended mandatory-action source preserve SE with adaptive native waits and full private recall? | [Reviewed protected proof](native-protected-execution.md) |
+| Concrete proof obligations | Which checked APIs apply, which adaptive adapters remain unformalized, and what prevents a full raw-menu conclusion? | [Foundation map](native-foundation-obligations.md) |
 | Accepted late actions | When does a late opening's gain scale with failure risk, and when can rare failures change successful posteriors? | [Admission risk and information](admission-information-boundary.md) |
 | Multi-phase late openings | Can accepted late fixed-value openings compose across a whole program while old secrets persist? | [Serial late-opening theorems](serial-late-release.md) |
 | Several delivery decisions | Can waits, retransmissions and private service learning share a type-independent rational completion? | [Immutable openings with delivery control](delivery-control-preservation.md) |
@@ -226,11 +238,12 @@ small errors in that metric.
 
 [The research workflow](workflow.md) specifies independent tasks, handoffs,
 review obligations and the next mathematical questions.
-[The native research agenda](native-research-agenda.md) directs approximately
-80% of current mathematical effort to protected execution and late actions in
-the actual runtime, with the remaining effort reserved for independent review
-and concrete foundational gaps. It fixes the intended-source scope and keeps
-alternative runtime proposals separate.
+[The native research agenda](native-research-agenda.md) directs the remaining
+mathematical effort to actual late actions, independent concrete review and
+protected-proof integration. Existing foundations suffice for the reviewed
+protected restriction; new foundations require a concrete missing bridge.
+The agenda fixes the intended-source scope and keeps alternative runtime
+proposals separate.
 [The annotated literature](literature.md) records relevant primary sources
 without treating them as proofs about this project's ledger.
 
