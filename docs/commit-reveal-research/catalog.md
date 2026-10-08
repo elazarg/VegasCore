@@ -70,6 +70,35 @@ are additional requirements. It covers included departures, not merely dropped
 packets. Controlled bids can also generate new signaling equilibria even with
 identical inclusion. [Policy, proof and scope](fee-policy.md).
 
+## Operational information and accepted late actions
+
+These results distinguish physically present observations from changes in
+strategic information. They also distinguish a protected restricted game from
+the full submission game; a positive in the former is not a positive in the
+latter.
+
+| Result | Interface reminder | Conclusion and boundary |
+| --- | --- | --- |
+| Compositional exact preservation | Finite perfect-recall source; bounded sure runtime processing; source actions may have uncharged implementation aliases. Every alias preserves conditional logical execution and utility. One fixed full-support alias rule makes the full remembered observation channel equal across each source information set. Excluded raw actions satisfy the actual structural, soundness and uniform first-departure collection premises. | Paper clean-game constructor plus checked audit-extension theorem; collateral depends on public utility and collection bounds before the builder and equilibrium. Exact forward implementation, not reflection or a native RAW instantiation. [Proof and local necessity test](universal-preservation-criterion.md). |
+| Protected serial native play | Canonical value-only opaque bindings; effective openings; every instruction waits for its serial predecessors. Source decisions occur once at protected opportunities; other activations offer silence. Actual pending packets, private samples, receipts and own recall remain observable. | Paper exact SE preservation with retained secrets, lawful source withholding and nonuniform bounded waits. Actual public input coupling supplies the information argument. Late sends, retries, malformed packets and the guarded-intention adapter remain outside the result. [Primitive argument](native-observation-criterion.md). |
+| One late fixed-value opening | Finite sender types, one immutable disclosure, protected Open or Defer followed by one Send/Never choice; receiver acts only after resolution. Sender gross reward in [0,R], failure forfeit D and additional failed-send charge c. Type-blind success/failure channels beyond the disclosed value. | Paper exact source-outcome implementation if q_min D-(1-q_min)c>R for a public lower success bound. Includes q=1 and q approaching one; no failure floor. D is intrinsic if withholding is lawful, and funding/costs are explicit exclusions. [Complete consistent construction](admission-information-boundary.md#a-complete-one-late-disclosure-positive). |
+| Serial late immutable openings across a whole program | Finite serial mandatory-opening source with correlated retained secrets; protected opaque binding choices. Each opening has one late Send/Never callback. Successful prefixes preserve source chance; first failure is publicly marked. Gross reward is bounded by R_i and total failure deductions by N_i D_i+K_i. | Reviewed paper exact forward SE preservation when D_i>R_i and D_i[1-N_i(1-q_min)]>R_i+(1-q_min)K_i. Constants precede the builder; no failure floor, and full off-path consistency is proved using actual entry priors. One physical callback and clean/dirty information separation are substantive restrictions. [Theorem and proof](serial-late-release.md#paper-preservation-theorem). |
+| The same serial interface with reconstructible exact success odds | At the callback, the owner knows exact scalar odds q(p,v); after success every later strategic player recovers the recorded callback state p, late route and public v. The other menus, loss bounds and omissions remain those of the serial interface. | Reviewed paper preservation for all q in [0,1] if D_i>R_i and D_i²-(N_i+1)R_iD_i-R_iK_i>=0. Reliable callbacks copy Send; unreliable routes receive arbitrary rational completion and cannot profit at the protected root. No native public-odds adapter or common policy under unspecified laws. [Separate theorem](serial-late-release.md#a-second-interface-publicly-reconstructible-success-odds). |
+| A late callback chooses a fresh binding value | Opaque x/y choice; one late callback; public protected/late route; private labels. Failure utility depends on the locally attempted value even if it was not admitted. | Complete paper nonpreservation at high inclusion reliability for a selected source SE. This wider full-history utility interface is not the native typed-readout game; failure rewards independent of the attempted value remove this example's preference mechanism. [Game and proof](admission-information-boundary.md#changing-the-binding-value-is-a-different-one-late-game). |
+
+The local information necessity result in the compositional note is exact for
+a forced observation refinement before one decision, over all bounded utility
+functions: an informative refinement can destroy preservation of a selected
+action law. It does not characterize multiplayer compilers or prove that every
+sufficient clause in the positive theorem is independently necessary.
+
+The late-action results explain why near-certain admission is not itself an
+obstruction. In the fixed-value one-opportunity positive, successful replies
+remain source replies and extra base gain is at most R times failure
+probability. In the two-opportunity timing negative, rare-failure preferences
+can sort types between opportunities and change successful replies by a fixed
+amount. An inclusion estimate alone does not distinguish these cases.
+
 ## A checked boundary for the asynchronous comparison
 
 The settle-late game has a machine-checked uniform-order impossibility. Fix

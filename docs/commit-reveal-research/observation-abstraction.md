@@ -401,22 +401,24 @@ admission, insufficient gas, a closed deadline, or exhausted capacity.
 
 ## Checked boundary and explicit implementation gaps
 
-The checked fully public reference defines
+The checked token-view reference defines
 `GameTheory.Protocol.PublicScheduler` with a public projection `pub`, fixed
 number `draws`, and kernel reading public projection, full token transcript
-and pending count. Its information model observes the entire public
-transcript. `PublicScheduler.expanded_sequentialEquilibrium` and the Paper pin
+and pending count. Its `view : player → Token → View` determines each player's
+observed part of each token. The information model remembers
+`transcript.map (view player)` and the pending count alongside source information.
+`PublicScheduler.expanded_sequentialEquilibrium` and the Paper pin
 `Vegas.Paper.public_scheduling_sequential_equilibrium` establish the bounded
-fully public case. This is the checked version described in
+token-view case, including the fully public identity view. This is the checked
+construction described in
 [public scheduling](../public-scheduling-se-preservation.md).
 
-The private token-view construction has a proof surface with
-`view : player → Token → View`; its information is source information paired
-with `transcript.map (view player)` and the pending count. Its intended argument
-uses replay bijections and equal marginal fiber masses rather than an injective
-view or full token visibility. This note supplies no independently verified
-machine-checked evidence for that private-view construction. The general
-channel-test theorem and private-view corollary proved here have paper status.
+The proof uses replay bijections and equal marginal fiber masses
+(`fiberMass_congr`, `bayesBelief_lift_map`), rather than requiring an injective
+view or full token visibility. This is checked evidence for that particular
+bounded constructor. The general channel-test theorem proved here has paper
+status; arbitrary native observations and variable-length packet execution
+are not an established instantiation of the checked constructor.
 
 **Independent mathematical review.** A second math agent reviewed the
 decision-prefix replay condition, full-belief consistency construction,

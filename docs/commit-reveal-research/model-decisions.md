@@ -49,7 +49,7 @@ menus, utilities and completion. The source policy can then ignore the
 auxiliary view. The [observation-abstraction argument](observation-abstraction.md)
 derives consistent beliefs and sequential rationality from replay-channel
 properties. It allows correlated private views under its stated conditions;
-the checked fully public scheduling theorem is a restricted reference case.
+the checked token-view scheduling theorem is a restricted reference case.
 The copied source policy works across the whole specified service class;
 consistent beliefs remain service-dependent.
 
@@ -109,6 +109,21 @@ collateral does not establish them.
 [Service contract](../../Vegas/Pending/ReactiveAsyncContract.lean),
 [settled verdict](../../Vegas/Pending/ReactiveSettledVerdict.lean).
 
+The [native serial information proof](native-observation-criterion.md) gives
+a concrete positive input to this task. Canonical commitment packets hide their
+chosen values; previous effective openings are source-public before the next
+decision. Equal public packet and environment histories therefore couple even
+a content-inspecting scheduler and correlated private packet samples. The
+restricted game retains one protected source decision per event and makes
+other activations forced silence. Its full RAW extension remains unproved.
+
+Not every additional implementation choice needs a charge. The
+[compositional theorem](universal-preservation-criterion.md) permits genuine
+aliases when each preserves conditional logical execution and a fixed
+full-support alias rule proves the required full observation channels. A
+private packet-name choice is a useful example. Public names, retries and bids
+are not equivalent merely because the application accepts the same value.
+
 For now, retain that abstract service layer. Test alternative public properties
 against it rather than silently substituting a new blockchain model. In
 particular, a uniform lower bound on late failure is a candidate enforcement
@@ -116,6 +131,32 @@ property, not a consequence of miner honesty. A gain-to-additional-collection
 bound may be more general than such a failure floor, but still needs physically
 available evidence and funded collection under all later policies.
 [Enforcement conditions](service-and-enforcement.md).
+
+Nor does every accepted late action require a failure floor. The
+[one-opportunity immutable-opening proof](admission-information-boundary.md)
+uses a public lower bound on success to make sending optimal at the late
+callback. Its consistent successful posteriors then match the source, and
+the root's potential gain is proportional to failure probability. It allows
+late success to approach one and includes certain success. More timing choices
+or a fresh private value choice can change this conclusion; the latter's
+counterexample uses attempted-value-dependent failure utility, which is not a
+proved native payoff adapter. These restrictions belong in the result, rather
+than in a general assertion about public mempools.
+
+That positive now composes across a finite mandatory-opening program in the
+[serial late-opening proof](serial-late-release.md). It uses protected bindings,
+one late callback per immutable opening, uniform success/loss bounds and a
+public failure marker. A single global consistency sequence couples all
+successful prefixes and completes all failure entries with their actual
+perturbed priors. The source horizon bounds possible losses, but does not
+derive the physical callback restriction or conditional inclusion guarantee.
+
+A separate sufficient interface in the same note permits every late success
+probability from zero to one. It requires exact callback odds known to the
+owner and their classification recoverable by every later strategic player
+after success. This is a pointwise theorem with uniform collateral, rather
+than a robust complete policy under unspecified service laws. Native readiness
+credentials do not by themselves retain callback time or this classification.
 
 ## What two simple producer models add
 

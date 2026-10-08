@@ -150,5 +150,26 @@ If a weakening survives, record the broader candidate and the new proof task.
     space from fee auditability or lift the producer negative by merely adding
     a bidding menu.
 
+16. Instantiate the [compositional constructor](universal-preservation-criterion.md)
+    on a single fully specified native restriction. Classify every raw action
+    as a source action, a proved harmless implementation choice, or an action
+    with a separate incentive proof. Check audit soundness on every retained
+    history, including failed late sends; accepted-call correctness alone does
+    not supply the extension premises.
+17. Extend the [protected serial observation argument](native-observation-criterion.md)
+    to barrier-ordered concurrent opaque bindings. Prove own decision recall
+    and information about whether another binding has happened, alongside
+    completion commutation. Guard-rejected TRUE and FALSE choices require the
+    private-intention normalization or an explicit private-memory adapter.
+18. Test the native adapters for the [multi-phase late-opening theorems](serial-late-release.md).
+    Their paper proofs derive successful prefix likelihoods and global
+    consistency while old secrets persist. Determine whether multiple physical
+    callbacks can be normalized to one, which actual failure observations
+    separate continuation regions, and which total-loss caps hold. Exact public
+    callback odds are an alternative sufficient interface, not information
+    supplied by a bare readiness token. Keep protected binding choices distinct
+    from late callbacks that select fresh values, and state which utility
+    readout the negative examples use.
+
 These tasks are mathematical and parallelizable. Formalization, deployment
 claims and changes to project semantics require separate work.

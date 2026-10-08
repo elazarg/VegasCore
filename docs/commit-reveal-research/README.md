@@ -66,6 +66,49 @@ optimal given its beliefs. Those beliefs must arise together as a limit of
 Bayesian beliefs under strategies giving every legal player action positive
 probability. Convenient but incompatible off-path beliefs are insufficient.
 
+## The most useful current proof route
+
+The research now separates two proof obligations that can be combined for the
+same finite implementation game. First, show that source decisions retain their
+menus, conditional logical transitions and utilities, and that the entire
+remembered runtime record adds no information within a source information set.
+This may include genuine uncharged choices among equivalent implementations,
+provided one fixed, fully supported selection rule yields the required
+observation channels. Second, handle every remaining physical action through
+an actual incentive and consistent-completion argument. The
+[compositional criterion](universal-preservation-criterion.md) gives a paper
+constructor for the first obligation and states the checked audit-extension
+theorem used for the second. Its assembly has not been instantiated for the
+full native runtime.
+
+For protected serial commit–reveal play, there is a concrete information
+argument: opaque commitments have identical public envelopes across hidden
+values, and earlier effective openings are already source-public before the
+next logical decision. Coupling the actual packets and environment inputs then
+couples timing, receipts and remembered private samples. This permits readable
+pending plaintext; it does not require a payload-blind scheduler. The
+[native serial analysis](native-observation-criterion.md) proves the restricted
+paper result and identifies the missing adapters for extra actions.
+
+Accepted late actions require separate analysis. With one late opportunity to
+open an immutable value, a complete paper positive permits inclusion chances
+approaching one, including certainty; it needs no uniform lower bound on
+failure. Its successful posteriors are derived from one common tremble sequence.
+The [admission-risk analysis](admission-information-boundary.md) also explains
+why multiple timing choices or fresh value choices need different arguments.
+Its value-choice counterexample uses a private attempted-value failure payoff
+that has not been embedded in the native typed readout.
+
+The [serial late-opening theorem](serial-late-release.md) composes the positive
+across an entire finite program with retained secrets. It keeps binding choices
+protected, permits one late Send/Never callback per mandatory opening, and
+allows an arbitrary rational continuation after a publicly marked failure.
+Public success and total-loss bounds give uniform finite forfeits. A separate
+theorem removes the success bound when the callback's exact success odds are
+known and its classification is recoverable by every later strategic player.
+That extra public information is not established by native readiness tokens.
+Both are reviewed paper results for explicitly restricted interfaces.
+
 Two source classes must remain separate:
 
 - **Withholding is a lawful choice.** Failure and its payoffs belong to the
@@ -119,6 +162,10 @@ small errors in that metric.
 | Honest producer candidates | What follows from sufficient capacity or simple fee maximization, without modeling a miner economy? | [Two producer models](honest-producer-models.md) |
 | Costs and scope | Which utility changes cancel, which yield approximate rationality, and what do participation and capital assumptions exclude? | [Costs and omissions](costs-and-scope.md) |
 | Auditable fee policy | Can we enforce a public bidding rule without fixing the numerical payment, and which priority and signaling effects remain? | [Fee policies](fee-policy.md) |
+| Compositional preservation | Which full observation, logical-execution and extra-action obligations combine into an SE theorem? | [Compositional criterion](universal-preservation-criterion.md) |
+| Native protected play | How do actual opaque envelopes and source-public openings couple serial runtime observations? | [Native serial analysis](native-observation-criterion.md) |
+| Accepted late actions | When does a late opening's gain scale with failure risk, and when can rare failures change successful posteriors? | [Admission risk and information](admission-information-boundary.md) |
+| Multi-phase late openings | Can accepted late fixed-value openings compose across a whole program while old secrets persist? | [Serial late-opening theorems](serial-late-release.md) |
 
 [The research workflow](workflow.md) specifies independent tasks, handoffs,
 review obligations and the next mathematical questions.
