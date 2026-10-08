@@ -591,6 +591,41 @@ joint law. It is not pursued.
   `AsyncTimely` and `BlindToLatePackets`, with a valid observation rule, makes
   the bounded raw runtime admit no sequential equilibrium with the intended
   outcome of some well-formed program; pinned with standard axioms.
+  Partial evidence: `Vegas.Paper.settle_late_not_preserved_for_every_margin`
+  (the instance of `settleLate_not_preserved_for_every_margin`, standard
+  axioms) mechanizes the combined comparison game of
+  [the runtime-features note](runtime-features-vs-late-leak.md) (section
+  "Combined, with a valid leak rule") as an abstract finite game in the
+  framework of I1 ([the settle-late game](../Vegas/Examples/LateLeak/SettleLateGame.lean)):
+  the settle-late builder with one observe-only listener activation between
+  the late turns, a stateless leak rule showing each pending opening
+  independently with probability `λ` at every listener activation (a dropped
+  opening stays pending), Luce inclusion laws `q` and `q / (1 + q)` per
+  opening, the blind retry, raw signals at the protected turn, after it and at
+  both late turns under an escrow charging `c` at most once, the ledger's
+  serial of the included opening, and listener raw packets of cost c_L seen
+  by the sender. Quantifier order as in the target: for every `R > 0`,
+  forfeit `D > R`, charge `c > R/2`, leak probability `λ` in `(0, 1)` and
+  c_L, an explicit threshold `q₀ < 1`
+  (`settleLateInclusionThreshold`) is fixed before the builder, and for every
+  inclusion probability `q` in `(q₀, 1)` the intended game has a sequential
+  equilibrium, all its sequential equilibria have the intended outcome, and
+  no sequential equilibrium of the full game has it. The proof follows the I1
+  steps: extra packets dominated at every member of the sender's
+  second-turn sets (`settleLate_rational_second_core`); the first-turn gap is
+  `λ` times the late-turn label preference with leak pull
+  `(1 - q)(1 - λ)` times the unseen-failure answer
+  (`settleLate_first_turn_preference`), so two types of some class strictly
+  prefer opposite turns for every listener answer after an unseen failure
+  (`settleLate_opposite_preferences`); the face dichotomy across all seen and
+  all unseen inclusion sets of the class, for every consistent assessment with
+  arbitrary type- and node-dependent trembles (`settleLate_consistent_face`);
+  and a profitable deferral of type `(v, A)` once the listener guesses there
+  (`settleLate_no_intended_equilibrium`). Not done: the game is an abstract
+  comparison game, not the bounded raw runtime of a compiled source program
+  under a builder proved to satisfy `AsyncContract`, `AsyncTimely` and
+  `BlindToLatePackets` with an `ObservationRule`; the native embedding (typed
+  readout, wrong-event and malformed packets, aliases) remains.
 - [ ] **I3. Builder-first preservation.** For every builder satisfying
   `AsyncContract` and `AsyncTimely` whose late sends fail with probability at
   least some known positive bound, and an audit collecting every dead envelope

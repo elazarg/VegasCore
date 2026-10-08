@@ -19,3 +19,14 @@ import Vegas.Examples.LateLeak.CompleteObservationPreservation
 import Vegas.Examples.LateLeak.CompleteObservationProtectedPosterior
 import Vegas.Examples.LateLeak.CompleteObservationCostPreservation
 import Vegas.Examples.LateLeak.ObservationAdvantage
+import Vegas.Examples.LateLeak.SettleLateGame
+import Vegas.Examples.LateLeak.SettleLatePlay
+import Vegas.Examples.LateLeak.SettleLateIncentives
+import Vegas.Examples.LateLeak.SettleLateTurns
+import Vegas.Examples.LateLeak.SettleLateListener
+import Vegas.Examples.LateLeak.SettleLateValues
+import Vegas.Examples.LateLeak.SettleLateDeferral
+import Vegas.Examples.LateLeak.SettleLateOutcome
+import Vegas.Examples.LateLeak.SettleLateConsistency
+import Vegas.Examples.LateLeak.SettleLateIntended
+import Vegas.Examples.LateLeak.SettleLatePreservation

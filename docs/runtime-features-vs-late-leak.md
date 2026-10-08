@@ -528,10 +528,18 @@ site.
 
 ### Limits
 
-These are finite comparison games, not Lean theorems. The face dichotomy
-(sampled, not enumerated), the escape-weight case analysis over theta, and
-the claim that the retry and signal thresholds stay below c along q -> 1
-(the retry limit 3R/8 is computed, not derived in closed form) are paper
-arguments whose premises the script asserts. Malformed or wrong-event
-packets, aliases, several listeners, and a native embedding into the
-compiled source program are not modeled.
+The finite comparisons above are script checks, not Lean theorems. The
+uniform-order statement of the previous section is checked in Lean for k = 1,
+every lambda in (0, 1) and every listener packet cost:
+`Vegas.Paper.settle_late_not_preserved_for_every_margin` (standard axioms) on
+[the settle-late game](../Vegas/Examples/LateLeak/SettleLateGame.lean). For
+q near 1 it needs neither the escape-weight case analysis over theta nor the
+retry limit: every extra packet is charged or forfeits surely, so it is
+dominated as soon as (1 - q)(D + c + R/2) < min(c, D) - R/2; the leak pull
+is nonzero in some class for every theta; the face dichotomy is proved for
+every consistent assessment; and a face at either family pays type (v, A)
+at least q(lambda R + (1 - lambda) R/2) - (1 - q)(D + c). The exact
+thresholds at fixed q, the windows marked undecided, and the constructed
+SEs remain script checks. Malformed or wrong-event packets, aliases,
+several listeners, and a native embedding into the compiled source program
+are not modeled.

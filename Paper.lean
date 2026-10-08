@@ -17,6 +17,7 @@ import Vegas.Examples.LateLeak.OutcomeSeparation
 import Vegas.Examples.LateLeak.ObservableOutcomeSeparation
 import Vegas.Examples.LateLeak.PenaltyPreservation
 import Vegas.Examples.LateLeak.CalibratedPenaltyPreservation
+import Vegas.Examples.LateLeak.SettleLatePreservation
 import Interaction.ReactiveSurvival
 import Vegas.Game.ServiceRosterProtection
 import GameTheoryExtensions.Analysis.PositiveCollection
@@ -1076,6 +1077,60 @@ theorem late_leak_not_preserved_for_every_margin (R D c : ℝ) (reward_pos : 0 <
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.lateLeak_not_preserved_for_every_margin
+
+/-- **The settle-late runtime loses the intended outcome for every margin.** The
+late-turn game placed in an asynchronous runtime: a builder that settles all
+late packets in one inclusion step after the sender's last late activation,
+with one observe-only listener activation between the late turns; a stateless
+leak rule that shows each pending opening independently with probability `λ` at
+every listener activation, so that a dropped opening stays pending and may be
+seen when the listener answers; Luce inclusion laws `q` for one late opening
+and `q / (1 + q)` for each of two; a blind retry; raw signals at the protected
+turn, after a protected opening and at both late turns under an escrow that
+charges `c` at most once; and a listener raw packet of cost c_L that the
+sender sees. For every reward scale `R > 0`, forfeit `D > R`, charge `c > R/2`,
+leak probability `λ` in `(0, 1)` (for instance `1/2`) and packet cost c_L,
+the explicit inclusion threshold is below one, and for every inclusion
+probability `q` above it: the intended game (open at the protected turn, emit
+nothing more) has a sequential equilibrium, all its sequential equilibria have
+the intended outcome law, and no sequential equilibrium of the settle-late game
+has that law. -/
+theorem settle_late_not_preserved_for_every_margin (R D c : ℝ) (reward_pos : 0 < R)
+    (margin : R < D) (charge : R / 2 < c) (leak : Set.Ioo (0 : ℝ) 1) (packetCost : ℝ) :
+    settleLateInclusionThreshold R D c leak < 1 ∧
+    ∀ q : Set.Ioo (0 : ℝ) 1, settleLateInclusionThreshold R D c leak < q →
+      (∃ A : (settleLateModel ⟨⟨R, D, c, q⟩, leak, packetCost⟩ false).BehavioralAssessment,
+        A.IsSequentialEquilibrium (settleLate_antichain ⟨⟨R, D, c, q⟩, leak, packetCost⟩ false)
+          (settleLate_terminates ⟨⟨R, D, c, q⟩, leak, packetCost⟩ false)
+          (settleLatePayoff ⟨⟨R, D, c, q⟩, leak, packetCost⟩ false)) ∧
+      (∀ A : (settleLateModel ⟨⟨R, D, c, q⟩, leak, packetCost⟩ false).BehavioralAssessment,
+        A.IsSequentialEquilibrium (settleLate_antichain ⟨⟨R, D, c, q⟩, leak, packetCost⟩ false)
+            (settleLate_terminates ⟨⟨R, D, c, q⟩, leak, packetCost⟩ false)
+            (settleLatePayoff ⟨⟨R, D, c, q⟩, leak, packetCost⟩ false) →
+          settleLateOutcomeLaw ⟨⟨R, D, c, q⟩, leak, packetCost⟩ false A.strategy =
+            settleLateIntendedOutcome) ∧
+      ∀ A : (settleLateModel ⟨⟨R, D, c, q⟩, leak, packetCost⟩ true).BehavioralAssessment,
+        A.IsSequentialEquilibrium (settleLate_antichain ⟨⟨R, D, c, q⟩, leak, packetCost⟩ true)
+            (settleLate_terminates ⟨⟨R, D, c, q⟩, leak, packetCost⟩ true)
+            (settleLatePayoff ⟨⟨R, D, c, q⟩, leak, packetCost⟩ true) →
+          settleLateOutcomeLaw ⟨⟨R, D, c, q⟩, leak, packetCost⟩ true A.strategy ≠
+            settleLateIntendedOutcome :=
+  settleLate_not_preserved_for_every_margin R D c reward_pos margin charge leak packetCost
+
+/-- info: 'Vegas.Paper.settle_late_not_preserved_for_every_margin' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.settle_late_not_preserved_for_every_margin
+
+/-- info: 'Vegas.settleLate_not_preserved_for_every_margin' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.settleLate_not_preserved_for_every_margin
+
+/-- info: 'Vegas.settleLate_intended_outcome_not_preserved' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.settleLate_intended_outcome_not_preserved
 
 /-- Every sequential equilibrium of the sample late-leak game is separated
 from the intended full terminal-state law by at least 267/2000 in total
