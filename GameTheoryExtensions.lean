@@ -52,6 +52,7 @@ import GameTheoryExtensions.Math.Probability.PriorityChoice
 import GameTheoryExtensions.Math.Probability.Regularity
 import GameTheoryExtensions.Math.Probability.SiteDraw
 import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Survival
 import GameTheoryExtensions.Math.Probability.TotalVariation
 import GameTheoryExtensions.Math.Probability.Uniform
 import GameTheoryExtensions.Protocol.BehavioralContinuation

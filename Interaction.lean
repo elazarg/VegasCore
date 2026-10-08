@@ -92,6 +92,7 @@ import Interaction.ReactiveScheduleClock
 import Interaction.ReactiveScheduleEvaluation
 import Interaction.ReactiveServiceInvariant
 import Interaction.ReactiveStopping
+import Interaction.ReactiveSurvival
 import Interaction.ReactiveSubmissionAudit
 import Interaction.ReactiveSubmissionSerial
 import Interaction.ReactiveTrafficAudit
