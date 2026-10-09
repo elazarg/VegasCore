@@ -6,6 +6,7 @@ import Vegas.Examples.LateOpeningRuntimeBobBindingDecision
 import Vegas.Examples.LateOpeningRuntimeBobBindingOptimization
 import Vegas.Examples.LateOpeningRuntimeBobBindingSettlement
 import Vegas.Examples.LateOpeningRuntimeBobKnownBit
+import Vegas.Examples.LateOpeningRuntimeBobSuccessSettlement
 import Vegas.Examples.LateOpeningRuntimeAliceFirstRationality
 import Vegas.Examples.LateOpeningRuntimeBobRationality
 import Vegas.Examples.LateOpeningRuntimeEquilibrium
@@ -27,6 +28,8 @@ authentic remembered bit certificate forces correct final publication and
 zero receiver audit charge on every supported continuation. At the sender's
 first late callback after prior silence, only silence and genuine opening
 envelopes have positive response probability; private opening aliases remain.
+After a successful late opening, every supported raw first binding fixes
+Safe or a maximizing label guess and settles cleanly on assessed support.
 
 The payoff constants precede the service choice. The response conditions
 quantify actual native information classes through actual representative
@@ -136,7 +139,42 @@ def NativeResponseConstraints
         ((LateOpeningRuntimeAliceFirstResponse.responseLaw weight nonnegative site
           (assessment.strategy alice site.1)).toOuterMeasure
             {response | ¬ LateOpeningRuntimeAliceFirstResponse.PermittedResponse
-              weight nonnegative decision response}).toReal = 0)
+              weight nonnegative decision response}).toReal = 0) ∧
+  (∀ (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
+      (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+        bob site.1)
+      (decision : LateOpeningRuntimeBobSuccessInformation.DecisionHistory weight nonnegative)
+      (current : representative.1.state = some ⟨14, some bob, decision.execution⟩),
+      (LateOpeningRuntimeBobBindingDecision.context
+        weight nonnegative site reward forfeit deposit assessment).value
+          (assessment.strategy bob) =
+            LateOpeningRuntimeBobSuccessOptimization.bestAnswerValue
+              weight nonnegative site reward forfeit deposit assessment ∧
+      ∀ response ∈ (LateOpeningRuntimeBobSuccessOptimization.currentResponses
+        weight nonnegative decision assessment).support,
+        ∃ answer : Answer,
+          (LateOpeningRuntimeBobRawBinding.serviced
+            decision.execution response).application.config.store (.inr bobBindEvent) =
+              some (.success answer) ∧
+          (answer = safe ∨ ∃ label : Fin 3,
+            answer = LateOpeningRuntimeBobSuccessDecision.labelGuess label) ∧
+          (LateOpeningRuntimeBobBindingDecision.context
+            weight nonnegative site reward forfeit deposit assessment).value
+              (LateOpeningRuntimeEarlyBobSafeMenu.answerFinitePolicy weight nonnegative answer) =
+                LateOpeningRuntimeBobSuccessOptimization.bestAnswerValue
+                  weight nonnegative site reward forfeit deposit assessment ∧
+          ∀ history ∈ (assessment.belief bob site).support,
+            ∀ final ∈ (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative)
+              (rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
+                (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy) 14
+              ((LateOpeningRuntimeBobSuccessInformation.decisionOfInformation
+                weight nonnegative site representative decision current history).execution.respond
+                  app bob response)).support,
+              final.application.config.store (.inr bobRevealEvent) = some (.success answer) ∧
+                TerminalAudit.charge
+                  (LateOpeningRuntimeService.runtime.serviceAuditObservation leaks)
+                  (serviceSourceAudit setup .sequential deadline leaks
+                    (fun actual => PMF.pure actual)) (app.finished final) bob = 0)
 
 /-- These constraints use sequential rationality alone. No consistency
 condition or posterior restriction is needed for the local comparisons. -/
@@ -154,7 +192,7 @@ theorem sequentially_rational_constraints
     NativeResponseConstraints weight nonnegative reward forfeit deposit assessment := by
   refine ⟨LateOpeningRuntimeAliceNormalization.sequentially_rational_last_responses
     weight nonnegative reward forfeit deposit positive rewardNonnegative forfeitPositive.le
-      depositNonnegative marginPositive assessment rational, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      depositNonnegative marginPositive assessment rational, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · intro site representative decision current
     exact LateOpeningRuntimeEarlyBobRationality.sequentially_rational_early_response_law
       weight nonnegative site representative decision current reward forfeit deposit
@@ -205,6 +243,20 @@ theorem sequentially_rational_constraints
     exact LateOpeningRuntimeAliceFirstRationality.sequentially_rational_nongenuine_packet_zero
       weight nonnegative site representative decision current reward forfeit deposit positive
         rewardNonnegative forfeitPositive.le depositNonnegative marginPositive assessment rational
+  · intro site representative decision current
+    have localRational := rational bob site
+    dsimp only at localRational
+    rw [assessment.continuationContext_eq_truncated_of_bounded
+      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
+        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
+      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
+        (LateOpeningRuntimeService.scheduler weight nonnegative))] at localRational
+    exact ⟨LateOpeningRuntimeBobSuccessOptimization.rational_value_eq_bestAnswerValue
+      weight nonnegative site representative decision current reward forfeit deposit
+        forfeitPositive.le (by linarith) assessment localRational,
+      LateOpeningRuntimeBobSuccessSettlement.rational_supported_clean_settlement
+        weight nonnegative site representative decision current reward forfeit deposit
+          forfeitPositive (by linarith) assessment localRational⟩
 
 /-- All response constraints hold simultaneously in each native sequential
 equilibrium, including its information classes outside the realized path. -/

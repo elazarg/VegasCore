@@ -90,7 +90,10 @@ failed-publication continuation-value lower bound of `1/2`, and final
 publication after a clean answer commitment. It also forces each failed-case
 current raw response to bind a maximizing Boolean guess, correct clean
 publication when an authentic bit certificate is remembered, and only genuine
-opening or silence at Alice's first late callback. The stronger local core needs
+opening or silence at Alice's first late callback. After a successful late
+opening it forces Safe or a maximizing label guess and clean settlement on
+positive-belief histories. These are eight constraints for that same game.
+The stronger local core needs
 sequential rationality alone. See
 [checked boundaries](checked-runtime-boundaries.md) for the exact conditions
 and omitted runtime aspects.
@@ -102,9 +105,9 @@ points and unproved outputs are distinguished explicitly.
 | Task | Existing boundary and required output |
 | --- | --- |
 | Legitimate sender timing | [First-response repair](../../Vegas/Examples/LateOpeningRuntimeAliceFirstRationality.lean) now excludes nongenuine packets while retaining silence, genuine packets and private aliases. Use the receiver's actual success/failure values to derive the private types' preferences between the two legal sending times. |
-| Receiver after successful sender publication | [Failed-case optimization](../../Vegas/Examples/LateOpeningRuntimeBobBindingOptimization.lean) already handles the full raw menu. Reuse its physical first-service argument on a successful-publication class: Safe earns `2/5`, label guesses earn their actual belief probabilities, and Boolean guesses earn zero. Derive the corresponding optimal logical-answer support and sender success floors. |
+| Receiver continuation on deviation histories | [Success-case optimization](../../Vegas/Examples/LateOpeningRuntimeBobSuccessOptimization.lean), [clean settlement](../../Vegas/Examples/LateOpeningRuntimeBobSuccessSettlement.lean), and [sender success floors](../../Vegas/Examples/LateOpeningRuntimeAliceSuccessFloor.lean) are checked. Clean settlement and the floor currently cover positive-belief histories. Derive a physical continuation transfer to compatible histories assigned zero receiver belief which a sender deviation can reach. |
 | Receiver label beliefs | [Authentic bit knowledge](../../Vegas/Examples/LateOpeningRuntimeBobKnownBit.lean) and its [actual initialized witness](../../Vegas/Examples/LateOpeningRuntimeBobKnownBitWitness.lean) are checked. The remaining beliefs concern Alice's unpublicized preference label, inferred from timing. Identify them from complete native histories rather than assuming a posterior. |
-| Rare-information likelihoods | Group every compatible native history, retaining hidden extra packets and private aliases. Combine uniform vanishing conditional retry and nongenuine-response probabilities with [relative-likelihood machinery](../../GameTheoryExtensions/Analysis/Protocol/AsymptoticLikelihood.lean). Derive the actual prefix and observation factors; the type-dependent earlier reach probability may itself vanish. Absolute error estimates do not suffice. |
+| Rare-information likelihoods | [Complete native history groups](../../Vegas/Examples/LateOpeningRuntimeBindingPrefix.lean), [actual conditional-belief limits](../../Vegas/Examples/LateOpeningRuntimeBindingPosterior.lean), and [one common consistency witness](../../Vegas/Examples/LateOpeningRuntimeConsistency.lean) are checked, retaining hidden extra packets and private aliases. Compute the observation-specific probabilities and combine the three uniform vanishing raw-response errors with [relative-likelihood machinery](../../GameTheoryExtensions/Analysis/Protocol/AsymptoticLikelihood.lean). The type-dependent earlier reach probability may itself vanish. Absolute error estimates do not suffice. |
 
 The final negative must combine these results with protected-acceptance
 necessity and a profitable initialized deferral. Neither local response

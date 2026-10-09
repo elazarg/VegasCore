@@ -630,9 +630,15 @@ clean publication throughout the supported continuation. First-late sender
 repair excludes nongenuine packets using her unchanged future policy and
 actual legal final-callback descendants. Preserving even the public Alice
 publication marginal forces protected acceptance almost surely.
-A checked native SE counterexample is still missing. Remaining Lean
-obligations include successful-publication receiver optimization and the
-legitimate first-versus-second timing comparisons, full native information-fiber sums, relative
-likelihood bounds, and the SE cross-identity and initial deviation argument.
+A checked native SE counterexample is still missing. Successful-publication
+receiver optimization is checked, including clean settlement and Alice's
+success floor on positive receiver-belief histories. The full native history
+groups are connected to physical prefix probabilities and actual consistent
+conditional-belief limits. One common SE consistency witness controls all
+three sender response errors uniformly. The remaining obligations include
+transferring successful settlement to deviation histories assigned zero Bob
+belief, legitimate first-versus-second timing comparisons, observation-specific
+relative likelihood calculations, and the SE cross-identity and initial
+deviation argument.
 These are formalization tasks for the explicit configuration, rather than
 an assumed private runtime interface.

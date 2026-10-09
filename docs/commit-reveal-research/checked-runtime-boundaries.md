@@ -860,6 +860,31 @@ the assessed belief and then over runtime outcomes. The pin is
 `Vegas.Examples.LateOpeningRuntimeBobBindingSettlement.rational_supported_clean_settlement`
 in [BobBindingSettlement](../../Vegas/Examples/LateOpeningRuntimeBobBindingSettlement.lean).
 
+The successful late-publication case is checked for the same unrestricted
+raw menu. At a ready, timely fresh binding with silent Bob recall, Safe has
+value `2/5`, each label guess has value equal to its actual posterior label
+probability, and both Boolean guesses have value zero. Sequential rationality
+therefore forces value
+`max(2/5, Pr(label=0), Pr(label=1), Pr(label=2))`; every supported current
+response binds Safe or a maximizing label guess. The pins are
+`Vegas.Examples.LateOpeningRuntimeBobSuccessOptimization.bestAnswerValue_formula`
+and `Vegas.Examples.LateOpeningRuntimeBobSuccessOptimization.rational_supported_binding`
+in [BobSuccessOptimization](../../Vegas/Examples/LateOpeningRuntimeBobSuccessOptimization.lean).
+Ready and timely are essential: success during Alice's protected clock-zero
+opportunity can leave this later Bob binding callback overdue.
+
+For `D>0` and `K_B>0`, that answer also publishes with zero Bob audit charge
+at every positive-belief hidden history and supported physical continuation.
+This is `Vegas.Examples.LateOpeningRuntimeBobSuccessSettlement.rational_supported_clean_settlement`
+in [BobSuccessSettlement](../../Vegas/Examples/LateOpeningRuntimeBobSuccessSettlement.lean).
+For Alice's first two preference labels, the corresponding payoff is at least
+`R/2` minus her own audit deduction; see
+`Vegas.Examples.LateOpeningRuntimeAliceSuccessFloor.rational_supported_payoff_floor`
+in [AliceSuccessFloor](../../Vegas/Examples/LateOpeningRuntimeAliceSuccessFloor.lean).
+These support statements do not cover merely possible histories assigned zero
+Bob belief. Extending them to histories reached by Alice's deviations requires
+a separate physical continuation argument.
+
 An authentic opening certificate in Bob's remembered view proves the value
 of Alice's original binding across that entire class. It does not require
 an accepting publication receipt: the packet can have leaked and then been
@@ -914,6 +939,18 @@ in [PreservingLaw](../../Vegas/Examples/LateOpeningRuntimePreservingLaw.lean).
 This supplies a necessary condition on every candidate preserving equilibrium;
 the native consistent-likelihood argument is still needed to exclude them.
 
+Matching the selected source's **joint terminal and realized-payoff law** has
+an additional consequence independent of equilibrium or audit sampling.
+Every supported native terminal history has the successful Safe readout, and
+its settlement law is the deterministic source payoff vector: `R/2` to Alice
+and `2/5` to Bob. Every player with a nonzero deposit consequently has zero
+audit-charge probability at each such history. The pins are
+`Vegas.Examples.LateOpeningRuntimePreservingSettlement.history_settlement_pure`
+and `Vegas.Examples.LateOpeningRuntimePreservingSettlement.history_charge_zero`
+in [PreservingSettlement](../../Vegas/Examples/LateOpeningRuntimePreservingSettlement.lean).
+No collateral sign or preservation theorem is assumed beyond the stated
+joint-law equality.
+
 ## Consistency constrains unreached beliefs
 
 At a decision the probability of a private type is the sum of the reach
@@ -941,6 +978,16 @@ and its ratio lemma in
 Together with the checked pending-opening retry bound, this controls two
 sources of hidden raw traffic without prescribing a posterior.
 
+The corresponding final-after-silence bound also counts omission as a
+nongenuine response. All three finite-site bounds can be taken along **one
+actual SE consistency sequence**, with a single uniform error tending to zero.
+The same sequence gives every initialized-input conditional-probability limit
+at every fresh Bob binding class. This is
+`Vegas.Examples.LateOpeningRuntimeConsistency.equilibrium_consistency_witness`
+in [Consistency](../../Vegas/Examples/LateOpeningRuntimeConsistency.lean),
+using [AliceOpeningTremble](../../Vegas/Examples/LateOpeningRuntimeAliceOpeningTremble.lean).
+The approximating assessments need not themselves be sequentially rational.
+
 An exact physical observation factor is also checked. For any actual first
 late sender decision and **any raw response probability law**, the probability
 that Bob learns the exact genuine opening packet at his next actual callback
@@ -953,6 +1000,72 @@ in [FirstObservation](../../Vegas/Examples/LateOpeningRuntimeFirstObservation.le
 This proves the first fair-sampling factor, not the complete receiver
 information-fiber reach sums or their consistent limiting beliefs.
 
+The complete native history groups now have a checked probability adapter.
+At Bob's fresh binding callback at clock three, the public clock and unused
+binding distinguish it from all other callbacks. Every compatible history
+has exactly seventeen protocol transitions: initialization, twelve service
+commands, and four completed player responses. The actual behavioral law at
+this depth is eleven complete runtime rounds followed by Bob's next activation
+and pending sample. The scheduler's later conditional callbacks remain intact.
+`Vegas.Examples.LateOpeningRuntimeBindingPrefix.binding_common_depth` and
+`Vegas.Examples.LateOpeningRuntimeBindingPrefix.binding_prefix_law` check this
+identification in [BindingPrefix](../../Vegas/Examples/LateOpeningRuntimeBindingPrefix.lean).
+
+Grouping **all** compatible histories by immutable initialized inputs gives
+exactly the physical joint probability of those inputs and Bob's information.
+The group includes every private submission representation and pending trace;
+the input readout is a mathematical grouping, unavailable to Bob's policy.
+`Vegas.Examples.LateOpeningRuntimeBindingPrefix.initialized_type_reach_eq_prefix`
+pins the equality. Bayes' rule then divides the joint physical probability by
+the actual information probability. One SE consistency witness makes these
+ratios converge to the assessed beliefs for every readout, even if that
+information probability tends to zero. See
+`Vegas.Examples.LateOpeningRuntimeBindingPosterior.consistent_conditional_probabilities`
+in [BindingPosterior](../../Vegas/Examples/LateOpeningRuntimeBindingPosterior.lean).
+
+For Alice's failed publication, Bob's checked all-raw optimum is consequently
+the maximum of the actual posterior probabilities of false and true. His
+value is also the limit of these two optimal conditional prefix probabilities
+along the same consistency sequence; it is not fixed at the original bit
+prior. These statements are
+`Vegas.Examples.LateOpeningRuntimeBobPosteriorOptimization.rational_value_eq_posterior_max`
+and `Vegas.Examples.LateOpeningRuntimeBobPosteriorOptimization.consistent_value_limit`
+in [BobPosteriorOptimization](../../Vegas/Examples/LateOpeningRuntimeBobPosteriorOptimization.lean).
+
+An additional checked physical kernel retains the original probability that
+Bob responds silently at his early observation. A transmitted first packet
+splits into the two actual fair observation branches; any event requiring
+silent Bob recall excludes every nonsilent raw early response by permanent
+recall. The remaining lottery, clock advance, expiry and second observation
+are computed from the complete actual pending pool, including duplicates and
+malformed packets. See
+`Vegas.Examples.LateOpeningRuntimeLatePrefixKernel.transmitted_binding_silent_event_probability`
+and `Vegas.Examples.LateOpeningRuntimeLatePrefixKernel.settlement_activation`
+in [LatePrefixKernel](../../Vegas/Examples/LateOpeningRuntimeLatePrefixKernel.lean).
+The actual remaining Alice response is also retained, rather than replaced
+by a canonical policy: `after_early_quiet_law` in
+[LateResponseKernel](../../Vegas/Examples/LateOpeningRuntimeLateResponseKernel.lean)
+composes its original raw response law with the full settlement kernel.
+For any genuine first-opening representation and a silent retry, the typed
+publication law is exactly `q` success and `1-q` failure. The pin is
+`Vegas.Examples.LateOpeningRuntimeLateResponseKernel.genuine_retry_publication_law`.
+These adapters still do not establish the final timing factors or posterior
+exclusions: complete observation-event calculations and their relative errors
+must be composed with the native probability bridge.
+
+The full recalled receipt history also establishes an exact inverse fact:
+an actual later Bob observation with an empty receipt list proves that Alice
+sent no raw packet at the protected opportunity. This applies to every
+compatible native history, including packets which would have been rejected;
+it uses permanent receipts, rather than a belief restriction. See
+`Vegas.Examples.LateOpeningRuntimeProtectedRecall.information_histories_protected_silent`
+in [ProtectedRecall](../../Vegas/Examples/LateOpeningRuntimeProtectedRecall.lean).
+Consequently the actual physical prefix gives zero mass to such an observation
+together with any protected raw submission, under every behavioral profile.
+This is
+`Vegas.Examples.LateOpeningRuntimeProtectedPrefix.protected_submission_event_zero`
+in [ProtectedPrefix](../../Vegas/Examples/LateOpeningRuntimeProtectedPrefix.lean).
+
 The general pin is
 `GameTheory.Protocol.InformationModel.AsymptoticHistoryLikelihood.belief_face`.
 Its premises concern actual execution likelihoods; they do not assume the
@@ -960,8 +1073,9 @@ desired posterior beliefs. The checked comparison-game instantiation is
 `Vegas.settleLate_opposite_timing_excludes_label` in
 [SettleLateLikelihood.lean](../../Vegas/Examples/LateLeak/SettleLateLikelihood.lean).
 That comparison is not identified with the compiled runtime. The native
-counterexample still needs its own complete history fibers and likelihood
-calculations, including hidden extra packets.
+counterexample still needs the observation-specific likelihood calculations
+for its complete native history groups, including relative contributions of
+hidden extra packets.
 
 The [native SE counterexample](native-late-action-analysis.md),
 [protected-execution positive](native-protected-execution.md), and

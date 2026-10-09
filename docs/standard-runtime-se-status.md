@@ -29,8 +29,10 @@ native SE obstruction.
 Its three-instruction source is now compiled to a checked family of actual
 partially public native services: the full raw-history contract, erasure
 independence, message alphabet, finite nature and exact early observation laws
-are proved. The remaining impossibility obligations concern full information
-fibers, relative likelihoods and sequential incentives, not builder
+are proved. The fresh receiver binding's full information fiber and exact
+native conditional-probability adapter are also checked. The remaining
+impossibility obligations concern observation-specific relative likelihoods,
+their consistent limits and sequential timing incentives, not builder
 admissibility.
 
 ## Checked positive results
@@ -210,7 +212,10 @@ admissibility.
   SE of that same game, including final disclosure after a clean answer
   commitment, first-late permitted sender responses, maximizing failed-case
   receiver bindings, and correct clean publication after authenticated bit
-  knowledge. It is
+  knowledge. After a successful late opening it also forces Safe or a
+  maximizing label guess, with clean publication on positive-belief histories.
+  This does not yet transfer settlement to zero-belief histories which Alice's
+  deviations can reach. It is
   `Vegas.Examples.LateOpeningRuntimeEquilibriumConstraints.exists_service_with_constraints`
   in [LateOpeningRuntimeEquilibriumConstraints.lean](../Vegas/Examples/LateOpeningRuntimeEquilibriumConstraints.lean).
   The failure bound is for specified canonical whole-horizon policies, not
@@ -219,6 +224,19 @@ admissibility.
   rationality alone, without Bayes or SE consistency, so the same necessary
   conditions apply to assessments satisfying that rationality condition under
   weaker equilibrium conventions. No PBE-preservation result follows.
+- **One actual consistency sequence:** all three sender response errors have
+  one uniform bound tending to zero along the same SE consistency witness
+  which generates Bob's actual conditional input probabilities. Full native
+  history groups are connected to the physical prefix law, including private
+  raw aliases and hidden extra packets. The remaining work is to compute the
+  observation-specific relative probabilities, rather than assume beliefs.
+  See [the checked consistency adapters](commit-reveal-research/checked-runtime-boundaries.md#consistency-constrains-unreached-beliefs).
+- **Preserving settlement has no supported deductions:** equality with the
+  selected source's joint terminal/payoff law forces the successful Safe
+  readout and fixed source payoffs at every supported native terminal history.
+  A nonzero deposit then forces zero charge at each such history. This is an
+  equilibrium-independent necessary condition; see
+  [PreservingSettlement](../Vegas/Examples/LateOpeningRuntimePreservingSettlement.lean).
 - **Fully observed late-opening comparison:** for every inclusion probability
   between zero and one, a checked comparison family with intrinsic forfeit
   twice its reward preserves every intended source SE by a target SE. This
