@@ -3,11 +3,12 @@
 import Interaction.ReactivePassiveContinuation
 import Interaction.ReactiveLocalContinuation
 
-/-! # The last observed response followed by passive settlement
+/-! # The last observed response of a player
 
-After the scheduler's last activation, the complete behavioral continuation
-depends only on the current response lottery. Future whole policies have no
-effect, even on off-path histories and with arbitrary passive inclusion.
+After a player's last activation, its complete behavioral continuation
+depends only on its current response lottery and the other players' future
+policies. After the game's last activation, all future policies are irrelevant.
+Both identities hold on off-path histories and with arbitrary passive inclusion.
 -/
 
 noncomputable section
@@ -21,22 +22,25 @@ variable {Principal : Type} [DecidableEq Principal] [Fintype Principal]
   {app : ReactiveApplication Principal} (menu : app.ResponseMenu)
   (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
-/-- The exact endpoint law at a last player response. The passive hypothesis
-concerns supported physical commands, not payoff comparisons or beliefs. -/
-theorem run_last_response
+/-- At a player's last response, the exact endpoint law retains every other
+player's future policy. Only the focal player's later policy is irrelevant. -/
+theorem run_last_response_of_unactivated
     (cursor : Nat)
-    (passive : ∀ past view, cursor ≤ past.length →
-      ∀ command ∈ (scheduler past view).support, command.actor? app = none)
+    (who : Principal)
+    (absent : ∀ past view, cursor ≤ past.length →
+      ∀ command ∈ (scheduler past view).support, command.actor? app ≠ some who)
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (history : (menu.protocol initial horizon scheduler).History)
-    (who : Principal) (remaining : Nat) (execution : app.Execution)
+    (remaining : Nat) (execution : app.Execution)
     (current : history.state = some ⟨remaining, some who, execution⟩)
     (later : cursor ≤ execution.environmentRecall.length) :
     ((menu.information initial horizon scheduler).runBehavioralFrom profile
       (2 * horizon + 1) history).map History.state =
       ((profile who ((menu.information initial horizon scheduler).infoOf who
         history.trace)).map (fun choice => choice.1.getD ⟨none⟩)).bind fun response =>
-          (app.runRounds scheduler (fun _ => app.silentPolicy) remaining
+          (app.runRounds scheduler
+            (Function.update (menu.decodeProfile initial horizon scheduler profile) who
+              app.silentPolicy) remaining
             (execution.respond app who response)).map app.finished := by
   classical
   have raw : (app.protocol initial horizon scheduler).Trace
@@ -56,6 +60,34 @@ theorem run_last_response
   have responded : cursor ≤ (execution.respond app who response).environmentRecall.length := by
     rw [app.respond_environmentRecall]
     exact later
+  rw [app.continuation_policy_independent_of_unactivated scheduler cursor who absent
+    _ (Function.update (menu.decodeProfile initial horizon scheduler profile) who app.silentPolicy)
+    (by intro actor different; rw [Function.update_of_ne different]) remaining _ responded]
+
+/-- The exact endpoint law at the last response of the entire game. The
+passive hypothesis concerns physical commands, not payoff comparisons or beliefs. -/
+theorem run_last_response
+    (cursor : Nat)
+    (passive : ∀ past view, cursor ≤ past.length →
+      ∀ command ∈ (scheduler past view).support, command.actor? app = none)
+    (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
+    (history : (menu.protocol initial horizon scheduler).History)
+    (who : Principal) (remaining : Nat) (execution : app.Execution)
+    (current : history.state = some ⟨remaining, some who, execution⟩)
+    (later : cursor ≤ execution.environmentRecall.length) :
+    ((menu.information initial horizon scheduler).runBehavioralFrom profile
+      (2 * horizon + 1) history).map History.state =
+      ((profile who ((menu.information initial horizon scheduler).infoOf who
+        history.trace)).map (fun choice => choice.1.getD ⟨none⟩)).bind fun response =>
+          (app.runRounds scheduler (fun _ => app.silentPolicy) remaining
+            (execution.respond app who response)).map app.finished := by
+  rw [menu.run_last_response_of_unactivated initial horizon scheduler cursor who
+    (by intro past view late command selected; rw [passive past view late command selected];
+        simp) profile history remaining execution current later]
+  apply bind_congr_on_support
+  intro response _
+  have responded : cursor ≤ (execution.respond app who response).environmentRecall.length := by
+    rwa [app.respond_environmentRecall]
   rw [app.passive_continuation_policy_independent scheduler cursor passive
     _ (fun _ => app.silentPolicy) remaining _ responded]
 

@@ -20,6 +20,47 @@ open GameTheory.Math.Probability
 
 variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication Principal)
   (scheduler : app.Scheduler) (cursor : Nat)
+
+/-- After a player's last callback, changing only that player's remaining
+policy preserves the complete execution law. Other players may still act. -/
+theorem continuation_policy_independent_of_unactivated (owner : Principal)
+    (absent : ∀ past view, cursor ≤ past.length →
+      ∀ command ∈ (scheduler past view).support, command.actor? app ≠ some owner)
+    (first second : Principal → app.Policy)
+    (others : ∀ who, who ≠ owner → first who = second who)
+    (count : Nat) (execution : app.Execution)
+    (later : cursor ≤ execution.environmentRecall.length) :
+    app.runRounds scheduler first count execution =
+      app.runRounds scheduler second count execution := by
+  have roundEqual (before : app.Execution)
+      (afterLast : cursor ≤ before.environmentRecall.length) :
+      app.round scheduler first before = app.round scheduler second before := by
+    unfold round dispatch
+    apply bind_congr_on_support
+    intro command selected
+    have notOwner := absent _ _ afterLast command selected
+    cases actor : command.actor? app with
+    | none => rfl
+    | some who =>
+        have different : who ≠ owner := fun equal =>
+          notOwner (actor.trans (congrArg some equal))
+        apply congrArg ((before.environmentStep app command).bind)
+        funext next
+        change (first who (next.recall who) (next.observe app who)).map
+          (next.respond app who) = _
+        rw [others who different]
+        rfl
+  induction count generalizing execution with
+  | zero => rfl
+  | succ count ih =>
+      rw [runRounds, runRounds, roundEqual execution later]
+      apply bind_congr_on_support
+      intro next reached
+      apply ih
+      have length := app.round_environmentRecall_length scheduler second execution next reached
+      omega
+
+variable
   (passive : ∀ past view, cursor ≤ past.length →
     ∀ command ∈ (scheduler past view).support, command.actor? app = none)
 

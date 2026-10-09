@@ -35,10 +35,10 @@ def aliceUtility (reward forfeit : ℝ) (deposit : Player → ℝ)
     (serviceSourceAudit setup .sequential LateOpeningRuntimeService.deadline leaks
       (fun actual => PMF.pure actual)) deposit (app.finished execution) alice
 
-private def OnlyAlicePacket (bit : Bool) (execution : app.Execution) : Prop :=
+def OnlyAlicePacket (bit : Bool) (execution : app.Execution) : Prop :=
   ∀ message ∈ execution.network.inputs, message.sender = alice → message = openingMessage bit
 
-private theorem quiet_onlyAlicePacket (bit : Bool) (players : Player → app.Policy) :
+theorem quiet_onlyAlicePacket (bit : Bool) (players : Player → app.Policy) :
     app.PolicyInvariant (quietAgainst players) (OnlyAlicePacket bit) where
   respond execution who action valid supported := by
     by_cases owner : who = alice
@@ -110,7 +110,7 @@ theorem aliceUtility_bounds {reward forfeit : ℝ} (rewardNonnegative : 0 ≤ re
   unfold aliceUtility TerminalAudit.utility
   constructor <;> linarith
 
-private theorem aliceUtility_integrable {reward forfeit : ℝ}
+theorem aliceUtility_integrable {reward forfeit : ℝ}
     (rewardNonnegative : 0 ≤ reward) (forfeitNonnegative : 0 ≤ forfeit)
     (deposit : Player → ℝ) (depositNonnegative : 0 ≤ deposit alice) (law : PMF app.Execution) :
     PayoffIntegrable law (aliceUtility reward forfeit deposit) := by
@@ -121,7 +121,7 @@ private theorem aliceUtility_integrable {reward forfeit : ℝ}
   rw [abs_le]
   constructor <;> linarith
 
-private theorem completed_opening_base_nonnegative {reward : ℝ}
+theorem completed_opening_base_nonnegative {reward : ℝ}
     (rewardNonnegative : 0 ≤ reward) (forfeit : ℝ) (weight : ℝ) (nonnegative : 0 ≤ weight)
     (control : app.Control)
     (trace : (app.protocol initial LateOpeningRuntimeService.horizon
@@ -337,7 +337,7 @@ private theorem secondLateDecision_raw_trace (weight : ℝ) (nonnegative : 0 ≤
     apply (PMF.mem_support_pure_iff _ _).mpr
     rfl
 
-private theorem input_persists (players : Player → app.Policy)
+theorem input_persists (players : Player → app.Policy)
     (message : Message Player app.Payload) :
     app.PolicyInvariant players (fun execution => message ∈ execution.network.inputs) where
   respond execution who action valid _ := by

@@ -122,6 +122,16 @@ admissibility.
   deviation gives failure probability at most `epsilon/D`. These are local
   consequences, not a source SE-preservation theorem. See
   [the concrete runtime boundaries](commit-reveal-research/checked-runtime-boundaries.md).
+- **Equilibrium silence after a pending opening:** at Alice's remaining
+  opportunity after a genuine first late opening, every native SE sends no
+  second packet when `K_A-R-(1-q)(D+K_A)>0`, with nonnegative reward, forfeit
+  and Alice deposit. The theorem derives the entire information class from
+  one actual representative, retains private raw syntax and arbitrary future
+  Bob behavior, and uses full traffic auditing. Sequential rationality alone
+  suffices. A bound epsilon on the actual whole-policy deviation gives send
+  probability at most epsilon divided by this margin. These classes are
+  inhabited in the actual bounded runtime. This remains a local result; see
+  [the native continuation analysis](commit-reveal-research/checked-runtime-boundaries.md).
 - **Fully observed late-opening comparison:** for every inclusion probability
   between zero and one, a checked comparison family with intrinsic forfeit
   twice its reward preserves every intended source SE by a target SE. This
@@ -133,6 +143,18 @@ example merely to public pending messages and high late inclusion probability.
 Both properties coexist with preservation in that comparison family.
 
 ## Checked negative results and their limits
+
+There is also a checked operational necessity in the actual compiled example:
+**a profile with certain terminal success for Alice must obtain acceptance
+during her protected opportunity.** If protected acceptance is missed, every
+later raw policy has a positive-probability branch which permanently records
+failure. This applies to unrestricted raw policies and to the actual bounded
+behavioral game, without an equilibrium, audit or payoff assumption. Thus a
+profile cannot reproduce the intended source's certain-success law using
+only late submissions. It does not exclude a preserving SE which uses the
+protected opportunity. The checked endpoint is
+`Vegas.Examples.LateOpeningRuntimeProtectedReceipt.native_almost_sure_success_protected_receipt_law`
+in [LateOpeningRuntimeProtectedReceipt.lean](../Vegas/Examples/LateOpeningRuntimeProtectedReceipt.lean).
 
 The selective late-leak game has no preserving target SE in its stated
 parameter regime. Its distinguishing information pattern is essential:

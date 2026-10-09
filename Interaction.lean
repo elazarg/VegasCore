@@ -85,6 +85,7 @@ import Interaction.ReactiveRecall
 import Interaction.ReactiveRecallEntries
 import Interaction.ReactiveRecallInvariant
 import Interaction.ReactiveReceipts
+import Interaction.ReactiveReceiptIdentity
 import Interaction.ReactiveRecovery
 import Interaction.ReactiveMessageReadout
 import Interaction.ReactiveResponseBudget

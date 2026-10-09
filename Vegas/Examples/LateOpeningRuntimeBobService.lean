@@ -91,12 +91,12 @@ def openingMessage (execution : app.Execution) (candidate : Handle nativeGraph)
   ⟨(bob, execution.network.nextSerial bob), openingPacket candidate answer⟩
 
 /-- Actual canonical normalization emits the binding's certified answer, and
-the application accepts it while the final disclosure is ready and timely. -/
+the application accepts it at every ready and timely Bob disclosure callback. -/
 theorem canonical_response (weight : ℝ) (nonnegative : 0 ≤ weight)
-    (execution : app.Execution)
+    (remaining : Nat) (execution : app.Execution)
     (trace : (app.protocol initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
-        (some ⟨6, some bob, execution⟩))
+        (some ⟨remaining, some bob, execution⟩))
     (answer : Answer)
     (bound : execution.application.config.store (.inr bobBindEvent) = some (.success answer))
     (ready : execution.application.config.cut.Ready bobRevealEvent)
@@ -115,7 +115,7 @@ theorem canonical_response (weight : ℝ) (nonnegative : 0 ≤ weight)
   have aligned : (app.protocol ((setup.initialLaw.map setup.eventInputs).map
       (EventGraphRuntime.State.initial (graph := nativeGraph))) LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
-          (some ⟨6, some bob, execution⟩) := by
+          (some ⟨remaining, some bob, execution⟩) := by
     rwa [initial_law_eq]
   have valid := LateOpeningRuntimeService.runtime.reactiveBindingInvariant_history leaks
     (setup.initialLaw.map setup.eventInputs) LateOpeningRuntimeService.horizon
@@ -176,10 +176,10 @@ theorem opening_permitted (execution : app.Execution) (candidate : Handle native
 /-- The actual next author service accepts the canonical answer with
 probability one, even after arbitrary earlier raw responses. -/
 theorem canonical_round (weight : ℝ) (nonnegative : 0 ≤ weight)
-    (players : Player → app.Policy) (execution : app.Execution)
+    (players : Player → app.Policy) (remaining : Nat) (execution : app.Execution)
     (trace : (app.protocol initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
-        (some ⟨6, some bob, execution⟩))
+        (some ⟨remaining, some bob, execution⟩))
     (answer : Answer)
     (bound : execution.application.config.store (.inr bobBindEvent) = some (.success answer))
     (ready : execution.application.config.cut.Ready bobRevealEvent)
@@ -195,7 +195,7 @@ theorem canonical_round (weight : ℝ) (nonnegative : 0 ≤ weight)
       next.application.config.store (.inr bobRevealEvent) = some (.success answer) ∧
       ((openingMessage execution candidate answer).id, true) ∈ next.receipts := by
   obtain ⟨candidate, material, decision, _unchanged, emitted, state, accepted, output⟩ :=
-    canonical_response weight nonnegative execution trace answer bound ready timely
+    canonical_response weight nonnegative remaining execution trace answer bound ready timely
   let submitted := execution.respond app bob ⟨some material⟩
   let identifier := (openingMessage execution candidate answer).id
   let included := submitted.includePending app identifier
@@ -209,8 +209,9 @@ theorem canonical_round (weight : ℝ) (nonnegative : 0 ≤ weight)
   have selected := latestAuthor_after_submit execution bob material serials.1
   have chosen : LateOpeningRuntimeService.scheduler weight nonnegative submitted.environmentRecall
       (submitted.observeEnvironment app) = PMF.pure (.include identifier) := by
-    exact (protected_response_scheduler weight nonnegative ⟨6, some bob, execution⟩ trace bob
-      rfl ⟨some material⟩ (Or.inl rfl)).trans (congrArg PMF.pure selected)
+    exact (protected_response_scheduler weight nonnegative
+      ⟨remaining, some bob, execution⟩ trace bob rfl ⟨some material⟩ (Or.inl rfl)).trans
+        (congrArg PMF.pure selected)
   have actual : app.handle submitted.application (openingMessage execution candidate answer) =
       some state := accepted
   have found : submitted.network.lookup identifier =
@@ -269,7 +270,7 @@ theorem canonical_terminal (weight : ℝ) (nonnegative : 0 ≤ weight)
         final.network.inputs = execution.network.inputs ++
           [(show Message Player app.Payload from openingMessage execution candidate answer)] := by
   obtain ⟨candidate, material, next, decision, emitted, moved, published, accepted⟩ :=
-    canonical_round weight nonnegative (fun _ => app.silentPolicy) execution trace answer
+    canonical_round weight nonnegative (fun _ => app.silentPolicy) 6 execution trace answer
       bound ready timely
   refine ⟨candidate, material, decision, ?_⟩
   intro players final reached

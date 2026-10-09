@@ -67,6 +67,14 @@ import Vegas.Examples.LateOpeningRuntimeUtility
 import Vegas.Examples.LateOpeningRuntimeNash
 import Vegas.Examples.LateOpeningRuntimeRetryAudit
 import Vegas.Examples.LateOpeningRuntimeAliceContinuation
+import Vegas.Examples.LateOpeningRuntimeAliceRationality
+import Vegas.Examples.LateOpeningRuntimeAliceEmptyDecision
+import Vegas.Examples.LateOpeningRuntimeAliceWitness
+import Vegas.Examples.LateOpeningRuntimeAliceTremble
+import Vegas.Examples.LateOpeningRuntimeProtectedReceipt
+import Vegas.Examples.LateOpeningRuntimeEarlyBobAudit
+import Vegas.Examples.LateOpeningRuntimeBobBindingService
+import Vegas.Examples.LateOpeningRuntimeBobQuietPrefix
 import Vegas.Examples.LateOpeningRuntimeBobIncentive
 import Vegas.Examples.LateOpeningRuntimeBobRationality
 import Vegas.Examples.LateOpeningRuntimeBobSuffix
@@ -1732,3 +1740,108 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Examples.LateOpeningRuntimeBobSuffix.final_disclosure_class_nonempty
+
+/-- info: 'Interaction.ReactiveApplication.continuation_policy_independent_of_unactivated'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.ReactiveApplication.continuation_policy_independent_of_unactivated
+
+
+/-- info: 'Interaction.ReactiveApplication.ResponseMenu.run_last_response_of_unactivated'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.ReactiveApplication.ResponseMenu.run_last_response_of_unactivated
+
+
+/-- info: 'Interaction.ReactiveApplication.receipt_identifiers_distinct_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.ReactiveApplication.receipt_identifiers_distinct_history
+
+
+/-- info: 'Interaction.ReactiveApplication.rejected_identifier_not_accepted'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.ReactiveApplication.rejected_identifier_not_accepted
+
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeProtectedOpening.protected_miss_terminal_failure'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeProtectedOpening.protected_miss_terminal_failure
+
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeProtectedReceipt.native_almost_sure_success_protected_receipt_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.LateOpeningRuntimeProtectedReceipt.native_almost_sure_success_protected_receipt_law
+
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeEarlyBobAudit.early_submission_continuation_utility_bound'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.LateOpeningRuntimeEarlyBobAudit.early_submission_continuation_utility_bound
+
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeAliceDecision.decision_of_information'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeAliceDecision.decision_of_information
+
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeAliceIncentive.quiet_second_packet_regret'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeAliceIncentive.quiet_second_packet_regret
+
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeAliceRationality.quiet_regret'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeAliceRationality.quiet_regret
+
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeAliceRationality.equilibrium_second_packet_zero'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeAliceRationality.equilibrium_second_packet_zero
+
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeAliceRationality.second_packet_le_of_deviation_regret'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeAliceRationality.second_packet_le_of_deviation_regret
+
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeAliceWitness.last_alice_class_nonempty'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeAliceWitness.last_alice_class_nonempty
+
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeAliceTremble.weighted_retry_ratio_tendsto'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeAliceTremble.weighted_retry_ratio_tendsto
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeAliceTremble.equilibrium_consistency_retry_bound'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeAliceTremble.equilibrium_consistency_retry_bound
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeBobBindingService.binding_round'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeBobBindingService.binding_round
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeBobQuietPrefix.binding_activation'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeBobQuietPrefix.binding_activation
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeAliceEmptyDecision.quiet_pending_empty'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeAliceEmptyDecision.quiet_pending_empty

@@ -193,6 +193,21 @@ theorem protected_submission_receipt (weight : ℝ) (nonnegative : 0 ≤ weight)
   · obtain ⟨_, _, _, _, _, _, sameClock, _⟩ := outstanding
     omega
 
+/-- By the next active callback, every protected authored envelope has a
+public receipt, including packets rejected by the application. -/
+theorem protected_submission_receipt_of_active (weight : ℝ) (nonnegative : 0 ≤ weight)
+    (control : app.Control)
+    (trace : (app.protocol initial horizon (scheduler weight nonnegative)).Trace (some control))
+    (who : Player) (entry : app.PlayerEntry) (member : entry ∈ control.execution.recall who)
+    (message : Message Player app.Payload) (emitted : entry.emitted = some message)
+    (tracked : who = bob ∨ entry.beforeView.application.publicView.clock = 0)
+    (active : control.actor ≠ none) :
+    ∃ accepted, (message.id, accepted) ∈ control.execution.receipts := by
+  rcases receipt_accounted_history weight nonnegative trace who entry member message emitted
+    tracked with received | outstanding
+  · exact received
+  · exact (active outstanding.1).elim
+
 /-- The actual all-raw scheduler supplies the asynchronous contract's
 protected inclusion guarantee for every finite nonnegative lottery weight. -/
 theorem inclusion (weight : ℝ) (nonnegative : 0 ≤ weight) :
