@@ -41,9 +41,14 @@ import Vegas.Examples.CommittedResolutionBobAudit
 import Vegas.Examples.CommittedResolutionBobDecision
 import Vegas.Examples.CommittedResolutionBobFailure
 import Vegas.Examples.CommittedResolutionBobReadout
+import Vegas.Examples.CommittedResolutionBobIncentive
 import Vegas.Pending.EventResolutionEnvironment
 import Vegas.Examples.CommittedResolutionReliability
 import Vegas.Examples.LateOpeningRuntimeSource
+import Vegas.Examples.LateOpeningRuntimeSourceBeliefs
+import Vegas.Examples.LateOpeningRuntimeSourceOptimality
+import Vegas.Examples.LateOpeningRuntimeSourcePreservation
+import Vegas.Examples.LateOpeningRuntimeSourceEquilibrium
 import Vegas.Examples.LateLeak.SettleLateLikelihood
 import Vegas.Pending.ReactiveLateLottery
 
@@ -1477,3 +1482,46 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.settleLate_opposite_timing_excludes_label
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeSource.consistent_bobBinding_uniform' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeSource.consistent_bobBinding_uniform
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeSource.bob_answer_law_value_eq_safe_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeSource.bob_answer_law_value_eq_safe_iff
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeSource.bob_answer_law_safe_probability_of_near_optimal'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.LateOpeningRuntimeSource.bob_answer_law_safe_probability_of_near_optimal
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeSource.intended_equilibrium_preserved_under_withholding'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.LateOpeningRuntimeSource.intended_equilibrium_preserved_under_withholding
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeSource.exists_withholding_sequential_equilibrium'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeSource.exists_withholding_sequential_equilibrium
+
+/-- info: 'Vegas.Examples.CommittedResolutionBobIncentive.canonical_bob_response_regret'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommittedResolutionBobIncentive.canonical_bob_response_regret
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeSource.intended_equilibrium_terminal_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeSource.intended_equilibrium_terminal_law
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeSource.exists_withholding_equilibrium_with_safe_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.LateOpeningRuntimeSource.exists_withholding_equilibrium_with_safe_law

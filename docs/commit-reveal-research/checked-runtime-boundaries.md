@@ -63,6 +63,101 @@ forfeit composition keeps its existing value-binding source specialization.
 None of these statements establishes sequential rationality after an
 unreached runtime history.
 
+## Failed publications in the concrete source game
+
+The concrete three-instruction source first opens Alice's committed Boolean,
+then lets Bob commit to an answer, then opens that answer. Alice also has a
+private preference label, drawn uniformly from three labels independently of
+her Boolean. Bob's safe answer pays `2/5`; correctly guessing the preference
+label pays one. These are ordinary source instructions and private payoff
+parameters, not new network primitives.
+
+At Bob's answer commitment, the actual source information set contains
+exactly three histories, one for each label. Every consistent assessment
+assigns them probability `1/3`. This is proved from the actual initialization
+and execution weights, including a complete enumeration of legal compatible
+histories, in
+[LateOpeningRuntimeSourceBeliefs.lean](../../Vegas/Examples/LateOpeningRuntimeSourceBeliefs.lean),
+pin `Vegas.Examples.LateOpeningRuntimeSource.consistent_bobBinding_uniform`.
+It supplies a posterior theorem rather than assuming the desired beliefs.
+
+For any randomized answer law, Bob's expected payoff under that uniform
+posterior is at most `2/5 - Pr(unsafe answer)/15`. Consequently an
+epsilon-optimal answer uses Safe with probability at least `1 - 15*epsilon`;
+an optimal answer law is exactly the Safe point mass. These checked bounds
+are in
+[LateOpeningRuntimeSourceOptimality.lean](../../Vegas/Examples/LateOpeningRuntimeSourceOptimality.lean).
+The actual two-step continuation from Bob's commitment draws precisely his
+answer distribution and then publishes it; no later intended action can
+change the answer. Combining that law with sequential rationality proves
+that **every intended source SE chooses Safe**. Every such SE therefore has
+the same joint terminal-store/payoff law: the initialized Boolean and private
+label keep their original distribution, both publications succeed, Bob's
+answer is Safe, and the payoff vector is `(R/2, 2/5)`. The checked pin is
+`Vegas.Examples.LateOpeningRuntimeSource.intended_equilibrium_terminal_law`
+in
+[LateOpeningRuntimeSourceEquilibrium.lean](../../Vegas/Examples/LateOpeningRuntimeSourceEquilibrium.lean).
+Finite-game existence gives an actual SE with that law; equilibrium
+existence is not assumed as an adapter premise.
+
+For nonnegative Alice reward `R` and a publication forfeit `D` satisfying
+`D >= R` and `D >= 1`, **every intended source SE extends to the source game
+with optional failed publications**. The extension has no failed publication
+on its equilibrium path and preserves the exact joint terminal-store/payoff
+law. An actual such source SE exists. The checked results are
+`Vegas.Examples.LateOpeningRuntimeSource.intended_equilibrium_preserved_under_withholding`
+and `Vegas.Examples.LateOpeningRuntimeSource.exists_withholding_sequential_equilibrium`
+in
+[LateOpeningRuntimeSourcePreservation.lean](../../Vegas/Examples/LateOpeningRuntimeSourcePreservation.lean).
+Composing these results also gives an actual withholding-source SE with the
+specified Safe joint law, rather than an unspecified intended outcome:
+`Vegas.Examples.LateOpeningRuntimeSource.exists_withholding_equilibrium_with_safe_law`
+in
+[LateOpeningRuntimeSourceEquilibrium.lean](../../Vegas/Examples/LateOpeningRuntimeSourceEquilibrium.lean).
+
+This instantiates the existing general intended-to-source theorem. Its
+binding interface admits values, while publications can fail. It does not
+claim admission of immediate failed bindings, absence of failure in every
+source equilibrium, or preservation through asynchronous message delivery.
+In particular, source failure handling by itself does not explain the
+runtime SE obstruction.
+
+## A final runtime opening is optimal under every belief
+
+In the separate initialized two-Boolean-commitment example, Bob has one final
+activation and immediate inclusion of a correct opening. This uses the
+existing public recovery scheduler and the complete typed source decoder;
+it allows all legal raw traffic and the actual terminal audit.
+
+Suppose Bob's gross terminal utility lies in `[L,U]`, his publication forfeit
+is `D >= U-L`, his audit deposit is nonnegative, and the audit reports only
+authentic evidence. At every legal final Bob decision history, the canonical
+opening succeeds without an audit charge. Its payoff weakly dominates every
+raw response and arbitrary later player policies. When the alternative
+publication fails, its loss is at least `D-(U-L)`.
+
+This also holds after averaging under **any belief over actual decision
+histories**, with arbitrary stochastic responses and continuations. The
+checked quantitative statement is
+
+> `(D-(U-L)) * Pr(final publication fails)` is at most the expected payoff
+> gained by choosing the canonical opening.
+
+The pin is
+`Vegas.Examples.CommittedResolutionBobIncentive.canonical_bob_response_regret`
+in
+[CommittedResolutionBobIncentive.lean](../../Vegas/Examples/CommittedResolutionBobIncentive.lean).
+It even allows the alternative to depend on the hidden history, which
+includes all information-feasible responses. With a strictly positive gap,
+an epsilon-optimal response consequently fails with probability at most
+`epsilon/(D-(U-L))`.
+
+No consistency or positive-reach assumption is needed. The result concerns
+this scheduler's final publication decision; it is not a general
+service-contract theorem or a constructed native SE assessment. It rules out
+failure at this decision as the explanation for an SE obstruction while
+leaving earlier timing and information choices to be analyzed.
+
 ## The service contract gives no uniform late-failure floor
 
 Consider an actual initialized source with two immutable Boolean commitments

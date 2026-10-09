@@ -45,6 +45,7 @@ Useful existing boundaries are the
 [fixed-horizon compiled-outcome obstruction](../Vegas/Game/ProbabilisticServiceObstruction.lean),
 [final immutable disclosure readout](../Vegas/Examples/CommittedResolutionBobReadout.lean),
 [actual final-disclosure continuation law](../Vegas/Examples/CommittedResolutionBobDecision.lean),
+[native disclosure regret under arbitrary beliefs](../Vegas/Examples/CommittedResolutionBobIncentive.lean),
 [positive collection over finite contingent plans](../GameTheoryExtensions/Analysis/PositiveCollection.lean),
 [finite reliability gaps and disclosure incentives](../GameTheoryExtensions/Analysis/DisclosureReliability.lean),
 [finite-deposit SE extension under a terminal audit](../GameTheoryExtensions/Analysis/Protocol/TerminalAudit.lean),

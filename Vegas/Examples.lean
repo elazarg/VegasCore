@@ -5,6 +5,11 @@ import Vegas.Examples.CommittedResolutionService
 import Vegas.Examples.CommittedResolutionRecovery
 import Vegas.Examples.CommittedResolutionReliability
 import Vegas.Examples.LateOpeningRuntimeSource
+import Vegas.Examples.LateOpeningRuntimeSourceBeliefs
+import Vegas.Examples.LateOpeningRuntimeSourceOptimality
+import Vegas.Examples.LateOpeningRuntimeSourceContinuation
+import Vegas.Examples.LateOpeningRuntimeSourcePreservation
+import Vegas.Examples.LateOpeningRuntimeSourceEquilibrium
 import Vegas.Examples.CommittedResolutionReadout
 import Vegas.Examples.CommittedResolutionBobService
 import Vegas.Examples.CommittedResolutionBobAudit
@@ -12,5 +17,6 @@ import Vegas.Examples.CommittedResolutionForfeit
 import Vegas.Examples.CommittedResolutionBobDecision
 import Vegas.Examples.CommittedResolutionBobFailure
 import Vegas.Examples.CommittedResolutionBobReadout
+import Vegas.Examples.CommittedResolutionBobIncentive
 import Vegas.Examples.LateLeak
 import Vegas.Examples.PrivateValueAuction

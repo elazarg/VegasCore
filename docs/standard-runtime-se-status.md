@@ -77,6 +77,24 @@ native SE obstruction.
   At zero deferral these are exact. The full raw-menu capstone is
   `Vegas.Paper.intended_opening_client_nash` in [Paper.lean](../Paper.lean),
   delegating to [IntendedOpeningNash.lean](../Vegas/Game/IntendedOpeningNash.lean).
+- **Concrete source publication failure:** every intended SE of the
+  three-instruction Boolean-opening/answer-commitment/answer-opening source
+  extends to a source SE permitting failed publications, when the forfeit
+  covers both players' gross payoff ranges. It preserves the joint terminal
+  store and payoff law. Every intended SE has the same Safe outcome, and an
+  actual source SE with optional failed publications preserves that specified
+  initialized store/payoff law. Binding admission is value-only. This is a source
+  result, before adding network timing; see
+  [the checked source instance](commit-reveal-research/checked-runtime-boundaries.md#failed-publications-in-the-concrete-source-game).
+- **Actual final-opening incentives:** in the initialized two-commitment
+  recovery example, a canonical final opening dominates all raw responses
+  under every belief over legal decision histories. Its expected advantage
+  is at least the forfeit's excess over the gross payoff range times the
+  probability of failed publication. This covers arbitrary stochastic
+  responses and later policies, including off-path histories, but is specific
+  to that recovery scheduler's final activation. It does not construct an SE
+  assessment; see
+  [the checked native incentive](commit-reveal-research/checked-runtime-boundaries.md#a-final-runtime-opening-is-optimal-under-every-belief).
 - **Fully observed late-opening comparison:** for every inclusion probability
   between zero and one, a checked comparison family with intrinsic forfeit
   twice its reward preserves every intended source SE by a target SE. This
