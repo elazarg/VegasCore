@@ -36,6 +36,18 @@ do not model reorganization, finality risk, outside communication, coalitions
 or resource and fee markets. In particular, an SE theorem for this interface
 would still need an implementation argument for a deployed blockchain.
 
+"Full raw menu" means every modeled submission within the declared finite
+alphabet and candidate capacity. It does not mean every possible blockchain
+transaction byte string. The public packet consists of its authenticated
+identifier, application call, optional ideal certificate and readiness token.
+Private submission forms which emit the same packet are retained as different
+remembered actions, but concrete signature randomness, proof encodings,
+auxiliary transaction fields and arbitrary outside messages are not separate
+public signaling choices in this game. Cryptographic hiding alone would not
+justify erasing any such field whose value a player can choose and others can
+observe. A refinement exposing those choices needs a separate information and
+incentive argument.
+
 For a barrier-ordered compiled graph, each player makes its source decision
 at its first suitable opportunity. Then, for every nonnegative audit deposit
 and every authentic audit,
@@ -539,9 +551,8 @@ auditing collects Bob's deposit. Every later raw policy therefore gives him
 payoff at most `1-K_B`, for nonnegative forfeit and deposit. The pin is
 `Vegas.Examples.LateOpeningRuntimeEarlyBobAudit.early_submission_continuation_utility_bound`
 in [LateOpeningRuntimeEarlyBobAudit.lean](../../Vegas/Examples/LateOpeningRuntimeEarlyBobAudit.lean).
-This bound does not yet prove that early silence is optimal: that requires
-a legal quiet continuation which publishes Bob's answer against arbitrary
-future Alice behavior.
+The payoff bound by itself does not establish early silence: a legal quiet
+continuation must publish Bob's answer against arbitrary future Alice behavior.
 The quiet prefix through Bob's binding opportunity is checked independently
 of Alice's behavior: every actual continuation of this prefix reaches a ready
 and timely binding opportunity at clock three with no previous Bob emission,
@@ -552,8 +563,82 @@ with clean earlier Bob traffic. The checked endpoints are
 `Vegas.Examples.LateOpeningRuntimeBobBindingService.binding_round` in
 [LateOpeningRuntimeBobQuietPrefix.lean](../../Vegas/Examples/LateOpeningRuntimeBobQuietPrefix.lean)
 and [LateOpeningRuntimeBobBindingService.lean](../../Vegas/Examples/LateOpeningRuntimeBobBindingService.lean).
-Their conjunction does not yet prove the complete quiet-to-publication
-deviation or its equilibrium implication.
+These two operational facts end at the accepting binding; the complete
+continuation requires its own publication and audit argument.
+
+The complete physical Safe continuation is checked. From Bob's first
+callback with empty own recall and Alice still unresolved, silence followed
+by the observable policy which binds Safe at clock three and opens it at
+the optional callback ensures successful Safe publication and zero audit
+charge against arbitrary future Alice responses. This holds for any authentic
+sampler and arbitrary real reward, forfeit and deposits. Bob's payoff is
+nonnegative. The pins are
+`Vegas.Examples.LateOpeningRuntimeBobSafeContinuation.safe_continuation_clean`
+and
+`Vegas.Examples.LateOpeningRuntimeBobSafeContinuation.safe_continuation_nonnegative`
+in [LateOpeningRuntimeBobSafeContinuation.lean](../../Vegas/Examples/LateOpeningRuntimeBobSafeContinuation.lean).
+
+These are actual whole-policy deviations in Bob's full information set.
+With nonnegative forfeit and `K_B>1`, sequential rationality forces his
+complete response law to be pure silence at every first callback where
+Alice's publication remains unresolved. A quiet current response followed
+by his incumbent future policy must be compared alongside the complete
+Safe continuation: the latter is worth at least zero, while any premature
+packet is worth at most `1-K_B`. If both attainable deviations have regret
+at most `epsilon`, premature-packet probability is at most
+`epsilon/(K_B-1)`. The pins are
+`Vegas.Examples.LateOpeningRuntimeEarlyBobRationality.equilibrium_early_response_law`
+and
+`Vegas.Examples.LateOpeningRuntimeEarlyBobRationality.early_packet_le_of_deviation_regrets`
+in [LateOpeningRuntimeEarlyBobRationality.lean](../../Vegas/Examples/LateOpeningRuntimeEarlyBobRationality.lean).
+No posterior, late-inclusion bound or restriction on Alice's later policy
+is assumed. This does not prohibit legitimate Bob commitments after Alice
+has already settled.
+
+At the actual clock-three first binding callback after Alice has failed,
+one representative with silent earlier Bob responses transports readiness,
+deadline validity and the failed publication through the entire actual Bob
+information set. His remembered and currently sampled pending packets remain
+in that information; no prior or posterior about the hidden Boolean or label
+is imposed. All six answer choices have a legal canonical commitment followed
+by a successful, uncharged opening under arbitrary later Alice behavior.
+With Alice's publication failed, the native payoff of that continuation is
+exactly one for the bit guess matching her initialized Boolean and zero for
+every other answer. This statement reads the bit only to evaluate hidden
+histories; it does not expose it to Bob's policy. The checked operational and
+payoff endpoints are
+`Vegas.Examples.LateOpeningRuntimeBobBindingInformation.decision_of_information`,
+`Vegas.Examples.LateOpeningRuntimeBobSafeContinuation.answer_continuation_clean`
+and
+`Vegas.Examples.LateOpeningRuntimeBobAnswerPayoff.failed_answer_continuation_payoff`
+in [LateOpeningRuntimeBobBindingInformation.lean](../../Vegas/Examples/LateOpeningRuntimeBobBindingInformation.lean),
+[LateOpeningRuntimeBobSafeContinuation.lean](../../Vegas/Examples/LateOpeningRuntimeBobSafeContinuation.lean)
+and [LateOpeningRuntimeBobAnswerPayoff.lean](../../Vegas/Examples/LateOpeningRuntimeBobAnswerPayoff.lean).
+The class has actual bounded representatives retaining the specified
+initialized Boolean and private label:
+`Vegas.Examples.LateOpeningRuntimeBobBindingWitness.failed_binding_representative`
+in [LateOpeningRuntimeBobBindingWitness.lean](../../Vegas/Examples/LateOpeningRuntimeBobBindingWitness.lean).
+
+The corresponding native assessment-context values are also checked.
+The two fixed bit-guess policies have complementary values summing to one,
+so one is worth at least `1/2` under every belief over this actual information
+class. Therefore sequential rationality, and in particular every actual SE,
+gives Bob incumbent continuation value at least `1/2` after Alice fails.
+These are legal whole-policy deviations with actual continuation laws, rather
+than an assumed payoff menu or posterior. No collateral or payoff-sign
+hypothesis is needed for this lower bound. The checked endpoints are
+`Vegas.Examples.LateOpeningRuntimeBobBindingDecision.answer_context_value`,
+`Vegas.Examples.LateOpeningRuntimeBobBindingDecision.exists_bit_guess_value_ge_half`
+and
+`Vegas.Examples.LateOpeningRuntimeBobBindingDecision.equilibrium_binding_value_ge_half`
+in [LateOpeningRuntimeBobBindingDecision.lean](../../Vegas/Examples/LateOpeningRuntimeBobBindingDecision.lean).
+The strengthened witness
+`Vegas.Examples.LateOpeningRuntimeBobBindingWitness.failed_binding_information_representative`
+supplies an actual bounded information-site representative, so this condition
+is not vacuous. The witness preserves the exact initialization invariant;
+it does not supply the complete sampled-history grouping or its likelihoods.
+Classifying all optimal raw binding responses still requires a separate upper
+bound.
 
 At an active Alice callback after she has emitted no packet, the actual
 pending pool is empty even if Bob previously sent arbitrary invalid packets
@@ -563,7 +648,67 @@ argument transports Alice's initialized binding, readiness and timeliness
 through her entire final information class. These are operational facts in
 [LateOpeningRuntimeAliceEmptyDecision.lean](../../Vegas/Examples/LateOpeningRuntimeAliceEmptyDecision.lean),
 including `Vegas.Examples.LateOpeningRuntimeAliceEmptyDecision.quiet_pending_empty`.
-They do not yet force her to open at that class.
+The corresponding actual equilibrium implication is also checked. At every
+such final information set, sequential rationality forces a genuine opening
+with probability one whenever
+
+`Gamma_open = min(D,K_A)-R-(1-q)(D+K_A) > 0`.
+
+Silence causes permanent reveal failure and has expected payoff at most
+`R-D`. Every other nongenuine response has expected payoff at most `R-K_A`.
+A canonical opening gives expected payoff at least `-(1-q)(D+K_A)` against
+arbitrary later Bob behavior. The legal deviation retains every genuine
+private submission alias and replaces only nongenuine responses with that
+opening. Its actual whole-policy gain is at least
+`Gamma_open * Pr(nongenuine response)`; a gain at most epsilon therefore
+bounds that probability by `epsilon/Gamma_open`. This proves a local native
+SE consequence without a posterior or consistency assumption. It does not
+give certain inclusion: the genuine opening still fails with probability
+`1-q`. The pins are
+`Vegas.Examples.LateOpeningRuntimeAliceOpeningRationality.equilibrium_nongenuine_response_zero`
+and
+`Vegas.Examples.LateOpeningRuntimeAliceOpeningRationality.nongenuine_le_of_deviation_regret`
+in [LateOpeningRuntimeAliceOpeningRationality.lean](../../Vegas/Examples/LateOpeningRuntimeAliceOpeningRationality.lean).
+
+Both last-Alice response laws can be forced by the **same admissible builder
+after collateral has been fixed**. For every `R>=0`, `D>R`, `K_A>R`, and any
+requested positive failure bound, there is one finite positive lottery weight
+whose scheduler satisfies the full raw-history service contract and all-view
+packet-erasure independence, has strictly positive canonical late omission
+below that bound, and makes both margins positive. Every sequentially rational
+assessment for that builder therefore opens after silence and stays silent
+after a genuine pending first opening, throughout the corresponding actual
+information sets. The pins are
+`Vegas.Examples.LateOpeningRuntimeAliceNormalization.equilibrium_last_responses`
+and
+`Vegas.Examples.LateOpeningRuntimeAliceNormalization.exists_service_with_last_responses_normalized`
+in [LateOpeningRuntimeAliceNormalization.lean](../../Vegas/Examples/LateOpeningRuntimeAliceNormalization.lean).
+The empty final-callback condition has actual bounded trace witnesses for
+every initialized bit and private label:
+`Vegas.Examples.LateOpeningRuntimeAliceEmptyWitness.secondLateDecision_trace`
+in [LateOpeningRuntimeAliceEmptyWitness.lean](../../Vegas/Examples/LateOpeningRuntimeAliceEmptyWitness.lean).
+This quantified result does not swap the collateral/builder order or assert
+that a source outcome is preserved or excluded.
+
+The distinction between accepted and permitted envelopes is checked without
+normalizing away raw actions. At any terminal history, every actual permitted
+Alice envelope contains her initialized Boolean opening, its matching
+certificate, and the valid readiness token. Every other actual Alice envelope
+is forbidden and, with full authentic traffic auditing and nonnegative
+reward, forfeit and deposit, gives utility at most `R-K_A`. This includes an
+opening whose raw handler accepted its identifier but whose certificate
+failed the audit's content condition. A receipt identifier alone would not
+authenticate a fabricated replacement envelope; the proof first identifies
+the exact emitted envelope with the ledger entry. The pins are
+`Vegas.Examples.LateOpeningRuntimeAliceOpeningAudit.permitted_alice_payload`
+and
+`Vegas.Examples.LateOpeningRuntimeAliceOpeningAudit.nongenuine_envelope_utility_bound`
+in [LateOpeningRuntimeAliceOpeningAudit.lean](../../Vegas/Examples/LateOpeningRuntimeAliceOpeningAudit.lean).
+The underlying identity theorem is application- and scheduler-general:
+`Interaction.ReactiveApplication.traffic_envelope_eq_ledger_of_id_eq`
+in [ReactiveTrafficIdentity.lean](../../Interaction/ReactiveTrafficIdentity.lean).
+These statements classify actual traffic; they do not forbid genuine opening
+packets sent at different legal times.
 
 At Bob's final callback, a successfully committed answer has a stronger
 incentive result when its publication is ready and still within its deadline,
@@ -620,6 +765,44 @@ The full information fibers, relative likelihood errors and remaining sender
 incentive comparisons are needed before this construction proves the SE
 negative. These checked execution and final-opening facts neither assume the
 desired posterior nor identify the native game with a comparison game.
+They also leave the relevant communication channel intact: even when every
+packet is the genuine Boolean opening, choosing its sending time can convey
+information about Alice's separate private preference label. The source
+reveals the Boolean and keeps that label private. Accepted late genuine
+openings remain audit clean; deterring malformed traffic alone does not remove
+this timing choice.
+
+The common-service capstone is
+`Vegas.Examples.LateOpeningRuntimeEquilibriumConstraints.exists_service_with_constraints`
+in [LateOpeningRuntimeEquilibriumConstraints.lean](../../Vegas/Examples/LateOpeningRuntimeEquilibriumConstraints.lean).
+For every fixed `R>=0`, `D>R`, `K_A>R`, `K_B>1`, and any positive requested
+failure bound, it supplies one finite positive-weight builder satisfying the
+same actual raw-history contract and packet-erasure requirement. Both canonical
+late-send policies have positive terminal omission below the requested bound,
+for every supported initialized bit and label. The native game has an SE, and
+**every SE of that same game** satisfies all these conditions:
+
+- Alice emits a genuine final opening after earlier silence.
+- Alice stays silent after a genuine first opening remains pending.
+- Bob stays silent at his first callback while Alice is unresolved.
+- After Alice fails, Bob's first binding continuation is worth at least `1/2`
+  when his earlier responses were silent.
+- After a clean accepted answer commitment, Bob has zero final-publication
+  failure probability at a ready, timely final information set.
+
+Each conclusion quantifies complete actual information classes using one
+representative with the specified operational conditions. The omission bound
+concerns the two specified late-send policies through the whole horizon; it
+is not a uniform bound on all raw continuations or an equilibrium outcome
+claim. This theorem keeps collateral before the builder and establishes
+nonvacuity, while leaving first-late timing, receiver response optimization
+and consistent posterior calculations open.
+The stronger core
+`Vegas.Examples.LateOpeningRuntimeEquilibriumConstraints.sequentially_rational_constraints`
+needs only the existing native sequential-rationality condition. Bayes
+consistency and an SE consistency sequence are unnecessary for these five
+constraints. This is useful for assessing weaker equilibrium conventions too;
+it is not a PBE-preservation theorem.
 
 ## Consistency constrains unreached beliefs
 

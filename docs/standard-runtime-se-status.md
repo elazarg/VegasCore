@@ -132,6 +132,60 @@ admissibility.
   probability at most epsilon divided by this margin. These classes are
   inhabited in the actual bounded runtime. This remains a local result; see
   [the native continuation analysis](commit-reveal-research/checked-runtime-boundaries.md).
+- **Equilibrium opening after earlier silence:** if Alice reaches her final
+  opportunity without emitting a packet, every native SE emits a genuine
+  opening with probability one when
+  `min(D,K_A)-R-(1-q)(D+K_A)>0`. Nonnegative reward, forfeit and deposit,
+  positive lottery weight, and full authentic traffic auditing are assumed.
+  The legal repair retains all private aliases of genuine openings and
+  changes only silence or nongenuine responses. Its whole-policy regret
+  bounds nongenuine probability quantitatively. Actual permitted envelopes
+  are classified using their complete ledger identity; handler acceptance
+  alone does not imply audit permission. Inclusion still has probability
+  `q<1`. This establishes a local sequential incentive, not general compiler
+  SE preservation; see
+  [the checked runtime boundaries](commit-reveal-research/checked-runtime-boundaries.md).
+- **Equilibrium silence before the earlier publication settles:** at Bob's
+  first callback while Alice remains unresolved, every native SE has the pure
+  silent response law when the forfeit is nonnegative and `K_B>1`. Two actual
+  whole-policy deviations establish this: silence with his incumbent future
+  policy, and a complete Safe continuation worth at least zero against arbitrary
+  future Alice behavior. If both have regret at most `epsilon`, premature
+  packet probability is at most `epsilon/(K_B-1)`. Pending observations stay
+  visible; no posterior is prescribed. See
+  [the native incentives](commit-reveal-research/checked-runtime-boundaries.md).
+- **Equilibrium value after Alice's failed publication:** at Bob's actual
+  first binding opportunity with silent earlier responses and Alice failed,
+  every sequentially rational assessment has continuation value at least
+  `1/2`. His two legal fixed bit guesses have complementary values under any
+  belief, using clean, successful actual commitment/opening continuations.
+  These information classes have bounded native representatives. This proves
+  an attainable deviation and incumbent-value bound; it does not classify
+  every optimal raw response or specify the posterior. See
+  [the checked binding analysis](commit-reveal-research/checked-runtime-boundaries.md).
+- **Collateral fixed before the builder:** for every nonnegative reward `R`,
+  fixed `D>R` and `K_A>R`, and any requested positive failure bound, one finite
+  positive lottery weight satisfies the actual full raw-history service
+  contract and all-view packet-erasure independence, keeps canonical late
+  omission strictly positive below that bound, and forces both last-Alice
+  response laws in every sequentially rational assessment. This uses the
+  user's required quantifier order. It is a checked family of local necessary
+  equilibrium conditions, not the missing full native SE obstruction. See
+  [the common-builder result](commit-reveal-research/checked-runtime-boundaries.md).
+- **All constraints for one native game:** the common-service capstone also
+  takes fixed `K_B>1`. It supplies one admissible finite builder, positive
+  arbitrarily small terminal omission for both canonical late-send policies,
+  an actual native SE, and the sender and receiver constraints above for every
+  SE of that same game, including final disclosure after a clean answer
+  commitment. It is
+  `Vegas.Examples.LateOpeningRuntimeEquilibriumConstraints.exists_service_with_constraints`
+  in [LateOpeningRuntimeEquilibriumConstraints.lean](../Vegas/Examples/LateOpeningRuntimeEquilibriumConstraints.lean).
+  The failure bound is for specified canonical whole-horizon policies, not
+  all raw continuations. The theorem neither assumes the intended law nor
+  establishes its preservation or exclusion. Its checked core uses sequential
+  rationality alone, without Bayes or SE consistency, so the same necessary
+  conditions apply to assessments satisfying that rationality condition under
+  weaker equilibrium conventions. No PBE-preservation result follows.
 - **Fully observed late-opening comparison:** for every inclusion probability
   between zero and one, a checked comparison family with intrinsic forfeit
   twice its reward preserves every intended source SE by a target SE. This

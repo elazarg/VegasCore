@@ -189,12 +189,12 @@ private theorem passive_round_supported (weight : ℝ) (nonnegative : 0 ≤ weig
   change next ∈ (PMF.pure next).support
   exact (PMF.mem_support_pure_iff _ _).mpr rfl
 
-private def expired (execution : app.Execution)
+def expired (execution : app.Execution)
     (ready : execution.application.config.cut.Ready aliceEvent) : app.Execution :=
   recorded execution (.application (.expire aliceEvent))
     (execution.application.complete aliceEvent ready false (.failure : PublicationResult Bool))
 
-private theorem expired_environment (execution : app.Execution)
+theorem expired_environment (execution : app.Execution)
     (ready : execution.application.config.cut.Ready aliceEvent)
     (activated : execution.application.activatedAt aliceEvent = some 0)
     (clock : execution.application.clock = 3) :
@@ -209,7 +209,7 @@ private theorem expired_environment (execution : app.Execution)
   rw [law, PMF.pure_map, PMF.pure_map]
   rfl
 
-private theorem expired_store (execution : app.Execution)
+theorem expired_store (execution : app.Execution)
     (ready : execution.application.config.cut.Ready aliceEvent) :
     (expired execution ready).application.config.store (.inr aliceEvent) =
       some (.failure : PublicationResult Bool) := by

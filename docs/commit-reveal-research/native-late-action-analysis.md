@@ -617,8 +617,15 @@ The [checked runtime boundaries](checked-runtime-boundaries.md) give the
 current Lean evidence: the actual source equilibrium law, native alphabet and
 capacity, finite nature, complete all-raw scheduler contract and all-view
 erasure independence, typed readout invariants, audit cleanliness, and exact
-initialized pending-observation prefixes. A checked native SE counterexample
-is still missing. Remaining Lean obligations are public opening normal form,
-full native information-fiber sums, relative likelihood bounds, and the SE
-cross-identity and deviation argument. These are formalization tasks for the
-explicit configuration, rather than an assumed private runtime interface.
+initialized pending-observation prefixes. Checked actual information-set
+incentives additionally force early Bob silence, Alice's final opening after
+silence, no duplicate after a genuine pending opening, and Bob continuation
+value at least one half after Alice's failure. One admissible builder gives
+both Alice laws with collateral fixed first. Actual permitted Alice envelopes
+are classified through their complete emitted ledger identity.
+A checked native SE counterexample is still missing. Remaining Lean
+obligations include the first-late opening normal form, complete receiver
+raw-response optimization, full native information-fiber sums, relative
+likelihood bounds, and the SE cross-identity and initial deviation argument.
+These are formalization tasks for the explicit configuration, rather than
+an assumed private runtime interface.

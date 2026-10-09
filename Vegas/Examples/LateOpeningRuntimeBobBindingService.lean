@@ -65,7 +65,7 @@ theorem silent_resources (weight : ℝ) (nonnegative : 0 ≤ weight)
   cases selected
 
 theorem binding_count_zero (physical : EventGraphRuntime.State nativeGraph)
-    (ready : physical.config.cut.Ready bobBindEvent) :
+    (unfinished : bobBindEvent ∉ physical.config.cut.completed) :
     physical.publicView.bindingCount bob = 0 := by
   unfold PublicView.bindingCount
   apply List.countP_eq_zero.mpr
@@ -73,7 +73,7 @@ theorem binding_count_zero (physical : EventGraphRuntime.State nativeGraph)
   change Fin 3 at event
   fin_cases event
   · decide
-  · exact (ready.1 ((physical.config.history_exact bobBindEvent).mp member)).elim
+  · exact (unfinished ((physical.config.history_exact bobBindEvent).mp member)).elim
   · decide
 
 /-- Canonical first binding uses the actual fresh first prepared handle at
@@ -87,7 +87,7 @@ theorem canonical_binding (weight : ℝ) (nonnegative : 0 ≤ weight)
     LateOpeningRuntimeService.runtime.canonicalServiceDecision leaks bob
       (control.execution.recall bob) (control.execution.observe app bob) bobBindEvent
         (.success answer) = LateOpeningRuntimeBobSuffix.binding answer := by
-  have count := binding_count_zero control.execution.application ready
+  have count := binding_count_zero control.execution.application ready.1
   apply LateOpeningRuntimeService.runtime.canonicalServiceDecision_binding leaks bob
     (control.execution.recall bob) (control.execution.observe app bob) bobBindEvent
       (.range 0 5) rfl rfl rfl 0 _ (.success answer)

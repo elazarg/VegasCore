@@ -55,7 +55,7 @@ full-menu paper proof; the declared contract alone cannot supply that positive.
 
 | Work | Share | Useful deliverable |
 | --- | --- | --- |
-| Actual late actions and settlement boundary | 60% | Test the reviewed weak-PBE and deposit arguments on guarded multi-phase programs, and concrete public service properties that could exclude the native SE counterexample. |
+| Actual late actions and settlement boundary | 60% | Mechanize complete receiver response optimization, sender timing normalization and grouped native-history likelihoods for the existing three-instruction counterexample. |
 | Independent concrete review | 30% | Check the entire native action space, admissible builder on every legal history, actual observations and global belief consistency. |
 | Protected proof integration and concrete cross-checks | 10% | Maintain the reviewed first-ready result and compare every claimed native premise with its declaration. |
 
@@ -74,6 +74,40 @@ for a general SE extension. The largest uncertainty is which concrete public
 service or settlement property supports a useful positive without excluding
 physically possible communication. Another family of alternative interfaces
 would help only if its native relationship is proved.
+
+## Checked native constraints and parallel proof obligations
+
+The [common-service capstone](../../Vegas/Examples/LateOpeningRuntimeEquilibriumConstraints.lean)
+uses the actual program: Alice reveals an initialized Boolean, Bob commits
+one of six answers, then Bob reveals it. Alice also has a private preference
+label which the source never publishes. Pending observations, private raw
+submission representations and all bounded packet deviations remain present.
+For fixed `R>=0`, `D>R`, `K_A>R`, `K_B>1` and each requested positive failure
+bound, one admissible public builder has positive canonical late omission
+below that bound and actual SEs. Every SE
+obeys both final Alice response laws, early unresolved Bob silence, Bob's
+failed-publication continuation-value lower bound of `1/2`, and final
+publication after a clean answer commitment. The stronger local core needs
+sequential rationality alone. See
+[checked boundaries](checked-runtime-boundaries.md) for the exact conditions
+and omitted runtime aspects.
+
+The following tasks can proceed in parallel, without adopting another game
+or assuming the desired posterior. They are **unproved obligations**, not
+additional pinned capstones.
+
+| Task | Existing boundary and required output |
+| --- | --- |
+| First late sender response | Extend [passive continuation](../../Interaction/ReactivePassiveContinuation.lean) with equality after changing only an inactive player's private recall. Instantiate it after Alice's final response, where other players still act and see identical views. Use the checked final-opening law to compare an entire policy that repairs a nongenuine first late send to silence followed by genuine opening. |
+| Receiver response optimization | Instantiate [binding classification](../../Vegas/Pending/ReactiveBindingClassification.lean) at Bob's actual first binding callback. Bound every raw continuation by the score of its fixed chosen answer, or prove failed settlement or audit collection. Canonical answer policies attain the corresponding scores. Use one argument for both Alice's success and failure, rather than assuming an answer-only runtime menu. |
+| Receiver knowledge | Derive the initialized bit from authentic opening evidence in Bob's actual remembered view and immutable initial association, throughout its information class. A known correct fixed guess then has value one; do not assume a point posterior. |
+| Rare-information likelihoods | Group every compatible native history, retaining hidden extra packets and private aliases. Combine uniform vanishing retry probabilities with [relative-likelihood machinery](../../GameTheoryExtensions/Analysis/Protocol/AsymptoticLikelihood.lean); the type-dependent earlier reach probability may itself vanish. Absolute error estimates do not suffice. |
+
+The final negative must combine these results with protected-acceptance
+necessity and a profitable initialized deferral. Neither local response
+normalization nor a receiver-value bound alone excludes every preserving SE.
+Any generic adapter should be small, motivated by one of these concrete
+obligations, and instantiated immediately on the existing runtime.
 
 ## Protected execution handoff
 

@@ -110,6 +110,7 @@ import Interaction.ReactiveSubmissionAudit
 import Interaction.ReactiveSubmissionSerial
 import Interaction.ReactiveTrafficAudit
 import Interaction.ReactiveTrafficContinuation
+import Interaction.ReactiveTrafficIdentity
 import Interaction.ReactiveTrafficState
 import Interaction.ScheduledChoicePosterior
 import Interaction.ScheduledOpening

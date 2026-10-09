@@ -192,6 +192,29 @@ theorem run_local_law_finish
       rfl
 
 open Classical in
+/-- A fixed assessment site can index the local lottery once its equality
+with the actual history's information is supplied explicitly. -/
+theorem run_local_law_finish_of_information
+    (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
+    (history : (menu.protocol initial horizon scheduler).History)
+    (who : Principal) (remaining : Nat) (execution : app.Execution)
+    (current : history.state = some ⟨remaining, some who, execution⟩)
+    (information : (menu.information initial horizon scheduler).InfoState who)
+    (observed : (menu.information initial horizon scheduler).infoOf who history.trace = information)
+    (law : PMF ((menu.information initial horizon scheduler).Choice who information))
+    (fuel : Nat) (enough : app.rank horizon history.state ≤ fuel + 1) :
+    ((menu.information initial horizon scheduler).runBehavioralFrom
+      (Profile.update (sig := (menu.information initial horizon scheduler).behavioralSignature)
+        profile who ((profile who).withLaw information law))
+      (fuel + 1) history).map History.state =
+      (law.map (fun choice => choice.1.getD ⟨none⟩)).bind fun response =>
+        app.finish initial horizon scheduler (menu.decodeProfile initial horizon scheduler profile)
+          (some ⟨remaining, none, execution.respond app who response⟩) := by
+  subst information
+  exact menu.run_local_law_finish initial horizon scheduler profile history who remaining execution
+    current law fuel enough
+
+open Classical in
 /-- The standard remaining-depth continuation fuel is sufficient at every
 actual menu decision history; callers need no separate scheduling estimate. -/
 theorem run_local_law_remaining

@@ -67,4 +67,72 @@ theorem expect_failure_regret {History Raw Comparator : Type*}
   rw [expanded] at total
   linarith
 
+open Classical in
+/-- Two actual deviation comparisons can eliminate costly responses even
+when silence with the incumbent future policy is not pointwise optimal.
+One comparison bounds that silence value; the other bounds the incumbent
+loss relative to an attainable outside value of zero. -/
+theorem eventProbability_le_of_two_value_comparisons {Action : Type*}
+    (law : PMF Action) (payoff : Action → ℝ) (costly : Set Action)
+    (quiet gap quietError outsideError : ℝ)
+    (integrable : PayoffIntegrable law payoff)
+    (costlyBound : ∀ action ∈ law.support, action ∈ costly → payoff action ≤ -gap)
+    (quietBound : ∀ action ∈ law.support, action ∉ costly → payoff action ≤ quiet)
+    (quietComparison : quiet - expect law payoff ≤ quietError)
+    (outsideComparison : -expect law payoff ≤ outsideError)
+    (positive : 0 < gap + quietError - outsideError) :
+    (law.toOuterMeasure costly).toReal ≤ quietError / (gap + quietError - outsideError) := by
+  let mass := (law.toOuterMeasure costly).toReal
+  have massNonnegative : 0 ≤ mass := ENNReal.toReal_nonneg
+  have massAtMostOne : mass ≤ 1 := by
+    exact ENNReal.toReal_le_of_le_ofReal zero_le_one
+      (by simpa using outerMeasure_le_one law costly)
+  let ceiling := fun action => quiet + (-gap - quiet) *
+    if action ∈ costly then (1 : ℝ) else 0
+  have indicatorIntegrable : PayoffIntegrable law
+      (fun action => if action ∈ costly then (1 : ℝ) else 0) :=
+    payoffIntegrable_ite_one_zero law (· ∈ costly)
+  have ceilingIntegrable : PayoffIntegrable law ceiling :=
+    payoffIntegrable_add (payoffIntegrable_constant law quiet)
+      (payoffIntegrable_const_mul indicatorIntegrable)
+  have below : expect law payoff ≤ expect law ceiling := by
+    apply expect_mono _ integrable ceilingIntegrable
+    intro action reached
+    by_cases included : action ∈ costly
+    · simp only [ceiling, included, ↓reduceIte, mul_one]
+      linarith [costlyBound action reached included]
+    · simpa only [ceiling, included, ↓reduceIte, mul_zero, add_zero] using
+        quietBound action reached included
+  have ceilingValue : expect law ceiling = (1 - mass) * quiet - mass * gap := by
+    change expect law (fun action => quiet + (-gap - quiet) *
+      if action ∈ costly then (1 : ℝ) else 0) = _
+    rw [expect_add (payoffIntegrable_constant law quiet)
+      (payoffIntegrable_const_mul indicatorIntegrable), expect_constant,
+      expect_const_mul, expect_indicator]
+    dsimp only [mass]
+    ring
+  rw [ceilingValue] at below
+  have retained := mul_le_mul_of_nonneg_left quietComparison
+    (sub_nonneg.mpr massAtMostOne)
+  have outside := mul_le_mul_of_nonneg_left outsideComparison massNonnegative
+  apply (le_div_iff₀ positive).mpr
+  dsimp only [mass] at *
+  nlinarith
+
+open Classical in
+/-- Exact comparisons with silence and an attainable nonnegative value force
+zero costly-response probability under a strictly positive loss gap. -/
+theorem eventProbability_zero_of_two_value_comparisons {Action : Type*}
+    (law : PMF Action) (payoff : Action → ℝ) (costly : Set Action) (quiet gap : ℝ)
+    (integrable : PayoffIntegrable law payoff)
+    (costlyBound : ∀ action ∈ law.support, action ∈ costly → payoff action ≤ -gap)
+    (quietBound : ∀ action ∈ law.support, action ∉ costly → payoff action ≤ quiet)
+    (quietComparison : quiet ≤ expect law payoff)
+    (outsideComparison : 0 ≤ expect law payoff) (positive : 0 < gap) :
+    (law.toOuterMeasure costly).toReal = 0 := by
+  have bound := eventProbability_le_of_two_value_comparisons law payoff costly quiet gap 0 0
+    integrable costlyBound quietBound (by linarith) (by linarith) (by simpa)
+  simp only [zero_div] at bound
+  exact le_antisymm bound ENNReal.toReal_nonneg
+
 end GameTheory.Math.Probability

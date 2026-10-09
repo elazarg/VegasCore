@@ -39,6 +39,7 @@ Useful existing boundaries are the
 [deterministic priority selection under packet erasure](../Interaction/ReactivePriorityErasure.lean),
 [authenticated emission order in actual recall](../Interaction/ReactiveEmissionOrder.lean),
 [receipt identifiers and permanent rejection](../Interaction/ReactiveReceiptIdentity.lean),
+[actual traffic and ledger envelope identity](../Interaction/ReactiveTrafficIdentity.lean),
 [policy independence without further activation](../Interaction/ReactivePassiveContinuation.lean),
 [the exact behavioral law at a player's final response](../Interaction/ReactivePassiveDecision.lean),
 [equilibrium existence in finite reactive runtimes](../Interaction/ReactiveEquilibriumExistence.lean),
@@ -56,6 +57,15 @@ Useful existing boundaries are the
 [native disclosure regret under arbitrary beliefs](../Vegas/Examples/CommittedResolutionBobIncentive.lean),
 [certain success requires protected acceptance](../Vegas/Examples/LateOpeningRuntimeProtectedReceipt.lean),
 [native equilibrium silence after a pending opening](../Vegas/Examples/LateOpeningRuntimeAliceRationality.lean),
+[permitted sender packets and accepted but forbidden envelopes](../Vegas/Examples/LateOpeningRuntimeAliceOpeningAudit.lean),
+[native final-opening response normalization](../Vegas/Examples/LateOpeningRuntimeAliceOpeningRationality.lean),
+[one admissible service after collateral is fixed](../Vegas/Examples/LateOpeningRuntimeAliceNormalization.lean),
+[common-service native equilibrium constraints](../Vegas/Examples/LateOpeningRuntimeEquilibriumConstraints.lean),
+[clean native answer continuations](../Vegas/Examples/LateOpeningRuntimeBobSafeContinuation.lean),
+[native equilibrium silence before publication settlement](../Vegas/Examples/LateOpeningRuntimeEarlyBobRationality.lean),
+[actual information after sender publication failure](../Vegas/Examples/LateOpeningRuntimeBobBindingInformation.lean),
+[exact native payoff of truthful bit guesses](../Vegas/Examples/LateOpeningRuntimeBobAnswerPayoff.lean),
+[whole-policy bit-guess values under arbitrary native beliefs](../Vegas/Examples/LateOpeningRuntimeBobBindingDecision.lean),
 [uniform relative retry bounds](../Vegas/Examples/LateOpeningRuntimeAliceTremble.lean),
 [positive collection over finite contingent plans](../GameTheoryExtensions/Analysis/PositiveCollection.lean),
 [finite reliability gaps and disclosure incentives](../GameTheoryExtensions/Analysis/DisclosureReliability.lean),
@@ -72,6 +82,11 @@ Behavioral commutation preserves the typed store and original own recall;
 native traffic and conditional beliefs need their own argument. Enforcement
 uses actual gain and change in charge probability; it does not construct the
 runtime's collection mechanism or assessment.
+The probability regret module also combines two attainable value comparisons:
+silence with an incumbent continuation and a separate nonnegative outside
+continuation. A payoff bound on costly packets alone does not establish
+silence. Actual traffic identity is needed before a receipt identifier can
+authenticate an envelope's complete payload and certificate.
 Likelihood adapters require grouped weights of actual compatible histories;
 absolute error bounds do not control beliefs when the observation mass also
 vanishes. Erasure-independent selection supplies no service contract by itself.

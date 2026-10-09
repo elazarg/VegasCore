@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Examples.LateOpeningRuntimeBobIncentive
-import Vegas.Pending.ReactiveFiniteCompiler
+import Vegas.Examples.LateOpeningRuntimeBobResponseMenu
 
 /-! # Information classes at the final native Bob callback
 
@@ -23,12 +23,6 @@ open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeBobSer
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
 
-private theorem initial_law_eq :
-    (setup.initialLaw.map setup.eventInputs).map
-      (EventGraphRuntime.State.initial (graph := nativeGraph)) = initial := by
-  rw [PMF.map_comp]
-  rfl
-
 theorem output_values_covered : bounds.CoversOutputValues := by
   intro event
   change Fin 3 at event
@@ -48,39 +42,8 @@ theorem canonical_available
     (current : history.state = some ⟨6, some bob, decision.execution⟩) :
     canonical weight nonnegative decision ∈ rawMenu.actions bob
       (decision.execution.recall bob) (decision.execution.observe app bob) := by
-  have inputTrace : (rawMenu.protocol
-      ((setup.initialLaw.map setup.eventInputs).map
-        (EventGraphRuntime.State.initial (graph := nativeGraph)))
-      LateOpeningRuntimeService.horizon
-      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
-        (some ⟨6, some bob, decision.execution⟩) := by
-    rw [initial_law_eq]
-    exact current ▸ history.trace
-  have handles := bounds.executionHandles_raw_history LateOpeningRuntimeService.runtime leaks
-    (setup.initialLaw.map setup.eventInputs) LateOpeningRuntimeService.horizon
-    (LateOpeningRuntimeService.scheduler weight nonnegative) inputTrace
-  obtain ⟨serial, small, selected⟩ :=
-    LateOpeningRuntimeService.runtime.reactiveFreshSlot_lt_horizon leaks
-      (setup.initialLaw.map setup.eventInputs) LateOpeningRuntimeService.horizon
-      (LateOpeningRuntimeService.scheduler weight nonnegative) ⟨6, some bob, decision.execution⟩
-      (rawMenu.toRawTrace _ _ _ inputTrace) bob rfl
-  apply bounds.menu_in_raw LateOpeningRuntimeService.runtime leaks
-  apply bounds.canonicalServiceDecision_available LateOpeningRuntimeService.runtime leaks
-  rw [LateOpeningRuntimeService.runtime.canonicalReactiveDecision_eq_of_not_bind leaks bob
-    bobRevealEvent true _ (by
-      intro owner payload outputEq _codeEq _same
-      have wrong : (EventField.publication (.range 0 5) : EventField Player simpleExpr) =
-          .binding owner payload := outputEq
-      cases wrong)]
-  apply bounds.reactiveDecision_available LateOpeningRuntimeService.runtime leaks bob
-    (decision.execution.recall bob) (decision.execution.observe app bob) output_values_covered
-  · intro field candidate found
-    exact handles.1 field candidate found
-  · intro chosen found
-    have same := Option.some.inj (found.symm.trans selected)
-    change chosen < 26
-    change serial < 26 at small
-    omega
+  exact LateOpeningRuntimeBobResponseMenu.opening_available weight nonnegative
+    output_values_covered ⟨6, some bob, decision.execution⟩ (current ▸ history.trace) rfl
 
 theorem clean_same_information (first second : app.Execution)
     (firstRecall : first.InputRecall app) (secondRecall : second.InputRecall app)
