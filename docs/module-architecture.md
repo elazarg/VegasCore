@@ -36,6 +36,7 @@ Useful existing boundaries are the
 [relative likelihood errors at unreached decisions](../GameTheoryExtensions/Analysis/Protocol/AsymptoticLikelihood.lean),
 [finite-prefix scheduler agreement](../Interaction/ReactiveSchedulerPrefix.lean),
 [public pending selection under packet erasure](../Interaction/PendingErasureSelection.lean),
+[deterministic priority selection under packet erasure](../Interaction/ReactivePriorityErasure.lean),
 [menu restriction](../GameTheoryExtensions/Protocol/MenuRestriction.lean),
 [intended game](../Vegas/Source/IntendedGame.lean),
 [choices drawn from an observation-local readout](../GameTheoryExtensions/Math/Probability/ObservedChoice.lean),

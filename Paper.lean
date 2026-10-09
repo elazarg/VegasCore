@@ -44,11 +44,23 @@ import Vegas.Examples.CommittedResolutionBobReadout
 import Vegas.Examples.CommittedResolutionBobIncentive
 import Vegas.Pending.EventResolutionEnvironment
 import Vegas.Examples.CommittedResolutionReliability
+import Vegas.Examples.CommittedResolutionErasure
 import Vegas.Examples.LateOpeningRuntimeSource
 import Vegas.Examples.LateOpeningRuntimeSourceBeliefs
 import Vegas.Examples.LateOpeningRuntimeSourceOptimality
 import Vegas.Examples.LateOpeningRuntimeSourcePreservation
 import Vegas.Examples.LateOpeningRuntimeSourceEquilibrium
+import Vegas.Examples.LateOpeningRuntimeCoverage
+import Vegas.Examples.LateOpeningRuntimeServiceClock
+import Vegas.Examples.LateOpeningRuntimeServiceCompletion
+import Vegas.Examples.LateOpeningRuntimeServiceOpportunity
+import Vegas.Examples.LateOpeningRuntimeServiceContract
+import Vegas.Examples.LateOpeningRuntimeServiceErasure
+import Vegas.Examples.LateOpeningRuntimeObservation
+import Vegas.Examples.LateOpeningRuntimeLatePrefix
+import Vegas.Examples.LateOpeningRuntimeFiberEvidence
+import Vegas.Examples.LateOpeningRuntimeUtility
+import Vegas.Examples.LateOpeningRuntimeNash
 import Vegas.Examples.LateLeak.SettleLateLikelihood
 import Vegas.Pending.ReactiveLateLottery
 
@@ -1530,3 +1542,84 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Examples.LateOpeningRuntimeSource.bayes_rational_terminal_law
+
+/-- info: 'Vegas.Examples.CommittedResolutionErasure.certain_late_inclusion_with_joint_contract'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommittedResolutionErasure.certain_late_inclusion_with_joint_contract
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeService.clock_history' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeService.clock_history
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeServiceErasure.scheduler_blind' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeServiceErasure.scheduler_blind
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeReadout.bob_continuation_success_immutable' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeReadout.bob_continuation_success_immutable
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeUtility.alice_accepted_openings_audit_clean'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeUtility.alice_accepted_openings_audit_clean
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeService.completes' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeService.completes
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeObservation.leaks_singleton' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeObservation.leaks_singleton
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeService.binding_values_covered' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeService.binding_values_covered
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeService.initial_values_covered' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeService.initial_values_covered
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeService.opportunity' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeService.opportunity
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeLatePrefix.firstBob_recall_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeLatePrefix.firstBob_recall_law
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeService.contract_and_blind' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeService.contract_and_blind
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeService.protected_submission_receipt' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeService.protected_submission_receipt
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeNash.first_opportunity_nash_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeNash.first_opportunity_nash_iff
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeNash.first_opportunity_settlement_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeNash.first_opportunity_settlement_law
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeFiberEvidence.bob_information_no_packets'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeFiberEvidence.bob_information_no_packets

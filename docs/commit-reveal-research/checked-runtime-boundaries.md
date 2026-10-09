@@ -196,7 +196,21 @@ contract builder gives this late opening a smaller probability of final
 nonacceptance. The pin is
 `Vegas.Examples.CommittedResolutionReliability.exists_contract_below_failure_floor`.
 This concerns late inclusion, not whole-game reliability or SE preservation.
-This family has no checked late-packet erasure-independence property.
+For stochastic `q < 1`, this family has no checked late-packet
+erasure-independence property.
+
+The deterministic endpoint `q=1` supplies a stronger joint boundary. The
+same actual scheduler satisfies the all-history service contract and the
+all-input late-packet erasure condition. The supported initialized canonical
+opening is sent outside the protected window and has acceptance probability
+one, both after six rounds and at the full terminal horizon. Thus **even
+those two conditions together imply no positive uniform late-failure
+floor**. The pin is
+`Vegas.Examples.CommittedResolutionErasure.certain_late_inclusion_with_joint_contract`
+in
+[CommittedResolutionErasure.lean](../../Vegas/Examples/CommittedResolutionErasure.lean).
+This is an operational theorem; it is not an SE counterexample and does not
+supply a nondegenerate stochastic builder.
 
 ## Public lotteries can satisfy erasure independence
 
@@ -223,9 +237,127 @@ and the actual runtime pin
 [ReactiveLateLottery.lean](../../Vegas/Pending/ReactiveLateLottery.lean).
 
 This lottery alone gives no protected activation, receipt or completion
-guarantee. **The service-contract family above and this erasure-independent
-lottery are separate constructions.** Their conjunction in the two-late
-counterexample's single scheduler remains an unproved native adapter.
+guarantee. **The stochastic service-contract family above and this
+erasure-independent lottery are separate constructions.** Their conjunction
+in the two-late counterexample's single scheduler remains an unproved native
+adapter. The deterministic endpoint supplies the distinct checked
+conjunction described above.
+
+The generic priority-selection adapter in
+[ReactivePriorityErasure.lean](../../Interaction/ReactivePriorityErasure.lean)
+and its runtime instantiation in
+[ReactiveLatestErasure.lean](../../Vegas/Pending/ReactiveLatestErasure.lean)
+prove that deterministic last-eligible selection is erasure-independent:
+either it selects the removed identifier or restoration gives the same
+retained choice. This holds for arbitrary public inputs, including duplicate
+identifiers. Mixing that selector with waiting generally loses the property:
+after deleting the latest of two eligible packets, the residual scheduler
+would select the older packet with positive probability, while the original
+mixture only selects the latest or waits.
+
+## Concrete native execution of the three-instruction example
+
+The same source with Alice's initialized Boolean and private label has
+an explicit compiled runtime in
+[LateOpeningRuntimeService.lean](../../Vegas/Examples/LateOpeningRuntimeService.lean).
+Its relative deadline durations are three ticks for Alice's opening, three
+for Bob's answer commitment, and four for Bob's answer opening. The public
+schedule has 26 commands, including wait padding for its conditional callback.
+Alice has a protected callback at clock zero and late callbacks at clocks
+one and two. Bob can observe pending traffic between them. Each protected
+receipt stage selects the latest unpublished packet of its authenticated
+author, including invalid calls. The clock-two lottery competes over all
+pending identifiers. Bindings and their dependency barriers are unchanged.
+
+The native alphabet covers both Booleans, all three private labels and all
+six answers; the raw menu includes all its malformed calls, handles and
+evidence requests. The compiler's binding-value, initial-candidate and capacity
+side conditions are checked in
+[LateOpeningRuntimeCoverage.lean](../../Vegas/Examples/LateOpeningRuntimeCoverage.lean).
+Initial states, observations and scheduler choices branch
+finitely, and the full bounded raw-history type is finite.
+
+Unlike the earlier two-Boolean operational fixture, this runtime samples
+foreign pending identifiers. Each subset of its foreign pool has probability
+`2^(-pool size)`. A singleton is observed with probability one half and
+missed with probability one half. The sampling law reads identifiers and
+authors, not packet contents; passive learning retains received certificates.
+These exact probability laws are checked in
+[LateOpeningRuntimeObservation.lean](../../Vegas/Examples/LateOpeningRuntimeObservation.lean).
+
+The same scheduler satisfies the all-input erasure condition for every
+finite nonnegative lottery weight:
+`Vegas.Examples.LateOpeningRuntimeServiceErasure.scheduler_blind`.
+Its public clock is fixed at every unrestricted raw history, and **every
+legal raw terminal execution completes all three events by the declared
+horizon**, including malformed calls and silence. These are
+`Vegas.Examples.LateOpeningRuntimeService.clock_history` and
+`Vegas.Examples.LateOpeningRuntimeService.completes` in
+[LateOpeningRuntimeServiceClock.lean](../../Vegas/Examples/LateOpeningRuntimeServiceClock.lean)
+and
+[LateOpeningRuntimeServiceCompletion.lean](../../Vegas/Examples/LateOpeningRuntimeServiceCompletion.lean).
+The required early owner activation is also checked at every raw history:
+`Vegas.Examples.LateOpeningRuntimeService.opportunity` in
+[LateOpeningRuntimeServiceOpportunity.lean](../../Vegas/Examples/LateOpeningRuntimeServiceOpportunity.lean).
+Every raw Bob response and every clock-zero Alice response receives service
+before the clock advances, even if its addressed call or payload is invalid.
+The receipt theorem does not need the contract's sole-packet premise:
+`Vegas.Examples.LateOpeningRuntimeService.protected_submission_receipt` in
+[LateOpeningRuntimeServiceReceipt.lean](../../Vegas/Examples/LateOpeningRuntimeServiceReceipt.lean).
+Together these prove the full service contract **and** all-view erasure
+independence for the same builder, for every finite nonnegative lottery weight:
+`Vegas.Examples.LateOpeningRuntimeService.contract_and_blind` in
+[LateOpeningRuntimeServiceContract.lean](../../Vegas/Examples/LateOpeningRuntimeServiceContract.lean).
+The compiled configuration is an actual instance of `Vegas.AsyncServiceSpec`,
+with all its alphabet, capacity and finite-nature requirements discharged.
+For this exact configuration,
+`Vegas.Examples.LateOpeningRuntimeNash.first_opportunity_nash_iff` gives
+same-error Nash preservation and reflection for every source admission
+interface, every authentic sampler, nonnegative reward, forfeit and deposits,
+and every finite lottery weight. Its realized payoff bounds are derived from
+the example's actual utilities. The associated
+`Vegas.Examples.LateOpeningRuntimeNash.first_opportunity_settlement_law`
+preserves the exact joint terminal store and net payoff vector, for every
+source profile. Both are in
+[LateOpeningRuntimeNash.lean](../../Vegas/Examples/LateOpeningRuntimeNash.lean).
+
+The late-send policies are actual members of the full bounded raw menu.
+Their initialized prefixes and Bob's complete remembered response records
+are evaluated in
+[LateOpeningRuntimeLatePrefix.lean](../../Vegas/Examples/LateOpeningRuntimeLatePrefix.lean).
+Sending at the first late turn gives exactly a half-seen, half-missed record
+law. Waiting until the second gives the same missed record with probability
+one. Neither record reveals Alice's private preference. Each branch has an
+actual legal raw trace; these are not proposed abstract information sets.
+At any raw history matching Bob's complete remembered silent response, no
+Bob-authored packet exists in pending, settled, leaked or recorded input
+traffic. Any ready Bob answer-binding decision at clock three occurs at the
+same callback with fourteen commands left. These full-history restrictions
+are checked in
+[LateOpeningRuntimeFiberEvidence.lean](../../Vegas/Examples/LateOpeningRuntimeFiberEvidence.lean).
+They do not exclude unseen later Alice packets or give a complete posterior.
+
+The complete decoder retains the original Boolean and private label alongside
+the answer commitment and publications. Under arbitrary schedulers, deadlines,
+observations and raw continuations, a successful Alice publication is her
+original bit and a successful Bob publication is his already accepted answer.
+See
+[LateOpeningRuntimeReadout.lean](../../Vegas/Examples/LateOpeningRuntimeReadout.lean).
+The actual service utilities apply the source's one failed-publication forfeit
+per owner. Alice has no binding-omission charge. If all her traffic consists
+of accepted certified openings, every authentic sampler charges her zero,
+regardless of their emission times:
+`Vegas.Examples.LateOpeningRuntimeUtility.alice_accepted_openings_audit_clean`
+in
+[LateOpeningRuntimeUtility.lean](../../Vegas/Examples/LateOpeningRuntimeUtility.lean).
+This states actual traffic conditions; an additional forbidden Alice packet
+is not silently treated as clean.
+
+**This is a checked native service, not yet a checked SE counterexample.**
+The native information fibers, relative likelihood errors and sequential
+incentive comparisons are needed before this construction proves the SE negative. These checked
+execution facts neither assume the desired posterior nor identify the
+native game with a comparison game.
 
 ## Consistency constrains unreached beliefs
 

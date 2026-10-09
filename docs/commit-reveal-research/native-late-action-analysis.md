@@ -7,6 +7,9 @@ an explicit finite configuration. Its full native SE theorem has not been
 entered into Lean. The typed source, initial law, utilities and source-prefix
 facts are checked in
 [LateOpeningRuntimeSource.lean](../../Vegas/Examples/LateOpeningRuntimeSource.lean).
+The exact initialized Safe joint law of every intended source SE, and a
+source SE permitting failed publications with that same law, are checked in
+[LateOpeningRuntimeSourceEquilibrium.lean](../../Vegas/Examples/LateOpeningRuntimeSourceEquilibrium.lean).
 The [checked runtime boundaries](checked-runtime-boundaries.md) distinguish
 additional operational and belief lemmas from that missing full theorem. In
 particular, the checked settle-late comparison is not itself the native result
@@ -463,20 +466,19 @@ than an assumption about its initialized paths.
 
 Use the length of the public command recall as the stage index. At the final
 Alice lottery, form the
-finite set `S` of pending identifiers with at least one proper public
-Alice-opening envelope. Its eligibility test also reads public readiness
-and the deadline. If `n=|S|>0`, choose each identifier with probability
+finite set `S` of all pending identifiers, including malformed packets.
+If `n=|S|>0`, choose each identifier with probability
 `q/[1+(n-1)q]`, and wait with probability
 `(1-q)/[1+(n-1)q]`; for `n=0`, wait. On legal fixture histories this gives
 the stated sole and duplicate laws. Using a set of identifiers makes the
 extension well defined even for arbitrary views with duplicate identifiers.
 
-Erasing an eligible identifier leaves exactly `n-1` eligible identifiers,
+Erasing a pending identifier leaves exactly `n-1` pending identifiers,
 after the native serial renaming. Restore maps them bijectively to the
 retained original identifiers. The `n`-identifier law is exactly the
 mixture of including the erased identifier with weight
 `q/[1+(n-1)q]` and the restored `(n-1)`-identifier law with the remaining
-weight. For an ineligible identifier the inclusion weight is zero. All
+weight. For an absent identifier the inclusion weight is zero. All
 other inclusion stages use the latest pending envelope of the prescribed
 author: if it is the erased identifier, give that include command weight
 one; otherwise erasure and restoration leave the selected command unchanged.
@@ -610,10 +612,13 @@ independent native source/scheduler/resource review, and the coordinating
 review. The reviews include the full raw-menu comparisons, relative rare-site
 likelihood bounds, universal raw-history contract promises, and all-view
 late-packet erasure identity. They also cover the smaller-deposit corollary,
-its fresh-handle fallback and its exact partial-audit accounting. No new Lean theorem, checked native
-counterexample or adopted-semantics change is claimed. Remaining Lean
-formalization obligations are the exact source setup and value-coverage
-instances, padded scheduler contract and finite-nature instances, public
-opening normal form, full native information-fiber sums, and the SE
+its fresh-handle fallback and its exact partial-audit accounting.
+The [checked runtime boundaries](checked-runtime-boundaries.md) give the
+current Lean evidence: the actual source equilibrium law, native alphabet and
+capacity, finite nature, complete all-raw scheduler contract and all-view
+erasure independence, typed readout invariants, audit cleanliness, and exact
+initialized pending-observation prefixes. A checked native SE counterexample
+is still missing. Remaining Lean obligations are public opening normal form,
+full native information-fiber sums, relative likelihood bounds, and the SE
 cross-identity and deviation argument. These are formalization tasks for the
 explicit configuration, rather than an assumed private runtime interface.

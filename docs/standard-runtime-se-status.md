@@ -26,6 +26,12 @@ game further requires predicted accepting bindings and mandatory openings.
 The [checked runtime boundaries](commit-reveal-research/checked-runtime-boundaries.md)
 give the precise positive scope and the operational and belief lemmas for the
 native SE obstruction.
+Its three-instruction source is now compiled to a checked family of actual
+partially public native services: the full raw-history contract, erasure
+independence, message alphabet, finite nature and exact early observation laws
+are proved. The remaining impossibility obligations concern full information
+fibers, relative likelihoods and sequential incentives, not builder
+admissibility.
 
 ## Checked positive results
 
@@ -129,6 +135,15 @@ this service class, not absence of equilibria in the runtime or failure of
 every blockchain configuration. Mechanizing this construction is a missing
 capstone. The [async checklist](se-async-checklist.md) retains its existing
 owner-controlled target and boxes.
+
+The checked operational boundary is sharper: an actual initialized opening
+outside its protected window can be accepted with probability one by a
+builder satisfying both the full service contract and all-view erasure
+independence. Thus these two requirements alone provide no positive uniform
+late-failure probability. The finite-weight partially public three-instruction
+family separately satisfies their conjunction for every nonnegative weight.
+These are execution results, not impossibility theorems about SE; see
+[the checked boundaries](commit-reveal-research/checked-runtime-boundaries.md#the-service-contract-gives-no-uniform-late-failure-floor).
 
 There is also a checked negative theorem for a nearby probabilistic backend.
 Mix the actual public controller with a positive probability of waiting on

@@ -42,6 +42,7 @@ import Interaction.ReactiveBayes
 import Interaction.ReactiveCompleteObservation
 import Interaction.ReactiveDecisionInformation
 import Interaction.ReactiveErasure
+import Interaction.ReactivePriorityErasure
 import Interaction.ReactiveEvaluation
 import Interaction.ReactiveEvidence
 import Interaction.ReactiveEvidencePersistence

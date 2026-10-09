@@ -104,6 +104,7 @@ import Vegas.Pending.ReactiveHiddenInclusion
 import Vegas.Pending.ReactiveHiddenResponse
 import Vegas.Pending.ReactiveInitialValues
 import Vegas.Pending.ReactiveLateBlind
+import Vegas.Pending.ReactiveLatestErasure
 import Vegas.Pending.ReactiveLateLottery
 import Vegas.Pending.ReactiveMonitoring
 import Vegas.Pending.ReactiveNormalization
