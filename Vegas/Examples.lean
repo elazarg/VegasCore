@@ -3,6 +3,8 @@
 import Vegas.Examples.CommitRevealAuction
 import Vegas.Examples.CommittedResolutionService
 import Vegas.Examples.CommittedResolutionRecovery
+import Vegas.Examples.CommittedResolutionReliability
+import Vegas.Examples.LateOpeningRuntimeSource
 import Vegas.Examples.CommittedResolutionReadout
 import Vegas.Examples.CommittedResolutionBobService
 import Vegas.Examples.CommittedResolutionBobAudit

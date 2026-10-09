@@ -3,9 +3,14 @@
 This note tests the native runtime, including its full bounded raw response
 menu, rather than adding a hypothetical private scheduler or allowing a reveal
 to cross a commitment barrier. The construction below is a paper analysis of
-an explicit finite configuration. It has not been entered into Lean. In
-particular, the existing checked settle-late comparison is not itself the
-native result stated here.
+an explicit finite configuration. Its full native SE theorem has not been
+entered into Lean. The typed source, initial law, utilities and source-prefix
+facts are checked in
+[LateOpeningRuntimeSource.lean](../../Vegas/Examples/LateOpeningRuntimeSource.lean).
+The [checked runtime boundaries](checked-runtime-boundaries.md) distinguish
+additional operational and belief lemmas from that missing full theorem. In
+particular, the checked settle-late comparison is not itself the native result
+stated here.
 
 The proposed obstruction uses one immutable opening, two opportunities to
 send it after its protected window, and an intervening observation of pending

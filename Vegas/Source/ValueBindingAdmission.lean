@@ -36,6 +36,25 @@ theorem BehavioralPolicy.admitted_values_iff_valueBinding {who : Player} :
         | failure => exact absurd member (binding own view)
   | _, _, .reveal _ _ _ _ _ _ next, policy => admitted_values_iff_valueBinding next policy.2
 
+/-- Successful value bindings are admitted by every commitment interface. -/
+theorem BehavioralPolicy.admitted_of_valueBinding {who : Player} :
+    {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → (policy : BehavioralPolicy who program) →
+    ValueBinding program policy → (admission : CommitmentInterface program) →
+    policy.Admitted program admission
+  | _, _, .ret _, _, _, _ => trivial
+  | _, _, .sample _ _ _ next, policy, binding, admission =>
+      admitted_of_valueBinding next policy binding admission
+  | _, _, .commit _ _ _ _ next, policy, binding, admission => by
+      refine ⟨?_, admitted_of_valueBinding next policy.2 binding.2
+        (fun site => admission (some site))⟩
+      intro own view choice member
+      cases choice with
+      | success value => exact CommitmentAdmission.admits_success _ value
+      | failure => exact absurd member (binding.1 own view)
+  | _, _, .reveal _ _ _ _ _ _ next, policy, binding, admission =>
+      admitted_of_valueBinding next policy.2 binding admission
+
 /-- The policies admitted by the value interface are the value-binding
 policies. -/
 def valueBindingAdmittedEquiv {Γ : SourceCtx Player L} {O : Finset VarId}

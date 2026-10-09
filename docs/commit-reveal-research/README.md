@@ -5,9 +5,11 @@ an abstract commit–reveal program retain its game-theoretic analysis. It studi
 a family of candidate interfaces. **None of these candidates is adopted as
 the VegasCore runtime model by appearing here.**
 
-The work is mathematical for now. Written proofs and counterexamples are
-separate from machine-checked theorems. Existing code, compiler semantics and
-owner-controlled proof checklists are outside this project's editing scope.
+Written proofs and counterexamples are separate from machine-checked theorems.
+The [checked runtime boundaries](checked-runtime-boundaries.md) identify the
+general native Nash theorem and the checked operational and belief components
+of the SE analysis. Candidate interfaces do not change the compiler semantics
+or owner-controlled proof target by appearing in these notes.
 
 In these notes, the **source** is the abstract program's game. The **target**
 is the implementation's game, including its actual message, timing and cost

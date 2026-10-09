@@ -42,6 +42,10 @@ import Vegas.Examples.CommittedResolutionBobDecision
 import Vegas.Examples.CommittedResolutionBobFailure
 import Vegas.Examples.CommittedResolutionBobReadout
 import Vegas.Pending.EventResolutionEnvironment
+import Vegas.Examples.CommittedResolutionReliability
+import Vegas.Examples.LateOpeningRuntimeSource
+import Vegas.Examples.LateLeak.SettleLateLikelihood
+import Vegas.Pending.ReactiveLateLottery
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -395,6 +399,7 @@ concurrent-binding dependency modes (`Vegas.serviceGraph_barrierOrdered`), with
 any configured deadlines. -/
 theorem async_client_nash_reflection [Fintype Player] [IExpr.ResultTypes L]
     {Parameter : Type} (service : AsyncServiceSpec Player L)
+    (admission : CommitmentInterface service.setup.program)
     (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
@@ -404,13 +409,13 @@ theorem async_client_nash_reflection [Fintype Player] [IExpr.ResultTypes L]
     (deposit : Player → ℝ) (menu : (serviceApplication service.setup service.mode service.deadline
       service.leaks).ResponseMenu)
     {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
-    (covered : ∀ (source : Profile service.sourceModel.behavioralSignature) who,
+    (covered : ∀ (source : Profile (service.sourceModel admission).behavioralSignature) who,
       menu.Admissible (serviceInitialLaw service.setup service.mode) service.horizon
         service.scheduler who
         (serviceClientPolicy service.setup service.mode service.deadline service.leaks
           service.bound turns timing
           (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
-            (CommitmentInterface.values service.setup.program) source)) who))
+            admission source)) who))
     (low : Player → ℝ) (range : ℝ)
     (within : ∀ who (output : Option (State L service.setup.program.terminalCtx))
       (charged : Bool),
@@ -418,7 +423,7 @@ theorem async_client_nash_reflection [Fintype Player] [IExpr.ResultTypes L]
           state) who) - (if charged then deposit who else 0) ∧
         output.elim 0 (fun state => utility (service.setup.parameterOutcome parameter
           state) who) - (if charged then deposit who else 0) ≤ low who + range)
-    (ε : ℝ) (source : Profile service.sourceModel.behavioralSignature) :
+    (ε : ℝ) (source : Profile (service.sourceModel admission).behavioralSignature) :
     let base := serviceBaseUtility service.setup service.mode service.deadline service.leaks
       (fun state => utility (service.setup.parameterOutcome parameter state))
     let payoff := TerminalAudit.utility base
@@ -428,13 +433,13 @@ theorem async_client_nash_reflection [Fintype Player] [IExpr.ResultTypes L]
     IsεNash ((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
         service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
         (fun history who => payoff history.state who) ε
-        (service.clientProfile menu timing source) →
-      IsεNash (service.sourceModel.toBehavioralGameForm
+        (service.clientProfile admission menu timing source) →
+      IsεNash ((service.sourceModel admission).toBehavioralGameForm
         (instructionCount service.setup.program + 1))
         (fun final who => (service.setup.protocolReadout final.state).elim 0
           (fun state => utility (service.setup.parameterOutcome parameter state) who))
         (ε + 2 * (∑ event, timing.deferral event) * range) source :=
-  service.isεNash_of_clientProfile ordered parameter utility sample authentic deposit menu
+  service.isεNash_of_clientProfile admission ordered parameter utility sample authentic deposit menu
     timing covered
     low range within ε source
 
@@ -572,9 +577,11 @@ first-turn clients has the typed outcome law of a source deviation whose
 bindings may fail (`Vegas.asyncDeviation_readout_law`).
 The service graph is barrier ordered, as in the sequential and the
 concurrent-binding dependency modes (`Vegas.serviceGraph_barrierOrdered`), with
-any configured deadlines. -/
+any configured deadlines. The binding interface is arbitrary: immediate binding
+failure may be admitted at every site, at none, or at selected sites. -/
 theorem async_client_nash_correspondence [Fintype Player] [IExpr.ResultTypes L]
     {Parameter : Type} (service : AsyncServiceSpec Player L)
+    (admission : CommitmentInterface service.setup.program)
     (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
@@ -590,14 +597,14 @@ theorem async_client_nash_correspondence [Fintype Player] [IExpr.ResultTypes L]
           state) who) - (if charged then deposit who else 0) ∧
         output.elim 0 (fun state => utility (service.setup.parameterOutcome parameter
           state) who) - (if charged then deposit who else 0) ≤ low who + range)
-    (ε : ℝ) (source : Profile service.sourceModel.behavioralSignature) :
+    (ε : ℝ) (source : Profile (service.sourceModel admission).behavioralSignature) :
     let base := serviceBaseUtility service.setup service.mode service.deadline service.leaks
       (fun state => utility (service.setup.parameterOutcome parameter state))
     let payoff := TerminalAudit.utility base
       ((serviceRuntime service.setup service.mode service.deadline).serviceAuditObservation
         service.leaks)
       (serviceSourceAudit service.setup service.mode service.deadline service.leaks sample) deposit
-    (IsεNash (service.sourceModel.toBehavioralGameForm
+    (IsεNash ((service.sourceModel admission).toBehavioralGameForm
         (instructionCount service.setup.program + 1))
         (fun final who => (service.setup.protocolReadout final.state).elim 0
           (fun state => utility (service.setup.parameterOutcome parameter state) who))
@@ -607,18 +614,18 @@ theorem async_client_nash_correspondence [Fintype Player] [IExpr.ResultTypes L]
         service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
         (fun history who => payoff history.state who)
         (ε + 2 * (∑ event, timing.deferral event) * range)
-        (service.clientProfile service.rawMenu timing source)) ∧
+        (service.clientProfile admission service.rawMenu timing source)) ∧
     (IsεNash ((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
       service.horizon
         service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
         (fun history who => payoff history.state who) ε
-        (service.clientProfile service.rawMenu timing source) →
-      IsεNash (service.sourceModel.toBehavioralGameForm
+        (service.clientProfile admission service.rawMenu timing source) →
+      IsεNash ((service.sourceModel admission).toBehavioralGameForm
         (instructionCount service.setup.program + 1))
         (fun final who => (service.setup.protocolReadout final.state).elim 0
           (fun state => utility (service.setup.parameterOutcome parameter state) who))
         (ε + 2 * (∑ event, timing.deferral event) * range) source) :=
-  service.isεNash_rawClientProfile_approximate ordered parameter utility sample authentic
+  service.isεNash_rawClientProfile_approximate admission ordered parameter utility sample authentic
     deposit
     nonnegative timing low range within ε source
 
@@ -664,7 +671,8 @@ theorem intended_async_client_nash [Fintype Player] [IExpr.ResultTypes L]
           (service.setup.parameterOutcome parameter state) who) -
             (if charged then deposit who else 0) ≤ low who + spread)
     (intended : Profile service.setup.intendedModel.behavioralSignature)
-    (source : Profile service.sourceModel.behavioralSignature)
+    (source : Profile (service.sourceModel (CommitmentInterface.values
+      service.setup.program)).behavioralSignature)
     (agrees : service.setup.intendedRestriction.ExtendsProfile intended source) (ε : ℝ)
     (equilibrium : IsεNash (service.setup.intendedModel.toBehavioralGameForm
         (instructionCount service.setup.program + 1))
@@ -687,11 +695,13 @@ theorem intended_async_client_nash [Fintype Player] [IExpr.ResultTypes L]
         service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
         (fun history who => payoff history.state who)
         (ε + 2 * (∑ event, timing.deferral event) * spread)
-        (service.clientProfile service.rawMenu timing source) ∧
+        (service.clientProfile (CommitmentInterface.values service.setup.program) service.rawMenu
+          timing source) ∧
       PMF.WithinTV (∑ event, timing.deferral event)
         (((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
           service.horizon
-          service.scheduler).runBehavioral (service.clientProfile service.rawMenu timing source)
+          service.scheduler).runBehavioral (service.clientProfile (CommitmentInterface.values
+            service.setup.program) service.rawMenu timing source)
             (2 * service.horizon + 1)).bind (fun final =>
               (settle final.state).map fun payoffs =>
                 (serviceSourceReadout service.setup service.mode service.deadline service.leaks
@@ -723,9 +733,11 @@ some bounded interval. This is `async_client_nash_correspondence` at deferral
 weight zero.
 The service graph is barrier ordered, as in the sequential and the
 concurrent-binding dependency modes (`Vegas.serviceGraph_barrierOrdered`), with
-any configured deadlines. -/
+any configured deadlines. Every binding interface is covered, including
+immediate failed bindings and site-dependent admission of that choice. -/
 theorem async_first_turn_nash_iff [Fintype Player] [IExpr.ResultTypes L]
     {Parameter : Type} (service : AsyncServiceSpec Player L)
+    (admission : CommitmentInterface service.setup.program)
     (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
@@ -741,7 +753,7 @@ theorem async_first_turn_nash_iff [Fintype Player] [IExpr.ResultTypes L]
           state) who) - (if charged then deposit who else 0) ∧
         output.elim 0 (fun state => utility (service.setup.parameterOutcome parameter
           state) who) - (if charged then deposit who else 0) ≤ low who + range)
-    (ε : ℝ) (source : Profile service.sourceModel.behavioralSignature) :
+    (ε : ℝ) (source : Profile (service.sourceModel admission).behavioralSignature) :
     let base := serviceBaseUtility service.setup service.mode service.deadline service.leaks
       (fun state => utility (service.setup.parameterOutcome parameter state))
     let payoff := TerminalAudit.utility base
@@ -752,14 +764,15 @@ theorem async_first_turn_nash_iff [Fintype Player] [IExpr.ResultTypes L]
       service.horizon
         service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
         (fun history who => payoff history.state who) ε
-        (service.clientProfile service.rawMenu (firstTurnTiming service.setup turns service.mode)
+        (service.clientProfile admission service.rawMenu (firstTurnTiming service.setup turns
+          service.mode)
           source) ↔
-      IsεNash (service.sourceModel.toBehavioralGameForm
+      IsεNash ((service.sourceModel admission).toBehavioralGameForm
         (instructionCount service.setup.program + 1))
         (fun final who => (service.setup.protocolReadout final.state).elim 0
           (fun state => utility (service.setup.parameterOutcome parameter state) who))
         ε source :=
-  service.isεNash_firstTurnClientProfile_iff ordered parameter utility sample authentic
+  service.isεNash_firstTurnClientProfile_iff admission ordered parameter utility sample authentic
     deposit
     nonnegative turns low range within ε source
 
@@ -805,7 +818,8 @@ theorem intended_async_first_turn_nash [Fintype Player] [IExpr.ResultTypes L]
           (service.setup.parameterOutcome parameter state) who) -
             (if charged then deposit who else 0) ≤ low who + spread)
     (intended : Profile service.setup.intendedModel.behavioralSignature)
-    (source : Profile service.sourceModel.behavioralSignature)
+    (source : Profile (service.sourceModel (CommitmentInterface.values
+      service.setup.program)).behavioralSignature)
     (agrees : service.setup.intendedRestriction.ExtendsProfile intended source) (ε : ℝ)
     (equilibrium : IsεNash (service.setup.intendedModel.toBehavioralGameForm
         (instructionCount service.setup.program + 1))
@@ -827,11 +841,13 @@ theorem intended_async_first_turn_nash [Fintype Player] [IExpr.ResultTypes L]
       service.horizon
         service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
         (fun history who => payoff history.state who) ε
-        (service.clientProfile service.rawMenu (firstTurnTiming service.setup turns service.mode)
+        (service.clientProfile (CommitmentInterface.values service.setup.program) service.rawMenu
+          (firstTurnTiming service.setup turns service.mode)
           source) ∧
       ((service.rawMenu.information (serviceInitialLaw service.setup service.mode) service.horizon
           service.scheduler).runBehavioral
-            (service.clientProfile service.rawMenu (firstTurnTiming service.setup turns
+            (service.clientProfile (CommitmentInterface.values service.setup.program)
+              service.rawMenu (firstTurnTiming service.setup turns
               service.mode) source)
             (2 * service.horizon + 1)).bind (fun final =>
               (settle final.state).map fun payoffs =>
@@ -906,7 +922,8 @@ theorem intended_opening_client_nash [Fintype Player] [IExpr.ResultTypes L]
       ((serviceRuntime service.setup service.mode service.deadline).serviceAuditObservation
         service.leaks)
       (serviceSourceAudit service.setup service.mode service.deadline service.leaks sample) deposit
-    ∃ source : Profile service.sourceModel.behavioralSignature,
+    ∃ source : Profile (service.sourceModel (CommitmentInterface.values
+      service.setup.program)).behavioralSignature,
       service.setup.intendedRestriction.ExtendsProfile intended source ∧
       (∀ player, Disclosing service.setup.program
         (service.setup.decodeBehavioralProfile (CommitmentInterface.values service.setup.program)
@@ -916,11 +933,13 @@ theorem intended_opening_client_nash [Fintype Player] [IExpr.ResultTypes L]
           service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
           (fun history who => payoff history.state who)
           (ε + 2 * (∑ event, timing.deferral event) * spread)
-          (service.clientProfile service.rawMenu timing source) ∧
+          (service.clientProfile (CommitmentInterface.values service.setup.program)
+            service.rawMenu timing source) ∧
         PMF.WithinTV (∑ event, timing.deferral event)
           (((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
             service.horizon
-            service.scheduler).runBehavioral (service.clientProfile service.rawMenu timing source)
+            service.scheduler).runBehavioral (service.clientProfile (CommitmentInterface.values
+              service.setup.program) service.rawMenu timing source)
               (2 * service.horizon + 1)).bind (fun final =>
                 (settle final.state).map fun payoffs =>
                   (serviceSourceReadout service.setup service.mode service.deadline service.leaks
@@ -931,7 +950,8 @@ theorem intended_opening_client_nash [Fintype Player] [IExpr.ResultTypes L]
               fun who => (service.setup.protocolReadout final.state).elim 0
                 (fun state => utility (service.setup.parameterOutcome parameter state) who)))) :=
   service.intended_openingExtension_isεNash wellFormed parameter utility forfeit range
-    sample authentic deposit nonnegative service.rawMenu timing (service.rawMenu_admits timing)
+    sample authentic deposit nonnegative service.rawMenu timing (service.rawMenu_admits
+      (CommitmentInterface.values service.setup.program) timing)
     low spread within intended ε equilibrium
 
 /-- info: 'Vegas.Paper.intended_opening_client_nash' depends on axioms:
@@ -1432,3 +1452,28 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Examples.CommittedResolutionBobReadout.bob_continuation_readout_eq
+
+/-- info: 'Vegas.AsyncServiceSpec.firstTurnClientProfile_settlement_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.AsyncServiceSpec.firstTurnClientProfile_settlement_law
+
+/-- info: 'Vegas.Examples.CommittedResolutionReliability.exists_contract_below_failure_floor'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommittedResolutionReliability.exists_contract_below_failure_floor
+
+/-- info: 'Vegas.EventGraphRuntime.blindToLatePackets_pendingLottery' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.blindToLatePackets_pendingLottery
+
+/-- info: 'GameTheory.Protocol.InformationModel.AsymptoticHistoryLikelihood.belief_face'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.Protocol.InformationModel.AsymptoticHistoryLikelihood.belief_face
+
+/-- info: 'Vegas.settleLate_opposite_timing_excludes_label' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.settleLate_opposite_timing_excludes_label

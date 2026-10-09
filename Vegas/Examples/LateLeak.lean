@@ -28,5 +28,6 @@ import Vegas.Examples.LateLeak.SettleLateValues
 import Vegas.Examples.LateLeak.SettleLateDeferral
 import Vegas.Examples.LateLeak.SettleLateOutcome
 import Vegas.Examples.LateLeak.SettleLateConsistency
+import Vegas.Examples.LateLeak.SettleLateLikelihood
 import Vegas.Examples.LateLeak.SettleLateIntended
 import Vegas.Examples.LateLeak.SettleLatePreservation

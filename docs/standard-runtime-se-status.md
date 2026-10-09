@@ -15,15 +15,17 @@ Here "standard" means this repository's `AsyncContract` runtime model; its
 sure protected-service assumption is not a claim about an unconditional
 liveness guarantee on a deployed blockchain.
 
-**Source admission matters.** The native compiler pins below use
-`CommitmentInterface.values`: a new binding chooses an ordinary typed value,
-and its later reveal can still withhold or fail validation. All four language
-constructors are covered, but this admission interface omits the separate
-choice to install a failed binding immediately. The language also defines
-`CommitmentInterface.forfeiture`, which admits that choice. A native theorem
-for the value-binding interface does not by itself establish preservation for
-every source admission interface. The intended game further requires
-predicted accepting bindings and mandatory openings.
+**Source admission matters.** The general asynchronous Nash pins cover every
+binding-admission interface, including immediate failed bindings and choices
+varying between sites. Their admission argument distinguishes
+`CommitmentInterface.values` from the complete
+`CommitmentInterface.forfeiture` interface. The calendar SE theorem and the
+intended-game compositions retain their value-binding specialization. Later
+reveals may withhold or fail validation in that source game; the intended
+game further requires predicted accepting bindings and mandatory openings.
+The [checked runtime boundaries](commit-reveal-research/checked-runtime-boundaries.md)
+give the precise positive scope and the operational and belief lemmas for the
+native SE obstruction.
 
 ## Checked positive results
 
@@ -56,6 +58,11 @@ predicted accepting bindings and mandatory openings.
   `Vegas.Paper.intended_async_first_turn_nash` in [Paper.lean](../Paper.lean).
   These compare source profiles with their compiled profiles, rather than
   asserting that every equilibrium of the runtime decompiles to the source.
+  Every binding-admission interface is covered, and the clients preserve the
+  exact joint terminal-store and realized-settlement law even when binding
+  failure is admitted. The latter is
+  `Vegas.AsyncServiceSpec.firstTurnClientProfile_settlement_law` in
+  [AsyncServiceRawNash.lean](../Vegas/Game/AsyncServiceRawNash.lean).
   The versions with voluntary deferral have Nash error at most the source
   error plus twice the total deferral weight times the runtime payoff range;
   the intended outcome-law error is at most the deferral weight. They are

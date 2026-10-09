@@ -12,6 +12,8 @@ import GameTheoryExtensions.Analysis.ObservationErasure
 import GameTheoryExtensions.Analysis.ObservationPayoff
 import GameTheoryExtensions.Analysis.PositiveCollection
 import GameTheoryExtensions.Analysis.Protocol.Bayes
+import GameTheoryExtensions.Analysis.Protocol.ConsistentLikelihood
+import GameTheoryExtensions.Analysis.Protocol.AsymptoticLikelihood
 import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
 import GameTheoryExtensions.Analysis.Protocol.ComponentCompletion
 import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion

@@ -32,6 +32,10 @@ Useful existing boundaries are the
 [copied-site limit with component completion](../GameTheoryExtensions/Analysis/Protocol/CopiedSiteLimit.lean),
 [consistent completion over component laws](../GameTheoryExtensions/Analysis/Protocol/ComponentCompletion.lean),
 [proportional belief transport](../GameTheoryExtensions/Analysis/Protocol/ProportionalBeliefTransport.lean),
+[posterior exclusion from factored reach weights](../GameTheoryExtensions/Analysis/Protocol/ConsistentLikelihood.lean),
+[relative likelihood errors at unreached decisions](../GameTheoryExtensions/Analysis/Protocol/AsymptoticLikelihood.lean),
+[finite-prefix scheduler agreement](../Interaction/ReactiveSchedulerPrefix.lean),
+[public pending selection under packet erasure](../Interaction/PendingErasureSelection.lean),
 [menu restriction](../GameTheoryExtensions/Protocol/MenuRestriction.lean),
 [intended game](../Vegas/Source/IntendedGame.lean),
 [choices drawn from an observation-local readout](../GameTheoryExtensions/Math/Probability/ObservedChoice.lean),
@@ -56,6 +60,9 @@ Behavioral commutation preserves the typed store and original own recall;
 native traffic and conditional beliefs need their own argument. Enforcement
 uses actual gain and change in charge probability; it does not construct the
 runtime's collection mechanism or assessment.
+Likelihood adapters require grouped weights of actual compatible histories;
+absolute error bounds do not control beliefs when the observation mass also
+vanishes. Erasure-independent selection supplies no service contract by itself.
 
 Imports expose results; they do not establish that the headline theorem uses
 those results. The SE evidence check examines declaration dependencies. New

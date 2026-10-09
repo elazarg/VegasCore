@@ -23,6 +23,8 @@ import Interaction.MessagePublishedObservation
 import Interaction.MessageRetention
 import Interaction.PendingPriority
 import Interaction.PendingSelection
+import Interaction.PendingOutsideSelection
+import Interaction.PendingErasureSelection
 import Interaction.ReactiveAliasAdmissibility
 import Interaction.ReactiveAliasBayes
 import Interaction.ReactiveAliasConsistency
@@ -93,6 +95,7 @@ import Interaction.ReactiveRoundsFiniteness
 import Interaction.ReactiveScheduleClock
 import Interaction.ReactiveScheduleEvaluation
 import Interaction.ReactiveSchedulerRefinement
+import Interaction.ReactiveSchedulerPrefix
 import Interaction.ReactiveServiceInvariant
 import Interaction.ReactiveStopping
 import Interaction.ReactiveSurvival

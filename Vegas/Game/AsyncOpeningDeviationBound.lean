@@ -58,7 +58,8 @@ theorem openingFirstTurn_deviation_bound {Parameter : Type}
       PMF (List (SettledEvidence service.setup service.mode)))
     (deposit : Player → ℝ) (nonnegative : ∀ who, 0 ≤ deposit who) {turns : Nat}
     (intended : Profile service.setup.intendedModel.behavioralSignature)
-    (source : Profile service.sourceModel.behavioralSignature)
+    (source : Profile (service.sourceModel (CommitmentInterface.values
+      service.setup.program)).behavioralSignature)
     (agrees : service.setup.intendedRestriction.ExtendsProfile intended source)
     (opens : ∀ player, (sourceServiceClientProfile service.setup
       (service.setup.decodeBehavioralProfile (CommitmentInterface.values service.setup.program)
@@ -77,7 +78,8 @@ theorem openingFirstTurn_deviation_bound {Parameter : Type}
     let clients := sourceServiceClientProfile service.setup
       (service.setup.decodeBehavioralProfile (CommitmentInterface.values service.setup.program)
         source)
-    ∃ deviation : service.sourceModel.BehavioralPolicy who,
+    ∃ deviation : (service.sourceModel (CommitmentInterface.values
+      service.setup.program)).BehavioralPolicy who,
       expect (((serviceApplication service.setup service.mode service.deadline
         service.leaks).roundsFrom (serviceInitialLaw service.setup service.mode)
           service.scheduler (deviatedTurnProfile service.bound turns
@@ -85,7 +87,8 @@ theorem openingFirstTurn_deviation_bound {Parameter : Type}
           service.horizon).map (serviceApplication service.setup service.mode service.deadline
             service.leaks).finished)
         (fun final => payoff final who) ≤
-      expect (service.sourceModel.runBehavioral (Profile.update source who deviation)
+      expect ((service.sourceModel (CommitmentInterface.values
+        service.setup.program)).runBehavioral (Profile.update source who deviation)
         (instructionCount service.setup.program + 1))
         (fun final => (service.setup.protocolReadout final.state).elim 0
           (fun state => forfeited (service.setup.parameterOutcome parameter state) who)) := by
@@ -269,7 +272,8 @@ theorem openingFirstTurn_deviation_bound {Parameter : Type}
     (BehavioralPolicy.admitted_values_iff_valueBinding service.setup.program improved).mpr
       valueBinding
   let sourceDeviation := (service.setup.behavioralPolicyEquiv admission who) ⟨improved, allowed⟩
-  have readout : (service.sourceModel.runBehavioral (Profile.update source who sourceDeviation)
+  have readout : ((service.sourceModel (CommitmentInterface.values
+    service.setup.program)).runBehavioral (Profile.update source who sourceDeviation)
       (instructionCount service.setup.program + 1)).map
         (fun final => service.setup.protocolReadout final.state) =
       (service.setup.run (Function.update decoded who improved)).map some := by
@@ -284,7 +288,8 @@ theorem openingFirstTurn_deviation_bound {Parameter : Type}
   let sourcePayoff := fun final : service.setup.intendedProtocol.History =>
     (service.setup.protocolReadout final.state).elim 0 plain
   have sourceValue : expect (service.setup.run (Function.update decoded who improved)) better =
-      expect (service.sourceModel.runBehavioral (Profile.update source who sourceDeviation)
+      expect ((service.sourceModel (CommitmentInterface.values
+        service.setup.program)).runBehavioral (Profile.update source who sourceDeviation)
         (instructionCount service.setup.program + 1)) targetPayoff := by
     have mapped := congrArg (fun law => expect law
       (fun outcome : Option (State L service.setup.program.terminalCtx) => outcome.elim 0 better))
@@ -356,10 +361,12 @@ theorem openingFirstTurn_deviation_bound {Parameter : Type}
   have extensionValue : expect (service.setup.intendedModel.runBehavioral
       (Function.update intended who retainedDeviation)
         (instructionCount service.setup.program + 1)) sourcePayoff =
-      expect (service.sourceModel.runBehavioral (Profile.update source who extension)
+      expect ((service.sourceModel (CommitmentInterface.values
+        service.setup.program)).runBehavioral (Profile.update source who extension)
         (instructionCount service.setup.program + 1))
         (fun final => (service.setup.protocolReadout final.state).elim 0 value) := by
-    change _ = expect (service.sourceModel.runBehavioral (Function.update source who extension)
+    change _ = expect ((service.sourceModel (CommitmentInterface.values
+      service.setup.program)).runBehavioral (Function.update source who extension)
       (instructionCount service.setup.program + 1)) _
     rw [← law, expect_map]
     congr 1
@@ -384,7 +391,8 @@ theorem openingFirstTurn_deviation_bound {Parameter : Type}
     _ = expect (service.setup.run (Function.update decoded who policy)) better := by
         rw [normalized]
     _ ≤ expect (service.setup.run (Function.update decoded who improved)) better := improvedLe
-    _ = expect (service.sourceModel.runBehavioral (Profile.update source who sourceDeviation)
+    _ = expect ((service.sourceModel (CommitmentInterface.values
+      service.setup.program)).runBehavioral (Profile.update source who sourceDeviation)
           (instructionCount service.setup.program + 1)) targetPayoff := sourceValue
     _ ≤ expect (service.setup.intendedModel.runBehavioral
           (Function.update intended who retainedDeviation)

@@ -196,7 +196,9 @@ theorem canonicalMenu_in_raw (bounds : MessageBounds (serviceGraph setup mode)) 
       original allowed
 
 omit [Fintype Player] in
-private theorem retained_resolutionPacket_allowed
+/-- A successful resolution packet uses the covered candidate value and an
+admitted accepted handle. Failed resolution intentions transmit no packet. -/
+theorem sourceService_resolutionPacket_allowed
     (bounds : MessageBounds (serviceGraph setup mode))
     (execution : (serviceApplication setup mode deadline leaks).Execution)
     (valid : execution.application.BindingInvariant)
@@ -295,7 +297,7 @@ theorem sourceServiceCanonicalPolicy_retained_of_resources
       apply bounds.canonical_resolution_retained (serviceRuntime setup mode deadline) leaks actor _
           _ event actor payload binding checks outputEq codeEq node turn owned readyView timely
           unsent disclose
-      exact retained_resolutionPacket_allowed bounds execution valid values handles actor event
+      exact sourceService_resolutionPacket_allowed bounds execution valid values handles actor event
         payload binding checks outputEq _
 
 /-- Every timely prescribed canonical decision is in the retained menu at every
