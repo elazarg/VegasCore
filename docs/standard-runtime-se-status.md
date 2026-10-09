@@ -4,9 +4,13 @@ Analysis by Codex.
 
 **We do not currently have a general SE-preservation theorem for the actual
 asynchronous audited runtime. We also do not have a checked impossibility
-theorem for that full target.** The calendar theorem is a positive result for
-a stronger scheduling interface; the late-leak theorem is a negative result
-for a particular observation game. Neither settles the general question.
+theorem for that full target.** An independently reviewed
+[native paper counterexample](commit-reveal-research/native-late-action-analysis.md)
+refutes the uniform preservation claim with collateral fixed before the
+builder, under its stated collateral bounds. Its full-runtime Lean
+formalization remains outstanding. The pinned calendar theorem is a positive
+result for a stronger scheduling interface; the pinned late-leak and
+settle-late negatives concern comparison games.
 Here "standard" means this repository's `AsyncContract` runtime model; its
 sure protected-service assumption is not a claim about an unconditional
 liveness guarantee on a deployed blockchain.
@@ -18,26 +22,37 @@ liveness guarantee on a deployed blockchain.
   service, audit, coverage and deposit hypotheses. Pending traffic can be
   observed; the calendar supplies reliable settlement and the scheduling
   structure used by the information and consistency proof. See
-  `Vegas.Paper.source_audited_raw_sequential_equilibrium` and
-  `Vegas.Paper.intended_sequential_equilibrium` in
-  [Paper.lean](../Paper.lean).
-- **Asynchronous Nash correspondence:** the checked client theorem applies
-  to arbitrary contract builders with a barrier-ordered graph, including the
-  sequential and concurrent-binding modes. Its approximate form has Nash
-  error at most the source error plus twice the total deferral weight times
-  the runtime payoff range; zero deferral gives exact Nash preservation.
-  The intended-game version also bounds outcome-law error by the deferral
-  weight. This does not assert SE or cover arbitrary concurrent reveals.
-  See `Vegas.Paper.async_client_nash_correspondence` and
-  `Vegas.Paper.intended_async_client_nash` in [Paper.lean](../Paper.lean).
+  `Vegas.Paper.source_audited_raw_sequential_equilibrium` in
+  [Paper.lean](../Paper.lean). The intended-game composition is
+  `Vegas.SourceServiceSpec.intended_audited_raw_sequentialEquilibrium` in
+  [IntendedServiceCompilation.lean](../Vegas/Game/IntendedServiceCompilation.lean),
+  whose standard axioms are guarded in Paper.
+- **Exact asynchronous Nash correspondence:** for arbitrary timely contract
+  builders with a barrier-ordered graph, including sequential and
+  concurrent-binding modes, the compiled first-opportunity clients are an
+  epsilon-Nash equilibrium exactly when their full-source profile is one,
+  with the same epsilon. The audit need only be authentic and its deposit
+  nonnegative; this theorem does not require a positive coverage rate.
+  The intended-game theorem adds the forfeit pass and preserves the joint
+  typed-outcome and realized-settlement law exactly. See
+  `Vegas.Paper.async_first_turn_nash_iff` and
+  `Vegas.Paper.intended_async_first_turn_nash` in [Paper.lean](../Paper.lean).
+  These compare source profiles with their compiled profiles, rather than
+  asserting that every equilibrium of the runtime decompiles to the source.
+  The versions with voluntary deferral have Nash error at most the source
+  error plus twice the total deferral weight times the runtime payoff range;
+  the intended outcome-law error is at most the deferral weight. They are
+  `Vegas.Paper.async_client_nash_correspondence` and
+  `Vegas.Paper.intended_async_client_nash`. None asserts SE.
 - **Intended opening clients, including concurrent reveals:** a specialized
   asynchronous Nash theorem goes beyond that barrier-ordered correspondence.
-  Under its well-formedness, effective opening, forfeit, audit and menu
-  admissibility hypotheses, it gives the same deferral-dependent Nash and
-  law-error bounds for reveal-relaxed scheduling. See
-  `Vegas.AsyncServiceSpec.intended_openingClientProfile_isεNash` and
-  `Vegas.AsyncServiceSpec.intended_openingExtension_isεNash` in
-  [IntendedOpeningNash.lean](../Vegas/Game/IntendedOpeningNash.lean).
+  Under its well-formedness, forfeit, authentic audit, nonnegative deposit
+  and payoff-bound hypotheses, it constructs an effectively disclosing
+  extension for the actual bounded raw menu and gives the same
+  deferral-dependent Nash and law-error bounds in every dependency mode.
+  At zero deferral these are exact. The full raw-menu capstone is
+  `Vegas.Paper.intended_opening_client_nash` in [Paper.lean](../Paper.lean),
+  delegating to [IntendedOpeningNash.lean](../Vegas/Game/IntendedOpeningNash.lean).
 - **Fully observed late-opening comparison:** for every inclusion probability
   between zero and one, a checked comparison family with intrinsic forfeit
   twice its reward preserves every intended source SE by a target SE. This
@@ -54,12 +69,24 @@ The selective late-leak game has no preserving target SE in its stated
 parameter regime. Its distinguishing information pattern is essential:
 different late emissions need not reveal the value before the receiver's
 irreversible choice. A public network with propagation delay can have such
-a distinction. A full actual-RAW embedding satisfying every service and audit
-hypothesis is still needed before this becomes a compiler impossibility.
-The broad impossibility wording in the
-[async checklist](se-async-checklist.md) should therefore not be read as an
-established impossibility for every fully public actual-runtime configuration.
-This analysis does not change its owner-controlled target or boxes.
+a distinction. The stronger pinned
+`Vegas.Paper.settle_late_not_preserved_for_every_margin` handles both late
+opportunities, repeated partial pending observations and additional signals
+with a capped charge. It remains a comparison game, without a checked
+source-program/native-runtime embedding.
+
+The [full native paper construction](commit-reveal-research/native-late-action-analysis.md)
+supplies that type of embedding separately, including the entire declared
+bounded raw menu, the actual audit, public chance builder, readiness rules and
+authentic opening certificates. For each fixed sufficiently large forfeit
+and sender/receiver audit deposits, sufficiently reliable late inclusion
+prevents every native SE from preserving the selected source joint law. The
+builder satisfies the declared service properties; it need not know private
+types or collude with players. The result concerns uniform preservation over
+this service class, not absence of equilibria in the runtime or failure of
+every blockchain configuration. Mechanizing this construction is a missing
+capstone. The [async checklist](se-async-checklist.md) retains its existing
+owner-controlled target and boxes.
 
 There is also a checked negative theorem for a nearby probabilistic backend.
 Mix the actual public controller with a positive probability of waiting on
@@ -74,6 +101,14 @@ counterexample under the unchanged asynchronous contract. See
 [the probabilistic-runtime analysis](probabilistic-runtime-preservation.md).
 
 ## Stronger positive mathematics, not yet checked compiler theorems
+
+The [protected native proof](commit-reveal-research/native-protected-execution.md)
+preserves every intended source SE in a first-ready restriction of the actual
+serial runtime. It retains adaptive public scheduling, actual private packet
+samples and full recall, with no invented public timing transcript. It is a
+reviewed paper proof, rather than a checked native theorem. Extending it to
+all raw timing and packet choices is a separate problem, and the native
+counterexample defeats the unrestricted uniform extension.
 
 The [public disclosure-phase proof](full-public-disclosure-phase-preservation.md)
 implements every source Nash outcome, hence every source PBE and SE outcome,
@@ -95,26 +130,36 @@ bounded fixed payoffs, and uniformly small primitive chance errors at every
 source-compatible history, including deviations. It does not promise nearby
 exact SEs, and its actual-runtime tree adapter remains unformalized.
 
-## The remaining question
+## What remains to pin or determine
 
-For the unchanged standard asynchronous contract, can a finite audit deposit
-support a consistent, sequentially rational completion of every intended
-source equilibrium, across all raw histories and concurrent dependencies?
-Sure protected service removes the finite-horizon outage obstruction, but
-does not itself answer this question. Accepted late openings can be audit
-clean, and an owner's single escrow charge can already be sunk at later
-histories. The proof must derive conditional incentives and compatible
-beliefs from those actual rules.
+The strongest reviewed results about the current source/runtime pair are not
+all machine checked. The main missing pins are the full native uniform SE
+counterexample, the protected first-ready positive, and the same-fixture weak
+PBE construction described below. No claim of maximality follows from the
+existing capstones: other restricted positive results or stronger negatives
+may still be provable.
+
+For a useful general SE positive, public service or settlement properties must
+exclude the native counterexample's mechanism. Accepted late openings can be
+audit clean, while rare failure continuations force type-dependent timing and
+change successful posteriors. Sure protected service and a fixed source
+horizon alone do not control that effect. Results with extra delivery-risk
+bounds, different failure settlement, or explicit communication remain
+separate candidate interfaces with their own source and action scopes.
 
 A weaker intrinsic-forfeit-only concurrent comparison already exhibits timing
 incentives despite complete public observation; a sufficiently large audit
 charge repairs that example. See
 [the concurrent-disclosure analysis](concurrent-disclosure-se-boundary.md).
-It therefore does not refute the intended audited target. At present, the
-general audited asynchronous result remains open, rather than either proved
-or disproved.
+It therefore does not refute the intended audited target by itself; the full
+native uniform negative rests on the separate two-late-opening construction.
 
 We likewise lack a general actual-runtime PBE-preservation theorem. The
 disclosure-phase paper result covers PBE outcomes by constructing a target SE;
 it does not establish that weakening SE consistency to PBE solves every raw
-asynchronous case.
+asynchronous case. The
+[same native counterexample has a preserving weak PBE](commit-reveal-research/native-weak-pbe.md)
+in a reviewed paper proof, where Bayes' rule is required only at decisions
+reached with positive equilibrium probability. That precise convention permits
+off-path beliefs which need not share an SE consistency sequence. This is not
+a general PBE preservation theorem.
