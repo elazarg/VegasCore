@@ -15,8 +15,25 @@ Here "standard" means this repository's `AsyncContract` runtime model; its
 sure protected-service assumption is not a claim about an unconditional
 liveness guarantee on a deployed blockchain.
 
+**Source admission matters.** The native compiler pins below use
+`CommitmentInterface.values`: a new binding chooses an ordinary typed value,
+and its later reveal can still withhold or fail validation. All four language
+constructors are covered, but this admission interface omits the separate
+choice to install a failed binding immediately. The language also defines
+`CommitmentInterface.forfeiture`, which admits that choice. A native theorem
+for the value-binding interface does not by itself establish preservation for
+every source admission interface. The intended game further requires
+predicted accepting bindings and mandatory openings.
+
 ## Checked positive results
 
+- **Source to the ideal concurrent event graph:** the pinned
+  `Vegas.Paper.concurrent_event_nash_iff` gives exact same-error Nash
+  correspondence for compiled profiles of the failure-aware source game,
+  including binding failure, under the ideal graph's public scheduler. This
+  graph permits independent commitments to complete in either order between
+  public barriers. It does not include pending-message traffic or the native
+  audit; see [Paper.lean](../Paper.lean).
 - **Audited calendar compiler:** every source SE has a native raw-runtime SE
   preserving the required outcome and settlement law, under the theorem's
   service, audit, coverage and deposit hypotheses. Pending traffic can be
