@@ -3,10 +3,12 @@
 Analysis by Codex.
 
 The strongest checked general result for the asynchronous message runtime is
-**exact Nash correspondence for every binding-admission interface**. General
-sequential-equilibrium preservation, and its full native counterexample, are
-still missing. The results below distinguish a compiler theorem, operational
-runtime facts, and the belief argument needed for the SE obstruction.
+**exact Nash correspondence for every binding-admission interface**. A checked
+full-menu native counterexample refutes general exact SE outcome preservation
+under the existing asynchronous contract. Its collateral, source and
+observation scopes are specified in [the native capstone](native-se-obstruction.md).
+The results below distinguish general compiler theorems, native operational
+facts and the assembled SE obstruction.
 
 ## Exact native Nash correspondence
 
@@ -89,8 +91,8 @@ The concrete two-Boolean runtime examples below fix the player network
 observation rule to return no packet signal. Their claims concern physical
 execution or pointwise payoff comparisons under arbitrary beliefs, not
 preservation of information in a public mempool. The general Nash theorem
-above permits pending-packet observations. A full native SE counterexample
-still needs the partially public observations specified in its own model.
+above permits pending-packet observations. The checked native SE counterexample
+uses the partially public observations specified in its own model.
 
 ## Sequential equilibria exist in the bounded runtime
 
@@ -116,7 +118,8 @@ no signs or margins for existence in a finite game.
 
 This separates two questions: **the runtime has SEs**, while **whether any of
 them realizes a specified source equilibrium law** requires a preservation or
-exclusion theorem. The latter is the unresolved full native question.
+exclusion theorem. The checked native obstruction below answers the latter
+negatively for one selected source law and admissible service family.
 
 ## Failed publications in the concrete source game
 
@@ -179,12 +182,24 @@ specified Safe joint law, rather than an unspecified intended outcome:
 in
 [LateOpeningRuntimeSourceEquilibrium.lean](../../Vegas/Examples/LateOpeningRuntimeSourceEquilibrium.lean).
 
-This instantiates the existing general intended-to-source theorem. Its
-binding interface admits values, while publications can fail. It does not
-claim admission of immediate failed bindings, absence of failure in every
-source equilibrium, or preservation through asynchronous message delivery.
-In particular, source failure handling by itself does not explain the
-runtime SE obstruction.
+This instantiates the existing general intended-to-source theorem with
+value-only binding admission. A separate checked concrete restriction extends
+**every value-only withholding source SE to immediate failed bindings** when
+`D>=0`, preserving the joint terminal-store and payoff law. Bob's only extra
+binding action forces his subsequent publication to fail and pays exactly
+`-D`. Every ordinary source continuation pays him at least `-D`, so the
+existing comparator extension applies without a new source semantic rule.
+
+The complete-interface pins are
+`Vegas.Examples.LateOpeningRuntimeSource.withholding_equilibrium_preserved_under_forfeiture`,
+`.intended_equilibrium_preserved_under_forfeiture` and
+`.exists_forfeiting_equilibrium_with_safe_law` in
+[SourceForfeiture](../../Vegas/Examples/LateOpeningRuntimeSourceForfeiture.lean).
+The intended composition and Safe-law existence use `R>=0,D>=R,D>=1`.
+They do not classify every full-source SE, establish a generic full-language
+failed-binding extension, or imply preservation through asynchronous delivery.
+The native obstruction is therefore not explained merely by comparing a
+failure-free source with a failure-aware runtime.
 
 ## A final runtime opening is optimal under every belief
 
@@ -309,11 +324,11 @@ and the actual runtime pin
 [ReactiveLateLottery.lean](../../Vegas/Pending/ReactiveLateLottery.lean).
 
 This lottery alone gives no protected activation, receipt or completion
-guarantee. **The stochastic service-contract family above and this
-erasure-independent lottery are separate constructions.** Their conjunction
-in the two-late counterexample's single scheduler remains an unproved native
-adapter. The deterministic endpoint supplies the distinct checked
-conjunction described above.
+guarantee. The stochastic service-contract family above and this generic
+lottery are separate constructions. The concrete three-instruction scheduler
+below proves the service and erasure conjunction on every legal bounded raw
+history; it is used by the checked SE obstruction. The deterministic endpoint
+supplies another checked conjunction.
 
 The generic priority-selection adapter in
 [ReactivePriorityErasure.lean](../../Interaction/ReactivePriorityErasure.lean)
@@ -760,11 +775,11 @@ pins are `Vegas.Examples.LateOpeningRuntimeBobSuffix.finalDecision_trace` and
 `Vegas.Examples.LateOpeningRuntimeBobSuffix.final_disclosure_class_nonempty` in
 [LateOpeningRuntimeBobSuffix.lean](../../Vegas/Examples/LateOpeningRuntimeBobSuffix.lean).
 
-**This is a checked native service, not yet a checked SE counterexample.**
-The full information fibers, relative likelihood errors and remaining sender
-incentive comparisons are needed before this construction proves the SE
-negative. These checked execution and final-opening facts neither assume the
-desired posterior nor identify the native game with a comparison game.
+**This service is the target of the checked full-menu native SE counterexample.**
+Its information fibers, relative likelihood limits and exact sender timing
+values are assembled in [the native capstone](native-se-obstruction.md).
+The checked execution and final-opening facts do not assume a desired
+posterior or identify the native game with a comparison game.
 They also leave the relevant communication channel intact: even when every
 packet is the genuine Boolean opening, choosing its sending time can convey
 information about Alice's separate private preference label. The source
@@ -1263,8 +1278,10 @@ whose target is globally sequentially rational. These are
 and `.early_silence_tendsto` in
 [InitializedSeenLikelihood](../../Vegas/Examples/LateOpeningRuntimeInitializedSeenLikelihood.lean).
 Actual legal representatives witness both the accepted and omitted seen
-information sets. The unseen-success group and the paired posterior
-cross-identity still need their own composition.
+information sets. The unseen-success group and paired posterior cross-identity
+are checked in
+[InitializedUnseenLikelihood](../../Vegas/Examples/LateOpeningRuntimeInitializedUnseenLikelihood.lean)
+and [LabelCross](../../Vegas/Examples/LateOpeningRuntimeLabelCross.lean).
 
 The complete eighteen-command suffix after Alice's last callback decomposes
 into the actual inclusion lottery, receiver observation and original receiver
@@ -1312,9 +1329,50 @@ in [SuccessPosterior](../../Vegas/Examples/LateOpeningRuntimeSuccessPosterior.le
 It neither assumes that the posterior remains uniform nor supplies the
 observation-specific exclusion needed by the negative proof.
 
-The full native negative still requires composing the initialized relative
-likelihoods for all relevant observations, proving their consistent
-cross-identity, establishing the exact sender timing comparisons, and
-deriving the initial profitable deferral. These local
-results are not a general native SE-preservation or impossibility theorem.
+## Checked full-menu native SE obstruction
+
+For fixed `R>0`, `D>R`, `K_A>R`, `K_B>1` and any `epsilon>0`, one finite
+admissible public chance builder has canonical terminal late-opening omission
+strictly between zero and epsilon. Native SEs exist, but every one fails to
+realize the source Safe joint terminal-store and realized-payoff law. The
+builder satisfies the unchanged full raw-history service contract and
+all-view late-packet erasure property; it is chosen before all equilibria.
+
+The headline pin is
+`Vegas.Examples.LateOpeningRuntimeUniformSeObstruction.exists_service_with_no_preserving_equilibrium`
+in [UniformSeObstruction](../../Vegas/Examples/LateOpeningRuntimeUniformSeObstruction.lean).
+The fixed-service exclusion and direct mandatory-source comparison are
+`Vegas.Examples.LateOpeningRuntimeSeObstruction.equilibrium_terminal_law_ne_safe`
+and `.equilibrium_terminal_law_ne_intended` in
+[SeObstruction](../../Vegas/Examples/LateOpeningRuntimeSeObstruction.lean).
+
+With the additional sufficient source bound `D>=1`, the explicit complete
+source-interface composition is
+`Vegas.Examples.LateOpeningRuntimeSourceSeObstruction.exists_source_equilibrium_with_uniform_service_obstruction`
+in [SourceSeObstruction](../../Vegas/Examples/LateOpeningRuntimeSourceSeObstruction.lean).
+It fixes one source SE admitting both failed bindings and failed publications
+before every requested failure bound and builder. Each bound gets one
+admissible service with native SEs, all of whose joint laws differ from that
+same source assessment's law. Both existence statements are proved.
+
+The proof is assembled from actual native histories and original future
+policies. Its main checked dependencies are:
+
+| Mathematical step | Owning module |
+| --- | --- |
+| Complete first and protected sender information fibers | [AliceFirstFiber](../../Vegas/Examples/LateOpeningRuntimeAliceFirstFiber.lean), [AliceProtectedFiber](../../Vegas/Examples/LateOpeningRuntimeAliceProtectedFiber.lean) |
+| Original full continuation laws after any available first response | [FirstSettlementContinuation](../../Vegas/Examples/LateOpeningRuntimeFirstSettlementContinuation.lean), [FirstResponseRetryNormalization](../../Vegas/Examples/LateOpeningRuntimeFirstResponseRetryNormalization.lean) |
+| Successful and failed typed receiver values, including all aliases | [AliceSuccessfulReduction](../../Vegas/Examples/LateOpeningRuntimeAliceSuccessfulReduction.lean), [AliceFailureReduction](../../Vegas/Examples/LateOpeningRuntimeAliceFailureReduction.lean) |
+| Exact first-versus-second timing values and strictly opposite preferences | [AliceTimingValues](../../Vegas/Examples/LateOpeningRuntimeAliceTimingValues.lean), [AliceTimingSorting](../../Vegas/Examples/LateOpeningRuntimeAliceTimingSorting.lean) |
+| Initialized unseen-success groups and label readout | [InitializedUnseenLikelihood](../../Vegas/Examples/LateOpeningRuntimeInitializedUnseenLikelihood.lean), [InitializedSuccessReadout](../../Vegas/Examples/LateOpeningRuntimeInitializedSuccessReadout.lean) |
+| Common-witness posterior cross-identity, retaining vanishing type weights | [LabelCross](../../Vegas/Examples/LateOpeningRuntimeLabelCross.lean) |
+| Positive Safe probability bounds every posterior label to `[1/5,2/5]` | [BobSafePosterior](../../Vegas/Examples/LateOpeningRuntimeBobSafePosterior.lean), [BobSafeProbability](../../Vegas/Examples/LateOpeningRuntimeBobSafeProbability.lean) |
+| An available first-opening value above the preserved `R/2` | [AliceTimingFloor](../../Vegas/Examples/LateOpeningRuntimeAliceTimingFloor.lean), [AliceProtectedOptimality](../../Vegas/Examples/LateOpeningRuntimeAliceProtectedOptimality.lean) |
+
+See [the model reminder and proof](native-se-obstruction.md) for the exact
+quantifiers, utility table and source-interface distinction. This is an exact
+joint-law negative with the full authentic audit and fair partial observations,
+not yet a public-outcome-only negative or a statement about every blockchain.
+The smaller-deposit and partial-audit paper variants, protected first-ready
+positive, and same-fixture weak PBE still need their own checked capstones.
 All runtime scope exclusions stated above continue to apply.

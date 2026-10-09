@@ -7,8 +7,8 @@ the VegasCore runtime model by appearing here.**
 
 Written proofs and counterexamples are separate from machine-checked theorems.
 The [checked runtime boundaries](checked-runtime-boundaries.md) identify the
-general native Nash theorem and the checked operational and belief components
-of the SE analysis. Candidate interfaces do not change the compiler semantics
+general native Nash theorem and the checked native SE obstruction. Candidate
+interfaces do not change the compiler semantics
 or owner-controlled proof target by appearing in these notes.
 
 In these notes, the **source** is the abstract program's game. The **target**
@@ -45,10 +45,14 @@ only the program and public service properties. The
 checked settle-late comparison defeats every fixed forfeit above the reward
 scale and every fixed audit charge above half that scale by choosing sufficiently
 reliable late inclusion. This settles a uniform-order negative for that
-abstract family. A separately reviewed
-[full native counterexample](native-late-action-analysis.md) supplies a paper
-embedding with explicit native deposit bounds and complete raw menus. Its Lean
-formalization remains outstanding. Collateral chosen for a fully known service
+abstract family. The [checked native obstruction](native-se-obstruction.md)
+includes the complete bounded raw menu: for fixed $R>0$, $D>R$, $K_A>R$ and
+$K_B>1$, it constructs an admissible builder with arbitrarily small positive
+canonical late-opening omission and no SE matching the source's joint
+terminal-store and realized-payoff law. It uses full authentic audit and fair
+partial pending samples. The [broader paper analysis](native-late-action-analysis.md)
+retains its sharper $K_A>R/2$ bound and additional sampling and audit variants
+as separate unmechanized claims. Collateral chosen for a fully known service
 is a pedagogic contrast.
 [Collateral and service quantifiers](quantifier-orders.md) gives the exact
 statement, model reminder and obligations for the two orders.
@@ -105,7 +109,7 @@ and deferral, retries and other raw actions are still outside this theorem.
 The [foundation map](native-foundation-obligations.md) identifies the checked
 APIs and remaining concrete extension obligations.
 
-The [two-late native counterexample](native-late-action-analysis.md) shows why
+The [checked two-late native counterexample](native-se-obstruction.md) shows why
 that restriction cannot simply be extended to every timely contract builder.
 For a three-instruction source with one immutable initial opening, fixed
 forfeit and sufficiently large fixed deposits, it constructs a finite public
@@ -113,10 +117,18 @@ builder whose sufficiently reliable late admission admits no SE preserving
 the selected joint parameter/result/net-payoff law. The proof includes the
 full bounded raw menu, private observation and all-history service promises;
 it also satisfies author-only sampling and the optional late-packet erasure
-condition. This is reviewed mathematics about an actual runtime configuration,
-not a checked native theorem or a claim about every blockchain game. Its
-SE-consistency obstruction supplies no PBE impossibility result. In fact,
-the [same native fixture has a preserving weak PBE](native-weak-pbe.md)
+condition. Its checked collateral bounds are $R>0$, $D>R$, $K_A>R$ and $K_B>1$,
+with full authentic audit and fair partial samples. Native SE exist; every one
+fails to reproduce the joint terminal-store and realized-payoff law. This does
+not prove impossibility for the public-result marginal alone or for every
+blockchain game. The [checked source extension](../../Vegas/Examples/LateOpeningRuntimeSourceForfeiture.lean)
+preserves every intended source SE of this program in its complete interface
+allowing both immediate failed bindings and failed publications when
+$R\ge0$ and $D\ge\max(R,1)$. This concrete result is not a general full-language
+SE extension theorem.
+The negative supplies no PBE impossibility result. The reviewed
+[weak-PBE construction for the same native fixture](native-weak-pbe.md)
+has the selected law
 for every late inclusion probability strictly between zero and one, under
 Bayes' rule only at positively reached information sets. That construction
 retains all dirty histories and merged information sets. It uses separately
@@ -251,7 +263,7 @@ small errors in that metric.
 | Compositional preservation | Which full observation, logical-execution and extra-action obligations combine into an SE theorem? | [Compositional criterion](universal-preservation-criterion.md) |
 | Native protected play | How do actual opaque envelopes and source-public openings couple serial runtime observations? | [Native serial analysis](native-observation-criterion.md) |
 | Actual first-ready execution | Does the intended mandatory-action source preserve SE with adaptive native waits and full private recall? | [Reviewed protected proof](native-protected-execution.md) |
-| Full native late actions | Can two late sends of the same immutable opening defeat every preserving SE, even with the full raw menu? | [Reviewed native counterexample](native-late-action-analysis.md) |
+| Full native late actions | Can two late sends of the same immutable opening defeat every preserving SE, even with the full raw menu? | [Checked native counterexample](native-se-obstruction.md), [broader paper variants](native-late-action-analysis.md) |
 | Native SE versus weak PBE | Does that exact full raw game preserve the selected source law under Bayes only at positive-reach decisions? | [Reviewed weak-PBE construction](native-weak-pbe.md) |
 | Concrete proof obligations | Which checked APIs apply, which adaptive adapters remain unformalized, and what prevents a full raw-menu conclusion? | [Foundation map](native-foundation-obligations.md) |
 | Accepted late actions | When does a late opening's gain scale with failure risk, and when can rare failures change successful posteriors? | [Admission risk and information](admission-information-boundary.md) |

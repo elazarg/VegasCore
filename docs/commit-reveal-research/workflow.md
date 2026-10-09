@@ -4,11 +4,15 @@ The deliverable is a collection of useful conditional results about ledger
 interfaces, organized so that a reader can reconstruct each model from its
 statement. It is not a replacement specification for the compiler.
 
-The [full native negative](native-late-action-analysis.md) and
-[same-fixture weak PBE](native-weak-pbe.md) are reviewed paper constructions.
-Their distinction locates a concrete off-path consistency issue. Their native
-formalization is outside the current math-only phase; the next mathematical
-questions concern larger native programs and explicit public service repairs.
+The [full native negative](native-se-obstruction.md) is checked for fixed
+$R>0$, $D>R$, $K_A>R$, $K_B>1$, full authentic audit and fair partial pending
+samples. It excludes the source's exact joint terminal-store and realized-payoff
+law in every native SE, while native SE exist. The
+[sharper collateral and sampling variants](native-late-action-analysis.md) and
+[same-fixture weak PBE](native-weak-pbe.md) remain reviewed paper constructions.
+This distinction locates a concrete off-path consistency issue. Further
+questions concern larger native programs and explicit public service repairs;
+the checked obstruction does not exclude matching only public results.
 
 The [native research agenda](native-research-agenda.md) directs the concrete
 wave: accepted late actions and real settlement, independent full-menu review,
@@ -134,10 +138,12 @@ If a weakening survives, record the broader candidate and the new proof task.
    simply be reused with deposits growing without bound.
 10. Under which public collection/gain bounds does collateral chosen before
     the selected builder preserve SE? Treat exact-builder calculations as
-    contrasts. Use the [reviewed full native negative](native-late-action-analysis.md)
+    contrasts. Use the [checked full native negative](native-se-obstruction.md)
     to identify which additional public properties could support a positive.
-    Its checked embedding remains a formalization task. Added native actions can change equilibrium existence;
-    an abstract embedding alone does not preserve a negative conclusion.
+    Its proof controls the complete bounded raw menu, rather than relying on
+    an abstract embedding. The sharper $K_A>R/2$ and broader observation/audit
+    variants remain paper results. Added actions in another runtime can change
+    equilibrium implementation and require their own proof.
 11. State a public miner/service class and distinguish pointwise preservation
     from a common policy and Bayesian hidden-service preservation. Test whether
     the negative comparison survives unknown inclusion rates and whether a

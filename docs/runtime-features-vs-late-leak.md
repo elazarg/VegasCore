@@ -7,10 +7,15 @@ intended game. The result is checked in Lean as
 `Vegas.Paper.late_leak_not_preserved_when_deferral_pays`. `G*` is a finite
 comparison game, and the actual asynchronous runtime gives its players more
 options. This note asks whether any of these options creates a preserving SE.
-The answer bears on the open question in the
-[standard-runtime status](standard-runtime-se-status.md). If no option does,
-then an actual-runtime embedding of `G*` would be a genuine counterexample
-to SE preservation for the standard contract.
+The answer concerns the comparison's relationship to the
+[standard-runtime status](standard-runtime-se-status.md). A separate
+[checked native construction](commit-reveal-research/native-se-obstruction.md)
+controls the complete bounded raw menu and supplies an actual counterexample
+to exact joint terminal-store/payoff SE preservation under the standard
+asynchronous contract. It uses fixed $R>0$, $D>R$, $K_A>R$, $K_B>1$, full
+authentic audit and fair partial pending samples; native SE exist. Its result
+does not exclude matching only public results or certify the broader script
+parameter claims in this note.
 
 All verdicts below are exact. They come from
 [`runtime_features_late_leak.py`](../scripts/experiments/runtime_features_late_leak.py),
@@ -375,7 +380,7 @@ conditions:
 
 `G*`'s parameters meet all of these.
 
-Two points remain before this becomes a counterexample:
+Two points are outside this comparison's script checks:
 
 - **The leak.** `G*`'s selective leak is not a stateless observation rule. A
   symmetric stateless leak with `lambda` above a small bound reproduces the
@@ -386,13 +391,16 @@ Two points remain before this becomes a counterexample:
   packets, aliases, several listener activations, and a native embedding into
   the compiled source program with its typed readout, such as
   [CommittedResolutionService](../Vegas/Examples/CommittedResolutionService.lean).
+  The separate checked native construction controls all these extra choices
+  in its own three-instruction fixture; it does not mechanize this script game.
 
 The positive mechanisms show what a preservation theorem would have to use.
 It could require a builder that reveals each late opening's fate before the
 owner's next opportunity, which makes retries informed. Alternatively, it
 could guarantee that public evidence of any dropped opening reaches every
 later decision maker. A theorem stated for every blind builder with a finite
-deposit cannot hold if the native embedding goes through.
+deposit cannot hold under the checked native theorem's joint-law and collateral
+hypotheses. Stronger script margins remain separate from that checked result.
 
 ## Combined, with a valid leak rule
 

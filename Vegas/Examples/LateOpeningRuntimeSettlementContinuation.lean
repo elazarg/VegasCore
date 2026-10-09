@@ -34,7 +34,9 @@ def settlementCompletion (players : Player → app.Policy) (execution : app.Exec
   (settlementKernel weight nonnegative execution).bind
     (receiverCompletion weight nonnegative players)
 
-private theorem receiver_suffix (players : Player → app.Policy) (execution : app.Execution)
+/-- The actual binding activation precedes the original receiver response
+and its complete fourteen-command continuation. -/
+theorem receiver_suffix (players : Player → app.Policy) (execution : app.Execution)
     (cursor : execution.environmentRecall.length = 11) :
     app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative) players 15 execution =
       (execution.environmentStep app (.activate bob)).bind

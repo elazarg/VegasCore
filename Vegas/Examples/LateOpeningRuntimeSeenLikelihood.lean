@@ -175,29 +175,9 @@ theorem early_comparison_filtered_probability (profile : Profile weight nonnegat
           ((earlyObserved bit label submission seen).recall bob)
           ((earlyObserved bit label submission seen).observe app bob) ⟨none⟩).toReal *
           ((quietRetry weight nonnegative bit label submission seen).toOuterMeasure
-            (seenEvent bit label accepted)).toReal := by
-  classical
-  unfold earlyComparison
-  rw [toReal_toOuterMeasure_bind]
-  calc
-    _ = expect (players weight nonnegative profile bob
-        ((earlyObserved bit label submission seen).recall bob)
-        ((earlyObserved bit label submission seen).observe app bob))
-        (fun response => if (⟨none⟩ : app.Action) = response then
-          ((quietRetry weight nonnegative bit label submission seen).toOuterMeasure
-            (seenEvent bit label accepted)).toReal else 0) := by
-      apply expect_congr_on_support
-      intro response _
-      rcases response with ⟨transmission⟩
-      cases transmission with
-      | none => simp only [↓reduceIte]
-      | some raw =>
-          rw [ite_eq_right (by intro same; cases same)]
-          rw [transmitted_early_silent_event_zero weight nonnegative
-            (players weight nonnegative profile) (earlyObserved bit label submission seen)
-              raw (seenEvent bit label accepted) (seen_event_quiet bit label accepted)]
-          simp
-    _ = _ := expect_ite_eq _ _ _
+            (seenEvent bit label accepted)).toReal :=
+  early_comparison_event_probability weight nonnegative profile bit label submission seen
+    (seenEvent bit label accepted) (seen_event_quiet bit label accepted)
 
 theorem genuine_comparison_seen_probability (profile : Profile weight nonnegative)
     (bit : Bool) (label : Fin 3) (submission : app.Submission)

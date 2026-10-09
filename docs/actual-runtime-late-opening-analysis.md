@@ -2,8 +2,10 @@
 
 See [the standard-runtime status](standard-runtime-se-status.md) for the
 distinction between the checked calendar SE theorem, asynchronous Nash
-correspondence, narrower SE comparisons, and the still-open general audited
-asynchronous SE question.
+correspondence, narrower SE comparisons, and the checked
+[native uniform SE obstruction](commit-reveal-research/native-se-obstruction.md)
+under partial pending observations. The fully public comparison below remains
+a separate positive result.
 
 The checked `LateLeak` impossibility theorem does not yet imply an
 impossibility theorem for the actual Vegas compiler on a fully observed public

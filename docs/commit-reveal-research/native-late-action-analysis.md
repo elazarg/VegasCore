@@ -2,18 +2,20 @@
 
 This note tests the native runtime, including its full bounded raw response
 menu, rather than adding a hypothetical private scheduler or allowing a reveal
-to cross a commitment barrier. The construction below is a paper analysis of
-an explicit finite configuration. Its full native SE theorem has not been
-entered into Lean. The typed source, initial law, utilities and source-prefix
-facts are checked in
+to cross a commitment barrier. The construction below gives the detailed
+analysis of an explicit finite configuration. Its full-menu native SE
+obstruction is checked for `R>0`, `D>R`, `K_A>R`, `K_B>1`, the full authentic
+audit and fair partial pending samples. See [the checked capstone](native-se-obstruction.md)
+for its exact quantifiers and scope. The smaller-deposit and partial-audit
+strengthenings below remain paper proofs. The typed source, initial law,
+utilities and source-prefix facts are checked in
 [LateOpeningRuntimeSource.lean](../../Vegas/Examples/LateOpeningRuntimeSource.lean).
 The exact initialized Safe joint law of every intended source SE, and a
 source SE permitting failed publications with that same law, are checked in
 [LateOpeningRuntimeSourceEquilibrium.lean](../../Vegas/Examples/LateOpeningRuntimeSourceEquilibrium.lean).
 The [checked runtime boundaries](checked-runtime-boundaries.md) distinguish
-additional operational and belief lemmas from that missing full theorem. In
-particular, the checked settle-late comparison is not itself the native result
-stated here.
+the native theorem from its supporting operational and belief lemmas. The
+checked settle-late comparison remains a separate comparison game.
 
 The proposed obstruction uses one immutable opening, two opportunities to
 send it after its protected window, and an intervening observation of pending
@@ -630,7 +632,10 @@ clean publication throughout the supported continuation. First-late sender
 repair excludes nongenuine packets using her unchanged future policy and
 actual legal final-callback descendants. Preserving even the public Alice
 publication marginal forces protected acceptance almost surely.
-A checked native SE counterexample is still missing. Successful-publication
+A checked native SE counterexample is composed from these facts in
+[SeObstruction](../../Vegas/Examples/LateOpeningRuntimeSeObstruction.lean) and
+[UniformSeObstruction](../../Vegas/Examples/LateOpeningRuntimeUniformSeObstruction.lean).
+Successful-publication
 receiver optimization is checked, including clean settlement and Alice's
 success floor on all compatible legal receiver histories. The full native history
 groups are connected to physical prefix probabilities and actual consistent
@@ -650,8 +655,10 @@ of each clean accepted answer on every physical continuation of the original
 receiver policy. Complete payoff laws retain genuine sender aliases, and the
 first-prefix likelihood after an earlier observed opening has error relative
 to its genuine-emission mass, including when that mass vanishes.
-The remaining obligations compare legitimate first-versus-second sending
-times and compose the initialized relative likelihoods into the SE
-cross-identity and initial deviation argument.
-These are formalization tasks for the explicit configuration, rather than
-an assumed private runtime interface.
+The legitimate first-versus-second timing comparison, initialized relative
+likelihood cross-identity and protected-decision contradiction are checked.
+They retain original future policies and use one actual native consistency
+sequence, including at unreached decisions. The checked uniform theorem uses
+`K_A>R`; the stronger `K_A>R/2` and partial-audit arguments in this note have
+not been formalized. None of these results assumes an invisible pending pool
+or changes the current runtime to a private interface.

@@ -37,8 +37,13 @@ For a source equilibrium and a fixed runtime, ask separately whether:
 The late-leak theorem refutes the second claim for a particular source outcome
 and late-turn protocol, hence the third for any compilation class containing
 that example. It is stronger than failure of one strategy translation. It does
-not refute the fifth. Realizing this finite example inside the complete bounded
-raw runtime remains a separate unproved obligation.
+not refute the fifth. The separate
+[checked native construction](commit-reveal-research/native-se-obstruction.md)
+also refutes the second claim for an actual compiled three-instruction program
+and its complete bounded raw menu. For fixed $R>0$, $D>R$, $K_A>R$, $K_B>1$,
+full authentic audit and fair partial samples, one admissible builder admits
+native SE but none with the selected joint terminal-store and realized-payoff
+law. This is not an impossibility for the public-result marginal alone.
 
 Finite perfect-recall games still have SE. The library's
 [existence theorem](../GameTheory/GameTheory/Analysis/Protocol/SequentialExistence.lean)
@@ -58,6 +63,7 @@ their outcomes differ from the specified source outcome.
 | Late-leak full-state approximation gap | Checked | Every exact target SE is at least 267/2000 away at the sample parameters |
 | Late-leak approximation gap after erasing timing | Checked | At least 3/2000 for the joint initial-type, success/failure and answer law |
 | Intended outcome preservation by arbitrary late-leak protocols | False, checked | The finite late-leak family under the two deferral margins |
+| Exact joint terminal-store/payoff SE preservation by every asynchronous contract builder | False, checked | Actual three-instruction program and full bounded raw menu; fixed R>0, D>R, K_A>R, K_B>1, full authentic audit, fair partial samples; finite admissible builder with arbitrarily small positive canonical omission |
 | Weak PBE preserves the late-leak intended outcome | Paper proof | Explicit assessment below |
 | Bonanno PBE or common-CPS PBE repairs that example | False, paper proof | Their coherent plausibility conditions retain the obstruction |
 | Every intended SE has a weak PBE realization in the general async runtime | Conjecture | Belief-support and credible-completion adapters remain open |
@@ -75,7 +81,7 @@ error at most epsilon plus `2 delta R`, with joint-law error at most delta.
 First-turn timing has delta zero. These hypotheses should accompany any
 headline about Nash preservation on an arbitrary builder.
 
-The checked SE result is
+The general checked positive SE result is
 [`SourceServiceSpec.audited_raw_sequentialEquilibrium_preserved`](../Vegas/Game/SourceServiceCompilation.lean).
 Physical implementation of its service assumptions is an additional task.
 The calendar does not require finite support of its unused network policy;

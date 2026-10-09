@@ -28,8 +28,16 @@ and late-inclusion probability 99/100. Its consistency argument allows arbitrary
 type-dependent and turn-dependent trembles. This rules out all preserving
 assessments for that game, not merely one attempted proof construction. See the
 [mathematical account](open-problem-late-turn-equilibria.md) for the argument
-and its extension across penalty margins. Realization of the example by the
-full bounded raw runtime is a separate obligation.
+and its extension across penalty margins. The separate
+[checked native obstruction](commit-reveal-research/native-se-obstruction.md)
+controls an actual compiled three-instruction program and its full bounded raw
+menu. For fixed $R>0$, $D>R$, $K_A>R$, $K_B>1$, full authentic audit and fair
+partial pending samples, one finite admissible builder has arbitrarily small
+positive canonical omission but no SE with the source's joint terminal-store
+and realized-payoff law. Native SE exist. This does not establish an
+impossibility for the public-result marginal alone, every blockchain or a
+different compiler. Sharper collateral and broader audit/sampling variants
+remain paper results.
 
 Pending openings can disclose their contents even when never included. That
 changes the continuation following failure and induces different private types

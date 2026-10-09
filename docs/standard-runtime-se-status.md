@@ -2,15 +2,15 @@
 
 Analysis by Codex.
 
-**We do not currently have a general SE-preservation theorem for the actual
-asynchronous audited runtime. We also do not have a checked impossibility
-theorem for that full target.** An independently reviewed
-[native paper counterexample](commit-reveal-research/native-late-action-analysis.md)
-refutes the uniform preservation claim with collateral fixed before the
-builder, under its stated collateral bounds. Its full-runtime Lean
-formalization remains outstanding. The pinned calendar theorem is a positive
-result for a stronger scheduling interface; the pinned late-leak and
-settle-late negatives concern comparison games.
+**General exact SE preservation under the existing asynchronous contract is
+refuted by a checked native counterexample.** With fixed finite collateral
+`R>0`, `D>R`, `K_A>R`, `K_B>1`, one admissible public chance builder has native
+SEs but none reproduces the source's joint terminal-store and realized-payoff
+law. Its canonical late-opening omission can be arbitrarily small and remains
+positive. This covers the example's entire bounded raw menu and full authentic
+audit. See [the checked native theorem](commit-reveal-research/native-se-obstruction.md)
+for exact quantifiers, observation scope and excluded costs. The pinned
+calendar theorem remains positive for its stronger scheduling interface.
 Here "standard" means this repository's `AsyncContract` runtime model; its
 sure protected-service assumption is not a claim about an unconditional
 liveness guarantee on a deployed blockchain.
@@ -26,14 +26,15 @@ game further requires predicted accepting bindings and mandatory openings.
 The [checked runtime boundaries](commit-reveal-research/checked-runtime-boundaries.md)
 give the precise positive scope and the operational and belief lemmas for the
 native SE obstruction.
-Its three-instruction source is now compiled to a checked family of actual
+Its three-instruction source is compiled to a checked family of actual
 partially public native services: the full raw-history contract, erasure
 independence, message alphabet, finite nature and exact early observation laws
 are proved. The fresh receiver binding's full information fiber and exact
-native conditional-probability adapter are also checked. The remaining
-impossibility obligations concern observation-specific relative likelihoods,
-their consistent limits and sequential timing incentives, not builder
-admissibility.
+native conditional-probability adapter are checked. Observation-specific
+relative likelihoods, their common consistent limits, sequential timing
+incentives and the protected-decision contradiction are checked and composed
+in the native capstone. The source variants and runtime observations must
+still be specified beside any broader claim.
 
 ## Checked positive results
 
@@ -93,13 +94,15 @@ admissibility.
   At zero deferral these are exact. The full raw-menu capstone is
   `Vegas.Paper.intended_opening_client_nash` in [Paper.lean](../Paper.lean),
   delegating to [IntendedOpeningNash.lean](../Vegas/Game/IntendedOpeningNash.lean).
-- **Concrete source publication failure:** every intended SE of the
+- **Concrete source binding and publication failure:** every intended SE of the
   three-instruction Boolean-opening/answer-commitment/answer-opening source
-  extends to a source SE permitting failed publications, when the forfeit
+  extends to a source SE permitting both failed bindings and failed
+  publications, when the forfeit
   covers both players' gross payoff ranges. It preserves the joint terminal
   store and payoff law. Every intended SE has the same Safe outcome, and an
-  actual source SE with optional failed publications preserves that specified
-  initialized store/payoff law. Binding admission is value-only. This is a source
+  actual full-forfeiture source SE preserves that specified initialized
+  store/payoff law. Every value-only withholding source SE also extends to
+  the full interface for any nonnegative forfeit. This is a concrete source
   result, before adding network timing; see
   [the checked source instance](commit-reveal-research/checked-runtime-boundaries.md#failed-publications-in-the-concrete-source-game).
 - **Actual final-opening incentives:** in the initialized two-commitment
@@ -202,8 +205,8 @@ admissibility.
   contract and all-view packet-erasure independence, keeps canonical late
   omission strictly positive below that bound, and forces both last-Alice
   response laws in every sequentially rational assessment. This uses the
-  user's required quantifier order. It is a checked family of local necessary
-  equilibrium conditions, not the missing full native SE obstruction. See
+  user's required quantifier order. This local normalization supplies the
+  margins used by the checked full native SE obstruction. See
   [the common-builder result](commit-reveal-research/checked-runtime-boundaries.md).
 - **All constraints for one native game:** the common-service capstone also
   takes fixed `K_B>1`. It supplies one admissible finite builder, positive
@@ -246,8 +249,8 @@ admissibility.
   Safe or label-guess reward. Failed continuations give the label-selected
   bit-guess reward minus `D+K_A`. Their expectations use the original raw
   receiver response law and its actual typed binding result, including private
-  aliases and zero-belief histories. This supplies continuation formulas,
-  while the sender's timing and initial deviation arguments remain open. See
+  aliases and zero-belief histories. The checked timing and initial-deviation
+  arguments use these formulas to exclude every preserving native SE. See
   [the exact native values](commit-reveal-research/checked-runtime-boundaries.md#full-information-publication-and-exact-pending-observations).
 - **One actual consistency sequence:** all three sender response errors have
   one uniform bound tending to zero along the same SE consistency witness
@@ -261,8 +264,9 @@ admissibility.
   first-send probability. The actual likelihood of remembering an earlier
   canonical opening is `alpha*p_seen*(q or 1-q)/2`, within that error, for both
   success and failure. Nongenuine first sends and earlier silence contribute
-  exactly zero to those remembered-opening records. The remaining work composes these facts
-  into complete observation-specific likelihoods and the timing contradiction.
+  exactly zero to those remembered-opening records. The unseen-success groups
+  and paired posterior identity use the same actual witness, completing the
+  likelihood input to the native timing contradiction.
   See [the checked consistency adapters](commit-reveal-research/checked-runtime-boundaries.md#consistency-constrains-unreached-beliefs).
 - **Preserving settlement has no supported deductions:** equality with the
   selected source's joint terminal/payoff law forces the successful Safe
@@ -281,6 +285,24 @@ example merely to public pending messages and high late inclusion probability.
 Both properties coexist with preservation in that comparison family.
 
 ## Checked negative results and their limits
+
+The strongest native negative is
+`Vegas.Examples.LateOpeningRuntimeUniformSeObstruction.exists_service_with_no_preserving_equilibrium`
+in [UniformSeObstruction](../Vegas/Examples/LateOpeningRuntimeUniformSeObstruction.lean).
+Collateral is fixed before one finite builder is chosen, and that same
+builder excludes the selected Safe joint law at every target SE. Native SEs
+exist. The result concerns exact joint terminal-store and audited payoff law,
+with fair partial pending samples and the full authentic audit. It is not yet
+an impossibility theorem for preservation of the public outcome alone. See
+[the theorem and proof](commit-reveal-research/native-se-obstruction.md).
+
+With the additional sufficient source-extension bound `D>=1`,
+`Vegas.Examples.LateOpeningRuntimeSourceSeObstruction.exists_source_equilibrium_with_uniform_service_obstruction`
+fixes one full-forfeiture source SE before any requested failure bound or
+builder. Every requested bound then has one admissible service whose native
+SEs all fail to implement that same selected source law. This uses both
+failed-binding and failed-publication admission, rather than omitting source
+failures from the comparison.
 
 There is also a checked operational necessity in the actual compiled example:
 **a profile with certain terminal success for Alice must obtain acceptance
@@ -304,8 +326,8 @@ opportunities, repeated partial pending observations and additional signals
 with a capped charge. It remains a comparison game, without a checked
 source-program/native-runtime embedding.
 
-The [full native paper construction](commit-reveal-research/native-late-action-analysis.md)
-supplies that type of embedding separately, including the entire declared
+The [checked native construction](commit-reveal-research/native-se-obstruction.md)
+supplies an actual embedding separately, including the entire declared
 bounded raw menu, the actual audit, public chance builder, readiness rules and
 authentic opening certificates. For each fixed sufficiently large forfeit
 and sender/receiver audit deposits, sufficiently reliable late inclusion
@@ -313,8 +335,9 @@ prevents every native SE from preserving the selected source joint law. The
 builder satisfies the declared service properties; it need not know private
 types or collude with players. The result concerns uniform preservation over
 this service class, not absence of equilibria in the runtime or failure of
-every blockchain configuration. Mechanizing this construction is a missing
-capstone. The [async checklist](se-async-checklist.md) retains its existing
+every blockchain configuration. The smaller-deposit and partial-audit
+strengthenings in [the detailed paper analysis](commit-reveal-research/native-late-action-analysis.md)
+remain unformalized. The [async checklist](se-async-checklist.md) retains its existing
 owner-controlled target and boxes.
 
 The checked operational boundary is sharper: an actual initialized opening
@@ -373,9 +396,10 @@ exact SEs, and its actual-runtime tree adapter remains unformalized.
 ## What remains to pin or determine
 
 The strongest reviewed results about the current source/runtime pair are not
-all machine checked. The main missing pins are the full native uniform SE
-counterexample, the protected first-ready positive, and the same-fixture weak
-PBE construction described below. No claim of maximality follows from the
+all machine checked. The protected first-ready positive and same-fixture weak
+PBE construction described below lack checked native capstones. A full
+failure-aware full-language source SE adapter, smaller-collateral native negative and
+general approximate preservation also need separate proofs. No claim of maximality follows from the
 existing capstones: other restricted positive results or stronger negatives
 may still be provable.
 

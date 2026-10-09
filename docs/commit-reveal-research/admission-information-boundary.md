@@ -455,10 +455,14 @@ activations, forwarded proofs and rejected packet observations cannot be
 discarded without proofs. A constant number of source events does not bound
 or normalize those physical decisions.
 
-The [two-live-opportunity native test](native-late-action-analysis.md) has
-a complete reviewed paper counterexample controlling the extra channels and
-the final audit. It fixes one immutable initial opening and allows the entire
+The [checked two-live-opportunity native test](native-se-obstruction.md)
+controls the extra channels, full authentic final audit and common native
+Bayesian limits. It fixes one immutable initial opening and allows the entire
 bounded raw menu; no late private value is inserted into the utility interface.
-Its source setup, universal scheduler and native Bayesian identities remain
-Lean formalization tasks. General multi-phase preservation with retained
-correlated private state remains outside both restricted positives here.
+For fixed $R>0$, $D>R$, $K_A>R$ and $K_B>1$, with fair partial pending samples,
+one admissible builder has arbitrarily small positive canonical omission but
+no SE matching the source's exact joint terminal-store and realized-payoff
+law. Native SE exist. The sharper $K_A>R/2$ and broader sampling/audit
+variants remain [paper results](native-late-action-analysis.md). General
+multi-phase preservation with retained correlated private state, and a negative
+for the public-result marginal alone, are outside these conclusions.

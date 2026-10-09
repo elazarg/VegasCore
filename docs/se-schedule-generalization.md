@@ -123,7 +123,10 @@ dependencies. It is not a checklist of completed arbitrary-builder work.
 
 [AsyncServiceSpec](../Vegas/Game/AsyncServiceSpec.lean) and
 [ReactiveAsyncContract](../Vegas/Pending/ReactiveAsyncContract.lean) state the
-arbitrary public builder contract. The general preservation theorem is open.
+arbitrary public builder contract. The checked
+[native obstruction](commit-reveal-research/native-se-obstruction.md) refutes
+unrestricted exact SE outcome preservation under that contract, with fixed
+collateral and its stated partial-observation and full-audit scope.
 The contract supplies a timely owner opportunity, bounded inclusion of its sole
 signed identifier, and complete play. Its clauses quantify over raw histories,
 including flooding. Reaction and inclusion bounds must fit each deadline.

@@ -42,22 +42,22 @@ it cannot establish the concurrent claim without an additional argument.
 
 ## Allocation and reasons
 
-Allocate **100% of the remaining mathematical attention to concrete runtime
-questions and their independent review, with no standalone foundational
-invention**. This is an estimate of useful effort, not a promised elapsed-time
-budget. The protected restriction has a reviewed paper proof in
+Allocate mathematical attention to concrete runtime interfaces and reuse
+existing foundations. The full native uniform negative is checked; repeating
+its local normalization work is not an open task. The protected restriction
+has a reviewed paper proof in
 [native protected execution](native-protected-execution.md). The
 [foundation map](native-foundation-obligations.md) identifies existing APIs for
-its adaptive stopped-prefix construction. Prioritize full-menu late-action
-accounting and the concrete properties a broader positive would need. The
-[native two-late counterexample](native-late-action-analysis.md) has a reviewed
-full-menu paper proof; the declared contract alone cannot supply that positive.
+its adaptive stopped-prefix construction. Prioritize source-admission
+adapters, weaker equilibrium claims and concrete properties a useful positive
+would need. The [checked native counterexample](native-se-obstruction.md)
+refutes unrestricted uniform exact SE preservation under the declared contract.
 
 | Work | Share | Useful deliverable |
 | --- | --- | --- |
-| Actual late actions and settlement boundary | 60% | Mechanize complete receiver response optimization, sender timing normalization and grouped native-history likelihoods for the existing three-instruction counterexample. |
-| Independent concrete review | 30% | Check the entire native action space, admissible builder on every legal history, actual observations and global belief consistency. |
-| Protected proof integration and concrete cross-checks | 10% | Maintain the reviewed first-ready result and compare every claimed native premise with its declaration. |
+| Source admission and settlement scope | 30% | Extend the concrete source SE to immediate failed bindings, and test the separate smaller-collateral and partial-audit negatives. |
+| Restricted positive and weaker rationality targets | 50% | Check the existing first-ready positive or same-fixture weak PBE using actual native histories; identify missing adapters before introducing new machinery. |
+| Independent concrete review and generality | 20% | Compare proposed public service properties with the checked timing mechanism, preserving every source, observation and payoff distinction. |
 
 The [same-fixture weak PBE](native-weak-pbe.md) has a reviewed full-menu paper
 construction for every late inclusion probability in (0,1). The native
@@ -68,7 +68,7 @@ public service properties against the two-late mechanism. These results do
 not create a general PBE theorem or alter the SE target.
 
 The general observation-transfer, consistent-completion and terminal-audit
-machinery already supplies substantial foundations. The reviewed full-menu
+machinery already supplies substantial foundations. The checked full-menu
 negative shows that the contract and its accepted late actions do not suffice
 for a general SE extension. The largest uncertainty is which concrete public
 service or settlement property supports a useful positive without excluding
@@ -100,20 +100,22 @@ sequential rationality alone. See
 [checked boundaries](checked-runtime-boundaries.md) for the exact conditions
 and omitted runtime aspects.
 
-The following remaining tasks can proceed in parallel, without adopting
-another game or assuming the desired posterior. Their checked starting
-points and unproved outputs are distinguished explicitly.
+The full native negative is
+`Vegas.Examples.LateOpeningRuntimeUniformSeObstruction.exists_service_with_no_preserving_equilibrium`.
+For positive reward it strengthens these local constraints to exclusion of
+the Safe joint law at every target SE. See [the checked native theorem](native-se-obstruction.md).
+The following completed ingredients give the owning APIs for later work.
 
-| Task | Existing boundary and required output |
+| Ingredient | Checked boundary |
 | --- | --- |
-| Legitimate sender timing | [First-response repair](../../Vegas/Examples/LateOpeningRuntimeAliceFirstRationality.lean) now excludes nongenuine packets while retaining silence, genuine packets and private aliases. Use the receiver's actual success/failure values to derive the private types' preferences between the two legal sending times. |
-| Receiver continuation on deviation histories | [Success-case binding cleanliness](../../Vegas/Examples/LateOpeningRuntimeBobSuccessBindingClean.lean) fixes the supported public commitment packet and accepting receipt throughout its whole information set. [Final publication](../../Vegas/Examples/LateOpeningRuntimeBobFinalFiberRationality.lean) covers all compatible histories, including zero-belief histories. [Optional publication](../../Vegas/Examples/LateOpeningRuntimeOptionalOpening.lean) has an attainable clean whole-policy comparator. Connect the intervening callbacks and transfer audit cleanliness; the checked [sender success floor](../../Vegas/Examples/LateOpeningRuntimeAliceSuccessFloor.lean) still has its positive-belief scope. |
-| Receiver label beliefs | [Authentic bit knowledge](../../Vegas/Examples/LateOpeningRuntimeBobKnownBit.lean) and its [actual initialized witness](../../Vegas/Examples/LateOpeningRuntimeBobKnownBitWitness.lean) are checked. The remaining beliefs concern Alice's unpublicized preference label, inferred from timing. Identify them from complete native histories rather than assuming a posterior. |
-| Rare-information likelihoods | [Initialized raw prefix](../../Vegas/Examples/LateOpeningRuntimeInitializedPrefix.lean) retains each type's original protected-silence probability. [Full observation factors](../../Vegas/Examples/LateOpeningRuntimeBindingFactors.lean) compute the actual inclusion and both pending samples for genuine private aliases. [Native alias witnesses](../../Vegas/Examples/LateOpeningRuntimeRetryWitness.lean) apply the [relative retry bound](../../Vegas/Examples/LateOpeningRuntimeRetryKernel.lean) to those original laws. Compose them with complete native history groups, the common consistency witness and [relative-likelihood machinery](../../GameTheoryExtensions/Analysis/Protocol/AsymptoticLikelihood.lean). The remaining nongenuine contributions must be controlled relative to each observation's mass, which may vanish arbitrarily quickly. |
+| Legitimate sender timing | [AliceTimingValues](../../Vegas/Examples/LateOpeningRuntimeAliceTimingValues.lean) computes actual first-versus-second values; [AliceTimingSorting](../../Vegas/Examples/LateOpeningRuntimeAliceTimingSorting.lean) derives opposite emission probabilities from global rationality. |
+| Receiver continuation on deviation histories | [FirstOpeningPayoff](../../Vegas/Examples/LateOpeningRuntimeFirstOpeningPayoff.lean) and [SecondOpeningPayoff](../../Vegas/Examples/LateOpeningRuntimeSecondOpeningPayoff.lean) preserve complete original payoff laws after every available genuine alias or silence. |
+| Receiver label beliefs | [InitializedSuccessReadout](../../Vegas/Examples/LateOpeningRuntimeInitializedSuccessReadout.lean) identifies actual label histories; [BobSafeProbability](../../Vegas/Examples/LateOpeningRuntimeBobSafeProbability.lean) derives quantitative bounds from positive Safe probability. |
+| Rare-information likelihoods | [LabelCross](../../Vegas/Examples/LateOpeningRuntimeLabelCross.lean) combines the complete initialized seen and unseen groups with one common consistency witness. Original protected-silence type weights can vanish arbitrarily quickly. |
+| Protected-decision contradiction | [AliceProtectedOptimality](../../Vegas/Examples/LateOpeningRuntimeAliceProtectedOptimality.lean) bounds the original late continuation by `R/2` for every initialized type under law preservation; [AliceTimingFloor](../../Vegas/Examples/LateOpeningRuntimeAliceTimingFloor.lean) supplies a strictly better available response. |
 
-The final negative must combine these results with protected-acceptance
-necessity and a profitable initialized deferral. Neither local response
-normalization nor a receiver-value bound alone excludes every preserving SE.
+The final negative combines these results, rather than treating local
+normalization or a receiver-value bound as sufficient by itself.
 Any generic adapter should be small, motivated by one of these concrete
 obligations, and instantiated immediately on the existing runtime.
 
@@ -147,9 +149,9 @@ rational policy, throughout all compatible legal histories. Final full-audit
 charges transfer separately using actual owner-authored traffic and receipts.
 The original first-prefix seen-opening likelihood has relative error bounded
 by its genuine-emission mass, with exact exclusions for nongenuine first
-packets and earlier silence. Prioritize initialized observation likelihoods,
-their common consistent limits, exact sender timing values and the initial
-deviation. The full native SE impossibility remains a missing capstone; see
+packets and earlier silence. Initialized likelihoods, their common consistent
+limits, exact sender timing values and the protected-decision contradiction
+are assembled in the checked native obstruction; see
 [the checked scopes](checked-runtime-boundaries.md#full-information-publication-and-exact-pending-observations).
 
 Use the actual packet identifier, evidence, readiness, binding allocation,

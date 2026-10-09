@@ -21,7 +21,7 @@ open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory GameTheory.Protocol GameTheory.Math.Probability
 open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeLatePrefix
   LateOpeningRuntimeLatePrefixKernel LateOpeningRuntimeLateResponseKernel
-  LateOpeningRuntimeFirstObservation
+  LateOpeningRuntimeFirstObservation LateOpeningRuntimeBobBindingService
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
 
@@ -94,6 +94,41 @@ def genuineProbability (profile : Profile weight nonnegative) (bit : Bool) (labe
     {response | GenuineResponse weight nonnegative
       (LateOpeningRuntimeAliceFirstWitness.decisionHistory weight nonnegative bit label)
         response}).toReal
+
+/-- The original early receiver response remains an exact multiplier for
+every event whose complete receiver record contains only silent responses. -/
+theorem early_comparison_event_probability (profile : Profile weight nonnegative)
+    (bit : Bool) (label : Fin 3) (submission : app.Submission) (seen : Bool)
+    (event : Set app.Execution) (quiet : ∀ final ∈ event, SilentRecall final) :
+    ((earlyComparison weight nonnegative profile bit label submission seen).toOuterMeasure
+      event).toReal =
+        (players weight nonnegative profile bob
+          ((earlyObserved bit label submission seen).recall bob)
+          ((earlyObserved bit label submission seen).observe app bob) ⟨none⟩).toReal *
+          ((quietRetry weight nonnegative bit label submission seen).toOuterMeasure event).toReal :=
+    by
+  classical
+  unfold earlyComparison
+  rw [toReal_toOuterMeasure_bind]
+  calc
+    _ = expect (players weight nonnegative profile bob
+        ((earlyObserved bit label submission seen).recall bob)
+        ((earlyObserved bit label submission seen).observe app bob))
+        (fun response => if (⟨none⟩ : app.Action) = response then
+          ((quietRetry weight nonnegative bit label submission seen).toOuterMeasure event).toReal
+            else 0) := by
+      apply expect_congr_on_support
+      intro response _
+      rcases response with ⟨transmission⟩
+      cases transmission with
+      | none => simp only [↓reduceIte]
+      | some raw =>
+          rw [ite_eq_right (by intro same; cases same)]
+          rw [transmitted_early_silent_event_zero weight nonnegative
+            (players weight nonnegative profile) (earlyObserved bit label submission seen)
+              raw event quiet]
+          simp
+    _ = _ := expect_ite_eq _ _ _
 
 variable (profile : Profile weight nonnegative) (bit : Bool) (label : Fin 3)
   (error : ℝ) (errorNonnegative : 0 ≤ error)

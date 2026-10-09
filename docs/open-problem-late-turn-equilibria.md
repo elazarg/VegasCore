@@ -21,8 +21,16 @@ and a dropped late opening is also charged an expected amount `c` by an audit.
 The intended game has none of this: commitments hold values and reveals open.
 The project has proved Nash-equilibrium preservation from the intended game to
 the ledger for every builder that respects protected inclusion. Sequential
-equilibrium (SE) preservation is proved for a fixed-calendar builder and open
-for arbitrary builders; this note isolates why.
+equilibrium (SE) preservation is proved for a fixed-calendar builder. The
+[checked native obstruction](commit-reveal-research/native-se-obstruction.md)
+rules out a general exact joint terminal-store/payoff theorem under the
+asynchronous contract alone: for fixed $R>0$, $D>R$, $K_A>R$, $K_B>1$, full
+authentic audit and fair partial samples, an admissible finite builder has
+native SE but none matching the source law. It permits arbitrarily small
+positive canonical late-opening omission. This does not rule out matching
+only public results or preservation under stronger public service properties.
+The finite comparison below isolates the mechanism; its sharper parameters
+are not the collateral bounds of the native theorem.
 
 ## The concrete question
 

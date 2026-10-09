@@ -5,7 +5,11 @@ Analysis by Codex. The exact finite native game in
 weak perfect Bayesian equilibrium with the selected source law, although
 for the high inclusion probabilities specified there no sequential equilibrium
 has that law. This is a paper result for the full bounded raw response menu.
-It is not a general PBE preservation theorem or a machine-checked result.
+It is not a general PBE preservation theorem or a machine-checked weak-PBE
+result. The companion [native SE obstruction](native-se-obstruction.md) is
+checked for $R>0$, $D>R$, $K_A>R$, $K_B>1$, full authentic audit and fair
+partial samples; the sharper collateral and broader sampling/audit variants
+remain paper results.
 
 Here **weak PBE** means sequential rationality at every information set,
 against every available continuation policy, and Bayes' rule at every

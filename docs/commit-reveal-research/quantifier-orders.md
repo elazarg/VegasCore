@@ -3,7 +3,9 @@
 The checked settle-late comparison already gives a negative answer to one
 abstract preservation question. It leaves a different positive question when
 collateral may depend on a known builder. Neither statement alone settles the
-full compiled runtime. This document keeps those scopes separate.
+full compiled runtime. The separate [checked native obstruction](native-se-obstruction.md)
+does settle the stated joint-law question for one actual compiled program and
+the full bounded raw menu. This document keeps those scopes separate.
 
 The primary project question chooses collateral before the selected builder,
 using only public service properties. The fixed-builder calculation below is
@@ -87,10 +89,13 @@ and the complete native action space are not covered. Adding actions can
 restore equilibrium implementation, so a native embedding must control their
 incentives and observations, not merely reproduce this game's paths.
 [Comparison scope](../runtime-features-vs-late-leak.md#limits).
-The [reviewed native construction](native-late-action-analysis.md) does this
+The [checked native construction](native-se-obstruction.md) does this
 for an explicit three-instruction source and the complete bounded raw menu,
-with explicit fixed native charge bounds. It has a paper proof; its exact source,
-scheduler, menu and belief identities remain to be formalized in Lean.
+with fixed $R>0$, $D>R$, $K_A>R$ and $K_B>1$, full authentic audit and fair
+partial samples. The exact source, scheduler, full-menu incentive comparisons
+and common native belief identities are checked. The sharper $K_A>R/2$ bound
+and broader observation/audit variants in the
+[paper construction](native-late-action-analysis.md) remain separate.
 
 ## Two orders of quantification
 
@@ -99,7 +104,7 @@ source equilibrium. They differ in whether the service is already known.
 
 | Order | Required preservation claim | Present status |
 | --- | --- | --- |
-| Collateral before service | Choose one finite collateral configuration that works for every builder in the declared class. | Checked negative in the settle-late family for D>R and c>R/2; reviewed full native paper negative with D>max(R,1), K_A>R/2 and K_B>1. Native formalization remains outstanding. |
+| Collateral before service | Choose one finite collateral configuration that works for every builder in the declared class. | Checked negative in the settle-late family for D>R and c>R/2. Also checked in the full bounded native menu for R>0, D>R, K_A>R, K_B>1, full authentic audit and fair partial samples: an admissible finite builder defeats exact joint terminal-store/payoff preservation while canonical omission can be arbitrarily small and positive. The stronger K_A>R/2 and broader audit/sampling variants remain paper results. |
 | Service before collateral | For each known builder satisfying stated bounds, choose a finite collateral configuration that works for every selected source SE. | The fixed-q comparison below has a paper bound forcing the intended law in every target SE. General compiled-runtime preservation remains open. |
 
 For fixed collateral, the builder can make 1-q small enough that expected
@@ -239,7 +244,9 @@ gives deterrence. They answer different questions. A positive floor is
 sufficient, but not necessary if potential gains vanish proportionally to
 collection risk or fees already make the actions unprofitable.
 
-The two independent native research tasks are therefore to realize the checked
-negative with complete additional-action coverage, and to derive the fixed
+The checked native negative supplies complete additional-action coverage for
+its stated fixture and collateral bounds. Remaining native questions include
+which public service properties exclude that construction and which fixed
 builder's conditional gain/collection bounds and source-information
-correspondence. Neither task should assume the other has been solved.
+correspondence support a positive. The negative does not supply those positive
+adapters, or an impossibility for the public-result marginal alone.

@@ -2,8 +2,10 @@
 
 Analysis by Codex. This is a decision aid for the mathematical research project,
 not a replacement runtime specification. It proposes a small interface and
-states where its conclusions stop. The linked new arguments are paper proofs;
-their native compiler adapters remain separate obligations.
+states where its conclusions stop. Candidate positive interfaces and the
+protected native adapter have paper proofs; the
+[full-menu native obstruction](native-se-obstruction.md) has a checked
+specialization with the scope stated below.
 The proposed scope and result classification have received independent
 mathematical review.
 
@@ -115,7 +117,7 @@ chosen values; previous effective openings are source-public before the next
 decision. Equal public packet and environment histories therefore couple even
 a content-inspecting scheduler and correlated private packet samples. The
 restricted game retains one protected source decision per event and makes
-other activations forced silence. Its full RAW extension remains unproved.
+other activations forced silence. Its conclusion does not cover the full RAW menu.
 
 For the well-formed intended mandatory-action source, the
 [reviewed native construction](native-protected-execution.md) proves that
@@ -129,11 +131,16 @@ from the adaptive adapters proved on paper. No additional general foundation
 is needed for this restricted paper result; its full-menu extension is the
 substantive boundary.
 
-The [full native counterexample](native-late-action-analysis.md) gives that
-boundary a complete paper negative. With fixed forfeit and sufficiently large
-deposits, two late sends of one immutable opening permit a public timely
-contract builder with no preserving SE. Full raw menus and the optional
-author-only observation and late-packet erasure hypotheses are included.
+The [checked full native counterexample](native-se-obstruction.md) gives that
+boundary a full-menu negative. For fixed $R>0$, $D>R$, $K_A>R$, $K_B>1$, full
+authentic audit and fair partial samples, two late sends of one immutable
+opening permit a public timely contract builder with no SE matching the
+source's joint terminal-store and realized-payoff law. Native SE exist, and
+canonical whole-horizon omission can be arbitrarily small and positive. Full
+raw menus, author-only samples and the late-packet erasure law are included.
+The sharper $K_A>R/2$ and broader audit/sampling variants remain
+[paper results](native-late-action-analysis.md). The checked theorem does not
+exclude preservation of the public-result marginal alone.
 The contradiction comes from globally consistent off-path beliefs. The
 [same full native fixture preserves weak PBE](native-weak-pbe.md), where
 Bayes' rule is required only at positive-reach decisions; stronger PBE

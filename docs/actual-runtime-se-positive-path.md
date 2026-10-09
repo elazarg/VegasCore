@@ -2,9 +2,12 @@
 
 Analysis by Codex. The useful positive direction is a faithful sequential
 service with public traffic, followed by enforcement of departures from that
-service. Pending packets need not be invisible. The unresolved part is proving
-that the actual asynchronous service is faithful at information sets, including
-unreached ones, rather than merely matching initialized terminal outcomes.
+service. Pending packets need not be invisible. The checked
+[native uniform obstruction](commit-reveal-research/native-se-obstruction.md)
+shows that the existing asynchronous contract alone cannot supply an
+unrestricted exact SE theorem. A positive needs an explicit stronger service,
+settlement or action restriction, with information and incentive arguments
+including unreached decisions.
 
 This analysis does not change the asynchronous target, checklist, or semantics.
 

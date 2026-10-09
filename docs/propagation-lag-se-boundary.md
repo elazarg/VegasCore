@@ -267,12 +267,19 @@ advantage and strong last-send bound are checked in
 whose targeted warning-strict build passes. The algebra and success-path
 consistency mechanism are explicit, but the extended polling game and its
 complete SE impossibility theorem have not been formalized in Lean. The
-checked whole-game negative remains the original `LateLeak` game.
+checked results for this polling extension are its primitive bounds.
+A separate [full native obstruction](commit-reveal-research/native-se-obstruction.md)
+is checked for the actual bounded raw runtime, full authentic audit and fair
+partial samples at fixed $R>0$, $D>R$, $K_A>R$, $K_B>1$. It excludes the
+source's joint terminal-store and realized-payoff law in every native SE;
+it does not formalize this extended polling game or prove a public-result-only
+impossibility.
 
 The operational direction is therefore more substantial than an appeal
 to unspecified robustness under chance perturbations. A fixed positive
 sampling hazard can produce the needed strict observation advantage in
-the existing carrier interface. Completing a native theorem still requires
+the existing carrier interface. Completing a native theorem for this polling
+extension still requires
 an actual all-history service schedule with two live late opportunities,
 no forced stale publication before the answer, and a proof controlling
 all strategic actions at the intervening observer activations.
