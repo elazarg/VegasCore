@@ -1081,3 +1081,119 @@ The [native SE counterexample](native-late-action-analysis.md),
 [protected-execution positive](native-protected-execution.md), and
 [same-fixture weak PBE](native-weak-pbe.md) remain reviewed paper results.
 The owner-controlled SE target and checklist are unchanged.
+
+## Full-information publication and exact pending observations
+
+These results concern the same three-instruction source and actual bounded
+runtime: Alice reveals an initialized Boolean, Bob commits one of six answers,
+and Bob reveals that immutable answer. Alice's additional private label is
+never published by the source. Her two legal late submission opportunities
+precede Bob's commitment. The builder samples pending identifiers fairly at
+two receiver callbacks and includes the pending pool through a public lottery
+with probability `q = weight/(1+weight)` for its singleton canonical packet.
+It admits all bounded raw responses, rather than restricting players to the
+canonical submission syntax.
+
+After Alice succeeds, every supported rational Bob commitment is clean
+throughout its **whole actual information set**, including histories with
+zero assigned belief. A single positive-belief clean settlement certifies
+the supported response's public commitment packet. Bob's remembered actions
+and current observation then fix that same packet and accepting receipt at
+every compatible legal history. Private response aliases remain possible.
+The pin is
+`Vegas.Examples.LateOpeningRuntimeBobSuccessBindingClean.rational_supported_clean_binding`
+in [BobSuccessBindingClean](../../Vegas/Examples/LateOpeningRuntimeBobSuccessBindingClean.lean).
+The actual accepting handler also proves the publication became ready at
+clock three, with its timer set to three, and that the canonical opening is
+available for the immutable selected answer. These are derived operational
+facts in [BobBindingChronology](../../Vegas/Examples/LateOpeningRuntimeBobBindingChronology.lean).
+
+At a clean, ready and timely **final** receiver callback, each supported
+response publishes the bound answer at every compatible history and every
+physical suffix in support. This includes zero-belief histories and arbitrary
+future player policies. The proof compares the full receiver-view law across
+the information set, then transports the zero failure probability established
+by sequential rationality. It does not infer audit equivalence from that view.
+The pin is
+`Vegas.Examples.LateOpeningRuntimeBobFinalFiberRationality.equilibrium_supported_publication`
+in [BobFinalFiberRationality](../../Vegas/Examples/LateOpeningRuntimeBobFinalFiberRationality.lean).
+Its conditions are `D>0`, nonnegative receiver collateral and authentic audit
+sampling.
+
+The earlier optional publication callback has a complete clean comparator:
+publish the current bound answer immediately, then use the existing answer
+policy, which stays silent at the final callback. Its actual whole suffix
+publishes that answer and has zero receiver charge on every physical branch.
+The immediate response belongs to the unchanged bounded menu. This is
+`Vegas.Examples.LateOpeningRuntimeOptionalOpening.canonical_continuation_clean`
+in [OptionalOpening](../../Vegas/Examples/LateOpeningRuntimeOptionalOpening.lean).
+The [optional information adapter](../../Vegas/Examples/LateOpeningRuntimeOptionalInformation.lean)
+distinguishes this callback from the earlier binding callback at the same
+clock using the exact number of remembered own responses. One actual clean
+representative supplies readiness, timeliness and cleanliness throughout the
+whole information set. An attainable comparator alone does not establish
+which optional responses sequential rationality permits.
+
+The comparator also attains the immutable answer's exact gross score at each
+hidden history. Every raw current response and future raw policy satisfies
+`raw payoff + actual audit charge*K_B + D*publication failure <= comparator payoff`.
+This pointwise bound retains the actual initialized inputs and every physical
+suffix; it has no sign restriction on the reward, forfeit or deposit. With
+nonnegative forfeit and deposit it gives weak dominance. The pin is
+`Vegas.Examples.LateOpeningRuntimeOptionalIncentive.canonical_audit_regret`
+in [OptionalIncentive](../../Vegas/Examples/LateOpeningRuntimeOptionalIncentive.lean).
+Turning this bound into supported-response normalization still requires the
+native whole-policy rationality and full-information adapters.
+
+The actual initialized prefix now decomposes over the original hidden-input
+prior and Alice's **original** protected response law. Any event requiring
+Bob's remembered empty protected receipts has zero probability after a
+protected raw packet. Its exact remaining probability therefore keeps the
+original protected-silence atom multiplied by the original first-late raw
+response law and the full later kernel. See
+`Vegas.Examples.LateOpeningRuntimeInitializedPrefix.clean_information_probability`
+in [InitializedPrefix](../../Vegas/Examples/LateOpeningRuntimeInitializedPrefix.lean).
+The silence atom may tend to zero arbitrarily fast; no lower bound is assumed.
+
+For any genuine first-opening alias and a silent retry, Bob's full remembered
+information has exact branch probabilities. Inclusion contributes `q`.
+Omission after Bob already learned the packet contributes `1-q`, since that
+knowledge persists. After he missed the packet earlier, the second sample
+splits omitted branches into newly learned and still empty information with
+probability `(1-q)/2` each. Actual receipts distinguish success from failure;
+the packet's public identity is retained. These laws are in
+[BindingFactors](../../Vegas/Examples/LateOpeningRuntimeBindingFactors.lean),
+using [BindingObservation](../../Vegas/Examples/LateOpeningRuntimeBindingObservation.lean).
+Actual bounded history representatives also witness the failure information
+classes in [BindingObservationWitness](../../Vegas/Examples/LateOpeningRuntimeBindingObservationWitness.lean).
+
+Replacing only the final retry by silence changes its whole native execution
+law by total variation at most the actual probability of an emitted retry.
+Every admitted genuine private first-opening representation has an actual
+bounded native retry information class, so the common consistency bound
+applies without a canonical-syntax restriction. A mixture with total prefix
+mass `m` consequently has event error at most `epsilon*m`. Dividing by positive
+`m` gives an error tending to zero even when `m` itself vanishes arbitrarily
+quickly. The pins are
+`Vegas.Examples.LateOpeningRuntimeRetryWitness.genuine_alias_response_close_quiet`
+and `Vegas.Examples.LateOpeningRuntimeRetryKernel.relative_event_error_tendsto` in
+[RetryWitness](../../Vegas/Examples/LateOpeningRuntimeRetryWitness.lean) and
+[RetryKernel](../../Vegas/Examples/LateOpeningRuntimeRetryKernel.lean).
+The original early Bob policy is retained in the pending kernels; these
+claims do not replace it by an independent or fixed silence probability.
+
+For successful Alice publication, Bob's native rational value is the maximum
+of `2/5` and his three actual posterior label probabilities. The same quantity
+computed from complete conditional physical prefix probabilities converges
+to that value along the given common SE consistency witness. This is
+`Vegas.Examples.LateOpeningRuntimeSuccessPosterior.conditional_value_tendsto`
+in [SuccessPosterior](../../Vegas/Examples/LateOpeningRuntimeSuccessPosterior.lean).
+It neither assumes that the posterior remains uniform nor supplies the
+observation-specific exclusion needed by the negative proof.
+
+The full native negative still requires connecting the optional callback,
+transferring audit cleanliness, controlling every nongenuine contribution
+relative to each relevant observation mass, proving the sender timing
+comparisons, and deriving the initial profitable deferral. These local
+results are not a general native SE-preservation or impossibility theorem.
+All runtime scope exclusions stated above continue to apply.

@@ -113,6 +113,21 @@ import Vegas.Examples.LateOpeningRuntimeBobRationality
 import Vegas.Examples.LateOpeningRuntimeBobSuffix
 import Vegas.Examples.LateOpeningRuntimeEquilibrium
 import Vegas.Examples.LateOpeningRuntimeEquilibriumConstraints
+import Vegas.Examples.LateOpeningRuntimeInitializedPrefix
+import Vegas.Examples.LateOpeningRuntimeSuccessPosterior
+import Vegas.Examples.LateOpeningRuntimeBindingObservation
+import Vegas.Examples.LateOpeningRuntimeBindingObservationWitness
+import Vegas.Examples.LateOpeningRuntimeBindingFactors
+import Vegas.Examples.LateOpeningRuntimeRetryKernel
+import Vegas.Examples.LateOpeningRuntimeRetryWitness
+import Vegas.Examples.LateOpeningRuntimeBobBindingPacket
+import Vegas.Examples.LateOpeningRuntimeBobSuccessBindingClean
+import Vegas.Examples.LateOpeningRuntimeBobBindingChronology
+import Vegas.Examples.LateOpeningRuntimeBobFinalObservation
+import Vegas.Examples.LateOpeningRuntimeBobFinalFiberRationality
+import Vegas.Examples.LateOpeningRuntimeOptionalOpening
+import Vegas.Examples.LateOpeningRuntimeOptionalInformation
+import Vegas.Examples.LateOpeningRuntimeOptionalIncentive
 import Vegas.Examples.LateLeak.SettleLateLikelihood
 import Vegas.Pending.ReactiveLateLottery
 
@@ -2213,3 +2228,117 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Examples.LateOpeningRuntimeAliceSuccessFloor.rational_supported_payoff_floor
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeInitializedPrefix.initialized_binding_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.LateOpeningRuntimeInitializedPrefix.initialized_binding_law
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeInitializedPrefix.clean_information_probability'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.LateOpeningRuntimeInitializedPrefix.clean_information_probability
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeSuccessPosterior.conditional_value_tendsto'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.LateOpeningRuntimeSuccessPosterior.conditional_value_tendsto
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeBindingObservation.genuine_retry_information_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.LateOpeningRuntimeBindingObservation.genuine_retry_information_law
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeBindingObservation.failed_unseen_timing_information'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.LateOpeningRuntimeBindingObservation.failed_unseen_timing_information
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeBindingObservation.failed_empty_information_inputs'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.LateOpeningRuntimeBindingObservation.failed_empty_information_inputs
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeBindingObservationWitness.failed_information_representative'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.LateOpeningRuntimeBindingObservationWitness.failed_information_representative
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeBindingFactors.canonical_seen_information_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.LateOpeningRuntimeBindingFactors.canonical_seen_information_law
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeBindingFactors.unseen_empty_failure_probability'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.LateOpeningRuntimeBindingFactors.unseen_empty_failure_probability
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeRetryKernel.relative_event_error_tendsto'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.LateOpeningRuntimeRetryKernel.relative_event_error_tendsto
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeRetryWitness.genuine_alias_response_close_quiet'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.LateOpeningRuntimeRetryWitness.genuine_alias_response_close_quiet
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeBobSuccessBindingClean.rational_supported_clean_binding'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.LateOpeningRuntimeBobSuccessBindingClean.rational_supported_clean_binding
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeBobBindingChronology.accepted_chronology'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.LateOpeningRuntimeBobBindingChronology.accepted_chronology
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeBobBindingChronology.canonical_openability'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.LateOpeningRuntimeBobBindingChronology.canonical_openability
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeBobFinalObservation.continuation_owner_same_information'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.LateOpeningRuntimeBobFinalObservation.continuation_owner_same_information
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeBobFinalFiberRationality.equilibrium_supported_publication'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.LateOpeningRuntimeBobFinalFiberRationality.equilibrium_supported_publication
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeOptionalOpening.canonical_continuation_clean'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.LateOpeningRuntimeOptionalOpening.canonical_continuation_clean
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeOptionalInformation.decisionOfInformation_spec'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.LateOpeningRuntimeOptionalInformation.decisionOfInformation_spec
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeOptionalIncentive.canonical_audit_regret'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.LateOpeningRuntimeOptionalIncentive.canonical_audit_regret

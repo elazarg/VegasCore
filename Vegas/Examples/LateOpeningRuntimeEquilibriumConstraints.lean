@@ -7,6 +7,7 @@ import Vegas.Examples.LateOpeningRuntimeBobBindingOptimization
 import Vegas.Examples.LateOpeningRuntimeBobBindingSettlement
 import Vegas.Examples.LateOpeningRuntimeBobKnownBit
 import Vegas.Examples.LateOpeningRuntimeBobSuccessSettlement
+import Vegas.Examples.LateOpeningRuntimeBobSuccessBindingClean
 import Vegas.Examples.LateOpeningRuntimeAliceFirstRationality
 import Vegas.Examples.LateOpeningRuntimeBobRationality
 import Vegas.Examples.LateOpeningRuntimeEquilibrium
@@ -29,7 +30,9 @@ zero receiver audit charge on every supported continuation. At the sender's
 first late callback after prior silence, only silence and genuine opening
 envelopes have positive response probability; private opening aliases remain.
 After a successful late opening, every supported raw first binding fixes
-Safe or a maximizing label guess and settles cleanly on assessed support.
+Safe or a maximizing label guess. Its canonical public commitment and clean
+immediate prefix are fixed throughout the whole information class, while
+future clean settlement is asserted on assessed support.
 
 The payoff constants precede the service choice. The response conditions
 quantify actual native information classes through actual representative
@@ -163,6 +166,28 @@ def NativeResponseConstraints
               (LateOpeningRuntimeEarlyBobSafeMenu.answerFinitePolicy weight nonnegative answer) =
                 LateOpeningRuntimeBobSuccessOptimization.bestAnswerValue
                   weight nonnegative site reward forfeit deposit assessment ∧
+          (∃ material : app.Submission,
+            response = ⟨some material⟩ ∧
+            LateOpeningRuntimeBobBindingPacket.responseMessage decision.execution material =
+              LateOpeningRuntimeBobSuffix.bindingMessage ∧
+            ((bob, 0), true) ∈
+              (LateOpeningRuntimeBobRawBinding.serviced decision.execution response).receipts ∧
+            LateOpeningRuntimeBobAudit.CleanBindings
+              (LateOpeningRuntimeBobRawBinding.serviced decision.execution response) ∧
+            ∀ history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+                bob site.1,
+              LateOpeningRuntimeBobBindingPacket.responseMessage
+                (LateOpeningRuntimeBobSuccessInformation.decisionOfInformation
+                  weight nonnegative site representative decision current history).execution
+                    material = LateOpeningRuntimeBobSuffix.bindingMessage ∧
+              ((bob, 0), true) ∈ (LateOpeningRuntimeBobRawBinding.serviced
+                (LateOpeningRuntimeBobSuccessInformation.decisionOfInformation
+                  weight nonnegative site representative decision current history).execution
+                    response).receipts ∧
+              LateOpeningRuntimeBobAudit.CleanBindings (LateOpeningRuntimeBobRawBinding.serviced
+                (LateOpeningRuntimeBobSuccessInformation.decisionOfInformation
+                  weight nonnegative site representative decision current history).execution
+                    response)) ∧
           ∀ history ∈ (assessment.belief bob site).support,
             ∀ final ∈ (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative)
               (rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
@@ -251,12 +276,24 @@ theorem sequentially_rational_constraints
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative))] at localRational
-    exact ⟨LateOpeningRuntimeBobSuccessOptimization.rational_value_eq_bestAnswerValue
+    refine ⟨LateOpeningRuntimeBobSuccessOptimization.rational_value_eq_bestAnswerValue
       weight nonnegative site representative decision current reward forfeit deposit
-        forfeitPositive.le (by linarith) assessment localRational,
+        forfeitPositive.le (by linarith) assessment localRational, ?_⟩
+    intro response supported
+    obtain ⟨material, answer, actionEq, packet, selected, shape, maximizing, receipt,
+        immediateClean, fullFiber⟩ :=
+      LateOpeningRuntimeBobSuccessBindingClean.rational_supported_clean_binding
+        weight nonnegative site representative decision current reward forfeit deposit
+          forfeitPositive (by linarith) assessment localRational response supported
+    obtain ⟨other, otherSelected, _, _, settled⟩ :=
       LateOpeningRuntimeBobSuccessSettlement.rational_supported_clean_settlement
         weight nonnegative site representative decision current reward forfeit deposit
-          forfeitPositive (by linarith) assessment localRational⟩
+          forfeitPositive (by linarith) assessment localRational response supported
+    have sameAnswer : other = answer := PublicationResult.success.inj
+      (Option.some.inj (otherSelected.symm.trans selected))
+    subst other
+    exact ⟨answer, selected, shape, maximizing,
+      ⟨material, actionEq, packet, receipt, immediateClean, fullFiber⟩, settled⟩
 
 /-- All response constraints hold simultaneously in each native sequential
 equilibrium, including its information classes outside the realized path. -/

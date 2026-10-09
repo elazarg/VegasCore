@@ -214,8 +214,12 @@ admissibility.
   receiver bindings, and correct clean publication after authenticated bit
   knowledge. After a successful late opening it also forces Safe or a
   maximizing label guess, with clean publication on positive-belief histories.
-  This does not yet transfer settlement to zero-belief histories which Alice's
-  deviations can reach. It is
+  Its supported successful commitments now have canonical public packets and
+  accepted binding receipts throughout the whole information set, including
+  histories with zero assessed belief. Final publication from a clean last
+  callback also transfers to all compatible histories. Connecting these facts
+  through the optional earlier publication callback, and transferring all
+  audit deductions, remain separate obligations. The common-service result is
   `Vegas.Examples.LateOpeningRuntimeEquilibriumConstraints.exists_service_with_constraints`
   in [LateOpeningRuntimeEquilibriumConstraints.lean](../Vegas/Examples/LateOpeningRuntimeEquilibriumConstraints.lean).
   The failure bound is for specified canonical whole-horizon policies, not
@@ -228,8 +232,11 @@ admissibility.
   one uniform bound tending to zero along the same SE consistency witness
   which generates Bob's actual conditional input probabilities. Full native
   history groups are connected to the physical prefix law, including private
-  raw aliases and hidden extra packets. The remaining work is to compute the
-  observation-specific relative probabilities, rather than assume beliefs.
+  raw aliases and hidden extra packets. Exact native observation factors now
+  retain the original early receiver policy and every genuine private alias.
+  Retry errors are bounded relative to their own prefix mass, even when that
+  mass vanishes arbitrarily quickly. The remaining work composes these facts
+  into complete observation-specific likelihoods and the timing contradiction.
   See [the checked consistency adapters](commit-reveal-research/checked-runtime-boundaries.md#consistency-constrains-unreached-beliefs).
 - **Preserving settlement has no supported deductions:** equality with the
   selected source's joint terminal/payoff law forces the successful Safe

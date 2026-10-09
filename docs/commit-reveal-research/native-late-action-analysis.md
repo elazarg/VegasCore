@@ -635,10 +635,16 @@ receiver optimization is checked, including clean settlement and Alice's
 success floor on positive receiver-belief histories. The full native history
 groups are connected to physical prefix probabilities and actual consistent
 conditional-belief limits. One common SE consistency witness controls all
-three sender response errors uniformly. The remaining obligations include
-transferring successful settlement to deviation histories assigned zero Bob
-belief, legitimate first-versus-second timing comparisons, observation-specific
-relative likelihood calculations, and the SE cross-identity and initial
-deviation argument.
+three sender response errors uniformly. Supported successful bindings now
+have a canonical public packet and accepting receipt throughout the whole
+information set, including zero-belief histories. Final publication from a
+clean final callback has the same full-information-set scope. The initialized
+raw prefix retains each private type's original protected-silence probability;
+exact observation factors retain genuine private aliases, and native retry
+witnesses supply vanishing error relative to their prefix mass.
+The remaining obligations connect the optional publication callback, transfer
+audit cleanliness, compare legitimate first-versus-second sending times, and
+compose the complete relative likelihoods into the SE cross-identity and
+initial deviation argument.
 These are formalization tasks for the explicit configuration, rather than
 an assumed private runtime interface.
