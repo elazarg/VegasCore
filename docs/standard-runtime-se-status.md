@@ -154,15 +154,46 @@ admissibility.
   packet probability is at most `epsilon/(K_B-1)`. Pending observations stay
   visible; no posterior is prescribed. See
   [the native incentives](commit-reveal-research/checked-runtime-boundaries.md).
-- **Equilibrium value after Alice's failed publication:** at Bob's actual
+- **Optimal raw responses after Alice's failed publication:** at Bob's actual
   first binding opportunity with silent earlier responses and Alice failed,
-  every sequentially rational assessment has continuation value at least
-  `1/2`. His two legal fixed bit guesses have complementary values under any
-  belief, using clean, successful actual commitment/opening continuations.
-  These information classes have bounded native representatives. This proves
-  an attainable deviation and incumbent-value bound; it does not classify
-  every optimal raw response or specify the posterior. See
+  every sequentially rational assessment has continuation value exactly equal
+  to the better of his two clean fixed bit guesses, hence at least `1/2`.
+  Every supported raw current response successfully binds a maximizing bit
+  guess. Their complementary values are computed under the assessment's
+  actual belief, with no posterior assumption. The raw ceiling includes
+  malformed packets, private preparation and every later policy; nonnegative
+  forfeit and receiver deposit suffice. These classes have bounded native
+  representatives. See
   [the checked binding analysis](commit-reveal-research/checked-runtime-boundaries.md).
+- **Clean settlement of optimal guesses:** positive forfeit and receiver
+  deposit further force successful publication of that same maximizing guess
+  with zero audit charge, for every supported current response, positive-belief
+  hidden history and supported actual continuation. This includes hidden
+  histories where the committed guess is wrong. The result retains the full
+  raw response menu; see
+  [the settlement result](commit-reveal-research/checked-runtime-boundaries.md).
+- **Authentic knowledge despite publication failure:** if Bob's remembered
+  view contains an authentic certificate for Alice's bit, his value at that
+  failed-publication binding class is one. With nonnegative forfeit and
+  positive receiver deposit, every supported physical continuation publishes
+  the correct bit guess with zero full-audit charge. The theorem derives bit
+  knowledge throughout the whole information class. Initialized bounded
+  witnesses prove this can actually occur after a packet leaks and is omitted;
+  see [the native knowledge result](commit-reveal-research/checked-runtime-boundaries.md).
+- **First late sender response:** after earlier silence, every native SE
+  uses only silence or a genuine opening at Alice's first late callback, under
+  the same positive final-opening margin above. The repair changes only that
+  current response and retains her entire incumbent future policy. Actual
+  bounded descendants and final sequential incentives supply its payoff lower
+  bound under arbitrary intervening receiver behavior. The choice between
+  the two legal sending times remains; see
+  [the checked sender analysis](commit-reveal-research/checked-runtime-boundaries.md).
+- **A public preservation requirement:** any raw native profile reproducing
+  the almost-sure successful Alice publication marginal must obtain her
+  protected accepting receipt almost surely. No equilibrium, collateral or
+  hidden-binding agreement is required. Matching any intended source SE's
+  joint outcome and payoff law therefore implies this condition; see
+  [the preserving-law boundary](commit-reveal-research/checked-runtime-boundaries.md).
 - **Collateral fixed before the builder:** for every nonnegative reward `R`,
   fixed `D>R` and `K_A>R`, and any requested positive failure bound, one finite
   positive lottery weight satisfies the actual full raw-history service
@@ -177,7 +208,9 @@ admissibility.
   arbitrarily small terminal omission for both canonical late-send policies,
   an actual native SE, and the sender and receiver constraints above for every
   SE of that same game, including final disclosure after a clean answer
-  commitment. It is
+  commitment, first-late permitted sender responses, maximizing failed-case
+  receiver bindings, and correct clean publication after authenticated bit
+  knowledge. It is
   `Vegas.Examples.LateOpeningRuntimeEquilibriumConstraints.exists_service_with_constraints`
   in [LateOpeningRuntimeEquilibriumConstraints.lean](../Vegas/Examples/LateOpeningRuntimeEquilibriumConstraints.lean).
   The failure bound is for specified canonical whole-horizon policies, not

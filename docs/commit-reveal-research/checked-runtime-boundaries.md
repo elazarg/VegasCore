@@ -787,6 +787,15 @@ for every supported initialized bit and label. The native game has an SE, and
 - Bob stays silent at his first callback while Alice is unresolved.
 - After Alice fails, Bob's first binding continuation is worth at least `1/2`
   when his earlier responses were silent.
+- Every supported raw response at that binding opportunity fixes a bit guess
+  maximizing its value under the actual assessment belief. The incumbent's
+  continuation value equals the better of his two clean fixed guesses.
+- If Bob's remembered view contains an authentic certificate for Alice's bit,
+  his continuation value is one. Every supported continuation publishes the
+  correct bit guess and has zero receiver audit charge.
+- At Alice's first late callback after earlier silence, she either remains
+  silent or emits her genuine opening envelope. Nongenuine packets have zero
+  response probability; all genuine private submission aliases remain.
 - After a clean accepted answer commitment, Bob has zero final-publication
   failure probability at a ready, timely final information set.
 
@@ -795,14 +804,115 @@ representative with the specified operational conditions. The omission bound
 concerns the two specified late-send policies through the whole horizon; it
 is not a uniform bound on all raw continuations or an equilibrium outcome
 claim. This theorem keeps collateral before the builder and establishes
-nonvacuity, while leaving first-late timing, receiver response optimization
-and consistent posterior calculations open.
+nonvacuity, while leaving the choice between the two legitimate late sending
+times and consistent posterior calculations open.
 The stronger core
 `Vegas.Examples.LateOpeningRuntimeEquilibriumConstraints.sequentially_rational_constraints`
 needs only the existing native sequential-rationality condition. Bayes
 consistency and an SE consistency sequence are unnecessary for these five
 constraints. This is useful for assessing weaker equilibrium conventions too;
 it is not a PBE-preservation theorem.
+
+## Complete raw responses at the concrete late decisions
+
+The source first publishes Alice's initialized Boolean, then asks Bob to
+commit one of six answers and publish it. Alice also has an independent
+private preference label that the source never publishes. Bob's answers are
+a Safe answer, three guesses of that label, and two guesses of the Boolean.
+If Alice's publication fails, only a correct Boolean guess earns Bob one;
+the other answers earn zero. Forfeit and audit deductions are nonnegative.
+
+At Bob's actual first binding callback after that failure and earlier Bob
+silence, **every raw response and every later policy has realized payoff at
+most the correctness score of the answer fixed by the immediate service**.
+This includes malformed calls, unusable handles, silence, hidden preparation,
+certificate aliases and arbitrary later packets. A binding omitted at that
+service cannot be repaired: the optional callback stays disabled, expiry
+stores binding failure, and the later callback occurs after that settlement.
+The same raw current response fixes the same typed result throughout Bob's
+actual information class, because his recall and view determine its immediate
+physical service. These are checked in
+[BobRawBinding](../../Vegas/Examples/LateOpeningRuntimeBobRawBinding.lean),
+[BobBindingOmission](../../Vegas/Examples/LateOpeningRuntimeBobBindingOmission.lean)
+and [BobRawPayoff](../../Vegas/Examples/LateOpeningRuntimeBobRawPayoff.lean).
+The payoff bound permits arbitrary audit sampling and only requires
+`D>=0` and `K_B>=0`.
+
+Clean complete bit-guess policies attain their corresponding expected
+correctness scores. Hence sequential rationality forces continuation value
+equal to the maximum of those two policy values, and **each supported current
+raw response successfully binds a maximizing bit guess**. A tie permits both
+guesses. Private submission syntax is retained; the conclusion classifies
+the logical answer rather than presuming a canonical runtime menu. It applies
+under any belief on the complete native information class. The pins are
+`Vegas.Examples.LateOpeningRuntimeBobBindingOptimization.rational_value_eq_bestGuessValue`
+and
+`Vegas.Examples.LateOpeningRuntimeBobBindingOptimization.rational_supported_binding`
+in [BobBindingOptimization](../../Vegas/Examples/LateOpeningRuntimeBobBindingOptimization.lean).
+
+For `D>0` and `K_B>0`, every such supported current response also publishes
+that same maximizing guess successfully with zero audit charge, at every
+positive-belief hidden history and every supported physical continuation.
+This includes histories where the chosen guess is wrong: positive forfeit
+makes withholding strictly worse there too. The proof saturates the
+nonnegative difference between logical score and realized payoff, first over
+the assessed belief and then over runtime outcomes. The pin is
+`Vegas.Examples.LateOpeningRuntimeBobBindingSettlement.rational_supported_clean_settlement`
+in [BobBindingSettlement](../../Vegas/Examples/LateOpeningRuntimeBobBindingSettlement.lean).
+
+An authentic opening certificate in Bob's remembered view proves the value
+of Alice's original binding across that entire class. It does not require
+an accepting publication receipt: the packet can have leaked and then been
+omitted. The correct fixed guess consequently has value one. Under `D>=0`
+and `K_B>0`, sequential rationality forces correct final publication and zero
+full-audit charge on every supported physical continuation averaged over his
+assessed belief. Merely possible histories assigned zero belief are not
+included in that support assertion. These are
+`Vegas.Examples.LateOpeningRuntimeBobKnownBit.equilibrium_correct_publication`
+in [BobKnownBit](../../Vegas/Examples/LateOpeningRuntimeBobKnownBit.lean), and
+the actual bounded information-class witness
+`Vegas.Examples.LateOpeningRuntimeBobKnownBitWitness.failed_publication_known_bit_class`
+in [BobKnownBitWitness](../../Vegas/Examples/LateOpeningRuntimeBobKnownBitWitness.lean).
+The witness retains the exact initialized Boolean and private label.
+
+At Alice's first late callback after no earlier transmission, a nongenuine
+packet is bounded above by `R-K_A`. Repairing only that response to silence
+leaves her entire future policy unchanged. Every supported intervening Bob
+response and service leads to a legal bounded final Alice callback with her
+immutable opening ready and timely. Global sequential rationality supplies
+the genuine final opening there, even after this counterfactual deviation.
+The resulting continuation is bounded below by `-(1-q)(D+K_A)`.
+Therefore the positive final-opening margin
+`min(D,K_A)-R-(1-q)(D+K_A)>0` also forces zero nongenuine first-late packet
+probability. Both silence and genuine first-late opening remain legitimate.
+This is
+`Vegas.Examples.LateOpeningRuntimeAliceFirstRationality.equilibrium_nongenuine_packet_zero`
+in [AliceFirstRationality](../../Vegas/Examples/LateOpeningRuntimeAliceFirstRationality.lean).
+The [physical prefix adapter](../../Vegas/Examples/LateOpeningRuntimeAliceQuietPrefix.lean)
+and [initialized witness](../../Vegas/Examples/LateOpeningRuntimeAliceFirstWitness.lean)
+keep real bounded traces and unrestricted intervening Bob policies.
+
+Private aliases of a genuine final opening have exactly the same terminal
+payoff distribution for every player and any audit sampler. The proof erases
+only the inactive sender's private recall as a total comparison projection;
+application state, packets, knowledge, receipts and every other player's
+recall remain exact. This projection does not change the runtime's memory or
+its information sets. See
+[AliceOpeningAliases](../../Vegas/Examples/LateOpeningRuntimeAliceOpeningAliases.lean)
+and [InactiveRecall](../../Interaction/ReactiveInactiveRecall.lean).
+
+Finally, any raw native profile whose decoded **Alice publication marginal**
+is almost surely successful must obtain her protected accepting receipt
+almost surely. Neither target equilibrium, hidden-binding equality, audit
+authenticity nor collateral assumptions are required. In particular, matching
+any intended source equilibrium's joint terminal and payoff law forces that
+protected receipt. The pins are
+`Vegas.Examples.LateOpeningRuntimePreservingLaw.successful_readout_protected_receipt`
+and
+`Vegas.Examples.LateOpeningRuntimePreservingLaw.intended_law_protected_receipt`
+in [PreservingLaw](../../Vegas/Examples/LateOpeningRuntimePreservingLaw.lean).
+This supplies a necessary condition on every candidate preserving equilibrium;
+the native consistent-likelihood argument is still needed to exclude them.
 
 ## Consistency constrains unreached beliefs
 
@@ -820,6 +930,28 @@ checks this argument for finite groups of actual histories.
 allows additional-history errors which vanish **relative to the shared type
 prefix and observation factors**. Absolute errors tending to zero are
 insufficient: the observation's probability may tend to zero faster.
+
+The actual native consistency sequence now has uniform vanishing conditional
+nongenuine-first-packet bounds across all legal first-late sender information
+classes. Weighted sums retain a relative bound even when the protected-silence
+prefix weights vanish arbitrarily quickly. This is
+`Vegas.Examples.LateOpeningRuntimeAliceFirstTremble.equilibrium_consistency_nongenuine_bound`
+and its ratio lemma in
+[AliceFirstTremble](../../Vegas/Examples/LateOpeningRuntimeAliceFirstTremble.lean).
+Together with the checked pending-opening retry bound, this controls two
+sources of hidden raw traffic without prescribing a posterior.
+
+An exact physical observation factor is also checked. For any actual first
+late sender decision and **any raw response probability law**, the probability
+that Bob learns the exact genuine opening packet at his next actual callback
+is one half the probability that Alice emitted that genuine envelope.
+Malformed responses and private aliases remain in the law; Bob's subsequent
+policy is arbitrary. A nongenuine first envelope cannot manufacture this
+exact observed packet. The pin is
+`Vegas.Examples.LateOpeningRuntimeFirstObservation.first_observation_probability`
+in [FirstObservation](../../Vegas/Examples/LateOpeningRuntimeFirstObservation.lean).
+This proves the first fair-sampling factor, not the complete receiver
+information-fiber reach sums or their consistent limiting beliefs.
 
 The general pin is
 `GameTheory.Protocol.InformationModel.AsymptoticHistoryLikelihood.belief_face`.

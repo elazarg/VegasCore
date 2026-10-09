@@ -623,9 +623,16 @@ silence, no duplicate after a genuine pending opening, and Bob continuation
 value at least one half after Alice's failure. One admissible builder gives
 both Alice laws with collateral fixed first. Actual permitted Alice envelopes
 are classified through their complete emitted ledger identity.
+Complete raw receiver optimization after failure is also checked: every
+supported current response fixes a maximizing Boolean guess, with no
+posterior assumption. An authentic remembered bit certificate forces correct
+clean publication throughout the supported continuation. First-late sender
+repair excludes nongenuine packets using her unchanged future policy and
+actual legal final-callback descendants. Preserving even the public Alice
+publication marginal forces protected acceptance almost surely.
 A checked native SE counterexample is still missing. Remaining Lean
-obligations include the first-late opening normal form, complete receiver
-raw-response optimization, full native information-fiber sums, relative
+obligations include successful-publication receiver optimization and the
+legitimate first-versus-second timing comparisons, full native information-fiber sums, relative
 likelihood bounds, and the SE cross-identity and initial deviation argument.
 These are formalization tasks for the explicit configuration, rather than
 an assumed private runtime interface.

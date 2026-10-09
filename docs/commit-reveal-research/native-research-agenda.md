@@ -87,21 +87,24 @@ bound, one admissible public builder has positive canonical late omission
 below that bound and actual SEs. Every SE
 obeys both final Alice response laws, early unresolved Bob silence, Bob's
 failed-publication continuation-value lower bound of `1/2`, and final
-publication after a clean answer commitment. The stronger local core needs
+publication after a clean answer commitment. It also forces each failed-case
+current raw response to bind a maximizing Boolean guess, correct clean
+publication when an authentic bit certificate is remembered, and only genuine
+opening or silence at Alice's first late callback. The stronger local core needs
 sequential rationality alone. See
 [checked boundaries](checked-runtime-boundaries.md) for the exact conditions
 and omitted runtime aspects.
 
-The following tasks can proceed in parallel, without adopting another game
-or assuming the desired posterior. They are **unproved obligations**, not
-additional pinned capstones.
+The following remaining tasks can proceed in parallel, without adopting
+another game or assuming the desired posterior. Their checked starting
+points and unproved outputs are distinguished explicitly.
 
 | Task | Existing boundary and required output |
 | --- | --- |
-| First late sender response | Extend [passive continuation](../../Interaction/ReactivePassiveContinuation.lean) with equality after changing only an inactive player's private recall. Instantiate it after Alice's final response, where other players still act and see identical views. Use the checked final-opening law to compare an entire policy that repairs a nongenuine first late send to silence followed by genuine opening. |
-| Receiver response optimization | Instantiate [binding classification](../../Vegas/Pending/ReactiveBindingClassification.lean) at Bob's actual first binding callback. Bound every raw continuation by the score of its fixed chosen answer, or prove failed settlement or audit collection. Canonical answer policies attain the corresponding scores. Use one argument for both Alice's success and failure, rather than assuming an answer-only runtime menu. |
-| Receiver knowledge | Derive the initialized bit from authentic opening evidence in Bob's actual remembered view and immutable initial association, throughout its information class. A known correct fixed guess then has value one; do not assume a point posterior. |
-| Rare-information likelihoods | Group every compatible native history, retaining hidden extra packets and private aliases. Combine uniform vanishing retry probabilities with [relative-likelihood machinery](../../GameTheoryExtensions/Analysis/Protocol/AsymptoticLikelihood.lean); the type-dependent earlier reach probability may itself vanish. Absolute error estimates do not suffice. |
+| Legitimate sender timing | [First-response repair](../../Vegas/Examples/LateOpeningRuntimeAliceFirstRationality.lean) now excludes nongenuine packets while retaining silence, genuine packets and private aliases. Use the receiver's actual success/failure values to derive the private types' preferences between the two legal sending times. |
+| Receiver after successful sender publication | [Failed-case optimization](../../Vegas/Examples/LateOpeningRuntimeBobBindingOptimization.lean) already handles the full raw menu. Reuse its physical first-service argument on a successful-publication class: Safe earns `2/5`, label guesses earn their actual belief probabilities, and Boolean guesses earn zero. Derive the corresponding optimal logical-answer support and sender success floors. |
+| Receiver label beliefs | [Authentic bit knowledge](../../Vegas/Examples/LateOpeningRuntimeBobKnownBit.lean) and its [actual initialized witness](../../Vegas/Examples/LateOpeningRuntimeBobKnownBitWitness.lean) are checked. The remaining beliefs concern Alice's unpublicized preference label, inferred from timing. Identify them from complete native histories rather than assuming a posterior. |
+| Rare-information likelihoods | Group every compatible native history, retaining hidden extra packets and private aliases. Combine uniform vanishing conditional retry and nongenuine-response probabilities with [relative-likelihood machinery](../../GameTheoryExtensions/Analysis/Protocol/AsymptoticLikelihood.lean). Derive the actual prefix and observation factors; the type-dependent earlier reach probability may itself vanish. Absolute error estimates do not suffice. |
 
 The final negative must combine these results with protected-acceptance
 necessity and a profitable initialized deferral. Neither local response

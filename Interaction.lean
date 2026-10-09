@@ -46,6 +46,7 @@ import Interaction.ReactivePriorityErasure
 import Interaction.ReactiveEmissionOrder
 import Interaction.ReactiveEquilibriumExistence
 import Interaction.ReactivePassiveContinuation
+import Interaction.ReactiveInactiveRecall
 import Interaction.ReactivePassiveDecision
 import Interaction.ReactiveEvaluation
 import Interaction.ReactiveEvidence
