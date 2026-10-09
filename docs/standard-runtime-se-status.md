@@ -217,9 +217,7 @@ admissibility.
   Its supported successful commitments now have canonical public packets and
   accepted binding receipts throughout the whole information set, including
   histories with zero assessed belief. Final publication from a clean last
-  callback also transfers to all compatible histories. Connecting these facts
-  through the optional earlier publication callback, and transferring all
-  audit deductions, remain separate obligations. The common-service result is
+  callback also transfers to all compatible histories. The common-service result is
   `Vegas.Examples.LateOpeningRuntimeEquilibriumConstraints.exists_service_with_constraints`
   in [LateOpeningRuntimeEquilibriumConstraints.lean](../Vegas/Examples/LateOpeningRuntimeEquilibriumConstraints.lean).
   The failure bound is for specified canonical whole-horizon policies, not
@@ -228,6 +226,29 @@ admissibility.
   rationality alone, without Bayes or SE consistency, so the same necessary
   conditions apply to assessments satisfying that rationality condition under
   weaker equilibrium conventions. No PBE-preservation result follows.
+- **Publication through both receiver callbacks:** separate checked native
+  consequences now compose the optional and final callbacks on Bob's original
+  rational policy. Once his clean canonical answer commitment is accepted,
+  every supported physical continuation publishes that answer, including from
+  zero-belief histories and after either Alice outcome. At the optional
+  callback, supported responses are silence or immediate correct publication;
+  actual silence reaches the clean, timely final callback. The latter also
+  has zero full-record Bob audit charge throughout its information set when
+  `D>0` and `K_B>0`. Alice's successful first two labels consequently receive
+  at least `R/2` before her own audit deduction. This does not normalize
+  gratuitous traffic at a later callback after Bob already published, or
+  establish a preserving SE. See
+  [the composed native publication results](commit-reveal-research/checked-runtime-boundaries.md#full-information-publication-and-exact-pending-observations).
+- **Exact sender values after settlement:** singleton inclusion has zero
+  sender audit charge; singleton omission has charge one under the full audit.
+  Under the original rational receiver policy, every branch publishes the
+  selected answer. Successful continuation values are exactly the source's
+  Safe or label-guess reward. Failed continuations give the label-selected
+  bit-guess reward minus `D+K_A`. Their expectations use the original raw
+  receiver response law and its actual typed binding result, including private
+  aliases and zero-belief histories. This supplies continuation formulas,
+  while the sender's timing and initial deviation arguments remain open. See
+  [the exact native values](commit-reveal-research/checked-runtime-boundaries.md#full-information-publication-and-exact-pending-observations).
 - **One actual consistency sequence:** all three sender response errors have
   one uniform bound tending to zero along the same SE consistency witness
   which generates Bob's actual conditional input probabilities. Full native
@@ -235,7 +256,12 @@ admissibility.
   raw aliases and hidden extra packets. Exact native observation factors now
   retain the original early receiver policy and every genuine private alias.
   Retry errors are bounded relative to their own prefix mass, even when that
-  mass vanishes arbitrarily quickly. The remaining work composes these facts
+  mass vanishes arbitrarily quickly. The entire original first-response
+  mixture has retry error at most `epsilon*alpha`, where `alpha` is its genuine
+  first-send probability. The actual likelihood of remembering an earlier
+  canonical opening is `alpha*p_seen*(q or 1-q)/2`, within that error, for both
+  success and failure. Nongenuine first sends and earlier silence contribute
+  exactly zero to those remembered-opening records. The remaining work composes these facts
   into complete observation-specific likelihoods and the timing contradiction.
   See [the checked consistency adapters](commit-reveal-research/checked-runtime-boundaries.md#consistency-constrains-unreached-beliefs).
 - **Preserving settlement has no supported deductions:** equality with the

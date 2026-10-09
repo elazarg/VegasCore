@@ -141,6 +141,17 @@ preparation memory must not disappear in a state-only projection.
 
 ## Late-action handoff
 
+For the concrete three-instruction configuration, clean accepted receiver
+bindings now publish through the optional and final callbacks on the original
+rational policy, throughout all compatible legal histories. Final full-audit
+charges transfer separately using actual owner-authored traffic and receipts.
+The original first-prefix seen-opening likelihood has relative error bounded
+by its genuine-emission mass, with exact exclusions for nongenuine first
+packets and earlier silence. Prioritize initialized observation likelihoods,
+their common consistent limits, exact sender timing values and the initial
+deviation. The full native SE impossibility remains a missing capstone; see
+[the checked scopes](checked-runtime-boundaries.md#full-information-publication-and-exact-pending-observations).
+
 Use the actual packet identifier, evidence, readiness, binding allocation,
 deadline and final-verdict definitions. Analyze at least two late choices or a
 fresh late binding where they are available; a one-callback abstraction can

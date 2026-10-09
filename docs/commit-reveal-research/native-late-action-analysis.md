@@ -632,7 +632,7 @@ actual legal final-callback descendants. Preserving even the public Alice
 publication marginal forces protected acceptance almost surely.
 A checked native SE counterexample is still missing. Successful-publication
 receiver optimization is checked, including clean settlement and Alice's
-success floor on positive receiver-belief histories. The full native history
+success floor on all compatible legal receiver histories. The full native history
 groups are connected to physical prefix probabilities and actual consistent
 conditional-belief limits. One common SE consistency witness controls all
 three sender response errors uniformly. Supported successful bindings now
@@ -642,9 +642,16 @@ clean final callback has the same full-information-set scope. The initialized
 raw prefix retains each private type's original protected-silence probability;
 exact observation factors retain genuine private aliases, and native retry
 witnesses supply vanishing error relative to their prefix mass.
-The remaining obligations connect the optional publication callback, transfer
-audit cleanliness, compare legitimate first-versus-second sending times, and
-compose the complete relative likelihoods into the SE cross-identity and
-initial deviation argument.
+The optional callback now permits only silence or immediate correct
+publication throughout its information set. Its actual silent suffix reaches
+the clean final callback, where publication and full receiver-audit cleanliness
+also hold throughout the information set. These facts compose into publication
+of each clean accepted answer on every physical continuation of the original
+receiver policy. Complete payoff laws retain genuine sender aliases, and the
+first-prefix likelihood after an earlier observed opening has error relative
+to its genuine-emission mass, including when that mass vanishes.
+The remaining obligations compare legitimate first-versus-second sending
+times and compose the initialized relative likelihoods into the SE
+cross-identity and initial deviation argument.
 These are formalization tasks for the explicit configuration, rather than
 an assumed private runtime interface.

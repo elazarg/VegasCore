@@ -1120,6 +1120,18 @@ in [BobFinalFiberRationality](../../Vegas/Examples/LateOpeningRuntimeBobFinalFib
 Its conditions are `D>0`, nonnegative receiver collateral and authentic audit
 sampling.
 
+With the actual full-record audit and `K_B>0`, the same scope also has zero
+receiver charge. This uses an additional audit argument: public terminal
+state, exact receipts and receiver-authored emitted envelopes determine his
+full charge. Those quantities have the same law across the final information
+set for a fixed response. The pin is
+`Vegas.Examples.LateOpeningRuntimeBobFinalAuditRationality.equilibrium_supported_clean_publication`
+in [BobFinalAuditRationality](../../Vegas/Examples/LateOpeningRuntimeBobFinalAuditRationality.lean).
+The audit transfer is proved in
+[BobFinalAuditObservation](../../Vegas/Examples/LateOpeningRuntimeBobFinalAuditObservation.lean).
+It is not asserted for an arbitrary sampler depending on other players'
+traffic.
+
 The earlier optional publication callback has a complete clean comparator:
 publish the current bound answer immediately, then use the existing answer
 policy, which stays silent at the final callback. Its actual whole suffix
@@ -1131,8 +1143,8 @@ The [optional information adapter](../../Vegas/Examples/LateOpeningRuntimeOption
 distinguishes this callback from the earlier binding callback at the same
 clock using the exact number of remembered own responses. One actual clean
 representative supplies readiness, timeliness and cleanliness throughout the
-whole information set. An attainable comparator alone does not establish
-which optional responses sequential rationality permits.
+whole information set. The actual finite whole-policy comparison is checked
+in [OptionalDecision](../../Vegas/Examples/LateOpeningRuntimeOptionalDecision.lean).
 
 The comparator also attains the immutable answer's exact gross score at each
 hidden history. Every raw current response and future raw policy satisfies
@@ -1142,8 +1154,37 @@ suffix; it has no sign restriction on the reward, forfeit or deposit. With
 nonnegative forfeit and deposit it gives weak dominance. The pin is
 `Vegas.Examples.LateOpeningRuntimeOptionalIncentive.canonical_audit_regret`
 in [OptionalIncentive](../../Vegas/Examples/LateOpeningRuntimeOptionalIncentive.lean).
-Turning this bound into supported-response normalization still requires the
-native whole-policy rationality and full-information adapters.
+For `D>0` and `K_B>0`, payoff saturation implies successful publication and
+zero charge on assessed continuation support, in
+[OptionalRationality](../../Vegas/Examples/LateOpeningRuntimeOptionalRationality.lean).
+More strongly, every supported current response is **silence or immediate
+successful publication of the bound answer**, throughout the entire legal
+information set. A clean assessed branch certifies the current packet, and
+the actual information fixes its public effect even at zero-belief histories.
+The pin is
+`Vegas.Examples.LateOpeningRuntimeOptionalPacket.equilibrium_supported_response`
+in [OptionalPacket](../../Vegas/Examples/LateOpeningRuntimeOptionalPacket.lean).
+This statement does not normalize a later callback after publication has
+already completed.
+
+The callbacks compose on the original receiver policy. An accepted clean
+answer commitment really enables the optional callback at clock three. If
+the receiver is silent there, the actual five-command prefix enables a clean,
+timely final callback at clock six, for every possible pending-message sample.
+Consequently every physical fourteen-command suffix publishes the selected
+answer, whether Alice previously succeeded or failed, without any positive
+belief premise. The pin is
+`Vegas.Examples.LateOpeningRuntimeBobDisclosurePublication.binding_publication`
+in [BobDisclosurePublication](../../Vegas/Examples/LateOpeningRuntimeBobDisclosurePublication.lean),
+using [BobDisclosureChronology](../../Vegas/Examples/LateOpeningRuntimeBobDisclosureChronology.lean).
+For Alice's first two private labels, her successful branch therefore pays at
+least `R/2` before her own audit deduction, at every compatible hidden history.
+Receiver rationality does not by itself clear sender traffic. This is
+`Vegas.Examples.LateOpeningRuntimeAliceFullFiberFloor.sequentially_rational_supported_payoff_floor`
+in [AliceFullFiberFloor](../../Vegas/Examples/LateOpeningRuntimeAliceFullFiberFloor.lean).
+After Alice's failure, the supported maximizing Boolean commitment is also
+clean throughout the whole information set, in
+[BobFailedBindingClean](../../Vegas/Examples/LateOpeningRuntimeBobFailedBindingClean.lean).
 
 The actual initialized prefix now decomposes over the original hidden-input
 prior and Alice's **original** protected response law. Any event requiring
@@ -1182,6 +1223,86 @@ and `Vegas.Examples.LateOpeningRuntimeRetryKernel.relative_event_error_tendsto` 
 The original early Bob policy is retained in the pending kernels; these
 claims do not replace it by an independent or fixed silence probability.
 
+The original mixture over **all** first responses and early receiver
+responses has a sharper retry error: at most `epsilon*alpha`, where `alpha`
+is the original genuine first-emission probability. Every other response
+keeps its original continuation in the comparison. Under the positive native
+retry-deterrence margin, sequential rationality makes the two laws exactly
+equal. The pins are
+`Vegas.Examples.LateOpeningRuntimeFirstRetryComparison.original_close_comparison`
+and `Vegas.Examples.LateOpeningRuntimeFirstRetryRationality.rational_comparison_law` in
+[FirstRetryComparison](../../Vegas/Examples/LateOpeningRuntimeFirstRetryComparison.lean)
+and [FirstRetryRationality](../../Vegas/Examples/LateOpeningRuntimeFirstRetryRationality.lean).
+
+For an information record remembering the canonical opening at the earlier
+sample, both acceptance and omission have actual first-prefix likelihood
+`alpha*p_seen*(q or 1-q)/2`, with error at most `epsilon*alpha`.
+Here $p_{\mathrm{seen}}$ is the original receiver-silence atom at that observation.
+A nongenuine first packet consumes Alice's identifier zero; no later raw
+policy can recreate the canonical identifier-zero opening. Earlier silence
+or an empty earlier sample also cannot create the remembered earlier packet.
+These exact exclusions support
+`Vegas.Examples.LateOpeningRuntimeSeenLikelihood.original_seen_error` in
+[SeenLikelihood](../../Vegas/Examples/LateOpeningRuntimeSeenLikelihood.lean), using
+[OpeningIdentity](../../Vegas/Examples/LateOpeningRuntimeOpeningIdentity.lean) and
+[EarlyRecall](../../Vegas/Examples/LateOpeningRuntimeEarlyRecall.lean).
+The relevant canonical early observations are actual bounded histories; their
+original receiver law is pure silence when `D>=0` and `K_B>1`, by
+[EarlyResponseLaw](../../Vegas/Examples/LateOpeningRuntimeEarlyResponseLaw.lean).
+
+This likelihood is connected to the complete initialized native history
+groups. Let `omega` be the actual prior atom times the original protected
+silence atom for that private bit and label. The seen-opening group's reach
+mass differs from `omega*alpha*p_seen*(q or 1-q)/2` by at most
+`epsilon*omega*alpha`. Immutable original inputs exclude every other private
+type exactly. Thus the error remains relative even when both protected
+silence and genuine first emission vanish arbitrarily fast. The actual
+receiver-silence atom converges to one along the **same** assessment sequence
+whose target is globally sequentially rational. These are
+`Vegas.Examples.LateOpeningRuntimeInitializedSeenLikelihood.initialized_history_seen_error`
+and `.early_silence_tendsto` in
+[InitializedSeenLikelihood](../../Vegas/Examples/LateOpeningRuntimeInitializedSeenLikelihood.lean).
+Actual legal representatives witness both the accepted and omitted seen
+information sets. The unseen-success group and the paired posterior
+cross-identity still need their own composition.
+
+The complete eighteen-command suffix after Alice's last callback decomposes
+into the actual inclusion lottery, receiver observation and original receiver
+continuation. Genuine private first-opening aliases with silent retry, and
+genuine final-opening aliases after earlier silence, preserve the exact whole
+payoff distribution against arbitrary future policies. The pins are
+`Vegas.Examples.LateOpeningRuntimeSettlementContinuation.genuine_first_payoff_law`
+and `.genuine_final_payoff_law` in
+[SettlementContinuation](../../Vegas/Examples/LateOpeningRuntimeSettlementContinuation.lean).
+The private submission recall remains present in the actual execution.
+
+The sender's complete continuation values after settlement are also exact.
+For the original rational receiver policy and positive `D,K_B`, successful
+singleton inclusion gives zero Alice audit charge, and omitted singleton
+inclusion gives charge one under the full audit. On every physical branch Bob
+publishes his selected answer. Alice's values are:
+
+| Alice's publication | Bob's selected answer | Alice's net payoff |
+| --- | --- | --- |
+| Success | Safe | `R/2` |
+| Success | Any of the three label guesses | `R` for Alice's labels zero and one; `0` for label two |
+| Failure | Guess true | `R-D-K_A` for label zero; `-D-K_A` otherwise |
+| Failure | Guess false | `R-D-K_A` for label one; `-D-K_A` otherwise |
+
+These are the actual source utility and deductions, not assumed continuation
+rewards. They retain all raw private commitment aliases. Their expectations
+are taken over Bob's **original current response law**, using the actual
+immediately serviced typed binding result. No desired posterior or
+positive-belief-history restriction is supplied. The expected-value pins are
+`Vegas.Examples.LateOpeningRuntimeAliceSuccessfulContinuation.receiver_expected_value`
+and `Vegas.Examples.LateOpeningRuntimeAliceFailureContinuation.receiver_expected_value`
+in [AliceSuccessfulContinuation](../../Vegas/Examples/LateOpeningRuntimeAliceSuccessfulContinuation.lean)
+and [AliceFailureContinuation](../../Vegas/Examples/LateOpeningRuntimeAliceFailureContinuation.lean).
+Expected-value integrability uses `R>=0,K_A>=0`; the pointwise payoff and audit
+identities in
+[AliceFailurePayoff](../../Vegas/Examples/LateOpeningRuntimeAliceFailurePayoff.lean)
+need no such sign assumptions.
+
 For successful Alice publication, Bob's native rational value is the maximum
 of `2/5` and his three actual posterior label probabilities. The same quantity
 computed from complete conditional physical prefix probabilities converges
@@ -1191,9 +1312,9 @@ in [SuccessPosterior](../../Vegas/Examples/LateOpeningRuntimeSuccessPosterior.le
 It neither assumes that the posterior remains uniform nor supplies the
 observation-specific exclusion needed by the negative proof.
 
-The full native negative still requires connecting the optional callback,
-transferring audit cleanliness, controlling every nongenuine contribution
-relative to each relevant observation mass, proving the sender timing
-comparisons, and deriving the initial profitable deferral. These local
+The full native negative still requires composing the initialized relative
+likelihoods for all relevant observations, proving their consistent
+cross-identity, establishing the exact sender timing comparisons, and
+deriving the initial profitable deferral. These local
 results are not a general native SE-preservation or impossibility theorem.
 All runtime scope exclusions stated above continue to apply.
