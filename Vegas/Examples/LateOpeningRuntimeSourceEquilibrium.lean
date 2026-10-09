@@ -112,11 +112,12 @@ theorem bobContinuation_payoff
     (parameterOutcome_finalState bit label answer)
 
 /-- Every whole Bob continuation policy has exactly the uniform-label
-decision value. Both source publications are mandatory in this game. -/
+decision value under Bayes' rule. Both source publications are mandatory,
+and this decision has positive reach under every strategy. -/
 theorem bobBinding_context_value
     {assessment : setup.intendedModel.BehavioralAssessment}
-    (consistent : assessment.IsSequentiallyConsistent
-      intended_decisionRecall.decisionInformationAntichain)
+    (bayes : InformationModel.BehavioralAssessment.IsBayesConsistent setup.intendedModel
+      assessment intended_decisionRecall.decisionInformationAntichain)
     (reward : ℝ) (bit : Bool) (alternative : setup.intendedModel.BehavioralPolicy bob) :
     (assessment.continuationContext setup.intended_bounded.wellFoundedHistories
       (bobBindingSite bit) (intendedPayoff reward bob)).value alternative =
@@ -125,7 +126,7 @@ theorem bobBinding_context_value
   let : Finite setup.intendedProtocol.History :=
     setup.intended_finite_history finiteBindingTypes
   rw [InformationModel.BehavioralAssessment.continuationContext_value, expect_bind_of_finite,
-    consistent_bobBinding_uniform consistent bit, expect_map]
+    bayes_bobBinding_uniform bayes bit, expect_map]
   change (expect (PMF.uniformOfFintype (Fin 3)) (fun label =>
     expect (setup.intendedModel.runBehavioralTerminalFrom
       setup.intended_bounded.wellFoundedHistories
@@ -134,6 +135,30 @@ theorem bobBinding_context_value
       (intendedPayoff reward bob))) = _
   simp_rw [bobContinuation_payoff]
   exact expect_comm_of_support_finite _ _ (Set.toFinite _) (Set.toFinite _) _
+
+/-- Bayes' rule and rationality at this decision alone force the safe
+answer. No requirement on off-path limiting beliefs is needed. -/
+theorem bayes_rational_bobAnswerLaw
+    {assessment : setup.intendedModel.BehavioralAssessment} {reward : ℝ}
+    (bayes : InformationModel.BehavioralAssessment.IsBayesConsistent setup.intendedModel
+      assessment intended_decisionRecall.decisionInformationAntichain) (bit : Bool)
+    (rational : assessment.IsSequentiallyRationalAt (bobBindingSite bit)
+      (assessment.continuationContext setup.intended_bounded.wellFoundedHistories
+        (bobBindingSite bit) (intendedPayoff reward bob))) :
+    bobAnswerLaw assessment.strategy bit = PMF.pure safe := by
+  let alternative : setup.intendedModel.BehavioralPolicy bob :=
+    fun info => PMF.pure (intendedFallback bob info)
+  have optimal := (Context.isLocallyOptimal_iff_of_integrable
+    (bobBinding_context_integrable assessment reward bit (assessment.strategy bob))
+    (fun policy _ => bobBinding_context_integrable assessment reward bit policy)).mp
+      rational alternative (Set.mem_univ _)
+  rw [bobBinding_context_value bayes, bobBinding_context_value bayes,
+    Profile.update_eq_self] at optimal
+  change expect (bobAnswerLaw (Profile.update (sig := setup.intendedModel.behavioralSignature)
+    assessment.strategy bob (fun info => PMF.pure (intendedFallback bob info))) bit)
+      (bobUniformAnswerValue reward bit) ≤ _ at optimal
+  rw [bobAnswerLaw_fallback, expect_pure, bobUniformAnswerValue_safe] at optimal
+  exact bob_answer_law_eq_pure_safe_of_value_ge reward bit _ optimal
 
 /-- Every actual intended source sequential equilibrium binds the safe
 answer. This identifies its outcome rather than selecting an unspecified
@@ -144,19 +169,11 @@ theorem intended_equilibrium_bobAnswerLaw
       intended_decisionRecall.decisionInformationAntichain
       setup.intended_bounded.wellFoundedHistories (intendedPayoff reward)) (bit : Bool) :
     bobAnswerLaw assessment.strategy bit = PMF.pure safe := by
-  let alternative : setup.intendedModel.BehavioralPolicy bob :=
-    fun info => PMF.pure (intendedFallback bob info)
-  have optimal := (Context.isLocallyOptimal_iff_of_integrable
-    (bobBinding_context_integrable assessment reward bit (assessment.strategy bob))
-    (fun policy _ => bobBinding_context_integrable assessment reward bit policy)).mp
-      (equilibrium.1 bob (bobBindingSite bit)) alternative (Set.mem_univ _)
-  rw [bobBinding_context_value equilibrium.2, bobBinding_context_value equilibrium.2,
-    Profile.update_eq_self] at optimal
-  change expect (bobAnswerLaw (Profile.update (sig := setup.intendedModel.behavioralSignature)
-    assessment.strategy bob (fun info => PMF.pure (intendedFallback bob info))) bit)
-      (bobUniformAnswerValue reward bit) ≤ _ at optimal
-  rw [bobAnswerLaw_fallback, expect_pure, bobUniformAnswerValue_safe] at optimal
-  exact bob_answer_law_eq_pure_safe_of_value_ge reward bit _ optimal
+  let : Finite setup.intendedProtocol.History :=
+    setup.intended_finite_history finiteBindingTypes
+  exact bayes_rational_bobAnswerLaw
+    (equilibrium.2.isBayesConsistent intended_decisionRecall.decisionInformationAntichain)
+    bit (equilibrium.1 bob (bobBindingSite bit))
 
 theorem intended_safe_readout_of_bobAnswerLaw
     (profile : ∀ who, setup.intendedModel.BehavioralPolicy who)
@@ -168,6 +185,20 @@ theorem intended_safe_readout_of_bobAnswerLaw
   rw [intendedTerminal_readout]
   simp_rw [safeAnswer, PMF.pure_map]
   exact PMF.bind_pure_comp _ _
+
+/-- Sequential rationality and Bayes' rule at positive-reach decisions
+already identify the exact source outcome. Full sequential consistency is
+stronger than this classification requires. -/
+theorem bayes_rational_terminal_law
+    {assessment : setup.intendedModel.BehavioralAssessment} {reward : ℝ}
+    (bayes : InformationModel.BehavioralAssessment.IsBayesConsistent setup.intendedModel
+      assessment intended_decisionRecall.decisionInformationAntichain)
+    (rational : assessment.IsSequentiallyRational
+      setup.intended_bounded.wellFoundedHistories (intendedPayoff reward)) :
+    intendedTerminalLaw reward assessment.strategy = safeTerminalLaw reward :=
+  intendedTerminalLaw_of_safe_readout reward assessment.strategy
+    (intended_safe_readout_of_bobAnswerLaw assessment.strategy
+      (fun bit => bayes_rational_bobAnswerLaw bayes bit (rational bob (bobBindingSite bit))))
 
 theorem intended_equilibrium_terminal_law
     {assessment : setup.intendedModel.BehavioralAssessment} {reward : ℝ}

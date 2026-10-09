@@ -63,6 +63,13 @@ forfeit composition keeps its existing value-binding source specialization.
 None of these statements establishes sequential rationality after an
 unreached runtime history.
 
+The concrete two-Boolean runtime examples below fix the player network
+observation rule to return no packet signal. Their claims concern physical
+execution or pointwise payoff comparisons under arbitrary beliefs, not
+preservation of information in a public mempool. The general Nash theorem
+above permits pending-packet observations. A full native SE counterexample
+still needs the partially public observations specified in its own model.
+
 ## Failed publications in the concrete source game
 
 The concrete three-instruction source first opens Alice's committed Boolean,
@@ -99,6 +106,15 @@ in
 [LateOpeningRuntimeSourceEquilibrium.lean](../../Vegas/Examples/LateOpeningRuntimeSourceEquilibrium.lean).
 Finite-game existence gives an actual SE with that law; equilibrium
 existence is not assumed as an adapter premise.
+
+This outcome classification also needs less than SE consistency: an
+assessment satisfying Bayes' rule at positive-reach information sets and
+sequential rationality has the same exact Safe law. The pin is
+`Vegas.Examples.LateOpeningRuntimeSource.bayes_rational_terminal_law` in the
+same module. At Bob's commitment each observed Boolean has positive
+probability under every strategy, so off-path belief freedom cannot change
+the answer. This is a source result under the stated Bayes-and-rationality
+convention; it does not establish PBE preservation through the runtime.
 
 For nonnegative Alice reward `R` and a publication forfeit `D` satisfying
 `D >= R` and `D >= 1`, **every intended source SE extends to the source game

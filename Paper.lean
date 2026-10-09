@@ -1525,3 +1525,8 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.Examples.LateOpeningRuntimeSource.exists_withholding_equilibrium_with_safe_law
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeSource.bayes_rational_terminal_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeSource.bayes_rational_terminal_law
