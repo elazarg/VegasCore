@@ -18,6 +18,49 @@ open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.P
 variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication Principal)
   (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
+/-- Every initialized raw history accounts for the scheduler horizon by its
+completed environment recall and remaining rounds. Player responses consume
+no scheduler rounds. -/
+theorem raw_trace_horizon {control : app.Control}
+    (trace : (app.protocol initial horizon scheduler).Trace (some control)) :
+    control.execution.environmentRecall.length + control.remaining = horizon := by
+  have accounted : ∀ {state}
+      (_trace : (app.protocol initial horizon scheduler).Trace state),
+      state.elim True (fun current =>
+        current.execution.environmentRecall.length + current.remaining = horizon) := by
+    intro state history
+    induction history with
+    | start => trivial
+    | @extend source target prior joint legal reached ih =>
+        change target ∈ (app.transition initial horizon scheduler source joint).support at reached
+        cases source with
+        | none =>
+            obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ reached
+            change 0 + horizon = horizon
+            omega
+        | some current =>
+            rcases current with ⟨remaining, actor, execution⟩
+            cases actor with
+            | some who =>
+                cases (PMF.mem_support_pure_iff _ _).mp reached
+                simpa only [Option.elim_some, app.respond_environmentRecall] using ih
+            | none =>
+                cases remaining with
+                | zero => exact (legal.1 ⟨rfl, rfl⟩).elim
+                | succ remaining =>
+                    obtain ⟨command, _, moved⟩ :=
+                      Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+                    obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
+                    have length : next.environmentRecall = execution.environmentRecall ++
+                        [⟨execution.observeEnvironment app, command⟩] := by
+                      unfold ReactiveApplication.Execution.environmentStep at supported
+                      obtain ⟨updated, _, rfl⟩ := PMF.support_map .. ▸ supported
+                      rfl
+                    simp only [Option.elim_some] at ih ⊢
+                    rw [length, List.length_append, List.length_singleton]
+                    omega
+  exact accounted trace
+
 theorem raw_trace_respond (remaining : Nat) (execution : app.Execution) (who : Principal)
     (response : app.Action)
     (trace : (app.protocol initial horizon scheduler).Trace

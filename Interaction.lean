@@ -43,6 +43,10 @@ import Interaction.ReactiveCompleteObservation
 import Interaction.ReactiveDecisionInformation
 import Interaction.ReactiveErasure
 import Interaction.ReactivePriorityErasure
+import Interaction.ReactiveEmissionOrder
+import Interaction.ReactiveEquilibriumExistence
+import Interaction.ReactivePassiveContinuation
+import Interaction.ReactivePassiveDecision
 import Interaction.ReactiveEvaluation
 import Interaction.ReactiveEvidence
 import Interaction.ReactiveEvidencePersistence

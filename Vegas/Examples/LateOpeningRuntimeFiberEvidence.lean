@@ -4,6 +4,7 @@ import Vegas.Examples.LateOpeningRuntimeLatePrefix
 import Vegas.Examples.LateOpeningRuntimeServiceDecision
 import Interaction.ReactiveSubmissionSerial
 import Interaction.ReactiveAllocation
+import Interaction.ReactiveEmissionOrder
 
 /-! # Evidence shared by actual native answer histories
 
@@ -58,6 +59,29 @@ theorem bob_silent_record_no_packets (weight : ℝ) (nonnegative : 0 ≤ weight)
   change message.id.1 = bob at same
   rw [same, zero] at earlier
   exact Nat.not_lt_zero _ earlier
+
+/-- Bob's silent record also rules out a random foreign-packet sample at
+Alice's next callback. Her own arbitrary pending traffic remains permitted. -/
+theorem bob_silent_record_alice_activation (weight : ℝ) (nonnegative : 0 ≤ weight)
+    (control : app.Control)
+    (trace : (app.protocol initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace (some control))
+    (bit : Bool) (label : Fin 3) (seen : Bool)
+    (recalled : control.execution.recall bob = [bobObservationRecord bit label seen]) :
+    control.execution.environmentStep app (.activate alice) =
+      PMF.pure (recorded control.execution (.activate alice) control.execution.application) := by
+  have noBob := bob_silent_record_no_packets weight nonnegative control trace
+    bit label seen recalled
+  apply recorded_activation
+  apply Finset.eq_empty_of_forall_notMem
+  intro id member
+  obtain ⟨pending, foreign⟩ := Finset.mem_filter.mp member
+  obtain ⟨message, member, identified⟩ := List.mem_map.mp (List.mem_toFinset.mp pending)
+  have other := noBob.pending message member
+  rcases message with ⟨⟨owner, serial⟩, payload⟩
+  fin_cases owner
+  · exact foreign (identified.symm ▸ rfl)
+  · exact other rfl
 
 /-- Any actual ready answer-binding decision at clock three is the same
 public callback, with exactly fourteen environment commands remaining. -/
@@ -127,5 +151,47 @@ theorem bob_information_no_packets (weight : ℝ) (nonnegative : 0 ≤ weight)
     (LateOpeningRuntimeService.scheduler weight nonnegative) trace
   exact ⟨bob_silent_record_serial weight nonnegative control raw bit label seen recalled,
     bob_silent_record_no_packets weight nonnegative control raw bit label seen recalled⟩
+
+/-- The ready event and clock in the player's actual observed view identify
+the answer decision throughout the bounded raw information fiber. -/
+theorem bob_information_binding_cursor (weight : ℝ) (nonnegative : 0 ≤ weight)
+    (control : app.Control)
+    (trace : (rawMenu.protocol initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace (some control))
+    (bit : Bool) (label : Fin 3) (seen : Bool) (view : app.PlayerView)
+    (same : (rawMenu.information initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).infoOf bob trace =
+        some ([bobObservationRecord bit label seen], view))
+    (ready : view.application.publicView.EventReady bobBindEvent)
+    (clock : view.application.publicView.clock = 3) :
+    control.execution.environmentRecall.length = 12 ∧ control.remaining = 14 := by
+  obtain ⟨active, _, observed⟩ := bob_information_recall weight nonnegative control trace
+    bit label seen view same
+  have applicationView := congrArg ReactiveApplication.PlayerView.application observed
+  change control.execution.application.playerView bob = view.application at applicationView
+  rw [← applicationView] at ready clock
+  change control.execution.application.publicView.EventReady bobBindEvent at ready
+  change control.execution.application.clock = 3 at clock
+  exact bob_binding_cursor weight nonnegative control
+    (rawMenu.toRawTrace initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative) trace) active
+        ((control.execution.application.publicView_eventReady bobBindEvent).mp ready) clock
+
+/-- An actual Alice packet with identifier zero has no earlier emitted
+packet in her remembered responses, irrespective of their contents. -/
+theorem alice_zero_no_prior_outputs (weight : ℝ) (nonnegative : 0 ≤ weight)
+    (control : app.Control)
+    (trace : (app.protocol initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace (some control))
+    (before after : List app.PlayerEntry) (entry : app.PlayerEntry)
+    (recalled : control.execution.recall alice = before ++ entry :: after)
+    (message : Message Player app.Payload) (emitted : entry.emitted = some message)
+    (identified : message.id = (alice, 0)) : app.outputs before = [] := by
+  have ordered := app.emissionOrder_history
+    (LateOpeningRuntimeService.scheduler weight nonnegative) initial
+      LateOpeningRuntimeService.horizon trace
+  change control.execution.EmissionOrder app at ordered
+  exact app.emitted_zero_has_no_prior_outputs control.execution ordered alice
+    before after entry recalled message emitted identified
 
 end Vegas.Examples.LateOpeningRuntimeFiberEvidence

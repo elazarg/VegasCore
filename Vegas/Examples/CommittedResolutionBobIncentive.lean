@@ -3,6 +3,7 @@
 import Vegas.Examples.CommittedResolutionBobAudit
 import Vegas.Examples.CommittedResolutionBobReadout
 import Vegas.Examples.CommittedResolutionForfeit
+import GameTheoryExtensions.Math.Probability.Regret
 
 /-! # Final native disclosure incentives under arbitrary beliefs
 
@@ -333,8 +334,6 @@ theorem canonical_bob_response_regret {History : Type*} (lower upper : ℝ)
   let gap := forfeit - (upper - lower)
   let fails : Set app.Execution :=
     {final | final.application.config.store (.inr bobEvent) = some .failure}
-  let augmented : app.Execution → ℝ := fun final =>
-    payoff final + gap * if final ∈ fails then 1 else 0
   let rawKernel := fun history => (responses history).bind fun response =>
     app.runRounds CommittedResolutionRecovery.scheduler (players history) 5
       ((control history).execution.respond app bob response)
@@ -348,61 +347,19 @@ theorem canonical_bob_response_regret {History : Type*} (lower upper : ℝ)
     payoffIntegrable_of_bounded _ _ fun final =>
       bob_native_utility_bounded parameter utility forfeit sample deposit lower upper within
         (app.finished final)
-  have integrableAugmented (law : PMF app.Execution) : PayoffIntegrable law augmented :=
-    payoffIntegrable_add (integrable law)
-      (payoffIntegrable_const_mul (payoffIntegrable_ite_one_zero law (· ∈ fails)))
-  have branch : ∀ history ∈ belief.support,
-      expect (rawKernel history) augmented ≤ expect (canonicalKernel history) payoff := by
-    intro history _
-    obtain ⟨canonical, decision, dominates⟩ := canonical_bob_response_dominates
-      parameter utility forfeit sample deposit lower upper within enough nonnegative authentic
-        (control history) (trace history) (active history)
-    subst canonical
-    apply expect_le_const _ augmented (integrableAugmented _)
-      (expect (canonicalKernel history) payoff)
-    intro final reached
-    obtain ⟨response, _chosen, continued⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-    have pointwise : ∀ canonicalFinal ∈ (canonicalKernel history).support,
-        augmented final ≤ payoff canonicalFinal := by
-      intro canonicalFinal canonicalReached
-      have comparison := dominates (players history) (future history) response final canonicalFinal
-        continued canonicalReached
-      by_cases failed : final ∈ fails
-      · simpa only [augmented, failed, ite_true, mul_one, payoff, gap] using comparison.2 failed
-      · simpa only [augmented, failed, ite_false, mul_zero, add_zero, payoff] using comparison.1
-    have averaged := expect_mono pointwise
-      (payoffIntegrable_constant (canonicalKernel history) (augmented final))
-      (integrable (canonicalKernel history))
-    simpa only [expect_constant] using averaged
-  have total := expect_mono branch
-    (payoffIntegrable_bind_conditionalExpectation belief rawKernel augmented (integrableAugmented
-      _))
-    (payoffIntegrable_bind_conditionalExpectation belief canonicalKernel payoff (integrable _))
-  rw [← expect_bind_tower belief rawKernel augmented (integrableAugmented _),
-    ← expect_bind_tower belief canonicalKernel payoff (integrable _)] at total
-  have indicatorIntegrable : PayoffIntegrable (belief.bind rawKernel)
-      (fun final => if final ∈ fails then (1 : ℝ) else 0) :=
-    payoffIntegrable_ite_one_zero _ _
-  have expanded : expect (belief.bind rawKernel) augmented =
-      expect (belief.bind rawKernel) payoff +
-        gap * ((belief.bind rawKernel).toOuterMeasure fails).toReal := by
-    change expect (belief.bind rawKernel)
-      (fun final => payoff final + gap * if final ∈ fails then 1 else 0) = _
-    rw [expect_add (integrable _) (payoffIntegrable_const_mul indicatorIntegrable),
-      expect_const_mul]
-    have eventMass : (expect (belief.bind rawKernel)
-        (fun final => if final ∈ fails then (1 : ℝ) else 0)) =
-        ((belief.bind rawKernel).toOuterMeasure fails).toReal := by
-      calc
-        _ = expect (belief.bind rawKernel) (fun final =>
-            @ite ℝ (final ∈ fails) (Classical.propDecidable _) 1 0) :=
-          expect_congr_on_support fun final _ => by
-            by_cases failed : final ∈ fails <;> simp only [failed, ite_true, ite_false]
-        _ = _ := expect_indicator (belief.bind rawKernel) fails
-    exact congrArg (fun mass => expect (belief.bind rawKernel) payoff + gap * mass) eventMass
-  rw [expanded] at total
-  change gap * ((belief.bind rawKernel).toOuterMeasure fails).toReal ≤
-    expect (belief.bind canonicalKernel) payoff - expect (belief.bind rawKernel) payoff
-  linarith
+  apply expect_failure_regret belief rawKernel canonicalKernel payoff payoff fails gap
+    (integrable _) (integrable _) (fun history _ => integrable (rawKernel history))
+    (fun history _ => integrable (canonicalKernel history))
+  intro history _ final reached canonicalFinal canonicalReached
+  obtain ⟨canonical, decision, dominates⟩ := canonical_bob_response_dominates
+    parameter utility forfeit sample deposit lower upper within enough nonnegative authentic
+      (control history) (trace history) (active history)
+  subst canonical
+  obtain ⟨response, _chosen, continued⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+  have comparison := dominates (players history) (future history) response final canonicalFinal
+    continued canonicalReached
+  by_cases failed : final ∈ fails
+  · simpa only [failed, ite_true, mul_one, payoff, gap] using comparison.2 failed
+  · simpa only [failed, ite_false, mul_zero, add_zero, payoff] using comparison.1
 
 end Vegas.Examples.CommittedResolutionBobIncentive

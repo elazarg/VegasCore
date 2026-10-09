@@ -26,6 +26,16 @@ completion by the target horizon. Commitments hide their private values;
 pending opening packets can be observed. Fees, capital costs and strategic
 miners are absent from this runtime game.
 
+The builder is a fixed public chance rule, not another strategic player. Each
+configured game evaluates strategies against that rule; a statement uniform
+over builders does not mean that players optimize against an unspecified
+distribution over builders. Such uncertainty would require a separate game
+or robust equilibrium definition. Ideal cryptography, authenticated authors
+and the declared sure protected-service promises are assumed. The results
+do not model reorganization, finality risk, outside communication, coalitions
+or resource and fee markets. In particular, an SE theorem for this interface
+would still need an implementation argument for a deployed blockchain.
+
 For a barrier-ordered compiled graph, each player makes its source decision
 at its first suitable opportunity. Then, for every nonnegative audit deposit
 and every authentic audit,
@@ -69,6 +79,32 @@ execution or pointwise payoff comparisons under arbitrary beliefs, not
 preservation of information in a public mempool. The general Nash theorem
 above permits pending-packet observations. A full native SE counterexample
 still needs the partially public observations specified in its own model.
+
+## Sequential equilibria exist in the bounded runtime
+
+A fixed physical horizon, finite local response menus, finitely branching
+initialization and nature, and remembered observations and responses suffice
+for SE existence in this runtime. The application states, message and
+observation carriers can remain infinite: only the legal histories must be
+finite. No sure inclusion, privacy, forfeit margin or audit coverage is needed
+for this existence statement. The proof instantiates the existing finite-game
+SE theorem with the native runtime's checked decision recall and finite-history
+laws; it does not replace native histories with a comparison game.
+
+The general pin is
+`Interaction.ReactiveApplication.ResponseMenu.exists_sequentialEquilibrium` in
+[ReactiveEquilibriumExistence.lean](../../Interaction/ReactiveEquilibriumExistence.lean).
+For the actual partially public three-instruction service described below,
+`Vegas.Examples.LateOpeningRuntimeEquilibrium.exists_sequential_equilibrium`
+in
+[LateOpeningRuntimeEquilibrium.lean](../../Vegas/Examples/LateOpeningRuntimeEquilibrium.lean)
+gives an SE for every finite nonnegative lottery weight and every choice of
+real-valued reward, forfeit, deposits and audit sampler. These parameters need
+no signs or margins for existence in a finite game.
+
+This separates two questions: **the runtime has SEs**, while **whether any of
+them realizes a specified source equilibrium law** requires a preservation or
+exclusion theorem. The latter is the unresolved full native question.
 
 ## Failed publications in the concrete source game
 
@@ -212,6 +248,30 @@ in
 This is an operational theorem; it is not an SE counterexample and does not
 supply a nondegenerate stochastic builder.
 
+The partially public three-instruction runtime described below gives the
+nondegenerate joint family as well. For every finite nonnegative weight
+`w`, it satisfies both predicates. Both initialized late sending times have
+an accepting receipt after nine commands with exactly
+`q = w/(1+w) < 1`; an accepting receipt survives **arbitrary later raw
+policies and schedulers**. The actual terminal acceptance is therefore at
+least `q`. For every positive proposed failure floor, some finite weight
+gives smaller final nonacceptance, for every supported Boolean and private
+label and both late timings. The pin is
+`Vegas.Examples.LateOpeningRuntimeReliability.exists_joint_service_below_failure_floor`
+in
+[LateOpeningRuntimeReliability.lean](../../Vegas/Examples/LateOpeningRuntimeReliability.lean).
+The same file checks that each actual sending decision is outside its
+protected window. Its exact probability is the nine-command lottery law;
+arbitrary later schedulers give a one-sided continuation bound. With this
+actual builder unchanged, later raw policies preserve **exactly** the
+Bernoulli receipt law, since it never includes another Alice identifier after
+the lottery. Thus its full-horizon acceptance is exactly `q` and its final
+nonacceptance is strictly positive `1-q` for every finite weight. This stronger
+law is `Vegas.Examples.LateOpeningRuntimeTerminalReceipt.terminal_receipt_law`
+in
+[LateOpeningRuntimeTerminalReceipt.lean](../../Vegas/Examples/LateOpeningRuntimeTerminalReceipt.lean).
+None of these claims assumes sequential rationality or supplies the native SE negative.
+
 ## Public lotteries can satisfy erasure independence
 
 A different checked construction gives each distinct pending identifier
@@ -329,6 +389,15 @@ Sending at the first late turn gives exactly a half-seen, half-missed record
 law. Waiting until the second gives the same missed record with probability
 one. Neither record reveals Alice's private preference. Each branch has an
 actual legal raw trace; these are not proposed abstract information sets.
+After accepted inclusion, Bob's **entire recall and current view** still
+agree between the first-send-missed and second-send cases, for any private
+labels. They also agree across labels when the first-send packet was observed.
+See
+[LateOpeningRuntimeLateAcceptance.lean](../../Vegas/Examples/LateOpeningRuntimeLateAcceptance.lean).
+For positive lottery weight, every possible branch reaches an actual active
+Bob decision in the complete bounded raw game:
+`Vegas.Examples.LateOpeningRuntimeLateHistories.answerDecision_trace` in
+[LateOpeningRuntimeLateHistories.lean](../../Vegas/Examples/LateOpeningRuntimeLateHistories.lean).
 At any raw history matching Bob's complete remembered silent response, no
 Bob-authored packet exists in pending, settled, leaked or recorded input
 traffic. Any ready Bob answer-binding decision at clock three occurs at the
@@ -336,6 +405,11 @@ same callback with fourteen commands left. These full-history restrictions
 are checked in
 [LateOpeningRuntimeFiberEvidence.lean](../../Vegas/Examples/LateOpeningRuntimeFiberEvidence.lean).
 They do not exclude unseen later Alice packets or give a complete posterior.
+Identifier zero does exclude every **earlier** emission, including malformed
+packets: actual remembered output identifiers are precisely their allocated
+serial order. The general checked lemma is
+`Interaction.ReactiveApplication.emitted_zero_has_no_prior_outputs` in
+[ReactiveEmissionOrder.lean](../../Interaction/ReactiveEmissionOrder.lean).
 
 The complete decoder retains the original Boolean and private label alongside
 the answer commitment and publications. Under arbitrary schedulers, deadlines,
@@ -352,12 +426,111 @@ in
 [LateOpeningRuntimeUtility.lean](../../Vegas/Examples/LateOpeningRuntimeUtility.lean).
 This states actual traffic conditions; an additional forbidden Alice packet
 is not silently treated as clean.
+At most one accepting identifier per source event is possible in **any** raw
+execution, for arbitrary initialization and scheduling. Accepting receipts
+also certify the event's authenticated owner and permanent completion. These
+are checked in
+[ReactiveAcceptanceUniqueness.lean](../../Vegas/Pending/ReactiveAcceptanceUniqueness.lean),
+with the pin `Vegas.EventGraphRuntime.accepting_identifiers_unique`.
+
+A retry has a concrete audit consequence. Alice owns one publication event,
+so two distinct Alice submissions cannot both be accepted. At settlement,
+every unaccepted envelope is forbidden, including malformed envelopes that
+name no event. The actual audit therefore collects with at least its declared
+coverage rate; full traffic auditing collects with certainty. If Alice's gross
+reward is at most `R`, her realized payoff after two distinct submissions is
+at most `R - K_A`, where `K_A` is her audit deposit. This holds under every raw
+continuation, rather than assuming that she retries a canonical packet. See
+`Vegas.Examples.LateOpeningRuntimeRetryAudit.alice_two_envelopes_utility_bound`
+in
+[LateOpeningRuntimeRetryAudit.lean](../../Vegas/Examples/LateOpeningRuntimeRetryAudit.lean).
+Silence can still leave the first packet unaccepted and incur both forfeit
+and audit collection. The actual remaining eighteen-command continuation
+after a genuine first late opening nevertheless gives a conservative bound:
+remaining silent has expected payoff at least `-(1-q)(D+K_A)`, for arbitrary
+Bob policies. On acceptance, Alice has nonnegative gross payoff and zero audit
+charge; on failure, the bound includes both losses. Every second raw submission
+has expected payoff at most `R-K_A`, even with arbitrary later policies. Thus
+silence strictly beats every second submission when
+
+`(1-q)(D+K_A) < K_A-R`.
+
+The checked pin is
+`Vegas.Examples.LateOpeningRuntimeAliceContinuation.quiet_strictly_beats_second_packet`
+in
+[LateOpeningRuntimeAliceContinuation.lean](../../Vegas/Examples/LateOpeningRuntimeAliceContinuation.lean).
+This comparison concerns the genuine first-late-opening histories just
+constructed, with a silent earlier Bob response and full traffic auditing.
+It does not yet classify every hidden history compatible with Alice's or Bob's
+information. Its deposit threshold is more conservative than the reviewed
+paper counterexample's threshold.
+The quantitative gap is at least
+`K_A-R-(1-q)(D+K_A)`. Moreover, for every fixed nonnegative reward and forfeit,
+every fixed `K_A>R`, and every positive requested failure floor, one finite
+builder in the same actual service family simultaneously satisfies the full
+raw-history service contract and packet-erasure requirement, has strictly
+positive failure below that floor for both canonical quiet late timing
+policies, and makes silence strictly superior for
+every bit, preference label, possible early sample and second raw submission.
+Both policy continuations remain arbitrary. This collateral-before-builder
+existential is
+`Vegas.Examples.LateOpeningRuntimeAliceContinuation.exists_service_with_quiet_normalization`.
+
+At Bob's final callback, a successfully committed answer has a stronger
+incentive result when its publication is ready and still within its deadline,
+and Bob's earlier traffic consists of accepted canonical commitments. Opening
+that answer succeeds and has zero audit charge under every authentic sampler.
+Every raw alternative weakly loses; if publication fails, it loses at least
+the forfeit `D`. For every belief over these actual histories, every stochastic
+raw response and every later policy, the expected gain from opening is at least
+`D` times the alternative's failure probability. The comparison does not require
+`D` to exceed the gross payoff range. Its chosen response uses only Bob's own
+remembered actions and current observation. The pins are
+`Vegas.Examples.LateOpeningRuntimeBobIncentive.canonical_dominates` and
+`Vegas.Examples.LateOpeningRuntimeBobIncentive.canonical_regret` in
+[LateOpeningRuntimeBobIncentive.lean](../../Vegas/Examples/LateOpeningRuntimeBobIncentive.lean).
+Clean earlier traffic and a deadline that has not passed are substantive
+conditions, not conclusions about every off-path final callback. This is a
+native continuation comparison.
+
+The bounded-menu and information-set adapters are also checked. One actual
+clean final-history representative suffices: every history at the same Bob
+information has the same committed answer, is ready and timely, and has clean
+Bob traffic. These facts follow from his own remembered submissions and
+current authenticated view, including the public receipts. His canonical
+response belongs to the actual bounded menu.
+The complete whole-policy continuation value used by the existing native
+assessment is exactly the physical response-and-settlement value used above.
+Consequently, **every native SE has zero final-publication failure probability
+under its belief at such an information set, whenever `D>0`**. Sequential
+rationality alone suffices; consistency is unnecessary for this local result.
+If the same genuine deviation improves payoff by at most epsilon, failure
+probability is at most `epsilon/D`.
+
+The pins are
+`Vegas.Examples.LateOpeningRuntimeBobRationality.equilibrium_final_failure_zero`
+and
+`Vegas.Examples.LateOpeningRuntimeBobRationality.final_failure_le_of_deviation_regret`
+in
+[LateOpeningRuntimeBobRationality.lean](../../Vegas/Examples/LateOpeningRuntimeBobRationality.lean).
+This is an actual-runtime SE consequence at a specified final information set.
+It does not establish sequential rationality at earlier decisions or global
+source SE preservation.
+For every positive finite lottery weight, the history class is inhabited:
+every typed answer, private label, either
+late sending time and possible early sample can reach a genuine bounded raw
+final Bob decision. Its answer was accepted at clock three, the optional
+opening callback was passed silently, and the final callback at clock six
+remains within the publication deadline. The checked witness and nonemptiness
+pins are `Vegas.Examples.LateOpeningRuntimeBobSuffix.finalDecision_trace` and
+`Vegas.Examples.LateOpeningRuntimeBobSuffix.final_disclosure_class_nonempty` in
+[LateOpeningRuntimeBobSuffix.lean](../../Vegas/Examples/LateOpeningRuntimeBobSuffix.lean).
 
 **This is a checked native service, not yet a checked SE counterexample.**
-The native information fibers, relative likelihood errors and sequential
-incentive comparisons are needed before this construction proves the SE negative. These checked
-execution facts neither assume the desired posterior nor identify the
-native game with a comparison game.
+The full information fibers, relative likelihood errors and remaining sender
+incentive comparisons are needed before this construction proves the SE
+negative. These checked execution and final-opening facts neither assume the
+desired posterior nor identify the native game with a comparison game.
 
 ## Consistency constrains unreached beliefs
 

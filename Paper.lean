@@ -58,9 +58,19 @@ import Vegas.Examples.LateOpeningRuntimeServiceContract
 import Vegas.Examples.LateOpeningRuntimeServiceErasure
 import Vegas.Examples.LateOpeningRuntimeObservation
 import Vegas.Examples.LateOpeningRuntimeLatePrefix
+import Vegas.Examples.LateOpeningRuntimeLateHistories
+import Vegas.Examples.LateOpeningRuntimeReliability
+import Vegas.Examples.LateOpeningRuntimeTerminalReceipt
+import Vegas.Pending.ReactiveAcceptanceUniqueness
 import Vegas.Examples.LateOpeningRuntimeFiberEvidence
 import Vegas.Examples.LateOpeningRuntimeUtility
 import Vegas.Examples.LateOpeningRuntimeNash
+import Vegas.Examples.LateOpeningRuntimeRetryAudit
+import Vegas.Examples.LateOpeningRuntimeAliceContinuation
+import Vegas.Examples.LateOpeningRuntimeBobIncentive
+import Vegas.Examples.LateOpeningRuntimeBobRationality
+import Vegas.Examples.LateOpeningRuntimeBobSuffix
+import Vegas.Examples.LateOpeningRuntimeEquilibrium
 import Vegas.Examples.LateLeak.SettleLateLikelihood
 import Vegas.Pending.ReactiveLateLottery
 
@@ -1623,3 +1633,102 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Examples.LateOpeningRuntimeFiberEvidence.bob_information_no_packets
+
+/-- info: 'Interaction.ReactiveApplication.emitted_zero_has_no_prior_outputs' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.ReactiveApplication.emitted_zero_has_no_prior_outputs
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeLateAcceptance.answerDecision_unseen_timing_info'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.LateOpeningRuntimeLateAcceptance.answerDecision_unseen_timing_info
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeLateHistories.answerDecision_trace' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeLateHistories.answerDecision_trace
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeReliability.exists_joint_service_below_failure_floor'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.LateOpeningRuntimeReliability.exists_joint_service_below_failure_floor
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeTerminalReceipt.terminal_receipt_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeTerminalReceipt.terminal_receipt_law
+
+/-- info: 'Vegas.EventGraphRuntime.accepting_identifiers_unique' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.accepting_identifiers_unique
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeTerminalReceipt.exists_joint_service_with_exact_failure'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.LateOpeningRuntimeTerminalReceipt.exists_joint_service_with_exact_failure
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeRetryAudit.alice_two_envelopes_utility_bound'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeRetryAudit.alice_two_envelopes_utility_bound
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeBobIncentive.canonical_dominates' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeBobIncentive.canonical_dominates
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeBobIncentive.canonical_regret' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeBobIncentive.canonical_regret
+
+/-- info: 'Interaction.ReactiveApplication.ResponseMenu.exists_sequentialEquilibrium'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.ReactiveApplication.ResponseMenu.exists_sequentialEquilibrium
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeEquilibrium.exists_sequential_equilibrium'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeEquilibrium.exists_sequential_equilibrium
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeAliceContinuation.quiet_expected_payoff_lower'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeAliceContinuation.quiet_expected_payoff_lower
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeAliceContinuation.quiet_strictly_beats_second_packet'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeAliceContinuation.quiet_strictly_beats_second_packet
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeAliceContinuation.exists_service_with_quiet_normalization'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.LateOpeningRuntimeAliceContinuation.exists_service_with_quiet_normalization
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeBobRationality.equilibrium_final_failure_zero'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeBobRationality.equilibrium_final_failure_zero
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeBobRationality.final_failure_le_of_deviation_regret'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeBobRationality.final_failure_le_of_deviation_regret
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeBobSuffix.finalDecision_trace' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeBobSuffix.finalDecision_trace
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeBobSuffix.final_disclosure_class_nonempty'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeBobSuffix.final_disclosure_class_nonempty

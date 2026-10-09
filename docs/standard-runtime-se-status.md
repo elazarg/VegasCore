@@ -35,6 +35,14 @@ admissibility.
 
 ## Checked positive results
 
+- **SE existence in the bounded runtime:** finite response menus, finite
+  branching of nature, a fixed horizon and the runtime's remembered
+  observations and responses give an SE for arbitrary realized payoffs.
+  In particular, the partially public three-instruction native example has
+  an SE at every finite lottery weight, without collateral-margin assumptions.
+  This is existence in the actual runtime, not preservation of a selected
+  source outcome. See
+  [the existence result](commit-reveal-research/checked-runtime-boundaries.md#sequential-equilibria-exist-in-the-bounded-runtime).
 - **Source to the ideal concurrent event graph:** the pinned
   `Vegas.Paper.concurrent_event_nash_iff` gives exact same-error Nash
   correspondence for compiled profiles of the failure-aware source game,
@@ -101,6 +109,19 @@ admissibility.
   to that recovery scheduler's final activation. It does not construct an SE
   assessment; see
   [the checked native incentive](commit-reveal-research/checked-runtime-boundaries.md#a-final-runtime-opening-is-optimal-under-every-belief).
+- **Final opening in the three-instruction native example:** after a clean
+  accepted answer commitment, at the actual final callback while publication
+  is ready and timely, canonical opening dominates every raw response. Its
+  expected advantage under every belief is at least `D` times the alternative's
+  failure probability, for every nonnegative forfeit `D`. The audit need only
+  be authentic and Bob's deposit nonnegative. The comparator uses his own
+  recall and observation. The actual bounded-menu and full information-set
+  adapters also give an SE consequence: at any information set with one such
+  clean representative, every native SE has zero final-publication failure
+  probability when `D>0`. An epsilon bound on the corresponding whole-policy
+  deviation gives failure probability at most `epsilon/D`. These are local
+  consequences, not a source SE-preservation theorem. See
+  [the concrete runtime boundaries](commit-reveal-research/checked-runtime-boundaries.md).
 - **Fully observed late-opening comparison:** for every inclusion probability
   between zero and one, a checked comparison family with intrinsic forfeit
   twice its reward preserves every intended source SE by a target SE. This
@@ -141,7 +162,9 @@ outside its protected window can be accepted with probability one by a
 builder satisfying both the full service contract and all-view erasure
 independence. Thus these two requirements alone provide no positive uniform
 late-failure probability. The finite-weight partially public three-instruction
-family separately satisfies their conjunction for every nonnegative weight.
+family gives the nondegenerate version: exact initialized and full-horizon
+late acceptance `w/(1+w)`, with strictly positive final failure for every
+finite nonnegative weight and their conjunction for the same builder.
 These are execution results, not impossibility theorems about SE; see
 [the checked boundaries](commit-reveal-research/checked-runtime-boundaries.md#the-service-contract-gives-no-uniform-late-failure-floor).
 

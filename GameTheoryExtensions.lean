@@ -56,6 +56,7 @@ import GameTheoryExtensions.Math.Probability.ObservedChoice
 import GameTheoryExtensions.Math.Probability.PresentConditional
 import GameTheoryExtensions.Math.Probability.PriorityChoice
 import GameTheoryExtensions.Math.Probability.Regularity
+import GameTheoryExtensions.Math.Probability.Regret
 import GameTheoryExtensions.Math.Probability.SiteDraw
 import GameTheoryExtensions.Math.Probability.Support
 import GameTheoryExtensions.Math.Probability.Survival

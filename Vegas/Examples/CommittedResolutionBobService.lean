@@ -6,6 +6,7 @@ import Vegas.Pending.ReactiveCanonicalResolution
 import Vegas.Pending.ReactiveServiceSelection
 import Interaction.ReactiveMessageIdentity
 import Interaction.ReactiveMonitoring
+import Interaction.ReactivePassiveContinuation
 
 /-! # A clean truthful Bob comparator after arbitrary RAW prefixes
 
@@ -343,40 +344,15 @@ theorem recovery_after_bob_passive (past : List app.EnvironmentEntry)
     subst command
     rfl
 
-private theorem recovery_round_after_bob (players : Player → app.Policy)
-    (execution : app.Execution) (later : 11 ≤ execution.environmentRecall.length) :
-    app.round CommittedResolutionRecovery.scheduler players execution =
-      (CommittedResolutionRecovery.scheduler execution.environmentRecall
-        (execution.observeEnvironment app)).bind (execution.environmentStep app) := by
-  unfold ReactiveApplication.round ReactiveApplication.dispatch
-  apply bind_congr_on_support
-  intro command selected
-  rw [recovery_after_bob_passive _ _ later command selected]
-  change (execution.environmentStep app command).bind PMF.pure = _
-  exact PMF.bind_pure _
-
 /-- After Bob's one response, the complete physical suffix is independent of
 every player's future policy. This accounts for whole-policy deviations. -/
 theorem recovery_suffix_policy_independent (first second : Player → app.Policy)
     (count : Nat) (execution : app.Execution)
     (later : 11 ≤ execution.environmentRecall.length) :
     app.runRounds CommittedResolutionRecovery.scheduler first count execution =
-      app.runRounds CommittedResolutionRecovery.scheduler second count execution := by
-  induction count generalizing execution with
-  | zero => rfl
-  | succ count ih =>
-      rw [ReactiveApplication.runRounds, ReactiveApplication.runRounds,
-        recovery_round_after_bob first execution later,
-        recovery_round_after_bob second execution later]
-      apply bind_congr_on_support
-      intro next reached
-      apply ih
-      have roundReached : next ∈
-          (app.round CommittedResolutionRecovery.scheduler first execution).support := by
-        rwa [recovery_round_after_bob first execution later]
-      have cursor := app.round_environmentRecall_length CommittedResolutionRecovery.scheduler
-        first execution next roundReached
-      omega
+      app.runRounds CommittedResolutionRecovery.scheduler second count execution :=
+  app.passive_continuation_policy_independent CommittedResolutionRecovery.scheduler 11
+    recovery_after_bob_passive first second count execution later
 
 /-- Passive recovery suffixes append no responses or packets, under arbitrary
 future RAW policies. In particular, Bob's accepting response is his last one. -/
@@ -384,22 +360,8 @@ theorem recovery_suffix_preserves_traffic (players : Player → app.Policy) (cou
     (execution final : app.Execution) (later : 11 ≤ execution.environmentRecall.length)
     (reached : final ∈
       (app.runRounds CommittedResolutionRecovery.scheduler players count execution).support) :
-    final.recall = execution.recall ∧ final.network.inputs = execution.network.inputs := by
-  induction count generalizing execution with
-  | zero =>
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      exact ⟨rfl, rfl⟩
-  | succ count ih =>
-      obtain ⟨next, moved, continued⟩ :=
-        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-      have cursor := app.round_environmentRecall_length CommittedResolutionRecovery.scheduler
-        players execution next moved
-      have nextLate : 11 ≤ next.environmentRecall.length := by omega
-      have retained := ih next nextLate continued
-      rw [recovery_round_after_bob players execution later] at moved
-      obtain ⟨command, _selected, environment⟩ :=
-        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ moved)
-      exact ⟨retained.1.trans (app.environmentStep_recall execution next command environment),
-        retained.2.trans (app.environmentStep_inputs execution next command environment)⟩
+    final.recall = execution.recall ∧ final.network.inputs = execution.network.inputs :=
+  app.passive_continuation_preserves_traffic CommittedResolutionRecovery.scheduler 11
+    recovery_after_bob_passive players count execution final later reached
 
 end Vegas.Examples.CommittedResolutionBobService
