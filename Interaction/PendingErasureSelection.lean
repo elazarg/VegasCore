@@ -2,6 +2,7 @@
 
 import Interaction.PendingOutsideSelection
 import Interaction.ReactiveErasure
+import Interaction.ReactiveSchedulerObservation
 
 /-! # Public pending lotteries commute with envelope erasure
 
@@ -195,8 +196,10 @@ def pendingLotteryCommand (selection : Option (MessageId Principal)) : app.Comma
 
 /-- Select any pending identifier using only public identifier metadata. -/
 def pendingLotteryScheduler (weight : ℝ) (nonnegative : 0 ≤ weight) : app.Scheduler :=
-  fun _ view => (MessageNetwork.chooseWithOutside weight nonnegative
-    (MessageNetwork.pendingIds view.network.pending)).map app.pendingLotteryCommand
+  Scheduler.ofObservation app
+    (fun _ view => MessageNetwork.pendingIds view.network.pending)
+    (fun identifiers => (MessageNetwork.chooseWithOutside weight nonnegative identifiers).map
+      app.pendingLotteryCommand)
 
 /-- Only pending identifiers influence selection; payloads, application
 observations, receipts, and earlier scheduler commands have no further effect. -/
@@ -207,8 +210,7 @@ theorem pendingLotteryScheduler_eq_of_identifiers (weight : ℝ) (nonnegative : 
       MessageNetwork.pendingIds secondView.network.pending) :
     app.pendingLotteryScheduler weight nonnegative firstRecall firstView =
       app.pendingLotteryScheduler weight nonnegative secondRecall secondView := by
-  unfold pendingLotteryScheduler
-  rw [same]
+  exact Scheduler.ofObservation_eq_of_observation_eq app _ _ same
 
 /-- The scheduler's law with one envelope removed differs only by that
 envelope's inclusion branch and restoration of the remaining identifiers. -/
@@ -228,7 +230,7 @@ theorem pendingLotteryScheduler_include_or_erased (weight : ℝ) (nonnegative : 
     MessageNetwork.chooseWithOutside_include_or_erased weight nonnegative
       view.network.pending message.id identifier
   refine ⟨probability, p0, p1, ?_⟩
-  unfold pendingLotteryScheduler
+  dsimp only [pendingLotteryScheduler, Scheduler.ofObservation]
   rw [decomposition, mix_map, PMF.pure_map]
   congr 1
   rw [PMF.map_comp, PMF.map_comp]

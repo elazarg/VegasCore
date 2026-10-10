@@ -57,7 +57,9 @@ private theorem allowed_before_binding (weight : ℝ) (nonnegative : 0 ≤ weigh
         split <;> trivial
     | change command ∈ (app.pendingLotteryScheduler weight nonnegative []
         (execution.observeEnvironment app)).support at selected
-      rw [ReactiveApplication.pendingLotteryScheduler, PMF.support_map] at selected
+      dsimp only [ReactiveApplication.pendingLotteryScheduler,
+        ReactiveApplication.Scheduler.ofObservation] at selected
+      rw [PMF.support_map] at selected
       obtain ⟨chosen, _, rfl⟩ := selected
       cases chosen <;> trivial
 

@@ -74,6 +74,28 @@ theorem policy_eq (past : List app.PlayerEntry) (view : app.PlayerView) :
       ((implementation.posterior past).bind fun memory =>
         implementation.respond memory (past, view)).map Prod.fst := rfl
 
+/-- Conditioning on a supported response preserves genuine predecessor memory
+and an output-matching implementation transition. No impossible-fiber fallback is used. -/
+theorem mem_support_posterior_snoc (past : List app.PlayerEntry) (entry : app.PlayerEntry)
+    (positive : entry.action ∈ (implementation.policy past entry.beforeView).support)
+    (nextMemory : Memory)
+    (supported : nextMemory ∈ (implementation.posterior (past ++ [entry])).support) :
+    ∃ memory ∈ (implementation.posterior past).support,
+      (entry.action, nextMemory) ∈
+        (implementation.respond memory (past, entry.beforeView)).support := by
+  rw [posterior_snoc] at supported
+  obtain ⟨response, conditioned, nextEq⟩ := PMF.support_map .. ▸ supported
+  have positiveJoint : entry.action ∈
+      (((implementation.posterior past).bind fun memory =>
+        implementation.respond memory (past, entry.beforeView)).map Prod.fst).support :=
+    positive
+  have genuine := mem_support_fiberPosterior positiveJoint conditioned
+  obtain ⟨memory, prior, produced⟩ :=
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ genuine.2)
+  refine ⟨memory, prior, ?_⟩
+  have responseEq : response = (entry.action, nextMemory) := Prod.ext genuine.1 nextEq
+  simpa only [responseEq] using produced
+
 variable [DecidableEq Principal]
 
 theorem posterior_respond (execution : app.Execution) (who : Principal) (action : app.Action) :

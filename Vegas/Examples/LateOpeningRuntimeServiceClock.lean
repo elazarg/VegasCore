@@ -29,7 +29,9 @@ theorem lottery_passive (weight : ℝ) (nonnegative : 0 ≤ weight) (view : app.
     (command : app.Command)
     (selected : command ∈ (app.pendingLotteryScheduler weight nonnegative [] view).support) :
     command.actor? app = none ∧ runtime.reactiveTicks leaks command = 0 := by
-  rw [ReactiveApplication.pendingLotteryScheduler, PMF.support_map] at selected
+  dsimp only [ReactiveApplication.pendingLotteryScheduler,
+    ReactiveApplication.Scheduler.ofObservation] at selected
+  rw [PMF.support_map] at selected
   obtain ⟨chosen, _, rfl⟩ := selected
   cases chosen <;> exact ⟨rfl, rfl⟩
 

@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceServiceLocalComparison
+import Vegas.Game.SourceServiceSpec
 import Vegas.Game.ServiceRosterAsync
 
 /-! # Full-source services under an asynchronous scheduler

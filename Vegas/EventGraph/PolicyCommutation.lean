@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.EventGraph.CommutationRecall
+import Vegas.EventGraph.KernelCommutation
 import Vegas.EventGraph.NormalizedPolicy
 import Vegas.EventGraph.RevealRelaxation
 
@@ -102,49 +102,17 @@ theorem ReadyIndependent.policyStepThen_eq_independent {profile : graph.Behavior
             (graph.playerObserve secondOwner config)).bind fun secondAction =>
           stepThen config first second firstReady secondReady different
             firstAction secondAction := by
-  unfold policyStepThen
-  apply bind_congr_on_support _
-  intro firstAction _
-  let secondLaw := graph.normalizePolicy secondOwner (profile secondOwner)
-    second secondActor (graph.playerObserve secondOwner config)
-  calc
-    (config.step first firstReady firstAction).bindOnSupport
-        (fun afterFirst member =>
-          (graph.normalizePolicy secondOwner (profile secondOwner) second secondActor
-              (graph.playerObserve secondOwner afterFirst)).bind fun secondAction =>
-            afterFirst.step second (by
-              rw [config.step_cut first firstReady firstAction afterFirst member]
-              exact secondReady.after_complete firstReady different.symm) secondAction) =
-      (config.step first firstReady firstAction).bindOnSupport
-        (fun afterFirst member => secondLaw.bind fun secondAction =>
-          afterFirst.step second (by
-            rw [config.step_cut first firstReady firstAction afterFirst member]
-            exact secondReady.after_complete firstReady different.symm) secondAction) := by
-        apply bindOnSupport_congr _
-        intro afterFirst member
-        rw [Config.step, PMF.support_map] at member
-        obtain ⟨value, _, rfl⟩ := member
-        have stable := independent.normalizePolicy_complete_foreign config second first
-          secondReady firstReady secondActor firstOwner firstActor differentOwner
-          firstAction value
-        exact congrArg (fun law => law.bind fun secondAction =>
-          (config.complete first firstReady firstAction value).step second
-            (secondReady.after_complete firstReady different.symm) secondAction) stable
-    _ = secondLaw.bind fun secondAction =>
-        (config.step first firstReady firstAction).bindOnSupport fun afterFirst member =>
-          afterFirst.step second (by
-            rw [config.step_cut first firstReady firstAction afterFirst member]
-            exact secondReady.after_complete firstReady different.symm) secondAction := by
-      exact (bind_bindOnSupport_comm secondLaw
-        (config.step first firstReady firstAction)
-        (fun secondAction afterFirst member =>
-          afterFirst.step second (by
-            rw [config.step_cut first firstReady firstAction afterFirst member]
-            exact secondReady.after_complete firstReady different.symm) secondAction)).symm
-    _ = secondLaw.bind fun secondAction =>
-        stepThen config first second firstReady secondReady different
-          firstAction secondAction := by
-      rfl
+  apply kernelStepThen_eq_independent config first second firstReady secondReady different
+    (fun current => graph.normalizePolicy firstOwner (profile firstOwner) first firstActor
+      (graph.playerObserve firstOwner current))
+    (fun current => graph.normalizePolicy secondOwner (profile secondOwner) second secondActor
+      (graph.playerObserve secondOwner current))
+  intro firstAction _ afterFirst member
+  rw [Config.step, PMF.support_map] at member
+  obtain ⟨value, _, rfl⟩ := member
+  exact independent.normalizePolicy_complete_foreign config second first
+    secondReady firstReady secondActor firstOwner firstActor differentOwner
+    firstAction value
 
 /-- The two sequential normalized behavioral kernels commute after projecting
 to the typed store and every player's original-action recall. -/
@@ -171,17 +139,21 @@ theorem ReadyIndependent.policyStepThen_map_storeRecall_comm
     rw [leftActor] at leftOwned
     rw [rightActor] at rightOwned
     exact ownerNe ((Option.some.inj leftOwned).trans (Option.some.inj rightOwned).symm)
-  rw [independent.policyStepThen_eq_independent config left right leftReady rightReady
-      different leftOwner rightOwner leftActor rightActor ownerNe,
-    independent.policyStepThen_eq_independent config right left rightReady leftReady
-      different.symm rightOwner leftOwner rightActor leftActor ownerNe.symm]
-  simp only [PMF.map_bind]
-  rw [PMF.bind_comm]
-  apply bind_congr_on_support _
-  intro rightAction _
-  apply bind_congr_on_support _
-  intro leftAction _
-  exact stepThen_map_storeRecall_comm config left right leftReady rightReady
-    different actorsDiffer leftAction rightAction
+  apply kernelStepThen_map_storeRecall_comm config left right leftReady rightReady different
+    (fun current => graph.normalizePolicy leftOwner (profile leftOwner) left leftActor
+      (graph.playerObserve leftOwner current))
+    (fun current => graph.normalizePolicy rightOwner (profile rightOwner) right rightActor
+      (graph.playerObserve rightOwner current))
+  · intro action _ after member
+    rw [Config.step, PMF.support_map] at member
+    obtain ⟨value, _, rfl⟩ := member
+    exact independent.normalizePolicy_complete_foreign config right left rightReady leftReady
+      rightActor leftOwner leftActor ownerNe action value
+  · intro action _ after member
+    rw [Config.step, PMF.support_map] at member
+    obtain ⟨value, _, rfl⟩ := member
+    exact independent.normalizePolicy_complete_foreign config left right leftReady rightReady
+      leftActor rightOwner rightActor ownerNe.symm action value
+  · exact actorsDiffer
 
 end Vegas.EventGraph

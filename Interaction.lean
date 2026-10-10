@@ -104,6 +104,7 @@ import Interaction.ReactiveScheduleClock
 import Interaction.ReactiveScheduleEvaluation
 import Interaction.ReactiveSchedulerRefinement
 import Interaction.ReactiveSchedulerPrefix
+import Interaction.ReactiveSchedulerObservation
 import Interaction.ReactiveServiceInvariant
 import Interaction.ReactiveStopping
 import Interaction.ReactiveSurvival

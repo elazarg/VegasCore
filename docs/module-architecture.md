@@ -21,11 +21,13 @@ outside the Lean source and default build roots.
 Search with rg and inspect signatures with lean-defs.py before adding machinery.
 Useful existing boundaries are the
 [source runtime](../Vegas/Game/RevealService.lean),
+[fixed service specification](../Vegas/Game/SourceServiceSpec.lean),
 [compiler observation relation](../Vegas/Compile/EventGraphObservation.lean),
 [final-record verdict](../Vegas/Pending/ReactiveSettledVerdict.lean),
 [asynchronous contract](../Vegas/Pending/ReactiveAsyncContract.lean),
 [scheduler support refinement](../Vegas/Pending/ReactiveAsyncRefinement.lean),
 [complete public traffic at raw decisions](../Interaction/ReactiveCompleteObservation.lean),
+[independent event action kernels](../Vegas/EventGraph/KernelCommutation.lean),
 [behavioral commutation](../Vegas/EventGraph/PolicyCommutation.lean),
 [whole-continuation enforcement](../GameTheoryExtensions/Analysis/Enforcement.lean),
 [local comparison limit](../GameTheoryExtensions/Analysis/Protocol/LocalSimulationLimit.lean),
@@ -35,6 +37,7 @@ Useful existing boundaries are the
 [posterior exclusion from factored reach weights](../GameTheoryExtensions/Analysis/Protocol/ConsistentLikelihood.lean),
 [relative likelihood errors at unreached decisions](../GameTheoryExtensions/Analysis/Protocol/AsymptoticLikelihood.lean),
 [finite-prefix scheduler agreement](../Interaction/ReactiveSchedulerPrefix.lean),
+[scheduler laws through backend observations](../Interaction/ReactiveSchedulerObservation.lean),
 [public pending selection under packet erasure](../Interaction/PendingErasureSelection.lean),
 [deterministic priority selection under packet erasure](../Interaction/ReactivePriorityErasure.lean),
 [authenticated emission order in actual recall](../Interaction/ReactiveEmissionOrder.lean),
@@ -132,6 +135,13 @@ Behavioral commutation preserves the typed store and original own recall;
 native traffic and conditional beliefs need their own argument. Enforcement
 uses actual gain and change in charge probability; it does not construct the
 runtime's collection mechanism or assessment.
+The [event-kernel diamond](../Vegas/EventGraph/KernelCommutation.lean) requires
+kernel stability only along supported actions and intermediate outcomes. It
+preserves the typed store for arbitrary independent events; preserving original
+own recall additionally requires that no player owns both events. Ownerless
+chance events instantiate the same evaluator and diamond.
+The [service specification](../Vegas/Game/SourceServiceSpec.lean) owns calendar
+service data and basic readouts independently of local continuation comparisons.
 The probability regret module also combines two attainable value comparisons:
 silence with an incumbent continuation and a separate nonnegative outside
 continuation. A payoff bound on costly packets alone does not establish
@@ -140,6 +150,18 @@ authenticate an envelope's complete payload and certificate.
 Likelihood adapters require grouped weights of actual compatible histories;
 absolute error bounds do not control beliefs when the observation mass also
 vanishes. Erasure-independent selection supplies no service contract by itself.
+The limiting Bayes cross identity retains nonzero timing factors as well as the
+zero-product exclusion corollary. Conditional domination and proportional Bayes
+transport derive the target mass positivity from their operational premises.
+Positive collection needs finitely many complete plans and integrable charges,
+not a finite outcome carrier.
+
+[Agreement at decision sites](../GameTheory/GameTheory/Protocol/DecisionPlan.lean)
+preserves pure and behavioral continuation laws. With the same history beliefs,
+it also preserves terminal sequential equilibrium; decision-plan fallback
+choices therefore have no strategic effect. Supported-choice optimality uses
+integrability of the incumbent and the particular comparator, retaining the
+extended-value treatment of other whole-policy deviations.
 
 Imports expose results; they do not establish that the headline theorem uses
 those results. The SE evidence check examines declaration dependencies. New

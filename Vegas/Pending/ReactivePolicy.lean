@@ -12,7 +12,8 @@ The prescribed policy samples once, remembers its original intention, and
 submits in the same action. A recovery continuation can submit again after an
 earlier deviation, reusing a supported remembered choice. Disclosures open only
 when owner-local validation predicts successful publication; every failed result
-withholds. Only accepted packets can restore their original intentions.
+withholds. Accepted packets and matching silent decisions restore their original
+intentions; a silent sampled decision also prevents a later redraw.
 Whole-service correctness additionally requires protected service and a proof
 that these local observations agree with the source observations.
 -/
@@ -102,10 +103,36 @@ def reactiveDecision (runtime : EventGraphRuntime graph)
         (reactiveResolutionPacket who event payload binding checks outputEq action view).map
           fun packet => (disclosureSubmission packet).normalizeReactive who view []
 
+/-- A remembered silent decision matches the actual response at a ready
+owned input. Silence without this observation and response evidence cannot
+restore a private intention. Supported implementation memory supplies the
+sampled intention; this predicate validates its recorded physical response. -/
+def ReactiveSilentDecision (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
+    (entry : (runtime.reactiveApplication leaks).PlayerEntry)
+    (remembered : graph.Completion) : Prop :=
+  entry.emitted = none ∧ entry.action.transmission = none ∧
+    entry.beforeView.application.who = who ∧
+    entry.beforeView.application.publicView.ownTurn? who = some remembered.event ∧
+    entry.beforeView.application.publicView.EventReady remembered.event ∧
+    graph.actor? remembered.event = some who ∧
+    entry.action = runtime.reactiveDecision leaks who remembered.event remembered.action
+      entry.beforeView.application
+
 open Classical in
-/-- Binding recall uses the value that actually took effect. A failed
-disclosure can retain its original intention only when the corresponding
-response generated an accepted packet. A mismatched internal intention is insufficient. -/
+/-- A sampled silent decision is already made, even though it emitted no
+packet. Internal memory must match the actual ready owned response. -/
+def reactiveAlreadyDecided (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
+    (history : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (intentions : List (Option graph.Completion)) (event : graph.EventId) : Bool :=
+  decide (∃ entry remembered, (entry, some remembered) ∈ history.zip intentions ∧
+    remembered.event = event ∧ runtime.ReactiveSilentDecision leaks who entry remembered)
+
+open Classical in
+/-- Binding recall uses the value that actually took effect. Resolution recall
+retains a sampled intention when its response either produced an accepted
+packet or was a matching silent decision at a ready owned input. -/
 def reactiveOriginal (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
     (history : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -117,13 +144,16 @@ def reactiveOriginal (runtime : EventGraphRuntime graph)
   | .resolve .. =>
       (((history.zip intentions).filterMap fun (entry, intention) => do
         let remembered ← intention
-        let message ← entry.emitted
         if remembered.event = completion.event ∧
-            message.payload.call.event? graph = some completion.event ∧
-            (message.id, true) ∈ receipts ∧
-            entry.action = runtime.reactiveDecision leaks who remembered.event
-              remembered.action entry.beforeView.application then some remembered
-        else none).head?).getD completion
+            runtime.ReactiveSilentDecision leaks who entry remembered then some remembered
+        else do
+          let message ← entry.emitted
+          if remembered.event = completion.event ∧
+              message.payload.call.event? graph = some completion.event ∧
+              (message.id, true) ∈ receipts ∧
+              entry.action = runtime.reactiveDecision leaks who remembered.event
+                remembered.action entry.beforeView.application then some remembered
+          else none).head?).getD completion
 
 /-- One ready owned event takes one activation, with no staging instructions.
 On consistent own histories this policy sends at most one packet per event.
@@ -140,7 +170,9 @@ def prescribedReactiveResponse (runtime : EventGraphRuntime graph)
   match view.application.publicView.ownTurn? who with
   | none => PMF.pure (⟨none⟩, none)
   | some event =>
-      if runtime.reactiveAlreadySubmitted leaks history event then PMF.pure (⟨none⟩, none)
+      if runtime.reactiveAlreadySubmitted leaks history event ||
+          runtime.reactiveAlreadyDecided leaks who history intentions event then
+        PMF.pure (⟨none⟩, none)
       else if owner : view.application.who = who then
         if view.application.publicView.EventReady event then
           if actor : graph.actor? event = some who then

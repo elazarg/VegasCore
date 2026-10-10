@@ -102,7 +102,9 @@ abbrev horizon : Nat := 26
 private theorem lottery_support_finite (weight : ℝ) (nonnegative : 0 ≤ weight)
     (view : app.EnvironmentView) :
     (app.pendingLotteryScheduler weight nonnegative [] view).support.Finite := by
-  rw [ReactiveApplication.pendingLotteryScheduler, PMF.support_map]
+  dsimp only [ReactiveApplication.pendingLotteryScheduler,
+    ReactiveApplication.Scheduler.ofObservation]
+  rw [PMF.support_map]
   apply Set.Finite.image
   apply ((MessageNetwork.chooseUniform_support_finite
     (MessageNetwork.pendingIds view.network.pending)).union (Set.finite_singleton none)).subset

@@ -168,7 +168,7 @@ the initial law and pending-observation rule.
 This is a genuine assumption removal in the existing capstone, rather than a
 second theorem with the same premises.
 See [ServiceRoster](../Vegas/Game/ServiceRoster.lean),
-[SourceServiceSpec](../Vegas/Game/SourceServiceLocalComparison.lean) and
+[SourceServiceSpec](../Vegas/Game/SourceServiceSpec.lean) and
 [SourceServiceCompilation](../Vegas/Game/SourceServiceCompilation.lean).
 The finite-support proof for any reserved plan is in
 [ReactiveServiceFiniteness](../Vegas/Pending/ReactiveServiceFiniteness.lean).

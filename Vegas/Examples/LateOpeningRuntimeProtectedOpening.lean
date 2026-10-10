@@ -157,7 +157,9 @@ pending pool and every finite nonnegative inclusion weight. -/
 theorem lottery_wait_supported (weight : ℝ) (nonnegative : 0 ≤ weight)
     (view : app.EnvironmentView) :
     (.wait : app.Command) ∈ (app.pendingLotteryScheduler weight nonnegative [] view).support := by
-  rw [ReactiveApplication.pendingLotteryScheduler, PMF.support_map]
+  dsimp only [ReactiveApplication.pendingLotteryScheduler,
+    ReactiveApplication.Scheduler.ofObservation]
+  rw [PMF.support_map]
   refine ⟨none, ?_, rfl⟩
   have positive : 0 < ((MessageNetwork.chooseWithOutside weight nonnegative
       (MessageNetwork.pendingIds view.network.pending)) none).toReal := by

@@ -11,6 +11,7 @@ import Vegas.EventGraph.Basic
 import Vegas.EventGraph.Execution
 import Vegas.EventGraph.Commutation
 import Vegas.EventGraph.CommutationRecall
+import Vegas.EventGraph.KernelCommutation
 import Vegas.EventGraph.Information
 import Vegas.EventGraph.CommitmentEvidence
 import Vegas.EventGraph.PrivateInputs

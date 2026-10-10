@@ -213,6 +213,7 @@ import Vegas.Game.SourceServiceInclusionSupport
 import Vegas.Game.SourceServiceInitialRepair
 import Vegas.Game.SourceServiceLaw
 import Vegas.Game.SourceServiceLocalComparison
+import Vegas.Game.SourceServiceSpec
 import Vegas.Game.SourceServiceLocalSupport
 import Vegas.Game.SourceServiceMenu
 import Vegas.Game.SourceServiceNash
