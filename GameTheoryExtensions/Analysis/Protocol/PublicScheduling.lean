@@ -1316,7 +1316,7 @@ theorem bayesBelief_lift_map [Finite S.protocol.History] (profile : ∀ i, M.Beh
     (S.liftProfile M profile) profile S.erase who site (S.sourceSite M who site)
     (fun x member => S.erase_mem M who site ⟨x, member⟩)
     (S.fiberMass M who site (S.erase witness.1)) ?_ scalePositive.ne' scaleFinite
-    (antichainN who site) (antichainM who _) _ _
+    (antichainN who site) (antichainM who _) _
   intro history
   have summand (x : (S.model M).InformationHistory who site.1) :
       (if S.erase x.1 = history.1 then

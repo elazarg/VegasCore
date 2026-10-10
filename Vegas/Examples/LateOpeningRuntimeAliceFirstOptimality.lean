@@ -154,8 +154,9 @@ theorem sequentially_rational_supported_response_maximal
     (fun history => LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
       deposit history.state alice)
     (local_rational weight nonnegative site reward forfeit deposit assessment rational)
-    (fun _ => payoffIntegrable_of_finite _ _) choice played
+    (payoffIntegrable_of_finite _ _) choice played
     ((assessment.strategy alice).commit site.1 candidate)
+    (payoffIntegrable_of_finite _ _)
   change (context weight nonnegative site reward forfeit deposit assessment).value
     ((assessment.strategy alice).commit site.1 candidate) ≤
       (context weight nonnegative site reward forfeit deposit assessment).value

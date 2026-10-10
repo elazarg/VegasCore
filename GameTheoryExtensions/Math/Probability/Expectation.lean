@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheory.Math.Probability.Bounds
+import GameTheory.Math.Probability.Domination
 import GameTheory.Math.Probability.ExpectationAlgebra
 import GameTheory.Math.Probability.ExpectationBind
 import GameTheory.Math.Probability.ExpectationMap
@@ -12,6 +13,34 @@ import GameTheory.Math.Probability.Support
 noncomputable section
 
 namespace GameTheory.Math.Probability
+
+/-- Supported kernel domination composes with domination of the initial law. -/
+theorem bind_supported_domination {α β : Type*}
+    (source target : PMF α) (sourceStep targetStep : α → PMF β)
+    (initialFactor stepFactor : ℝ) (initialNonnegative : 0 ≤ initialFactor)
+    (initialLower : ∀ value, initialFactor * (source value).toReal ≤ (target value).toReal)
+    (stepLower : ∀ prior ∈ source.support, ∀ value,
+      stepFactor * (sourceStep prior value).toReal ≤ (targetStep prior value).toReal)
+    (value : β) :
+    (initialFactor * stepFactor) * ((source.bind sourceStep) value).toReal ≤
+      ((target.bind targetStep) value).toReal := by
+  rw [toReal_bind_apply, toReal_bind_apply]
+  calc
+    _ = initialFactor * expect source
+        (fun prior => stepFactor * (sourceStep prior value).toReal) := by
+      rw [expect_const_mul]
+      ring
+    _ ≤ initialFactor * expect source (fun prior => (targetStep prior value).toReal) :=
+      mul_le_mul_of_nonneg_left (expect_mono
+        (fun prior supported => stepLower prior supported value)
+        (payoffIntegrable_of_bounded _ _ (C := |stepFactor|) fun prior => by
+          rw [abs_mul, abs_of_nonneg ENNReal.toReal_nonneg]
+          exact mul_le_of_le_one_right (abs_nonneg _) (pmf_toReal_apply_le_one _ _))
+        (payoffIntegrable_toReal_apply source targetStep value)) initialNonnegative
+    _ ≤ expect target (fun prior => (targetStep prior value).toReal) :=
+      mul_expect_le_of_prob_le source target initialFactor initialLower _
+        (fun _ => ENNReal.toReal_nonneg) (payoffIntegrable_toReal_apply target targetStep value)
+
 
 /-- Branchwise agreement of readouts transports an expectation over a mixture.
 No integrability is needed: both sides are the expectation of one readout law. -/

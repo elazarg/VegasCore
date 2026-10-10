@@ -25,6 +25,23 @@ def WithinTV (error : ℝ) (first second : PMF α) : Prop :=
   ∀ event : Set α, |(first.toOuterMeasure event).toReal -
     (second.toOuterMeasure event).toReal| ≤ error
 
+/-- A law containing a factor of another law loses at most the remaining mass. -/
+theorem WithinTV.of_domination {α : Type*} (source target : PMF α)
+    (factor : ℝ) (small : factor ≤ 1)
+    (lower : ∀ value, factor * (source value).toReal ≤ (target value).toReal) :
+    PMF.WithinTV (1 - factor) source target := by
+  intro event
+  have first := probOf_domination source target factor lower event
+  have second := probOf_domination_excess source target factor lower event
+  have atMostOne : (source.toOuterMeasure event).toReal ≤ 1 :=
+    ENNReal.toReal_le_of_le_ofReal zero_le_one (by simpa using outerMeasure_le_one source event)
+  have missing : (1 - factor) * (source.toOuterMeasure event).toReal ≤ 1 - factor :=
+    mul_le_of_le_one_right (sub_nonneg.mpr small) atMostOne
+  have scaled : factor * (source.toOuterMeasure event).toReal ≤
+      (source.toOuterMeasure event).toReal :=
+    mul_le_of_le_one_left ENNReal.toReal_nonneg small
+  exact abs_le.mpr ⟨by linarith, by linarith⟩
+
 theorem WithinTV.refl (μ : PMF α) : WithinTV 0 μ μ := fun event => by
   rw [sub_self, abs_zero]
 

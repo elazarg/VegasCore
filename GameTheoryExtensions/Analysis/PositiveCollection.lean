@@ -19,18 +19,17 @@ namespace GameTheory.Enforcement
 
 open Math.Probability
 
-variable {Plan Outcome : Type*} [Fintype Plan] [Nonempty Plan] [Finite Outcome]
+variable {Plan Outcome : Type*} [Fintype Plan] [Nonempty Plan]
 
 /-- The minimum of pure-plan expected charges bounds all joint mixtures,
 including correlated mixtures, of those complete continuation plans. -/
 theorem pure_collection_floor_le_mixture (execute : Plan → PMF Outcome)
-    (collected : Outcome → ℝ) (plans : PMF Plan) :
+    (collected : Outcome → ℝ)
+    (integrable : ∀ plan, PayoffIntegrable (execute plan) collected) (plans : PMF Plan) :
     FinitePayoffBounds.lower (fun plan => expect (execute plan) collected) ≤
       expect (plans.bind execute) collected := by
-  rw [expect_bind_of_finite,
-    ← expect_constant plans
-      (FinitePayoffBounds.lower (fun plan => expect (execute plan) collected))]
-  apply expect_mono _ (payoffIntegrable_constant _ _) (payoffIntegrable_of_finite _ _)
+  apply expect_bind_ge_constant_on_support plans execute collected _
+    (payoffIntegrable_bind_of_finite plans execute collected integrable)
   intro plan _
   exact FinitePayoffBounds.lower_le _ plan
 
@@ -40,13 +39,14 @@ positive rate before the continuation's randomization is chosen. -/
 theorem exists_positive_collection_floor (execute : Plan → PMF Outcome)
     [Finite Plan]
     (collected : Outcome → ℝ)
+    (integrable : ∀ plan, PayoffIntegrable (execute plan) collected)
     (positive : ∀ plan, 0 < expect (execute plan) collected) :
     ∃ rate : ℝ, 0 < rate ∧
       ∀ plans : PMF Plan, rate ≤ expect (plans.bind execute) collected := by
   let := Fintype.ofFinite Plan
   refine ⟨FinitePayoffBounds.lower (fun plan => expect (execute plan) collected),
     (FinitePayoffBounds.lt_lower_iff _ 0).mpr positive, ?_⟩
-  exact pure_collection_floor_le_mixture execute collected
+  exact pure_collection_floor_le_mixture execute collected integrable
 
 end GameTheory.Enforcement
 
@@ -56,17 +56,17 @@ open Math.Probability
 
 variable {Player : Type*} [Fintype Player] (form : GameForm Player)
   [∀ who, Finite (form.sig.Strategy who)] [∀ who, Nonempty (form.sig.Strategy who)]
-  [Finite form.sig.Outcome]
 
 /-- Positive pure-profile collection in a finite game form is uniform over
 all mixed profiles. This is a mixture theorem, not a protocol realization. -/
 theorem exists_positive_mixed_collection_floor (collected : form.sig.Outcome → ℝ)
+    (integrable : ∀ profile, PayoffIntegrable (form.play profile) collected)
     (positive : ∀ profile : Profile form.sig, 0 < expect (form.play profile) collected) :
     ∃ rate : ℝ, 0 < rate ∧
       ∀ profile : Profile form.sig.mixed, rate ≤ expect (form.mixed.play profile) collected := by
   classical
   obtain ⟨rate, positiveRate, floor⟩ :=
-    Enforcement.exists_positive_collection_floor form.play collected positive
+    Enforcement.exists_positive_collection_floor form.play collected integrable positive
   refine ⟨rate, positiveRate, fun profile => ?_⟩
   exact floor (independentProduct profile)
 

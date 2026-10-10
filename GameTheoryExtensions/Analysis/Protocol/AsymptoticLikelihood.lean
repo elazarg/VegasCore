@@ -76,18 +76,19 @@ theorem bayes_cross_identity (antichain : M.DecisionInformationAntichain)
   unfold crossAt
   ring
 
-/-- Relative likelihood estimates, unlike absolute execution errors, constrain
-the beliefs at observations whose probability vanishes along the sequence. -/
-theorem belief_product_eq_zero {A : M.BehavioralAssessment}
+/-- Bayes cross identities pass to the limiting beliefs and timing factors. -/
+theorem belief_cross_identity {A : M.BehavioralAssessment}
     (antichain : M.DecisionInformationAntichain)
     (mixed : ∀ n, (sequence n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent M (sequence n) antichain)
     (converges : BehavioralAssessmentConvergesPointwise sequence A)
-    (first second : Label) (x : X) (y : Y)
-    (nonzero : left.crossLimit right first second x y ≠ 0)
-    (zero : left.crossLimit right second first x y = 0) :
+    (first second : Label) (x : X) (y : Y) :
     finiteHistoryBelief A who (left.site x) (left.histories x second) *
-      finiteHistoryBelief A who (right.site y) (right.histories y first) = 0 := by
+        finiteHistoryBelief A who (right.site y) (right.histories y first) *
+        left.crossLimit right first second x y =
+      finiteHistoryBelief A who (left.site x) (left.histories x first) *
+        finiteHistoryBelief A who (right.site y) (right.histories y second) *
+        left.crossLimit right second first x y := by
   have factorLimit (a b : Label) :
       Tendsto (fun n => left.crossAt right n a b x y) atTop
         (nhds (left.crossLimit right a b x y)) :=
@@ -109,7 +110,22 @@ theorem belief_product_eq_zero {A : M.BehavioralAssessment}
     funext n
     exact left.bayes_cross_identity right antichain mixed bayes n first second x y
   rw [same] at leftLimit
-  have limits := tendsto_nhds_unique leftLimit rightLimit
+  exact tendsto_nhds_unique leftLimit rightLimit
+
+/-- Relative likelihood estimates, unlike absolute execution errors, constrain
+the beliefs at observations whose probability vanishes along the sequence. -/
+theorem belief_product_eq_zero {A : M.BehavioralAssessment}
+    (antichain : M.DecisionInformationAntichain)
+    (mixed : ∀ n, (sequence n).IsFullyMixed)
+    (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent M (sequence n) antichain)
+    (converges : BehavioralAssessmentConvergesPointwise sequence A)
+    (first second : Label) (x : X) (y : Y)
+    (nonzero : left.crossLimit right first second x y ≠ 0)
+    (zero : left.crossLimit right second first x y = 0) :
+    finiteHistoryBelief A who (left.site x) (left.histories x second) *
+      finiteHistoryBelief A who (right.site y) (right.histories y first) = 0 := by
+  have limits := left.belief_cross_identity right antichain mixed bayes converges
+    first second x y
   rw [zero, mul_zero] at limits
   exact (mul_eq_zero.mp limits).resolve_right nonzero
 

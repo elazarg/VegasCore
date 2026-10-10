@@ -64,13 +64,14 @@ by the source mass of the event. -/
 theorem conditional_domination_bound_of_subset (source target : PMF α) (event part : Set α)
     (inside : part ⊆ event)
     (sourcePositive : 0 < (source.toOuterMeasure event).toReal)
-    (targetPositive : 0 < (target.toOuterMeasure event).toReal)
     (factor : ℝ) (positive : 0 < factor) (atMostOne : factor ≤ 1)
     (lower : ∀ a, factor * (source a).toReal ≤ (target a).toReal) :
     |(target.toOuterMeasure part).toReal / (target.toOuterMeasure event).toReal -
       (source.toOuterMeasure part).toReal / (source.toOuterMeasure event).toReal| ≤
-        (1 - factor) / (factor * (source.toOuterMeasure event).toReal) :=
-  ratio_domination_bound _ _ _ _ _ sourcePositive targetPositive ENNReal.toReal_nonneg
+        (1 - factor) / (factor * (source.toOuterMeasure event).toReal) := by
+  have targetPositive := (mul_pos positive sourcePositive).trans_le
+    (probOf_domination source target factor lower event)
+  exact ratio_domination_bound _ _ _ _ _ sourcePositive targetPositive ENNReal.toReal_nonneg
     (ENNReal.toReal_mono (outerMeasure_ne_top source event)
       (MeasureTheory.measure_mono inside))
     positive atMostOne (probOf_domination source target factor lower part)
@@ -84,7 +85,6 @@ probability of the event. -/
 theorem conditional_domination_converges_of_subset (source target : ℕ → PMF α)
     (event part : Set α) (inside : part ⊆ event)
     (sourcePositive : ∀ n, 0 < ((source n).toOuterMeasure event).toReal)
-    (targetPositive : ∀ n, 0 < ((target n).toOuterMeasure event).toReal)
     (factor : ℕ → ℝ) (positive : ∀ n, 0 < factor n) (atMostOne : ∀ n, factor n ≤ 1)
     (lower : ∀ n a, factor n * ((source n) a).toReal ≤ ((target n) a).toReal)
     (negligible : Tendsto (fun n =>
@@ -99,7 +99,7 @@ theorem conditional_domination_converges_of_subset (source target : ℕ → PMF 
   intro n
   simpa only [Real.dist_eq, abs_sub_comm] using
     conditional_domination_bound_of_subset (source n) (target n) event part inside
-      (sourcePositive n) (targetPositive n) (factor n) (positive n) (atMostOne n) (lower n)
+      (sourcePositive n) (factor n) (positive n) (atMostOne n) (lower n)
 
 end GameTheory.Math.Probability
 
@@ -301,10 +301,6 @@ theorem retained_beliefs_converge_unclocked
     rw [sourcePassage]
     exact ENNReal.toReal_pos (sourceMass n).ne' (ne_top_of_le_ne_top ENNReal.one_ne_top
       (M.informationMass_le_one _ who site (sourceAntichain who site)))
-  have targetPositive (n : ℕ) : 0 < ((targetLaw n).toOuterMeasure passage).toReal := by
-    rw [targetPassage]
-    exact ENNReal.toReal_pos (targetMass n).ne' (ne_top_of_le_ne_top ENNReal.one_ne_top
-      (N.informationMass_le_one _ who _ (targetAntichain who _)))
   rw [pmfConvergesPointwise_iff_toReal]
   intro history
   let cone : Set T.History := {final | T.HistoryReaches history.1 final}
@@ -336,7 +332,7 @@ theorem retained_beliefs_converge_unclocked
       rw [PMF.toOuterMeasure_map_apply, restriction.cone_preimage_eq_empty who site history
         embedded, MeasureTheory.measure_empty, ENNReal.toReal_zero, zero_div]
   exact (conditional_domination_converges_of_subset sourceLaw targetLaw passage cone inside
-    sourcePositive targetPositive factor positive atMostOne lower
+    sourcePositive factor positive atMostOne lower
     (by simpa only [sourcePassage] using negligible) _ sourceLimit).congr targetRatio
 
 section Extension

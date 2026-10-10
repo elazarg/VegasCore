@@ -60,9 +60,11 @@ theorem bayesBelief_projection_of_proportional_reach
     (scaleNonzero : scale ≠ 0) (scaleFinite : scale ≠ ∞)
     (rawAntichain : rawSite.IsHistoryAntichain)
     (sourceAntichain : sourceSite.IsHistoryAntichain)
-    (rawPositive : 0 < M.informationMass raw who rawSite)
     (sourcePositive : 0 < N.informationMass source who sourceSite) :
-    (M.bayesBelief raw who rawSite rawAntichain rawPositive).map
+    (M.bayesBelief raw who rawSite rawAntichain (by
+      rw [M.informationMass_projection_of_proportional_reach N raw source project who
+        rawSite sourceSite maps scale fiber]
+      exact ENNReal.mul_pos scaleNonzero sourcePositive.ne')).map
       (fun original : M.InformationHistory who rawSite.1 =>
         (⟨project original.1, maps original.1 original.2⟩ :
           N.InformationHistory who sourceSite.1)) =
@@ -71,13 +73,14 @@ theorem bayesBelief_projection_of_proportional_reach
   have mass := M.informationMass_projection_of_proportional_reach N raw source project who
     rawSite sourceSite maps scale fiber
   ext history
-  rw [PMF.map_apply, N.bayesBelief_apply,
+  rw [PMF.map_apply, N.bayesBelief_apply]
+  simp_rw [M.bayesBelief_apply]
+  rw [
     ← ENNReal.mul_div_mul_left (N.historyReachWeight source history.1)
       (N.informationMass source who sourceSite) scaleNonzero scaleFinite,
     fiber history, ← mass, div_eq_mul_inv, ← ENNReal.tsum_mul_right]
   apply tsum_congr
   intro original
-  rw [M.bayesBelief_apply]
   by_cases same : project original.1 = history.1
   · have equal : history = ⟨project original.1, maps original.1 original.2⟩ :=
       Subtype.ext same.symm

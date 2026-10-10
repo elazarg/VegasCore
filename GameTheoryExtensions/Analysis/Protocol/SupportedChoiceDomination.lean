@@ -20,48 +20,6 @@ open GameTheory.Math.Probability GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type*} [Fintype Player] {E : ExecutionProtocol Player}
   (M : InformationModel E)
 
-private theorem bind_supported_domination {α : Type*}
-    (source target : PMF α) (sourceStep targetStep : α → PMF α)
-    (initialFactor stepFactor : ℝ) (initialNonnegative : 0 ≤ initialFactor)
-    (initialLower : ∀ value, initialFactor * (source value).toReal ≤ (target value).toReal)
-    (stepLower : ∀ prior ∈ source.support, ∀ value,
-      stepFactor * (sourceStep prior value).toReal ≤ (targetStep prior value).toReal)
-    (value : α) :
-    (initialFactor * stepFactor) * ((source.bind sourceStep) value).toReal ≤
-      ((target.bind targetStep) value).toReal := by
-  rw [toReal_bind_apply, toReal_bind_apply]
-  calc
-    _ = initialFactor * expect source
-        (fun prior => stepFactor * (sourceStep prior value).toReal) := by
-      rw [expect_const_mul]
-      ring
-    _ ≤ initialFactor * expect source (fun prior => (targetStep prior value).toReal) :=
-      mul_le_mul_of_nonneg_left (expect_mono
-        (fun prior supported => stepLower prior supported value)
-        (payoffIntegrable_of_bounded _ _ (C := |stepFactor|) fun prior => by
-          rw [abs_mul, abs_of_nonneg ENNReal.toReal_nonneg]
-          exact mul_le_of_le_one_right (abs_nonneg _) (pmf_toReal_apply_le_one _ _))
-        (payoffIntegrable_toReal_apply source targetStep value)) initialNonnegative
-    _ ≤ expect target (fun prior => (targetStep prior value).toReal) :=
-      mul_expect_le_of_prob_le source target initialFactor initialLower _
-        (fun _ => ENNReal.toReal_nonneg) (payoffIntegrable_toReal_apply target targetStep value)
-
-private theorem withinTV_of_domination {α : Type*} (source target : PMF α)
-    (factor : ℝ) (small : factor ≤ 1)
-    (lower : ∀ value, factor * (source value).toReal ≤ (target value).toReal) :
-    PMF.WithinTV (1 - factor) source target := by
-  intro event
-  have first := probOf_domination source target factor lower event
-  have second := probOf_domination_excess source target factor lower event
-  have atMostOne : (source.toOuterMeasure event).toReal ≤ 1 :=
-    ENNReal.toReal_le_of_le_ofReal zero_le_one (by simpa using outerMeasure_le_one source event)
-  have missing : (1 - factor) * (source.toOuterMeasure event).toReal ≤ 1 - factor :=
-    mul_le_of_le_one_right (sub_nonneg.mpr small) atMostOne
-  have scaled : factor * (source.toOuterMeasure event).toReal ≤
-      (source.toOuterMeasure event).toReal :=
-    mul_le_of_le_one_left ENNReal.toReal_nonneg small
-  exact abs_le.mpr ⟨by linarith, by linarith⟩
-
 private theorem runBehavioral_step_domination_of_choices
     (source target : ∀ who, M.BehavioralPolicy who)
     (factor : ℝ) (nonnegative : 0 ≤ factor)
@@ -128,7 +86,7 @@ theorem runBehavioral_withinTV_of_supported_choices
     PMF.WithinTV (1 - factor ^ (Fintype.card Player * fuel))
       (M.runBehavioral source fuel)
       (M.runBehavioral target fuel) := by
-  apply withinTV_of_domination _ _ _ (pow_le_one₀ nonnegative small)
+  apply PMF.WithinTV.of_domination _ _ _ (pow_le_one₀ nonnegative small)
   exact M.runBehavioral_domination_of_supported_choices source target factor
     nonnegative lower fuel
 
