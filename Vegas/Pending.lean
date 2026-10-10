@@ -108,6 +108,7 @@ import Vegas.Pending.ReactiveIntentionRecall
 import Vegas.Pending.ReactiveLateBlind
 import Vegas.Pending.ReactiveLatestErasure
 import Vegas.Pending.ReactiveAcceptanceUniqueness
+import Vegas.Pending.ReactiveAcceptedIntentionRecall
 import Vegas.Pending.ReactiveLateLottery
 import Vegas.Pending.ReactiveMonitoring
 import Vegas.Pending.ReactiveNormalization
@@ -120,6 +121,7 @@ import Vegas.Pending.ReactiveOpeningLikelihood
 import Vegas.Pending.ReactiveOpeningRecords
 import Vegas.Pending.ReactiveOpeningSettlement
 import Vegas.Pending.ReactiveOpeningWindow
+import Vegas.Pending.ReactiveOriginalConfig
 import Vegas.Pending.ReactiveOwnerPhase
 import Vegas.Pending.ReactiveOwnerWindow
 import Vegas.Pending.ReactivePacketEvidence

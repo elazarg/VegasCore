@@ -39,6 +39,7 @@ import Vegas.Game.IntendedServiceNash
 import Vegas.Game.PurificationEdge
 import Vegas.Game.ReactiveSourceDecision
 import Vegas.Game.ReactiveSourceAcceptance
+import Vegas.Game.ReactiveSupportedSourceAcceptance
 import Vegas.Game.ReactiveSourceObservation
 import Vegas.Game.RevealService
 import Vegas.Game.RevealServiceActions

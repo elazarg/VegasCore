@@ -8,6 +8,11 @@ import Vegas.Pending.ReactivePosteriorUniqueness
 import Vegas.Pending.ReactiveRecoveryContinuation
 import Vegas.Examples.LateOpeningRuntimeSchedulerObservation
 import Vegas.Examples.LateOpeningRuntimeBobSunkAudit
+import Vegas.Examples.LateOpeningRuntimeBobDirtyPrefix
+import Vegas.Source.BindingRepairTrace
+import Vegas.Pending.ReactiveAcceptedIntentionRecall
+import Vegas.Pending.ReactiveOriginalConfig
+import Vegas.Game.ReactiveSupportedSourceAcceptance
 import GameTheoryExtensions.Analysis.Protocol.PublicScheduling
 import Vegas.Game.SourceSiteNonterminal
 import Vegas.Pending.ReactiveLateCollection
@@ -2796,3 +2801,33 @@ open Vegas.Examples.LateOpeningRuntimeBobSunkAudit in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms early_submission_continuation_full_charge
+
+open Vegas.SourceProgram in
+/-- info: 'Vegas.SourceProgram.Setup.deviation_history_values_representation'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Setup.deviation_history_values_representation
+
+open Vegas.EventGraphRuntime in
+/-- info: 'Vegas.EventGraphRuntime.reactiveOriginal_accepted_of_initialized_support'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms reactiveOriginal_accepted_of_initialized_support
+
+open Vegas.EventGraphRuntime in
+/-- info: 'Vegas.EventGraphRuntime.prescribedReactiveResponse_originalConfig'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms prescribedReactiveResponse_originalConfig
+
+open Vegas in
+/-- info: 'Vegas.supportedSourceResponse_accepted'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms supportedSourceResponse_accepted
+
+open Vegas.Examples.LateOpeningRuntimeBobDirtyPrefix in
+/-- info: 'Vegas.Examples.LateOpeningRuntimeBobDirtyPrefix.dirty_information_history_full_charge'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms dirty_information_history_full_charge

@@ -43,6 +43,62 @@ private theorem filterMap_head_of_unique {α β : Type} (select : α → Option 
           · intro witness member head chosen
             exact unique witness (List.mem_cons_of_mem _ member) head chosen
 
+/-- Original-action recall preserves every physical completion's event identity,
+independently of service success or supported internal memory. -/
+theorem reactiveOriginal_event {graph : EventGraph Player L}
+    (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
+    (history : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (intentions : List (Option graph.Completion)) (receipts : List (MessageId Player × Bool))
+    (completion : graph.Completion) :
+    (runtime.reactiveOriginal leaks who history intentions receipts completion).event =
+      completion.event := by
+  classical
+  cases node : nodeView graph completion.event with
+  | sample => simp only [reactiveOriginal, node]
+  | bind => simp only [reactiveOriginal, node]
+  | resolve =>
+      let select := fun (pair : (runtime.reactiveApplication leaks).PlayerEntry ×
+          Option graph.Completion) => do
+        let remembered ← pair.2
+        if remembered.event = completion.event ∧
+            runtime.ReactiveSilentDecision leaks who pair.1 remembered then some remembered
+        else do
+          let message ← pair.1.emitted
+          if remembered.event = completion.event ∧
+              message.payload.call.event? graph = some completion.event ∧
+              (message.id, true) ∈ receipts ∧
+              pair.1.action = runtime.reactiveDecision leaks who remembered.event
+                remembered.action pair.1.beforeView.application then some remembered
+          else none
+      let candidates := (history.zip intentions).filterMap select
+      have sameEvent : ∀ remembered ∈ candidates, remembered.event = completion.event := by
+        intro remembered member
+        obtain ⟨⟨entry, saved⟩, _, selected⟩ := List.mem_filterMap.mp member
+        cases saved with
+        | none => simp [select] at selected
+        | some intention =>
+            simp only [select, Option.bind_eq_bind, Option.bind_some] at selected
+            split at selected
+            · rename_i authentic
+              cases Option.some.inj selected
+              exact authentic.1
+            · cases emitted : entry.emitted with
+              | none => simp [emitted] at selected
+              | some message =>
+                  simp only [emitted, Option.bind_some] at selected
+                  split at selected
+                  · rename_i accepted
+                    cases Option.some.inj selected
+                    exact accepted.1
+                  · cases selected
+      simp only [reactiveOriginal, node]
+      change (candidates.head?.getD completion).event = completion.event
+      cases selected : candidates.head? with
+      | none => rfl
+      | some remembered =>
+          exact sameEvent remembered (List.mem_of_mem_head? (by simp [selected]))
+
 /-- Complete response recall restores a genuine silent resolution intention.
 Uniqueness is about the event-labelled private memory, rather than a desired
 observation or continuation-law equality. -/
