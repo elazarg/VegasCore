@@ -160,7 +160,10 @@ import Vegas.Pending.ReactiveRuntime
 import Vegas.Pending.ReactiveSafety
 import Vegas.Pending.ReactiveSampleLikelihood
 import Vegas.Pending.ReactiveSampledAcceptance
+import Vegas.Pending.ReactiveSampledBindingSettlement
 import Vegas.Pending.ReactiveSampledFrontierFreshness
+import Vegas.Pending.ReactiveSampledFrontierOwnership
+import Vegas.Pending.ReactiveSampledFrontierContinuation
 import Vegas.Pending.ReactiveSelectionObservation
 import Vegas.Pending.ReactiveService
 import Vegas.Pending.ReactiveServiceAudit

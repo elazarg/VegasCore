@@ -123,4 +123,34 @@ theorem resume_disintegrate_profile
       simpa only [resume, invoke, PMF.bind_map, Function.comp_def] using
         response_disintegrate_profile implementations execution who next
 
+/-- A genuine scheduler round retains the whole joint private-memory law.
+The scheduler uses only its actual environment observation; no memory or
+conditional-law hypothesis is supplied. -/
+theorem round_disintegrate_profile
+    (implementations : Principal → app.Implementation Memory)
+    (execution : app.Execution) (scheduler : app.Scheduler)
+    {Result : Type} (next : app.Execution → (Principal → Memory) → PMF Result) :
+    (independentProduct (fun owner =>
+      (implementations owner).posterior (execution.recall owner))).bind
+        (fun memories =>
+          (scheduler execution.environmentRecall (execution.observeEnvironment app)).bind
+            fun command => (execution.environmentStep app command).bind fun current =>
+              match command.actor? app with
+              | none => next current memories
+              | some who => ((implementations who).respond (memories who)
+                  (current.recall who, current.observe app who)).bind fun response =>
+                    next (current.respond app who response.1)
+                      (Function.update memories who response.2)) =
+      (app.round scheduler (fun owner => (implementations owner).policy) execution).bind
+        (fun current => (independentProduct (fun owner =>
+          (implementations owner).posterior (current.recall owner))).bind (next current)) := by
+  rw [PMF.bind_comm]
+  simp only [round, dispatch, PMF.bind_bind]
+  apply bind_congr_on_support
+  intro command _
+  rw [environmentStep_disintegrate_profile]
+  apply bind_congr_on_support
+  intro current _
+  exact resume_disintegrate_profile implementations current (command.actor? app) next
+
 end Interaction.ReactiveApplication

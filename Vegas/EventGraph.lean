@@ -9,6 +9,7 @@ import Vegas.EventGraph.ExecutionMode
 import Vegas.EventGraph.Code
 import Vegas.EventGraph.Basic
 import Vegas.EventGraph.Execution
+import Vegas.EventGraph.ForeignCompletionSequence
 import Vegas.EventGraph.Commutation
 import Vegas.EventGraph.CommutationRecall
 import Vegas.EventGraph.KernelCommutation

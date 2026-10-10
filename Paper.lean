@@ -20,6 +20,10 @@ import Vegas.Pending.ReactiveOriginalInclusionStability
 import Vegas.Pending.ReactiveSampledFrontierFreshness
 import Vegas.Examples.LateOpeningRuntimeBobDirtyScore
 import Vegas.Examples.LateOpeningRuntimeBobDirtyAttainment
+import Vegas.Source.ProtocolValueBindingContinuation
+import Vegas.Pending.ReactiveSampledFrontierContinuation
+import Vegas.Pending.ReactiveSampledBindingSettlement
+import Vegas.Examples.LateOpeningRuntimeBobDirtyContext
 import GameTheoryExtensions.Analysis.Protocol.PublicScheduling
 import Vegas.Game.SourceSiteNonterminal
 import Vegas.Pending.ReactiveLateCollection
@@ -2845,6 +2849,12 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms resume_disintegrate_profile
 
+open Interaction.ReactiveApplication in
+/-- info: 'Interaction.ReactiveApplication.round_disintegrate_profile'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms round_disintegrate_profile
+
 open Vegas.SourceProgram in
 /-- info: 'Vegas.SourceProgram.Setup.run_copied_opponents_from_values_history'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -2856,3 +2866,15 @@ open Vegas.Examples.LateOpeningRuntimeBobDirtyScore in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms dirty_continuation_payoff_le_score
+
+open Vegas.SourceProgram in
+/-- info: 'Vegas.SourceProgram.Setup.exists_values_site_continuation_ge'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Setup.exists_values_site_continuation_ge
+
+open Vegas.EventGraphRuntime in
+/-- info: 'Vegas.EventGraphRuntime.prescribedReactiveResponse_sampledFrontierContinuation'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms prescribedReactiveResponse_sampledFrontierContinuation

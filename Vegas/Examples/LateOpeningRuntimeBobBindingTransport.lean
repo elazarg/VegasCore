@@ -20,7 +20,7 @@ open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
 open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeBobBindingService
   LateOpeningRuntimeBobRecallStability LateOpeningRuntimeBobDirtyPrefix
-  LateOpeningRuntimeBobSubmissionService
+  LateOpeningRuntimeBobSubmissionService LateOpeningRuntimeBobResponseState
 
 /-- The first native binding callback has exactly one earlier receiver action. -/
 theorem binding_history_prior_action (weight : ℝ) (nonnegative : 0 ≤ weight)
@@ -217,4 +217,34 @@ theorem servicedBinding_physical (weight : ℝ) (nonnegative : 0 ≤ weight)
       | some material =>
           exact submission_physical weight nonnegative 14 execution
             (rawMenu.toRawTrace _ _ _ trace) material
+theorem serviced_binding_same_information (weight : ℝ) (nonnegative : 0 ≤ weight)
+    (first second : app.Execution)
+    (firstTrace : (rawMenu.protocol initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
+        (some ⟨14, some bob, first⟩))
+    (secondTrace : (rawMenu.protocol initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
+        (some ⟨14, some bob, second⟩))
+    (sameRecall : first.recall bob = second.recall bob)
+    (sameView : first.observe app bob = second.observe app bob) (response : app.Action) :
+    (servicedBinding first response).application.config.store (.inr bobBindEvent) =
+      (servicedBinding second response).application.config.store (.inr bobBindEvent) := by
+  rw [servicedBinding_physical weight nonnegative first firstTrace,
+    servicedBinding_physical weight nonnegative second secondTrace]
+  have same := responseState_same_view first second
+    (app.history_inputRecall initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)
+        (rawMenu.toRawTrace _ _ _ firstTrace))
+    (app.history_inputRecall initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)
+        (rawMenu.toRawTrace _ _ _ secondTrace)) sameRecall sameView response
+  have stores := congrArg (fun view : PlayerView nativeGraph => view.observation.store) same
+  have visible : nativeGraph.fieldVisibleTo bob (.inr bobBindEvent) := by decide
+  have stored := congrFun stores (.inr bobBindEvent)
+  change nativeGraph.playerStore bob (responseState first response).config.store
+      (.inr bobBindEvent) =
+    nativeGraph.playerStore bob (responseState second response).config.store
+      (.inr bobBindEvent) at stored
+  simpa only [nativeGraph.playerStore_of_visible bob _ _ visible] using stored
+
 end Vegas.Examples.LateOpeningRuntimeBobBindingTransport

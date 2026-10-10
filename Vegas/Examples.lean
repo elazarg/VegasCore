@@ -174,6 +174,7 @@ import Vegas.Examples.LateOpeningRuntimeBobDirtyPrefix
 import Vegas.Examples.LateOpeningRuntimeBobRecallStability
 import Vegas.Examples.LateOpeningRuntimeBobFreshContinuation
 import Vegas.Examples.LateOpeningRuntimeBobDirtyAttainment
+import Vegas.Examples.LateOpeningRuntimeBobDirtyContext
 import Vegas.Examples.LateOpeningRuntimeBobDirtyPayoff
 import Vegas.Examples.LateOpeningRuntimeBobDirtyScore
 import Vegas.Examples.LateOpeningRuntimeBobResponseState
