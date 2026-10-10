@@ -90,34 +90,41 @@ variable (weight : ℝ) (nonnegative : 0 ≤ weight)
 
 /-- Terminal decoding retains the actual immutable label and successful
 public Alice bit through every unrestricted raw continuation. -/
-theorem continuation_readout (decision : DecisionHistory weight nonnegative)
+theorem continuation_readout (weight : ℝ) (nonnegative : 0 ≤ weight)
+    (execution : app.Execution)
+    (trace : (app.protocol initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
+        (some ⟨14, some bob, execution⟩))
+    (publishedBit : Bool)
+    (publishedAlice : execution.application.config.store (.inr aliceEvent) =
+      some (.success publishedBit : PublicationResult Bool))
     (response : app.Action) (players : Player → app.Policy) (final : app.Execution)
     (reached : final ∈ (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative)
-      players 14 (decision.execution.respond app bob response)).support) :
+      players 14 (execution.respond app bob response)).support) :
     ∃ bit label binding publication,
-      decision.bit = bit ∧ originalLabel decision.execution = label ∧
+      publishedBit = bit ∧ originalLabel execution = label ∧
       EventGraph.Config.Reachable (graph := nativeGraph)
         (setup.eventInputs (sourceInitial bit label)) final.application.config ∧
       final.application.config.store (.inr bobBindEvent) = some binding ∧
       final.application.config.store (.inr bobRevealEvent) = some publication ∧
       serviceSourceReadout setup .sequential deadline leaks (app.finished final) =
-        some (terminalStateOf bit label (.success decision.bit) binding publication) := by
+        some (terminalStateOf bit label (.success publishedBit) binding publication) := by
   obtain ⟨bit, label, valid⟩ := history_initial_invariant LateOpeningRuntimeService.runtime leaks
     LateOpeningRuntimeService.horizon (LateOpeningRuntimeService.scheduler weight nonnegative)
-      ⟨14, some bob, decision.execution⟩ decision.trace
+      ⟨14, some bob, execution⟩ trace
   have invariant := LateOpeningRuntimeService.runtime.reactiveStateInvariant leaks
     (setup.eventInputs (sourceInitial bit label))
   have after := (ReactiveApplication.Invariant.policyInvariant app invariant players).runRounds
     (LateOpeningRuntimeService.scheduler weight nonnegative) 14 _ final
-      (invariant.respond decision.execution bob response valid) reached
+      (invariant.respond execution bob response valid) reached
   have publicationInvariant := LateOpeningRuntimeService.runtime.reactiveStoreInvariant leaks
-    (.inr aliceEvent) (.success decision.bit : PublicationResult Bool)
+    (.inr aliceEvent) (.success publishedBit : PublicationResult Bool)
   have aliceAfter := (ReactiveApplication.Invariant.policyInvariant app publicationInvariant
     players).runRounds (LateOpeningRuntimeService.scheduler weight nonnegative) 14 _ final
-      (publicationInvariant.respond decision.execution bob response decision.published) reached
+      (publicationInvariant.respond execution bob response publishedAlice) reached
   obtain ⟨responded⟩ := app.raw_trace_respond initial LateOpeningRuntimeService.horizon
-    (LateOpeningRuntimeService.scheduler weight nonnegative) 14 decision.execution bob response
-      decision.trace
+    (LateOpeningRuntimeService.scheduler weight nonnegative) 14 execution bob response
+      trace
   obtain ⟨finalTrace⟩ := app.raw_trace_runRounds initial LateOpeningRuntimeService.horizon
     (LateOpeningRuntimeService.scheduler weight nonnegative) players 0 14 _ final responded reached
   have complete := (contract weight nonnegative).completes ⟨0, none, final⟩ finalTrace ⟨rfl, rfl⟩
@@ -126,14 +133,14 @@ theorem continuation_readout (decision : DecisionHistory weight nonnegative)
   obtain ⟨publication, published⟩ := Option.isSome_iff_exists.mp
     (final.application.config.store_available_of_terminal complete (.inr bobRevealEvent))
   refine ⟨bit, label, binding, publication,
-    alice_success_from_initialized_bit decision.execution.application bit label valid
-      decision.bit decision.published, originalLabel_initialized decision.execution bit label valid,
+    alice_success_from_initialized_bit execution.application bit label valid
+      publishedBit publishedAlice, originalLabel_initialized execution bit label valid,
     after.reachable, bound,
       published, ?_⟩
   change (if final.application.config.cut.Terminal then
     decodeState? (terminalRefs program) final.application.config.store else none) = _
   rw [ite_eq_left complete]
-  exact decode_terminalStateOf final.application bit label (.success decision.bit) binding
+  exact decode_terminalStateOf final.application bit label (.success publishedBit) binding
     publication after.reachable.inputs_eq aliceAfter bound published
 
 /-- A fixed raw response cannot earn more than the logical score of its
@@ -151,7 +158,8 @@ theorem continuation_payoff_le_score (decision : DecisionHistory weight nonnegat
         ((serviced decision.execution response).application.config.store (.inr bobBindEvent)) := by
   obtain ⟨bit, label, binding, publication, bitEq, labelEq, finalReachable,
     bound, published, readout⟩ :=
-    continuation_readout weight nonnegative decision response players final reached
+    continuation_readout weight nonnegative decision.execution decision.trace decision.bit
+      decision.published response players final reached
   have splitReach := reached
   rw [continuation_split weight nonnegative _ decision.trace decision.quiet] at splitReach
   obtain ⟨servicedTrace⟩ := serviced_trace weight nonnegative _ decision.trace decision.quiet
@@ -219,7 +227,8 @@ theorem answer_continuation_payoff
     bobPolicy decision.execution final decision.trace decision.quiet decision.ready decision.timely
       sample authentic reached
   obtain ⟨bit, label, binding, publication, bitEq, labelEq, reachable, bound, published, readout⟩ :=
-    continuation_readout weight nonnegative decision (LateOpeningRuntimeBobSuffix.binding answer)
+    continuation_readout weight nonnegative decision.execution decision.trace decision.bit
+      decision.published (LateOpeningRuntimeBobSuffix.binding answer)
       players final reached
   have same : publication = PublicationResult.success answer :=
     Option.some.inj (published.symm.trans successful)

@@ -64,7 +64,9 @@ theorem continuation_payoff_floor (decision : DecisionHistory weight nonnegative
         deposit alice ≤
       LateOpeningRuntimeNash.payoff reward forfeit sample deposit (app.finished final) alice := by
   obtain ⟨bit, label, binding, publication, bitEq, labelEq, reachable,
-    bound, stored, readout⟩ := continuation_readout weight nonnegative decision response players
+    bound, stored, readout⟩ := continuation_readout weight nonnegative
+      decision.execution decision.trace decision.bit
+      decision.published response players
       final reached
   have same : publication = PublicationResult.success answer :=
     Option.some.inj (stored.symm.trans published)

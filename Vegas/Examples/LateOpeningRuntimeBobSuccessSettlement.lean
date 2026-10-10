@@ -182,7 +182,9 @@ theorem score_saturation_settles_clean (decision : DecisionHistory weight nonneg
         (serviceSourceAudit setup .sequential deadline leaks (fun actual => PMF.pure actual))
           (app.finished final) bob = 0 := by
   obtain ⟨bit, label, binding, publication, bitEq, labelEq, reachable, bound, published, readout⟩ :=
-    LateOpeningRuntimeBobSuccessPayoff.continuation_readout weight nonnegative decision response
+    LateOpeningRuntimeBobSuccessPayoff.continuation_readout weight nonnegative
+      decision.execution decision.trace decision.bit
+      decision.published response
       players final reached
   have charged := TerminalAudit.charge_mem_Icc
     (LateOpeningRuntimeService.runtime.serviceAuditObservation leaks)

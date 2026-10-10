@@ -169,7 +169,9 @@ theorem continuation_payoff_of_publication (positive : 0 < weight)
       successfulValue reward label answer := by
   let decision := decisionHistory weight nonnegative positive bit label slot seen samplePossible
   obtain ⟨actualBit, actualLabel, binding, publication, _, labelEq, _, _, stored, readout⟩ :=
-    LateOpeningRuntimeBobSuccessPayoff.continuation_readout weight nonnegative decision response
+    LateOpeningRuntimeBobSuccessPayoff.continuation_readout weight nonnegative
+      decision.execution decision.trace decision.bit
+      decision.published response
       players final reached
   have actualLabelEq : actualLabel = label := by
     rw [← labelEq]

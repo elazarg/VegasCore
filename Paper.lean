@@ -13,6 +13,13 @@ import Vegas.Source.BindingRepairTrace
 import Vegas.Pending.ReactiveAcceptedIntentionRecall
 import Vegas.Pending.ReactiveOriginalConfig
 import Vegas.Game.ReactiveSupportedSourceAcceptance
+import Interaction.ReactiveImplementationProfile
+import Vegas.Source.BindingRepairContinuation
+import Vegas.Pending.ReactiveOriginalResponseStability
+import Vegas.Pending.ReactiveOriginalInclusionStability
+import Vegas.Pending.ReactiveSampledFrontierFreshness
+import Vegas.Examples.LateOpeningRuntimeBobDirtyScore
+import Vegas.Examples.LateOpeningRuntimeBobDirtyAttainment
 import GameTheoryExtensions.Analysis.Protocol.PublicScheduling
 import Vegas.Game.SourceSiteNonterminal
 import Vegas.Pending.ReactiveLateCollection
@@ -2831,3 +2838,21 @@ open Vegas.Examples.LateOpeningRuntimeBobDirtyPrefix in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms dirty_information_history_full_charge
+
+open Interaction.ReactiveApplication in
+/-- info: 'Interaction.ReactiveApplication.resume_disintegrate_profile'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms resume_disintegrate_profile
+
+open Vegas.SourceProgram in
+/-- info: 'Vegas.SourceProgram.Setup.run_copied_opponents_from_values_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Setup.run_copied_opponents_from_values_history
+
+open Vegas.Examples.LateOpeningRuntimeBobDirtyScore in
+/-- info: 'Vegas.Examples.LateOpeningRuntimeBobDirtyScore.dirty_continuation_payoff_le_score'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms dirty_continuation_payoff_le_score

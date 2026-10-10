@@ -122,6 +122,9 @@ import Vegas.Pending.ReactiveOpeningRecords
 import Vegas.Pending.ReactiveOpeningSettlement
 import Vegas.Pending.ReactiveOpeningWindow
 import Vegas.Pending.ReactiveOriginalConfig
+import Vegas.Pending.ReactiveOriginalContinuation
+import Vegas.Pending.ReactiveOriginalInclusionStability
+import Vegas.Pending.ReactiveOriginalResponseStability
 import Vegas.Pending.ReactiveOwnerPhase
 import Vegas.Pending.ReactiveOwnerWindow
 import Vegas.Pending.ReactivePacketEvidence
@@ -157,6 +160,7 @@ import Vegas.Pending.ReactiveRuntime
 import Vegas.Pending.ReactiveSafety
 import Vegas.Pending.ReactiveSampleLikelihood
 import Vegas.Pending.ReactiveSampledAcceptance
+import Vegas.Pending.ReactiveSampledFrontierFreshness
 import Vegas.Pending.ReactiveSelectionObservation
 import Vegas.Pending.ReactiveService
 import Vegas.Pending.ReactiveServiceAudit

@@ -55,6 +55,7 @@ import Interaction.ReactiveFiniteAssessment
 import Interaction.ReactiveHistory
 import Interaction.ReactiveHorizonContinuation
 import Interaction.ReactiveImplementation
+import Interaction.ReactiveImplementationProfile
 import Interaction.ReactiveImplementationContinuation
 import Interaction.ReactiveInvariant
 import Interaction.ReactiveLedgerConformance
