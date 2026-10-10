@@ -163,6 +163,8 @@ import Vegas.Pending.ReactiveSampledAcceptance
 import Vegas.Pending.ReactiveSampledBindingSettlement
 import Vegas.Pending.ReactiveSampledFrontierFreshness
 import Vegas.Pending.ReactiveSampledFrontierOwnership
+import Vegas.Pending.ReactiveSampledResolutionSettlement
+import Vegas.Pending.ReactiveSampledSilentSettlement
 import Vegas.Pending.ReactiveSampledFrontierContinuation
 import Vegas.Pending.ReactiveSelectionObservation
 import Vegas.Pending.ReactiveService

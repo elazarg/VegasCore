@@ -24,6 +24,10 @@ import Vegas.Source.ProtocolValueBindingContinuation
 import Vegas.Pending.ReactiveSampledFrontierContinuation
 import Vegas.Pending.ReactiveSampledBindingSettlement
 import Vegas.Examples.LateOpeningRuntimeBobDirtyContext
+import Vegas.Game.ValueAdmissionPreservation
+import Vegas.Pending.ReactiveSampledResolutionSettlement
+import Vegas.Pending.ReactiveSampledSilentSettlement
+import Vegas.Examples.LateOpeningRuntimeBobDirtyOptimization
 import GameTheoryExtensions.Analysis.Protocol.PublicScheduling
 import Vegas.Game.SourceSiteNonterminal
 import Vegas.Pending.ReactiveLateCollection
@@ -2872,6 +2876,12 @@ open Vegas.SourceProgram in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Setup.exists_values_site_continuation_ge
+
+open Vegas.SourceProgram in
+/-- info: 'Vegas.SourceProgram.Setup.values_sequentialEquilibrium_preserved'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Setup.values_sequentialEquilibrium_preserved
 
 open Vegas.EventGraphRuntime in
 /-- info: 'Vegas.EventGraphRuntime.prescribedReactiveResponse_sampledFrontierContinuation'
