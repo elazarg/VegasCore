@@ -559,10 +559,12 @@ theorem bobBindingInfo_length
     history.1.trace.length = 2 := by
   obtain ⟨config, state⟩ := bobBindingInfo_state history
   have count := setup.protocol_history_length (CommitmentInterface.values program)
-    (setup.intendedRestriction.history history.1).trace
-  rw [setup.intendedRestriction.length history.1] at count
+    ((setup.intendedRestriction (CommitmentInterface.values setup.program)).history history.1).trace
+  rw [(setup.intendedRestriction (CommitmentInterface.values setup.program)).length history.1]
+    at count
   have remaining :
-      setup.protocolRemaining (setup.intendedRestriction.history history.1).state = 2 :=
+      setup.protocolRemaining ((setup.intendedRestriction (CommitmentInterface.values
+        setup.program)).history history.1).state = 2 :=
     (congrArg setup.protocolRemaining state).trans rfl
   rw [remaining] at count
   change history.1.trace.length + 2 = 4 at count

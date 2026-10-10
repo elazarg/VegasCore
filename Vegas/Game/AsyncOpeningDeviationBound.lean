@@ -60,7 +60,8 @@ theorem openingFirstTurn_deviation_bound {Parameter : Type}
     (intended : Profile service.setup.intendedModel.behavioralSignature)
     (source : Profile (service.sourceModel (CommitmentInterface.values
       service.setup.program)).behavioralSignature)
-    (agrees : service.setup.intendedRestriction.ExtendsProfile intended source)
+    (agrees : (service.setup.intendedRestriction (CommitmentInterface.values
+      service.setup.program)).ExtendsProfile intended source)
     (opens : ∀ player, (sourceServiceClientProfile service.setup
       (service.setup.decodeBehavioralProfile (CommitmentInterface.values service.setup.program)
         source) player).OpensEffectively service.setup.program []
@@ -299,7 +300,8 @@ theorem openingFirstTurn_deviation_bound {Parameter : Type}
   -- A failed reveal of the deviator is a debt; the retained conditional is at least as good.
   have : Finite (service.setup.executionProtocol admission).History :=
     service.setup.finite_history finite _
-  have matching : ∀ history, targetPayoff (service.setup.intendedRestriction.history history) =
+  have matching : ∀ history, targetPayoff ((service.setup.intendedRestriction
+    (CommitmentInterface.values service.setup.program)).history history) =
       sourcePayoff history := by
     intro history
     change (service.setup.protocolReadout history.state).elim 0 _ =
@@ -340,22 +342,27 @@ theorem openingFirstTurn_deviation_bound {Parameter : Type}
         rw [show charged (outcomeOf terminal) = floor from
           ite_eq_right (Nat.pos_iff_ne_zero.mp positive)]
         exact floorLe intendedTerminal
-  let retainedDeviation := service.setup.intendedRestriction.retainedPolicy who sourceDeviation
+  let retainedDeviation := (service.setup.intendedRestriction (CommitmentInterface.values
+    service.setup.program)).retainedPolicy who sourceDeviation
     (intended who)
-  have retained := service.setup.intendedRestriction.expect_deviation_le_retained
+  have retained := (service.setup.intendedRestriction (CommitmentInterface.values
+    service.setup.program)).expect_deviation_le_retained
     (service.setup.protocol_bounded _)
     ((service.setup.informationModel _).menuRestriction_reflecting _ _
-      service.setup.intendedMenu_subset)
+      (service.setup.intendedMenu_subset
+        (CommitmentInterface.values service.setup.program)))
     intended source agrees who sourceDeviation (intended who) (service.setup.IndebtedState who)
     (service.setup.indebted_localStep who)
     (fun original choices next running _ extra reached =>
       service.setup.indebted_of_extra wellFormed who original choices next running extra reached)
     sourcePayoff targetPayoff matching forfeits
   -- The retained conditional extends to a source deviation with the same forfeited payoff.
-  let extension := service.setup.intendedRestriction.extendProfile
+  let extension := (service.setup.intendedRestriction (CommitmentInterface.values
+    service.setup.program)).extendProfile
     (Function.update intended who retainedDeviation) source who
   have extended := agrees.update_extendProfile who retainedDeviation
-  have law := service.setup.intendedRestriction.initialized_law _ _ extended
+  have law := (service.setup.intendedRestriction (CommitmentInterface.values
+    service.setup.program)).initialized_law _ _ extended
     (instructionCount service.setup.program + 1)
   refine ⟨extension, ?_⟩
   have extensionValue : expect (service.setup.intendedModel.runBehavioral

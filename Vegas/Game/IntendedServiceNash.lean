@@ -52,7 +52,8 @@ theorem intended_audited_raw_isεNash {Parameter : Type}
       probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     (intended : Profile service.setup.intendedModel.behavioralSignature)
     (source : Profile service.sourceModel.behavioralSignature)
-    (agrees : service.setup.intendedRestriction.ExtendsProfile intended source) (ε : ℝ)
+    (agrees : (service.setup.intendedRestriction (CommitmentInterface.values
+      service.setup.program)).ExtendsProfile intended source) (ε : ℝ)
     (equilibrium : IsεNash (service.setup.intendedModel.toBehavioralGameForm
         (instructionCount service.setup.program + 1))
       (fun final who => (service.setup.protocolReadout final.state).elim 0

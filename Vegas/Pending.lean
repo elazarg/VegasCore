@@ -88,6 +88,7 @@ import Vegas.Pending.ReactiveCompiledMenu
 import Vegas.Pending.ReactiveCompiledResolution
 import Vegas.Pending.ReactiveContinuationObservation
 import Vegas.Pending.ReactiveDisclosure
+import Vegas.Pending.ReactiveDisclosureRealization
 import Vegas.Pending.ReactiveDisclosureStability
 import Vegas.Pending.ReactiveEmissionTokens
 import Vegas.Pending.ReactiveEntryStability
@@ -103,6 +104,7 @@ import Vegas.Pending.ReactiveGuardedResponse
 import Vegas.Pending.ReactiveHiddenInclusion
 import Vegas.Pending.ReactiveHiddenResponse
 import Vegas.Pending.ReactiveInitialValues
+import Vegas.Pending.ReactiveIntentionRecall
 import Vegas.Pending.ReactiveLateBlind
 import Vegas.Pending.ReactiveLatestErasure
 import Vegas.Pending.ReactiveAcceptanceUniqueness
@@ -126,6 +128,9 @@ import Vegas.Pending.ReactivePlayerWindow
 import Vegas.Pending.ReactivePolicy
 import Vegas.Pending.ReactivePolicyFacts
 import Vegas.Pending.ReactivePolicyMixture
+import Vegas.Pending.ReactivePosteriorAlignment
+import Vegas.Pending.ReactivePosteriorUniqueness
+import Vegas.Pending.ReactiveRecoveryContinuation
 import Vegas.Pending.ReactiveRawBindingFrame
 import Vegas.Pending.ReactiveRepeatedSubmissionData
 import Vegas.Pending.ReactiveRepeatedSubmissionStep
@@ -149,6 +154,7 @@ import Vegas.Pending.ReactiveRiskPersistence
 import Vegas.Pending.ReactiveRuntime
 import Vegas.Pending.ReactiveSafety
 import Vegas.Pending.ReactiveSampleLikelihood
+import Vegas.Pending.ReactiveSampledAcceptance
 import Vegas.Pending.ReactiveSelectionObservation
 import Vegas.Pending.ReactiveService
 import Vegas.Pending.ReactiveServiceAudit

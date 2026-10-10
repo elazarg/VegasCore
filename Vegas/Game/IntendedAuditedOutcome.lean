@@ -119,7 +119,9 @@ theorem intended_finite_history [Finite Player] (finite : setup.program.FiniteBi
     [setup.FiniteInitialLaw] : Finite setup.intendedProtocol.History :=
   have : Finite (setup.executionProtocol (CommitmentInterface.values setup.program)).History :=
     setup.finite_history finite _
-  Finite.of_injective setup.intendedRestriction.history setup.intendedRestriction.history.injective
+  Finite.of_injective (setup.intendedRestriction (CommitmentInterface.values
+    setup.program)).history (setup.intendedRestriction (CommitmentInterface.values
+    setup.program)).history.injective
 
 /-- On the runtime, the audited utility of the readout and the collection
 probabilities is the audited terminal utility of the forfeited base payoff. -/

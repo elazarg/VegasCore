@@ -74,7 +74,8 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds {Parameter : Type}
     (intended : Profile service.setup.intendedModel.behavioralSignature)
     (source : Profile (service.sourceModel (CommitmentInterface.values
       service.setup.program)).behavioralSignature)
-    (agrees : service.setup.intendedRestriction.ExtendsProfile intended source)
+    (agrees : (service.setup.intendedRestriction (CommitmentInterface.values
+      service.setup.program)).ExtendsProfile intended source)
     (terminal : FirstTurnSourceLaw service.setup service.mode service.deadline service.leaks
       service.horizon service.scheduler service.bound turns
       (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile

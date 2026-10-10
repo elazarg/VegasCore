@@ -3,6 +3,11 @@
 import Vegas.Game.SourceServiceCompilation
 import Vegas.Game.IntendedPreservation
 import Vegas.Game.IntendedServiceCompilation
+import Vegas.Game.ReactiveSourceObservation
+import Vegas.Pending.ReactivePosteriorUniqueness
+import Vegas.Pending.ReactiveRecoveryContinuation
+import Vegas.Examples.LateOpeningRuntimeSchedulerObservation
+import Vegas.Examples.LateOpeningRuntimeBobSunkAudit
 import GameTheoryExtensions.Analysis.Protocol.PublicScheduling
 import Vegas.Game.SourceSiteNonterminal
 import Vegas.Pending.ReactiveLateCollection
@@ -173,6 +178,8 @@ import Vegas.Examples.LateOpeningRuntimeSecondOpeningPayoff
 import Vegas.Examples.LateOpeningRuntimeTimingPreference
 import Vegas.Examples.LateOpeningRuntimeTypeWeight
 import Vegas.Examples.LateOpeningRuntimeUniformSeObstruction
+import Vegas.Examples.LateOpeningRuntimePartialAudit
+import Vegas.Examples.LateOpeningRuntimePartialAuditSourceObstruction
 import Vegas.Examples.LateOpeningRuntimeSourceSeObstruction
 import Vegas.Examples.LateOpeningRuntimeUnseenLikelihood
 import Vegas.Examples.LateLeak.SettleLateLikelihood
@@ -340,7 +347,8 @@ theorem intended_sequential_equilibrium [Fintype Player] [IExpr.ResultTypes L]
           (fun final => (setup.protocolReadout final.state,
             fun who => (setup.protocolReadout final.state).elim 0
               (fun state => utility (setup.parameterOutcome parameter state) who))) :=
-  setup.intended_sequentialEquilibrium_preserved finite wellFormed parameter utility forfeit
+  setup.intended_sequentialEquilibrium_preserved
+      (CommitmentInterface.values setup.program) finite wellFormed parameter utility forfeit
     range _ _ intended equilibrium
 
 /-- info: 'Vegas.Paper.intended_sequential_equilibrium' depends on axioms:
@@ -597,7 +605,8 @@ theorem intended_nash [Fintype Player] [IExpr.ResultTypes L]
     (intended : Profile setup.intendedModel.behavioralSignature)
     (target : Profile
       (setup.informationModel (CommitmentInterface.values setup.program)).behavioralSignature)
-    (agrees : setup.intendedRestriction.ExtendsProfile intended target) (ε : ℝ)
+    (agrees : (setup.intendedRestriction (CommitmentInterface.values
+      setup.program)).ExtendsProfile intended target) (ε : ℝ)
     (equilibrium : IsεNash (setup.intendedModel.toBehavioralGameForm
         (instructionCount setup.program + 1))
       (fun final who => (setup.protocolReadout final.state).elim 0
@@ -655,7 +664,8 @@ theorem intended_audited_raw_nash [Fintype Player] [IExpr.ResultTypes L]
       probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     (intended : Profile service.setup.intendedModel.behavioralSignature)
     (source : Profile service.sourceModel.behavioralSignature)
-    (agrees : service.setup.intendedRestriction.ExtendsProfile intended source) (ε : ℝ)
+    (agrees : (service.setup.intendedRestriction (CommitmentInterface.values
+      service.setup.program)).ExtendsProfile intended source) (ε : ℝ)
     (equilibrium : IsεNash (service.setup.intendedModel.toBehavioralGameForm
         (instructionCount service.setup.program + 1))
       (fun final who => (service.setup.protocolReadout final.state).elim 0
@@ -804,7 +814,8 @@ theorem intended_async_client_nash [Fintype Player] [IExpr.ResultTypes L]
     (intended : Profile service.setup.intendedModel.behavioralSignature)
     (source : Profile (service.sourceModel (CommitmentInterface.values
       service.setup.program)).behavioralSignature)
-    (agrees : service.setup.intendedRestriction.ExtendsProfile intended source) (ε : ℝ)
+    (agrees : (service.setup.intendedRestriction (CommitmentInterface.values
+      service.setup.program)).ExtendsProfile intended source) (ε : ℝ)
     (equilibrium : IsεNash (service.setup.intendedModel.toBehavioralGameForm
         (instructionCount service.setup.program + 1))
       (fun final who => (service.setup.protocolReadout final.state).elim 0
@@ -951,7 +962,8 @@ theorem intended_async_first_turn_nash [Fintype Player] [IExpr.ResultTypes L]
     (intended : Profile service.setup.intendedModel.behavioralSignature)
     (source : Profile (service.sourceModel (CommitmentInterface.values
       service.setup.program)).behavioralSignature)
-    (agrees : service.setup.intendedRestriction.ExtendsProfile intended source) (ε : ℝ)
+    (agrees : (service.setup.intendedRestriction (CommitmentInterface.values
+      service.setup.program)).ExtendsProfile intended source) (ε : ℝ)
     (equilibrium : IsεNash (service.setup.intendedModel.toBehavioralGameForm
         (instructionCount service.setup.program + 1))
       (fun final who => (service.setup.protocolReadout final.state).elim 0
@@ -1055,7 +1067,8 @@ theorem intended_opening_client_nash [Fintype Player] [IExpr.ResultTypes L]
       (serviceSourceAudit service.setup service.mode service.deadline service.leaks sample) deposit
     ∃ source : Profile (service.sourceModel (CommitmentInterface.values
       service.setup.program)).behavioralSignature,
-      service.setup.intendedRestriction.ExtendsProfile intended source ∧
+      (service.setup.intendedRestriction (CommitmentInterface.values
+        service.setup.program)).ExtendsProfile intended source ∧
       (∀ player, Disclosing service.setup.program
         (service.setup.decodeBehavioralProfile (CommitmentInterface.values service.setup.program)
           source player)) ∧
@@ -2747,3 +2760,39 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   exists_source_equilibrium_with_uniform_service_obstruction
+
+open Vegas.Examples.LateOpeningRuntimePartialAudit in
+/-- info: 'Vegas.Examples.LateOpeningRuntimePartialAudit.exists_service_with_no_preserving_equilibrium'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms exists_service_with_no_preserving_equilibrium
+
+open Vegas.Examples.LateOpeningRuntimePartialAuditSourceObstruction in
+/-- info: 'Vegas.Examples.LateOpeningRuntimePartialAuditSourceObstruction.exists_source_equilibrium_with_partial_audit_obstruction'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms exists_source_equilibrium_with_partial_audit_obstruction
+
+open Vegas.EventGraphRuntime in
+/-- info: 'Vegas.EventGraphRuntime.reactiveOriginal_silent_of_initialized_support'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms reactiveOriginal_silent_of_initialized_support
+
+open Vegas in
+/-- info: 'Vegas.encodeDecisionView?_originalReactiveSourceRecall'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms encodeDecisionView?_originalReactiveSourceRecall
+
+open Vegas.Examples.LateOpeningRuntimeService in
+/-- info: 'Vegas.Examples.LateOpeningRuntimeService.runRounds_observable_scheduler'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms runRounds_observable_scheduler
+
+open Vegas.Examples.LateOpeningRuntimeBobSunkAudit in
+/-- info: 'Vegas.Examples.LateOpeningRuntimeBobSunkAudit.early_submission_continuation_full_charge'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms early_submission_continuation_full_charge

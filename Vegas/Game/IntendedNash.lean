@@ -59,20 +59,25 @@ theorem indebted_of_extra (wellFormed : setup.WellFormed) (who : Player)
     (original : setup.intendedProtocol.History)
     (choices : ∀ i, (setup.informationModel (CommitmentInterface.values setup.program)).Choice i
       ((setup.informationModel (CommitmentInterface.values setup.program)).infoOf i
-        (setup.intendedRestriction.history original).trace))
+        ((setup.intendedRestriction (CommitmentInterface.values setup.program)).history
+          original).trace))
     (next : (setup.executionProtocol (CommitmentInterface.values setup.program)).History)
     (running : ¬ setup.intendedProtocol.terminal original.state)
-    (extra : choices who ∉ Set.range (setup.intendedRestriction.choiceAt who original))
+    (extra : choices who ∉ Set.range ((setup.intendedRestriction (CommitmentInterface.values
+      setup.program)).choiceAt who original))
     (reached : next ∈ ((setup.informationModel
       (CommitmentInterface.values setup.program)).localStep
-        (setup.intendedRestriction.history original) choices).support) :
+        ((setup.intendedRestriction (CommitmentInterface.values setup.program)).history
+          original) choices).support) :
     setup.IndebtedState who next.state := by
   obtain ⟨action, spelled, missing⟩ :=
     (setup.informationModel (CommitmentInterface.values setup.program)).menuRestriction_extraAt
-      setup.intendedMenu setup.intendedMenu_adequate setup.intendedMenu_subset who original
+      setup.intendedMenu setup.intendedMenu_adequate (setup.intendedMenu_subset
+        (CommitmentInterface.values setup.program)) who original
       (choices who) extra
   have running' : ¬ (setup.executionProtocol (CommitmentInterface.values setup.program)).terminal
-      (setup.intendedRestriction.history original).state := running
+      ((setup.intendedRestriction (CommitmentInterface.values setup.program)).history
+        original).state := running
   simp only [InformationModel.localStep, dite_eq_right_of_eq_false (eq_false running'),
     PMF.mem_support_bindOnSupport_iff, PMF.mem_support_pure_iff] at reached
   obtain ⟨target, realized, rfl⟩ := reached
@@ -101,7 +106,8 @@ theorem intended_isεNash_preserved [Fintype Player]
     (intended : Profile setup.intendedModel.behavioralSignature)
     (target : Profile
       (setup.informationModel (CommitmentInterface.values setup.program)).behavioralSignature)
-    (agrees : setup.intendedRestriction.ExtendsProfile intended target) (ε : ℝ)
+    (agrees : (setup.intendedRestriction (CommitmentInterface.values
+      setup.program)).ExtendsProfile intended target) (ε : ℝ)
     (equilibrium : IsεNash (setup.intendedModel.toBehavioralGameForm
         (instructionCount setup.program + 1))
       (fun final who => (setup.protocolReadout final.state).elim 0
@@ -138,7 +144,8 @@ theorem intended_isεNash_preserved [Fintype Player]
       (fun state => forfeitUtility setup.program forfeit utility
         (setup.parameterOutcome parameter state) who)
   have matching : ∀ history who,
-      targetPayoff (setup.intendedRestriction.history history) who =
+      targetPayoff ((setup.intendedRestriction (CommitmentInterface.values
+        setup.program)).history history) who =
         sourcePayoff history who := by
     intro history who
     change (setup.protocolReadout history.state).elim 0 _ =
@@ -191,11 +198,14 @@ theorem intended_isεNash_preserved [Fintype Player]
           Nat.one_le_cast.mpr positive
         simp only [forfeitUtility]
         nlinarith
-  have law := setup.intendedRestriction.initialized_law intended target agrees
+  have law := (setup.intendedRestriction (CommitmentInterface.values
+    setup.program)).initialized_law intended target agrees
     (instructionCount setup.program + 1)
   refine ⟨?_, ?_, ?_⟩
-  · exact setup.intendedRestriction.isεNash_extends_of_debt (setup.protocol_bounded _)
-      ((setup.informationModel _).menuRestriction_reflecting _ _ setup.intendedMenu_subset)
+  · exact (setup.intendedRestriction (CommitmentInterface.values
+    setup.program)).isεNash_extends_of_debt (setup.protocol_bounded _)
+      ((setup.informationModel _).menuRestriction_reflecting _ _ (setup.intendedMenu_subset
+        (CommitmentInterface.values setup.program)))
       intended target agrees (fun who => setup.IndebtedState who)
       (fun who => setup.indebted_localStep who)
       (fun who original choices next running _ extra reached =>

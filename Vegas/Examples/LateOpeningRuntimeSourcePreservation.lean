@@ -78,7 +78,8 @@ theorem intended_equilibrium_preserved_under_withholding {reward forfeit : ℝ}
           ∀ who, failedReveals setup.program who (publicOutcome setup.program terminal) = 0) ∧
       withholdingTerminalLaw reward forfeit target.strategy =
         intendedTerminalLaw reward intended.strategy := by
-  exact setup.intended_sequentialEquilibrium_preserved finiteBindingTypes wellFormed parameter
+  exact setup.intended_sequentialEquilibrium_preserved
+      (CommitmentInterface.values setup.program) finiteBindingTypes wellFormed parameter
     (grossUtility reward) forfeit (grossUtility_range nonnegative coversAlice coversBob)
     setup.intended_bounded.wellFoundedHistories withholding_bounded.wellFoundedHistories
     intended equilibrium

@@ -135,7 +135,9 @@ theorem optional_activation (weight : ℝ) (nonnegative : 0 ≤ weight)
   rw [timer, clock]
   decide
 
-private theorem protected_round_inputs (weight : ℝ) (nonnegative : 0 ≤ weight)
+/-- A protected receiver service round retains exactly the inputs already
+authored by the response, including after arbitrary earlier raw traffic. -/
+theorem protected_round_inputs (weight : ℝ) (nonnegative : 0 ≤ weight)
     (remaining : Nat) (execution : app.Execution)
     (trace : (app.protocol initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace

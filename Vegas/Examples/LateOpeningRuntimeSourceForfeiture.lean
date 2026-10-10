@@ -367,13 +367,13 @@ theorem intended_equilibrium_preserved_under_forfeiture {reward forfeit : ℝ}
         forfeiting_bounded.wellFoundedHistories (forfeitingPayoff reward forfeit) ∧
       forfeitingTerminalLaw reward forfeit target.strategy =
         intendedTerminalLaw reward intended.strategy := by
-  obtain ⟨source, sourceEquilibrium, _, sourceLaw⟩ :=
-    intended_equilibrium_preserved_under_withholding nonnegative coversAlice coversBob
+  obtain ⟨target, targetEquilibrium, _, sameLaw⟩ :=
+    setup.intended_sequentialEquilibrium_preserved
+      (CommitmentInterface.forfeiture setup.program) finiteBindingTypes wellFormed parameter
+      (grossUtility reward) forfeit (grossUtility_range nonnegative coversAlice coversBob)
+      setup.intended_bounded.wellFoundedHistories forfeiting_bounded.wellFoundedHistories
       intended equilibrium
-  obtain ⟨target, targetEquilibrium, sameLaw⟩ :=
-    withholding_equilibrium_preserved_under_forfeiture reward (by linarith)
-      source sourceEquilibrium
-  exact ⟨target, targetEquilibrium, sameLaw.trans sourceLaw⟩
+  exact ⟨target, targetEquilibrium, sameLaw⟩
 
 /-- The initialized Safe terminal-store and payoff law is a sequential
 equilibrium outcome even when both bindings and publications can fail. -/

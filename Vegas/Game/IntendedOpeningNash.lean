@@ -102,7 +102,8 @@ theorem intended_openingClientProfile_isεNash {Parameter : Type}
     (intended : Profile service.setup.intendedModel.behavioralSignature)
     (source : Profile (service.sourceModel (CommitmentInterface.values
       service.setup.program)).behavioralSignature)
-    (agrees : service.setup.intendedRestriction.ExtendsProfile intended source)
+    (agrees : (service.setup.intendedRestriction (CommitmentInterface.values
+      service.setup.program)).ExtendsProfile intended source)
     (disclosing : ∀ player, Disclosing service.setup.program
       (service.setup.decodeBehavioralProfile (CommitmentInterface.values service.setup.program)
         source player)) (ε : ℝ)
@@ -207,7 +208,8 @@ theorem intended_openingExtension_isεNash {Parameter : Type}
       (serviceSourceAudit service.setup service.mode service.deadline service.leaks sample) deposit
     ∃ source : Profile (service.sourceModel (CommitmentInterface.values
       service.setup.program)).behavioralSignature,
-      service.setup.intendedRestriction.ExtendsProfile intended source ∧
+      (service.setup.intendedRestriction (CommitmentInterface.values
+        service.setup.program)).ExtendsProfile intended source ∧
       (∀ player, Disclosing service.setup.program
         (service.setup.decodeBehavioralProfile (CommitmentInterface.values service.setup.program)
           source player)) ∧

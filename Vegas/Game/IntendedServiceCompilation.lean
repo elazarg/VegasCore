@@ -99,6 +99,7 @@ theorem intended_audited_raw_sequentialEquilibrium {Parameter : Type}
   intro forfeited raw base deposit payoff settle
   obtain ⟨source, sourceEquilibrium, _, sourceLaw⟩ :=
     service.setup.intended_sequentialEquilibrium_preserved
+      (CommitmentInterface.values service.setup.program)
       (sourceService_finiteBindingTypes service.setup service.bounds service.values)
       wellFormed parameter utility forfeit range _ service.sourceTerminates intended equilibrium
   obtain ⟨target, targetEquilibrium, uncharged, targetLaw⟩ :=

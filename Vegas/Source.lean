@@ -14,6 +14,10 @@ import Vegas.Source.Purification
 import Vegas.Source.ValueBinding
 import Vegas.Source.ValueBindingAdmission
 import Vegas.Source.ValueBindingContinuation
+import Vegas.Source.AdmissionRestriction
+import Vegas.Source.BindingRepairInformation
+import Vegas.Source.FailedBinding
+import Vegas.Source.FailedBindingDeviation
 import Vegas.Source.Disclosure
 import Vegas.Source.DisclosureAliases
 import Vegas.Source.DisclosureNormalization

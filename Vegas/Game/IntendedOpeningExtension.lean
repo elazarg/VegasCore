@@ -147,23 +147,26 @@ is not a refusal. -/
 def openingExtension (intended : Profile setup.intendedModel.behavioralSignature) :
     Profile
       (setup.informationModel (CommitmentInterface.values setup.program)).behavioralSignature :=
-  setup.intendedRestriction.extendProfile intended
+  (setup.intendedRestriction (CommitmentInterface.values setup.program)).extendProfile intended
     (fun who => setup.openingPolicy (CommitmentInterface.values setup.program) who)
 
 /-- The opening extension extends the intended profile. -/
 theorem openingExtension_extends (intended : Profile setup.intendedModel.behavioralSignature) :
-    setup.intendedRestriction.ExtendsProfile intended (setup.openingExtension intended) :=
-  setup.intendedRestriction.extendProfile_extends _ _
+    (setup.intendedRestriction (CommitmentInterface.values setup.program)).ExtendsProfile
+      intended (setup.openingExtension intended) :=
+  (setup.intendedRestriction (CommitmentInterface.values setup.program)).extendProfile_extends _ _
 
 /-- The opening extension never refuses a disclosure. -/
 theorem openingExtension_notRefusal (intended : Profile setup.intendedModel.behavioralSignature)
     (who : Player) (info : setup.ProtocolView who) :
     ∀ choice ∈ (setup.openingExtension intended who info).support, NotRefusal choice.1 := by
   classical
-  by_cases retained : setup.intendedRestriction.Retained who info
+  by_cases retained : (setup.intendedRestriction (CommitmentInterface.values
+    setup.program)).Retained who info
   · obtain ⟨site, rfl⟩ := retained
     simp only [openingExtension, InformationModel.ActionRestriction.extendProfile,
-      dite_eq_left (setup.intendedRestriction.retained_site who site),
+      dite_eq_left ((setup.intendedRestriction (CommitmentInterface.values
+        setup.program)).retained_site who site),
       InformationModel.ActionRestriction.retainedLaw_at]
     intro choice member
     obtain ⟨intendedChoice, _, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp member
