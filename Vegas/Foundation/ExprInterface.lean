@@ -98,18 +98,28 @@ structure IExpr where
   evalLawDeps_eq_evalLaw :
     ∀ {Γ : Ctx Ty} {τ : Ty} (d : DistExpr Γ τ) (ρ : Env Val Γ),
       evalLawDeps d (fun x σ h _ => ρ x σ h) = evalLaw d ρ
-  /-- Soundness of `exprDeps`: if two environments agree on the declared
-  dependency set, `eval` produces equal results. The semantic justification
-  for treating `exprDeps` as a usable dependency tracker. -/
-  expr_deps_sound :
-    ∀ {Γ : Ctx Ty} {τ : Ty} (e : Expr Γ τ) (ρ₁ ρ₂ : Env Val Γ),
-      AgreesOn ρ₁ ρ₂ (exprDeps e) → eval e ρ₁ = eval e ρ₂
-  /-- Soundness of `distDeps` for retained exact probability tables. -/
-  law_deps_sound :
-    ∀ {Γ : Ctx Ty} {τ : Ty} (d : DistExpr Γ τ) (ρ₁ ρ₂ : Env Val Γ),
-      AgreesOn ρ₁ ρ₂ (distDeps d) → evalLaw d ρ₁ = evalLaw d ρ₂
 
 namespace IExpr
+
+/-- Dependency-local evaluation makes expression dependency tracking sound. -/
+theorem expr_deps_sound (L : IExpr) {Γ : Ctx L.Ty} {τ : L.Ty}
+    (e : L.Expr Γ τ) (left right : Env L.Val Γ)
+    (agrees : AgreesOn left right (L.exprDeps e)) :
+    L.eval e left = L.eval e right := by
+  rw [← L.evalDeps_eq_eval e left, ← L.evalDeps_eq_eval e right]
+  congr 1
+  funext x σ h member
+  exact agrees x σ h member
+
+/-- Dependency-local evaluation makes exact-law dependency tracking sound. -/
+theorem law_deps_sound (L : IExpr) {Γ : Ctx L.Ty} {τ : L.Ty}
+    (law : L.DistExpr Γ τ) (left right : Env L.Val Γ)
+    (agrees : AgreesOn left right (L.distDeps law)) :
+    L.evalLaw law left = L.evalLaw law right := by
+  rw [← L.evalLawDeps_eq_evalLaw law left, ← L.evalLawDeps_eq_evalLaw law right]
+  congr 1
+  funext x σ h member
+  exact agrees x σ h member
 
 /-- Optional publication-result support for an expression language. This is
 separate from `IExpr` so languages that do not publish fallible source outcomes

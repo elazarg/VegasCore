@@ -304,83 +304,6 @@ theorem expr_deps_context {Γ : CtxSimple} {b : BaseTy}
         · exact iht y hyt
         · exact ihf y hyf
 
-theorem expr_deps_sound {Γ : CtxSimple} {b : BaseTy}
-    (e : Expr Γ b) (ρ₁ ρ₂ : PlainEnv Γ)
-    (ha : AgreesOn ρ₁ ρ₂ (exprDeps e)) :
-    evalExpr e ρ₁ = evalExpr e ρ₂ := by
-  induction e with
-  | var x h =>
-    exact ha x _ h (Finset.mem_singleton.mpr rfl)
-  | constInt _ => rfl
-  | constBool _ => rfl
-  | constWord _ => rfl
-  | constRange _ => rfl
-  | none => rfl
-  | some e ih =>
-    simp only [evalExpr]
-    rw [ih ha]
-  | isSome e ih =>
-    simp only [evalExpr]
-    rw [ih ha]
-  | isNone e ih =>
-    simp only [evalExpr]
-    rw [ih ha]
-  | getD e fallback ihe ihf =>
-    simp only [evalExpr]
-    rw [ihe (ha.mono Finset.subset_union_left),
-        ihf (ha.mono Finset.subset_union_right)]
-  | failure => rfl
-  | success e ih =>
-    simp only [evalExpr]
-    rw [ih ha]
-  | isSuccess e ih =>
-    simp only [evalExpr]
-    rw [ih ha]
-  | isFailure e ih =>
-    simp only [evalExpr]
-    rw [ih ha]
-  | getResultD e fallback ihe ihf =>
-    simp only [evalExpr]
-    rw [ihe (ha.mono Finset.subset_union_left),
-        ihf (ha.mono Finset.subset_union_right)]
-  | addInt l r ihl ihr =>
-    simp only [evalExpr]
-    rw [ihl (ha.mono Finset.subset_union_left),
-        ihr (ha.mono Finset.subset_union_right)]
-  | addWord l r ihl ihr =>
-    simp only [evalExpr]
-    rw [ihl (ha.mono Finset.subset_union_left),
-        ihr (ha.mono Finset.subset_union_right)]
-  | subWord l r ihl ihr =>
-    simp only [evalExpr]
-    rw [ihl (ha.mono Finset.subset_union_left),
-        ihr (ha.mono Finset.subset_union_right)]
-  | mulWord l r ihl ihr =>
-    simp only [evalExpr]
-    rw [ihl (ha.mono Finset.subset_union_left),
-        ihr (ha.mono Finset.subset_union_right)]
-  | ltWord l r ihl ihr =>
-    simp only [evalExpr]
-    rw [ihl (ha.mono Finset.subset_union_left),
-        ihr (ha.mono Finset.subset_union_right)]
-  | eq l r ihl ihr =>
-    simp only [evalExpr]
-    rw [ihl (ha.mono Finset.subset_union_left),
-        ihr (ha.mono Finset.subset_union_right)]
-  | andBool l r ihl ihr =>
-    simp only [evalExpr]
-    rw [ihl (ha.mono Finset.subset_union_left),
-        ihr (ha.mono Finset.subset_union_right)]
-  | notBool e ih =>
-    simp only [evalExpr]
-    rw [ih ha]
-  | ite c t f ihc iht ihf =>
-    simp only [evalExpr]
-    rw [ihc (ha.mono (Finset.subset_union_left.trans Finset.subset_union_left))]
-    split
-    · exact iht (ha.mono (Finset.subset_union_right.trans Finset.subset_union_left))
-    · exact ihf (ha.mono Finset.subset_union_right)
-
 def evalExprDeps {Γ : CtxSimple} {b : BaseTy} : (e : Expr Γ b) →
     ((x : VarId) → (τ : BaseTy) → HasVar Γ x τ →
       x ∈ exprDeps e → Val τ) → Val b
@@ -546,20 +469,6 @@ theorem dist_deps_context {Γ : CtxSimple} {b : BaseTy}
         · exact iht x hxt
         · exact ihf x hxf
 
-theorem law_deps_sound {Γ : CtxSimple} {b : BaseTy}
-    (d : DistExpr Γ b) (ρ₁ ρ₂ : PlainEnv Γ)
-    (ha : AgreesOn ρ₁ ρ₂ (distExprDeps d)) :
-    evalLawDistExpr d ρ₁ = evalLawDistExpr d ρ₂ := by
-  induction d with
-  | weighted _ => rfl
-  | ite c t f iht ihf =>
-    simp only [evalLawDistExpr]
-    rw [expr_deps_sound c ρ₁ ρ₂
-      (ha.mono (Finset.subset_union_left.trans Finset.subset_union_left))]
-    split
-    · exact iht (ha.mono (Finset.subset_union_right.trans Finset.subset_union_left))
-    · exact ihf (ha.mono Finset.subset_union_right)
-
 def evalLawDistExprDeps {Γ : CtxSimple} {b : BaseTy} : (d : DistExpr Γ b) →
     ((x : VarId) → (τ : BaseTy) → HasVar Γ x τ →
       x ∈ distExprDeps d → Val τ) →
@@ -607,8 +516,6 @@ theorem evalLawDistExprDeps_eq_evalLaw {Γ : CtxSimple} {b : BaseTy}
   evalLawDeps := @evalLawDistExprDeps
   evalDeps_eq_eval := @evalExprDeps_eq_eval
   evalLawDeps_eq_evalLaw := @evalLawDistExprDeps_eq_evalLaw
-  expr_deps_sound := @expr_deps_sound
-  law_deps_sound := @law_deps_sound
 
 instance simpleExprResultTypes : IExpr.ResultTypes simpleExpr where
   result := BaseTy.result
