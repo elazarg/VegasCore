@@ -161,7 +161,7 @@ theorem canonical_payoff_nonnegative (decision : DecisionHistory weight nonnegat
         (LateOpeningRuntimeService.runtime.canonicalServiceDecision leaks bob
           (decision.execution.recall bob) (decision.execution.observe app bob)
             bobRevealEvent true))).support) :
-    0 ≤ LateOpeningRuntimeNash.payoff reward forfeit sample deposit (app.finished final) bob := by
+    0 ≤ LateOpeningRuntimeGame.payoff reward forfeit sample deposit (app.finished final) bob := by
   obtain ⟨candidate, material, canonical, clean⟩ := canonical_continuation_clean weight nonnegative
     decision players bobPolicy sample authentic
   rw [canonical] at reached
@@ -191,7 +191,7 @@ theorem canonical_payoff_nonnegative (decision : DecisionHistory weight nonnegat
       decodeState? (terminalRefs program) final.application.config.store else none) = _
     rw [ite_eq_left completed]
     exact decoded
-  unfold LateOpeningRuntimeNash.payoff TerminalAudit.utility
+  unfold LateOpeningRuntimeGame.payoff TerminalAudit.utility
   rw [clear, zero_mul, sub_zero, nativeBaseUtility_of_readout reward forfeit _ _ readout bob,
     sourceUtility_bob]
   have success : ((terminalStateOf bit label aliceResult (.success decision.answer)

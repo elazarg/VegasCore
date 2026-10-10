@@ -243,9 +243,12 @@ information sets need their own control.
 The strongest positive claim justified for the actual implementation today is
 the checked audited raw calendar theorem. The most direct realistic extension
 is a bounded, public, sequential phase service with guaranteed legitimate
-settlement and actual penalties for departures. Arbitrary `AsyncServiceSpec`
-preservation remains open at its source-information adapter, even though its
-risk-menu enforcement edge is already checked.
+settlement and actual penalties for departures. Universal exact SE preservation
+under the baseline asynchronous contract is refuted by the
+[checked native source obstruction](commit-reveal-research/native-se-obstruction.md).
+Positive SE results require stronger stated service and information hypotheses;
+their off-path source-information and rational-completion adapters remain
+separate obligations, even though risk-menu enforcement is checked.
 
 ## A useful fully public one-phase calculation
 

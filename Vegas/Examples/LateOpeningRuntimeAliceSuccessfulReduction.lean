@@ -98,11 +98,11 @@ theorem successfulValue_labelGuess (reward : ℝ) (label guessed : Fin 3) :
 theorem rational_supported_successful_binding (positive : 0 < weight)
     (reward forfeit : ℝ) (deposit : Player → ℝ)
     (forfeitPositive : 0 < forfeit) (depositPositive : 0 < deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
     (players : Player → app.Policy)
     (bobPolicy : players bob = rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
@@ -169,18 +169,18 @@ theorem receiver_expected_value_closed (positive : 0 < weight)
     (reward forfeit : ℝ) (deposit : Player → ℝ)
     (rewardNonnegative : 0 ≤ reward) (forfeitPositive : 0 < forfeit)
     (aliceDepositNonnegative : 0 ≤ deposit alice) (bobDepositPositive : 0 < deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
     (players : Player → app.Policy)
     (bobPolicy : players bob = rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy bob) :
     expect (LateOpeningRuntimeSettlementContinuation.receiverCompletion weight nonnegative players
       (answerDecision bit label slot seen))
-      (fun final => LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+      (fun final => LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
         deposit (app.finished final) alice) =
       if label.val < 2 then reward * (1 - safeProbability players bit seen / 2)
       else reward * safeProbability players bit seen / 2 := by

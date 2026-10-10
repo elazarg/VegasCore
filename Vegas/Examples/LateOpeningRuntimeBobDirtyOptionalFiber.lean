@@ -59,8 +59,8 @@ theorem failure_persists (execution : app.Execution)
       failed reached
 
 variable
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1)
   (execution : app.Execution)
   (executionTrace : (app.protocol initial LateOpeningRuntimeService.horizon
@@ -75,7 +75,7 @@ variable
   (reward forfeit : ℝ) (deposit : Player → ℝ)
 include representative executionTrace current bound ready timely rejected in
 theorem rational_supported_response_not_failure (forfeitPositive : 0 < forfeit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment))
     (response : app.Action)

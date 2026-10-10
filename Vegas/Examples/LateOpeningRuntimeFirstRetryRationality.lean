@@ -29,11 +29,11 @@ theorem rational_comparison_law
     (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit alice)
     (marginPositive : 0 < LateOpeningRuntimeAliceRationality.margin
       weight reward forfeit deposit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
     (bit : Bool) (label : Fin 3) :
     originalLaw weight nonnegative assessment.strategy bit label =

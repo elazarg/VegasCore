@@ -358,9 +358,11 @@ argument nor the event-only credential alone supplies this premise.
 The strongest next positive target is therefore an actual retained-action
 runtime with complete observation, canonical submission ownership, and a
 source-information adapter, followed by a proved incremental enforcement
-extension to the raw menu. The strongest negative target must exhibit an
-actual source program and scheduler satisfying the all-history service
-contract, compute the listener's true leaked-and-ledger information, and
-exclude every raw SE with the required source outcome law. The existing
-operational lemmas reduce this work substantially; they do not yet finish
-either capstone.
+extension to the raw menu. The
+[checked native source obstruction](commit-reveal-research/native-se-obstruction.md)
+exhibits an actual source program and scheduler satisfying the all-history
+service contract, computes the listener's leaked-and-ledger information, and
+excludes every raw SE preserving the selected source equilibrium's joint
+store/payoff law, under its stated partially public observations and audit and
+collateral assumptions. The complete-observation positive construction above
+still needs its source-information and enforcement adapters.

@@ -48,13 +48,13 @@ private theorem inclusion_positive (positive : 0 < weight) : 0 < inclusionProbab
 private theorem seen_factor_tendsto (positive : 0 < weight)
     (reward forfeit : ℝ) (deposit : Player → ℝ)
     (forfeitNonnegative : 0 ≤ forfeit) (collateral : 1 < deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
-    (sequence : ℕ → (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (sequence : ℕ → (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (converges : InformationModel.BehavioralAssessmentConvergesPointwise sequence assessment)
     (error : ℕ → ℝ) (errorNonnegative : ∀ n, 0 ≤ error n)
     (errorLimit : Tendsto error atTop (nhds 0))
@@ -104,13 +104,13 @@ private theorem seen_factor_tendsto (positive : 0 < weight)
 private theorem unseen_factor_tendsto (positive : 0 < weight)
     (reward forfeit : ℝ) (deposit : Player → ℝ)
     (forfeitNonnegative : 0 ≤ forfeit) (collateral : 1 < deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
-    (sequence : ℕ → (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (sequence : ℕ → (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (converges : InformationModel.BehavioralAssessmentConvergesPointwise sequence assessment)
     (error : ℕ → ℝ) (errorNonnegative : ∀ n, 0 ≤ error n)
     (errorLimit : Tendsto error atTop (nhds 0))
@@ -168,13 +168,13 @@ private theorem unseen_factor_tendsto (positive : 0 < weight)
   simpa only [unseenFactor, mass, cancel] using limit
 
 variable (bit : Bool)
-  (seenSite : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (seenRepresentative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (seenSite : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (seenRepresentative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob seenSite.1) (seenLabel : Fin 3)
   (seenCurrent : seenRepresentative.1.state =
     some ⟨14, some bob, answerDecision bit seenLabel 0 true⟩)
-  (unseenSite : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (unseenRepresentative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (unseenSite : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (unseenRepresentative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob unseenSite.1) (unseenLabel : Fin 3)
   (unseenCurrent : unseenRepresentative.1.state =
     some ⟨14, some bob, answerDecision bit unseenLabel 0 false⟩)
@@ -188,13 +188,13 @@ theorem label_belief_cross_identity (positive : 0 < weight)
     (aliceDepositNonnegative : 0 ≤ deposit alice) (bobCollateral : 1 < deposit bob)
     (marginPositive : 0 < LateOpeningRuntimeAliceOpeningRationality.margin
       weight reward forfeit deposit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (equilibrium : assessment.IsSequentialEquilibrium
       (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
     (sender holder : Fin 3) :
     LateOpeningRuntimeBindingPosterior.readoutBelief weight nonnegative seenSite assessment
@@ -215,7 +215,7 @@ theorem label_belief_cross_identity (positive : 0 < weight)
       reward forfeit deposit positive rewardNonnegative forfeitNonnegative aliceDepositNonnegative
         marginPositive assessment equilibrium
   let seen : InformationModel.AsymptoticHistoryLikelihood
-      (M := LateOpeningRuntimeNash.model weight nonnegative) bob Unit (Fin 3) sequence
+      (M := LateOpeningRuntimeGame.model weight nonnegative) bob Unit (Fin 3) sequence
         (fun n label => typeWeight weight nonnegative (sequence n).strategy bit label) := {
     site := fun _ => seenSite
     histories := fun _ label => readoutHistories weight nonnegative seenSite initializedInputs
@@ -251,7 +251,7 @@ theorem label_belief_cross_identity (positive : 0 < weight)
           error errorNonnegative errorLimit retryBound bit label
   }
   let unseen : InformationModel.AsymptoticHistoryLikelihood
-      (M := LateOpeningRuntimeNash.model weight nonnegative) bob Unit (Fin 3) sequence
+      (M := LateOpeningRuntimeGame.model weight nonnegative) bob Unit (Fin 3) sequence
         (fun n label => typeWeight weight nonnegative (sequence n).strategy bit label) := {
     site := fun _ => unseenSite
     histories := fun _ label => readoutHistories weight nonnegative unseenSite initializedInputs
@@ -338,13 +338,13 @@ theorem label_belief_product_zero (positive : 0 < weight)
     (aliceDepositNonnegative : 0 ≤ deposit alice) (bobCollateral : 1 < deposit bob)
     (marginPositive : 0 < LateOpeningRuntimeAliceOpeningRationality.margin
       weight reward forfeit deposit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (equilibrium : assessment.IsSequentialEquilibrium
       (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
     (sender holder : Fin 3)
     (sends : genuineProbability weight nonnegative assessment.strategy bit sender = 1)

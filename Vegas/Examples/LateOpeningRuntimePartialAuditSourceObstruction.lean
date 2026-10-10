@@ -43,24 +43,24 @@ theorem exists_source_equilibrium_with_partial_audit_obstruction
             (LateOpeningRuntimeService.scheduler weight nonnegative) ∧
           0 < 1 - inclusionProbability weight ∧
           1 - inclusionProbability weight < failureFloor ∧
-          (∃ assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment,
+          (∃ assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment,
             assessment.IsSequentialEquilibrium
               (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
                 (LateOpeningRuntimeService.scheduler
                   weight nonnegative)).decisionInformationAntichain
               (rawMenu.bounded initial LateOpeningRuntimeService.horizon
                 (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-              (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+              (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
                 (LateOpeningRuntimePartialAudit.sample probability samplingPositive.le bounded)
                   deposit history.state who)) ∧
-          ∀ assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment,
+          ∀ assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment,
             assessment.IsSequentialEquilibrium
               (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
                 (LateOpeningRuntimeService.scheduler
                   weight nonnegative)).decisionInformationAntichain
               (rawMenu.bounded initial LateOpeningRuntimeService.horizon
                 (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-              (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+              (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
                 (LateOpeningRuntimePartialAudit.sample probability samplingPositive.le bounded)
                   deposit history.state who) →
             nativeTerminalLaw weight nonnegative reward forfeit

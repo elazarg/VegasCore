@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Examples.LateOpeningRuntimeNash
+import Vegas.Examples.LateOpeningRuntimeGame
 import Interaction.ReactiveEquilibriumExistence
 
 /-! # Sequential-equilibrium existence in the actual late-opening runtime
@@ -17,7 +17,7 @@ namespace Vegas.Examples.LateOpeningRuntimeEquilibrium
 
 open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory GameTheory.Protocol GameTheory.Enforcement
-open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeNash
+open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeGame
 
 /-- The actual partially public runtime has a sequential equilibrium, with
 all bounded raw deviations available. No payoff-sign, collateral-margin or

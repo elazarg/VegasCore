@@ -25,8 +25,8 @@ open LateOpeningRuntimeSource LateOpeningRuntimeReadout LateOpeningRuntimeServic
   LateOpeningRuntimeBobSuccessDecision LateOpeningRuntimeSuccessPosterior
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1)
   (decision : DecisionHistory weight nonnegative)
   (current : representative.1.state = some ⟨14, some bob, decision.execution⟩)
@@ -35,7 +35,7 @@ include current in
 /-- Every compatible legal history, including one with zero assessment belief,
 retains the published initial bit and one of the actual three private labels. -/
 theorem initialized_type_of_information
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1) :
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1) :
     ∃ label : Fin 3,
       initializedInputs history.1.state =
           some (setup.eventInputs (sourceInitial decision.bit label)) ∧
@@ -62,7 +62,7 @@ theorem initialized_type_of_information
 
 include current in
 theorem initialized_inputs_iff_label
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1)
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1)
     (label : Fin 3) :
     initializedInputs history.1.state =
         some (setup.eventInputs (sourceInitial decision.bit label)) ↔
@@ -91,7 +91,7 @@ theorem label_histories_eq_initialized_type (label : Fin 3) :
     history label).symm
 
 theorem label_mass_eq_initialized_type
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (label : Fin 3) :
     labelMass weight nonnegative site representative decision current assessment label =
       InformationModel.finiteHistoryBelief assessment bob site

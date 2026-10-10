@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceAuditableCollection
+import Vegas.Pending.ReactiveEmissionTokens
 
 /-! # Responses that doom their author, and their collection
 
@@ -32,64 +33,6 @@ variable {Player : Type} [DecidableEq Player]
 
 section Emissions
 
-variable (setup leaks) in
-/-- Every recorded submission emitted an envelope carrying its call. -/
-def RecalledEmissions (execution : (serviceApplication setup mode deadline leaks).Execution) :
-    Prop :=
-  ∀ who, ∀ entry ∈ execution.recall who, ∀ material, entry.action.transmission = some material →
-    ∃ message, entry.emitted = some message ∧ message.payload.call = material.call.packet
-
-theorem recalledEmissions_respond
-    (execution : (serviceApplication setup mode deadline leaks).Execution) (who : Player)
-    (action : (serviceApplication setup mode deadline leaks).Action)
-    (valid : RecalledEmissions setup leaks execution) :
-    RecalledEmissions setup leaks
-      (execution.respond (serviceApplication setup mode deadline leaks) who action) := by
-  intro observer entry member material sent
-  by_cases same : observer = who
-  · subst observer
-    rcases action with ⟨transmission⟩
-    cases transmission with
-    | none =>
-        simp only [ReactiveApplication.Execution.respond, ↓reduceIte, List.mem_append,
-          List.mem_singleton] at member
-        rcases member with prior | rfl
-        · exact valid _ entry prior material sent
-        · cases sent
-    | some chosen =>
-        simp only [ReactiveApplication.Execution.respond, ↓reduceIte, List.mem_append,
-          List.mem_singleton] at member
-        rcases member with prior | rfl
-        · exact valid _ entry prior material sent
-        · cases Option.some.inj sent
-          exact ⟨_, rfl, rfl⟩
-  · rw [(serviceApplication setup mode deadline leaks).respond_recall_other execution who
-      observer same action] at member
-    exact valid observer entry member material sent
-
-variable (setup leaks) in
-theorem recalledEmissionsInvariant
-    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler) :
-    (serviceApplication setup mode deadline leaks).ServiceInvariant scheduler
-      (RecalledEmissions setup leaks) where
-  respond execution who action valid := recalledEmissions_respond execution who action valid
-  environment execution next command valid _ reached := by
-    intro who entry member
-    rw [(serviceApplication setup mode deadline leaks).environmentStep_recall execution next
-      command reached] at member
-    exact valid who entry member
-
-/-- At every legal history every recorded submission emitted an envelope with
-its call, under arbitrary responses and every scheduler. -/
-theorem history_recalledEmissions {horizon : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {control : (serviceApplication setup mode deadline leaks).Control}
-    (trace : ((serviceApplication setup mode deadline leaks).protocol
-      (serviceInitialLaw setup mode) horizon scheduler).Trace (some control)) :
-    RecalledEmissions setup leaks control.execution :=
-  (recalledEmissionsInvariant setup leaks scheduler).history (serviceInitialLaw setup mode)
-    horizon (fun _ _ _ _ member => False.elim (List.not_mem_nil member)) trace
-
 /-- A recalled call for an event left an emitted envelope of its author naming
 that event. -/
 theorem recalled_call_emitted {horizon : Nat}
@@ -112,8 +55,10 @@ theorem recalled_call_emitted {horizon : Nat}
       simp only [EventGraphRuntime.submittedEvent?, sent, reduceCtorEq] at named
   | some material =>
       simp only [EventGraphRuntime.submittedEvent?, sent] at named
-      obtain ⟨message, emitted, call⟩ := history_recalledEmissions trace who entry member
-        material sent
+      obtain ⟨message, emitted, call⟩ :=
+        ((serviceRuntime setup mode deadline).reactiveEmission_history leaks
+        (serviceInitialLaw setup mode) horizon scheduler control trace who).2 entry member
+          material sent
       have input : control.execution.InputRecall app :=
         app.history_inputRecall (serviceInitialLaw setup mode) horizon scheduler trace
       have output : message ∈ app.outputs (control.execution.recall who) :=

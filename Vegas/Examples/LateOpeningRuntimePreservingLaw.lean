@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Examples.LateOpeningRuntimeProtectedReceipt
-import Vegas.Examples.LateOpeningRuntimeNash
+import Vegas.Examples.LateOpeningRuntimeGame
 
 /-! # Reproducing the source law requires protected native acceptance
 
@@ -29,19 +29,19 @@ for the actual bounded raw profile. -/
 def nativeTerminalLaw (reward forfeit : ℝ)
     (sample : List (SettledEvidence setup .sequential) →
       PMF (List (SettledEvidence setup .sequential))) (deposit : Player → ℝ)
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who) :=
-  ((LateOpeningRuntimeNash.model weight nonnegative).runBehavioral profile
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who) :=
+  ((LateOpeningRuntimeGame.model weight nonnegative).runBehavioral profile
     (2 * LateOpeningRuntimeService.horizon + 1)).bind fun history =>
-      (LateOpeningRuntimeNash.settlement reward forfeit sample deposit history.state).map
+      (LateOpeningRuntimeGame.settlement reward forfeit sample deposit history.state).map
         fun payoffs =>
           (serviceSourceReadout setup .sequential deadline leaks history.state, payoffs)
 
 theorem native_terminal_readout (reward forfeit : ℝ)
     (sample : List (SettledEvidence setup .sequential) →
       PMF (List (SettledEvidence setup .sequential))) (deposit : Player → ℝ)
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who) :
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who) :
     (nativeTerminalLaw weight nonnegative reward forfeit sample deposit profile).map Prod.fst =
-      ((LateOpeningRuntimeNash.model weight nonnegative).runBehavioral profile
+      ((LateOpeningRuntimeGame.model weight nonnegative).runBehavioral profile
         (2 * LateOpeningRuntimeService.horizon + 1)).map
           (fun history => serviceSourceReadout setup .sequential deadline leaks history.state) := by
   unfold nativeTerminalLaw
@@ -75,8 +75,8 @@ theorem readout_success (state : app.ProtocolState)
 /-- Only Alice's public publication marginal is needed: this condition
 does not reveal or constrain hidden terminal bindings or initial secrets. -/
 theorem successful_readout_protected_receipt
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who)
-    (same : ((LateOpeningRuntimeNash.model weight nonnegative).runBehavioral profile
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who)
+    (same : ((LateOpeningRuntimeGame.model weight nonnegative).runBehavioral profile
         (2 * LateOpeningRuntimeService.horizon + 1)).map
           (fun history =>
             (serviceSourceReadout setup .sequential deadline leaks history.state).map
@@ -87,7 +87,7 @@ theorem successful_readout_protected_receipt
         (LateOpeningRuntimeService.scheduler weight nonnegative) profile) 2).map protectedAccepted =
           PMF.pure true := by
   apply native_almost_sure_success_protected_receipt_law weight nonnegative profile
-  change ((LateOpeningRuntimeNash.model weight nonnegative).runBehavioral profile
+  change ((LateOpeningRuntimeGame.model weight nonnegative).runBehavioral profile
     (2 * LateOpeningRuntimeService.horizon + 1)).map
       (fun history => stateSucceeded history.state) = PMF.pure true
   apply pmf_eq_pure_of_support_subset_singleton
@@ -96,7 +96,7 @@ theorem successful_readout_protected_receipt
   have projected :
       (serviceSourceReadout setup .sequential deadline leaks history.state).map
         (fun terminal => (terminal.get alicePublication).isSuccess) ∈
-      (((LateOpeningRuntimeNash.model weight nonnegative).runBehavioral profile
+      (((LateOpeningRuntimeGame.model weight nonnegative).runBehavioral profile
         (2 * LateOpeningRuntimeService.horizon + 1)).map
           (fun final => (serviceSourceReadout setup .sequential deadline leaks final.state).map
             (fun terminal => (terminal.get alicePublication).isSuccess))).support :=
@@ -113,8 +113,8 @@ theorem successful_readout_protected_receipt
 /-- Matching just the source typed outcome marginal already forces the
 protected accepting receipt; no target equilibrium assumption is used. -/
 theorem safe_readout_protected_receipt
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who)
-    (same : ((LateOpeningRuntimeNash.model weight nonnegative).runBehavioral profile
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who)
+    (same : ((LateOpeningRuntimeGame.model weight nonnegative).runBehavioral profile
         (2 * LateOpeningRuntimeService.horizon + 1)).map
           (fun history => serviceSourceReadout setup .sequential deadline leaks history.state) =
       prior.map (fun initial => some (finalState initial.1 initial.2 true safe true))) :
@@ -123,14 +123,14 @@ theorem safe_readout_protected_receipt
         (LateOpeningRuntimeService.scheduler weight nonnegative) profile) 2).map protectedAccepted =
           PMF.pure true := by
   apply native_almost_sure_success_protected_receipt_law weight nonnegative profile
-  change ((LateOpeningRuntimeNash.model weight nonnegative).runBehavioral profile
+  change ((LateOpeningRuntimeGame.model weight nonnegative).runBehavioral profile
     (2 * LateOpeningRuntimeService.horizon + 1)).map
       (fun history => stateSucceeded history.state) = PMF.pure true
   apply pmf_eq_pure_of_support_subset_singleton
   intro result supported
   obtain ⟨history, reached, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
   have projected : serviceSourceReadout setup .sequential deadline leaks history.state ∈
-      (((LateOpeningRuntimeNash.model weight nonnegative).runBehavioral profile
+      (((LateOpeningRuntimeGame.model weight nonnegative).runBehavioral profile
         (2 * LateOpeningRuntimeService.horizon + 1)).map
           (fun final =>
             serviceSourceReadout setup .sequential deadline leaks final.state)).support :=
@@ -145,7 +145,7 @@ protected receipt condition for every actual raw native profile. -/
 theorem safe_settlement_protected_receipt (reward forfeit : ℝ)
     (sample : List (SettledEvidence setup .sequential) →
       PMF (List (SettledEvidence setup .sequential))) (deposit : Player → ℝ)
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who)
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who)
     (same : nativeTerminalLaw weight nonnegative reward forfeit sample deposit profile =
       safeTerminalLaw reward) :
     (app.roundsFrom initial (LateOpeningRuntimeService.scheduler weight nonnegative)
@@ -166,7 +166,7 @@ theorem intended_law_protected_receipt (reward forfeit : ℝ)
     (equilibrium : source.IsSequentialEquilibrium
       intended_decisionRecall.decisionInformationAntichain
         setup.intended_bounded.wellFoundedHistories (intendedPayoff reward))
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who)
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who)
     (same : nativeTerminalLaw weight nonnegative reward forfeit sample deposit profile =
       intendedTerminalLaw reward source.strategy) :
     (app.roundsFrom initial (LateOpeningRuntimeService.scheduler weight nonnegative)

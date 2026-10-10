@@ -24,8 +24,8 @@ open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeBobBin
 /-- The actual whole answer policy attains the same sunk-charge score formula
 throughout the complete legal information fiber, without a belief-support guard. -/
 theorem dirty_information_answer_attainment (weight : ℝ) (nonnegative : 0 ≤ weight)
-    (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-    (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+    (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       bob site.1)
     (execution : app.Execution)
     (trace : (rawMenu.protocol initial LateOpeningRuntimeService.horizon
@@ -37,7 +37,7 @@ theorem dirty_information_answer_attainment (weight : ℝ) (nonnegative : 0 ≤ 
     (published : execution.application.config.store (.inr aliceEvent) =
       some (.success bit : PublicationResult Bool))
     (current : representative.1.state = some ⟨14, some bob, execution⟩)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1)
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1)
     (reward forfeit : ℝ) (deposit : Player → ℝ) (answer : Answer) :
     ∃ (other : app.Execution) (serial : Nat),
       history.1.state = some ⟨14, some bob, other⟩ ∧
@@ -47,7 +47,7 @@ theorem dirty_information_answer_attainment (weight : ℝ) (nonnegative : 0 ≤ 
         players bob = LateOpeningRuntimeBobSafeContinuation.answerPolicy answer →
         ∀ final ∈ (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative)
           players 14 (other.respond app bob (response serial answer))).support,
-          LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+          LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
             deposit (some ⟨0, none, final⟩) bob =
               answerScore (originalLabel other) answer - deposit bob := by
   obtain ⟨other, stateEq, sameRecall, sameView⟩ :=

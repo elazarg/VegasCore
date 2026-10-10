@@ -174,7 +174,7 @@ private theorem prefix_control_steps (players : Player → app.Policy)
               (execution.observeEnvironment app) command selected)
 
 def bindingPrefix
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who) :
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who) :
     PMF app.ProtocolState :=
   let players := rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
     (LateOpeningRuntimeService.scheduler weight nonnegative) profile
@@ -184,8 +184,8 @@ def bindingPrefix
 
 /-- The exact original evaluator law before Bob's binding response. -/
 theorem binding_prefix_law
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who) :
-    ((LateOpeningRuntimeNash.model weight nonnegative).runBehavioral profile 17).map History.state =
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who) :
+    ((LateOpeningRuntimeGame.model weight nonnegative).runBehavioral profile 17).map History.state =
       bindingPrefix weight nonnegative profile := by
   classical
   let players := rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
@@ -208,7 +208,7 @@ theorem binding_prefix_law
       (rawMenu.protocol initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).initHistory
   rw [restricted] at runner
-  change ((LateOpeningRuntimeNash.model weight nonnegative).runBehavioral profile 17).map
+  change ((LateOpeningRuntimeGame.model weight nonnegative).runBehavioral profile 17).map
       History.state = _ at runner
   rw [runner]
   change (fun law : PMF app.ProtocolState => law.bind (app.controlStep initial
@@ -235,8 +235,8 @@ theorem binding_prefix_law
   exact PMF.pure_bind _ _
 
 variable
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1)
   (execution : app.Execution)
   (current : representative.1.state = some ⟨14, some bob, execution⟩)
@@ -245,7 +245,7 @@ variable
 include current ready in
 /-- Full raw information fibers of a fresh first binding have depth seventeen. -/
 theorem binding_common_depth : InformationModel.InformationSite.CommonDepth
-    (LateOpeningRuntimeNash.model weight nonnegative) site 17 := by
+    (LateOpeningRuntimeGame.model weight nonnegative) site 17 := by
   intro history
   have active := InformationModel.InformationSite.active _ site history
   obtain ⟨control, stateEq, actor⟩ := app.control_of_active initial
@@ -320,29 +320,29 @@ theorem binding_common_depth : InformationModel.InformationSite.CommonDepth
 
 include current ready in
 theorem information_mass_eq_prefix
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who) :
-    (LateOpeningRuntimeNash.model weight nonnegative).informationMass profile bob site =
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who) :
+    (LateOpeningRuntimeGame.model weight nonnegative).informationMass profile bob site =
       (bindingPrefix weight nonnegative profile).toOuterMeasure
         {state | app.observe bob state = site.1} := by
   have exactDepth := binding_common_depth weight nonnegative site representative execution
     current ready
-  rw [(LateOpeningRuntimeNash.model weight nonnegative).informationMass_eq_fixedDepth_toOuterMeasure
+  rw [(LateOpeningRuntimeGame.model weight nonnegative).informationMass_eq_fixedDepth_toOuterMeasure
     profile bob site 17 exactDepth, ← binding_prefix_law weight nonnegative profile,
     PMF.toOuterMeasure_map_apply]
   congr 1
   ext history
-  change (LateOpeningRuntimeNash.model weight nonnegative).infoOf bob history.trace = site.1 ↔
+  change (LateOpeningRuntimeGame.model weight nonnegative).infoOf bob history.trace = site.1 ↔
     app.observe bob history.state = site.1
-  rw [show (LateOpeningRuntimeNash.model weight nonnegative).infoOf bob history.trace =
+  rw [show (LateOpeningRuntimeGame.model weight nonnegative).infoOf bob history.trace =
     app.observe bob history.state from rawMenu.info initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative) bob history.trace]
 
 include current ready in
 theorem state_belief_eq_prefix
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (mixed : assessment.IsFullyMixed)
     (bayes : InformationModel.BehavioralAssessment.IsBayesConsistent
-      (LateOpeningRuntimeNash.model weight nonnegative) assessment
+      (LateOpeningRuntimeGame.model weight nonnegative) assessment
       (rawMenu.decisionInformationAntichain initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative))) :
     assessment.stateBelief bob site =
@@ -355,27 +355,27 @@ theorem state_belief_eq_prefix
 
 include current ready in
 theorem readout_reach_eq_prefix {Label : Type}
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who)
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who)
     (readout : app.ProtocolState → Label) (value : Label) :
-    (LateOpeningRuntimeNash.model weight nonnegative).readoutReach profile bob site
+    (LateOpeningRuntimeGame.model weight nonnegative).readoutReach profile bob site
         (readout ∘ History.state) value =
       (bindingPrefix weight nonnegative profile).toOuterMeasure
         {state | app.observe bob state = site.1 ∧ readout state = value} := by
   classical
-  rw [(LateOpeningRuntimeNash.model weight nonnegative).readoutReach_eq_informationReadout
+  rw [(LateOpeningRuntimeGame.model weight nonnegative).readoutReach_eq_informationReadout
     profile bob site (readout ∘ History.state) 17
       (binding_common_depth weight nonnegative site representative execution current ready) value,
     ← PMF.toOuterMeasure_apply_singleton, PMF.toOuterMeasure_map_apply,
     ← binding_prefix_law weight nonnegative profile, PMF.toOuterMeasure_map_apply]
   congr 1
   ext history
-  change (LateOpeningRuntimeNash.model weight nonnegative).informationReadout bob site
+  change (LateOpeningRuntimeGame.model weight nonnegative).informationReadout bob site
       (readout ∘ History.state) history = some value ↔
     app.observe bob history.state = site.1 ∧ readout history.state = value
   unfold InformationModel.informationReadout
   have info := rawMenu.info initial LateOpeningRuntimeService.horizon
     (LateOpeningRuntimeService.scheduler weight nonnegative) bob history.trace
-  rw [show (LateOpeningRuntimeNash.model weight nonnegative).infoOf bob history.trace =
+  rw [show (LateOpeningRuntimeGame.model weight nonnegative).infoOf bob history.trace =
     app.observe bob history.state from info]
   by_cases observed : app.observe bob history.state = site.1
   · simp only [observed, ↓reduceIte, Function.comp_def, Option.some.injEq, true_and]
@@ -385,22 +385,22 @@ open Classical in
 /-- Every actual history in the information fiber whose existing physical
 readout has the given value. No raw representation or pending trace is omitted. -/
 def readoutHistories {Label : Type} (readout : app.ProtocolState → Label) (value : Label) :
-    Finset ((LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1) :=
+    Finset ((LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1) :=
   Finset.univ.filter (fun history => readout history.1.state = value)
 
 include current ready in
 theorem finite_history_reach_eq_prefix {Label : Type}
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who)
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who)
     (readout : app.ProtocolState → Label) (value : Label) :
     InformationModel.finiteHistoryReach profile bob site
         (readoutHistories weight nonnegative site readout value) =
       ((bindingPrefix weight nonnegative profile).toOuterMeasure
         {state | app.observe bob state = site.1 ∧ readout state = value}).toReal := by
   classical
-  have mass : (LateOpeningRuntimeNash.model weight nonnegative).readoutReach profile bob site
+  have mass : (LateOpeningRuntimeGame.model weight nonnegative).readoutReach profile bob site
       (readout ∘ History.state) value =
       ∑ history ∈ readoutHistories weight nonnegative site readout value,
-        (LateOpeningRuntimeNash.model weight nonnegative).historyReachWeight profile history.1 := by
+        (LateOpeningRuntimeGame.model weight nonnegative).historyReachWeight profile history.1 := by
     rw [InformationModel.readoutReach, tsum_fintype, readoutHistories, Finset.sum_filter]
     apply Finset.sum_congr rfl
     intro history _
@@ -409,7 +409,7 @@ theorem finite_history_reach_eq_prefix {Label : Type}
     rw [eq_comm (a := value) (b := readout history.1.state)]
   unfold InformationModel.finiteHistoryReach
   rw [← ENNReal.toReal_sum (fun history _ =>
-    (LateOpeningRuntimeNash.model weight nonnegative).historyReachWeight_ne_top profile history.1),
+    (LateOpeningRuntimeGame.model weight nonnegative).historyReachWeight_ne_top profile history.1),
     ← mass, readout_reach_eq_prefix weight nonnegative site representative execution current ready]
 
 /-- The complete immutable initialized inputs, used only as a mathematical
@@ -419,7 +419,7 @@ def initializedInputs (state : app.ProtocolState) : Option nativeGraph.Inputs :=
 
 include current ready in
 theorem initialized_type_reach_eq_prefix
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who)
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who)
     (bit : Bool) (label : Fin 3) :
     InformationModel.finiteHistoryReach profile bob site
         (readoutHistories weight nonnegative site initializedInputs

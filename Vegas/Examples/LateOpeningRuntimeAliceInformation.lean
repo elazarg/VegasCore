@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Examples.LateOpeningRuntimeAliceContinuation
-import Vegas.Examples.LateOpeningRuntimeNash
+import Vegas.Examples.LateOpeningRuntimeGame
 import Interaction.ReactiveProvenance
 import Interaction.ReactiveMessageIdentity
 
@@ -159,13 +159,13 @@ theorem reference_outputs (bit : Bool) (label : Fin 3) (seen : Bool) :
 /-- Every hidden history of the actual Alice information class has the same
 single genuine pending envelope and the same remaining service horizon. -/
 theorem information_fiber
-    (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite alice)
-    (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite alice)
+    (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       alice site.1)
     (bit : Bool) (label : Fin 3) (seen : Bool)
     (current : representative.1.state = some ⟨18, some alice,
       secondLateDecision bit label 0 seen⟩)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory alice site.1) :
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory alice site.1) :
     ∃ execution : app.Execution,
       history.1.state = some ⟨18, some alice, execution⟩ ∧
       execution.recall alice = (secondLateDecision bit label 0 seen).recall alice ∧

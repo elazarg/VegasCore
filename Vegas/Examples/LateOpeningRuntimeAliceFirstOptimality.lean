@@ -28,15 +28,15 @@ open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeLatePr
   LateOpeningRuntimeReadout
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite alice)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite alice)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     alice site.1) (bit : Bool) (label : Fin 3)
   (current : representative.1.state = some ⟨22, some alice, firstLateDecision bit label⟩)
   (reward forfeit : ℝ) (deposit : Player → ℝ)
 
 /-- A fixed current raw action followed by the entire original profile. -/
 def responseValue
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (response : app.Action) : ℝ :=
   expect (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative)
     (rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
@@ -53,7 +53,7 @@ private theorem site_info : site.1 =
 
 include current in
 private theorem current_law
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     responseLaw weight nonnegative site
     (assessment.strategy alice site.1) =
     LateOpeningRuntimeFirstRetryComparison.firstResponses weight nonnegative
@@ -68,7 +68,7 @@ include current in
 private def responseChoice (response : app.Action)
     (available : response ∈ rawMenu.actions alice ((firstLateDecision bit label).recall alice)
       ((firstLateDecision bit label).observe app alice)) :
-    (LateOpeningRuntimeNash.model weight nonnegative).Choice alice site.1 := by
+    (LateOpeningRuntimeGame.model weight nonnegative).Choice alice site.1 := by
   refine ⟨some response, ?_⟩
   rw [site_info weight nonnegative site representative bit label current]
   exact ⟨response, available, rfl⟩
@@ -76,8 +76,8 @@ private def responseChoice (response : app.Action)
 include current in
 open Classical in
 private theorem commit_value
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
-    (choice : (LateOpeningRuntimeNash.model weight nonnegative).Choice alice site.1) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (choice : (LateOpeningRuntimeGame.model weight nonnegative).Choice alice site.1) :
     (context weight nonnegative site reward forfeit deposit assessment).value
       ((assessment.strategy alice).commit site.1 choice) =
       responseValue weight nonnegative bit label reward forfeit deposit assessment
@@ -90,11 +90,11 @@ private theorem commit_value
   rfl
 
 private theorem local_rational
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who)) :
     assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment) := by
@@ -108,7 +108,7 @@ private theorem local_rational
   exact localRational
 
 theorem supported_response_available
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (response : app.Action)
     (supported : response ∈ (LateOpeningRuntimeFirstRetryComparison.firstResponses
       weight nonnegative assessment.strategy bit label).support) :
@@ -122,11 +122,11 @@ include representative current in
 /-- Current raw responses played with positive probability maximize the
 actual physical continuation value against every available raw response. -/
 theorem sequentially_rational_supported_response_maximal
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
     (response : app.Action)
     (supported : response ∈ (LateOpeningRuntimeFirstRetryComparison.firstResponses
@@ -142,16 +142,16 @@ theorem sequentially_rational_supported_response_maximal
   obtain ⟨choice, played, same⟩ := PMF.support_map .. ▸ supported
   let candidate := responseChoice weight nonnegative site representative bit label current
     alternative available
-  have factor := (LateOpeningRuntimeNash.model weight nonnegative).runnerFactorsAt_truncated
+  have factor := (LateOpeningRuntimeGame.model weight nonnegative).runnerFactorsAt_truncated
     (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).actsOnceWhereItMatters
     (rawMenu.informationSite_allNonterminal initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative) alice site)
     (2 * LateOpeningRuntimeService.horizon)
   have best := assessment.supported_choice_optimal
-    ((LateOpeningRuntimeNash.model weight nonnegative).truncatedRunner
+    ((LateOpeningRuntimeGame.model weight nonnegative).truncatedRunner
       (2 * LateOpeningRuntimeService.horizon + 1)) site factor
-    (fun history => LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+    (fun history => LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
       deposit history.state alice)
     (local_rational weight nonnegative site reward forfeit deposit assessment rational)
     (payoffIntegrable_of_finite _ _) choice played
@@ -174,11 +174,11 @@ include representative current in
 /-- The incumbent value is at least the value of each available current
 response with the entire original future retained. -/
 theorem sequentially_rational_value_ge_response
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
     (response : app.Action)
     (available : response ∈ rawMenu.actions alice ((firstLateDecision bit label).recall alice)
@@ -206,7 +206,7 @@ private theorem canonical_genuine : GenuineResponse weight nonnegative
   exact firstLate_opening_packet bit label
 
 private theorem supported_permitted_of_zero
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (zero : ((LateOpeningRuntimeFirstRetryComparison.firstResponses weight nonnegative
       assessment.strategy bit label).toOuterMeasure {response | ¬ PermittedResponse
         weight nonnegative (LateOpeningRuntimeAliceFirstWitness.decisionHistory
@@ -225,11 +225,11 @@ include representative current in
 /-- A strictly better genuine opening forces total genuine-emission mass
 when the actual raw law assigns zero mass to nongenuine packets. -/
 theorem genuineProbability_one_of_preference
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
     (zero : ((LateOpeningRuntimeFirstRetryComparison.firstResponses weight nonnegative
       assessment.strategy bit label).toOuterMeasure {response | ¬ PermittedResponse
@@ -276,11 +276,11 @@ theorem sequentially_rational_genuineProbability_one_of_preference
     (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit alice)
     (openingMarginPositive : 0 < LateOpeningRuntimeAliceOpeningRationality.margin
       weight reward forfeit deposit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
     (firstValue secondValue : ℝ)
     (openingValue : ∀ response ∈ rawMenu.actions alice
@@ -309,11 +309,11 @@ include representative current in
 /-- A strictly better silent response excludes every genuine opening alias;
 this implication does not require the nongenuine-packet exclusion premise. -/
 theorem sequentially_rational_genuineProbability_zero_of_preference
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
     (firstValue secondValue : ℝ)
     (openingValue : ∀ response ∈ rawMenu.actions alice

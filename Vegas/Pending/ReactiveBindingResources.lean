@@ -4,6 +4,7 @@ import Vegas.Pending.ReactiveCandidateBudget
 import Vegas.Pending.ReactiveAssociationEvidence
 import Vegas.Pending.ReactiveBindingAllocation
 import Interaction.ReactiveAllocation
+import Interaction.ReactiveRecallInvariant
 import Vegas.Pending.ReactivePolicyFacts
 
 /-! # Binding resources at actual native decisions
@@ -123,5 +124,24 @@ theorem reactiveDecision_binding_transmits_history (runtime : EventGraphRuntime 
   refine ⟨serial, material, bounded, ?_, rfl⟩
   simp only [reactiveDecision, node, selected, Option.map_some, material]
   rfl
+
+/-- Every actual retained callback observed a fresh candidate below the native
+horizon; availability is derived from its genuine earlier active prefix. -/
+theorem reactiveFreshSlot_recorded (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (inputs : PMF graph.Inputs) (horizon : Nat)
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    (control : (runtime.reactiveApplication leaks).Control)
+    (trace : ((runtime.reactiveApplication leaks).protocol (inputs.map State.initial)
+      horizon scheduler).Trace (some control))
+    (who : Player) (entry : (runtime.reactiveApplication leaks).PlayerEntry)
+    (recorded : entry ∈ control.execution.recall who) :
+    ∃ serial, serial < horizon ∧ reactiveFreshSlot entry.beforeView.application = some serial := by
+  obtain ⟨before, ⟨prefixTrace⟩, active, viewed⟩ :=
+    (runtime.reactiveApplication leaks).recorded_response_prefix (inputs.map State.initial)
+      horizon scheduler control trace who entry recorded
+  obtain ⟨serial, bounded, selected⟩ := runtime.reactiveFreshSlot_lt_horizon leaks inputs horizon
+    scheduler before prefixTrace who active
+  exact ⟨serial, bounded, viewed ▸ selected⟩
 
 end Vegas.EventGraphRuntime

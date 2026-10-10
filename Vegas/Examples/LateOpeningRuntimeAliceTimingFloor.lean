@@ -45,11 +45,11 @@ private theorem emptyValue_nonnegative (rewardNonnegative : 0 ≤ reward)
 variable (positive : 0 < weight) (rewardNonnegative : 0 ≤ reward)
   (forfeitPositive : 0 < forfeit) (aliceDepositNonnegative : 0 ≤ deposit alice)
   (bobDepositPositive : 0 < deposit bob)
-  (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+  (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
   (rational : assessment.IsSequentiallyRational
     (rawMenu.bounded initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-    (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+    (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
       (fun actual => PMF.pure actual) deposit history.state who))
   (players : Player → app.Policy)
   (bobPolicy : players bob =

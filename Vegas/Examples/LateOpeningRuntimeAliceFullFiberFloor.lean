@@ -29,8 +29,8 @@ open LateOpeningRuntimeBobRawBinding (serviced)
 open LateOpeningRuntimeBobBindingDecision (context)
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1)
   (decision : DecisionHistory weight nonnegative)
   (current : representative.1.state = some ⟨14, some bob, decision.execution⟩)
@@ -40,11 +40,11 @@ variable (weight : ℝ) (nonnegative : 0 ≤ weight)
 disclosure law. Only the receiver follows the original assessed policy. -/
 theorem sequentially_rational_supported_publication (forfeitPositive : 0 < forfeit)
     (depositPositive : 0 < deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
     (response : app.Action)
     (supported : response ∈ (currentResponses weight nonnegative decision assessment).support) :
@@ -52,7 +52,7 @@ theorem sequentially_rational_supported_publication (forfeitPositive : 0 < forfe
       (serviced decision.execution response).application.config.store (.inr bobBindEvent) =
         some (.success answer) ∧
       (answer = safe ∨ ∃ label : Fin 3, answer = labelGuess label) ∧
-      ∀ (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1)
+      ∀ (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1)
         (players : Player → app.Policy),
         players bob = rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
           (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy bob →
@@ -100,15 +100,15 @@ theorem sequentially_rational_supported_publication (forfeitPositive : 0 < forfe
 and retains exactly Alice's own full-record audit deduction. -/
 theorem sequentially_rational_supported_payoff_floor (rewardNonnegative : 0 ≤ reward)
     (forfeitPositive : 0 < forfeit) (depositPositive : 0 < deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
     (response : app.Action)
     (supported : response ∈ (currentResponses weight nonnegative decision assessment).support)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1)
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1)
     (labelLow : (originalLabel (decisionOfInformation weight nonnegative site representative
       decision current history).execution).val < 2)
     (players : Player → app.Policy)
@@ -122,7 +122,7 @@ theorem sequentially_rational_supported_payoff_floor (rewardNonnegative : 0 ≤ 
       (LateOpeningRuntimeService.runtime.serviceAuditObservation leaks)
       (serviceSourceAudit setup .sequential deadline leaks (fun actual => PMF.pure actual))
         (app.finished final) alice * deposit alice ≤
-      LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+      LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
         deposit (app.finished final) alice := by
   obtain ⟨answer, _, shape, published⟩ := sequentially_rational_supported_publication weight
     nonnegative site representative decision current reward forfeit deposit forfeitPositive

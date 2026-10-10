@@ -54,7 +54,7 @@ theorem protected_round (players : Player → app.Policy) (bit : Bool) (label : 
 /-- The actual full prefix before any filtering, including every protected
 raw response and all later private representations. -/
 theorem initialized_binding_law
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who) :
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who) :
     bindingPrefix weight nonnegative profile =
       let players := rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative) profile
@@ -174,8 +174,8 @@ private theorem after_protected_trace (players : Player → app.Policy)
   exact (PMF.mem_support_pure_iff _ _).mpr rfl
 
 variable
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1) (control : app.Control)
   (current : representative.1.state = some control) (active : control.actor = some bob)
   (remembered : app.PlayerEntry) (member : remembered ∈ control.execution.recall bob)
@@ -218,7 +218,7 @@ include current active member later empty in
 /-- Exact original type-prefix weights: prior, protected silence, and every
 first-late raw response with the unchanged continuation policy. -/
 theorem clean_information_probability
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who)
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who)
     (event : Set app.ProtocolState)
     (observed : ∀ state ∈ event, app.observe bob state = site.1) :
     ((bindingPrefix weight nonnegative profile).toOuterMeasure event).toReal =

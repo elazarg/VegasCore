@@ -30,6 +30,9 @@ import Vegas.Examples.LateOpeningRuntimeReliability
 import Vegas.Examples.LateOpeningRuntimeTerminalReceipt
 import Vegas.Examples.LateOpeningRuntimeFiberEvidence
 import Vegas.Examples.LateOpeningRuntimeUtility
+import Vegas.Examples.LateOpeningRuntimeGame
+import Vegas.Examples.LateOpeningRuntimeBobDirtyDisclosurePublication
+import Vegas.Examples.LateOpeningRuntimeAliceProtectedPublication
 import Vegas.Examples.LateOpeningRuntimeNash
 import Vegas.Examples.LateOpeningRuntimeRetryAudit
 import Vegas.Examples.LateOpeningRuntimeAliceContinuation

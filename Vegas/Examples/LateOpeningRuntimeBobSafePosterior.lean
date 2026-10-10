@@ -23,14 +23,14 @@ open LateOpeningRuntimeBobRawBinding (serviced)
 open LateOpeningRuntimeBobBindingDecision (context)
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1)
   (decision : DecisionHistory weight nonnegative)
   (current : representative.1.state = some ⟨14, some bob, decision.execution⟩)
 
 theorem label_mass_sum
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     (∑ label : Fin 3,
       labelMass weight nonnegative site representative decision current assessment label) = 1 := by
   classical
@@ -44,7 +44,7 @@ variable (reward forfeit : ℝ) (deposit : Player → ℝ)
 include representative current in
 theorem supported_safe_label_bounds
     (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment))
     (response : app.Action)

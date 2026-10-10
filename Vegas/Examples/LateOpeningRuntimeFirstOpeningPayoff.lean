@@ -33,10 +33,10 @@ theorem quiet_retry_payoff_law (policy : Player → app.Policy) (bit : Bool) (la
     (reward forfeit : ℝ) (deposit : Player → ℝ) :
     ((quietRetry weight nonnegative bit label submission seen).bind
       (receiverCompletion weight nonnegative policy)).map
-        (fun final => LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+        (fun final => LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
           deposit (app.finished final) alice) =
       (settlementCompletion weight nonnegative policy (beforeLottery bit label 0 seen)).map
-        (fun final => LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+        (fun final => LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
           deposit (app.finished final) alice) := by
   have law := genuine_first_payoff_law weight nonnegative policy bit label submission
     genuine seen reward forfeit deposit (fun actual => PMF.pure actual) alice
@@ -47,11 +47,11 @@ theorem quiet_retry_payoff_law (policy : Player → app.Policy) (bit : Bool) (la
   simpa only [settlementCompletion, quietRetry] using law
 
 variable (reward forfeit : ℝ) (deposit : Player → ℝ)
-  (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+  (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
   (rational : assessment.IsSequentiallyRational
     (rawMenu.bounded initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-    (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+    (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
       (fun actual => PMF.pure actual) deposit history.state who))
 
 include rational in
@@ -91,14 +91,14 @@ theorem first_genuine_payoff_law (positive : 0 < weight) (rewardNonnegative : 0 
     (LateOpeningRuntimeAliceFirstPacket.responseLaw weight nonnegative
       (LateOpeningRuntimeAliceFirstWitness.decisionHistory weight nonnegative bit label)
         ⟨some submission⟩ (players weight nonnegative assessment.strategy)).map
-          (fun final => LateOpeningRuntimeNash.payoff reward forfeit
+          (fun final => LateOpeningRuntimeGame.payoff reward forfeit
             (fun actual => PMF.pure actual) deposit (app.finished final) alice) =
       mix (1 / 2) (by norm_num) (by norm_num)
         ((settlementCompletion weight nonnegative (players weight nonnegative assessment.strategy)
-          (beforeLottery bit label 0 true)).map (fun final => LateOpeningRuntimeNash.payoff
+          (beforeLottery bit label 0 true)).map (fun final => LateOpeningRuntimeGame.payoff
             reward forfeit (fun actual => PMF.pure actual) deposit (app.finished final) alice))
         ((settlementCompletion weight nonnegative (players weight nonnegative assessment.strategy)
-          (beforeLottery bit label 0 false)).map (fun final => LateOpeningRuntimeNash.payoff
+          (beforeLottery bit label 0 false)).map (fun final => LateOpeningRuntimeGame.payoff
             reward forfeit (fun actual => PMF.pure actual) deposit
               (app.finished final) alice)) := by
   rw [LateOpeningRuntimeFirstResponseRetryNormalization.rational_response_completion_law

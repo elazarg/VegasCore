@@ -165,45 +165,6 @@ open Interaction EventGraph GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-/-- Actual response records retain exactly the transmitted event call, including
-submissions that the application later rejects. -/
-theorem reactiveEmission_call_invariant (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (players : Player → (runtime.reactiveApplication leaks).Policy) (who : Player) :
-    (runtime.reactiveApplication leaks).PolicyInvariant players (fun execution =>
-      ∀ entry ∈ execution.recall who, ∀ material,
-        entry.action.transmission = some material →
-        ∃ message, entry.emitted = some message ∧
-          message.payload.call = material.call.packet) where
-  respond execution actor action faithful _ := by
-    by_cases same : who = actor
-    · subst actor
-      cases action with
-      | mk transmission =>
-          cases transmission with
-          | none =>
-              simp only [ReactiveApplication.Execution.respond, ↓reduceIte]
-              intro entry member material transmitted
-              rcases List.mem_append.mp member with old | latest
-              · exact faithful entry old material transmitted
-              · have same := List.mem_singleton.mp latest
-                subst entry
-                cases transmitted
-          | some sent =>
-              simp only [ReactiveApplication.Execution.respond, ↓reduceIte]
-              intro entry member material transmitted
-              rcases List.mem_append.mp member with old | latest
-              · exact faithful entry old material transmitted
-              · have same := List.mem_singleton.mp latest
-                subst entry
-                cases Option.some.inj transmitted
-                exact ⟨_, rfl, rfl⟩
-    · rw [(runtime.reactiveApplication leaks).respond_recall_other execution actor who same action]
-      exact faithful
-  environment execution next command faithful reached := by
-    rw [(runtime.reactiveApplication leaks).environmentStep_recall execution next command reached]
-    exact faithful
-
 /-- Every supported initialized execution samples each owned event at most once
 in every supported private posterior memory. Opponents and scheduler are arbitrary. -/
 theorem prescribedReactivePosterior_events_nodup_run

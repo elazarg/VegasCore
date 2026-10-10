@@ -29,11 +29,11 @@ variable (weight : ℝ) (nonnegative : 0 ≤ weight)
   (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit alice)
   (marginPositive : 0 < LateOpeningRuntimeAliceOpeningRationality.margin
     weight reward forfeit deposit)
-  (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+  (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
   (rational : assessment.IsSequentiallyRational
     (rawMenu.bounded initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-    (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+    (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
       (fun actual => PMF.pure actual) deposit history.state who))
 
 include rational positive rewardNonnegative forfeitNonnegative depositNonnegative marginPositive in
@@ -52,9 +52,9 @@ theorem decoded_response_genuine (decision : DecisionHistory weight nonnegative)
       (LateOpeningRuntimeService.scheduler weight nonnegative)).History :=
     ⟨some ⟨18, some alice, decision.execution⟩, boundedTrace⟩
   obtain ⟨site, observed⟩ :=
-    (LateOpeningRuntimeNash.model weight nonnegative).exists_informationSite_of_active
+    (LateOpeningRuntimeGame.model weight nonnegative).exists_informationSite_of_active
       alice history (by change ¬ (18 = 0 ∧ some alice = none); simp) rfl
-  let representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  let representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       alice site.1 := ⟨history, observed.symm⟩
   have current : representative.1.state = some ⟨18, some alice, decision.execution⟩ := rfl
   have zero :=

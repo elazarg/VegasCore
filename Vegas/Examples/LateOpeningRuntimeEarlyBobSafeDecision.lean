@@ -25,13 +25,13 @@ open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeEarlyB
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
 
 def safePlayers
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     Player → app.Policy :=
   Function.update (rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
     (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy) bob safePolicy
 
 theorem safePlayers_admissible
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (who : Player) :
     rawMenu.Admissible initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative) who
@@ -46,8 +46,8 @@ theorem safePlayers_admissible
       _ _ response supported
 
 theorem safeProfile_as_restriction
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
-    Profile.update (sig := (LateOpeningRuntimeNash.model weight nonnegative).behavioralSignature)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
+    Profile.update (sig := (LateOpeningRuntimeGame.model weight nonnegative).behavioralSignature)
       assessment.strategy bob (safeFinitePolicy weight nonnegative) =
     fun who => rawMenu.restrictPolicy initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative) who
@@ -64,14 +64,14 @@ theorem safeProfile_as_restriction
       (LateOpeningRuntimeService.scheduler weight nonnegative) who (assessment.strategy who)).symm
 
 variable
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1)
   (decision : DecisionHistory weight nonnegative)
   (current : representative.1.state = some ⟨21, some bob, decision.execution⟩)
 
 def safeFinalLaw
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     PMF app.Execution :=
   (assessment.belief bob site).bind fun history =>
     app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative)
@@ -80,10 +80,10 @@ def safeFinalLaw
         history).execution.respond app bob ⟨none⟩)
 
 theorem safe_current_continuation_law
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1) :
-    ((LateOpeningRuntimeNash.model weight nonnegative).runBehavioralFrom
-      (Profile.update (sig := (LateOpeningRuntimeNash.model weight nonnegative).behavioralSignature)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1) :
+    ((LateOpeningRuntimeGame.model weight nonnegative).runBehavioralFrom
+      (Profile.update (sig := (LateOpeningRuntimeGame.model weight nonnegative).behavioralSignature)
         assessment.strategy bob (safeFinitePolicy weight nonnegative))
       (2 * LateOpeningRuntimeService.horizon + 1) history.1).map History.state =
     (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative)
@@ -119,7 +119,7 @@ theorem safe_current_continuation_law
 variable (reward forfeit : ℝ) (deposit : Player → ℝ)
 
 theorem safe_context_outcome_law
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     ((context weight nonnegative site reward forfeit deposit assessment).outcome
       (safeFinitePolicy weight nonnegative)).map History.state =
     (safeFinalLaw weight nonnegative site representative decision current assessment).map
@@ -134,7 +134,7 @@ theorem safe_context_outcome_law
     assessment history
 
 theorem safe_context_value
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     (context weight nonnegative site reward forfeit deposit assessment).value
       (safeFinitePolicy weight nonnegative) =
     expect (safeFinalLaw weight nonnegative site representative decision current assessment)
@@ -142,7 +142,7 @@ theorem safe_context_value
   have mapped := expect_map History.state
     ((context weight nonnegative site reward forfeit deposit assessment).outcome
       (safeFinitePolicy weight nonnegative))
-    (fun state => LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+    (fun state => LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
       deposit state bob)
   rw [safe_context_outcome_law weight nonnegative site representative decision current,
     expect_map] at mapped
@@ -150,7 +150,7 @@ theorem safe_context_value
 
 include representative decision current in
 theorem safe_context_nonnegative
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     0 ≤ (context weight nonnegative site reward forfeit deposit assessment).value
       (safeFinitePolicy weight nonnegative) := by
   rw [safe_context_value weight nonnegative site representative decision current]

@@ -52,7 +52,7 @@ theorem protected_decision_trace (bit : Bool) (label : Fin 3) :
 /-- Silence has positive physical mass at each actual protected decision
 under full mixing of the native behavioral strategy. -/
 theorem protected_silence_supported
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (mixed : assessment.IsFullyMixed) (bit : Bool) (label : Fin 3) :
     (⟨none⟩ : app.Action) ∈
       (players weight nonnegative assessment.strategy alice
@@ -84,7 +84,7 @@ theorem protected_silence_supported
   trivial
 
 theorem typeWeight_positive
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (mixed : assessment.IsFullyMixed) (bit : Bool) (label : Fin 3) :
     0 < typeWeight weight nonnegative assessment.strategy bit label := by
   unfold typeWeight
@@ -97,7 +97,7 @@ theorem typeWeight_positive
 /-- The same positivity holds at every term of any supplied common fully
 mixed witness, even when the weights converge to zero. -/
 theorem witness_typeWeight_positive
-    (sequence : ℕ → (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (sequence : ℕ → (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (mixed : ∀ n, (sequence n).IsFullyMixed) (n : ℕ) (bit : Bool) (label : Fin 3) :
     0 < typeWeight weight nonnegative (sequence n).strategy bit label :=
   typeWeight_positive weight nonnegative (sequence n) (mixed n) bit label

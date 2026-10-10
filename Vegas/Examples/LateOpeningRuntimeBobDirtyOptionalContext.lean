@@ -13,8 +13,8 @@ open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeBobSer
 open LateOpeningRuntimeBobBindingDecision
   (answerPlayers answerPlayers_admissible answerProfile_as_restriction context context_integrable)
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1)
   (execution : app.Execution)
   (executionTrace : (app.protocol initial LateOpeningRuntimeService.horizon
@@ -25,7 +25,7 @@ variable (weight : ℝ) (nonnegative : 0 ≤ weight)
   (ready : execution.application.config.cut.Ready bobRevealEvent)
 
 def canonicalFinalLaw
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     PMF app.Execution :=
   (assessment.belief bob site).bind fun history =>
     let recovered := executionOfInformation weight nonnegative site representative execution
@@ -38,10 +38,10 @@ def canonicalFinalLaw
 
 include ready in
 theorem canonical_current_continuation_law
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1) :
-    ((LateOpeningRuntimeNash.model weight nonnegative).runBehavioralFrom
-      (Profile.update (sig := (LateOpeningRuntimeNash.model weight nonnegative).behavioralSignature)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1) :
+    ((LateOpeningRuntimeGame.model weight nonnegative).runBehavioralFrom
+      (Profile.update (sig := (LateOpeningRuntimeGame.model weight nonnegative).behavioralSignature)
         assessment.strategy bob (answerFinitePolicy weight nonnegative answer))
       (2 * LateOpeningRuntimeService.horizon + 1) history.1).map History.state =
     let recovered := executionOfInformation weight nonnegative site representative execution
@@ -86,7 +86,7 @@ variable (reward forfeit : ℝ) (deposit : Player → ℝ)
 
 include ready in
 theorem canonical_context_outcome_law
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     ((context weight nonnegative site reward forfeit deposit assessment).outcome
       (answerFinitePolicy weight nonnegative answer)).map History.state =
     (canonicalFinalLaw weight nonnegative site representative execution executionTrace
@@ -102,7 +102,7 @@ theorem canonical_context_outcome_law
     executionTrace current answer ready assessment history
 
 def incumbentFinalLaw
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     PMF app.Execution :=
   let players := rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
     (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy
@@ -114,7 +114,7 @@ def incumbentFinalLaw
       (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative) players 12)
 
 theorem incumbent_context_outcome_law
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     ((context weight nonnegative site reward forfeit deposit assessment).outcome
       (assessment.strategy bob)).map History.state =
     (incumbentFinalLaw weight nonnegative site representative execution executionTrace current

@@ -184,11 +184,11 @@ theorem first_view_injective : Function.Injective
 /-- Every actual hidden history of this sender information class has exactly
 the initialized silent-prefix state, including all physical and private recall. -/
 theorem information_history_state
-    (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite alice)
-    (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite alice)
+    (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       alice site.1) (bit : Bool) (label : Fin 3)
     (current : representative.1.state = some ⟨22, some alice, firstLateDecision bit label⟩)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory alice site.1) :
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory alice site.1) :
     history.1.state = some ⟨22, some alice, firstLateDecision bit label⟩ := by
   let decision := LateOpeningRuntimeAliceFirstWitness.decisionHistory weight nonnegative bit label
   obtain ⟨other, stateEq, _, sameView, _⟩ := decision_of_information weight nonnegative
@@ -205,8 +205,8 @@ theorem information_history_state
     some (⟨22, some alice, execution⟩ : app.Control)) normal)
 
 variable
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite alice)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite alice)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     alice site.1) (bit : Bool) (label : Fin 3)
   (current : representative.1.state = some ⟨22, some alice, firstLateDecision bit label⟩)
 
@@ -214,8 +214,8 @@ include current in
 /-- Any current response law has its concrete initialized continuation law;
 averaging over this information class adds no hidden state uncertainty. -/
 theorem finalLaw_eq_physical
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
-    (law : PMF ((LateOpeningRuntimeNash.model weight nonnegative).Choice alice site.1)) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (law : PMF ((LateOpeningRuntimeGame.model weight nonnegative).Choice alice site.1)) :
     LateOpeningRuntimeAliceFirstResponse.finalLaw weight nonnegative site representative
       (LateOpeningRuntimeAliceFirstWitness.decisionHistory weight nonnegative bit label)
         current assessment law =
@@ -254,8 +254,8 @@ theorem finalLaw_eq_physical
 include current in
 open Classical in
 theorem context_value_eq_physical (reward forfeit : ℝ) (deposit : Player → ℝ)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
-    (law : PMF ((LateOpeningRuntimeNash.model weight nonnegative).Choice alice site.1)) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (law : PMF ((LateOpeningRuntimeGame.model weight nonnegative).Choice alice site.1)) :
     (LateOpeningRuntimeAliceFirstResponse.context weight nonnegative site reward forfeit deposit
       assessment).value ((assessment.strategy alice).withLaw site.1 law) =
       expect ((LateOpeningRuntimeAliceFirstResponse.responseLaw weight nonnegative site law).bind

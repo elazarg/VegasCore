@@ -115,7 +115,7 @@ private theorem handle_submitted (decision : DecisionHistory weight nonnegative)
         decision.bound (.success decision.bit)
           (by rw [EventCode.resolveOutput?, decision.bound]; rfl)
 
-private theorem accepted_physical (decision : DecisionHistory weight nonnegative)
+theorem accepted_physical (decision : DecisionHistory weight nonnegative)
     (submission : app.Submission) (genuine : EmitsOpening weight nonnegative decision submission) :
     (accepted weight nonnegative decision submission).application =
       decision.execution.application.complete aliceEvent decision.ready true
@@ -129,7 +129,7 @@ private theorem accepted_physical (decision : DecisionHistory weight nonnegative
   rw [handle_submitted weight nonnegative decision submission genuine]
   rfl
 
-private theorem accepted_receipt (decision : DecisionHistory weight nonnegative)
+theorem accepted_receipt (decision : DecisionHistory weight nonnegative)
     (submission : app.Submission) (genuine : EmitsOpening weight nonnegative decision submission) :
     ((alice, 0), true) ∈ (accepted weight nonnegative decision submission).receipts := by
   change ((alice, 0), true) ∈
@@ -179,7 +179,7 @@ theorem lottery_round (decision : DecisionHistory weight nonnegative)
     rw [recorded_wait, PMF.pure_bind]
     rfl
 
-private theorem accepted_trace (positive : 0 < weight)
+theorem accepted_trace (positive : 0 < weight)
     (decision : DecisionHistory weight nonnegative) (submission : app.Submission)
     (genuine : EmitsOpening weight nonnegative decision submission)
     (players : Player → app.Policy) :
@@ -198,29 +198,20 @@ private theorem accepted_trace (positive : 0 < weight)
     (MessageNetwork.inclusionMass_below_one weight nonnegative 1).le
     (by unfold inclusionProbability MessageNetwork.inclusionMass; positivity) (by simp)
 
-theorem accepted_opening_nonnegative (positive : 0 < weight)
-    (decision : DecisionHistory weight nonnegative) (submission : app.Submission)
-    (genuine : EmitsOpening weight nonnegative decision submission) (players : Player → app.Policy)
-    {reward : ℝ} (rewardNonnegative : 0 ≤ reward) (forfeit : ℝ) (deposit : Player → ℝ)
-    (execution : app.Execution)
+theorem accepted_charge_zero (decision : DecisionHistory weight nonnegative)
+    (submission : app.Submission) (genuine : EmitsOpening weight nonnegative decision submission)
+    (prior : (app.protocol initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
+        (some ⟨17, none, accepted weight nonnegative decision submission⟩))
+    (players : Player → app.Policy) (execution : app.Execution)
     (reached : execution ∈ (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative)
       (quietAgainst players) 17 (accepted weight nonnegative decision submission)).support) :
-    0 ≤ aliceUtility reward forfeit deposit execution := by
-  obtain ⟨prior⟩ := accepted_trace weight nonnegative positive decision submission genuine
-    (quietAgainst players)
+    TerminalAudit.charge (LateOpeningRuntimeService.runtime.serviceAuditObservation leaks)
+      (serviceSourceAudit setup .sequential deadline leaks (fun actual => PMF.pure actual))
+        (app.finished execution) alice = 0 := by
   obtain ⟨trace⟩ := app.raw_trace_runRounds initial LateOpeningRuntimeService.horizon
     (LateOpeningRuntimeService.scheduler weight nonnegative) (quietAgainst players) 0 17
       (accepted weight nonnegative decision submission) execution prior reached
-  have published : (accepted weight nonnegative decision submission).application.config.store
-      (.inr aliceEvent) = some (.success decision.bit) := by
-    rw [accepted_physical weight nonnegative decision submission genuine]
-    change (decision.execution.application.complete aliceEvent decision.ready true
-      (.success decision.bit)).config.outputs aliceEvent = _
-    simp [EventGraphRuntime.State.complete, Config.complete]
-  have retained := (ReactiveApplication.Invariant.policyInvariant app
-    (LateOpeningRuntimeService.runtime.reactiveStoreInvariant leaks (.inr aliceEvent)
-      (.success decision.bit)) (quietAgainst players)).runRounds
-        (LateOpeningRuntimeService.scheduler weight nonnegative) 17 _ execution published reached
   have only : OnlyAlicePacket decision.bit (accepted weight nonnegative decision submission) := by
     intro message member owner
     have unchanged : (accepted weight nonnegative decision submission).network.inputs =
@@ -256,6 +247,33 @@ theorem accepted_opening_nonnegative (positive : 0 < weight)
         exact List.mem_map.mpr ⟨traffic, member, rfl⟩
       rw [after traffic.envelope present owner]
       exact accepted_alice_opening_permitted _ (alice, 0) decision.bit (some ⟨aliceEvent⟩) receipt
+  exact charged
+
+theorem accepted_opening_nonnegative (positive : 0 < weight)
+    (decision : DecisionHistory weight nonnegative) (submission : app.Submission)
+    (genuine : EmitsOpening weight nonnegative decision submission) (players : Player → app.Policy)
+    {reward : ℝ} (rewardNonnegative : 0 ≤ reward) (forfeit : ℝ) (deposit : Player → ℝ)
+    (execution : app.Execution)
+    (reached : execution ∈ (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative)
+      (quietAgainst players) 17 (accepted weight nonnegative decision submission)).support) :
+    0 ≤ aliceUtility reward forfeit deposit execution := by
+  obtain ⟨prior⟩ := accepted_trace weight nonnegative positive decision submission genuine
+    (quietAgainst players)
+  obtain ⟨trace⟩ := app.raw_trace_runRounds initial LateOpeningRuntimeService.horizon
+    (LateOpeningRuntimeService.scheduler weight nonnegative) (quietAgainst players) 0 17
+      (accepted weight nonnegative decision submission) execution prior reached
+  have published : (accepted weight nonnegative decision submission).application.config.store
+      (.inr aliceEvent) = some (.success decision.bit) := by
+    rw [accepted_physical weight nonnegative decision submission genuine]
+    change (decision.execution.application.complete aliceEvent decision.ready true
+      (.success decision.bit)).config.outputs aliceEvent = _
+    simp [EventGraphRuntime.State.complete, Config.complete]
+  have retained := (ReactiveApplication.Invariant.policyInvariant app
+    (LateOpeningRuntimeService.runtime.reactiveStoreInvariant leaks (.inr aliceEvent)
+      (.success decision.bit)) (quietAgainst players)).runRounds
+        (LateOpeningRuntimeService.scheduler weight nonnegative) 17 _ execution published reached
+  have charged := accepted_charge_zero weight nonnegative decision submission genuine prior
+    players execution reached
   unfold aliceUtility TerminalAudit.utility
   rw [charged, zero_mul, sub_zero]
   exact completed_opening_base_nonnegative rewardNonnegative forfeit weight nonnegative

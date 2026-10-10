@@ -24,15 +24,15 @@ open LateOpeningRuntimeBobRawBinding (serviced)
 open LateOpeningRuntimeBobBindingDecision (context context_integrable)
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1)
   (decision : DecisionHistory weight nonnegative)
   (current : representative.1.state = some ⟨14, some bob, decision.execution⟩)
   (reward forfeit : ℝ) (deposit : Player → ℝ)
 
 def bestAnswerValue
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) : ℝ :=
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) : ℝ :=
   max ((context weight nonnegative site reward forfeit deposit assessment).value
       (answerFinitePolicy weight nonnegative safe))
     (max ((context weight nonnegative site reward forfeit deposit assessment).value
@@ -43,7 +43,7 @@ def bestAnswerValue
           (answerFinitePolicy weight nonnegative (labelGuess 2)))))
 
 theorem bestAnswerValue_formula
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     bestAnswerValue weight nonnegative site reward forfeit deposit assessment =
       max (2 / 5) (max (labelMass weight nonnegative site representative decision current
         assessment 0) (max (labelMass weight nonnegative site representative decision current
@@ -57,7 +57,7 @@ theorem bestAnswerValue_formula
 
 include representative decision current in
 theorem bestAnswerValue_ge_safe
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     (2 / 5 : ℝ) ≤ bestAnswerValue weight nonnegative site reward forfeit deposit assessment := by
   rw [← safe_context_value weight nonnegative site representative decision current reward forfeit
     deposit assessment]
@@ -76,7 +76,7 @@ theorem answer_safe_or_label_of_low (answer : Answer) (low : answer.val ≤ 3) :
 
 include representative decision current in
 theorem answer_value_le_bestAnswerValue
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (answer : Answer) :
     (context weight nonnegative site reward forfeit deposit assessment).value
       (answerFinitePolicy weight nonnegative answer) ≤
@@ -100,7 +100,7 @@ include representative decision current in
 /-- The expected ceiling of any fixed raw response is bounded by the four
 actual clean Safe and label-guess values at this information class. -/
 theorem response_score_value_le_bestAnswerValue
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (response : app.Action) :
     expect (assessment.belief bob site) (fun history =>
       bindingScore (originalLabel (decisionOfInformation weight nonnegative site representative
@@ -129,14 +129,14 @@ theorem response_score_value_le_bestAnswerValue
             current reward forfeit deposit assessment answer
 
 def currentResponses
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     PMF app.Action :=
   rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
     (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy bob
       (decision.execution.recall bob) (decision.execution.observe app bob)
 
 def responseValue
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (response : app.Action) : ℝ :=
   expect (assessment.belief bob site) fun history =>
     expect (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative)
@@ -144,11 +144,11 @@ def responseValue
         (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy) 14
       ((decisionOfInformation weight nonnegative site representative decision current
         history).execution.respond app bob response)) fun final =>
-          LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+          LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
             deposit (app.finished final) bob
 
 theorem responseValue_bounded
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (response : app.Action) :
     |responseValue weight nonnegative site representative decision current reward forfeit deposit
       assessment response| ≤ 1 + |forfeit| + |deposit bob| := by
@@ -161,7 +161,7 @@ theorem responseValue_bounded
 
 theorem responseValue_le_scoreValue (forfeitNonnegative : 0 ≤ forfeit)
     (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (response : app.Action) :
     responseValue weight nonnegative site representative decision current reward forfeit deposit
       assessment response ≤ expect (assessment.belief bob site) (fun history =>
@@ -194,7 +194,7 @@ theorem responseValue_le_scoreValue (forfeitNonnegative : 0 ≤ forfeit)
 
 theorem responseValue_le_bestAnswerValue (forfeitNonnegative : 0 ≤ forfeit)
     (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (response : app.Action) :
     responseValue weight nonnegative site representative decision current reward forfeit deposit
       assessment response ≤ bestAnswerValue weight nonnegative site reward forfeit deposit
@@ -205,7 +205,7 @@ theorem responseValue_le_bestAnswerValue (forfeitNonnegative : 0 ≤ forfeit)
         current reward forfeit deposit assessment response)
 
 theorem incumbent_value_eq_response_average
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     (context weight nonnegative site reward forfeit deposit assessment).value
       (assessment.strategy bob) =
     expect (currentResponses weight nonnegative decision assessment)
@@ -213,7 +213,7 @@ theorem incumbent_value_eq_response_average
         deposit assessment) := by
   let players := rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
     (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy
-  let utility := fun final : app.Execution => LateOpeningRuntimeNash.payoff reward forfeit
+  let utility := fun final : app.Execution => LateOpeningRuntimeGame.payoff reward forfeit
     (fun actual => PMF.pure actual) deposit (app.finished final) bob
   have bounded : ∀ final : app.Execution, |utility final| ≤ 1 + |forfeit| + |deposit bob| :=
     fun final => LateOpeningRuntimeBobIncentive.payoff_bounded reward forfeit
@@ -221,7 +221,7 @@ theorem incumbent_value_eq_response_average
   have mapped := expect_map History.state
     ((context weight nonnegative site reward forfeit deposit assessment).outcome
       (assessment.strategy bob))
-    (fun state => LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+    (fun state => LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
       deposit state bob)
   rw [incumbent_context_outcome_law weight nonnegative site representative decision current,
     expect_map] at mapped
@@ -253,7 +253,7 @@ theorem incumbent_value_eq_response_average
 include representative decision current in
 theorem incumbent_value_le_bestAnswerValue (forfeitNonnegative : 0 ≤ forfeit)
     (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     (context weight nonnegative site reward forfeit deposit assessment).value
       (assessment.strategy bob) ≤
         bestAnswerValue weight nonnegative site reward forfeit deposit assessment := by
@@ -270,7 +270,7 @@ include representative decision current in
 exactly the maximum of Safe and the three actual private-label masses. -/
 theorem rational_value_eq_bestAnswerValue (forfeitNonnegative : 0 ≤ forfeit)
     (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment)) :
     (context weight nonnegative site reward forfeit deposit assessment).value
@@ -293,7 +293,7 @@ theorem rational_value_eq_bestAnswerValue (forfeitNonnegative : 0 ≤ forfeit)
 value. This conclusion concerns the actual strategy's response law. -/
 theorem rational_supported_response_value (forfeitNonnegative : 0 ≤ forfeit)
     (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment)) :
     ∀ response ∈ (currentResponses weight nonnegative decision assessment).support,
@@ -316,7 +316,7 @@ include representative current in
 answer or private-label guess. Packet aliases remain part of the raw menu. -/
 theorem rational_supported_binding (forfeitNonnegative : 0 ≤ forfeit)
     (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment)) :
     ∀ response ∈ (currentResponses weight nonnegative decision assessment).support,

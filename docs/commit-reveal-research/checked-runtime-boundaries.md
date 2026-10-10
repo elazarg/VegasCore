@@ -79,6 +79,16 @@ opening material; it is not represented by silently missing the binding.
 Prescribed packets incur no audit charge. Source failure payoffs, including
 an explicitly applied forfeit, remain part of the utility being preserved.
 
+The prescribed reactive policies also preserve the exact joint law of the
+original initial source state and the decoded complete terminal source state.
+`Vegas.source_prescribed_terminal_joint_law` in
+[SourceServiceReactiveLaw.lean](../../Vegas/Game/SourceServiceReactiveLaw.lean)
+proves this for finite players under `AsyncContract` and `AsyncTimely`, in
+sequential and concurrent execution modes. It derives the execution, recall,
+sampling and expiry invariants internally. The original private draw is sampled
+once and remains correlated with the final state. Audit and equilibrium claims
+require their separate strategic and settlement results.
+
 If the clients voluntarily defer with total deferral weight delta, the
 two-way Nash error is at most epsilon plus `2 * delta * R`, where `R` bounds
 the range of realized runtime payoffs. This is
@@ -400,6 +410,8 @@ independence for the same builder, for every finite nonnegative lottery weight:
 [LateOpeningRuntimeServiceContract.lean](../../Vegas/Examples/LateOpeningRuntimeServiceContract.lean).
 The compiled configuration is an actual instance of `Vegas.AsyncServiceSpec`,
 with all its alphabet, capacity and finite-nature requirements discharged.
+The raw information model, audited payoff, and settlement are defined in
+[LateOpeningRuntimeGame.lean](../../Vegas/Examples/LateOpeningRuntimeGame.lean).
 For this exact configuration,
 `Vegas.Examples.LateOpeningRuntimeNash.first_opportunity_nash_iff` gives
 same-error Nash preservation and reflection for every source admission

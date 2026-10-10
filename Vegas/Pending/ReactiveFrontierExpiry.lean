@@ -1,5 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Pending.ReactiveOwnerOpportunity
+import Vegas.Pending.ReactiveChronologicalRecall
 import Vegas.Pending.ReactiveResolutionRecall
 import Vegas.Pending.ReactivePolicyFacts
 import Vegas.Pending.ReactiveFrontierRecall
@@ -205,5 +207,108 @@ theorem ReactiveFrontier.expire_silent_resolution (runtime : EventGraphRuntime g
       simpa only [ownCompletions, List.filter_append, List.filter_cons, List.filter_nil,
         foreign, decide_false, Bool.false_eq_true, ↓reduceIte, List.append_nil, execution]
         using related.recalled observer
+
+private theorem recordedClock_le_at_prefix {Entry : Type} (clock : Entry → Nat)
+    (before later : List Entry) (timely sampled : Entry)
+    (chronological : (before ++ [timely] ++ later).Pairwise
+      (fun earlier next => clock earlier ≤
+        clock next))
+    (recorded : sampled ∈ before ++ [timely]) :
+    clock sampled ≤
+      clock timely := by
+  have prefixOrdered := (List.pairwise_append.mp chronological).1
+  have separated := (List.pairwise_append.mp prefixOrdered).2.2
+  rcases List.mem_append.mp recorded with earlier | equal
+  · exact separated sampled earlier timely (List.mem_singleton.mpr rfl)
+  · cases List.mem_singleton.mp equal
+    exact Nat.le_refl _
+
+/-- Opportunity and actual recall provenance locate a sampled intention no later
+ than the owner response delay, even when that response retained an older sample. -/
+theorem due_owner_timely_sample_origin
+    (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (inputs : PMF graph.Inputs) (horizon : Nat)
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    (delay bound : graph.EventId → Nat)
+    (opportunity : runtime.Opportunity leaks (inputs.map State.initial) horizon scheduler delay)
+    (timely : runtime.AsyncTimely delay bound) (ordered : graph.BarrierOrdered)
+    (control : (runtime.reactiveApplication leaks).Control)
+    (trace : ((runtime.reactiveApplication leaks).protocol (inputs.map State.initial)
+      horizon scheduler).Trace (some control)) (idle : control.actor = none)
+    (event : graph.EventId) (who : Player) (actor : graph.actor? event = some who)
+    (ready : control.execution.application.config.cut.Ready event)
+    (entered : Nat) (activated : control.execution.application.activatedAt event = some entered)
+    (due : runtime.deadline event ≤ control.execution.application.clock - entered)
+    (policy : graph.BehavioralPolicy who)
+    (consistent : (runtime.prescribedReactivePolicy leaks who policy).Consistent
+      (control.execution.recall who))
+    (quiet : ∀ record ∈ control.execution.recall who,
+      record.action.transmission = none → record.emitted = none)
+    (sent : ∀ record ∈ control.execution.recall who, ∀ material,
+      record.action.transmission = some material → ∃ message,
+        record.emitted = some message ∧ message.payload.call = material.call.packet)
+    (intentions : List (Option graph.Completion))
+    (supported : intentions ∈ ((runtime.prescribedReactiveImplementation leaks who policy).posterior
+      (control.execution.recall who)).support) :
+    ∃ entry remembered,
+      (entry, some remembered) ∈ (control.execution.recall who).zip intentions ∧
+      remembered.event = event ∧
+      entry.beforeView.application.publicView.clock ≤ entered + delay event ∧
+      entry.beforeView.application.publicView.EventReady event ∧
+      entry.beforeView.application.publicView.activatedAt event = some entered := by
+  let app := runtime.reactiveApplication leaks
+  have margin := timely event (by simp only [actor, Option.isSome_some])
+  have activatedOwner := opportunity control trace event who entered actor
+    ((control.execution.application.publicView_eventReady event).mpr ready) activated (by omega)
+  obtain ⟨before, _, _, response, retained, viewed, turn, _, responded⟩ :=
+    runtime.owner_response_within_delay leaks (inputs.map State.initial) horizon scheduler delay
+      opportunity ordered control trace idle event who entered actor activatedOwner
+  obtain ⟨earlier, later, split⟩ := List.mem_iff_append.mp retained
+  have split' : control.execution.recall who = (earlier ++ [response]) ++ later := by
+    simpa only [List.append_assoc, List.singleton_append] using split
+  have responseOwner : response.beforeView.application.who = who := by
+    simp only [viewed, ReactiveApplication.Execution.observe, reactiveApplication,
+      State.playerView]
+  have turn' : response.beforeView.application.publicView.ownTurn? who = some event := by
+    simpa only [viewed, ReactiveApplication.Execution.observe, app, reactiveApplication,
+      State.playerView] using turn
+  have responseReady :=
+    (response.beforeView.application.publicView.ownTurn?_spec who event turn').1
+  obtain ⟨remembered, sampling, priorMemory, _, priorSupport, _, named, paired, fullPair⟩ :=
+    runtime.prescribedReactivePosterior_ready_prefix_origin leaks who policy earlier later response
+      (split' ▸ consistent)
+      (fun record member => quiet record (split' ▸ List.mem_append_left later member))
+      (fun record member => sent record (split' ▸ List.mem_append_left later member))
+      event turn' responseOwner responseReady actor intentions (split' ▸ supported)
+  have sampleMember : sampling ∈ earlier ++ [response] := by
+    have projected : sampling ∈ ((earlier ++ [response]).zip priorMemory).map Prod.fst :=
+      List.mem_map.mpr ⟨(sampling, some remembered), paired, rfl⟩
+    rw [List.map_fst_zip] at projected
+    · exact projected
+    · exact (runtime.prescribedReactivePosterior_length leaks who policy
+        ((split' ▸ consistent).of_append) priorMemory priorSupport).symm.le
+  have full : (sampling, some remembered) ∈ (control.execution.recall who).zip intentions :=
+    split' ▸ fullPair
+  obtain ⟨oldHistory, oldMemory, produced⟩ :=
+    runtime.prescribedReactivePosterior_paired_response leaks who policy consistent intentions
+      supported sampling remembered full
+  have sampledReady := (runtime.prescribedReactiveResponse_some_ready leaks who policy oldHistory
+    oldMemory sampling.beforeView sampling.action remembered produced).1
+  have priorClock := recordedClock_le_at_prefix
+    (fun entry : app.PlayerEntry => entry.beforeView.application.publicView.clock)
+    earlier later response sampling
+    (split' ▸ (runtime.chronologicalRecall_history leaks (inputs.map State.initial) horizon
+      scheduler control trace).2 who) sampleMember
+  have responseClock : response.beforeView.application.publicView.clock ≤
+      entered + delay event := by
+    simpa only [viewed, ReactiveApplication.Execution.observe, app, reactiveApplication,
+      State.playerView, State.publicView] using responded
+  have sampleRetained : sampling ∈ control.execution.recall who :=
+    split' ▸ List.mem_append_left later sampleMember
+  refine ⟨sampling, remembered, full, named, priorClock.trans responseClock,
+    named ▸ sampledReady, ?_⟩
+  exact runtime.recorded_ready_activatedAt leaks inputs horizon scheduler control trace who sampling
+    sampleRetained event (named ▸ sampledReady) actor ready entered activated
 
 end Vegas.EventGraphRuntime

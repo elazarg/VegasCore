@@ -143,8 +143,8 @@ theorem failed_binding_class_nonempty (weight : ℝ) (nonnegative : 0 ≤ weight
 with an actual bounded representative of the complete raw protocol. -/
 theorem failed_binding_information_representative (weight : ℝ) (nonnegative : 0 ≤ weight)
     (bit : Bool) (label : Fin 3) (seen : Bool) :
-    ∃ (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-      (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    ∃ (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+      (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
         bob site.1)
       (decision : LateOpeningRuntimeBobBindingInformation.DecisionHistory weight nonnegative),
       representative.1.state = some ⟨14, some bob, decision.execution⟩ ∧
@@ -162,7 +162,7 @@ theorem failed_binding_information_representative (weight : ℝ) (nonnegative : 
     change ¬ (14 = 0 ∧ some bob = none)
     simp
   obtain ⟨site, same⟩ :=
-    (LateOpeningRuntimeNash.model weight nonnegative).exists_informationSite_of_active
+    (LateOpeningRuntimeGame.model weight nonnegative).exists_informationSite_of_active
       bob history running rfl
   exact ⟨site, ⟨history, same.symm⟩, decision, rfl, valid, observed⟩
 

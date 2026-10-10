@@ -2,7 +2,7 @@
 
 import Vegas.Examples.LateOpeningRuntimeRetryAudit
 import Vegas.Examples.LateOpeningRuntimeLatePrefix
-import Vegas.Examples.LateOpeningRuntimeNash
+import Vegas.Examples.LateOpeningRuntimeGame
 import Vegas.Pending.ReactiveAssociationPersistence
 import Interaction.ReactiveReceipts
 import Interaction.ReactiveTrafficIdentity
@@ -269,7 +269,7 @@ theorem nongenuine_envelope_utility_bound {reward forfeit : ℝ}
     (traffic : app.TrafficRecord) (present : traffic ∈ app.executionTraffic control.execution)
     (owner : traffic.envelope.sender = alice)
     (nongenuine : traffic.envelope.payload ≠ (openingMessage bit).payload) :
-    LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual) deposit
+    LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit
       (some control) alice ≤ reward - deposit alice := by
   have completed := LateOpeningRuntimeService.completes weight nonnegative control trace terminal
   obtain ⟨initialBit, label, aliceResult, binding, answer, decoded⟩ := nativeReadout_complete
@@ -281,7 +281,7 @@ theorem nongenuine_envelope_utility_bound {reward forfeit : ℝ}
   have charged := nongenuine_envelope_full_charge weight nonnegative control trace terminal bit
     bound traffic present owner nongenuine
   have penalty := mul_le_mul_of_nonneg_right charged depositNonnegative
-  unfold LateOpeningRuntimeNash.payoff TerminalAudit.utility
+  unfold LateOpeningRuntimeGame.payoff TerminalAudit.utility
   rw [base]
   linarith
 

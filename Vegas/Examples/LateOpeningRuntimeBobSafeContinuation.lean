@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Examples.LateOpeningRuntimeBobQuietPrefix
-import Vegas.Examples.LateOpeningRuntimeNash
+import Vegas.Examples.LateOpeningRuntimeGame
 
 /-! # Clean chosen-answer settlement and the quiet/Safe comparison
 
@@ -576,7 +576,7 @@ theorem safe_continuation_nonnegative (weight : ℝ) (nonnegative : 0 ≤ weight
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (reached : final ∈ (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative)
       players 21 (execution.respond app bob ⟨none⟩)).support) :
-    0 ≤ LateOpeningRuntimeNash.payoff reward forfeit sample deposit (app.finished final) bob := by
+    0 ≤ LateOpeningRuntimeGame.payoff reward forfeit sample deposit (app.finished final) bob := by
   obtain ⟨published, clear⟩ := safe_continuation_clean weight nonnegative players bobPolicy
     execution final trace empty unresolved sample authentic reached
   obtain ⟨quietTrace⟩ := app.raw_trace_respond initial LateOpeningRuntimeService.horizon
@@ -599,7 +599,7 @@ theorem safe_continuation_nonnegative (weight : ℝ) (nonnegative : 0 ≤ weight
       decodeState? (terminalRefs program) final.application.config.store else none) = _
     rw [ite_eq_left completed]
     exact decoded
-  unfold LateOpeningRuntimeNash.payoff TerminalAudit.utility
+  unfold LateOpeningRuntimeGame.payoff TerminalAudit.utility
   rw [clear, zero_mul, sub_zero, nativeBaseUtility_of_readout reward forfeit _ _ readout bob,
     sourceUtility_bob]
   have success : ((terminalStateOf bit label aliceResult (.success safe)

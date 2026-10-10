@@ -41,8 +41,8 @@ def typedUnseenEvent (bit : Bool) (representativeLabel label : Fin 3) :
     Set app.ProtocolState :=
   typedInformationEvent (bobInformation (answerDecision bit representativeLabel 0 false)) bit label
 
-variable (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+variable (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1) (bit : Bool) (representativeLabel : Fin 3)
   (current : representative.1.state =
     some ⟨14, some bob, answerDecision bit representativeLabel 0 false⟩)
@@ -150,13 +150,13 @@ sample information site along the same assessment sequence. -/
 theorem early_silence_tendsto
     (reward forfeit : ℝ) (deposit : Player → ℝ)
     (forfeitNonnegative : 0 ≤ forfeit) (collateral : 1 < deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
-    (sequence : ℕ → (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (sequence : ℕ → (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (converges : InformationModel.BehavioralAssessmentConvergesPointwise sequence assessment)
     (bit : Bool) (label : Fin 3) :
     Tendsto (fun n => earlySilenceProbability weight nonnegative (sequence n).strategy bit label)

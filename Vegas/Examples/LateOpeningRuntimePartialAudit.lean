@@ -133,11 +133,11 @@ theorem partial_charge (probability : ℝ) (nonnegative : 0 ≤ probability)
 theorem partial_payoff (probability : ℝ) (nonnegative : 0 ≤ probability)
     (bounded : probability ≤ 1) (reward forfeit : ℝ) (deposit : Player → ℝ)
     (state : app.ProtocolState) (who : Player) :
-    LateOpeningRuntimeNash.payoff reward forfeit (sample probability nonnegative bounded)
+    LateOpeningRuntimeGame.payoff reward forfeit (sample probability nonnegative bounded)
         deposit state who =
-      LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+      LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
         (effectiveDeposit probability deposit) state who := by
-  unfold LateOpeningRuntimeNash.payoff TerminalAudit.utility
+  unfold LateOpeningRuntimeGame.payoff TerminalAudit.utility
   rw [partial_charge]
   unfold effectiveDeposit
   split_ifs <;> ring
@@ -148,7 +148,7 @@ than equality of expected payoffs alone, supplies the supportwise argument. -/
 theorem preserving_partial_implies_full (probability : ℝ) (positive : 0 < probability)
     (bounded : probability ≤ 1) (weight : ℝ) (nonnegative : 0 ≤ weight)
     (reward forfeit : ℝ) (deposit : Player → ℝ) (nonzero : ∀ who, deposit who ≠ 0)
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who)
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who)
     (same : nativeTerminalLaw weight nonnegative reward forfeit
       (sample probability positive.le bounded) deposit profile = safeTerminalLaw reward) :
     nativeTerminalLaw weight nonnegative reward forfeit (fun actual => PMF.pure actual)
@@ -202,21 +202,21 @@ theorem exists_service_with_no_preserving_equilibrium
         (LateOpeningRuntimeService.scheduler weight nonnegative) ∧
       0 < 1 - LateOpeningRuntimeLateAcceptance.inclusionProbability weight ∧
       1 - LateOpeningRuntimeLateAcceptance.inclusionProbability weight < failureFloor ∧
-      (∃ assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment,
+      (∃ assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment,
         assessment.IsSequentialEquilibrium
           (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
             (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain
           (rawMenu.bounded initial LateOpeningRuntimeService.horizon
             (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-          (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+          (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
             (sample probability positive.le bounded) deposit history.state who)) ∧
-      ∀ assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment,
+      ∀ assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment,
         assessment.IsSequentialEquilibrium
           (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
             (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain
           (rawMenu.bounded initial LateOpeningRuntimeService.horizon
             (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-          (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+          (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
             (sample probability positive.le bounded) deposit history.state who) →
         nativeTerminalLaw weight nonnegative reward forfeit
           (sample probability positive.le bounded) deposit assessment.strategy ≠
@@ -233,9 +233,9 @@ theorem exists_service_with_no_preserving_equilibrium
         aliceEffective bobEffective failureFloor floorPositive
   have payoffs : (fun who (history : (rawMenu.protocol initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).History) =>
-      LateOpeningRuntimeNash.payoff reward forfeit
+      LateOpeningRuntimeGame.payoff reward forfeit
         (sample probability positive.le bounded) deposit history.state who) =
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual)
         (effectiveDeposit probability deposit) history.state who) := by
     funext who history

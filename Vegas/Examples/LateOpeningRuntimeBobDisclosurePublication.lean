@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Examples.LateOpeningRuntimeGame
 import Vegas.Examples.LateOpeningRuntimeBobDisclosureChronology
 
 /-! # Successful disclosure after an actual clean first binding
@@ -26,7 +27,7 @@ open LateOpeningRuntimeBobRawBinding (serviced serviced_round serviced_trace)
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
   (reward forfeit : ℝ) (deposit : Player → ℝ)
-  (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+  (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
 
 private theorem decoded_covered (who : Player) (past : List app.PlayerEntry)
     (view : app.PlayerView) (response : app.Action)
@@ -46,7 +47,7 @@ private theorem final_response_publication
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
     (response : app.Action)
     (supported : response ∈ (rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
@@ -63,9 +64,9 @@ private theorem final_response_publication
       (LateOpeningRuntimeService.scheduler weight nonnegative)).terminal history.state := by
     change ¬ (6 = 0 ∧ some bob = none)
     simp
-  obtain ⟨site, same⟩ := (LateOpeningRuntimeNash.model weight nonnegative)
+  obtain ⟨site, same⟩ := (LateOpeningRuntimeGame.model weight nonnegative)
     |>.exists_informationSite_of_active bob history running rfl
-  let representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  let representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       bob site.1 := ⟨history, same.symm⟩
   have current : representative.1.state = some ⟨6, some bob, decision.execution⟩ := rfl
   have info := LateOpeningRuntimeBobRationality.site_information weight nonnegative site
@@ -113,7 +114,7 @@ theorem optional_response_publication
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
     (response : app.Action)
     (supported : response ∈ (rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
@@ -133,9 +134,9 @@ theorem optional_response_publication
       (LateOpeningRuntimeService.scheduler weight nonnegative)).terminal history.state := by
     change ¬ (12 = 0 ∧ some bob = none)
     simp
-  obtain ⟨site, same⟩ := (LateOpeningRuntimeNash.model weight nonnegative)
+  obtain ⟨site, same⟩ := (LateOpeningRuntimeGame.model weight nonnegative)
     |>.exists_informationSite_of_active bob history running rfl
-  let representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  let representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       bob site.1 := ⟨history, same.symm⟩
   have current : representative.1.state = some ⟨12, some bob, decision.execution⟩ := rfl
   have valid := LateOpeningRuntimeOptionalInformation.decisionOfInformation_spec weight
@@ -263,7 +264,7 @@ theorem binding_publication (execution : app.Execution)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
     (players : Player → app.Policy)
     (bobPolicy : players bob = rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
@@ -292,8 +293,12 @@ theorem binding_publication (execution : app.Execution)
       (LateOpeningRuntimeService.scheduler weight nonnegative) servedRaw
     change (serviced execution ⟨some material⟩).environmentRecall.length + 13 = 26 at counted
     omega
-  obtain ⟨revealReady, _, _⟩ := LateOpeningRuntimeBobBindingChronology.accepted_chronology
-    weight nonnegative execution rawTrace quiet ready ⟨some material⟩ answer selected
+  have serviceEq := LateOpeningRuntimeBobBindingChronology.serviced_of_silent weight nonnegative
+    execution rawTrace quiet ⟨some material⟩
+  have chronology := LateOpeningRuntimeBobBindingChronology.accepted_chronology weight nonnegative
+    execution rawTrace ready ⟨some material⟩ answer (by rw [serviceEq]; exact selected)
+  rw [serviceEq] at chronology
+  obtain ⟨revealReady, _, _⟩ := chronology
   have completed : bobBindEvent ∈
       (serviced execution ⟨some material⟩).application.publicView.observation.completionOrder :=
     ((serviced execution ⟨some material⟩).application.config.history_exact bobBindEvent).mpr

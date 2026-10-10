@@ -26,7 +26,7 @@ open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeReadou
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
 
 def responseLaw (decision : DecisionHistory weight nonnegative)
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who) :
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who) :
     PMF app.Execution :=
   let players := rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
     (LateOpeningRuntimeService.scheduler weight nonnegative) profile
@@ -40,7 +40,7 @@ def quietLaw (decision : DecisionHistory weight nonnegative) : PMF app.Execution
 /-- This is the actual original final callback and its subsequent physical
 service, with no change to the source or target response alphabet. -/
 theorem response_law_physical (decision : DecisionHistory weight nonnegative)
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who) :
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who) :
     let players := rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative) profile
     ((app.invoke players alice decision.execution).bind fun responded =>
@@ -73,8 +73,8 @@ private theorem emission_probability_eq_complement (law : PMF app.Action) :
       split_ifs <;> norm_num), expect_constant, expect_ite_eq, mul_one]
 
 variable
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite alice)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite alice)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     alice site.1)
   (decision : DecisionHistory weight nonnegative)
   (current : representative.1.state = some ⟨18, some alice, decision.execution⟩)
@@ -83,7 +83,7 @@ include current in
 /-- Every actual information event differs from the quiet physical branch by
 at most the native site's own additional-packet probability. -/
 theorem response_close_quiet
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who) :
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who) :
     PMF.WithinTV (LateOpeningRuntimeAliceTremble.emissionProbability
       weight nonnegative profile site) (responseLaw weight nonnegative decision profile)
         (quietLaw weight nonnegative decision) := by
@@ -115,9 +115,9 @@ theorem response_close_quiet
 /-- Arbitrary nonnegative prefix weights keep the exact relative native
 retry bound. In particular their sum need not have a positive limiting value. -/
 theorem weighted_event_error_bound {Root : Type} [Fintype Root]
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who)
-    (sites : Root → (LateOpeningRuntimeNash.model weight nonnegative).InformationSite alice)
-    (histories : ∀ root, (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who)
+    (sites : Root → (LateOpeningRuntimeGame.model weight nonnegative).InformationSite alice)
+    (histories : ∀ root, (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       alice (sites root).1)
     (decisions : Root → DecisionHistory weight nonnegative)
     (atDecision : ∀ root, (histories root).1.state =
@@ -154,11 +154,11 @@ theorem weighted_event_error_bound {Root : Type} [Fintype Root]
 native retry bound, even when the original prefix weights vanish faster. -/
 theorem relative_event_error_tendsto {Root : Type} [Fintype Root]
     (sequence : ℕ → ∀ who,
-      (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who)
+      (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who)
     (sites : ℕ → Root →
-      (LateOpeningRuntimeNash.model weight nonnegative).InformationSite alice)
+      (LateOpeningRuntimeGame.model weight nonnegative).InformationSite alice)
     (histories : ∀ n root,
-      (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory alice (sites n root).1)
+      (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory alice (sites n root).1)
     (decisions : ℕ → Root → DecisionHistory weight nonnegative)
     (atDecision : ∀ n root, (histories n root).1.state =
       some ⟨18, some alice, (decisions n root).execution⟩)

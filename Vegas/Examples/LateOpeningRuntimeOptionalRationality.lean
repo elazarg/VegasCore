@@ -27,17 +27,17 @@ open LateOpeningRuntimeBobBindingDecision
   (answerPlayers answerPlayers_admissible context context_integrable)
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1)
   (decision : DecisionHistory weight nonnegative)
   (current : representative.1.state = some ⟨12, some bob, decision.execution⟩)
   (reward forfeit : ℝ) (deposit : Player → ℝ)
 
 theorem conditionalValue_bounded
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (response : app.Action)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1) :
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1) :
     |conditionalValue weight nonnegative site representative decision current reward forfeit
       deposit assessment response history| ≤ 1 + |forfeit| + |deposit bob| :=
   expect_abs_le_of_bounded (by positivity) fun final =>
@@ -45,8 +45,8 @@ theorem conditionalValue_bounded
       deposit (app.finished final)
 
 theorem canonicalValue_bounded
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1) :
     |canonicalValue weight nonnegative site representative decision current reward forfeit
       deposit assessment history| ≤ 1 + |forfeit| + |deposit bob| :=
   expect_abs_le_of_bounded (by positivity) fun final =>
@@ -54,7 +54,7 @@ theorem canonicalValue_bounded
       deposit (app.finished final)
 
 theorem responseValue_bounded
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (response : app.Action) :
     |responseValue weight nonnegative site representative decision current reward forfeit
       deposit assessment response| ≤ 1 + |forfeit| + |deposit bob| :=
@@ -64,13 +64,13 @@ theorem responseValue_bounded
 
 open Classical in
 theorem payoff_audit_regret_le_canonicalValue
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1)
     (response : app.Action) (players : Player → app.Policy) (final : app.Execution)
     (reached : final ∈ (continuation weight nonnegative
       (decisionOfInformation weight nonnegative site representative decision current history)
       response players).support) :
-    LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+    LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
       deposit (app.finished final) bob +
       TerminalAudit.charge (LateOpeningRuntimeService.runtime.serviceAuditObservation leaks)
         (serviceSourceAudit setup .sequential deadline leaks (fun actual => PMF.pure actual))
@@ -102,13 +102,13 @@ theorem payoff_audit_regret_le_canonicalValue
 
 theorem payoff_le_canonicalValue (forfeitNonnegative : 0 ≤ forfeit)
     (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1)
     (response : app.Action) (players : Player → app.Policy) (final : app.Execution)
     (reached : final ∈ (continuation weight nonnegative
       (decisionOfInformation weight nonnegative site representative decision current history)
       response players).support) :
-    LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+    LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
       deposit (app.finished final) bob ≤
     canonicalValue weight nonnegative site representative decision current reward forfeit deposit
       assessment history := by
@@ -125,9 +125,9 @@ theorem payoff_le_canonicalValue (forfeitNonnegative : 0 ≤ forfeit)
 
 theorem conditionalValue_le_canonicalValue (forfeitNonnegative : 0 ≤ forfeit)
     (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (response : app.Action)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1) :
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1) :
     conditionalValue weight nonnegative site representative decision current reward forfeit deposit
       assessment response history ≤
     canonicalValue weight nonnegative site representative decision current reward forfeit deposit
@@ -143,7 +143,7 @@ theorem conditionalValue_le_canonicalValue (forfeitNonnegative : 0 ≤ forfeit)
 
 theorem responseValue_le_canonical_mean (forfeitNonnegative : 0 ≤ forfeit)
     (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (response : app.Action) :
     responseValue weight nonnegative site representative decision current reward forfeit deposit
       assessment response ≤
@@ -162,7 +162,7 @@ theorem responseValue_le_canonical_mean (forfeitNonnegative : 0 ≤ forfeit)
 include representative decision current in
 theorem rational_value_eq_canonical_mean (forfeitNonnegative : 0 ≤ forfeit)
     (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment)) :
     (context weight nonnegative site reward forfeit deposit assessment).value
@@ -188,7 +188,7 @@ theorem rational_value_eq_canonical_mean (forfeitNonnegative : 0 ≤ forfeit)
 
 theorem rational_supported_response_value (forfeitNonnegative : 0 ≤ forfeit)
     (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment)) :
     ∀ response ∈ (currentResponses weight nonnegative decision assessment).support,
@@ -208,7 +208,7 @@ theorem rational_supported_response_value (forfeitNonnegative : 0 ≤ forfeit)
 
 theorem rational_conditional_value_eq_canonicalValue (forfeitNonnegative : 0 ≤ forfeit)
     (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment))
     (response : app.Action)
@@ -245,18 +245,18 @@ theorem rational_conditional_value_eq_canonicalValue (forfeitNonnegative : 0 ≤
 
 theorem rational_supported_payoff_eq_canonicalValue (forfeitNonnegative : 0 ≤ forfeit)
     (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment))
     (response : app.Action)
     (supported : response ∈ (currentResponses weight nonnegative decision assessment).support)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1)
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1)
     (believed : history ∈ (assessment.belief bob site).support) :
     ∀ final ∈ (continuation weight nonnegative
       (decisionOfInformation weight nonnegative site representative decision current history)
       response (rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy)).support,
-      LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+      LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
         deposit (app.finished final) bob =
       canonicalValue weight nonnegative site representative decision current reward forfeit
         deposit assessment history := by
@@ -273,12 +273,12 @@ theorem rational_supported_payoff_eq_canonicalValue (forfeitNonnegative : 0 ≤ 
 
 theorem rational_supported_clean_settlement (forfeitPositive : 0 < forfeit)
     (depositPositive : 0 < deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment))
     (response : app.Action)
     (supported : response ∈ (currentResponses weight nonnegative decision assessment).support)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1)
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1)
     (believed : history ∈ (assessment.belief bob site).support)
     (final : app.Execution)
     (reached : final ∈ (continuation weight nonnegative

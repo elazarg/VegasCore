@@ -18,6 +18,12 @@ open GameTheory.Protocol GameTheory.Math.Probability
 open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeReadout
 open LateOpeningRuntimeBobRawBinding (known_same_information)
 
+def emittedMessage (execution : app.Execution) (material : app.Submission) :
+    Message Player app.Payload :=
+  ⟨(bob, execution.network.nextSerial bob),
+    app.packet (app.submit execution.application bob material) bob
+      (execution.network.known bob) material⟩
+
 /-- Actual local submission and handler result using the next native message ID. -/
 def responseState (execution : app.Execution) (response : app.Action) : app.State :=
   match response.transmission with

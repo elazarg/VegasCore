@@ -13,8 +13,8 @@ open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeReadou
   LateOpeningRuntimeBobDirtyFinalContext LateOpeningRuntimeBobDirtyFinalRationality
   LateOpeningRuntimeBobFinalObservation
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1)
   (execution : app.Execution)
   (executionTrace : (app.protocol initial LateOpeningRuntimeService.horizon
@@ -51,7 +51,7 @@ theorem continuation_answer_same_information
   simpa only [PMF.map_comp, Function.comp_def, answerView_physical] using readout
 
 def responseContinuationLaw
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (history : app.Execution) (players : Player → app.Policy) :
     PMF app.Execution :=
   ((assessment.strategy bob site.1).map (fun choice => choice.1.getD ⟨none⟩)).bind fun response =>
@@ -59,7 +59,7 @@ def responseContinuationLaw
       (history.respond app bob response)
 
 theorem finalLaw_answer_law
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (players : Player → app.Policy) :
     (finalLaw weight nonnegative site representative execution executionTrace current assessment
       (assessment.strategy bob)).map
@@ -106,11 +106,11 @@ variable (answer : Answer)
 include bound ready timely rejected in
 theorem rational_every_history_failure_zero
     (forfeitPositive : 0 < forfeit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (LateOpeningRuntimeBobRationality.context weight nonnegative site reward forfeit
         (fun actual => PMF.pure actual) deposit assessment))
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1)
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1)
     (players : Player → app.Policy) :
     ((responseContinuationLaw weight nonnegative site assessment
       (executionOfInformation weight nonnegative site representative execution
@@ -148,11 +148,11 @@ theorem rational_every_history_failure_zero
 include bound ready timely rejected in
 theorem rational_supported_publication
     (forfeitPositive : 0 < forfeit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (LateOpeningRuntimeBobRationality.context weight nonnegative site reward forfeit
         (fun actual => PMF.pure actual) deposit assessment))
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1)
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1)
     (response : app.Action)
     (supported : response ∈ ((assessment.strategy bob site.1).map
       (fun choice => choice.1.getD ⟨none⟩)).support)

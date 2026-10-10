@@ -95,17 +95,17 @@ theorem completion_payoff_law_eq (players : Player → app.Policy)
     (sample : List (SettledEvidence setup .sequential) →
       PMF (List (SettledEvidence setup .sequential))) (who : Player) :
     (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative) players 18 first).map
-      (fun final => LateOpeningRuntimeNash.payoff reward forfeit sample deposit
+      (fun final => LateOpeningRuntimeGame.payoff reward forfeit sample deposit
         (app.finished final) who) =
     (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative) players 18 second).map
-      (fun final => LateOpeningRuntimeNash.payoff reward forfeit sample deposit
+      (fun final => LateOpeningRuntimeGame.payoff reward forfeit sample deposit
         (app.finished final) who) := by
   have laws := app.continuation_eq_of_erasedRecall_eq
     (LateOpeningRuntimeService.scheduler weight nonnegative) 8 alice
       (LateOpeningRuntimeAliceIncentive.alice_absent weight nonnegative) players 18
         first second later same
   have mapped := congrArg (fun law : PMF app.Execution => law.map
-    (fun final => LateOpeningRuntimeNash.payoff reward forfeit sample deposit
+    (fun final => LateOpeningRuntimeGame.payoff reward forfeit sample deposit
       (app.finished final) who)) laws
   simpa only [PMF.map_comp, Function.comp_def,
     LateOpeningRuntimeAliceOpeningAliases.payoff_eraseRecall] using mapped
@@ -123,10 +123,10 @@ theorem genuine_first_payoff_law (players : Player → app.Policy)
     (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative) players 18
       ((finalDecision bit label ⟨some submission⟩
         (if seen then {(alice, 0)} else ∅)).respond app alice ⟨none⟩)).map
-          (fun final => LateOpeningRuntimeNash.payoff reward forfeit sample deposit
+          (fun final => LateOpeningRuntimeGame.payoff reward forfeit sample deposit
             (app.finished final) who) =
       (settlementCompletion weight nonnegative players (beforeLottery bit label 0 seen)).map
-        (fun final => LateOpeningRuntimeNash.payoff reward forfeit sample deposit
+        (fun final => LateOpeningRuntimeGame.payoff reward forfeit sample deposit
           (app.finished final) who) := by
   rw [← whole_suffix_law weight nonnegative players _ (by rfl :
     (beforeLottery bit label 0 seen).environmentRecall.length = 8)]
@@ -148,10 +148,10 @@ theorem genuine_final_payoff_law (players : Player → app.Policy)
       PMF (List (SettledEvidence setup .sequential))) (who : Player) :
     (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative) players 18
       ((finalDecision bit label ⟨none⟩ ∅).respond app alice ⟨some submission⟩)).map
-        (fun final => LateOpeningRuntimeNash.payoff reward forfeit sample deposit
+        (fun final => LateOpeningRuntimeGame.payoff reward forfeit sample deposit
           (app.finished final) who) =
       (settlementCompletion weight nonnegative players (beforeLottery bit label 1 false)).map
-        (fun final => LateOpeningRuntimeNash.payoff reward forfeit sample deposit
+        (fun final => LateOpeningRuntimeGame.payoff reward forfeit sample deposit
           (app.finished final) who) := by
   rw [← whole_suffix_law weight nonnegative players _ (by rfl :
     (beforeLottery bit label 1 false).environmentRecall.length = 8)]

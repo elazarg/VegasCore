@@ -34,14 +34,14 @@ theorem canonical_dominates (remaining : Nat) (execution : app.Execution)
       (execution.respond app bob
         (LateOpeningRuntimeService.runtime.canonicalServiceDecision leaks bob (execution.recall bob)
           (execution.observe app bob) bobRevealEvent true))).support) :
-    LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual) deposit
+    LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit
         (app.finished final) bob ≤
-      LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual) deposit
+      LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit
         (app.finished canonicalFinal) bob ∧
     (final.application.config.store (.inr bobRevealEvent) = some .failure →
-      LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual) deposit
+      LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit
           (app.finished final) bob + forfeit ≤
-        LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual) deposit
+        LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit
           (app.finished canonicalFinal) bob) := by
   obtain ⟨bit, label, valid⟩ := history_initial_invariant LateOpeningRuntimeService.runtime leaks
     LateOpeningRuntimeService.horizon
@@ -94,12 +94,12 @@ theorem canonical_dominates (remaining : Nat) (execution : app.Execution)
   change TerminalAudit.charge (LateOpeningRuntimeService.runtime.serviceAuditObservation leaks)
     (serviceSourceAudit setup .sequential deadline leaks (fun actual => PMF.pure actual))
       (app.finished canonicalFinal) bob = 1 at canonicalCharge
-  have canonicalValue : LateOpeningRuntimeNash.payoff reward forfeit
+  have canonicalValue : LateOpeningRuntimeGame.payoff reward forfeit
       (fun actual => PMF.pure actual) deposit (app.finished canonicalFinal) bob =
       grossUtility reward (setup.parameterOutcome parameter
         (terminalStateOf bit label aliceResult (.success answer) (.success answer))) bob -
         deposit bob := by
-    unfold LateOpeningRuntimeNash.payoff TerminalAudit.utility
+    unfold LateOpeningRuntimeGame.payoff TerminalAudit.utility
     rw [nativeBaseUtility_of_readout reward forfeit _ _ canonicalRead bob, canonicalCharge,
       one_mul, sourceUtility_bob]
     change _ - 0 - _ = _
@@ -107,11 +107,11 @@ theorem canonical_dominates (remaining : Nat) (execution : app.Execution)
   have grossNonnegative := (bob_gross_bounds reward (setup.parameterOutcome parameter
     (terminalStateOf bit label aliceResult (.success answer) (.success answer)))).1
   have failedValue (failed : final.application.config.store (.inr bobRevealEvent) = some .failure) :
-      LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual) deposit
+      LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit
         (app.finished final) bob = -forfeit - deposit bob := by
     have equal : rawResult = .failure := Option.some.inj (rawStored.symm.trans failed)
     subst rawResult
-    unfold LateOpeningRuntimeNash.payoff TerminalAudit.utility
+    unfold LateOpeningRuntimeGame.payoff TerminalAudit.utility
     rw [nativeBaseUtility_of_readout reward forfeit _ _ rawRead bob, sourceUtility_bob_failure,
       rawCharge, one_mul]
   refine ⟨?_, fun failed => by rw [failedValue failed, canonicalValue]; linarith⟩
@@ -125,7 +125,7 @@ theorem canonical_dominates (remaining : Nat) (execution : app.Execution)
           bound response reached
           opened rawStored
       subst opened
-      unfold LateOpeningRuntimeNash.payoff TerminalAudit.utility
+      unfold LateOpeningRuntimeGame.payoff TerminalAudit.utility
       rw [nativeBaseUtility_of_readout reward forfeit _ _ rawRead bob,
         nativeBaseUtility_of_readout reward forfeit _ _ canonicalRead bob,
         rawCharge, canonicalCharge]

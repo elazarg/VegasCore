@@ -13,6 +13,7 @@ import Vegas.Game.AsyncServiceDeviationBound
 import Vegas.Game.AsyncServiceNash
 import Vegas.Game.AsyncServiceRawNash
 import Vegas.Game.AsyncServiceSpec
+import Vegas.Game.SourceServiceReactiveLaw
 import Vegas.Game.AsyncWithholdLaw
 import Vegas.Game.AsyncWithholdReadout
 import Vegas.Game.BindingRepairBlock

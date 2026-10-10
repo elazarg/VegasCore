@@ -1,9 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Examples.LateOpeningRuntimeGame
 import Vegas.Examples.LateOpeningRuntimeBobSuccessSettlement
 
-/-! # Sender payoffs after a successful opening and optimal answer
+/-! # Sender payoff bounds by immutable private label
 
+For the third label, every source result has gross reward at most half.
 For either of Alice's first two labels, successful Safe or label answers give
 at least half of her reward. Her own runtime audit deduction is retained
 explicitly: optimal Bob settlement alone does not certify Alice's traffic.
@@ -22,6 +24,40 @@ open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeReadou
   LateOpeningRuntimeBobSuccessPayoff LateOpeningRuntimeBobSuccessDecision
   LateOpeningRuntimeBobSuccessOptimization LateOpeningRuntimeBobSuccessSettlement
 open LateOpeningRuntimeBobBindingDecision (context)
+
+theorem grossUtility_highLabel_upper (reward : ℝ) (nonnegative : 0 ≤ reward)
+    (result : Parameter × PublicOutcome program) (high : 2 ≤ result.1.2.val) :
+    grossUtility reward result alice ≤ reward / 2 := by
+  have notLow : ¬ result.1.2.val < 2 := by omega
+  have notZero : result.1.2.val ≠ 0 := by omega
+  have notOne : result.1.2.val ≠ 1 := by omega
+  unfold grossUtility
+  cases answer : bobResult result.2 with
+  | failure => linarith
+  | success opened =>
+      simp only [ite_true]
+      by_cases published : (aliceResult result.2).isSuccess
+      · rw [ite_eq_left published]
+        by_cases safe : opened.val = 0
+        · rw [ite_eq_left safe]
+        · rw [ite_eq_right safe, ite_eq_right (by simp only [notLow, and_false, not_false_eq_true])]
+          linarith
+      · rw [ite_eq_right published]
+        simp only [notZero, notOne, false_and, or_self, ite_false]
+        linarith
+
+
+/-- Alice cannot receive more than half the reward at the third label;
+failed opening forfeits can only reduce that amount. -/
+theorem sourceUtility_highLabel_upper (reward forfeit : ℝ)
+    (rewardNonnegative : 0 ≤ reward) (forfeitNonnegative : 0 ≤ forfeit)
+    (terminal : State simpleExpr program.terminalCtx)
+    (high : 2 ≤ (setup.parameterOutcome parameter terminal).1.2.val) :
+    sourceUtility reward forfeit terminal alice ≤ reward / 2 := by
+  have upper := grossUtility_highLabel_upper reward rewardNonnegative
+    (setup.parameterOutcome parameter terminal) high
+  rw [sourceUtility_alice]
+  split_ifs <;> linarith
 
 theorem sourceUtility_floor (reward forfeit : ℝ) (rewardNonnegative : 0 ≤ reward)
     (bit publishedBit : Bool) (label : Fin 3) (labelLow : label.val < 2)
@@ -70,7 +106,7 @@ theorem continuation_payoff_floor
       leaks)
       (serviceSourceAudit setup .sequential deadline leaks sample) (app.finished final) alice *
         deposit alice ≤
-      LateOpeningRuntimeNash.payoff reward forfeit sample deposit (app.finished final) alice := by
+      LateOpeningRuntimeGame.payoff reward forfeit sample deposit (app.finished final) alice := by
   obtain ⟨bit, label, binding, publication, _bitEq, labelEq, _reachable,
     _bound, stored, readout⟩ := continuation_readout weight nonnegative execution trace
       publishedBit publishedAlice response players final reached
@@ -80,13 +116,13 @@ theorem continuation_payoff_floor
   have low : label.val < 2 := by rwa [← labelEq]
   have floor := LateOpeningRuntimeAliceSuccessFloor.sourceUtility_floor reward forfeit
     rewardNonnegative bit publishedBit label low binding answer shape
-  unfold LateOpeningRuntimeNash.payoff TerminalAudit.utility
+  unfold LateOpeningRuntimeGame.payoff TerminalAudit.utility
   rw [nativeBaseUtility_of_readout reward forfeit _ _ readout alice]
   linarith
 
 variable
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1)
   (decision : DecisionHistory weight nonnegative)
   (current : representative.1.state = some ⟨14, some bob, decision.execution⟩)
@@ -96,12 +132,12 @@ variable
 the actual joint support for her first two immutable private labels. -/
 theorem rational_supported_payoff_floor (rewardNonnegative : 0 ≤ reward)
     (forfeitPositive : 0 < forfeit) (depositPositive : 0 < deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment))
     (response : app.Action)
     (supported : response ∈ (currentResponses weight nonnegative decision assessment).support)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1)
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1)
     (believed : history ∈ (assessment.belief bob site).support)
     (labelLow : (originalLabel (decisionOfInformation weight nonnegative site representative
       decision current history).execution).val < 2)
@@ -115,7 +151,7 @@ theorem rational_supported_payoff_floor (rewardNonnegative : 0 ≤ reward)
       (LateOpeningRuntimeService.runtime.serviceAuditObservation leaks)
       (serviceSourceAudit setup .sequential deadline leaks (fun actual => PMF.pure actual))
         (app.finished final) alice * deposit alice ≤
-      LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+      LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
         deposit (app.finished final) alice := by
   obtain ⟨answer, selected, shape, maximizing, clean⟩ := rational_supported_clean_settlement
     weight nonnegative site representative decision current reward forfeit deposit

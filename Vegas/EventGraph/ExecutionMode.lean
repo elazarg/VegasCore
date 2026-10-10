@@ -155,4 +155,15 @@ theorem runPolicies_withMode_store (graph : Vegas.EventGraph Player L)
       rw [← relaxedLaw, ← sameProfile]
       exact baseLaw
 
+omit [DecidableEq Player] in
+/-- Observation normalization commutes with forgetting a dependency mode,
+while preserving the full store and original own-action recall. -/
+theorem fromModeProfile_normalizeProfile (graph : Vegas.EventGraph Player L)
+    (mode : ExecutionMode) (profile : (graph.withMode mode).BehavioralProfile) :
+    graph.fromModeProfile mode ((graph.withMode mode).normalizeProfile profile) =
+      graph.normalizeProfile (graph.fromModeProfile mode profile) := by
+  funext who event actor observation
+  unfold fromModeProfile fromModePolicy normalizeProfile normalizePolicy
+  rfl
+
 end Vegas.EventGraph

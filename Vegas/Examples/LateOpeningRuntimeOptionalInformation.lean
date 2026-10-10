@@ -174,15 +174,15 @@ theorem optional_remaining_same_information (execution : app.Execution)
     omega
 
 theorem optional_history_same_information
-    (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-    (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+    (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       bob site.1)
     (execution : app.Execution)
     (executionTrace : (app.protocol initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
       (some ⟨12, some bob, execution⟩))
     (current : representative.1.state = some ⟨12, some bob, execution⟩)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1) :
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1) :
     ∃ actual : app.Execution,
       history.1.state = some ⟨12, some bob, actual⟩ ∧
       Nonempty ((app.protocol initial LateOpeningRuntimeService.horizon
@@ -221,8 +221,8 @@ theorem optional_history_same_information
 section RawOptionalInformation
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1)
   (execution : app.Execution)
   (executionTrace : (app.protocol initial LateOpeningRuntimeService.horizon
@@ -231,13 +231,13 @@ variable (weight : ℝ) (nonnegative : 0 ≤ weight)
   (current : representative.1.state = some ⟨12, some bob, execution⟩)
 
 def executionOfInformation
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1) :
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1) :
     app.Execution :=
   (optional_history_same_information weight nonnegative site representative execution executionTrace
     current history).choose
 
 theorem executionOfInformation_spec
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1) :
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1) :
     let actual := executionOfInformation weight nonnegative site representative execution
       executionTrace current history
     history.1.state = some ⟨12, some bob, actual⟩ ∧
@@ -255,12 +255,12 @@ end RawOptionalInformation
 /-- Every actual hidden history of this information site has the same
 selected answer and complete operational opening interface. -/
 theorem decision_of_information
-    (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-    (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+    (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       bob site.1)
     (decision : DecisionHistory weight nonnegative)
     (current : representative.1.state = some ⟨12, some bob, decision.execution⟩)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1) :
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1) :
     ∃ result : DecisionHistory weight nonnegative,
       history.1.state = some ⟨12, some bob, result.execution⟩ ∧
       decision.execution.recall bob = result.execution.recall bob ∧
@@ -283,19 +283,19 @@ theorem decision_of_information
   exact ⟨result, stateEq, sameRecall, sameView, rfl⟩
 
 def decisionOfInformation
-    (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-    (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+    (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       bob site.1) (decision : DecisionHistory weight nonnegative)
     (current : representative.1.state = some ⟨12, some bob, decision.execution⟩)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1) :=
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1) :=
   (decision_of_information weight nonnegative site representative decision current history).choose
 
 theorem decisionOfInformation_spec
-    (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-    (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+    (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       bob site.1) (decision : DecisionHistory weight nonnegative)
     (current : representative.1.state = some ⟨12, some bob, decision.execution⟩)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1) :
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1) :
     let result :=
       decisionOfInformation weight nonnegative site representative decision current history
     history.1.state = some ⟨12, some bob, result.execution⟩ ∧

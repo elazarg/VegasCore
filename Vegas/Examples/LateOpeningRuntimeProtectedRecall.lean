@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Examples.LateOpeningRuntimeNash
+import Vegas.Examples.LateOpeningRuntimeGame
 import Vegas.Examples.LateOpeningRuntimeServiceReceipt
 import Interaction.ReactiveRecallInvariant
 
@@ -200,14 +200,14 @@ theorem protected_silence_of_empty_receipt_recall (control : app.Control)
 /-- The same protected silence holds at every native history of the full Bob
 information class. Only his actual remembered observation is assumed. -/
 theorem information_histories_protected_silent
-    (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-    (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+    (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       bob site.1) (control : app.Control)
     (current : representative.1.state = some control) (active : control.actor = some bob)
     (remembered : app.PlayerEntry) (member : remembered ∈ control.execution.recall bob)
     (later : 0 < remembered.beforeView.application.publicView.clock)
     (empty : remembered.beforeView.receipts = [])
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1) :
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1) :
     ∃ compatible : app.Control, history.1.state = some compatible ∧
       ProtectedSilence compatible.execution := by
   have acting := InformationModel.InformationSite.active _ site history

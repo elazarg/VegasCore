@@ -29,9 +29,9 @@ theorem payoff_eraseRecall (reward forfeit : ℝ) (deposit : Player → ℝ)
     (sample : List (SettledEvidence setup .sequential) →
       PMF (List (SettledEvidence setup .sequential)))
     (execution : app.Execution) (owner who : Player) :
-    LateOpeningRuntimeNash.payoff reward forfeit sample deposit
+    LateOpeningRuntimeGame.payoff reward forfeit sample deposit
         (app.finished (execution.eraseRecall app owner)) who =
-      LateOpeningRuntimeNash.payoff reward forfeit sample deposit (app.finished execution) who := by
+      LateOpeningRuntimeGame.payoff reward forfeit sample deposit (app.finished execution) who := by
   rfl
 
 theorem aliceUtility_eraseRecall (reward forfeit : ℝ) (deposit : Player → ℝ)
@@ -97,16 +97,16 @@ theorem opening_payoff_law_eq (decision : DecisionHistory weight nonnegative)
       PMF (List (SettledEvidence setup .sequential))) (who : Player) :
     (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative) players count
         (submitted weight nonnegative decision first)).map
-          (fun execution => LateOpeningRuntimeNash.payoff reward forfeit sample deposit
+          (fun execution => LateOpeningRuntimeGame.payoff reward forfeit sample deposit
             (app.finished execution) who) =
       (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative) players count
         (submitted weight nonnegative decision second)).map
-          (fun execution => LateOpeningRuntimeNash.payoff reward forfeit sample deposit
+          (fun execution => LateOpeningRuntimeGame.payoff reward forfeit sample deposit
             (app.finished execution) who) := by
   have laws := opening_continuation_projected_eq weight nonnegative decision first second
     firstGenuine secondGenuine players count
   have mapped := congrArg (fun law : PMF app.Execution => law.map
-    (fun execution => LateOpeningRuntimeNash.payoff reward forfeit sample deposit
+    (fun execution => LateOpeningRuntimeGame.payoff reward forfeit sample deposit
       (app.finished execution) who)) laws
   simpa only [PMF.map_comp, Function.comp_def, payoff_eraseRecall] using mapped
 

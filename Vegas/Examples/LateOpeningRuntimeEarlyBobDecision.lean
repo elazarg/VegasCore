@@ -24,8 +24,8 @@ open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeEarlyB
   LateOpeningRuntimeEarlyBobInformation
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1)
   (decision : DecisionHistory weight nonnegative)
   (current : representative.1.state = some ⟨21, some bob, decision.execution⟩)
@@ -38,31 +38,31 @@ theorem site_information : site.1 =
   rw [rawMenu.info, current]
   rfl
 
-def quietChoice : (LateOpeningRuntimeNash.model weight nonnegative).Choice bob site.1 := by
+def quietChoice : (LateOpeningRuntimeGame.model weight nonnegative).Choice bob site.1 := by
   refine ⟨some (⟨none⟩ : app.Action), ?_⟩
   rw [site_information weight nonnegative site representative decision current]
   exact ⟨⟨none⟩, bounds.silent_available LateOpeningRuntimeService.runtime leaks bob _ _, rfl⟩
 
 def localPolicy
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
-    (law : PMF ((LateOpeningRuntimeNash.model weight nonnegative).Choice bob site.1)) :
-    (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy bob := by
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (law : PMF ((LateOpeningRuntimeGame.model weight nonnegative).Choice bob site.1)) :
+    (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy bob := by
   classical
   exact (assessment.strategy bob).withLaw site.1 law
 
 def quietPolicy
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
-    (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy bob :=
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
+    (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy bob :=
   localPolicy weight nonnegative site assessment
     (PMF.pure (quietChoice weight nonnegative site representative decision current))
 
 def responseLaw
-    (law : PMF ((LateOpeningRuntimeNash.model weight nonnegative).Choice bob site.1)) :
+    (law : PMF ((LateOpeningRuntimeGame.model weight nonnegative).Choice bob site.1)) :
     PMF app.Action := law.map (fun choice => choice.1.getD ⟨none⟩)
 
 def continuation
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1)
     (response : app.Action) : PMF app.Execution :=
   app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative)
     (rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
@@ -70,8 +70,8 @@ def continuation
     ((decisionOfInformation weight nonnegative site representative decision current
       history).execution.respond app bob response)
 
-def finalLaw (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
-    (law : PMF ((LateOpeningRuntimeNash.model weight nonnegative).Choice bob site.1)) :
+def finalLaw (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (law : PMF ((LateOpeningRuntimeGame.model weight nonnegative).Choice bob site.1)) :
     PMF app.Execution :=
   (assessment.belief bob site).bind fun history =>
     (responseLaw weight nonnegative site law).bind fun response =>
@@ -79,11 +79,11 @@ def finalLaw (assessment : (LateOpeningRuntimeNash.model weight nonnegative).Beh
         history response
 
 theorem current_local_continuation_law
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1)
-    (law : PMF ((LateOpeningRuntimeNash.model weight nonnegative).Choice bob site.1)) :
-    ((LateOpeningRuntimeNash.model weight nonnegative).runBehavioralFrom
-      (Profile.update (sig := (LateOpeningRuntimeNash.model weight nonnegative).behavioralSignature)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1)
+    (law : PMF ((LateOpeningRuntimeGame.model weight nonnegative).Choice bob site.1)) :
+    ((LateOpeningRuntimeGame.model weight nonnegative).runBehavioralFrom
+      (Profile.update (sig := (LateOpeningRuntimeGame.model weight nonnegative).behavioralSignature)
         assessment.strategy bob (localPolicy weight nonnegative site assessment law))
       (2 * LateOpeningRuntimeService.horizon + 1) history.1).map History.state =
     (responseLaw weight nonnegative site law).bind fun response =>
@@ -109,13 +109,13 @@ theorem current_local_continuation_law
 
 variable (reward forfeit : ℝ) (deposit : Player → ℝ)
 
-def context (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :=
+def context (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :=
   assessment.truncatedContinuationContext site
-    (fun history => LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+    (fun history => LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
       deposit history.state bob) (2 * LateOpeningRuntimeService.horizon + 1)
 
 def utility (final : app.Execution) : ℝ :=
-  LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual) deposit
+  LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit
     (app.finished final) bob
 
 theorem utility_bounded (final : app.Execution) :
@@ -124,8 +124,8 @@ theorem utility_bounded (final : app.Execution) :
     deposit (app.finished final)
 
 theorem context_integrable
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
-    (alternative : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy bob) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (alternative : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy bob) :
     Context.IntegrableAt
       (context weight nonnegative site reward forfeit deposit assessment) alternative :=
   payoffIntegrable_of_bounded _ _ fun history =>
@@ -133,8 +133,8 @@ theorem context_integrable
       deposit history.state
 
 theorem local_context_outcome_law
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
-    (law : PMF ((LateOpeningRuntimeNash.model weight nonnegative).Choice bob site.1)) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (law : PMF ((LateOpeningRuntimeGame.model weight nonnegative).Choice bob site.1)) :
     ((context weight nonnegative site reward forfeit deposit assessment).outcome
       (localPolicy weight nonnegative site assessment law)).map History.state =
     (finalLaw weight nonnegative site representative decision current assessment law).map
@@ -149,8 +149,8 @@ theorem local_context_outcome_law
     PMF.map_bind]
 
 theorem local_context_value
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
-    (law : PMF ((LateOpeningRuntimeNash.model weight nonnegative).Choice bob site.1)) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (law : PMF ((LateOpeningRuntimeGame.model weight nonnegative).Choice bob site.1)) :
     (context weight nonnegative site reward forfeit deposit assessment).value
       (localPolicy weight nonnegative site assessment law) =
     expect (finalLaw weight nonnegative site representative decision current assessment law)
@@ -158,14 +158,14 @@ theorem local_context_value
   have mapped := expect_map History.state
     ((context weight nonnegative site reward forfeit deposit assessment).outcome
       (localPolicy weight nonnegative site assessment law))
-    (fun state => LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+    (fun state => LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
       deposit state bob)
   rw [local_context_outcome_law weight nonnegative site representative decision current,
     expect_map] at mapped
   exact mapped.symm
 
 theorem incumbent_context_value
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     (context weight nonnegative site reward forfeit deposit assessment).value
       (assessment.strategy bob) =
     expect (finalLaw weight nonnegative site representative decision current assessment
@@ -175,7 +175,7 @@ theorem incumbent_context_value
   simpa only [localPolicy, InformationModel.BehavioralPolicy.withLaw_eq_self] using result
 
 def responseValue
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (response : app.Action) : ℝ :=
   expect ((assessment.belief bob site).bind fun history =>
     continuation weight nonnegative site representative decision current assessment history
@@ -183,8 +183,8 @@ def responseValue
     (utility reward forfeit deposit)
 
 theorem finalLaw_response_first
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
-    (law : PMF ((LateOpeningRuntimeNash.model weight nonnegative).Choice bob site.1)) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (law : PMF ((LateOpeningRuntimeGame.model weight nonnegative).Choice bob site.1)) :
     finalLaw weight nonnegative site representative decision current assessment law =
     (responseLaw weight nonnegative site law).bind fun response =>
       (assessment.belief bob site).bind fun history =>
@@ -194,8 +194,8 @@ theorem finalLaw_response_first
   exact PMF.bind_comm _ _ _
 
 theorem local_context_value_response
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
-    (law : PMF ((LateOpeningRuntimeNash.model weight nonnegative).Choice bob site.1)) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (law : PMF ((LateOpeningRuntimeGame.model weight nonnegative).Choice bob site.1)) :
     (context weight nonnegative site reward forfeit deposit assessment).value
       (localPolicy weight nonnegative site assessment law) =
     expect (responseLaw weight nonnegative site law)
@@ -207,7 +207,7 @@ theorem local_context_value_response
     (utility_bounded reward forfeit deposit))
 
 theorem incumbent_context_value_response
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     (context weight nonnegative site reward forfeit deposit assessment).value
       (assessment.strategy bob) =
     expect (responseLaw weight nonnegative site (assessment.strategy bob site.1))
@@ -218,7 +218,7 @@ theorem incumbent_context_value_response
   simpa only [localPolicy, InformationModel.BehavioralPolicy.withLaw_eq_self] using result
 
 theorem quiet_context_value
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     (context weight nonnegative site reward forfeit deposit assessment).value
       (quietPolicy weight nonnegative site representative decision current assessment) =
     responseValue weight nonnegative site representative decision current
@@ -229,7 +229,7 @@ theorem quiet_context_value
 
 theorem rejected_responseValue_bound
     (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (response : app.Action) (submitted : response.transmission.isSome) :
     responseValue weight nonnegative site representative decision current
       reward forfeit deposit assessment response ≤ 1 - deposit bob := by

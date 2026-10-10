@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Examples.LateOpeningRuntimeServiceContract
-import Vegas.Examples.LateOpeningRuntimeUtility
+import Vegas.Examples.LateOpeningRuntimeGame
 import Vegas.Game.AsyncServiceRawNash
 
 /-! # Exact Nash correspondence for the concrete partially public runtime
@@ -20,24 +20,7 @@ namespace Vegas.Examples.LateOpeningRuntimeNash
 open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory GameTheory.Protocol GameTheory.Enforcement
 open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeUtility
-
-abbrev model (weight : ℝ) (nonnegative : 0 ≤ weight) :=
-  rawMenu.information initial LateOpeningRuntimeService.horizon
-    (LateOpeningRuntimeService.scheduler weight nonnegative)
-
-def payoff (reward forfeit : ℝ)
-    (sample : List (SettledEvidence setup .sequential) →
-      PMF (List (SettledEvidence setup .sequential))) (deposit : Player → ℝ) :=
-  TerminalAudit.utility (nativeBaseUtility reward forfeit)
-    (LateOpeningRuntimeService.runtime.serviceAuditObservation leaks)
-    (serviceSourceAudit setup .sequential deadline leaks sample) deposit
-
-def settlement (reward forfeit : ℝ)
-    (sample : List (SettledEvidence setup .sequential) →
-      PMF (List (SettledEvidence setup .sequential))) (deposit : Player → ℝ) :=
-  TerminalAudit.settlement (nativeBaseUtility reward forfeit)
-    (LateOpeningRuntimeService.runtime.serviceAuditObservation leaks)
-    (serviceSourceAudit setup .sequential deadline leaks sample) deposit
+open LateOpeningRuntimeGame
 
 def clients (weight : ℝ) (nonnegative : 0 ≤ weight)
     (admission : CommitmentInterface program)

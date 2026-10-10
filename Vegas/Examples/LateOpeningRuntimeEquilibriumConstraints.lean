@@ -55,27 +55,27 @@ variable (weight : ℝ) (nonnegative : 0 ≤ weight)
 /-- Checked response and value constraints on an assessment of the existing
 native game. This predicate changes neither the game nor its equilibrium notion. -/
 def NativeResponseConstraints
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     Prop :=
   LateOpeningRuntimeAliceNormalization.LastAliceResponsesNormalized
       weight nonnegative assessment.strategy ∧
-  (∀ (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-      (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (∀ (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+      (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
         bob site.1)
       (decision : LateOpeningRuntimeEarlyBobInformation.DecisionHistory weight nonnegative),
       representative.1.state = some ⟨21, some bob, decision.execution⟩ →
         LateOpeningRuntimeEarlyBobDecision.responseLaw weight nonnegative site
           (assessment.strategy bob site.1) = PMF.pure ⟨none⟩) ∧
-  (∀ (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-      (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (∀ (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+      (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
         bob site.1)
       (decision : LateOpeningRuntimeBobBindingInformation.DecisionHistory weight nonnegative),
       representative.1.state = some ⟨14, some bob, decision.execution⟩ →
         (1 / 2 : ℝ) ≤ (LateOpeningRuntimeBobBindingDecision.context
           weight nonnegative site reward forfeit deposit assessment).value
             (assessment.strategy bob)) ∧
-  (∀ (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-      (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (∀ (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+      (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
         bob site.1)
       (decision : LateOpeningRuntimeBobIncentive.DecisionHistory weight nonnegative)
       (current : representative.1.state = some ⟨6, some bob, decision.execution⟩),
@@ -83,8 +83,8 @@ def NativeResponseConstraints
         decision current assessment (assessment.strategy bob)).toOuterMeasure
           {final | final.application.config.store (.inr bobRevealEvent) =
             some .failure}).toReal = 0) ∧
-  (∀ (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-      (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (∀ (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+      (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
         bob site.1)
       (decision : LateOpeningRuntimeBobBindingInformation.DecisionHistory weight nonnegative)
       (current : representative.1.state = some ⟨14, some bob, decision.execution⟩),
@@ -118,8 +118,8 @@ def NativeResponseConstraints
                   (LateOpeningRuntimeService.runtime.serviceAuditObservation leaks)
                   (serviceSourceAudit setup .sequential deadline leaks
                     (fun actual => PMF.pure actual)) (app.finished final) bob = 0) ∧
-  (∀ (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-      (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (∀ (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+      (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
         bob site.1)
       (decision : LateOpeningRuntimeBobBindingInformation.DecisionHistory weight nonnegative)
       (current : representative.1.state = some ⟨14, some bob, decision.execution⟩)
@@ -134,8 +134,8 @@ def NativeResponseConstraints
             TerminalAudit.charge (LateOpeningRuntimeService.runtime.serviceAuditObservation leaks)
               (serviceSourceAudit setup .sequential deadline leaks (fun actual => PMF.pure actual))
                 (app.finished final) bob = 0) ∧
-  (∀ (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite alice)
-      (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (∀ (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite alice)
+      (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
         alice site.1)
       (decision : LateOpeningRuntimeAliceFirstDecision.DecisionHistory weight nonnegative),
       representative.1.state = some ⟨22, some alice, decision.execution⟩ →
@@ -143,8 +143,8 @@ def NativeResponseConstraints
           (assessment.strategy alice site.1)).toOuterMeasure
             {response | ¬ LateOpeningRuntimeAliceFirstResponse.PermittedResponse
               weight nonnegative decision response}).toReal = 0) ∧
-  (∀ (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-      (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (∀ (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+      (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
         bob site.1)
       (decision : LateOpeningRuntimeBobSuccessInformation.DecisionHistory weight nonnegative)
       (current : representative.1.state = some ⟨14, some bob, decision.execution⟩),
@@ -174,7 +174,7 @@ def NativeResponseConstraints
               (LateOpeningRuntimeBobRawBinding.serviced decision.execution response).receipts ∧
             LateOpeningRuntimeBobAudit.CleanBindings
               (LateOpeningRuntimeBobRawBinding.serviced decision.execution response) ∧
-            ∀ history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+            ∀ history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
                 bob site.1,
               LateOpeningRuntimeBobBindingPacket.responseMessage
                 (LateOpeningRuntimeBobSuccessInformation.decisionOfInformation
@@ -208,11 +208,11 @@ theorem sequentially_rational_constraints
     (forfeitPositive : 0 < forfeit) (depositNonnegative : 0 ≤ deposit alice)
     (marginPositive : 0 < LateOpeningRuntimeAliceOpeningRationality.margin
       weight reward forfeit deposit) (bobCollateral : 1 < deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who)) :
     NativeResponseConstraints weight nonnegative reward forfeit deposit assessment := by
   refine ⟨LateOpeningRuntimeAliceNormalization.sequentially_rational_last_responses
@@ -302,13 +302,13 @@ theorem equilibrium_constraints
     (forfeitPositive : 0 < forfeit) (depositNonnegative : 0 ≤ deposit alice)
     (marginPositive : 0 < LateOpeningRuntimeAliceOpeningRationality.margin
       weight reward forfeit deposit) (bobCollateral : 1 < deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (equilibrium : assessment.IsSequentialEquilibrium
       (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who)) :
     NativeResponseConstraints weight nonnegative reward forfeit deposit assessment :=
   sequentially_rational_constraints weight nonnegative reward forfeit deposit positive
@@ -341,21 +341,21 @@ theorem exists_service_with_constraints
           (LateOpeningRuntimeLatePrefix.latePlayers bit slot) LateOpeningRuntimeService.horizon
             (LateOpeningRuntimeLatePrefix.initialExecution bit label)).map
               LateOpeningRuntimeReliability.accepted) true).toReal < failureFloor) ∧
-      (∃ assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment,
+      (∃ assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment,
         assessment.IsSequentialEquilibrium
           (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
             (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain
           (rawMenu.bounded initial LateOpeningRuntimeService.horizon
             (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-          (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+          (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
             (fun actual => PMF.pure actual) deposit history.state who)) ∧
-      ∀ assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment,
+      ∀ assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment,
         assessment.IsSequentialEquilibrium
           (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
             (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain
           (rawMenu.bounded initial LateOpeningRuntimeService.horizon
             (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-          (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+          (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
             (fun actual => PMF.pure actual) deposit history.state who) →
           NativeResponseConstraints weight nonnegative reward forfeit deposit assessment := by
   obtain ⟨weight, nonnegative, positive, contract, blind, failurePositive,

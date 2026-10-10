@@ -30,8 +30,8 @@ def initializedBit (state : app.ProtocolState) : Option Bool :=
   state.map (fun control => originalBit control.execution)
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1)
   (decision : DecisionHistory weight nonnegative)
   (current : representative.1.state = some ⟨14, some bob, decision.execution⟩)
@@ -39,7 +39,7 @@ variable (weight : ℝ) (nonnegative : 0 ≤ weight)
 
 include representative decision current in
 theorem bit_guess_value_eq_belief_probability
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (bit : Bool) :
     (context weight nonnegative site reward forfeit deposit assessment).value
       (answerFinitePolicy weight nonnegative (bitGuess bit)) =
@@ -61,7 +61,7 @@ theorem bit_guess_value_eq_belief_probability
 
 include representative decision current in
 theorem best_value_eq_posterior_max
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     bestGuessValue weight nonnegative site reward forfeit deposit assessment =
       max (readoutBelief weight nonnegative site assessment initializedBit (some false))
         (readoutBelief weight nonnegative site assessment initializedBit (some true)) := by
@@ -71,10 +71,10 @@ theorem best_value_eq_posterior_max
 
 include representative decision current in
 theorem best_value_eq_conditional_probability_max
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (mixed : assessment.IsFullyMixed)
     (bayes : InformationModel.BehavioralAssessment.IsBayesConsistent
-      (LateOpeningRuntimeNash.model weight nonnegative) assessment
+      (LateOpeningRuntimeGame.model weight nonnegative) assessment
       (rawMenu.decisionInformationAntichain initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative))) :
     bestGuessValue weight nonnegative site reward forfeit deposit assessment =
@@ -91,7 +91,7 @@ theorem best_value_eq_conditional_probability_max
 include representative decision current in
 theorem rational_value_eq_posterior_max (forfeitNonnegative : 0 ≤ forfeit)
     (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment)) :
     (context weight nonnegative site reward forfeit deposit assessment).value
@@ -107,16 +107,16 @@ include representative decision current in
 the limit of optimal guesses from actual native prefix probabilities. -/
 theorem consistent_value_limit
     (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment))
     (consistent : assessment.IsSequentiallyConsistent
       (rawMenu.decisionInformationAntichain initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative))) :
-    ∃ sequence : ℕ → (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment,
+    ∃ sequence : ℕ → (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment,
       (∀ n, (sequence n).IsFullyMixed ∧
         InformationModel.BehavioralAssessment.IsBayesConsistent
-          (LateOpeningRuntimeNash.model weight nonnegative) (sequence n)
+          (LateOpeningRuntimeGame.model weight nonnegative) (sequence n)
           (rawMenu.decisionInformationAntichain initial LateOpeningRuntimeService.horizon
             (LateOpeningRuntimeService.scheduler weight nonnegative))) ∧
       InformationModel.BehavioralAssessmentConvergesPointwise sequence assessment ∧

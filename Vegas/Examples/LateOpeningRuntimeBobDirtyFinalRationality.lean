@@ -12,8 +12,8 @@ open LateOpeningRuntimeSource LateOpeningRuntimeService
   LateOpeningRuntimeBobInformation LateOpeningRuntimeBobDirtyFinalContext
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1)
   (execution : app.Execution)
   (executionTrace : (app.protocol initial LateOpeningRuntimeService.horizon
@@ -24,7 +24,7 @@ variable (weight : ℝ) (nonnegative : 0 ≤ weight)
 /-- The admissible whole-policy disclosure deviation uses the same complete receiver
 information at every compatible final history. -/
 private theorem opening_finalLaw
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     finalLaw weight nonnegative site representative execution executionTrace current assessment
       (openingPolicy weight nonnegative site representative execution current
         assessment) =
@@ -61,7 +61,7 @@ include bound ready timely rejected in
 /-- With an earlier rejected envelope already charged, withholding disclosure loses
 at least the forfeit in the actual full-evidence continuation context. -/
 theorem final_failure_regret (forfeitNonnegative : 0 ≤ forfeit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     forfeit * ((finalLaw weight nonnegative site representative execution executionTrace current
       assessment (assessment.strategy bob)).toOuterMeasure
         {final | final.application.config.store (.inr bobRevealEvent) = some .failure}).toReal ≤
@@ -83,7 +83,7 @@ theorem final_failure_regret (forfeitNonnegative : 0 ≤ forfeit)
       (fun _ => app.silentPolicy) 6 ((recover history).respond app bob
         (LateOpeningRuntimeService.runtime.canonicalServiceDecision leaks bob
           ((recover history).recall bob) ((recover history).observe app bob) bobRevealEvent true))
-  let payoff := fun final => LateOpeningRuntimeNash.payoff reward forfeit
+  let payoff := fun final => LateOpeningRuntimeGame.payoff reward forfeit
     (fun actual => PMF.pure actual) deposit (app.finished final) bob
   have integrable (law : PMF app.Execution) : PayoffIntegrable law payoff :=
     payoffIntegrable_of_bounded _ _ fun final => LateOpeningRuntimeBobIncentive.payoff_bounded
@@ -122,7 +122,7 @@ include bound ready timely rejected in
 /-- A rational receiver discloses almost surely at an actual final information site
 with an earlier rejected receipt, without requiring a nonnegative receiver deposit. -/
 theorem rational_final_failure_zero (forfeitPositive : 0 < forfeit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (LateOpeningRuntimeBobRationality.context weight nonnegative site reward forfeit
         (fun actual => PMF.pure actual) deposit assessment)) :

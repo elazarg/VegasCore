@@ -27,8 +27,8 @@ open LateOpeningRuntimeBobRawBinding (serviced response_result_same_information)
 open LateOpeningRuntimeBobBindingDecision (context)
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1)
   (decision : DecisionHistory weight nonnegative)
   (current : representative.1.state = some ⟨14, some bob, decision.execution⟩)
@@ -39,7 +39,7 @@ and an accepting Bob-zero receipt throughout the complete native fiber. Its
 private submission representation remains unrestricted. -/
 theorem rational_supported_clean_binding (forfeitPositive : 0 < forfeit)
     (depositPositive : 0 < deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment))
     (response : app.Action)
@@ -55,7 +55,7 @@ theorem rational_supported_clean_binding (forfeitPositive : 0 < forfeit)
           bestGuessValue weight nonnegative site reward forfeit deposit assessment ∧
       ((bob, 0), true) ∈ (serviced decision.execution response).receipts ∧
       CleanBindings (serviced decision.execution response) ∧
-      ∀ history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1,
+      ∀ history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1,
         responseMessage (decisionOfInformation weight nonnegative site representative decision
           current history).execution material = LateOpeningRuntimeBobSuffix.bindingMessage ∧
         ((bob, 0), true) ∈ (serviced (decisionOfInformation weight nonnegative site representative

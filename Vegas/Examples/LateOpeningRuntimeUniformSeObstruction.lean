@@ -39,21 +39,21 @@ theorem exists_service_with_no_preserving_equilibrium
         (LateOpeningRuntimeService.scheduler weight nonnegative) ∧
       0 < 1 - inclusionProbability weight ∧
       1 - inclusionProbability weight < failureFloor ∧
-      (∃ assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment,
+      (∃ assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment,
         assessment.IsSequentialEquilibrium
           (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
             (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain
           (rawMenu.bounded initial LateOpeningRuntimeService.horizon
             (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-          (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+          (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
             (fun actual => PMF.pure actual) deposit history.state who)) ∧
-      ∀ assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment,
+      ∀ assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment,
         assessment.IsSequentialEquilibrium
           (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
             (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain
           (rawMenu.bounded initial LateOpeningRuntimeService.horizon
             (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-          (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+          (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
             (fun actual => PMF.pure actual) deposit history.state who) →
         nativeTerminalLaw weight nonnegative reward forfeit (fun actual => PMF.pure actual)
           deposit assessment.strategy ≠ safeTerminalLaw reward := by

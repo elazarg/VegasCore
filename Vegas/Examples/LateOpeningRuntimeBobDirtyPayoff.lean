@@ -41,7 +41,7 @@ theorem dirty_fresh_answer_payoff (weight : ℝ) (nonnegative : 0 ≤ weight)
     (reached : final ∈ (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative)
       players 14 (execution.respond app bob
         (LateOpeningRuntimeBobFreshBinding.response serial answer))).support) :
-    LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+    LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
       deposit (some ⟨0, none, final⟩) bob =
         LateOpeningRuntimeBobSuccessPayoff.answerScore
           (LateOpeningRuntimeBobSuccessPayoff.originalLabel execution) answer - deposit bob := by

@@ -56,7 +56,7 @@ theorem failed_answer_continuation_payoff
       players 14
         (decision.execution.respond app bob
           (LateOpeningRuntimeBobSuffix.binding answer))).support) :
-    LateOpeningRuntimeNash.payoff reward forfeit sample deposit (app.finished final) bob =
+    LateOpeningRuntimeGame.payoff reward forfeit sample deposit (app.finished final) bob =
       if answer.val = (if originalBit decision.execution then 5 else 4) then 1 else 0 := by
   obtain ⟨published, clear⟩ := answer_continuation_clean weight nonnegative answer players
     bobPolicy decision.execution final decision.trace decision.quiet decision.ready decision.timely
@@ -94,7 +94,7 @@ theorem failed_answer_continuation_payoff
       decodeState? (terminalRefs program) final.application.config.store else none) = _
     rw [ite_eq_left completed]
     exact decoded
-  unfold LateOpeningRuntimeNash.payoff TerminalAudit.utility
+  unfold LateOpeningRuntimeGame.payoff TerminalAudit.utility
   rw [clear, zero_mul, sub_zero, nativeBaseUtility_of_readout reward forfeit _ _ readout bob,
     sourceUtility_bob_after_alice_failure, bitEq]
 

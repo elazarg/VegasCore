@@ -94,12 +94,12 @@ theorem first_remaining_same_view (decision : DecisionHistory weight nonnegative
 /-- A single actual first-callback representative classifies every hidden
 history in its bounded raw information class, including zero-reach histories. -/
 theorem decision_of_information
-    (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-    (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+    (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       bob site.1)
     (decision : DecisionHistory weight nonnegative)
     (current : representative.1.state = some ⟨21, some bob, decision.execution⟩)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1) :
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1) :
     ∃ result : DecisionHistory weight nonnegative,
       history.1.state = some ⟨21, some bob, result.execution⟩ ∧
       decision.execution.observe app bob = result.execution.observe app bob := by
@@ -132,21 +132,21 @@ theorem decision_of_information
   exact ⟨result, stateEq.trans (congrArg some sameControl), sameView⟩
 
 def decisionOfInformation
-    (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-    (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+    (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       bob site.1)
     (decision : DecisionHistory weight nonnegative)
     (current : representative.1.state = some ⟨21, some bob, decision.execution⟩)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1) :=
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1) :=
   (decision_of_information weight nonnegative site representative decision current history).choose
 
 theorem decisionOfInformation_spec
-    (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-    (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+    (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       bob site.1)
     (decision : DecisionHistory weight nonnegative)
     (current : representative.1.state = some ⟨21, some bob, decision.execution⟩)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1) :
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1) :
     let result :=
       decisionOfInformation weight nonnegative site representative decision current history
     history.1.state = some ⟨21, some bob, result.execution⟩ ∧

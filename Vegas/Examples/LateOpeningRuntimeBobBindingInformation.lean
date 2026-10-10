@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Examples.LateOpeningRuntimeBobQuietPrefix
-import Vegas.Examples.LateOpeningRuntimeNash
+import Vegas.Examples.LateOpeningRuntimeGame
 
 /-! # Bob's first binding information after Alice's publication failure
 
@@ -113,12 +113,12 @@ the same failed Alice publication, unused timely binding, and silent own
 responses. The complete sampled network view is preserved without a posterior
 assumption about Alice's inputs. -/
 theorem decision_of_information
-    (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-    (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+    (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       bob site.1)
     (decision : DecisionHistory weight nonnegative)
     (current : representative.1.state = some ⟨14, some bob, decision.execution⟩)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1) :
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1) :
     ∃ result : DecisionHistory weight nonnegative,
       history.1.state = some ⟨14, some bob, result.execution⟩ ∧
         decision.execution.recall bob = result.execution.recall bob ∧
@@ -159,21 +159,21 @@ theorem decision_of_information
   exact ⟨result, stateEq.trans (congrArg some sameControl), sameRecall, sameView⟩
 
 def decisionOfInformation
-    (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-    (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+    (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       bob site.1)
     (decision : DecisionHistory weight nonnegative)
     (current : representative.1.state = some ⟨14, some bob, decision.execution⟩)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1) :=
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1) :=
   (decision_of_information weight nonnegative site representative decision current history).choose
 
 theorem decisionOfInformation_spec
-    (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-    (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+    (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       bob site.1)
     (decision : DecisionHistory weight nonnegative)
     (current : representative.1.state = some ⟨14, some bob, decision.execution⟩)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1) :
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1) :
     let result :=
       decisionOfInformation weight nonnegative site representative decision current history
     history.1.state = some ⟨14, some bob, result.execution⟩ ∧

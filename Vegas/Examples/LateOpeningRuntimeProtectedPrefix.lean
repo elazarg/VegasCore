@@ -28,8 +28,8 @@ def ProtectedSubmission : app.ProtocolState → Prop
       entry.beforeView.application.publicView.clock = 0 ∧ entry.action.transmission.isSome
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1) (control : app.Control)
   (current : representative.1.state = some control) (active : control.actor = some bob)
   (remembered : app.PlayerEntry) (member : remembered ∈ control.execution.recall bob)
@@ -40,7 +40,7 @@ include current active member later empty in
 /-- Protected transmissions contribute exactly zero to this actual full
 information event, even along arbitrary fully mixed approximation profiles. -/
 theorem protected_submission_event_zero
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who) :
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who) :
     (bindingPrefix weight nonnegative profile).toOuterMeasure
       {state | app.observe bob state = site.1 ∧ ProtectedSubmission state} = 0 := by
   rw [PMF.toOuterMeasure_apply_eq_zero_iff, Set.disjoint_left]
@@ -48,10 +48,10 @@ theorem protected_submission_event_zero
   rw [← binding_prefix_law weight nonnegative profile, PMF.support_map] at supported
   obtain ⟨history, _running, rfl⟩ := supported
   rcases selected with ⟨observed, transmitted⟩
-  have information : (LateOpeningRuntimeNash.model weight nonnegative).infoOf bob history.trace =
+  have information : (LateOpeningRuntimeGame.model weight nonnegative).infoOf bob history.trace =
       site.1 := (rawMenu.info initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative) bob history.trace).trans observed
-  let actual : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1 :=
+  let actual : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1 :=
     ⟨history, information⟩
   obtain ⟨compatible, stateEq, silence⟩ := information_histories_protected_silent weight nonnegative
     site representative control current active remembered member later empty actual

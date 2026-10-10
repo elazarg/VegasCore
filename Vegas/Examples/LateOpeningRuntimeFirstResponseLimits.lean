@@ -24,7 +24,7 @@ variable (weight : ℝ) (nonnegative : 0 ≤ weight)
 
 theorem firstResponses_converges
     (sequence : ℕ → Profile weight nonnegative) (target : Profile weight nonnegative)
-    (converges : ∀ site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite alice,
+    (converges : ∀ site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite alice,
       PMFConvergesPointwise (fun n => sequence n alice site.1) (target alice site.1))
     (bit : Bool) (label : Fin 3) :
     PMFConvergesPointwise (fun n => firstResponses weight nonnegative (sequence n) bit label)
@@ -35,9 +35,9 @@ theorem firstResponses_converges
       (LateOpeningRuntimeAliceFirstWitness.firstLateDecision_trace
         weight nonnegative bit label).some⟩
   obtain ⟨site, information⟩ :=
-    (LateOpeningRuntimeNash.model weight nonnegative).exists_informationSite_of_active
+    (LateOpeningRuntimeGame.model weight nonnegative).exists_informationSite_of_active
       alice history (by change ¬ (22 = 0 ∧ some alice = none); simp) rfl
-  let representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  let representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       alice site.1 := ⟨history, information.symm⟩
   have info := LateOpeningRuntimeAliceFirstResponse.site_information weight nonnegative site
     representative (LateOpeningRuntimeAliceFirstWitness.decisionHistory weight nonnegative
@@ -51,7 +51,7 @@ theorem firstResponses_converges
 
 theorem genuineProbability_tendsto
     (sequence : ℕ → Profile weight nonnegative) (target : Profile weight nonnegative)
-    (converges : ∀ site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite alice,
+    (converges : ∀ site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite alice,
       PMFConvergesPointwise (fun n => sequence n alice site.1) (target alice site.1))
     (bit : Bool) (label : Fin 3) :
     Tendsto (fun n => genuineProbability weight nonnegative (sequence n) bit label) atTop
@@ -70,7 +70,7 @@ theorem genuineProbability_tendsto
 
 theorem silenceProbability_tendsto
     (sequence : ℕ → Profile weight nonnegative) (target : Profile weight nonnegative)
-    (converges : ∀ site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite alice,
+    (converges : ∀ site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite alice,
       PMFConvergesPointwise (fun n => sequence n alice site.1) (target alice site.1))
     (bit : Bool) (label : Fin 3) :
     Tendsto (fun n => (firstResponses weight nonnegative (sequence n) bit label ⟨none⟩).toReal)

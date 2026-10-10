@@ -26,8 +26,8 @@ open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeBobBin
   LateOpeningRuntimeBobBindingDecision
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1)
   (execution : app.Execution)
   (trace : (rawMenu.protocol initial LateOpeningRuntimeService.horizon
@@ -41,7 +41,7 @@ theorem responseValue_le_scoreValue (dirty : ¬ SilentRecall execution) (bit : B
     (published : execution.application.config.store (.inr aliceEvent) =
       some (.success bit : PublicationResult Bool))
     (forfeitNonnegative : 0 ≤ forfeit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (response : app.Action) :
     responseValue weight nonnegative site representative execution trace ready current reward
       forfeit deposit assessment response ≤
@@ -97,7 +97,7 @@ theorem responseValue_le_scoreValue (dirty : ¬ SilentRecall execution) (bit : B
   rwa [← same] at upper
 
 def bestAnswerValue
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) : ℝ :=
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) : ℝ :=
   max ((context weight nonnegative site reward forfeit deposit assessment).value
       (LateOpeningRuntimeEarlyBobSafeMenu.answerFinitePolicy weight nonnegative safe))
     (max ((context weight nonnegative site reward forfeit deposit assessment).value
@@ -118,7 +118,7 @@ variable
 
 include representative execution trace ready current timely dirty bit published in
 theorem safe_context_value
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     (context weight nonnegative site reward forfeit deposit assessment).value
       (LateOpeningRuntimeEarlyBobSafeMenu.answerFinitePolicy weight nonnegative safe) =
         2 / 5 - deposit bob := by
@@ -130,7 +130,7 @@ theorem safe_context_value
 
 include representative execution trace ready current timely dirty bit published in
 theorem bestAnswerValue_ge_safe
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     (2 / 5 : ℝ) - deposit bob ≤
       bestAnswerValue weight nonnegative site reward forfeit deposit assessment := by
   rw [← safe_context_value weight nonnegative site representative execution trace ready current
@@ -139,7 +139,7 @@ theorem bestAnswerValue_ge_safe
 
 include representative execution trace ready current timely dirty bit published in
 theorem answer_context_value_eq_neg_deposit_of_high
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (answer : Answer) (high : 4 ≤ answer.val) :
     (context weight nonnegative site reward forfeit deposit assessment).value
       (LateOpeningRuntimeEarlyBobSafeMenu.answerFinitePolicy weight nonnegative answer) =
@@ -162,7 +162,7 @@ theorem answer_context_value_eq_neg_deposit_of_high
 
 include representative execution trace ready current timely dirty bit published in
 theorem answer_value_le_bestAnswerValue
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (answer : Answer) :
     (context weight nonnegative site reward forfeit deposit assessment).value
       (LateOpeningRuntimeEarlyBobSafeMenu.answerFinitePolicy weight nonnegative answer) ≤
@@ -185,7 +185,7 @@ theorem answer_value_le_bestAnswerValue
 
 include representative execution trace ready current timely dirty bit published in
 theorem response_score_value_le_bestAnswerValue
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (response : app.Action) :
     expect (assessment.belief bob site) (fun history =>
       bindingScore (originalLabel (executionOfInformation weight nonnegative site representative
@@ -217,7 +217,7 @@ theorem response_score_value_le_bestAnswerValue
             trace ready current reward forfeit deposit timely dirty bit published assessment answer
 
 theorem responseValue_bounded
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (response : app.Action) :
     |responseValue weight nonnegative site representative execution trace ready current reward
       forfeit deposit assessment response| ≤ 1 + |forfeit| + |deposit bob| := by
@@ -230,7 +230,7 @@ theorem responseValue_bounded
 
 include representative execution trace ready current timely dirty bit published in
 theorem responseValue_le_bestAnswerValue (forfeitNonnegative : 0 ≤ forfeit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (response : app.Action) :
     responseValue weight nonnegative site representative execution trace ready current reward
       forfeit deposit assessment response ≤
@@ -242,7 +242,7 @@ theorem responseValue_le_bestAnswerValue (forfeitNonnegative : 0 ≤ forfeit)
 
 include representative execution trace ready current timely dirty bit published in
 theorem incumbent_value_le_bestAnswerValue (forfeitNonnegative : 0 ≤ forfeit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     (context weight nonnegative site reward forfeit deposit assessment).value
       (assessment.strategy bob) ≤
         bestAnswerValue weight nonnegative site reward forfeit deposit assessment := by
@@ -258,7 +258,7 @@ theorem incumbent_value_le_bestAnswerValue (forfeitNonnegative : 0 ≤ forfeit)
 
 include representative execution trace ready current timely dirty bit published in
 theorem rational_value_eq_bestAnswerValue (forfeitNonnegative : 0 ≤ forfeit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment)) :
     (context weight nonnegative site reward forfeit deposit assessment).value
@@ -284,7 +284,7 @@ theorem rational_value_eq_bestAnswerValue (forfeitNonnegative : 0 ≤ forfeit)
 
 include representative execution trace ready current timely dirty bit published in
 theorem rational_supported_response_value (forfeitNonnegative : 0 ≤ forfeit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment)) :
     ∀ response ∈ (currentResponses weight nonnegative execution assessment).support,
@@ -305,7 +305,7 @@ theorem rational_supported_response_value (forfeitNonnegative : 0 ≤ forfeit)
 
 include representative execution trace ready current timely dirty bit published in
 theorem rational_supported_binding (forfeitNonnegative : 0 ≤ forfeit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment)) :
     ∀ response ∈ (currentResponses weight nonnegative execution assessment).support,

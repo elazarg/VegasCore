@@ -52,9 +52,9 @@ theorem first_nongenuine_probability_le (profile : Profile weight nonnegative)
       (LateOpeningRuntimeAliceFirstWitness.firstLateDecision_trace
         weight nonnegative bit label).some⟩
   obtain ⟨site, information⟩ :=
-    (LateOpeningRuntimeNash.model weight nonnegative).exists_informationSite_of_active
+    (LateOpeningRuntimeGame.model weight nonnegative).exists_informationSite_of_active
       alice history (by change ¬ (22 = 0 ∧ some alice = none); simp) rfl
-  let representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  let representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       alice site.1 := ⟨history, information.symm⟩
   let actual : LateOpeningRuntimeAliceFirstTremble.FirstOpeningSite weight nonnegative :=
     ⟨site, decision, representative, rfl⟩
@@ -230,8 +230,8 @@ theorem genuine_quiet_unseen_probability (bit : Bool) (label : Fin 3)
     rfl
 
 theorem empty_information_representative (bit : Bool) (label : Fin 3) :
-    ∃ (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite alice)
-      (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    ∃ (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite alice)
+      (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
         alice site.1),
       history.1.state = some ⟨18, some alice,
         (LateOpeningRuntimeAliceEmptyWitness.decisionHistory
@@ -242,7 +242,7 @@ theorem empty_information_representative (bit : Bool) (label : Fin 3) :
       (LateOpeningRuntimeAliceEmptyWitness.secondLateDecision_trace
         weight nonnegative bit label).some⟩
   obtain ⟨site, information⟩ :=
-    (LateOpeningRuntimeNash.model weight nonnegative).exists_informationSite_of_active
+    (LateOpeningRuntimeGame.model weight nonnegative).exists_informationSite_of_active
       alice history (by change ¬ (18 = 0 ∧ some alice = none); simp) rfl
   exact ⟨site, ⟨history, information.symm⟩, rfl⟩
 

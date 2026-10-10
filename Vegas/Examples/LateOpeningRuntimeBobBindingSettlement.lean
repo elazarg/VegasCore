@@ -25,28 +25,28 @@ open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeReadou
   LateOpeningRuntimeBobBindingOptimization LateOpeningRuntimeEarlyBobSafeMenu
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1)
   (decision : DecisionHistory weight nonnegative)
   (current : representative.1.state = some ⟨14, some bob, decision.execution⟩)
   (reward forfeit : ℝ) (deposit : Player → ℝ)
 
 def conditionalValue
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (response : app.Action)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1) :
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1) :
     ℝ :=
   expect (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative)
     (rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy) 14
     ((decisionOfInformation weight nonnegative site representative decision current
       history).execution.respond app bob response)) fun final =>
-        LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+        LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
           deposit (app.finished final) bob
 
 def conditionalScore (response : app.Action)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1) :
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1) :
     ℝ :=
   bindingScore (originalBit (decisionOfInformation weight nonnegative site representative decision
     current history).execution)
@@ -65,9 +65,9 @@ private theorem score_bounded (bit : Bool) (result : Option (PublicationResult A
 
 theorem conditionalValue_le_score (forfeitNonnegative : 0 ≤ forfeit)
     (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (response : app.Action)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1) :
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1) :
     conditionalValue weight nonnegative site representative decision current reward forfeit deposit
       assessment response history ≤ conditionalScore weight nonnegative site representative decision
         current response history := by
@@ -88,7 +88,7 @@ theorem conditionalValue_le_score (forfeitNonnegative : 0 ≤ forfeit)
 every supported maximizing response, and hence vanishes on actual belief support. -/
 theorem rational_conditional_value_eq_score (forfeitNonnegative : 0 ≤ forfeit)
     (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment))
     (response : app.Action)
@@ -138,19 +138,19 @@ theorem rational_conditional_value_eq_score (forfeitNonnegative : 0 ≤ forfeit)
 which the actual assessment assigns positive belief. -/
 theorem rational_supported_payoff_eq_score (forfeitNonnegative : 0 ≤ forfeit)
     (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment))
     (response : app.Action)
     (supported : response ∈ (currentResponses weight nonnegative decision assessment).support)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1)
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1)
     (believed : history ∈ (assessment.belief bob site).support) :
     ∀ final ∈ (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative)
       (rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy) 14
       ((decisionOfInformation weight nonnegative site representative decision current
         history).execution.respond app bob response)).support,
-      LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual) deposit
+      LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit
         (app.finished final) bob =
           conditionalScore weight nonnegative site representative decision current response
             history := by
@@ -182,7 +182,7 @@ theorem score_saturation_settles_clean (decision : DecisionHistory weight nonneg
     (reached : final ∈ (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative)
       players 14 (decision.execution.respond app bob response)).support)
     (forfeitPositive : 0 < forfeit) (depositPositive : 0 < deposit bob)
-    (saturated : LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+    (saturated : LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
       deposit (app.finished final) bob =
       bindingScore (originalBit decision.execution)
         ((serviced decision.execution response).application.config.store (.inr bobBindEvent))) :
@@ -200,7 +200,7 @@ theorem score_saturation_settles_clean (decision : DecisionHistory weight nonneg
   have deduction := mul_nonneg charged.1 depositPositive.le
   have nonnegativeScore := bindingScore_nonnegative (originalBit decision.execution)
     ((serviced decision.execution response).application.config.store (.inr bobBindEvent))
-  unfold LateOpeningRuntimeNash.payoff TerminalAudit.utility at saturated
+  unfold LateOpeningRuntimeGame.payoff TerminalAudit.utility at saturated
   rw [nativeBaseUtility_of_readout reward forfeit _ _ readout bob] at saturated
   cases publication with
   | failure =>
@@ -233,7 +233,7 @@ theorem score_saturation_settles_clean (decision : DecisionHistory weight nonneg
 on the actual joint support of current response, assessed history, and runtime. -/
 theorem rational_supported_clean_settlement (forfeitPositive : 0 < forfeit)
     (depositPositive : 0 < deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment))
     (response : app.Action)

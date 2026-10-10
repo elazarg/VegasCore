@@ -24,8 +24,8 @@ open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeAliceC
 open LateOpeningRuntimeAliceIncentive (alice_absent)
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite alice)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite alice)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     alice site.1)
   (decision : DecisionHistory weight nonnegative)
   (current : representative.1.state = some ⟨18, some alice, decision.execution⟩)
@@ -44,11 +44,11 @@ def continuation (decision : DecisionHistory weight nonnegative) (response : app
     (decision.execution.respond app alice response)
 
 def responseLaw
-    (alternative : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy alice) :
+    (alternative : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy alice) :
     PMF app.Action := (alternative site.1).map (fun choice => choice.1.getD ⟨none⟩)
 
-def finalLaw (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
-    (alternative : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy alice) :
+def finalLaw (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (alternative : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy alice) :
     PMF app.Execution :=
   (assessment.belief alice site).bind fun history =>
     (responseLaw weight nonnegative site alternative).bind fun response =>
@@ -58,9 +58,9 @@ def finalLaw (assessment : (LateOpeningRuntimeNash.model weight nonnegative).Beh
           (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy)
 
 theorem current_continuation_law
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory alice site.1) :
-    ((LateOpeningRuntimeNash.model weight nonnegative).runBehavioralFrom profile
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who)
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory alice site.1) :
+    ((LateOpeningRuntimeGame.model weight nonnegative).runBehavioralFrom profile
       (2 * LateOpeningRuntimeService.horizon + 1) history.1).map History.state =
       (responseLaw weight nonnegative site (profile alice)).bind fun response =>
         (continuation weight nonnegative
@@ -91,14 +91,14 @@ theorem current_continuation_law
 
 variable (reward forfeit : ℝ) (deposit : Player → ℝ)
 
-def context (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :=
+def context (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :=
   assessment.truncatedContinuationContext site
-    (fun history => LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+    (fun history => LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
       deposit history.state alice) (2 * LateOpeningRuntimeService.horizon + 1)
 
 theorem context_outcome_law
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
-    (alternative : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy alice) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (alternative : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy alice) :
     ((context weight nonnegative site reward forfeit deposit assessment).outcome alternative).map
       History.state =
     (finalLaw weight nonnegative site representative decision current assessment alternative).map
@@ -129,14 +129,14 @@ theorem context_outcome_law
       rw [decision_cursor])]
 
 theorem context_value
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
-    (alternative : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy alice) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (alternative : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy alice) :
     (context weight nonnegative site reward forfeit deposit assessment).value alternative =
     expect (finalLaw weight nonnegative site representative decision current assessment alternative)
       (aliceUtility reward forfeit deposit) := by
   have mapped := expect_map History.state
     ((context weight nonnegative site reward forfeit deposit assessment).outcome alternative)
-    (fun state => LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+    (fun state => LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
       deposit state alice)
   rw [context_outcome_law weight nonnegative site representative decision current,
     expect_map] at mapped
@@ -146,8 +146,8 @@ theorem context_value
 theorem context_integrable
     (rewardNonnegative : 0 ≤ reward) (forfeitNonnegative : 0 ≤ forfeit)
     (depositNonnegative : 0 ≤ deposit alice)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
-    (alternative : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy alice) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (alternative : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy alice) :
     Context.IntegrableAt
       (context weight nonnegative site reward forfeit deposit assessment) alternative :=
   payoffIntegrable_of_bounded _ _ fun history =>
@@ -155,7 +155,7 @@ theorem context_integrable
       rewardNonnegative forfeitNonnegative depositNonnegative history.state
 
 /-- The initialized opening is already in the complete raw menu. -/
-def openingChoice : (LateOpeningRuntimeNash.model weight nonnegative).Choice alice site.1 := by
+def openingChoice : (LateOpeningRuntimeGame.model weight nonnegative).Choice alice site.1 := by
   classical
   refine ⟨some (LateOpeningRuntimeLatePrefix.opening decision.bit), ?_⟩
   rw [site_information weight nonnegative site representative decision current]
@@ -174,14 +174,14 @@ def repairResponse (response : app.Action) : app.Action := by
   exact if GenuineResponse weight nonnegative decision response then response
     else LateOpeningRuntimeLatePrefix.opening decision.bit
 
-def repairChoice (choice : (LateOpeningRuntimeNash.model weight nonnegative).Choice alice site.1) :
-    (LateOpeningRuntimeNash.model weight nonnegative).Choice alice site.1 := by
+def repairChoice (choice : (LateOpeningRuntimeGame.model weight nonnegative).Choice alice site.1) :
+    (LateOpeningRuntimeGame.model weight nonnegative).Choice alice site.1 := by
   classical
   exact if GenuineResponse weight nonnegative decision (choice.1.getD ⟨none⟩) then choice
     else openingChoice weight nonnegative site representative decision current
 
 theorem repairChoice_response
-    (choice : (LateOpeningRuntimeNash.model weight nonnegative).Choice alice site.1) :
+    (choice : (LateOpeningRuntimeGame.model weight nonnegative).Choice alice site.1) :
     (repairChoice weight nonnegative site representative decision current choice).1.getD ⟨none⟩ =
       repairResponse weight nonnegative decision (choice.1.getD ⟨none⟩) := by
   classical
@@ -189,15 +189,15 @@ theorem repairChoice_response
   split <;> rfl
 
 def openingPolicy
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
-    (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy alice := by
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
+    (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy alice := by
   classical
   exact (assessment.strategy alice).withLaw site.1
     ((assessment.strategy alice site.1).map
       (repairChoice weight nonnegative site representative decision current))
 
 theorem repaired_responseLaw
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     responseLaw weight nonnegative site
       (openingPolicy weight nonnegative site representative decision current assessment) =
         (responseLaw weight nonnegative site (assessment.strategy alice)).map
@@ -210,7 +210,7 @@ theorem repaired_responseLaw
   exact repairChoice_response weight nonnegative site representative decision current choice
 
 theorem genuine_of_information
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory alice site.1)
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory alice site.1)
     (response : app.Action) :
     GenuineResponse weight nonnegative
       (decisionOfInformation weight nonnegative site representative decision current history)
@@ -290,7 +290,7 @@ It improves only the nongenuine branches and retains every genuine alias. -/
 theorem opening_regret
     (positive : 0 < weight) (rewardNonnegative : 0 ≤ reward)
     (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit alice)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     margin weight reward forfeit deposit *
         ((responseLaw weight nonnegative site (assessment.strategy alice)).toOuterMeasure
           {response | ¬ GenuineResponse weight nonnegative decision response}).toReal ≤
@@ -306,15 +306,15 @@ theorem opening_regret
   let recover := decisionOfInformation weight nonnegative site representative decision current
   let utility := aliceUtility reward forfeit deposit
   let row := fun pair :
-      (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory alice site.1 ×
+      (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory alice site.1 ×
         app.Action => expect
     (continuation weight nonnegative (recover pair.1) pair.2 players) utility
   let repaired := fun pair :
-      (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory alice site.1 ×
+      (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory alice site.1 ×
         app.Action => (pair.1, repairResponse weight nonnegative decision pair.2)
   let joint := belief.bind fun history => actions.map fun response => (history, response)
   let bad : Set
-      ((LateOpeningRuntimeNash.model weight nonnegative).InformationHistory alice site.1 ×
+      ((LateOpeningRuntimeGame.model weight nonnegative).InformationHistory alice site.1 ×
         app.Action) := {pair | ¬ GenuineResponse weight nonnegative decision pair.2}
   let indicator := fun pair =>
     @ite ℝ (pair ∈ bad) (Classical.propDecidable _) 1 0
@@ -423,7 +423,7 @@ theorem rational_nongenuine_response_zero
     (positive : 0 < weight) (rewardNonnegative : 0 ≤ reward)
     (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit alice)
     (marginPositive : 0 < margin weight reward forfeit deposit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment)) :
     ((responseLaw weight nonnegative site (assessment.strategy alice)).toOuterMeasure
@@ -448,11 +448,11 @@ theorem sequentially_rational_nongenuine_response_zero
     (positive : 0 < weight) (rewardNonnegative : 0 ≤ reward)
     (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit alice)
     (marginPositive : 0 < margin weight reward forfeit deposit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who)) :
     ((responseLaw weight nonnegative site (assessment.strategy alice)).toOuterMeasure
       {response | ¬ GenuineResponse weight nonnegative decision response}).toReal = 0 := by
@@ -473,13 +473,13 @@ theorem equilibrium_nongenuine_response_zero
     (positive : 0 < weight) (rewardNonnegative : 0 ≤ reward)
     (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit alice)
     (marginPositive : 0 < margin weight reward forfeit deposit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (equilibrium : assessment.IsSequentialEquilibrium
       (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who)) :
     ((responseLaw weight nonnegative site (assessment.strategy alice)).toOuterMeasure
       {response | ¬ GenuineResponse weight nonnegative decision response}).toReal = 0 :=
@@ -494,7 +494,7 @@ theorem nongenuine_le_of_deviation_regret
     (positive : 0 < weight) (rewardNonnegative : 0 ≤ reward)
     (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit alice)
     (marginPositive : 0 < margin weight reward forfeit deposit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (epsilon : ℝ)
     (regret : (context weight nonnegative site reward forfeit deposit assessment).value
         (openingPolicy weight nonnegative site representative decision current assessment) -

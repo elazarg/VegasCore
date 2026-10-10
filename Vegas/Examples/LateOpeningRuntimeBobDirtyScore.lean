@@ -36,7 +36,7 @@ theorem dirty_continuation_payoff_le_score (weight : ℝ) (nonnegative : 0 ≤ w
     (reached : final ∈ (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative)
       players 14 (execution.respond app bob response)).support)
     (reward forfeit : ℝ) (forfeitNonnegative : 0 ≤ forfeit) (deposit : Player → ℝ) :
-    LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+    LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
       deposit (some ⟨0, none, final⟩) bob ≤
         bindingScore (originalLabel execution)
           ((servicedBinding execution response).application.config.store (.inr bobBindEvent)) -

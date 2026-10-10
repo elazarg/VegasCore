@@ -76,25 +76,25 @@ def decision (bit : Bool) (label : Fin 3) (slot : Fin 2) (seen : Bool)
 
 theorem information_representative (bit : Bool) (label : Fin 3) (slot : Fin 2) (seen : Bool)
     (possible : slot = 0 ∨ seen = false) :
-    ∃ (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-      (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1),
+    ∃ (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+      (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1),
       history.1.state = some ⟨21, some bob, observed bit label slot seen⟩ := by
   let history : (rawMenu.protocol initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).History :=
     ⟨some ⟨21, some bob, observed bit label slot seen⟩,
       (observed_trace weight nonnegative bit label slot seen possible).some⟩
   obtain ⟨site, information⟩ :=
-    (LateOpeningRuntimeNash.model weight nonnegative).exists_informationSite_of_active
+    (LateOpeningRuntimeGame.model weight nonnegative).exists_informationSite_of_active
       bob history (by change ¬ (21 = 0 ∧ some bob = none); simp) rfl
   exact ⟨site, ⟨history, information.symm⟩, rfl⟩
 
 theorem sequentially_rational_response_law (reward forfeit : ℝ) (deposit : Player → ℝ)
     (forfeitNonnegative : 0 ≤ forfeit) (collateral : 1 < deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
     (bit : Bool) (label : Fin 3) (slot : Fin 2) (seen : Bool)
     (possible : slot = 0 ∨ seen = false) :

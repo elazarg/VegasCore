@@ -33,18 +33,18 @@ theorem equilibrium_consistency_witness
     (depositNonnegative : 0 ≤ deposit alice)
     (marginPositive : 0 < LateOpeningRuntimeAliceOpeningRationality.margin
       weight reward forfeit deposit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (equilibrium : assessment.IsSequentialEquilibrium
       (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who)) :
-    ∃ sequence : ℕ → (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment,
+    ∃ sequence : ℕ → (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment,
       (∀ n, (sequence n).IsFullyMixed ∧
         InformationModel.BehavioralAssessment.IsBayesConsistent
-          (LateOpeningRuntimeNash.model weight nonnegative) (sequence n)
+          (LateOpeningRuntimeGame.model weight nonnegative) (sequence n)
           (rawMenu.decisionInformationAntichain initial LateOpeningRuntimeService.horizon
             (LateOpeningRuntimeService.scheduler weight nonnegative))) ∧
       InformationModel.BehavioralAssessmentConvergesPointwise sequence assessment ∧
@@ -58,8 +58,8 @@ theorem equilibrium_consistency_witness
       (∀ n (site : LateOpeningRuntimeAliceOpeningTremble.EmptyOpeningSite weight nonnegative),
         LateOpeningRuntimeAliceOpeningTremble.nongenuineProbability weight nonnegative
           (sequence n).strategy site ≤ error n) ∧
-      ∀ (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-        (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+      ∀ (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+        (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
           bob site.1) (execution : app.Execution),
         representative.1.state = some ⟨14, some bob, execution⟩ →
         execution.application.config.cut.Ready bobBindEvent →

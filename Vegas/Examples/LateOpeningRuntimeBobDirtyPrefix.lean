@@ -218,19 +218,19 @@ theorem dirty_binding_payoff_eq_base_sub_deposit (weight : ℝ) (nonnegative : 0
     (response : app.Action) (players : Player → app.Policy) (final : app.Execution)
     (reached : final ∈ (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative)
       players 14 (execution.respond app bob response)).support) :
-    LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+    LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
       deposit (some ⟨0, none, final⟩) bob =
         LateOpeningRuntimeUtility.nativeBaseUtility reward forfeit (some ⟨0, none, final⟩) bob -
           deposit bob := by
-  unfold LateOpeningRuntimeNash.payoff GameTheory.Enforcement.TerminalAudit.utility
+  unfold LateOpeningRuntimeGame.payoff GameTheory.Enforcement.TerminalAudit.utility
   rw [dirty_binding_continuation_full_charge weight nonnegative execution trace ready dirty
     response players final reached]
   ring
 /-- The sunk-charge identity holds at every compatible legal history, including
 histories carrying zero posterior belief. -/
 theorem dirty_information_history_full_charge (weight : ℝ) (nonnegative : 0 ≤ weight)
-    (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-    (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+    (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       bob site.1)
     (execution : app.Execution)
     (trace : (rawMenu.protocol initial LateOpeningRuntimeService.horizon
@@ -239,7 +239,7 @@ theorem dirty_information_history_full_charge (weight : ℝ) (nonnegative : 0 �
     (ready : execution.application.config.cut.Ready bobBindEvent)
     (dirty : ¬ SilentRecall execution)
     (current : representative.1.state = some ⟨14, some bob, execution⟩)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1) :
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1) :
     ∃ other : app.Execution,
       history.1.state = some ⟨14, some bob, other⟩ ∧
       execution.recall bob = other.recall bob ∧ execution.observe app bob = other.observe app bob ∧

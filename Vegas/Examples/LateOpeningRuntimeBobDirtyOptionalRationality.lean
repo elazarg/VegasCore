@@ -13,8 +13,8 @@ open LateOpeningRuntimeSource LateOpeningRuntimeService
   LateOpeningRuntimeEarlyBobSafeMenu
 open LateOpeningRuntimeBobBindingDecision (context context_integrable answerPlayers)
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1)
   (execution : app.Execution)
   (executionTrace : (app.protocol initial LateOpeningRuntimeService.horizon
@@ -30,34 +30,34 @@ variable (weight : ℝ) (nonnegative : 0 ≤ weight)
 
 include ready in
 theorem canonical_context_value
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     (context weight nonnegative site reward forfeit deposit assessment).value
       (answerFinitePolicy weight nonnegative answer) =
     expect (canonicalFinalLaw weight nonnegative site representative execution
       executionTrace current
-      answer assessment) (fun final => LateOpeningRuntimeNash.payoff reward forfeit
+      answer assessment) (fun final => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit (app.finished final) bob) := by
   have mapped := expect_map History.state
     ((context weight nonnegative site reward forfeit deposit assessment).outcome
       (answerFinitePolicy weight nonnegative answer))
-    (fun state => LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+    (fun state => LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
       deposit state bob)
   rw [canonical_context_outcome_law weight nonnegative site representative execution executionTrace
     current answer ready, expect_map] at mapped
   exact mapped.symm
 
 theorem incumbent_context_value
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     (context weight nonnegative site reward forfeit deposit assessment).value
       (assessment.strategy bob) =
     expect (incumbentFinalLaw weight nonnegative site representative execution
       executionTrace current
-      assessment) (fun final => LateOpeningRuntimeNash.payoff reward forfeit
+      assessment) (fun final => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit (app.finished final) bob) := by
   have mapped := expect_map History.state
     ((context weight nonnegative site reward forfeit deposit assessment).outcome
       (assessment.strategy bob))
-    (fun state => LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+    (fun state => LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
       deposit state bob)
   rw [incumbent_context_outcome_law weight nonnegative site representative execution executionTrace
     current, expect_map] at mapped
@@ -65,7 +65,7 @@ theorem incumbent_context_value
 
 include bound ready timely rejected in
 theorem optional_failure_regret (forfeitNonnegative : 0 ≤ forfeit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     forfeit * ((incumbentFinalLaw weight nonnegative site representative execution executionTrace
       current assessment).toOuterMeasure
         {final | final.application.config.store (.inr bobRevealEvent) = some .failure}).toReal ≤
@@ -86,7 +86,7 @@ theorem optional_failure_regret (forfeitNonnegative : 0 ≤ forfeit)
       ((recover history).respond app bob
         (LateOpeningRuntimeService.runtime.canonicalServiceDecision leaks bob
           ((recover history).recall bob) ((recover history).observe app bob) bobRevealEvent true))
-  let payoff := fun final => LateOpeningRuntimeNash.payoff reward forfeit
+  let payoff := fun final => LateOpeningRuntimeGame.payoff reward forfeit
     (fun actual => PMF.pure actual) deposit (app.finished final) bob
   have integrable (law : PMF app.Execution) : PayoffIntegrable law payoff :=
     payoffIntegrable_of_bounded _ _ fun final => LateOpeningRuntimeBobIncentive.payoff_bounded
@@ -130,7 +130,7 @@ theorem optional_failure_regret (forfeitNonnegative : 0 ≤ forfeit)
 
 include bound ready timely rejected in
 theorem rational_optional_failure_zero (forfeitPositive : 0 < forfeit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment)) :
     ((incumbentFinalLaw weight nonnegative site representative execution executionTrace current

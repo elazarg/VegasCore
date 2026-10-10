@@ -3,6 +3,7 @@
 import Vegas.Pending.ReactiveRuntime
 import Interaction.ReactiveServiceInvariant
 import Interaction.ReactiveProvenance
+import Interaction.ReactiveRecallInvariant
 
 /-! # Readiness tokens over whole histories
 
@@ -129,5 +130,91 @@ theorem history_network_tokens (initial : PMF (State graph)) (horizon : Nat)
   apply provenance.mono
   rintro message ⟨entry, member, _material, _transmission, emitted, _packet⟩
   exact ⟨entry, member, emitted, tokens message.sender entry member message emitted⟩
+
+/-- Actual response records retain exactly the transmitted event call, including
+submissions that the application later rejects. -/
+theorem reactiveEmission_call_invariant (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (players : Player → (runtime.reactiveApplication leaks).Policy) (who : Player) :
+    (runtime.reactiveApplication leaks).PolicyInvariant players (fun execution =>
+      ∀ entry ∈ execution.recall who, ∀ material,
+        entry.action.transmission = some material →
+        ∃ message, entry.emitted = some message ∧
+          message.payload.call = material.call.packet) where
+  respond execution actor action faithful _ := by
+    by_cases same : who = actor
+    · subst actor
+      cases action with
+      | mk transmission =>
+          cases transmission with
+          | none =>
+              simp only [ReactiveApplication.Execution.respond, ↓reduceIte]
+              intro entry member material transmitted
+              rcases List.mem_append.mp member with old | latest
+              · exact faithful entry old material transmitted
+              · have same := List.mem_singleton.mp latest
+                subst entry
+                cases transmitted
+          | some sent =>
+              simp only [ReactiveApplication.Execution.respond, ↓reduceIte]
+              intro entry member material transmitted
+              rcases List.mem_append.mp member with old | latest
+              · exact faithful entry old material transmitted
+              · have same := List.mem_singleton.mp latest
+                subst entry
+                cases Option.some.inj transmitted
+                exact ⟨_, rfl, rfl⟩
+    · rw [(runtime.reactiveApplication leaks).respond_recall_other execution actor who same action]
+      exact faithful
+  environment execution next command faithful reached := by
+    rw [(runtime.reactiveApplication leaks).environmentStep_recall execution next command reached]
+    exact faithful
+
+/-- Actual initialized raw traces record silence faithfully and retain the exact
+call carried by every transmitted material, regardless of player policies. -/
+theorem reactiveEmission_history (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (initial : PMF (runtime.reactiveApplication leaks).State) (horizon : Nat)
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    (control : (runtime.reactiveApplication leaks).Control)
+    (trace : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
+      (some control)) (who : Player) :
+    (∀ entry ∈ control.execution.recall who,
+      entry.action.transmission = none → entry.emitted = none) ∧
+    (∀ entry ∈ control.execution.recall who, ∀ material,
+      entry.action.transmission = some material → ∃ message,
+        entry.emitted = some message ∧ message.payload.call = material.call.packet) := by
+  let app := runtime.reactiveApplication leaks
+  have quietInvariant : app.ServiceInvariant scheduler (fun execution =>
+      ∀ entry ∈ execution.recall who,
+        entry.action.transmission = none → entry.emitted = none) := by
+    constructor
+    · intro execution actor action faithful
+      exact (ReactiveApplication.silentEmission_invariant app
+        (fun _ _ _ => PMF.pure action) who).respond
+        execution actor action faithful (by simp)
+    · intro execution next command faithful _ reached
+      exact (ReactiveApplication.silentEmission_invariant app
+        (fun _ _ _ => PMF.pure ⟨none⟩) who).environment
+        execution next command faithful reached
+  have sentInvariant : app.ServiceInvariant scheduler (fun execution =>
+      ∀ entry ∈ execution.recall who, ∀ material,
+        entry.action.transmission = some material → ∃ message,
+          entry.emitted = some message ∧ message.payload.call = material.call.packet) := by
+    constructor
+    · intro execution actor action faithful
+      exact (runtime.reactiveEmission_call_invariant leaks
+        (fun _ _ _ => PMF.pure action) who).respond
+        execution actor action faithful (by simp)
+    · intro execution next command faithful _ reached
+      exact (runtime.reactiveEmission_call_invariant leaks
+        (fun _ _ _ => PMF.pure ⟨none⟩) who).environment
+        execution next command faithful reached
+  exact ⟨quietInvariant.history initial horizon (by
+      intro state _ entry member
+      simp [ReactiveApplication.Execution.initial] at member) trace,
+    sentInvariant.history initial horizon (by
+      intro state _ entry member
+      simp [ReactiveApplication.Execution.initial] at member) trace⟩
 
 end Vegas.EventGraphRuntime

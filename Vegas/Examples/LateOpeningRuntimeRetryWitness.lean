@@ -121,8 +121,8 @@ def decisionHistory : LateOpeningRuntimeAliceDecision.DecisionHistory weight non
 /-- This native information class remembers the exact original raw
 submission, including its private syntax. -/
 theorem pending_information_representative :
-    ∃ (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite alice)
-      (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    ∃ (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite alice)
+      (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
         alice site.1),
       history.1.state = some ⟨18, some alice,
         (decisionHistory weight nonnegative bit label submission available seen
@@ -133,7 +133,7 @@ theorem pending_information_representative :
       finalDecision bit label ⟨some submission⟩ (if seen then {(alice, 0)} else ∅)⟩,
         (final_decision_trace weight nonnegative bit label submission available seen).some⟩
   obtain ⟨site, information⟩ :=
-    (LateOpeningRuntimeNash.model weight nonnegative).exists_informationSite_of_active
+    (LateOpeningRuntimeGame.model weight nonnegative).exists_informationSite_of_active
       alice history (by change ¬ (18 = 0 ∧ some alice = none); simp) rfl
   exact ⟨site, ⟨history, information.symm⟩, rfl⟩
 
@@ -141,7 +141,7 @@ include available genuine in
 /-- The checked uniform native retry bound applies to the exact physical
 continuation of every admitted genuine private first-submission alias. -/
 theorem genuine_alias_response_close_quiet
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who)
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who)
     (error : ℝ)
     (bound : ∀ actual : LateOpeningRuntimeAliceTremble.PendingOpeningSite weight nonnegative,
       LateOpeningRuntimeAliceTremble.emissionProbability

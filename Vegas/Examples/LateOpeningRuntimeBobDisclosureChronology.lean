@@ -57,8 +57,11 @@ theorem optional_of_binding (execution : app.Execution)
         observed.application.activatedAt bobRevealEvent = some 3 ∧
         observed.application.clock = 3 := by
   obtain ⟨servedTrace⟩ := serviced_trace weight nonnegative execution trace quiet ⟨some material⟩
-  obtain ⟨revealReady, timer, clock⟩ := accepted_chronology weight nonnegative execution trace quiet
-    ready ⟨some material⟩ answer selected
+  have serviceEq := serviced_of_silent weight nonnegative execution trace quiet ⟨some material⟩
+  have chronology := accepted_chronology weight nonnegative execution trace ready ⟨some material⟩
+    answer (by rw [serviceEq]; exact selected)
+  rw [serviceEq] at chronology
+  obtain ⟨revealReady, timer, clock⟩ := chronology
   have clean := canonical_packet_clean weight nonnegative execution trace quiet ready material
     answer selected packet
   obtain ⟨⟨observedTrace⟩, physical, inputs, observedReady, timely, observedClock⟩ :=
@@ -76,9 +79,12 @@ def afterSilence (execution : app.Execution) : app.Execution :=
   let responded := execution.respond app bob ⟨none⟩
   recorded responded .wait responded.application
 
-def beforeFinal (execution : app.Execution) : app.Execution :=
-  let advanced := ticked (ticked (ticked (afterSilence execution)))
+def beforeFinalAfterService (execution : app.Execution) : app.Execution :=
+  let advanced := ticked (ticked (ticked execution))
   recorded advanced (.application (.expire bobBindEvent)) advanced.application
+
+def beforeFinal (execution : app.Execution) : app.Execution :=
+  beforeFinalAfterService (afterSilence execution)
 
 theorem silence_round (decision : LateOpeningRuntimeOptionalOpening.DecisionHistory
     weight nonnegative) (players : Player → app.Policy) :
@@ -182,7 +188,8 @@ theorem silence_prefix_law (decision : LateOpeningRuntimeOptionalOpening.Decisio
 private theorem beforeFinal_physical (execution : app.Execution) :
     (beforeFinal execution).application = { execution.application with
       clock := execution.application.clock + 3 } := by
-  simp only [beforeFinal, ticked, afterSilence, recorded, ReactiveApplication.Execution.respond]
+  simp only [beforeFinal, beforeFinalAfterService, ticked, afterSilence, recorded,
+    ReactiveApplication.Execution.respond]
 
 /-- Each possible final observation after optional silence is a genuine
 clean final disclosure class, with its clock-three timer still timely at six. -/
@@ -253,5 +260,110 @@ theorem final_of_optional_silence
     exact ⟨token, content, receipts ▸ receipt⟩
   exact ⟨⟨observed, observedTrace, decision.answer, observedBound, observedReady, timely, clean⟩,
     rfl, rfl, observedClock⟩
+
+theorem live_prefix_law (execution : app.Execution) (players : Player → app.Policy)
+    (position : execution.environmentRecall.length = 15)
+    (ready : execution.application.config.cut.Ready bobRevealEvent) :
+    app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative) players 4 execution =
+      PMF.pure (beforeFinalAfterService execution) := by
+  have secondCursor : (ticked execution).environmentRecall.length = 16 := by
+    rw [ticked_cursor, position]
+  have thirdCursor : (ticked (ticked execution)).environmentRecall.length = 17 := by
+    rw [ticked_cursor, secondCursor]
+  have fourthCursor : (ticked (ticked (ticked execution))).environmentRecall.length = 18 := by
+    rw [ticked_cursor, thirdCursor]
+  have completed : bobBindEvent ∈
+      (ticked (ticked (ticked execution))).application.config.cut.completed :=
+    ready.2 (by decide)
+  have expiry := fixed_round weight nonnegative players (ticked (ticked (ticked execution)))
+    (beforeFinalAfterService execution) 18 (.application (.expire bobBindEvent)) fourthCursor
+    rfl
+      (binding_expiry (ticked (ticked (ticked execution))) completed)
+  change (app.round (LateOpeningRuntimeService.scheduler weight nonnegative) players execution).bind
+    (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative) players 3) = _
+  rw [clock_round weight nonnegative players execution 0 position, PMF.pure_bind]
+  change (app.round (LateOpeningRuntimeService.scheduler weight nonnegative) players
+    (ticked execution)).bind
+      (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative) players 2) = _
+  rw [clock_round weight nonnegative players (ticked execution) 1 secondCursor, PMF.pure_bind]
+  change (app.round (LateOpeningRuntimeService.scheduler weight nonnegative) players
+    (ticked (ticked execution))).bind
+      (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative) players 1) = _
+  rw [clock_round weight nonnegative players (ticked (ticked execution)) 2 thirdCursor,
+    PMF.pure_bind]
+  simp only [ReactiveApplication.runRounds, PMF.bind_pure]
+  exact expiry
+
+theorem beforeFinalAfterService_physical (execution : app.Execution) :
+    (beforeFinalAfterService execution).application = { execution.application with
+      clock := execution.application.clock + 3 } := by
+  simp only [beforeFinalAfterService, ticked, recorded]
+
+theorem final_of_live_prefix (execution : app.Execution) (answer : Answer)
+    (trace : (app.protocol initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
+        (some ⟨11, none, execution⟩))
+    (bound : execution.application.config.store (.inr bobBindEvent) = some (.success answer))
+    (ready : execution.application.config.cut.Ready bobRevealEvent)
+    (timer : execution.application.activatedAt bobRevealEvent = some 3)
+    (clock : execution.application.clock = 3) (observed : app.Execution)
+    (sampled : observed ∈
+      ((beforeFinalAfterService execution).environmentStep app (.activate bob)).support) :
+    Nonempty ((app.protocol initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
+        (some ⟨6, some bob, observed⟩)) ∧
+      observed.application.config.store (.inr bobBindEvent) = some (.success answer) ∧
+      observed.application.config.cut.Ready bobRevealEvent ∧
+      observed.application.WithinDeadline LateOpeningRuntimeService.runtime bobRevealEvent ∧
+      observed.application.clock = 6 := by
+  have cursor : execution.environmentRecall.length = 15 := by
+    have counted := app.raw_trace_horizon initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative) trace
+    change execution.environmentRecall.length + 11 = 26 at counted
+    omega
+  obtain ⟨beforeTrace⟩ := app.raw_trace_runRounds initial LateOpeningRuntimeService.horizon
+    (LateOpeningRuntimeService.scheduler weight nonnegative) (fun _ => app.silentPolicy)
+      7 4 execution (beforeFinalAfterService execution) trace (by
+        rw [live_prefix_law weight nonnegative execution _ cursor ready]
+        exact (PMF.mem_support_pure_iff _ _).mpr rfl)
+  have position : (beforeFinalAfterService execution).environmentRecall.length = 19 := by
+    have counted := app.raw_trace_horizon initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative) beforeTrace
+    change (beforeFinalAfterService execution).environmentRecall.length + 7 = 26 at counted
+    omega
+  have selected : (.activate bob : app.Command) ∈ (LateOpeningRuntimeService.scheduler
+      weight nonnegative (beforeFinalAfterService execution).environmentRecall
+        ((beforeFinalAfterService execution).observeEnvironment app)).support := by
+    change _ ∈ (stageChoice weight nonnegative _ _).support
+    rw [position]
+    exact (PMF.mem_support_pure_iff _ _).mpr rfl
+  obtain ⟨observedTrace⟩ := app.raw_trace_environment initial LateOpeningRuntimeService.horizon
+    (LateOpeningRuntimeService.scheduler weight nonnegative) 6 _ observed (.activate bob)
+      beforeTrace selected sampled
+  have physical : observed.application = (beforeFinalAfterService execution).application := by
+    obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ sampled
+    obtain ⟨sample, _, rfl⟩ := PMF.support_map .. ▸ supported
+    rfl
+  have finalPhysical := physical.trans (beforeFinalAfterService_physical execution)
+  have observedBound : observed.application.config.store (.inr bobBindEvent) =
+      some (.success answer) := by
+    rw [finalPhysical]
+    exact bound
+  have observedReady : observed.application.config.cut.Ready bobRevealEvent := by
+    rw [finalPhysical]
+    exact ready
+  have observedClock : observed.application.clock = 6 := by
+    rw [finalPhysical, clock]
+  have timely : observed.application.WithinDeadline LateOpeningRuntimeService.runtime
+      bobRevealEvent := by
+    unfold State.WithinDeadline
+    rw [finalPhysical]
+    change (match execution.application.activatedAt bobRevealEvent with
+      | none => False
+      | some entered => execution.application.clock + 3 - entered <
+          LateOpeningRuntimeService.runtime.deadline bobRevealEvent)
+    rw [timer, clock]
+    decide
+  exact ⟨⟨observedTrace⟩, observedBound, observedReady, timely, observedClock⟩
 
 end Vegas.Examples.LateOpeningRuntimeBobDisclosureChronology

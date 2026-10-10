@@ -30,9 +30,9 @@ variable (weight : ℝ) (nonnegative : 0 ≤ weight)
 /-- Actual information classes containing a first late callback after no
 earlier Alice transmission. The complete private recall remains in the class. -/
 def FirstOpeningSite :=
-  {site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite alice //
+  {site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite alice //
     ∃ (decision : DecisionHistory weight nonnegative)
-      (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+      (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
         alice site.1), history.1.state = some ⟨22, some alice, decision.execution⟩}
 
 instance finiteFirstOpeningSite : Finite (FirstOpeningSite weight nonnegative) := by
@@ -43,7 +43,7 @@ def siteDecision (site : FirstOpeningSite weight nonnegative) :
     DecisionHistory weight nonnegative := site.2.choose
 
 def siteRepresentative (site : FirstOpeningSite weight nonnegative) :
-    (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory alice site.1.1 :=
+    (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory alice site.1.1 :=
   site.2.choose_spec.choose
 
 theorem site_current (site : FirstOpeningSite weight nonnegative) :
@@ -54,7 +54,7 @@ theorem site_current (site : FirstOpeningSite weight nonnegative) :
 /-- The event does not depend on which actual representative was selected. -/
 theorem permitted_of_representative (site : FirstOpeningSite weight nonnegative)
     (decision : DecisionHistory weight nonnegative)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory alice site.1.1)
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory alice site.1.1)
     (current : history.1.state = some ⟨22, some alice, decision.execution⟩)
     (response : app.Action) :
     PermittedResponse weight nonnegative (siteDecision weight nonnegative site) response ↔
@@ -84,17 +84,17 @@ theorem permitted_of_representative (site : FirstOpeningSite weight nonnegative)
       rw [sameExecution, sameBit]
 
 def nongenuineProbability
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who)
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who)
     (site : FirstOpeningSite weight nonnegative) : ℝ :=
   (((profile alice site.1.1).map (fun choice => choice.1.getD ⟨none⟩)).toOuterMeasure
     {response | ¬ PermittedResponse weight nonnegative
       (siteDecision weight nonnegative site) response}).toReal
 
 theorem nongenuineProbability_of_representative
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who)
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who)
     (site : FirstOpeningSite weight nonnegative)
     (decision : DecisionHistory weight nonnegative)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory alice site.1.1)
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory alice site.1.1)
     (current : history.1.state = some ⟨22, some alice, decision.execution⟩) :
     nongenuineProbability weight nonnegative profile site =
       ((responseLaw weight nonnegative site.1 (profile alice site.1.1)).toOuterMeasure
@@ -106,16 +106,16 @@ theorem nongenuineProbability_of_representative
     current response)
 
 theorem nongenuineProbability_nonnegative
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who)
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who)
     (site : FirstOpeningSite weight nonnegative) :
     0 ≤ nongenuineProbability weight nonnegative profile site := ENNReal.toReal_nonneg
 
 theorem nongenuineProbability_tendsto
     {sequence : ℕ → ∀ who,
-      (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who}
-    {target : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who}
+      (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who}
+    {target : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who}
     (converges : ∀ site :
-      (LateOpeningRuntimeNash.model weight nonnegative).InformationSite alice,
+      (LateOpeningRuntimeGame.model weight nonnegative).InformationSite alice,
       PMFConvergesPointwise (fun n => sequence n alice site.1) (target alice site.1))
     (site : FirstOpeningSite weight nonnegative) :
     Tendsto (fun n => nongenuineProbability weight nonnegative (sequence n) site) atTop
@@ -137,10 +137,10 @@ theorem nongenuineProbability_tendsto
 
 theorem exists_uniform_nongenuine_bound
     {sequence : ℕ → ∀ who,
-      (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who}
-    {target : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who}
+      (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who}
+    {target : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who}
     (converges : ∀ site :
-      (LateOpeningRuntimeNash.model weight nonnegative).InformationSite alice,
+      (LateOpeningRuntimeGame.model weight nonnegative).InformationSite alice,
       PMFConvergesPointwise (fun n => sequence n alice site.1) (target alice site.1))
     (genuineOrSilent : ∀ site : FirstOpeningSite weight nonnegative,
       nongenuineProbability weight nonnegative target site = 0) :
@@ -166,7 +166,7 @@ theorem exists_uniform_nongenuine_bound
 /-- Nongenuine first packets remain negligible relative to their own prefix
 weights; no lower bound on those weights is required. -/
 theorem weighted_nongenuine_bound {Root : Type} [Fintype Root]
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who)
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who)
     (site : Root → FirstOpeningSite weight nonnegative) (prefixWeight : Root → ℝ)
     (prefixNonnegative : ∀ root, 0 ≤ prefixWeight root) (error : ℝ)
     (bound : ∀ root, nongenuineProbability weight nonnegative profile (site root) ≤ error) :
@@ -179,7 +179,7 @@ theorem weighted_nongenuine_bound {Root : Type} [Fintype Root]
 
 theorem weighted_nongenuine_ratio_tendsto {Root : Type} [Fintype Root]
     (sequence : ℕ → ∀ who,
-      (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who)
+      (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who)
     (site : ℕ → Root → FirstOpeningSite weight nonnegative)
     (prefixWeight : ℕ → Root → ℝ)
     (prefixNonnegative : ∀ n root, 0 ≤ prefixWeight n root)
@@ -207,13 +207,13 @@ theorem sequentially_rational_uniform_nongenuine_bound
     (depositNonnegative : 0 ≤ deposit alice)
     (marginPositive : 0 < LateOpeningRuntimeAliceOpeningRationality.margin
       weight reward forfeit deposit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
-    (sequence : ℕ → (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (sequence : ℕ → (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (converges : InformationModel.BehavioralAssessmentConvergesPointwise sequence assessment) :
     ∃ error : ℕ → ℝ, (∀ n, 0 ≤ error n) ∧ Tendsto error atTop (nhds 0) ∧
       ∀ n (site : FirstOpeningSite weight nonnegative),
@@ -233,18 +233,18 @@ theorem equilibrium_consistency_nongenuine_bound
     (depositNonnegative : 0 ≤ deposit alice)
     (marginPositive : 0 < LateOpeningRuntimeAliceOpeningRationality.margin
       weight reward forfeit deposit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (equilibrium : assessment.IsSequentialEquilibrium
       (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who)) :
-    ∃ sequence : ℕ → (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment,
+    ∃ sequence : ℕ → (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment,
       (∀ n, (sequence n).IsFullyMixed ∧
         InformationModel.BehavioralAssessment.IsBayesConsistent
-          (LateOpeningRuntimeNash.model weight nonnegative) (sequence n)
+          (LateOpeningRuntimeGame.model weight nonnegative) (sequence n)
           (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
           (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain) ∧
       InformationModel.BehavioralAssessmentConvergesPointwise sequence assessment ∧

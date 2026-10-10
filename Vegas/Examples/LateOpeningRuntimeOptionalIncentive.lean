@@ -72,7 +72,7 @@ theorem canonical_payoff_eq_gross (history : DecisionHistory weight nonnegative)
     (final : app.Execution)
     (reached : final ∈ (continuation weight nonnegative history
       (canonical weight nonnegative history) players).support) :
-    LateOpeningRuntimeNash.payoff reward forfeit sample deposit (app.finished final) bob =
+    LateOpeningRuntimeGame.payoff reward forfeit sample deposit (app.finished final) bob =
       grossUtility reward (setup.parameterOutcome parameter
         (terminalStateOf bit label aliceResult (.success history.answer)
           (.success history.answer))) bob := by
@@ -84,7 +84,7 @@ theorem canonical_payoff_eq_gross (history : DecisionHistory weight nonnegative)
     bobPolicy final reached
   have equal : result = .success history.answer := Option.some.inj (stored.symm.trans published)
   subst result
-  unfold LateOpeningRuntimeNash.payoff TerminalAudit.utility
+  unfold LateOpeningRuntimeGame.payoff TerminalAudit.utility
   rw [nativeBaseUtility_of_readout reward forfeit _ _ readout bob, clear, zero_mul,
     sub_zero, sourceUtility_bob]
   change _ - 0 = _
@@ -104,13 +104,13 @@ theorem canonical_audit_regret (history : DecisionHistory weight nonnegative)
     (reached : final ∈ (continuation weight nonnegative history response players).support)
     (canonicalReached : canonicalFinal ∈ (continuation weight nonnegative history
       (canonical weight nonnegative history) future).support) :
-    LateOpeningRuntimeNash.payoff reward forfeit sample deposit (app.finished final) bob +
+    LateOpeningRuntimeGame.payoff reward forfeit sample deposit (app.finished final) bob +
       TerminalAudit.charge (LateOpeningRuntimeService.runtime.serviceAuditObservation leaks)
         (serviceSourceAudit setup .sequential deadline leaks sample) (app.finished final) bob *
           deposit bob +
       (if final.application.config.store (.inr bobRevealEvent) = some .failure
         then forfeit else 0) ≤
-      LateOpeningRuntimeNash.payoff reward forfeit sample deposit
+      LateOpeningRuntimeGame.payoff reward forfeit sample deposit
         (app.finished canonicalFinal) bob := by
   obtain ⟨bit, label, valid⟩ := history_initial_invariant LateOpeningRuntimeService.runtime leaks
     LateOpeningRuntimeService.horizon (LateOpeningRuntimeService.scheduler weight nonnegative)
@@ -126,7 +126,7 @@ theorem canonical_audit_regret (history : DecisionHistory weight nonnegative)
     aliceResult aliceStored reward forfeit deposit sample authentic future bobPolicy
       canonicalFinal canonicalReached
   rw [comparator]
-  unfold LateOpeningRuntimeNash.payoff TerminalAudit.utility
+  unfold LateOpeningRuntimeGame.payoff TerminalAudit.utility
   rw [nativeBaseUtility_of_readout reward forfeit _ _ readout bob]
   cases result with
   | failure =>

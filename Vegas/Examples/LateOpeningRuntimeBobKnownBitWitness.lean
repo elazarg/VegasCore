@@ -24,8 +24,8 @@ open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeBobKno
 even though Alice's opening has no successful publication receipt. -/
 theorem failed_publication_known_bit_class (weight : ℝ) (nonnegative : 0 ≤ weight)
     (bit : Bool) (label : Fin 3) :
-    ∃ (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-      (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    ∃ (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+      (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
         bob site.1)
       (decision : LateOpeningRuntimeBobBindingInformation.DecisionHistory weight nonnegative),
       representative.1.state = some ⟨14, some bob, decision.execution⟩ ∧

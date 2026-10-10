@@ -1,8 +1,10 @@
 # End-to-end sequential-equilibrium proof checklist
 
 This ledger covers the checked fixed-calendar theorem. The
-[asynchronous plan](se-schedule-generalization.md) tracks the separate open
-arbitrary-builder target.
+[asynchronous plan](se-schedule-generalization.md) records the separate
+arbitrary-builder target. Its universal baseline form is refuted by the
+[checked native obstruction](commit-reveal-research/native-se-obstruction.md);
+stronger conditional service hypotheses remain under study.
 
 ## Fixed target
 
@@ -25,8 +27,9 @@ This target uses the existing bounded runtime. Unbounded interaction and a
 cryptographic or EVM implementation are separate refinements.
 
 The service here is the fixed finite calendar of `SourceServiceSpec`. The
-[asynchronous plan](se-schedule-generalization.md) tracks the additional
-arbitrary-builder preservation theorem, which remains open.
+[asynchronous plan](se-schedule-generalization.md) separates the refuted
+universal baseline claim from remaining conditional service and information
+adapters.
 
 ## How boxes close
 

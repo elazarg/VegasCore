@@ -25,4 +25,9 @@ results. Cryptographic and EVM realization require separate refinement proofs.
 The [checklist](se-proof-checklist.md) validates this calendar chain.
 The [asynchronous design and plan](se-schedule-generalization.md) states the
 unchanged runtime semantics, concrete unresolved issues and general proof road.
-The arbitrary-builder capstone and faithful operational watcher adapter are open.
+General exact SE preservation under the existing asynchronous contract is
+refuted by the [checked native obstruction](commit-reveal-research/native-se-obstruction.md).
+The [protected timely execution theorem](../Vegas/Game/SourceServiceReactiveLaw.lean)
+preserves the initialized joint source-state law in sequential and
+concurrent-binding modes; equilibrium preservation requires separate evidence.
+A faithful operational watcher adapter remains open.

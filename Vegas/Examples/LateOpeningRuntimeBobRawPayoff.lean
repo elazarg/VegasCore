@@ -97,7 +97,7 @@ theorem continuation_payoff_le_score (decision : DecisionHistory weight nonnegat
     (depositNonnegative : 0 ≤ deposit bob)
     (sample : List (SettledEvidence setup .sequential) →
       PMF (List (SettledEvidence setup .sequential))) :
-    LateOpeningRuntimeNash.payoff reward forfeit sample deposit (app.finished final) bob ≤
+    LateOpeningRuntimeGame.payoff reward forfeit sample deposit (app.finished final) bob ≤
       bindingScore (originalBit decision.execution)
         ((serviced decision.execution response).application.config.store (.inr bobBindEvent)) := by
   obtain ⟨bit, label, binding, publication, bitEq, finalReachable, bound, published, readout⟩ :=
@@ -110,10 +110,10 @@ theorem continuation_payoff_le_score (decision : DecisionHistory weight nonnegat
       (LateOpeningRuntimeService.runtime.serviceAuditObservation leaks)
       (serviceSourceAudit setup .sequential deadline leaks sample) (app.finished final) bob *
         deposit bob := mul_nonneg (TerminalAudit.charge_mem_Icc _ _ _ _).1 depositNonnegative
-  have baseUpper : LateOpeningRuntimeNash.payoff reward forfeit sample deposit
+  have baseUpper : LateOpeningRuntimeGame.payoff reward forfeit sample deposit
       (app.finished final) bob ≤ sourceUtility reward forfeit
         (terminalStateOf bit label .failure binding publication) bob := by
-    unfold LateOpeningRuntimeNash.payoff TerminalAudit.utility
+    unfold LateOpeningRuntimeGame.payoff TerminalAudit.utility
     rw [nativeBaseUtility_of_readout reward forfeit _ _ readout bob]
     exact sub_le_self _ deduction
   rw [bitEq]

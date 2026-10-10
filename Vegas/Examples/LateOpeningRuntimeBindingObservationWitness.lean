@@ -67,8 +67,8 @@ theorem failedAnswerDecision_trace (bit : Bool) (label : Fin 3) (slot : Fin 2)
 sites in the complete bounded raw game, for every finite lottery weight. -/
 theorem failed_information_representative (bit : Bool) (label : Fin 3) (slot : Fin 2)
     (earlySeen finalSeen : Bool) (samplePossible : slot = 0 ∨ earlySeen = false) :
-    ∃ (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-      (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    ∃ (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+      (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
         bob site.1),
       representative.1.state =
           some ⟨14, some bob, failedAnswerDecision bit label slot earlySeen finalSeen⟩ ∧
@@ -84,7 +84,7 @@ theorem failed_information_representative (bit : Bool) (label : Fin 3) (slot : F
     change ¬ (14 = 0 ∧ some bob = none)
     simp
   obtain ⟨site, same⟩ :=
-    (LateOpeningRuntimeNash.model weight nonnegative).exists_informationSite_of_active
+    (LateOpeningRuntimeGame.model weight nonnegative).exists_informationSite_of_active
       bob history running rfl
   refine ⟨site, ⟨history, same.symm⟩, rfl, ?_⟩
   change site.1 = (rawMenu.signals _ _ _).infoOf bob history.trace at same

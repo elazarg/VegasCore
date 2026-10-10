@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveIntentionRecall
+import Interaction.ReactiveRecallInvariant
+import Vegas.Pending.ReactiveEmissionTokens
 
 /-! # Authentication of retained intentions from initialized posterior support -/
 
@@ -93,45 +95,7 @@ theorem prescribedReactivePosterior_silent_alignment (runtime : EventGraphRuntim
 
 end Vegas.EventGraphRuntime
 
-namespace Interaction.ReactiveApplication
 
-variable {Player : Type} [DecidableEq Player] (app : ReactiveApplication Player)
-
-/-- Empty emission for a silent response is an invariant of actual executions,
-independently of the policy, scheduler, and environment commands. -/
-theorem silentEmission_invariant (players : Player → app.Policy) (who : Player) :
-    app.PolicyInvariant players (fun execution =>
-      ∀ entry ∈ execution.recall who,
-        entry.action.transmission = none → entry.emitted = none) where
-  respond execution actor action faithful _ := by
-    by_cases same : who = actor
-    · subst actor
-      cases action with
-      | mk transmission =>
-          cases transmission with
-          | none =>
-              simp only [Execution.respond, ↓reduceIte]
-              intro entry member silent
-              rcases List.mem_append.mp member with old | latest
-              · exact faithful entry old silent
-              · have same := List.mem_singleton.mp latest
-                subst entry
-                rfl
-          | some material =>
-              simp only [Execution.respond, ↓reduceIte]
-              intro entry member silent
-              rcases List.mem_append.mp member with old | latest
-              · exact faithful entry old silent
-              · have same := List.mem_singleton.mp latest
-                subst entry
-                cases silent
-    · rw [app.respond_recall_other execution actor who same action]
-      exact faithful
-  environment execution next command faithful reached := by
-    rw [app.environmentStep_recall execution next command reached]
-    exact faithful
-
-end Interaction.ReactiveApplication
 
 namespace Vegas.EventGraphRuntime
 

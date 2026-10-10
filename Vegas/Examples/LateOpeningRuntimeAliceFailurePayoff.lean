@@ -164,7 +164,7 @@ theorem failed_completion_payoff (players : Player → app.Policy)
     (answer : Answer)
     (published : final.application.config.store (.inr bobRevealEvent) = some (.success answer))
     (reward forfeit : ℝ) (deposit : Player → ℝ) :
-    LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual) deposit
+    LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit
       (app.finished final) alice =
         (if (label.val = 0 ∧ answer.val = 5) ∨ (label.val = 1 ∧ answer.val = 4)
           then reward else 0) - forfeit - deposit alice := by
@@ -205,7 +205,7 @@ theorem failed_completion_payoff (players : Player → app.Policy)
       decodeState? (terminalRefs program) final.application.config.store else none) = _
     rw [ite_eq_left complete]
     exact decoded
-  unfold LateOpeningRuntimeNash.payoff TerminalAudit.utility
+  unfold LateOpeningRuntimeGame.payoff TerminalAudit.utility
   rw [charged, one_mul, nativeBaseUtility_of_readout reward forfeit _ _ readout alice,
     sourceUtility_alice_failure]
 

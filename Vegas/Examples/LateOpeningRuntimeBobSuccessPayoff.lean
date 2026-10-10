@@ -153,7 +153,7 @@ theorem continuation_payoff_le_score (decision : DecisionHistory weight nonnegat
     (depositNonnegative : 0 ≤ deposit bob)
     (sample : List (SettledEvidence setup .sequential) →
       PMF (List (SettledEvidence setup .sequential))) :
-    LateOpeningRuntimeNash.payoff reward forfeit sample deposit (app.finished final) bob ≤
+    LateOpeningRuntimeGame.payoff reward forfeit sample deposit (app.finished final) bob ≤
       bindingScore (originalLabel decision.execution)
         ((serviced decision.execution response).application.config.store (.inr bobBindEvent)) := by
   obtain ⟨bit, label, binding, publication, bitEq, labelEq, finalReachable,
@@ -168,10 +168,10 @@ theorem continuation_payoff_le_score (decision : DecisionHistory weight nonnegat
       (LateOpeningRuntimeService.runtime.serviceAuditObservation leaks)
       (serviceSourceAudit setup .sequential deadline leaks sample) (app.finished final) bob *
         deposit bob := mul_nonneg (TerminalAudit.charge_mem_Icc _ _ _ _).1 depositNonnegative
-  have baseUpper : LateOpeningRuntimeNash.payoff reward forfeit sample deposit
+  have baseUpper : LateOpeningRuntimeGame.payoff reward forfeit sample deposit
       (app.finished final) bob ≤ sourceUtility reward forfeit
         (terminalStateOf bit label (.success decision.bit) binding publication) bob := by
-    unfold LateOpeningRuntimeNash.payoff TerminalAudit.utility
+    unfold LateOpeningRuntimeGame.payoff TerminalAudit.utility
     rw [nativeBaseUtility_of_readout reward forfeit _ _ readout bob]
     exact sub_le_self _ deduction
   rw [labelEq]
@@ -221,7 +221,7 @@ theorem answer_continuation_payoff
       players 14
         (decision.execution.respond app bob
           (LateOpeningRuntimeBobSuffix.binding answer))).support) :
-    LateOpeningRuntimeNash.payoff reward forfeit sample deposit (app.finished final) bob =
+    LateOpeningRuntimeGame.payoff reward forfeit sample deposit (app.finished final) bob =
       answerScore (originalLabel decision.execution) answer := by
   obtain ⟨successful, clear⟩ := answer_continuation_clean weight nonnegative answer players
     bobPolicy decision.execution final decision.trace decision.quiet decision.ready decision.timely
@@ -233,7 +233,7 @@ theorem answer_continuation_payoff
   have same : publication = PublicationResult.success answer :=
     Option.some.inj (published.symm.trans successful)
   subst publication
-  unfold LateOpeningRuntimeNash.payoff TerminalAudit.utility
+  unfold LateOpeningRuntimeGame.payoff TerminalAudit.utility
   rw [clear, zero_mul, sub_zero, nativeBaseUtility_of_readout reward forfeit _ _ readout bob,
     sourceUtility_bob_after_alice_success, labelEq]
 

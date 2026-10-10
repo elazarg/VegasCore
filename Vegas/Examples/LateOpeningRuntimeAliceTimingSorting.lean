@@ -33,11 +33,11 @@ variable (weight : ℝ) (nonnegative : 0 ≤ weight)
     weight reward forfeit deposit)
   (openingMarginPositive : 0 < LateOpeningRuntimeAliceOpeningRationality.margin
     weight reward forfeit deposit)
-  (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+  (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
   (rational : assessment.IsSequentiallyRational
     (rawMenu.bounded initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-    (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+    (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
       (fun actual => PMF.pure actual) deposit history.state who))
 
 include positive rewardPositive forfeitPositive aliceDepositNonnegative bobCollateral
@@ -74,8 +74,8 @@ private theorem silent_value (bit : Bool) (label : Fin 3) :
       bit label
 
 private theorem first_representative (bit : Bool) (label : Fin 3) :
-    ∃ (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite alice)
-      (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory alice site.1),
+    ∃ (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite alice)
+      (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory alice site.1),
       history.1.state = some ⟨22, some alice, firstLateDecision bit label⟩ := by
   let history : (rawMenu.protocol initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).History :=
@@ -83,7 +83,7 @@ private theorem first_representative (bit : Bool) (label : Fin 3) :
       (LateOpeningRuntimeAliceFirstWitness.firstLateDecision_trace
         weight nonnegative bit label).some⟩
   obtain ⟨site, information⟩ :=
-    (LateOpeningRuntimeNash.model weight nonnegative).exists_informationSite_of_active
+    (LateOpeningRuntimeGame.model weight nonnegative).exists_informationSite_of_active
       alice history (by change ¬ (22 = 0 ∧ some alice = none); simp) rfl
   exact ⟨site, ⟨history, information.symm⟩, rfl⟩
 

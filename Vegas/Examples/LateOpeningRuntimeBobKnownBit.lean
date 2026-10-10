@@ -66,8 +66,8 @@ theorem originalBit_of_observed (decision : DecisionHistory weight nonnegative)
   rw [stored]
 
 variable
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1)
   (decision : DecisionHistory weight nonnegative)
   (current : representative.1.state = some ⟨14, some bob, decision.execution⟩)
@@ -76,7 +76,7 @@ variable
 of whether an assessment assigns it positive belief. -/
 theorem originalBit_of_information (bit : Bool)
     (observed : ObservesBit (decision.execution.observe app bob) bit)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1) :
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1) :
     originalBit (decisionOfInformation weight nonnegative site representative decision current
       history).execution = bit := by
   have same := (decisionOfInformation_spec weight nonnegative site representative decision current
@@ -93,7 +93,7 @@ theorem payoff_le_one (forfeitNonnegative : 0 ≤ forfeit)
     (depositNonnegative : 0 ≤ deposit bob)
     (sample : List (SettledEvidence setup .sequential) →
       PMF (List (SettledEvidence setup .sequential))) (state : app.ProtocolState) :
-    LateOpeningRuntimeNash.payoff reward forfeit sample deposit state bob ≤ 1 := by
+    LateOpeningRuntimeGame.payoff reward forfeit sample deposit state bob ≤ 1 := by
   have baseUpper : nativeBaseUtility reward forfeit state bob ≤ 1 := by
     unfold nativeBaseUtility serviceBaseUtility
     cases decoded : serviceSourceReadout setup .sequential deadline leaks state with
@@ -104,7 +104,7 @@ theorem payoff_le_one (forfeitNonnegative : 0 ≤ forfeit)
       (LateOpeningRuntimeService.runtime.serviceAuditObservation leaks)
       (serviceSourceAudit setup .sequential deadline leaks sample) state bob * deposit bob :=
     mul_nonneg (TerminalAudit.charge_mem_Icc _ _ _ _).1 depositNonnegative
-  unfold LateOpeningRuntimeNash.payoff TerminalAudit.utility
+  unfold LateOpeningRuntimeGame.payoff TerminalAudit.utility
   linarith
 
 include representative decision current in
@@ -112,7 +112,7 @@ include representative decision current in
 any belief over this certificate-bearing native information class. -/
 theorem correct_guess_context_value (bit : Bool)
     (observed : ObservesBit (decision.execution.observe app bob) bit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     (context weight nonnegative site reward forfeit deposit assessment).value
       (answerFinitePolicy weight nonnegative (bitGuess bit)) = 1 := by
   rw [answer_context_value weight nonnegative site representative decision current]
@@ -131,7 +131,7 @@ certificate identifies the failed publication's immutable initial bit. -/
 theorem rational_context_value_eq_one (forfeitNonnegative : 0 ≤ forfeit)
     (depositNonnegative : 0 ≤ deposit bob) (bit : Bool)
     (observed : ObservesBit (decision.execution.observe app bob) bit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment)) :
     (context weight nonnegative site reward forfeit deposit assessment).value
@@ -158,12 +158,12 @@ which is stronger than merely having optimal expected payoff. -/
 theorem rational_supported_payoff_eq_one (forfeitNonnegative : 0 ≤ forfeit)
     (depositNonnegative : 0 ≤ deposit bob) (bit : Bool)
     (observed : ObservesBit (decision.execution.observe app bob) bit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment)) :
     ∀ final ∈ ((context weight nonnegative site reward forfeit deposit assessment).outcome
       (assessment.strategy bob)).support,
-      LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+      LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
         deposit final.state bob = 1 := by
   apply expect_eq_const_of_le_on_support _ _ 1
     (context_integrable weight nonnegative site reward forfeit deposit assessment
@@ -176,7 +176,7 @@ theorem rational_supported_payoff_eq_one (forfeitNonnegative : 0 ≤ forfeit)
 /-- The complete physical continuation of the incumbent native profile,
 averaged over the actual assessment information class. -/
 def incumbentFinalLaw
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     PMF app.Execution :=
   let players := rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
     (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy
@@ -187,7 +187,7 @@ def incumbentFinalLaw
       (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative) players 14)
 
 theorem incumbent_context_outcome_law
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     ((context weight nonnegative site reward forfeit deposit assessment).outcome
       (assessment.strategy bob)).map History.state =
     (incumbentFinalLaw weight nonnegative site representative decision current assessment).map
@@ -216,12 +216,12 @@ include representative decision current in
 theorem rational_physical_payoff_eq_one (forfeitNonnegative : 0 ≤ forfeit)
     (depositNonnegative : 0 ≤ deposit bob) (bit : Bool)
     (observed : ObservesBit (decision.execution.observe app bob) bit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment)) :
     ∀ final ∈ (incumbentFinalLaw weight nonnegative site representative decision current
       assessment).support,
-      LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+      LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
         deposit (app.finished final) bob = 1 := by
   intro final supported
   have mapped : app.finished final ∈
@@ -245,7 +245,7 @@ theorem payoff_one_correct_publication (forfeitNonnegative : 0 ≤ forfeit)
     (response : app.Action) (players : Player → app.Policy) (final : app.Execution)
     (reached : final ∈ (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative)
       players 14 (decision.execution.respond app bob response)).support)
-    (payoffOne : LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+    (payoffOne : LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
       deposit (app.finished final) bob = 1) :
     final.application.config.store (.inr bobRevealEvent) = some (.success (bitGuess bit)) ∧
       TerminalAudit.charge (LateOpeningRuntimeService.runtime.serviceAuditObservation leaks)
@@ -290,7 +290,7 @@ theorem payoff_one_correct_publication (forfeitNonnegative : 0 ≤ forfeit)
     (TerminalAudit.charge_mem_Icc (LateOpeningRuntimeService.runtime.serviceAuditObservation leaks)
       (serviceSourceAudit setup .sequential deadline leaks (fun actual => PMF.pure actual))
       (app.finished final) bob).1 depositPositive.le
-  unfold LateOpeningRuntimeNash.payoff TerminalAudit.utility at payoffOne
+  unfold LateOpeningRuntimeGame.payoff TerminalAudit.utility at payoffOne
   rw [nativeBaseUtility_of_readout reward forfeit _ _ readout bob] at payoffOne
   cases answer with
   | failure =>
@@ -314,7 +314,7 @@ and has zero full audit charge at a rational certificate-bearing class. -/
 theorem rational_correct_publication (forfeitNonnegative : 0 ≤ forfeit)
     (depositPositive : 0 < deposit bob) (bit : Bool)
     (observed : ObservesBit (decision.execution.observe app bob) bit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment)) :
     ∀ final ∈ (incumbentFinalLaw weight nonnegative site representative decision current
@@ -347,11 +347,11 @@ game, without a separate local-context or posterior premise. -/
 theorem sequentially_rational_context_value_eq_one (forfeitNonnegative : 0 ≤ forfeit)
     (depositNonnegative : 0 ≤ deposit bob) (bit : Bool)
     (observed : ObservesBit (decision.execution.observe app bob) bit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who)) :
     (context weight nonnegative site reward forfeit deposit assessment).value
       (assessment.strategy bob) = 1 := by
@@ -372,11 +372,11 @@ correct bit without full audit charge on each supported physical continuation. -
 theorem sequentially_rational_correct_publication (forfeitNonnegative : 0 ≤ forfeit)
     (depositPositive : 0 < deposit bob) (bit : Bool)
     (observed : ObservesBit (decision.execution.observe app bob) bit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who)) :
     ∀ final ∈ (incumbentFinalLaw weight nonnegative site representative decision current
       assessment).support,
@@ -401,13 +401,13 @@ equilibrium, including this class after an earlier publication deviation. -/
 theorem equilibrium_correct_publication (forfeitNonnegative : 0 ≤ forfeit)
     (depositPositive : 0 < deposit bob) (bit : Bool)
     (observed : ObservesBit (decision.execution.observe app bob) bit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (equilibrium : assessment.IsSequentialEquilibrium
       (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who)) :
     ∀ final ∈ (incumbentFinalLaw weight nonnegative site representative decision current
       assessment).support,

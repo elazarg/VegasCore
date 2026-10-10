@@ -52,8 +52,8 @@ def typedSeenEvent (bit : Bool) (representativeLabel label : Fin 3) (accepted : 
   typedInformationEvent (LateOpeningRuntimeBindingObservation.bobInformation
     (seenExecution bit representativeLabel accepted)) bit label
 
-variable (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+variable (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1) (bit : Bool) (representativeLabel : Fin 3) (accepted : Bool)
   (current : representative.1.state =
     some ⟨14, some bob, seenExecution bit representativeLabel accepted⟩)
@@ -147,8 +147,8 @@ theorem initialized_history_seen_error (profile : Profile weight nonnegative) (l
 classes, constructed from admitted initialized raw histories. -/
 theorem exists_seen_representative (positive : 0 < weight) (bit : Bool) (label : Fin 3)
     (accepted : Bool) :
-    ∃ (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-      (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    ∃ (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+      (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
         bob site.1),
       representative.1.state = some ⟨14, some bob, seenExecution bit label accepted⟩ := by
   cases accepted
@@ -167,7 +167,7 @@ theorem exists_seen_representative (positive : 0 < weight) (bit : Bool) (label :
       change ¬ (14 = 0 ∧ some bob = none)
       simp
     obtain ⟨site, same⟩ :=
-      (LateOpeningRuntimeNash.model weight nonnegative).exists_informationSite_of_active
+      (LateOpeningRuntimeGame.model weight nonnegative).exists_informationSite_of_active
         bob history running rfl
     exact ⟨site, ⟨history, same.symm⟩, rfl⟩
 
@@ -176,13 +176,13 @@ seen-opening information class along the same assessment sequence. -/
 theorem early_silence_tendsto
     (reward forfeit : ℝ) (deposit : Player → ℝ)
     (forfeitNonnegative : 0 ≤ forfeit) (collateral : 1 < deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
-    (sequence : ℕ → (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (sequence : ℕ → (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (converges : InformationModel.BehavioralAssessmentConvergesPointwise sequence assessment)
     (bit : Bool) (label : Fin 3) :
     Tendsto (fun n => earlySilenceProbability weight nonnegative (sequence n).strategy bit label)

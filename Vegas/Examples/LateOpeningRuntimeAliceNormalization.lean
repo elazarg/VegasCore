@@ -29,17 +29,17 @@ variable (weight : ℝ) (nonnegative : 0 ≤ weight)
 /-- A predicate on the existing native strategy; it introduces no game or
 alternative equilibrium notion. -/
 def LastAliceResponsesNormalized
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who) :
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who) :
     Prop :=
-  (∀ (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite alice)
-      (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (∀ (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite alice)
+      (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
         alice site.1)
       (decision : LateOpeningRuntimeAliceDecision.DecisionHistory weight nonnegative),
       representative.1.state = some ⟨18, some alice, decision.execution⟩ →
         ((LateOpeningRuntimeAliceRationality.responseLaw weight nonnegative site
           (profile alice)).toOuterMeasure {response | response.transmission.isSome}).toReal = 0) ∧
-  (∀ (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite alice)
-      (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (∀ (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite alice)
+      (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
         alice site.1)
       (decision : LateOpeningRuntimeAliceEmptyDecision.DecisionHistory weight nonnegative),
       representative.1.state = some ⟨18, some alice, decision.execution⟩ →
@@ -55,11 +55,11 @@ theorem sequentially_rational_last_responses
     (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit alice)
     (marginPositive : 0 < LateOpeningRuntimeAliceOpeningRationality.margin
       weight reward forfeit deposit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who)) :
     LastAliceResponsesNormalized weight nonnegative assessment.strategy := by
   have retryMargin :
@@ -82,13 +82,13 @@ theorem equilibrium_last_responses
     (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit alice)
     (marginPositive : 0 < LateOpeningRuntimeAliceOpeningRationality.margin
       weight reward forfeit deposit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (equilibrium : assessment.IsSequentialEquilibrium
       (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who)) :
     LastAliceResponsesNormalized weight nonnegative assessment.strategy :=
   sequentially_rational_last_responses weight nonnegative reward forfeit deposit positive
@@ -109,11 +109,11 @@ theorem exists_service_with_last_responses_normalized
         (LateOpeningRuntimeService.scheduler weight nonnegative) ∧
       0 < 1 - inclusionProbability weight ∧ 1 - inclusionProbability weight < failureFloor ∧
       0 < LateOpeningRuntimeAliceOpeningRationality.margin weight reward forfeit deposit ∧
-      ∀ assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment,
+      ∀ assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment,
         assessment.IsSequentiallyRational
           (rawMenu.bounded initial LateOpeningRuntimeService.horizon
             (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-          (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+          (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
             (fun actual => PMF.pure actual) deposit history.state who) →
           LastAliceResponsesNormalized weight nonnegative assessment.strategy := by
   have totalPositive : 0 < forfeit + deposit alice := by linarith

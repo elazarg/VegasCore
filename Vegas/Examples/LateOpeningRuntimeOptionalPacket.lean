@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Examples.LateOpeningRuntimeGame
 import Vegas.Examples.LateOpeningRuntimeOptionalRationality
 import Vegas.Examples.LateOpeningRuntimeBobFinalAuditObservation
 import Interaction.ReactiveReceiptIdentity
@@ -25,18 +26,12 @@ open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeReadou
   LateOpeningRuntimeOptionalIncentive LateOpeningRuntimeOptionalDecision
   LateOpeningRuntimeOptionalRationality
 open LateOpeningRuntimeBobFinalObservation (serviced)
-open LateOpeningRuntimeBobResponseState (responseState)
+open LateOpeningRuntimeBobResponseState (emittedMessage responseState)
 open LateOpeningRuntimeBobFinalAuditObservation
   (auditKey keyCharge fullCharge fullCharge_eq_keyCharge)
 open LateOpeningRuntimeBobBindingDecision (context)
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
-
-def emittedMessage (execution : app.Execution) (material : app.Submission) :
-    Message Player app.Payload :=
-  ⟨(bob, execution.network.nextSerial bob),
-    app.packet (app.submit execution.application bob material) bob
-      (execution.network.known bob) material⟩
 
 theorem continuation_split (decision : DecisionHistory weight nonnegative)
     (material : app.Submission) (players : Player → app.Policy) :
@@ -229,8 +224,8 @@ theorem immediate_publication_same_information
     congrFun stores (.inr bobRevealEvent)
 
 variable
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1)
   (decision : DecisionHistory weight nonnegative)
   (current : representative.1.state = some ⟨12, some bob, decision.execution⟩)
@@ -238,10 +233,10 @@ variable
 
 theorem rational_supported_response (forfeitPositive : 0 < forfeit)
     (depositPositive : 0 < deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment))
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1)
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1)
     (response : app.Action)
     (supported : response ∈ (currentResponses weight nonnegative decision assessment).support) :
     response.transmission = none ∨
@@ -279,13 +274,13 @@ theorem rational_supported_response (forfeitPositive : 0 < forfeit)
 
 theorem sequentially_rational_supported_response (forfeitPositive : 0 < forfeit)
     (depositPositive : 0 < deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1)
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1)
     (response : app.Action)
     (supported : response ∈ (currentResponses weight nonnegative decision assessment).support) :
     response.transmission = none ∨
@@ -305,15 +300,15 @@ theorem sequentially_rational_supported_response (forfeitPositive : 0 < forfeit)
 
 theorem equilibrium_supported_response (forfeitPositive : 0 < forfeit)
     (depositPositive : 0 < deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (equilibrium : assessment.IsSequentialEquilibrium
       (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1)
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1)
     (response : app.Action)
     (supported : response ∈ (currentResponses weight nonnegative decision assessment).support) :
     response.transmission = none ∨
@@ -323,5 +318,90 @@ theorem equilibrium_supported_response (forfeitPositive : 0 < forfeit)
   sequentially_rational_supported_response weight nonnegative site representative decision current
     reward forfeit deposit forfeitPositive depositPositive assessment equilibrium.1 history response
       supported
+
+theorem accepted_reveal_available (physical next : app.State)
+    (ready : physical.config.cut.Ready bobRevealEvent)
+    (message : Message Player app.Payload)
+    (handled : app.handle physical message = some next) :
+    (next.config.outputs bobRevealEvent).isSome := by
+  have raw := (reactiveApplication_handle_eq_some LateOpeningRuntimeService.runtime leaks
+    physical next message handled).2
+  obtain ⟨event, _named, unfinished, complete⟩ := handle_completes
+    LateOpeningRuntimeService.runtime physical next ⟨message.id, message.payload.call⟩ raw
+  have eventEq : event = bobRevealEvent := by
+    change Fin 3 at event
+    fin_cases event
+    · exact (unfinished (ready.2 (by decide : aliceEvent ∈
+        nativeGraph.order.predecessors bobRevealEvent))).elim
+    · exact (unfinished (ready.2 (by decide : bobBindEvent ∈
+        nativeGraph.order.predecessors bobRevealEvent))).elim
+    · rfl
+  subst event
+  exact (next.config.output_available bobRevealEvent).mpr complete
+
+theorem handler_rejects_of_unpublished (physical : app.State)
+    (ready : physical.config.cut.Ready bobRevealEvent)
+    (message : Message Player app.Payload)
+    (unpublished : ((app.handle physical message).getD physical).config.store
+      (.inr bobRevealEvent) = none) :
+    app.handle physical message = none := by
+  cases handled : app.handle physical message with
+  | none => rfl
+  | some next =>
+      have available := accepted_reveal_available physical next ready message handled
+      change (next.config.store (.inr bobRevealEvent)).isSome = true at available
+      rw [handled, Option.getD_some] at unpublished
+      rw [unpublished] at available
+      cases available
+
+theorem unpublished_response_preserves (execution : app.Execution) (response : app.Action)
+    (ready : execution.application.config.cut.Ready bobRevealEvent)
+    (unpublished : (LateOpeningRuntimeBobResponseState.responseState
+      execution response).config.store
+      (.inr bobRevealEvent) = none) :
+    (LateOpeningRuntimeBobResponseState.responseState execution response).config =
+        execution.application.config ∧
+      (LateOpeningRuntimeBobResponseState.responseState execution response).clock =
+        execution.application.clock ∧
+      (LateOpeningRuntimeBobResponseState.responseState execution response).activatedAt =
+        execution.application.activatedAt := by
+  rcases response with ⟨transmission⟩
+  cases transmission with
+  | none => exact ⟨rfl, rfl, rfl⟩
+  | some material =>
+      have configSame := (LateOpeningRuntimeService.runtime.reactive_respond_application leaks
+        execution bob ⟨some material⟩).1
+      have publicSame := (LateOpeningRuntimeService.runtime.reactive_respond_application leaks
+        execution bob ⟨some material⟩).2
+      have submittedReady : (app.submit execution.application bob material).config.cut.Ready
+          bobRevealEvent := by
+        change (execution.respond app bob ⟨some material⟩).application.config.cut.Ready
+          bobRevealEvent
+        rw [configSame]
+        exact ready
+      have rejected := handler_rejects_of_unpublished
+        (app.submit execution.application bob material)
+        submittedReady _ unpublished
+      simp only [LateOpeningRuntimeBobResponseState.responseState, rejected, Option.getD_none]
+      exact ⟨configSame, congrArg PublicView.clock publicSame,
+        congrArg PublicView.activatedAt publicSame⟩
+
+theorem unpublished_service_preserves (weight : ℝ) (nonnegative : 0 ≤ weight)
+    (execution : app.Execution)
+    (trace : (app.protocol initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
+        (some ⟨12, some bob, execution⟩))
+    (response : app.Action) (ready : execution.application.config.cut.Ready bobRevealEvent)
+    (unpublished : (LateOpeningRuntimeBobFinalObservation.serviced
+      execution response).application.config.store (.inr bobRevealEvent) = none) :
+    (LateOpeningRuntimeBobFinalObservation.serviced execution response).application.config =
+        execution.application.config ∧
+      (LateOpeningRuntimeBobFinalObservation.serviced execution response).application.clock =
+        execution.application.clock ∧
+      (LateOpeningRuntimeBobFinalObservation.serviced execution response).application.activatedAt =
+        execution.application.activatedAt := by
+  rw [LateOpeningRuntimeBobFinalObservation.serviced_physical weight nonnegative 12 execution
+    trace response] at unpublished ⊢
+  exact unpublished_response_preserves execution response ready unpublished
 
 end Vegas.Examples.LateOpeningRuntimeOptionalPacket

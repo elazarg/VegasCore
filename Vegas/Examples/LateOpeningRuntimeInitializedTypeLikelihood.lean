@@ -120,8 +120,8 @@ theorem typed_branch_probability (profile : Profile weight nonnegative)
       exact same ((input_parameter_injective (Option.some.inj filtered)).symm)
     rw [zero, ENNReal.toReal_zero]
 
-variable (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+variable (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1) (execution : app.Execution)
   (current : representative.1.state = some ⟨14, some bob, execution⟩)
   (remembered : app.PlayerEntry) (member : remembered ∈ execution.recall bob)

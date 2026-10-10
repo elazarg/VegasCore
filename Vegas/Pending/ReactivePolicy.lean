@@ -14,8 +14,9 @@ earlier deviation, reusing a supported remembered choice. Disclosures open only
 when owner-local validation predicts successful publication; every failed result
 withholds. Accepted packets and matching silent decisions restore their original
 intentions; a silent sampled decision also prevents a later redraw.
-Whole-service correctness additionally requires protected service and a proof
-that these local observations agree with the source observations.
+The source-service reachable-frontier induction proves initialized source
+correctness under protected timely sequential and concurrent-binding service.
+Off-path strategic comparisons and native audit payoffs require separate evidence.
 -/
 
 noncomputable section

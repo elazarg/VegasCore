@@ -94,11 +94,11 @@ private theorem protected_cursor (control : app.Control)
 /-- The protected information class has no hidden physical or setup state
 uncertainty, including when it is unreached in the assessed strategy. -/
 theorem information_history_state
-    (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite alice)
-    (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite alice)
+    (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       alice site.1) (bit : Bool) (label : Fin 3)
     (current : representative.1.state = some ⟨25, some alice, protectedDecision bit label⟩)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory alice site.1) :
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory alice site.1) :
     history.1.state = some ⟨25, some alice, protectedDecision bit label⟩ := by
   have active := InformationModel.InformationSite.active _ site history
   obtain ⟨control, stateEq, actor⟩ := app.control_of_active initial

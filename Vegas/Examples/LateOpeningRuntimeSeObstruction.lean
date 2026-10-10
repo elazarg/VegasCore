@@ -31,8 +31,8 @@ variable (weight : ℝ) (nonnegative : 0 ≤ weight)
 
 private theorem accepted_information_representative (positive : 0 < weight)
     (bit seen : Bool) :
-    ∃ (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-      (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1),
+    ∃ (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+      (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1),
       history.1.state = some ⟨14, some bob, answerDecision bit 0 0 seen⟩ := by
   let history : (rawMenu.protocol initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).History :=
@@ -40,7 +40,7 @@ private theorem accepted_information_representative (positive : 0 < weight)
       (LateOpeningRuntimeLateHistories.answerDecision_trace weight nonnegative positive
         bit 0 0 seen (Or.inl rfl)).some⟩
   obtain ⟨site, information⟩ :=
-    (LateOpeningRuntimeNash.model weight nonnegative).exists_informationSite_of_active
+    (LateOpeningRuntimeGame.model weight nonnegative).exists_informationSite_of_active
       bob history (by change ¬ (14 = 0 ∧ some bob = none); simp) rfl
   exact ⟨site, ⟨history, information.symm⟩, rfl⟩
 
@@ -55,13 +55,13 @@ theorem equilibrium_excludes_one_safe_probability
       weight reward forfeit deposit)
     (openingMarginPositive : 0 < LateOpeningRuntimeAliceOpeningRationality.margin
       weight reward forfeit deposit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (equilibrium : assessment.IsSequentialEquilibrium
       (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who)) :
     ∃ bit,
       LateOpeningRuntimeAliceSuccessfulReduction.safeProbability
@@ -97,13 +97,13 @@ theorem equilibrium_terminal_law_ne_safe
       weight reward forfeit deposit)
     (profitable : reward / 2 < 3 * inclusionProbability weight * reward / 4 -
       (1 - inclusionProbability weight) * (forfeit + deposit alice))
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (equilibrium : assessment.IsSequentialEquilibrium
       (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who)) :
     nativeTerminalLaw weight nonnegative reward forfeit (fun actual => PMF.pure actual)
       deposit assessment.strategy ≠ safeTerminalLaw reward := by
@@ -148,13 +148,13 @@ theorem equilibrium_terminal_law_ne_intended
       weight reward forfeit deposit)
     (profitable : reward / 2 < 3 * inclusionProbability weight * reward / 4 -
       (1 - inclusionProbability weight) * (forfeit + deposit alice))
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (equilibrium : assessment.IsSequentialEquilibrium
       (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
     (source : setup.intendedModel.BehavioralAssessment)
     (sourceEquilibrium : source.IsSequentialEquilibrium

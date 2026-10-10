@@ -103,11 +103,11 @@ theorem safePolicy_admissible :
   answerPolicy_admissible weight nonnegative safe
 
 def answerFinitePolicy (answer : Answer) :
-    (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy bob :=
+    (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy bob :=
   rawMenu.restrictPolicy initial LateOpeningRuntimeService.horizon
     (LateOpeningRuntimeService.scheduler weight nonnegative) bob (answerPolicy answer)
 
-def safeFinitePolicy : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy bob :=
+def safeFinitePolicy : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy bob :=
   rawMenu.restrictPolicy initial LateOpeningRuntimeService.horizon
     (LateOpeningRuntimeService.scheduler weight nonnegative) bob safePolicy
 

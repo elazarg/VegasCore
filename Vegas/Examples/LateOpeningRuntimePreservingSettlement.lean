@@ -23,7 +23,7 @@ open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeUtilit
 variable (weight : ℝ) (nonnegative : 0 ≤ weight) (reward forfeit : ℝ)
   (sample : List (SettledEvidence setup .sequential) →
     PMF (List (SettledEvidence setup .sequential))) (deposit : Player → ℝ)
-  (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who)
+  (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who)
   (same : nativeTerminalLaw weight nonnegative reward forfeit sample deposit profile =
     safeTerminalLaw reward)
 
@@ -31,11 +31,11 @@ include same in
 theorem supported_settlement_matches
     (history : (rawMenu.protocol initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).History)
-    (reached : history ∈ ((LateOpeningRuntimeNash.model weight nonnegative).runBehavioral profile
+    (reached : history ∈ ((LateOpeningRuntimeGame.model weight nonnegative).runBehavioral profile
       (2 * LateOpeningRuntimeService.horizon + 1)).support)
     (payoffs : Player → ℝ)
     (supported : payoffs ∈
-      (LateOpeningRuntimeNash.settlement reward forfeit sample deposit history.state).support) :
+      (LateOpeningRuntimeGame.settlement reward forfeit sample deposit history.state).support) :
     ∃ initial ∈ prior.support,
       serviceSourceReadout setup .sequential deadline leaks history.state =
         some (finalState initial.1 initial.2 true safe true) ∧
@@ -56,9 +56,9 @@ realized settlement vector if the joint source law is reproduced. -/
 theorem history_settlement_pure
     (history : (rawMenu.protocol initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).History)
-    (reached : history ∈ ((LateOpeningRuntimeNash.model weight nonnegative).runBehavioral profile
+    (reached : history ∈ ((LateOpeningRuntimeGame.model weight nonnegative).runBehavioral profile
       (2 * LateOpeningRuntimeService.horizon + 1)).support) :
-    LateOpeningRuntimeNash.settlement reward forfeit sample deposit history.state =
+    LateOpeningRuntimeGame.settlement reward forfeit sample deposit history.state =
       PMF.pure (fun who : Player => if who = alice then reward / 2 else (2 / 5 : ℝ)) := by
   apply pmf_eq_pure_of_support_subset_singleton
   intro payoffs supported
@@ -70,16 +70,16 @@ include same in
 theorem history_payoff_fixed
     (history : (rawMenu.protocol initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).History)
-    (reached : history ∈ ((LateOpeningRuntimeNash.model weight nonnegative).runBehavioral profile
+    (reached : history ∈ ((LateOpeningRuntimeGame.model weight nonnegative).runBehavioral profile
       (2 * LateOpeningRuntimeService.horizon + 1)).support) (who : Player) :
-    LateOpeningRuntimeNash.payoff reward forfeit sample deposit history.state who =
+    LateOpeningRuntimeGame.payoff reward forfeit sample deposit history.state who =
       if who = alice then reward / 2 else (2 / 5 : ℝ) := by
   have equality := TerminalAudit.settlement_expect (nativeBaseUtility reward forfeit)
     (LateOpeningRuntimeService.runtime.serviceAuditObservation leaks)
     (serviceSourceAudit setup .sequential deadline leaks sample) deposit history.state who
-  change expect (LateOpeningRuntimeNash.settlement reward forfeit sample deposit history.state)
+  change expect (LateOpeningRuntimeGame.settlement reward forfeit sample deposit history.state)
     (fun payoffs => payoffs who) =
-      LateOpeningRuntimeNash.payoff reward forfeit sample deposit history.state who at equality
+      LateOpeningRuntimeGame.payoff reward forfeit sample deposit history.state who at equality
   rw [history_settlement_pure weight nonnegative reward forfeit sample deposit profile same
     history reached, expect_pure] at equality
   exact equality.symm
@@ -90,13 +90,13 @@ nonzero deposit. No audit authenticity or payoff-sign assumption is needed. -/
 theorem history_charge_zero
     (history : (rawMenu.protocol initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).History)
-    (reached : history ∈ ((LateOpeningRuntimeNash.model weight nonnegative).runBehavioral profile
+    (reached : history ∈ ((LateOpeningRuntimeGame.model weight nonnegative).runBehavioral profile
       (2 * LateOpeningRuntimeService.horizon + 1)).support)
     (who : Player) (nonzero : deposit who ≠ 0) :
     TerminalAudit.charge (LateOpeningRuntimeService.runtime.serviceAuditObservation leaks)
       (serviceSourceAudit setup .sequential deadline leaks sample) history.state who = 0 := by
   obtain ⟨payoffs, supported⟩ :=
-    (LateOpeningRuntimeNash.settlement reward forfeit sample deposit history.state).support_nonempty
+    (LateOpeningRuntimeGame.settlement reward forfeit sample deposit history.state).support_nonempty
   obtain ⟨initial, _, decoded, _⟩ := supported_settlement_matches weight nonnegative reward forfeit
     sample deposit profile same history reached payoffs supported
   have base : nativeBaseUtility reward forfeit history.state who =

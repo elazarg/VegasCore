@@ -31,20 +31,20 @@ open LateOpeningRuntimeBobSuccessOptimization (currentResponses)
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
 
 def bindingSafeProbability
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who)
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who)
     (execution : app.Execution) : ℝ :=
   ((bindingLaw (LateOpeningRuntimeFirstRetryComparison.players weight nonnegative profile)
     execution) (some (.success safe))).toReal
 
 theorem bindingSafeProbability_nonnegative
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who)
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who)
     (execution : app.Execution) : 0 ≤ bindingSafeProbability weight nonnegative profile execution :=
   ENNReal.toReal_nonneg
 
 section SuccessfulSite
 
-variable (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+variable (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1)
   (decision : DecisionHistory weight nonnegative)
   (current : representative.1.state = some ⟨14, some bob, decision.execution⟩)
@@ -55,7 +55,7 @@ include representative current in
 so a positive atom supplies a supported response selecting Safe. -/
 theorem positive_safe_label_bounds
     (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment))
     (positive : 0 < bindingSafeProbability weight nonnegative assessment.strategy
@@ -84,11 +84,11 @@ include representative current in
 bounded execution identifies it with the checked finite context. -/
 theorem rational_positive_safe_label_bounds
     (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
     (positive : 0 < bindingSafeProbability weight nonnegative assessment.strategy
       decision.execution) (label : Fin 3) :
@@ -110,21 +110,21 @@ end SuccessfulSite
 /-- If both actual typed Safe atoms are positive, every cross-label
 posterior product has the quantitative lower bound one twenty-fifth. -/
 theorem positive_safe_label_product_lower_bound
-    (firstSite secondSite : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-    (firstRepresentative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    (firstSite secondSite : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+    (firstRepresentative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       bob firstSite.1)
-    (secondRepresentative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    (secondRepresentative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       bob secondSite.1)
     (firstDecision secondDecision : DecisionHistory weight nonnegative)
     (firstCurrent : firstRepresentative.1.state = some ⟨14, some bob, firstDecision.execution⟩)
     (secondCurrent : secondRepresentative.1.state = some ⟨14, some bob, secondDecision.execution⟩)
     (reward forfeit : ℝ) (deposit : Player → ℝ)
     (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
     (firstPositive : 0 < bindingSafeProbability weight nonnegative assessment.strategy
       firstDecision.execution)
@@ -147,21 +147,21 @@ theorem positive_safe_label_product_lower_bound
 /-- No beliefs or reach probabilities are prescribed: the cross product
 concerns the supplied assessment's full actual information classes. -/
 theorem safe_zero_of_label_product_zero
-    (firstSite secondSite : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-    (firstRepresentative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    (firstSite secondSite : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+    (firstRepresentative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       bob firstSite.1)
-    (secondRepresentative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    (secondRepresentative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       bob secondSite.1)
     (firstDecision secondDecision : DecisionHistory weight nonnegative)
     (firstCurrent : firstRepresentative.1.state = some ⟨14, some bob, firstDecision.execution⟩)
     (secondCurrent : secondRepresentative.1.state = some ⟨14, some bob, secondDecision.execution⟩)
     (reward forfeit : ℝ) (deposit : Player → ℝ)
     (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
     (firstLabel secondLabel : Fin 3)
     (productZero : readoutBelief weight nonnegative firstSite assessment initializedLabel
@@ -191,7 +191,7 @@ theorem safe_zero_of_label_product_zero
   norm_num at lower
 
 theorem canonical_bindingSafeProbability (positive : 0 < weight)
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who)
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who)
     (bit : Bool) (label : Fin 3) (slot : Fin 2) (seen : Bool)
     (samplePossible : slot = 0 ∨ seen = false) :
     bindingSafeProbability weight nonnegative profile
@@ -207,19 +207,19 @@ theorem canonical_bindingSafeProbability (positive : 0 < weight)
 /-- This form directly uses the native canonical accepted-opening
 representatives, while retaining their arbitrary private labels and raw policy. -/
 theorem rational_positive_safeProbability_label_bounds (positive : 0 < weight)
-    (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-    (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+    (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       bob site.1) (bit : Bool) (privateLabel : Fin 3) (slot : Fin 2) (seen : Bool)
     (samplePossible : slot = 0 ∨ seen = false)
     (current : representative.1.state = some ⟨14, some bob,
       LateOpeningRuntimeLateAcceptance.answerDecision bit privateLabel slot seen⟩)
     (reward forfeit : ℝ) (deposit : Player → ℝ)
     (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
     (safePositive : 0 < safeProbability
       (LateOpeningRuntimeFirstRetryComparison.players weight nonnegative assessment.strategy)
@@ -237,10 +237,10 @@ theorem rational_positive_safeProbability_label_bounds (positive : 0 < weight)
   exact safePositive
 
 theorem safeProbability_zero_of_label_product_zero (positive : 0 < weight)
-    (firstSite secondSite : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-    (firstRepresentative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    (firstSite secondSite : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+    (firstRepresentative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       bob firstSite.1)
-    (secondRepresentative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    (secondRepresentative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       bob secondSite.1) (bit : Bool) (firstPrivateLabel secondPrivateLabel : Fin 3)
     (firstCurrent : firstRepresentative.1.state = some ⟨14, some bob,
       LateOpeningRuntimeLateAcceptance.answerDecision bit firstPrivateLabel 0 true⟩)
@@ -248,11 +248,11 @@ theorem safeProbability_zero_of_label_product_zero (positive : 0 < weight)
       LateOpeningRuntimeLateAcceptance.answerDecision bit secondPrivateLabel 0 false⟩)
     (reward forfeit : ℝ) (deposit : Player → ℝ)
     (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
     (firstLabel secondLabel : Fin 3)
     (productZero : readoutBelief weight nonnegative firstSite assessment initializedLabel

@@ -24,8 +24,8 @@ open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeReadou
   LateOpeningRuntimeAliceFirstResponse
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite alice)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite alice)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     alice site.1)
   (decision : DecisionHistory weight nonnegative)
   (current : representative.1.state = some ⟨22, some alice, decision.execution⟩)
@@ -38,11 +38,11 @@ theorem repair_regret
     (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit alice)
     (openingMarginPositive : 0 < LateOpeningRuntimeAliceOpeningRationality.margin
       weight reward forfeit deposit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who)) :
     LateOpeningRuntimeAliceRationality.margin weight reward forfeit deposit *
         ((responseLaw weight nonnegative site (assessment.strategy alice site.1)).toOuterMeasure
@@ -59,16 +59,16 @@ theorem repair_regret
   let recover := decisionOfInformation weight nonnegative site representative decision current
   let utility := aliceUtility reward forfeit deposit
   let row := fun pair :
-      (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory alice site.1 ×
+      (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory alice site.1 ×
         app.Action => expect
     (LateOpeningRuntimeAliceFirstPacket.responseLaw weight nonnegative
       (recover pair.1) pair.2 players) utility
   let repaired := fun pair :
-      (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory alice site.1 ×
+      (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory alice site.1 ×
         app.Action => (pair.1, repairResponse weight nonnegative decision pair.2)
   let joint := belief.bind fun history => actions.map fun response => (history, response)
   let bad : Set
-      ((LateOpeningRuntimeNash.model weight nonnegative).InformationHistory alice site.1 ×
+      ((LateOpeningRuntimeGame.model weight nonnegative).InformationHistory alice site.1 ×
         app.Action) := {pair | ¬ PermittedResponse weight nonnegative decision pair.2}
   let indicator := fun pair =>
     @ite ℝ (pair ∈ bad) (Classical.propDecidable _) 1 0
@@ -181,11 +181,11 @@ theorem sequentially_rational_nongenuine_packet_zero
     (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit alice)
     (openingMarginPositive : 0 < LateOpeningRuntimeAliceOpeningRationality.margin
       weight reward forfeit deposit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who)) :
     ((responseLaw weight nonnegative site (assessment.strategy alice site.1)).toOuterMeasure
       {response | ¬ PermittedResponse weight nonnegative decision response}).toReal = 0 := by
@@ -223,13 +223,13 @@ theorem equilibrium_nongenuine_packet_zero
     (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit alice)
     (openingMarginPositive : 0 < LateOpeningRuntimeAliceOpeningRationality.margin
       weight reward forfeit deposit)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (equilibrium : assessment.IsSequentialEquilibrium
       (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who)) :
     ((responseLaw weight nonnegative site (assessment.strategy alice site.1)).toOuterMeasure
       {response | ¬ PermittedResponse weight nonnegative decision response}).toReal = 0 :=

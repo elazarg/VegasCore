@@ -72,11 +72,11 @@ theorem rational_response_payoff
     (samplePossible : slot = 0 ∨ earlySeen = false)
     (reward forfeit : ℝ) (deposit : Player → ℝ)
     (forfeitPositive : 0 < forfeit) (depositPositive : 0 < deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
     (players : Player → app.Policy)
     (bobPolicy : players bob = rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
@@ -93,7 +93,7 @@ theorem rational_response_payoff
       ∀ final ∈ (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative) players 14
         ((failedAnswerDecision bit label slot earlySeen finalSeen).respond app bob
           response)).support,
-        LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+        LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
           deposit (app.finished final) alice = failureValue reward label answer -
             forfeit - deposit alice := by
   let decision := decisionHistory weight nonnegative bit label slot earlySeen finalSeen
@@ -107,9 +107,9 @@ theorem rational_response_payoff
       (LateOpeningRuntimeService.scheduler weight nonnegative)).terminal history.state := by
     change ¬ (14 = 0 ∧ some bob = none)
     simp
-  obtain ⟨site, same⟩ := (LateOpeningRuntimeNash.model weight nonnegative)
+  obtain ⟨site, same⟩ := (LateOpeningRuntimeGame.model weight nonnegative)
     |>.exists_informationSite_of_active bob history running rfl
-  let representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  let representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       bob site.1 := ⟨history, same.symm⟩
   have current : representative.1.state = some ⟨14, some bob, decision.execution⟩ := rfl
   have localRational := rational bob site
@@ -172,18 +172,18 @@ theorem receiver_expected_value
     (reward forfeit : ℝ) (deposit : Player → ℝ)
     (rewardNonnegative : 0 ≤ reward) (forfeitPositive : 0 < forfeit)
     (aliceDepositNonnegative : 0 ≤ deposit alice) (bobDepositPositive : 0 < deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who))
     (players : Player → app.Policy)
     (bobPolicy : players bob = rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy bob) :
     expect (receiverCompletion weight nonnegative players
       (failedAnswerDecision bit label slot earlySeen finalSeen))
-      (fun final => LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+      (fun final => LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
         deposit (app.finished final) alice) =
     expect (players bob ((failedAnswerDecision bit label slot earlySeen finalSeen).recall bob)
       ((failedAnswerDecision bit label slot earlySeen finalSeen).observe app bob)) (fun response =>
@@ -202,11 +202,11 @@ theorem receiver_expected_value
     exact failureBindingValue_abs_le reward rewardNonnegative label _
   have value : expect (receiverCompletion weight nonnegative players
       (failedAnswerDecision bit label slot earlySeen finalSeen))
-      (fun final => LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual)
+      (fun final => LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual)
         deposit (app.finished final) alice) =
       expect responses (fun response => score response - forfeit - deposit alice) := by
     have integrable (law : PMF app.Execution) : PayoffIntegrable law
-        (fun final => LateOpeningRuntimeNash.payoff reward forfeit
+        (fun final => LateOpeningRuntimeGame.payoff reward forfeit
           (fun actual => PMF.pure actual) deposit (app.finished final) alice) :=
       LateOpeningRuntimeAliceContinuation.aliceUtility_integrable rewardNonnegative
         forfeitPositive.le deposit aliceDepositNonnegative law

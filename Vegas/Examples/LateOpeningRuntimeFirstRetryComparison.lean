@@ -26,7 +26,7 @@ open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeLatePr
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
 
 abbrev Profile := ∀ who,
-  (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who
+  (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who
 
 def players (profile : Profile weight nonnegative) : Player → app.Policy :=
   rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon

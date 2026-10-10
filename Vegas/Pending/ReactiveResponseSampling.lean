@@ -441,4 +441,37 @@ theorem prescribedReactivePosterior_ready_prefix_origin (runtime : EventGraphRun
   exact List.mem_append_left _ paired
 
 
+/-- A paired sampled intention retains its actual generating callback law. -/
+theorem prescribedReactivePosterior_paired_response
+    (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (who : Player) (policy : graph.BehavioralPolicy who)
+    {history : List (runtime.reactiveApplication leaks).PlayerEntry}
+    (consistent : (runtime.prescribedReactivePolicy leaks who policy).Consistent history)
+    (intentions : List (Option graph.Completion))
+    (supported : intentions ∈
+      ((runtime.prescribedReactiveImplementation leaks who policy).posterior history).support) :
+    ∀ entry remembered, (entry, some remembered) ∈ history.zip intentions →
+      ∃ earlier previous,
+        (entry.action, some remembered) ∈
+          (runtime.prescribedReactiveResponse leaks who policy earlier previous
+            entry.beforeView).support := by
+  induction consistent generalizing intentions with
+  | nil => simp
+  | @snoc history latest consistent positive ih =>
+      obtain ⟨previous, prior, saved, memoryEq, produced⟩ :=
+        runtime.prescribedReactivePosterior_snoc_support leaks who policy history latest
+          positive intentions supported
+      have aligned := (runtime.prescribedReactivePosterior_length leaks who policy
+        consistent previous prior).symm
+      intro entry remembered paired
+      rw [memoryEq, List.zip_append aligned] at paired
+      rcases List.mem_append.mp paired with earlier | current
+      · exact ih previous prior entry remembered earlier
+      · have equal : entry = latest ∧ some remembered = saved := by
+          simpa only [List.zip_cons_cons, List.zip_nil_left, List.mem_singleton,
+            Prod.mk.injEq] using current
+        obtain ⟨rfl, rfl⟩ := equal
+        exact ⟨history, previous, produced⟩
+
 end Vegas.EventGraphRuntime

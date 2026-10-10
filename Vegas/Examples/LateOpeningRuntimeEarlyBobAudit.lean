@@ -2,7 +2,7 @@
 
 import Vegas.Examples.LateOpeningRuntimeRetryAudit
 import Vegas.Examples.LateOpeningRuntimeServiceReceipt
-import Vegas.Examples.LateOpeningRuntimeNash
+import Vegas.Examples.LateOpeningRuntimeGame
 import Interaction.ReactiveReceiptIdentity
 import Interaction.ReactiveTrafficContinuation
 
@@ -175,7 +175,7 @@ theorem bob_rejected_envelope_utility_bound {reward forfeit : ℝ}
     (present : traffic ∈ app.executionTraffic control.execution)
     (owner : traffic.envelope.sender = bob)
     (rejected : (traffic.envelope.id, false) ∈ control.execution.receipts) :
-    LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual) deposit
+    LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit
       (some control) bob ≤ 1 - deposit bob := by
   have completed := LateOpeningRuntimeService.completes weight nonnegative control trace terminal
   obtain ⟨bit, label, aliceResult, binding, answer, decoded⟩ := nativeReadout_complete
@@ -187,7 +187,7 @@ theorem bob_rejected_envelope_utility_bound {reward forfeit : ℝ}
   have charged := rejected_envelope_full_charge weight nonnegative control trace terminal bob
     traffic present owner rejected
   have penalty := mul_le_mul_of_nonneg_right charged depositNonnegative
-  unfold LateOpeningRuntimeNash.payoff TerminalAudit.utility
+  unfold LateOpeningRuntimeGame.payoff TerminalAudit.utility
   rw [base]
   linarith
 
@@ -207,7 +207,7 @@ theorem early_submission_continuation_utility_bound {reward forfeit : ℝ}
     (players : Player → app.Policy) (final : app.Execution)
     (reached : final ∈ (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative)
       players 21 (execution.respond app bob ⟨some submission⟩)).support) :
-    LateOpeningRuntimeNash.payoff reward forfeit (fun actual => PMF.pure actual) deposit
+    LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit
       (some ⟨0, none, final⟩) bob ≤ 1 - deposit bob := by
   obtain ⟨submittedTrace⟩ := app.raw_trace_respond initial LateOpeningRuntimeService.horizon
     (LateOpeningRuntimeService.scheduler weight nonnegative) 21 execution bob

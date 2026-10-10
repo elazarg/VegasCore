@@ -32,15 +32,15 @@ def initializedLabel (state : app.ProtocolState) : Option (Fin 3) :=
   state.map (fun control => originalLabel control.execution)
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1)
   (decision : DecisionHistory weight nonnegative)
   (current : representative.1.state = some ⟨14, some bob, decision.execution⟩)
   (reward forfeit : ℝ) (deposit : Player → ℝ)
 
 theorem label_mass_eq_readout
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (label : Fin 3) :
     labelMass weight nonnegative site representative decision current assessment label =
       readoutBelief weight nonnegative site assessment initializedLabel (some label) := by
@@ -58,7 +58,7 @@ theorem label_mass_eq_readout
 
 include representative decision current in
 theorem best_value_eq_posterior_max
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     bestAnswerValue weight nonnegative site reward forfeit deposit assessment =
       max (2 / 5) (max (readoutBelief weight nonnegative site assessment initializedLabel (some 0))
         (max (readoutBelief weight nonnegative site assessment initializedLabel (some 1))
@@ -71,7 +71,7 @@ theorem best_value_eq_posterior_max
 include representative decision current in
 theorem rational_value_eq_posterior_max (forfeitNonnegative : 0 ≤ forfeit)
     (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment)) :
     (context weight nonnegative site reward forfeit deposit assessment).value
@@ -89,13 +89,13 @@ include representative decision current in
 independent posterior witnesses for the three label guesses. -/
 theorem conditional_value_tendsto (forfeitNonnegative : 0 ≤ forfeit)
     (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment))
-    (sequence : ℕ → (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (sequence : ℕ → (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (mixed : ∀ n, (sequence n).IsFullyMixed)
     (bayes : ∀ n, InformationModel.BehavioralAssessment.IsBayesConsistent
-      (LateOpeningRuntimeNash.model weight nonnegative) (sequence n)
+      (LateOpeningRuntimeGame.model weight nonnegative) (sequence n)
       (rawMenu.decisionInformationAntichain initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)))
     (converges : InformationModel.BehavioralAssessmentConvergesPointwise sequence assessment) :

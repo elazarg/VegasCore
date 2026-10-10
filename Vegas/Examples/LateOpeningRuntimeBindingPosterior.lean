@@ -22,21 +22,21 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeBindingPrefix
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1)
   (execution : app.Execution)
   (current : representative.1.state = some ⟨14, some bob, execution⟩)
   (ready : execution.application.config.cut.Ready bobBindEvent)
 
 def readoutBelief {Label : Type}
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (readout : app.ProtocolState → Label) (value : Label) : ℝ :=
   InformationModel.finiteHistoryBelief assessment bob site
     (readoutHistories weight nonnegative site readout value)
 
 def conditionalPrefixProbability {Label : Type}
-    (profile : ∀ who, (LateOpeningRuntimeNash.model weight nonnegative).BehavioralPolicy who)
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who)
     (readout : app.ProtocolState → Label) (value : Label) : ℝ :=
   ((bindingPrefix weight nonnegative profile).toOuterMeasure
     {state | app.observe bob state = site.1 ∧ readout state = value}).toReal /
@@ -45,26 +45,26 @@ def conditionalPrefixProbability {Label : Type}
 
 include current ready in
 theorem information_probability_positive
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (mixed : assessment.IsFullyMixed) :
     0 < ((bindingPrefix weight nonnegative assessment.strategy).toOuterMeasure
       {state | app.observe bob state = site.1}).toReal := by
   rw [← information_mass_eq_prefix weight nonnegative site representative execution current ready]
   exact ENNReal.toReal_pos
-    (ne_of_gt ((LateOpeningRuntimeNash.model weight nonnegative).informationMass_pos_of_fullSupport
+    (ne_of_gt ((LateOpeningRuntimeGame.model weight nonnegative).informationMass_pos_of_fullSupport
       assessment.strategy mixed bob site))
     (ne_top_of_le_ne_top ENNReal.one_ne_top
-      ((LateOpeningRuntimeNash.model weight nonnegative).informationMass_le_one
+      ((LateOpeningRuntimeGame.model weight nonnegative).informationMass_le_one
         assessment.strategy bob site
         (rawMenu.decisionInformationAntichain initial LateOpeningRuntimeService.horizon
           (LateOpeningRuntimeService.scheduler weight nonnegative) bob site)))
 
 include current ready in
 theorem bayes_readout_belief_eq_conditional_probability {Label : Type}
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (mixed : assessment.IsFullyMixed)
     (bayes : InformationModel.BehavioralAssessment.IsBayesConsistent
-      (LateOpeningRuntimeNash.model weight nonnegative) assessment
+      (LateOpeningRuntimeGame.model weight nonnegative) assessment
       (rawMenu.decisionInformationAntichain initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)))
     (readout : app.ProtocolState → Label) (value : Label) :
@@ -74,18 +74,18 @@ theorem bayes_readout_belief_eq_conditional_probability {Label : Type}
   rw [InformationModel.finiteHistoryBelief_eq_div_reach
     (rawMenu.decisionInformationAntichain initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)) bayes bob site
-    ((LateOpeningRuntimeNash.model weight nonnegative).informationMass_pos_of_fullSupport
+    ((LateOpeningRuntimeGame.model weight nonnegative).informationMass_pos_of_fullSupport
       assessment.strategy mixed bob site),
     finite_history_reach_eq_prefix weight nonnegative site representative execution current ready,
     information_mass_eq_prefix weight nonnegative site representative execution current ready]
 
 include current ready in
 theorem conditional_probability_tendsto {Label : Type}
-    (sequence : ℕ → (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (sequence : ℕ → (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (mixed : ∀ n, (sequence n).IsFullyMixed)
     (bayes : ∀ n, InformationModel.BehavioralAssessment.IsBayesConsistent
-      (LateOpeningRuntimeNash.model weight nonnegative) (sequence n)
+      (LateOpeningRuntimeGame.model weight nonnegative) (sequence n)
       (rawMenu.decisionInformationAntichain initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)))
     (converges : InformationModel.BehavioralAssessmentConvergesPointwise sequence assessment)
@@ -104,14 +104,14 @@ include current ready in
 /-- A single native consistency witness determines all readout posteriors.
 There is no positive lower bound on the limiting information probability. -/
 theorem consistent_conditional_probabilities {Label : Type}
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (consistent : assessment.IsSequentiallyConsistent
       (rawMenu.decisionInformationAntichain initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative))) :
-    ∃ sequence : ℕ → (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment,
+    ∃ sequence : ℕ → (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment,
       (∀ n, (sequence n).IsFullyMixed ∧
         InformationModel.BehavioralAssessment.IsBayesConsistent
-          (LateOpeningRuntimeNash.model weight nonnegative) (sequence n)
+          (LateOpeningRuntimeGame.model weight nonnegative) (sequence n)
           (rawMenu.decisionInformationAntichain initial LateOpeningRuntimeService.horizon
             (LateOpeningRuntimeService.scheduler weight nonnegative))) ∧
       InformationModel.BehavioralAssessmentConvergesPointwise sequence assessment ∧

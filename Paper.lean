@@ -1,6 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceCompilation
+import Vegas.Game.SourceServiceReactiveLaw
+import Vegas.Examples.LateOpeningRuntimeBobDirtyDisclosurePublication
+import Vegas.Examples.LateOpeningRuntimeAliceProtectedPublication
 import Vegas.EventGraph.ConfigRestriction
 import Vegas.Pending.ReactiveFrontierEnvironment
 import Vegas.Pending.ReactiveFrontierSampling
@@ -3004,3 +3007,50 @@ open Vegas.Examples.LateOpeningRuntimeBobDirtyOptionalFiber in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms rational_supported_response_not_failure
+
+open Vegas in
+/-- info: 'Vegas.source_prescribed_terminal_joint_store_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms source_prescribed_terminal_joint_store_law
+
+open Vegas in
+/-- info: 'Vegas.source_prescribed_terminal_joint_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms source_prescribed_terminal_joint_law
+
+open Vegas.Examples.LateOpeningRuntimeBobDirtyDisclosurePublication in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeBobDirtyDisclosurePublication.binding_response_publication'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms binding_response_publication
+
+open Vegas.Examples.LateOpeningRuntimeBobDirtyDisclosurePublication in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeBobDirtyDisclosurePublication.binding_payoff_floor'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms binding_payoff_floor
+
+open Vegas.Examples.LateOpeningRuntimeAliceProtectedPublication in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeAliceProtectedPublication.accepted_genuine_floor'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms accepted_genuine_floor
+
+open Vegas.Examples.LateOpeningRuntimeAliceProtectedPublication in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeAliceProtectedPublication.opening_payoff_floor'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms opening_payoff_floor
+
+open Vegas.Examples.LateOpeningRuntimeAliceSuccessFloor in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeAliceSuccessFloor.sourceUtility_highLabel_upper'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms sourceUtility_highLabel_upper

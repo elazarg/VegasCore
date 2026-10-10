@@ -25,15 +25,15 @@ open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeEarlyB
   LateOpeningRuntimeEarlyBobSafeDecision
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1)
   (decision : DecisionHistory weight nonnegative)
   (current : representative.1.state = some ⟨21, some bob, decision.execution⟩)
   (reward forfeit : ℝ) (deposit : Player → ℝ)
 
 theorem responseValue_integrable
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment) :
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     PayoffIntegrable
       (responseLaw weight nonnegative site (assessment.strategy bob site.1))
       (responseValue weight nonnegative site representative decision current
@@ -43,7 +43,7 @@ theorem responseValue_integrable
     (utility_bounded reward forfeit deposit)
 
 theorem quiet_responseValue_bound
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (response : app.Action) (quiet : ¬ response.transmission.isSome) :
     responseValue weight nonnegative site representative decision current
       reward forfeit deposit assessment response ≤
@@ -62,7 +62,7 @@ include representative decision current in
 raw packet, even at information sites reached only by previous deviations. -/
 theorem rational_early_packet_zero
     (forfeitNonnegative : 0 ≤ forfeit) (collateral : 1 < deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment)) :
     ((responseLaw weight nonnegative site (assessment.strategy bob site.1)).toOuterMeasure
@@ -101,11 +101,11 @@ theorem rational_early_packet_zero
 include representative decision current in
 theorem sequentially_rational_early_packet_zero
     (forfeitNonnegative : 0 ≤ forfeit) (collateral : 1 < deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who)) :
     ((responseLaw weight nonnegative site (assessment.strategy bob site.1)).toOuterMeasure
       {response | response.transmission.isSome}).toReal = 0 := by
@@ -125,13 +125,13 @@ include representative decision current in
 quiet before the earlier publication settles when the full audit exceeds one. -/
 theorem equilibrium_early_packet_zero
     (forfeitNonnegative : 0 ≤ forfeit) (collateral : 1 < deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (equilibrium : assessment.IsSequentialEquilibrium
       (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who)) :
     ((responseLaw weight nonnegative site (assessment.strategy bob site.1)).toOuterMeasure
       {response | response.transmission.isSome}).toReal = 0 :=
@@ -161,11 +161,11 @@ include representative decision current in
 be reused directly in later physical-prefix and belief calculations. -/
 theorem sequentially_rational_early_response_law
     (forfeitNonnegative : 0 ≤ forfeit) (collateral : 1 < deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who)) :
     responseLaw weight nonnegative site (assessment.strategy bob site.1) = PMF.pure ⟨none⟩ :=
   pure_quiet_of_packet_zero _
@@ -177,13 +177,13 @@ include representative decision current in
 response law at an early unresolved-publication class. -/
 theorem equilibrium_early_response_law
     (forfeitNonnegative : 0 ≤ forfeit) (collateral : 1 < deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (equilibrium : assessment.IsSequentialEquilibrium
       (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeNash.payoff reward forfeit
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who)) :
     responseLaw weight nonnegative site (assessment.strategy bob site.1) = PMF.pure ⟨none⟩ :=
   sequentially_rational_early_response_law weight nonnegative site representative decision current
@@ -193,7 +193,7 @@ theorem equilibrium_early_response_law
 epsilon divided by collateral-minus-one premature-packet probability bound. -/
 theorem early_packet_le_of_deviation_regrets
     (forfeitNonnegative : 0 ≤ forfeit) (collateral : 1 < deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (epsilon : ℝ)
     (quietRegret : (context weight nonnegative site reward forfeit deposit assessment).value
         (quietPolicy weight nonnegative site representative decision current assessment) -

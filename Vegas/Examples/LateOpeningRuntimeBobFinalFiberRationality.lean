@@ -22,8 +22,8 @@ open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeReadou
   LateOpeningRuntimeBobRationality LateOpeningRuntimeBobFinalObservation
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
-  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
     bob site.1)
   (decision : DecisionHistory weight nonnegative)
   (current : representative.1.state = some ⟨6, some bob, decision.execution⟩)
@@ -52,14 +52,14 @@ theorem continuation_answer_same_information
   simpa only [continuation, PMF.map_comp, Function.comp_def, answerView_physical] using readout
 
 def responseContinuationLaw
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (history : DecisionHistory weight nonnegative) (players : Player → app.Policy) :
     PMF app.Execution :=
   ((assessment.strategy bob site.1).map (fun choice => choice.1.getD ⟨none⟩)).bind fun response =>
     continuation weight nonnegative history response players
 
 theorem finalLaw_answer_law
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (players : Player → app.Policy) :
     (finalLaw weight nonnegative site representative decision current assessment
       (assessment.strategy bob)).map
@@ -103,10 +103,10 @@ theorem rational_every_history_failure_zero
     (forfeitPositive : 0 < forfeit)
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit sample deposit assessment))
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1)
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1)
     (players : Player → app.Policy) :
     ((responseContinuationLaw weight nonnegative site assessment
       (decisionOfInformation weight nonnegative site representative decision current history)
@@ -137,10 +137,10 @@ theorem rational_supported_publication
     (forfeitPositive : 0 < forfeit)
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit sample deposit assessment))
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1)
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1)
     (response : app.Action)
     (supported : response ∈ ((assessment.strategy bob site.1).map
       (fun choice => choice.1.getD ⟨none⟩)).support)
@@ -196,13 +196,13 @@ theorem sequentially_rational_supported_publication
     (forfeitPositive : 0 < forfeit)
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRational
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
       (fun who history =>
-        LateOpeningRuntimeNash.payoff reward forfeit sample deposit history.state who))
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1)
+        LateOpeningRuntimeGame.payoff reward forfeit sample deposit history.state who))
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1)
     (response : app.Action)
     (supported : response ∈ ((assessment.strategy bob site.1).map
       (fun choice => choice.1.getD ⟨none⟩)).support)
@@ -229,15 +229,15 @@ theorem equilibrium_supported_publication
     (forfeitPositive : 0 < forfeit)
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (depositNonnegative : 0 ≤ deposit bob)
-    (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (equilibrium : assessment.IsSequentialEquilibrium
       (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain
       (rawMenu.bounded initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
       (fun who history =>
-        LateOpeningRuntimeNash.payoff reward forfeit sample deposit history.state who))
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1)
+        LateOpeningRuntimeGame.payoff reward forfeit sample deposit history.state who))
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1)
     (response : app.Action)
     (supported : response ∈ ((assessment.strategy bob site.1).map
       (fun choice => choice.1.getD ⟨none⟩)).support)

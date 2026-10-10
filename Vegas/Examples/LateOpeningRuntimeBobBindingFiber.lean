@@ -26,8 +26,8 @@ open LateOpeningRuntimeBobBindingInformation
 /-- Every compatible history is at the actual first binding callback,
 including histories with earlier non-silent receiver responses. -/
 theorem binding_history_same_information (weight : ℝ) (nonnegative : 0 ≤ weight)
-    (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
-    (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
+    (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       bob site.1)
     (execution : app.Execution)
     (trace : (app.protocol initial LateOpeningRuntimeService.horizon
@@ -35,7 +35,7 @@ theorem binding_history_same_information (weight : ℝ) (nonnegative : 0 ≤ wei
         (some ⟨14, some bob, execution⟩))
     (ready : execution.application.config.cut.Ready bobBindEvent)
     (current : representative.1.state = some ⟨14, some bob, execution⟩)
-    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1) :
+    (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1) :
     ∃ other : app.Execution,
       history.1.state = some ⟨14, some bob, other⟩ ∧
       execution.recall bob = other.recall bob ∧
