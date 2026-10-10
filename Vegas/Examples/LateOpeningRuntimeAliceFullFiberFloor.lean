@@ -127,8 +127,11 @@ theorem sequentially_rational_supported_payoff_floor (rewardNonnegative : 0 ≤ 
   obtain ⟨answer, _, shape, published⟩ := sequentially_rational_supported_publication weight
     nonnegative site representative decision current reward forfeit deposit forfeitPositive
       depositPositive assessment rational response supported
+  let recovered := decisionOfInformation weight nonnegative site representative decision current
+    history
   exact LateOpeningRuntimeAliceSuccessFloor.continuation_payoff_floor weight nonnegative
-    _ response players final reached answer (published history players bobPolicy final reached)
+    recovered.execution recovered.trace recovered.bit recovered.published response players final
+    reached answer (published history players bobPolicy final reached)
       shape labelLow reward forfeit rewardNonnegative deposit (fun actual => PMF.pure actual)
 
 end Vegas.Examples.LateOpeningRuntimeAliceFullFiberFloor

@@ -4,7 +4,12 @@ import Vegas.Game.SourceServiceCompilation
 import Vegas.EventGraph.ConfigRestriction
 import Vegas.Pending.ReactiveFrontierEnvironment
 import Vegas.Pending.ReactiveFrontierSampling
+import Vegas.Pending.ReactiveFrontierInclusion
+import Vegas.Pending.ReactiveFrontierPotential
+import Vegas.Pending.ReactiveFrontierExpiry
 import Vegas.Examples.LateOpeningRuntimeBobDirtyFinalRationality
+import Vegas.Examples.LateOpeningRuntimeBobDirtyFinalFiber
+import Vegas.Examples.LateOpeningRuntimeBobDirtyOptionalFiber
 import Vegas.Game.IntendedPreservation
 import Vegas.Game.IntendedServiceCompilation
 import Vegas.Game.ReactiveSourceObservation
@@ -2949,3 +2954,53 @@ open Vegas.Examples.LateOpeningRuntimeBobDirtyFinalRationality in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms rational_final_failure_zero
+
+open Vegas.EventGraphRuntime.ReactiveFrontier in
+/-- info: 'Vegas.EventGraphRuntime.ReactiveFrontier.include_pending'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms include_pending
+
+open Vegas.EventGraphRuntime.ReactiveFrontier in
+/-- info: 'Vegas.EventGraphRuntime.ReactiveFrontier.response_harmonic'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms response_harmonic
+
+open Vegas.EventGraphRuntime.ReactiveFrontier in
+/-- info: 'Vegas.EventGraphRuntime.ReactiveFrontier.sample_command_harmonic'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms sample_command_harmonic
+
+open Vegas.EventGraphRuntime.ReactiveFrontier in
+/-- info: 'Vegas.EventGraphRuntime.ReactiveFrontier.expire_silent_resolution'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms expire_silent_resolution
+
+open Vegas.Examples.LateOpeningRuntimeBobSunkDisclosure in
+/-- info: 'Vegas.Examples.LateOpeningRuntimeBobSunkDisclosure.canonical_dominates'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms canonical_dominates
+
+open Vegas.Examples.LateOpeningRuntimeBobDirtyFinalFiber in
+/-- info: 'Vegas.Examples.LateOpeningRuntimeBobDirtyFinalFiber.rational_supported_publication'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms rational_supported_publication
+
+open Vegas.Examples.LateOpeningRuntimeBobDirtyOptionalRationality in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeBobDirtyOptionalRationality.rational_optional_failure_zero'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms rational_optional_failure_zero
+
+open Vegas.Examples.LateOpeningRuntimeBobDirtyOptionalFiber in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeBobDirtyOptionalFiber.rational_supported_response_not_failure'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms rational_supported_response_not_failure

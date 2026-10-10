@@ -47,33 +47,39 @@ variable (weight : ℝ) (nonnegative : 0 ≤ weight)
 
 /-- Actual sender payoff keeps its own audit deduction, without assuming
 that Bob's zero audit charge clears Alice's earlier or later packets. -/
-theorem continuation_payoff_floor (decision : DecisionHistory weight nonnegative)
+theorem continuation_payoff_floor
+    (execution : app.Execution)
+    (trace : (app.protocol initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
+      (some ⟨14, some bob, execution⟩))
+    (publishedBit : Bool)
+    (publishedAlice : execution.application.config.store (.inr aliceEvent) =
+      some (.success publishedBit : PublicationResult Bool))
     (response : app.Action) (players : Player → app.Policy) (final : app.Execution)
     (reached : final ∈ (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative)
-      players 14 (decision.execution.respond app bob response)).support)
+      players 14
+      (execution.respond app bob response)).support)
     (answer : Answer)
-    (published : final.application.config.store (.inr bobRevealEvent) = some (.success answer))
-    (shape : answer = safe ∨ ∃ label : Fin 3, answer = labelGuess label)
-    (labelLow : (originalLabel decision.execution).val < 2)
+    (publishedBob : final.application.config.store (.inr bobRevealEvent) = some (.success answer))
+    (shape : answer = safe ∨ ∃ guessed : Fin 3, answer = labelGuess guessed)
+    (labelLow : (originalLabel execution).val < 2)
     (reward forfeit : ℝ) (rewardNonnegative : 0 ≤ reward) (deposit : Player → ℝ)
     (sample : List (SettledEvidence setup .sequential) →
       PMF (List (SettledEvidence setup .sequential))) :
-    reward / 2 - TerminalAudit.charge
-      (LateOpeningRuntimeService.runtime.serviceAuditObservation leaks)
+    reward / 2 - TerminalAudit.charge (LateOpeningRuntimeService.runtime.serviceAuditObservation
+      leaks)
       (serviceSourceAudit setup .sequential deadline leaks sample) (app.finished final) alice *
         deposit alice ≤
       LateOpeningRuntimeNash.payoff reward forfeit sample deposit (app.finished final) alice := by
-  obtain ⟨bit, label, binding, publication, bitEq, labelEq, reachable,
-    bound, stored, readout⟩ := continuation_readout weight nonnegative
-      decision.execution decision.trace decision.bit
-      decision.published response players
-      final reached
+  obtain ⟨bit, label, binding, publication, _bitEq, labelEq, _reachable,
+    _bound, stored, readout⟩ := continuation_readout weight nonnegative execution trace
+      publishedBit publishedAlice response players final reached
   have same : publication = PublicationResult.success answer :=
-    Option.some.inj (stored.symm.trans published)
+    Option.some.inj (stored.symm.trans publishedBob)
   subst publication
   have low : label.val < 2 := by rwa [← labelEq]
-  have floor := sourceUtility_floor reward forfeit rewardNonnegative bit decision.bit label low
-    binding answer shape
+  have floor := LateOpeningRuntimeAliceSuccessFloor.sourceUtility_floor reward forfeit
+    rewardNonnegative bit publishedBit label low binding answer shape
   unfold LateOpeningRuntimeNash.payoff TerminalAudit.utility
   rw [nativeBaseUtility_of_readout reward forfeit _ _ readout alice]
   linarith
@@ -114,7 +120,10 @@ theorem rational_supported_payoff_floor (rewardNonnegative : 0 ≤ reward)
   obtain ⟨answer, selected, shape, maximizing, clean⟩ := rational_supported_clean_settlement
     weight nonnegative site representative decision current reward forfeit deposit
       forfeitPositive depositPositive assessment rational response supported
-  exact continuation_payoff_floor weight nonnegative _ response _ final reached answer
+  let recovered := decisionOfInformation weight nonnegative site representative decision current
+    history
+  exact continuation_payoff_floor weight nonnegative recovered.execution recovered.trace
+    recovered.bit recovered.published response _ final reached answer
     (clean history believed final reached).1 shape labelLow reward forfeit rewardNonnegative
       deposit (fun actual => PMF.pure actual)
 

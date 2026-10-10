@@ -69,10 +69,12 @@ theorem continuation_trace (history : DecisionHistory weight nonnegative)
   exact app.raw_trace_runRounds initial LateOpeningRuntimeService.horizon
     (LateOpeningRuntimeService.scheduler weight nonnegative) players 0 6 _ final responded reached
 
-theorem continuation_readout (execution : app.Execution)
+/-- A ready immutable receiver binding determines the decoded terminal continuation at any
+actual native callback, including optional and final disclosures. -/
+theorem continuation_readout (remaining : Nat) (execution : app.Execution)
     (trace : (app.protocol initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
-      (some ⟨6, some bob, execution⟩))
+      (some ⟨remaining, some bob, execution⟩))
     (answer : Answer)
     (bound : execution.application.config.store (.inr bobBindEvent) = some (.success answer))
     (ready : execution.application.config.cut.Ready bobRevealEvent)
@@ -83,7 +85,7 @@ theorem continuation_readout (execution : app.Execution)
     (aliceStored : execution.application.config.store (.inr aliceEvent) = some aliceResult)
     (response : app.Action) (players : Player → app.Policy) (final : app.Execution)
     (reached : final ∈ (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative)
-      players 6
+      players remaining
       (execution.respond app bob response)).support) :
     ∃ result,
       final.application.config.store (.inr bobRevealEvent) = some result ∧
@@ -91,19 +93,20 @@ theorem continuation_readout (execution : app.Execution)
         some (terminalStateOf bit label aliceResult (.success answer) result) := by
   obtain ⟨responded⟩ := app.raw_trace_respond initial LateOpeningRuntimeService.horizon
     (LateOpeningRuntimeService.scheduler weight nonnegative)
-    6 execution bob response trace
+    remaining execution bob response trace
   obtain ⟨terminalTrace⟩ := app.raw_trace_runRounds initial LateOpeningRuntimeService.horizon
     (LateOpeningRuntimeService.scheduler weight nonnegative)
-    players 0 6 _ final responded reached
+    players 0 remaining _ final (by simpa only [Nat.zero_add] using responded) reached
   have complete := (contract weight nonnegative).completes ⟨0, none, final⟩ terminalTrace
     ⟨rfl, rfl⟩
   have invariant := LateOpeningRuntimeService.runtime.reactiveStateInvariant leaks
     (setup.eventInputs (sourceInitial bit label))
   have after := (ReactiveApplication.Invariant.policyInvariant app invariant players).runRounds
-    (LateOpeningRuntimeService.scheduler weight nonnegative) 6 _ final
+    (LateOpeningRuntimeService.scheduler weight nonnegative) remaining _ final
       (invariant.respond execution bob response valid) reached
   have inherited := bob_continuation_other_fields LateOpeningRuntimeService.runtime leaks players
-    (LateOpeningRuntimeService.scheduler weight nonnegative) 6 execution final ready response
+    (LateOpeningRuntimeService.scheduler weight nonnegative) remaining execution final
+      ready response
       reached
   have aliceAfter : final.application.config.store (.inr aliceEvent) = some aliceResult :=
     (inherited _ (by decide)).trans aliceStored
@@ -119,8 +122,6 @@ theorem continuation_readout (execution : app.Execution)
   rw [ite_eq_left complete]
   exact decoded
 
-/-- Canonical opening succeeds and incurs zero actual terminal audit charge,
-under arbitrary future raw policies and authentic evidence sampling. -/
 theorem canonical_clean (history : DecisionHistory weight nonnegative)
     (sample : List (SettledEvidence setup .sequential) →
       PMF (List (SettledEvidence setup .sequential)))
@@ -227,11 +228,11 @@ theorem canonical_dominates (history : DecisionHistory weight nonnegative)
   obtain ⟨aliceResult, aliceStored⟩ := Option.isSome_iff_exists.mp
     (bob_prefix_other_field_available history.execution.application history.ready
       (.inr aliceEvent) (by decide))
-  obtain ⟨rawResult, rawStored, rawRead⟩ := continuation_readout weight nonnegative
+  obtain ⟨rawResult, rawStored, rawRead⟩ := continuation_readout weight nonnegative 6
     history.execution history.trace history.answer history.bound history.ready bit label valid
     aliceResult aliceStored response players final reached
   obtain ⟨canonicalResult, canonicalStored, canonicalRead⟩ := continuation_readout
-    weight nonnegative history.execution history.trace history.answer history.bound history.ready
+    weight nonnegative 6 history.execution history.trace history.answer history.bound history.ready
     bit label valid aliceResult aliceStored
     (canonical weight nonnegative history)
       future canonicalFinal canonicalReached

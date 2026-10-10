@@ -33,46 +33,6 @@ def canonical (history : DecisionHistory weight nonnegative) : app.Action :=
   LateOpeningRuntimeService.runtime.canonicalServiceDecision leaks bob
     (history.execution.recall bob) (history.execution.observe app bob) bobRevealEvent true
 
-theorem continuation_readout (history : DecisionHistory weight nonnegative)
-    (bit : Bool) (label : Fin 3)
-    (valid : EventGraphRuntime.State.Invariant (graph := nativeGraph)
-      (setup.eventInputs (sourceInitial bit label)) history.execution.application)
-    (aliceResult : PublicationResult Bool)
-    (aliceStored : history.execution.application.config.store (.inr aliceEvent) = some aliceResult)
-    (response : app.Action) (players : Player → app.Policy) (final : app.Execution)
-    (reached : final ∈ (continuation weight nonnegative history response players).support) :
-    ∃ result,
-      final.application.config.store (.inr bobRevealEvent) = some result ∧
-      serviceSourceReadout setup .sequential deadline leaks (app.finished final) =
-        some (terminalStateOf bit label aliceResult (.success history.answer) result) := by
-  obtain ⟨responded⟩ := app.raw_trace_respond initial LateOpeningRuntimeService.horizon
-    (LateOpeningRuntimeService.scheduler weight nonnegative) 12 history.execution bob response
-      history.trace
-  obtain ⟨trace⟩ := app.raw_trace_runRounds initial LateOpeningRuntimeService.horizon
-    (LateOpeningRuntimeService.scheduler weight nonnegative) players 0 12 _ final responded reached
-  have complete := (contract weight nonnegative).completes ⟨0, none, final⟩ trace ⟨rfl, rfl⟩
-  have invariant := LateOpeningRuntimeService.runtime.reactiveStateInvariant leaks
-    (setup.eventInputs (sourceInitial bit label))
-  have after := (ReactiveApplication.Invariant.policyInvariant app invariant players).runRounds
-    (LateOpeningRuntimeService.scheduler weight nonnegative) 12 _ final
-      (invariant.respond history.execution bob response valid) reached
-  have inherited := bob_continuation_other_fields LateOpeningRuntimeService.runtime leaks players
-    (LateOpeningRuntimeService.scheduler weight nonnegative) 12 history.execution final
-      history.ready response reached
-  have aliceAfter : final.application.config.store (.inr aliceEvent) = some aliceResult :=
-    (inherited _ (by decide)).trans aliceStored
-  have boundAfter : final.application.config.store (.inr bobBindEvent) =
-      some (.success history.answer) := (inherited _ (by decide)).trans history.bound
-  obtain ⟨result, stored⟩ := Option.isSome_iff_exists.mp
-    (final.application.config.store_available_of_terminal complete (.inr bobRevealEvent))
-  refine ⟨result, stored, ?_⟩
-  have decoded := decode_terminalStateOf final.application bit label aliceResult
-    (.success history.answer) result after.reachable.inputs_eq aliceAfter boundAfter stored
-  change (if final.application.config.cut.Terminal then
-    decodeState? (terminalRefs program) final.application.config.store else none) = _
-  rw [ite_eq_left complete]
-  exact decoded
-
 theorem canonical_clean (history : DecisionHistory weight nonnegative)
     (sample : List (SettledEvidence setup .sequential) →
       PMF (List (SettledEvidence setup .sequential)))
@@ -116,7 +76,9 @@ theorem canonical_payoff_eq_gross (history : DecisionHistory weight nonnegative)
       grossUtility reward (setup.parameterOutcome parameter
         (terminalStateOf bit label aliceResult (.success history.answer)
           (.success history.answer))) bob := by
-  obtain ⟨result, stored, readout⟩ := continuation_readout weight nonnegative history bit label
+  obtain ⟨result, stored, readout⟩ :=
+    LateOpeningRuntimeBobIncentive.continuation_readout weight nonnegative 12
+    history.execution history.trace history.answer history.bound history.ready bit label
     valid aliceResult aliceStored (canonical weight nonnegative history) players final reached
   obtain ⟨published, clear⟩ := canonical_clean weight nonnegative history sample authentic players
     bobPolicy final reached
@@ -156,7 +118,9 @@ theorem canonical_audit_regret (history : DecisionHistory weight nonnegative)
   obtain ⟨aliceResult, aliceStored⟩ := Option.isSome_iff_exists.mp
     (bob_prefix_other_field_available history.execution.application history.ready
       (.inr aliceEvent) (by decide))
-  obtain ⟨result, stored, readout⟩ := continuation_readout weight nonnegative history bit label
+  obtain ⟨result, stored, readout⟩ :=
+    LateOpeningRuntimeBobIncentive.continuation_readout weight nonnegative 12
+    history.execution history.trace history.answer history.bound history.ready bit label
     valid aliceResult aliceStored response players final reached
   have comparator := canonical_payoff_eq_gross weight nonnegative history bit label valid
     aliceResult aliceStored reward forfeit deposit sample authentic future bobPolicy

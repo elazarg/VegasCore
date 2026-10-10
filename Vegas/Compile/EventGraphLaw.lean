@@ -43,23 +43,6 @@ private theorem canonical_ready_least
   rw [ordered.2] at unfinished
   omega
 
-omit [DecidableEq Player] in
-private theorem EventCode.actionOfActorNone_eq_sample
-    {Field : Type} [DecidableEq Field]
-    {layout : Field → Vegas.EventGraph.EventField Player L}
-    {output : Vegas.EventGraph.EventField Player L}
-    (code : Vegas.EventGraph.EventCode layout output) (payload : L.Ty)
-    (law : Vegas.EventGraph.PublicDist layout payload)
-    (outputEq : output = .publicData payload)
-    (codeEq : cast (congrArg (Vegas.EventGraph.EventCode layout) outputEq) code =
-      .sample payload law)
-    (ownerless : code.actor = none) :
-    Vegas.EventGraph.EventCode.actionOfActorNone code ownerless =
-      cast (congrArg Vegas.EventGraph.EventField.Action outputEq.symm) PUnit.unit := by
-  cases outputEq
-  cases codeEq
-  rfl
-
 /-- Exact execution law at every compiled suffix.  The `Option` result is the
 actual partial decoder; the theorem proves it is `some` on the entire source
 law rather than choosing a default for malformed stores. -/
@@ -124,8 +107,8 @@ theorem runWith_option_law
               ((toEventGraph whole).nodes event) ownerless =
             cast (congrArg Vegas.EventGraph.EventField.Action outputEq.symm)
               PUnit.unit :=
-        EventCode.actionOfActorNone_eq_sample
-          ((toEventGraph whole).nodes event) _ _ outputEq codeEq ownerless
+        Vegas.EventGraph.EventCode.action_eq_of_actor_none
+          ((toEventGraph whole).nodes event) ownerless _ _
       rw [show eventCount (.sample name fresh law next) = eventCount next + 1 by
         simp [eventCount]]
       rw [Vegas.EventGraph.runPlan_canonical_ownerless

@@ -3,6 +3,7 @@
 import Vegas.Pending.ReactiveAsyncContract
 import Interaction.ReactiveHistory
 import Vegas.Pending.ReactiveCanonicalDecision
+import Vegas.Pending.ReactiveResponseSampling
 
 /-! # A ready owner must receive an opportunity before actual expiry -/
 
@@ -337,5 +338,49 @@ theorem PublicView.inclusionFitsDeadline_of_response_delay
   rw [activated]
   have margin := timely event owned
   omega
+
+/-- A genuine due expiry has already sampled its owner's original intention in
+ every supported posterior memory of the actual prescribed recall. -/
+theorem due_owner_posterior_coverage (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (initial : PMF (runtime.reactiveApplication leaks).State) (horizon : Nat)
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    (delay bound : graph.EventId → Nat)
+    (opportunity : runtime.Opportunity leaks initial horizon scheduler delay)
+    (timely : runtime.AsyncTimely delay bound) (ordered : graph.BarrierOrdered)
+    (control : (runtime.reactiveApplication leaks).Control)
+    (trace : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
+      (some control)) (idle : control.actor = none)
+    (event : graph.EventId) (owner : Player) (actor : graph.actor? event = some owner)
+    (ready : control.execution.application.config.cut.Ready event)
+    (entered : Nat) (activated : control.execution.application.activatedAt event = some entered)
+    (due : runtime.deadline event ≤ control.execution.application.clock - entered)
+    (policy : graph.BehavioralPolicy owner)
+    (consistent : (runtime.prescribedReactivePolicy leaks owner policy).Consistent
+      (control.execution.recall owner))
+    (quiet : ∀ entry ∈ control.execution.recall owner,
+      entry.action.transmission = none → entry.emitted = none)
+    (sent : ∀ entry ∈ control.execution.recall owner, ∀ material,
+      entry.action.transmission = some material → ∃ message,
+        entry.emitted = some message ∧ message.payload.call = material.call.packet)
+    (intentions : List (Option graph.Completion))
+    (supported : intentions ∈
+      ((runtime.prescribedReactiveImplementation leaks owner policy).posterior
+        (control.execution.recall owner)).support) :
+    ∃ remembered, some remembered ∈ intentions ∧ remembered.event = event := by
+  obtain ⟨before, _, _, entry, retained, viewed, turn, _⟩ :=
+    runtime.due_owner_response_prefix leaks initial horizon scheduler delay bound opportunity
+      timely ordered control trace idle event owner actor ready entered activated due
+  apply runtime.prescribedReactivePosterior_recorded_ready_coverage leaks owner policy
+    (control.execution.recall owner) consistent quiet sent entry retained event
+      (by simpa only [viewed, ReactiveApplication.Execution.observe, reactiveApplication,
+        State.playerView] using turn)
+      (by simp only [viewed, ReactiveApplication.Execution.observe, reactiveApplication,
+        State.playerView])
+      _ actor intentions supported
+  rw [viewed]
+  change before.execution.application.publicView.EventReady event
+  exact (before.execution.application.publicView.ownTurn?_spec owner event turn).1
+
 
 end Vegas.EventGraphRuntime

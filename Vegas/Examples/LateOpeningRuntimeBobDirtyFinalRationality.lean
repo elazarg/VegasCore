@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Examples.LateOpeningRuntimeBobDirtyFinalIncentive
+import Vegas.Examples.LateOpeningRuntimeBobSunkDisclosure
 import Vegas.Examples.LateOpeningRuntimeBobDirtyFinalContext
 
 noncomputable section
@@ -104,8 +104,8 @@ theorem final_failure_regret (forfeitNonnegative : 0 ≤ forfeit)
       have sameReceipts := congrArg ReactiveApplication.PlayerView.receipts sameView
       change execution.receipts = (recover history).receipts at sameReceipts
       have actualRejected := sameReceipts ▸ rejected
-      have comparison := LateOpeningRuntimeBobDirtyFinalIncentive.canonical_dominates
-        weight nonnegative
+      have comparison := LateOpeningRuntimeBobSunkDisclosure.canonical_dominates
+        weight nonnegative 5
         (recover history) rawTrace answer actualBound actualReady actualTimely serial actualRejected
         reward forfeit forfeitNonnegative deposit response _ _ final canonicalFinal continued
           canonicalReached

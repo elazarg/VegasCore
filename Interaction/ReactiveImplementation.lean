@@ -109,6 +109,29 @@ theorem posterior_respond (execution : app.Execution) (who : Principal) (action 
   | some transmission =>
       simp only [Execution.respond, ↓reduceIte, posterior_snoc]
 
+/-- A supported private transition remains in the posterior after its actual
+external response, even when that response has several private explanations. -/
+theorem mem_support_posterior_respond
+    (execution : app.Execution) (who : Principal) (memory nextMemory : Memory)
+    (prior : memory ∈ (implementation.posterior (execution.recall who)).support)
+    (action : app.Action)
+    (produced : (action, nextMemory) ∈
+      (implementation.respond memory (execution.recall who, execution.observe app who)).support) :
+    nextMemory ∈
+      (implementation.posterior ((execution.respond app who action).recall who)).support := by
+  let law := (implementation.posterior (execution.recall who)).bind fun saved =>
+    implementation.respond saved (execution.recall who, execution.observe app who)
+  have joint : (action, nextMemory) ∈ law.support := by
+    rw [PMF.support_bind]
+    exact Set.mem_iUnion₂.mpr ⟨memory, prior, produced⟩
+  have positive : action ∈ (law.map Prod.fst).support := by
+    rw [PMF.support_map]
+    exact ⟨(action, nextMemory), joint, rfl⟩
+  rw [implementation.posterior_respond, PMF.support_map]
+  refine ⟨(action, nextMemory), ?_, rfl⟩
+  rw [fiberPosterior_support _ _ _ positive]
+  exact ⟨rfl, joint⟩
+
 /-- Disintegrate one real response using only the focal player's recall. The
 continuation may inspect the complete external execution and private state. -/
 theorem response_disintegrate {Result : Type} (execution : app.Execution) (who : Principal)

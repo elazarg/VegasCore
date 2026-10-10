@@ -77,6 +77,31 @@ theorem Policy.recover_eq_recovery (prescribed recovery : app.Policy)
 
 variable [DecidableEq Principal]
 
+/-- Every actual supported response preserves consistency of all players'
+recall with the profile that generated it. Opponents' pasts are unchanged. -/
+theorem consistentRecall_policyInvariant (players : Principal → app.Policy) :
+    app.PolicyInvariant players
+      (fun execution => ∀ who, (players who).Consistent (execution.recall who)) where
+  respond execution who action valid supported := by
+    intro owner
+    by_cases equal : owner = who
+    · subst owner
+      rcases action with ⟨transmission⟩
+      cases transmission with
+      | none =>
+          simpa only [Execution.respond, ↓reduceIte] using
+            Policy.Consistent.snoc (policy := players who)
+              ⟨execution.observe app who, ⟨none⟩, none⟩ (valid who) supported
+      | some material =>
+          simp only [Execution.respond, ↓reduceIte]
+          exact .snoc _ (valid who) supported
+    · rw [app.respond_recall_other execution who owner equal action]
+      exact valid owner
+  environment execution next command valid reached := by
+    intro owner
+    rw [app.environmentStep_recall execution next command reached]
+    exact valid owner
+
 /-- Opponents need not follow the prescribed policy. Only the focal player's
 own supported actions enter its consistency check. -/
 theorem Policy.recover_invariant (prescribed recovery : app.Policy) (who : Principal)

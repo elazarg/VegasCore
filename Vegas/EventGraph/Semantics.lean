@@ -68,6 +68,17 @@ def actionOfActorNone {Field : Type} [DecidableEq Field]
   | resolve owner payload binding checks => simp [actor] at ownerless
   | sample payload law => exact PUnit.unit
 
+omit [DecidableEq Player] in
+/-- An ownerless event has only one action. -/
+theorem action_eq_of_actor_none {Field : Type} [DecidableEq Field]
+    {layout : Field → EventField Player L} {output : EventField Player L}
+    (code : EventCode layout output) (ownerless : code.actor = none)
+    (left right : EventField.Action output) : left = right := by
+  cases code with
+  | bind owner payload => simp [actor] at ownerless
+  | resolve owner payload binding checks => simp [actor] at ownerless
+  | sample payload law => exact Subsingleton.elim left right
+
 end EventCode
 
 omit [DecidableEq Player] in

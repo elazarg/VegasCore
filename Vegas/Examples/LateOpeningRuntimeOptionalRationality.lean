@@ -323,7 +323,9 @@ theorem rational_supported_clean_settlement (forfeitPositive : 0 < forfeit)
   obtain ⟨aliceResult, aliceStored⟩ := Option.isSome_iff_exists.mp
     (LateOpeningRuntimeReadout.bob_prefix_other_field_available recovered.execution.application
       recovered.ready (.inr aliceEvent) (by decide))
-  obtain ⟨result, stored, _readout⟩ := continuation_readout weight nonnegative recovered bit label
+  obtain ⟨result, stored, _readout⟩ :=
+    LateOpeningRuntimeBobIncentive.continuation_readout weight nonnegative 12
+    recovered.execution recovered.trace recovered.answer recovered.bound recovered.ready bit label
     valid aliceResult aliceStored response players final reached
   cases result with
   | failure => exact (notFailed stored).elim

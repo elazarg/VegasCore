@@ -206,3 +206,10 @@ import Vegas.Pending.ReactiveFrontier
 import Vegas.Pending.ReactiveFrontierEnvironment
 import Vegas.Pending.ReactiveFrontierSampling
 import Vegas.Pending.ReactiveFrontierRecall
+import Vegas.Pending.ReactiveFrontierInclusion
+import Vegas.Pending.ReactiveFrontierUniqueness
+import Vegas.Pending.ReactiveFrontierPotential
+import Vegas.Pending.ReactiveChronologicalRecall
+import Vegas.Pending.ReactiveResolutionRecall
+import Vegas.Pending.ReactiveTimelyCalls
+import Vegas.Pending.ReactiveFrontierExpiry

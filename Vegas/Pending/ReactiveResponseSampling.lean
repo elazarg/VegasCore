@@ -115,7 +115,7 @@ theorem prescribedReactivePosterior_emitted_coverage (runtime : EventGraphRuntim
     (supported : intentions ∈
       ((runtime.prescribedReactiveImplementation leaks who policy).posterior history).support) :
     ∀ entry ∈ history, ∀ message, entry.emitted = some message →
-      ∃ remembered, some remembered ∈ intentions ∧
+      ∃ remembered, (entry, some remembered) ∈ history.zip intentions ∧
         message.payload.call.event? graph = some remembered.event := by
   induction consistent generalizing intentions with
   | nil => simp
@@ -123,8 +123,10 @@ theorem prescribedReactivePosterior_emitted_coverage (runtime : EventGraphRuntim
       obtain ⟨previous, prior, saved, memoryEq, produced⟩ :=
         runtime.prescribedReactivePosterior_snoc_support leaks who policy history latest
           positive intentions supported
+      have aligned := (runtime.prescribedReactivePosterior_length leaks who policy
+        consistent previous prior).symm
       intro entry member message emitted
-      rw [memoryEq]
+      rw [memoryEq, List.zip_append aligned]
       rcases List.mem_append.mp member with earlier | last
       · obtain ⟨remembered, retained, named⟩ := ih
           (fun entry member => quiet entry (List.mem_append_left _ member))
@@ -196,7 +198,8 @@ theorem prescribedReactivePosterior_submitted_coverage (runtime : EventGraphRunt
       obtain ⟨remembered, retained, intentionNamed⟩ :=
         runtime.prescribedReactivePosterior_emitted_coverage leaks who policy consistent quiet sent
           intentions supported entry member message emitted
-      exact ⟨remembered, retained, Option.some.inj (intentionNamed.symm.trans named)⟩
+      exact ⟨remembered, (List.of_mem_zip retained).2,
+        Option.some.inj (intentionNamed.symm.trans named)⟩
 
 /-- A remembered silent decision has an actual retained event intention. -/
 theorem reactiveAlreadyDecided_memory (runtime : EventGraphRuntime graph)
@@ -352,5 +355,90 @@ theorem prescribedReactivePosterior_recorded_ready_coverage (runtime : EventGrap
     apply sent record
     rw [split']
     exact List.mem_append_left _ (List.mem_append_left _ member)
+
+/-- Conditioning on later positive responses retains an actual supported
+ posterior prefix, rather than merely a list of matching event names. -/
+theorem prescribedReactivePosterior_prefix_support (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (who : Player) (policy : graph.BehavioralPolicy who)
+    (history later : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (consistent : (runtime.prescribedReactivePolicy leaks who policy).Consistent (history ++ later))
+    (intentions : List (Option graph.Completion))
+    (supported : intentions ∈
+      ((runtime.prescribedReactiveImplementation leaks who policy).posterior
+        (history ++ later)).support) :
+    ∃ previous ∈ ((runtime.prescribedReactiveImplementation leaks who policy).posterior
+      history).support, ∃ extra, intentions = previous ++ extra := by
+  induction later using List.reverseRecOn generalizing intentions with
+  | nil => exact ⟨intentions, by simpa only [List.append_nil] using supported,
+      [], (List.append_nil intentions).symm⟩
+  | append_singleton later entry ih =>
+      have stepConsistent : (runtime.prescribedReactivePolicy leaks who policy).Consistent
+          ((history ++ later) ++ [entry]) := by
+        simpa only [List.append_assoc] using consistent
+      have step := (ReactiveApplication.Policy.consistent_snoc_iff _ _ _).mp stepConsistent
+      have stepSupported : intentions ∈
+          ((runtime.prescribedReactiveImplementation leaks who policy).posterior
+            ((history ++ later) ++ [entry])).support := by
+        simpa only [List.append_assoc] using supported
+      obtain ⟨previous, prior, saved, memoryEq, _⟩ :=
+        runtime.prescribedReactivePosterior_snoc_support leaks who policy (history ++ later) entry
+          step.2 intentions stepSupported
+      obtain ⟨original, positive, extra, originalEq⟩ := ih step.1 previous prior
+      refine ⟨original, positive, extra ++ [saved], ?_⟩
+      simp only [memoryEq, originalEq, List.append_assoc]
+
+/-- A real ready owner response already has a sampled original event in its
+ actual posterior prefix; its generating entry remains paired in final recall. -/
+theorem prescribedReactivePosterior_ready_prefix_origin (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (who : Player) (policy : graph.BehavioralPolicy who)
+    (before later : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (entry : (runtime.reactiveApplication leaks).PlayerEntry)
+    (consistent : (runtime.prescribedReactivePolicy leaks who policy).Consistent
+      ((before ++ [entry]) ++ later))
+    (quiet : ∀ record ∈ before ++ [entry],
+      record.action.transmission = none → record.emitted = none)
+    (sent : ∀ record ∈ before ++ [entry], ∀ material,
+      record.action.transmission = some material → ∃ message,
+        record.emitted = some message ∧ message.payload.call = material.call.packet)
+    (event : graph.EventId)
+    (turn : entry.beforeView.application.publicView.ownTurn? who = some event)
+    (owner : entry.beforeView.application.who = who)
+    (ready : entry.beforeView.application.publicView.EventReady event)
+    (actor : graph.actor? event = some who)
+    (intentions : List (Option graph.Completion))
+    (supported : intentions ∈
+      ((runtime.prescribedReactiveImplementation leaks who policy).posterior
+        ((before ++ [entry]) ++ later)).support) :
+    ∃ remembered samplingEntry previous extra,
+      previous ∈ ((runtime.prescribedReactiveImplementation leaks who policy).posterior
+        (before ++ [entry])).support ∧
+      intentions = previous ++ extra ∧ remembered.event = event ∧
+      (samplingEntry, some remembered) ∈ (before ++ [entry]).zip previous ∧
+      (samplingEntry, some remembered) ∈ ((before ++ [entry]) ++ later).zip intentions := by
+  obtain ⟨previous, prior, extra, memoryEq⟩ :=
+    runtime.prescribedReactivePosterior_prefix_support leaks who policy (before ++ [entry]) later
+      consistent intentions supported
+  have prefixConsistent := consistent.of_append
+  have step := (ReactiveApplication.Policy.consistent_snoc_iff _ _ _).mp prefixConsistent
+  obtain ⟨remembered, retained, named⟩ :=
+    runtime.prescribedReactivePosterior_ready_response_coverage leaks who policy before entry
+      step.1 step.2 (fun record member => quiet record (List.mem_append_left _ member))
+      (fun record member => sent record (List.mem_append_left _ member))
+      event turn owner ready actor
+      previous prior
+  have aligned := runtime.prescribedReactivePosterior_length leaks who policy prefixConsistent
+    previous prior
+  have projected : some remembered ∈ ((before ++ [entry]).zip previous).map Prod.snd := by
+    rw [List.map_snd_zip aligned.le]
+    exact retained
+  obtain ⟨⟨samplingEntry, saved⟩, paired, savedEq⟩ := List.mem_map.mp projected
+  dsimp only at savedEq
+  subst saved
+  refine ⟨remembered, samplingEntry, previous, extra, prior, memoryEq, named, paired, ?_⟩
+  rw [memoryEq, List.zip_append aligned.symm]
+  exact List.mem_append_left _ paired
+
 
 end Vegas.EventGraphRuntime
