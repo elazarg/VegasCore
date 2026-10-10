@@ -119,4 +119,33 @@ theorem pending_intention_foreign_of_fresh (runtime : EventGraphRuntime graph)
   apply fresh
   exact List.mem_filterMap.mpr ⟨some remembered, retained, by simp [same]⟩
 
+/-- A physically ready chance node has no pending sampled owned intentions:
+public barriers make every physically ready event that same chance node. -/
+theorem prescribedReactivePosterior_completed_at_chance (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (ordered : graph.BarrierOrdered)
+    (execution : (runtime.reactiveApplication leaks).Execution)
+    (stable : runtime.EntryEventStable leaks execution)
+    (who : Player) (policy : graph.BehavioralPolicy who)
+    (consistent : (runtime.prescribedReactivePolicy leaks who policy).Consistent
+      (execution.recall who))
+    (intentions : List (Option graph.Completion))
+    (supported : intentions ∈
+      ((runtime.prescribedReactiveImplementation leaks who policy).posterior
+        (execution.recall who)).support)
+    (event : graph.EventId) (ready : execution.application.config.cut.Ready event)
+    (chance : graph.actor? event = none)
+    (remembered : graph.Completion) (retained : some remembered ∈ intentions) :
+    remembered.event ∈ execution.application.config.cut.completed := by
+  by_contra unfinished
+  have pendingReady := runtime.prescribedReactivePosterior_pending_ready leaks execution stable
+    who policy consistent intentions supported remembered retained unfinished
+  have pendingActor := runtime.prescribedReactivePosterior_owned leaks who policy consistent
+    intentions supported remembered retained
+  have publicOutput := EventCode.output_public_of_actor_none (graph.nodes event) chance
+  have same := ordered.ready_public_unique execution.application.config.cut
+    publicOutput ready pendingReady
+  rw [same, chance] at pendingActor
+  cases pendingActor
+
 end Vegas.EventGraphRuntime

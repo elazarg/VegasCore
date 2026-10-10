@@ -1,13 +1,13 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Examples.LateOpeningRuntimeBobRationality
-import Vegas.Examples.LateOpeningRuntimeBobRawBinding
+import Vegas.Examples.LateOpeningRuntimeBobSubmissionService
 import Interaction.ReactiveTrafficIdentity
 import Interaction.ReactiveReceiptIdentity
 
 /-! # Hidden-history independence of the final native receiver response
 
-At a clean last disclosure callback, a fixed raw response determines the
+At any actual last disclosure callback, a fixed raw response determines the
 whole terminal owner observation. The only remaining service commands are
 immediate author inclusion, four clock ticks and disclosure expiry. Hidden
 initial labels and unseen foreign packets cannot change that readout law.
@@ -21,18 +21,10 @@ open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory.Protocol GameTheory.Math.Probability
 open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeBobService
   LateOpeningRuntimeBobAudit LateOpeningRuntimeBobIncentive LateOpeningRuntimeBobInformation
-open LateOpeningRuntimeBobRawBinding (known_same_information)
+open LateOpeningRuntimeBobResponseState (responseState)
 open LateOpeningRuntimeLatePrefix (recorded recorded_clock)
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
-
-def responsePhysical (execution : app.Execution) (response : app.Action) : app.State :=
-  match response.transmission with
-  | none => execution.application
-  | some material =>
-      let submitted := app.submit execution.application bob material
-      (app.handle submitted ⟨(bob, execution.network.nextSerial bob),
-        app.packet submitted bob (execution.network.known bob) material⟩).getD submitted
 
 def serviced (execution : app.Execution) (response : app.Action) : app.Execution :=
   let submitted := execution.respond app bob response
@@ -45,125 +37,55 @@ def serviced (execution : app.Execution) (response : app.Action) : app.Execution
   { included with environmentRecall := submitted.environmentRecall ++
     [⟨submitted.observeEnvironment app, command⟩] }
 
-theorem latestAuthor_clean (decision : DecisionHistory weight nonnegative) :
-    latestAuthor bob (decision.execution.observeEnvironment app) = .wait := by
-  let execution := decision.execution
-  have retained := app.retained_envelopes_mem_inputs execution
-    (app.history_provenance initial LateOpeningRuntimeService.horizon
-      (LateOpeningRuntimeService.scheduler weight nonnegative) decision.trace)
-    (app.history_inputRecall initial LateOpeningRuntimeService.horizon
-      (LateOpeningRuntimeService.scheduler weight nonnegative) decision.trace)
-  have receiptIds := app.receipt_identifiers_history initial LateOpeningRuntimeService.horizon
-    (LateOpeningRuntimeService.scheduler weight nonnegative) _ decision.trace
-  have absent : execution.network.pending.reverse.find?
-      (fun message : Message Player app.Payload => decide (message.sender = bob ∧
-        message.id ∉ execution.network.ledger.map Message.id)) = none := by
-    apply List.find?_eq_none.mpr
-    intro message member selected
-    rw [List.mem_reverse] at member
-    obtain ⟨owned, unpublished⟩ := of_decide_eq_true selected
-    obtain ⟨_, _, accepted⟩ := decision.clean message (retained.pending message member) owned
-    apply unpublished
-    rw [← receiptIds]
-    exact List.mem_map.mpr ⟨(message.id, true), accepted, rfl⟩
-  unfold latestAuthor
-  change (match execution.network.pending.reverse.find?
-    (fun message : Message Player app.Payload => decide (message.sender = bob ∧
-      message.id ∉ execution.network.ledger.map Message.id)) with
-    | none => ReactiveApplication.Command.wait
-    | some message => ReactiveApplication.Command.include message.id) = _
-  rw [absent]
-
-theorem serviced_round (decision : DecisionHistory weight nonnegative)
+theorem serviced_round (remaining : Nat) (execution : app.Execution)
+    (trace : (app.protocol initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
+      (some ⟨remaining, some bob, execution⟩))
     (response : app.Action) (players : Player → app.Policy) :
-    app.round (LateOpeningRuntimeService.scheduler weight nonnegative) players
-      (decision.execution.respond app bob response) =
-        PMF.pure (serviced decision.execution response) := by
-  have chosen := protected_response_scheduler weight nonnegative
-    ⟨6, some bob, decision.execution⟩ decision.trace bob rfl response (Or.inl rfl)
+    app.round (LateOpeningRuntimeService.scheduler weight nonnegative) players (execution.respond
+      app bob response) =
+      PMF.pure (serviced execution response) := by
   rcases response with ⟨transmission⟩
   cases transmission with
   | none =>
+      have chosen := protected_response_scheduler weight nonnegative
+        ⟨remaining, some bob, execution⟩ trace bob rfl ⟨none⟩ (Or.inl rfl)
       have selected : latestAuthor bob
-          ((decision.execution.respond app bob ⟨none⟩).observeEnvironment app) = .wait :=
-        latestAuthor_clean weight nonnegative decision
+          ((execution.respond app bob ⟨none⟩).observeEnvironment app) = .wait := by
+        change latestAuthor bob (execution.observeEnvironment app) = .wait
+        exact latestAuthor_bob_wait_of_active weight nonnegative
+          ⟨remaining, some bob, execution⟩ trace (by simp)
       rw [ReactiveApplication.round, chosen, selected, PMF.pure_bind,
         ReactiveApplication.dispatch]
       simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
         PMF.pure_bind, ReactiveApplication.Command.actor?, ReactiveApplication.resume]
       rfl
   | some material =>
-      have serials := app.serialsBeforeNext_history (LateOpeningRuntimeService.scheduler
-        weight nonnegative) initial LateOpeningRuntimeService.horizon decision.trace
-      have selected := latestAuthor_after_submit decision.execution bob material serials
-      rw [ReactiveApplication.round, chosen, selected, PMF.pure_bind,
-        ReactiveApplication.dispatch]
-      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
-        PMF.pure_bind, ReactiveApplication.Command.actor?, ReactiveApplication.resume]
-      rfl
+      exact LateOpeningRuntimeBobSubmissionService.submission_round
+        weight nonnegative remaining execution trace material players
 
-theorem serviced_physical (decision : DecisionHistory weight nonnegative)
+theorem serviced_physical (remaining : Nat) (execution : app.Execution)
+    (trace : (app.protocol initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
+      (some ⟨remaining, some bob, execution⟩))
     (response : app.Action) :
-    (serviced decision.execution response).application =
-      responsePhysical decision.execution response := by
+    (serviced execution response).application = responseState execution response := by
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => rfl
   | some material =>
-      have serials := app.serialsBeforeNext_history (LateOpeningRuntimeService.scheduler
-        weight nonnegative) initial LateOpeningRuntimeService.horizon decision.trace
-      have found := serials.lookup_submit bob
-        (app.packet (app.submit decision.execution.application bob material) bob
-          (decision.execution.network.known bob) material)
-      have lookup : (decision.execution.respond app bob ⟨some material⟩).network.lookup
-          (bob, decision.execution.network.nextSerial bob) =
-        some ⟨(bob, decision.execution.network.nextSerial bob),
-          app.packet (app.submit decision.execution.application bob material) bob
-            (decision.execution.network.known bob) material⟩ := found
-      change ((decision.execution.respond app bob ⟨some material⟩).includePending app
-        (bob, decision.execution.network.nextSerial bob)).application = _
-      unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
-      rw [lookup]
-      rfl
+      exact LateOpeningRuntimeBobSubmissionService.submission_physical
+        weight nonnegative remaining execution trace material
 
-theorem serviced_cursor (decision : DecisionHistory weight nonnegative)
-    (response : app.Action) :
-    (serviced decision.execution response).environmentRecall.length = 21 := by
-  have cursor := final_cursor weight nonnegative decision.execution decision.trace
-  cases response with
-  | mk transmission =>
-      cases transmission <;>
-        simpa only [serviced, ReactiveApplication.Execution.respond,
-          ReactiveApplication.Execution.includePending, List.length_append,
-          List.length_singleton] using congrArg (fun value => value + 1) cursor
-
-theorem responsePhysical_same_information (first second : app.Execution)
-    (firstRecall : first.InputRecall app) (secondRecall : second.InputRecall app)
-    (sameRecall : first.recall bob = second.recall bob)
-    (sameView : first.observe app bob = second.observe app bob) (response : app.Action) :
-    (responsePhysical first response).playerView bob =
-      (responsePhysical second response).playerView bob := by
-  have physicalView := congrArg ReactiveApplication.PlayerView.application sameView
-  change first.application.playerView bob = second.application.playerView bob at physicalView
+theorem serviced_cursor (execution : app.Execution)
+    (trace : (app.protocol initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
+      (some ⟨6, some bob, execution⟩))
+    (response : app.Action) : (serviced execution response).environmentRecall.length = 21 := by
+  have cursor := LateOpeningRuntimeBobService.final_cursor weight nonnegative execution trace
   rcases response with ⟨transmission⟩
-  cases transmission with
-  | none => exact physicalView
-  | some material =>
-      have submitted := LateOpeningRuntimeService.runtime.submit_playerView_congr leaks
-        first.application second.application bob material physicalView
-      have known := known_same_information first second firstRecall secondRecall sameRecall sameView
-      have packets := LateOpeningRuntimeService.runtime.packet_playerView_congr leaks
-        first.application second.application bob (first.network.known bob) material physicalView
-      have emitted : app.packet (app.submit first.application bob material) bob
-          (first.network.known bob) material =
-        app.packet (app.submit second.application bob material) bob
-          (second.network.known bob) material := by
-        rw [← known]
-        exact packets
-      apply LateOpeningRuntimeService.runtime.reactive_handle_result_playerView_congr leaks
-        _ _ bob (first.network.nextSerial bob) (second.network.nextSerial bob) _ _
-          (congrArg WitnessedPacket.call emitted) (congrArg WitnessedPacket.tokenValid emitted)
-            submitted
+  cases transmission <;> simp only [serviced, ReactiveApplication.respond_environmentRecall,
+    List.length_append, List.length_singleton, cursor]
 
 private def tick (execution : app.Execution) : app.Execution :=
   recorded execution (.application .advanceClock)
@@ -262,35 +184,38 @@ theorem tail_owner_same_information (first second : app.Execution)
     (.expire bobRevealEvent) (by intro event; simp)
       (tick_view _ _ (tick_view _ _ (tick_view _ _ (tick_view _ _ same))))
 
-theorem continuation_owner_same_information
-    (first second : DecisionHistory weight nonnegative)
-    (sameRecall : first.execution.recall bob = second.execution.recall bob)
-    (sameView : first.execution.observe app bob = second.execution.observe app bob)
+theorem continuation_owner_same_information (first second : app.Execution)
+    (firstTrace : (app.protocol initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
+      (some ⟨6, some bob, first⟩))
+    (secondTrace : (app.protocol initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
+      (some ⟨6, some bob, second⟩))
+    (sameRecall : first.recall bob = second.recall bob)
+    (sameView : first.observe app bob = second.observe app bob)
     (response : app.Action) (firstPlayers secondPlayers : Player → app.Policy) :
-    (continuation weight nonnegative first response firstPlayers).map
-      (fun final => final.application.playerView bob) =
-    (continuation weight nonnegative second response secondPlayers).map
-      (fun final => final.application.playerView bob) := by
-  unfold continuation
+    (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative) firstPlayers 6
+      (first.respond app bob response)).map (fun final => final.application.playerView bob) =
+    (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative) secondPlayers 6
+      (second.respond app bob response)).map (fun final => final.application.playerView bob) := by
   change PMF.map _ (PMF.bind (app.round (LateOpeningRuntimeService.scheduler weight nonnegative)
-    firstPlayers (first.execution.respond app bob response))
+    firstPlayers (first.respond app bob response))
     (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative) firstPlayers 5)) =
     PMF.map _ (PMF.bind (app.round (LateOpeningRuntimeService.scheduler weight nonnegative)
-      secondPlayers (second.execution.respond app bob response))
+      secondPlayers (second.respond app bob response))
       (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative) secondPlayers 5))
-  rw [serviced_round weight nonnegative first response firstPlayers,
-    serviced_round weight nonnegative second response secondPlayers,
+  rw [serviced_round weight nonnegative 6 first firstTrace response firstPlayers,
+    serviced_round weight nonnegative 6 second secondTrace response secondPlayers,
     PMF.pure_bind, PMF.pure_bind]
   apply tail_owner_same_information weight nonnegative _ _
-    (serviced_cursor weight nonnegative first response)
-    (serviced_cursor weight nonnegative second response) _ firstPlayers secondPlayers
-  rw [serviced_physical weight nonnegative first response,
-    serviced_physical weight nonnegative second response]
-  exact responsePhysical_same_information first.execution second.execution
+    (serviced_cursor weight nonnegative first firstTrace response)
+    (serviced_cursor weight nonnegative second secondTrace response) _ firstPlayers secondPlayers
+  rw [serviced_physical weight nonnegative 6 first firstTrace response,
+    serviced_physical weight nonnegative 6 second secondTrace response]
+  exact LateOpeningRuntimeBobResponseState.responseState_same_view first second
     (app.history_inputRecall initial LateOpeningRuntimeService.horizon
-      (LateOpeningRuntimeService.scheduler weight nonnegative) first.trace)
+      (LateOpeningRuntimeService.scheduler weight nonnegative) firstTrace)
     (app.history_inputRecall initial LateOpeningRuntimeService.horizon
-      (LateOpeningRuntimeService.scheduler weight nonnegative) second.trace)
-        sameRecall sameView response
-
+      (LateOpeningRuntimeService.scheduler weight nonnegative) secondTrace)
+      sameRecall sameView response
 end Vegas.Examples.LateOpeningRuntimeBobFinalObservation

@@ -926,7 +926,9 @@ private theorem handle_commitment_config_step
     · simp [handle, ready, timely] at accepted
   · simp [handle, ready] at accepted
 
-private theorem handle_opening_config_step
+/-- An accepted opening executes its resolution with the original `true`
+action, retaining the precise node and action witnesses. -/
+theorem handle_opening_config_step
     (runtime : EventGraphRuntime graph) (state next : State graph)
     (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
     (raw : Raw L)
@@ -934,7 +936,15 @@ private theorem handle_opening_config_step
     ∃ (ready : state.config.cut.Ready event) (action : graph.Action event),
       next.config ∈ (state.config.step event ready action).support ∧
         next.clock = state.clock ∧
-        next.activatedAt = State.refreshActivated next.config state.clock state.activatedAt := by
+        next.activatedAt = State.refreshActivated next.config state.clock state.activatedAt ∧
+        ∃ (owner : Player) (payload : L.Ty)
+          (binding : FieldRef graph.layout (.binding owner payload))
+          (checks : List (GuardCheck graph.layout payload))
+          (outputEq : graph.outputLayout event = .publication payload)
+          (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+            (graph.nodes event) = .resolve owner payload binding checks),
+          nodeView graph event = .resolve owner payload binding checks outputEq codeEq ∧
+            action = cast (congrArg EventField.Action outputEq.symm) true := by
   by_cases ready : state.config.cut.Ready event
   · by_cases timely : state.WithinDeadline runtime event
     · cases view : nodeView graph event with
@@ -966,7 +976,8 @@ private theorem handle_opening_config_step
                     subst next
                     refine ⟨cast (congrArg EventField.Action outputEq.symm) true, ?_⟩
                     exact ⟨resolve_complete_mem_step state event ready owner payload binding
-                      checks outputEq codeEq true result resultEq, rfl, rfl⟩
+                      checks outputEq codeEq true result resultEq, rfl, rfl,
+                      owner, payload, binding, checks, rfl, codeEq, rfl, rfl⟩
               · simp [stored] at accepted
           · simp_all only [reduceCtorEq]
     · simp [handle, ready, timely] at accepted
@@ -1075,7 +1086,7 @@ theorem handle_clock_activated (runtime : EventGraphRuntime graph)
         handle_commitment_config_step runtime state next id event candidate accepted
       exact ⟨clockEq, activatedEq⟩
   | opening event candidate raw =>
-      obtain ⟨_, _, _, clockEq, activatedEq⟩ :=
+      obtain ⟨_, _, _, clockEq, activatedEq, _⟩ :=
         handle_opening_config_step runtime state next id event candidate raw accepted
       exact ⟨clockEq, activatedEq⟩
 

@@ -235,8 +235,9 @@ theorem optional_response_publication
       cases materialEq
       rfl
     subst response
-    rw [LateOpeningRuntimeOptionalPacket.submission_round weight nonnegative decision material
-      players, PMF.mem_support_pure_iff] at firstReached
+    rw [LateOpeningRuntimeBobFinalObservation.serviced_round weight nonnegative 12
+      decision.execution decision.trace ⟨some material⟩ players,
+      PMF.mem_support_pure_iff] at firstReached
     subst first
     exact (ReactiveApplication.Invariant.policyInvariant app
       (LateOpeningRuntimeService.runtime.reactiveStoreInvariant leaks (.inr bobRevealEvent)

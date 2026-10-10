@@ -5,6 +5,8 @@ import Vegas.Examples.LateOpeningRuntimeServiceDecision
 import Vegas.Pending.ReactiveStateInvariant
 import Interaction.ReactiveAllocation
 import Interaction.ReactiveReceipts
+import Interaction.ReactiveProvenance
+import Interaction.ReactiveReceiptIdentity
 import Interaction.ReactiveRecallInvariant
 
 /-! # Physical receipt guarantees for the late-opening service
@@ -207,6 +209,40 @@ theorem protected_submission_receipt_of_active (weight : ℝ) (nonnegative : 0 �
     tracked with received | outstanding
   · exact received
   · exact (active outstanding.1).elim
+
+/-- At every active native callback, earlier receiver envelopes have receipts,
+so protected author service has nothing to include after a silent response. -/
+theorem latestAuthor_bob_wait_of_active (weight : ℝ) (nonnegative : 0 ≤ weight)
+    (control : app.Control)
+    (trace : (app.protocol initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace (some control))
+    (active : control.actor ≠ none) :
+    latestAuthor bob (control.execution.observeEnvironment app) = .wait := by
+  have origins := app.history_provenance initial LateOpeningRuntimeService.horizon
+    (LateOpeningRuntimeService.scheduler weight nonnegative) trace
+  have receiptIds := app.receipt_identifiers_history initial LateOpeningRuntimeService.horizon
+    (LateOpeningRuntimeService.scheduler weight nonnegative) control trace
+  have absent : control.execution.network.pending.reverse.find?
+      (fun message : Message Player app.Payload => decide (message.sender = bob ∧
+        message.id ∉ control.execution.network.ledger.map Message.id)) = none := by
+    apply List.find?_eq_none.mpr
+    intro message member selected
+    have chosen := of_decide_eq_true selected
+    obtain ⟨entry, recalled, _material, _transmitted, emitted, _packet⟩ :=
+      origins.pending message (List.mem_reverse.mp member)
+    rw [chosen.1] at recalled
+    obtain ⟨accepted, received⟩ := protected_submission_receipt_of_active
+      weight nonnegative control trace bob entry recalled message emitted (Or.inl rfl) active
+    apply chosen.2
+    rw [← receiptIds]
+    exact List.mem_map.mpr ⟨(message.id, accepted), received, rfl⟩
+  unfold latestAuthor
+  change (match control.execution.network.pending.reverse.find?
+    (fun message : Message Player app.Payload => decide (message.sender = bob ∧
+      message.id ∉ control.execution.network.ledger.map Message.id)) with
+    | none => ReactiveApplication.Command.wait
+    | some message => ReactiveApplication.Command.include message.id) = _
+  rw [absent]
 
 /-- The actual all-raw scheduler supplies the asynchronous contract's
 protected inclusion guarantee for every finite nonnegative lottery weight. -/

@@ -1,6 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceCompilation
+import Vegas.EventGraph.ConfigRestriction
+import Vegas.Pending.ReactiveFrontierEnvironment
+import Vegas.Pending.ReactiveFrontierSampling
+import Vegas.Examples.LateOpeningRuntimeBobDirtyFinalRationality
 import Vegas.Game.IntendedPreservation
 import Vegas.Game.IntendedServiceCompilation
 import Vegas.Game.ReactiveSourceObservation
@@ -2915,3 +2919,33 @@ open Vegas.Examples.LateOpeningRuntimeBobSunkAudit in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms rejected_identifier_same_view_full_charge
+
+open Vegas.EventGraph.Config.Reachable in
+/-- info: 'Vegas.EventGraph.Config.Reachable.foreign_factor'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms foreign_factor
+
+open Vegas.EventGraphRuntime.ReactiveFrontier in
+/-- info: 'Vegas.EventGraphRuntime.ReactiveFrontier.respond_some'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms respond_some
+
+open Vegas.EventGraphRuntime.ReactiveFrontier in
+/-- info: 'Vegas.EventGraphRuntime.ReactiveFrontier.sample_coupling'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms sample_coupling
+
+open Vegas.EventGraphRuntime.ReactiveFrontier in
+/-- info: 'Vegas.EventGraphRuntime.ReactiveFrontier.sampled_response_canonicalContinuation'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms sampled_response_canonicalContinuation
+
+open Vegas.Examples.LateOpeningRuntimeBobDirtyFinalRationality in
+/-- info: 'Vegas.Examples.LateOpeningRuntimeBobDirtyFinalRationality.rational_final_failure_zero'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms rational_final_failure_zero

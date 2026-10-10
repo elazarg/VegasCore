@@ -101,71 +101,6 @@ theorem binding_history_prior_action (weight : ℝ) (nonnegative : 0 ≤ weight)
     rfl
   exact ⟨response, responseActions⟩
 
-/-- Every earlier receiver envelope is already receipted at the first binding;
-a silent current response therefore causes protected service to wait. -/
-theorem latestAuthor_before_binding_silent (weight : ℝ) (nonnegative : 0 ≤ weight)
-    (execution : app.Execution)
-    (trace : (rawMenu.protocol initial LateOpeningRuntimeService.horizon
-      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
-        (some ⟨14, some bob, execution⟩))
-    (ready : execution.application.config.cut.Ready bobBindEvent) :
-    latestAuthor bob (execution.observeEnvironment app) = .wait := by
-  by_cases quiet : SilentRecall execution
-  · exact LateOpeningRuntimeBobRawBinding.latestAuthor_silent weight nonnegative execution
-      (rawMenu.toRawTrace _ _ _ trace) quiet
-  obtain ⟨response, actions⟩ := binding_history_prior_action weight nonnegative execution trace
-  have recallLength : (execution.recall bob).length = 1 := by
-    have lengths := congrArg List.length actions
-    simpa only [List.length_map, List.length_singleton] using lengths
-  have rawTrace := rawMenu.toRawTrace _ _ _ trace
-  have counted := app.serialRecall_history (LateOpeningRuntimeService.scheduler weight nonnegative)
-    initial LateOpeningRuntimeService.horizon rawTrace
-  have bounded : execution.network.nextSerial bob ≤ 1 := by
-    change execution.SerialRecall app at counted
-    rw [counted bob]
-    exact (List.countP_le_length ..).trans_eq recallLength
-  obtain ⟨traffic, present, owner, rejected⟩ :=
-    dirty_binding_history_has_rejected_traffic weight nonnegative execution trace ready quiet
-  have serials := app.serialsBeforeNext_history
-    (LateOpeningRuntimeService.scheduler weight nonnegative) initial
-      LateOpeningRuntimeService.horizon rawTrace
-  have receiptIds := app.receipt_identifiers_history initial LateOpeningRuntimeService.horizon
-    (LateOpeningRuntimeService.scheduler weight nonnegative) ⟨14, some bob, execution⟩ rawTrace
-  have publishedId : traffic.envelope.id ∈ execution.network.ledger.map Message.id := by
-    rw [← receiptIds]
-    exact List.mem_map.mpr ⟨(traffic.envelope.id, false), rejected, rfl⟩
-  obtain ⟨message, ledgerMember, sameId⟩ := List.mem_map.mp publishedId
-  have earlier := serials.ledger message ledgerMember
-  rw [sameId] at earlier
-  change traffic.envelope.id.2 < execution.network.nextSerial traffic.envelope.id.1 at earlier
-  change traffic.envelope.id.1 = bob at owner
-  rw [owner] at earlier
-  have zero : traffic.envelope.id = (bob, 0) := by
-    apply Prod.ext owner
-    omega
-  have publishedZero : (bob, 0) ∈ execution.network.ledger.map Message.id := zero ▸ publishedId
-  have absent : execution.network.pending.reverse.find?
-      (fun message : Message Player app.Payload => decide (message.sender = bob ∧
-        message.id ∉ execution.network.ledger.map Message.id)) = none := by
-    apply List.find?_eq_none.mpr
-    intro message member selected
-    rw [List.mem_reverse] at member
-    have chosen := of_decide_eq_true selected
-    have earlier := serials.pending message member
-    change message.id.2 < execution.network.nextSerial message.id.1 at earlier
-    have owned : message.id.1 = bob := chosen.1
-    rw [owned] at earlier
-    have idEq : message.id = (bob, 0) := by
-      apply Prod.ext owned
-      omega
-    exact chosen.2 (idEq ▸ publishedZero)
-  unfold latestAuthor
-  change (match execution.network.pending.reverse.find?
-    (fun message : Message Player app.Payload => decide (message.sender = bob ∧
-      message.id ∉ execution.network.ledger.map Message.id)) with
-    | none => ReactiveApplication.Command.wait
-    | some message => ReactiveApplication.Command.include message.id) = _
-  rw [absent]
 /-- Actual protected binding service for arbitrary earlier receiver actions. -/
 def servicedBinding (execution : app.Execution) (response : app.Action) : app.Execution :=
   match response.transmission with
@@ -180,7 +115,6 @@ theorem servicedBinding_round (weight : ℝ) (nonnegative : 0 ≤ weight)
     (trace : (rawMenu.protocol initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
         (some ⟨14, some bob, execution⟩))
-    (ready : execution.application.config.cut.Ready bobBindEvent)
     (response : app.Action) (players : Player → app.Policy) :
     app.round (LateOpeningRuntimeService.scheduler weight nonnegative) players
       (execution.respond app bob response) = PMF.pure (servicedBinding execution response) := by
@@ -195,7 +129,8 @@ theorem servicedBinding_round (weight : ℝ) (nonnegative : 0 ≤ weight)
             ⟨14, some bob, execution⟩ (rawMenu.toRawTrace _ _ _ trace) bob rfl ⟨none⟩ (Or.inl rfl)
           have selected : latestAuthor bob
               ((execution.respond app bob ⟨none⟩).observeEnvironment app) = .wait :=
-            latestAuthor_before_binding_silent weight nonnegative execution trace ready
+            latestAuthor_bob_wait_of_active weight nonnegative ⟨14, some bob, execution⟩
+              (rawMenu.toRawTrace _ _ _ trace) (by simp)
           rw [ReactiveApplication.round, chosen, selected, PMF.pure_bind,
             ReactiveApplication.dispatch]
           simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,

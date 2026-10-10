@@ -310,11 +310,14 @@ theorem continuation_auditKey_law (decision : DecisionHistory weight nonnegative
     (decision.execution.respond app bob response)).bind
       (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative) players 5)).support
     at suffix
-  rw [serviced_round weight nonnegative decision response players, PMF.pure_bind] at suffix
+  rw [serviced_round weight nonnegative 6 decision.execution decision.trace response players,
+    PMF.pure_bind] at suffix
   have receipts := tail_preserves_receipts weight nonnegative players 5 _ final
-    (by rw [serviced_cursor weight nonnegative decision response]) suffix
+    (by rw [serviced_cursor weight nonnegative decision.execution decision.trace response]) suffix
   have inputs := final_preserves_inputs weight nonnegative players 5 _ final
-    (by rw [serviced_cursor weight nonnegative decision response]; omega) suffix
+    (by
+      rw [serviced_cursor weight nonnegative decision.execution decision.trace response]
+      omega) suffix
   unfold auditKey
   rw [receipts, inputs]
   rfl
@@ -328,9 +331,11 @@ theorem continuation_auditKey_same_information (first second : DecisionHistory w
   rw [continuation_auditKey_law weight nonnegative first response firstPlayers,
     continuation_auditKey_law weight nonnegative second response secondPlayers,
     serviced_receipts_same_information weight nonnegative first second sameRecall sameView response,
-    serviced_inputs_same_information weight nonnegative first second sameRecall sameView response,
-    continuation_owner_same_information weight nonnegative first second sameRecall sameView response
-      firstPlayers secondPlayers]
+    serviced_inputs_same_information weight nonnegative first second sameRecall sameView response]
+  unfold continuation
+  rw [continuation_owner_same_information weight nonnegative
+    first.execution second.execution first.trace second.trace sameRecall sameView response
+    firstPlayers secondPlayers]
 
 theorem continuation_charge_same_information (first second : DecisionHistory weight nonnegative)
     (sameRecall : first.execution.recall bob = second.execution.recall bob)

@@ -24,83 +24,19 @@ open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeReadou
   LateOpeningRuntimeOptionalOpening LateOpeningRuntimeOptionalInformation
   LateOpeningRuntimeOptionalIncentive LateOpeningRuntimeOptionalDecision
   LateOpeningRuntimeOptionalRationality
-open LateOpeningRuntimeBobFinalObservation (serviced responsePhysical)
+open LateOpeningRuntimeBobFinalObservation (serviced)
+open LateOpeningRuntimeBobResponseState (responseState)
 open LateOpeningRuntimeBobFinalAuditObservation
   (auditKey keyCharge fullCharge fullCharge_eq_keyCharge)
 open LateOpeningRuntimeBobBindingDecision (context)
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
 
-theorem latestAuthor_clean (control : app.Control)
-    (trace : (app.protocol initial LateOpeningRuntimeService.horizon
-      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace (some control))
-    (clean : LateOpeningRuntimeBobAudit.CleanBindings control.execution) :
-    latestAuthor bob (control.execution.observeEnvironment app) = .wait := by
-  let execution := control.execution
-  have retained := app.retained_envelopes_mem_inputs execution
-    (app.history_provenance initial LateOpeningRuntimeService.horizon
-      (LateOpeningRuntimeService.scheduler weight nonnegative) trace)
-    (app.history_inputRecall initial LateOpeningRuntimeService.horizon
-      (LateOpeningRuntimeService.scheduler weight nonnegative) trace)
-  have receiptIds := app.receipt_identifiers_history initial LateOpeningRuntimeService.horizon
-    (LateOpeningRuntimeService.scheduler weight nonnegative) control trace
-  have absent : execution.network.pending.reverse.find?
-      (fun message : Message Player app.Payload => decide (message.sender = bob ∧
-        message.id ∉ execution.network.ledger.map Message.id)) = none := by
-    apply List.find?_eq_none.mpr
-    intro message member selected
-    rw [List.mem_reverse] at member
-    obtain ⟨owned, unpublished⟩ := of_decide_eq_true selected
-    obtain ⟨_, _, accepted⟩ := clean message (retained.pending message member) owned
-    apply unpublished
-    rw [← receiptIds]
-    exact List.mem_map.mpr ⟨(message.id, true), accepted, rfl⟩
-  unfold latestAuthor
-  change (match execution.network.pending.reverse.find?
-    (fun message : Message Player app.Payload => decide (message.sender = bob ∧
-      message.id ∉ execution.network.ledger.map Message.id)) with
-    | none => ReactiveApplication.Command.wait
-    | some message => ReactiveApplication.Command.include message.id) = _
-  rw [absent]
-
 def emittedMessage (execution : app.Execution) (material : app.Submission) :
     Message Player app.Payload :=
   ⟨(bob, execution.network.nextSerial bob),
     app.packet (app.submit execution.application bob material) bob
       (execution.network.known bob) material⟩
-
-theorem submission_round (decision : DecisionHistory weight nonnegative)
-    (material : app.Submission) (players : Player → app.Policy) :
-    app.round (LateOpeningRuntimeService.scheduler weight nonnegative) players
-      (decision.execution.respond app bob ⟨some material⟩) =
-        PMF.pure (serviced decision.execution ⟨some material⟩) := by
-  have chosen := protected_response_scheduler weight nonnegative
-    ⟨12, some bob, decision.execution⟩ decision.trace bob rfl ⟨some material⟩ (Or.inl rfl)
-  have serials := app.serialsBeforeNext_history (LateOpeningRuntimeService.scheduler
-    weight nonnegative) initial LateOpeningRuntimeService.horizon decision.trace
-  have selected := latestAuthor_after_submit decision.execution bob material serials
-  rw [ReactiveApplication.round, chosen, selected, PMF.pure_bind, ReactiveApplication.dispatch]
-  simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map, PMF.pure_bind,
-    ReactiveApplication.Command.actor?, ReactiveApplication.resume]
-  rfl
-
-theorem serviced_physical (decision : DecisionHistory weight nonnegative)
-    (material : app.Submission) :
-    (serviced decision.execution ⟨some material⟩).application =
-      responsePhysical decision.execution ⟨some material⟩ := by
-  have serials := app.serialsBeforeNext_history (LateOpeningRuntimeService.scheduler
-    weight nonnegative) initial LateOpeningRuntimeService.horizon decision.trace
-  have found := serials.lookup_submit bob
-    (app.packet (app.submit decision.execution.application bob material) bob
-      (decision.execution.network.known bob) material)
-  have lookup : (decision.execution.respond app bob ⟨some material⟩).network.lookup
-      (bob, decision.execution.network.nextSerial bob) =
-    some (emittedMessage decision.execution material) := found
-  change ((decision.execution.respond app bob ⟨some material⟩).includePending app
-    (bob, decision.execution.network.nextSerial bob)).application = _
-  unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
-  rw [lookup]
-  rfl
 
 theorem continuation_split (decision : DecisionHistory weight nonnegative)
     (material : app.Submission) (players : Player → app.Policy) :
@@ -109,7 +45,8 @@ theorem continuation_split (decision : DecisionHistory weight nonnegative)
       (serviced decision.execution ⟨some material⟩) := by
   change (app.round (LateOpeningRuntimeService.scheduler weight nonnegative) players
     (decision.execution.respond app bob ⟨some material⟩)).bind _ = _
-  rw [submission_round weight nonnegative decision material players, PMF.pure_bind]
+  rw [LateOpeningRuntimeBobFinalObservation.serviced_round weight nonnegative 12
+    decision.execution decision.trace ⟨some material⟩ players, PMF.pure_bind]
 
 theorem permitted_of_clear (control : app.Control)
     (trace : (app.protocol initial LateOpeningRuntimeService.horizon
@@ -169,7 +106,8 @@ theorem immediate_publication_of_clear (decision : DecisionHistory weight nonneg
   obtain ⟨firstTrace⟩ := app.raw_trace_round initial LateOpeningRuntimeService.horizon
     (LateOpeningRuntimeService.scheduler weight nonnegative) players 11 submitted first
       respondedTrace (by
-        rw [submission_round weight nonnegative decision material players]
+        rw [LateOpeningRuntimeBobFinalObservation.serviced_round weight nonnegative 12
+    decision.execution decision.trace ⟨some material⟩ players]
         exact (PMF.mem_support_pure_iff _ _).mpr rfl)
   have suffix := reached
   rw [continuation_split weight nonnegative decision material players] at suffix
@@ -270,9 +208,11 @@ theorem immediate_publication_same_information
     (serviced first.execution ⟨some material⟩).application.config.store (.inr bobRevealEvent) =
       (serviced second.execution ⟨some material⟩).application.config.store
         (.inr bobRevealEvent) := by
-  rw [serviced_physical weight nonnegative first material,
-    serviced_physical weight nonnegative second material]
-  have views := LateOpeningRuntimeBobFinalObservation.responsePhysical_same_information
+  rw [LateOpeningRuntimeBobFinalObservation.serviced_physical weight nonnegative 12
+    first.execution first.trace ⟨some material⟩,
+    LateOpeningRuntimeBobFinalObservation.serviced_physical weight nonnegative 12
+    second.execution second.trace ⟨some material⟩]
+  have views := LateOpeningRuntimeBobResponseState.responseState_same_view
     first.execution second.execution
     (app.history_inputRecall initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative) first.trace)
@@ -280,9 +220,9 @@ theorem immediate_publication_same_information
       (LateOpeningRuntimeService.scheduler weight nonnegative) second.trace)
     sameRecall sameView ⟨some material⟩
   have stores : nativeGraph.playerStore bob
-      (responsePhysical first.execution ⟨some material⟩).config.store =
+      (responseState first.execution ⟨some material⟩).config.store =
       nativeGraph.playerStore bob
-        (responsePhysical second.execution ⟨some material⟩).config.store :=
+        (responseState second.execution ⟨some material⟩).config.store :=
     congrArg (fun view : PlayerView nativeGraph => view.observation.store) views
   have visible : nativeGraph.fieldVisibleTo bob (.inr bobRevealEvent) := by decide
   simpa only [nativeGraph.playerStore_of_visible bob _ _ visible] using

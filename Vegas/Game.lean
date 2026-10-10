@@ -300,3 +300,4 @@ import Vegas.Game.SourceStateKernel
 import Vegas.Game.ProbabilisticServiceObstruction
 import Vegas.Game.ValueBindingEdge
 import Vegas.Game.ValueAdmissionPreservation
+import Vegas.Game.SourceServicePrescribedCall

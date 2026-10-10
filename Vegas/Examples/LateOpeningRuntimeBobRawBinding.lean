@@ -46,36 +46,6 @@ def serviced (execution : app.Execution) (response : app.Action) : app.Execution
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
 
-theorem latestAuthor_silent (execution : app.Execution)
-    (trace : (app.protocol initial LateOpeningRuntimeService.horizon
-      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
-        (some ⟨14, some bob, execution⟩)) (quiet : SilentRecall execution) :
-    latestAuthor bob (execution.observeEnvironment app) = .wait := by
-  have zero := (silent_resources weight nonnegative _ trace quiet).1
-  have serials := app.serialsBeforeNext_history
-    (LateOpeningRuntimeService.scheduler weight nonnegative) initial
-      LateOpeningRuntimeService.horizon trace
-  unfold latestAuthor
-  have absent : execution.network.pending.reverse.find?
-      (fun message : Message Player app.Payload => decide (message.sender = bob ∧
-        message.id ∉ execution.network.ledger.map Message.id)) = none := by
-    apply List.find?_eq_none.mpr
-    intro message member
-    rw [List.mem_reverse] at member
-    intro selected
-    have authored := (of_decide_eq_true selected).1
-    have earlier := serials.pending message member
-    change message.id.2 < execution.network.nextSerial message.id.1 at earlier
-    change message.id.1 = bob at authored
-    rw [authored, zero] at earlier
-    exact (Nat.not_lt_zero _ earlier).elim
-  change (match execution.network.pending.reverse.find?
-    (fun message : Message Player app.Payload => decide (message.sender = bob ∧
-      message.id ∉ execution.network.ledger.map Message.id)) with
-    | none => ReactiveApplication.Command.wait
-    | some message => ReactiveApplication.Command.include message.id) = _
-  rw [absent]
-
 theorem serviced_round (execution : app.Execution)
     (trace : (app.protocol initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
@@ -90,7 +60,8 @@ theorem serviced_round (execution : app.Execution)
   | none =>
       have selected : latestAuthor bob
           ((execution.respond app bob ⟨none⟩).observeEnvironment app) = .wait :=
-        latestAuthor_silent weight nonnegative execution trace quiet
+        latestAuthor_bob_wait_of_active weight nonnegative ⟨14, some bob, execution⟩ trace
+          (by simp)
       rw [ReactiveApplication.round, chosen, selected, PMF.pure_bind,
         ReactiveApplication.dispatch]
       simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,

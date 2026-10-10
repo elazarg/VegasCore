@@ -50,14 +50,14 @@ theorem dirty_continuation_payoff_le_score (weight : ℝ) (nonnegative : 0 ≤ w
     (execution.respond app bob response)).bind
       (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative) players 13)).support
     at splitReach
-  rw [servicedBinding_round weight nonnegative execution trace ready response players,
+  rw [servicedBinding_round weight nonnegative execution trace response players,
     PMF.pure_bind] at splitReach
   obtain ⟨respondedTrace⟩ := app.raw_trace_respond initial LateOpeningRuntimeService.horizon
     (LateOpeningRuntimeService.scheduler weight nonnegative) 14 execution bob response rawTrace
   obtain ⟨servicedTrace⟩ := app.raw_trace_round initial LateOpeningRuntimeService.horizon
     (LateOpeningRuntimeService.scheduler weight nonnegative) players 13 _
     (servicedBinding execution response) respondedTrace
-    (by rw [servicedBinding_round weight nonnegative execution trace ready response players]
+    (by rw [servicedBinding_round weight nonnegative execution trace response players]
         exact (PMF.mem_support_pure_iff _ _).mpr rfl)
   change serviceSourceReadout setup .sequential deadline leaks (some ⟨0, none, final⟩) =
     some (terminalStateOf bit label (.success publishedBit) binding publication) at readout

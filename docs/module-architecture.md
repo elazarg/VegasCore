@@ -10,10 +10,10 @@
 | Vegas.EventGraph | Typed dependencies, source-event execution and observations. |
 | Vegas.Pending | Runtime packet submission, inclusion, deadlines and pending-message laws. |
 | Vegas.Compile | Source-to-graph compiler and correspondence. |
-| Vegas.Game | Strategic composition and the checked calendar SE proof. |
-| Test libraries and Paper | Regressions and the calendar theorem's axiom pins. |
+| Vegas.Game | Strategic composition, source equilibrium extension, runtime preservation and obstruction proofs. |
+| Test libraries and Paper | Regressions and checked capstone axiom guards. |
 
-The [active plan](se-schedule-generalization.md) governs arbitrary-builder work.
+The [active plan](se-schedule-generalization.md) governs work beyond the fixed calendar.
 The [calendar checklist](se-proof-checklist.md) records checked evidence. The
 [archive](../archive/se-generalization/README.md) is searchable reference material,
 outside the Lean source and default build roots.
@@ -68,8 +68,10 @@ Useful existing boundaries are the
 [original-action retention through actual packet inclusion](../Vegas/Pending/ReactiveOriginalInclusionStability.lean),
 [fresh sampled events outside retained intention frontiers](../Vegas/Pending/ReactiveSampledFrontierFreshness.lean),
 [owner-authenticated joint intention frontiers](../Vegas/Pending/ReactiveSampledFrontierOwnership.lean),
+[reachable frontiers through actual compiler responses](../Vegas/Pending/ReactiveFrontier.lean),
 [physical readiness and foreignness of retained pending intentions](../Vegas/Pending/ReactivePendingFrontierReadiness.lean),
 [foreign completion sequences preserving decision kernels](../Vegas/EventGraph/ForeignCompletionSequence.lean),
+[reachable restriction to causal cuts and exact foreign replay](../Vegas/EventGraph/ConfigRestriction.lean),
 [retained evaluations through foreign completion](../Vegas/EventGraph/ForeignCompletionEvaluation.lean),
 [completed-output agreement and terminal stores](../Vegas/EventGraph/CompletedOutputAgreement.lean),
 [canonical continuation at sampled pending-event frontiers](../Vegas/Pending/ReactiveSampledFrontierContinuation.lean),
@@ -77,6 +79,10 @@ Useful existing boundaries are the
 [original sampled resolutions through actual acceptance](../Vegas/Pending/ReactiveSampledResolutionSettlement.lean),
 [silent original resolutions through delayed expiry](../Vegas/Pending/ReactiveSampledSilentSettlement.lean),
 [sampled frontier outputs agreeing with physical settlement](../Vegas/Pending/ReactiveSampledValueAgreement.lean),
+[timely actual owner responses before expiry](../Vegas/Pending/ReactiveOwnerOpportunity.lean),
+[sample coverage through actual prescribed callbacks](../Vegas/Pending/ReactiveResponseSampling.lean),
+[unique event emissions on prescribed runs](../Vegas/Pending/ReactiveSingleSubmission.lean),
+[fresh service calls from timely supported responses](../Vegas/Game/SourceServicePrescribedCall.lean),
 [compiled canonical continuation decoded to the source law](../Vegas/Compile/EventGraphCanonicalContinuation.lean),
 [reactive source decision laws](../Vegas/Game/ReactiveSourceDecision.lean),
 [acceptance of recorded source calls during their live window](../Vegas/Game/ReactiveSourceAcceptance.lean),

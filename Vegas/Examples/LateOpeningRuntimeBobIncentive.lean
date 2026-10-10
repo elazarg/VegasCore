@@ -69,37 +69,51 @@ theorem continuation_trace (history : DecisionHistory weight nonnegative)
   exact app.raw_trace_runRounds initial LateOpeningRuntimeService.horizon
     (LateOpeningRuntimeService.scheduler weight nonnegative) players 0 6 _ final responded reached
 
-theorem continuation_readout (history : DecisionHistory weight nonnegative)
+theorem continuation_readout (execution : app.Execution)
+    (trace : (app.protocol initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
+      (some ⟨6, some bob, execution⟩))
+    (answer : Answer)
+    (bound : execution.application.config.store (.inr bobBindEvent) = some (.success answer))
+    (ready : execution.application.config.cut.Ready bobRevealEvent)
     (bit : Bool) (label : Fin 3)
     (valid : EventGraphRuntime.State.Invariant (graph := nativeGraph)
-      (setup.eventInputs (sourceInitial bit label)) history.execution.application)
+      (setup.eventInputs (sourceInitial bit label)) execution.application)
     (aliceResult : PublicationResult Bool)
-    (aliceStored : history.execution.application.config.store (.inr aliceEvent) = some aliceResult)
+    (aliceStored : execution.application.config.store (.inr aliceEvent) = some aliceResult)
     (response : app.Action) (players : Player → app.Policy) (final : app.Execution)
-    (reached : final ∈ (continuation weight nonnegative history response players).support) :
+    (reached : final ∈ (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative)
+      players 6
+      (execution.respond app bob response)).support) :
     ∃ result,
       final.application.config.store (.inr bobRevealEvent) = some result ∧
       serviceSourceReadout setup .sequential deadline leaks (app.finished final) =
-        some (terminalStateOf bit label aliceResult (.success history.answer) result) := by
-  obtain ⟨trace⟩ := continuation_trace weight nonnegative history response players final reached
-  have complete := (contract weight nonnegative).completes ⟨0, none, final⟩ trace ⟨rfl, rfl⟩
+        some (terminalStateOf bit label aliceResult (.success answer) result) := by
+  obtain ⟨responded⟩ := app.raw_trace_respond initial LateOpeningRuntimeService.horizon
+    (LateOpeningRuntimeService.scheduler weight nonnegative)
+    6 execution bob response trace
+  obtain ⟨terminalTrace⟩ := app.raw_trace_runRounds initial LateOpeningRuntimeService.horizon
+    (LateOpeningRuntimeService.scheduler weight nonnegative)
+    players 0 6 _ final responded reached
+  have complete := (contract weight nonnegative).completes ⟨0, none, final⟩ terminalTrace
+    ⟨rfl, rfl⟩
   have invariant := LateOpeningRuntimeService.runtime.reactiveStateInvariant leaks
     (setup.eventInputs (sourceInitial bit label))
   have after := (ReactiveApplication.Invariant.policyInvariant app invariant players).runRounds
     (LateOpeningRuntimeService.scheduler weight nonnegative) 6 _ final
-      (invariant.respond history.execution bob response valid) reached
+      (invariant.respond execution bob response valid) reached
   have inherited := bob_continuation_other_fields LateOpeningRuntimeService.runtime leaks players
-    (LateOpeningRuntimeService.scheduler weight nonnegative) 6 history.execution final
-      history.ready response reached
+    (LateOpeningRuntimeService.scheduler weight nonnegative) 6 execution final ready response
+      reached
   have aliceAfter : final.application.config.store (.inr aliceEvent) = some aliceResult :=
     (inherited _ (by decide)).trans aliceStored
-  have boundAfter : final.application.config.store (.inr bobBindEvent) =
-      some (.success history.answer) := (inherited _ (by decide)).trans history.bound
+  have boundAfter : final.application.config.store (.inr bobBindEvent) = some (.success answer) :=
+    (inherited _ (by decide)).trans bound
   obtain ⟨result, stored⟩ := Option.isSome_iff_exists.mp
     (final.application.config.store_available_of_terminal complete (.inr bobRevealEvent))
   refine ⟨result, stored, ?_⟩
   have decoded := decode_terminalStateOf final.application bit label aliceResult
-    (.success history.answer) result after.reachable.inputs_eq aliceAfter boundAfter stored
+    (.success answer) result after.reachable.inputs_eq aliceAfter boundAfter stored
   change (if final.application.config.cut.Terminal then
     decodeState? (terminalRefs program) final.application.config.store else none) = _
   rw [ite_eq_left complete]
@@ -214,9 +228,11 @@ theorem canonical_dominates (history : DecisionHistory weight nonnegative)
     (bob_prefix_other_field_available history.execution.application history.ready
       (.inr aliceEvent) (by decide))
   obtain ⟨rawResult, rawStored, rawRead⟩ := continuation_readout weight nonnegative
-    history bit label valid aliceResult aliceStored response players final reached
+    history.execution history.trace history.answer history.bound history.ready bit label valid
+    aliceResult aliceStored response players final reached
   obtain ⟨canonicalResult, canonicalStored, canonicalRead⟩ := continuation_readout
-    weight nonnegative history bit label valid aliceResult aliceStored
+    weight nonnegative history.execution history.trace history.answer history.bound history.ready
+    bit label valid aliceResult aliceStored
     (canonical weight nonnegative history)
       future canonicalFinal canonicalReached
   obtain ⟨published, clear⟩ := canonical_clean weight nonnegative history sample authentic

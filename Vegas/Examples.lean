@@ -195,3 +195,6 @@ import Vegas.Examples.CommittedResolutionBobReadout
 import Vegas.Examples.CommittedResolutionBobIncentive
 import Vegas.Examples.LateLeak
 import Vegas.Examples.PrivateValueAuction
+import Vegas.Examples.LateOpeningRuntimeBobDirtyFinalIncentive
+import Vegas.Examples.LateOpeningRuntimeBobDirtyFinalContext
+import Vegas.Examples.LateOpeningRuntimeBobDirtyFinalRationality

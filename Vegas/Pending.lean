@@ -199,3 +199,10 @@ import Vegas.Pending.ServicePlan
 import Vegas.Pending.EventResolutionEnvironment
 import Vegas.Pending.ReactiveSampledValueAgreement
 import Vegas.Pending.ReactivePendingFrontierReadiness
+import Vegas.Pending.ReactiveResponseSampling
+import Vegas.Pending.ReactiveOwnerOpportunity
+import Vegas.Pending.ReactiveSingleSubmission
+import Vegas.Pending.ReactiveFrontier
+import Vegas.Pending.ReactiveFrontierEnvironment
+import Vegas.Pending.ReactiveFrontierSampling
+import Vegas.Pending.ReactiveFrontierRecall

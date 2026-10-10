@@ -43,7 +43,9 @@ private theorem binding_absent (physical : app.State)
         rfl
       exact (ready.1 ((physical.config.output_available bobBindEvent).mp present)).elim
 
-private theorem binding_call_of_handler (physical next : app.State)
+/-- At a ready first binding, every accepted call commits that binding,
+independently of its identifier and the earlier raw traffic. -/
+theorem binding_call_of_handler (physical next : app.State)
     (ready : physical.config.cut.Ready bobBindEvent) (message : Message Player app.Payload)
     (handled : app.handle physical message = some next) :
     ∃ candidate, message.payload.call = .commitment bobBindEvent candidate := by

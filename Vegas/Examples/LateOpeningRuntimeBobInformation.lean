@@ -101,23 +101,28 @@ theorem timely_same_view (first second : app.Execution)
 
 /-- Equal final Bob observations identify the actual final callback and the
 six remaining scheduler rounds, rather than merely postulating common depth. -/
-theorem final_remaining_same_view (decision : DecisionHistory weight nonnegative)
+theorem final_remaining_same_view
+    (execution : app.Execution)
+    (executionTrace : (app.protocol initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
+      (some ⟨6, some bob, execution⟩))
     (control : app.Control)
     (trace : (app.protocol initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace (some control))
     (active : control.actor = some bob)
-    (sameView : decision.execution.observe app bob = control.execution.observe app bob) :
+    (sameView : execution.observe app bob = control.execution.observe app bob) :
     control.remaining = 6 := by
-  have clock : decision.execution.application.clock = 6 := by
-    rw [clock_history weight nonnegative _ decision.trace,
-      final_cursor weight nonnegative _ decision.trace]
+  have clock : execution.application.clock = 6 := by
+    rw [clock_history weight nonnegative _ executionTrace,
+      final_cursor weight nonnegative _ executionTrace]
     decide
   have sameClock := congrArg (fun view : app.PlayerView => view.application.publicView.clock)
     sameView
-  change decision.execution.application.clock = control.execution.application.clock at sameClock
+  change execution.application.clock = control.execution.application.clock at sameClock
   have clocked := clock_history weight nonnegative control trace
-  have actualClock : LateOpeningRuntimeService.clockAt control.execution.environmentRecall.length =
-      6 := clocked.symm.trans (sameClock.symm.trans clock)
+  have actualClock : LateOpeningRuntimeService.clockAt control.execution.environmentRecall.length
+    = 6 :=
+    clocked.symm.trans (sameClock.symm.trans clock)
   have slot := active_cursor weight nonnegative control trace bob active
   rcases slot with ⟨impossible, _⟩ | ⟨_, positions | ⟨position, _⟩⟩
   · cases impossible
@@ -133,6 +138,83 @@ theorem final_remaining_same_view (decision : DecisionHistory weight nonnegative
   · rw [position] at actualClock
     exact ((by decide : LateOpeningRuntimeService.clockAt 14 ≠ 6) actualClock).elim
 
+theorem final_history_same_information
+    (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
+    (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+      bob site.1)
+    (execution : app.Execution)
+    (executionTrace : (app.protocol initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
+      (some ⟨6, some bob, execution⟩))
+    (current : representative.1.state = some ⟨6, some bob, execution⟩)
+    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1) :
+    ∃ actual : app.Execution,
+      history.1.state = some ⟨6, some bob, actual⟩ ∧
+      Nonempty ((app.protocol initial LateOpeningRuntimeService.horizon
+        (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
+        (some ⟨6, some bob, actual⟩)) ∧
+      execution.recall bob = actual.recall bob ∧
+      execution.observe app bob = actual.observe app bob := by
+  classical
+  have active := InformationModel.InformationSite.active _ site history
+  obtain ⟨control, stateEq, actor⟩ := app.control_of_active initial
+    LateOpeningRuntimeService.horizon
+    (LateOpeningRuntimeService.scheduler weight nonnegative) (rawMenu.toRawHistory _ _ _
+      history.1) bob active
+  change history.1.state = some control at stateEq
+  have rawTrace := stateEq ▸ rawMenu.toRawTrace initial LateOpeningRuntimeService.horizon
+    (LateOpeningRuntimeService.scheduler weight nonnegative) history.1.trace
+  have information := representative.2.trans history.2.symm
+  change (rawMenu.signals _ _ _).infoOf bob representative.1.trace =
+    (rawMenu.signals _ _ _).infoOf bob history.1.trace at information
+  rw [rawMenu.info, rawMenu.info] at information
+  change app.observe bob representative.1.state = app.observe bob history.1.state at information
+  rw [current, stateEq] at information
+  simp only [ReactiveApplication.observe, actor, ↓reduceIte] at information
+  have sameRecall := congrArg Prod.fst (Option.some.inj information)
+  have sameView := congrArg Prod.snd (Option.some.inj information)
+  have remaining := final_remaining_same_view weight nonnegative execution executionTrace
+    control rawTrace actor sameView
+  have sameControl : control = ⟨6, some bob, control.execution⟩ := by
+    cases control
+    simp only [ReactiveApplication.Control.mk.injEq] at actor remaining ⊢
+    exact ⟨remaining, actor, trivial⟩
+  exact ⟨control.execution, stateEq.trans (congrArg some sameControl),
+    ⟨sameControl ▸ rawTrace⟩, sameRecall, sameView⟩
+
+section RawFinalInformation
+
+variable (weight : ℝ) (nonnegative : 0 ≤ weight)
+  (site : (LateOpeningRuntimeNash.model weight nonnegative).InformationSite bob)
+  (representative : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory
+    bob site.1)
+  (execution : app.Execution)
+  (executionTrace : (app.protocol initial LateOpeningRuntimeService.horizon
+    (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
+    (some ⟨6, some bob, execution⟩))
+  (current : representative.1.state = some ⟨6, some bob, execution⟩)
+
+def executionOfInformation
+    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1) :
+    app.Execution :=
+  (final_history_same_information weight nonnegative site representative execution executionTrace
+    current history).choose
+
+theorem executionOfInformation_spec
+    (history : (LateOpeningRuntimeNash.model weight nonnegative).InformationHistory bob site.1) :
+    let actual := executionOfInformation weight nonnegative site representative execution
+      executionTrace current history
+    history.1.state = some ⟨6, some bob, actual⟩ ∧
+      Nonempty ((app.protocol initial LateOpeningRuntimeService.horizon
+        (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
+        (some ⟨6, some bob, actual⟩)) ∧
+      execution.recall bob = actual.recall bob ∧
+      execution.observe app bob = actual.observe app bob :=
+  (final_history_same_information weight nonnegative site representative execution executionTrace
+    current history).choose_spec
+
+end RawFinalInformation
+
 /-- Every legal hidden history of one actual final Bob information site has
 the clean, immutable, ready and timely binding of its representative. -/
 theorem decision_of_information
@@ -146,32 +228,11 @@ theorem decision_of_information
       history.1.state = some ⟨6, some bob, result.execution⟩ ∧
       decision.execution.recall bob = result.execution.recall bob ∧
       decision.execution.observe app bob = result.execution.observe app bob := by
-  classical
-  have active := InformationModel.InformationSite.active _ site history
-  obtain ⟨control, stateEq, actor⟩ := app.control_of_active initial
-    LateOpeningRuntimeService.horizon (LateOpeningRuntimeService.scheduler weight nonnegative)
-      (rawMenu.toRawHistory _ _ _ history.1) bob active
-  change history.1.state = some control at stateEq
-  have rawTrace := stateEq ▸ rawMenu.toRawTrace initial LateOpeningRuntimeService.horizon
-    (LateOpeningRuntimeService.scheduler weight nonnegative) history.1.trace
-  have information := representative.2.trans history.2.symm
-  change (rawMenu.signals _ _ _).infoOf bob representative.1.trace =
-    (rawMenu.signals _ _ _).infoOf bob history.1.trace at information
-  rw [rawMenu.info, rawMenu.info] at information
-  change app.observe bob representative.1.state = app.observe bob history.1.state at information
-  rw [current, stateEq] at information
-  simp only [ReactiveApplication.observe, actor, ↓reduceIte] at information
-  have sameRecall := congrArg Prod.fst (Option.some.inj information)
-  have sameView := congrArg Prod.snd (Option.some.inj information)
-  have remaining := final_remaining_same_view weight nonnegative decision control rawTrace
-    actor sameView
-  have sameControl : control = ⟨6, some bob, control.execution⟩ := by
-    cases control
-    simp only [ReactiveApplication.Control.mk.injEq] at actor remaining ⊢
-    exact ⟨remaining, actor, trivial⟩
-  have finalTrace := sameControl ▸ rawTrace
+  obtain ⟨actual, stateEq, ⟨actualTrace⟩, sameRecall, sameView⟩ :=
+    final_history_same_information weight nonnegative site representative decision.execution
+      decision.trace current history
   let result : DecisionHistory weight nonnegative :=
-    ⟨control.execution, finalTrace, decision.answer,
+    ⟨actual, actualTrace, decision.answer,
     (bound_same_view _ _ sameView).symm.trans decision.bound,
     ready_same_view _ _ sameView decision.ready,
     timely_same_view _ _ sameView decision.timely,
@@ -179,9 +240,9 @@ theorem decision_of_information
       (app.history_inputRecall initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative) decision.trace)
       (app.history_inputRecall initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative) rawTrace)
+        (LateOpeningRuntimeService.scheduler weight nonnegative) actualTrace)
       sameRecall sameView decision.clean⟩
-  exact ⟨result, stateEq.trans (congrArg some sameControl), sameRecall, sameView⟩
+  exact ⟨result, stateEq, sameRecall, sameView⟩
 
 /-- Recover the actual final disclosure history in an information fiber. -/
 def decisionOfInformation

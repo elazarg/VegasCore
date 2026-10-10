@@ -45,10 +45,11 @@ theorem continuation_answer_same_information
       (fun final => final.application.config.store (.inr bobRevealEvent)) =
     (continuation weight nonnegative second response secondPlayers).map
       (fun final => final.application.config.store (.inr bobRevealEvent)) := by
-  have observed := continuation_owner_same_information weight nonnegative first second sameRecall
+  have observed := continuation_owner_same_information weight nonnegative
+    first.execution second.execution first.trace second.trace sameRecall
     sameView response firstPlayers secondPlayers
   have readout := congrArg (PMF.map answerView) observed
-  simpa only [PMF.map_comp, Function.comp_def, answerView_physical] using readout
+  simpa only [continuation, PMF.map_comp, Function.comp_def, answerView_physical] using readout
 
 def responseContinuationLaw
     (assessment : (LateOpeningRuntimeNash.model weight nonnegative).BehavioralAssessment)

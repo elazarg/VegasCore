@@ -4,6 +4,7 @@ import Vegas.Pending.ReactiveCandidateBudget
 import Vegas.Pending.ReactiveAssociationEvidence
 import Vegas.Pending.ReactiveBindingAllocation
 import Interaction.ReactiveAllocation
+import Vegas.Pending.ReactivePolicyFacts
 
 /-! # Binding resources at actual native decisions
 
@@ -20,7 +21,7 @@ noncomputable section
 
 namespace Vegas.EventGraphRuntime
 
-open Interaction GameTheory.Math.Probability
+open Interaction EventGraph GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
@@ -88,5 +89,39 @@ theorem preparedPrefix_binding_resources (runtime : EventGraphRuntime graph)
     Option.some.inj (selected.symm.trans canonical)
   simpa only [← same] using
     And.intro (lt_of_lt_of_le bounded enough) ⟨selected, fresh, unused, vacant, serials⟩
+
+/-- Every active ready binding decision transmits, including sampled failure.
+Actual horizon resources rule out silence from an exhausted candidate lookup. -/
+theorem reactiveDecision_binding_transmits_history (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (inputs : PMF graph.Inputs) (horizon : Nat)
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    (control : (runtime.reactiveApplication leaks).Control)
+    (trace : ((runtime.reactiveApplication leaks).protocol (inputs.map State.initial)
+      horizon scheduler).Trace (some control))
+    (who : Player) (active : control.actor = some who)
+    (event : graph.EventId) (ready : control.execution.application.config.cut.Ready event)
+    (owner : Player) (payload : L.Ty)
+    (outputEq : graph.outputLayout event = .binding owner payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .bind owner payload)
+    (node : nodeView graph event = .bind owner payload outputEq codeEq)
+    (action : graph.Action event) :
+    ∃ serial material, serial < horizon ∧
+      (runtime.reactiveDecision leaks who event action
+        (control.execution.observe
+          (runtime.reactiveApplication leaks) who).application).transmission =
+          some material ∧ material.call.packet = .commitment event (who, .prepared serial) := by
+  obtain ⟨serial, bounded, selected, _⟩ := runtime.reactiveBinding_resources_history leaks inputs
+    horizon scheduler control trace who active event ready
+  let material : WitnessedSubmission graph :=
+    ⟨⟨.commitment event (who, .prepared serial),
+      match (cast (congrArg EventField.Action outputEq) action :
+          PublicationResult (L.Val payload)) with
+      | .failure => none
+      | .success value => some ⟨payload, value⟩⟩, .none⟩
+  refine ⟨serial, material, bounded, ?_, rfl⟩
+  simp only [reactiveDecision, node, selected, Option.map_some, material]
+  rfl
 
 end Vegas.EventGraphRuntime

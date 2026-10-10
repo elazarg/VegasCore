@@ -46,6 +46,7 @@ import Vegas.EventGraph.PayoffTransport
 import Vegas.EventGraph.ForeignCompletionEvaluation
 
 import Vegas.EventGraph.CompletedOutputAgreement
+import Vegas.EventGraph.ConfigRestriction
 
 /-! # Dependency-driven typed events
 

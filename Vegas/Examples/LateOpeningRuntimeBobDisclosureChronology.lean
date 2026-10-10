@@ -88,8 +88,8 @@ theorem silence_round (decision : LateOpeningRuntimeOptionalOpening.DecisionHist
     ⟨12, some bob, decision.execution⟩ decision.trace bob rfl ⟨none⟩ (Or.inl rfl)
   have selected : latestAuthor bob
       ((decision.execution.respond app bob ⟨none⟩).observeEnvironment app) = .wait :=
-    LateOpeningRuntimeOptionalPacket.latestAuthor_clean weight nonnegative
-      ⟨12, some bob, decision.execution⟩ decision.trace decision.clean
+    latestAuthor_bob_wait_of_active weight nonnegative
+      ⟨12, some bob, decision.execution⟩ decision.trace (by simp)
   rw [ReactiveApplication.round, chosen, selected, PMF.pure_bind, ReactiveApplication.dispatch]
   simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
     PMF.pure_bind, ReactiveApplication.Command.actor?, ReactiveApplication.resume]
