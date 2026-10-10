@@ -130,8 +130,10 @@ theorem ServiceBoundary.binding_inclusion
     simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
       PMF.mem_support_pure_iff _ _] at moved
     rw [moved]
-    exact app.submit_include_serials_match_ledger before beforeSerials settled owner
+    intro observer
+    exact app.submit_include_serials_match_ledger before beforeSerials owner
       ⟨⟨.commitment event (owner, .prepared serial), some ⟨payload, value⟩⟩, .none⟩
+      observer (settled observer)
   have config := ((runtime setup).reactiveBinding_reserved_state leaks before owner event payload
     outputEq codeEq node (.success value) serial beforeReady beforeTimely beforeFresh beforeVacant
       beforeUnused beforeSerials players network immediate included).1

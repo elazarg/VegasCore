@@ -120,18 +120,18 @@ phase. The fact concerns network inclusion, so rejected application calls have
 the same accounting as successful calls. -/
 theorem submit_include_serials_match_ledger (execution : app.Execution)
     (serials : execution.network.SerialsBeforeNext)
-    (settled : ∀ observer, execution.network.nextSerial observer =
-      Message.distinctAuthoredCount execution.network.ledger observer)
-    (who : Principal) (submission : app.Submission) (observer : Principal) :
+    (who : Principal) (submission : app.Submission) (observer : Principal)
+    (settled : execution.network.nextSerial observer =
+      Message.distinctAuthoredCount execution.network.ledger observer) :
     let next := (execution.respond app who ⟨some submission⟩).includePending app
       (who, execution.network.nextSerial who)
     next.network.nextSerial observer =
       Message.distinctAuthoredCount next.network.ledger observer := by
   dsimp only
   rw [app.includePending_network]
-  exact serials.submit_include_serials_match_ledger settled who
+  exact serials.submit_include_serials_match_ledger who
     (app.packet (app.submit execution.application who submission) who
-      (execution.network.known who) submission) observer
+      (execution.network.known who) submission) observer settled
 
 /-- Every serial allocated to an author was emitted by one of its recorded
 fresh submissions. -/

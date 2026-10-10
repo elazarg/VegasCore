@@ -335,8 +335,10 @@ prevents every native SE from preserving the selected source joint law. The
 builder satisfies the declared service properties; it need not know private
 types or collude with players. The result concerns uniform preservation over
 this service class, not absence of equilibria in the runtime or failure of
-every blockchain configuration. The smaller-deposit and partial-audit
-strengthenings in [the detailed paper analysis](commit-reveal-research/native-late-action-analysis.md)
+every blockchain configuration. The checked partial sender audit retains all
+receiver evidence and scales sender collateral by its positive coverage
+probability. The smaller-deposit and all-traffic-or-none audit variants in
+[the detailed paper analysis](commit-reveal-research/native-late-action-analysis.md)
 remain unformalized. The [async checklist](se-async-checklist.md) retains its existing
 owner-controlled target and boxes.
 

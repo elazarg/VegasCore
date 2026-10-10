@@ -28,6 +28,9 @@ import Vegas.Game.ValueAdmissionPreservation
 import Vegas.Pending.ReactiveSampledResolutionSettlement
 import Vegas.Pending.ReactiveSampledSilentSettlement
 import Vegas.Examples.LateOpeningRuntimeBobDirtyOptimization
+import Vegas.Compile.EventGraphCanonicalContinuation
+import Vegas.Pending.ReactiveSampledValueAgreement
+import Vegas.EventGraph.CompletedOutputAgreement
 import GameTheoryExtensions.Analysis.Protocol.PublicScheduling
 import Vegas.Game.SourceSiteNonterminal
 import Vegas.Pending.ReactiveLateCollection
@@ -2888,3 +2891,27 @@ open Vegas.EventGraphRuntime in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms prescribedReactiveResponse_sampledFrontierContinuation
+
+open Vegas in
+/-- info: 'Vegas.canonicalContinuation_setup_source_decode'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms canonicalContinuation_setup_source_decode
+
+open Vegas.EventGraphRuntime in
+/-- info: 'Vegas.EventGraphRuntime.sampled_owned_output_eq_settlement'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms sampled_owned_output_eq_settlement
+
+open Vegas.EventGraph.Config in
+/-- info: 'Vegas.EventGraph.Config.CompletedOutputAgreement.terminal_store'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms CompletedOutputAgreement.terminal_store
+
+open Vegas.Examples.LateOpeningRuntimeBobSunkAudit in
+/-- info: 'Vegas.Examples.LateOpeningRuntimeBobSunkAudit.rejected_identifier_same_view_full_charge'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms rejected_identifier_same_view_full_charge

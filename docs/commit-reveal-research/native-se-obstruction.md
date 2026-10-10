@@ -65,7 +65,7 @@ be fixed before $\varepsilon$ or the builder, with the exact Safe joint law.
 This uses the concrete source extension below; $D\ge1$ is a sufficient
 extension bound, not a proved minimal collateral requirement.
 
-This strongest explicit source-to-target composition is
+The full-audit source-to-target composition is
 `Vegas.Examples.LateOpeningRuntimeSourceSeObstruction.exists_source_equilibrium_with_uniform_service_obstruction`
 in [SourceSeObstruction](../../Vegas/Examples/LateOpeningRuntimeSourceSeObstruction.lean).
 Its order is
@@ -78,6 +78,30 @@ Its order is
 
 Every native SE's joint law differs from that same selected source SE's law.
 Neither source nor target equilibrium existence is an unproved hypothesis.
+
+The obstruction also holds for an authentic partial sender audit. Fix
+$0<\alpha\le1$. The sampler retains every receiver evidence item and retains
+the sender's evidence together with probability $\alpha$; public binding
+omissions are still fully charged. On every raw history its expected utility
+equals the full-audit utility with sender deposit $\alpha K_A$ and receiver
+deposit $K_B$. Under
+
+\[
+\alpha K_A>R,\qquad K_B>1,
+\]
+
+the same quantifier order, arbitrarily small positive omission probability,
+native SE existence and exclusion of the joint store/realized-payoff law hold.
+The realized-settlement comparison uses zero collection forced by that joint
+law, rather than inferring it from expected utility equality alone. The checked
+declarations are
+`Vegas.Examples.LateOpeningRuntimePartialAudit.exists_service_with_no_preserving_equilibrium`
+and
+`Vegas.Examples.LateOpeningRuntimePartialAuditSourceObstruction.exists_source_equilibrium_with_partial_audit_obstruction`
+in [PartialAudit](../../Vegas/Examples/LateOpeningRuntimePartialAudit.lean) and
+[PartialAuditSourceObstruction](../../Vegas/Examples/LateOpeningRuntimePartialAuditSourceObstruction.lean).
+This sampler has full receiver coverage; the result does not quantify over
+every authentic partial-audit sampler.
 
 ## The source and target being compared
 
@@ -111,13 +135,22 @@ The checked
 and `.exists_forfeiting_equilibrium_with_safe_law` in
 [SourceForfeiture](../../Vegas/Examples/LateOpeningRuntimeSourceForfeiture.lean)
 extend the comparison to the complete interface permitting immediate failed
-bindings as well. In this particular program a failed Bob binding forces his
-sole publication to fail, paying him exactly $-D$. Every value-only
-continuation gives him at least $-D$. Thus **every** value-only withholding
-source SE extends to this complete interface for $D\ge0$, preserving the exact
-joint law. Composing the intended extension uses $R\ge0$ and
-$D\ge\max(R,1)$. This is a concrete source theorem, not a generic
-full-language failed-binding SE adapter.
+bindings as well. Every value-only withholding source SE extends to this
+complete interface for every real $D$, preserving the exact joint law.
+Composing the intended extension uses $R\ge0$ and $D\ge\max(R,1)$ to construct
+the original withholding source SE.
+
+The extension instantiates the generic checked theorem
+`Vegas.SourceProgram.Setup.values_sequentialEquilibrium_preserved` in
+[ValueAdmissionPreservation](../../Vegas/Game/ValueAdmissionPreservation.lean).
+For finite players, finite binding types and a finite initial law, every
+value-only source SE extends to arbitrary sitewise commitment admission,
+preserving copied strategies, retained-site beliefs and the full terminal
+history law. Utilities may depend jointly on immutable initial parameters and
+public outcomes. The theorem permits failed publications in the original SE
+and needs no forfeit bound or zero-failure assumption. Its target is the source
+protocol with enlarged commitment admission; it asserts no arbitrary-builder
+native SE preservation.
 
 The target is the actual bounded signed-message runtime. Its horizon is 26
 rounds. It has a sure protected owner opportunity and two later opportunities
@@ -225,10 +258,11 @@ not remove the equilibrium consequences of accepted lawful timing choices.
 The checked exact asynchronous Nash correspondence and the stronger calendar
 SE theorem are unchanged. The same-fixture preserving weak PBE and the native
 first-ready positive have reviewed paper proofs, not checked compiler
-capstones. The smaller sender-deposit and partial-audit variants in
+capstones. The smaller sender-deposit variant in
 [the detailed analysis](native-late-action-analysis.md#smaller-sender-deposit)
-are also paper results; the checked uniform negative uses $K_A>R$ and the full
-authentic audit. No theorem here establishes a general PBE preservation result
+is also a paper result; the checked uniform negative uses $K_A>R$ with full
+sender audit, or $\alpha K_A>R$ with the specified partial sender audit and full
+receiver audit. No theorem here establishes a general PBE preservation result
 or a necessary-and-sufficient interface for SE preservation.
 
 A proposed positive for an unrestricted runtime must explicitly rule out this

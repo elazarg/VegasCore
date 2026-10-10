@@ -91,9 +91,9 @@ new envelope restores the public counter equality. Application acceptance is
 irrelevant: inclusion also consumes an envelope whose call is rejected. -/
 theorem SerialsBeforeNext.submit_include_serials_match_ledger
     (valid : network.SerialsBeforeNext)
-    (settled : ∀ observer, network.nextSerial observer =
-      Message.distinctAuthoredCount network.ledger observer)
-    (who : Principal) (payload : Payload) (observer : Principal) :
+    (who : Principal) (payload : Payload) (observer : Principal)
+    (settled : network.nextSerial observer =
+      Message.distinctAuthoredCount network.ledger observer) :
     ((network.submit who payload).2.includePending (who, network.nextSerial who)).2.nextSerial
         observer =
       Message.distinctAuthoredCount
@@ -103,7 +103,7 @@ theorem SerialsBeforeNext.submit_include_serials_match_ledger
   have fresh := valid.next_unpublished who
   change _ = Message.distinctAuthoredCount
     (network.ledger ++ [⟨(who, network.nextSerial who), payload⟩]) observer
-  rw [Message.distinctAuthoredCount_append_of_not_mem _ _ _ fresh, ← settled observer]
+  rw [Message.distinctAuthoredCount_append_of_not_mem _ _ _ fresh, ← settled]
   by_cases same : observer = who
   · subst observer
     simp [MessageNetwork.submit, Message.sender]

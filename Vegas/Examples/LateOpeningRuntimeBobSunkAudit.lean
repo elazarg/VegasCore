@@ -2,6 +2,8 @@
 
 import Vegas.Examples.LateOpeningRuntimeEarlyBobAudit
 import Vegas.Pending.ReactiveAcceptanceUniqueness
+import Interaction.ReactiveReceiptIdentity
+import Interaction.ReactiveTrafficIdentity
 
 /-! # The receiver charge after an early rejected native response
 
@@ -145,5 +147,63 @@ theorem rejected_prefix_full_charge (weight : ℝ) (nonnegative : 0 ≤ weight)
   · exact rejected_envelope_full_charge weight nonnegative ⟨0, none, final⟩ finalTrace
       (by simp [ReactiveApplication.terminal]) bob traffic retained owner finalRejected
 
+
+/-- An actual rejected receiver identifier already certifies the authored
+traffic needed for the permanent full audit deduction. -/
+theorem rejected_identifier_continuation_full_charge (weight : ℝ) (nonnegative : 0 ≤ weight)
+    (remaining : Nat) (execution : app.Execution)
+    (trace : (app.protocol initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
+        (some ⟨remaining, some bob, execution⟩))
+    (serial : Nat) (rejected : ((bob, serial), false) ∈ execution.receipts)
+    (response : app.Action) (players : Player → app.Policy) (final : app.Execution)
+    (reached : final ∈ (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative)
+      players remaining (execution.respond app bob response)).support) :
+    TerminalAudit.charge (LateOpeningRuntimeService.runtime.serviceAuditObservation leaks)
+      (serviceSourceAudit setup .sequential deadline leaks (fun actual => PMF.pure actual))
+        (some ⟨0, none, final⟩) bob = 1 := by
+  have receiptIds := app.receipt_identifiers_history initial LateOpeningRuntimeService.horizon
+    (LateOpeningRuntimeService.scheduler weight nonnegative) ⟨remaining, some bob, execution⟩ trace
+  have published : (bob, serial) ∈ execution.network.ledger.map Message.id := by
+    rw [← receiptIds]
+    exact List.mem_map.mpr ⟨((bob, serial), false), rejected, rfl⟩
+  obtain ⟨message, ledgerMember, identified⟩ := List.mem_map.mp published
+  have authored := app.ledger_subset_inputs_history initial LateOpeningRuntimeService.horizon
+    (LateOpeningRuntimeService.scheduler weight nonnegative) ⟨remaining, some bob, execution⟩ trace
+      ledgerMember
+  have inputIds := app.stateTraffic_inputs initial LateOpeningRuntimeService.horizon
+    (LateOpeningRuntimeService.scheduler weight nonnegative) trace
+  change (app.executionTraffic execution).map ReactiveApplication.TrafficRecord.envelope =
+    execution.network.inputs at inputIds
+  rw [← inputIds] at authored
+  obtain ⟨traffic, present, envelopeEq⟩ := List.mem_map.mp authored
+  have owner : traffic.envelope.sender = bob := by
+    change traffic.envelope.id.1 = bob
+    rw [envelopeEq, identified]
+  have receipt : (traffic.envelope.id, false) ∈ execution.receipts := by
+    rw [envelopeEq, identified]
+    exact rejected
+  exact rejected_prefix_full_charge weight nonnegative remaining execution trace traffic present
+    owner receipt response players final reached
+
+/-- The sunk receiver charge depends on a public rejected receipt, so it
+persists across every same-view legal disclosure history. -/
+theorem rejected_identifier_same_view_full_charge (weight : ℝ) (nonnegative : 0 ≤ weight)
+    (remaining : Nat) (first second : app.Execution)
+    (sameView : first.observe app bob = second.observe app bob)
+    (serial : Nat) (rejected : ((bob, serial), false) ∈ first.receipts)
+    (trace : (app.protocol initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
+        (some ⟨remaining, some bob, second⟩))
+    (response : app.Action) (players : Player → app.Policy) (final : app.Execution)
+    (reached : final ∈ (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative)
+      players remaining (second.respond app bob response)).support) :
+    TerminalAudit.charge (LateOpeningRuntimeService.runtime.serviceAuditObservation leaks)
+      (serviceSourceAudit setup .sequential deadline leaks (fun actual => PMF.pure actual))
+        (some ⟨0, none, final⟩) bob = 1 := by
+  have receipts := congrArg ReactiveApplication.PlayerView.receipts sameView
+  change first.receipts = second.receipts at receipts
+  exact rejected_identifier_continuation_full_charge weight nonnegative remaining second trace
+    serial (receipts ▸ rejected) response players final reached
 
 end Vegas.Examples.LateOpeningRuntimeBobSunkAudit

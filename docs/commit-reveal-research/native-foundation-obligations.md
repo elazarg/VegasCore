@@ -257,6 +257,11 @@ ruled out by this theorem. The
 [checked concrete source extension](../../Vegas/Examples/LateOpeningRuntimeSourceForfeiture.lean)
 preserves every intended SE of this three-instruction program while allowing
 both failed bindings and failed publications, for $R\ge0$ and
-$D\ge\max(R,1)$. The sharper paper variants, general protected positive
-adapter and generic full-language failed-binding SE extension remain separate
-obligations. This note changes no adopted checklist or runtime semantics.
+$D\ge\max(R,1)$. It instantiates the generic
+[value-admission source SE extension](../../Vegas/Game/ValueAdmissionPreservation.lean),
+which preserves every value-only source SE under arbitrary commitment admission
+without a forfeit bound. The specified partial sender audit with full receiver
+coverage has a checked negative under effective sender collateral above $R$.
+The smaller-deposit and all-traffic-or-none audit paper variants and the general
+protected positive adapter remain separate obligations. This note changes no
+adopted checklist or runtime semantics.

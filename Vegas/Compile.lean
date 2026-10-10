@@ -20,6 +20,7 @@ import Vegas.Compile.EventGraphSuffix
 import Vegas.Compile.EventGraphPolicyLaw
 import Vegas.Compile.EventGraphLaw
 import Vegas.Compile.EventGraphCanonical
+import Vegas.Compile.EventGraphCanonicalContinuation
 import Vegas.Compile.EventGraphScheduling
 import Vegas.Compile.EventGraphDeviation
 import Vegas.Compile.EventGraphBacktranslation

@@ -43,6 +43,10 @@ import Vegas.EventGraph.PolicyCongruence
 import Vegas.EventGraph.ResolutionProvenance
 import Vegas.EventGraph.PayoffTransport
 
+import Vegas.EventGraph.ForeignCompletionEvaluation
+
+import Vegas.EventGraph.CompletedOutputAgreement
+
 /-! # Dependency-driven typed events
 
 Finite dependency cuts and failure-aware event code for asynchronous graph

@@ -183,12 +183,15 @@ in
 [LateOpeningRuntimeSourceEquilibrium.lean](../../Vegas/Examples/LateOpeningRuntimeSourceEquilibrium.lean).
 
 This instantiates the existing general intended-to-source theorem with
-value-only binding admission. A separate checked concrete restriction extends
-**every value-only withholding source SE to immediate failed bindings** when
-`D>=0`, preserving the joint terminal-store and payoff law. Bob's only extra
-binding action forces his subsequent publication to fail and pays exactly
-`-D`. Every ordinary source continuation pays him at least `-D`, so the
-existing comparator extension applies without a new source semantic rule.
+value-only binding admission. The checked generic
+[value-admission extension](../../Vegas/Game/ValueAdmissionPreservation.lean)
+extends every value-only source SE to arbitrary sitewise commitment admission,
+with finite players, finite binding types and finite initial law. It preserves
+copied strategies, retained-site beliefs and the full terminal-history law for
+utilities of initial parameters and public outcomes, without a forfeit bound
+or zero-failure premise. Its concrete instantiation extends
+**every value-only withholding source SE to immediate failed bindings** for
+every real `D`, preserving the joint terminal-store and payoff law.
 
 The complete-interface pins are
 `Vegas.Examples.LateOpeningRuntimeSource.withholding_equilibrium_preserved_under_forfeiture`,
@@ -196,8 +199,8 @@ The complete-interface pins are
 `.exists_forfeiting_equilibrium_with_safe_law` in
 [SourceForfeiture](../../Vegas/Examples/LateOpeningRuntimeSourceForfeiture.lean).
 The intended composition and Safe-law existence use `R>=0,D>=R,D>=1`.
-They do not classify every full-source SE, establish a generic full-language
-failed-binding extension, or imply preservation through asynchronous delivery.
+These extensions do not classify every full-source SE or imply preservation
+through asynchronous delivery.
 The native obstruction is therefore not explained merely by comparing a
 failure-free source with a failure-aware runtime.
 
@@ -1373,6 +1376,9 @@ See [the model reminder and proof](native-se-obstruction.md) for the exact
 quantifiers, utility table and source-interface distinction. This is an exact
 joint-law negative with the full authentic audit and fair partial observations,
 not yet a public-outcome-only negative or a statement about every blockchain.
-The smaller-deposit and partial-audit paper variants, protected first-ready
-positive, and same-fixture weak PBE still need their own checked capstones.
+An authentic partial sender audit with full receiver coverage also has checked
+[native and fixed-source capstones](native-se-obstruction.md#quantifiers-and-collateral),
+using effective sender collateral above `R`. The smaller-deposit and
+all-traffic-or-none audit paper variants, protected first-ready positive, and
+same-fixture weak PBE still need their own checked capstones.
 All runtime scope exclusions stated above continue to apply.

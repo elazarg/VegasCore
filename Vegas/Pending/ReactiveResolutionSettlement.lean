@@ -183,7 +183,7 @@ theorem MessageBounds.compiled_resolution_settlement (bounds : MessageBounds gra
             (@List.append (Message Player (WitnessedPacket graph)) initial.network.ledger
               [message]) observer
         have counted := activeSerials.submit_include_serials_match_ledger
-          accounted owner packet observer
+          owner packet observer (accounted observer)
         rw [MessageNetwork.includePending, activeSerials.lookup_submit owner packet] at counted
         exact counted
 
