@@ -229,3 +229,4 @@ import Vegas.Examples.LateOpeningRuntimeLabelBeliefs
 import Vegas.Examples.LateOpeningRuntimeBobTail
 import Vegas.Examples.LateOpeningRuntimeProtectedBobPrefix
 import Vegas.Examples.LateOpeningRuntimeRecoveryValue
+import Vegas.Examples.LateOpeningRuntimeProtectedBobPolicy

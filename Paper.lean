@@ -1,3 +1,5 @@
+import Vegas.Examples.LateOpeningRuntimeProtectedBobPolicy
+import Vegas.Pending.ReactiveBindingResponseNoise
 import Vegas.Examples.LateOpeningRuntimeBobTail
 import Vegas.Examples.LateOpeningRuntimeProtectedBobPrefix
 import Vegas.Examples.LateOpeningRuntimeRecoveryValue
@@ -3804,3 +3806,38 @@ open Vegas.Examples.LateOpeningRuntimeEquilibrium in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms exists_uniform_bob_reference
+
+open Vegas.Examples.LateOpeningRuntimeProtectedBobPolicy in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeProtectedBobPolicy.canonical_binding'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms canonical_binding
+
+open Vegas.Examples.LateOpeningRuntimeProtectedBobPolicy in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeProtectedBobPolicy.canonical_opening'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms canonical_opening
+
+open Vegas.Examples.LateOpeningRuntimeProtectedBobPolicy in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeProtectedBobPolicy.canonical_silent_after_completed'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms canonical_silent_after_completed
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.reactiveBinding_activation_response_joint_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms reactiveBinding_activation_response_joint_law
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.reactiveBinding_activation_response_posterior'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms reactiveBinding_activation_response_posterior

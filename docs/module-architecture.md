@@ -349,3 +349,21 @@ The protected first-opportunity value
 adapter and optimality against arbitrary whole continuation policies remain
 separate obligations; the one-response comparison retains its explicit value
 correspondence hypothesis.
+
+[Native canonical Bob decisions](../Vegas/Examples/LateOpeningRuntimeProtectedBobPolicy.lean)
+instantiate the existing source-canonical policy: a genuine fresh ready binding
+selects its typed answer, a ready opening discloses TRUE, and completion of both
+Bob events forces silence. This includes another callback at the same clock,
+without emitting a second opening identifier. Binding readiness supplies the
+source observation decoder's publication requirement. These policy identities
+introduce no runtime model and do not assert full terminal audit cleanliness,
+optimality or weak PBE.
+
+[Raw response binding posteriors](../Vegas/Pending/ReactiveBindingResponseNoise.lean)
+extend the existing opaque-binding activation law through an arbitrary observer
+raw policy. At a fixed actual prefix, a foreign private binding draw is
+independent of the full next activation input and chosen raw response. Its
+posterior conditional on both equals the original draw law, including the
+owning posterior's total fallback at impossible observations. This assumes no
+desired noise law and permits arbitrary leak rules; it does not establish a
+whole-phase or initialized unilateral source-information/noise factorization.

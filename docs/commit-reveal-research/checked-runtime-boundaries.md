@@ -1607,3 +1607,20 @@ protected completion guarantee; it does not refute that guarantee.
 The separate ready, timely late-callback mismatch above refutes unrestricted
 exact source-value correspondence. Protected first-opportunity correspondence
 and whole-policy recovery remain open.
+
+[ProtectedBobPolicy](../../Vegas/Examples/LateOpeningRuntimeProtectedBobPolicy.lean)
+checks the actual existing source-canonical Bob comparator. At a genuine fresh
+ready binding it selects the typed answer; at a ready opening it selects the
+canonical TRUE disclosure; after both Bob events settle it is silent, including
+the optional repeated clock-three callback. Readiness derives the publication
+needed by the source observation decoder. These are operational identities,
+without a new native policy or source/runtime model. The full terminal audit
+law and protected-ready optimality comparison remain separate proof obligations.
+
+[ReactiveBindingResponseNoise](../../Vegas/Pending/ReactiveBindingResponseNoise.lean)
+extends opaque binding independence to the complete next activation input and
+an arbitrary raw observer response. Conditioning on both retains the foreign
+private binding draw's original distribution, even at an impossible observation
+under the existing total posterior fallback. The prefix is fixed, leak rules
+are arbitrary, and no desired factorization is assumed. Whole-phase and
+initialized unilateral source-information/noise correspondence remain open.

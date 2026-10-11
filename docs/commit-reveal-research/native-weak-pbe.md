@@ -387,3 +387,12 @@ terminal audit law or optimality of the protected-ready binding choice.
 Protected-ready early optimality, actual-positive Bayes override and the
 assembled weak-PBE/selected-source-law capstones remain unproved in Lean.
 No owner-controlled checklist completion is claimed.
+
+[ProtectedBobPolicy](../../Vegas/Examples/LateOpeningRuntimeProtectedBobPolicy.lean)
+checks the actual existing source-canonical Bob comparator. At a genuine fresh
+ready binding it selects the typed answer; at a ready opening it selects the
+canonical TRUE disclosure; after both Bob events settle it is silent, including
+the optional repeated clock-three callback. Readiness derives the publication
+needed by the source observation decoder. These are operational identities,
+without a new native policy or source/runtime model. The full terminal audit
+law and protected-ready optimality comparison remain separate proof obligations.

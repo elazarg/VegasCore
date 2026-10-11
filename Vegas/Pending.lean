@@ -223,3 +223,4 @@ import Vegas.Pending.ReactiveBindingNoise
 import Vegas.Pending.ReactiveDeviationObservation
 import Vegas.Pending.ReactiveDeviationInclusion
 import Vegas.Pending.ReactiveDeviationCompletion
+import Vegas.Pending.ReactiveBindingResponseNoise
