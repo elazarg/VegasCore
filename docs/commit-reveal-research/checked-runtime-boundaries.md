@@ -1596,7 +1596,42 @@ the complete prior source history. Native focal expiry in
 [ReactiveDeviationCompletion](../../Vegas/Pending/ReactiveDeviationCompletion.lean)
 either stutters that configuration or produces a supported genuine graph step.
 These adapters impose no prescribed focal policy and assume no target law.
-The mixed-frontier induction and whole unilateral source/noise law remain open.
+The complete unilateral phase and source/noise law remain open.
+
+[ReactiveRetainedFrontier](../../Vegas/Pending/ReactiveRetainedFrontier.lean)
+now owns the common reachable configuration, input/domain, output agreement
+and ordered source recall relation. The existing all-prescribed frontier retains
+its full intention equality as an extension.
+[ReactiveUnilateralFrontier](../../Vegas/Pending/ReactiveUnilateralFrontier.lean)
+adds the arbitrary focal player's actual physical completions, empty auxiliary
+focal memory and genuine foreign sampled intentions. No prescribed focal policy
+is assumed. The shared pending-owner suffix proof requires genuine consistency
+and posterior support only for owners actually retaining an intention; it
+replaces duplicated mixed replay machinery. All original source joint-law,
+no-miss, authentic audit and realized settlement capstones retain their scope.
+
+Actual mixed native branches are checked in
+[UnilateralEnvironment](../../Vegas/Pending/ReactiveUnilateralEnvironment.lean),
+[UnilateralExpiry](../../Vegas/Pending/ReactiveUnilateralExpiry.lean),
+[UnilateralInclusion](../../Vegas/Pending/ReactiveUnilateralInclusion.lean),
+[UnilateralSampling](../../Vegas/Pending/ReactiveUnilateralSampling.lean),
+[UnilateralSettlement](../../Vegas/Pending/ReactiveUnilateralSettlement.lean) and
+[UnilateralSilentExpiry](../../Vegas/Pending/ReactiveUnilateralSilentExpiry.lean).
+They retain arbitrary focal responses, couple real chance and focal graph draws,
+sample genuine foreign intentions, settle authenticated pending packets or
+stutter on rejection/missing packets, and retain actual silent foreign expiry
+under the stated provenance, posterior and opportunity hypotheses.
+[AcceptedEventOwnership](../../Vegas/Pending/AcceptedEventOwnership.lean)
+derives an accepted event's owner from the actual packet sender.
+
+[UnilateralObservation](../../Vegas/Pending/ReactiveUnilateralObservation.lean)
+derives exact equality between the sampled frontier's complete normalized source
+observation and the focal physical source observation. It uses genuine foreign
+completion replay and the strengthened owning observation commutation theorem,
+with `BarrierOrdered` explicit. The concurrent reveal operational laws do not
+by themselves supply this information claim for arbitrary adaptive focal
+deviations. Full unilateral phase composition, chronological source checkpoints
+and conditional raw traffic/noise factorization remain open.
 
 The recovery owner also proves the exact zero-round physical-store law and
 action-indexed store utility at a genuine legal last activation. A recovery

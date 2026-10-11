@@ -2,6 +2,7 @@
 
 import Vegas.Pending.ReactivePendingFrontierReadiness
 import Vegas.Pending.ReactiveOriginalConfig
+import Vegas.Pending.ReactiveRetainedFrontier
 import Vegas.Pending.ReactiveSampledFrontierOwnership
 import Vegas.Pending.ReactiveSampledFrontierFreshness
 import Vegas.EventGraph.CompletedOutputAgreement
@@ -21,17 +22,9 @@ The relation records full owner chronology and available typed outputs. -/
 structure ReactiveFrontier (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (execution : (runtime.reactiveApplication leaks).Execution)
-    (memories : Player → List (Option graph.Completion)) (frontier : graph.Config) : Prop where
-  reachable : frontier.Reachable execution.application.config.inputs
-  inputs : frontier.inputs = execution.application.config.inputs
-  domain : ∀ event, event ∈ frontier.cut.completed ↔
-    event ∈ execution.application.config.cut.completed ∨
-      ∃ owner remembered, some remembered ∈ memories owner ∧ remembered.event = event
-  settled : execution.application.config.CompletedOutputAgreement frontier
+    (memories : Player → List (Option graph.Completion)) (frontier : graph.Config) : Prop
+    extends runtime.ReactiveRetainedFrontier leaks execution memories frontier where
   intentions : ∀ owner, graph.ownCompletions owner frontier.history = (memories owner).filterMap id
-  recalled : ∀ owner, graph.ownCompletions owner
-    (runtime.originalConfig leaks execution memories).history <+:
-      graph.ownCompletions owner frontier.history
 
 /-- The sampled frontier starts at the genuine graph initial configuration. -/
 theorem reactiveFrontier_initial (runtime : EventGraphRuntime graph)
@@ -41,17 +34,18 @@ theorem reactiveFrontier_initial (runtime : EventGraphRuntime graph)
       (ReactiveApplication.Execution.initial
         (runtime.reactiveApplication leaks) (State.initial inputs))
       (fun _ => []) (Config.initial inputs) := by
-  constructor
-  · exact .initial
-  · rfl
-  · intro event
-    simp [ReactiveApplication.Execution.initial, State.initial, Config.initial,
-      EventOrder.Cut.empty]
-  · exact Config.CompletedOutputAgreement.refl _
+  refine ⟨?_, ?_⟩
+  · constructor
+    · exact .initial
+    · rfl
+    · intro event
+      simp [ReactiveApplication.Execution.initial, State.initial, Config.initial,
+        EventOrder.Cut.empty]
+    · exact Config.CompletedOutputAgreement.refl _
+    · intro owner
+      exact ⟨[], rfl⟩
   · intro owner
     rfl
-  · intro owner
-    exact ⟨[], rfl⟩
 
 /-- A real supported response and its memory append preserve every original
 completion already physically recorded, for all owners simultaneously. -/
@@ -127,39 +121,6 @@ theorem originalConfig_respond_semanticKey (runtime : EventGraphRuntime graph)
         execution.application.config.store
       exact congrArg Config.store configEq
     · exact congrArg (fun history => fun owner => graph.ownCompletions owner history) historyEq
-private theorem updatedIntentionEvents
-    (memories : Player → List (Option graph.Completion)) (who : Player)
-    (saved : Option graph.Completion) (query : graph.EventId) :
-    (∃ owner remembered, some remembered ∈
-        Function.update memories who (memories who ++ [saved]) owner ∧ remembered.event = query) ↔
-      (∃ owner remembered, some remembered ∈ memories owner ∧ remembered.event = query) ∨
-        saved.map Completion.event = some query := by
-  constructor
-  · rintro ⟨owner, remembered, retained, named⟩
-    by_cases equal : owner = who
-    · subst owner
-      rw [Function.update_self] at retained
-      rcases List.mem_append.mp retained with earlier | current
-      · exact Or.inl ⟨who, remembered, earlier, named⟩
-      · right
-        have selected : some remembered = saved := List.mem_singleton.mp current
-        rw [← selected]
-        exact congrArg some named
-    · rw [Function.update_of_ne equal] at retained
-      exact Or.inl ⟨owner, remembered, retained, named⟩
-  · rintro (⟨owner, remembered, retained, named⟩ | selected)
-    · refine ⟨owner, remembered, ?_, named⟩
-      by_cases equal : owner = who
-      · subst owner
-        rw [Function.update_self]
-        exact List.mem_append_left _ retained
-      · rw [Function.update_of_ne equal]
-        exact retained
-    · cases saved with
-      | none => cases selected
-      | some remembered =>
-          exact ⟨who, remembered, by simp, Option.some.inj selected⟩
-
 /-- An actual compiler callback that retains no new decision stutters the
 reachable sampled frontier and preserves full reconstructed own recall. -/
 theorem ReactiveFrontier.respond_none (runtime : EventGraphRuntime graph)
@@ -179,16 +140,20 @@ theorem ReactiveFrontier.respond_none (runtime : EventGraphRuntime graph)
   have configEq := (runtime.reactive_respond_application leaks execution who action).1
   have originalSame := runtime.originalConfig_respond_semanticKey leaks execution memories who
     policy aligned action none supported
-  constructor
-  · rw [configEq]
-    exact related.reachable
-  · rw [configEq]
-    exact related.inputs
-  · intro event
-    rw [configEq, updatedIntentionEvents]
-    simpa only [Option.map_none, reduceCtorEq, or_false] using related.domain event
-  · rw [configEq]
-    exact related.settled
+  refine ⟨?_, ?_⟩
+  · constructor
+    · rw [configEq]
+      exact related.reachable
+    · rw [configEq]
+      exact related.inputs
+    · intro event
+      rw [configEq, updatedIntentionEvents]
+      simpa only [Option.map_none, reduceCtorEq, or_false] using related.domain event
+    · rw [configEq]
+      exact related.settled
+    · intro owner
+      rw [semanticKey_ownCompletions_eq originalSame owner]
+      exact related.recalled owner
   · intro owner
     by_cases equal : owner = who
     · subst owner
@@ -196,9 +161,6 @@ theorem ReactiveFrontier.respond_none (runtime : EventGraphRuntime graph)
         List.filterMap_nil, id_eq, List.append_nil] using related.intentions who
     · rw [Function.update_of_ne equal]
       exact related.intentions owner
-  · intro owner
-    rw [semanticKey_ownCompletions_eq originalSame owner]
-    exact related.recalled owner
 
 /-- Every genuine newly retained compiler decision advances the existing
 reachable graph execution by that exact original action. -/
@@ -253,37 +215,38 @@ theorem ReactiveFrontier.respond_some (runtime : EventGraphRuntime graph)
     | mk event decision =>
       simp only [ownCompletions, List.filter_append, List.filter_cons, List.filter_nil]
       simp [actor, eq_comm]
-  constructor
-  · rw [configEq]
-    exact related.reachable.step remembered.event ready remembered.action next member
-  · rw [configEq]
-    rw [Config.step, PMF.support_map] at member
-    obtain ⟨value, _, rfl⟩ := member
-    exact related.inputs
-  · intro event
-    rw [frontier.step_cut remembered.event ready remembered.action next member,
-      EventOrder.Cut.mem_complete, configEq, updatedIntentionEvents]
-    simp only [Option.map_some, Option.some.injEq]
-    rw [related.domain event]
-    constructor
-    · rintro (equal | completed | retained)
-      · exact Or.inr (Or.inr equal.symm)
-      · exact Or.inl completed
-      · exact Or.inr (Or.inl retained)
-    · rintro (completed | retained | equal)
-      · exact Or.inr (Or.inl completed)
-      · exact Or.inr (Or.inr retained)
-      · exact Or.inl equal.symm
-  · rw [configEq]
-    exact related.settled.frontier_step _ _ _ remembered.event ready remembered.action member
+  refine ⟨?_, ?_⟩
+  · constructor
+    · rw [configEq]
+      exact related.reachable.step remembered.event ready remembered.action next member
+    · rw [configEq]
+      rw [Config.step, PMF.support_map] at member
+      obtain ⟨value, _, rfl⟩ := member
+      exact related.inputs
+    · intro event
+      rw [frontier.step_cut remembered.event ready remembered.action next member,
+        EventOrder.Cut.mem_complete, configEq, updatedIntentionEvents]
+      simp only [Option.map_some, Option.some.injEq]
+      rw [related.domain event]
+      constructor
+      · rintro (equal | completed | retained)
+        · exact Or.inr (Or.inr equal.symm)
+        · exact Or.inl completed
+        · exact Or.inr (Or.inl retained)
+      · rintro (completed | retained | equal)
+        · exact Or.inr (Or.inl completed)
+        · exact Or.inr (Or.inr retained)
+        · exact Or.inl equal.symm
+    · rw [configEq]
+      exact related.settled.frontier_step _ _ _ remembered.event ready remembered.action member
+    · intro owner
+      rw [semanticKey_ownCompletions_eq originalSame owner, ownEq]
+      exact (related.recalled owner).trans (List.prefix_append _ _)
   · intro owner
     rw [ownEq, related.intentions owner]
     by_cases equal : owner = who
     · subst owner
       simp [List.filterMap_append]
     · simp [equal]
-  · intro owner
-    rw [semanticKey_ownCompletions_eq originalSame owner, ownEq]
-    exact (related.recalled owner).trans (List.prefix_append _ _)
 
 end Vegas.EventGraphRuntime

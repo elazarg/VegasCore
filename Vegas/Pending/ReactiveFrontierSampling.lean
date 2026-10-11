@@ -48,8 +48,8 @@ theorem ReactiveFrontier.foreign_sequence (runtime : EventGraphRuntime graph)
         (consistent owner) (memories owner) (supported owner) remembered retained
       refine ⟨owner, named ▸ owned, ?_⟩
       apply runtime.pending_intention_foreign_of_fresh leaks ordered execution stable
-        profile memories
-        consistent supported who event ready actor fresh owner remembered retained
+        memories who (profile who) (consistent who) (supported who)
+        event ready actor fresh owner remembered retained
       intro completed
       exact unfinished (named ▸ completed)
   obtain ⟨last, sequence, same⟩ :=

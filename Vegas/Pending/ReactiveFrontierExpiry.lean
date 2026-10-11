@@ -169,47 +169,50 @@ theorem ReactiveFrontier.expire_silent_resolution (runtime : EventGraphRuntime g
       activated due who payload binding checks outputEq codeEq node] at changed
     cases (PMF.mem_support_pure_iff _ _).mp changed
     rfl
-  constructor
-  · rw [configEq]
-    exact related.reachable
-  · rw [configEq]
-    exact related.inputs
-  · intro query
-    rw [configEq, Config.complete_cut, EventOrder.Cut.mem_complete]
-    constructor
-    · intro completed
-      rcases (related.domain query).mp completed with physical | saved
-      · exact Or.inl (Or.inr physical)
-      · exact Or.inr saved
-    · rintro ((same | physical) | saved)
-      · exact (related.domain query).mpr (Or.inr
-          ⟨who, remembered, (List.of_mem_zip retained).2, same.symm⟩)
-      · exact (related.domain query).mpr (Or.inl physical)
-      · exact (related.domain query).mpr (Or.inr saved)
-  · rw [configEq]
-    simpa only [semantic, Config.CompletedOutputAgreement, Config.complete] using settled
+  refine ⟨?_, ?_⟩
+  · constructor
+    · rw [configEq]
+      exact related.reachable
+    · rw [configEq]
+      exact related.inputs
+    · intro query
+      rw [configEq, Config.complete_cut, EventOrder.Cut.mem_complete]
+      constructor
+      · intro completed
+        rcases (related.domain query).mp completed with physical | saved
+        · exact Or.inl (Or.inr physical)
+        · exact Or.inr saved
+      · rintro ((same | physical) | saved)
+        · exact (related.domain query).mpr (Or.inr
+            ⟨who, remembered, (List.of_mem_zip retained).2, same.symm⟩)
+        · exact (related.domain query).mpr (Or.inl physical)
+        · exact (related.domain query).mpr (Or.inr saved)
+    · rw [configEq]
+      simpa only [semantic, Config.CompletedOutputAgreement, Config.complete] using settled
+    · intro observer
+      rw [originalEq]
+      change (graph.ownCompletions observer
+        ((runtime.originalConfig leaks execution memories).history ++ [remembered])) <+:
+          graph.ownCompletions observer frontier.history
+      by_cases equal : observer = who
+      · subst observer
+        have suffix := related.toReactiveRetainedFrontier.pending_owner_suffix
+          runtime leaks ordered execution
+          (runtime.entryEventStable_history leaks initial horizon scheduler trace)
+          memories frontier profile (fun owner _ => consistent owner)
+          (fun owner _ => supported owner) who (related.intentions who) remembered
+          (List.of_mem_zip retained).2 ready
+        have ownAppend : graph.ownCompletions who
+            ((runtime.originalConfig leaks execution memories).history ++ [remembered]) =
+            graph.ownCompletions who (runtime.originalConfig leaks execution memories).history ++
+              [remembered] := by simp [ownCompletions, actor]
+        rw [ownAppend, ← suffix]
+      · have foreign : graph.actor? remembered.event ≠ some observer := by
+          simpa only [actor, Option.some.injEq, ne_eq] using Ne.symm equal
+        simpa only [ownCompletions, List.filter_append, List.filter_cons, List.filter_nil,
+          foreign, decide_false, Bool.false_eq_true, ↓reduceIte, List.append_nil, execution]
+          using related.recalled observer
   · exact related.intentions
-  · intro observer
-    rw [originalEq]
-    change (graph.ownCompletions observer
-      ((runtime.originalConfig leaks execution memories).history ++ [remembered])) <+:
-        graph.ownCompletions observer frontier.history
-    by_cases equal : observer = who
-    · subst observer
-      have suffix := related.pending_owner_suffix runtime leaks ordered execution
-        (runtime.entryEventStable_history leaks initial horizon scheduler trace)
-        memories frontier profile consistent supported who remembered
-        (List.of_mem_zip retained).2 ready
-      have ownAppend : graph.ownCompletions who
-          ((runtime.originalConfig leaks execution memories).history ++ [remembered]) =
-          graph.ownCompletions who (runtime.originalConfig leaks execution memories).history ++
-            [remembered] := by simp [ownCompletions, actor]
-      rw [ownAppend, ← suffix]
-    · have foreign : graph.actor? remembered.event ≠ some observer := by
-        simpa only [actor, Option.some.injEq, ne_eq] using Ne.symm equal
-      simpa only [ownCompletions, List.filter_append, List.filter_cons, List.filter_nil,
-        foreign, decide_false, Bool.false_eq_true, ↓reduceIte, List.append_nil, execution]
-        using related.recalled observer
 
 private theorem recordedClock_le_at_prefix {Entry : Type} (clock : Entry → Nat)
     (before later : List Entry) (timely sampled : Entry)

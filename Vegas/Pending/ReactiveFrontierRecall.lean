@@ -51,20 +51,23 @@ variable {Player : Type} [DecidableEq Player]
 
 /-- Compilation barriers and actual posterior readiness force the next unsettled
 owned intention to be the entire remaining own-recall suffix. -/
-theorem ReactiveFrontier.pending_owner_suffix (runtime : EventGraphRuntime graph)
+theorem ReactiveRetainedFrontier.pending_owner_suffix (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (ordered : graph.RevealRelaxedOrdered)
     (execution : (runtime.reactiveApplication leaks).Execution)
     (stable : runtime.EntryEventStable leaks execution)
     (memories : Player → List (Option graph.Completion)) (frontier : graph.Config)
-    (related : runtime.ReactiveFrontier leaks execution memories frontier)
+    (related : runtime.ReactiveRetainedFrontier leaks execution memories frontier)
     (profile : graph.BehavioralProfile)
-    (consistent : ∀ owner, (runtime.prescribedReactivePolicy leaks owner (profile owner)).Consistent
+    (consistent : ∀ owner, (∃ saved, some saved ∈ memories owner) →
+      (runtime.prescribedReactivePolicy leaks owner (profile owner)).Consistent
       (execution.recall owner))
-    (supported : ∀ owner, memories owner ∈
+    (supported : ∀ owner, (∃ saved, some saved ∈ memories owner) → memories owner ∈
       ((runtime.prescribedReactiveImplementation leaks owner (profile owner)).posterior
         (execution.recall owner)).support)
-    (who : Player) (remembered : graph.Completion)
+    (who : Player)
+    (intentions : graph.ownCompletions who frontier.history = (memories who).filterMap id)
+    (remembered : graph.Completion)
     (retained : some remembered ∈ memories who)
     (ready : execution.application.config.cut.Ready remembered.event) :
     graph.ownCompletions who frontier.history =
@@ -72,7 +75,8 @@ theorem ReactiveFrontier.pending_owner_suffix (runtime : EventGraphRuntime graph
         [remembered] := by
   let original := runtime.originalConfig leaks execution memories
   have actor := runtime.prescribedReactivePosterior_owned leaks who (profile who)
-    (consistent who) (memories who) (supported who) remembered retained
+    (consistent who ⟨remembered, retained⟩) (memories who)
+    (supported who ⟨remembered, retained⟩) remembered retained
   have eventDomain : ∀ event, graph.actor? event = some who →
       (event ∈ (graph.ownCompletions who original.history).map Completion.event ↔
         event ∈ execution.application.config.cut.completed) := by
@@ -89,7 +93,7 @@ theorem ReactiveFrontier.pending_owner_suffix (runtime : EventGraphRuntime graph
         ⟨member, by simpa only [named, decide_eq_true_eq] using owned⟩, named⟩
   apply prefix_append_unique_pending Completion.event _ _ remembered (related.recalled who)
   · exact frontier.history_nodup.sublist (List.filter_sublist.map _)
-  · rw [related.intentions who]
+  · rw [intentions]
     exact List.mem_filterMap.mpr ⟨some remembered, retained, rfl⟩
   · exact fun member => ready.1 ((eventDomain remembered.event actor).mp member)
   · intro completion member unfinished
@@ -102,7 +106,8 @@ theorem ReactiveFrontier.pending_owner_suffix (runtime : EventGraphRuntime graph
     obtain ⟨owner, saved, savedMember, sameEvent⟩ :=
       (related.domain completion.event).mp ghostCompleted |>.resolve_left physicalUnfinished
     have pendingReady := runtime.prescribedReactivePosterior_pending_ready leaks execution stable
-      owner (profile owner) (consistent owner) (memories owner) (supported owner)
+      owner (profile owner) (consistent owner ⟨saved, savedMember⟩) (memories owner)
+      (supported owner ⟨saved, savedMember⟩)
       saved savedMember (by simpa only [sameEvent] using physicalUnfinished)
     rw [sameEvent] at pendingReady
     exact ordered.ready_actor_unique execution.application.config.cut ready pendingReady

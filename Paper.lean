@@ -1,3 +1,13 @@
+import Vegas.Pending.AcceptedEventOwnership
+import Vegas.Pending.ReactiveRetainedFrontier
+import Vegas.Pending.ReactiveUnilateralEnvironment
+import Vegas.Pending.ReactiveUnilateralExpiry
+import Vegas.Pending.ReactiveUnilateralFrontier
+import Vegas.Pending.ReactiveUnilateralInclusion
+import Vegas.Pending.ReactiveUnilateralObservation
+import Vegas.Pending.ReactiveUnilateralSampling
+import Vegas.Pending.ReactiveUnilateralSettlement
+import Vegas.Pending.ReactiveUnilateralSilentExpiry
 import Vegas.Examples.LateOpeningRuntimeProtectedBobPolicy
 import Vegas.Pending.ReactiveBindingResponseNoise
 import Vegas.Examples.LateOpeningRuntimeBobTail
@@ -3841,3 +3851,276 @@ open Vegas.EventGraphRuntime in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms reactiveBinding_activation_response_posterior
+
+open Vegas.EventGraphRuntime.ReactiveUnilateralFrontier in
+/-- info:
+'Vegas.EventGraphRuntime.ReactiveUnilateralFrontier.congr_execution'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms congr_execution
+
+open Vegas.EventGraphRuntime.ReactiveUnilateralFrontier in
+/-- info:
+'Vegas.EventGraphRuntime.ReactiveUnilateralFrontier.wait'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms wait
+
+open Vegas.EventGraphRuntime.ReactiveUnilateralFrontier in
+/-- info:
+'Vegas.EventGraphRuntime.ReactiveUnilateralFrontier.activate'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms activate
+
+open Vegas.EventGraphRuntime.ReactiveUnilateralFrontier in
+/-- info:
+'Vegas.EventGraphRuntime.ReactiveUnilateralFrontier.advanceClock'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms advanceClock
+
+open Vegas.EventGraphRuntime.ReactiveUnilateralFrontier in
+/-- info:
+'Vegas.EventGraphRuntime.ReactiveUnilateralFrontier.chance_complete'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms chance_complete
+
+open Vegas.EventGraphRuntime.ReactiveUnilateralFrontier in
+/-- info:
+'Vegas.EventGraphRuntime.ReactiveUnilateralFrontier.sample_coupling'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms sample_coupling
+
+open Vegas.EventGraphRuntime.ReactiveUnilateralFrontier in
+/-- info:
+'Vegas.EventGraphRuntime.ReactiveUnilateralFrontier.expire_focal'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms expire_focal
+
+open Vegas.EventGraphRuntime.ReactiveUnilateralFrontier in
+/-- info:
+'Vegas.EventGraphRuntime.ReactiveUnilateralFrontier.retained_foreign'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms retained_foreign
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.reactiveUnilateralFrontier_initial'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms reactiveUnilateralFrontier_initial
+
+open Vegas.EventGraphRuntime.ReactiveUnilateralFrontier in
+/-- info:
+'Vegas.EventGraphRuntime.ReactiveUnilateralFrontier.respond_focal'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms respond_focal
+
+open Vegas.EventGraphRuntime.ReactiveUnilateralFrontier in
+/-- info:
+'Vegas.EventGraphRuntime.ReactiveUnilateralFrontier.complete_focal'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms complete_focal
+
+open Vegas.EventGraphRuntime.ReactiveUnilateralFrontier in
+/-- info:
+'Vegas.EventGraphRuntime.ReactiveUnilateralFrontier.step_focal'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms step_focal
+
+open Vegas.EventGraphRuntime.ReactiveUnilateralFrontier in
+/-- info:
+'Vegas.EventGraphRuntime.ReactiveUnilateralFrontier.include_focal'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms include_focal
+
+open Vegas.EventGraphRuntime.ReactiveUnilateralFrontier in
+/-- info:
+'Vegas.EventGraphRuntime.ReactiveUnilateralFrontier.normalizeObservation_focal'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms normalizeObservation_focal
+
+open Vegas.EventGraphRuntime.ReactiveUnilateralFrontier in
+/-- info:
+'Vegas.EventGraphRuntime.ReactiveUnilateralFrontier.ready_foreign'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms ready_foreign
+
+open Vegas.EventGraphRuntime.ReactiveUnilateralFrontier in
+/-- info:
+'Vegas.EventGraphRuntime.ReactiveUnilateralFrontier.respond_foreign_some'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms respond_foreign_some
+
+open Vegas.EventGraphRuntime.ReactiveUnilateralFrontier in
+/-- info:
+'Vegas.EventGraphRuntime.ReactiveUnilateralFrontier.respond_foreign_none'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms respond_foreign_none
+
+open Vegas.EventGraphRuntime.ReactiveUnilateralFrontier in
+/-- info:
+'Vegas.EventGraphRuntime.ReactiveUnilateralFrontier.include_foreign_binding'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms include_foreign_binding
+
+open Vegas.EventGraphRuntime.ReactiveUnilateralFrontier in
+/-- info:
+'Vegas.EventGraphRuntime.ReactiveUnilateralFrontier.include_foreign_resolution'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms include_foreign_resolution
+
+open Vegas.EventGraphRuntime.ReactiveUnilateralFrontier in
+/-- info:
+'Vegas.EventGraphRuntime.ReactiveUnilateralFrontier.include_accepted'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms include_accepted
+
+open Vegas.EventGraphRuntime.ReactiveUnilateralFrontier in
+/-- info:
+'Vegas.EventGraphRuntime.ReactiveUnilateralFrontier.include_rejected'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms include_rejected
+
+open Vegas.EventGraphRuntime.ReactiveUnilateralFrontier in
+/-- info:
+'Vegas.EventGraphRuntime.ReactiveUnilateralFrontier.include_pending'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms include_pending
+
+open Vegas.EventGraphRuntime.ReactiveUnilateralFrontier in
+/-- info:
+'Vegas.EventGraphRuntime.ReactiveUnilateralFrontier.expire_foreign_silent_resolution'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms expire_foreign_silent_resolution
+
+open Vegas.EventGraphRuntime.ReactiveRetainedFrontier in
+/-- info:
+'Vegas.EventGraphRuntime.ReactiveRetainedFrontier.pending_owner_suffix'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms pending_owner_suffix
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.handle_event_actor'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms handle_event_actor
+
+open Vegas.EventGraph.ForeignCompletionSequence in
+/-- info:
+'Vegas.EventGraph.ForeignCompletionSequence.normalizeObservation_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms normalizeObservation_eq
+
+open Vegas in
+/-- info:
+'Vegas.source_prescribed_no_miss_round'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms source_prescribed_no_miss_round
+
+open Vegas in
+/-- info:
+'Vegas.source_prescribed_no_miss_runRounds'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms source_prescribed_no_miss_runRounds
+
+open Vegas in
+/-- info:
+'Vegas.source_prescribed_initialized_no_miss'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms source_prescribed_initialized_no_miss
+
+open Vegas in
+/-- info:
+'Vegas.source_prescribed_prefix_frontiers'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms source_prescribed_prefix_frontiers
+
+open Vegas in
+/-- info:
+'Vegas.source_prescribed_response_conforming'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms source_prescribed_response_conforming
+
+open Vegas in
+/-- info:
+'Vegas.source_prescribed_policy_conforming'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms source_prescribed_policy_conforming
+
+open Vegas in
+/-- info:
+'Vegas.source_prescribed_packetFacts_runRounds'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms source_prescribed_packetFacts_runRounds
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.round_posterior_frontier_exists_of_expiry'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms round_posterior_frontier_exists_of_expiry
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.round_posterior_potential_of_expiry'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms round_posterior_potential_of_expiry
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.runRounds_posterior_potential_of_expiry'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms runRounds_posterior_potential_of_expiry
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.runRounds_terminal_store_of_expiry'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms runRounds_terminal_store_of_expiry
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.initial_posterior_potential'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms initial_posterior_potential
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.initialized_terminal_store_of_expiry'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms initialized_terminal_store_of_expiry

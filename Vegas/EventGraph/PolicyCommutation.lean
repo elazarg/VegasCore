@@ -79,8 +79,9 @@ theorem BarrierOrdered.readyIndependent (ordered : graph.BarrierOrdered)
   ready_pair_actors := ordered.ready_pair_actors
   normalizePolicy_complete_foreign config event other eventReady otherReady _ actor foreign
       otherActor differentOwner action value :=
-    (ordered.normalizePolicy_complete_foreign (profile _) config event other eventReady
-      otherReady actor foreign otherActor differentOwner action value).2
+    congrArg ((profile _) event actor)
+      (ordered.normalizeObservation_complete_foreign config event other eventReady
+        otherReady actor foreign otherActor differentOwner action value).2
 
 /-- When the two owners differ, the second normalized kernel can be pulled
 back across the first actual step.  The resulting law draws both actions from

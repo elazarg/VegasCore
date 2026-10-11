@@ -187,53 +187,58 @@ theorem ReactiveFrontier.include_resolution (runtime : EventGraphRuntime graph)
     rw [Config.step, PMF.support_map] at physicalStep
     obtain ⟨value, _, produced⟩ := physicalStep
     simpa only [Config.complete] using congrArg Config.inputs produced.symm
-  constructor
-  · rw [configEq, inputEq]
-    exact related.reachable
-  · rw [configEq, inputEq]
-    exact related.inputs
-  · intro event
-    rw [configEq, control.execution.application.config.step_cut remembered.event ready
-      remembered.action after.config physicalStep, EventOrder.Cut.mem_complete]
-    constructor
-    · intro completed
-      rcases (related.domain event).mp completed with physical | saved
-      · exact Or.inl (Or.inr physical)
-      · exact Or.inr saved
-    · rintro ((same | physical) | saved)
-      · exact (related.domain event).mpr (Or.inr
-          ⟨who, remembered, (List.of_mem_zip retained).2, same.symm⟩)
-      · exact (related.domain event).mpr (Or.inl physical)
-      · exact (related.domain event).mpr (Or.inr saved)
-  · rw [configEq]
-    have recorded : remembered ∈ frontier.history := (List.mem_filter.mp (by
-      rw [related.intentions who]
-      exact List.mem_filterMap.mpr ⟨some remembered, (List.of_mem_zip retained).2, rfl⟩ :
-        remembered ∈ graph.ownCompletions who frontier.history)).1
-    exact Config.CompletedOutputAgreement.settle_sampled_owned
-      control.execution.application.config frontier after.config related.settled related.inputs.symm
-      (by simpa only [related.inputs] using related.reachable) remembered recorded who actor ready
-      physicalStep
+  refine ⟨?_, ?_⟩
+  · constructor
+    · rw [configEq, inputEq]
+      exact related.reachable
+    · rw [configEq, inputEq]
+      exact related.inputs
+    · intro event
+      rw [configEq, control.execution.application.config.step_cut remembered.event ready
+        remembered.action after.config physicalStep, EventOrder.Cut.mem_complete]
+      constructor
+      · intro completed
+        rcases (related.domain event).mp completed with physical | saved
+        · exact Or.inl (Or.inr physical)
+        · exact Or.inr saved
+      · rintro ((same | physical) | saved)
+        · exact (related.domain event).mpr (Or.inr
+            ⟨who, remembered, (List.of_mem_zip retained).2, same.symm⟩)
+        · exact (related.domain event).mpr (Or.inl physical)
+        · exact (related.domain event).mpr (Or.inr saved)
+    · rw [configEq]
+      have recorded : remembered ∈ frontier.history := (List.mem_filter.mp (by
+        rw [related.intentions who]
+        exact List.mem_filterMap.mpr ⟨some remembered, (List.of_mem_zip retained).2, rfl⟩ :
+          remembered ∈ graph.ownCompletions who frontier.history)).1
+      exact Config.CompletedOutputAgreement.settle_sampled_owned
+        control.execution.application.config frontier after.config related.settled
+        related.inputs.symm
+        (by simpa only [related.inputs] using related.reachable) remembered recorded who actor ready
+        physicalStep
+    · intro observer
+      rw [originalHistory]
+      by_cases equal : observer = who
+      · subst observer
+        have suffix := related.toReactiveRetainedFrontier.pending_owner_suffix
+          runtime leaks ordered control.execution
+          (runtime.entryEventStable_history leaks (inputs.map State.initial)
+            horizon scheduler trace)
+          memories frontier profile (fun owner _ => consistent owner)
+          (fun owner _ => supported owner) who (related.intentions who) remembered
+          (List.of_mem_zip retained).2 ready
+        have ownAppend : graph.ownCompletions who
+            ((runtime.originalConfig leaks control.execution memories).history ++ [remembered]) =
+            graph.ownCompletions who
+              (runtime.originalConfig leaks control.execution memories).history ++
+              [remembered] := by simp [ownCompletions, actor]
+        rw [ownAppend, ← suffix]
+      · have foreign : graph.actor? remembered.event ≠ some observer := by
+          simpa only [actor, Option.some.injEq, ne_eq] using Ne.symm equal
+        simpa [ownCompletions, foreign] using related.recalled observer
   · exact related.intentions
-  · intro observer
-    rw [originalHistory]
-    by_cases equal : observer = who
-    · subst observer
-      have suffix := related.pending_owner_suffix runtime leaks ordered control.execution
-        (runtime.entryEventStable_history leaks (inputs.map State.initial) horizon scheduler trace)
-        memories frontier profile consistent supported who remembered
-        (List.of_mem_zip retained).2 ready
-      have ownAppend : graph.ownCompletions who
-          ((runtime.originalConfig leaks control.execution memories).history ++ [remembered]) =
-          graph.ownCompletions who
-            (runtime.originalConfig leaks control.execution memories).history ++
-            [remembered] := by simp [ownCompletions, actor]
-      rw [ownAppend, ← suffix]
-    · have foreign : graph.actor? remembered.event ≠ some observer := by
-        simpa only [actor, Option.some.injEq, ne_eq] using Ne.symm equal
-      simpa [ownCompletions, foreign] using related.recalled observer
 
-private theorem originalConfig_include_binding_history (runtime : EventGraphRuntime graph)
+theorem originalConfig_include_binding_history (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
@@ -350,51 +355,56 @@ theorem ReactiveFrontier.include_binding (runtime : EventGraphRuntime graph)
     rw [Config.step, PMF.support_map] at physicalStep
     obtain ⟨value, _, produced⟩ := physicalStep
     simpa only [Config.complete] using congrArg Config.inputs produced.symm
-  constructor
-  · rw [configEq, inputEq]
-    exact related.reachable
-  · rw [configEq, inputEq]
-    exact related.inputs
-  · intro event
-    rw [configEq, control.execution.application.config.step_cut remembered.event ready
-      remembered.action after.config physicalStep, EventOrder.Cut.mem_complete]
-    constructor
-    · intro completed
-      rcases (related.domain event).mp completed with physical | saved
-      · exact Or.inl (Or.inr physical)
-      · exact Or.inr saved
-    · rintro ((same | physical) | saved)
-      · exact (related.domain event).mpr (Or.inr
-          ⟨who, remembered, (List.of_mem_zip retained).2, same.symm⟩)
-      · exact (related.domain event).mpr (Or.inl physical)
-      · exact (related.domain event).mpr (Or.inr saved)
-  · rw [configEq]
-    have recorded : remembered ∈ frontier.history := (List.mem_filter.mp (by
-      rw [related.intentions who]
-      exact List.mem_filterMap.mpr ⟨some remembered, (List.of_mem_zip retained).2, rfl⟩ :
-        remembered ∈ graph.ownCompletions who frontier.history)).1
-    exact Config.CompletedOutputAgreement.settle_sampled_owned
-      control.execution.application.config frontier after.config related.settled related.inputs.symm
-      (by simpa only [related.inputs] using related.reachable) remembered recorded who actor ready
-      physicalStep
+  refine ⟨?_, ?_⟩
+  · constructor
+    · rw [configEq, inputEq]
+      exact related.reachable
+    · rw [configEq, inputEq]
+      exact related.inputs
+    · intro event
+      rw [configEq, control.execution.application.config.step_cut remembered.event ready
+        remembered.action after.config physicalStep, EventOrder.Cut.mem_complete]
+      constructor
+      · intro completed
+        rcases (related.domain event).mp completed with physical | saved
+        · exact Or.inl (Or.inr physical)
+        · exact Or.inr saved
+      · rintro ((same | physical) | saved)
+        · exact (related.domain event).mpr (Or.inr
+            ⟨who, remembered, (List.of_mem_zip retained).2, same.symm⟩)
+        · exact (related.domain event).mpr (Or.inl physical)
+        · exact (related.domain event).mpr (Or.inr saved)
+    · rw [configEq]
+      have recorded : remembered ∈ frontier.history := (List.mem_filter.mp (by
+        rw [related.intentions who]
+        exact List.mem_filterMap.mpr ⟨some remembered, (List.of_mem_zip retained).2, rfl⟩ :
+          remembered ∈ graph.ownCompletions who frontier.history)).1
+      exact Config.CompletedOutputAgreement.settle_sampled_owned
+        control.execution.application.config frontier after.config related.settled
+        related.inputs.symm
+        (by simpa only [related.inputs] using related.reachable) remembered recorded who actor ready
+        physicalStep
+    · intro observer
+      rw [originalHistory]
+      by_cases equal : observer = who
+      · subst observer
+        have suffix := related.toReactiveRetainedFrontier.pending_owner_suffix
+          runtime leaks ordered control.execution
+          (runtime.entryEventStable_history leaks (inputs.map State.initial)
+            horizon scheduler trace)
+          memories frontier profile (fun owner _ => consistent owner)
+          (fun owner _ => supported owner) who (related.intentions who) remembered
+          (List.of_mem_zip retained).2 ready
+        have ownAppend : graph.ownCompletions who
+            ((runtime.originalConfig leaks control.execution memories).history ++ [remembered]) =
+            graph.ownCompletions who
+              (runtime.originalConfig leaks control.execution memories).history ++
+              [remembered] := by simp [ownCompletions, actor]
+        rw [ownAppend, ← suffix]
+      · have foreign : graph.actor? remembered.event ≠ some observer := by
+          simpa only [actor, Option.some.injEq, ne_eq] using Ne.symm equal
+        simpa [ownCompletions, foreign] using related.recalled observer
   · exact related.intentions
-  · intro observer
-    rw [originalHistory]
-    by_cases equal : observer = who
-    · subst observer
-      have suffix := related.pending_owner_suffix runtime leaks ordered control.execution
-        (runtime.entryEventStable_history leaks (inputs.map State.initial) horizon scheduler trace)
-        memories frontier profile consistent supported who remembered
-        (List.of_mem_zip retained).2 ready
-      have ownAppend : graph.ownCompletions who
-          ((runtime.originalConfig leaks control.execution memories).history ++ [remembered]) =
-          graph.ownCompletions who
-            (runtime.originalConfig leaks control.execution memories).history ++
-            [remembered] := by simp [ownCompletions, actor]
-      rw [ownAppend, ← suffix]
-    · have foreign : graph.actor? remembered.event ≠ some observer := by
-        simpa only [actor, Option.some.injEq, ne_eq] using Ne.symm equal
-      simpa [ownCompletions, foreign] using related.recalled observer
 
 /-- Every actually accepted pending envelope from the initialized prescribed
 profile settles a sampled intention and preserves the entire semantic frontier. -/
@@ -514,19 +524,20 @@ private theorem ReactiveFrontier.include_rejected (runtime : EventGraphRuntime g
     · rfl
     · exact runtime.reactiveOriginal_include_completed_history leaks inputs horizon scheduler
         control trace _ (memories _) id completion completed
-  constructor
-  · rw [configEq]
-    exact related.reachable
-  · rw [configEq]
-    exact related.inputs
-  · rw [configEq]
-    exact related.domain
-  · rw [configEq]
-    exact related.settled
+  refine ⟨?_, ?_⟩
+  · constructor
+    · rw [configEq]
+      exact related.reachable
+    · rw [configEq]
+      exact related.inputs
+    · rw [configEq]
+      exact related.domain
+    · rw [configEq]
+      exact related.settled
+    · intro owner
+      rw [originalHistory]
+      exact related.recalled owner
   · exact related.intentions
-  · intro owner
-    rw [originalHistory]
-    exact related.recalled owner
 
 /-- Every actual pending-inclusion command preserves the reachable sampled
 frontier under the prescribed profile. Authentication, associated intentions,

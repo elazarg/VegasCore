@@ -143,13 +143,13 @@ theorem BarrierOrdered.simultaneous_foreign_hidden
     simp_all [EventField.IsPublic, EventField.VisibleTo]
 
 /-- Completing a simultaneously-ready foreign strategic event leaves the
-normalized prescribed kernel at the retained event exactly unchanged.  The
+complete normalized observation at the retained event exactly unchanged.  The
 foreign event is necessarily hidden by the public-barrier discipline; its
 completion also leaves the retained event ready. -/
-theorem BarrierOrdered.normalizePolicy_complete_foreign
+theorem BarrierOrdered.normalizeObservation_complete_foreign
     {graph : Vegas.EventGraph Player L} {who : Player}
     (ordered : graph.BarrierOrdered)
-    (policy : graph.BehavioralPolicy who) (config : graph.Config)
+    (config : graph.Config)
     (event other : graph.EventId) (eventReady : config.cut.Ready event)
     (otherReady : config.cut.Ready other) (actor : graph.actor? event = some who)
     (foreign : Player) (otherActor : graph.actor? other = some foreign)
@@ -157,10 +157,8 @@ theorem BarrierOrdered.normalizePolicy_complete_foreign
     (value : (graph.outputLayout other).Value) :
     let next := config.complete other otherReady action value
     next.cut.Ready event ∧
-      graph.normalizePolicy who policy event actor
-          (graph.playerObserve who next) =
-        graph.normalizePolicy who policy event actor
-          (graph.playerObserve who config) := by
+      graph.normalizeObservation event who (graph.playerObserve who next) =
+        graph.normalizeObservation event who (graph.playerObserve who config) := by
   have different : event ≠ other := by
     intro same
     subst other
@@ -177,7 +175,6 @@ theorem BarrierOrdered.normalizePolicy_complete_foreign
   have actionsEq := graph.ownCompletions_complete_of_not_actor who config other
     otherReady action value notOwned
   refine ⟨retainedReady, ?_⟩
-  apply congrArg (policy event actor)
   apply PlayerObservation.ext graph
   · rfl
   · exact storeEq

@@ -75,6 +75,16 @@ Useful existing boundaries are the
 [original-action retention through actual packet inclusion](../Vegas/Pending/ReactiveOriginalInclusionStability.lean),
 [fresh sampled events outside retained intention frontiers](../Vegas/Pending/ReactiveSampledFrontierFreshness.lean),
 [owner-authenticated joint intention frontiers](../Vegas/Pending/ReactiveSampledFrontierOwnership.lean),
+[shared reachability, output and ordered recall relations](../Vegas/Pending/ReactiveRetainedFrontier.lean),
+[frontiers retaining arbitrary focal physical completions](../Vegas/Pending/ReactiveUnilateralFrontier.lean),
+[arbitrary focal inclusion](../Vegas/Pending/ReactiveUnilateralInclusion.lean),
+[mixed chance draws and environment steps](../Vegas/Pending/ReactiveUnilateralEnvironment.lean),
+[actual focal expiry](../Vegas/Pending/ReactiveUnilateralExpiry.lean),
+[foreign prescribed sampling with arbitrary focal traffic](../Vegas/Pending/ReactiveUnilateralSampling.lean),
+[authenticated foreign and focal pending settlement](../Vegas/Pending/ReactiveUnilateralSettlement.lean),
+[retained silent foreign expiry](../Vegas/Pending/ReactiveUnilateralSilentExpiry.lean),
+[actual focal source observations under public barriers](../Vegas/Pending/ReactiveUnilateralObservation.lean),
+[accepted events' authenticated ownership](../Vegas/Pending/AcceptedEventOwnership.lean),
 [reachable frontiers through actual compiler responses](../Vegas/Pending/ReactiveFrontier.lean),
 [unique semantic frontiers from genuine retained memory](../Vegas/Pending/ReactiveFrontierUniqueness.lean),
 [actual pending inclusion preserving original decisions](../Vegas/Pending/ReactiveFrontierInclusion.lean),
@@ -367,3 +377,24 @@ posterior conditional on both equals the original draw law, including the
 owning posterior's total fallback at impossible observations. This assumes no
 desired noise law and permits arbitrary leak rules; it does not establish a
 whole-phase or initialized unilateral source-information/noise factorization.
+
+`ReactiveRetainedFrontier` owns the common reachable configuration, input,
+completed-domain, output agreement and ordered recall relation. The prescribed
+frontier adds equality with every owner's sampled intention list. The unilateral
+frontier instead retains the focal player's actual physical completions and an
+empty auxiliary focal intention list; it imposes no prescribed focal raw policy.
+The shared pending-owner suffix proof requires consistency and posterior support
+only from owners with a retained intention. Fresh-event foreignness needs only
+the current prescribed owner's consistency and support. The original initialized
+joint source-store, audit and realized-net-payoff capstones retain their scope.
+
+Public-barrier foreign completion preserves the entire normalized observation,
+which supplies the existing policy-kernel commutation by applying the policy.
+The same observation equality lifts through actual foreign completion replay
+and the unilateral frontier to the focal physical source observation. The
+observation adapter explicitly requires `BarrierOrdered`; arbitrary focal raw
+deviations in concurrent reveal graphs need a separate information argument.
+Actual mixed sampling, chance, inclusion and expiry branches are checked, with
+their stated provenance, posterior and retained-silent-opportunity hypotheses.
+Composition into a complete unilateral phase law, chronological source
+checkpoints and conditional raw traffic/noise independence remain open.

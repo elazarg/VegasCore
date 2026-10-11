@@ -331,4 +331,22 @@ theorem ForeignCompletionSequence.retag_of_completed_diff
         exact foreignOwners other (Finset.mem_insert.mpr (Or.inl rfl)) new (equal ▸ actor)
       exact .snoc (ih foreignEarlier) other ready otherOwner actor different action value supported
 
+/-- In a public-barrier graph a ready player's complete normalized observation
+is unchanged across every actual supported foreign completion replay. -/
+theorem ForeignCompletionSequence.normalizeObservation_eq
+    {who : Player} {first last : graph.Config}
+    (sequence : ForeignCompletionSequence who first last) (ordered : graph.BarrierOrdered)
+    (event : graph.EventId) (ready : first.cut.Ready event)
+    (actor : graph.actor? event = some who) :
+    last.cut.Ready event ∧
+      graph.normalizeObservation event who (graph.playerObserve who last) =
+        graph.normalizeObservation event who (graph.playerObserve who first) := by
+  induction sequence with
+  | refl => exact ⟨ready, rfl⟩
+  | snoc previous other otherReady owner otherActor foreign action value supported ih =>
+      obtain ⟨retainedReady, same⟩ := ih
+      have advanced := ordered.normalizeObservation_complete_foreign _ event other
+        retainedReady otherReady actor owner otherActor foreign action value
+      exact ⟨advanced.1, advanced.2.trans same⟩
+
 end Vegas.EventGraph

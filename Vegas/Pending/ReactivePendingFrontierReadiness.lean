@@ -94,14 +94,14 @@ theorem pending_intention_foreign_of_fresh (runtime : EventGraphRuntime graph)
     (ordered : graph.RevealRelaxedOrdered)
     (execution : (runtime.reactiveApplication leaks).Execution)
     (stable : runtime.EntryEventStable leaks execution)
-    (profile : graph.BehavioralProfile)
     (memories : Player → List (Option graph.Completion))
-    (consistent : ∀ owner, (runtime.prescribedReactivePolicy leaks owner (profile owner)).Consistent
-      (execution.recall owner))
-    (supported : ∀ owner, memories owner ∈
-      ((runtime.prescribedReactiveImplementation leaks owner (profile owner)).posterior
-        (execution.recall owner)).support)
-    (who : Player) (event : graph.EventId)
+    (who : Player) (policy : graph.BehavioralPolicy who)
+    (consistent : (runtime.prescribedReactivePolicy leaks who policy).Consistent
+      (execution.recall who))
+    (supported : memories who ∈
+      ((runtime.prescribedReactiveImplementation leaks who policy).posterior
+        (execution.recall who)).support)
+    (event : graph.EventId)
     (ready : execution.application.config.cut.Ready event)
     (actor : graph.actor? event = some who)
     (fresh : event ∉ (memories who).filterMap (fun saved => saved.map Completion.event))
@@ -111,9 +111,9 @@ theorem pending_intention_foreign_of_fresh (runtime : EventGraphRuntime graph)
   intro equal
   subst owner
   have pendingReady := runtime.prescribedReactivePosterior_pending_ready leaks execution stable
-    who (profile who) (consistent who) (memories who) (supported who) remembered retained unfinished
-  have pendingActor := runtime.prescribedReactivePosterior_owned leaks who (profile who)
-    (consistent who) (memories who) (supported who) remembered retained
+    who policy consistent (memories who) supported remembered retained unfinished
+  have pendingActor := runtime.prescribedReactivePosterior_owned leaks who policy
+    consistent (memories who) supported remembered retained
   have same := ordered.ready_actor_unique execution.application.config.cut ready pendingReady
     actor pendingActor
   apply fresh

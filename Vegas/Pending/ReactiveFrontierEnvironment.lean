@@ -50,28 +50,29 @@ theorem ReactiveFrontier.chance_complete (runtime : EventGraphRuntime graph)
         graph.ownCompletions owner frontier.history := by
     apply graph.ownCompletions_complete_of_not_actor
     simp only [chance, ne_eq, reduceCtorEq, not_false_eq_true]
-  constructor
-  · exact related.reachable.step event frontierReady action _ frontierSupported
-  · exact related.inputs
-  · intro query
-    change query ∈ insert event frontier.cut.completed ↔
-      query ∈ insert event execution.application.config.cut.completed ∨ _
-    simp only [Finset.mem_insert, related.domain query]
-    tauto
-  · apply Config.CompletedOutputAgreement.physical_step _ _ _
-      (related.settled.frontier_step _ _ _ event frontierReady action frontierSupported)
-      event physicalReady action physicalSupported
-    simp
+  refine ⟨?_, ?_⟩
+  · constructor
+    · exact related.reachable.step event frontierReady action _ frontierSupported
+    · exact related.inputs
+    · intro query
+      change query ∈ insert event frontier.cut.completed ↔
+        query ∈ insert event execution.application.config.cut.completed ∨ _
+      simp only [Finset.mem_insert, related.domain query]
+      tauto
+    · apply Config.CompletedOutputAgreement.physical_step _ _ _
+        (related.settled.frontier_step _ _ _ event frontierReady action frontierSupported)
+        event physicalReady action physicalSupported
+      simp
+    · intro owner
+      change (graph.ownCompletions owner
+        (runtime.originalConfig leaks next memories).history).IsPrefix _
+      rw [history, own owner]
+      simpa only [ownCompletions, List.filter_append, List.filter_cons, List.filter_nil,
+        chance, reduceCtorEq, decide_false, Bool.false_eq_true, ↓reduceIte, List.append_nil] using
+        related.recalled owner
   · intro owner
     rw [own owner]
     exact related.intentions owner
-  · intro owner
-    change (graph.ownCompletions owner
-      (runtime.originalConfig leaks next memories).history).IsPrefix _
-    rw [history, own owner]
-    simpa only [ownCompletions, List.filter_append, List.filter_cons, List.filter_nil,
-      chance, reduceCtorEq, decide_false, Bool.false_eq_true, ↓reduceIte, List.append_nil] using
-      related.recalled owner
 
 /-- The genuine reactive chance command and its semantic frontier step share
 one draw and preserve the full sampled-frontier relation on their joint support. -/
@@ -176,20 +177,21 @@ theorem ReactiveFrontier.congr_execution (runtime : EventGraphRuntime graph)
     intro completion _
     unfold originalCompletion
     rw [recall, receipts]
-  constructor
-  · rw [← config]
-    exact related.reachable
-  · rw [← config]
-    exact related.inputs
-  · intro event
-    rw [← config]
-    exact related.domain event
-  · rw [← config]
-    exact related.settled
+  refine ⟨?_, ?_⟩
+  · constructor
+    · rw [← config]
+      exact related.reachable
+    · rw [← config]
+      exact related.inputs
+    · intro event
+      rw [← config]
+      exact related.domain event
+    · rw [← config]
+      exact related.settled
+    · intro owner
+      rw [← history]
+      exact related.recalled owner
   · exact related.intentions
-  · intro owner
-    rw [← history]
-    exact related.recalled owner
 
 /-- A genuine raw wait records the scheduler command and leaves the sampled
 frontier fixed. -/
