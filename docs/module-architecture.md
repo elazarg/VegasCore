@@ -49,7 +49,7 @@ Useful existing boundaries are the
 [actual traffic and ledger envelope identity](../Interaction/ReactiveTrafficIdentity.lean),
 [policy independence without further activation](../Interaction/ReactivePassiveContinuation.lean),
 [the exact behavioral law at a player's final response](../Interaction/ReactivePassiveDecision.lean),
-[the native kernel at a final recovery callback](../Vegas/Pending/ReactiveRecoveryContinuation.lean),
+[the native recovery kernel with arbitrary later callbacks](../Vegas/Pending/ReactiveRecoveryContinuation.lean),
 [joint private-memory conditioning through actual scheduler rounds](../Interaction/ReactiveImplementationProfile.lean),
 [equilibrium existence in finite reactive runtimes](../Interaction/ReactiveEquilibriumExistence.lean),
 [unique accepting receipts for completed source events](../Vegas/Pending/ReactiveAcceptanceUniqueness.lean),
@@ -223,12 +223,15 @@ Behavioral commutation preserves the typed store and original own recall;
 native traffic and conditional beliefs need their own argument. Enforcement
 uses actual gain and change in charge probability; it does not construct the
 runtime's collection mechanism or assessment.
-The final recovery callback comparison retains the genuine private posterior,
-every opponent continuation and the actual action-indexed native kernel. It
-requires source values to equal that kernel's expected payoff and supported
-source actions to maximize those values. Global integrability suffices for
-both compared laws. Deriving that value correspondence at arbitrary off-path
-sites and handling further callbacks remain separate obligations.
+The recovery callback comparison retains the genuine private posterior,
+every opponent continuation and the actual action-indexed native kernel,
+including the incumbent recovery policy at every later callback. It requires
+source values to equal that kernel's expected payoff and supported source
+actions to maximize those values. Global integrability suffices for both
+compared laws. The final-callback case additionally removes the owner's future
+policy using genuine absence of further activation. Deriving source-value
+correspondence at arbitrary off-path sites and extending one-response domination
+to arbitrary whole continuation policies remain separate obligations.
 The [event-kernel diamond](../Vegas/EventGraph/KernelCommutation.lean) requires
 kernel stability only along supported actions and intermediate outcomes. It
 preserves the typed store for arbitrary independent events; preserving original

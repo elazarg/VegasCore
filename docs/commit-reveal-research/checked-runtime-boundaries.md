@@ -256,6 +256,18 @@ through asynchronous delivery.
 The native obstruction is therefore not explained merely by comparing a
 failure-free source with a failure-aware runtime.
 
+The generic recovery kernel now also retains arbitrary later callbacks.
+`Vegas.EventGraphRuntime.recoverReactivePolicy_ready_callback_comparison` in
+[ReactiveRecoveryContinuation](../../Vegas/Pending/ReactiveRecoveryContinuation.lean)
+compares the actual recovered response with any posterior-dependent source-action
+lottery at one ready callback. Every opponent policy and the incumbent recovery
+policy remain in the full future native execution. The comparison assumes that
+source values equal these actual continuation expectations and that supported
+source actions maximize them; global integrability of the two compared laws
+suffices. The existing final-callback comparison is derived by actual future
+policy independence. Arbitrary off-path source-value correspondence and
+optimality against changes to the whole future policy remain unproved here.
+
 ## A final runtime opening is optimal under every belief
 
 In the separate initialized two-Boolean-commitment example, Bob has one final
