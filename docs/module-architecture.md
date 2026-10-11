@@ -310,3 +310,12 @@ A legal final activation can leave zero environment rounds, in which case the
 actual response preserves the physical store and every authored action has the
 same native store-based value. This is a necessary boundary for general raw
 callbacks, not a counterexample under the protected completion contract.
+
+The native `exists_uniform_alice_bob_completion` constructs the Bob reference
+assessment: Alice's uniform raw decision laws remain fixed in a fully mixed
+Bayes sequence and its consistent limit, Bob is rational against every whole
+continuation policy at every legal information fiber, and his label beliefs
+are uniform at every fiber. The reference assessment has actual-positive Bayes
+beliefs. This does not make uniform Alice rational or establish the selected
+source law; transferring Bob's continuation to the later Alice completion and
+assembling the weak PBE remain separate obligations.

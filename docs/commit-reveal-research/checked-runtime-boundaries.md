@@ -1497,8 +1497,17 @@ Bob's complete remembered-information invariance are checked in
 [LabelOrbits](../../Vegas/Examples/LateOpeningRuntimeLabelOrbits.lean)
 proves the full legal-history bijection and its restriction to every Bob
 information-history fiber. The uniform reference label posterior is checked
-under the actual uniform Alice decision laws as described below. Bob's
-reference continuation and the assembled weak-PBE capstone remain open.
+under the actual uniform Alice decision laws as described below.
+`exists_uniform_alice_bob_completion` in the existing
+[LateOpeningRuntimeEquilibrium](../../Vegas/Examples/LateOpeningRuntimeEquilibrium.lean)
+constructs the actual Bob reference assessment: Alice's uniform laws stay
+fixed at every fully mixed Bayes approximant and the limit, Bob is rational
+against all whole continuation policies at every legal fiber, all his label
+beliefs are uniform, and actual-positive Bayes holds. Reward, source
+forfeit, audit sample and deposits retain their arbitrary finite-game scope.
+No Alice rationality or selected source law follows from this endpoint.
+Bob continuation transfer to the later Alice completion, the Bayes override
+and the assembled weak-PBE capstone remain open.
 
 The original source recall is also retained through actual prescribed responses.
 [ReactiveSourceResponseRecall](../../Vegas/Game/ReactiveSourceResponseRecall.lean)

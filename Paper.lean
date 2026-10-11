@@ -3696,3 +3696,10 @@ open Vegas.Examples.LateOpeningRuntimeLabelBeliefs in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms label_belief_uniform_of_uniform_sequence
+
+open Vegas.Examples.LateOpeningRuntimeEquilibrium in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeEquilibrium.exists_uniform_alice_bob_completion'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms exists_uniform_alice_bob_completion

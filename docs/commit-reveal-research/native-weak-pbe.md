@@ -365,6 +365,13 @@ limit. The completion machinery can retain these full-support prescribed
 laws at every approximant. The assembled weak-PBE capstone remains open.
 Alice's completion is rational on every legal fiber and has actual-positive
 Bayes beliefs. These results do not yet assemble the paper equilibrium.
-Bob's reference continuation, actual-positive Bayes override and selected
-source-law capstone remain unproved
-in Lean. No owner-controlled checklist completion is claimed.
+`exists_uniform_alice_bob_completion` in the existing native equilibrium
+owner constructs the actual Bob reference assessment. Alice's uniform raw
+laws are fixed throughout the fully mixed Bayes sequence and its consistent
+limit; Bob is rational against every whole continuation policy at every
+legal information fiber, and all his label posteriors are uniform.
+Actual-positive Bayes also holds. This endpoint needs no reward, forfeit
+or deposit sign assumption, and does not assert Alice optimality or the
+selected source law. Bob continuation transfer, actual-positive Bayes
+override and the selected source-law capstone remain unproved in Lean.
+No owner-controlled checklist completion is claimed.
