@@ -372,6 +372,18 @@ limit; Bob is rational against every whole continuation policy at every
 legal information fiber, and all his label posteriors are uniform.
 Actual-positive Bayes also holds. This endpoint needs no reward, forfeit
 or deposit sign assumption, and does not assert Alice optimality or the
-selected source law. Bob continuation transfer, actual-positive Bayes
-override and the selected source-law capstone remain unproved in Lean.
+selected source law. Under full audit, nonnegative source forfeit and
+`K_B>1`, `exists_uniform_bob_reference` additionally proves pure silence at
+every unresolved first Bob callback using Bob's local whole-policy optimality.
+[Bob tail transfer](../../Vegas/Examples/LateOpeningRuntimeBobTail.lean) derives
+that every legal Bob fiber at public clock at least three is after Alice's last
+activation. Its complete terminal-history continuation law and whole-policy
+rationality retain their original beliefs under arbitrary Alice policy changes.
+[Protected early binding and opening](../../Vegas/Examples/LateOpeningRuntimeProtectedBobPrefix.lean)
+preserve the entire graph configuration and clean Bob binding traffic across
+arbitrary intervening Alice responses, then accept the same typed answer's
+opening at clock three. This operational prefix does not yet prove the full
+terminal audit law or optimality of the protected-ready binding choice.
+Protected-ready early optimality, actual-positive Bayes override and the
+assembled weak-PBE/selected-source-law capstones remain unproved in Lean.
 No owner-controlled checklist completion is claimed.

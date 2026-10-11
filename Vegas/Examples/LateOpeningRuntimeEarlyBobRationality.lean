@@ -157,6 +157,19 @@ private theorem pure_quiet_of_packet_zero (law : PMF app.Action)
   exact Set.mem_singleton_iff.mpr same
 
 include representative decision current in
+/-- Local whole-policy optimality already forces the complete early unresolved
+response law to be silent; no other player's rationality is required. -/
+theorem rational_early_response_law
+    (forfeitNonnegative : 0 ≤ forfeit) (collateral : 1 < deposit bob)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (rational : assessment.IsSequentiallyRationalAt site
+      (context weight nonnegative site reward forfeit deposit assessment)) :
+    responseLaw weight nonnegative site (assessment.strategy bob site.1) = PMF.pure ⟨none⟩ :=
+  pure_quiet_of_packet_zero _
+    (rational_early_packet_zero weight nonnegative site representative decision current
+      reward forfeit deposit forfeitNonnegative collateral assessment rational)
+
+include representative decision current in
 /-- The complete native response law is the pure silent action, which can
 be reused directly in later physical-prefix and belief calculations. -/
 theorem sequentially_rational_early_response_law
@@ -167,10 +180,17 @@ theorem sequentially_rational_early_response_law
         (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
       (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who)) :
-    responseLaw weight nonnegative site (assessment.strategy bob site.1) = PMF.pure ⟨none⟩ :=
-  pure_quiet_of_packet_zero _
-    (sequentially_rational_early_packet_zero weight nonnegative site representative decision current
-      reward forfeit deposit forfeitNonnegative collateral assessment rational)
+    responseLaw weight nonnegative site (assessment.strategy bob site.1) = PMF.pure ⟨none⟩ := by
+  apply rational_early_response_law weight nonnegative site representative decision current
+    reward forfeit deposit forfeitNonnegative collateral assessment
+  have localRational := rational bob site
+  dsimp only at localRational
+  rw [assessment.continuationContext_eq_truncated_of_bounded
+    (rawMenu.bounded initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
+    (rawMenu.bounded initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative))] at localRational
+  exact localRational
 
 include representative decision current in
 /-- Every actual native sequential equilibrium has the same pure silent

@@ -270,8 +270,18 @@ policy remain in the full future native execution. The comparison assumes that
 source values equal these actual continuation expectations and that supported
 source actions maximize them; global integrability of the two compared laws
 suffices. The existing final-callback comparison is derived by actual future
-policy independence. Arbitrary off-path source-value correspondence and
-optimality against changes to the whole future policy remain unproved here.
+policy independence. Unrestricted exact off-path source-value correspondence
+is refuted by
+[LateOpeningRuntimeRecoveryValue](../../Vegas/Examples/LateOpeningRuntimeRecoveryValue.lean).
+At a genuine legal, ready, timely late callback under the unchanged service,
+Alice's literal compiled proper opening against fixed SafeBob has the
+net-payoff law under full audit paying `R/2` with probability `q` and `-D-K_A` with
+probability `1-q`. Its expectation is strictly below the actual intended source
+run's `R/2` when `R>0` and `D+K_A>=0`, where `D` is the source forfeit.
+No equilibrium or desired source-value
+law is assumed. The service protects the first opportunity, so this does not
+refute protected-first-opportunity correspondence. That adapter and optimality
+against changes to the whole future policy remain open.
 
 ## A final runtime opening is optimal under every belief
 
@@ -1506,8 +1516,19 @@ against all whole continuation policies at every legal fiber, all his label
 beliefs are uniform, and actual-positive Bayes holds. Reward, source
 forfeit, audit sample and deposits retain their arbitrary finite-game scope.
 No Alice rationality or selected source law follows from this endpoint.
-Bob continuation transfer to the later Alice completion, the Bayes override
-and the assembled weak-PBE capstone remain open.
+`exists_uniform_bob_reference` specializes this to full audit, nonnegative
+source forfeit and Bob deposit greater than one, deriving pure silence at every
+unresolved first Bob callback from local whole-policy optimality.
+[BobTail](../../Vegas/Examples/LateOpeningRuntimeBobTail.lean) derives the genuine
+post-Alice chronology at every legal Bob fiber with public clock at least three,
+and transfers the complete terminal-history law and whole-policy rationality
+under changes to Alice's policy, retaining Bob's beliefs and decision laws.
+[ProtectedBobPrefix](../../Vegas/Examples/LateOpeningRuntimeProtectedBobPrefix.lean)
+checks the actual ready, timely early typed binding, preservation of the whole
+graph configuration and clean Bob bindings across arbitrary intervening Alice
+traffic, and accepted opening of that same typed answer at clock three.
+Protected-ready early optimality, the full terminal comparator law, actual Bayes
+override and the assembled weak-PBE/selected-source-law capstones remain open.
 
 The original source recall is also retained through actual prescribed responses.
 [ReactiveSourceResponseRecall](../../Vegas/Game/ReactiveSourceResponseRecall.lean)
@@ -1582,5 +1603,7 @@ action-indexed store utility at a genuine legal last activation. A recovery
 response authors traffic while the physical graph remains unchanged until an
 environment step. Thus nonconstant source continuation values need a real
 settlement/opportunity adapter. This raw last-activation example is outside the
-protected completion guarantee; it does not refute that guarantee or close
-arbitrary off-path correspondence and whole-policy recovery.
+protected completion guarantee; it does not refute that guarantee.
+The separate ready, timely late-callback mismatch above refutes unrestricted
+exact source-value correspondence. Protected first-opportunity correspondence
+and whole-policy recovery remain open.

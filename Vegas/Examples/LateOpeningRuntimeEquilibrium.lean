@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Examples.LateOpeningRuntimeGame
+import Vegas.Examples.LateOpeningRuntimeEarlyBobRationality
 import Vegas.Examples.LateOpeningRuntimeLabelBeliefs
 import Interaction.ReactiveEquilibriumExistence
 import GameTheoryExtensions.Analysis.Protocol.PrescribedCompletion
@@ -161,5 +162,56 @@ theorem exists_uniform_alice_bob_completion (weight : ℝ) (nonnegative : 0 ≤ 
       LateOpeningRuntimeService.horizon (LateOpeningRuntimeService.scheduler weight nonnegative)
       sequence assessment mixed bayes converges
       uniformSequence
+
+/-- Under full traffic audit, a coherent label-uniform Bob reference is silent
+at every actual unresolved first callback. Alice is fixed uniformly, with no
+claim that she is optimal or that this is the selected initialized law. -/
+theorem exists_uniform_bob_reference (weight : ℝ) (nonnegative : 0 ≤ weight)
+    (reward forfeit : ℝ) (deposit : Player → ℝ)
+    (forfeitNonnegative : 0 ≤ forfeit) (collateral : 1 < deposit bob) :
+    ∃ assessment : (model weight nonnegative).BehavioralAssessment,
+      assessment.IsSequentiallyConsistent
+        (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
+          (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain ∧
+      InformationModel.BehavioralAssessment.IsBayesConsistent (model weight nonnegative)
+        assessment (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
+          (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain ∧
+      (∀ site : (model weight nonnegative).InformationSite alice,
+        assessment.strategy alice site.1 =
+          rawMenu.uniformPolicy initial LateOpeningRuntimeService.horizon
+            (LateOpeningRuntimeService.scheduler weight nonnegative) alice site.1) ∧
+      (∀ site : (model weight nonnegative).InformationSite bob,
+        assessment.IsSequentiallyRationalAt site
+          (assessment.continuationContext
+            (rawMenu.bounded initial LateOpeningRuntimeService.horizon
+              (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
+            site (fun history => payoff reward forfeit (fun actual => PMF.pure actual)
+              deposit history.state bob))) ∧
+      (∀ site : (model weight nonnegative).InformationSite bob,
+        (assessment.belief bob site).map (fun history =>
+          LateOpeningRuntimeLabelBeliefs.historyLabel LateOpeningRuntimeService.horizon
+            (LateOpeningRuntimeService.scheduler weight nonnegative) history.1) =
+          PMF.uniformOfFintype (Fin 3)) ∧
+      ∀ (site : (model weight nonnegative).InformationSite bob)
+          (representative : (model weight nonnegative).InformationHistory bob site.1)
+          (decision : LateOpeningRuntimeEarlyBobInformation.DecisionHistory weight nonnegative),
+        representative.1.state = some ⟨21, some bob, decision.execution⟩ →
+          LateOpeningRuntimeEarlyBobDecision.responseLaw weight nonnegative site
+            (assessment.strategy bob site.1) = PMF.pure ⟨none⟩ := by
+  obtain ⟨sequence, assessment, _, _, _, _, consistent, bayes, uniform, rational, labels⟩ :=
+    exists_uniform_alice_bob_completion weight nonnegative reward forfeit
+      (fun actual => PMF.pure actual) deposit
+  refine ⟨assessment, consistent, bayes, uniform, rational, labels, ?_⟩
+  intro site representative decision current
+  apply LateOpeningRuntimeEarlyBobRationality.rational_early_response_law weight nonnegative
+    site representative decision current reward forfeit deposit forfeitNonnegative collateral
+    assessment
+  have localRational := rational site
+  rw [assessment.continuationContext_eq_truncated_of_bounded
+    (rawMenu.bounded initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
+    (rawMenu.bounded initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative))] at localRational
+  exact localRational
 
 end Vegas.Examples.LateOpeningRuntimeEquilibrium

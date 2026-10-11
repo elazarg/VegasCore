@@ -245,9 +245,10 @@ including the incumbent recovery policy at every later callback. It requires
 source values to equal that kernel's expected payoff and supported source
 actions to maximize those values. Global integrability suffices for both
 compared laws. The final-callback case additionally removes the owner's future
-policy using genuine absence of further activation. Deriving source-value
-correspondence at arbitrary off-path sites and extending one-response domination
-to arbitrary whole continuation policies remain separate obligations.
+policy using genuine absence of further activation. Unrestricted exact off-path
+source-value correspondence is refuted by the late-callback result below.
+Protected first-opportunity correspondence and domination against arbitrary
+whole continuation policies remain separate obligations.
 The [event-kernel diamond](../Vegas/EventGraph/KernelCommutation.lean) requires
 kernel stability only along supported actions and intermediate outcomes. It
 preserves the typed store for arbitrary independent events; preserving original
@@ -319,3 +320,32 @@ are uniform at every fiber. The reference assessment has actual-positive Bayes
 beliefs. This does not make uniform Alice rational or establish the selected
 source law; transferring Bob's continuation to the later Alice completion and
 assembling the weak PBE remain separate obligations.
+
+[Bob tail continuation transfer](../Vegas/Examples/LateOpeningRuntimeBobTail.lean)
+derives that every legal Bob information fiber with public clock at least three
+is after Alice's last activation. The complete terminal-history law and
+whole-policy rationality are invariant under changing Alice's future policy,
+while retaining Bob's original beliefs and decision laws. This does not cover
+the clock-one binding callback or transport consistency or Bayes beliefs.
+[Protected Bob binding and opening](../Vegas/Examples/LateOpeningRuntimeProtectedBobPrefix.lean)
+retains the whole graph configuration and clean binding traffic across arbitrary
+intervening Alice responses, and reaches an accepted opening of the same typed
+answer at clock three. It does not yet establish the full terminal audit law or
+optimality of a protected-ready binding choice.
+
+The native `exists_uniform_bob_reference` additionally forces pure silence at
+every unresolved first Bob callback under full audit, nonnegative source
+forfeit and Bob deposit greater than one. This uses local whole-policy
+optimality, without assuming Alice rationality. Protected-ready early optimality,
+the initialized selected source law and the weak-PBE assembly remain separate.
+
+[Late-callback recovery values](../Vegas/Examples/LateOpeningRuntimeRecoveryValue.lean)
+refute unrestricted exact off-path source-value correspondence in the unchanged
+native service. At a genuine legal, ready, timely late Alice callback, the literal
+compiled proper opening against SafeBob has value
+`q*(R/2) - (1-q)*(D+K_A)`, strictly below the actual successful-opening source
+run's `R/2` when `R>0` and `D+K_A>=0`, where `D` is the source forfeit.
+The protected first-opportunity value
+adapter and optimality against arbitrary whole continuation policies remain
+separate obligations; the one-response comparison retains its explicit value
+correspondence hypothesis.
