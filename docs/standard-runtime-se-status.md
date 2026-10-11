@@ -358,9 +358,18 @@ are [checked](../Vegas/Examples/LateOpeningRuntimeAllOrNoneTrafficAudit.lean).
 Public binding omissions retain their full charge rather than a scaled charge.
 An actual successful Bob binding excludes that branch throughout arbitrary
 supported continuations, where scaled full-audit expected utilities agree.
-The all-or-none native SE obstruction still needs pre-binding continuation and
-rationality adapters; random realized settlement laws are not equated with
-deterministic scaled deposits.
+Checked comparisons retain the original assessment and all whole-policy
+alternatives: Alice at every information site; Bob after a successful binding;
+and Bob's binding sites with quiet failed or clean/dirty successful Alice
+publication. Dirty failed-publication binding and the complete obstruction
+composition remain separate obligations. Random realized settlement laws are
+not equated with deterministic scaled deposits. Instead,
+[preservation of the source's actual joint law](../Vegas/Examples/LateOpeningRuntimeAllOrNonePreservingSettlement.lean)
+implies its preservation by the unchanged profile under full audit at scaled
+deposits, for arbitrary deposits. The
+[settlement criterion](../GameTheoryExtensions/Analysis/Protocol/TerminalAuditSettlement.lean)
+identifies zero expected deductions with the exact unchanged joint payoff
+vector, including zero deposits and correlated audit verdicts.
 
 The checked operational boundary is sharper: an actual initialized opening
 outside its protected window can be accepted with probability one by a

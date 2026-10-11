@@ -4,6 +4,12 @@ import Vegas.Game.SourceServiceCompilation
 import Vegas.Game.SourceServiceReactiveLaw
 import Vegas.Game.SourceServiceReactiveAudit
 import Vegas.Examples.LateOpeningRuntimeAllOrNoneTrafficAudit
+import Vegas.Examples.LateOpeningRuntimeAllOrNoneAlice
+import Vegas.Examples.LateOpeningRuntimeAllOrNoneBinding
+import Vegas.Examples.LateOpeningRuntimeAllOrNoneCleanBinding
+import Vegas.Examples.LateOpeningRuntimeAllOrNonePostBinding
+import Vegas.Examples.LateOpeningRuntimeAllOrNonePreservingSettlement
+import GameTheoryExtensions.Analysis.Protocol.TerminalAuditSettlement
 import Vegas.Examples.LateOpeningRuntimeBobDirtyDisclosurePublication
 import Vegas.Examples.LateOpeningRuntimeAliceProtectedPublication
 import Vegas.EventGraph.ConfigRestriction
@@ -3142,3 +3148,56 @@ open Interaction.ReactiveApplication in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Scheduler.exists_observation_law_iff
+
+open GameTheory.Enforcement.TerminalAudit in
+/-- info:
+'GameTheory.Enforcement.TerminalAudit.settlement_eq_pure_iff_zero_deductions'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms settlement_eq_pure_iff_zero_deductions
+
+open Vegas.Examples.LateOpeningRuntimeAllOrNonePreservingSettlement in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeAllOrNonePreservingSettlement.preserving_implies_full'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms preserving_implies_full
+
+open Vegas.Examples.LateOpeningRuntimeAllOrNoneAlice in
+/-- info: 'Vegas.Examples.LateOpeningRuntimeAllOrNoneAlice.rational_alice'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms rational_alice
+
+open Vegas.Examples.LateOpeningRuntimeAllOrNoneBinding in
+/-- info: 'Vegas.Examples.LateOpeningRuntimeAllOrNoneBinding.failed_binding_rationality_scaled'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms failed_binding_rationality_scaled
+
+open Vegas.Examples.LateOpeningRuntimeAllOrNoneBinding in
+/-- info: 'Vegas.Examples.LateOpeningRuntimeAllOrNoneBinding.dirty_binding_rationality_scaled'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms dirty_binding_rationality_scaled
+
+open Vegas.Examples.LateOpeningRuntimeAllOrNoneCleanBinding in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeAllOrNoneCleanBinding.clean_binding_rationality_scaled'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms clean_binding_rationality_scaled
+
+open Vegas.Examples.LateOpeningRuntimeAllOrNonePostBinding in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeAllOrNonePostBinding.optional_binding_rationality_iff'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms optional_binding_rationality_iff
+
+open Vegas.Examples.LateOpeningRuntimeAllOrNonePostBinding in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeAllOrNonePostBinding.final_binding_rationality_iff'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms final_binding_rationality_iff
