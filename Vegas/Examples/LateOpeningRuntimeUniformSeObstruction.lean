@@ -28,7 +28,7 @@ every native equilibrium. No equilibrium-dependent builder is selected. -/
 theorem exists_service_with_no_preserving_equilibrium
     (reward forfeit : ℝ) (deposit : Player → ℝ)
     (rewardPositive : 0 < reward) (largeForfeit : reward < forfeit)
-    (aliceCollateral : reward < deposit alice) (bobCollateral : 1 < deposit bob)
+    (aliceCollateral : reward / 2 < deposit alice) (bobCollateral : 1 < deposit bob)
     (failureFloor : ℝ) (floorPositive : 0 < failureFloor) :
     ∃ (weight : ℝ) (nonnegative : 0 ≤ weight),
       0 < weight ∧
@@ -58,20 +58,16 @@ theorem exists_service_with_no_preserving_equilibrium
         nativeTerminalLaw weight nonnegative reward forfeit (fun actual => PMF.pure actual)
           deposit assessment.strategy ≠ safeTerminalLaw reward := by
   have forfeitPositive : 0 < forfeit := rewardPositive.trans largeForfeit
-  have alicePositive : 0 < deposit alice := rewardPositive.trans aliceCollateral
+  have alicePositive : 0 < deposit alice := lt_trans (by linarith) aliceCollateral
   have lossPositive : 0 < forfeit + deposit alice := add_pos forfeitPositive alicePositive
   have denominator : 0 < 3 * reward + 4 * (forfeit + deposit alice) := by positivity
   let small := min failureFloor (reward / (3 * reward + 4 * (forfeit + deposit alice)))
   have smallPositive : 0 < small := lt_min floorPositive (div_pos rewardPositive denominator)
   obtain ⟨weight, nonnegative, positive, contract, blind, failurePositive, close,
-    openingMargin, _⟩ :=
-    LateOpeningRuntimeAliceNormalization.exists_service_with_last_responses_normalized
-      reward forfeit deposit rewardPositive.le largeForfeit aliceCollateral small smallPositive
-  have retryMargin : 0 < LateOpeningRuntimeAliceRationality.margin weight reward forfeit deposit :=
-    by
-    unfold LateOpeningRuntimeAliceRationality.margin
-    unfold LateOpeningRuntimeAliceOpeningRationality.margin at openingMargin
-    linarith [min_le_right forfeit (deposit alice)]
+    normalized⟩ :=
+    LateOpeningRuntimeAliceNormalization.exists_service_with_responses_normalized
+      reward forfeit deposit rewardPositive.le largeForfeit aliceCollateral
+      (lt_trans zero_lt_one bobCollateral) small smallPositive
   have profitable : reward / 2 < 3 * inclusionProbability weight * reward / 4 -
       (1 - inclusionProbability weight) * (forfeit + deposit alice) := by
     have profitable := LateOpeningRuntimeTimingPreference.first_floor_exceeds_safe reward
@@ -86,6 +82,6 @@ theorem exists_service_with_no_preserving_equilibrium
   · intro assessment equilibrium
     exact LateOpeningRuntimeSeObstruction.equilibrium_terminal_law_ne_safe weight nonnegative
       reward forfeit deposit positive rewardPositive forfeitPositive alicePositive.le bobCollateral
-        retryMargin openingMargin profitable assessment equilibrium
+        profitable assessment (normalized assessment equilibrium.1) equilibrium
 
 end Vegas.Examples.LateOpeningRuntimeUniformSeObstruction

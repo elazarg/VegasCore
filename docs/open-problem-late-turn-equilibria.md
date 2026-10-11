@@ -24,7 +24,7 @@ the ledger for every builder that respects protected inclusion. Sequential
 equilibrium (SE) preservation is proved for a fixed-calendar builder. The
 [checked native obstruction](commit-reveal-research/native-se-obstruction.md)
 rules out a general exact joint terminal-store/payoff theorem under the
-asynchronous contract alone: for fixed $R>0$, $D>R$, $K_A>R$, $K_B>1$, full
+asynchronous contract alone: for fixed $R>0$, $D>R$, $K_A>R/2$, $K_B>1$, full
 authentic audit and fair partial samples, an admissible finite builder has
 native SE but none matching the source law. It permits arbitrarily small
 positive canonical late-opening omission. This does not rule out matching

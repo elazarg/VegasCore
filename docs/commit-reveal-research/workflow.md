@@ -5,10 +5,10 @@ interfaces, organized so that a reader can reconstruct each model from its
 statement. It is not a replacement specification for the compiler.
 
 The [full native negative](native-se-obstruction.md) is checked for fixed
-$R>0$, $D>R$, $K_A>R$, $K_B>1$, full authentic audit and fair partial pending
+$R>0$, $D>R$, $K_A>R/2$, $K_B>1$, full authentic audit and fair partial pending
 samples. It excludes the source's exact joint terminal-store and realized-payoff
 law in every native SE, while native SE exist. The
-[sharper collateral and sampling variants](native-late-action-analysis.md) and
+[additional sampling variants](native-late-action-analysis.md) and
 [same-fixture weak PBE](native-weak-pbe.md) remain reviewed paper constructions.
 This distinction locates a concrete off-path consistency issue. Further
 questions concern larger native programs and explicit public service repairs;
@@ -141,7 +141,7 @@ If a weakening survives, record the broader candidate and the new proof task.
     contrasts. Use the [checked full native negative](native-se-obstruction.md)
     to identify which additional public properties could support a positive.
     Its proof controls the complete bounded raw menu, rather than relying on
-    an abstract embedding. The sharper $K_A>R/2$ and broader observation/audit
+    an abstract embedding. The broader observation/audit
     variants remain paper results. Added actions in another runtime can change
     equilibrium implementation and require their own proof.
 11. State a public miner/service class and distinguish pointwise preservation

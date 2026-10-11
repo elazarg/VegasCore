@@ -1352,7 +1352,7 @@ observation-specific exclusion needed by the negative proof.
 
 ## Checked full-menu native SE obstruction
 
-For fixed `R>0`, `D>R`, `K_A>R`, `K_B>1` and any `epsilon>0`, one finite
+For fixed `R>0`, `D>R`, `K_A>R/2`, `K_B>1` and any `epsilon>0`, one finite
 admissible public chance builder has canonical terminal late-opening omission
 strictly between zero and epsilon. Native SEs exist, but every one fails to
 realize the source Safe joint terminal-store and realized-payoff law. The

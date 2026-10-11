@@ -363,3 +363,174 @@ theorem opening_payoff_floor (positive : 0 < weight)
   linarith
 
 end Vegas.Examples.LateOpeningRuntimeAliceProtectedPublication
+
+namespace Vegas.Examples.LateOpeningRuntimeAliceProtectedPublication
+open SourceProgram EventGraph EventGraphRuntime Interaction
+open GameTheory.Protocol GameTheory.Math.Probability GameTheory.Enforcement
+open LateOpeningRuntimeSource LateOpeningRuntimeReadout LateOpeningRuntimeService
+  LateOpeningRuntimeLatePrefix LateOpeningRuntimeLateAcceptance
+  LateOpeningRuntimeAliceDecision LateOpeningRuntimeAliceIncentive
+  LateOpeningRuntimeAliceContinuation LateOpeningRuntimeUtility
+variable (weight : ℝ) (nonnegative : 0 ≤ weight)
+
+theorem pending_accepted_binding_ready_timer (decision : DecisionHistory weight nonnegative)
+ :
+    (accepted weight nonnegative decision).application.config.cut.Ready bobBindEvent ∧
+      (accepted weight nonnegative decision).application.activatedAt bobBindEvent =
+        some 2 ∧
+      (accepted weight nonnegative decision).application.clock = 2 := by
+  have ready := LateOpeningRuntimeAliceProtectedPublication.binding_ready_after_alice
+    decision.execution.application decision.ready
+  have clock := decision_clock weight nonnegative decision
+  obtain ⟨bit, label, invariant⟩ := history_initial_invariant
+    LateOpeningRuntimeService.runtime leaks LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)
+        ⟨18, some alice, decision.execution⟩ decision.trace
+  have unactivated : decision.execution.application.activatedAt bobBindEvent = none := by
+    cases timer : decision.execution.application.activatedAt bobBindEvent with
+    | none => rfl
+    | some entered =>
+        have beforeReady := ((invariant.activated_iff bobBindEvent).mp (by rw [timer]; rfl)).1
+        exact (decision.ready.1 (beforeReady.2
+          (by decide : aliceEvent ∈ nativeGraph.order.predecessors bobBindEvent))).elim
+  rw [accepted_physical weight nonnegative decision]
+  refine ⟨ready, ?_, clock⟩
+  change State.refreshActivated _ decision.execution.application.clock
+    decision.execution.application.activatedAt bobBindEvent = some 2
+  unfold State.refreshActivated
+  have completedReady : (decision.execution.application.config.complete aliceEvent decision.ready
+      true (.success decision.bit)).cut.Ready bobBindEvent := ready
+  rw [dite_eq_left completedReady]
+  change (decision.execution.application.activatedAt bobBindEvent).orElse
+    (fun _ => some decision.execution.application.clock) = some 2
+  rw [unactivated, clock]
+  rfl
+
+theorem accepted_quiet_floor (positive : 0 < weight)
+    (decision : DecisionHistory weight nonnegative)
+    (boundedTrace : (rawMenu.protocol initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
+        (some ⟨18, some alice, decision.execution⟩))
+    (labelLow : (LateOpeningRuntimeBobSuccessPayoff.originalLabel decision.execution).val < 2)
+    (reward forfeit : ℝ) (deposit : Player → ℝ)
+    (rewardNonnegative : 0 ≤ reward) (forfeitPositive : 0 < forfeit)
+    (bobDepositPositive : 0 < deposit bob)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (rational : assessment.IsSequentiallyRational
+      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
+        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
+        (fun actual => PMF.pure actual) deposit history.state who))
+    (players : Player → app.Policy)
+    (bobPolicy : players bob = rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy bob)
+    (final : app.Execution)
+    (reached : final ∈ (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative)
+      (quietAgainst players) 17 (accepted weight nonnegative decision)).support) :
+    reward / 2 ≤ aliceUtility reward forfeit deposit final := by
+  let decoded := rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
+    (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy
+  obtain ⟨respondedTrace⟩ := rawMenu.trace_respond initial LateOpeningRuntimeService.horizon
+    (LateOpeningRuntimeService.scheduler weight nonnegative) 18 decision.execution alice
+      ⟨none⟩ boundedTrace
+        (bounds.silent_available LateOpeningRuntimeService.runtime leaks _ _ _)
+  obtain ⟨acceptedTrace⟩ := rawMenu.trace_round initial LateOpeningRuntimeService.horizon
+    (LateOpeningRuntimeService.scheduler weight nonnegative) decoded
+      (fun who => rawMenu.decode_embedPolicy_covered initial LateOpeningRuntimeService.horizon
+        (LateOpeningRuntimeService.scheduler weight nonnegative) who (assessment.strategy who))
+      17 (waiting weight nonnegative decision)
+      (accepted weight nonnegative decision) respondedTrace (by
+        rw [lottery_round weight nonnegative decision]
+        exact mem_support_mix_left (inclusionProbability weight)
+          (MessageNetwork.inclusionMass_nonnegative weight nonnegative 1)
+          (MessageNetwork.inclusionMass_below_one weight nonnegative 1).le
+          (by unfold inclusionProbability MessageNetwork.inclusionMass; positivity) (by simp))
+  have published : (accepted weight nonnegative decision).application.config.store
+      (.inr aliceEvent) = some (.success decision.bit) := by
+    rw [accepted_physical weight nonnegative decision]
+    change (decision.execution.application.complete aliceEvent decision.ready true
+      (.success decision.bit)).config.outputs aliceEvent = _
+    simp [EventGraphRuntime.State.complete, Config.complete]
+  obtain ⟨ready, timer, clock⟩ := pending_accepted_binding_ready_timer weight nonnegative decision
+  have low : (LateOpeningRuntimeBobSuccessPayoff.originalLabel
+      (accepted weight nonnegative decision)).val < 2 := by
+    change ((accepted weight nonnegative decision).application.config.inputs
+      labelInput).val.toNat < 2
+    rw [accepted_physical weight nonnegative decision]
+    exact labelLow
+  have owner : (quietAgainst players) bob = decoded bob := by
+    simp only [quietAgainst, show bob ≠ alice by decide, ite_false]
+    exact bobPolicy
+  have floorBound := LateOpeningRuntimeAliceProtectedPublication.protected_publication_floor
+    weight nonnegative
+    (accepted weight nonnegative decision) acceptedTrace decision.bit published ready
+    timer clock low reward forfeit deposit rewardNonnegative forfeitPositive bobDepositPositive
+    assessment rational (quietAgainst players) owner final reached
+  have charge := accepted_charge_zero weight nonnegative decision
+    (rawMenu.toRawTrace _ _ _ acceptedTrace) players final reached
+  rw [charge, zero_mul, sub_zero] at floorBound
+  exact floorBound
+
+theorem quiet_payoff_floor (positive : 0 < weight)
+    (decision : DecisionHistory weight nonnegative)
+    (boundedTrace : (rawMenu.protocol initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
+        (some ⟨18, some alice, decision.execution⟩))
+    (labelLow : (LateOpeningRuntimeBobSuccessPayoff.originalLabel decision.execution).val < 2)
+    (reward forfeit : ℝ) (deposit : Player → ℝ)
+    (rewardNonnegative : 0 ≤ reward) (forfeitPositive : 0 < forfeit)
+    (bobDepositPositive : 0 < deposit bob)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (rational : assessment.IsSequentiallyRational
+      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
+        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
+        (fun actual => PMF.pure actual) deposit history.state who))
+    (players : Player → app.Policy)
+    (bobPolicy : players bob = rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy bob)
+    (aliceDepositNonnegative : 0 ≤ deposit alice) :
+    inclusionProbability weight * reward / 2 -
+        (1 - inclusionProbability weight) * (forfeit + deposit alice) ≤
+      expect (quietLaw weight nonnegative decision players)
+        (aliceUtility reward forfeit deposit) := by
+  let scheduler := LateOpeningRuntimeService.scheduler weight nonnegative
+  let yes := app.runRounds scheduler (quietAgainst players) 17
+    (accepted weight nonnegative decision)
+  let no := app.runRounds scheduler (quietAgainst players) 17
+    (omitted weight nonnegative decision)
+  have acceptedBound : reward / 2 ≤ expect yes (aliceUtility reward forfeit deposit) := by
+    have comparison := expect_mono (μ := yes) (f := fun _ => reward / 2)
+      (g := aliceUtility reward forfeit deposit)
+      (fun execution reached => accepted_quiet_floor weight nonnegative positive decision
+        boundedTrace labelLow reward forfeit deposit rewardNonnegative
+        forfeitPositive bobDepositPositive assessment rational players bobPolicy execution reached)
+      (payoffIntegrable_constant yes (reward / 2))
+      (aliceUtility_integrable rewardNonnegative forfeitPositive.le deposit
+        aliceDepositNonnegative yes)
+    simpa only [expect_constant] using comparison
+  have omittedBound : -forfeit - deposit alice ≤
+      expect no (aliceUtility reward forfeit deposit) := by
+    have comparison := expect_mono (μ := no) (f := fun _ => -forfeit - deposit alice)
+      (g := aliceUtility reward forfeit deposit)
+      (fun execution _ => (aliceUtility_bounds rewardNonnegative forfeitPositive.le
+        deposit aliceDepositNonnegative execution).1)
+      (payoffIntegrable_constant no (-forfeit - deposit alice))
+      (aliceUtility_integrable rewardNonnegative forfeitPositive.le deposit
+        aliceDepositNonnegative no)
+    simpa only [expect_constant] using comparison
+  unfold quietLaw
+  rw [ReactiveApplication.runRounds, lottery_round weight nonnegative decision,
+    mix_bind, PMF.pure_bind, PMF.pure_bind,
+    expect_mix _ _ _ _ _ _
+      (aliceUtility_integrable rewardNonnegative forfeitPositive.le deposit
+        aliceDepositNonnegative yes)
+      (aliceUtility_integrable rewardNonnegative forfeitPositive.le deposit
+        aliceDepositNonnegative no)]
+  have first := mul_le_mul_of_nonneg_left acceptedBound
+    (MessageNetwork.inclusionMass_nonnegative weight nonnegative 1)
+  have second := mul_le_mul_of_nonneg_left omittedBound
+    (sub_nonneg.mpr (MessageNetwork.inclusionMass_below_one weight nonnegative 1).le)
+  linarith
+
+end Vegas.Examples.LateOpeningRuntimeAliceProtectedPublication

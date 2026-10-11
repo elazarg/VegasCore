@@ -26,7 +26,7 @@ theorem exists_source_equilibrium_with_partial_audit_obstruction
     (probability : ℝ) (samplingPositive : 0 < probability) (bounded : probability ≤ 1)
     (reward forfeit : ℝ) (deposit : Player → ℝ)
     (rewardPositive : 0 < reward) (largeForfeit : reward < forfeit)
-    (coversBob : 1 ≤ forfeit) (aliceCollateral : reward < probability * deposit alice)
+    (coversBob : 1 ≤ forfeit) (aliceCollateral : reward / 2 < probability * deposit alice)
     (bobCollateral : 1 < deposit bob) :
     ∃ source : forfeitingModel.BehavioralAssessment,
       source.IsSequentialEquilibrium

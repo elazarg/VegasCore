@@ -191,7 +191,7 @@ theorem exists_service_with_no_preserving_equilibrium
     (probability : ℝ) (positive : 0 < probability) (bounded : probability ≤ 1)
     (reward forfeit : ℝ) (deposit : Player → ℝ)
     (rewardPositive : 0 < reward) (largeForfeit : reward < forfeit)
-    (aliceCollateral : reward < probability * deposit alice) (bobCollateral : 1 < deposit bob)
+    (aliceCollateral : reward / 2 < probability * deposit alice) (bobCollateral : 1 < deposit bob)
     (failureFloor : ℝ) (floorPositive : 0 < failureFloor) :
     ∃ (weight : ℝ) (nonnegative : 0 ≤ weight),
       0 < weight ∧
@@ -221,8 +221,8 @@ theorem exists_service_with_no_preserving_equilibrium
         nativeTerminalLaw weight nonnegative reward forfeit
           (sample probability positive.le bounded) deposit assessment.strategy ≠
             safeTerminalLaw reward := by
-  have aliceEffective : reward < effectiveDeposit probability deposit alice := by
-    change reward < probability * deposit alice
+  have aliceEffective : reward / 2 < effectiveDeposit probability deposit alice := by
+    change reward / 2 < probability * deposit alice
     exact aliceCollateral
   have bobEffective : 1 < effectiveDeposit probability deposit bob := by
     simpa only [effectiveDeposit, ite_eq_right (by decide : bob ≠ alice)] using bobCollateral
@@ -250,7 +250,7 @@ theorem exists_service_with_no_preserving_equilibrium
       reward forfeit deposit _ assessment.strategy same
     intro who
     fin_cases who
-    · have productPositive := rewardPositive.trans aliceCollateral
+    · have productPositive : 0 < probability * deposit alice := by linarith
       exact (mul_ne_zero_iff.mp productPositive.ne').2
     · exact (zero_lt_one.trans bobCollateral).ne'
 

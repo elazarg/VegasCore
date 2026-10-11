@@ -4,7 +4,7 @@ Analysis by Codex.
 
 **General exact SE preservation under the existing asynchronous contract is
 refuted by a checked native counterexample.** With fixed finite collateral
-`R>0`, `D>R`, `K_A>R`, `K_B>1`, one admissible public chance builder has native
+`R>0`, `D>R`, `K_A>R/2`, `K_B>1`, one admissible public chance builder has native
 SEs but none reproduces the source's joint terminal-store and realized-payoff
 law. Its canonical late-opening omission can be arbitrarily small and remains
 positive. This covers the example's entire bounded raw menu and full authentic
@@ -337,9 +337,11 @@ types or collude with players. The result concerns uniform preservation over
 this service class, not absence of equilibria in the runtime or failure of
 every blockchain configuration. The checked partial sender audit retains all
 receiver evidence and scales sender collateral by its positive coverage
-probability. The smaller-deposit and all-traffic-or-none audit variants in
+probability. The checked smaller-deposit bound is `K_A>R/2`, or effective sender
+collateral greater than `R/2` for the specified partial sender audit, with
+`D>R` and `K_B>1` unchanged. The all-traffic-or-none audit variant in
 [the detailed paper analysis](commit-reveal-research/native-late-action-analysis.md)
-remain unformalized. The [async checklist](se-async-checklist.md) retains its existing
+remains separate. The [async checklist](se-async-checklist.md) retains its existing
 owner-controlled target and boxes.
 
 The checked operational boundary is sharper: an actual initialized opening
@@ -400,8 +402,7 @@ exact SEs, and its actual-runtime tree adapter remains unformalized.
 The strongest reviewed results about the current source/runtime pair are not
 all machine checked. The protected first-ready positive and same-fixture weak
 PBE construction described below lack checked native capstones. A full
-failure-aware full-language source SE adapter, smaller-collateral native negative and
-general approximate preservation also need separate proofs. No claim of maximality follows from the
+failure-aware full-language source SE adapter and general approximate preservation also need separate proofs. No claim of maximality follows from the
 existing capstones: other restricted positive results or stronger negatives
 may still be provable.
 

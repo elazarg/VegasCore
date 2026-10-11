@@ -546,3 +546,14 @@ theorem exists_service_with_quiet_normalization {reward forfeit : ℝ}
       seen submission
 
 end Vegas.Examples.LateOpeningRuntimeAliceContinuation
+
+namespace Vegas.Examples.LateOpeningRuntimeAliceContinuation
+open LateOpeningRuntimeSource
+
+/-- A conservative gain shared by the clean sender's three late response kinds. -/
+def continuationMargin (weight reward forfeit : ℝ) (deposit : Player → ℝ) : ℝ :=
+  min (forfeit - reward) (deposit LateOpeningRuntimeSource.alice - reward / 2) -
+    (1 - LateOpeningRuntimeLateAcceptance.inclusionProbability weight) *
+      (forfeit + deposit LateOpeningRuntimeSource.alice + reward / 2)
+
+end Vegas.Examples.LateOpeningRuntimeAliceContinuation

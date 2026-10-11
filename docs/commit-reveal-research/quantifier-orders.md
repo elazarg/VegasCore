@@ -91,10 +91,9 @@ incentives and observations, not merely reproduce this game's paths.
 [Comparison scope](../runtime-features-vs-late-leak.md#limits).
 The [checked native construction](native-se-obstruction.md) does this
 for an explicit three-instruction source and the complete bounded raw menu,
-with fixed $R>0$, $D>R$, $K_A>R$ and $K_B>1$, full authentic audit and fair
+with fixed $R>0$, $D>R$, $K_A>R/2$ and $K_B>1$, full authentic audit and fair
 partial samples. The exact source, scheduler, full-menu incentive comparisons
-and common native belief identities are checked. The sharper $K_A>R/2$ bound
-and broader observation/audit variants in the
+and common native belief identities are checked. The broader observation/audit variants in the
 [paper construction](native-late-action-analysis.md) remain separate.
 
 ## Two orders of quantification
@@ -104,7 +103,7 @@ source equilibrium. They differ in whether the service is already known.
 
 | Order | Required preservation claim | Present status |
 | --- | --- | --- |
-| Collateral before service | Choose one finite collateral configuration that works for every builder in the declared class. | Checked negative in the settle-late family for D>R and c>R/2. Also checked in the full bounded native menu for R>0, D>R, K_A>R, K_B>1, full authentic audit and fair partial samples: an admissible finite builder defeats exact joint terminal-store/payoff preservation while canonical omission can be arbitrarily small and positive. The stronger K_A>R/2 and broader audit/sampling variants remain paper results. |
+| Collateral before service | Choose one finite collateral configuration that works for every builder in the declared class. | Checked negative in the settle-late family for D>R and c>R/2. Also checked in the full bounded native menu for R>0, D>R, K_A>R/2, K_B>1, full authentic audit and fair partial samples: an admissible finite builder defeats exact joint terminal-store/payoff preservation while canonical omission can be arbitrarily small and positive. The broader audit/sampling variants remain paper results. |
 | Service before collateral | For each known builder satisfying stated bounds, choose a finite collateral configuration that works for every selected source SE. | The fixed-q comparison below has a paper bound forcing the intended law in every target SE. General compiled-runtime preservation remains open. |
 
 For fixed collateral, the builder can make 1-q small enough that expected

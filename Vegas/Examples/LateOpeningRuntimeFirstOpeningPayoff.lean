@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Examples.LateOpeningRuntimeAliceResponseNormalization
 import Vegas.Examples.LateOpeningRuntimeFirstResponseRetryNormalization
 import Vegas.Examples.LateOpeningRuntimeEarlyResponseLaw
 
@@ -15,6 +16,7 @@ response may have zero probability under the assessed policy.
 noncomputable section
 
 namespace Vegas.Examples.LateOpeningRuntimeFirstOpeningPayoff
+open LateOpeningRuntimeAliceResponseNormalization
 
 open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory GameTheory.Protocol GameTheory.Math.Probability
@@ -78,9 +80,8 @@ theorem early_comparison_law (forfeitNonnegative : 0 ≤ forfeit) (collateral : 
   rw [actualQuiet, PMF.pure_bind, ite_eq_left rfl]
 
 include rational in
-theorem first_genuine_payoff_law (positive : 0 < weight) (rewardNonnegative : 0 ≤ reward)
-    (forfeitNonnegative : 0 ≤ forfeit) (aliceDepositNonnegative : 0 ≤ deposit alice)
-    (marginPositive : 0 < LateOpeningRuntimeAliceRationality.margin weight reward forfeit deposit)
+theorem first_genuine_payoff_law (forfeitNonnegative : 0 ≤ forfeit)
+    (normalized : PendingResponsesNormalized weight nonnegative assessment.strategy)
     (collateral : 1 < deposit bob) (bit : Bool) (label : Fin 3) (submission : app.Submission)
     (available : (⟨some submission⟩ : app.Action) ∈ rawMenu.actions alice
       ((firstLateDecision bit label).recall alice)
@@ -102,8 +103,8 @@ theorem first_genuine_payoff_law (positive : 0 < weight) (rewardNonnegative : 0 
             reward forfeit (fun actual => PMF.pure actual) deposit
               (app.finished final) alice)) := by
   rw [LateOpeningRuntimeFirstResponseRetryNormalization.rational_response_completion_law
-    weight nonnegative reward forfeit deposit positive rewardNonnegative forfeitNonnegative
-      aliceDepositNonnegative marginPositive assessment rational bit label ⟨some submission⟩
+    weight nonnegative assessment normalized
+      bit label ⟨some submission⟩
         available]
   simp only [firstComparison, ite_eq_left genuine]
   rw [early_comparison_law weight nonnegative reward forfeit deposit assessment rational

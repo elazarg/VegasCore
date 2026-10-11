@@ -270,7 +270,7 @@ complete SE impossibility theorem have not been formalized in Lean. The
 checked results for this polling extension are its primitive bounds.
 A separate [full native obstruction](commit-reveal-research/native-se-obstruction.md)
 is checked for the actual bounded raw runtime, full authentic audit and fair
-partial samples at fixed $R>0$, $D>R$, $K_A>R$, $K_B>1$. It excludes the
+partial samples at fixed $R>0$, $D>R$, $K_A>R/2$, $K_B>1$. It excludes the
 source's joint terminal-store and realized-payoff law in every native SE;
 it does not formalize this extended polling game or prove a public-result-only
 impossibility.

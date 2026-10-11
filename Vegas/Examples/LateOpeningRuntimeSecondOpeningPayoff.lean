@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Examples.LateOpeningRuntimeAliceResponseNormalization
 import Vegas.Examples.LateOpeningRuntimeFirstSettlementContinuation
 import Vegas.Examples.LateOpeningRuntimeEarlyResponseLaw
 import Vegas.Examples.LateOpeningRuntimeAliceFinalSupport
@@ -15,6 +16,7 @@ exactly the canonical second-opening payoff distribution.
 noncomputable section
 
 namespace Vegas.Examples.LateOpeningRuntimeSecondOpeningPayoff
+open LateOpeningRuntimeAliceResponseNormalization
 
 open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory GameTheory.Protocol GameTheory.Math.Probability
@@ -23,20 +25,19 @@ open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeLatePr
   LateOpeningRuntimeLateResponseKernel LateOpeningRuntimeSettlementContinuation
   LateOpeningRuntimeFirstRetryComparison
 
+
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
   (reward forfeit : ℝ) (deposit : Player → ℝ)
-  (positive : 0 < weight) (rewardNonnegative : 0 ≤ reward)
-  (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit alice)
-  (marginPositive : 0 < LateOpeningRuntimeAliceOpeningRationality.margin
-    weight reward forfeit deposit)
+  (forfeitNonnegative : 0 ≤ forfeit)
   (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+  (normalized : EmptyResponsesNormalized weight nonnegative assessment.strategy)
   (rational : assessment.IsSequentiallyRational
     (rawMenu.bounded initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
     (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
       (fun actual => PMF.pure actual) deposit history.state who))
 
-include rational positive rewardNonnegative forfeitNonnegative depositNonnegative marginPositive in
+include normalized in
 theorem final_genuine_payoff_law (bit : Bool) (label : Fin 3) :
     ((finalResponseLaw weight nonnegative bit label ⟨none⟩ ∅
       (players weight nonnegative assessment.strategy)).bind
@@ -61,9 +62,8 @@ theorem final_genuine_payoff_law (bit : Bool) (label : Fin 3) :
       intro response supported
       have finalState : finalDecision bit label ⟨none⟩ ∅ =
           secondLateDecision bit label 1 false := rfl
-      have genuine := LateOpeningRuntimeAliceFinalSupport.decoded_response_genuine weight
-        nonnegative reward forfeit deposit positive rewardNonnegative forfeitNonnegative
-          depositNonnegative marginPositive assessment rational
+      have genuine := LateOpeningRuntimeAliceFinalSupport.decoded_response_genuine
+        weight nonnegative assessment normalized
             (LateOpeningRuntimeAliceEmptyWitness.decisionHistory weight nonnegative bit label)
             (LateOpeningRuntimeAliceEmptyWitness.secondLateDecision_trace weight nonnegative
               bit label).some response (by
@@ -84,7 +84,7 @@ theorem final_genuine_payoff_law (bit : Bool) (label : Fin 3) :
           simpa only [settlementCompletion] using law
     _ = _ := PMF.bind_const _ _
 
-include rational positive rewardNonnegative forfeitNonnegative depositNonnegative marginPositive in
+include rational forfeitNonnegative normalized in
 theorem first_silence_payoff_law (collateral : 1 < deposit bob)
     (bit : Bool) (label : Fin 3) :
     (LateOpeningRuntimeAliceFirstPacket.responseLaw weight nonnegative
@@ -114,8 +114,7 @@ theorem first_silence_payoff_law (collateral : 1 < deposit bob)
   change ((afterEarly weight nonnegative (players weight nonnegative assessment.strategy)
     (earlyQuiet bit label ⟨none⟩ ∅)).bind _).map _ = _
   rw [after_early_quiet_law]
-  exact final_genuine_payoff_law weight nonnegative reward forfeit deposit positive
-    rewardNonnegative forfeitNonnegative depositNonnegative marginPositive assessment rational
+  exact final_genuine_payoff_law weight nonnegative reward forfeit deposit assessment normalized
       bit label
 
 end Vegas.Examples.LateOpeningRuntimeSecondOpeningPayoff

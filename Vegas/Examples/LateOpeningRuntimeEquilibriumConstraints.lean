@@ -57,7 +57,7 @@ native game. This predicate changes neither the game nor its equilibrium notion.
 def NativeResponseConstraints
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment) :
     Prop :=
-  LateOpeningRuntimeAliceNormalization.LastAliceResponsesNormalized
+  LateOpeningRuntimeAliceResponseNormalization.LastAliceResponsesNormalized
       weight nonnegative assessment.strategy ∧
   (∀ (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
       (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
@@ -215,7 +215,7 @@ theorem sequentially_rational_constraints
       (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
         (fun actual => PMF.pure actual) deposit history.state who)) :
     NativeResponseConstraints weight nonnegative reward forfeit deposit assessment := by
-  refine ⟨LateOpeningRuntimeAliceNormalization.sequentially_rational_last_responses
+  refine ⟨LateOpeningRuntimeAliceResponseNormalization.sequentially_rational_last_responses
     weight nonnegative reward forfeit deposit positive rewardNonnegative forfeitPositive.le
       depositNonnegative marginPositive assessment rational, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · intro site representative decision current

@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Examples.LateOpeningRuntimeAliceResponseNormalization
 import Vegas.Examples.LateOpeningRuntimeAliceFirstTremble
 import Vegas.Examples.LateOpeningRuntimeAliceTremble
 import Vegas.Examples.LateOpeningRuntimeAliceOpeningTremble
@@ -18,6 +19,7 @@ runtime interface or independently prescribed off-path posterior.
 noncomputable section
 
 namespace Vegas.Examples.LateOpeningRuntimeConsistency
+open LateOpeningRuntimeAliceResponseNormalization
 
 open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
@@ -28,12 +30,9 @@ open LateOpeningRuntimeSource LateOpeningRuntimeService
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
 
 theorem equilibrium_consistency_witness
-    (reward forfeit : ℝ) (deposit : Player → ℝ) (positive : 0 < weight)
-    (rewardNonnegative : 0 ≤ reward) (forfeitNonnegative : 0 ≤ forfeit)
-    (depositNonnegative : 0 ≤ deposit alice)
-    (marginPositive : 0 < LateOpeningRuntimeAliceOpeningRationality.margin
-      weight reward forfeit deposit)
+    (reward forfeit : ℝ) (deposit : Player → ℝ)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (normalized : ResponsesNormalized weight nonnegative assessment.strategy)
     (equilibrium : assessment.IsSequentialEquilibrium
       (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain
@@ -69,23 +68,28 @@ theorem equilibrium_consistency_witness
             (sequence n).strategy readout value) atTop
               (nhds (readoutBelief weight nonnegative site assessment readout value)) := by
   obtain ⟨sequence, approximate, converges⟩ := equilibrium.2
-  have retryMargin : 0 < LateOpeningRuntimeAliceRationality.margin
-      weight reward forfeit deposit := by
-    unfold LateOpeningRuntimeAliceOpeningRationality.margin at marginPositive
-    unfold LateOpeningRuntimeAliceRationality.margin
-    linarith [min_le_right forfeit (deposit alice)]
   obtain ⟨firstError, firstNonnegative, firstLimit, firstBound⟩ :=
-    LateOpeningRuntimeAliceFirstTremble.sequentially_rational_uniform_nongenuine_bound
-      weight nonnegative reward forfeit deposit positive rewardNonnegative forfeitNonnegative
-        depositNonnegative marginPositive assessment equilibrium.1 sequence converges
+    LateOpeningRuntimeAliceFirstTremble.exists_uniform_nongenuine_bound weight nonnegative
+      (fun site => converges.strategy alice site) (by
+        intro site
+        exact normalized.2 site.1
+          (LateOpeningRuntimeAliceFirstTremble.siteRepresentative weight nonnegative site)
+          (LateOpeningRuntimeAliceFirstTremble.siteDecision weight nonnegative site)
+          (LateOpeningRuntimeAliceFirstTremble.site_current weight nonnegative site))
   obtain ⟨retryError, retryNonnegative, retryLimit, retryBound⟩ :=
-    LateOpeningRuntimeAliceTremble.sequentially_rational_uniform_retry_bound
-      weight nonnegative reward forfeit deposit positive rewardNonnegative forfeitNonnegative
-        depositNonnegative retryMargin assessment equilibrium.1 sequence converges
+    LateOpeningRuntimeAliceTremble.exists_uniform_retry_bound weight nonnegative
+      (fun site => converges.strategy alice site) (by
+        intro site
+        obtain ⟨decision, history, current⟩ := site.2
+        exact normalized.1.1 site.1 history decision current)
   obtain ⟨openingError, openingNonnegative, openingLimit, openingBound⟩ :=
-    LateOpeningRuntimeAliceOpeningTremble.sequentially_rational_uniform_nongenuine_bound
-      weight nonnegative reward forfeit deposit positive rewardNonnegative forfeitNonnegative
-        depositNonnegative marginPositive assessment equilibrium.1 sequence converges
+    LateOpeningRuntimeAliceOpeningTremble.exists_uniform_nongenuine_bound weight nonnegative
+      (fun site => converges.strategy alice site) (by
+        intro site
+        exact normalized.1.2 site.1
+          (LateOpeningRuntimeAliceOpeningTremble.siteRepresentative weight nonnegative site)
+          (LateOpeningRuntimeAliceOpeningTremble.siteDecision weight nonnegative site)
+          (LateOpeningRuntimeAliceOpeningTremble.site_current weight nonnegative site))
   let error : ℕ → ℝ := fun n => firstError n + retryError n + openingError n
   refine ⟨sequence, approximate, converges, error, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · intro n

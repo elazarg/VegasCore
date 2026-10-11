@@ -205,3 +205,4 @@ import Vegas.Examples.LateOpeningRuntimeBobDirtyFinalFiber
 import Vegas.Examples.LateOpeningRuntimeBobDirtyOptionalContext
 import Vegas.Examples.LateOpeningRuntimeBobDirtyOptionalRationality
 import Vegas.Examples.LateOpeningRuntimeBobDirtyOptionalFiber
+import Vegas.Examples.LateOpeningRuntimeAliceResponseNormalization

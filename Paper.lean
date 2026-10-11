@@ -3070,3 +3070,31 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.EventGraphRuntime.prescribedReactivePolicy_inclusion_fits
+
+open Vegas.Examples.LateOpeningRuntimeAliceFirstRationality in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeAliceFirstRationality.repair_regret_of_continuation_margin'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms repair_regret_of_continuation_margin
+
+open Vegas.Examples.LateOpeningRuntimeAliceFirstRationality in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeAliceFirstRationality.sequentially_rational_nongenuine_packet_zero_of_continuation_margin'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms sequentially_rational_nongenuine_packet_zero_of_continuation_margin
+
+open Vegas.Examples.LateOpeningRuntimeAliceNormalization in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeAliceNormalization.sequentially_rational_responses'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms sequentially_rational_responses
+
+open Vegas.Examples.LateOpeningRuntimeAliceNormalization in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeAliceNormalization.exists_service_with_responses_normalized'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms exists_service_with_responses_normalized

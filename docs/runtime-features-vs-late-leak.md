@@ -12,7 +12,7 @@ The answer concerns the comparison's relationship to the
 [checked native construction](commit-reveal-research/native-se-obstruction.md)
 controls the complete bounded raw menu and supplies an actual counterexample
 to exact joint terminal-store/payoff SE preservation under the standard
-asynchronous contract. It uses fixed $R>0$, $D>R$, $K_A>R$, $K_B>1$, full
+asynchronous contract. It uses fixed $R>0$, $D>R$, $K_A>R/2$, $K_B>1$, full
 authentic audit and fair partial pending samples; native SE exist. Its result
 does not exclude matching only public results or certify the broader script
 parameter claims in this note.

@@ -46,13 +46,12 @@ checked settle-late comparison defeats every fixed forfeit above the reward
 scale and every fixed audit charge above half that scale by choosing sufficiently
 reliable late inclusion. This settles a uniform-order negative for that
 abstract family. The [checked native obstruction](native-se-obstruction.md)
-includes the complete bounded raw menu: for fixed $R>0$, $D>R$, $K_A>R$ and
+includes the complete bounded raw menu: for fixed $R>0$, $D>R$, $K_A>R/2$ and
 $K_B>1$, it constructs an admissible builder with arbitrarily small positive
 canonical late-opening omission and no SE matching the source's joint
 terminal-store and realized-payoff law. It uses full authentic audit and fair
 partial pending samples. The [broader paper analysis](native-late-action-analysis.md)
-retains its sharper $K_A>R/2$ bound and additional sampling and audit variants
-as separate unmechanized claims. Collateral chosen for a fully known service
+retains its additional sampling and audit variants as separate unmechanized claims. Collateral chosen for a fully known service
 is a pedagogic contrast.
 [Collateral and service quantifiers](quantifier-orders.md) gives the exact
 statement, model reminder and obligations for the two orders.
@@ -117,7 +116,7 @@ builder whose sufficiently reliable late admission admits no SE preserving
 the selected joint parameter/result/net-payoff law. The proof includes the
 full bounded raw menu, private observation and all-history service promises;
 it also satisfies author-only sampling and the optional late-packet erasure
-condition. Its checked collateral bounds are $R>0$, $D>R$, $K_A>R$ and $K_B>1$,
+condition. Its checked collateral bounds are $R>0$, $D>R$, $K_A>R/2$ and $K_B>1$,
 with full authentic audit and fair partial samples. Native SE exist; every one
 fails to reproduce the joint terminal-store and realized-payoff law. This does
 not prove impossibility for the public-result marginal alone or for every

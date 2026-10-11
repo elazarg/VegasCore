@@ -21,7 +21,7 @@ Let the sender's reward scale be $R$, the publication forfeit be $D$, and the
 sender and receiver audit deposits be $K_A,K_B$. Fix finite real amounts with
 
 \[
-R>0,\qquad D>R,\qquad K_A>R,\qquad K_B>1.
+R>0,\qquad D>R,\qquad K_A>R/2,\qquad K_B>1.
 \]
 
 For every $\varepsilon>0$, the checked theorem constructs one finite public
@@ -87,7 +87,7 @@ equals the full-audit utility with sender deposit $\alpha K_A$ and receiver
 deposit $K_B$. Under
 
 \[
-\alpha K_A>R,\qquad K_B>1,
+\alpha K_A>R/2,\qquad K_B>1,
 \]
 
 the same quantifier order, arbitrarily small positive omission probability,
@@ -258,11 +258,11 @@ not remove the equilibrium consequences of accepted lawful timing choices.
 The checked exact asynchronous Nash correspondence and the stronger calendar
 SE theorem are unchanged. The same-fixture preserving weak PBE and the native
 first-ready positive have reviewed paper proofs, not checked compiler
-capstones. The smaller sender-deposit variant in
+capstones. The checked uniform negative uses $K_A>R/2$ with full sender
+audit, or $\alpha K_A>R/2$ with the specified partial sender audit and full
+receiver audit. The all-traffic-or-none audit variant in
 [the detailed analysis](native-late-action-analysis.md#smaller-sender-deposit)
-is also a paper result; the checked uniform negative uses $K_A>R$ with full
-sender audit, or $\alpha K_A>R$ with the specified partial sender audit and full
-receiver audit. No theorem here establishes a general PBE preservation result
+remains a separate result. No theorem here establishes a general PBE preservation result
 or a necessary-and-sufficient interface for SE preservation.
 
 A proposed positive for an unrestricted runtime must explicitly rule out this

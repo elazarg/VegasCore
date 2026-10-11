@@ -31,7 +31,7 @@ realization for admissible services with arbitrarily small late failure. -/
 theorem exists_source_equilibrium_with_uniform_service_obstruction
     (reward forfeit : ℝ) (deposit : Player → ℝ)
     (rewardPositive : 0 < reward) (largeForfeit : reward < forfeit)
-    (coversBob : 1 ≤ forfeit) (aliceCollateral : reward < deposit alice)
+    (coversBob : 1 ≤ forfeit) (aliceCollateral : reward / 2 < deposit alice)
     (bobCollateral : 1 < deposit bob) :
     ∃ source : forfeitingModel.BehavioralAssessment,
       source.IsSequentialEquilibrium

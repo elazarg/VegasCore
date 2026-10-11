@@ -1,5 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Examples.LateOpeningRuntimeAliceProtectedPublication
+import Vegas.Examples.LateOpeningRuntimeAliceResponseNormalization
 import Vegas.Examples.LateOpeningRuntimeAliceOpeningRationality
 
 /-! # Actual supported opening responses of a sequentially rational profile
@@ -22,21 +24,21 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open LateOpeningRuntimeSource LateOpeningRuntimeReadout LateOpeningRuntimeService
   LateOpeningRuntimeAliceEmptyDecision LateOpeningRuntimeAliceContinuation
   LateOpeningRuntimeAliceOpeningContinuation
+open LateOpeningRuntimeAliceResponseNormalization
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
   (reward forfeit : ℝ) (deposit : Player → ℝ)
   (positive : 0 < weight) (rewardNonnegative : 0 ≤ reward)
   (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit alice)
-  (marginPositive : 0 < LateOpeningRuntimeAliceOpeningRationality.margin
-    weight reward forfeit deposit)
   (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+  (normalized : EmptyResponsesNormalized weight nonnegative assessment.strategy)
   (rational : assessment.IsSequentiallyRational
     (rawMenu.bounded initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
     (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
       (fun actual => PMF.pure actual) deposit history.state who))
 
-include rational positive rewardNonnegative forfeitNonnegative depositNonnegative marginPositive in
+include normalized in
 theorem decoded_response_genuine (decision : DecisionHistory weight nonnegative)
     (boundedTrace : (rawMenu.protocol initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
@@ -57,10 +59,7 @@ theorem decoded_response_genuine (decision : DecisionHistory weight nonnegative)
   let representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       alice site.1 := ⟨history, observed.symm⟩
   have current : representative.1.state = some ⟨18, some alice, decision.execution⟩ := rfl
-  have zero :=
-    LateOpeningRuntimeAliceOpeningRationality.sequentially_rational_nongenuine_response_zero
-      weight nonnegative site representative decision current reward forfeit deposit positive
-        rewardNonnegative forfeitNonnegative depositNonnegative marginPositive assessment rational
+  have zero := normalized site representative decision current
   have law : rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy alice
         (decision.execution.recall alice) (decision.execution.observe app alice) =
@@ -81,7 +80,7 @@ theorem decoded_response_genuine (decision : DecisionHistory weight nonnegative)
   rw [zero] at positiveMass
   exact (lt_irrefl 0) positiveMass
 
-include rational positive rewardNonnegative forfeitNonnegative depositNonnegative marginPositive in
+include positive rewardNonnegative forfeitNonnegative depositNonnegative normalized in
 /-- The incumbent's real current response, followed by its entire remaining
 policy, has the genuine late-opening payoff lower bound at every legal empty
 final callback. No reach or posterior hypothesis is required. -/
@@ -103,8 +102,7 @@ theorem final_response_value_lower (decision : DecisionHistory weight nonnegativ
   apply expect_bind_ge_constant_on_support
   · exact aliceUtility_integrable rewardNonnegative forfeitNonnegative deposit depositNonnegative _
   · intro response supported
-    have genuine := decoded_response_genuine weight nonnegative reward forfeit deposit positive
-      rewardNonnegative forfeitNonnegative depositNonnegative marginPositive assessment rational
+    have genuine := decoded_response_genuine weight nonnegative assessment normalized
         decision boundedTrace response supported
     rcases response with ⟨transmission⟩
     cases transmission with
@@ -113,5 +111,46 @@ theorem final_response_value_lower (decision : DecisionHistory weight nonnegativ
         exact LateOpeningRuntimeAliceOpeningRationality.continuation_opening_lower
           weight nonnegative reward forfeit deposit positive decision submission genuine _
             rewardNonnegative forfeitNonnegative depositNonnegative
+
+include rational positive rewardNonnegative depositNonnegative normalized in
+theorem final_response_value_floor (forfeitPositive : 0 < forfeit)
+    (bobDepositPositive : 0 < deposit bob) (decision : DecisionHistory weight nonnegative)
+    (low : (LateOpeningRuntimeBobSuccessPayoff.originalLabel decision.execution).val < 2)
+    (boundedTrace : (rawMenu.protocol initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
+        (some ⟨18, some alice, decision.execution⟩)) :
+    LateOpeningRuntimeLateAcceptance.inclusionProbability weight * reward / 2 -
+        (1 - LateOpeningRuntimeLateAcceptance.inclusionProbability weight) *
+          (forfeit + deposit alice) ≤
+      expect ((app.invoke (rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
+        (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy)
+          alice decision.execution).bind
+            (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative)
+              (rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
+                (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy) 18))
+        (aliceUtility reward forfeit deposit) := by
+  unfold ReactiveApplication.invoke
+  rw [PMF.bind_map]
+  apply expect_bind_ge_constant_on_support
+  · exact aliceUtility_integrable rewardNonnegative forfeitPositive.le deposit depositNonnegative _
+  · intro response supported
+    have genuine := decoded_response_genuine weight nonnegative assessment normalized
+        decision boundedTrace response supported
+    rcases response with ⟨transmission⟩
+    cases transmission with
+    | none => exact genuine.elim
+    | some submission =>
+        have available := rawMenu.decode_embedPolicy_covered initial
+          LateOpeningRuntimeService.horizon
+          (LateOpeningRuntimeService.scheduler weight nonnegative) alice (assessment.strategy alice)
+          _ _ _ supported
+        have lower := LateOpeningRuntimeAliceProtectedPublication.opening_payoff_floor weight
+          nonnegative positive decision boundedTrace submission genuine available low reward forfeit
+          deposit rewardNonnegative forfeitPositive bobDepositPositive assessment rational
+          (rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
+            (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy) rfl
+          depositNonnegative
+        rw [LateOpeningRuntimeAliceOpeningRationality.openingLaw_eq_continuation] at lower
+        exact lower
 
 end Vegas.Examples.LateOpeningRuntimeAliceFinalSupport

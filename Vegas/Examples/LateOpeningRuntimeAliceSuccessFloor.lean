@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Examples.LateOpeningRuntimeAliceOpeningAudit
 import Vegas.Examples.LateOpeningRuntimeGame
 import Vegas.Examples.LateOpeningRuntimeBobSuccessSettlement
 
@@ -162,5 +163,64 @@ theorem rational_supported_payoff_floor (rewardNonnegative : 0 ≤ reward)
     recovered.bit recovered.published response _ final reached answer
     (clean history believed final reached).1 shape labelLow reward forfeit rewardNonnegative
       deposit (fun actual => PMF.pure actual)
+
+end Vegas.Examples.LateOpeningRuntimeAliceSuccessFloor
+
+namespace Vegas.Examples.LateOpeningRuntimeAliceSuccessFloor
+open SourceProgram EventGraph EventGraphRuntime Interaction
+open GameTheory.Protocol GameTheory.Math.Probability GameTheory.Enforcement
+open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeReadout
+  LateOpeningRuntimeUtility LateOpeningRuntimeLatePrefix
+
+theorem nativeBaseUtility_upper {reward forfeit : ℝ}
+    (rewardNonnegative : 0 ≤ reward) (forfeitNonnegative : 0 ≤ forfeit)
+    (weight : ℝ) (nonnegative : 0 ≤ weight) (control : app.Control)
+    (trace : (app.protocol initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace (some control))
+    (terminal : app.terminal (some control))
+    (high : 2 ≤ (control.execution.application.config.inputs labelInput).val.toNat) :
+    nativeBaseUtility reward forfeit (some control) alice ≤ reward / 2 := by
+  have completed := LateOpeningRuntimeService.completes weight nonnegative control trace terminal
+  obtain ⟨bit, label, valid⟩ := history_initial_invariant LateOpeningRuntimeService.runtime leaks
+    LateOpeningRuntimeService.horizon (LateOpeningRuntimeService.scheduler weight nonnegative)
+    control trace
+  obtain ⟨aliceResult, binding, answer, decoded⟩ := terminal_decode_exists
+    control.execution.application bit label valid completed
+  have readout : serviceSourceReadout setup .sequential deadline leaks (some control) =
+      some (terminalStateOf bit label aliceResult binding answer) := by
+    unfold serviceSourceReadout
+    rw [Option.bind_some, ite_eq_left completed]
+    exact decoded
+  have labelHigh : 2 ≤ label.val := by
+    rw [valid.reachable.inputs_eq] at high
+    exact high
+  have bound := LateOpeningRuntimeAliceSuccessFloor.sourceUtility_highLabel_upper reward forfeit
+    rewardNonnegative forfeitNonnegative (terminalStateOf bit label aliceResult binding answer)
+    (by simpa only [parameterOutcome_terminalStateOf] using labelHigh)
+  rw [nativeBaseUtility_of_readout reward forfeit _ _ readout alice]
+  exact bound
+
+theorem nongenuine_envelope_utility_upper {reward forfeit : ℝ}
+    (rewardNonnegative : 0 ≤ reward) (forfeitNonnegative : 0 ≤ forfeit)
+    (deposit : Player → ℝ) (depositNonnegative : 0 ≤ deposit alice)
+    (weight : ℝ) (nonnegative : 0 ≤ weight) (control : app.Control)
+    (trace : (app.protocol initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace (some control))
+    (terminal : app.terminal (some control))
+    (high : 2 ≤ (control.execution.application.config.inputs labelInput).val.toNat)
+    (bit : Bool)
+    (bound : aliceBinding.get? control.execution.application.config.store = some (.success bit))
+    (traffic : app.TrafficRecord) (present : traffic ∈ app.executionTraffic control.execution)
+    (owner : traffic.envelope.sender = alice)
+    (nongenuine : traffic.envelope.payload ≠ (openingMessage bit).payload) :
+    LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit
+      (some control) alice ≤ reward / 2 - deposit alice := by
+  have base := nativeBaseUtility_upper rewardNonnegative forfeitNonnegative weight nonnegative
+    control trace terminal high
+  have charged := LateOpeningRuntimeAliceOpeningAudit.nongenuine_envelope_full_charge weight
+    nonnegative control trace terminal bit bound traffic present owner nongenuine
+  have penalty := mul_le_mul_of_nonneg_right charged depositNonnegative
+  unfold LateOpeningRuntimeGame.payoff TerminalAudit.utility
+  linarith
 
 end Vegas.Examples.LateOpeningRuntimeAliceSuccessFloor

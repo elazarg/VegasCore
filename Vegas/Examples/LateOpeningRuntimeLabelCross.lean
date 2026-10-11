@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Examples.LateOpeningRuntimeAliceResponseNormalization
 import Vegas.Examples.LateOpeningRuntimeInitializedSeenLikelihood
 import Vegas.Examples.LateOpeningRuntimeInitializedUnseenLikelihood
 import Vegas.Examples.LateOpeningRuntimeInitializedSuccessReadout
@@ -20,6 +21,7 @@ two off-path posteriors without prescribing either posterior separately.
 noncomputable section
 
 namespace Vegas.Examples.LateOpeningRuntimeLabelCross
+open LateOpeningRuntimeAliceResponseNormalization
 
 open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
@@ -184,11 +186,9 @@ include seenCurrent unseenCurrent in
 identity even when neither is reached in the limiting native strategy. -/
 theorem label_belief_cross_identity (positive : 0 < weight)
     (reward forfeit : ℝ) (deposit : Player → ℝ)
-    (rewardNonnegative : 0 ≤ reward) (forfeitNonnegative : 0 ≤ forfeit)
-    (aliceDepositNonnegative : 0 ≤ deposit alice) (bobCollateral : 1 < deposit bob)
-    (marginPositive : 0 < LateOpeningRuntimeAliceOpeningRationality.margin
-      weight reward forfeit deposit)
+    (forfeitNonnegative : 0 ≤ forfeit) (bobCollateral : 1 < deposit bob)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (normalized : ResponsesNormalized weight nonnegative assessment.strategy)
     (equilibrium : assessment.IsSequentialEquilibrium
       (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain
@@ -212,8 +212,7 @@ theorem label_belief_cross_identity (positive : 0 < weight)
   obtain ⟨sequence, approximate, converges, error, errorNonnegative, errorLimit,
     firstBound, retryBound, openingBound, _⟩ :=
     LateOpeningRuntimeConsistency.equilibrium_consistency_witness weight nonnegative
-      reward forfeit deposit positive rewardNonnegative forfeitNonnegative aliceDepositNonnegative
-        marginPositive assessment equilibrium
+      reward forfeit deposit assessment normalized equilibrium
   let seen : InformationModel.AsymptoticHistoryLikelihood
       (M := LateOpeningRuntimeGame.model weight nonnegative) bob Unit (Fin 3) sequence
         (fun n label => typeWeight weight nonnegative (sequence n).strategy bit label) := {
@@ -334,11 +333,9 @@ include seenCurrent unseenCurrent in
 both have positive posterior in the opposite accepted-opening observations. -/
 theorem label_belief_product_zero (positive : 0 < weight)
     (reward forfeit : ℝ) (deposit : Player → ℝ)
-    (rewardNonnegative : 0 ≤ reward) (forfeitNonnegative : 0 ≤ forfeit)
-    (aliceDepositNonnegative : 0 ≤ deposit alice) (bobCollateral : 1 < deposit bob)
-    (marginPositive : 0 < LateOpeningRuntimeAliceOpeningRationality.margin
-      weight reward forfeit deposit)
+    (forfeitNonnegative : 0 ≤ forfeit) (bobCollateral : 1 < deposit bob)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (normalized : ResponsesNormalized weight nonnegative assessment.strategy)
     (equilibrium : assessment.IsSequentialEquilibrium
       (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
         (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain
@@ -355,8 +352,8 @@ theorem label_belief_product_zero (positive : 0 < weight)
         LateOpeningRuntimeSuccessPosterior.initializedLabel (some sender) = 0 := by
   have cross := label_belief_cross_identity weight nonnegative bit seenSite seenRepresentative
     seenLabel seenCurrent unseenSite unseenRepresentative unseenLabel unseenCurrent positive
-      reward forfeit deposit rewardNonnegative forfeitNonnegative aliceDepositNonnegative
-        bobCollateral marginPositive assessment equilibrium sender holder
+      reward forfeit deposit forfeitNonnegative bobCollateral assessment normalized
+      equilibrium sender holder
   simpa only [sends, holds, zero_div, sub_zero, one_mul, zero_mul, mul_one, mul_zero] using cross
 
 end Vegas.Examples.LateOpeningRuntimeLabelCross

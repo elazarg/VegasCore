@@ -212,7 +212,7 @@ about the larger retained and raw menus.
 | Adaptive bounded first-ready channel | The native paper construction supplies normalization and the complete source-fiber coupling; checked roster laws and atomic observation facts supply ingredients. | High formalization value: implement (1) and (2) on actual variable-length histories. No further general paper bridge is missing. |
 | Original continuation and zero settlement from every clean prefix | Initialized prescribed adaptive execution and zero standard audit settlement are checked. The paper construction supplies the stronger conditional continuation; its arbitrary clean-prefix and intended-alternative adapter remains open. | High formalization value: implement adaptive prefix-relative readout and audit soundness, including every legal intended source alternative. |
 | One globally consistent restricted assessment | Existing Bayesian compactness and local-simulation theorem suffice once the preceding evidence is supplied. | Low need for new theory; instantiate rather than invent another equilibrium completion theorem. |
-| Extension through accepted late moves | An accepted late packet can be uncharged. The [checked native two-late negative](native-se-obstruction.md) rules out exact joint terminal-store/payoff preservation in the full bounded menu for fixed R>0, D>R, K_A>R, K_B>1, full authentic audit and fair partial samples. Native SE exist. The sharper collateral and broader sampling/audit variants remain paper results. | Identify further public service or settlement properties supporting a positive, and distinguish SE from weaker PBE and public-result-only preservation. |
+| Extension through accepted late moves | An accepted late packet can be uncharged. The [checked native two-late negative](native-se-obstruction.md) rules out exact joint terminal-store/payoff preservation in the full bounded menu for fixed R>0, D>R, K_A>R/2, K_B>1, full authentic audit and fair partial samples. Native SE exist. The broader sampling/audit variants remain paper results. | Identify further public service or settlement properties supporting a positive, and distinguish SE from weaker PBE and public-result-only preservation. |
 | Excluded raw moves and one-time charges | Existing signed exclusion, collection and raw alias APIs cover important classes. Uniform collection must be checked for each excluded class. | High: keep arbitrary later play in the quantifier, and distinguish an uncharged first departure from an already collected penalty. |
 | Concurrent genuine choices | Typed completion commutation exists, but current serial channel proof does not settle information or timing opportunities. | Separate later extension; do not count serial success as general concurrency preservation. |
 
@@ -258,7 +258,7 @@ initialized-law premise. The concrete
 mathematical acceptance of its complete restricted-game paper construction.
 Its adaptive formal adapter remains unformalized. The
 [native negative](native-se-obstruction.md) is checked for the full bounded
-raw menu, $R>0$, $D>R$, $K_A>R$, $K_B>1$, full authentic audit and fair partial
+raw menu, $R>0$, $D>R$, $K_A>R/2$, $K_B>1$, full authentic audit and fair partial
 samples. The declared contract alone therefore supplies no general exact
 joint terminal-store/payoff SE extension. Its public-result marginal is not
 ruled out by this theorem. The
@@ -269,7 +269,7 @@ $D\ge\max(R,1)$. It instantiates the generic
 [value-admission source SE extension](../../Vegas/Game/ValueAdmissionPreservation.lean),
 which preserves every value-only source SE under arbitrary commitment admission
 without a forfeit bound. The specified partial sender audit with full receiver
-coverage has a checked negative under effective sender collateral above $R$.
-The smaller-deposit and all-traffic-or-none audit paper variants and the general
+coverage has a checked negative under effective sender collateral above $R/2$.
+The all-traffic-or-none audit paper variant and the general
 protected positive adapter remain separate obligations. This note changes no
 adopted checklist or runtime semantics.

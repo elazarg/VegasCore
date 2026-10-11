@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Examples.LateOpeningRuntimeAliceResponseNormalization
 import Vegas.Examples.LateOpeningRuntimeAliceFirstFiber
 import Vegas.Examples.LateOpeningRuntimeAliceFirstRationality
 import Vegas.Examples.LateOpeningRuntimeFirstRetryComparison
@@ -269,43 +270,6 @@ theorem genuineProbability_one_of_preference
   rw [(PMF.toOuterMeasure_apply_eq_one_iff _ _).mpr full, ENNReal.toReal_one]
 
 include representative current in
-/-- The checked native deterrence margin supplies the nongenuine-mass
-condition for the strict first-opening preference. -/
-theorem sequentially_rational_genuineProbability_one_of_preference
-    (positive : 0 < weight) (rewardNonnegative : 0 ≤ reward)
-    (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit alice)
-    (openingMarginPositive : 0 < LateOpeningRuntimeAliceOpeningRationality.margin
-      weight reward forfeit deposit)
-    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
-    (firstValue secondValue : ℝ)
-    (openingValue : ∀ response ∈ rawMenu.actions alice
-      ((firstLateDecision bit label).recall alice)
-        ((firstLateDecision bit label).observe app alice),
-      GenuineResponse weight nonnegative
-        (LateOpeningRuntimeAliceFirstWitness.decisionHistory weight nonnegative bit label)
-          response → responseValue weight nonnegative bit label reward forfeit deposit
-            assessment response = firstValue)
-    (silenceValue : responseValue weight nonnegative bit label reward forfeit deposit
-      assessment ⟨none⟩ = secondValue)
-    (better : secondValue < firstValue) :
-    LateOpeningRuntimeFirstRetryComparison.genuineProbability weight nonnegative
-      assessment.strategy bit label = 1 := by
-  have zero := LateOpeningRuntimeAliceFirstRationality.sequentially_rational_nongenuine_packet_zero
-    weight nonnegative site representative
-      (LateOpeningRuntimeAliceFirstWitness.decisionHistory weight nonnegative bit label) current
-      reward forfeit deposit positive rewardNonnegative forfeitNonnegative depositNonnegative
-        openingMarginPositive assessment rational
-  rw [current_law weight nonnegative site representative bit label current assessment] at zero
-  exact genuineProbability_one_of_preference weight nonnegative site representative bit label
-    current reward forfeit deposit assessment rational zero firstValue secondValue
-      openingValue silenceValue better
-
-include representative current in
 /-- A strictly better silent response excludes every genuine opening alias;
 this implication does not require the nongenuine-packet exclusion premise. -/
 theorem sequentially_rational_genuineProbability_zero_of_preference
@@ -343,5 +307,56 @@ theorem sequentially_rational_genuineProbability_zero_of_preference
     exact not_le_of_gt better best
   unfold LateOpeningRuntimeFirstRetryComparison.genuineProbability
   rw [zero, ENNReal.toReal_zero]
+
+end Vegas.Examples.LateOpeningRuntimeAliceFirstOptimality
+
+namespace Vegas.Examples.LateOpeningRuntimeAliceFirstOptimality
+
+open SourceProgram EventGraph EventGraphRuntime Interaction
+open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
+  GameTheory.Math.Probability
+open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeLatePrefix
+  LateOpeningRuntimeAliceFirstDecision LateOpeningRuntimeAliceFirstResponse
+  LateOpeningRuntimeAliceContinuation LateOpeningRuntimeFirstObservation
+  LateOpeningRuntimeReadout
+open LateOpeningRuntimeAliceResponseNormalization
+
+variable (weight : ℝ) (nonnegative : 0 ≤ weight)
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite alice)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
+    alice site.1) (bit : Bool) (label : Fin 3)
+  (current : representative.1.state = some ⟨22, some alice, firstLateDecision bit label⟩)
+  (reward forfeit : ℝ) (deposit : Player → ℝ)
+
+include representative current in
+/-- Normalized first responses supply the nongenuine-mass
+condition for the strict first-opening preference. -/
+theorem sequentially_rational_genuineProbability_one_of_preference
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (normalized : FirstResponsesNormalized weight nonnegative assessment.strategy)
+    (rational : assessment.IsSequentiallyRational
+      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
+        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
+        (fun actual => PMF.pure actual) deposit history.state who))
+    (firstValue secondValue : ℝ)
+    (openingValue : ∀ response ∈ rawMenu.actions alice
+      ((firstLateDecision bit label).recall alice)
+        ((firstLateDecision bit label).observe app alice),
+      GenuineResponse weight nonnegative
+        (LateOpeningRuntimeAliceFirstWitness.decisionHistory weight nonnegative bit label)
+          response → responseValue weight nonnegative bit label reward forfeit deposit
+            assessment response = firstValue)
+    (silenceValue : responseValue weight nonnegative bit label reward forfeit deposit
+      assessment ⟨none⟩ = secondValue)
+    (better : secondValue < firstValue) :
+    LateOpeningRuntimeFirstRetryComparison.genuineProbability weight nonnegative
+      assessment.strategy bit label = 1 := by
+  have zero := normalized site representative
+    (LateOpeningRuntimeAliceFirstWitness.decisionHistory weight nonnegative bit label) current
+  rw [current_law weight nonnegative site representative bit label current assessment] at zero
+  exact genuineProbability_one_of_preference weight nonnegative site representative bit label
+    current reward forfeit deposit assessment rational zero firstValue secondValue
+      openingValue silenceValue better
 
 end Vegas.Examples.LateOpeningRuntimeAliceFirstOptimality

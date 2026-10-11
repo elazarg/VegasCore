@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Examples.LateOpeningRuntimeAliceProtectedPublication
 import Vegas.Examples.LateOpeningRuntimeAliceIncentive
 import Interaction.ReactivePassiveDecision
 import GameTheoryExtensions.Protocol.ContinuationHorizon
@@ -403,6 +404,235 @@ theorem second_packet_le_of_deviation_regret
   have bound := quiet_regret weight nonnegative site representative decision current
     reward forfeit deposit positive rewardNonnegative forfeitNonnegative depositNonnegative
       assessment
+  nlinarith
+
+end Vegas.Examples.LateOpeningRuntimeAliceRationality
+
+namespace Vegas.Examples.LateOpeningRuntimeAliceRationality
+open SourceProgram EventGraph EventGraphRuntime Interaction
+open GameTheory.Protocol GameTheory.Math.Probability
+open LateOpeningRuntimeSource LateOpeningRuntimeReadout LateOpeningRuntimeService
+  LateOpeningRuntimeLatePrefix LateOpeningRuntimeLateAcceptance
+  LateOpeningRuntimeAliceDecision LateOpeningRuntimeAliceIncentive
+  LateOpeningRuntimeAliceContinuation
+
+theorem quiet_extra_packet_gain (weight : ℝ) (nonnegative : 0 ≤ weight)
+    (positive : 0 < weight) (decision : DecisionHistory weight nonnegative)
+    (boundedTrace : (rawMenu.protocol initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
+        (some ⟨18, some alice, decision.execution⟩))
+    (submission : app.Submission) (alternatives : Player → app.Policy)
+    (reward forfeit : ℝ) (deposit : Player → ℝ)
+    (rewardNonnegative : 0 ≤ reward) (forfeitPositive : 0 < forfeit)
+    (bobDepositPositive : 0 < deposit bob) (aliceDepositNonnegative : 0 ≤ deposit alice)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (rational : assessment.IsSequentiallyRational
+      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
+        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
+        (fun actual => PMF.pure actual) deposit history.state who)) :
+    continuationMargin weight reward forfeit deposit ≤
+      expect (quietLaw weight nonnegative decision
+        (rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
+          (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy))
+        (aliceUtility reward forfeit deposit) -
+      expect (secondLaw weight nonnegative decision submission alternatives)
+        (aliceUtility reward forfeit deposit) := by
+  let players := rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
+    (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy
+  have failureNonnegative : 0 ≤ 1 - inclusionProbability weight := by
+    exact sub_nonneg.mpr (MessageNetwork.inclusionMass_below_one weight nonnegative 1).le
+  have slackNonnegative : 0 ≤ (1 - inclusionProbability weight) * (reward / 2) := by
+    positivity
+  have gapDeposit := min_le_right (forfeit - reward) (deposit alice - reward / 2)
+  by_cases low : (LateOpeningRuntimeBobSuccessPayoff.originalLabel decision.execution).val < 2
+  · have lower := LateOpeningRuntimeAliceProtectedPublication.quiet_payoff_floor weight nonnegative
+      positive decision boundedTrace low reward forfeit deposit rewardNonnegative forfeitPositive
+      bobDepositPositive assessment rational players rfl aliceDepositNonnegative
+    have upper := extra_payoff_upper weight nonnegative decision submission alternatives
+      rewardNonnegative forfeitPositive.le deposit aliceDepositNonnegative
+    dsimp only [continuationMargin]
+    dsimp only [players] at lower
+    nlinarith
+  · have lower := quiet_payoff_lower weight nonnegative positive decision players
+      rewardNonnegative forfeitPositive.le deposit aliceDepositNonnegative
+    have high : 2 ≤ (decision.execution.application.config.inputs labelInput).val.toNat := by
+      change ¬ (decision.execution.application.config.inputs labelInput).val.toNat < 2 at low
+      omega
+    have upper := LateOpeningRuntimeAliceIncentive.extra_payoff_highLabel_upper weight nonnegative
+      decision submission high alternatives rewardNonnegative forfeitPositive.le deposit
+      aliceDepositNonnegative
+    dsimp only [continuationMargin]
+    dsimp only [players] at lower
+    nlinarith
+
+end Vegas.Examples.LateOpeningRuntimeAliceRationality
+
+namespace Vegas.Examples.LateOpeningRuntimeAliceRationality
+open SourceProgram EventGraph EventGraphRuntime Interaction
+open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
+open LateOpeningRuntimeSource LateOpeningRuntimeReadout LateOpeningRuntimeService
+  LateOpeningRuntimeLatePrefix LateOpeningRuntimeLateAcceptance
+  LateOpeningRuntimeAliceDecision LateOpeningRuntimeAliceContinuation
+open LateOpeningRuntimeAliceIncentive
+  (continuation quietLaw_eq_continuation secondLaw_eq_continuation)
+open LateOpeningRuntimeAliceRationality
+  (responseLaw context context_integrable context_value quietPolicy finalLaw quiet_finalLaw)
+open LateOpeningRuntimeAliceContinuation (continuationMargin)
+variable (weight : ℝ) (nonnegative : 0 ≤ weight)
+  (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite alice)
+  (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
+    alice site.1)
+  (decision : DecisionHistory weight nonnegative)
+  (current : representative.1.state = some ⟨18, some alice, decision.execution⟩)
+  (reward forfeit : ℝ) (deposit : Player → ℝ)
+
+theorem quiet_regret_of_sequential_rationality
+    (positive : 0 < weight) (rewardNonnegative : 0 ≤ reward)
+    (forfeitPositive : 0 < forfeit) (bobDepositPositive : 0 < deposit bob)
+    (depositNonnegative : 0 ≤ deposit alice)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (rational : assessment.IsSequentiallyRational
+      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
+        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
+        (fun actual => PMF.pure actual) deposit history.state who)) :
+    continuationMargin weight reward forfeit deposit *
+        ((responseLaw weight nonnegative site (assessment.strategy alice)).toOuterMeasure
+          {response | response.transmission.isSome}).toReal ≤
+      (context weight nonnegative site reward forfeit deposit assessment).value
+        (quietPolicy weight nonnegative site representative decision current assessment) -
+      (context weight nonnegative site reward forfeit deposit assessment).value
+        (assessment.strategy alice) := by
+  classical
+  have forfeitNonnegative := forfeitPositive.le
+  let belief := assessment.belief alice site
+  let actions := responseLaw weight nonnegative site (assessment.strategy alice)
+  let players := rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
+    (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy
+  let recover := decisionOfInformation weight nonnegative site representative decision current
+  let utility := aliceUtility reward forfeit deposit
+  let row := fun pair :
+      (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory alice site.1 ×
+        app.Action => expect
+    (continuation weight nonnegative (recover pair.1) pair.2 players) utility
+  let quiet := fun history => expect
+    (continuation weight nonnegative (recover history) ⟨none⟩ players) utility
+  let joint := belief.bind fun history => actions.map fun response => (history, response)
+  have constantNonnegative : 0 ≤ reward + forfeit + deposit alice := by positivity
+  have bound : ∀ final, |utility final| ≤ reward + forfeit + deposit alice := by
+    intro final
+    obtain ⟨lower, upper⟩ := aliceUtility_bounds rewardNonnegative forfeitNonnegative
+      deposit depositNonnegative final
+    exact abs_le.mpr ⟨by linarith, by linarith⟩
+  have rowBound : ∀ pair, |row pair| ≤ reward + forfeit + deposit alice := by
+    intro pair
+    exact expect_abs_le_of_bounded constantNonnegative bound
+  have quietBound : ∀ history, |quiet history| ≤ reward + forfeit + deposit alice := by
+    intro history
+    exact expect_abs_le_of_bounded constantNonnegative bound
+  have regret := expect_failure_regret belief
+    (fun history => actions.map fun response => (history, response)) PMF.pure row quiet
+      {pair | pair.2.transmission.isSome} (continuationMargin weight reward forfeit deposit)
+      (payoffIntegrable_of_bounded _ _ rowBound)
+      (payoffIntegrable_of_bounded _ _ quietBound)
+      (fun _ _ => payoffIntegrable_of_bounded _ _ rowBound)
+      (fun _ _ => payoffIntegrable_of_bounded _ _ quietBound) (by
+        intro history _ first firstReached second secondReached
+        rw [PMF.mem_support_map_iff] at firstReached
+        obtain ⟨response, _, rfl⟩ := firstReached
+        rw [PMF.mem_support_pure_iff] at secondReached
+        subst second
+        rcases response with ⟨transmission⟩
+        cases transmission with
+        | none => simp [row, quiet]
+        | some submission =>
+            have facts := decisionOfInformation_spec weight nonnegative site representative
+              decision current history
+            have boundedTrace : (rawMenu.protocol initial LateOpeningRuntimeService.horizon
+                (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
+                  (some ⟨18, some alice, (recover history).execution⟩) := by
+              rw [← facts.1]
+              exact history.1.trace
+            have comparison := quiet_extra_packet_gain weight nonnegative positive
+              (recover history)
+              boundedTrace submission players reward forfeit deposit rewardNonnegative
+              forfeitPositive
+              bobDepositPositive depositNonnegative assessment rational
+            rw [quietLaw_eq_continuation, secondLaw_eq_continuation] at comparison
+            have converted : row (history, ⟨some submission⟩) +
+                continuationMargin weight reward forfeit deposit ≤ quiet history := by
+              change expect (continuation weight nonnegative (recover history)
+                ⟨some submission⟩ players) utility + _ ≤ _
+              linarith [comparison]
+            simpa using converted)
+  have marginal : joint.map Prod.snd = actions := by
+    simp only [joint, PMF.map_bind, PMF.map_comp, Function.comp_def, PMF.bind_const]
+    change actions.map id = actions
+    exact PMF.map_id actions
+  have mass : (joint.toOuterMeasure {pair | pair.2.transmission.isSome}).toReal =
+      (actions.toOuterMeasure {response | response.transmission.isSome}).toReal := by
+    rw [← marginal, PMF.toOuterMeasure_map_apply]
+    rfl
+  have rawMean : expect joint row = expect
+      (finalLaw weight nonnegative site representative decision current assessment
+        (assessment.strategy alice)) utility := by
+    rw [expect_bind_tower_bounded belief _ _ rowBound]
+    unfold finalLaw
+    rw [expect_bind_tower_bounded _ _ _ bound]
+    apply expect_congr_on_support
+    intro history _
+    rw [expect_map, expect_bind_tower_bounded _ _ _ bound]
+    rfl
+  have quietMean : expect (belief.bind PMF.pure) quiet = expect
+      (finalLaw weight nonnegative site representative decision current assessment
+        (quietPolicy weight nonnegative site representative decision current assessment))
+        utility := by
+    rw [PMF.bind_pure, quiet_finalLaw,
+      expect_bind_tower_bounded _ _ _ bound]
+  change continuationMargin weight reward forfeit deposit *
+    (joint.toOuterMeasure {pair | pair.2.transmission.isSome}).toReal ≤
+      expect (belief.bind PMF.pure) quiet - expect joint row at regret
+  rw [mass, quietMean, rawMean] at regret
+  rw [context_value weight nonnegative site representative decision current,
+    context_value weight nonnegative site representative decision current]
+  exact regret
+
+include representative decision current in
+theorem sequentially_rational_second_packet_zero_of_continuation_margin
+    (positive : 0 < weight) (rewardNonnegative : 0 ≤ reward)
+    (forfeitPositive : 0 < forfeit) (bobDepositPositive : 0 < deposit bob)
+    (depositNonnegative : 0 ≤ deposit alice)
+    (marginPositive : 0 < continuationMargin weight reward forfeit deposit)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (rational : assessment.IsSequentiallyRational
+      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
+        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
+        (fun actual => PMF.pure actual) deposit history.state who)) :
+    ((responseLaw weight nonnegative site (assessment.strategy alice)).toOuterMeasure
+      {response | response.transmission.isSome}).toReal = 0 := by
+  have localRational := rational alice site
+  dsimp only at localRational
+  rw [assessment.continuationContext_eq_truncated_of_bounded
+    (rawMenu.bounded initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
+    (rawMenu.bounded initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative))] at localRational
+  have comparison := (Context.isLocallyOptimal_iff_of_integrable
+    (context_integrable weight nonnegative site reward forfeit deposit rewardNonnegative
+      forfeitPositive.le depositNonnegative assessment (assessment.strategy alice))
+    (fun alternative _ => context_integrable weight nonnegative site reward forfeit deposit
+      rewardNonnegative forfeitPositive.le depositNonnegative assessment alternative)).mp
+        localRational (quietPolicy weight nonnegative site representative decision current
+          assessment) (Set.mem_univ _)
+  have regret := quiet_regret_of_sequential_rationality
+    weight nonnegative site representative decision current
+    reward forfeit deposit positive rewardNonnegative forfeitPositive bobDepositPositive
+      depositNonnegative assessment rational
+  have nonnegative := ENNReal.toReal_nonneg (a :=
+    ((responseLaw weight nonnegative site (assessment.strategy alice)).toOuterMeasure
+      {response | response.transmission.isSome}))
   nlinarith
 
 end Vegas.Examples.LateOpeningRuntimeAliceRationality

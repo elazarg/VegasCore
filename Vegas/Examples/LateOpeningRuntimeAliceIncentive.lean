@@ -1,5 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Examples.LateOpeningRuntimeAliceSuccessFloor
+import Vegas.Examples.LateOpeningRuntimeGame
+
 import Vegas.Examples.LateOpeningRuntimeAliceDecision
 import Interaction.ReactivePassiveContinuation
 import Interaction.ReactiveEmissionOrder
@@ -124,7 +127,7 @@ private theorem handle_waiting (decision : DecisionHistory weight nonnegative) :
         decision.bound (.success decision.bit)
           (by rw [EventCode.resolveOutput?, decision.bound]; rfl)
 
-private theorem accepted_physical (decision : DecisionHistory weight nonnegative) :
+theorem accepted_physical (decision : DecisionHistory weight nonnegative) :
     (accepted weight nonnegative decision).application =
       decision.execution.application.complete aliceEvent decision.ready true
         (.success decision.bit) := by
@@ -136,7 +139,7 @@ private theorem accepted_physical (decision : DecisionHistory weight nonnegative
   rw [handle_waiting]
   rfl
 
-private theorem accepted_receipt (decision : DecisionHistory weight nonnegative) :
+theorem accepted_receipt (decision : DecisionHistory weight nonnegative) :
     ((alice, 0), true) ∈ (accepted weight nonnegative decision).receipts := by
   change ((alice, 0), true) ∈
     ((waiting weight nonnegative decision).includePending app (alice, 0)).receipts
@@ -148,7 +151,7 @@ private theorem accepted_receipt (decision : DecisionHistory weight nonnegative)
   rw [handle_waiting]
   exact List.mem_append_right _ (List.mem_singleton_self _)
 
-private theorem accepted_inputs (decision : DecisionHistory weight nonnegative) :
+theorem accepted_inputs (decision : DecisionHistory weight nonnegative) :
     (accepted weight nonnegative decision).network.inputs = [openingMessage decision.bit] := by
   have same : (accepted weight nonnegative decision).network.inputs =
       (waiting weight nonnegative decision).network.inputs := by
@@ -193,7 +196,7 @@ theorem lottery_round (decision : DecisionHistory weight nonnegative)
     rw [recorded_wait, PMF.pure_bind]
     rfl
 
-private theorem accepted_trace (positive : 0 < weight)
+theorem accepted_trace (positive : 0 < weight)
     (decision : DecisionHistory weight nonnegative) (players : Player → app.Policy) :
     Nonempty ((app.protocol initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
@@ -210,27 +213,19 @@ private theorem accepted_trace (positive : 0 < weight)
     (MessageNetwork.inclusionMass_below_one weight nonnegative 1).le
     (by unfold inclusionProbability MessageNetwork.inclusionMass; positivity) (by simp)
 
-theorem accepted_quiet_nonnegative (positive : 0 < weight)
-    (decision : DecisionHistory weight nonnegative) (players : Player → app.Policy)
-    {reward : ℝ} (rewardNonnegative : 0 ≤ reward) (forfeit : ℝ) (deposit : Player → ℝ)
-    (execution : app.Execution)
+theorem accepted_charge_zero (decision : DecisionHistory weight nonnegative)
+    (prior : (app.protocol initial LateOpeningRuntimeService.horizon
+      (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
+        (some ⟨17, none, accepted weight nonnegative decision⟩))
+    (players : Player → app.Policy) (execution : app.Execution)
     (reached : execution ∈ (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative)
       (quietAgainst players) 17 (accepted weight nonnegative decision)).support) :
-    0 ≤ aliceUtility reward forfeit deposit execution := by
-  obtain ⟨prior⟩ := accepted_trace weight nonnegative positive decision (quietAgainst players)
+    TerminalAudit.charge (LateOpeningRuntimeService.runtime.serviceAuditObservation leaks)
+      (serviceSourceAudit setup .sequential deadline leaks (fun actual => PMF.pure actual))
+        (app.finished execution) alice = 0 := by
   obtain ⟨trace⟩ := app.raw_trace_runRounds initial LateOpeningRuntimeService.horizon
     (LateOpeningRuntimeService.scheduler weight nonnegative) (quietAgainst players) 0 17
       (accepted weight nonnegative decision) execution prior reached
-  have published : (accepted weight nonnegative decision).application.config.store
-      (.inr aliceEvent) = some (.success decision.bit) := by
-    rw [accepted_physical]
-    change (decision.execution.application.complete aliceEvent decision.ready true
-      (.success decision.bit)).config.outputs aliceEvent = _
-    simp [EventGraphRuntime.State.complete, Config.complete]
-  have retained := (ReactiveApplication.Invariant.policyInvariant app
-    (LateOpeningRuntimeService.runtime.reactiveStoreInvariant leaks (.inr aliceEvent)
-      (.success decision.bit)) (quietAgainst players)).runRounds
-        (LateOpeningRuntimeService.scheduler weight nonnegative) 17 _ execution published reached
   have only : OnlyAlicePacket decision.bit (accepted weight nonnegative decision) := by
     intro message member _
     rw [accepted_inputs] at member
@@ -258,6 +253,30 @@ theorem accepted_quiet_nonnegative (positive : 0 < weight)
         exact List.mem_map.mpr ⟨traffic, member, rfl⟩
       rw [after traffic.envelope submitted owner]
       exact accepted_alice_opening_permitted _ (alice, 0) decision.bit (some ⟨aliceEvent⟩) receipt
+  exact charged
+
+theorem accepted_quiet_nonnegative (positive : 0 < weight)
+    (decision : DecisionHistory weight nonnegative) (players : Player → app.Policy)
+    {reward : ℝ} (rewardNonnegative : 0 ≤ reward) (forfeit : ℝ) (deposit : Player → ℝ)
+    (execution : app.Execution)
+    (reached : execution ∈ (app.runRounds (LateOpeningRuntimeService.scheduler weight nonnegative)
+      (quietAgainst players) 17 (accepted weight nonnegative decision)).support) :
+    0 ≤ aliceUtility reward forfeit deposit execution := by
+  obtain ⟨prior⟩ := accepted_trace weight nonnegative positive decision (quietAgainst players)
+  obtain ⟨trace⟩ := app.raw_trace_runRounds initial LateOpeningRuntimeService.horizon
+    (LateOpeningRuntimeService.scheduler weight nonnegative) (quietAgainst players) 0 17
+      (accepted weight nonnegative decision) execution prior reached
+  have published : (accepted weight nonnegative decision).application.config.store
+      (.inr aliceEvent) = some (.success decision.bit) := by
+    rw [accepted_physical]
+    change (decision.execution.application.complete aliceEvent decision.ready true
+      (.success decision.bit)).config.outputs aliceEvent = _
+    simp [EventGraphRuntime.State.complete, Config.complete]
+  have retained := (ReactiveApplication.Invariant.policyInvariant app
+    (LateOpeningRuntimeService.runtime.reactiveStoreInvariant leaks (.inr aliceEvent)
+      (.success decision.bit)) (quietAgainst players)).runRounds
+        (LateOpeningRuntimeService.scheduler weight nonnegative) 17 _ execution published reached
+  have charged := accepted_charge_zero weight nonnegative decision prior players execution reached
   unfold aliceUtility TerminalAudit.utility
   rw [charged, zero_mul, sub_zero]
   exact completed_opening_base_nonnegative rewardNonnegative forfeit weight nonnegative
@@ -365,6 +384,92 @@ theorem quiet_second_packet_regret (positive : 0 < weight)
     rewardNonnegative forfeitNonnegative deposit depositNonnegative
   have upper := extra_payoff_upper weight nonnegative decision submission alternatives
     rewardNonnegative forfeitNonnegative deposit depositNonnegative
+  linarith
+
+end Vegas.Examples.LateOpeningRuntimeAliceIncentive
+
+namespace Vegas.Examples.LateOpeningRuntimeAliceIncentive
+open SourceProgram EventGraph EventGraphRuntime Interaction
+open GameTheory.Protocol GameTheory.Math.Probability GameTheory.Enforcement
+open LateOpeningRuntimeSource LateOpeningRuntimeReadout LateOpeningRuntimeService
+  LateOpeningRuntimeLatePrefix LateOpeningRuntimeLateAcceptance
+  LateOpeningRuntimeAliceDecision LateOpeningRuntimeAliceIncentive
+  LateOpeningRuntimeAliceContinuation LateOpeningRuntimeUtility
+variable (weight : ℝ) (nonnegative : 0 ≤ weight)
+
+theorem extra_payoff_highLabel_upper (decision : DecisionHistory weight nonnegative)
+    (submission : app.Submission)
+    (high : 2 ≤ (decision.execution.application.config.inputs labelInput).val.toNat)
+    (players : Player → app.Policy) {reward forfeit : ℝ}
+    (rewardNonnegative : 0 ≤ reward) (forfeitNonnegative : 0 ≤ forfeit)
+    (deposit : Player → ℝ) (depositNonnegative : 0 ≤ deposit alice) :
+    expect (secondLaw weight nonnegative decision submission players)
+      (aliceUtility reward forfeit deposit) ≤ reward / 2 - deposit alice := by
+  apply expect_le_const _ _
+    (aliceUtility_integrable rewardNonnegative forfeitNonnegative deposit depositNonnegative _) _
+  intro execution reached
+  have own := app.history_inputRecall initial LateOpeningRuntimeService.horizon
+    (LateOpeningRuntimeService.scheduler weight nonnegative) decision.trace
+  change decision.execution.InputRecall app at own
+  have ordered := app.emissionOrder_history (LateOpeningRuntimeService.scheduler weight nonnegative)
+    initial LateOpeningRuntimeService.horizon decision.trace
+  change decision.execution.EmissionOrder app at ordered
+  have counter := congrArg List.length (ordered alice)
+  rw [List.length_map, List.length_map, List.length_range, ← own alice, decision.inputs] at counter
+  have serial : decision.execution.network.nextSerial alice = 1 := by
+    simpa [openingMessage, Message.sender] using counter.symm
+  let packet : Message Player app.Payload :=
+    ⟨(alice, 1), app.packet (app.submit decision.execution.application alice submission) alice
+      (decision.execution.network.known alice) submission⟩
+  have inputs : (decision.execution.respond app alice ⟨some submission⟩).network.inputs =
+      [openingMessage decision.bit, packet] := by
+    change decision.execution.network.inputs ++ [⟨(alice,
+      decision.execution.network.nextSerial alice), _⟩] = _
+    rw [decision.inputs, serial]
+    rfl
+  obtain ⟨after⟩ := app.raw_trace_respond initial LateOpeningRuntimeService.horizon
+    (LateOpeningRuntimeService.scheduler weight nonnegative) 18 decision.execution alice
+      ⟨some submission⟩ decision.trace
+  obtain ⟨trace⟩ := app.raw_trace_runRounds initial LateOpeningRuntimeService.horizon
+    (LateOpeningRuntimeService.scheduler weight nonnegative) players 0 18 _ execution after reached
+  have firstPresent := (input_persists players (openingMessage decision.bit)).runRounds
+    (LateOpeningRuntimeService.scheduler weight nonnegative) 18 _ execution
+      (by rw [inputs]; simp) reached
+  have secondPresent := (input_persists players packet).runRounds
+    (LateOpeningRuntimeService.scheduler weight nonnegative) 18 _ execution
+      (by rw [inputs]; simp) reached
+  have traffic := app.stateTraffic_inputs initial LateOpeningRuntimeService.horizon
+    (LateOpeningRuntimeService.scheduler weight nonnegative) trace
+  change (app.executionTraffic execution).map ReactiveApplication.TrafficRecord.envelope =
+    execution.network.inputs at traffic
+  rw [← traffic] at firstPresent secondPresent
+  obtain ⟨first, firstMember, firstEnvelope⟩ := List.mem_map.mp firstPresent
+  obtain ⟨second, secondMember, secondEnvelope⟩ := List.mem_map.mp secondPresent
+  obtain ⟨initialBit, label, valid⟩ := history_initial_invariant
+    LateOpeningRuntimeService.runtime leaks LateOpeningRuntimeService.horizon
+    (LateOpeningRuntimeService.scheduler weight nonnegative)
+    ⟨18, some alice, decision.execution⟩ decision.trace
+  have afterValid := (LateOpeningRuntimeService.runtime.reactiveStateInvariant leaks
+    (setup.eventInputs (sourceInitial initialBit label))).respond decision.execution alice
+      ⟨some submission⟩ valid
+  have finalValid := (ReactiveApplication.Invariant.policyInvariant app
+    (LateOpeningRuntimeService.runtime.reactiveStateInvariant leaks
+      (setup.eventInputs (sourceInitial initialBit label))) players).runRounds
+        (LateOpeningRuntimeService.scheduler weight nonnegative) 18 _ execution afterValid reached
+  have finalHigh : 2 ≤ (execution.application.config.inputs labelInput).val.toNat := by
+    rw [finalValid.reachable.inputs_eq, ← valid.reachable.inputs_eq]
+    exact high
+  have base := LateOpeningRuntimeAliceSuccessFloor.nativeBaseUtility_upper rewardNonnegative
+    forfeitNonnegative weight nonnegative ⟨0, none, execution⟩ trace ⟨rfl, rfl⟩ finalHigh
+  have charged := LateOpeningRuntimeRetryAudit.alice_two_envelopes_full_charge weight nonnegative
+    ⟨0, none, execution⟩ trace ⟨rfl, rfl⟩ first second firstMember secondMember
+    (by rw [firstEnvelope]; rfl) (by rw [secondEnvelope]; rfl)
+    (by rw [firstEnvelope, secondEnvelope]; change (alice, 0) ≠ (alice, 1); decide)
+  have penalty := mul_le_mul_of_nonneg_right charged depositNonnegative
+  change nativeBaseUtility reward forfeit (app.finished execution) alice ≤ reward / 2 at base
+  change 1 * deposit alice ≤
+    TerminalAudit.charge _ _ (app.finished execution) alice * deposit alice at penalty
+  unfold aliceUtility TerminalAudit.utility
   linarith
 
 end Vegas.Examples.LateOpeningRuntimeAliceIncentive

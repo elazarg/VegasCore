@@ -31,7 +31,7 @@ assessments for that game, not merely one attempted proof construction. See the
 and its extension across penalty margins. The separate
 [checked native obstruction](commit-reveal-research/native-se-obstruction.md)
 controls an actual compiled three-instruction program and its full bounded raw
-menu. For fixed $R>0$, $D>R$, $K_A>R$, $K_B>1$, full authentic audit and fair
+menu. For fixed $R>0$, $D>R$, $K_A>R/2$, $K_B>1$, full authentic audit and fair
 partial pending samples, one finite admissible builder has arbitrarily small
 positive canonical omission but no SE with the source's joint terminal-store
 and realized-payoff law. Native SE exist. This does not establish an

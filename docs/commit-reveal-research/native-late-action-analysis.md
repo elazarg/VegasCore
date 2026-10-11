@@ -4,10 +4,10 @@ This note tests the native runtime, including its full bounded raw response
 menu, rather than adding a hypothetical private scheduler or allowing a reveal
 to cross a commitment barrier. The construction below gives the detailed
 analysis of an explicit finite configuration. Its full-menu native SE
-obstruction is checked for `R>0`, `D>R`, `K_A>R`, `K_B>1`, the full authentic
+obstruction is checked for `R>0`, `D>R`, `K_A>R/2`, `K_B>1`, the full authentic
 audit and fair partial pending samples. See [the checked capstone](native-se-obstruction.md)
 for its exact quantifiers and scope, including the checked partial sender
-audit with full receiver evidence. The smaller-deposit and all-traffic-or-none
+audit with full receiver evidence. The all-traffic-or-none
 audit strengthenings below remain paper proofs. The typed source, initial law,
 utilities and source-prefix facts are checked in
 [LateOpeningRuntimeSource.lean](../../Vegas/Examples/LateOpeningRuntimeSource.lean).
@@ -660,8 +660,10 @@ The legitimate first-versus-second timing comparison, initialized relative
 likelihood cross-identity and protected-decision contradiction are checked.
 They retain original future policies and use one actual native consistency
 sequence, including at unreached decisions. The checked uniform theorem uses
-`K_A>R`; the stronger `K_A>R/2` and all-traffic-or-none audit arguments in this
-note have not been formalized. A distinct partial sender audit retains all
-receiver evidence and has a checked capstone when its effective sender
-collateral exceeds `R`. None of these results assumes an invisible pending pool
+`K_A>R/2`. A distinct partial sender audit retains all receiver evidence and
+has a checked capstone when its effective sender collateral exceeds `R/2`.
+The all-traffic-or-none audit argument remains separate. The checked bound
+uses the conservative continuation margin
+`min(D-R,K_A-R/2) - (1-q)(D+K_A+R/2)`, with a separate actual high-label
+upper bound; it does not require a uniform half-reward floor for every label. None of these results assumes an invisible pending pool
 or changes the current runtime to a private interface.

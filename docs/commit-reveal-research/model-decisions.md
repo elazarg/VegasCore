@@ -132,13 +132,13 @@ is needed for this restricted paper result; its full-menu extension is the
 substantive boundary.
 
 The [checked full native counterexample](native-se-obstruction.md) gives that
-boundary a full-menu negative. For fixed $R>0$, $D>R$, $K_A>R$, $K_B>1$, full
+boundary a full-menu negative. For fixed $R>0$, $D>R$, $K_A>R/2$, $K_B>1$, full
 authentic audit and fair partial samples, two late sends of one immutable
 opening permit a public timely contract builder with no SE matching the
 source's joint terminal-store and realized-payoff law. Native SE exist, and
 canonical whole-horizon omission can be arbitrarily small and positive. Full
 raw menus, author-only samples and the late-packet erasure law are included.
-The sharper $K_A>R/2$ and broader audit/sampling variants remain
+The broader audit/sampling variants remain
 [paper results](native-late-action-analysis.md). The checked theorem does not
 exclude preservation of the public-result marginal alone.
 The contradiction comes from globally consistent off-path beliefs. The
