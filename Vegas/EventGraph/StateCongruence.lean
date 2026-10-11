@@ -66,6 +66,20 @@ def normalizedPolicyStep (graph : Vegas.EventGraph Player L)
   | none => config.step event ready
       (EventCode.actionOfActorNone (graph.nodes event) actor)
 
+/-- An ownerless normalized step uses the original chance evaluator and its
+unique unit action, independently of the behavioral profile. -/
+theorem normalizedPolicyStep_ownerless (profile : graph.BehavioralProfile)
+    (config : graph.Config) (event : graph.EventId) (ready : config.cut.Ready event)
+    (ownerless : graph.actor? event = none) :
+    graph.normalizedPolicyStep profile config event ready =
+      config.step event ready ((graph.nodes event).actionOfActorNone ownerless) := by
+  unfold normalizedPolicyStep
+  split
+  · rename_i who owned
+    rw [ownerless] at owned
+    cases owned
+  · rfl
+
 /-- Completing the same event with the same action and value preserves key
 equality. Readiness witnesses are proof irrelevant. -/
 theorem semanticKey_complete_congr {left right : graph.Config}

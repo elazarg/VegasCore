@@ -1,3 +1,8 @@
+import Vegas.Pending.ReactiveOffTurnPosterior
+import Vegas.Game.ReactiveSourceResponseRecall
+import Vegas.Game.ReactiveSourceResponseLaw
+import Vegas.Examples.LateOpeningRuntimeLabelTransitions
+import Vegas.Examples.LateOpeningRuntimeLabelHistories
 import Vegas.Game.SourceServiceRawCompletionBoundary
 import Vegas.Pending.ReactiveRecordedOpportunity
 import Vegas.Compile.EventGraphDisclosurePolicy
@@ -3365,3 +3370,87 @@ open Vegas.EventGraphRuntime in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms recoverReactivePolicy_ready_callback_comparison
+
+open Vegas.EventGraph in
+/-- info:
+'Vegas.EventGraph.normalizedPolicyStep_ownerless'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms normalizedPolicyStep_ownerless
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.prescribedReactivePosterior_snoc_of_no_turn'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms prescribedReactivePosterior_snoc_of_no_turn
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.prescribedReactivePosterior_intentions_snoc_of_no_turn'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms prescribedReactivePosterior_intentions_snoc_of_no_turn
+
+open Vegas in
+/-- info:
+'Vegas.originalReactiveSourceRecall_respond'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms originalReactiveSourceRecall_respond
+
+open Vegas in
+/-- info:
+'Vegas.originalReactiveSourceRecall_posterior_respond_of_no_turn'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms originalReactiveSourceRecall_posterior_respond_of_no_turn
+
+open Vegas in
+/-- info:
+'Vegas.prescribedReactivePolicy_source_recall_response_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms prescribedReactivePolicy_source_recall_response_law
+
+open Vegas.Examples.LateOpeningRuntimeLabelTransitions in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeLabelTransitions.environment_replace'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms environment_replace
+
+open Vegas.Examples.LateOpeningRuntimeLabelTransitions in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeLabelTransitions.emit_replace'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms emit_replace
+
+open Vegas.Examples.LateOpeningRuntimeLabelHistories in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeLabelHistories.respond_replace'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms respond_replace
+
+open Vegas.Examples.LateOpeningRuntimeLabelHistories in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeLabelHistories.environmentStep_replace'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms environmentStep_replace
+
+open Vegas.Examples.LateOpeningRuntimeLabelHistories in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeLabelHistories.rawMenu_replace'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms rawMenu_replace
+
+open Vegas.Examples.LateOpeningRuntimeLabelHistories in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeLabelHistories.prior_label_permutation'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms prior_label_permutation

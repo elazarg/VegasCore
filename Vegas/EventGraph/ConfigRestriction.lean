@@ -300,7 +300,7 @@ variable {Player : Type} [DecidableEq Player]
 and a supported foreign completion trace, preserving every owner's full recall. -/
 theorem Config.Reachable.foreign_factor {inputs : graph.Inputs} {config : graph.Config}
     (reachable : config.Reachable inputs) (retained : graph.order.Cut)
-    (ordered : graph.BarrierOrdered) (who : Player)
+    (ordered : graph.RevealRelaxedOrdered) (who : Player)
     (foreignOwners : ∀ event ∈ config.cut.completed, event ∉ retained.completed →
       ∃ owner, graph.actor? event = some owner ∧ owner ≠ who) :
     ∃ final, graph.ForeignCompletionSequence who (config.restrict retained) final ∧

@@ -181,7 +181,8 @@ theorem ReactiveFrontier.response_continuation (runtime : EventGraphRuntime grap
 potential, whether it samples a fresh decision or reuses retained memory. -/
 theorem ReactiveFrontier.response_harmonic (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (ordered : graph.BarrierOrdered) (profile : graph.BehavioralProfile)
+    (ordered : graph.RevealRelaxedOrdered) (profile : graph.BehavioralProfile)
+    (independent : graph.ReadyIndependent profile)
     (execution : (runtime.reactiveApplication leaks).Execution)
     (stable : runtime.EntryEventStable leaks execution)
     (memories : Player → List (Option graph.Completion)) (frontier : graph.Config)
@@ -242,14 +243,16 @@ theorem ReactiveFrontier.response_harmonic (runtime : EventGraphRuntime graph)
               (profile who) (consistent who) quiet sent (memories who) (supportedMemory who)
               (execution.observe (runtime.reactiveApplication leaks) who) _ _ produced
             exact related.sampled_response_canonicalContinuation runtime leaks ordered execution
-              stable profile memories consistent supportedMemory frontier who event turn actor
+              stable profile independent memories consistent supportedMemory frontier who event
+                turn actor
               freshMemory unblocked.1 unblocked.2
 
 /-- An actual public chance command preserves the canonical continuation
 potential using its genuine common draw with the retained frontier. -/
 theorem ReactiveFrontier.sample_harmonic (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (ordered : graph.BarrierOrdered) (profile : graph.BehavioralProfile)
+    (profile : graph.BehavioralProfile)
+    (independent : graph.ReadyIndependent profile)
     (execution : (runtime.reactiveApplication leaks).Execution)
     (stable : runtime.EntryEventStable leaks execution)
     (memories : Player → List (Option graph.Completion)) (frontier : graph.Config)
@@ -298,17 +301,13 @@ theorem ReactiveFrontier.sample_harmonic (runtime : EventGraphRuntime graph)
   rw [jointKernel]
   change joint.bind ((graph.canonicalContinuation profile) ∘ Prod.snd) = _
   rw [← PMF.bind_map, frontierMarginal]
-  have harmonic := (ordered.readyIndependent profile).normalizedThenCanonical_eq
+  have harmonic := independent.normalizedThenCanonical_eq
     frontier event ready
   have stepEq : graph.normalizedPolicyStep profile frontier event ready =
       frontier.step event ready (cast (congrArg EventField.Action outputEq.symm) PUnit.unit) := by
-    unfold normalizedPolicyStep
-    split
-    · rename_i owner owned
-      rw [chance] at owned
-      cases owned
-    · congr 1
-      exact EventCode.action_eq_of_actor_none (graph.nodes event) chance _ _
+    rw [graph.normalizedPolicyStep_ownerless profile frontier event ready chance]
+    congr 1
+    exact EventCode.action_eq_of_actor_none (graph.nodes event) chance _ _
   unfold normalizedThenCanonical at harmonic
   rw [stepEq] at harmonic
   exact harmonic.trans (related.potential_eq runtime leaks profile execution stable memories
@@ -378,7 +377,8 @@ theorem ReactiveFrontier.passive_command_harmonic (runtime : EventGraphRuntime g
 
 theorem ReactiveFrontier.sample_command_harmonic (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (ordered : graph.BarrierOrdered) (profile : graph.BehavioralProfile)
+    (profile : graph.BehavioralProfile)
+    (independent : graph.ReadyIndependent profile)
     (execution : (runtime.reactiveApplication leaks).Execution)
     (stable : runtime.EntryEventStable leaks execution)
     (memories : Player → List (Option graph.Completion)) (frontier : graph.Config)
@@ -406,7 +406,7 @@ theorem ReactiveFrontier.sample_command_harmonic (runtime : EventGraphRuntime gr
   by_cases ready : execution.application.config.cut.Ready event
   · cases node : nodeView graph event with
     | sample payload law outputEq codeEq =>
-        exact related.sample_harmonic runtime leaks ordered profile execution stable memories
+        exact related.sample_harmonic runtime leaks profile independent execution stable memories
           frontier consistent supportedMemory event ready payload law outputEq codeEq node
     | bind owner payload outputEq codeEq =>
         apply frontier_stutter_harmonic runtime leaks profile execution stable memories frontier
@@ -499,7 +499,7 @@ theorem ReactiveFrontier.sample_command_frontier_exists (runtime : EventGraphRun
 
 theorem ReactiveFrontier.include_command_frontier_exists (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (ordered : graph.BarrierOrdered)
+    (ordered : graph.RevealRelaxedOrdered)
     (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (control : (runtime.reactiveApplication leaks).Control)
@@ -526,7 +526,7 @@ theorem ReactiveFrontier.include_command_frontier_exists (runtime : EventGraphRu
 
 theorem ReactiveFrontier.include_command_harmonic (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (ordered : graph.BarrierOrdered)
+    (ordered : graph.RevealRelaxedOrdered)
     (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (control : (runtime.reactiveApplication leaks).Control)

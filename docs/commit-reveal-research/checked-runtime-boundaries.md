@@ -84,9 +84,12 @@ original initial source state and the decoded complete terminal source state.
 `Vegas.source_prescribed_terminal_joint_law` in
 [SourceServiceReactiveLaw.lean](../../Vegas/Game/SourceServiceReactiveLaw.lean)
 proves this for finite players under `AsyncContract` and `AsyncTimely`, in
-sequential and concurrent-binding modes. It derives the execution, recall,
-sampling and expiry invariants internally. The original private draw is sampled
-once and remains correlated with the final state. For the same prescribed
+sequential and concurrent-binding modes for arbitrary source profiles, and
+concurrent-reveal mode for `Disclosing` source profiles. It derives the actual
+execution, recall, sampling and expiry invariants internally. Relaxed reveal
+ordering suffices for the operational frontier laws; actual kernel independence
+is derived from mandatory disclosure for the source-law composition. The original private draw is sampled
+once and remains correlated with the final state. In sequential and concurrent-binding modes, for the same prescribed
 policies and service assumptions, `Vegas.source_prescribed_initialized_audit_clear`
 and `Vegas.source_prescribed_terminal_settlement_law` in
 [SourceServiceReactiveAudit.lean](../../Vegas/Game/SourceServiceReactiveAudit.lean)
@@ -118,8 +121,10 @@ with the genuine source law under every execution mode and every adaptive public
 graph scheduler. Its hypothesis is the existing source `Disclosing` predicate;
 failed bindings remain allowed. Publication kernels are derived to be independent
 of store and own history, discharging the existing relaxed scheduling machinery.
-This graph theorem does not yet extend the asynchronous runtime correspondence
-above to concurrent reveals.
+The asynchronous runtime correspondence above now realizes this source law
+under the existing service contract and timing bounds, including concurrent
+reveals for mandatory-disclosure profiles. Its actual audit/payoff composition
+currently retains sequential and concurrent-binding scope.
 
 With withholding available, order independence fails even for actual terminal
 stores. [ConcurrentRevealOrderLaw](../../Vegas/Examples/ConcurrentRevealOrderLaw.lean)
@@ -1486,3 +1491,26 @@ Every raw commitment, opening and malformed-packet handler commutes with it,
 including rejection and failure cases. Full raw-history and reference-posterior
 symmetry, Bob's rational reference continuation, and the assembled weak-PBE
 capstone remain to be checked.
+
+The original source recall is also retained through actual prescribed responses.
+[ReactiveSourceResponseRecall](../../Vegas/Game/ReactiveSourceResponseRecall.lean)
+proves that a newly sampled response preserves the complete reconstructed source
+past until physical event completion. At a genuine off-turn callback,
+[ReactiveOffTurnPosterior](../../Vegas/Pending/ReactiveOffTurnPosterior.lean)
+proves exact posterior pushforward by appending an empty memory slot, including
+total fallback; the law of original intentions and decoded source past is
+unchanged. [ReactiveSourceResponseLaw](../../Vegas/Game/ReactiveSourceResponseLaw.lean)
+couples the whole next external execution and original source past to the actual
+private posterior and authentic response. It keeps native traffic and source
+recall together. This does not yet establish the full unilateral-deviation
+source-information factorization.
+
+The native label symmetry lift now covers authenticated emissions, inclusion,
+all actual environment commands and the complete `Execution.respond` and
+`Execution.environmentStep` laws in
+[LabelTransitions](../../Vegas/Examples/LateOpeningRuntimeLabelTransitions.lean)
+and [LabelHistories](../../Vegas/Examples/LateOpeningRuntimeLabelHistories.lean).
+The full bounded raw menu is unchanged, and the original initialized prior is
+invariant under every label permutation. These are operational execution laws;
+the complete legal protocol-history orbit, uniform conditional reference beliefs
+and assembled weak-PBE capstone remain separate proof obligations.

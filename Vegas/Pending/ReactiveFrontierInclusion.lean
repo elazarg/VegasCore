@@ -110,7 +110,7 @@ theorem originalConfig_include_resolution_history (runtime : EventGraphRuntime g
 original intention while preserving the reachable sampled frontier. -/
 theorem ReactiveFrontier.include_resolution (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (ordered : graph.BarrierOrdered)
+    (ordered : graph.RevealRelaxedOrdered)
     (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (control : (runtime.reactiveApplication leaks).Control)
@@ -282,7 +282,7 @@ private theorem originalConfig_include_binding_history (runtime : EventGraphRunt
 including an originally sampled failed binding. -/
 theorem ReactiveFrontier.include_binding (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (ordered : graph.BarrierOrdered)
+    (ordered : graph.RevealRelaxedOrdered)
     (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (control : (runtime.reactiveApplication leaks).Control)
@@ -400,7 +400,7 @@ theorem ReactiveFrontier.include_binding (runtime : EventGraphRuntime graph)
 profile settles a sampled intention and preserves the entire semantic frontier. -/
 theorem ReactiveFrontier.include_accepted (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (ordered : graph.BarrierOrdered)
+    (ordered : graph.RevealRelaxedOrdered)
     (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (control : (runtime.reactiveApplication leaks).Control)
@@ -533,7 +533,7 @@ frontier under the prescribed profile. Authentication, associated intentions,
 prepared bindings and original recall are all derived from actual histories. -/
 theorem ReactiveFrontier.include_pending (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (ordered : graph.BarrierOrdered)
+    (ordered : graph.RevealRelaxedOrdered)
     (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (control : (runtime.reactiveApplication leaks).Control)

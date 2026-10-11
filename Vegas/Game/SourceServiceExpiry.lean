@@ -149,7 +149,7 @@ theorem due_prescribed_intention_silent
     (timely : (serviceRuntime setup mode deadline).AsyncTimely delay bound)
     (inclusion : ProtectedInclusion (serviceRuntime setup mode deadline) leaks
       (serviceInitialLaw setup mode) horizon scheduler bound)
-    (ordered : (serviceGraph setup mode).BarrierOrdered)
+    (ordered : (serviceGraph setup mode).RevealRelaxedOrdered)
     (control : (serviceApplication setup mode deadline leaks).Control)
     (trace : ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
       horizon scheduler).Trace (some control)) (idle : control.actor = none)
@@ -227,7 +227,7 @@ theorem source_prescribed_due_binding_impossible
     (timely : (serviceRuntime setup mode deadline).AsyncTimely delay bound)
     (inclusion : ProtectedInclusion (serviceRuntime setup mode deadline) leaks
       (serviceInitialLaw setup mode) horizon scheduler bound)
-    (ordered : (serviceGraph setup mode).BarrierOrdered)
+    (ordered : (serviceGraph setup mode).RevealRelaxedOrdered)
     (control : (serviceApplication setup mode deadline leaks).Control)
     (trace : ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
       horizon scheduler).Trace (some control)) (idle : control.actor = none)
@@ -286,7 +286,7 @@ theorem source_prescribed_expiry_frontier
     (timely : (serviceRuntime setup mode deadline).AsyncTimely delay bound)
     (inclusion : ProtectedInclusion (serviceRuntime setup mode deadline) leaks
       (serviceInitialLaw setup mode) horizon scheduler bound)
-    (ordered : (serviceGraph setup mode).BarrierOrdered)
+    (ordered : (serviceGraph setup mode).RevealRelaxedOrdered)
     (control : (serviceApplication setup mode deadline leaks).Control)
     (trace : ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
       horizon scheduler).Trace (some control)) (idle : control.actor = none)

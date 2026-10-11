@@ -53,7 +53,7 @@ variable {Player : Type} [DecidableEq Player]
 owned intention to be the entire remaining own-recall suffix. -/
 theorem ReactiveFrontier.pending_owner_suffix (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (ordered : graph.BarrierOrdered)
+    (ordered : graph.RevealRelaxedOrdered)
     (execution : (runtime.reactiveApplication leaks).Execution)
     (stable : runtime.EntryEventStable leaks execution)
     (memories : Player → List (Option graph.Completion)) (frontier : graph.Config)

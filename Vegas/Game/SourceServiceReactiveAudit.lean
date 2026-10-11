@@ -79,7 +79,8 @@ theorem source_prescribed_no_miss_round
         ((runtime.prescribedReactiveImplementation leaks who (profile who)).posterior
           (execution.recall who)).support_nonempty
       exact source_prescribed_due_binding_impossible setup leaks horizon scheduler delay bound
-        contract.opportunity timely contract.inclusion ordered ⟨remaining + 1, none, execution⟩
+        contract.opportunity timely contract.inclusion ordered.revealRelaxedOrdered
+          ⟨remaining + 1, none, execution⟩
         trace rfl who event payload outputEq codeEq node ready entered activated due (profile who)
         (consistent who) valid.2 intentions supported
 
@@ -257,7 +258,8 @@ theorem source_prescribed_prefix_frontiers
     have faithful := runtime.reactiveEmission_history leaks (serviceInitialLaw setup mode)
       horizon scheduler ⟨remaining + 1, none, execution⟩ sourceTrace
     exact source_prescribed_expiry_frontier setup leaks horizon scheduler delay bound
-      contract.opportunity timely contract.inclusion ordered ⟨remaining + 1, none, execution⟩
+      contract.opportunity timely contract.inclusion ordered.revealRelaxedOrdered
+          ⟨remaining + 1, none, execution⟩
       sourceTrace rfl valid.1 valid.2 profile memories consistent
       (fun owner => (faithful owner).1) (fun owner => (faithful owner).2)
       supported frontier related event next moved
@@ -297,7 +299,8 @@ theorem source_prescribed_prefix_frontiers
   have trace : (app.protocol (inputs.map State.initial) horizon scheduler).Trace
       (some ⟨horizon - count + count, none, execution⟩) := by
     simpa only [horizonEq, Nat.sub_zero] using initialTrace
-  exact (runRounds_posterior_potential_of_expiry runtime leaks ordered profile inputs horizon
+  exact (runRounds_posterior_potential_of_expiry runtime leaks ordered.revealRelaxedOrdered profile
+    (ordered.readyIndependent profile) inputs horizon
     scheduler safe invariant expiry count (horizon - count) execution trace valid consistent
       frontiers).2 next reached
 
@@ -363,7 +366,8 @@ theorem source_prescribed_response_conforming
     ((execution.application.publicView_eventReady remembered.event).mp eventFacts.1)
     eventFacts.2 fresh
   obtain ⟨entered, activated, responded⟩ := runtime.prescribedReactiveResponse_within_delay leaks
-    inputs horizon scheduler delay (initialEq.symm ▸ opportunity) ordered remaining execution who
+    inputs horizon scheduler delay (initialEq.symm ▸ opportunity) ordered.revealRelaxedOrdered
+    remaining execution who
       (initialEq.symm ▸ trace) (profile who) (consistent who) (memories who) (supported who)
         ⟨some material⟩ remembered produced
   have within : execution.application.WithinDeadline runtime remembered.event := by
@@ -602,7 +606,8 @@ theorem source_prescribed_packetFacts_runRounds
             (middleFacts responder).2.2.1 (middleFacts responder).2.2.2 first fresh
             (runtime.prescribedReactivePolicy_inclusion_fits leaks inputs horizon scheduler delay
               bound (initialEq.symm ▸ contract.opportunity) timely
-              (serviceGraph_barrierOrdered setup keepsReveals) (horizon - (count + 1)) middle
+              (serviceGraph_barrierOrdered setup keepsReveals).revealRelaxedOrdered
+              (horizon - (count + 1)) middle
               responder (initialEq.symm ▸ middleTrace) (profile responder)
               (middleConsistent responder) response positive)
         · exact ownerPacketFacts_respond_other middle owner responder same response
@@ -772,8 +777,8 @@ theorem source_prescribed_terminal_settlement_law
     rw [clean initial supportedInitial next reached, PMF.pure_map]
     rfl
   rw [settled]
-  have law := source_prescribed_terminal_joint_law setup keepsReveals leaks horizon scheduler
-    delay bound contract timely profile
+  have law := source_prescribed_terminal_joint_law setup leaks horizon scheduler
+    delay bound contract timely profile (fun same => (keepsReveals same).elim)
   have joint := congrArg (fun distribution => distribution.map (fun pair =>
     (pair.1, pair.2, fun owner => pair.2.elim 0 (fun source => utility source owner)))) law
   simpa only [PMF.map_bind, PMF.map_comp, Function.comp_def, Option.elim_some, native,

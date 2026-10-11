@@ -91,7 +91,7 @@ theorem prescribedReactivePosterior_pending_ready_history (runtime : EventGraphR
 barriers: the owner's unique simultaneous event cannot be a prior intention. -/
 theorem pending_intention_foreign_of_fresh (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (ordered : graph.BarrierOrdered)
+    (ordered : graph.RevealRelaxedOrdered)
     (execution : (runtime.reactiveApplication leaks).Execution)
     (stable : runtime.EntryEventStable leaks execution)
     (profile : graph.BehavioralProfile)
@@ -123,7 +123,7 @@ theorem pending_intention_foreign_of_fresh (runtime : EventGraphRuntime graph)
 public barriers make every physically ready event that same chance node. -/
 theorem prescribedReactivePosterior_completed_at_chance (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (ordered : graph.BarrierOrdered)
+    (ordered : graph.RevealRelaxedOrdered)
     (execution : (runtime.reactiveApplication leaks).Execution)
     (stable : runtime.EntryEventStable leaks execution)
     (who : Player) (policy : graph.BehavioralPolicy who)
@@ -143,8 +143,9 @@ theorem prescribedReactivePosterior_completed_at_chance (runtime : EventGraphRun
   have pendingActor := runtime.prescribedReactivePosterior_owned leaks who policy consistent
     intentions supported remembered retained
   have publicOutput := EventCode.output_public_of_actor_none (graph.nodes event) chance
-  have same := ordered.ready_public_unique execution.application.config.cut
-    publicOutput ready pendingReady
+  have same := ordered.ready_alone_of_not_publication execution.application.config.cut
+    publicOutput (EventCode.not_publication_of_actor_none (graph.nodes event) chance)
+      ready pendingReady
   rw [same, chance] at pendingActor
   cases pendingActor
 

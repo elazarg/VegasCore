@@ -103,6 +103,9 @@ Useful existing boundaries are the
 [repeated prescribed turns under arbitrary raw opponents](../Vegas/Pending/ReactiveRecordedOpportunity.lean),
 [source-event boundary advance for arbitrary raw continuations](../Vegas/Game/SourceServiceRawCompletionBoundary.lean),
 [first source decisions under arbitrary raw opponents](../Vegas/Game/ReactiveSourceFirstOpportunity.lean),
+[private posterior stability through off-turn callbacks](../Vegas/Pending/ReactiveOffTurnPosterior.lean),
+[original source recall through actual responses](../Vegas/Game/ReactiveSourceResponseRecall.lean),
+[joint external execution and original source recall](../Vegas/Game/ReactiveSourceResponseLaw.lean),
 [reactive source decision laws](../Vegas/Game/ReactiveSourceDecision.lean),
 [acceptance of recorded source calls during their live window](../Vegas/Game/ReactiveSourceAcceptance.lean),
 [live-window acceptance of supported prescribed source responses](../Vegas/Game/ReactiveSupportedSourceAcceptance.lean),
@@ -118,6 +121,8 @@ Useful existing boundaries are the
 [native disclosure regret under arbitrary beliefs](../Vegas/Examples/CommittedResolutionBobIncentive.lean),
 [native Alice completion against any fixed Bob policy](../Vegas/Examples/LateOpeningRuntimeEquilibrium.lean),
 [native label symmetry through every raw packet handler](../Vegas/Examples/LateOpeningRuntimeLabelSymmetry.lean),
+[authenticated native label transition symmetry](../Vegas/Examples/LateOpeningRuntimeLabelTransitions.lean),
+[native execution, raw-menu and prior label symmetry](../Vegas/Examples/LateOpeningRuntimeLabelHistories.lean),
 [concrete late-opening game data](../Vegas/Examples/LateOpeningRuntimeGame.lean),
 [certain success requires protected acceptance](../Vegas/Examples/LateOpeningRuntimeProtectedReceipt.lean),
 [native equilibrium silence after a pending opening](../Vegas/Examples/LateOpeningRuntimeAliceRationality.lean),
@@ -270,3 +275,12 @@ Imports expose results; they do not establish that the headline theorem uses
 those results. The SE evidence check examines declaration dependencies. New
 adapters need actual runtime premises, not hypotheses restating desired
 posteriors, comparisons or equilibrium existence.
+
+Protected initialized asynchronous source-law correspondence now includes
+concurrent reveals for source profiles satisfying `Disclosing`. The generic
+graph frontier and continuation laws use relaxed reveal ordering and actual
+profile `ReadyIndependent`; the compiler derives that kernel condition from
+disclosure. Sequential and concurrent-binding modes retain arbitrary source
+profiles. This is an execution-law result, distinct from SE preservation.
+The actual source audit and realized-net-payoff law retain their checked
+sequential/concurrent-binding scope.

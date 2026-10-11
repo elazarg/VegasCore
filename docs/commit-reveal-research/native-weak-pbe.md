@@ -349,6 +349,10 @@ The checked construction currently includes
 [consistent Alice completion against any fixed full Bob policy](../../Vegas/Examples/LateOpeningRuntimeEquilibrium.lean)
 and [label symmetry through actual graph transitions, Bob's physical view and
 every raw packet handler](../../Vegas/Examples/LateOpeningRuntimeLabelSymmetry.lean).
+The lift through [authenticated native operations](../../Vegas/Examples/LateOpeningRuntimeLabelTransitions.lean)
+and [complete execution transitions, the raw menu and the original prior](../../Vegas/Examples/LateOpeningRuntimeLabelHistories.lean)
+is checked too. Complete legal-history and reference-posterior symmetry remains
+the next step.
 Alice's completion is rational on every legal fiber and has actual-positive
 Bayes beliefs. These results do not yet assemble the paper equilibrium.
 The full-history uniform-label reference posterior, Bob's reference continuation,

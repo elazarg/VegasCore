@@ -475,7 +475,9 @@ theorem ReactiveFrontier.fresh_bindingCount (runtime : EventGraphRuntime graph)
     (fresh : event ∉ (memories who).filterMap (fun saved => saved.map Completion.event)) :
     ({execution.application with config := frontier} : State graph).publicView.bindingCount who =
       execution.application.publicView.bindingCount who := by
-  obtain ⟨last, replay, same⟩ := relation.foreign_sequence runtime leaks ordered execution stable
+  obtain ⟨last, replay, same⟩ := relation.foreign_sequence runtime leaks
+    ordered.revealRelaxedOrdered
+    execution stable
     profile memories consistent supported frontier who event ready actor fresh
   change bindingCount frontier who = bindingCount execution.application.config who
   exact (bindingCount_cut_eq frontier last (semanticKey_cut_eq same) who).trans

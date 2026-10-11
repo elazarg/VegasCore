@@ -20,7 +20,7 @@ theorem prescribedReactiveResponse_sampledFrontierContinuation
     (execution : (runtime.reactiveApplication leaks).Execution)
     (memories : Player → List (Option graph.Completion))
     (who : Player)
-    (profile : graph.BehavioralProfile) (ordered : graph.BarrierOrdered)
+    (profile : graph.BehavioralProfile) (independent : graph.ReadyIndependent profile)
     (frontier : graph.Config)
     (pending : graph.ForeignCompletionSequence who
       (runtime.originalConfig leaks execution memories) frontier)
@@ -38,13 +38,13 @@ theorem prescribedReactiveResponse_sampledFrontierContinuation
   have ready : (runtime.originalConfig leaks execution memories).cut.Ready event :=
     (execution.application.publicView_eventReady event).mp
       (execution.application.publicView.ownTurn?_spec who event turn).1
-  have transported := pending.normalizePolicy_eq ordered (profile who) event ready actor
+  have transported := pending.normalizePolicy_eq profile independent event ready actor
   rw [runtime.prescribedReactiveResponse_originalConfig leaks execution memories who
     (profile who) event turn fresh undecided actor]
   rw [← transported.2, PMF.bind_map]
   simp only [Function.comp_def, originalDecisionContinuation, dite_eq_left transported.1]
   rw [← PMF.bind_bind]
-  have continuation := (ordered.readyIndependent profile).normalizedThenCanonical_eq
+  have continuation := independent.normalizedThenCanonical_eq
     frontier event transported.1
   unfold normalizedThenCanonical normalizedPolicyStep at continuation
   split at continuation

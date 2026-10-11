@@ -41,19 +41,24 @@ information discipline rather than assuming the desired kernel equality. -/
 theorem ForeignCompletionSequence.normalizePolicy_eq
     {who : Player} {first last : graph.Config}
     (sequence : ForeignCompletionSequence who first last)
-    (ordered : graph.BarrierOrdered) (policy : graph.BehavioralPolicy who)
+    (profile : graph.BehavioralProfile) (independent : graph.ReadyIndependent profile)
     (event : graph.EventId) (ready : first.cut.Ready event)
     (actor : graph.actor? event = some who) :
     last.cut.Ready event ∧
-      graph.normalizePolicy who policy event actor (graph.playerObserve who last) =
-        graph.normalizePolicy who policy event actor (graph.playerObserve who first) := by
+      graph.normalizePolicy who (profile who) event actor (graph.playerObserve who last) =
+        graph.normalizePolicy who (profile who) event actor (graph.playerObserve who first) := by
   induction sequence with
   | refl => exact ⟨ready, rfl⟩
   | snoc previous other otherReady owner otherActor foreign action value supported ih =>
       obtain ⟨retainedReady, same⟩ := ih
-      have advanced := ordered.normalizePolicy_complete_foreign policy _ event other
+      have different : event ≠ other := by
+        intro equal
+        subst other
+        rw [actor] at otherActor
+        exact foreign (Option.some.inj otherActor).symm
+      have advanced := independent.normalizePolicy_complete_foreign _ event other
         retainedReady otherReady actor owner otherActor foreign action value
-      exact ⟨advanced.1, advanced.2.trans same⟩
+      exact ⟨retainedReady.after_complete otherReady different, advanced.trans same⟩
 
 
 omit [DecidableEq Player] in
@@ -260,7 +265,7 @@ theorem ForeignCompletionSequence.ready_of_unfinished
 still-ready target's owner, while preserving the actual trace unchanged. -/
 theorem ForeignCompletionSequence.retag {who : Player} {first last : graph.Config}
     (sequence : graph.ForeignCompletionSequence who first last)
-    (ordered : graph.BarrierOrdered) (event : graph.EventId) (ready : first.cut.Ready event)
+    (ordered : graph.RevealRelaxedOrdered) (event : graph.EventId) (ready : first.cut.Ready event)
     (unfinished : event ∉ last.cut.completed) (owner : Player)
     (actor : graph.actor? event = some owner) :
     graph.ForeignCompletionSequence owner first last := by
@@ -286,7 +291,7 @@ remains ready and unfinished under the compiler's barrier discipline. -/
 theorem ForeignCompletionSequence.eq_of_ready_actor_none
     {who : Player} {first last : graph.Config}
     (sequence : graph.ForeignCompletionSequence who first last)
-    (ordered : graph.BarrierOrdered) (event : graph.EventId) (ready : first.cut.Ready event)
+    (ordered : graph.RevealRelaxedOrdered) (event : graph.EventId) (ready : first.cut.Ready event)
     (unfinished : event ∉ last.cut.completed) (actor : graph.actor? event = none) :
     first = last := by
   cases sequence with
@@ -296,8 +301,9 @@ theorem ForeignCompletionSequence.eq_of_ready_actor_none
         intro completed
         exact unfinished (Finset.mem_insert.mpr (Or.inr completed))
       have targetReady := previous.ready_of_unfinished event ready unfinishedBefore
-      have same := ordered.ready_public_unique _
-        (EventCode.output_public_of_actor_none (graph.nodes event) actor) targetReady otherReady
+      have same := ordered.ready_alone_of_not_publication _
+        (EventCode.output_public_of_actor_none (graph.nodes event) actor)
+        (EventCode.not_publication_of_actor_none (graph.nodes event) actor) targetReady otherReady
       subst other
       exact (unfinished (Finset.mem_insert.mpr (Or.inl rfl))).elim
 

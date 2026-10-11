@@ -217,3 +217,4 @@ import Vegas.Pending.ReactiveFrontierExpiry
 import Vegas.Pending.ReactivePrescribedAllocation
 import Vegas.Pending.ReactiveFirstOpportunity
 import Vegas.Pending.ReactiveRecordedOpportunity
+import Vegas.Pending.ReactiveOffTurnPosterior

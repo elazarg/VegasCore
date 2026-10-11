@@ -15,7 +15,7 @@ variable {Player : Type} [DecidableEq Player]
 
 private theorem environment_frontier_exists (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (ordered : graph.BarrierOrdered) (profile : graph.BehavioralProfile)
+    (ordered : graph.RevealRelaxedOrdered) (profile : graph.BehavioralProfile)
     (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (control : (runtime.reactiveApplication leaks).Control)
@@ -58,7 +58,8 @@ private theorem environment_frontier_exists (runtime : EventGraphRuntime graph)
 
 private theorem environment_potential_harmonic (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (ordered : graph.BarrierOrdered) (profile : graph.BehavioralProfile)
+    (ordered : graph.RevealRelaxedOrdered) (profile : graph.BehavioralProfile)
+    (independent : graph.ReadyIndependent profile)
     (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (control : (runtime.reactiveApplication leaks).Control)
@@ -97,7 +98,7 @@ private theorem environment_potential_harmonic (runtime : EventGraphRuntime grap
             memories frontier consistent supported (.application .advanceClock)
               (Or.inr (Or.inr rfl))
       | executeSample event =>
-          exact related.sample_command_harmonic runtime leaks ordered profile control.execution
+          exact related.sample_command_harmonic runtime leaks profile independent control.execution
             stable memories frontier consistent supported event
       | expire event =>
           calc
@@ -120,7 +121,7 @@ private theorem environment_potential_harmonic (runtime : EventGraphRuntime grap
 
 theorem round_posterior_frontier_exists_of_expiry (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (ordered : graph.BarrierOrdered) (profile : graph.BehavioralProfile)
+    (ordered : graph.RevealRelaxedOrdered) (profile : graph.BehavioralProfile)
     (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler) (remaining : Nat)
     (execution : (runtime.reactiveApplication leaks).Execution)
@@ -195,7 +196,8 @@ variable [Fintype Player]
 
 theorem round_posterior_potential_of_expiry (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (ordered : graph.BarrierOrdered) (profile : graph.BehavioralProfile)
+    (ordered : graph.RevealRelaxedOrdered) (profile : graph.BehavioralProfile)
+    (independent : graph.ReadyIndependent profile)
     (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler) (remaining : Nat)
     (execution : (runtime.reactiveApplication leaks).Execution)
@@ -267,21 +269,24 @@ theorem round_posterior_potential_of_expiry (runtime : EventGraphRuntime graph)
             (by simpa only [actorEq] using nextTrace) who
           simpa only [implementations, prescribedReactiveImplementation, PMF.bind_map,
             Function.comp_def] using
-            nextRelated.response_harmonic runtime leaks ordered profile next stableNext memories
+            nextRelated.response_harmonic runtime leaks ordered profile independent next
+              stableNext memories
               nextFrontier (by simpa only [recallEq] using consistent)
                 (by simpa only [recallEq] using supported) who quiet sent
     _ = (scheduler execution.environmentRecall (execution.observeEnvironment app)).bind
         (fun _ => runtime.reactiveFrontierPotential leaks profile execution memories) := by
       apply bind_congr_on_support
       intro command _
-      exact environment_potential_harmonic runtime leaks ordered profile inputs horizon scheduler
+      exact environment_potential_harmonic runtime leaks ordered profile independent
+        inputs horizon scheduler
         ⟨remaining + 1, none, execution⟩ trace memories frontier related consistent supported
           (expiry memories frontier supported related) command
     _ = _ := PMF.bind_const _ _
 
 theorem runRounds_posterior_potential_of_expiry (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (ordered : graph.BarrierOrdered) (profile : graph.BehavioralProfile)
+    (ordered : graph.RevealRelaxedOrdered) (profile : graph.BehavioralProfile)
+    (independent : graph.ReadyIndependent profile)
     (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (safe : (runtime.reactiveApplication leaks).Execution → Prop)
@@ -376,7 +381,8 @@ theorem runRounds_posterior_potential_of_expiry (runtime : EventGraphRuntime gra
             intro next reached
             obtain ⟨⟨nextTrace⟩, nextSafe, nextConsistent, nextFrontiers⟩ := after reached
             exact (ih next nextTrace nextSafe nextConsistent nextFrontiers).1
-          _ = _ := round_posterior_potential_of_expiry runtime leaks ordered profile inputs horizon
+          _ = _ := round_posterior_potential_of_expiry runtime leaks ordered profile independent
+            inputs horizon
             scheduler (remaining + count) execution traceBefore consistent frontiers
               (expiry (remaining + count) execution ⟨traceBefore⟩ valid consistent)
       · intro next reached memories supported
@@ -388,7 +394,8 @@ theorem runRounds_posterior_potential_of_expiry (runtime : EventGraphRuntime gra
 
 theorem runRounds_terminal_store_of_expiry (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (ordered : graph.BarrierOrdered) (profile : graph.BehavioralProfile)
+    (ordered : graph.RevealRelaxedOrdered) (profile : graph.BehavioralProfile)
+    (independent : graph.ReadyIndependent profile)
     (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (safe : (runtime.reactiveApplication leaks).Execution → Prop)
@@ -432,7 +439,8 @@ theorem runRounds_terminal_store_of_expiry (runtime : EventGraphRuntime graph)
   have initializedTrace : (app.protocol (inputs.map State.initial) horizon scheduler).Trace
       (some ⟨0 + count, none, execution⟩) := by simpa only [Nat.zero_add] using trace
   obtain ⟨conserved, retained⟩ := runRounds_posterior_potential_of_expiry runtime leaks ordered
-    profile inputs horizon scheduler safe invariant expiry count 0 execution initializedTrace
+    profile independent
+        inputs horizon scheduler safe invariant expiry count 0 execution initializedTrace
       valid consistent frontiers
   rw [← conserved, PMF.map_bind]
   change (app.runRounds scheduler players count execution).map
@@ -496,7 +504,8 @@ theorem initial_posterior_potential (runtime : EventGraphRuntime graph)
 omit [Fintype Player] in
 theorem initialized_terminal_store_of_expiry [Finite Player] (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (ordered : graph.BarrierOrdered) (profile : graph.BehavioralProfile)
+    (ordered : graph.RevealRelaxedOrdered) (profile : graph.BehavioralProfile)
+    (independent : graph.ReadyIndependent profile)
     (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (safe : (runtime.reactiveApplication leaks).Execution → Prop)
@@ -553,7 +562,8 @@ theorem initialized_terminal_store_of_expiry [Finite Player] (runtime : EventGra
       exact (PMF.mem_support_pure_iff _ _).mp (supported owner)
     rw [empty]
     exact ⟨Config.initial initial, runtime.reactiveFrontier_initial leaks initial⟩
-  rw [runRounds_terminal_store_of_expiry runtime leaks ordered profile inputs horizon scheduler
+  rw [runRounds_terminal_store_of_expiry runtime leaks ordered profile independent
+        inputs horizon scheduler
     safe invariant expiry completes horizon execution
       (by simpa only [Nat.sub_zero] using initialTrace)
         (initialSafe initial supportedInitial) consistent frontiers,

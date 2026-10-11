@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.EventApplication
-import Vegas.EventGraph.BarrierInformation
+import Vegas.EventGraph.RevealRelaxation
 
 /-! # Public tests for event readiness and commitment inclusion -/
 
@@ -131,8 +131,8 @@ theorem State.publicView_eventReady (state : State graph) (event : graph.EventId
     · intro predecessor member
       exact (state.config.history_exact predecessor).mpr (predecessors member)
 
-/-- Under the barrier order every ready event is its actor's turn. -/
-theorem State.ownTurn_of_ready (state : State graph) (ordered : graph.BarrierOrdered)
+/-- Under reveal-relaxed ordering every ready event is its actor's turn. -/
+theorem State.ownTurn_of_ready (state : State graph) (ordered : graph.RevealRelaxedOrdered)
     (who : Player) (event : graph.EventId) (ready : state.publicView.EventReady event)
     (actor : graph.actor? event = some who) : state.publicView.OwnTurn who event :=
   ⟨ready, actor, fun other otherReady otherActor =>

@@ -18,7 +18,7 @@ variable {Player : Type} [DecidableEq Player]
 replays to the reachable sampled frontier using only supported foreign events. -/
 theorem ReactiveFrontier.foreign_sequence (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (ordered : graph.BarrierOrdered)
+    (ordered : graph.RevealRelaxedOrdered)
     (execution : (runtime.reactiveApplication leaks).Execution)
     (stable : runtime.EntryEventStable leaks execution)
     (profile : graph.BehavioralProfile) (memories : Player → List (Option graph.Completion))
@@ -71,10 +71,11 @@ canonical source continuation, despite pending foreign physical settlement. -/
 theorem ReactiveFrontier.sampled_response_canonicalContinuation
     (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (ordered : graph.BarrierOrdered)
+    (ordered : graph.RevealRelaxedOrdered)
     (execution : (runtime.reactiveApplication leaks).Execution)
     (stable : runtime.EntryEventStable leaks execution)
-    (profile : graph.BehavioralProfile) (memories : Player → List (Option graph.Completion))
+    (profile : graph.BehavioralProfile) (independent : graph.ReadyIndependent profile)
+    (memories : Player → List (Option graph.Completion))
     (consistent : ∀ owner,
       (runtime.prescribedReactivePolicy leaks owner (profile owner)).Consistent
       (execution.recall owner))
@@ -102,7 +103,7 @@ theorem ReactiveFrontier.sampled_response_canonicalContinuation
       physicalReady actor freshMemory
   have originalReady : (runtime.originalConfig leaks execution memories).cut.Ready event :=
     physicalReady
-  have transported := pending.normalizePolicy_eq ordered (profile who) event originalReady actor
+  have transported := pending.normalizePolicy_eq profile independent event originalReady actor
   have frontierReady : frontier.cut.Ready event := by
     rw [semanticKey_cut_eq same]
     exact transported.1
@@ -121,7 +122,7 @@ theorem ReactiveFrontier.sampled_response_canonicalContinuation
     exact dite_eq_left frontierReady
   simp only [Function.comp_def, evaluate]
   rw [← PMF.bind_bind]
-  have continuation := (ordered.readyIndependent profile).normalizedThenCanonical_eq
+  have continuation := independent.normalizedThenCanonical_eq
     frontier event frontierReady
   have stepEq : graph.normalizedPolicyStep profile frontier event frontierReady =
       (graph.normalizePolicy who (profile who) event actor (graph.playerObserve who frontier)).bind

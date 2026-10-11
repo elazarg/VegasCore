@@ -2,7 +2,7 @@
 
 import Vegas.Game.SourceServiceExpiry
 import Vegas.Pending.ReactiveFrontierExecution
-import Vegas.Compile.EventGraphCanonicalContinuation
+import Vegas.Compile.EventGraphDisclosurePolicy
 
 noncomputable section
 namespace Vegas
@@ -14,7 +14,7 @@ variable {Player : Type} [DecidableEq Player] [Finite Player]
  including its correlation with the original initial source-state draw. -/
 theorem source_prescribed_terminal_joint_store_law
     (setup : Setup (Player := Player) (L := L))
-    {mode : EventGraph.ExecutionMode} (keepsReveals : mode ≠ .concurrentReveals)
+    {mode : EventGraph.ExecutionMode}
     {deadline : (serviceGraph setup mode).EventId → Nat}
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
     (horizon : Nat) (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
@@ -22,7 +22,8 @@ theorem source_prescribed_terminal_joint_store_law
     (contract : (serviceRuntime setup mode deadline).AsyncContract leaks
       (serviceInitialLaw setup mode) horizon scheduler delay bound)
     (timely : (serviceRuntime setup mode deadline).AsyncTimely delay bound)
-    (profile : (serviceGraph setup mode).BehavioralProfile) :
+    (profile : (serviceGraph setup mode).BehavioralProfile)
+    (independent : (serviceGraph setup mode).ReadyIndependent profile) :
     setup.initialLaw.bind (fun initial =>
       ((serviceApplication setup mode deadline leaks).runRounds scheduler
         (fun owner => (serviceRuntime setup mode deadline).prescribedReactivePolicy leaks
@@ -44,7 +45,7 @@ theorem source_prescribed_terminal_joint_store_law
     execution.application.BindingInvariant ∧ runtime.RecordedTimelyCalls leaks execution
   have initialEq : inputs.map State.initial = serviceInitialLaw setup mode := by
     simp only [inputs, serviceInitialLaw, PMF.map_comp, Function.comp_def]
-  have ordered := serviceGraph_barrierOrdered setup keepsReveals
+  have ordered := serviceGraph_revealRelaxedOrdered setup mode
   have invariant := runtime.recordedTimelyCalls_policyInvariant leaks profile
   have expiry : ∀ remaining execution,
       Nonempty (((runtime.reactiveApplication leaks).protocol (inputs.map State.initial)
@@ -104,7 +105,8 @@ theorem source_prescribed_terminal_joint_store_law
     rw [empty]
     exact ⟨EventGraph.Config.initial (setup.eventInputs initial),
       runtime.reactiveFrontier_initial leaks (setup.eventInputs initial)⟩
-  have law := runRounds_terminal_store_of_expiry runtime leaks ordered profile inputs horizon
+  have law := runRounds_terminal_store_of_expiry runtime leaks ordered profile independent
+    inputs horizon
     scheduler safe invariant expiry completes horizon execution
       (by simpa only [Nat.sub_zero] using initialTrace) valid consistent frontiers
   rw [initial_posterior_potential runtime leaks profile (setup.eventInputs initial)] at law
@@ -115,7 +117,7 @@ theorem source_prescribed_terminal_joint_store_law
  joint initial-state and decoded final-state distribution. -/
 theorem source_prescribed_terminal_joint_law
     (setup : Setup (Player := Player) (L := L))
-    {mode : EventGraph.ExecutionMode} (keepsReveals : mode ≠ .concurrentReveals)
+    {mode : EventGraph.ExecutionMode}
     {deadline : (serviceGraph setup mode).EventId → Nat}
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
     (horizon : Nat) (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
@@ -123,7 +125,9 @@ theorem source_prescribed_terminal_joint_law
     (contract : (serviceRuntime setup mode deadline).AsyncContract leaks
       (serviceInitialLaw setup mode) horizon scheduler delay bound)
     (timely : (serviceRuntime setup mode deadline).AsyncTimely delay bound)
-    (profile : SourceProgram.BehavioralProfile setup.program) :
+    (profile : SourceProgram.BehavioralProfile setup.program)
+    (disclosing : mode = .concurrentReveals →
+      ∀ owner, SourceProgram.Disclosing setup.program (profile owner)) :
     setup.initialLaw.bind (fun initial =>
       ((serviceApplication setup mode deadline leaks).runRounds scheduler
         (fun owner => (serviceRuntime setup mode deadline).prescribedReactivePolicy leaks owner
@@ -136,9 +140,15 @@ theorem source_prescribed_terminal_joint_law
       setup.initialLaw.bind (fun initial =>
         (SourceProgram.run setup.program profile initial).map
           (fun final => (initial, some final))) := by
-  have storeLaw := source_prescribed_terminal_joint_store_law setup keepsReveals leaks
+  have independent : (serviceGraph setup mode).ReadyIndependent
+      (setup.eventGraph.toModeProfile mode (compileEventProfile setup.program profile)) := by
+    by_cases same : mode = .concurrentReveals
+    · exact compileEventProfile_mode_disclosing_readyIndependent setup.program profile
+        (disclosing same) mode
+    · exact (serviceGraph_barrierOrdered setup same).readyIndependent _
+  have storeLaw := source_prescribed_terminal_joint_store_law setup leaks
     horizon scheduler delay bound contract timely
-      (setup.eventGraph.toModeProfile mode (compileEventProfile setup.program profile))
+      (setup.eventGraph.toModeProfile mode (compileEventProfile setup.program profile)) independent
   have decoded := congrArg (fun distribution => distribution.map
     (fun pair => (pair.1, decodeState? (terminalRefs setup.program) pair.2))) storeLaw
   rw [PMF.map_bind, PMF.map_bind] at decoded
