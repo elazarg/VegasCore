@@ -1,3 +1,9 @@
+import Vegas.Pending.ReactiveDeviationObservation
+import Vegas.Pending.ReactiveDeviationInclusion
+import Vegas.Pending.ReactiveDeviationCompletion
+import Vegas.Examples.LateOpeningRuntimeLabelKernels
+import Vegas.Examples.LateOpeningRuntimeLabelReach
+import Vegas.Examples.LateOpeningRuntimeLabelBeliefs
 import Vegas.Pending.ReactiveDeviationRecall
 import Vegas.Pending.ReactiveBindingNoise
 import Vegas.Game.ReactiveSourceForeignRecall
@@ -3571,3 +3577,122 @@ open Vegas.Examples.LateOpeningRuntimeLabelOrbits in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms informationHistoryEquiv
+
+open GameTheory.Protocol.InformationModel in
+/-- info:
+'GameTheory.Protocol.InformationModel.exists_consistent_full_support_player_completion'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms exists_consistent_full_support_player_completion
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.recoverReactivePolicy_zero_rounds_store'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms recoverReactivePolicy_zero_rounds_store
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.recovery_zero_rounds_action_value'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms recovery_zero_rounds_action_value
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.recovery_zero_rounds_active_site'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms recovery_zero_rounds_active_site
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.originalConfig_playerObserve_of_empty_memory'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms originalConfig_playerObserve_of_empty_memory
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.originalConfig_include_focal_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms originalConfig_include_focal_history
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.originalConfig_include_focal_eq_complete'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms originalConfig_include_focal_eq_complete
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.originalConfig_complete_focal'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms originalConfig_complete_focal
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.originalConfig_expire_focal_eq_or_mem_step'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms originalConfig_expire_focal_eq_or_mem_step
+
+open Vegas.Examples.LateOpeningRuntimeLabelKernels in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeLabelKernels.menu_permutation'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms menu_permutation
+
+open Vegas.Examples.LateOpeningRuntimeLabelKernels in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeLabelKernels.uniformPolicy_raw_permutation'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms uniformPolicy_raw_permutation
+
+open Vegas.Examples.LateOpeningRuntimeLabelKernels in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeLabelKernels.behavioralJoint_raw_permutation'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms behavioralJoint_raw_permutation
+
+open Vegas.Examples.LateOpeningRuntimeLabelReach in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeLabelReach.stepHistory_permutation'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms stepHistory_permutation
+
+open Vegas.Examples.LateOpeningRuntimeLabelReach in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeLabelReach.runBehavioralFrom_permutation'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms runBehavioralFrom_permutation
+
+open Vegas.Examples.LateOpeningRuntimeLabelReach in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeLabelReach.historyReachWeight_permutation'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms historyReachWeight_permutation
+
+open Vegas.Examples.LateOpeningRuntimeLabelBeliefs in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeLabelBeliefs.belief_permutation_of_uniform_sequence'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms belief_permutation_of_uniform_sequence
+
+open Vegas.Examples.LateOpeningRuntimeLabelBeliefs in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeLabelBeliefs.label_belief_uniform_of_uniform_sequence'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms label_belief_uniform_of_uniform_sequence

@@ -223,3 +223,6 @@ import Vegas.Examples.LateOpeningRuntimeLabelTransitions
 import Vegas.Examples.LateOpeningRuntimeLabelHistories
 import Vegas.Examples.LateOpeningRuntimeLabelTrace
 import Vegas.Examples.LateOpeningRuntimeLabelOrbits
+import Vegas.Examples.LateOpeningRuntimeLabelKernels
+import Vegas.Examples.LateOpeningRuntimeLabelReach
+import Vegas.Examples.LateOpeningRuntimeLabelBeliefs

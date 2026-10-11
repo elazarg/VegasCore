@@ -356,10 +356,15 @@ preserves every raw action and Bob's complete information under every
 scheduler. Recorded-label alignment derives the inverse on legal execution
 snapshots. [Full legal-history label bijections](../../Vegas/Examples/LateOpeningRuntimeLabelOrbits.lean)
 also restrict to every complete Bob information-history fiber, including
-unreached fibers. Reference-posterior symmetry and the assembled weak-PBE
-capstone remain open.
+unreached fibers. The actual [uniform raw response laws](../../Vegas/Examples/LateOpeningRuntimeLabelKernels.lean)
+and [history reach symmetry](../../Vegas/Examples/LateOpeningRuntimeLabelReach.lean)
+give [uniform conditional label beliefs](../../Vegas/Examples/LateOpeningRuntimeLabelBeliefs.lean)
+at every Bob site in a pointwise limit of fully mixed Bayes assessments
+keeping Alice's uniform decision laws, including sites unreached at the
+limit. The completion machinery can retain these full-support prescribed
+laws at every approximant. The assembled weak-PBE capstone remains open.
 Alice's completion is rational on every legal fiber and has actual-positive
 Bayes beliefs. These results do not yet assemble the paper equilibrium.
-The full-history uniform-label reference posterior, Bob's reference continuation,
-actual-positive Bayes override and selected source-law capstone remain unproved
+Bob's reference continuation, actual-positive Bayes override and selected
+source-law capstone remain unproved
 in Lean. No owner-controlled checklist completion is claimed.

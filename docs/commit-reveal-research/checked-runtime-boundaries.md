@@ -1475,6 +1475,9 @@ protocol, preserving prescribed decision laws for every fixed player and making
 each free player's whole continuation policy rational at every legal information
 site. Fully mixed references and the common consistency sequence are constructed
 inside the proof; no rationality premise is imposed on their approximants.
+`exists_consistent_full_support_player_completion` additionally retains
+full-support prescribed decision laws exactly at every approximant, and
+returns that fully mixed Bayes sequence and its pointwise limit.
 
 `exists_consistent_alice_completion` in
 [LateOpeningRuntimeEquilibrium](../../Vegas/Examples/LateOpeningRuntimeEquilibrium.lean)
@@ -1493,7 +1496,8 @@ Bob's complete remembered-information invariance are checked in
 [LabelTrace](../../Vegas/Examples/LateOpeningRuntimeLabelTrace.lean).
 [LabelOrbits](../../Vegas/Examples/LateOpeningRuntimeLabelOrbits.lean)
 proves the full legal-history bijection and its restriction to every Bob
-information-history fiber. Uniform reference posteriors, Bob's rational
+information-history fiber. The uniform reference label posterior is checked
+under the actual uniform Alice decision laws as described below. Bob's
 reference continuation and the assembled weak-PBE capstone remain open.
 
 The original source recall is also retained through actual prescribed responses.
@@ -1522,9 +1526,18 @@ and Bob's full information. Inversion on legal execution snapshots is
 derived from recorded-label alignment in actual initialized histories.
 [LabelOrbits](../../Vegas/Examples/LateOpeningRuntimeLabelOrbits.lean)
 derives the full legal-history bijection and every Bob information-history
-fiber bijection without positive-reach or belief assumptions. Uniform
-conditional reference beliefs and the assembled weak-PBE capstone remain
-separate proof obligations.
+fiber bijection without positive-reach or belief assumptions.
+[LabelKernels](../../Vegas/Examples/LateOpeningRuntimeLabelKernels.lean) and
+[LabelReach](../../Vegas/Examples/LateOpeningRuntimeLabelReach.lean) derive
+the actual uniform raw response laws, every finite-fuel history law and
+complete history reach weights under these permutations, with Bob's full
+policy arbitrary.
+[LabelBeliefs](../../Vegas/Examples/LateOpeningRuntimeLabelBeliefs.lean)
+derives Bayes belief symmetry and uniform conditional label marginals
+through pointwise limits of fully mixed Bayes assessments that keep Alice's
+actual uniform decision laws. This includes Bob sites unreached by the
+limit strategy; no symmetric witness or desired posterior is assumed.
+The assembled weak-PBE capstone remains a separate proof obligation.
 
 Unilateral callback adapters now retain the focal player's actual completions
 instead of imposing prescribed intention consistency on that player.
@@ -1542,3 +1555,23 @@ binding choice. This holds for arbitrary leak rules because these binding
 envelopes are opaque. The initialized prescribed adapter derives fresh memory
 from the real trace. These local laws do not yet supply the full mixed-frontier
 induction or unilateral source-information/noise factorization.
+
+The actual native focal response has the same graph observation as its
+reconstructed original-action configuration when focal memory is empty;
+[ReactiveDeviationObservation](../../Vegas/Pending/ReactiveDeviationObservation.lean)
+retains every foreign sampled memory. At genuine initialized accepted focal
+packets, [ReactiveDeviationInclusion](../../Vegas/Pending/ReactiveDeviationInclusion.lean)
+derives the actual handler action and full reconstructed completion, including
+the complete prior source history. Native focal expiry in
+[ReactiveDeviationCompletion](../../Vegas/Pending/ReactiveDeviationCompletion.lean)
+either stutters that configuration or produces a supported genuine graph step.
+These adapters impose no prescribed focal policy and assume no target law.
+The mixed-frontier induction and whole unilateral source/noise law remain open.
+
+The recovery owner also proves the exact zero-round physical-store law and
+action-indexed store utility at a genuine legal last activation. A recovery
+response authors traffic while the physical graph remains unchanged until an
+environment step. Thus nonconstant source continuation values need a real
+settlement/opportunity adapter. This raw last-activation example is outside the
+protected completion guarantee; it does not refute that guarantee or close
+arbitrary off-path correspondence and whole-policy recovery.

@@ -220,3 +220,6 @@ import Vegas.Pending.ReactiveRecordedOpportunity
 import Vegas.Pending.ReactiveOffTurnPosterior
 import Vegas.Pending.ReactiveDeviationRecall
 import Vegas.Pending.ReactiveBindingNoise
+import Vegas.Pending.ReactiveDeviationObservation
+import Vegas.Pending.ReactiveDeviationInclusion
+import Vegas.Pending.ReactiveDeviationCompletion

@@ -65,6 +65,9 @@ Useful existing boundaries are the
 [initialized private-intention uniqueness and restoration](../Vegas/Pending/ReactivePosteriorUniqueness.lean),
 [accepted original intentions in initialized executions](../Vegas/Pending/ReactiveAcceptedIntentionRecall.lean),
 [original-action configurations and actual sampler laws](../Vegas/Pending/ReactiveOriginalConfig.lean),
+[actual focal graph observations](../Vegas/Pending/ReactiveDeviationObservation.lean),
+[accepted focal packets and reconstructed graph completion](../Vegas/Pending/ReactiveDeviationInclusion.lean),
+[native focal expiry and reconstructed graph steps](../Vegas/Pending/ReactiveDeviationCompletion.lean),
 [raw unilateral callbacks and mixed foreign-frontier replay](../Vegas/Pending/ReactiveDeviationRecall.lean),
 [opaque binding responses and foreign activation inputs](../Vegas/Pending/ReactiveBindingNoise.lean),
 [foreign original source recall through raw callbacks](../Vegas/Game/ReactiveSourceForeignRecall.lean),
@@ -128,6 +131,9 @@ Useful existing boundaries are the
 [native execution, raw-menu and prior label symmetry](../Vegas/Examples/LateOpeningRuntimeLabelHistories.lean),
 [actual legal native traces and complete Bob information under label permutations](../Vegas/Examples/LateOpeningRuntimeLabelTrace.lean),
 [legal native history and Bob information-fiber label bijections](../Vegas/Examples/LateOpeningRuntimeLabelOrbits.lean),
+[uniform raw response kernels under label permutations](../Vegas/Examples/LateOpeningRuntimeLabelKernels.lean),
+[actual label-symmetric history laws and reach weights](../Vegas/Examples/LateOpeningRuntimeLabelReach.lean),
+[uniform conditional label beliefs through Bayes limits](../Vegas/Examples/LateOpeningRuntimeLabelBeliefs.lean),
 [concrete late-opening game data](../Vegas/Examples/LateOpeningRuntimeGame.lean),
 [certain success requires protected acceptance](../Vegas/Examples/LateOpeningRuntimeProtectedReceipt.lean),
 [native equilibrium silence after a pending opening](../Vegas/Examples/LateOpeningRuntimeAliceRationality.lean),
@@ -291,3 +297,16 @@ The authentic source audit is clear in these same modes, and the realized
 joint initial-state, final-store and net-payoff law holds for arbitrary
 authentic audit sampling and deposits. The full unilateral-deviation
 source-information and noise factorization remains a separate obligation.
+
+Full-support prescribed decision laws can be retained exactly at every
+approximant of the consistent whole-player completion, as well as at the limit.
+The native uniform raw Alice policy therefore supports genuine Bayes reference
+beliefs with a uniform conditional label marginal at every Bob information site,
+including sites unreached by the limit strategy. This requires the checked
+uniform Alice laws; arbitrary consistency witnesses are not assumed symmetric.
+
+Recovery source-value correspondence needs a physical settlement opportunity.
+A legal final activation can leave zero environment rounds, in which case the
+actual response preserves the physical store and every authored action has the
+same native store-based value. This is a necessary boundary for general raw
+callbacks, not a counterexample under the protected completion contract.

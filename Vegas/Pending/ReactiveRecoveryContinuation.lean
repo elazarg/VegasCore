@@ -1,7 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Pending.ReactiveStateInvariant
 import Vegas.Pending.ReactivePolicyFacts
 import Interaction.ReactivePassiveContinuation
+import Interaction.ReactiveRawRoundTrace
 
 /-! # The actual downstream kernel at a recovery callback
 
@@ -307,5 +309,90 @@ theorem recoverReactivePolicy_final_callback_comparison (runtime : EventGraphRun
   dsimp only at comparison
   simp only [kernelEq] at comparison
   exact comparison values maximal alternativeIntegrable recoveredIntegrable
+
+
+/-- A recovery response authors traffic but cannot settle a graph event without
+subsequent environment rounds. Its full typed-store marginal remains physical. -/
+theorem recoverReactivePolicy_zero_rounds_store (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (who : Player) (policy : graph.BehavioralPolicy who)
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    (execution : (runtime.reactiveApplication leaks).Execution) :
+    let app := runtime.reactiveApplication leaks
+    let recovered := Function.update players who (runtime.recoverReactivePolicy leaks who policy)
+    ((app.resume recovered (some who) execution).bind
+      (app.runRounds scheduler recovered 0)).map (fun next => next.application.config.store) =
+        PMF.pure execution.application.config.store := by
+  dsimp only
+  simp only [ReactiveApplication.runRounds, PMF.bind_pure, ReactiveApplication.resume,
+    ReactiveApplication.invoke, PMF.map_comp]
+  have constant : (fun action : (runtime.reactiveApplication leaks).Action =>
+      (execution.respond (runtime.reactiveApplication leaks) who action).application.config.store) =
+      (fun _ => execution.application.config.store) := by
+    funext action
+    exact congrArg EventGraph.Config.store
+      (runtime.reactive_respond_application leaks execution who action).1
+  change ((Function.update players who (runtime.recoverReactivePolicy leaks who policy)) who
+    (execution.recall who) (execution.observe (runtime.reactiveApplication leaks) who)).map
+      (fun action =>
+        let next := execution.respond (runtime.reactiveApplication leaks) who action
+        next.application.config.store) = _
+  rw [constant]
+  exact PMF.map_const _ _
+
+/-- At zero remaining rounds every authored source action has the same native
+store value. Nonconstant source continuation values therefore need a genuine
+settlement/opportunity hypothesis before they can describe this kernel. -/
+theorem recovery_zero_rounds_action_value (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (who : Player) (policy : graph.BehavioralPolicy who)
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    (execution : (runtime.reactiveApplication leaks).Execution)
+    (event : graph.EventId) (action : graph.Action event)
+    (utility : graph.Config → ℝ) :
+    expect ((runtime.reactiveApplication leaks).runRounds scheduler
+      (Function.update players who (runtime.recoverReactivePolicy leaks who policy)) 0
+      (execution.respond (runtime.reactiveApplication leaks) who
+        (runtime.reactiveDecision leaks who event action
+          (execution.observe (runtime.reactiveApplication leaks) who).application)))
+      (fun next => utility next.application.config) = utility execution.application.config := by
+  rw [ReactiveApplication.runRounds, expect_pure,
+    (runtime.reactive_respond_application leaks execution who _).1]
+
+
+/-- The last scheduled activation is a genuine legal raw callback even when
+no environment rounds remain. Activation preserves the initialized graph state;
+a ready event can therefore still await physical settlement at this site. -/
+theorem recovery_zero_rounds_active_site (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (who : Player) (state : State graph) :
+    let app := runtime.reactiveApplication leaks
+    let scheduler : app.Scheduler := fun _ _ => PMF.pure (.activate who)
+    ∃ execution : app.Execution,
+      Nonempty ((app.protocol (PMF.pure state) 1 scheduler).Trace
+        (some ⟨0, some who, execution⟩)) ∧ execution.application = state := by
+  dsimp only
+  let app := runtime.reactiveApplication leaks
+  let scheduler : app.Scheduler := fun _ _ => PMF.pure (.activate who)
+  let start := ReactiveApplication.Execution.initial app state
+  have initialSupport : start ∈ (app.roundsFrom (PMF.pure state) scheduler
+      (fun _ => app.silentPolicy) 0).support := by
+    simp only [ReactiveApplication.roundsFrom, ReactiveApplication.runRounds, PMF.pure_bind,
+      PMF.mem_support_pure_iff]
+    rfl
+  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (PMF.pure state) 1 scheduler
+    (fun _ => app.silentPolicy) 0 (Nat.zero_le 1) start initialSupport
+  obtain ⟨next, supported⟩ := (start.environmentStep app (.activate who)).support_nonempty
+  have selected : (.activate who : app.Command) ∈
+      (scheduler start.environmentRecall (start.observeEnvironment app)).support := by
+    exact (PMF.mem_support_pure_iff _ _).mpr rfl
+  have reached := app.raw_trace_environment (PMF.pure state) 1 scheduler 0 start next
+    (.activate who) trace selected supported
+  refine ⟨next, reached, ?_⟩
+  obtain ⟨updated, positive, rfl⟩ := PMF.support_map .. ▸ supported
+  obtain ⟨observed, _, rfl⟩ := PMF.support_map .. ▸ positive
+  rfl
 
 end Vegas.EventGraphRuntime
