@@ -3,6 +3,7 @@
 import Vegas.Game.SourceServiceCompilation
 import Vegas.Game.SourceServiceReactiveLaw
 import Vegas.Game.SourceServiceReactiveAudit
+import Vegas.Examples.LateOpeningRuntimeAllOrNoneTrafficAudit
 import Vegas.Examples.LateOpeningRuntimeBobDirtyDisclosurePublication
 import Vegas.Examples.LateOpeningRuntimeAliceProtectedPublication
 import Vegas.EventGraph.ConfigRestriction
@@ -3098,3 +3099,31 @@ open Vegas.Examples.LateOpeningRuntimeAliceNormalization in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms exists_service_with_responses_normalized
+
+open Vegas.Examples.LateOpeningRuntimeAllOrNoneTrafficAudit in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeAllOrNoneTrafficAudit.charge'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms charge
+
+open Vegas.Examples.LateOpeningRuntimeAllOrNoneTrafficAudit in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeAllOrNoneTrafficAudit.payoff'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms payoff
+
+open Vegas.Examples.LateOpeningRuntimeAllOrNoneTrafficAudit in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeAllOrNoneTrafficAudit.charge_not_scaled_of_omission'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms charge_not_scaled_of_omission
+
+open Vegas.Examples.LateOpeningRuntimeAllOrNoneTrafficAudit in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeAllOrNoneTrafficAudit.successful_binding_continuation_payoff'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms successful_binding_continuation_payoff

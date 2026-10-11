@@ -116,6 +116,7 @@ Useful existing boundaries are the
 [native final-opening response normalization](../Vegas/Examples/LateOpeningRuntimeAliceOpeningRationality.lean),
 [one admissible service after collateral is fixed](../Vegas/Examples/LateOpeningRuntimeAliceNormalization.lean),
 [actual sender response-normalization predicates](../Vegas/Examples/LateOpeningRuntimeAliceResponseNormalization.lean),
+[authentic all-or-none traffic charges and successful-binding continuation payoffs](../Vegas/Examples/LateOpeningRuntimeAllOrNoneTrafficAudit.lean),
 [common-service native equilibrium constraints](../Vegas/Examples/LateOpeningRuntimeEquilibriumConstraints.lean),
 [public outcome requires protected acceptance](../Vegas/Examples/LateOpeningRuntimePreservingLaw.lean),
 [actual first-late sender repair](../Vegas/Examples/LateOpeningRuntimeAliceFirstRationality.lean),

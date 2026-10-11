@@ -451,6 +451,18 @@ For this variant choose `q` using
 conditions again make the common threshold strictly below one. The
 complete-audit threshold cannot be reused unchanged when `alpha<1`.
 
+The actual all-or-none sampler's authenticity, coverage and charge identities
+are checked in
+[AllOrNoneTrafficAudit](../../Vegas/Examples/LateOpeningRuntimeAllOrNoneTrafficAudit.lean).
+Public binding omissions remain fully charged: its expected utility equals
+full-audit utility at scaled deposits minus `(1-alpha)K_i` when player `i`
+has a public omission. Alice has no binding-omission branch. After an actual
+successful Bob binding, binding and store invariants exclude future omissions,
+so the scaled expected-utility identity holds throughout every supported
+continuation with arbitrary player policies. These identities do not identify
+realized settlement laws or establish the native SE obstruction; pre-binding
+continuation and rationality adapters remain separate obligations.
+
 The construction does not require late fresh value choices or failed-binding
 erasure. Its sender's value is an immutable successful initial commitment.
 Bob's only fresh binding is his ordinary source answer. It therefore avoids

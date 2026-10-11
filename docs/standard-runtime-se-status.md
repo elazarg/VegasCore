@@ -344,6 +344,15 @@ collateral greater than `R/2` for the specified partial sender audit, with
 remains separate. The [async checklist](se-async-checklist.md) retains its existing
 owner-controlled target and boxes.
 
+The actual all-or-none sampler and its exact expected-charge/payoff identities
+are [checked](../Vegas/Examples/LateOpeningRuntimeAllOrNoneTrafficAudit.lean).
+Public binding omissions retain their full charge rather than a scaled charge.
+An actual successful Bob binding excludes that branch throughout arbitrary
+supported continuations, where scaled full-audit expected utilities agree.
+The all-or-none native SE obstruction still needs pre-binding continuation and
+rationality adapters; random realized settlement laws are not equated with
+deterministic scaled deposits.
+
 The checked operational boundary is sharper: an actual initialized opening
 outside its protected window can be accepted with probability one by a
 builder satisfying both the full service contract and all-view erasure
