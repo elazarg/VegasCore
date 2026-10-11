@@ -351,8 +351,13 @@ and [label symmetry through actual graph transitions, Bob's physical view and
 every raw packet handler](../../Vegas/Examples/LateOpeningRuntimeLabelSymmetry.lean).
 The lift through [authenticated native operations](../../Vegas/Examples/LateOpeningRuntimeLabelTransitions.lean)
 and [complete execution transitions, the raw menu and the original prior](../../Vegas/Examples/LateOpeningRuntimeLabelHistories.lean)
-is checked too. Complete legal-history and reference-posterior symmetry remains
-the next step.
+is checked too. [Actual legal native trace transport](../../Vegas/Examples/LateOpeningRuntimeLabelTrace.lean)
+preserves every raw action and Bob's complete information under every
+scheduler. Recorded-label alignment derives the inverse on legal execution
+snapshots. [Full legal-history label bijections](../../Vegas/Examples/LateOpeningRuntimeLabelOrbits.lean)
+also restrict to every complete Bob information-history fiber, including
+unreached fibers. Reference-posterior symmetry and the assembled weak-PBE
+capstone remain open.
 Alice's completion is rational on every legal fiber and has actual-positive
 Bayes beliefs. These results do not yet assemble the paper equilibrium.
 The full-history uniform-label reference posterior, Bob's reference continuation,

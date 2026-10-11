@@ -1,3 +1,8 @@
+import Vegas.Pending.ReactiveDeviationRecall
+import Vegas.Pending.ReactiveBindingNoise
+import Vegas.Game.ReactiveSourceForeignRecall
+import Vegas.Examples.LateOpeningRuntimeLabelTrace
+import Vegas.Examples.LateOpeningRuntimeLabelOrbits
 import Vegas.Pending.ReactiveOffTurnPosterior
 import Vegas.Game.ReactiveSourceResponseRecall
 import Vegas.Game.ReactiveSourceResponseLaw
@@ -3454,3 +3459,115 @@ open Vegas.Examples.LateOpeningRuntimeLabelHistories in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms prior_label_permutation
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.originalConfig_respond_of_empty_memory'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms originalConfig_respond_of_empty_memory
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.unilateralFrontier_ready'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms unilateralFrontier_ready
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.unilateralFrontier_foreign_sequence'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms unilateralFrontier_foreign_sequence
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.unilateralFrontier_coupled_step'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms unilateralFrontier_coupled_step
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.reactiveBinding_activation_joint_result_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms reactiveBinding_activation_joint_result_law
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.prescribedReactivePolicy_binding_activation_input_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms prescribedReactivePolicy_binding_activation_input_law
+
+open Vegas in
+/-- info:
+'Vegas.originalReactiveSourceRecall_respond_other'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms originalReactiveSourceRecall_respond_other
+
+open Vegas in
+/-- info:
+'Vegas.originalReactiveSourceRecall_posterior_respond_other'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms originalReactiveSourceRecall_posterior_respond_other
+
+open Vegas.Examples.LateOpeningRuntimeLabelTrace in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeLabelTrace.initial_permutation'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms initial_permutation
+
+open Vegas.Examples.LateOpeningRuntimeLabelTrace in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeLabelTrace.permuteProtocolState_transition'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms permuteProtocolState_transition
+
+open Vegas.Examples.LateOpeningRuntimeLabelTrace in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeLabelTrace.recordedLabels_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms recordedLabels_history
+
+open Vegas.Examples.LateOpeningRuntimeLabelTrace in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeLabelTrace.permuteExecution_inverse'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms permuteExecution_inverse
+
+open Vegas.Examples.LateOpeningRuntimeLabelTrace in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeLabelTrace.info_bob_permutation'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms info_bob_permutation
+
+open Vegas.Examples.LateOpeningRuntimeLabelOrbits in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeLabelOrbits.permuteHistory_inverse'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms permuteHistory_inverse
+
+open Vegas.Examples.LateOpeningRuntimeLabelOrbits in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeLabelOrbits.historyEquiv'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms historyEquiv
+
+open Vegas.Examples.LateOpeningRuntimeLabelOrbits in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeLabelOrbits.informationHistoryEquiv'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms informationHistoryEquiv

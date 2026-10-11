@@ -218,3 +218,5 @@ import Vegas.Pending.ReactivePrescribedAllocation
 import Vegas.Pending.ReactiveFirstOpportunity
 import Vegas.Pending.ReactiveRecordedOpportunity
 import Vegas.Pending.ReactiveOffTurnPosterior
+import Vegas.Pending.ReactiveDeviationRecall
+import Vegas.Pending.ReactiveBindingNoise

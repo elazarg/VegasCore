@@ -89,8 +89,8 @@ concurrent-reveal mode for `Disclosing` source profiles. It derives the actual
 execution, recall, sampling and expiry invariants internally. Relaxed reveal
 ordering suffices for the operational frontier laws; actual kernel independence
 is derived from mandatory disclosure for the source-law composition. The original private draw is sampled
-once and remains correlated with the final state. In sequential and concurrent-binding modes, for the same prescribed
-policies and service assumptions, `Vegas.source_prescribed_initialized_audit_clear`
+once and remains correlated with the final state. For the same prescribed
+policies, mode-specific disclosure condition and service assumptions, `Vegas.source_prescribed_initialized_audit_clear`
 and `Vegas.source_prescribed_terminal_settlement_law` in
 [SourceServiceReactiveAudit.lean](../../Vegas/Game/SourceServiceReactiveAudit.lean)
 prove zero standard audit charge at every initialized supported prefix and
@@ -123,8 +123,8 @@ failed bindings remain allowed. Publication kernels are derived to be independen
 of store and own history, discharging the existing relaxed scheduling machinery.
 The asynchronous runtime correspondence above now realizes this source law
 under the existing service contract and timing bounds, including concurrent
-reveals for mandatory-disclosure profiles. Its actual audit/payoff composition
-currently retains sequential and concurrent-binding scope.
+reveals for mandatory-disclosure profiles. The same scope includes the
+actual authentic audit and joint realized-net-payoff law.
 
 With withholding available, order independence fails even for actual terminal
 stores. [ConcurrentRevealOrderLaw](../../Vegas/Examples/ConcurrentRevealOrderLaw.lean)
@@ -1488,9 +1488,13 @@ checks invariance under changing Alice's ordinary private label while preserving
 her immutable bit. Actual graph transitions, reachable configurations, Bob's
 full physical view and initial authentic candidate meanings respect this change.
 Every raw commitment, opening and malformed-packet handler commutes with it,
-including rejection and failure cases. Full raw-history and reference-posterior
-symmetry, Bob's rational reference continuation, and the assembled weak-PBE
-capstone remain to be checked.
+including rejection and failure cases. Actual legal trace transport and
+Bob's complete remembered-information invariance are checked in
+[LabelTrace](../../Vegas/Examples/LateOpeningRuntimeLabelTrace.lean).
+[LabelOrbits](../../Vegas/Examples/LateOpeningRuntimeLabelOrbits.lean)
+proves the full legal-history bijection and its restriction to every Bob
+information-history fiber. Uniform reference posteriors, Bob's rational
+reference continuation and the assembled weak-PBE capstone remain open.
 
 The original source recall is also retained through actual prescribed responses.
 [ReactiveSourceResponseRecall](../../Vegas/Game/ReactiveSourceResponseRecall.lean)
@@ -1511,6 +1515,30 @@ all actual environment commands and the complete `Execution.respond` and
 [LabelTransitions](../../Vegas/Examples/LateOpeningRuntimeLabelTransitions.lean)
 and [LabelHistories](../../Vegas/Examples/LateOpeningRuntimeLabelHistories.lean).
 The full bounded raw menu is unchanged, and the original initialized prior is
-invariant under every label permutation. These are operational execution laws;
-the complete legal protocol-history orbit, uniform conditional reference beliefs
-and assembled weak-PBE capstone remain separate proof obligations.
+invariant under every label permutation.
+[LabelTrace](../../Vegas/Examples/LateOpeningRuntimeLabelTrace.lean) lifts
+this to actual legal traces for every scheduler, retaining every raw action
+and Bob's full information. Inversion on legal execution snapshots is
+derived from recorded-label alignment in actual initialized histories.
+[LabelOrbits](../../Vegas/Examples/LateOpeningRuntimeLabelOrbits.lean)
+derives the full legal-history bijection and every Bob information-history
+fiber bijection without positive-reach or belief assumptions. Uniform
+conditional reference beliefs and the assembled weak-PBE capstone remain
+separate proof obligations.
+
+Unilateral callback adapters now retain the focal player's actual completions
+instead of imposing prescribed intention consistency on that player.
+[ReactiveDeviationRecall](../../Vegas/Pending/ReactiveDeviationRecall.lean)
+checks raw focal response stability, actual focal-step coupling and foreign
+completion replay under structural frontier invariants and genuine foreign
+posterior support.
+[ReactiveSourceForeignRecall](../../Vegas/Game/ReactiveSourceForeignRecall.lean)
+retains the complete original source past and posterior readout across every
+foreign raw callback.
+[ReactiveBindingNoise](../../Vegas/Pending/ReactiveBindingNoise.lean) proves the
+actual joint private binding-result and next foreign activation-input law:
+the observer's full recall and observation are independent of the private
+binding choice. This holds for arbitrary leak rules because these binding
+envelopes are opaque. The initialized prescribed adapter derives fresh memory
+from the real trace. These local laws do not yet supply the full mixed-frontier
+induction or unilateral source-information/noise factorization.

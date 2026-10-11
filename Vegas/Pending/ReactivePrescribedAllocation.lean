@@ -457,7 +457,7 @@ private theorem foreign_bindingCount {who : Player} {first last : graph.Config}
  binding serial; the equality follows from the operational frontier replay. -/
 theorem ReactiveFrontier.fresh_bindingCount (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (ordered : graph.BarrierOrdered)
+    (ordered : graph.RevealRelaxedOrdered)
     (execution : (runtime.reactiveApplication leaks).Execution)
     (stable : runtime.EntryEventStable leaks execution)
     (profile : graph.BehavioralProfile) (memories : Player → List (Option graph.Completion))
@@ -476,7 +476,7 @@ theorem ReactiveFrontier.fresh_bindingCount (runtime : EventGraphRuntime graph)
     ({execution.application with config := frontier} : State graph).publicView.bindingCount who =
       execution.application.publicView.bindingCount who := by
   obtain ⟨last, replay, same⟩ := relation.foreign_sequence runtime leaks
-    ordered.revealRelaxedOrdered
+    ordered
     execution stable
     profile memories consistent supported frontier who event ready actor fresh
   change bindingCount frontier who = bindingCount execution.application.config who
@@ -517,7 +517,7 @@ private theorem bindingCount_ownCompletions (config : graph.Config) (who : Playe
  establish the canonical physical prefix at a genuine fresh owned callback. -/
 theorem ReactiveFrontier.fresh_preparedPrefix (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (ordered : graph.BarrierOrdered)
+    (ordered : graph.RevealRelaxedOrdered)
     (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (control : (runtime.reactiveApplication leaks).Control)

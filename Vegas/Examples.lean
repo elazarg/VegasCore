@@ -221,3 +221,5 @@ import Vegas.Examples.ConcurrentRevealOrderLaw
 import Vegas.Examples.LateOpeningRuntimeLabelSymmetry
 import Vegas.Examples.LateOpeningRuntimeLabelTransitions
 import Vegas.Examples.LateOpeningRuntimeLabelHistories
+import Vegas.Examples.LateOpeningRuntimeLabelTrace
+import Vegas.Examples.LateOpeningRuntimeLabelOrbits

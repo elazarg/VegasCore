@@ -65,6 +65,9 @@ Useful existing boundaries are the
 [initialized private-intention uniqueness and restoration](../Vegas/Pending/ReactivePosteriorUniqueness.lean),
 [accepted original intentions in initialized executions](../Vegas/Pending/ReactiveAcceptedIntentionRecall.lean),
 [original-action configurations and actual sampler laws](../Vegas/Pending/ReactiveOriginalConfig.lean),
+[raw unilateral callbacks and mixed foreign-frontier replay](../Vegas/Pending/ReactiveDeviationRecall.lean),
+[opaque binding responses and foreign activation inputs](../Vegas/Pending/ReactiveBindingNoise.lean),
+[foreign original source recall through raw callbacks](../Vegas/Game/ReactiveSourceForeignRecall.lean),
 [original-action retention through actual responses](../Vegas/Pending/ReactiveOriginalResponseStability.lean),
 [original-action retention through actual packet inclusion](../Vegas/Pending/ReactiveOriginalInclusionStability.lean),
 [fresh sampled events outside retained intention frontiers](../Vegas/Pending/ReactiveSampledFrontierFreshness.lean),
@@ -123,6 +126,8 @@ Useful existing boundaries are the
 [native label symmetry through every raw packet handler](../Vegas/Examples/LateOpeningRuntimeLabelSymmetry.lean),
 [authenticated native label transition symmetry](../Vegas/Examples/LateOpeningRuntimeLabelTransitions.lean),
 [native execution, raw-menu and prior label symmetry](../Vegas/Examples/LateOpeningRuntimeLabelHistories.lean),
+[actual legal native traces and complete Bob information under label permutations](../Vegas/Examples/LateOpeningRuntimeLabelTrace.lean),
+[legal native history and Bob information-fiber label bijections](../Vegas/Examples/LateOpeningRuntimeLabelOrbits.lean),
 [concrete late-opening game data](../Vegas/Examples/LateOpeningRuntimeGame.lean),
 [certain success requires protected acceptance](../Vegas/Examples/LateOpeningRuntimeProtectedReceipt.lean),
 [native equilibrium silence after a pending opening](../Vegas/Examples/LateOpeningRuntimeAliceRationality.lean),
@@ -282,5 +287,7 @@ graph frontier and continuation laws use relaxed reveal ordering and actual
 profile `ReadyIndependent`; the compiler derives that kernel condition from
 disclosure. Sequential and concurrent-binding modes retain arbitrary source
 profiles. This is an execution-law result, distinct from SE preservation.
-The actual source audit and realized-net-payoff law retain their checked
-sequential/concurrent-binding scope.
+The authentic source audit is clear in these same modes, and the realized
+joint initial-state, final-store and net-payoff law holds for arbitrary
+authentic audit sampling and deposits. The full unilateral-deviation
+source-information and noise factorization remains a separate obligation.
