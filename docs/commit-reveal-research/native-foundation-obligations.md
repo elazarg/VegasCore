@@ -189,6 +189,14 @@ not be the same. Actual zero audit and zero intrinsic forfeit on these retained
 paths require their own accepted-packet and no-miss induction. The existing
 roster soundness theorem is not evidence for arbitrary adaptive soundness.
 
+Initialized prescribed reactive execution has checked canonical prepared-slot
+allocation, zero authentic standard audit charge at every supported prefix, and
+the joint initial-state, final-state and realized net-payoff law under
+`AsyncContract` and `AsyncTimely`, for sequential and concurrent-binding modes;
+see [SourceServiceReactiveAudit](../../Vegas/Game/SourceServiceReactiveAudit.lean).
+This does not supply continuation comparisons from arbitrary stopped or off-path
+prefixes, including all intended alternatives in a consistency sequence.
+
 ## Concrete obligation map and priority
 
 The reviewed [protected execution construction](native-protected-execution.md)
@@ -200,9 +208,9 @@ about the larger retained and raw menus.
 | Obligation | Present assessment | Leverage and next concrete evidence |
 | --- | --- | --- |
 | Intended guard satisfaction on all legal prefixes | Checked recursive source predicate and prediction APIs exist; propagation and native alignment remain assembly work. | High: prevents hidden loss of an intended value or opening in full-support profiles. |
-| Canonical menu coverage and fixed fresh slots | Actual constructors, value coverage and retained-slot invariants exist. Uniform clean-prefix use under adaptive scheduling is not yet a checked constructor. | High: prove the counted prepared slot stays fresh and within capacity, without falling back to a secret-dependent slot search. |
+| Canonical menu coverage and fixed fresh slots | Actual constructors and value coverage exist. Initialized prescribed adaptive runs have checked canonical prepared-slot allocation and envelope conformance; uniform use at arbitrary stopped/off-path prefixes remains a separate obligation. | High: prove the counted prepared slot stays fresh and within capacity, without falling back to a secret-dependent slot search. |
 | Adaptive bounded first-ready channel | The native paper construction supplies normalization and the complete source-fiber coupling; checked roster laws and atomic observation facts supply ingredients. | High formalization value: implement (1) and (2) on actual variable-length histories. No further general paper bridge is missing. |
-| Original continuation and zero settlement from every clean prefix | The native paper checkpoint/acceptance construction supplies the conditional law and conformance induction; semantic, first-turn and settlement declarations supply checked ingredients. | High formalization value: implement adaptive prefix-relative readout and audit soundness, including every legal intended source alternative. |
+| Original continuation and zero settlement from every clean prefix | Initialized prescribed adaptive execution and zero standard audit settlement are checked. The paper construction supplies the stronger conditional continuation; its arbitrary clean-prefix and intended-alternative adapter remains open. | High formalization value: implement adaptive prefix-relative readout and audit soundness, including every legal intended source alternative. |
 | One globally consistent restricted assessment | Existing Bayesian compactness and local-simulation theorem suffice once the preceding evidence is supplied. | Low need for new theory; instantiate rather than invent another equilibrium completion theorem. |
 | Extension through accepted late moves | An accepted late packet can be uncharged. The [checked native two-late negative](native-se-obstruction.md) rules out exact joint terminal-store/payoff preservation in the full bounded menu for fixed R>0, D>R, K_A>R, K_B>1, full authentic audit and fair partial samples. Native SE exist. The sharper collateral and broader sampling/audit variants remain paper results. | Identify further public service or settlement properties supporting a positive, and distinguish SE from weaker PBE and public-result-only preservation. |
 | Excluded raw moves and one-time charges | Existing signed exclusion, collection and raw alias APIs cover important classes. Uniform collection must be checked for each excluded class. | High: keep arbitrary later play in the quantifier, and distinguish an uncharged first departure from an already collected penalty. |

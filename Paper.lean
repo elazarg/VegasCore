@@ -2,6 +2,7 @@
 
 import Vegas.Game.SourceServiceCompilation
 import Vegas.Game.SourceServiceReactiveLaw
+import Vegas.Game.SourceServiceReactiveAudit
 import Vegas.Examples.LateOpeningRuntimeBobDirtyDisclosurePublication
 import Vegas.Examples.LateOpeningRuntimeAliceProtectedPublication
 import Vegas.EventGraph.ConfigRestriction
@@ -3054,3 +3055,18 @@ open Vegas.Examples.LateOpeningRuntimeAliceSuccessFloor in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms sourceUtility_highLabel_upper
+
+/-- info: 'Vegas.source_prescribed_initialized_audit_clear'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.source_prescribed_initialized_audit_clear
+
+/-- info: 'Vegas.source_prescribed_terminal_settlement_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.source_prescribed_terminal_settlement_law
+
+/-- info: 'Vegas.EventGraphRuntime.prescribedReactivePolicy_inclusion_fits'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.prescribedReactivePolicy_inclusion_fits

@@ -8,6 +8,9 @@ import Vegas.Pending.ReactiveFrontierRecall
 import Vegas.Pending.ReactivePosteriorUniqueness
 import Vegas.EventGraph.ConfigRestriction
 import Interaction.ReactiveRecallInvariant
+import Interaction.ReactiveRawRoundTrace
+import Vegas.Pending.ReactiveSampledFrontierFreshness
+import Vegas.Pending.ReactiveStateInvariant
 
 noncomputable section
 namespace Vegas.EventGraphRuntime
@@ -225,21 +228,21 @@ private theorem recordedClock_le_at_prefix {Entry : Type} (clock : Entry → Nat
 
 /-- Opportunity and actual recall provenance locate a sampled intention no later
  than the owner response delay, even when that response retained an older sample. -/
-theorem due_owner_timely_sample_origin
+theorem late_owner_timely_sample_origin
     (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    (delay bound : graph.EventId → Nat)
+    (delay : graph.EventId → Nat)
     (opportunity : runtime.Opportunity leaks (inputs.map State.initial) horizon scheduler delay)
-    (timely : runtime.AsyncTimely delay bound) (ordered : graph.BarrierOrdered)
+    (ordered : graph.BarrierOrdered)
     (control : (runtime.reactiveApplication leaks).Control)
     (trace : ((runtime.reactiveApplication leaks).protocol (inputs.map State.initial)
       horizon scheduler).Trace (some control)) (idle : control.actor = none)
     (event : graph.EventId) (who : Player) (actor : graph.actor? event = some who)
     (ready : control.execution.application.config.cut.Ready event)
     (entered : Nat) (activated : control.execution.application.activatedAt event = some entered)
-    (due : runtime.deadline event ≤ control.execution.application.clock - entered)
+    (late : entered + delay event < control.execution.application.clock)
     (policy : graph.BehavioralPolicy who)
     (consistent : (runtime.prescribedReactivePolicy leaks who policy).Consistent
       (control.execution.recall who))
@@ -258,9 +261,8 @@ theorem due_owner_timely_sample_origin
       entry.beforeView.application.publicView.EventReady event ∧
       entry.beforeView.application.publicView.activatedAt event = some entered := by
   let app := runtime.reactiveApplication leaks
-  have margin := timely event (by simp only [actor, Option.isSome_some])
   have activatedOwner := opportunity control trace event who entered actor
-    ((control.execution.application.publicView_eventReady event).mpr ready) activated (by omega)
+    ((control.execution.application.publicView_eventReady event).mpr ready) activated late
   obtain ⟨before, _, _, response, retained, viewed, turn, _, responded⟩ :=
     runtime.owner_response_within_delay leaks (inputs.map State.initial) horizon scheduler delay
       opportunity ordered control trace idle event who entered actor activatedOwner
@@ -310,5 +312,158 @@ theorem due_owner_timely_sample_origin
     named ▸ sampledReady, ?_⟩
   exact runtime.recorded_ready_activatedAt leaks inputs horizon scheduler control trace who sampling
     sampleRetained event (named ▸ sampledReady) actor ready entered activated
+
+/-- The first supported prescribed sample occurs within the readiness episode's
+ opportunity delay; otherwise an earlier timely sample would already be remembered. -/
+theorem prescribedReactiveResponse_within_delay (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (inputs : PMF graph.Inputs) (horizon : Nat)
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    (delay : graph.EventId → Nat)
+    (opportunity : runtime.Opportunity leaks (inputs.map State.initial) horizon scheduler delay)
+    (ordered : graph.BarrierOrdered)
+    (remaining : Nat) (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
+    (trace : ((runtime.reactiveApplication leaks).protocol (inputs.map State.initial) horizon
+      scheduler).Trace (some ⟨remaining, some who, execution⟩))
+    (policy : graph.BehavioralPolicy who)
+    (consistent : (runtime.prescribedReactivePolicy leaks who policy).Consistent
+      (execution.recall who))
+    (intentions : List (Option graph.Completion))
+    (supported : intentions ∈ ((runtime.prescribedReactiveImplementation leaks who policy).posterior
+      (execution.recall who)).support)
+    (action : (runtime.reactiveApplication leaks).Action) (remembered : graph.Completion)
+    (produced : (action, some remembered) ∈ (runtime.prescribedReactiveResponse leaks who policy
+      (execution.recall who) intentions (execution.observe (runtime.reactiveApplication leaks)
+        who)).support) :
+    ∃ entered, execution.application.activatedAt remembered.event = some entered ∧
+      execution.application.clock ≤ entered + delay remembered.event := by
+  let app := runtime.reactiveApplication leaks
+  let after := execution.respond app who action
+  have positive : action ∈ (runtime.prescribedReactivePolicy leaks who policy
+      (execution.recall who) (execution.observe app who)).support := by
+    rw [runtime.prescribedReactivePolicy_apply, PMF.support_bind]
+    refine Set.mem_iUnion₂.mpr ⟨intentions, supported, ?_⟩
+    rw [PMF.support_map]
+    exact ⟨(action, some remembered), produced, rfl⟩
+  obtain ⟨afterTrace⟩ := app.raw_trace_respond (inputs.map State.initial) horizon scheduler
+    remaining
+    execution who action trace
+  have afterConsistent : (runtime.prescribedReactivePolicy leaks who policy).Consistent
+      (after.recall who) := by
+    simp only [after, ReactiveApplication.Execution.respond, ↓reduceIte]
+    exact .snoc _ consistent positive
+  have afterSupported : intentions ++ [some remembered] ∈
+      ((runtime.prescribedReactiveImplementation leaks who policy).posterior
+        (after.recall who)).support := by
+    apply (runtime.prescribedReactiveImplementation leaks who policy).mem_support_posterior_respond
+      execution who intentions (intentions ++ [some remembered]) supported action
+    change (action, intentions ++ [some remembered]) ∈
+      ((runtime.prescribedReactiveResponse leaks who policy (execution.recall who) intentions
+        (execution.observe app who)).map
+          (fun response => (response.1, intentions ++ [response.2]))).support
+    rw [PMF.support_map]
+    exact ⟨(action, some remembered), produced, rfl⟩
+  have beforeFaithful := runtime.reactiveEmission_history leaks (inputs.map State.initial) horizon
+    scheduler ⟨remaining, some who, execution⟩ trace
+  have afterFaithful := runtime.reactiveEmission_history leaks (inputs.map State.initial) horizon
+    scheduler ⟨remaining, none, after⟩ afterTrace
+  have eventFacts := runtime.prescribedReactiveResponse_some_ready leaks who policy
+    (execution.recall who) intentions (execution.observe app who) action remembered produced
+  have ready : execution.application.config.cut.Ready remembered.event :=
+    (execution.application.publicView_eventReady remembered.event).mp eventFacts.1
+  obtain ⟨_, _, invariant⟩ := runtime.reactive_history_invariant leaks inputs horizon scheduler
+    trace
+  obtain ⟨entered, activated⟩ := invariant.activatedAt_eq_some_of_ready_actor remembered.event
+    ready (by simp only [eventFacts.2, Option.isSome_some])
+  refine ⟨entered, activated, ?_⟩
+  by_contra notWithin
+  have responseFacts := runtime.reactive_respond_application leaks execution who action
+  have afterReady : after.application.config.cut.Ready remembered.event := by
+    change (execution.respond app who action).application.config.cut.Ready remembered.event
+    rw [responseFacts.1]
+    exact ready
+  have clockEq : after.application.clock = execution.application.clock :=
+    congrArg (fun view => view.clock) responseFacts.2
+  have afterActivated : after.application.activatedAt remembered.event = some entered :=
+    (congrArg (fun view => view.activatedAt remembered.event) responseFacts.2).trans activated
+  have late : entered + delay remembered.event < after.application.clock := by
+    rw [clockEq]
+    omega
+  obtain ⟨entry, original, paired, named, sampledWithin, _, _⟩ :=
+    runtime.late_owner_timely_sample_origin leaks inputs horizon scheduler delay opportunity
+      ordered ⟨remaining, none, after⟩ afterTrace rfl remembered.event who eventFacts.2 afterReady
+      entered afterActivated late policy afterConsistent (afterFaithful who).1
+      (afterFaithful who).2 (intentions ++ [some remembered]) afterSupported
+  have aligned := (runtime.prescribedReactivePosterior_length leaks who policy consistent intentions
+    supported).symm
+  simp only [after, ReactiveApplication.Execution.respond, ↓reduceIte] at paired
+  rw [List.zip_append aligned] at paired
+  rcases List.mem_append.mp paired with earlier | current
+  · have fresh := runtime.prescribedReactiveResponse_event_not_saved leaks who policy consistent
+      (beforeFaithful who).1 (beforeFaithful who).2 intentions supported
+      (execution.observe app who) action remembered produced
+    apply fresh
+    have inMemory : some original ∈ intentions := by
+      have projected : some original ∈ ((execution.recall who).zip intentions).map Prod.snd :=
+        List.mem_map.mpr ⟨(entry, some original), earlier, rfl⟩
+      rw [List.map_snd_zip aligned.symm.le] at projected
+      exact projected
+    exact List.mem_filterMap.mpr ⟨some original, inMemory, by simp only [Option.map_some, named]⟩
+  · have equal := List.mem_singleton.mp (by
+      simpa only [List.zip_cons_cons, List.zip_nil_left] using current)
+    have sameEntry := congrArg Prod.fst equal
+    dsimp only at sameEntry
+    rw [sameEntry] at sampledWithin
+    exact notWithin sampledWithin
+
+/-- Genuine prescribed transmissions reserve the contract's full inclusion bound
+ before the deadline, using actual opportunity rather than assumed packet timing. -/
+theorem prescribedReactivePolicy_inclusion_fits (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (inputs : PMF graph.Inputs) (horizon : Nat)
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    (delay bound : graph.EventId → Nat)
+    (opportunity : runtime.Opportunity leaks (inputs.map State.initial) horizon scheduler delay)
+    (timely : runtime.AsyncTimely delay bound) (ordered : graph.BarrierOrdered)
+    (remaining : Nat) (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
+    (trace : ((runtime.reactiveApplication leaks).protocol (inputs.map State.initial) horizon
+      scheduler).Trace (some ⟨remaining, some who, execution⟩))
+    (policy : graph.BehavioralPolicy who)
+    (consistent : (runtime.prescribedReactivePolicy leaks who policy).Consistent
+      (execution.recall who))
+    (action : (runtime.reactiveApplication leaks).Action)
+    (positive : action ∈ (runtime.prescribedReactivePolicy leaks who policy (execution.recall who)
+      (execution.observe (runtime.reactiveApplication leaks) who)).support) :
+    ∀ event, runtime.submittedEvent? leaks action = some event →
+      execution.application.publicView.InclusionFitsDeadline runtime bound event := by
+  rw [runtime.prescribedReactivePolicy_apply] at positive
+  obtain ⟨intentions, supported, produced⟩ :=
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ positive)
+  obtain ⟨⟨response, intention⟩, issued, rfl⟩ := PMF.support_map .. ▸ produced
+  intro event named
+  obtain ⟨material, transmitted⟩ : ∃ material, response.transmission = some material := by
+    cases transmission : response.transmission with
+    | none => simp only [submittedEvent?, transmission] at named; cases named
+    | some material => exact ⟨material, rfl⟩
+  cases intention with
+  | none =>
+      have absent := runtime.prescribedReactiveResponse_none_silent leaks who policy
+        (execution.recall who) intentions _ response issued
+      rw [transmitted] at absent
+      cases absent
+  | some remembered =>
+      have facts := runtime.prescribedReactiveResponse_transmitted_event leaks who policy
+        (execution.recall who) intentions _ response remembered issued material transmitted
+      have eventEq : remembered.event = event := by
+        have actual : material.call.packet.event? graph = some event := by
+          simpa only [submittedEvent?, transmitted] using named
+        exact Option.some.inj (facts.2.2.symm.trans actual)
+      obtain ⟨entered, activated, responded⟩ := runtime.prescribedReactiveResponse_within_delay
+        leaks inputs horizon scheduler delay opportunity ordered remaining execution who trace
+          policy consistent intentions supported response remembered issued
+      rw [← eventEq]
+      exact PublicView.inclusionFitsDeadline_of_response_delay runtime delay bound timely
+        execution.application.publicView remembered.event entered
+        (by simp only [facts.2.1, Option.isSome_some]) activated responded
 
 end Vegas.EventGraphRuntime

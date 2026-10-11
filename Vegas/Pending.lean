@@ -214,3 +214,4 @@ import Vegas.Pending.ReactiveChronologicalRecall
 import Vegas.Pending.ReactiveResolutionRecall
 import Vegas.Pending.ReactiveTimelyCalls
 import Vegas.Pending.ReactiveFrontierExpiry
+import Vegas.Pending.ReactivePrescribedAllocation

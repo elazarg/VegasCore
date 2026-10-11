@@ -28,6 +28,8 @@ unchanged runtime semantics, concrete unresolved issues and general proof road.
 General exact SE preservation under the existing asynchronous contract is
 refuted by the [checked native obstruction](commit-reveal-research/native-se-obstruction.md).
 The [protected timely execution theorem](../Vegas/Game/SourceServiceReactiveLaw.lean)
-preserves the initialized joint source-state law in sequential and
-concurrent-binding modes; equilibrium preservation requires separate evidence.
+and [authentic settled-audit theorem](../Vegas/Game/SourceServiceReactiveAudit.lean)
+preserve the initialized joint source-state and realized net-payoff law in
+sequential and concurrent-binding modes, for every authentic standard audit
+sampler and deposit. Equilibrium preservation requires separate evidence.
 A faithful operational watcher adapter remains open.

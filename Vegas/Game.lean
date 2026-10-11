@@ -303,3 +303,4 @@ import Vegas.Game.ValueBindingEdge
 import Vegas.Game.ValueAdmissionPreservation
 import Vegas.Game.SourceServicePrescribedCall
 import Vegas.Game.SourceServiceExpiry
+import Vegas.Game.SourceServiceReactiveAudit

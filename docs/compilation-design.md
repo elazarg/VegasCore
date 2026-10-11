@@ -52,9 +52,13 @@ facts into `Vegas.source_prescribed_terminal_joint_law` in
 [SourceServiceReactiveLaw](../Vegas/Game/SourceServiceReactiveLaw.lean).
 For finite players under `AsyncContract` and `AsyncTimely`, it preserves the
 joint original-initial-state and complete final-source-state law in sequential
-and concurrent-binding modes. Unilateral-deviation correspondence, off-path
-belief and rationality transport, native audit payoff equality, and
-concurrent-reveals preservation require separate evidence.
+and concurrent-binding modes. The
+[authentic settled-audit theorem](../Vegas/Game/SourceServiceReactiveAudit.lean)
+also proves zero standard audit charge throughout initialized prescribed runs
+and preserves the joint initial-state, final-state and realized net-payoff law,
+for every authentic audit sampler and deposit. Unilateral-deviation correspondence,
+off-path belief and rationality transport, and concurrent-reveals preservation
+require separate evidence.
 
 The [checked calendar stack](se-compilation-stack.md) supplies these edges for
 one service. The [asynchronous plan](se-schedule-generalization.md) states how to

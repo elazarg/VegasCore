@@ -84,10 +84,16 @@ original initial source state and the decoded complete terminal source state.
 `Vegas.source_prescribed_terminal_joint_law` in
 [SourceServiceReactiveLaw.lean](../../Vegas/Game/SourceServiceReactiveLaw.lean)
 proves this for finite players under `AsyncContract` and `AsyncTimely`, in
-sequential and concurrent execution modes. It derives the execution, recall,
+sequential and concurrent-binding modes. It derives the execution, recall,
 sampling and expiry invariants internally. The original private draw is sampled
-once and remains correlated with the final state. Audit and equilibrium claims
-require their separate strategic and settlement results.
+once and remains correlated with the final state. For the same prescribed
+policies and service assumptions, `Vegas.source_prescribed_initialized_audit_clear`
+and `Vegas.source_prescribed_terminal_settlement_law` in
+[SourceServiceReactiveAudit.lean](../../Vegas/Game/SourceServiceReactiveAudit.lean)
+prove zero standard audit charge at every initialized supported prefix and
+the exact joint initial-state, final-state and realized net-payoff law.
+These results allow every authentic settled-evidence sampler and arbitrary
+deposit; they do not establish unilateral-deviation or equilibrium preservation.
 
 If the clients voluntarily defer with total deferral weight delta, the
 two-way Nash error is at most epsilon plus `2 * delta * R`, where `R` bounds

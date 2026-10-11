@@ -181,10 +181,12 @@ theorem due_prescribed_intention_silent
   have initialEq : inputs.map (State.initial (graph := serviceGraph setup mode)) =
       serviceInitialLaw setup mode := by
     simp only [inputs, PMF.map_comp, Function.comp_def, serviceInitialLaw]
+  have margin := timely event (by simp only [actor, Option.isSome_some])
+  change delay event + bound event < deadline event at margin
   obtain ⟨entry, remembered, paired, named, responded, beforeReady, beforeActivated⟩ :=
-    runtime.due_owner_timely_sample_origin leaks inputs horizon scheduler delay bound
-      (initialEq ▸ opportunity) timely ordered control (initialEq ▸ trace) idle event who actor
-      ready entered activated due policy consistent quiet sent intentions supported
+    runtime.late_owner_timely_sample_origin leaks inputs horizon scheduler delay
+      (initialEq ▸ opportunity) ordered control (initialEq ▸ trace) idle event who actor
+      ready entered activated (by omega) policy consistent quiet sent intentions supported
   obtain ⟨oldHistory, oldMemory, produced⟩ := runtime.prescribedReactivePosterior_paired_response
     leaks who policy consistent intentions supported entry remembered paired
   have retained : entry ∈ control.execution.recall who := by
@@ -210,6 +212,65 @@ theorem due_prescribed_intention_silent
   exact ⟨entry, remembered, paired, named,
     runtime.prescribedReactivePosterior_silent_alignment leaks who policy consistent quiet
       intentions supported entry remembered paired silent⟩
+
+/-- Authentic prescribed binding decisions cannot remain ready at a due expiry;
+ the actual opportunity, retained sample and protected call already exclude it. -/
+theorem source_prescribed_due_binding_impossible
+    (setup : Setup (Player := Player) (L := L))
+    {mode : EventGraph.ExecutionMode}
+    {deadline : (serviceGraph setup mode).EventId → Nat}
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+    (horizon : Nat) (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+    (delay bound : (serviceGraph setup mode).EventId → Nat)
+    (opportunity : (serviceRuntime setup mode deadline).Opportunity leaks
+      (serviceInitialLaw setup mode) horizon scheduler delay)
+    (timely : (serviceRuntime setup mode deadline).AsyncTimely delay bound)
+    (inclusion : ProtectedInclusion (serviceRuntime setup mode deadline) leaks
+      (serviceInitialLaw setup mode) horizon scheduler bound)
+    (ordered : (serviceGraph setup mode).BarrierOrdered)
+    (control : (serviceApplication setup mode deadline leaks).Control)
+    (trace : ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
+      horizon scheduler).Trace (some control)) (idle : control.actor = none)
+    (who : Player) (event : (serviceGraph setup mode).EventId) (payload : L.Ty)
+    (outputEq : (serviceGraph setup mode).outputLayout event = .binding who payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode (serviceGraph setup mode).layout) outputEq)
+      ((serviceGraph setup mode).nodes event) = .bind who payload)
+    (node : nodeView (serviceGraph setup mode) event = .bind who payload outputEq codeEq)
+    (ready : control.execution.application.config.cut.Ready event)
+    (entered : Nat) (activated : control.execution.application.activatedAt event = some entered)
+    (due : deadline event ≤ control.execution.application.clock - entered)
+    (policy : (serviceGraph setup mode).BehavioralPolicy who)
+    (consistent : ((serviceRuntime setup mode deadline).prescribedReactivePolicy leaks who
+      policy).Consistent (control.execution.recall who))
+    (conformance : (serviceRuntime setup mode deadline).RecordedTimelyCalls leaks control.execution)
+    (intentions : List (Option (serviceGraph setup mode).Completion))
+    (supported : intentions ∈
+      (((serviceRuntime setup mode deadline).prescribedReactiveImplementation leaks who
+        policy).posterior (control.execution.recall who)).support) : False := by
+  let runtime := serviceRuntime setup mode deadline
+  obtain ⟨quiet, sent⟩ := runtime.reactiveEmission_history leaks (serviceInitialLaw setup mode)
+    horizon scheduler control trace who
+  obtain ⟨entry, remembered, paired, named, matching⟩ := due_prescribed_intention_silent setup leaks
+    horizon scheduler delay bound opportunity timely inclusion ordered control trace idle who event
+    (nodeView_bind_actor outputEq codeEq) ready entered activated due policy consistent quiet sent
+    conformance intentions supported
+  subst event
+  have retained : entry ∈ control.execution.recall who := by
+    have projected : entry ∈ ((control.execution.recall who).zip intentions).map Prod.fst :=
+      List.mem_map.mpr ⟨_, paired, rfl⟩
+    rwa [List.map_fst_zip (runtime.prescribedReactivePosterior_length leaks who policy
+      consistent _ supported).symm.le] at projected
+  let inputs : PMF (serviceGraph setup mode).Inputs := setup.initialLaw.map setup.eventInputs
+  have initialEq : inputs.map State.initial = serviceInitialLaw setup mode := by
+    simp only [inputs, serviceInitialLaw, PMF.map_comp, Function.comp_def]
+  obtain ⟨serial, _, allocated⟩ := runtime.reactiveFreshSlot_recorded leaks inputs horizon scheduler
+    control (initialEq.symm ▸ trace) who entry retained
+  have actionEq := matching.2.2.2.2.2.2
+  have sends := runtime.reactiveDecision_binding_eq leaks who who remembered.event payload
+    outputEq codeEq node remembered.action entry.beforeView.application serial allocated
+  have impossible := matching.2.1
+  rw [actionEq, sends] at impossible
+  cases impossible
 
 /-- Every actual supported expiry under the existing source service guarantees
  preserves the sampled frontier; silence, timing and accepted settlement are derived. -/
@@ -281,33 +342,10 @@ theorem source_prescribed_expiry_frontier
                 payload law outputEq codeEq node, PMF.mem_support_pure_iff] at changed
               exact stutter changed
           | bind owner payload outputEq codeEq =>
-              have actor := nodeView_bind_actor outputEq codeEq
-              obtain ⟨entry, remembered, paired, named, matching⟩ :=
-                due_prescribed_intention_silent setup leaks horizon scheduler delay bound
-                  opportunity timely inclusion ordered control trace idle owner event actor ready
-                  entered activated due (profile owner) (consistent owner)
-                  (quiet owner) (sent owner) conformance
-                  (memories owner) (supported owner)
-              subst event
-              have retained : entry ∈ control.execution.recall owner := by
-                have projected : entry ∈ ((control.execution.recall owner).zip
-                    (memories owner)).map Prod.fst := List.mem_map.mpr ⟨_, paired, rfl⟩
-                rwa [List.map_fst_zip (runtime.prescribedReactivePosterior_length leaks owner
-                  (profile owner) (consistent owner) _ (supported owner)).symm.le] at projected
-              let inputs : PMF (serviceGraph setup mode).Inputs :=
-                setup.initialLaw.map setup.eventInputs
-              have initialEq : inputs.map (State.initial (graph := serviceGraph setup mode)) =
-                  serviceInitialLaw setup mode := by
-                simp only [inputs, PMF.map_comp, Function.comp_def, serviceInitialLaw]
-              obtain ⟨serial, _, allocated⟩ := runtime.reactiveFreshSlot_recorded leaks inputs
-                horizon scheduler control (initialEq ▸ trace) owner entry retained
-              have actionEq := matching.2.2.2.2.2.2
-              have sentBinding := runtime.reactiveDecision_binding_eq leaks owner owner
-                remembered.event payload outputEq codeEq node
-                remembered.action entry.beforeView.application serial allocated
-              have impossible := matching.2.1
-              rw [actionEq, sentBinding] at impossible
-              cases impossible
+              exact (source_prescribed_due_binding_impossible setup leaks horizon scheduler delay
+                bound opportunity timely inclusion ordered control trace idle owner event payload
+                outputEq codeEq node ready entered activated due (profile owner) (consistent owner)
+                conformance (memories owner) (supported owner)).elim
           | resolve owner payload binding checks outputEq codeEq =>
               have actor := nodeView_resolve_actor outputEq codeEq
               obtain ⟨entry, remembered, paired, named, matching⟩ :=

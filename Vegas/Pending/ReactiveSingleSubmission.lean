@@ -2,6 +2,7 @@
 
 import Vegas.Pending.ReactivePolicyFacts
 import Vegas.Pending.ReactiveAsyncContract
+import Vegas.Pending.ReactiveSubmissionRecall
 import Interaction.ReactivePolicyInvariant
 
 /-! # Unique prescribed event submissions on actual runs -/
@@ -148,5 +149,47 @@ theorem prescribedReactiveSubmittedEvents_runRounds (runtime : EventGraphRuntime
     leaks who policy players focal
   apply invariant.runRounds scheduler count execution next _ supported
   simp only [empty, reactiveSubmittedEvents, List.filterMap_nil, List.nodup_nil]
+
+/-- A supported prescribed transmission is the first actual call for its event
+ when retained emissions faithfully record the previous submitted calls. -/
+theorem prescribedReactivePolicy_firstSubmission (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
+    (policy : graph.BehavioralPolicy who)
+    (history : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (action : (runtime.reactiveApplication leaks).Action)
+    (supported : action ∈ (runtime.prescribedReactivePolicy leaks who policy history view).support)
+    (faithful : ∀ entry ∈ history, ∀ material, entry.action.transmission = some material →
+      ∃ message, entry.emitted = some message ∧ message.payload.call = material.call.packet) :
+    runtime.firstSubmission leaks history action = true := by
+  classical
+  rcases runtime.prescribedReactivePolicy_transmission leaks who policy history view action
+      supported with silent | ⟨event, material, sent, named, absent⟩
+  · simp only [firstSubmission, submittedEvent?, silent]
+  · have submitted : runtime.submittedEvent? leaks action = some event := by
+      simp only [submittedEvent?, sent, named]
+    have unrecorded : runtime.eventRecorded leaks history event = false := by
+      cases recorded : runtime.eventRecorded leaks history event with
+      | false => rfl
+      | true =>
+          obtain ⟨entry, member, eventEq⟩ := (runtime.eventRecorded_iff leaks history event).mp
+            recorded
+          obtain ⟨prior, transmitted⟩ : ∃ prior, entry.action.transmission = some prior := by
+            cases transmission : entry.action.transmission with
+            | none =>
+                simp only [submittedEvent?, transmission] at eventEq
+                cases eventEq
+            | some prior => exact ⟨prior, rfl⟩
+          obtain ⟨message, emitted, packet⟩ := faithful entry member prior transmitted
+          have priorNamed : message.payload.call.event? graph = some event := by
+            rw [packet]
+            simpa only [submittedEvent?, transmitted] using eventEq
+          have recordedEmission : runtime.reactiveAlreadySubmitted leaks history event = true :=
+            List.any_eq_true.mpr ⟨entry, member, by simp only [emitted, Option.any_some, priorNamed,
+              decide_true]⟩
+          rw [absent] at recordedEmission
+          cases recordedEmission
+    simp only [firstSubmission, submitted, unrecorded, Bool.not_false]
+
 
 end Vegas.EventGraphRuntime

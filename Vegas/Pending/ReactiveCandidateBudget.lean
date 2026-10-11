@@ -43,7 +43,7 @@ def CandidateRecall (runtime : EventGraphRuntime graph)
   ∀ who serial, serial ∉ runtime.submittedCandidateSlots leaks (execution.recall who) →
     execution.application.candidates.lookup (who, .prepared serial) = .fresh
 
-private theorem submission_candidate_other (state : State graph) (sender observer : Player)
+theorem submission_candidate_other (state : State graph) (sender observer : Player)
     (serial : Nat) (material : Submission graph)
     (different : observer ≠ sender ∨ material.packet.preparedCommitment? ≠ some serial) :
     (submitStep (material.register state sender) sender material.packet).candidates.lookup
