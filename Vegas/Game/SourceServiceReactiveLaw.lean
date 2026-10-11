@@ -42,11 +42,13 @@ theorem source_prescribed_terminal_joint_store_law
   let inputs : PMF graph.Inputs := setup.initialLaw.map setup.eventInputs
   let players := fun owner => runtime.prescribedReactivePolicy leaks owner (profile owner)
   let safe : app.Execution → Prop := fun execution =>
-    execution.application.BindingInvariant ∧ runtime.RecordedTimelyCalls leaks execution
+    execution.application.BindingInvariant ∧ (∀ owner, runtime.RecordedTimelyCalls
+      leaks owner execution)
   have initialEq : inputs.map State.initial = serviceInitialLaw setup mode := by
     simp only [inputs, serviceInitialLaw, PMF.map_comp, Function.comp_def]
   have ordered := serviceGraph_revealRelaxedOrdered setup mode
-  have invariant := runtime.recordedTimelyCalls_policyInvariant leaks profile
+  have invariant := runtime.recordedTimelyCalls_policyInvariant leaks profile id
+      (fun owner => runtime.prescribedReactivePolicy leaks owner (profile owner)) (fun _ => rfl)
   have expiry : ∀ remaining execution,
       Nonempty (((runtime.reactiveApplication leaks).protocol (inputs.map State.initial)
         horizon scheduler).Trace (some ⟨remaining + 1, none, execution⟩)) → safe execution →

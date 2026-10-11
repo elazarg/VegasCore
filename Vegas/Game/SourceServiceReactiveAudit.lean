@@ -41,7 +41,7 @@ theorem source_prescribed_no_miss_round
     (trace : ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
       horizon scheduler).Trace (some ⟨remaining + 1, none, execution⟩))
     (valid : execution.application.BindingInvariant ∧
-      (serviceRuntime setup mode deadline).RecordedTimelyCalls leaks execution)
+      ∀ owner, (serviceRuntime setup mode deadline).RecordedTimelyCalls leaks owner execution)
     (consistent : ∀ who, ((serviceRuntime setup mode deadline).prescribedReactivePolicy leaks who
       (profile who)).Consistent (execution.recall who))
     (clear : ∀ who, execution.application.publicView.missedBindingBy who = false)
@@ -86,7 +86,7 @@ theorem source_prescribed_no_miss_round
         contract.opportunity timely contract.inclusion ordered
           ⟨remaining + 1, none, execution⟩
         trace rfl who event payload outputEq codeEq node ready entered activated due (profile who)
-        (consistent who) valid.2 intentions supported
+        (consistent who) (valid.2 who) intentions supported
 
 
 
@@ -109,7 +109,7 @@ theorem source_prescribed_no_miss_runRounds
     (trace : ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
       horizon scheduler).Trace (some ⟨remaining + count, none, execution⟩))
     (valid : execution.application.BindingInvariant ∧
-      (serviceRuntime setup mode deadline).RecordedTimelyCalls leaks execution)
+      ∀ owner, (serviceRuntime setup mode deadline).RecordedTimelyCalls leaks owner execution)
     (consistent : ∀ who, ((serviceRuntime setup mode deadline).prescribedReactivePolicy leaks who
       (profile who)).Consistent (execution.recall who))
     (clear : ∀ who, execution.application.publicView.missedBindingBy who = false)
@@ -133,7 +133,9 @@ theorem source_prescribed_no_miss_runRounds
         simpa only [ReactiveApplication.runRounds, PMF.bind_pure] using first
       obtain ⟨middleTrace⟩ := app.raw_trace_round (serviceInitialLaw setup mode) horizon scheduler
         players (remaining + count) execution middle before first
-      have nextValid := (runtime.recordedTimelyCalls_policyInvariant leaks profile).runRounds
+      have nextValid := (runtime.recordedTimelyCalls_policyInvariant leaks profile id
+      (fun owner => runtime.prescribedReactivePolicy leaks owner (profile owner))
+        (fun _ => rfl)).runRounds
         scheduler 1 execution middle valid one
       have nextConsistent := (app.consistentRecall_policyInvariant players).runRounds
         scheduler 1 execution middle consistent one
@@ -180,8 +182,9 @@ theorem source_prescribed_initialized_no_miss
       refine Set.mem_iUnion₂.mpr ⟨EventGraphRuntime.State.initial (setup.eventInputs initial),
         supportedState, ?_⟩
       exact (PMF.mem_support_pure_iff _ _).mpr rfl)
-  have valid : execution.application.BindingInvariant ∧ runtime.RecordedTimelyCalls leaks
-      execution := by
+  have valid : execution.application.BindingInvariant ∧ (∀ owner, runtime.RecordedTimelyCalls
+    leaks owner
+      execution) := by
     refine ⟨EventGraphRuntime.State.initial_bindingInvariant _, ?_⟩
     intro who entry retained
     exact (List.not_mem_nil retained).elim
@@ -240,11 +243,13 @@ theorem source_prescribed_prefix_frontiers
   let inputs : PMF graph.Inputs := setup.initialLaw.map setup.eventInputs
   let players := fun owner => runtime.prescribedReactivePolicy leaks owner (profile owner)
   let safe : app.Execution → Prop := fun execution =>
-    execution.application.BindingInvariant ∧ runtime.RecordedTimelyCalls leaks execution
+    execution.application.BindingInvariant ∧ (∀ owner, runtime.RecordedTimelyCalls
+      leaks owner execution)
   have initialEq : inputs.map State.initial = serviceInitialLaw setup mode := by
     simp only [inputs, serviceInitialLaw, PMF.map_comp, Function.comp_def]
   have ordered := serviceGraph_revealRelaxedOrdered setup mode
-  have invariant := runtime.recordedTimelyCalls_policyInvariant leaks profile
+  have invariant := runtime.recordedTimelyCalls_policyInvariant leaks profile id
+      (fun owner => runtime.prescribedReactivePolicy leaks owner (profile owner)) (fun _ => rfl)
   have expiry : ∀ remaining execution,
       Nonempty (((runtime.reactiveApplication leaks).protocol (inputs.map State.initial)
         horizon scheduler).Trace (some ⟨remaining + 1, none, execution⟩)) → safe execution →
@@ -503,7 +508,7 @@ theorem source_prescribed_packetFacts_runRounds
   let start := ReactiveApplication.Execution.initial app
     (EventGraphRuntime.State.initial (setup.eventInputs initial))
   have startSafe : start.application.BindingInvariant ∧
-      runtime.RecordedTimelyCalls leaks start := by
+      (∀ owner, runtime.RecordedTimelyCalls leaks owner start) := by
     refine ⟨EventGraphRuntime.State.initial_bindingInvariant _, ?_⟩
     intro owner entry member
     exact (List.not_mem_nil member).elim
@@ -545,7 +550,9 @@ theorem source_prescribed_packetFacts_runRounds
         simpa only [horizonEq, Nat.sub_zero] using startTrace
       obtain ⟨executionTrace⟩ := app.raw_trace_runRounds (serviceInitialLaw setup mode) horizon
         scheduler players (horizon - count) count start execution initializedTrace earlierSupport
-      have executionSafe := (runtime.recordedTimelyCalls_policyInvariant leaks profile).runRounds
+      have executionSafe := (runtime.recordedTimelyCalls_policyInvariant leaks profile id
+      (fun owner => runtime.prescribedReactivePolicy leaks owner (profile owner))
+        (fun _ => rfl)).runRounds
         scheduler count start execution startSafe earlierSupport
       have executionConsistent := (app.consistentRecall_policyInvariant players).runRounds
         scheduler count start execution startConsistent earlierSupport
@@ -577,7 +584,9 @@ theorem source_prescribed_packetFacts_runRounds
           | «include» id => cases active
           | application command => cases command <;> cases active
         have recallEq := app.environmentStep_recall execution middle command moved
-        have middleSafe := (runtime.recordedTimelyCalls_policyInvariant leaks profile).environment
+        have middleSafe := (runtime.recordedTimelyCalls_policyInvariant leaks profile id
+      (fun owner => runtime.prescribedReactivePolicy leaks owner (profile owner))
+        (fun _ => rfl)).environment
           execution middle command executionSafe moved
         have middleConsistent : ∀ owner, (players owner).Consistent (middle.recall owner) := by
           simpa only [recallEq] using executionConsistent

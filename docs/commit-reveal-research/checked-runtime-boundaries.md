@@ -1583,8 +1583,9 @@ actual joint private binding-result and next foreign activation-input law:
 the observer's full recall and observation are independent of the private
 binding choice. This holds for arbitrary leak rules because these binding
 envelopes are opaque. The initialized prescribed adapter derives fresh memory
-from the real trace. These local laws do not yet supply the full mixed-frontier
-induction or unilateral source-information/noise factorization.
+from the real trace. The source-service unilateral execution adapter supplies
+the operational mixed-frontier induction. Unilateral source-information/noise
+factorization remains a separate obligation.
 
 The actual native focal response has the same graph observation as its
 reconstructed original-action configuration when focal memory is empty;
@@ -1596,7 +1597,7 @@ the complete prior source history. Native focal expiry in
 [ReactiveDeviationCompletion](../../Vegas/Pending/ReactiveDeviationCompletion.lean)
 either stutters that configuration or produces a supported genuine graph step.
 These adapters impose no prescribed focal policy and assume no target law.
-The complete unilateral phase and source/noise law remain open.
+The complete unilateral source/noise law remains open.
 
 [ReactiveRetainedFrontier](../../Vegas/Pending/ReactiveRetainedFrontier.lean)
 owns the common reachable configuration, input/domain, output agreement
@@ -1630,8 +1631,9 @@ observation and the focal physical source observation. It uses genuine foreign
 completion replay and the strengthened owning observation commutation theorem,
 with `BarrierOrdered` explicit. The concurrent reveal operational laws do not
 by themselves supply this information claim for arbitrary adaptive focal
-deviations. Full unilateral phase composition, chronological source checkpoints
-and conditional raw traffic/noise factorization remain open.
+deviations. Operational initialization and whole-round composition are checked
+by the service adapters below. Private-binding source chronology and full
+conditional raw traffic/noise factorization remain open.
 
 The recovery owner also proves the exact zero-round physical-store law and
 action-indexed store utility at a genuine legal last activation. A recovery
@@ -1683,3 +1685,42 @@ uses actual continuations and derives both values; it does not assume a value
 correspondence. It proves a local action-value obstruction, without an
 equilibrium conclusion. Protected first-opportunity correspondence and optimality
 against arbitrary whole continuation policies remain separate obligations.
+
+[UnilateralExecution](../../Vegas/Game/SourceServiceUnilateralExecution.lean)
+checks every supported initialized bounded run with one arbitrary focal raw
+policy and prescribed foreign policies. For every compatible foreign posterior
+memory and empty focal auxiliary memory it derives a reachable mixed frontier,
+retaining focal physical completions, settled outputs and original source
+recall. It covers every source-service mode under genuine opportunity, timely
+deadlines and protected inclusion. The owning recorded-call predicate and its
+actual policy invariant are owner-local; the deviator's calls need not conform.
+Actual callbacks, sampling, inclusion, focal expiry, foreign binding and silent
+foreign resolution expiry compose through real rounds. Existing all-prescribed
+source joint-store, authentic audit and net-payoff capstones retain their scope.
+This is a support and structural correspondence result, not a full PMF law.
+
+[PublicCheckpoint](../../Vegas/Game/ReactiveSourcePublicCheckpoint.lean)
+derives chronological prefix and source observation decoding at an actual
+public-ready focal event in `toEventGraph`, with the compiler's explicit context
+reference/coverage hypotheses. The resulting source decision view and actual
+focal source history encode to the exact physical normalized observation.
+No source-state or desired-law premise is assumed. Private-binding chronology
+and the full conditional source/noise correspondence remain open.
+
+[ProtectedBobMenu](../../Vegas/Examples/LateOpeningRuntimeProtectedBobMenu.lean)
+proves the existing canonical Bob policy is globally admissible in the original
+bounded raw menu for every source profile, including failed binding declarations
+and arbitrary earlier traffic.
+[LabelContinuation](../../Vegas/Examples/LateOpeningRuntimeLabelContinuation.lean)
+derives full actual terminal-history permutation symmetry for every whole Bob
+alternative from the genuine fully mixed Bayes sequence retaining uniform Alice.
+A successful-publication summary retains missing and failed outputs explicitly;
+orbit averaging bounds gross payoff by `2/5`. A successful public Alice output
+at one representative is derived across its entire legal Bob information fiber
+and persists through every actual terminal continuation. For nonnegative source
+forfeit and Bob deposit, every whole Bob continuation alternative therefore has
+actual audited context value at most `2/5`, with arbitrary audit sampling and the
+original beliefs and opponent continuations. There is no payoff relabeling or
+assumed conditional independence. Safe attainment has its separate operational
+hypotheses; protected-first optimality, reference transfer and the assembled
+weak-PBE/selected-source-law capstones remain open.

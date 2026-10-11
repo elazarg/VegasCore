@@ -54,59 +54,79 @@ theorem prescribedReactivePolicy_emitted_acceptable (runtime : EventGraphRuntime
         (execution.recall who) intentions action remembered produced (same ▸ timely)
           material transmitted
 
-/-- Actual recorded transmissions are acceptable whenever their original
- author view was within the addressed event's deadline. -/
+/-- An actual author's recorded transmissions are acceptable whenever the
+original author view was within the addressed event's deadline. -/
 def RecordedTimelyCalls (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution : (runtime.reactiveApplication leaks).Execution) : Prop :=
-  ∀ who entry, entry ∈ execution.recall who → ∀ message event,
+    (who : Player) (execution : (runtime.reactiveApplication leaks).Execution) : Prop :=
+  ∀ entry, entry ∈ execution.recall who → ∀ message event,
     entry.emitted = some message → message.payload.call.event? graph = some event →
     entry.beforeView.application.publicView.WithinDeadline runtime event →
     runtime.freshServiceAcceptable entry.beforeView.application.publicView message
 
-/-- Actual prescribed callbacks retain their genuine conformance facts through
- arbitrary scheduler commands; no conformance is imposed on late calls. -/
+/-- Each selected authentic author retains its actual recorded conformance
+through arbitrary other-player responses and scheduler commands. -/
 theorem recordedTimelyCalls_policyInvariant (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (profile : graph.BehavioralProfile) :
-    (runtime.reactiveApplication leaks).PolicyInvariant
-      (fun who => runtime.prescribedReactivePolicy leaks who (profile who))
+    (profile : graph.BehavioralProfile)
+    {Selected : Type} (owners : Selected → Player)
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (authentic : ∀ index, players (owners index) =
+      runtime.prescribedReactivePolicy leaks (owners index) (profile (owners index))) :
+    (runtime.reactiveApplication leaks).PolicyInvariant players
       (fun execution => execution.application.BindingInvariant ∧
-        runtime.RecordedTimelyCalls leaks execution) := by
+        ∀ index, runtime.RecordedTimelyCalls leaks (owners index) execution) := by
   let app := runtime.reactiveApplication leaks
   constructor
   · intro execution who action valid positive
     refine ⟨(runtime.reactiveBindingInvariant leaks).respond execution who action valid.1, ?_⟩
-    intro observer entry retained message event emitted named timely
-    by_cases same : observer = who
-    · subst observer
+    intro index entry retained message event emitted named timely
+    by_cases same : owners index = who
+    · subst who
+      rw [authentic index] at positive
       rcases action with ⟨transmission⟩
       cases transmission with
       | none =>
           simp only [ReactiveApplication.Execution.respond, ↓reduceIte, List.mem_append,
             List.mem_singleton] at retained
           rcases retained with old | rfl
-          · exact valid.2 who entry old message event emitted named timely
+          · exact valid.2 index entry old message event emitted named timely
           · cases emitted
       | some material =>
           simp only [ReactiveApplication.Execution.respond, ↓reduceIte, List.mem_append,
             List.mem_singleton] at retained
           rcases retained with old | rfl
-          · exact valid.2 who entry old message event emitted named timely
+          · exact valid.2 index entry old message event emitted named timely
           · have sameMessage := Option.some.inj emitted
             subst message
-            apply runtime.prescribedReactivePolicy_emitted_acceptable leaks execution valid.1 who
-              (profile who) ⟨some material⟩ positive material rfl event
+            apply runtime.prescribedReactivePolicy_emitted_acceptable leaks execution valid.1
+              (owners index) (profile (owners index)) ⟨some material⟩ positive material rfl event
             · simpa only [MessageNetwork.submit, reactiveApplication, WitnessedSubmission.emit_call]
                 using named
             · exact timely
-    · rw [app.respond_recall_other execution who observer same action] at retained
-      exact valid.2 observer entry retained message event emitted named timely
+    · rw [app.respond_recall_other execution who (owners index) same action] at retained
+      exact valid.2 index entry retained message event emitted named timely
   · intro execution next command valid reached
     refine ⟨(runtime.reactiveBindingInvariant leaks).environmentStep execution next command
       valid.1 reached, ?_⟩
-    intro who entry retained message event emitted named timely
+    intro index entry retained message event emitted named timely
     rw [app.environmentStep_recall execution next command reached] at retained
-    exact valid.2 who entry retained message event emitted named timely
+    exact valid.2 index entry retained message event emitted named timely
+
+/-- Authentic foreign authors retain recorded conformance when the focal
+player uses an arbitrary raw policy in the unchanged reactive application. -/
+theorem recordedTimelyCalls_unilateral_policyInvariant (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (profile : graph.BehavioralProfile) (focal : Player)
+    (deviation : (runtime.reactiveApplication leaks).Policy) :
+    (runtime.reactiveApplication leaks).PolicyInvariant
+      (Function.update (fun owner => runtime.prescribedReactivePolicy leaks owner (profile owner))
+        focal deviation)
+      (fun execution => execution.application.BindingInvariant ∧
+        ∀ owner : {who : Player // who ≠ focal},
+          runtime.RecordedTimelyCalls leaks owner.val execution) := by
+  apply runtime.recordedTimelyCalls_policyInvariant leaks profile Subtype.val
+  intro owner
+  exact Function.update_of_ne owner.property _ _
 
 end Vegas.EventGraphRuntime

@@ -1,3 +1,12 @@
+import Vegas.Game.SourceServiceUnilateralEnvironment
+import Vegas.Game.SourceServiceUnilateralExecution
+import Vegas.Game.SourceServiceUnilateralExpiry
+import Vegas.Game.SourceServiceUnilateralRound
+import Vegas.Pending.ReactiveUnilateralCallback
+import Vegas.Pending.ReactiveUnilateralCommands
+import Vegas.Game.ReactiveSourcePublicCheckpoint
+import Vegas.Examples.LateOpeningRuntimeProtectedBobMenu
+import Vegas.Examples.LateOpeningRuntimeLabelContinuation
 import Vegas.Examples.LateOpeningRuntimeProtectedBobContinuation
 import Vegas.Examples.LateOpeningRuntimeProtectedBobTiming
 import Vegas.Examples.LateOpeningRuntimeRecoveryDomination
@@ -4204,3 +4213,157 @@ open Vegas.Examples.LateOpeningRuntimeRecoveryDomination in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms exists_positive_weight_action_reversal
+
+open Vegas in
+/-- info:
+'Vegas.freshCall_not_due'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms freshCall_not_due
+
+open Vegas in
+/-- info:
+'Vegas.recorded_prescribed_transmission_not_due'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms recorded_prescribed_transmission_not_due
+
+open Vegas in
+/-- info:
+'Vegas.due_prescribed_intention_silent'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms due_prescribed_intention_silent
+
+open Vegas in
+/-- info:
+'Vegas.source_prescribed_due_binding_impossible'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms source_prescribed_due_binding_impossible
+
+open Vegas in
+/-- info:
+'Vegas.source_prescribed_expiry_frontier'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms source_prescribed_expiry_frontier
+
+open Vegas in
+/-- info:
+'Vegas.source_unilateral_environment_frontier'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms source_unilateral_environment_frontier
+
+open Vegas in
+/-- info:
+'Vegas.source_unilateral_runRounds_frontier'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms source_unilateral_runRounds_frontier
+
+open Vegas in
+/-- info:
+'Vegas.source_unilateral_initialized_frontier'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms source_unilateral_initialized_frontier
+
+open Vegas in
+/-- info:
+'Vegas.source_unilateral_expiry_frontier'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms source_unilateral_expiry_frontier
+
+open Vegas in
+/-- info:
+'Vegas.source_unilateral_round_frontier'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms source_unilateral_round_frontier
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.prescribedReactivePolicy_emitted_acceptable'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms prescribedReactivePolicy_emitted_acceptable
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.recordedTimelyCalls_policyInvariant'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms recordedTimelyCalls_policyInvariant
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.recordedTimelyCalls_unilateral_policyInvariant'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms recordedTimelyCalls_unilateral_policyInvariant
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.respond_policy_unilateral_frontier_exists'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms respond_policy_unilateral_frontier_exists
+
+open Vegas.EventGraphRuntime.ReactiveUnilateralFrontier in
+/-- info:
+'Vegas.EventGraphRuntime.ReactiveUnilateralFrontier.sample_command_frontier_exists'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms sample_command_frontier_exists
+
+open Vegas in
+/-- info:
+'Vegas.encodeDecisionView?_unilateral_public_checkpoint'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms encodeDecisionView?_unilateral_public_checkpoint
+
+open Vegas.Examples.LateOpeningRuntimeProtectedBobMenu in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeProtectedBobMenu.canonical_admissible'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms canonical_admissible
+
+open Vegas.Examples.LateOpeningRuntimeLabelContinuation in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeLabelContinuation.continuation_law_permutation_of_uniform_sequence'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms continuation_law_permutation_of_uniform_sequence
+
+open Vegas.Examples.LateOpeningRuntimeLabelContinuation in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeLabelContinuation.continuation_successful_gross_le_of_uniform_sequence'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms continuation_successful_gross_le_of_uniform_sequence
+
+open Vegas.Examples.LateOpeningRuntimeLabelContinuation in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeLabelContinuation.terminal_alice_publication_persistent'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms terminal_alice_publication_persistent
+
+open Vegas.Examples.LateOpeningRuntimeLabelContinuation in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeLabelContinuation.information_alice_publication'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms information_alice_publication
+
+open Vegas.Examples.LateOpeningRuntimeLabelContinuation in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeLabelContinuation.continuation_payoff_le_of_uniform_sequence'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms continuation_payoff_le_of_uniform_sequence

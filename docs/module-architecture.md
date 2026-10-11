@@ -403,8 +403,26 @@ observation adapter explicitly requires `BarrierOrdered`; arbitrary focal raw
 deviations in concurrent reveal graphs need a separate information argument.
 Actual mixed sampling, chance, inclusion and expiry branches are checked, with
 their stated provenance, posterior and retained-silent-opportunity hypotheses.
-Composition into a complete unilateral phase law, chronological source
-checkpoints and conditional raw traffic/noise independence remain open.
+[Foreign author conformance](../Vegas/Pending/ReactiveTimelyCalls.lean)
+is owner-local and its invariant follows from actual policies only at the
+selected owners. An arbitrary focal raw policy imposes no conformance obligation
+on that owner. Existing all-prescribed source-store, audit and net-payoff laws
+retain their conclusions.
+[Mixed callbacks](../Vegas/Pending/ReactiveUnilateralCallback.lean),
+[complete native commands](../Vegas/Pending/ReactiveUnilateralCommands.lean),
+[source-service expiry](../Vegas/Game/SourceServiceUnilateralExpiry.lean),
+[environment dispatch](../Vegas/Game/SourceServiceUnilateralEnvironment.lean) and
+[whole rounds](../Vegas/Game/SourceServiceUnilateralRound.lean) feed
+[initialized unilateral execution](../Vegas/Game/SourceServiceUnilateralExecution.lean).
+Every supported bounded prefix admits a reachable mixed frontier for every
+compatible foreign posterior memory, under actual opportunity, timely deadline
+and protected-inclusion guarantees. This operational support theorem covers
+every source-service mode and retains arbitrary focal raw policies.
+[Public source decisions](../Vegas/Game/ReactiveSourcePublicCheckpoint.lean)
+derive a genuine source observation and its exact decision encoding from the
+actual frontier at public ready events in `toEventGraph`, with explicit compiler
+reference coverage hypotheses. Private-binding chronology and the full
+conditional source-information/noise law remain separate obligations.
 
 [Actual silent recovery continuations](../Vegas/Examples/LateOpeningRuntimeRecoveryDomination.lean)
 derive the native silent payoff law `pure(-D)` at the same genuine legal, ready,
@@ -416,3 +434,17 @@ if `R/2+D>0`. Every fixed positive `K_A` admits a positive service weight chosen
 afterward with this reversal, uniformly over all remaining Alice policies and
 initial bits and labels. This is a local action-value obstruction; protected
 first-opportunity correspondence and whole-policy recovery remain open.
+
+[Canonical Bob menu admissibility](../Vegas/Examples/LateOpeningRuntimeProtectedBobMenu.lean)
+represents every existing source-canonical Bob profile as a whole bounded raw
+policy, including failed bindings and arbitrary earlier traffic.
+[Whole Bob continuation ceilings](../Vegas/Examples/LateOpeningRuntimeLabelContinuation.lean)
+derive the full terminal-history orbit law for every whole Bob alternative from
+the coherent fully mixed Bayes sequence retaining uniform Alice. A finite
+successful-publication summary gives gross payoff at most `2/5`. The public
+successful Alice cell transfers across every legal Bob information fiber and
+persists through actual terminal continuations. Nonnegative source forfeit and
+Bob deposit give actual audited context value at most `2/5` for every whole Bob
+alternative, under arbitrary audit sampling. This bound is distinct from the
+Safe attainment theorem; first-binding selection and weak-PBE assembly remain
+open.

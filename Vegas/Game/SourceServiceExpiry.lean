@@ -86,7 +86,8 @@ theorem recorded_prescribed_transmission_not_due
     (faithful : ∀ record ∈ control.execution.recall owner, ∀ material,
       record.action.transmission = some material → ∃ message,
         record.emitted = some message ∧ message.payload.call = material.call.packet)
-    (conformance : (serviceRuntime setup mode deadline).RecordedTimelyCalls leaks control.execution)
+    (conformance : (serviceRuntime setup mode deadline).RecordedTimelyCalls leaks owner
+      control.execution)
     (earlier later : List (serviceApplication setup mode deadline leaks).PlayerEntry)
     (entry : (serviceApplication setup mode deadline leaks).PlayerEntry)
     (split : control.execution.recall owner = earlier ++ entry :: later)
@@ -126,7 +127,7 @@ theorem recorded_prescribed_transmission_not_due
     simpa only [decide_eq_true_eq] using (List.mem_filter.mp recordedMessage).2
   have call : FreshCall setup leaks owner event bound entry message :=
     ⟨⟨material, transmitted⟩, emitted, authored, named, beforeReady, fits,
-      conformance owner entry retained message event emitted named fits.withinDeadline⟩
+      conformance entry retained message event emitted named fits.withinDeadline⟩
   have once := runtime.prescribedReactiveSubmittedEvents_nodup leaks owner policy
     consistent quiet faithful
   rw [split] at once
@@ -166,7 +167,8 @@ theorem due_prescribed_intention_silent
     (sent : ∀ record ∈ control.execution.recall who, ∀ material,
       record.action.transmission = some material → ∃ message,
         record.emitted = some message ∧ message.payload.call = material.call.packet)
-    (conformance : (serviceRuntime setup mode deadline).RecordedTimelyCalls leaks control.execution)
+    (conformance : (serviceRuntime setup mode deadline).RecordedTimelyCalls leaks who
+      control.execution)
     (intentions : List (Option (serviceGraph setup mode).Completion))
     (supported : intentions ∈
       (((serviceRuntime setup mode deadline).prescribedReactiveImplementation
@@ -242,7 +244,8 @@ theorem source_prescribed_due_binding_impossible
     (policy : (serviceGraph setup mode).BehavioralPolicy who)
     (consistent : ((serviceRuntime setup mode deadline).prescribedReactivePolicy leaks who
       policy).Consistent (control.execution.recall who))
-    (conformance : (serviceRuntime setup mode deadline).RecordedTimelyCalls leaks control.execution)
+    (conformance : (serviceRuntime setup mode deadline).RecordedTimelyCalls leaks who
+      control.execution)
     (intentions : List (Option (serviceGraph setup mode).Completion))
     (supported : intentions ∈
       (((serviceRuntime setup mode deadline).prescribedReactiveImplementation leaks who
@@ -291,7 +294,8 @@ theorem source_prescribed_expiry_frontier
     (trace : ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
       horizon scheduler).Trace (some control)) (idle : control.actor = none)
     (valid : control.execution.application.BindingInvariant)
-    (conformance : (serviceRuntime setup mode deadline).RecordedTimelyCalls leaks control.execution)
+    (conformance : ∀ owner, (serviceRuntime setup mode deadline).RecordedTimelyCalls leaks owner
+      control.execution)
     (profile : (serviceGraph setup mode).BehavioralProfile)
     (memories : Player → List (Option (serviceGraph setup mode).Completion))
     (consistent : ∀ owner, ((serviceRuntime setup mode deadline).prescribedReactivePolicy leaks
@@ -345,14 +349,14 @@ theorem source_prescribed_expiry_frontier
               exact (source_prescribed_due_binding_impossible setup leaks horizon scheduler delay
                 bound opportunity timely inclusion ordered control trace idle owner event payload
                 outputEq codeEq node ready entered activated due (profile owner) (consistent owner)
-                conformance (memories owner) (supported owner)).elim
+                (conformance owner) (memories owner) (supported owner)).elim
           | resolve owner payload binding checks outputEq codeEq =>
               have actor := nodeView_resolve_actor outputEq codeEq
               obtain ⟨entry, remembered, paired, named, matching⟩ :=
                 due_prescribed_intention_silent setup leaks horizon scheduler delay bound
                   opportunity timely inclusion ordered control trace idle owner event actor ready
                   entered activated due (profile owner) (consistent owner)
-                  (quiet owner) (sent owner) conformance
+                  (quiet owner) (sent owner) (conformance owner)
                   (memories owner) (supported owner)
               subst event
               exact ReactiveFrontier.expire_silent_resolution runtime leaks ordered

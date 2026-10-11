@@ -234,3 +234,5 @@ import Vegas.Pending.ReactiveUnilateralObservation
 import Vegas.Pending.ReactiveUnilateralSampling
 import Vegas.Pending.ReactiveUnilateralSettlement
 import Vegas.Pending.ReactiveUnilateralSilentExpiry
+import Vegas.Pending.ReactiveUnilateralCallback
+import Vegas.Pending.ReactiveUnilateralCommands
