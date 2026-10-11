@@ -224,6 +224,12 @@ authenticate an envelope's complete payload and certificate.
 Likelihood adapters require grouped weights of actual compatible histories;
 absolute error bounds do not control beliefs when the observation mass also
 vanishes. Erasure-independent selection supplies no service contract by itself.
+An observation-based scheduler exists exactly when indistinguishable backend
+inputs receive the same full command distribution. The checked criterion in
+`Interaction.ReactiveSchedulerObservation` quantifies all inputs; its witness
+uses a wait command outside the observation image. Existing scheduler
+factorization then preserves execution laws for every player policy. Providing
+executable choice code and deployed settlement remains a separate task.
 The limiting Bayes cross identity retains nonzero timing factors as well as the
 zero-product exclusion corollary. Conditional domination and proportional Bayes
 transport derive the target mass positivity from their operational premises.

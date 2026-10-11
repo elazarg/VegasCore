@@ -56,4 +56,31 @@ theorem runRounds_eq_of_scheduler_factorization [DecidableEq Principal]
       app.runRounds (Scheduler.ofObservation app observe choose) players count execution := by
   rw [Scheduler.eq_of_factorization app scheduler observe choose factors]
 
+/-- A scheduler admits an exact restricted-observation command law precisely
+when it assigns equal command distributions to indistinguishable backend
+inputs. The witness is mathematical; executable backend realization requires
+an implementation of that law. -/
+theorem Scheduler.exists_observation_law_iff {Observation : Type}
+    (scheduler : app.Scheduler)
+    (observe : List app.EnvironmentEntry → app.EnvironmentView → Observation) :
+    (∃ choose : Observation → PMF app.Command,
+      scheduler = Scheduler.ofObservation app observe choose) ↔
+      ∀ firstPast secondPast firstView secondView,
+        observe firstPast firstView = observe secondPast secondView →
+        scheduler firstPast firstView = scheduler secondPast secondView := by
+  constructor
+  · rintro ⟨choose, rfl⟩ firstPast secondPast firstView secondView same
+    exact Scheduler.ofObservation_eq_of_observation_eq app observe choose same
+  · intro invariant
+    let commandLaw := fun input : List app.EnvironmentEntry × app.EnvironmentView =>
+      scheduler input.1 input.2
+    let observation := fun input : List app.EnvironmentEntry × app.EnvironmentView =>
+      observe input.1 input.2
+    have factors : commandLaw.FactorsThrough observation := fun first second same =>
+      invariant first.1 second.1 first.2 second.2 same
+    let choose := Function.extend observation commandLaw (fun _ => PMF.pure .wait)
+    refine ⟨choose, Scheduler.eq_of_factorization app scheduler observe choose ?_⟩
+    intro past view
+    exact (factors.extend_apply (fun _ => PMF.pure .wait) (past, view)).symm
+
 end Interaction.ReactiveApplication

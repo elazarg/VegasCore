@@ -20,6 +20,7 @@ import Vegas.Game.IntendedServiceCompilation
 import Vegas.Game.ReactiveSourceObservation
 import Vegas.Pending.ReactivePosteriorUniqueness
 import Vegas.Pending.ReactiveRecoveryContinuation
+import Interaction.ReactiveSchedulerObservation
 import Vegas.Examples.LateOpeningRuntimeSchedulerObservation
 import Vegas.Examples.LateOpeningRuntimeBobSunkAudit
 import Vegas.Examples.LateOpeningRuntimeBobDirtyPrefix
@@ -3134,3 +3135,10 @@ open Vegas.EventGraphRuntime in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms recoverReactivePolicy_final_callback_comparison
+
+open Interaction.ReactiveApplication in
+/-- info:
+'Interaction.ReactiveApplication.Scheduler.exists_observation_law_iff'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Scheduler.exists_observation_law_iff
