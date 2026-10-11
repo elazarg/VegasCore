@@ -203,6 +203,12 @@ Behavioral commutation preserves the typed store and original own recall;
 native traffic and conditional beliefs need their own argument. Enforcement
 uses actual gain and change in charge probability; it does not construct the
 runtime's collection mechanism or assessment.
+The final recovery callback comparison retains the genuine private posterior,
+every opponent continuation and the actual action-indexed native kernel. It
+requires source values to equal that kernel's expected payoff and supported
+source actions to maximize those values. Global integrability suffices for
+both compared laws. Deriving that value correspondence at arbitrary off-path
+sites and handling further callbacks remain separate obligations.
 The [event-kernel diamond](../Vegas/EventGraph/KernelCommutation.lean) requires
 kernel stability only along supported actions and intermediate outcomes. It
 preserves the typed store for arbitrary independent events; preserving original

@@ -3127,3 +3127,10 @@ open Vegas.Examples.LateOpeningRuntimeAllOrNoneTrafficAudit in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms successful_binding_continuation_payoff
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.recoverReactivePolicy_final_callback_comparison'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms recoverReactivePolicy_final_callback_comparison

@@ -8,7 +8,8 @@ import Interaction.ReactivePassiveContinuation
 The scheduler may include, reject, expire or inspect the authored packet, and
 other players may continue responding. If it never activates the recovering
 owner again, the full native continuation is a fixed action-indexed kernel.
-This identifies that kernel without asserting source payoff optimality for it.
+This identifies that kernel and compares recovery against alternative
+source-action lotteries when source values describe its actual payoff.
 -/
 
 noncomputable section
@@ -100,5 +101,90 @@ theorem recoverReactivePolicy_final_ready_callback (runtime : EventGraphRuntime 
   simp only [recoverReactiveResponse, turn, owner, ready, actor, ↓reduceDIte,
     ↓reduceIte, PMF.bind_map]
   rfl
+
+/-- Compare genuine recovery with arbitrary posterior-dependent source-action
+lotteries at a final callback. The source values must describe the actual
+action-indexed native continuation, including the chosen terminal payoff.
+All opponent policies remain in that continuation. This is a decision-site
+comparison, not an off-path source/runtime simulation theorem. -/
+theorem recoverReactivePolicy_final_callback_comparison (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (who : Player) (policy : graph.BehavioralPolicy who)
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler) (cursor count : Nat)
+    (absent : ∀ past view, cursor ≤ past.length →
+      ∀ command ∈ (scheduler past view).support,
+        command.actor? (runtime.reactiveApplication leaks) ≠ some who)
+    (execution : (runtime.reactiveApplication leaks).Execution)
+    (later : cursor ≤ execution.environmentRecall.length)
+    (event : graph.EventId)
+    (turn : PublicView.ownTurn?
+      (execution.observe (runtime.reactiveApplication leaks) who).application.publicView who =
+        some event)
+    (owner : (execution.observe (runtime.reactiveApplication leaks) who).application.who = who)
+    (ready : PublicView.EventReady
+      (execution.observe (runtime.reactiveApplication leaks) who).application.publicView event)
+    (actor : graph.actor? event = some who) :
+    let app := runtime.reactiveApplication leaks
+    let view := execution.observe app who
+    let history := execution.recall who
+    let posterior := (runtime.recoverReactiveImplementation leaks who policy).posterior history
+    let observation : graph.PlayerObservation who := owner ▸ view.application.observation
+    let sourceLaw := fun intentions => graph.normalizePolicy who policy event actor
+      { observation with ownActions := (observation.ownActions.map
+          (runtime.reactiveOriginal leaks who history intentions view.receipts)) }
+    let kernel := fun action => app.runRounds scheduler
+      (Function.update players who app.silentPolicy) count
+      (execution.respond app who
+        (runtime.reactiveDecision leaks who event action view.application))
+    ∀ (value : List (Option graph.Completion) → graph.Action event → ℝ)
+      (utility : app.Execution → ℝ)
+      (alternative : List (Option graph.Completion) → PMF (graph.Action event)),
+      (∀ intentions ∈ posterior.support, ∀ action,
+        expect (kernel action) utility = value intentions action) →
+      (∀ intentions ∈ posterior.support, ∀ action ∈ (sourceLaw intentions).support,
+        ∀ other, value intentions other ≤ value intentions action) →
+      PayoffIntegrable (posterior.bind fun intentions =>
+        (alternative intentions).bind kernel) utility →
+      PayoffIntegrable ((app.resume
+        (Function.update players who (runtime.recoverReactivePolicy leaks who policy))
+        (some who) execution).bind
+        (app.runRounds scheduler
+          (Function.update players who (runtime.recoverReactivePolicy leaks who policy)) count))
+        utility →
+      expect (posterior.bind fun intentions => (alternative intentions).bind kernel) utility ≤
+        expect ((app.resume
+          (Function.update players who (runtime.recoverReactivePolicy leaks who policy))
+          (some who) execution).bind
+          (app.runRounds scheduler
+            (Function.update players who (runtime.recoverReactivePolicy leaks who policy)) count))
+          utility := by
+  dsimp only
+  intro value utility alternative values maximal alternativeIntegrable recoveredIntegrable
+  rw [runtime.recoverReactivePolicy_final_ready_callback leaks who policy players scheduler
+    cursor count absent execution later event turn owner ready actor] at recoveredIntegrable ⊢
+  have alternativeLocal :=
+    payoffIntegrable_bind_conditional_on_support _ _ _ alternativeIntegrable
+  have recoveredLocal :=
+    payoffIntegrable_bind_conditional_on_support _ _ _ recoveredIntegrable
+  rw [expect_bind_tower _ _ _ alternativeIntegrable,
+    expect_bind_tower _ _ _ recoveredIntegrable]
+  apply expect_mono _
+    (payoffIntegrable_bind_conditionalExpectation _ _ _ alternativeIntegrable)
+    (payoffIntegrable_bind_conditionalExpectation _ _ _ recoveredIntegrable)
+  intro intentions supported
+  rw [expect_bind_tower _ _ _ (alternativeLocal intentions supported),
+    expect_bind_tower _ _ _ (recoveredLocal intentions supported)]
+  apply expect_le_const _ _
+    (payoffIntegrable_bind_conditionalExpectation _ _ _ (alternativeLocal intentions supported))
+  intro other _
+  have bound := expect_mono (fun action used =>
+    (values intentions supported other).trans_le
+      ((maximal intentions supported action
+        (reactiveRecoveryLaw_support intentions event _ action used) other).trans_eq
+          (values intentions supported action).symm))
+    (payoffIntegrable_constant _ _)
+    (payoffIntegrable_bind_conditionalExpectation _ _ _ (recoveredLocal intentions supported))
+  simpa only [expect_constant] using bound
 
 end Vegas.EventGraphRuntime

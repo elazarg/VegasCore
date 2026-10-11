@@ -38,6 +38,15 @@ still be specified beside any broader claim.
 
 ## Checked positive results
 
+- **Conditional final recovery comparison:** at an actual ready callback with
+  no subsequent activation of its owner, genuine recovery dominates arbitrary
+  posterior-dependent source-action lotteries if supported source actions
+  maximize values equal to the actual native continuation's expected payoff.
+  Every opponent policy and the genuine private posterior are retained; only
+  the two compared laws need global integrability. The value correspondence
+  remains an explicit hypothesis, so this does not establish arbitrary
+  off-path preservation. See
+  [ReactiveRecoveryContinuation.lean](../Vegas/Pending/ReactiveRecoveryContinuation.lean).
 - **SE existence in the bounded runtime:** finite response menus, finite
   branching of nature, a fixed horizon and the runtime's remembered
   observations and responses give an SE for arbitrary realized payoffs.
