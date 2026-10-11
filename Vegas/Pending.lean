@@ -215,3 +215,5 @@ import Vegas.Pending.ReactiveResolutionRecall
 import Vegas.Pending.ReactiveTimelyCalls
 import Vegas.Pending.ReactiveFrontierExpiry
 import Vegas.Pending.ReactivePrescribedAllocation
+import Vegas.Pending.ReactiveFirstOpportunity
+import Vegas.Pending.ReactiveRecordedOpportunity

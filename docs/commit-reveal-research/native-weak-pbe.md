@@ -8,8 +8,9 @@ has that law. This is a paper result for the full bounded raw response menu.
 It is not a general PBE preservation theorem or a machine-checked weak-PBE
 result. The companion [native SE obstruction](native-se-obstruction.md) is
 checked for $R>0$, $D>R$, $K_A>R/2$, $K_B>1$, full authentic audit and fair
-partial samples; the broader sampling/audit variants
-remain paper results.
+partial observations. Authentic partial sender coverage and all-or-none traffic
+sampling also have checked native and fixed-source obstruction capstones under
+their stated effective-collateral bounds.
 
 Here **weak PBE** means sequential rationality at every information set,
 against every available continuation policy, and Bayes' rule at every
@@ -344,8 +345,12 @@ observations and raw packet deviations. Fees, outside signaling, strategic
 builders, capital timing, physical chain capacity and finality are excluded,
 as in the companion native result.
 
-Status: the complete paper construction passed independent mathematical review
-and the coordinating review. These cover the full raw menu, label symmetry,
-coherent Bob continuation, Alice's normalized control limit, merged dirty
-information fibers and actual-positive Bayes override. No Lean theorem,
-runtime change or owner-controlled checklist completion is claimed.
+The checked construction currently includes
+[consistent Alice completion against any fixed full Bob policy](../../Vegas/Examples/LateOpeningRuntimeEquilibrium.lean)
+and [label symmetry through actual graph transitions, Bob's physical view and
+every raw packet handler](../../Vegas/Examples/LateOpeningRuntimeLabelSymmetry.lean).
+Alice's completion is rational on every legal fiber and has actual-positive
+Bayes beliefs. These results do not yet assemble the paper equilibrium.
+The full-history uniform-label reference posterior, Bob's reference continuation,
+actual-positive Bayes override and selected source-law capstone remain unproved
+in Lean. No owner-controlled checklist completion is claimed.

@@ -217,3 +217,5 @@ import Vegas.Examples.LateOpeningRuntimeAllOrNoneDirtyFailedBinding
 import Vegas.Examples.LateOpeningRuntimeAllOrNoneRationality
 import Vegas.Examples.LateOpeningRuntimeAllOrNoneEarlyBob
 import Vegas.Examples.LateOpeningRuntimeAllOrNoneSeObstruction
+import Vegas.Examples.ConcurrentRevealOrderLaw
+import Vegas.Examples.LateOpeningRuntimeLabelSymmetry

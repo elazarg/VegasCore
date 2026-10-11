@@ -110,6 +110,42 @@ preservation of information in a public mempool. The general Nash theorem
 above permits pending-packet observations. The checked native SE counterexample
 uses the partially public observations specified in its own model.
 
+For the ideal compiled graph, mandatory disclosure supplies a stronger scheduling
+result. `Vegas.runPolicies_mode_disclosing_joint_source_law` in
+[EventGraphDisclosurePolicy](../../Vegas/Compile/EventGraphDisclosurePolicy.lean)
+proves equality of the joint initial source state and decoded final source state
+with the genuine source law under every execution mode and every adaptive public
+graph scheduler. Its hypothesis is the existing source `Disclosing` predicate;
+failed bindings remain allowed. Publication kernels are derived to be independent
+of store and own history, discharging the existing relaxed scheduling machinery.
+This graph theorem does not yet extend the asynchronous runtime correspondence
+above to concurrent reveals.
+
+With withholding available, order independence fails even for actual terminal
+stores. [ConcurrentRevealOrderLaw](../../Vegas/Examples/ConcurrentRevealOrderLaw.lean)
+exhibits reachable simultaneously ready reveals in the existing auction example
+whose two execution orders yield different terminal-store laws. This concerns
+the unrestricted value-only profile; it does not refute the mandatory-disclosure
+fragment or establish an equilibrium obstruction.
+
+Actual first source responses under arbitrary raw opponents are checked in
+[ReactiveSourceFirstOpportunity](../../Vegas/Game/ReactiveSourceFirstOpportunity.lean).
+At an initialized supported checkpoint agreeing with the source state, the
+owner's first callback uses the posterior average of the original source commit
+or reveal kernel, retaining original own recall and its posterior correlations.
+[ReactiveFirstOpportunity](../../Vegas/Pending/ReactiveFirstOpportunity.lean)
+derives freshness before that callback and silence after a recorded turn from
+actual retained intention memory. The source checkpoint and first-opportunity
+conditions remain explicit.
+[ReactiveRecordedOpportunity](../../Vegas/Pending/ReactiveRecordedOpportunity.lean)
+also derives repeated-turn silence directly from actual legal raw trace recall,
+without a separately supplied callback-identity premise.
+[SourceServiceRawCompletionBoundary](../../Vegas/Game/SourceServiceRawCompletionBoundary.lean)
+proves actual bounded advance to the next source-event completion boundary under
+arbitrary raw player policies and the existing `CompletesPlay` contract. A complete
+unilateral-deviation law still needs source-checkpoint and recall coupling and
+the source-information factorization of traffic noise.
+
 ## Sequential equilibria exist in the bounded runtime
 
 A fixed physical horizon, finite local response menus, finitely branching
@@ -1413,3 +1449,28 @@ full-audit SE equivalence. Public binding omissions remain fully charged.
 The protected first-ready positive and same-fixture weak PBE still need
 their own checked capstones.
 All runtime scope exclusions stated above continue to apply.
+
+## Checked completion and label symmetry for weak PBE
+
+[PrescribedCompletion](../../GameTheoryExtensions/Analysis/Protocol/PrescribedCompletion.lean)
+constructs one consistent assessment in a finite terminating perfect-recall
+protocol, preserving prescribed decision laws for every fixed player and making
+each free player's whole continuation policy rational at every legal information
+site. Fully mixed references and the common consistency sequence are constructed
+inside the proof; no rationality premise is imposed on their approximants.
+
+`exists_consistent_alice_completion` in
+[LateOpeningRuntimeEquilibrium](../../Vegas/Examples/LateOpeningRuntimeEquilibrium.lean)
+instantiates this for every fixed full native Bob policy. Alice is rational on
+every information fiber, Bob's laws remain fixed, and Bayes holds at initialized
+positive-reach sites. This endpoint alone supplies neither Bob rationality nor
+the selected source terminal law.
+
+[LateOpeningRuntimeLabelSymmetry](../../Vegas/Examples/LateOpeningRuntimeLabelSymmetry.lean)
+checks invariance under changing Alice's ordinary private label while preserving
+her immutable bit. Actual graph transitions, reachable configurations, Bob's
+full physical view and initial authentic candidate meanings respect this change.
+Every raw commitment, opening and malformed-packet handler commutes with it,
+including rejection and failure cases. Full raw-history and reference-posterior
+symmetry, Bob's rational reference continuation, and the assembled weak-PBE
+capstone remain to be checked.

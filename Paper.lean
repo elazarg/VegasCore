@@ -1,3 +1,11 @@
+import Vegas.Game.SourceServiceRawCompletionBoundary
+import Vegas.Pending.ReactiveRecordedOpportunity
+import Vegas.Compile.EventGraphDisclosurePolicy
+import Vegas.Pending.ReactiveFirstOpportunity
+import Vegas.Game.ReactiveSourceFirstOpportunity
+import Vegas.Examples.ConcurrentRevealOrderLaw
+import Vegas.Examples.LateOpeningRuntimeLabelSymmetry
+import GameTheoryExtensions.Analysis.Protocol.PrescribedCompletion
 import Vegas.Examples.LateOpeningRuntimeAllOrNoneSeObstruction
 import Vegas.Examples.LateOpeningRuntimeAllOrNoneEarlyBob
 import Vegas.Examples.LateOpeningRuntimeAllOrNoneRationality
@@ -3259,3 +3267,87 @@ open Vegas.Examples.LateOpeningRuntimeSeObstruction in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms consistent_rational_terminal_law_ne_safe
+
+open GameTheory.Protocol.InformationModel in
+/-- info:
+'GameTheory.Protocol.InformationModel.exists_consistent_player_completion'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms exists_consistent_player_completion
+
+open Vegas.Examples.LateOpeningRuntimeEquilibrium in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeEquilibrium.exists_consistent_alice_completion'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms exists_consistent_alice_completion
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.prescribedReactivePosterior_fresh_before_turn_of_initialized_support'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms prescribedReactivePosterior_fresh_before_turn_of_initialized_support
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.prescribedReactivePolicy_silent_after_recorded_turn'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms prescribedReactivePolicy_silent_after_recorded_turn
+
+open Vegas in
+/-- info:
+'Vegas.prescribedReactivePolicy_source_commit_first_opportunity'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms prescribedReactivePolicy_source_commit_first_opportunity
+
+open Vegas in
+/-- info:
+'Vegas.prescribedReactivePolicy_source_reveal_first_opportunity'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms prescribedReactivePolicy_source_reveal_first_opportunity
+
+open Vegas in
+/-- info:
+'Vegas.runPolicies_mode_disclosing_joint_source_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms runPolicies_mode_disclosing_joint_source_law
+
+open Vegas.Examples.ConcurrentRevealOrderLaw in
+/-- info:
+'Vegas.Examples.ConcurrentRevealOrderLaw.terminal_store_laws_differ'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms terminal_store_laws_differ
+
+open Vegas.Examples.LateOpeningRuntimeLabelSymmetry in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeLabelSymmetry.replaceStateInputs_bob_view'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms replaceStateInputs_bob_view
+
+open Vegas.Examples.LateOpeningRuntimeLabelSymmetry in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeLabelSymmetry.replaceStateInputs_handle'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms replaceStateInputs_handle
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.prescribedReactivePolicy_silent_after_turn_of_initialized_support'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms prescribedReactivePolicy_silent_after_turn_of_initialized_support
+
+open Vegas in
+/-- info:
+'Vegas.raw_completion_boundary'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms raw_completion_boundary

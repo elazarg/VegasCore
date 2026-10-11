@@ -304,3 +304,5 @@ import Vegas.Game.ValueAdmissionPreservation
 import Vegas.Game.SourceServicePrescribedCall
 import Vegas.Game.SourceServiceExpiry
 import Vegas.Game.SourceServiceReactiveAudit
+import Vegas.Game.ReactiveSourceFirstOpportunity
+import Vegas.Game.SourceServiceRawCompletionBoundary
