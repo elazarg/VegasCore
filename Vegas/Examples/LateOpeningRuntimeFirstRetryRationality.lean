@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Examples.LateOpeningRuntimeContinuationRationality
 import Vegas.Examples.LateOpeningRuntimeFirstRetryComparison
 
 /-! # Exact first-prefix law under native sequential rationality
@@ -14,6 +15,7 @@ classes of every admitted genuine alias, including unreached classes.
 noncomputable section
 
 namespace Vegas.Examples.LateOpeningRuntimeFirstRetryRationality
+open LateOpeningRuntimeContinuationRationality
 
 open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory GameTheory.Protocol GameTheory.Math.Probability
@@ -30,11 +32,10 @@ theorem rational_comparison_law
     (marginPositive : 0 < LateOpeningRuntimeAliceRationality.margin
       weight reward forfeit deposit)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : AliceContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit) ∧
+      ReceiverContinuationsRational weight nonnegative assessment
+        (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (bit : Bool) (label : Fin 3) :
     originalLaw weight nonnegative assessment.strategy bit label =
       comparisonLaw weight nonnegative assessment.strategy bit label := by

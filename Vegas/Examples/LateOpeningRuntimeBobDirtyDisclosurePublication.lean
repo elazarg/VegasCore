@@ -8,6 +8,7 @@ import Vegas.Examples.LateOpeningRuntimeOptionalPacket
 import Vegas.Examples.LateOpeningRuntimeBobDirtyOptionalFiber
 import Vegas.Examples.LateOpeningRuntimeBobDirtyFinalFiber
 import Vegas.Examples.LateOpeningRuntimeBobDisclosurePublication
+import Vegas.Examples.LateOpeningRuntimeContinuationRationality
 
 /-! # Actual publication after a sunk rejected Bob receipt
 
@@ -24,6 +25,8 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
   GameTheory.Math.Probability
 open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeReadout
   LateOpeningRuntimeBobSuccessPayoff
+open LateOpeningRuntimeContinuationRationality
+
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
   (reward forfeit : ℝ) (deposit : Player → ℝ)
   (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
@@ -37,11 +40,8 @@ theorem final_response_publication
       (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
         (some ⟨6, some bob, execution⟩))
     (forfeitPositive : 0 < forfeit)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : ReceiverContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (response : app.Action)
     (supported : response ∈ (rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy bob
@@ -83,8 +83,8 @@ theorem final_response_publication
     have states := congrArg (fun state : Option app.Control =>
       state.map (fun control => control.execution)) (current.symm.trans valid.1)
     simpa only [Option.map_some, Option.some.injEq] using states.symm
-  have localRational := rational bob site
-  dsimp only at localRational
+  have localRational := rational site representative ⟨6, some bob, execution⟩
+    current rfl (Or.inr ⟨Or.inr rfl, answer, bound⟩)
   rw [assessment.continuationContext_eq_truncated_of_bounded
     (rawMenu.bounded initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
@@ -106,11 +106,8 @@ theorem optional_response_not_failure
       (LateOpeningRuntimeService.scheduler weight nonnegative)).Trace
         (some ⟨12, some bob, execution⟩))
     (forfeitPositive : 0 < forfeit)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : ReceiverContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (response : app.Action)
     (supported : response ∈ (rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy bob
@@ -136,8 +133,8 @@ theorem optional_response_not_failure
     change (rawMenu.signals _ _ _).infoOf bob representative.1.trace = _
     rw [rawMenu.info, current]
     rfl
-  have localRational := rational bob site
-  dsimp only at localRational
+  have localRational := rational site representative ⟨12, some bob, execution⟩
+    current rfl (Or.inr ⟨Or.inl rfl, answer, bound⟩)
   rw [assessment.continuationContext_eq_truncated_of_bounded
     (rawMenu.bounded initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
@@ -160,11 +157,8 @@ theorem unpublished_optional_publication
     (clock : execution.application.clock = 3)
     (serial : Nat) (rejected : ((bob, serial), false) ∈ execution.receipts)
     (forfeitPositive : 0 < forfeit)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : ReceiverContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (response : app.Action)
     (supported : response ∈ (rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy bob
@@ -292,11 +286,8 @@ theorem optional_response_publication
     (clock : execution.application.clock = 3)
     (serial : Nat) (rejected : ((bob, serial), false) ∈ execution.receipts)
     (forfeitPositive : 0 < forfeit)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : ReceiverContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (response : app.Action)
     (supported : response ∈ (rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy bob
@@ -368,11 +359,8 @@ theorem binding_response_publication (execution : app.Execution)
       some (.success answer))
     (serial : Nat) (rejected : ((bob, serial), false) ∈ execution.receipts)
     (forfeitPositive : 0 < forfeit)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : ReceiverContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (players : Player → app.Policy)
     (bobPolicy : players bob = rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy bob)
@@ -491,11 +479,8 @@ theorem dirty_binding_payoff_floor
       some (.success bit : PublicationResult Bool))
     (labelLow : (originalLabel execution).val < 2)
     (rewardNonnegative : 0 ≤ reward) (forfeitPositive : 0 < forfeit)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : ReceiverContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (response : app.Action)
     (supported : response ∈ (rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy bob
@@ -524,8 +509,8 @@ theorem dirty_binding_payoff_floor
   let representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       bob site.1 := ⟨history, same.symm⟩
   have current : representative.1.state = some ⟨14, some bob, execution⟩ := rfl
-  have localRational := rational bob site
-  dsimp only at localRational
+  have localRational := rational site representative ⟨14, some bob, execution⟩
+    current rfl (Or.inl ⟨rfl, ready, timely⟩)
   rw [assessment.continuationContext_eq_truncated_of_bounded
     (rawMenu.bounded initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
@@ -570,11 +555,8 @@ theorem binding_payoff_floor
     (labelLow : (originalLabel execution).val < 2)
     (rewardNonnegative : 0 ≤ reward) (forfeitPositive : 0 < forfeit)
     (bobDepositPositive : 0 < deposit bob)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : ReceiverContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (response : app.Action)
     (supported : response ∈ (rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy bob

@@ -3,6 +3,7 @@
 import Vegas.Examples.LateOpeningRuntimeGame
 import Vegas.Examples.LateOpeningRuntimeBobDirtyDisclosurePublication
 import Vegas.Examples.LateOpeningRuntimeAliceOpeningContinuation
+import Vegas.Examples.LateOpeningRuntimeContinuationRationality
 
 /-! # Protected Alice publication against rational future Bob play
 
@@ -14,6 +15,7 @@ The lottery bound includes omitted service and the exact Alice audit charge.
 
 noncomputable section
 namespace Vegas.Examples.LateOpeningRuntimeAliceProtectedPublication
+open LateOpeningRuntimeContinuationRationality
 open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory.Protocol GameTheory.Math.Probability GameTheory.Enforcement
 open LateOpeningRuntimeSource LateOpeningRuntimeReadout LateOpeningRuntimeService
@@ -137,11 +139,8 @@ theorem protected_publication_floor (execution : app.Execution)
     (rewardNonnegative : 0 ≤ reward) (forfeitPositive : 0 < forfeit)
     (bobDepositPositive : 0 < deposit bob)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : ReceiverContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (players : Player → app.Policy)
     (bobPolicy : players bob = rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy bob)
@@ -242,11 +241,8 @@ theorem accepted_genuine_floor (positive : 0 < weight)
     (rewardNonnegative : 0 ≤ reward) (forfeitPositive : 0 < forfeit)
     (bobDepositPositive : 0 < deposit bob)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : ReceiverContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (players : Player → app.Policy)
     (bobPolicy : players bob = rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy bob)
@@ -310,11 +306,8 @@ theorem opening_payoff_floor (positive : 0 < weight)
     (rewardNonnegative : 0 ≤ reward) (forfeitPositive : 0 < forfeit)
     (bobDepositPositive : 0 < deposit bob)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : ReceiverContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (players : Player → app.Policy)
     (bobPolicy : players bob = rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy bob)
@@ -365,6 +358,7 @@ theorem opening_payoff_floor (positive : 0 < weight)
 end Vegas.Examples.LateOpeningRuntimeAliceProtectedPublication
 
 namespace Vegas.Examples.LateOpeningRuntimeAliceProtectedPublication
+open LateOpeningRuntimeContinuationRationality
 open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory.Protocol GameTheory.Math.Probability GameTheory.Enforcement
 open LateOpeningRuntimeSource LateOpeningRuntimeReadout LateOpeningRuntimeService
@@ -416,11 +410,8 @@ theorem accepted_quiet_floor (positive : 0 < weight)
     (rewardNonnegative : 0 ≤ reward) (forfeitPositive : 0 < forfeit)
     (bobDepositPositive : 0 < deposit bob)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : ReceiverContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (players : Player → app.Policy)
     (bobPolicy : players bob = rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy bob)
@@ -481,11 +472,8 @@ theorem quiet_payoff_floor (positive : 0 < weight)
     (rewardNonnegative : 0 ≤ reward) (forfeitPositive : 0 < forfeit)
     (bobDepositPositive : 0 < deposit bob)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : ReceiverContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (players : Player → app.Policy)
     (bobPolicy : players bob = rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy bob)

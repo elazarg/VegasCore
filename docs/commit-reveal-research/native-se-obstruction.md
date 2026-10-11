@@ -260,9 +260,13 @@ SE theorem are unchanged. The same-fixture preserving weak PBE and the native
 first-ready positive have reviewed paper proofs, not checked compiler
 capstones. The checked uniform negative uses $K_A>R/2$ with full sender
 audit, or $\alpha K_A>R/2$ with the specified partial sender audit and full
-receiver audit. The all-traffic-or-none audit variant in
-[the detailed analysis](native-late-action-analysis.md#smaller-sender-deposit)
-remains a separate result. No theorem here establishes a general PBE preservation result
+receiver audit. With the authentic all-or-none traffic sampler, the checked
+bounds are $\alpha K_A>R/2$ and $\alpha K_B>1$, with sampling fixed before
+the builder. Public binding omissions remain fully charged.
+The native and fixed-source capstones are in
+[AllOrNoneSeObstruction](../../Vegas/Examples/LateOpeningRuntimeAllOrNoneSeObstruction.lean);
+they retain positive late failure, actual native SE existence and the literal
+joint store and realized-net-payoff law. No theorem here establishes a general PBE preservation result
 or a necessary-and-sufficient interface for SE preservation.
 
 A proposed positive for an unrestricted runtime must explicitly rule out this

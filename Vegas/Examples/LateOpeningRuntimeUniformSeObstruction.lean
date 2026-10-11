@@ -80,8 +80,13 @@ theorem exists_service_with_no_preserving_equilibrium
   · exact LateOpeningRuntimeEquilibrium.exists_sequential_equilibrium weight nonnegative
       reward forfeit (fun actual => PMF.pure actual) deposit
   · intro assessment equilibrium
+    have continuations :=
+      LateOpeningRuntimeContinuationRationality.continuations_rational_of_rational
+        weight nonnegative assessment
+          (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit)
+            equilibrium.1
     exact LateOpeningRuntimeSeObstruction.equilibrium_terminal_law_ne_safe weight nonnegative
       reward forfeit deposit positive rewardPositive forfeitPositive alicePositive.le bobCollateral
-        profitable assessment (normalized assessment equilibrium.1) equilibrium
+        profitable assessment (normalized assessment continuations) equilibrium
 
 end Vegas.Examples.LateOpeningRuntimeUniformSeObstruction

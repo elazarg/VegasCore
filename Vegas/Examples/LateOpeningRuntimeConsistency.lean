@@ -29,17 +29,12 @@ open LateOpeningRuntimeSource LateOpeningRuntimeService
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
 
-theorem equilibrium_consistency_witness
-    (reward forfeit : ℝ) (deposit : Player → ℝ)
+theorem consistency_witness
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (normalized : ResponsesNormalized weight nonnegative assessment.strategy)
-    (equilibrium : assessment.IsSequentialEquilibrium
+    (consistent : assessment.IsSequentiallyConsistent
       (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who)) :
+        (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain) :
     ∃ sequence : ℕ → (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment,
       (∀ n, (sequence n).IsFullyMixed ∧
         InformationModel.BehavioralAssessment.IsBayesConsistent
@@ -67,7 +62,7 @@ theorem equilibrium_consistency_witness
           Tendsto (fun n => conditionalPrefixProbability weight nonnegative site
             (sequence n).strategy readout value) atTop
               (nhds (readoutBelief weight nonnegative site assessment readout value)) := by
-  obtain ⟨sequence, approximate, converges⟩ := equilibrium.2
+  obtain ⟨sequence, approximate, converges⟩ := consistent
   obtain ⟨firstError, firstNonnegative, firstLimit, firstBound⟩ :=
     LateOpeningRuntimeAliceFirstTremble.exists_uniform_nongenuine_bound weight nonnegative
       (fun site => converges.strategy alice site) (by

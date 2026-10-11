@@ -7,8 +7,9 @@ analysis of an explicit finite configuration. Its full-menu native SE
 obstruction is checked for `R>0`, `D>R`, `K_A>R/2`, `K_B>1`, the full authentic
 audit and fair partial pending samples. See [the checked capstone](native-se-obstruction.md)
 for its exact quantifiers and scope, including the checked partial sender
-audit with full receiver evidence. The all-traffic-or-none
-audit strengthenings below remain paper proofs. The typed source, initial law,
+audit with full receiver evidence and the authentic all-or-none traffic
+audit with `alpha*K_A>R/2`, `alpha*K_B>1`. Its source capstone fixes the
+sampler and deposits before the source equilibrium and every builder. The typed source, initial law,
 utilities and source-prefix facts are checked in
 [LateOpeningRuntimeSource.lean](../../Vegas/Examples/LateOpeningRuntimeSource.lean).
 The exact initialized Safe joint law of every intended source SE, and a
@@ -459,9 +460,13 @@ full-audit utility at scaled deposits minus `(1-alpha)K_i` when player `i`
 has a public omission. Alice has no binding-omission branch. After an actual
 successful Bob binding, binding and store invariants exclude future omissions,
 so the scaled expected-utility identity holds throughout every supported
-continuation with arbitrary player policies. These identities do not identify
-realized settlement laws or establish the native SE obstruction; pre-binding
-continuation and rationality adapters remain separate obligations.
+continuation with arbitrary player policies. The checked
+[AllOrNonePreservingSettlement](../../Vegas/Examples/LateOpeningRuntimeAllOrNonePreservingSettlement.lean)
+separately transports exact source realized-law preservation on the unchanged
+profile. Actual Alice, exhaustive receiver and early-silence comparisons feed
+[AllOrNoneSeObstruction](../../Vegas/Examples/LateOpeningRuntimeAllOrNoneSeObstruction.lean),
+which retains the original consistency witness and proves the uniform native
+and fixed-source obstruction without assuming full-audit global equilibrium.
 
 The construction does not require late fresh value choices or failed-binding
 erasure. Its sender's value is an immutable successful initial commitment.
@@ -674,7 +679,8 @@ They retain original future policies and use one actual native consistency
 sequence, including at unreached decisions. The checked uniform theorem uses
 `K_A>R/2`. A distinct partial sender audit retains all receiver evidence and
 has a checked capstone when its effective sender collateral exceeds `R/2`.
-The all-traffic-or-none audit argument remains separate. The checked bound
+The authentic all-or-none traffic sampler has a checked capstone with
+`alpha*K_A>R/2` and `alpha*K_B>1`. The full-audit checked bound
 uses the conservative continuation margin
 `min(D-R,K_A-R/2) - (1-q)(D+K_A+R/2)`, with a separate actual high-label
 upper bound; it does not require a uniform half-reward floor for every label. None of these results assumes an invisible pending pool

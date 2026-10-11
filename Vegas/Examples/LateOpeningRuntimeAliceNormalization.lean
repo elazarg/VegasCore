@@ -3,6 +3,7 @@
 import Vegas.Examples.LateOpeningRuntimeAliceFirstRationality
 import Vegas.Examples.LateOpeningRuntimeAliceResponseNormalization
 import Vegas.Examples.LateOpeningRuntimeAliceOpeningRationality
+import Vegas.Examples.LateOpeningRuntimeContinuationRationality
 
 /-! # Fixed collateral and both actual final Alice response laws
 
@@ -21,6 +22,7 @@ or exclusion of a complete sequential equilibrium.
 noncomputable section
 
 namespace Vegas.Examples.LateOpeningRuntimeAliceNormalization
+open LateOpeningRuntimeContinuationRationality
 
 open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory.Protocol GameTheory.Math.Probability
@@ -46,7 +48,10 @@ theorem equilibrium_last_responses
         (fun actual => PMF.pure actual) deposit history.state who)) :
     LastAliceResponsesNormalized weight nonnegative assessment.strategy :=
   sequentially_rational_last_responses weight nonnegative reward forfeit deposit positive
-    rewardNonnegative forfeitNonnegative depositNonnegative marginPositive assessment equilibrium.1
+    rewardNonnegative forfeitNonnegative depositNonnegative marginPositive assessment
+    (continuations_rational_of_rational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit
+        (fun actual => PMF.pure actual) deposit) equilibrium.1)
 
 omit weight nonnegative in
 /-- Collateral precedes the builder. All actual information fibers of both
@@ -92,11 +97,15 @@ theorem exists_service_with_last_responses_normalized
     close.trans_le (min_le_left failureFloor _), marginPositive, ?_⟩
   intro assessment rational
   exact sequentially_rational_last_responses weight nonnegative reward forfeit deposit positive
-    rewardNonnegative (by linarith) (by linarith) marginPositive assessment rational
+    rewardNonnegative (by linarith) (by linarith) marginPositive assessment
+    (continuations_rational_of_rational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit
+        (fun actual => PMF.pure actual) deposit) rational)
 
 end Vegas.Examples.LateOpeningRuntimeAliceNormalization
 
 namespace Vegas.Examples.LateOpeningRuntimeAliceNormalization
+open LateOpeningRuntimeContinuationRationality
 open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory.Protocol
 open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeAliceContinuation
@@ -111,11 +120,10 @@ theorem sequentially_rational_responses (weight : ℝ) (nonnegative : 0 ≤ weig
     (marginPositive : 0 < continuationMargin
       weight reward forfeit deposit)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who)) :
+    (rational : AliceContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit) ∧
+      ReceiverContinuationsRational weight nonnegative assessment
+        (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit)) :
     ResponsesNormalized weight nonnegative assessment.strategy := by
   constructor
   · exact sequentially_rational_last_responses_of_continuation_margin
@@ -130,6 +138,7 @@ theorem sequentially_rational_responses (weight : ℝ) (nonnegative : 0 ≤ weig
 end Vegas.Examples.LateOpeningRuntimeAliceNormalization
 
 namespace Vegas.Examples.LateOpeningRuntimeAliceNormalization
+open LateOpeningRuntimeContinuationRationality
 open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory.Protocol GameTheory.Math.Probability
 open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeLateAcceptance
@@ -149,11 +158,11 @@ theorem exists_service_with_responses_normalized
         (LateOpeningRuntimeService.scheduler weight nonnegative) ∧
       0 < 1 - inclusionProbability weight ∧ 1 - inclusionProbability weight < failureFloor ∧
       ∀ assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment,
-        assessment.IsSequentiallyRational
-          (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-            (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-          (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-            (fun actual => PMF.pure actual) deposit history.state who) →
+        (AliceContinuationsRational weight nonnegative assessment
+          (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit) ∧
+          ReceiverContinuationsRational weight nonnegative assessment
+            (LateOpeningRuntimeGame.payoff reward forfeit
+              (fun actual => PMF.pure actual) deposit)) →
           ResponsesNormalized weight nonnegative assessment.strategy := by
   have totalPositive : 0 < forfeit + deposit alice + reward / 2 := by linarith
   have gapPositive : 0 < min (forfeit - reward) (deposit alice - reward / 2) := by

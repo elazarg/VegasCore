@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Examples.LateOpeningRuntimeContinuationRationality
 import Vegas.Examples.LateOpeningRuntimeAliceResponseNormalization
 import Vegas.Examples.LateOpeningRuntimeFirstOpeningPayoff
 import Vegas.Examples.LateOpeningRuntimeSecondOpeningPayoff
@@ -17,6 +18,7 @@ values. Publication forfeits and audit costs occur only on omission.
 noncomputable section
 
 namespace Vegas.Examples.LateOpeningRuntimeAliceTimingValues
+open LateOpeningRuntimeContinuationRationality
 open LateOpeningRuntimeAliceResponseNormalization
 
 open SourceProgram EventGraph EventGraphRuntime Interaction
@@ -64,11 +66,10 @@ variable (positive : 0 < weight) (rewardNonnegative : 0 ≤ reward)
   (forfeitPositive : 0 < forfeit) (aliceDepositNonnegative : 0 ≤ deposit alice)
   (bobDepositPositive : 0 < deposit bob)
   (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-  (rational : assessment.IsSequentiallyRational
-    (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-      (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-    (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-      (fun actual => PMF.pure actual) deposit history.state who))
+  (rational : ReceiverContinuationsRational weight nonnegative assessment
+    (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
+  (earlySilent : LateOpeningRuntimeEarlyResponseLaw.ResponsesSilent
+    weight nonnegative assessment.strategy)
   (players : Player → app.Policy)
   (bobPolicy : players bob =
     LateOpeningRuntimeFirstRetryComparison.players weight nonnegative assessment.strategy bob)
@@ -184,12 +185,12 @@ theorem opposite_preferences (rewardPositive : 0 < reward) :
   · intro bit
     simpa using difference bit 2
 
-include rewardNonnegative forfeitPositive aliceDepositNonnegative rational in
+include rewardNonnegative forfeitPositive aliceDepositNonnegative earlySilent in
 /-- Every available genuine first private alias has the canonical first
 timing value against the original entire future strategies. -/
 theorem first_genuine_response_value
     (normalized : PendingResponsesNormalized weight nonnegative assessment.strategy)
-    (collateral : 1 < deposit bob) (bit : Bool) (label : Fin 3) (submission : app.Submission)
+    (bit : Bool) (label : Fin 3) (submission : app.Submission)
     (available : (⟨some submission⟩ : app.Action) ∈ rawMenu.actions alice
       ((firstLateDecision bit label).recall alice)
       ((firstLateDecision bit label).observe app alice))
@@ -207,8 +208,9 @@ theorem first_genuine_response_value
   let actual := LateOpeningRuntimeFirstRetryComparison.players weight nonnegative
     assessment.strategy
   have law := LateOpeningRuntimeFirstOpeningPayoff.first_genuine_payoff_law weight nonnegative
-    reward forfeit deposit assessment rational forfeitPositive.le
-      normalized collateral bit label submission available genuine
+    reward forfeit deposit assessment
+      earlySilent
+      normalized bit label submission available genuine
   have expectations := congrArg (fun distribution : PMF ℝ => expect distribution id) law
   have integrable (seen : Bool) : PayoffIntegrable
       ((settlementCompletion weight nonnegative actual (beforeLottery bit label 0 seen)).map
@@ -231,12 +233,11 @@ theorem first_genuine_response_value
   unfold firstTimingValue
   ring
 
-include forfeitPositive rational in
+include earlySilent in
 /-- First late silence keeps the original final opening policy and gives the
 canonical second timing value, with all supported private encodings retained. -/
 theorem first_silence_response_value
     (normalized : EmptyResponsesNormalized weight nonnegative assessment.strategy)
-    (collateral : 1 < deposit bob)
     (bit : Bool) (label : Fin 3) :
     expect (LateOpeningRuntimeAliceFirstPacket.responseLaw weight nonnegative
       (LateOpeningRuntimeAliceFirstWitness.decisionHistory weight nonnegative bit label)
@@ -247,8 +248,9 @@ theorem first_silence_response_value
       (LateOpeningRuntimeFirstRetryComparison.players weight nonnegative assessment.strategy)
         bit label := by
   have law := LateOpeningRuntimeSecondOpeningPayoff.first_silence_payoff_law weight nonnegative
-    reward forfeit deposit forfeitPositive.le assessment normalized rational
-      collateral bit label
+    reward forfeit deposit assessment normalized
+      earlySilent
+      bit label
   have expectations := congrArg (fun distribution : PMF ℝ => expect distribution id) law
   simpa only [expect_map, Function.comp_def, id_eq, secondTimingValue, settlementValue,
     utility_payoff]

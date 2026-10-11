@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Examples.LateOpeningRuntimeContinuationRationality
 import Vegas.Examples.LateOpeningRuntimeAliceOpeningRationality
 import Interaction.ReactiveFiniteAssessment
 import GameTheory.Math.Probability.Convergence
@@ -17,6 +18,7 @@ assessment sequence. The sequence need not itself be sequentially rational.
 noncomputable section
 
 namespace Vegas.Examples.LateOpeningRuntimeAliceOpeningTremble
+open LateOpeningRuntimeContinuationRationality
 
 open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
@@ -164,11 +166,10 @@ theorem sequentially_rational_uniform_nongenuine_bound
     (depositNonnegative : 0 ≤ deposit alice)
     (marginPositive : 0 < margin weight reward forfeit deposit)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : AliceContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit) ∧
+      ReceiverContinuationsRational weight nonnegative assessment
+        (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (sequence : ℕ → (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (converges : InformationModel.BehavioralAssessmentConvergesPointwise sequence assessment) :
     ∃ error : ℕ → ℝ, (∀ n, 0 ≤ error n) ∧ Tendsto error atTop (nhds 0) ∧

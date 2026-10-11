@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Examples.LateOpeningRuntimeContinuationRationality
 import Vegas.Examples.LateOpeningRuntimeBobSafePosterior
 import Vegas.Examples.LateOpeningRuntimeAliceSuccessfulReduction
 import Vegas.Examples.LateOpeningRuntimeFirstRetryComparison
@@ -21,6 +22,7 @@ namespace Vegas.Examples.LateOpeningRuntimeBobSafeProbability
 open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
   GameTheory.Math.Probability
+open LateOpeningRuntimeContinuationRationality
 open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeBobSuccessInformation
   LateOpeningRuntimeBindingPosterior LateOpeningRuntimeSuccessPosterior
 open LateOpeningRuntimeAliceFailureReduction (bindingLaw)
@@ -80,22 +82,19 @@ theorem positive_safe_label_bounds
       depositNonnegative assessment rational response responseSupported selected label
 
 include representative current in
-/-- Global rationality uses the original native continuation context;
+/-- Receiver continuation rationality uses the original native context;
 bounded execution identifies it with the checked finite context. -/
 theorem rational_positive_safe_label_bounds
     (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit bob)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : ReceiverContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (positive : 0 < bindingSafeProbability weight nonnegative assessment.strategy
       decision.execution) (label : Fin 3) :
     (1 / 5 : ℝ) ≤ readoutBelief weight nonnegative site assessment initializedLabel (some label) ∧
       readoutBelief weight nonnegative site assessment initializedLabel (some label) ≤ 2 / 5 := by
-  have localRational := rational bob site
-  dsimp only at localRational
+  have localRational := rational site representative ⟨14, some bob, decision.execution⟩
+    current rfl (Or.inl ⟨rfl, decision.ready, decision.timely⟩)
   rw [assessment.continuationContext_eq_truncated_of_bounded
     (rawMenu.bounded initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
@@ -121,11 +120,8 @@ theorem positive_safe_label_product_lower_bound
     (reward forfeit : ℝ) (deposit : Player → ℝ)
     (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit bob)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : ReceiverContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (firstPositive : 0 < bindingSafeProbability weight nonnegative assessment.strategy
       firstDecision.execution)
     (secondPositive : 0 < bindingSafeProbability weight nonnegative assessment.strategy
@@ -158,11 +154,8 @@ theorem safe_zero_of_label_product_zero
     (reward forfeit : ℝ) (deposit : Player → ℝ)
     (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit bob)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : ReceiverContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (firstLabel secondLabel : Fin 3)
     (productZero : readoutBelief weight nonnegative firstSite assessment initializedLabel
         (some firstLabel) * readoutBelief weight nonnegative secondSite assessment initializedLabel
@@ -216,11 +209,8 @@ theorem rational_positive_safeProbability_label_bounds (positive : 0 < weight)
     (reward forfeit : ℝ) (deposit : Player → ℝ)
     (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit bob)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : ReceiverContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (safePositive : 0 < safeProbability
       (LateOpeningRuntimeFirstRetryComparison.players weight nonnegative assessment.strategy)
         bit seen) (label : Fin 3) :
@@ -249,11 +239,8 @@ theorem safeProbability_zero_of_label_product_zero (positive : 0 < weight)
     (reward forfeit : ℝ) (deposit : Player → ℝ)
     (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit bob)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : ReceiverContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (firstLabel secondLabel : Fin 3)
     (productZero : readoutBelief weight nonnegative firstSite assessment initializedLabel
         (some firstLabel) * readoutBelief weight nonnegative secondSite assessment initializedLabel

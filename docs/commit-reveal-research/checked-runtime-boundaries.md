@@ -1016,10 +1016,10 @@ sources of hidden raw traffic without prescribing a posterior.
 
 The corresponding final-after-silence bound also counts omission as a
 nongenuine response. All three finite-site bounds can be taken along **one
-actual SE consistency sequence**, with a single uniform error tending to zero.
+actual consistency sequence with normalized sender responses**, with a single uniform error tending to zero.
 The same sequence gives every initialized-input conditional-probability limit
 at every fresh Bob binding class. This is
-`Vegas.Examples.LateOpeningRuntimeConsistency.equilibrium_consistency_witness`
+`Vegas.Examples.LateOpeningRuntimeConsistency.consistency_witness`
 in [Consistency](../../Vegas/Examples/LateOpeningRuntimeConsistency.lean),
 using [AliceOpeningTremble](../../Vegas/Examples/LateOpeningRuntimeAliceOpeningTremble.lean).
 The approximating assessments need not themselves be sequentially rational.
@@ -1294,7 +1294,8 @@ mass differs from `omega*alpha*p_seen*(q or 1-q)/2` by at most
 type exactly. Thus the error remains relative even when both protected
 silence and genuine first emission vanish arbitrarily fast. The actual
 receiver-silence atom converges to one along the **same** assessment sequence
-whose target is globally sequentially rational. These are
+whose target has the checked early-silence response law. The approximating
+assessments need no rationality assumption. These are
 `Vegas.Examples.LateOpeningRuntimeInitializedSeenLikelihood.initialized_history_seen_error`
 and `.early_silence_tendsto` in
 [InitializedSeenLikelihood](../../Vegas/Examples/LateOpeningRuntimeInitializedSeenLikelihood.lean).
@@ -1396,7 +1397,19 @@ joint-law negative with the full authentic audit and fair partial observations,
 not yet a public-outcome-only negative or a statement about every blockchain.
 An authentic partial sender audit with full receiver coverage also has checked
 [native and fixed-source capstones](native-se-obstruction.md#quantifiers-and-collateral),
-using effective sender collateral above `R`. The smaller-deposit and
-all-traffic-or-none audit paper variants, protected first-ready positive, and
-same-fixture weak PBE still need their own checked capstones.
+using effective sender collateral above `R/2`.
+The authentic all-or-none traffic sampler also has checked native and
+fixed-source capstones for `0<alpha<=1`, `alpha*K_A>R/2`, `alpha*K_B>1`,
+`R>0` and `D>R` (with `D>=1` for the full-forfeiture source SE).
+`Vegas.Examples.LateOpeningRuntimeAllOrNoneSeObstruction.exists_source_equilibrium_with_uniform_service_obstruction`
+in [AllOrNoneSeObstruction](../../Vegas/Examples/LateOpeningRuntimeAllOrNoneSeObstruction.lean)
+fixes the sampler and deposits before the source SE and every requested failure
+bound; each bound gets one admissible fallible builder with native SEs, all
+of which fail to realize that source's joint store and realized-net-payoff law.
+Its proof transports actual continuation rationality on the same assessment,
+retains the original consistency sequence, derives sampled early silence, and
+separately transports the realized preservation law. It asserts no global
+full-audit SE equivalence. Public binding omissions remain fully charged.
+The protected first-ready positive and same-fixture weak PBE still need
+their own checked capstones.
 All runtime scope exclusions stated above continue to apply.

@@ -3,6 +3,7 @@
 import Vegas.Examples.LateOpeningRuntimeAliceProtectedPublication
 import Vegas.Examples.LateOpeningRuntimeAliceResponseNormalization
 import Vegas.Examples.LateOpeningRuntimeAliceOpeningRationality
+import Vegas.Examples.LateOpeningRuntimeContinuationRationality
 
 /-! # Actual supported opening responses of a sequentially rational profile
 
@@ -17,6 +18,7 @@ bound, with every later Bob policy retained.
 noncomputable section
 
 namespace Vegas.Examples.LateOpeningRuntimeAliceFinalSupport
+open LateOpeningRuntimeContinuationRationality
 
 open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
@@ -32,11 +34,8 @@ variable (weight : ℝ) (nonnegative : 0 ≤ weight)
   (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit alice)
   (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
   (normalized : EmptyResponsesNormalized weight nonnegative assessment.strategy)
-  (rational : assessment.IsSequentiallyRational
-    (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-      (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-    (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-      (fun actual => PMF.pure actual) deposit history.state who))
+  (rational : ReceiverContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
 
 include normalized in
 theorem decoded_response_genuine (decision : DecisionHistory weight nonnegative)

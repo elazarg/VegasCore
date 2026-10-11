@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Examples.LateOpeningRuntimeContinuationRationality
 import Vegas.Examples.LateOpeningRuntimeAliceFirstRationality
 import Interaction.ReactiveFiniteAssessment
 import GameTheory.Math.Probability.Convergence
@@ -18,6 +19,7 @@ even when the protected-silence prefix weights vanish.
 noncomputable section
 
 namespace Vegas.Examples.LateOpeningRuntimeAliceFirstTremble
+open LateOpeningRuntimeContinuationRationality
 
 open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
@@ -208,11 +210,10 @@ theorem sequentially_rational_uniform_nongenuine_bound
     (marginPositive : 0 < LateOpeningRuntimeAliceOpeningRationality.margin
       weight reward forfeit deposit)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : AliceContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit) ∧
+      ReceiverContinuationsRational weight nonnegative assessment
+        (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (sequence : ℕ → (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (converges : InformationModel.BehavioralAssessmentConvergesPointwise sequence assessment) :
     ∃ error : ℕ → ℝ, (∀ n, 0 ≤ error n) ∧ Tendsto error atTop (nhds 0) ∧
@@ -255,6 +256,9 @@ theorem equilibrium_consistency_nongenuine_bound
   refine ⟨sequence, admissible, converges, ?_⟩
   exact sequentially_rational_uniform_nongenuine_bound weight nonnegative reward forfeit deposit
     positive rewardNonnegative forfeitNonnegative depositNonnegative marginPositive
-      assessment equilibrium.1 sequence converges
+      assessment
+      (continuations_rational_of_rational weight nonnegative assessment
+        (LateOpeningRuntimeGame.payoff reward forfeit
+          (fun actual => PMF.pure actual) deposit) equilibrium.1) sequence converges
 
 end Vegas.Examples.LateOpeningRuntimeAliceFirstTremble

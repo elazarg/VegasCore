@@ -27,6 +27,17 @@ def observed (bit : Bool) (label : Fin 3) (slot : Fin 2) (seen : Bool) : app.Exe
   (beforeBob bit label slot).sampledActivation app bob
     (if seen then {(alice, 0)} else ∅)
 
+/-- The original receiver policy is silent at every canonical early sample,
+including samples outside the equilibrium's positive-reach support. -/
+def ResponsesSilent
+    (profile : ∀ who, (LateOpeningRuntimeGame.model weight nonnegative).BehavioralPolicy who) :
+    Prop :=
+  ∀ (bit : Bool) (label : Fin 3) (slot : Fin 2) (seen : Bool),
+    slot = 0 ∨ seen = false →
+      players weight nonnegative profile bob
+        ((observed bit label slot seen).recall bob)
+        ((observed bit label slot seen).observe app bob) = PMF.pure ⟨none⟩
+
 theorem observed_trace (bit : Bool) (label : Fin 3) (slot : Fin 2) (seen : Bool)
     (possible : slot = 0 ∨ seen = false) :
     Nonempty ((rawMenu.protocol initial LateOpeningRuntimeService.horizon
@@ -115,5 +126,19 @@ theorem sequentially_rational_response_law (reward forfeit : ℝ) (deposit : Pla
     ReactiveApplication.decodePolicy, ReactiveApplication.ResponseMenu.embedPolicy,
     ReactiveApplication.ResponseMenu.rawChoice, PMF.map_comp, Function.comp_def,
     actual, decision] using silent
+
+theorem sequentially_rational_responses_silent (reward forfeit : ℝ)
+    (deposit : Player → ℝ) (forfeitNonnegative : 0 ≤ forfeit)
+    (collateral : 1 < deposit bob)
+    (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
+    (rational : assessment.IsSequentiallyRational
+      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
+        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
+      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
+        (fun actual => PMF.pure actual) deposit history.state who)) :
+    ResponsesSilent weight nonnegative assessment.strategy := by
+  intro bit label slot seen possible
+  exact sequentially_rational_response_law weight nonnegative reward forfeit deposit
+    forfeitNonnegative collateral assessment rational bit label slot seen possible
 
 end Vegas.Examples.LateOpeningRuntimeEarlyResponseLaw

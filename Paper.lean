@@ -1,3 +1,8 @@
+import Vegas.Examples.LateOpeningRuntimeAllOrNoneSeObstruction
+import Vegas.Examples.LateOpeningRuntimeAllOrNoneEarlyBob
+import Vegas.Examples.LateOpeningRuntimeAllOrNoneRationality
+import Vegas.Examples.LateOpeningRuntimeAllOrNoneDirtyFailedBinding
+import Vegas.Examples.LateOpeningRuntimeContinuationRationality
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceCompilation
@@ -2285,10 +2290,10 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms Vegas.Examples.LateOpeningRuntimeLateResponseKernel.genuine_retry_publication_law
 
-/-- info: 'Vegas.Examples.LateOpeningRuntimeConsistency.equilibrium_consistency_witness'
+/-- info: 'Vegas.Examples.LateOpeningRuntimeConsistency.consistency_witness'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.Examples.LateOpeningRuntimeConsistency.equilibrium_consistency_witness
+#print axioms Vegas.Examples.LateOpeningRuntimeConsistency.consistency_witness
 
 /-- info: 'Vegas.Examples.LateOpeningRuntimePreservingSettlement.history_charge_zero'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -2755,11 +2760,11 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #print axioms
   Vegas.Examples.LateOpeningRuntimeAliceTimingFloor.first_value_lower_of_safe_zero
 
-/-- info: 'Vegas.Examples.LateOpeningRuntimeSeObstruction.equilibrium_excludes_one_safe_probability'
+/-- info: 'Vegas.Examples.LateOpeningRuntimeSeObstruction.consistent_rational_excludes_one_safe_probability'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
-  Vegas.Examples.LateOpeningRuntimeSeObstruction.equilibrium_excludes_one_safe_probability
+  Vegas.Examples.LateOpeningRuntimeSeObstruction.consistent_rational_excludes_one_safe_probability
 
 /-- info: 'Vegas.Examples.LateOpeningRuntimeSeObstruction.equilibrium_terminal_law_ne_safe'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -3201,3 +3206,56 @@ open Vegas.Examples.LateOpeningRuntimeAllOrNonePostBinding in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms final_binding_rationality_iff
+
+open Vegas.Examples.LateOpeningRuntimeContinuationRationality in
+/-- info: 'Vegas.Examples.LateOpeningRuntimeContinuationRationality.continuations_rational_of_rational'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms continuations_rational_of_rational
+
+open Vegas.Examples.LateOpeningRuntimeAllOrNoneDirtyFailedBinding in
+/-- info: 'Vegas.Examples.LateOpeningRuntimeAllOrNoneDirtyFailedBinding.dirty_failed_binding_rationality_scaled'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms dirty_failed_binding_rationality_scaled
+
+/-- info: 'Vegas.Examples.LateOpeningRuntimeAllOrNoneRationality.receiver_continuations_rational'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.LateOpeningRuntimeAllOrNoneRationality.receiver_continuations_rational
+
+open Vegas.Examples.LateOpeningRuntimeAllOrNoneEarlyBob in
+/-- info: 'Vegas.Examples.LateOpeningRuntimeAllOrNoneEarlyBob.sequentially_rational_early_response_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms sequentially_rational_early_response_law
+
+open Vegas.Examples.LateOpeningRuntimeAllOrNoneEarlyBob in
+/-- info: 'Vegas.Examples.LateOpeningRuntimeAllOrNoneEarlyBob.sequentially_rational_responses_silent'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms sequentially_rational_responses_silent
+
+open Vegas.Examples.LateOpeningRuntimeAllOrNoneSeObstruction in
+/-- info: 'Vegas.Examples.LateOpeningRuntimeAllOrNoneSeObstruction.equilibrium_terminal_law_ne_safe'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms equilibrium_terminal_law_ne_safe
+
+open Vegas.Examples.LateOpeningRuntimeAllOrNoneSeObstruction in
+/-- info: 'Vegas.Examples.LateOpeningRuntimeAllOrNoneSeObstruction.exists_service_with_no_preserving_equilibrium'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms exists_service_with_no_preserving_equilibrium
+
+open Vegas.Examples.LateOpeningRuntimeAllOrNoneSeObstruction in
+/-- info: 'Vegas.Examples.LateOpeningRuntimeAllOrNoneSeObstruction.exists_source_equilibrium_with_uniform_service_obstruction'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms exists_source_equilibrium_with_uniform_service_obstruction
+
+open Vegas.Examples.LateOpeningRuntimeSeObstruction in
+/-- info: 'Vegas.Examples.LateOpeningRuntimeSeObstruction.consistent_rational_terminal_law_ne_safe'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms consistent_rational_terminal_law_ne_safe

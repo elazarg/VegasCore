@@ -217,7 +217,10 @@ theorem sequentially_rational_constraints
     NativeResponseConstraints weight nonnegative reward forfeit deposit assessment := by
   refine ⟨LateOpeningRuntimeAliceResponseNormalization.sequentially_rational_last_responses
     weight nonnegative reward forfeit deposit positive rewardNonnegative forfeitPositive.le
-      depositNonnegative marginPositive assessment rational, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      depositNonnegative marginPositive assessment
+      (LateOpeningRuntimeContinuationRationality.continuations_rational_of_rational
+        weight nonnegative assessment (LateOpeningRuntimeGame.payoff reward forfeit
+          (fun actual => PMF.pure actual) deposit) rational), ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · intro site representative decision current
     exact LateOpeningRuntimeEarlyBobRationality.sequentially_rational_early_response_law
       weight nonnegative site representative decision current reward forfeit deposit
@@ -267,7 +270,10 @@ theorem sequentially_rational_constraints
   · intro site representative decision current
     exact LateOpeningRuntimeAliceFirstRationality.sequentially_rational_nongenuine_packet_zero
       weight nonnegative site representative decision current reward forfeit deposit positive
-        rewardNonnegative forfeitPositive.le depositNonnegative marginPositive assessment rational
+        rewardNonnegative forfeitPositive.le depositNonnegative marginPositive assessment
+        (LateOpeningRuntimeContinuationRationality.continuations_rational_of_rational
+          weight nonnegative assessment (LateOpeningRuntimeGame.payoff reward forfeit
+            (fun actual => PMF.pure actual) deposit) rational)
   · intro site representative decision current
     have localRational := rational bob site
     dsimp only at localRational

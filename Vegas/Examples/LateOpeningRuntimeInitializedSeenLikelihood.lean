@@ -174,14 +174,9 @@ theorem exists_seen_representative (positive : 0 < weight) (bit : Bool) (label :
 /-- The original early receiver atom converges to one at the actual legal
 seen-opening information class along the same assessment sequence. -/
 theorem early_silence_tendsto
-    (reward forfeit : ℝ) (deposit : Player → ℝ)
-    (forfeitNonnegative : 0 ≤ forfeit) (collateral : 1 < deposit bob)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (earlySilent : LateOpeningRuntimeEarlyResponseLaw.ResponsesSilent
+      weight nonnegative assessment.strategy)
     (sequence : ℕ → (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (converges : InformationModel.BehavioralAssessmentConvergesPointwise sequence assessment)
     (bit : Bool) (label : Fin 3) :
@@ -213,9 +208,7 @@ theorem early_silence_tendsto
     rw [← observed]
     exact limit
   have limit := decoded.toReal (⟨none⟩ : app.Action)
-  have silent := LateOpeningRuntimeEarlyResponseLaw.sequentially_rational_response_law
-    weight nonnegative reward forfeit deposit forfeitNonnegative collateral
-      assessment rational bit label 0 true (Or.inl rfl)
+  have silent := earlySilent bit label 0 true (Or.inl rfl)
   rw [silent, PMF.pure_apply_self, ENNReal.toReal_one] at limit
   simpa only [earlySilenceProbability, LateOpeningRuntimeEarlyResponseLaw.observed,
     ↓reduceIte] using limit

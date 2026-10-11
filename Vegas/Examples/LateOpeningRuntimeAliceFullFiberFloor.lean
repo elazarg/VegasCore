@@ -3,6 +3,7 @@
 import Vegas.Examples.LateOpeningRuntimeBobDisclosurePublication
 import Vegas.Examples.LateOpeningRuntimeBobSuccessBindingClean
 import Vegas.Examples.LateOpeningRuntimeAliceSuccessFloor
+import Vegas.Examples.LateOpeningRuntimeContinuationRationality
 
 /-! # Sender reward on every compatible successful-opening history
 
@@ -28,6 +29,8 @@ open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeReadou
 open LateOpeningRuntimeBobRawBinding (serviced)
 open LateOpeningRuntimeBobBindingDecision (context)
 
+open LateOpeningRuntimeContinuationRationality
+
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
   (site : (LateOpeningRuntimeGame.model weight nonnegative).InformationSite bob)
   (representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
@@ -41,11 +44,8 @@ disclosure law. Only the receiver follows the original assessed policy. -/
 theorem sequentially_rational_supported_publication (forfeitPositive : 0 < forfeit)
     (depositPositive : 0 < deposit bob)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : ReceiverContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (response : app.Action)
     (supported : response ∈ (currentResponses weight nonnegative decision assessment).support) :
     ∃ answer : Answer,
@@ -60,8 +60,8 @@ theorem sequentially_rational_supported_publication (forfeitPositive : 0 < forfe
           players 14 ((decisionOfInformation weight nonnegative site representative decision
             current history).execution.respond app bob response)).support,
           final.application.config.store (.inr bobRevealEvent) = some (.success answer) := by
-  have localRational := rational bob site
-  dsimp only at localRational
+  have localRational := rational site representative ⟨14, some bob, decision.execution⟩
+    current rfl (Or.inl ⟨rfl, decision.ready, decision.timely⟩)
   rw [assessment.continuationContext_eq_truncated_of_bounded
     (rawMenu.bounded initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
@@ -101,11 +101,8 @@ and retains exactly Alice's own full-record audit deduction. -/
 theorem sequentially_rational_supported_payoff_floor (rewardNonnegative : 0 ≤ reward)
     (forfeitPositive : 0 < forfeit) (depositPositive : 0 < deposit bob)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : ReceiverContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (response : app.Action)
     (supported : response ∈ (currentResponses weight nonnegative decision assessment).support)
     (history : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory bob site.1)

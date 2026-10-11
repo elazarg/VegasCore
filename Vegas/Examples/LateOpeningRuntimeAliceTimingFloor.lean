@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Examples.LateOpeningRuntimeContinuationRationality
 import Vegas.Examples.LateOpeningRuntimeAliceTimingValues
 
 /-! # Native first-opening floor when one successful transcript excludes Safe
@@ -13,6 +14,7 @@ conditional on inclusion for each of the first two private labels.
 noncomputable section
 
 namespace Vegas.Examples.LateOpeningRuntimeAliceTimingFloor
+open LateOpeningRuntimeContinuationRationality
 
 open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory GameTheory.Protocol GameTheory.Math.Probability
@@ -46,11 +48,8 @@ variable (positive : 0 < weight) (rewardNonnegative : 0 ≤ reward)
   (forfeitPositive : 0 < forfeit) (aliceDepositNonnegative : 0 ≤ deposit alice)
   (bobDepositPositive : 0 < deposit bob)
   (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-  (rational : assessment.IsSequentiallyRational
-    (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-      (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-    (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-      (fun actual => PMF.pure actual) deposit history.state who))
+  (rational : ReceiverContinuationsRational weight nonnegative assessment
+    (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
   (players : Player → app.Policy)
   (bobPolicy : players bob =
     LateOpeningRuntimeFirstRetryComparison.players weight nonnegative assessment.strategy bob)

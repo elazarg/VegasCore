@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Examples.LateOpeningRuntimeContinuationRationality
 import Vegas.Examples.LateOpeningRuntimeAliceResponseNormalization
 import Vegas.Examples.LateOpeningRuntimeAliceFirstFiber
 import Vegas.Examples.LateOpeningRuntimeAliceFirstRationality
@@ -19,6 +20,7 @@ assumption and no replacement of a future behavioral policy.
 noncomputable section
 
 namespace Vegas.Examples.LateOpeningRuntimeAliceFirstOptimality
+open LateOpeningRuntimeContinuationRationality
 
 open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
@@ -92,15 +94,11 @@ private theorem commit_value
 
 private theorem local_rational
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who)) :
+    (rational : AliceContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit)) :
     assessment.IsSequentiallyRationalAt site
       (context weight nonnegative site reward forfeit deposit assessment) := by
-  have localRational := rational alice site
-  dsimp only at localRational
+  have localRational := rational site
   rw [assessment.continuationContext_eq_truncated_of_bounded
     (rawMenu.bounded initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
@@ -124,11 +122,8 @@ include representative current in
 actual physical continuation value against every available raw response. -/
 theorem sequentially_rational_supported_response_maximal
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : AliceContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (response : app.Action)
     (supported : response ∈ (LateOpeningRuntimeFirstRetryComparison.firstResponses
       weight nonnegative assessment.strategy bit label).support)
@@ -176,11 +171,8 @@ include representative current in
 response with the entire original future retained. -/
 theorem sequentially_rational_value_ge_response
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : AliceContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (response : app.Action)
     (available : response ∈ rawMenu.actions alice ((firstLateDecision bit label).recall alice)
       ((firstLateDecision bit label).observe app alice)) :
@@ -227,11 +219,8 @@ include representative current in
 when the actual raw law assigns zero mass to nongenuine packets. -/
 theorem genuineProbability_one_of_preference
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : AliceContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (zero : ((LateOpeningRuntimeFirstRetryComparison.firstResponses weight nonnegative
       assessment.strategy bit label).toOuterMeasure {response | ¬ PermittedResponse
         weight nonnegative (LateOpeningRuntimeAliceFirstWitness.decisionHistory
@@ -274,11 +263,8 @@ include representative current in
 this implication does not require the nongenuine-packet exclusion premise. -/
 theorem sequentially_rational_genuineProbability_zero_of_preference
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : AliceContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (firstValue secondValue : ℝ)
     (openingValue : ∀ response ∈ rawMenu.actions alice
       ((firstLateDecision bit label).recall alice)
@@ -311,6 +297,7 @@ theorem sequentially_rational_genuineProbability_zero_of_preference
 end Vegas.Examples.LateOpeningRuntimeAliceFirstOptimality
 
 namespace Vegas.Examples.LateOpeningRuntimeAliceFirstOptimality
+open LateOpeningRuntimeContinuationRationality
 
 open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
@@ -334,11 +321,8 @@ condition for the strict first-opening preference. -/
 theorem sequentially_rational_genuineProbability_one_of_preference
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (normalized : FirstResponsesNormalized weight nonnegative assessment.strategy)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : AliceContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (firstValue secondValue : ℝ)
     (openingValue : ∀ response ∈ rawMenu.actions alice
       ((firstLateDecision bit label).recall alice)

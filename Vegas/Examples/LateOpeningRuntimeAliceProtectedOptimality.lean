@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Examples.LateOpeningRuntimeContinuationRationality
 import Vegas.Examples.LateOpeningRuntimeAliceProtectedFiber
 import Vegas.Examples.LateOpeningRuntimeAliceFirstOptimality
 import Vegas.Examples.LateOpeningRuntimePreservingSettlement
@@ -19,6 +20,7 @@ or replacement of a future policy is used.
 noncomputable section
 
 namespace Vegas.Examples.LateOpeningRuntimeAliceProtectedOptimality
+open LateOpeningRuntimeContinuationRationality
 
 open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
@@ -257,17 +259,13 @@ include current in
 first late continuation at every initialized bit and private label. -/
 theorem preserving_first_value_le_half
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : AliceContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (same : nativeTerminalLaw weight nonnegative reward forfeit (fun actual => PMF.pure actual)
       deposit assessment.strategy = safeTerminalLaw reward) :
     firstValue weight nonnegative bit label reward forfeit deposit assessment ≤ reward / 2 := by
   classical
-  have localRational := rational alice site
-  dsimp only at localRational
+  have localRational := rational site
   rw [assessment.continuationContext_eq_truncated_of_bounded
     (rawMenu.bounded initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
@@ -288,11 +286,8 @@ theorem preserving_first_value_le_half
 each legal current raw response with the original future retained. -/
 theorem first_value_ge_response
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : AliceContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (response : app.Action)
     (available : response ∈ rawMenu.actions alice ((firstLateDecision bit label).recall alice)
       ((firstLateDecision bit label).observe app alice)) :
@@ -341,11 +336,8 @@ theorem first_value_ge_response
 including types whose later first callback is off the assessed path. -/
 theorem preserving_first_value_le_half_all_types
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : AliceContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (same : nativeTerminalLaw weight nonnegative reward forfeit (fun actual => PMF.pure actual)
       deposit assessment.strategy = safeTerminalLaw reward) :
     firstValue weight nonnegative bit label reward forfeit deposit assessment ≤ reward / 2 := by

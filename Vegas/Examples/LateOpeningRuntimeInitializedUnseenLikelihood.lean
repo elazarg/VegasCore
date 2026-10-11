@@ -148,14 +148,9 @@ theorem initialized_history_unseen_error (profile : Profile weight nonnegative) 
 /-- The original early receiver silence atom converges at the actual empty
 sample information site along the same assessment sequence. -/
 theorem early_silence_tendsto
-    (reward forfeit : ℝ) (deposit : Player → ℝ)
-    (forfeitNonnegative : 0 ≤ forfeit) (collateral : 1 < deposit bob)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (earlySilent : LateOpeningRuntimeEarlyResponseLaw.ResponsesSilent
+      weight nonnegative assessment.strategy)
     (sequence : ℕ → (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (converges : InformationModel.BehavioralAssessmentConvergesPointwise sequence assessment)
     (bit : Bool) (label : Fin 3) :
@@ -187,9 +182,7 @@ theorem early_silence_tendsto
     rw [← observed]
     exact limit
   have limit := decoded.toReal (⟨none⟩ : app.Action)
-  have silent := LateOpeningRuntimeEarlyResponseLaw.sequentially_rational_response_law
-    weight nonnegative reward forfeit deposit forfeitNonnegative collateral
-      assessment rational bit label 0 false (Or.inr rfl)
+  have silent := earlySilent bit label 0 false (Or.inr rfl)
   rw [silent, PMF.pure_apply_self, ENNReal.toReal_one] at limit
   simpa only [earlySilenceProbability, LateOpeningRuntimeEarlyResponseLaw.observed,
     Bool.false_eq_true, ↓reduceIte] using limit

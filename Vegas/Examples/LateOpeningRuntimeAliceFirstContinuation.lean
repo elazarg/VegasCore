@@ -3,6 +3,7 @@
 import Vegas.Examples.LateOpeningRuntimeAliceFirstPacket
 import Vegas.Examples.LateOpeningRuntimeAliceFinalSupport
 import Vegas.Examples.LateOpeningRuntimeAliceQuietPrefix
+import Vegas.Examples.LateOpeningRuntimeContinuationRationality
 
 /-! # The incumbent continuation after first late silence
 
@@ -16,6 +17,7 @@ policy or restricting hidden histories.
 noncomputable section
 
 namespace Vegas.Examples.LateOpeningRuntimeAliceFirstContinuation
+open LateOpeningRuntimeContinuationRationality
 
 open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
@@ -30,11 +32,8 @@ variable (weight : ℝ) (nonnegative : 0 ≤ weight)
   (forfeitNonnegative : 0 ≤ forfeit) (depositNonnegative : 0 ≤ deposit alice)
   (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
   (normalized : EmptyResponsesNormalized weight nonnegative assessment.strategy)
-  (rational : assessment.IsSequentiallyRational
-    (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-      (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-    (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-      (fun actual => PMF.pure actual) deposit history.state who))
+  (rational : ReceiverContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
 
 include positive rewardNonnegative forfeitNonnegative depositNonnegative normalized in
 /-- The entire incumbent continuation following first-late silence retains

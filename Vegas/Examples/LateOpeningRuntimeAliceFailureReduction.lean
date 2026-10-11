@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Examples.LateOpeningRuntimeContinuationRationality
 import Vegas.Examples.LateOpeningRuntimeAliceFailureContinuation
 
 /-! # Observable receiver guesses on omitted-opening branches
@@ -13,6 +14,7 @@ logical guess is the certified bit. No posterior formula is assumed.
 noncomputable section
 
 namespace Vegas.Examples.LateOpeningRuntimeAliceFailureReduction
+open LateOpeningRuntimeContinuationRationality
 
 open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
@@ -155,11 +157,8 @@ theorem rational_known_binding_law
     (seen : finalSeen = true ∨ (earlySeen = true ∧ slot.val = 0))
     (forfeitPositive : 0 < forfeit) (depositPositive : 0 < deposit bob)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : ReceiverContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (players : Player → app.Policy)
     (bobPolicy : players bob = rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy bob) :
@@ -181,8 +180,8 @@ theorem rational_known_binding_law
   let representative : (LateOpeningRuntimeGame.model weight nonnegative).InformationHistory
       bob site.1 := ⟨history, same.symm⟩
   have current : representative.1.state = some ⟨14, some bob, decision.execution⟩ := rfl
-  have localRational := rational bob site
-  dsimp only at localRational
+  have localRational := rational site representative ⟨14, some bob, decision.execution⟩
+    current rfl (Or.inl ⟨rfl, decision.ready, decision.timely⟩)
   rw [assessment.continuationContext_eq_truncated_of_bounded
     (rawMenu.bounded initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
@@ -207,11 +206,8 @@ theorem receiver_known_expected_value
     (rewardNonnegative : 0 ≤ reward) (forfeitPositive : 0 < forfeit)
     (aliceDepositNonnegative : 0 ≤ deposit alice) (bobDepositPositive : 0 < deposit bob)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : ReceiverContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (players : Player → app.Policy)
     (bobPolicy : players bob = rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy bob) :
@@ -244,11 +240,8 @@ theorem receiver_empty_expected_value
     (rewardNonnegative : 0 ≤ reward) (forfeitPositive : 0 < forfeit)
     (aliceDepositNonnegative : 0 ≤ deposit alice) (bobDepositPositive : 0 < deposit bob)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : ReceiverContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (players : Player → app.Policy)
     (bobPolicy : players bob = rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy bob) :
@@ -274,11 +267,8 @@ omit site representative decision current in
 theorem empty_false_probability
     (forfeitPositive : 0 < forfeit) (depositPositive : 0 < deposit bob)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : ReceiverContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (players : Player → app.Policy)
     (bobPolicy : players bob = rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy bob) :
@@ -363,11 +353,8 @@ theorem receiver_empty_expected_value_closed
     (rewardNonnegative : 0 ≤ reward) (forfeitPositive : 0 < forfeit)
     (aliceDepositNonnegative : 0 ≤ deposit alice) (bobDepositPositive : 0 < deposit bob)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (rational : ReceiverContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
     (players : Player → app.Policy)
     (bobPolicy : players bob = rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative) assessment.strategy bob) :

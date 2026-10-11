@@ -48,14 +48,9 @@ private theorem inclusion_positive (positive : 0 < weight) : 0 < inclusionProbab
   positivity
 
 private theorem seen_factor_tendsto (positive : 0 < weight)
-    (reward forfeit : ℝ) (deposit : Player → ℝ)
-    (forfeitNonnegative : 0 ≤ forfeit) (collateral : 1 < deposit bob)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (earlySilent : LateOpeningRuntimeEarlyResponseLaw.ResponsesSilent
+      weight nonnegative assessment.strategy)
     (sequence : ℕ → (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (converges : InformationModel.BehavioralAssessmentConvergesPointwise sequence assessment)
     (error : ℕ → ℝ) (errorNonnegative : ∀ n, 0 ≤ error n)
@@ -76,8 +71,7 @@ private theorem seen_factor_tendsto (positive : 0 < weight)
     nonnegative (fun n => (sequence n).strategy) assessment.strategy
       (fun actual => converges.strategy alice actual) bit label
   have early := LateOpeningRuntimeInitializedSeenLikelihood.early_silence_tendsto
-    weight nonnegative reward forfeit deposit forfeitNonnegative collateral
-      assessment rational sequence converges bit label
+    weight nonnegative assessment earlySilent sequence converges bit label
   have close (n : ℕ) : ‖mass n - leading n‖ ≤
       error n * genuineProbability weight nonnegative (sequence n).strategy bit label := by
     rw [Real.norm_eq_abs]
@@ -104,14 +98,9 @@ private theorem seen_factor_tendsto (positive : 0 < weight)
   simpa only [seenFactor, mass, cancel] using limit
 
 private theorem unseen_factor_tendsto (positive : 0 < weight)
-    (reward forfeit : ℝ) (deposit : Player → ℝ)
-    (forfeitNonnegative : 0 ≤ forfeit) (collateral : 1 < deposit bob)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+    (earlySilent : LateOpeningRuntimeEarlyResponseLaw.ResponsesSilent
+      weight nonnegative assessment.strategy)
     (sequence : ℕ → (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (converges : InformationModel.BehavioralAssessmentConvergesPointwise sequence assessment)
     (error : ℕ → ℝ) (errorNonnegative : ∀ n, 0 ≤ error n)
@@ -140,8 +129,7 @@ private theorem unseen_factor_tendsto (positive : 0 < weight)
     nonnegative (fun n => (sequence n).strategy) assessment.strategy
       (fun actual => converges.strategy alice actual) bit label
   have early := LateOpeningRuntimeInitializedUnseenLikelihood.early_silence_tendsto
-    weight nonnegative reward forfeit deposit forfeitNonnegative collateral
-      assessment rational sequence converges bit label
+    weight nonnegative assessment earlySilent sequence converges bit label
   have close (n : ℕ) : ‖mass n - leading n‖ ≤ 2 * error n := by
     rw [Real.norm_eq_abs]
     exact LateOpeningRuntimeUnseenLikelihood.original_unseen_error weight nonnegative
@@ -185,17 +173,13 @@ include seenCurrent unseenCurrent in
 /-- Two actual accepted-opening information classes obey this posterior
 identity even when neither is reached in the limiting native strategy. -/
 theorem label_belief_cross_identity (positive : 0 < weight)
-    (reward forfeit : ℝ) (deposit : Player → ℝ)
-    (forfeitNonnegative : 0 ≤ forfeit) (bobCollateral : 1 < deposit bob)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (normalized : ResponsesNormalized weight nonnegative assessment.strategy)
-    (equilibrium : assessment.IsSequentialEquilibrium
+    (consistent : assessment.IsSequentiallyConsistent
       (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+        (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain)
+    (earlySilent : LateOpeningRuntimeEarlyResponseLaw.ResponsesSilent
+      weight nonnegative assessment.strategy)
     (sender holder : Fin 3) :
     LateOpeningRuntimeBindingPosterior.readoutBelief weight nonnegative seenSite assessment
         LateOpeningRuntimeSuccessPosterior.initializedLabel (some holder) *
@@ -211,8 +195,8 @@ theorem label_belief_cross_identity (positive : 0 < weight)
         (1 - genuineProbability weight nonnegative assessment.strategy bit sender / 2)) := by
   obtain ⟨sequence, approximate, converges, error, errorNonnegative, errorLimit,
     firstBound, retryBound, openingBound, _⟩ :=
-    LateOpeningRuntimeConsistency.equilibrium_consistency_witness weight nonnegative
-      reward forfeit deposit assessment normalized equilibrium
+    LateOpeningRuntimeConsistency.consistency_witness weight nonnegative
+      assessment normalized consistent
   let seen : InformationModel.AsymptoticHistoryLikelihood
       (M := LateOpeningRuntimeGame.model weight nonnegative) bob Unit (Fin 3) sequence
         (fun n label => typeWeight weight nonnegative (sequence n).strategy bit label) := {
@@ -245,8 +229,8 @@ theorem label_belief_cross_identity (positive : 0 < weight)
       field_simp
     timing_tendsto := by
       intro _ label
-      exact seen_factor_tendsto weight nonnegative positive reward forfeit deposit
-        forfeitNonnegative bobCollateral assessment equilibrium.1 sequence converges
+      exact seen_factor_tendsto weight nonnegative positive assessment earlySilent
+        sequence converges
           error errorNonnegative errorLimit retryBound bit label
   }
   let unseen : InformationModel.AsymptoticHistoryLikelihood
@@ -282,8 +266,8 @@ theorem label_belief_cross_identity (positive : 0 < weight)
       field_simp
     timing_tendsto := by
       intro _ label
-      exact unseen_factor_tendsto weight nonnegative positive reward forfeit deposit
-        forfeitNonnegative bobCollateral assessment equilibrium.1 sequence converges
+      exact unseen_factor_tendsto weight nonnegative positive assessment earlySilent
+        sequence converges
           error errorNonnegative errorLimit retryBound openingBound firstBound bit label
   }
   have factorLimit (first second : Fin 3) :
@@ -332,17 +316,13 @@ include seenCurrent unseenCurrent in
 /-- A type that certainly sends first and a type that certainly defers cannot
 both have positive posterior in the opposite accepted-opening observations. -/
 theorem label_belief_product_zero (positive : 0 < weight)
-    (reward forfeit : ℝ) (deposit : Player → ℝ)
-    (forfeitNonnegative : 0 ≤ forfeit) (bobCollateral : 1 < deposit bob)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (normalized : ResponsesNormalized weight nonnegative assessment.strategy)
-    (equilibrium : assessment.IsSequentialEquilibrium
+    (consistent : assessment.IsSequentiallyConsistent
       (rawMenu.decisionRecall initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who))
+        (LateOpeningRuntimeService.scheduler weight nonnegative)).decisionInformationAntichain)
+    (earlySilent : LateOpeningRuntimeEarlyResponseLaw.ResponsesSilent
+      weight nonnegative assessment.strategy)
     (sender holder : Fin 3)
     (sends : genuineProbability weight nonnegative assessment.strategy bit sender = 1)
     (holds : genuineProbability weight nonnegative assessment.strategy bit holder = 0) :
@@ -352,8 +332,7 @@ theorem label_belief_product_zero (positive : 0 < weight)
         LateOpeningRuntimeSuccessPosterior.initializedLabel (some sender) = 0 := by
   have cross := label_belief_cross_identity weight nonnegative bit seenSite seenRepresentative
     seenLabel seenCurrent unseenSite unseenRepresentative unseenLabel unseenCurrent positive
-      reward forfeit deposit forfeitNonnegative bobCollateral assessment normalized
-      equilibrium sender holder
+      assessment normalized consistent earlySilent sender holder
   simpa only [sends, holds, zero_div, sub_zero, one_mul, zero_mul, mul_one, mul_zero] using cross
 
 end Vegas.Examples.LateOpeningRuntimeLabelCross

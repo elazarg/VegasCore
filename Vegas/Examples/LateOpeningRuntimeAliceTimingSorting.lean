@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Examples.LateOpeningRuntimeContinuationRationality
 import Vegas.Examples.LateOpeningRuntimeAliceResponseNormalization
 import Vegas.Examples.LateOpeningRuntimeAliceTimingValues
 import Vegas.Examples.LateOpeningRuntimeAliceFirstOptimality
@@ -15,6 +16,7 @@ for two private labels sharing one immutable original bit.
 noncomputable section
 
 namespace Vegas.Examples.LateOpeningRuntimeAliceTimingSorting
+open LateOpeningRuntimeContinuationRationality
 open LateOpeningRuntimeAliceResponseNormalization
 
 open SourceProgram EventGraph EventGraphRuntime Interaction
@@ -35,14 +37,15 @@ variable (weight : ℝ) (nonnegative : 0 ≤ weight)
   (bobCollateral : 1 < deposit bob)
   (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
     (normalized : ResponsesNormalized weight nonnegative assessment.strategy)
-  (rational : assessment.IsSequentiallyRational
-    (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-      (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-    (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-      (fun actual => PMF.pure actual) deposit history.state who))
+  (rational : AliceContinuationsRational weight nonnegative assessment
+    (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit) ∧
+    ReceiverContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit))
+  (earlySilent : LateOpeningRuntimeEarlyResponseLaw.ResponsesSilent
+    weight nonnegative assessment.strategy)
 
-include rewardPositive forfeitPositive aliceDepositNonnegative bobCollateral
-  normalized rational in
+include rewardPositive forfeitPositive aliceDepositNonnegative
+  normalized earlySilent in
 private theorem genuine_value (bit : Bool) (label : Fin 3) (response : app.Action)
     (available : response ∈ rawMenu.actions alice ((firstLateDecision bit label).recall alice)
       ((firstLateDecision bit label).observe app alice))
@@ -60,18 +63,17 @@ private theorem genuine_value (bit : Bool) (label : Fin 3) (response : app.Actio
   rw [same] at available ⊢
   exact first_genuine_response_value weight nonnegative reward forfeit deposit
     rewardPositive.le forfeitPositive
-    aliceDepositNonnegative assessment rational
-      normalized.1.1
-      bobCollateral bit label submission available opening
+    aliceDepositNonnegative assessment earlySilent
+      normalized.1.1 bit label submission available opening
 
-include forfeitPositive bobCollateral normalized rational in
+include normalized earlySilent in
 private theorem silent_value (bit : Bool) (label : Fin 3) :
     LateOpeningRuntimeAliceFirstOptimality.responseValue weight nonnegative bit label
       reward forfeit deposit assessment ⟨none⟩ =
     secondTimingValue weight nonnegative reward forfeit deposit
       (players weight nonnegative assessment.strategy) bit label :=
   first_silence_response_value weight nonnegative reward forfeit deposit
-    forfeitPositive assessment rational normalized.1.2 bobCollateral
+    assessment earlySilent normalized.1.2
       bit label
 
 private theorem first_representative (bit : Bool) (label : Fin 3) :
@@ -89,7 +91,7 @@ private theorem first_representative (bit : Bool) (label : Fin 3) :
   exact ⟨site, ⟨history, information.symm⟩, rfl⟩
 
 include positive rewardPositive forfeitPositive aliceDepositNonnegative bobCollateral
-  normalized rational in
+  normalized rational earlySilent in
 /-- Every globally rational original native profile has a bit class with one
 private label sending at the first late opportunity and another waiting,
 where emission probability includes all legal genuine private aliases. -/
@@ -100,7 +102,7 @@ theorem opposite_emission_probabilities :
   have bobPositive : 0 < deposit bob := lt_trans zero_lt_one bobCollateral
   obtain ⟨bit, sender, holder, sendsBetter, holdsBetter⟩ := opposite_preferences weight nonnegative
     reward forfeit deposit positive rewardPositive.le forfeitPositive aliceDepositNonnegative
-      bobPositive assessment rational (players weight nonnegative assessment.strategy) rfl
+      bobPositive assessment rational.2 (players weight nonnegative assessment.strategy) rfl
         rewardPositive
   obtain ⟨senderSite, senderHistory, senderCurrent⟩ := first_representative
     weight nonnegative bit sender
@@ -110,21 +112,19 @@ theorem opposite_emission_probabilities :
   · exact sequentially_rational_genuineProbability_one_of_preference
       weight nonnegative senderSite
         senderHistory bit sender senderCurrent reward forfeit deposit
-          assessment normalized.2 rational
+          assessment normalized.2 rational.1
           _ _ (genuine_value weight nonnegative reward forfeit deposit rewardPositive
-            forfeitPositive aliceDepositNonnegative bobCollateral assessment normalized
-              rational bit sender)
+            forfeitPositive aliceDepositNonnegative assessment normalized
+              earlySilent bit sender)
           (silent_value weight nonnegative reward forfeit deposit
-            forfeitPositive bobCollateral assessment normalized
-              rational bit sender) sendsBetter
+            assessment normalized earlySilent bit sender) sendsBetter
   · exact sequentially_rational_genuineProbability_zero_of_preference
       weight nonnegative holderSite
-        holderHistory bit holder holderCurrent reward forfeit deposit assessment rational _ _
+        holderHistory bit holder holderCurrent reward forfeit deposit assessment rational.1 _ _
           (genuine_value weight nonnegative reward forfeit deposit rewardPositive
-            forfeitPositive aliceDepositNonnegative bobCollateral assessment normalized
-              rational bit holder)
+            forfeitPositive aliceDepositNonnegative assessment normalized
+              earlySilent bit holder)
           (silent_value weight nonnegative reward forfeit deposit
-            forfeitPositive bobCollateral assessment normalized
-              rational bit holder) holdsBetter
+            assessment normalized earlySilent bit holder) holdsBetter
 
 end Vegas.Examples.LateOpeningRuntimeAliceTimingSorting

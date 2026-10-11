@@ -7,7 +7,7 @@ import Vegas.Examples.LateOpeningRuntimeAliceFinalSupport
 
 /-! # Complete native payoff law after first late silence
 
-An actual rational profile is silent at the early receiver activation and
+A receiver profile silent at the early activation and
 emits a genuine opening at the sender's empty final activation. Keeping
 both original policies and all private aliases, first late silence has
 exactly the canonical second-opening payoff distribution.
@@ -28,14 +28,10 @@ open LateOpeningRuntimeSource LateOpeningRuntimeService LateOpeningRuntimeLatePr
 
 variable (weight : ℝ) (nonnegative : 0 ≤ weight)
   (reward forfeit : ℝ) (deposit : Player → ℝ)
-  (forfeitNonnegative : 0 ≤ forfeit)
   (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
   (normalized : EmptyResponsesNormalized weight nonnegative assessment.strategy)
-  (rational : assessment.IsSequentiallyRational
-    (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-      (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-    (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-      (fun actual => PMF.pure actual) deposit history.state who))
+  (earlySilent : LateOpeningRuntimeEarlyResponseLaw.ResponsesSilent
+    weight nonnegative assessment.strategy)
 
 include normalized in
 theorem final_genuine_payoff_law (bit : Bool) (label : Fin 3) :
@@ -84,8 +80,8 @@ theorem final_genuine_payoff_law (bit : Bool) (label : Fin 3) :
           simpa only [settlementCompletion] using law
     _ = _ := PMF.bind_const _ _
 
-include rational forfeitNonnegative normalized in
-theorem first_silence_payoff_law (collateral : 1 < deposit bob)
+include earlySilent normalized in
+theorem first_silence_payoff_law
     (bit : Bool) (label : Fin 3) :
     (LateOpeningRuntimeAliceFirstPacket.responseLaw weight nonnegative
       (LateOpeningRuntimeAliceFirstWitness.decisionHistory weight nonnegative bit label)
@@ -95,9 +91,7 @@ theorem first_silence_payoff_law (collateral : 1 < deposit bob)
       (settlementCompletion weight nonnegative (players weight nonnegative assessment.strategy)
         (beforeLottery bit label 1 false)).map (fun final => LateOpeningRuntimeGame.payoff
           reward forfeit (fun actual => PMF.pure actual) deposit (app.finished final) alice) := by
-  have quiet := LateOpeningRuntimeEarlyResponseLaw.sequentially_rational_response_law
-    weight nonnegative reward forfeit deposit forfeitNonnegative collateral assessment rational
-      bit label 1 false (Or.inr rfl)
+  have quiet  := earlySilent bit label 1 false (Or.inr rfl)
   rw [LateOpeningRuntimeFirstSettlementContinuation.response_completion_law,
     silent_first_binding_law]
   unfold ReactiveApplication.invoke

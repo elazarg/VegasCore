@@ -2,6 +2,7 @@
 
 import Vegas.Examples.LateOpeningRuntimeAliceFirstResponse
 import Vegas.Examples.LateOpeningRuntimeAliceFirstContinuation
+import Vegas.Examples.LateOpeningRuntimeContinuationRationality
 
 /-! # Genuine or silent responses at Alice's first late callback
 
@@ -15,6 +16,7 @@ holds over every history in the actual native information set.
 noncomputable section
 
 namespace Vegas.Examples.LateOpeningRuntimeAliceFirstRationality
+open LateOpeningRuntimeContinuationRationality
 
 open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
@@ -39,11 +41,10 @@ theorem repair_regret
     (openingMarginPositive : 0 < LateOpeningRuntimeAliceOpeningRationality.margin
       weight reward forfeit deposit)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who)) :
+    (rational : AliceContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit) ∧
+      ReceiverContinuationsRational weight nonnegative assessment
+        (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit)) :
     LateOpeningRuntimeAliceRationality.margin weight reward forfeit deposit *
         ((responseLaw weight nonnegative site (assessment.strategy alice site.1)).toOuterMeasure
           {response | ¬ PermittedResponse weight nonnegative decision response}).toReal ≤
@@ -186,15 +187,13 @@ theorem sequentially_rational_nongenuine_packet_zero
     (openingMarginPositive : 0 < LateOpeningRuntimeAliceOpeningRationality.margin
       weight reward forfeit deposit)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who)) :
+    (rational : AliceContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit) ∧
+      ReceiverContinuationsRational weight nonnegative assessment
+        (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit)) :
     ((responseLaw weight nonnegative site (assessment.strategy alice site.1)).toOuterMeasure
       {response | ¬ PermittedResponse weight nonnegative decision response}).toReal = 0 := by
-  have localRational := rational alice site
-  dsimp only at localRational
+  have localRational := rational.1 site
   rw [assessment.continuationContext_eq_truncated_of_bounded
     (rawMenu.bounded initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
@@ -239,11 +238,15 @@ theorem equilibrium_nongenuine_packet_zero
       {response | ¬ PermittedResponse weight nonnegative decision response}).toReal = 0 :=
   sequentially_rational_nongenuine_packet_zero weight nonnegative site representative decision
     current reward forfeit deposit positive rewardNonnegative forfeitNonnegative depositNonnegative
-      openingMarginPositive assessment equilibrium.1
+      openingMarginPositive assessment
+    (continuations_rational_of_rational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit
+        (fun actual => PMF.pure actual) deposit) equilibrium.1)
 
 end Vegas.Examples.LateOpeningRuntimeAliceFirstRationality
 
 namespace Vegas.Examples.LateOpeningRuntimeAliceFirstRationality
+open LateOpeningRuntimeContinuationRationality
 open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory.Protocol GameTheory.Math.Probability
 open LateOpeningRuntimeSource LateOpeningRuntimeReadout LateOpeningRuntimeService
@@ -265,11 +268,10 @@ theorem deferred_nongenuine_gain (weight : ℝ) (nonnegative : 0 ≤ weight)
     (bobDepositPositive : 0 < deposit bob) (aliceDepositNonnegative : 0 ≤ deposit alice)
     (marginPositive : 0 < continuationMargin weight reward forfeit deposit)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who)) :
+    (rational : AliceContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit) ∧
+      ReceiverContinuationsRational weight nonnegative assessment
+        (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit)) :
     continuationMargin weight reward forfeit deposit ≤
       expect (responseLaw weight nonnegative decision ⟨none⟩
         (rawMenu.decodeProfile initial LateOpeningRuntimeService.horizon
@@ -293,7 +295,7 @@ theorem deferred_nongenuine_gain (weight : ℝ) (nonnegative : 0 ≤ weight)
   by_cases low : (LateOpeningRuntimeBobSuccessPayoff.originalLabel decision.execution).val < 2
   · have lower := LateOpeningRuntimeAliceFirstContinuation.deferred_payoff_floor weight nonnegative
       reward forfeit deposit positive rewardNonnegative aliceDepositNonnegative
-      assessment normalized.2 rational forfeitPositive bobDepositPositive
+      assessment normalized.2 rational.2 forfeitPositive bobDepositPositive
       decision boundedTrace low
     have upper := nongenuine_payoff_upper weight nonnegative decision submission nongenuine players
       rewardNonnegative forfeitPositive.le deposit aliceDepositNonnegative
@@ -319,6 +321,7 @@ theorem deferred_nongenuine_gain (weight : ℝ) (nonnegative : 0 ≤ weight)
 end Vegas.Examples.LateOpeningRuntimeAliceFirstRationality
 
 namespace Vegas.Examples.LateOpeningRuntimeAliceFirstRationality
+open LateOpeningRuntimeContinuationRationality
 
 open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
@@ -344,11 +347,10 @@ theorem repair_regret_of_continuation_margin
     (depositNonnegative : 0 ≤ deposit alice)
     (marginPositive : 0 < continuationMargin weight reward forfeit deposit)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who)) :
+    (rational : AliceContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit) ∧
+      ReceiverContinuationsRational weight nonnegative assessment
+        (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit)) :
     continuationMargin weight reward forfeit deposit *
         ((responseLaw weight nonnegative site (assessment.strategy alice site.1)).toOuterMeasure
           {response | ¬ PermittedResponse weight nonnegative decision response}).toReal ≤
@@ -483,16 +485,14 @@ theorem sequentially_rational_nongenuine_packet_zero_of_continuation_margin
     (depositNonnegative : 0 ≤ deposit alice)
     (marginPositive : 0 < continuationMargin weight reward forfeit deposit)
     (assessment : (LateOpeningRuntimeGame.model weight nonnegative).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRational
-      (rawMenu.bounded initial LateOpeningRuntimeService.horizon
-        (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
-      (fun who history => LateOpeningRuntimeGame.payoff reward forfeit
-        (fun actual => PMF.pure actual) deposit history.state who)) :
+    (rational : AliceContinuationsRational weight nonnegative assessment
+      (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit) ∧
+      ReceiverContinuationsRational weight nonnegative assessment
+        (LateOpeningRuntimeGame.payoff reward forfeit (fun actual => PMF.pure actual) deposit)) :
     ((responseLaw weight nonnegative site (assessment.strategy alice site.1)).toOuterMeasure
       {response | ¬ PermittedResponse weight nonnegative decision response}).toReal = 0 := by
   have forfeitNonnegative := forfeitPositive.le
-  have localRational := rational alice site
-  dsimp only at localRational
+  have localRational := rational.1 site
   rw [assessment.continuationContext_eq_truncated_of_bounded
     (rawMenu.bounded initial LateOpeningRuntimeService.horizon
       (LateOpeningRuntimeService.scheduler weight nonnegative)).wellFoundedHistories
