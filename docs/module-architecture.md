@@ -340,8 +340,15 @@ the clock-one binding callback or transport consistency or Bayes beliefs.
 [Protected Bob binding and opening](../Vegas/Examples/LateOpeningRuntimeProtectedBobPrefix.lean)
 retains the whole graph configuration and clean binding traffic across arbitrary
 intervening Alice responses, and reaches an accepted opening of the same typed
-answer at clock three. It does not yet establish the full terminal audit law or
-optimality of a protected-ready binding choice.
+answer at clock three.
+[Canonical Bob terminal continuations](../Vegas/Examples/LateOpeningRuntimeProtectedBobContinuation.lean)
+derive final publication of that answer and zero Bob audit charge for arbitrary
+authentic sampling and arbitrary Alice future policies. On a successful Alice
+branch the Safe comparator attains exactly `2/5`, with no payoff-parameter
+restrictions.
+[Early binding activation](../Vegas/Examples/LateOpeningRuntimeProtectedBobTiming.lean)
+derives timestamp zero at the genuine initialized ready Bob callback. Whole-policy
+optimality and first-response selection remain separate obligations.
 
 The native `exists_uniform_bob_reference` additionally forces pure silence at
 every unresolved first Bob callback under full audit, nonnegative source
@@ -398,3 +405,14 @@ Actual mixed sampling, chance, inclusion and expiry branches are checked, with
 their stated provenance, posterior and retained-silent-opportunity hypotheses.
 Composition into a complete unilateral phase law, chronological source
 checkpoints and conditional raw traffic/noise independence remain open.
+
+[Actual silent recovery continuations](../Vegas/Examples/LateOpeningRuntimeRecoveryDomination.lean)
+derive the native silent payoff law `pure(-D)` at the same genuine legal, ready,
+timely late callback used by the opening-value obstruction. Absence of authored
+Alice traffic supplies audit charge zero; the actual clock-three Safe Bob
+continuation supplies publication. Under full audit, the literal compiled TRUE
+opening loses to silence if `K_A > weight*(R/2+D)`, while source TRUE beats FALSE
+if `R/2+D>0`. Every fixed positive `K_A` admits a positive service weight chosen
+afterward with this reversal, uniformly over all remaining Alice policies and
+initial bits and labels. This is a local action-value obstruction; protected
+first-opportunity correspondence and whole-policy recovery remain open.

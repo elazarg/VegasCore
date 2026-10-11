@@ -230,3 +230,6 @@ import Vegas.Examples.LateOpeningRuntimeBobTail
 import Vegas.Examples.LateOpeningRuntimeProtectedBobPrefix
 import Vegas.Examples.LateOpeningRuntimeRecoveryValue
 import Vegas.Examples.LateOpeningRuntimeProtectedBobPolicy
+import Vegas.Examples.LateOpeningRuntimeProtectedBobContinuation
+import Vegas.Examples.LateOpeningRuntimeProtectedBobTiming
+import Vegas.Examples.LateOpeningRuntimeRecoveryDomination

@@ -1,3 +1,6 @@
+import Vegas.Examples.LateOpeningRuntimeProtectedBobContinuation
+import Vegas.Examples.LateOpeningRuntimeProtectedBobTiming
+import Vegas.Examples.LateOpeningRuntimeRecoveryDomination
 import Vegas.Pending.AcceptedEventOwnership
 import Vegas.Pending.ReactiveRetainedFrontier
 import Vegas.Pending.ReactiveUnilateralEnvironment
@@ -4124,3 +4127,80 @@ open Vegas.EventGraphRuntime in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms initialized_terminal_store_of_expiry
+
+open Vegas.Examples.LateOpeningRuntimeProtectedBobContinuation in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeProtectedBobContinuation.after_opening'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms after_opening
+
+open Vegas.Examples.LateOpeningRuntimeProtectedBobContinuation in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeProtectedBobContinuation.opening_continuation_clean'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms opening_continuation_clean
+
+open Vegas.Examples.LateOpeningRuntimeProtectedBobContinuation in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeProtectedBobContinuation.binding_continuation_clean'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms binding_continuation_clean
+
+open Vegas.Examples.LateOpeningRuntimeProtectedBobContinuation in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeProtectedBobContinuation.safe_continuation_payoff'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms safe_continuation_payoff
+
+open Vegas.Examples.LateOpeningRuntimeProtectedBobTiming in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeProtectedBobTiming.early_binding_timer'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms early_binding_timer
+
+open Vegas.Examples.LateOpeningRuntimeRecoveryDomination in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeRecoveryDomination.silent_binding_opportunity'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms silent_binding_opportunity
+
+open Vegas.Examples.LateOpeningRuntimeRecoveryDomination in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeRecoveryDomination.silent_audit_charge_zero'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms silent_audit_charge_zero
+
+open Vegas.Examples.LateOpeningRuntimeRecoveryDomination in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeRecoveryDomination.silent_safe_payoff_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms silent_safe_payoff_law
+
+open Vegas.Examples.LateOpeningRuntimeRecoveryDomination in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeRecoveryDomination.late_compiler_action_value_lt_silence'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms late_compiler_action_value_lt_silence
+
+open Vegas.Examples.LateOpeningRuntimeRecoveryDomination in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeRecoveryDomination.source_opening_value_gt_silence'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms source_opening_value_gt_silence
+
+open Vegas.Examples.LateOpeningRuntimeRecoveryDomination in
+/-- info:
+'Vegas.Examples.LateOpeningRuntimeRecoveryDomination.exists_positive_weight_action_reversal'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms exists_positive_weight_action_reversal

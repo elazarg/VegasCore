@@ -1599,7 +1599,7 @@ These adapters impose no prescribed focal policy and assume no target law.
 The complete unilateral phase and source/noise law remain open.
 
 [ReactiveRetainedFrontier](../../Vegas/Pending/ReactiveRetainedFrontier.lean)
-now owns the common reachable configuration, input/domain, output agreement
+owns the common reachable configuration, input/domain, output agreement
 and ordered source recall relation. The existing all-prescribed frontier retains
 its full intention equality as an extension.
 [ReactiveUnilateralFrontier](../../Vegas/Pending/ReactiveUnilateralFrontier.lean)
@@ -1649,8 +1649,16 @@ ready binding it selects the typed answer; at a ready opening it selects the
 canonical TRUE disclosure; after both Bob events settle it is silent, including
 the optional repeated clock-three callback. Readiness derives the publication
 needed by the source observation decoder. These are operational identities,
-without a new native policy or source/runtime model. The full terminal audit
-law and protected-ready optimality comparison remain separate proof obligations.
+without a new native policy or source/runtime model.
+[ProtectedBobContinuation](../../Vegas/Examples/LateOpeningRuntimeProtectedBobContinuation.lean)
+derives the entire chosen-answer terminal publication and Bob audit charge zero
+under arbitrary authentic sampling, retaining arbitrary Alice future policies.
+Once Alice has published successfully, Safe attains exactly `2/5` without
+restrictions on reward, forfeit or deposits.
+[ProtectedBobTiming](../../Vegas/Examples/LateOpeningRuntimeProtectedBobTiming.lean)
+derives the binding activation timestamp zero at the actual initialized ready
+Bob callback. Protected-ready whole-policy optimality, first-binding selection
+and the weak-PBE/source-selected-law capstones remain open.
 
 [ReactiveBindingResponseNoise](../../Vegas/Pending/ReactiveBindingResponseNoise.lean)
 extends opaque binding independence to the complete next activation input and
@@ -1659,3 +1667,19 @@ private binding draw's original distribution, even at an impossible observation
 under the existing total posterior fallback. The prefix is fixed, leak rules
 are arbitrary, and no desired factorization is assumed. Whole-phase and
 initialized unilateral source-information/noise correspondence remain open.
+
+[RecoveryDomination](../../Vegas/Examples/LateOpeningRuntimeRecoveryDomination.lean)
+compares two actual responses at the same genuine legal, ready, timely late
+Alice callback against the original Safe Bob continuation. Actual silence
+authors no Alice traffic, reaches Safe Bob publication and has exact net payoff
+law `pure(-D)`; zero Alice audit charge is derived for every authentic sampler.
+With full audit, the literal compiled TRUE opening has strictly smaller value
+than silence when `K_A > weight*(R/2+D)`. In the intended source run against
+Safe Bob, TRUE instead strictly beats FALSE when `R/2+D>0`. For every fixed
+positive `K_A` and positive source benefit, choosing
+`weight = K_A/(2*(R/2+D))` gives a positive admissible service weight with the
+reversal for every initial bit, label and remaining Alice policy. The proof
+uses actual continuations and derives both values; it does not assume a value
+correspondence. It proves a local action-value obstruction, without an
+equilibrium conclusion. Protected first-opportunity correspondence and optimality
+against arbitrary whole continuation policies remain separate obligations.
