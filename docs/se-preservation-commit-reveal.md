@@ -129,6 +129,21 @@ Review history:
   phrase from 1.5(4) that mentioned packets "sent privately to the builder":
   the model has no such channel. Every emitted packet enters the public
   mempool. What remains open about reporting is the incentive to report.
+- The model was then restated around player-chosen timing:
+  - The "builder" became the **network** (miners plus gossip).
+  - In a standard network players may act at every tick; the network
+    controls only when information reaches them.
+  - The readiness token is the hash of the block that made the event ready,
+    so nobody can send for an event before seeing that block.
+  - The native game with a standard network is a FOSG (1.2).
+  - Theorem 1 and Examples 2–3 were re-expressed with standard networks; the
+    arguments are unchanged.
+  - Example 1 needed a changed inclusion rule: with extra decision points,
+    "a little late" was a weakly optimal way out.
+  - A first packet sent after its event completed is now free, since the
+    token stays valid. The excluded-player claim in 4.4 was adjusted.
+
+  These changes have not been re-reviewed.
 
 ## Summary
 
@@ -138,21 +153,22 @@ commitment holds a valid value and every reveal opens. Compiling the program
 to a ledger adds what the honest game lacks:
 
 - players may stay silent or send late;
-- a block builder schedules, includes and omits messages;
+- the network (miners and gossip) includes, orders and omits messages, and
+  decides when each player learns of new blocks and pending messages;
 - pending messages can be seen by others before inclusion;
 - a deposit and an audit punish misbehaviour.
 
 We ask whether every sequential equilibrium (SE) of the honest game has an SE
 of the compiled game with the same outcome law and no charges on its paths. The
-deposit is fixed **before** the builder, so it cannot be scaled against the
-builder's reliability.
+deposit is fixed **before** the network, so it cannot be scaled against the
+network's reliability.
 
 - **Theorem 1 (negative).** The standard compiler fails. It charges a forfeit
   for each failed reveal and continues the program, and it charges every
   authentic packet that is never accepted. There is a program with three
   commitments, three reveals, and no setup, guard or randomness, such that the
   following holds for every forfeit and deposit above fixed thresholds and
-  every $\varepsilon>0$. Some admissible builder, with late-omission
+  every $\varepsilon>0$. Some admissible network, with late-omission
   probability below $\varepsilon$, has native SEs, and none of them preserves
   the honest SE.
 - **Theorem 2 (positive, one event at a time).** A modified compiler succeeds,
@@ -166,19 +182,19 @@ builder's reliability.
     packets, like double-signing; a packet that never lands proves nothing.
 
   For every program in the class, every forfeit, every deposit above the
-  payoff spread and every admissible value-blind builder, every honest SE is
+  payoff spread and every admissible value-blind network, every honest SE is
   preserved.
 - **Theorem 3 (positive, concurrent).** The same holds when events run
   concurrently in an order that respects the source's information dependence.
   Five further conditions are needed:
   - concurrent commit phases are reset when a binding fails;
-  - the builder is *success-separable*: whether an event succeeds depends only
+  - the network is *success-separable*: whether an event succeeds depends only
     on its owner's delivery and on randomness private to that event, while the
     timing and order of inclusion are free, so a stable fee priority is
     allowed;
-  - the builder is *per-event value-blind*: what it does with an event reads no
+  - the network is *per-event value-blind*: what it does with an event reads no
     unopened value other than that event's own opening;
-  - its leaks are *content-blind*. Pending packets are visible: the builder
+  - its leaks are *content-blind*. Pending packets are visible: the network
     may show any of them, in full, to any player, as a public mempool does.
     What is restricted is only *which* packets are shown to whom and when:
     that may depend on who sent them, but not on what they contain;
@@ -211,7 +227,7 @@ lists what is open.
 | Term | Meaning |
 | --- | --- |
 | honest game | The program's intended game: every commitment holds a guard-accepted value, every reveal opens (1.1). |
-| native game | The finite game played on the ledger under a compiler and a builder (1.2–1.3). |
+| native game | The finite game played on the ledger under a compiler and a network (1.2–1.3). |
 | gross / net payoff | Payoff before / after audit charges and forfeits. |
 | settlement | The end of a run, when the audit's verdicts are computed and charges collected. |
 | authentic packet | A packet signed by its emitter; every packet in the model is authentic. |
@@ -225,7 +241,7 @@ lists what is open.
 | missed binding | Expiry of a commit event without an accepted binding. |
 | raw menu | Everything a player may emit at an activation (1.2). |
 | late packet | A packet for an event sent after its owner's protected turn. If it is sent at a clock $s$ with $s+\mathit{bound}_e\ge r_e+d_e$, protected inclusion is vacuous for it, and it may be omitted (1.2, 2.3). |
-| protected turn | The owner's first activation while its event is ready. |
+| protected turn | The owner's first activation after it learns that its event is ready. |
 | charged packet | A packet the audit charges (1.3). |
 | clean history / set | A history in which nobody emitted a charged packet; an information set that contains a clean history (5.2). |
 | $m_j$ | The minimum of $j$'s gross payoff over compiled terminal histories in which $j$ is not excluded (1.3). |
@@ -285,8 +301,8 @@ histories of $\Gamma^H$.
 
 ### 1.2 The ledger runtime
 
-**Clock and events.** Time is a public clock in **slots**. Sections 2 and 3
-use Stage S: events run one at a time in program order. Section 4 allows any
+**Clock and events.** Time is a public clock in discrete **ticks**. Sections
+2 and 3 use Stage S: events run one at a time in program order. Section 4 allows any
 information-respecting execution order. An owned event $e$ becomes **ready**
 at the clock $r_e$ when its predecessors complete. It completes in one of two
 ways:
@@ -294,14 +310,29 @@ ways:
 - when the contract accepts a packet for it;
 - at **expiry**, as a failure, when the clock reaches $r_e+d_e$.
 
-**Packets.** When the builder activates player $i$, $i$ may emit at most one
-packet, or stay silent. A packet has three parts:
+**Activations.** An *activation* of $i$ is a tick at which $i$ may emit.
+In a **standard** network every tick is an activation of every player:
+players act whenever they choose, and waiting means staying silent. Nobody
+grants permission to act. What the network controls is *information*: when
+each ledger update and each pending packet reaches each player. A general
+network may also withhold activations, which models clients that are slow or
+offline. Theorems 2–4 hold for every network satisfying their conditions, so
+in particular for standard ones. Theorem 1 and Examples 1–3 use standard
+networks. The owner's **first activation for $e$** is its first activation
+after it has learned that $e$ is ready.
+
+**Packets.** At each activation, $i$ may emit a finite set of packets,
+possibly empty. A packet has three parts:
 
 1. a *call*: a binding for an event (with a handle of $i$), an opening (a
    handle and a value), or a malformed call;
 2. optional *evidence*: a fact "handle $h$ holds value $v$";
-3. a *readiness token* for the call's event, which the runtime attaches only
-   while that event is ready.
+3. a *readiness token* for the call's event: a reference to the ledger state
+   in which the event became ready, for example that block's hash. It cannot
+   be produced before that state exists, so a player can attach it only after
+   that state has reached it. A packet without a valid token is never
+   accepted. In particular no one can send a valid packet for an event ahead
+   of time.
 
 **Evidence is unforgeable.** A player can emit the evidence "$h$ holds $v$"
 only if it is true: either $h$ is its own handle and its slot holds $v$, or it
@@ -338,21 +369,27 @@ $\mathsf{fail}$. So a guard-rejected or out-of-domain opening publishes its valu
 An opening whose value does not match is not accepted.
 
 **Mempool and leaks.** An emitted packet is *pending* until it is included.
-At each activation of $i$, the builder may *show* $i$ some pending packets of
+At each activation of $i$, the network may *show* $i$ some pending packets of
 other players. Showing a packet reveals its identifier, call and evidence.
 This is the mempool: the model allows any pending packet to be shown to any
 player before inclusion, and nothing in this note assumes pending packets
 are private. Bindings are opaque, so seeing one reveals no value. A pending
 opening reveals its value to whoever is shown it.
 
-**Builder.** The builder is a public chance process that chooses activations,
-inclusions, leaks, clock advances and expiries. Its law is fixed and known to
-the players; its realization is not. Each owned event $e$ has parameters
+**Network.** The *network* stands for everything between the players and
+the ledger: miners, who include and order packets, and gossip, which carries
+blocks and pending packets to players. It is a public chance process that
+chooses inclusions and their order, leaks, when each ledger update reaches
+each player, activations (every tick, for a standard network), clock advances
+and expiries. Its law is fixed and known to the players; its realization is
+not. It is not a strategic player. Each owned event $e$ has parameters
 $\mathit{delay}_e$ and $\mathit{bound}_e$. The following hold on every legal
 history, including histories with deviations:
 
 - **Opportunity.** Once the clock exceeds $r_e+\mathit{delay}_e$, the owner has
-  been activated since $e$ became ready.
+  learned that $e$ is ready and has been activated since. For a standard
+  network, $\mathit{delay}_e$ bounds how long the block that made $e$ ready
+  takes to reach its owner.
 - **Protected inclusion.** Suppose the owner emits a packet for $e$ while $e$
   is ready, at clock $s$, and emits no other identifier for $e$. Then by the
   time the clock exceeds $s+\mathit{bound}_e$, the packet has a receipt,
@@ -371,13 +408,37 @@ late packets may be omitted.
   receipt and inclusion clock;
 - every completion, publication result, failure and expiry;
 - its own activations and emissions;
+- each of these ledger facts when the network delivers it to $i$. In
+  particular $i$ learns that an event is ready, together with everything on
+  the ledger before it, when the block that made it ready reaches $i$;
 - at each of its activations, the packets shown to it, with the clock of their
   first sighting. Showing an already known packet again adds nothing.
 
 Players do not observe others' activations or emissions except through leaks
 and inclusions.
 
-**Builder properties used below.** The builder is:
+**Relation to FOSGs.** With a standard network, the native game is a finite
+*factored-observation stochastic game* (FOSG; Kovařík, Schmid, Burch,
+Bowling and Lisý, *Artificial Intelligence* 303, 2022).
+- At every tick all players act simultaneously, each choosing a finite set
+  of packets.
+- The network's choices are the chance part of the transition.
+- The public observation is the clock. Each player's private observation is
+  its own emissions, plus the ledger updates and pending packets the network
+  delivers to it.
+
+A general network is still a FOSG, with a player's legal actions reduced to
+silence at ticks where it is not activated. Sequential equilibrium is taken
+in the extensive form the FOSG induces, and players have perfect recall
+because they observe their own emissions. The GameTheory library formalizes
+FOSGs (`GameTheory.Languages.FOSG.Game`) with a translation to extensive form.
+
+The FOSG reading is exact for a discrete-time ledger, and nothing used here
+lies outside it. What it does not capture is continuous time; ticks can be
+made as fine as needed. A strategic miner can be added as a FOSG player, but
+no theorem here covers that case (Section 9).
+
+**Network properties used below.** The network is:
 
 - **value-blind** if its laws read only public data, packet identifiers and
   emitters, and the value of the opening being delivered. In particular they
@@ -391,7 +452,7 @@ and inclusions.
   is still shown in full; the property restricts the choice of what to
   show, not what showing reveals;
 - **blind to late packets in its inclusion law** if the following holds at
-  every history holding a pending late packet $x$. The builder's inclusion law
+  every history holding a pending late packet $x$. The network's inclusion law
   is a mixture of two components: including $x$, and the inclusion law at the
   corresponding history in which $x$ was never sent.
 
@@ -452,7 +513,9 @@ burned.
 
   The emitter's **first** packet for $e$ is the one with the lowest serial
   among its packets addressed to $e$. It is free if it is well-formed, whether
-  or not it is ever included. Every other packet is charged:
+  or not it is ever included. The token stays valid after $e$ completes, so a
+  first packet sent too late to count is also free; it is simply not
+  accepted. Every other packet is charged:
   - every later packet for $e$, even an identical copy, and even if $e$ failed;
   - every packet that is not well-formed, which includes every disclosure of
     an unopened value;
@@ -498,7 +561,7 @@ Sequential equilibrium is in the sense of Kreps and Wilson. It requires
 sequential rationality at every information set, and **consistency**:
 beliefs are limits of Bayes beliefs along one sequence of fully mixed
 behaviour profiles. Only the players' strategies are perturbed. Chance moves,
-meaning samples and every draw of the builder, keep their fixed laws
+meaning samples and every draw of the network, keep their fixed laws
 throughout.
 
 **Tremble notation.** For a tremble sequence $\sigma^H_n$ of an honest SE,
@@ -510,7 +573,7 @@ The quantifier order is **deposit-first**:
 1. the program and utilities;
 2. the compiler's parameters (forfeits, $\alpha$, deposits);
 3. an honest SE;
-4. the builder;
+4. the network;
 5. the native SE, which may depend on everything before it.
 
 ### 1.5 Standing assumptions
@@ -523,7 +586,7 @@ The quantifier order is **deposit-first**:
    player.
 3. Players are finitely many.
 4. **Reporting.** Emitting a packet means broadcasting it to the public
-   mempool; the model has no private channel to the builder. Leaks (1.2)
+   mempool; the model has no private channel to the network. Leaks (1.2)
    govern what a *player* has seen by the time it acts, not what eventually
    becomes public. So every emitted packet can eventually be obtained and
    reported. The charge needs no trust, because it is proved from signed
@@ -569,7 +632,7 @@ Let $\Gamma^X$ be the following finite game.
   owners commit again in a fresh phase. An excluded player's events are not
   part of any phase, so their automatic failures trigger no reset.
 
-$\Gamma^X$ contains no blockchain detail: no clocks, packets, builder or
+$\Gamma^X$ contains no blockchain detail: no clocks, packets, network or
 mempool. Compared with the honest game, it adds three things: the source's
 full commit menu (guard-violating values included, with deferred guards), the
 meaning of failure, and the reset. The honest game is the part of $\Gamma^X$
@@ -908,11 +971,13 @@ discuss them. The assumptions are these.
 | Assumption | Where | Used by | Realism |
 | --- | --- | --- | --- |
 | Pending packets may be seen by anyone | 1.2 | all | Not an assumption: the model allows it. |
+| Players choose when to act; the network controls only when information reaches them (standard networks) | 1.2 | Theorem 1, Examples 1–3; Theorems 2–4 also allow networks that withhold activations | Realistic for a discrete-time ledger: the native game is then a FOSG. Ticks can be as fine as needed. |
+| Readiness token: a packet must cite the block that made its event ready | 1.2 | all | Realistic: a block hash cannot be produced in advance, so nobody can send for an event before seeing that block. |
 | Contract guarantees: opportunity, protected inclusion, timeliness, completion | 1.2 | all | Liveness and censorship resistance: an owner's single on-time packet lands within a known bound, whatever others send. Reasonable when deadlines are long against inclusion delays; fails under sustained censorship. |
-| Builder is exogenous, with a law known to players | 1.2 | all | Standard for equilibrium analysis. A profit-seeking builder (MEV) is not covered (Section 9). |
-| Value-blind builder (per event, under concurrency) | 1.2, 4.2 | Theorems 2–4 | Automatic for bindings, which are opaque. For openings in flight it forbids using a value read from the mempool when handling *other* events. Restrictive against content-aware builders. |
+| Network is exogenous, with a law known to players | 1.2 | all | Standard for equilibrium analysis. A profit-seeking network (MEV) is not covered (Section 9). |
+| Value-blind network (per event, under concurrency) | 1.2, 4.2 | Theorems 2–4 | Automatic for bindings, which are opaque. For openings in flight it forbids using a value read from the mempool when handling *other* events. Restrictive against content-aware networks. |
 | Content-blind leaks | 1.2 | Theorems 3–4 | Which pending packets reach whom may not depend on their contents. Ordinary gossip roughly fits; selective relaying by content does not. |
-| Success separability (S1–S3) | 4.2 | Theorems 3–4 | The strongest builder assumption: a *late* packet's success rests on luck private to its event. Real congestion is correlated (Section 9). It constrains only late, off-path packets; on-time packets are covered by protected inclusion. Example 1 shows that some such condition is needed. |
+| Success separability (S1–S3) | 4.2 | Theorems 3–4 | The strongest network assumption: a *late* packet's success rests on luck private to its event. Real congestion is correlated (Section 9). It constrains only late, off-path packets; on-time packets are covered by protected inclusion. Example 1 shows that some such condition is needed. |
 | Reporting: charged packets are reported and collected with probability at least $\alpha$ | 1.5(4) | D1, Lemma C, hence Theorems 2–4 | Every emitted packet is broadcast, so it can be obtained, and the charge is verifiable from signatures. What is assumed is that someone reports it. Charges are burned, so reporting is not rewarded in the model; a bounty from the slashed deposit is the natural fix (Section 9). The factor $\alpha$ absorbs imperfect reporting. |
 | No off-ledger communication | 1.5(1) | all | Unenforceable; a modelling assumption, as is standard. |
 | Finite domains and horizon | 1.5(2) | all | Excludes sealed-bid auctions over $\mathbb N$. |
@@ -995,45 +1060,54 @@ The law to preserve is the following:
 - every publication succeeds, and Bob publishes Safe;
 - Alice nets $R/2$ and Bob nets $2/5$.
 
-### 2.3 The builder
+### 2.3 The network
 
-**Parameters.** All clocks are slots, and a receipt is due once the clock
-*exceeds* the sending clock plus $\mathit{bound}$.
+**Parameters.** The network is standard: both players may emit at every
+tick. A tick has two steps: first both players emit, simultaneously; then
+the network includes, expires and delivers. Every ledger update reaches both
+players by the next tick. Only gossip about pending packets is delayed. A
+receipt is due once the clock *exceeds* the sending clock plus
+$\mathit{bound}$.
 
-| Event | $\mathit{delay}$ | $\mathit{bound}$ | $d$ |
-| --- | --- | --- | --- |
-| commit $b$, commit $t$ | $0$ | $0$ | $1$ |
-| reveal $b$ (ready at clock $0$) | $0$ | $2$ | $3$ |
-| commit $c$ | $1$ | $0$ | $2$ |
-| reveal $c$, reveal $t$ | $0$ | $0$ | $1$ |
+| Event | ready at tick | $\mathit{delay}$ | $\mathit{bound}$ | $d$ |
+| --- | --- | --- | --- | --- |
+| commit $b$, commit $t$ | $-2$, $-1$ | $0$ | $0$ | $1$ |
+| reveal $b$ | $0$ | $0$ | $2$ | $3$ |
+| commit $c$ | $3$ | $0$ | $0$ | $1$ |
+| reveal $c$, reveal $t$ | $4$, $5$ | $0$ | $0$ | $1$ |
 
-Timeliness holds for every event. Each event other than the reveal of $b$
-gets one owner activation when it becomes ready, and that owner's packet from
-the activation is included at once (a *receipt*). So protected inclusion holds
-with $\mathit{bound}=0$.
+Timeliness holds for every event. Each event other than the reveal of $b$ is
+on time for exactly one tick, its first, and a packet its owner emits then is
+included in that tick (a *receipt*). So protected inclusion holds with
+$\mathit{bound}=0$.
 
-Commit $c$ becomes ready at clock $2$ when the lottery includes the opening of
-$b$. Bob is activated at clock $3$, which is why $\mathit{delay}_c=1$.
+Commit $c$ becomes ready at tick $3$ in both branches. In the success branch
+the lottery at tick $2$ includes the opening of $b$; in the failure branch the
+reveal of $b$ expires at the end of tick $2$.
 
 For the reveal of $b$, the protected packet is sent at clock $0$ and included
 at once. A packet sent at clock $1$ or $2$ has $s+2\ge3=r+d$, so protected
 inclusion is vacuous for it: it is a *late packet* and may be omitted.
 
-**Schedule.**
+**Schedule.** Both players may emit at every tick; the table lists what the
+network does.
 
-| Clock | Operations |
+| Tick | Network |
 | --- | --- |
-| 0 | Alice: activation and receipt (commit $b$); activation and receipt (commit $t$); activation and receipt (reveal $b$, her protected turn). |
-| 1 | Alice's first late activation. Her emission is *not* included at clock 1. Then Bob's activation and leak sample, and a receipt for Bob's own emission, if any. |
-| 2 | Alice's second late activation, then the inclusion lottery. |
-| 3 | Expire the reveal of $b$ if unresolved. Bob: activation and receipt (commit $c$). Bob: activation and receipt (reveal $c$), if his binding completed. Alice: activation and receipt (reveal $t$), if Bob's publication completed. |
-| later | Each unresolved event expires at its deadline; when an event becomes ready, one owner activation and receipt; then settlement. |
+| $-2$, $-1$ | Includes Alice's commit of $b$, then of $t$, in the tick it is sent. |
+| 0 | Reveal $b$ is ready: Alice's protected turn. Includes her opening if sent now. |
+| 1 | Includes nothing of Alice's from this tick. Gossip: shows Bob each pending packet of Alice's independently with probability $1/2$. |
+| 2 | The inclusion lottery below; then, if unresolved, the reveal of $b$ expires. Gossip: shows Bob each pending packet of Alice's not yet shown, independently with probability $1/2$. |
+| 3 | Commit $c$ is ready; includes Bob's binding if sent now. |
+| 4, 5 | Reveal $c$, then reveal $t$ if Bob's publication completed; includes the owner's packet if sent in that tick. |
+| later | No further gossip; settlement. |
 
-Bob's only activation between clock 1 and his commitment is at clock 3, in
-both the success and the failure branch.
-
-**Leaks.** At each activation, each pending packet of the other player is
-shown independently with probability $1/2$. Packets not shown stay pending.
+Bob chooses his commitment at tick $3$ in both branches, its only on-time
+tick. Before it he has no ready event, so his only uncharged action is
+silence. The gossip at the end of tick $2$ is the last thing he learns before
+choosing. Every packet that is not accepted is charged under $C_0$. That
+covers packets for events not yet ready (no valid token), packets after an
+event has completed, and extra packets in one tick.
 
 **Lottery.** Let $m$ be the number of pending identifiers at clock 2. Only
 Alice's late packets can be pending, since Bob's are included on receipt. Each
@@ -1041,7 +1115,7 @@ pending identifier is included with probability $w/(1+mw)$, and none is
 included with probability $1/(1+mw)$. A sole late opening is therefore
 included with probability $q=w/(1+w)$. Let $\delta=1-q$.
 
-This builder satisfies every condition of 1.2. It is value-blind and
+This network satisfies every condition of 1.2. It is value-blind and
 content-blind. It is blind to late packets in its inclusion law: conditioned on
 not including a given packet, the lottery is the lottery on the remaining
 $m-1$ identifiers. Its leaks are not covered by that property.
@@ -1077,7 +1151,7 @@ $$
 \delta<\frac{R}{3R+4(D+K_A)},
 \tag{δ}
 $$
-and set $w=(1-\delta)/\delta$. Under compiler $C_0$ and the builder of 2.3,
+and set $w=(1-\delta)/\delta$. Under compiler $C_0$ and the network of 2.3,
 the native game is finite with perfect recall, so it has SEs. **None of them
 preserves the honest SE.**
 
@@ -1178,8 +1252,8 @@ histories with further traffic.
 - Including any other packet produces a public receipt, and hence a different
   record. Inclusion removes only the included identifier, so the other pending
   packets meet the same fate in both branches.
-- Bob already knows the opening, and he has exactly one activation before his
-  commitment in either branch.
+- Bob already knows the opening, and in either branch he chooses his
+  commitment at tick $3$, after the same gossip.
 
 So $\Pr_n(E(b),\tau):\Pr_n(F_1(b),\tau)=q:\delta$ for every type and every
 $n$, and Bob's posteriors at $E(b)$ and $F_1(b)$ coincide.
@@ -1282,7 +1356,7 @@ $C_1$, and fix:
 - any payoffs $a_j<\underline u_j$;
 - any $\alpha>0$ and deposits with $\alpha K_i>\operatorname{sp}_i$;
 - any honest SE $(\sigma^H,\mu^H)$;
-- any value-blind builder of 1.2. Blindness to late packets is not assumed.
+- any value-blind network of 1.2. Blindness to late packets is not assumed.
 
 Then some native SE preserves $(\sigma^H,\mu^H)$.
 
@@ -1348,7 +1422,7 @@ instead plays $\sigma^X_n$ at an owner's own guard-violating sets (4.4).
 
 **The profile $\sigma^*$ on the forced region.**
 
-- *First activation while the event is ready.* The owner sends its free
+- *First activation for the event.* The owner sends its free
   packet:
   - for a binding, the value is drawn from $\sigma^H$ at $\Pi(I)$, with a
     fresh handle of the owner, chosen independently of the value, and no
@@ -1441,7 +1515,7 @@ Lemma B covers them.
   since well-formed bindings carry no evidence and are opaque.
 - *Every other history* factors as
   $\Pr_n(h)=\Pr^H_n(\Pi(h))\,N_n(h)\,(1+o(1))$. Here $\Pr^H_n$ is the honest
-  probability. $N_n$ collects the builder's draws, the leaks, the collection
+  probability. $N_n$ collects the network's draws, the leaks, the collection
   and the timing trembles.
   - By value-blindness and by the construction of the trembles and of
     $\varphi^*$, the law of the operational record given the honest history
@@ -1474,13 +1548,13 @@ alone.
   $V\ge\underline u_j>a_j$.
 - **Adaptive policies.** $s$ may read everything $j$ observes while its
   event is pending. At Stage S nothing else is in flight on a forced history,
-  so that is the builder's data about $j$'s own event. It is independent of
+  so that is the network's data about $j$'s own event. It is independent of
   everything the continuation's payoff depends on: others' hidden values (by
   value-blindness, and bindings are opaque), later samples, and later play,
   which reads no timing. So success is independent of the continuation
   payoff given $j$'s information, and the payoff is $P_sV+(1-P_s)a_j$ for
   every such $s$. Under concurrency this fails, and Lemma B3 replaces it.
-- **Success probability.** $P_s$ depends only on the builder and the policy.
+- **Success probability.** $P_s$ depends only on the network and the policy.
   These may read the value being opened. That value is public after success
   and payoff-irrelevant to $j$ after failure. They read no other unopened
   value. So $\arg\max P_s$ is the same set for every type that delivers the
@@ -1556,7 +1630,7 @@ mixed profiles of the construction.
 
 **Preservation.** Every owner sends its free packet at its first activation,
 and it is accepted before the deadline. So nobody is excluded or charged on
-path. Bindings follow $\sigma^H$, samples follow their law, and the builder's
+path. Bindings follow $\sigma^H$, samples follow their law, and the network's
 randomness affects no public result. So the joint law of public results and
 net payoffs is the honest one. $\square$
 
@@ -1578,8 +1652,7 @@ The order is **information-respecting** if two conditions hold.
    can be sent before that commit completes only as a charged packet, since it
    has no valid token.
 2. **Same owner keeps program order.** Two events of one owner are ordered as
-   in the program. So every owner has at most one ready event, which matters
-   because one activation emits at most one packet.
+   in the program. So every owner has at most one ready event.
 
 Guards read only values their owner knows at the commit, and their deferred
 obligations are decided at the author's own reveals (1.1). So guards impose
@@ -1620,7 +1693,7 @@ never resets.
 
 ### 4.2 Success separability
 
-For each owned event $e$ with owner $j$, the builder's randomness splits into
+For each owned event $e$ with owner $j$, the network's randomness splits into
 a component $\xi_e$ private to $e$, and a remainder.
 
 - **(S1) Success is private.** Whether $e$ succeeds is a function of three
@@ -1631,17 +1704,19 @@ a component $\xi_e$ private to $e$, and a remainder.
   - the content of those packets: well-formedness, and for a reveal the guard
     rule.
 
-  $j$'s activations while $e$ is ready are determined by $\xi_e$. The packets
-  shown to $j$ at those activations (leaks) come from the remainder.
-- **(S2) Independent seeds with fixed laws.** The builder's randomness
+  When $j$ learns that $e$ is ready, and $j$'s activations while $e$ is
+  ready, are determined by $\xi_e$. For a standard network the activations
+  are every tick, so only the arrival time is random. The packets shown to
+  $j$ at those activations (leaks) come from the remainder.
+- **(S2) Independent seeds with fixed laws.** The network's randomness
   consists of exogenous seeds: one $\xi_e$ per owned event, and a remainder
   seed. The seeds are independent of each other, of Nature, and of the
   players' private randomization. The law of each $\xi_e$ is fixed in
   advance and depends only on $e$, stated relative to $r_e$. An event re-run
   after a reset is a new event, with a fresh seed.
 - **(S3) The seed is read only through the event.** $\xi_e$ enters the run
-  only as (S1) says: through $j$'s activations while $e$ is ready, and through
-  $e$'s success or failure. Everything else the builder does is a function of
+  only as (S1) says: through when $j$ learns that $e$ is ready, through $j$'s
+  activations while $e$ is ready, and through $e$'s success or failure. Everything else the network does is a function of
   the remainder seed and of the history so far.
 
 (S2) constrains seeds, not endogenous quantities. Choices, readiness clocks
@@ -1651,7 +1726,7 @@ give is freshness: at any history at which $e$ is unresolved, $\xi_e$ is
 independent of everything else in the run given $j$'s activations for $e$ so
 far. Nothing before $r_e$ reads $\xi_e$, and afterwards the only
 $\xi_e$-dependent data in the history are those activations, which $j$ sees.
-In particular the builder cannot show $j$ a signal about $j$'s own future
+In particular the network cannot show $j$ a signal about $j$'s own future
 activations.
 
 The remainder may depend on the whole history, subject to per-event
@@ -1683,11 +1758,11 @@ phase reset, and fix:
 - $\alpha>0$ and deposits with $\alpha K_i>\operatorname{sp}_i$;
 - an honest SE $(\sigma^H,\mu^H)$, and the SE $(\sigma^X,\mu^X)$ of $\Gamma^X$
   that Proposition 1(2) builds from it, with its tremble sequence $\sigma^X_n$;
-- a per-event value-blind, content-blind, success-separable builder satisfying
+- a per-event value-blind, content-blind, success-separable network satisfying
   the contract of 1.2 (opportunity, protected inclusion, timeliness,
   completion) for every event.
 
-Then some native SE preserves $(\sigma^H,\mu^H)$. This holds for every builder
+Then some native SE preserves $(\sigma^H,\mu^H)$. This holds for every network
 continuation: after a barrier the remainder's law may depend on earlier data.
 The laws of the $\xi$ never change.
 
@@ -1719,8 +1794,11 @@ first region that applies:
    actions, with no exclusion and nobody publicly doomed.
 
 Exclusions and public doom are functions of public data, so these regions are
-well defined. Excluded players' own sets carry a constant gross payoff, and
-their only uncharged action is silence.
+well defined. Excluded players' own sets carry a constant gross payoff. Their
+uncharged actions are silence and, if they never sent one, the free first
+packet for the event that excluded them. That packet is not accepted, and
+what it shows belongs to an excluded player, so it is payoff-irrelevant and
+uninformative about active players' values (M3).
 
 **The native profile at stage $n$.** At forced and lifted sets the profile is
 built from $\sigma^X_n$:
@@ -1802,7 +1880,7 @@ $$
 $$
 where $\Pr^X_n$ is the $\Gamma^X$ probability under $\sigma^X_n$. The factor
 $N_n$ collects four things:
-- the builder's draws, the leaks and the collection;
+- the network's draws, the leaks and the collection;
 - the timing tier;
 - the native-only tier;
 - the ratio between the native weight of a failure and its $\Gamma^X$ weight.
@@ -1836,7 +1914,7 @@ to the set and cancel in beliefs. Moves and failures within the current
 phase that are not yet observed are handled by conditioning on $\Phi$
 (Lemma A3), under which they are all moves, with the common factor
 $c^{\mathrm{mv}}_n$. Every other part of $N_n$ reads no unopened value:
-bindings are opaque, the builder is per-event value-blind, and binding
+bindings are opaque, the network is per-event value-blind, and binding
 policies read no value. A failure factor that depends on the value being
 opened reads only the failing player's own value, which is payoff-irrelevant
 after its exclusion and independent of the active players' values given the
@@ -1911,7 +1989,7 @@ such $x$, up to $1+o(1)$:
   that $N_n$ could read from earlier phases is already public at $I$;
 - within the phase, given $\Phi$ every other owner's binding is a move, so
   the only choices left in $x$ are values. Their operational law is
-  value-free: bindings are opaque, the builder is value-blind, binding
+  value-free: bindings are opaque, the network is value-blind, binding
   delivery reads no value, and the timing tier is the same at every set and
   for every value;
 - a native move can still fail, through a timing tremble followed by a
@@ -2159,29 +2237,43 @@ u_p=W\cdot\mathbf 1\{\text{some other player's reveal failed}\},\qquad W>0.
 $$
 Every honest payoff is $0$, and $m_p=0$.
 
-**Builder.**
+**Network** (standard: everyone may emit at every tick).
 
-- All three reveals become ready at clock $0$, with delay $0$, bound $1$ and
-  deadline $2$.
-- At clock $0$, players $1,2,3$ are activated in that public order. Each sees
-  every earlier pending emission.
-- At clock $1$, everyone who has not sent is activated once.
-- All inclusions happen during clock $1$:
-  - if anyone sent at clock $0$, every packet is included;
-  - if all three send at clock $1$, exactly one of the three, chosen
+- All three reveals become ready at tick $0$, with deadline $4$. The block
+  that made them ready reaches players $1,2,3$ at ticks $0,1,2$, so those are
+  their first activations. Player $p$'s reveal has delay $p-1$ and bound
+  $4-p$. A packet is *on time* if it is sent at its sender's first
+  activation; every later packet is late.
+- When the block reaches a player, gossip shows it every on-time packet of
+  earlier players, and no other pending packet.
+- All inclusions happen in tick $3$:
+  - if anyone sent on time, every packet is included;
+  - otherwise, if all three have sent, exactly one of the three, chosen
     uniformly, is omitted;
   - otherwise every packet is included.
-- Unresolved reveals expire at clock $2$.
+- Unresolved reveals expire at the end of tick $3$.
 
-**Analysis.** For $a_p>-2W$:
+**Analysis.** Take $a_p\in(-2W,0)$. Late packets are all treated alike,
+whenever they are sent, so each player's real choice is made at its first
+activation: send on time, or be late.
 
-- At clock $1$, a player who has not sent strictly sends.
-- After two silences, player 3 strictly waits: $\tfrac23W+\tfrac13a_3>0$.
-- Then player 2 strictly waits after one silence.
-- Then player 1 strictly prefers silence.
+- A player that has not sent by tick $3$ strictly sends. Otherwise it fails
+  and gets $a_p$. Sending gives $0$, or $\tfrac23W+\tfrac13a_p$ if all three
+  are late, and both exceed $a_p$.
+- Player 3, seeing no on-time packet, strictly chooses late:
+  $\tfrac23W+\tfrac13a_3>0$, against $0$ for sending on time.
+- Then player 2, seeing no on-time packet from player 1, strictly chooses
+  late.
+- Then player 1 strictly chooses late.
 
 So every SE has a failure. With $n$ players the same argument works for
-$a_p>-(n-1)W$.
+$a_p\in(-(n-1)W,0)$.
+
+Extra decision points matter here. If late packets sent before the last
+tick could rescue everyone, as on-time ones do, sending "a little late"
+would be a weakly optimal way out, and an SE without failures would exist.
+The inclusion rule above treats every late packet alike, which removes
+that.
 
 #### Example 2: the bound $a_j<\underline u_j$ is too weak under concurrency
 
@@ -2195,22 +2287,27 @@ Bob gets $W>0$.
 Take $a_A\in(-X,0)$, which satisfies $a_A<\underline u_A$ but not $a_A<m_A=-X$.
 Take $a_B<0$.
 
-**Builder** (success-separable). Both reveals have delay $0$, bound $1$ and
-deadline $2$.
+**Network** (standard, success-separable). Both reveals become ready at
+tick $0$, with deadline $2$.
 
-- At clock $0$, Bob is activated first. A clock-$0$ packet of his is included
-  immediately, before Alice's activation, so Alice knows whether Bob sent.
-- Alice's packets sent after clock $0$ always fail.
-- Bob's clock-$1$ packet succeeds with probability $q$, independently of
-  everything else.
+- The block that made them ready reaches Bob at tick $0$ and Alice at tick
+  $1$. Bob's reveal has delay $0$ and bound $1$; Alice's has delay $1$ and
+  bound $0$. Alice cannot send earlier, since she has no token.
+- Bob's tick-$0$ packet is included in tick $0$, so at tick $1$ Alice knows
+  whether Bob sent.
+- Alice's tick-$1$ packet is included at once. Her reveal expires after tick
+  $1$.
+- Bob's tick-$1$ packet is late and succeeds with probability $q$,
+  independently of everything else.
 
-**Analysis.** If Bob is silent at clock $0$, he sends at clock $1$. Alice then
+**Analysis.** If Bob is silent at tick $0$, he sends at tick $1$. Alice then
 compares:
 
 - sending, which gives $-(1-q)X$;
 - withholding, which gives $a_A$.
 
-Waiting is equivalent to withholding, since her late packets fail. She
+Waiting is equivalent to withholding, since her reveal expires after tick
+$1$. She
 withholds if $a_A>-(1-q)X$. Bob's silence then earns $qW+(1-q)a_B$, which is
 positive if $qW>(1-q)|a_B|$.
 
@@ -2232,15 +2329,19 @@ phase, followed by `reveal a` and `reveal b`. No guards.
 The unique honest SE has $a=0$, with payoffs $(0,0)$. The minima are
 $m_A=-\varepsilon$ and $m_B=0$. Take $a_A=a_B=-1$, so $a_j<m_j$ holds.
 
-**Builder** (success-separable, value-blind). Both commits have delay $0$,
-bound $1$ and deadline $2$.
+**Network** (standard, success-separable, value-blind). Both commits become
+ready at tick $0$, with deadline $2$.
 
-- At clock $0$, B is activated first. B's clock-$0$ packet is included
-  immediately.
-- At clock $1$, B's late packet succeeds with probability $q=1/2$,
-  independently of everything else. A's late packets fail.
+- The block that made them ready reaches B at tick $0$ and A at tick $1$.
+  B's commit has delay $0$ and bound $1$; A's has delay $1$ and bound $0$.
+- B's tick-$0$ packet is included in tick $0$, so at tick $1$ A knows whether
+  B committed. A's tick-$1$ packet is included at once, and A's commit
+  expires after tick $1$.
+- B's tick-$1$ packet is late and succeeds with probability $q=1/2$,
+  independently of everything else.
 
-**Analysis without reset.** Suppose A sees B silent at clock $0$.
+**Analysis without reset.** Suppose A sees at tick $1$ that B was silent at
+tick $0$.
 
 - Binding $a=0$ gives $0$.
 - Binding $a=1$ gives $-q\varepsilon+(1-q)H=0.45$.
@@ -2312,7 +2413,7 @@ strength.
 
 - **M1. On-time honest actions succeed.** Suppose a packet is the owner's
   first and only packet for its event, is well-formed, and is sent at the
-  owner's first activation while the event is ready. For a reveal, suppose
+  owner's first activation for the event. For a reveal, suppose
   also that no obligation this reveal completes rejects. Then the packet is
   accepted before the deadline and the event succeeds, whatever anyone else
   sends.
@@ -2328,7 +2429,7 @@ strength.
 - **M3. Clean packets carry no evidence about unopened values.** Two parts:
   - The only evidence a clean packet carries is an opening's own certificate,
     for the value being delivered. Bindings carry none.
-  - The builder's laws, the leak rule and audit collection read no unopened
+  - The network's laws, the leak rule and audit collection read no unopened
     value other than the value of the opening being delivered.
 
   Two consequences follow:
@@ -2438,8 +2539,8 @@ clean sets put zero weight on unclean histories (Lemma A3).
 
 ### 5.3 Proof
 
-**M1.** Opportunity and timeliness give an activation while $e$ is ready, at a
-clock $s\le r_e+\mathit{delay}_e$. Protected inclusion needs the packet to be
+**M1.** Opportunity and timeliness give an activation after the owner has
+learned that $e$ is ready, at a clock $s\le r_e+\mathit{delay}_e$. Protected inclusion needs the packet to be
 the owner's only identifier for $e$. It then gives a receipt by clock
 $s+\mathit{bound}_e<r_e+d_e$, before expiry. The contract accepts it:
 
@@ -2532,7 +2633,7 @@ $\square$
 | --- | --- | --- | --- |
 | An honest move takes effect | the move itself | M1 | contract (protected inclusion) |
 | Outcomes after misbehaviour | a $\Gamma^X$ outcome | M2 | exclusion, reset, deferred guards |
-| Evidence about others' hidden values | none exists in clean traffic | M3 | well-formedness, value-blind builder |
+| Evidence about others' hidden values | none exists in clean traffic | M3 | well-formedness, value-blind network |
 | Seeing a failed opening (omitted but leaked, or included with result $\mathsf{fail}$) | an excluded player's irrelevant value | M3 | exclusion, product structure |
 | Others interfering with your success | impossible while your client sends by itself; at most a reset of your phase | M4, E3 | protected inclusion, success separability |
 | Disclosures, junk, copies | never sent | D1 | deposit $\alpha K_i>\operatorname{sp}_i$ |
@@ -2562,8 +2663,8 @@ no source counterpart. It arises only after a strictly dominated action (D1).
   whether a failed opening was seen, which no source-level event expresses.
 - **What the client must know.** The off-path delivery policy $\varphi^*$
   reads the law of $\xi_e$. On the path the client needs nothing about the
-  builder.
-- **Builder conditions.** The tiers rest on the contract (protected
+  network.
+- **Network conditions.** The tiers rest on the contract (protected
   inclusion), on value-blindness, and under concurrency on success
   separability. These are assumptions about the chain, not about the source.
 
@@ -2602,7 +2703,7 @@ counterexamples.
   $$
   q\,(V-a_j)-\alpha K(1-q).
   $$
-  The builder is chosen after the deposit, so it can pick $q$ with
+  The network is chosen after the deposit, so it can pick $q$ with
   $\alpha K(1-q)/q$ strictly between the continuation values $V_1-a_j$ and
   $V_2-a_j$ of two types. Then the high-value type sends late and the
   low-value type stays silent, and Lemma A fails.
@@ -2614,8 +2715,8 @@ counterexamples.
   respond to it. Under $C_0$, the settled audit already forbids such packets;
   $C_1$ keeps that.
 - **Deposit $\alpha K_i>\operatorname{sp}_i$.** Lemma C needs it, and it does
-  not depend on the builder.
-- **Value-blind builder.** Lemma A needs it. The runtime's scheduler view
+  not depend on the network.
+- **Value-blind network.** Lemma A needs it. The runtime's scheduler view
   contains pending payloads, so this is a real restriction.
 - **The source game includes violations.** A guard completed at a later
   reveal lets a guard-violating binding publish values first and fail later.
@@ -2670,7 +2771,7 @@ player needs: the source game $\Gamma^X$.
     reads only source-level information, as Theorem 3 lifts $\sigma^X$;
   - the excluded player's continuation value is then route-independent and
     below $\underline u_j$.
-- **Coupled builders.** Can a forfeit scaled by $n-1$, or capped fail-stop
+- **Coupled networks.** Can a forfeit scaled by $n-1$, or capped fail-stop
   payoffs, restore preservation when (S2) fails? Example 1 bounds what a
   forfeit must exceed.
 - **Correlated shocks.** (S2) excludes common outages that make all late
@@ -2682,7 +2783,7 @@ player needs: the source game $\Gamma^X$.
   more than any non-excluded payoff.
 - **Infinite domains**, for example sealed-bid auctions over $\mathbb N$, are
   outside all four theorems.
-- **Builder-first order.** If the deposit may depend on the builder's law,
+- **Network-first order.** If the deposit may depend on the network's law,
   Theorems 2 and 3 apply unchanged. Whether $C_0$ preserves SE in that order
   is not settled.
 - **Mechanization.** No theorem is machine-checked. The finite games,
@@ -2691,17 +2792,17 @@ player needs: the source game $\Gamma^X$.
 
 **Questions an external reviewer will ask.**
 
-- *Why is the builder a chance process, not a strategic player (MEV)?* The
-  theorems treat the builder as exogenous, with a known law. A builder that
+- *Why is the network a chance process, not a strategic player (MEV)?* The
+  theorems treat the network as exogenous, with a known law. A network that
   profits from ordering or censorship is a player with its own payoff, and
   none of the results covers it. Theorem 1 is unaffected, since an exogenous
-  builder is a special case. For Theorems 2–4, a strategic builder is
+  network is a special case. For Theorems 2–4, a strategic network is
   open.
 - *Is value-blindness realistic, given that payloads sit in the mempool?*
   Bindings are opaque, so for them it is only a statement about commitment
-  hashes. For openings in flight it is a real restriction: a builder could
+  hashes. For openings in flight it is a real restriction: a network could
   read a pending opening's value and treat it differently. Per-event
-  value-blindness still lets the builder read the value of the opening being
+  value-blindness still lets the network read the value of the opening being
   delivered. What it forbids is using that value for *other* events.
 - *Can the recovery protocol be implemented?*
   - **The reset** is a contract rule: void the phase's bindings and reopen the
@@ -2733,7 +2834,7 @@ A mechanization must also check the following, beyond the statements above:
 - value-blindness of the scheduler, the leak rule and collection;
 - that expiry cannot fire before clock $r_e+\mathit{delay}_e+\mathit{bound}_e+1$;
 - that failures and expiries are in every player's view;
-- that the builder of Theorem 1 satisfies the contract with the parameters of
+- that the network of Theorem 1 satisfies the contract with the parameters of
   2.3, and that its inclusion law is blind to late packets;
 - the agent-form fixed point;
 - that the contract's deferred guard obligations coincide with the source's
