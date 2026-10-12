@@ -415,8 +415,8 @@ rejection's public effect, which is not worked out here.
   evidence, for example about $t$, as a different emission that leads to a
   different record. A mechanization must check that the audit charges such
   attachments, or extend Step 1 to show they are not strictly preferred.
-  The [fail-stop note](empty-context-fail-stop-preservation.md) shows that an
-  uncharged evidence channel alone breaks preservation.
+  The [exclusion note](empty-context-fail-stop-preservation.md) sketches, for
+  Battle of the Sexes, how an uncharged evidence channel breaks preservation.
 - **Unopenable bindings.** The proof allows them (they only enlarge the set
   of types) and handles them in Case B.
 - **Honest SE.** It relies on Alice's indifference among her commitments.
