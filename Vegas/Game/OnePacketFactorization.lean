@@ -1009,6 +1009,34 @@ theorem LateDeliveryBlindness.site_failure_near
   rw [abs_le]
   constructor <;> linarith [firstNear.1, firstNear.2, secondNear.1, secondNear.2]
 
+/-- **A hidden-value swap between two sites.** For two information sites of the
+owner `who`, a bijection between their histories that keeps the operational
+record, the source weight under the `n`-th assessment, and regularity. It
+stands for exchanging the owner's hidden values while leaving everything the
+operational record and the other players' source factors read. Together with
+the operational factorization, under which the owner mass is constant on a
+site, it makes the belief laws of operational records at the two sites agree up
+to the factorization error, which is the `keyed` field of
+`Vegas.LateDeliveryBlindness` for sites with the same late-delivery key. -/
+structure HiddenValueSwap (sequence : ℕ → setup.intendedModel.BehavioralAssessment) (n : ℕ)
+    (who : Player)
+    (first second : (onePacketInformation setup leaks bounds horizon
+      scheduler).InformationSite who) where
+  /-- The exchange of the owner's hidden values. -/
+  swap : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
+      first.1 ≃
+    (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who second.1
+  record : ∀ history,
+    operationalRecord setup leaks bounds horizon scheduler (swap history).1.trace =
+      operationalRecord setup leaks bounds horizon scheduler history.1.trace
+  source : ∀ history,
+    othersSourceWeight setup leaks bounds horizon scheduler (sequence n) who
+        (swap history).1.trace =
+      othersSourceWeight setup leaks bounds horizon scheduler (sequence n) who history.1.trace
+  regular : ∀ history,
+    RegularTrace setup leaks bounds horizon scheduler (sequence n) who (swap history).1.trace ↔
+      RegularTrace setup leaks bounds horizon scheduler (sequence n) who history.1.trace
+
 end LateDelivery
 
 end Vegas
