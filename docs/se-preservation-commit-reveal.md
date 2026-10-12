@@ -174,6 +174,18 @@ of the compiled game with the same outcome law and no charges on its paths. The
 deposit is fixed **before** the builder, so it cannot be scaled against the
 builder's reliability.
 
+**What kind of result this is.** The negative result is about a standard
+compiler. The positive results are an *equilibrium implementation through
+recovery rules that the compiler adds*: exclusion, a free first packet, and
+a reset. These rules preserve the honest game's outcome law, but they change
+what failures mean. An excluded player's utility is replaced by a fixed
+payoff, and a reset voids surviving players' commitments. So this is not
+preservation of the program's own failure semantics, and it is a separate
+target from preservation under a fixed compiler and runtime (Section 8). The
+positive theorems are existence results. For each honest SE they construct
+one SE of the compiled game that preserves it, with suitable off-path
+beliefs. They do not claim that every SE of the compiled game preserves it.
+
 - **Theorem 1 (negative).** The standard compiler fails. It charges a forfeit
   for each failed reveal and continues the program, and it charges every
   authentic packet that is never accepted. There is a program with three
@@ -194,7 +206,7 @@ builder's reliability.
 
   For every program in the class, every forfeit, every deposit above the
   payoff spread and every admissible value-blind builder, every honest SE is
-  preserved.
+  preserved by some SE of the compiled game.
 - **Theorem 3 (positive, concurrent).** The same holds when events run
   concurrently in an order that respects the source's information dependence.
   Five further conditions are needed:
@@ -212,7 +224,9 @@ builder's reliability.
   - the exclusion payoff lies below every payoff the player can receive while
     not excluded.
 
-  Examples 1–3 show that each condition is needed.
+  Examples 1–3 show that three of these are needed: success separability,
+  the reset, and the stronger payoff bound. Whether value-blindness and
+  content-blind leaks are needed is not shown.
 - **Theorem 4 (source explanation).** Under the hypotheses of Theorem 3, honest
   players need to reason only about a source-level game $\Gamma^X$. It is the
   source program, with its own deferred guards, read with one extra rule: *a
@@ -226,6 +240,10 @@ builder's reliability.
   - where the mechanics allow more, *dominance*, which holds whatever others
     do;
   - otherwise, the *equilibrium* that Theorem 3 constructs.
+
+  The third tier is a property of that constructed SE, not of every SE. For
+  example, send times and handle slots remain mechanically available as
+  signals; the constructed SE gives them no meaning.
 
 Section 6 relates Theorems 1 and 2. Section 7 explains what the proofs need
 from each change. Section 8 states what the compiler implements. Section 9
@@ -2820,11 +2838,14 @@ needs its own review. What is known:
     be produced earlier, so no one can send for an event before seeing that
     block. That token stays valid after the event completes, so a first
     packet sent too late would be free rather than charged.
+- *Theorems 2–4: open for the realistic clock.* A builder that activates
+  every player at every tick does satisfy their conditions, but that
+  specialization is not the realistic model. The realistic model also has
+  delayed observation of blocks, and readiness tokens that stay valid after
+  an event completes. Those bring new information sets and new actions, for
+  example a free first packet sent after expiry. The theorems do not cover
+  them. Transferring Theorems 2–4 needs its own proof.
 - *Expected to hold with ticks, checked informally only:*
-  - **Theorems 2–4.** They hold for every builder meeting their conditions,
-    and a builder that activates every player at every tick is one. The
-    first activation for an event is then when its readiness block reaches
-    the owner, and (S1) concerns that arrival time.
   - **Theorem 1**, with relabelled ticks. Bob's extra decision points carry
     no new information, and silence is his only uncharged action at them.
   - **Examples 2 and 3.** The second player's later move comes from a
