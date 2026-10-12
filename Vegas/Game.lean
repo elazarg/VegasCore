@@ -47,6 +47,7 @@ import Vegas.Game.OnePacketCanonicalPermits
 import Vegas.Game.OnePacketPendingPool
 import Vegas.Game.OnePacketDelivery
 import Vegas.Game.OnePacketLawApproximation
+import Vegas.Game.CompiledPolicyView
 import Vegas.Game.PurificationEdge
 import Vegas.Game.ReactiveSourceDecision
 import Vegas.Game.ReactiveSourceAcceptance
