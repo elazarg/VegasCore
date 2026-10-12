@@ -45,6 +45,7 @@ import Vegas.Game.OnePacketTrembles
 import Vegas.Game.OnePacketPrescribedSupport
 import Vegas.Game.OnePacketCanonicalPermits
 import Vegas.Game.OnePacketCanonicalAcceptance
+import Vegas.Game.OnePacketFirstActivation
 import Vegas.Game.OnePacketPendingPool
 import Vegas.Game.OnePacketDelivery
 import Vegas.Game.OnePacketLawApproximation
