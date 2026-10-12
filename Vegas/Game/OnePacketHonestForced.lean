@@ -174,4 +174,67 @@ theorem honest_reached_forced (wellFormed : setup.WellFormed) {horizon : Nat}
 
 end Forced
 
+section Domination
+
+variable [Fintype Player] (bounds : MessageBounds (graph setup))
+
+omit [DecidableEq Player] [IExpr.ResultTypes L] in
+private theorem apply_eq_one_of_subsingleton {α : Type} [Subsingleton α] (law : PMF α) (a : α) :
+    law a = 1 := by
+  rw [← law.tsum_coe, tsum_eq_single a (fun other different =>
+    (different (Subsingleton.elim other a)).elim)]
+
+/-- **Prescribed play at forced states dominates as-if-honest play.** For a
+well-formed setup, under the asynchronous contract with timely delays and
+retention of first canonical packets, a profile of the one-packet game that
+plays the prescribed component at every forced information state dominates
+as-if-honest play from initialization, whatever it plays elsewhere. -/
+theorem dominatesHonest_of_prescribed_forced (wellFormed : setup.WellFormed) {horizon : Nat}
+    {scheduler : (application setup leaks).Scheduler} {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
+      bound)
+    (timely : AsyncTimely (runtime setup) delay bound)
+    (assessment : setup.intendedModel.BehavioralAssessment)
+    (retains : RetainsFirstCanonical setup leaks bounds bound)
+    {scale : ℝ} (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
+    (profile : ∀ who,
+      (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).BehavioralPolicy who)
+    (prescribed : ∀ who info,
+      forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
+        scheduler who info →
+      profile who info = prescribedComponent setup leaks bounds (initialLaw setup) horizon
+        scheduler assessment scale nonnegative le_one who info) :
+    DominatesHonestFrom setup leaks bounds (initialLaw setup) horizon scheduler assessment scale
+      profile ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+        scheduler).initHistory := by
+  let menu := bounds.onePacketMenu (runtime setup) leaks
+  let model := onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
+  intro fuel history reached who choice
+  have observed : model.infoOf who history.trace =
+      (application setup leaks).observe who history.state :=
+    menu.info (initialLaw setup) horizon scheduler who history.trace
+  by_cases forced : forcedAgent menu (initialLaw setup) horizon scheduler who
+      (model.infoOf who history.trace)
+  · rw [prescribed who _ forced]
+    exact trembledChoice_ge_main setup leaks bounds (initialLaw setup) horizon scheduler
+      nonnegative le_one who _ _ _ choice
+  · have info : model.infoOf who history.trace = none := by
+      rw [observed]
+      cases state : history.state with
+      | none => rfl
+      | some control =>
+          exact (forced (forcedAgent_of_history history
+            (honest_reached_forced bounds wellFormed contract timely assessment retains fuel history
+              reached control state who))).elim
+    revert choice
+    rw [info]
+    intro choice
+    have : Subsingleton (model.Choice who none) :=
+      InformationModel.subsingleton_choice_of_menu_subsingleton _ _ Set.subsingleton_singleton
+    rw [apply_eq_one_of_subsingleton _ choice, apply_eq_one_of_subsingleton _ choice,
+      ENNReal.toReal_one, mul_one]
+    exact trembleRetention_le_one nonnegative le_one
+
+end Domination
+
 end Vegas
