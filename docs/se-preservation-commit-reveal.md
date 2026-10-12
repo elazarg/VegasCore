@@ -1259,8 +1259,13 @@ instead plays $\sigma^X_n$ at an owner's own guard-violating sets (4.4).
 - *Late delivery.* If the owner has sent nothing for an unresolved event, it
   follows a fixed policy $\varphi^*$.
   - At each activation, $\varphi^*$ decides whether to send the free packet
-    now, so as to maximize the conditional probability that the event
-    succeeds.
+    now and, for a binding, which handle slot it uses. It does so to
+    maximize the conditional probability that the event succeeds. The slot
+    matters because a value-blind builder may still treat late packets
+    differently by slot, for example accepting one slot at once and delaying
+    another past the deadline. A rule that fixed the slot would then not be
+    a best response. On-time packets are unaffected, because protected
+    inclusion holds whatever the slot.
   - $\varphi^*$, including its tie-breaking rule, is a function of the public
     data, the owner's operational view, and the value being delivered only.
     For a binding it reads no value.
@@ -1401,7 +1406,10 @@ alone.
 - **Pending reveal.** While a reveal is pending, other players' only uncharged
   action is silence, so their beliefs do not yet matter.
 - **Handle slot.** The handle slot is uncharged cheap talk. Its trembles do
-  not depend on the value, so by Lemma A observers ignore it. $\square$
+  not depend on the value, so by Lemma A observers ignore it. For a late
+  binding the slot can also change $P_s$. That is why $\varphi^*$ chooses
+  the slot together with the send time, as a function of the data above,
+  so it still reads no value. $\square$
 
 **Lemma C (charged one-shot deviations do not pay).** At a forced set of
 player $j$, every one-shot deviation to a charged action is strictly worse
