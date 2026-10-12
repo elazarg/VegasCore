@@ -1282,29 +1282,44 @@ instead plays $\sigma^X_n$ at an owner's own guard-violating sets (4.4).
 beliefs $\mu^H_n\to\mu^H$. Let $c$ bound the menu sizes, and take $\rho_n$ as
 in 1.4. At each forced set the perturbed profile is built as follows:
 
-- The prescribed component gets mass $1-\eta_n-\eta_n^2-\eta_n^{M_2}$, and
-  inside it honest choices follow $\sigma^H_n$ at the projection. So an honest
-  action $x$ has probability $\sigma^H_n(x)(1-\eta_n-\eta_n^2-\eta_n^{M_2})$,
-  which is the same rescaling at every set.
+- The prescribed component gets mass $1-\eta_n-\eta_n^2-\eta_n^3-\eta_n^{M_2}$,
+  and inside it honest choices follow $\sigma^H_n$ at the projection, at the
+  prescribed handle slot. So an honest action $x$ has probability
+  $\sigma^H_n(x)(1-\eta_n-\eta_n^2-\eta_n^3-\eta_n^{M_2})$, which is the same
+  rescaling at every set.
 - *Timing deviations* get probability $\eta_n$. That is silence at a first
   activation, or the send time that $\varphi^*$ does not choose; each forced
   set has at most one.
-- The other native-only uncharged actions share $\eta_n^2$, uniformly. These
-  are values outside the honest set, bad bindings and other handle slots.
-  Where a set has no such action, the $\eta_n^2$ goes to the prescribed
-  component.
+- *Slot trembles* get $\eta_n^2$ at a commit. The value is drawn from
+  $\sigma^H_n$ at the projection, exactly as in the prescribed component, and
+  the handle slot is drawn uniformly from the other slots, independently of
+  the value. So a visible non-canonical slot says nothing about the value.
+- The other native-only uncharged actions share $\eta_n^3$, uniformly. These
+  are values outside the honest set and bad bindings, at any slot. Where a set
+  has no such action, its share goes to the prescribed component.
+
+  The split matters. If slots and values trembled together at one order,
+  uniformly over the whole menu, then a non-canonical slot would carry a
+  uniformly distributed value. That slot is uncharged and visible, so an
+  observer who sees it would hold a uniform belief about the value instead of
+  $\mu^H$. For example, if A's commitment has honest law $(\tfrac34,\tfrac14)$
+  chosen to make B indifferent, B would believe $(\tfrac12,\tfrac12)$ and stop
+  being indifferent.
 - Charged actions share $\eta_n^{M_2}$.
 
 The sequences satisfy four conditions:
 $$
-\eta_n=o(\rho_n),\qquad \eta_n^2=o(\rho_n^{\mathcal T}),\qquad M_2>2\mathcal T,
-\qquad \eta_n^{M_2-2\mathcal T}=o\bigl((\rho_n/c)^{\mathcal T}\bigr).
+\eta_n=o(\rho_n^{\mathcal T}),\qquad M_2>3\mathcal T,
+\qquad \eta_n^{M_2-3\mathcal T}=o\bigl((\rho_n/c)^{\mathcal T}\bigr).
 $$
 So a history with a charged action has weight at most $\eta_n^{M_2}$. That is
 negligible against any history without one, whose weight is at least
-$(\eta_n^2/c)^{\mathcal T}\rho_n^{\mathcal T}$.
+$(\eta_n^3/c)^{\mathcal T}\rho_n^{\mathcal T}$.
 
-The condition $\eta_n^2=o(\rho_n^{\mathcal T})$ handles bad bindings. The
+The condition $\eta_n=o(\rho_n^{\mathcal T})$ handles bad bindings. A bad
+binding carries $\eta_n^3$. Its honest counterpart must show the same slot,
+so it may itself be a slot tremble, with weight $\eta_n^2$ times the honest
+value's probability. The
 honest counterpart of a bad binding, with the same public record, may have to
 change up to $\mathcal T$ of the author's hidden commitments. Take a guard
 $y=x_1\wedge x_2\wedge x_3$ with every $x_i=0$ on path, and the deviation
@@ -1344,10 +1359,10 @@ the other players' only uncharged action is silence.
 *Proof.*
 
 - *Charged actions* are negligible by the choice of $M_2$.
-- *A bad binding* carries a factor of at most $\eta_n^2$. Its honest
-  counterpart, with the same public record, carries at least
-  $\rho_n^{\mathcal T}$ times the common factors, and
-  $\eta_n^2=o(\rho_n^{\mathcal T})$. At a forced set nobody is publicly doomed,
+- *A bad binding* carries a factor of at most $\eta_n^3$. Its honest
+  counterpart, with the same public record and the same slot, carries at least
+  $\eta_n^2\rho_n^{\mathcal T}$ times the common factors, and
+  $\eta_n^3=o(\eta_n^2\rho_n^{\mathcal T})$. At a forced set nobody is publicly doomed,
   so such a counterpart exists. The two operational records have the same law,
   since well-formed bindings carry no evidence and are opaque. Until the bad
   binding's reveal, its owner times its moves exactly as the counterpart
@@ -1712,7 +1727,7 @@ built from $\sigma^X_n$:
     On the honest region that is $\sigma^H_n$ scaled as in Proposition 1. At
     the owner's own guard-violating sets it is Proposition 1's play there.
   - Native-only bad bindings (unopenable or wrongly typed) are in the
-    $\zeta_n^2$ tier below. At commit-phase sets, others' beliefs give them
+    $\zeta_n^3$ tier below. At commit-phase sets, others' beliefs give them
     zero weight while their owner is active (Lemma A3, part 1). Their
     owner sends on time and otherwise plays as if the bad binding held a fixed
     honest value. Any uncharged choice is optimal for it, by the own-bad-binding
@@ -1720,15 +1735,18 @@ built from $\sigma^X_n$:
 - **Timing deviations** are the $\zeta_n$ terms above: extra silence at the
   first activation, and a send-or-wait choice that $\varphi^*$ does not make.
   They are the same at every set and for every value.
-- **Native-only values** share $\zeta_n^2$. These are unopenable and wrongly
-  typed bindings, and handle slots other than the prescribed one.
+- **Slot trembles** get $\zeta_n^2$ at a commit: the value follows
+  $\sigma^X_n$, and the handle slot is uniform over the other slots,
+  independently of the value.
+- **Native-only values** share $\zeta_n^3$. These are unopenable and wrongly
+  typed bindings, at any slot.
 - **Charged actions** share $\zeta_n^{M_3}$.
 
 Let $\rho^X_n$ be the smallest positive probability that $\sigma^X_n$ or Nature
 gives to any action. Choose $\zeta_n\to0$ and $M_3$ such that
 $$
-\zeta_n^2=o\bigl((\rho^X_n)^{\mathcal T}\bigr),\qquad M_3>2\mathcal T,\qquad
-\zeta_n^{M_3}=o\bigl((\zeta_n^{2}\rho^X_n/c)^{\mathcal T}\bigr),
+\zeta_n=o\bigl((\rho^X_n)^{\mathcal T}\bigr),\qquad M_3>3\mathcal T,\qquad
+\zeta_n^{M_3}=o\bigl((\zeta_n^{3}\rho^X_n/c)^{\mathcal T}\bigr),
 $$
 where $c$ bounds the menu sizes. The first condition makes native-only bad
 bindings of active players negligible against their counterparts with the
@@ -1942,7 +1960,7 @@ Theorem 2, whose Lemma A asserts honest beliefs only where no reveal is
 pending.
 
 *Proof.* **Claim 1.** Charged histories have weight at most
-$\zeta_n^{M_3}$ against at least $(\zeta_n^2\rho^X_n/c)^{\mathcal T}$ for a clean
+$\zeta_n^{M_3}$ against at least $(\zeta_n^3\rho^X_n/c)^{\mathcal T}$ for a clean
 history in the set, so they are negligible by the choice of $M_3$. Take a
 history in which another active player $k$ holds a native-only bad binding.
 $k$ has not yet reached the reveal of that binding, since that reveal would
@@ -1950,9 +1968,10 @@ have excluded it. Its counterpart replaces the bad value with an honest one,
 together with up to $\mathcal T$ earlier choices of $k$. It is in the same
 information set: the owner of the set is not $k$, and sees neither $k$'s
 values nor $k$'s private choices. It has the same public record and the
-same timing, so the same operational factors. The bad binding carries
-$\zeta_n^2$ against at least $(\rho^X_n)^{\mathcal T}$, which is negligible by
-the first condition of 4.4. The same comparisons hold inside $\Phi$. The
+same timing and the same slot, so the same operational factors. The bad
+binding carries $\zeta_n^3$ against at least $\zeta_n^2(\rho^X_n)^{\mathcal T}$
+(the counterpart may be a slot tremble), which is negligible by the first
+condition of 4.4. The same comparisons hold inside $\Phi$. The
 counterpart of a bad-binding history has the same in-phase behaviour, so
 the same $\Phi$ status. A charged history in which $\Phi$ holds is compared
 with a clean one in which $\Phi$ holds, which exists when $\Phi$ is possible.
