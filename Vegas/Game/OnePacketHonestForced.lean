@@ -16,16 +16,20 @@ law, which records no failed reveal, while a decoded debt would record one on
 every terminal continuation. So at every history as-if-honest play reaches,
 the decoding is an intended point at which nobody is excluded or owes a failed
 reveal, and the state is forced for every player
-(`Vegas.honest_reached_forced`). A profile playing the prescribed component at
-every forced information state therefore dominates as-if-honest play
-(`Vegas.dominatesHonest_of_prescribed_forced`), whatever it plays elsewhere.
+(`Vegas.honest_reached_forced`). A profile that keeps a fraction of every
+as-if-honest choice at every forced information state therefore dominates
+as-if-honest play with that fraction (`Vegas.dominatesHonest_of_forced`),
+whatever it plays elsewhere; the prescribed component keeps the retention of
+its scale (`Vegas.dominatesHonest_of_prescribed_forced`).
 
-**The law approximation.** Along vanishing tremble scales, profiles playing
-the prescribed component at forced information states have a law of typed
-readouts, and of typed readouts with exclusion payoffs, within a vanishing
-error of the intended law, uniformly over outcomes and over their play at
-other information states (`Vegas.onePacket_readout_lawApproximation`,
-`Vegas.onePacket_exclusion_lawApproximation`).
+**The law approximation.** Along retentions tending to one, profiles keeping
+that fraction of the as-if-honest choice at forced information states have a
+law of typed readouts, and of typed readouts with exclusion payoffs, within a
+vanishing error of the intended law, uniformly over outcomes and over their
+play at other information states (`Vegas.onePacket_readout_lawApproximation`,
+`Vegas.onePacket_exclusion_lawApproximation`); prescribed trembled components
+along vanishing scales are one instance
+(`Vegas.onePacket_prescribed_lawApproximation`).
 -/
 
 noncomputable section
@@ -191,29 +195,30 @@ private theorem apply_eq_one_of_subsingleton {α : Type} [Subsingleton α] (law 
   rw [← law.tsum_coe, tsum_eq_single a (fun other different =>
     (different (Subsingleton.elim other a)).elim)]
 
-/-- **Prescribed play at forced states dominates as-if-honest play.** For a
-well-formed setup, under the asynchronous contract with timely delays and
-retention of first canonical packets, a profile of the one-packet game that
-plays the prescribed component at every forced information state dominates
-as-if-honest play from initialization, whatever it plays elsewhere. -/
-theorem dominatesHonest_of_prescribed_forced (wellFormed : setup.WellFormed) {horizon : Nat}
+/-- **Keeping the as-if-honest choice at forced states dominates as-if-honest
+play.** For a well-formed setup, under the asynchronous contract with timely
+delays and retention of first canonical packets, a profile of the one-packet
+game that gives every choice at every forced information state at least
+`retention ∈ [0, 1]` times its as-if-honest mass dominates as-if-honest play
+from initialization with that retention, whatever it plays elsewhere. -/
+theorem dominatesHonest_of_forced (wellFormed : setup.WellFormed) {horizon : Nat}
     {scheduler : (application setup leaks).Scheduler} {delay bound : (graph setup).EventId → Nat}
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
       bound)
     (timely : AsyncTimely (runtime setup) delay bound)
     (assessment : setup.intendedModel.BehavioralAssessment)
     (retains : RetainsFirstCanonical setup leaks bounds bound)
-    {scale : ℝ} (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
+    {retention : ℝ} (le_one : retention ≤ 1)
     (profile : ∀ who,
       (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).BehavioralPolicy who)
-    (prescribed : ∀ who info,
+    (kept : ∀ who info,
       forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
-        scheduler who info →
-      profile who info = prescribedComponent setup leaks bounds (initialLaw setup) horizon
-        scheduler assessment scale nonnegative le_one who info) :
-    DominatesHonestFrom setup leaks bounds (initialLaw setup) horizon scheduler assessment scale
-      profile ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
-        scheduler).initHistory := by
+        scheduler who info → ∀ choice,
+      retention * ((honestProfile setup leaks bounds (initialLaw setup) horizon scheduler
+          assessment who info) choice).toReal ≤ ((profile who info) choice).toReal) :
+    DominatesHonestFrom setup leaks bounds (initialLaw setup) horizon scheduler assessment
+      retention profile ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+        horizon scheduler).initHistory := by
   let menu := bounds.onePacketMenu (runtime setup) leaks
   let model := onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
   intro fuel history reached who choice
@@ -222,9 +227,7 @@ theorem dominatesHonest_of_prescribed_forced (wellFormed : setup.WellFormed) {ho
     menu.info (initialLaw setup) horizon scheduler who history.trace
   by_cases forced : forcedAgent menu (initialLaw setup) horizon scheduler who
       (model.infoOf who history.trace)
-  · rw [prescribed who _ forced]
-    exact trembledChoice_ge_main setup leaks bounds (initialLaw setup) horizon scheduler
-      nonnegative le_one who _ _ _ choice
+  · exact kept who _ forced choice
   · have info : model.infoOf who history.trace = none := by
       rw [observed]
       cases state : history.state with
@@ -240,7 +243,35 @@ theorem dominatesHonest_of_prescribed_forced (wellFormed : setup.WellFormed) {ho
       InformationModel.subsingleton_choice_of_menu_subsingleton _ _ Set.subsingleton_singleton
     rw [apply_eq_one_of_subsingleton _ choice, apply_eq_one_of_subsingleton _ choice,
       ENNReal.toReal_one, mul_one]
-    exact trembleRetention_le_one nonnegative le_one
+    exact le_one
+
+/-- **Prescribed play at forced states dominates as-if-honest play.** Under the
+hypotheses of `dominatesHonest_of_forced`, a profile playing the prescribed
+component at every forced information state dominates as-if-honest play with
+the retention of the tremble scale. -/
+theorem dominatesHonest_of_prescribed_forced (wellFormed : setup.WellFormed) {horizon : Nat}
+    {scheduler : (application setup leaks).Scheduler} {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
+      bound)
+    (timely : AsyncTimely (runtime setup) delay bound)
+    (assessment : setup.intendedModel.BehavioralAssessment)
+    (retains : RetainsFirstCanonical setup leaks bounds bound)
+    {scale : ℝ} (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
+    (profile : ∀ who,
+      (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).BehavioralPolicy who)
+    (prescribed : ∀ who info,
+      forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
+        scheduler who info →
+      profile who info = prescribedComponent setup leaks bounds (initialLaw setup) horizon
+        scheduler assessment scale nonnegative le_one who info) :
+    DominatesHonestFrom setup leaks bounds (initialLaw setup) horizon scheduler assessment
+      (trembleRetention scale) profile ((bounds.onePacketMenu (runtime setup) leaks).protocol
+        (initialLaw setup) horizon scheduler).initHistory :=
+  dominatesHonest_of_forced bounds wellFormed contract timely assessment retains
+    (trembleRetention_le_one nonnegative le_one) profile fun who info forced choice => by
+      rw [prescribed who info forced]
+      exact trembledChoice_ge_main setup leaks bounds (initialLaw setup) horizon scheduler
+        nonnegative le_one who _ _ _ choice
 
 end Domination
 
@@ -252,12 +283,13 @@ variable [Fintype Player] (bounds : MessageBounds (graph setup))
 
 /-- **The law approximation of the one-packet game under the contract.** For
 a well-formed setup, under the asynchronous contract with timely delays and
-retention of first canonical packets, along vanishing tremble scales in
-`[0, 1]`, every sequence of one-packet profiles playing the prescribed
-component of `assessments n` at every forced information state, whatever they
-play elsewhere, has a law of typed readouts whose probabilities differ from the
-intended ones under `(assessments n).strategy` by an error that vanishes,
-uniformly over outcomes; the error depends only on the scales. -/
+retention of first canonical packets, along retentions `retentions n` in
+`[0, 1]` tending to one, every sequence of one-packet profiles that at every
+forced information state give every choice at least `retentions n` times its
+as-if-honest mass under `assessments n`, whatever they play elsewhere, has a
+law of typed readouts whose probabilities differ from the intended ones under
+`(assessments n).strategy` by an error that vanishes, uniformly over outcomes;
+the error depends only on the retentions. -/
 theorem onePacket_readout_lawApproximation (wellFormed : setup.WellFormed) {horizon : Nat}
     {scheduler : (application setup leaks).Scheduler} {delay bound : (graph setup).EventId → Nat}
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
@@ -265,15 +297,15 @@ theorem onePacket_readout_lawApproximation (wellFormed : setup.WellFormed) {hori
     (timely : AsyncTimely (runtime setup) delay bound)
     (retains : RetainsFirstCanonical setup leaks bounds bound)
     (assessments : ℕ → setup.intendedModel.BehavioralAssessment)
-    (scales : ℕ → ℝ) (nonnegative : ∀ n, 0 ≤ scales n) (le_one : ∀ n, scales n ≤ 1)
-    (vanishing : Tendsto scales atTop (nhds 0))
+    (retentions : ℕ → ℝ) (nonnegative : ∀ n, 0 ≤ retentions n) (le_one : ∀ n, retentions n ≤ 1)
+    (converging : Tendsto retentions atTop (nhds 1))
     (profiles : ℕ → ∀ who,
       (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).BehavioralPolicy who)
-    (prescribed : ∀ n who info,
+    (kept : ∀ n who info,
       forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
-        scheduler who info →
-      profiles n who info = prescribedComponent setup leaks bounds (initialLaw setup) horizon
-        scheduler (assessments n) (scales n) (nonnegative n) (le_one n) who info) :
+        scheduler who info → ∀ choice,
+      retentions n * ((honestProfile setup leaks bounds (initialLaw setup) horizon scheduler
+          (assessments n) who info) choice).toReal ≤ ((profiles n who info) choice).toReal) :
     ∃ lawError : ℕ → ℝ, Tendsto lawError atTop (nhds 0) ∧
       ∀ n outcome,
         |((((onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).runBehavioral
@@ -282,15 +314,15 @@ theorem onePacket_readout_lawApproximation (wellFormed : setup.WellFormed) {hori
           (((setup.intendedModel.runBehavioral (assessments n).strategy
             (instructionCount setup.program + 1)).map
             (fun final => setup.protocolReadout final.state)) outcome).toReal| ≤ lawError n := by
-  refine ⟨fun n => (Fintype.card Player * (2 * horizon + 1) : ℕ) * (scales n + scales n ^ 2),
+  refine ⟨fun n => (Fintype.card Player * (2 * horizon + 1) : ℕ) * (1 - retentions n),
     ?_, fun n outcome => ?_⟩
-  · have limit := (vanishing.add (vanishing.pow 2)).const_mul
+  · have limit := ((tendsto_const_nhds (x := (1 : ℝ))).sub converging).const_mul
       ((Fintype.card Player * (2 * horizon + 1) : ℕ) : ℝ)
     simpa using limit
   · have close := (onePacket_withinTV_honest setup leaks bounds (initialLaw setup) horizon
       scheduler (assessments n) (nonnegative n) (le_one n) (profiles n)
-      (dominatesHonest_of_prescribed_forced bounds wellFormed contract timely (assessments n)
-        retains (nonnegative n) (le_one n) (profiles n) (prescribed n))
+      (dominatesHonest_of_forced bounds wellFormed contract timely (assessments n) retains
+        (le_one n) (profiles n) (kept n))
       (2 * horizon + 1)).map (fun final => sourceReadout setup leaks final.state)
     rw [honestProfile_readout_law bounds wellFormed contract timely (assessments n) retains]
       at close
@@ -301,6 +333,47 @@ hypotheses of `onePacket_readout_lawApproximation`, the joint law of typed
 readout and native exclusion payoff is within a vanishing error of the
 intended joint law of typed readout and exclusion payoff. -/
 theorem onePacket_exclusion_lawApproximation (wellFormed : setup.WellFormed) {horizon : Nat}
+    {scheduler : (application setup leaks).Scheduler} {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
+      bound)
+    (timely : AsyncTimely (runtime setup) delay bound)
+    (retains : RetainsFirstCanonical setup leaks bounds bound)
+    {Parameter : Type} (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (excludedPayoff : Player → ℝ)
+    (assessments : ℕ → setup.intendedModel.BehavioralAssessment)
+    (retentions : ℕ → ℝ) (nonnegative : ∀ n, 0 ≤ retentions n) (le_one : ∀ n, retentions n ≤ 1)
+    (converging : Tendsto retentions atTop (nhds 1))
+    (profiles : ℕ → ∀ who,
+      (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).BehavioralPolicy who)
+    (kept : ∀ n who info,
+      forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
+        scheduler who info → ∀ choice,
+      retentions n * ((honestProfile setup leaks bounds (initialLaw setup) horizon scheduler
+          (assessments n) who info) choice).toReal ≤ ((profiles n who info) choice).toReal) :
+    ∃ lawError : ℕ → ℝ, Tendsto lawError atTop (nhds 0) ∧
+      ∀ n outcome,
+        |((((onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).runBehavioral
+            (profiles n) (2 * horizon + 1)).map
+            (readoutExclusion setup leaks bounds (initialLaw setup) horizon scheduler parameter
+              utility excludedPayoff)) outcome).toReal -
+          (((setup.intendedModel.runBehavioral (assessments n).strategy
+            (instructionCount setup.program + 1)).map
+            (intendedReadoutExclusion setup parameter utility excludedPayoff))
+            outcome).toReal| ≤ lawError n :=
+  onePacket_lawApproximation setup leaks bounds (initialLaw setup) horizon scheduler parameter
+    utility excludedPayoff assessments (fun n => (assessments n).strategy)
+    (instructionCount setup.program + 1) (2 * horizon + 1)
+    (fun n => honestProfile_readout_law bounds wellFormed contract timely (assessments n) retains)
+    retentions nonnegative le_one converging profiles
+    (fun n => dominatesHonest_of_forced bounds wellFormed contract timely (assessments n)
+      retains (le_one n) (profiles n) (kept n))
+
+/-- **The law approximation for prescribed trembled components.** Under the
+hypotheses of `onePacket_exclusion_lawApproximation`, along vanishing tremble
+scales in `[0, 1]`, profiles playing the prescribed component at every forced
+information state satisfy the law approximation with exclusion payoffs. -/
+theorem onePacket_prescribed_lawApproximation (wellFormed : setup.WellFormed) {horizon : Nat}
     {scheduler : (application setup leaks).Scheduler} {delay bound : (graph setup).EventId → Nat}
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
       bound)
@@ -329,13 +402,14 @@ theorem onePacket_exclusion_lawApproximation (wellFormed : setup.WellFormed) {ho
             (instructionCount setup.program + 1)).map
             (intendedReadoutExclusion setup parameter utility excludedPayoff))
             outcome).toReal| ≤ lawError n :=
-  onePacket_lawApproximation setup leaks bounds (initialLaw setup) horizon scheduler parameter
-    utility excludedPayoff assessments (fun n => (assessments n).strategy)
-    (instructionCount setup.program + 1) (2 * horizon + 1)
-    (fun n => honestProfile_readout_law bounds wellFormed contract timely (assessments n) retains)
-    scales nonnegative le_one vanishing profiles
-    (fun n => dominatesHonest_of_prescribed_forced bounds wellFormed contract timely (assessments n)
-      retains (nonnegative n) (le_one n) (profiles n) (prescribed n))
+  onePacket_exclusion_lawApproximation bounds wellFormed contract timely retains parameter utility
+    excludedPayoff assessments (fun n => trembleRetention (scales n))
+    (fun n => trembleRetention_nonneg (nonnegative n) (le_one n))
+    (fun n => trembleRetention_le_one (nonnegative n) (le_one n))
+    (tendsto_trembleRetention vanishing) profiles fun n who info forced choice => by
+      rw [prescribed n who info forced]
+      exact trembledChoice_ge_main setup leaks bounds (initialLaw setup) horizon scheduler
+        (nonnegative n) (le_one n) who _ _ _ choice
 
 end LawApproximation
 
