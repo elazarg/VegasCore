@@ -129,6 +129,7 @@ Useful existing boundaries are the
 [choices drawn from an observation-local readout](../GameTheoryExtensions/Math/Probability/ObservedChoice.lean),
 [expected regret from pointwise failure gaps](../GameTheoryExtensions/Math/Probability/Regret.lean),
 [conditional survival through bounded adaptive opportunities](../GameTheoryExtensions/Math/Probability/Survival.lean),
+[marginal transport through an approximate product factorization](../GameTheoryExtensions/Math/Probability/ProductTransport.lean),
 [survival in scheduler rounds and bounded stopping](../Interaction/ReactiveSurvival.lean),
 [explicit probabilistic service in the native evaluator](../Interaction/ReactiveOutage.lean),
 [fixed-horizon compiled-outcome obstruction](../Vegas/Game/ProbabilisticServiceObstruction.lean),

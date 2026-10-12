@@ -2838,6 +2838,7 @@ needs its own review. What is known:
 | Settled audit of $C_0$ | `Vegas.EventGraphRuntime.SettledRecord.Permits` |
 | Per-emitter serials | `Interaction.MessageNetwork.submit` |
 | Event address of a packet | `Vegas.EventGraphRuntime.Payload.event?` |
+| Lemma T, finite core: transport of a marginal through an approximate product factorization, with remainder | `GameTheory.Math.Probability.NearProductWeights.tendsto_sum_abs_nativeLaw_sub_sourceLaw` |
 
 A mechanization must also check the following, beyond the statements above:
 
