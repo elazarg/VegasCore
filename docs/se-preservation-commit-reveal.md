@@ -40,7 +40,9 @@ Review history:
   - the tremble-order step now notes that it needs $\mathcal T\ge2$;
   - two wording fixes.
 
-  These last fixes have not been re-reviewed.
+  A targeted re-check confirmed these fixes, including the new induction,
+  and found nothing fatal and no open gaps. Its only remark was a one-line
+  definition of the induction measure, which is applied.
 
 ## Summary
 
@@ -595,8 +597,9 @@ induction at each fixed large $n$. The induction runs on $j$'s **value**, not
 on its failure probability: a free agent of $j$ might violate rather than fail,
 and under Stage S a violation also excludes.
 
-Write $k$ for the number of $j$'s own later sets, which is at most
-$\mathcal T$. Write $\operatorname{sp}_j$ for the spread of $j$'s gross payoff (1.3).
+For a set $I$ of $j$, write $k$ for the maximum, over all continuations
+from $I$, of the number of $j$'s own later sets, counting re-runs after
+resets. It is at most $\mathcal T$ by 1.5(2). Write $\operatorname{sp}_j$ for the spread of $j$'s gross payoff (1.3).
 
 **Claim.** At every set $I$ of $j$, forced or free, at which $j$ is not
 privately doomed and has at most $k$ later own sets, $j$'s value in the
