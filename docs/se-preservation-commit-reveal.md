@@ -106,6 +106,20 @@ Review history:
   $\Phi$, built from the conditional kernels of each owner's choices given its
   private history.
 
+  A review of that revision found a construction error and a boundary case,
+  fixed in this revision:
+  - Theorem 3's native profile realized a source-level failure as the plan
+    "never send". As a behaviour strategy, that made the conditional
+    probability of a late send vanish at late sets, even where sending
+    succeeds and is strictly better. The profile is now specified at every
+    raw activation: the first activation reads $\sigma^X_n$, and every late
+    set follows $\varphi^*$ up to a tremble. For the resulting failure weights
+    to stay uninformative, Proposition 1 now forces own-doomed agents to move
+    (optimal by weak dominance), so that every failure rate depends only on
+    the public region;
+  - an excluded owner's automatic failures are now explicitly outside every
+    phase: they trigger no reset and do not count against $\Phi$.
+
   These fixes have not been re-reviewed.
 
 ## Summary
@@ -394,7 +408,9 @@ burned.
   failed or unopenable opening, a reveal whose completed obligation rejects,
   or an expiry. Player $j$ is then **excluded**:
   - each later event of $j$ completes as a failure, without becoming ready
-    for $j$;
+    for $j$. Such an automatic failure is not part of any phase: it
+    triggers no reset (4.1), and it is not a failure for the phase-success
+    event $\Phi$ (1.6);
   - $j$'s gross payoff is a fixed $a_j$;
   - every other player $i$ continues, and receives $u_i$ evaluated on the
     public results, in which every excluded player's later results are
@@ -504,9 +520,10 @@ Let $\Gamma^X$ be the following finite game.
   - its payoff is the fixed $a_j$;
   - every other player receives $u_i$ on the public results, with every
     excluded player's later results failed.
-- **Reset.** Under concurrency, if a commit fails, the phase's other commits
-  are voided, with their guard obligations. Their owners commit again in a
-  fresh phase.
+- **Reset.** Under concurrency, if an active owner's commit fails, the
+  phase's other commits are voided, with their guard obligations. Their
+  owners commit again in a fresh phase. An excluded player's events are not
+  part of any phase, so their automatic failures trigger no reset.
 
 $\Gamma^X$ contains no blockchain detail: no clocks, packets, builder or
 mempool. Compared with the honest game, it adds three things: the source's
@@ -541,6 +558,10 @@ region that applies:
 3. **privately doomed**: the owner itself is privately doomed;
 4. **honest region**: all other sets.
 
+Separately, call a set **own-doomed** if its owner is privately doomed,
+whatever its region. Regions 1–2 are *public*: they are functions of the
+observed results. Whether a set is own-doomed is private.
+
 **Counterpart property.** Every honest-region set $I$ contains a history with
 no failure and no violation. To see this, take any history in $I$ and modify
 it in two ways:
@@ -565,8 +586,10 @@ SE $(\sigma^H,\mu^H)$ with tremble sequence $\sigma^H_n$.
      violates;
    - on the honest region, beliefs about other players' values are $\mu^H$.
 2. If $a_j<m_j$ for every $j$, the SE can moreover be chosen with
-   **never fail**: at every information set, a player that is not privately
-   doomed fails with probability zero.
+   **never fail**: at every information set, every player fails with
+   probability zero. Moreover, at every stage $n$ of the construction, the
+   probability of failing at a set depends only on the set's public region,
+   not on its owner's values or on whether it is own-doomed.
 3. Under concurrency, its value choices are **optimal given phase
    success**, defined below.
 
@@ -574,19 +597,24 @@ The same $(\sigma^X,\mu^X)$ serves all three parts. Parts 2 and 3 are
 properties of the construction.
 
 **Phase success.** At a commit set $I$ of $j$, write $\Phi$ for the event
-that no binding of another owner in the current phase fails. At every stage
-$n$ the profile is fully mixed, so $\Pr_n(\Phi\mid I)>0$.
+that no binding of another active owner in the current phase fails.
+Excluded owners' automatic failures are not counted; they are not part of
+the phase. Every binding that $\Phi$ does count is a choice of an active
+owner, and at every stage $n$ the profile is fully mixed, so
+$\Pr_n(\Phi\mid I)>0$.
 
 Conditioning on $\Phi$ changes more than beliefs about the past. It also
 changes the law of other owners' choices later in the same phase, and it
 does so jointly with their earlier private choices. Given $\Phi$, *every*
 binding of each other owner in the phase succeeds. That conditions the
-owner's whole trajectory, not each move separately. A doomed owner may send
-a uniform bit $v$ at its first binding and fail its second iff $v=0$: given
-$\Phi$, $v=1$ surely, although conditioning the first move on moving leaves
-$v$ uniform. And an owner whose limit strategy fails surely still has a
-well-defined conditional trajectory at stage $n$, which the limit strategy
-does not record. So the object to carry is the whole **phase outcome**
+owner's whole trajectory, not each move separately, and keeps each later
+choice's dependence on the owner's earlier private choices (a guard $y=x$
+correlates them perfectly). In a general profile, failures could also
+select: an owner that fails its second binding iff its first value was $0$
+has first value $1$ given $\Phi$. The forced rule for own-doomed agents
+rules out such selection in $\sigma^X_n$, since failure rates depend only on
+the public region, but the definition below does not rely on it. So the
+object to carry is the whole **phase outcome**
 $\omega$: the active players' hidden values and the other
 owners' choices in the current phase, as they stand when the phase ends,
 earlier hidden values included. Write
@@ -621,9 +649,32 @@ $\Gamma^X$. Every information set is an agent with its own menu.
   share $\eta_n^2$ uniformly. A set with no guard-violating value (every
   reveal, and a commit whose guards accept every value) has nowhere to put
   $\eta_n^2$; there honest actions get $\sigma^H_n\cdot(1-\eta_n)$.
+- **Own-doomed agents are forced**, in every region. They move, with the
+  value drawn from a fixed law of full support on the domain. Failing gets
+  $\eta_n$ in regions 3–4 and $\eta_n^{M_1}$ in regions 1–2, the same as the
+  non-doomed agents of that region (Part 2 shows those use exactly these
+  rates). This takes precedence over the two other rules.
 - **All other agents are free.** They choose any behaviour that gives every
   action probability at least $\eta_n^{M_1}$, for a fixed exponent
   $M_1\ge2$. Part 2 below needs the minimum to be $O(\eta_n)$, which this gives.
+
+*Why own-doomed agents may be forced.* For an own-doomed player, moving
+weakly dominates failing, and its value is irrelevant, pointwise:
+- failing excludes it now, for $a_j$;
+- after moving, it is either excluded later, for $a_j$, or rescued by a
+  reset that voids its violating binding (under concurrency, only while that
+  binding's phase is open). A rescued player is not excluded by that
+  binding, and its payoff is at least $a_j$, since every gross payoff is
+  either $a_j$ or a non-excluded payoff of at least $m_j>a_j$. Under Stage S
+  there is no reset, so its payoff is $a_j$ whatever it does, and Part 1
+  needs no more. Under concurrency the rescue case uses $a_j<m_j$, which
+  Theorems 3 and 4 assume;
+- the value it chooses either stands next to a binding that excludes it, or
+  is voided with it.
+
+So the forced rule is optimal at every own-doomed set, at any belief. It
+also makes failure uninformative: whether an agent fails does not depend on
+whether its owner is doomed.
 
 The sequences satisfy two conditions:
 $$
@@ -650,8 +701,8 @@ profiles, with Nature's laws fixed. This is Kreps–Wilson consistency.
   honest assignment (counterpart property), may need up to $\mathcal T$ of
   that author's earlier honest choices to differ. So it weighs at least
   $\rho_n^{\mathcal T}$ times the same common factors. The violator's own
-  moves after the violation are at free sets, each with probability at most
-  $1$. Other players' sets and regions are the same in both histories, so their
+  moves after the violation are at own-doomed sets, each with probability at
+  most $1$. Other players' sets and regions are the same in both histories, so their
   factors cancel. Since $\eta_n^2=o(\rho_n^{\mathcal T})$, violating histories
   get zero limit weight.
 - A history in $I$ with a failure has it inside the current phase, unobserved,
@@ -696,7 +747,8 @@ $j$, with everyone following the limit profile afterwards.
 
 So $\sigma^H$ is optimal at $I$.
 
-*Sequential rationality elsewhere.* Every other agent is free. In the
+*Sequential rationality elsewhere.* At own-doomed sets, the forced rule is
+optimal by the dominance above. Every other agent is free. In the
 constrained game it plays an exact best response to its Bayes beliefs, subject
 to the minimum probability. In the limit, every action that it plays with
 positive probability is a best response to $\mu^X$ and $\sigma^X$. That is the
@@ -704,8 +756,8 @@ standard argument that limits of perturbed agent-form equilibria are
 sequential. With the one-shot deviation principle, this gives sequential
 rationality at every free set.
 
-*Part 2: never fail.* Let $a_j<m_j$. At honest-region sets $j$ fails with
-probability $\eta_n\to0$, by construction. The free sets need a backward
+*Part 2: never fail.* Let $a_j<m_j$. At honest-region and own-doomed sets
+$j$ fails with probability $\eta_n$ or $\eta_n^{M_1}$, by construction. The free sets need a backward
 induction at each fixed large $n$. The induction runs on $j$'s **value**, not
 on its failure probability: a free agent of $j$ might violate rather than fail,
 and under Stage S a violation also excludes.
@@ -751,7 +803,10 @@ $a_j<m_j-C\eta_n$ for large $n$. So at every free set of a non-doomed $j$,
 failing is strictly worse than an available action, by a margin bounded away
 from zero. In the constrained game it therefore gets exactly its minimum
 $\eta_n^{M_1}\to0$. This uses that the minimum is $O(\eta_n)$, which
-$M_1\ge2$ gives.
+$M_1\ge2$ gives. So for large $n$, free agents fail with probability exactly
+$\eta_n^{M_1}$, honest-region agents with exactly $\eta_n$, and own-doomed
+agents with the rate of their region: the failure probability is a function
+of the public region alone.
 
 *Part 3: phase-success optimality.* At stage $n$, the payoff of committing
 $v$ at $I$ is $\Pr_n(\Phi\mid I)\,W_{I,n}(v)+R_n$, where $W_{I,n}$ is the
@@ -1478,8 +1533,10 @@ Consequences:
   barrier, and samples are barriers too.
 - Stage S is the special case where $\prec$ is the program order.
 
-**Phase reset (part of $C_1$ under concurrency).** Suppose a binding of a
-commit phase fails, through a missed binding or expiry. Then:
+**Phase reset (part of $C_1$ under concurrency).** Suppose a binding of an
+active owner in a commit phase fails, through a missed binding or expiry.
+(An excluded owner's events never become ready, are not part of the phase,
+and trigger nothing.) Then:
 
 1. its owner is excluded, as in $C_1$;
 2. at the end of the phase, every other binding of that phase is **voided**;
@@ -1605,13 +1662,30 @@ their only uncharged action is silence.
 built from $\sigma^X_n$:
 
 - **Source-level choices.** These are the choice of a value, and the choice
-  between moving and failing. They follow $\sigma^X_n$ at the projected
+  between moving and failing. They are read from $\sigma^X_n$ at the projected
   $\Gamma^X$ set $\Pi(I)$.
   - $\Pi(I)$ ignores in-phase observations: others' in-phase expiries,
-    receipts, author-only leaks, and in reveal phases others' openings. This
-    is the same matching map as in Theorem 4.
-  - *Moving* means sending the free packet at the first activation.
-  - *Failing* means never sending.
+    receipts, author-only leaks, and in reveal phases others' openings. It
+    also ignores the owner's own timing, so every activation of the owner for
+    one event projects to the same $\Gamma^X$ set. This is the same matching
+    map as in Theorem 4.
+  - The native profile is specified at every raw activation, as a behaviour
+    strategy, not as a plan. Write $\alpha_n=\sigma^X_n(\text{fail})$ at
+    $\Pi(I)$. By Proposition 1(2) it depends only on the public region of
+    $\Pi(I)$, so it does not depend on the owner's values or on whether it is
+    doomed.
+  - *First activation* while the event is ready and nothing is sent: send the
+    free packet now with probability $1-\alpha_n-\zeta_n$, with its value
+    drawn from $\sigma^X_n$ at $\Pi(I)$ conditioned on moving; stay silent with
+    probability $\alpha_n+\zeta_n$.
+  - *Later activations* while the event is unresolved and nothing is sent
+    (**late sets**): do what $\varphi^*$ does, send now or wait, with
+    probability $1-\zeta_n$, and the other with probability $\zeta_n$. A late
+    send draws its value from $\sigma^X_n$ at $\Pi(I)$ conditioned on moving.
+  - So a source-level failure is not "never send". It is silence at the
+    first activation followed by late play that never gets included. In the
+    limit, every late set follows $\varphi^*$, and every first activation
+    sends.
   - On forced sets, $\Pi(I)$ is in the honest region of $\Gamma^X$, or in its
     privately doomed region when the owner holds its own guard-violating
     binding, which is an ordinary $\Gamma^X$ action. Both follow $\sigma^X_n$.
@@ -1623,10 +1697,9 @@ built from $\sigma^X_n$:
     owner sends on time and otherwise plays as if the bad binding held a fixed
     honest value. Any uncharged choice is optimal for it, by the own-bad-binding
     argument of 4.5.
-- **Timing deviations** get a separate tier $\zeta_n$, the same at every set
-  and for every value. These are silence at the first activation followed by
-  late delivery by $\varphi^*$, and a send time that $\varphi^*$ does not
-  choose.
+- **Timing deviations** are the $\zeta_n$ terms above: extra silence at the
+  first activation, and a send-or-wait choice that $\varphi^*$ does not make.
+  They are the same at every set and for every value.
 - **Native-only values** share $\zeta_n^2$. These are unopenable and wrongly
   typed bindings, and handle slots other than the prescribed one.
 - **Charged actions** share $\zeta_n^{M_3}$.
@@ -1670,19 +1743,40 @@ $N_n$ collects four things:
 - the native-only tier;
 - the ratio between the native weight of a failure and its $\Gamma^X$ weight.
 
-A native failure is either a source-level failure (never sending) or a
-timing deviation followed by a failed delivery. The first has probability
-$\sigma^X_n(\text{fail})\ge\rho^X_n$. The second has probability at most
-$\zeta_n$, and $\zeta_n=o(\rho^X_n)$ by the first condition above, because
-$\mathcal T\ge2$. So the ratio
-is $1+o(1)$, uniformly. Every other part of $N_n$ reads no unopened value:
-bindings are opaque, the builder is per-event value-blind, and binding
-policies read no value.
+*Move and failure weights.* Fix an owned event $e$ at a set with public
+region $\pi$. Let $\lambda_n(e)$ be the probability that late play, starting
+from silence at the first activation, is never included. It depends only on
+the fixed law of $\xi_e$, on $\varphi^*$ and on $\zeta_n$, by (S1–S3), and for a
+reveal also on the value being opened. Then natively:
+$$
+\Pr_n(\text{move with }v)=\sigma^X_n(v)\cdot c^{\mathrm{mv}}_n,\qquad
+\Pr_n(\text{fail})=\sigma^X_n(\text{fail})\cdot c^{\mathrm{fl}}_n,
+$$
+with
+$$
+c^{\mathrm{mv}}_n=\frac{(1-\alpha_n-\zeta_n)+(\alpha_n+\zeta_n)(1-\lambda_n(e))}{1-\alpha_n},
+\qquad
+c^{\mathrm{fl}}_n=\frac{(\alpha_n+\zeta_n)\,\lambda_n(e)}{\alpha_n}.
+$$
+Both factors depend only on $e$, on $\pi$ and on $n$, since $\alpha_n$ does,
+by Proposition 1(2). They do not depend on the owner's values or on whether
+it is doomed. For a reveal they may also depend on the value being opened,
+which is public after a success, and after a failure belongs to an excluded
+player. Since $\alpha_n+\zeta_n\to0$, $c^{\mathrm{mv}}_n\to1$ and the native
+probability of failing tends to zero.
 
-The value-dependent part of the failure ratio would be harmless even without
-this bound. It reads only the failing player's own delivered value, which is
-payoff-irrelevant after its exclusion and independent of the active players'
-values given the public history.
+The native failure weight need not be close to the $\Gamma^X$ one; it is not
+compared with it. Every history in an information set has the same publicly
+observed results, so the factors of observed moves and failures are common
+to the set and cancel in beliefs. Moves and failures within the current
+phase that are not yet observed are handled by conditioning on $\Phi$
+(Lemma A3), under which they are all moves, with the common factor
+$c^{\mathrm{mv}}_n$. Every other part of $N_n$ reads no unopened value:
+bindings are opaque, the builder is per-event value-blind, and binding
+policies read no value. A failure factor that depends on the value being
+opened reads only the failing player's own value, which is payoff-irrelevant
+after its exclusion and independent of the active players' values given the
+public history.
 
 ### 4.5 Proof
 
@@ -1698,35 +1792,26 @@ values given the public history.
    $\Gamma^X$. Then $\nu(I)=\nu^X(\Pi(I))$. On forced sets $\Pr(\Phi\mid I)\to1$,
    and this is the honest law, by Proposition 1. At a set where a failure in
    the phase has been observed, $\Phi$ is false, no claim is made, and none is
-   needed: the owner's binding will be voided.
+   needed: the owner's binding will be voided. (Failure here means an
+   active owner's failure, as in $\Phi$; excluded owners' automatic failures
+   do not count and void nothing.)
 3. In particular, the owner predicts the others' not-yet-chosen values of
    the phase by $\nu^X(\Pi(I))$, jointly with their earlier hidden values.
-   This is neither $\sigma^X$ nor $\sigma^X$ conditioned on each move
-   separately:
-   - a future value can depend on its owner's earlier private choices. If
-     A holds a hidden bit $x$ and commits $y$ under the guard $y=x$, the two
-     are perfectly correlated, even on honest paths;
-   - $\Phi$ conditions each owner's whole trajectory. A doomed A that sends a
-     uniform $v$ and then fails its second binding iff $v=0$ has $v=1$ given
-     $\Phi$;
-   - where $\sigma^X$ fails surely, the conditional trajectory comes from the
-     tremble sequence. A doomed owner may play
-     $\Pr_n(\mathrm{fail})=1-3\delta_n$, $\Pr_n(0)=\delta_n$,
-     $\Pr_n(1)=2\delta_n$; its limit strategy fails surely, but given $\Phi$
-     its value is $0$ or $1$ with probabilities $\tfrac13,\tfrac23$.
+   A future value can depend on its owner's earlier private choices: if A
+   holds a hidden bit $x$ and commits $y$ under the guard $y=x$, the two are
+   perfectly correlated, even on honest paths. So the prediction is a joint
+   law, not a product of marginals.
 
-The unconditioned belief can be finer than $\mu^X(\Pi(I))$ at lifted sets.
-Suppose a player A is privately doomed for some of its hidden values but not
-others, for instance after publishing $y=1$ under a guard $y=x$ with $x$
-still hidden. Proposition 1 leaves a doomed type free to fail at A's next
-binding, while the other type moves. If that binding shares a commit phase
-with B's, natively B may see it accepted before choosing, and conclude that A
-is not doomed. $\Gamma^X$'s simultaneity hides this. But B's value matters
-only if nobody fails in the phase (Lemma D3), and given that event A moved in
-both games. So the belief that B's choice reads is the same. It must be
-taken as a limit of conditioned stage-$n$ beliefs: if A's doomed type fails
-surely in the limit, $\Phi$ can have limit probability zero in $\Gamma^X$
-while B has natively seen A's binding accepted.
+*Why condition on $\Phi$.* B's value matters only if no other binding of
+the phase fails (Lemma D3), so $\Phi$ is the event its choice reads. The
+claim is stated given $\Phi$ so that the in-phase pattern of moves and
+failures, which B may partly observe natively (an accepted binding) but not
+in $\Gamma^X$ (simultaneity), drops out of the comparison. Under the
+construction of 4.4 that pattern is also uninformative about values, since
+failure rates depend only on public data in both games. The conditional
+statement does not rely on this, and it is taken as a limit of conditioned
+stage-$n$ laws, so it stays defined where $\Phi$ has limit probability zero
+natively.
 
 No belief claim is made in reveal phases. There a player may see another's
 opening in flight, or its receipt, and so know a value that $\Pi(I)$ does not
