@@ -139,6 +139,9 @@ Section 6 shows why each change is needed, and Section 7 asks which parts of
 6. **Preservation.** The native SE induces the honest SE's joint law of public
    results and realized net payoffs, and charges and forfeits nobody on its
    paths.
+7. **No off-ledger behaviour.** Players interact only through the runtime's
+   packets. No player hands another an opening, evidence or any other message
+   outside the network.
 
 ### Quantifier order
 
@@ -547,25 +550,9 @@ everything else about the continuation can be relaxed.
   "the excluded player takes no further action whose result becomes public"
   is a contract rule, not a behavioural assumption. The theorem with a fixed
   $a_j$ does not even need that rule (Section 7, item 2).
-- **Off-ledger disclosure.** A player can still hand its opening to someone
-  else off the ledger. The audit sees only packets, so it cannot charge this,
-  and verifiable evidence is exactly the Battle of the Sexes channel.
-  Unverifiable claims are cheap talk, which the babbling construction already
-  handles, and they are a stated limitation.
-
-  A **proposed, unproved** deterrent is a disclosure bounty. Anyone who
-  submits a valid opening of $j$'s commitment before $j$'s reveal has been
-  accepted (or after $j$'s exclusion) triggers $j$'s charge and receives a
-  bounty $b$ from it.
-  - Reporting reveals the value to everyone, which can cost the recipient at
-    most $\Delta_{\text{recipient}}$. So a bounty $b>\Delta_i$ for every
-    potential recipient $i$ makes reporting dominant.
-  - The sender is then charged surely: $K_j\ge\max_i b$ and $K_j>\Delta_j$.
-  - Charges are then transfers, not burned, so every $\Delta_i$ must include
-    bounty receipts.
-  - Side payments between sender and recipient (collusion) are out of scope.
-  - Adding the report action to the native game, and re-checking Lemmas A
-    and C with it, is not done.
+- **Off-ledger behaviour.** Assumed absent (assumption 7). The audit sees
+  only packets, so verifiable off-ledger disclosure (the Battle of the Sexes
+  channel) is excluded by assumption, not deterred.
 - **Concurrency.** Stage S only. With concurrent events, a player can see
   another's pending opening before making its own choice. Exclusion does not
   remove that front-running channel, so the concurrent stage needs its own
