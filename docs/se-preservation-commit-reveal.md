@@ -58,6 +58,19 @@ Review history:
   - Theorem 1 called an uncertified matching opening "never accepted". The
     contract accepts it; the audit charges it.
 
+  A review of these fixes found three more gaps, fixed in this revision:
+  - Lemma A3(2) still overstated commit-phase beliefs at lifted sets. A
+    privately doomed player's choice to move can depend on its hidden values,
+    and an accepted binding seen in the phase reveals that choice. The claim
+    now concerns the belief given no failure in the phase, which is the only
+    belief a value choice reads (Lemma D3); E1 and E5 follow suit;
+  - the "never fail" induction counted only later sets, so its base case
+    omitted the current set's own trembles. The measure now counts the
+    current set;
+  - M4 claimed noninterference for every profile, but a send rule that reads
+    others' traffic lets them change its emissions. M4 now holds the owner's
+    emissions fixed.
+
   These fixes have not been re-reviewed.
 
 ## Summary
@@ -614,19 +627,25 @@ on its failure probability: a free agent of $j$ might violate rather than fail,
 and under Stage S a violation also excludes.
 
 For a set $I$ of $j$, write $k$ for the maximum, over all continuations
-from $I$, of the number of $j$'s own later sets, counting re-runs after
-resets. It is at most $\mathcal T$ by 1.5(2). Write $\operatorname{sp}_j$ for the spread of $j$'s gross payoff (1.3).
+from $I$, of the number of $j$'s own sets from $I$ on, counting $I$ itself and
+re-runs after resets. So $k\ge1$, and $k$ is at most $\mathcal T$ by 1.5(2).
+A terminal history counts as $k=0$. Write $\operatorname{sp}_j$ for the spread of $j$'s gross payoff (1.3).
 
 **Claim.** At every set $I$ of $j$, forced or free, at which $j$ is not
-privately doomed and has at most $k$ later own sets, $j$'s value in the
+privately doomed and has at most $k$ own sets from $I$ on, $j$'s value in the
 constrained game at stage $n$ is at least $m_j-c_k\eta_n$. Here
-$c_0=0$ and $c_{k+1}=c_k+2\operatorname{sp}_j$.
+$c_0=0$ and $c_{k+1}=c_k+2\operatorname{sp}_j$, so $c_k=2k\operatorname{sp}_j$.
+The case $k=0$ is a terminal history in which $j$ is not excluded, worth at
+least $m_j$. The current set's own trembles are what the step from $c_{k-1}$
+to $c_k$ pays for: at a final reveal with $k=1$, the value is about
+$m_j-2\eta_n\operatorname{sp}_j$, not $m_j$.
 
 *Proof of the claim.* Consider the action "move": a guard-accepted value at a
 commit, which exists by guard satisfiability, or "open" at a reveal. After it,
-$j$ is still not privately doomed. Its own later sets, if any, satisfy the
-claim with $k-1$, by the induction hypothesis. If it has none, the result is a
-terminal history in which $j$ is not excluded, worth at least $m_j$. Under
+$j$ is still not privately doomed. Each continuation reaches either an own
+later set of $j$, which has at most $k-1$ own sets from it on and satisfies the
+claim with $k-1$ by the induction hypothesis, or a terminal history in which
+$j$ is not excluded, worth at least $m_j=m_j-c_0\eta_n$. Under
 concurrency a reset may void $j$'s binding; $j$ then commits again and is still
 not excluded. So "move" is worth at least $m_j-c_{k-1}\eta_n$.
 
@@ -1559,10 +1578,22 @@ values given the public history.
    histories with a charged action or with another player's native-only bad
    binding.
 2. At every forced or lifted set $I$ in a commit phase, the limit belief
-   about the active players' values is $\mu^X(\Pi(I))$. On forced sets this is
-   $\mu^H$, by Proposition 1.
+   about the active players' values, **conditioned on no failure in the
+   current phase**, is $\mu^X(\Pi(I))$ conditioned on the same event. On
+   forced sets the conditioning changes nothing, and the belief is $\mu^H$,
+   by Proposition 1.
 3. At such a set, the owner predicts the others' not-yet-chosen values of
    the phase by $\sigma^X$ at their sets.
+
+The unconditioned belief can be finer than $\mu^X(\Pi(I))$ at lifted sets.
+Suppose a player A is privately doomed for some of its hidden values but not
+others, for instance after publishing $y=1$ under a guard $y=x$ with $x$
+still hidden. Proposition 1 leaves a doomed type free to fail at A's next
+binding, while the other type moves. If that binding shares a commit phase
+with B's, natively B may see it accepted before choosing, and conclude that A
+is not doomed. $\Gamma^X$'s simultaneity hides this. But B's value matters
+only if nobody fails in the phase (Lemma D3), and given that event A moved in
+both games. So the belief that B's choice reads is the same.
 
 No belief claim is made in reveal phases. There a player may see another's
 opening in flight, or its receipt, and so know a value that $\Pi(I)$ does not
@@ -1575,9 +1606,18 @@ pending.
 *Proof.* Charged histories and native-only bad bindings are negligible by the
 choice of $\zeta_n$ and $M_3$. For the remaining histories, use the
 factorization of 4.4. In a commit phase no opening is in flight (order rule
-1), so every value that $N_n$ could read is already public at $I$. By the
-bound there, $N_n$ reads no unopened value, up to a factor $1+o(1)$. So the
-posterior over active players' values is $\mu^X_n(\Pi(I))(1+o(1))$, which converges to $\mu^X(\Pi(I))$.
+1), so every value that $N_n$ could read is already public at $I$. The
+in-phase observations (receipts, expiries, leaks, timing) depend on others'
+values only through whether each co-phase owner moves or fails. A privately
+doomed owner's choice between them may depend on its hidden values. Given
+that every owner of the phase moves, their law is value-free: bindings are
+opaque, the builder is value-blind, binding delivery reads no value, and the
+timing tier is the same at every set and for every value. So conditioning on
+no failure in the phase removes the only value-dependent factor. By the
+bound there, $N_n$ reads no other unopened value, up to a factor $1+o(1)$.
+So the posterior over active players' values, given no failure in the phase,
+is $\mu^X_n(\Pi(I))$ given the same event, times $1+o(1)$. It converges to
+$\mu^X(\Pi(I))$ given that event.
 
 The hidden commitments of different players are independent given the public
 history, because in $\Gamma^X$ every choice reads only public data and its
@@ -1712,7 +1752,8 @@ guard-violating.
 
 **Sequential rationality.** Single deviations suffice. No player can make
 another fail without a charged action: another player's emissions enter
-neither $\xi_e$ nor the content of $e$'s packets (S1). The cases:
+neither $\xi_e$ nor the content of $e$'s packets (S1), and prescribed send
+rules are own-service, so they do not react to others' traffic. The cases:
 
 - **Honest value choice in a commit phase.** It is optimal among honest values
   by Lemma D3. Sending at once succeeds surely, by protected inclusion. The
@@ -1732,9 +1773,14 @@ neither $\xi_e$ nor the content of $e$'s packets (S1). The cases:
   as at lifted sets.
 - **Lifted sets.** These are the sets after an exclusion or with a publicly
   doomed player, including the rest of a phase after an exclusion.
-  - Prescribed moves are $\sigma^X$'s. In commit phases they are
-    sequentially rational in $\Gamma^X$ at the belief $\mu^X(\Pi(I))$, which
-    is the native belief by Lemma A3(2). In reveal phases the only choice is
+  - Prescribed moves are $\sigma^X$'s. In commit phases their value choice
+    is optimal natively. The decomposition of Lemma D3 holds at lifted sets
+    too, with the continuation given by $\sigma^X$: a value matters only if no
+    binding of the phase fails, and the probability of that event does not
+    depend on it. So the optimal value maximizes the continuation value given
+    no failure in the phase, at the belief given that event. That belief is
+    $\mu^X$'s by Lemma A3(2), and $\sigma^X$ maximizes the same quantity in
+    $\Gamma^X$. In reveal phases the only choice is
     moving versus failing. Moving is optimal pointwise for a player that is
     not doomed (D2 of Theorem 4), and a doomed player's payoff is constant.
   - Each $\Gamma^X$ move has the same continuation value natively as in
@@ -1751,9 +1797,10 @@ neither $\xi_e$ nor the content of $e$'s packets (S1). The cases:
     leaks, and in reveal phases others' openings. These do not change what is
     optimal.
     - *Commit phases.* By Lemma D3, $j$'s value matters only when the phase
-      has no failure. Any in-phase observation consistent with "no failure"
-      has a likelihood that does not depend on values: bindings are opaque and
-      the builder is value-blind. So conditioning on it leaves the argmax
+      has no failure. Given that event, every in-phase observation has a
+      likelihood that does not depend on values (Lemma A3). Without the
+      conditioning this can fail, because a doomed owner's move can depend on
+      its values. So conditioning on the observation leaves the argmax
       unchanged. If an in-phase failure has been observed, $j$'s binding will
       be voided, and any value is optimal.
     - *Moving versus failing.* This is settled by D2 of Theorem 4 when $j$ is
@@ -1971,10 +2018,18 @@ strength.
   - *Uncertified* signals remain mechanically possible. A player can choose its
     handle slot or its send time as a function of its values. Tier E (E5)
     deals with them.
-- **M4. Nobody's clean actions affect another's success or charges.**
-  - For an on-time packet this is M1, under every execution order.
-  - For a late packet it follows from (S1–S3): success depends only on
-    $\xi_e$, whose law is fixed, and on the owner's own emissions.
+- **M4. Nobody's clean actions affect another's success or charges, once
+  that owner's emissions are fixed.** Fix the owner's emissions for its event
+  (which packets, and at which of its activations). Then:
+  - for an on-time packet, success is M1, under every execution order;
+  - for a late packet it follows from (S1–S3): success depends only on
+    $\xi_e$, whose law is fixed, and on those emissions.
+
+  The qualifier matters. An owner whose send rule reads others' traffic, say
+  "send only if A's opening has been seen", lets A's emission change its own
+  emissions, and so its success. That is the owner's own choice. Tier E
+  shows it gains nothing (Lemma B3(b)), and in $(\sigma^*,\mu^*)$ send rules
+  are own-service, which no other player's traffic reaches.
   - Charges attach to the emitter.
   - The one effect another player's clean action can have is to void your
     binding, by failing in your commit phase and so triggering a reset. That
@@ -2004,9 +2059,12 @@ strength.
 clean sets put zero weight on unclean histories (Lemma A3).
 
 - **E1. Beliefs are source beliefs.** Take a clean set $I$ at which the owner
-  has a value choice. Its belief about others' unopened values, and its
-  prediction of the not-yet-chosen values of its phase, are those at $I^X$
-  under $\sigma^X$. Values seen in included openings whose result is
+  has a value choice. Its belief about others' unopened values given no
+  failure in the current phase, which is the only belief its value choice
+  reads, and its prediction of the not-yet-chosen values of its phase, are
+  those at $I^X$ under $\sigma^X$. The unconditioned belief may be finer: an
+  accepted binding in the phase shows that its owner moved, and a privately
+  doomed owner's move can depend on its hidden values (Lemma A3). Values seen in included openings whose result is
   $\mathsf{fail}$ belong to excluded players. By the product structure they say
   nothing about active players' values. Two special cases:
   - for an owner holding its own bad binding, value choices are irrelevant.
@@ -2047,7 +2105,8 @@ clean sets put zero weight on unclean histories (Lemma A3).
   nothing else it knows. The delivered value is public after success.
 - **E5. Cheap talk carries no meaning.** Handle slots, send times and
   inclusion order carry no information about any active player's unopened
-  value at a clean set with a value choice. Observers' beliefs ignore them
+  value at a clean set with a value choice, beyond what the fact that its
+  owner moved reveals. Observers' beliefs ignore them
   (E1), and prescribed play never reads them (E2).
 
 ### 5.3 Proof
@@ -2089,9 +2148,9 @@ others.
   during a commit phase. Every opening seen earlier either succeeded
   (published) or failed (author excluded).
 
-**M4.** For on-time packets, this is M1. For late packets, by (S1) success is a
-function of $\xi_e$, the owner's emission clocks and the content of its
-packets. By (S2–S3) the law of $\xi_e$ is fixed, and $\xi_e$ is a seed
+**M4.** With the owner's emissions fixed: for on-time packets, this is M1.
+For late packets, by (S1) success is a function of $\xi_e$, the owner's
+emission clocks and the content of its packets. By (S2–S3) the law of $\xi_e$ is fixed, and $\xi_e$ is a seed
 independent of every other player's randomization; another player's
 emissions reach $\xi_e$'s event only through the remainder, which success
 does not read. Charges attach to the emitter by 1.3.
@@ -2112,8 +2171,8 @@ which lie in commit phases, it gives honest beliefs over the projection
 before any exclusion or public doom, and $\Gamma^X$ beliefs at doomed sets
 and after exclusions.
 
-Cheap-talk channels carry no information because their native law is
-value-independent:
+Cheap-talk channels carry no information because their native law, given
+which owners moved, is value-independent:
 
 - handle slots tremble uniformly, at a rate that does not depend on values;
 - send times follow $\varphi^*$, which reads only operational data and, for a
@@ -2148,7 +2207,7 @@ $\square$
 | Outcomes after misbehaviour | a $\Gamma^X$ outcome | M2 | exclusion, reset, deferred guards |
 | Evidence about others' hidden values | none exists in clean traffic | M3 | well-formedness, value-blind builder |
 | Seeing a failed opening (omitted but leaked, or included with result $\mathsf{fail}$) | an excluded player's irrelevant value | M3 | exclusion, product structure |
-| Others interfering with your success | impossible; at most a reset of your phase | M4 | protected inclusion, success separability |
+| Others interfering with your success | impossible while your client sends by itself; at most a reset of your phase | M4, E3 | protected inclusion, success separability |
 | Disclosures, junk, copies | never sent | D1 | deposit $\alpha K_i>\operatorname{sp}_i$ |
 | Withholding after seeing others' openings | never chosen | D2 | $a_j<m_j$ |
 | Your value choice and your beliefs | the source game $\Gamma^X$ | E1, E2 | equilibrium |
