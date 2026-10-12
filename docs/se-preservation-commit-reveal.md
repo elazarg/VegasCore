@@ -2838,6 +2838,11 @@ needs its own review. What is known:
 | Settled audit of $C_0$ | `Vegas.EventGraphRuntime.SettledRecord.Permits` |
 | Per-emitter serials | `Interaction.MessageNetwork.submit` |
 | Event address of a packet | `Vegas.EventGraphRuntime.Payload.event?` |
+| Source game with exclusion (one event at a time) | `Vegas.SourceProgram.Setup.exclusionModel` |
+| Exclusion payoff | `Vegas.SourceProgram.exclusionUtility` |
+| Proposition 1(1), one event at a time | `Vegas.SourceProgram.Setup.intended_sequentialEquilibrium_extends_to_exclusion` |
+| Count audit verdict (one signed packet per move) | `Vegas.EventGraphRuntime.CountPermits` |
+| Lemma C: one-packet equilibria extend with no charges | `Vegas.EventGraphRuntime.MessageBounds.onePacket_raw_sequentialEquilibrium` |
 | Lemma T, finite core: transport of a marginal through an approximate product factorization, with remainder | `GameTheory.Math.Probability.NearProductWeights.tendsto_sum_abs_nativeLaw_sub_sourceLaw` |
 
 A mechanization must also check the following, beyond the statements above:
