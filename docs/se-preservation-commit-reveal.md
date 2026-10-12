@@ -43,6 +43,22 @@ Review history:
   A targeted re-check confirmed these fixes, including the new induction,
   and found nothing fatal and no open gaps. Its only remark was a one-line
   definition of the induction measure, which is applied.
+- A further review found three errors in Theorem 3's lemmas, and one
+  inconsistency. None disproves preservation. All are fixed in this revision:
+  - Lemma B3 claimed the payoff $P_sV+(1-P_s)a_j$ for every policy. A policy
+    that reads others' in-flight data can select which continuations
+    succeed. The formula now covers own-service policies, and B3(b) bounds the
+    rest pointwise; E3 and E4 follow suit;
+  - (S2) required each $\xi_e$ to be independent of players' choices and of
+    readiness clocks, which are endogenous. It now speaks of exogenous seeds,
+    and the observation restriction the proof uses is stated as (S3);
+  - Lemma A3 asserted source beliefs in reveal phases, where a player may see
+    others' openings in flight. The claim is now made only in commit phases,
+    which are the only places it is used;
+  - Theorem 1 called an uncertified matching opening "never accepted". The
+    contract accepts it; the audit charges it.
+
+  These fixes have not been re-reviewed.
 
 ## Summary
 
@@ -795,8 +811,9 @@ does not reveal $b$, so it is one information set for both values. Seeing a
 known packet again is not a new observation, so $F_1(b)$ is a single
 information set.
 
-An opening call without its own certificate is never accepted under $C_0$ and
-is charged. It produces records other than those above.
+An opening call without its own certificate is accepted by the contract when
+its value matches (1.2), but the settled audit of $C_0$ charges it (1.3).
+Step 1 below treats it as a charged packet.
 
 ### 2.4 Statement
 
@@ -1204,6 +1221,14 @@ alone.
 - **Success.** $\sigma^*$ plays the projection of $\sigma^H$, with honest
   beliefs by Lemma A, so the continuation is honest and worth
   $V\ge\underline u_j>a_j$.
+- **Adaptive policies.** $s$ may read everything $j$ observes while its
+  event is pending. At Stage S nothing else is in flight on a forced history,
+  so that is the builder's data about $j$'s own event. It is independent of
+  everything the continuation's payoff depends on: others' hidden values (by
+  value-blindness, and bindings are opaque), later samples, and later play,
+  which reads no timing. So success is independent of the continuation
+  payoff given $j$'s information, and the payoff is $P_sV+(1-P_s)a_j$ for
+  every such $s$. Under concurrency this fails, and Lemma B3 replaces it.
 - **Success probability.** $P_s$ depends only on the builder and the policy.
   These may read the value being opened. That value is public after success
   and payoff-irrelevant to $j$ after failure. They read no other unopened
@@ -1355,12 +1380,26 @@ a component $\xi_e$ private to $e$, and a remainder.
 
   $j$'s activations while $e$ is ready are determined by $\xi_e$. The packets
   shown to $j$ at those activations (leaks) come from the remainder.
-- **(S2) Independence and a fixed law.** The law of each $\xi_e$ is fixed in
-  advance. It depends only on the event $e$, stated relative to $r_e$, and not
-  on the history. The family $(\xi_e)_e$ is independent across events, and
-  independent of the remainder of the builder's randomness, of every player's
-  choices, and of every $r_f$. An event re-run after a reset is a new event,
-  with a fresh independent $\xi$.
+- **(S2) Independent seeds with fixed laws.** The builder's randomness
+  consists of exogenous seeds: one $\xi_e$ per owned event, and a remainder
+  seed. The seeds are independent of each other, of Nature, and of the
+  players' private randomization. The law of each $\xi_e$ is fixed in
+  advance and depends only on $e$, stated relative to $r_e$. An event re-run
+  after a reset is a new event, with a fresh seed.
+- **(S3) The seed is read only through the event.** $\xi_e$ enters the run
+  only as (S1) says: through $j$'s activations while $e$ is ready, and through
+  $e$'s success or failure. Everything else the builder does is a function of
+  the remainder seed and of the history so far.
+
+(S2) constrains seeds, not endogenous quantities. Choices, readiness clocks
+$r_f$ of later events and the remainder's behaviour may all depend on $\xi_e$,
+through $j$'s activations, its emissions and $e$'s completion. What (S2–S3)
+give is freshness: at any history at which $e$ is unresolved, $\xi_e$ is
+independent of everything else in the run given $j$'s activations for $e$ so
+far. Nothing before $r_e$ reads $\xi_e$, and afterwards the only
+$\xi_e$-dependent data in the history are those activations, which $j$ sees.
+In particular the builder cannot show $j$ a signal about $j$'s own future
+activations.
 
 The remainder may depend on the whole history, subject to per-event
 value-blindness and author-only leaks:
@@ -1371,7 +1410,7 @@ value-blindness and author-only leaks:
 - activations other than an owner's own while its event is ready;
 - clock advances and leaks.
 
-(S1–S2) are an assumption separate from protected inclusion. They say that a
+(S1–S3) are an assumption separate from protected inclusion. They say that a
 late packet may fail, but neither its failure nor its success is correlated
 with anything another player can influence.
 
@@ -1379,7 +1418,7 @@ The marginal version is not enough, that is, requiring only that each event's
 success *probability* be unaffected by others' traffic. If successes can be
 correlated through timing, a player who gains from another's failure prefers
 anticorrelated timing, and how much it prefers it depends on its continuation
-value. (S2) excludes this.
+value. (S2–S3) exclude this.
 
 ### 4.3 Statement
 
@@ -1474,11 +1513,12 @@ histories negligible against clean ones.
 **Delivery policy.** $\varphi^*$ is chosen among *own-service* policies. Their
 send times depend only on the owner's activations and the clock relative to
 $r_e$, and, for a reveal, on the value being opened. A binding's delivery
-policy reads no value. $\varphi^*$ maximizes the event's success probability,
-computed from the fixed law of $\xi_e$. By (S1–S2), conditioning on anything
-else cannot raise that probability: leaks and others' receipts come from the
-remainder, which is independent of $\xi_e$. So $\varphi^*$ is optimal among all
-delivery policies.
+policy reads no value. From every activation record of $j$ for $e$,
+$\varphi^*$ maximizes the event's remaining success probability, computed from
+the fixed law of $\xi_e$. A policy that reads more, such as leaks, receipts or
+others' openings in flight, can select *which* continuations succeed, so its
+payoff is not a function of its success probability alone. Lemma B3(b) shows
+that it still does no better than $\varphi^*$.
 
 **Free region.** For each $n$, take an equilibrium of the agent-form game in
 which forced and lifted sets play the profile above, and free sets choose
@@ -1518,16 +1558,26 @@ values given the public history.
 1. At every forced or lifted set, the limit belief puts zero weight on
    histories with a charged action or with another player's native-only bad
    binding.
-2. At every forced or lifted set $I$, the limit belief about the active players'
-   values is $\mu^X(\Pi(I))$. On forced sets this is $\mu^H$, by Proposition 1.
-3. At such a set in a commit phase, the owner predicts the others'
-   not-yet-chosen values of the phase by $\sigma^X$ at their sets.
+2. At every forced or lifted set $I$ in a commit phase, the limit belief
+   about the active players' values is $\mu^X(\Pi(I))$. On forced sets this is
+   $\mu^H$, by Proposition 1.
+3. At such a set, the owner predicts the others' not-yet-chosen values of
+   the phase by $\sigma^X$ at their sets.
+
+No belief claim is made in reveal phases. There a player may see another's
+opening in flight, or its receipt, and so know a value that $\Pi(I)$ does not
+record. No decision needs such a claim: a reveal phase has no value choice,
+moving versus failing is settled pointwise (D2 of Theorem 4, or the
+own-bad-binding argument), and Lemma B3 holds at any belief. This matches
+Theorem 2, whose Lemma A asserts honest beliefs only where no reveal is
+pending.
 
 *Proof.* Charged histories and native-only bad bindings are negligible by the
 choice of $\zeta_n$ and $M_3$. For the remaining histories, use the
-factorization of 4.4. By the bound there, $N_n$ reads no unopened value, up
-to a factor $1+o(1)$. So the posterior over active players' values is
-$\mu^X_n(\Pi(I))(1+o(1))$, which converges to $\mu^X(\Pi(I))$.
+factorization of 4.4. In a commit phase no opening is in flight (order rule
+1), so every value that $N_n$ could read is already public at $I$. By the
+bound there, $N_n$ reads no unopened value, up to a factor $1+o(1)$. So the
+posterior over active players' values is $\mu^X_n(\Pi(I))(1+o(1))$, which converges to $\mu^X(\Pi(I))$.
 
 The hidden commitments of different players are independent given the public
 history, because in $\Gamma^X$ every choice reads only public data and its
@@ -1557,58 +1607,83 @@ $\mu^H(\Pi(I))$. So the honest choice $\sigma^H$ is optimal.
 - *No binding fails.* Every value stands, and play continues by $\sigma^H$.
   Conditional on this event, the other values of the phase are still
   distributed by $\sigma^H$, because success is independent of values by
-  (S1–S2) and value-blindness. So the conditional continuation value is
+  (S1–S3) and value-blindness. So the conditional continuation value is
   $V^H(v)$ by Lemma A3.
 
 The probability of each case does not depend on $v$. This needs the
 in-phase failure rates of the other owners, and of $j$ itself, to be
 value-independent. They are: trembles are uniform across values, binding
-delivery reads no value, and by (S2) others' successes do not depend on $j$'s
+delivery reads no value, and by (S1–S3) each other owner's success is a
+function of its own seed and its own emissions, which do not read $j$'s
 choices. $\square$
 
 Without the reset, the second case would keep $v$, and $j$ would optimize
 against a mixture that includes another player's failure. That is Example 3.
 
-**Lemma B3 (delivery is one-dimensional).** Take a forced history at which
-$j$'s event $e$ is unresolved and $j$ has sent nothing for it. Others in the
-phase may be late, or may already be excluded. For every type of $j$ without a
-bad binding, every policy $s$ that sends at most the free packet yields
-$$
-P_s\,V+(1-P_s)\,a_j ,
-$$
-where $V$ does not depend on $s$ and $V\ge m_j>a_j$. So every type ranks these
-policies by $P_s$ alone. The same holds at lifted sets, with the continuation
-given by $\sigma^X$.
+**Lemma B3 (delivery).** Take a forced or lifted history at which $j$'s
+event $e$ is unresolved and $j$ has sent nothing for it. Others in the phase
+may be late, or may already be excluded. Let $j$ hold no bad binding. Consider
+policies $s$ that send at most the free packet. Call $s$ *own-service* if it
+reads only $j$'s activations for $e$, the clock relative to $r_e$, and, for a
+reveal, the value being opened. A general policy may read everything $j$
+observes, including leaks, receipts and others' openings in flight. Let $P^*$
+be the largest remaining success probability of an own-service policy, which
+$\varphi^*$ attains. Then:
 
-*Proof.*
+- (a) every own-service policy $s$ yields $P_s\,V+(1-P_s)\,a_j$, where $V$
+  does not depend on $s$ and $V\ge m_j>a_j$. So every type ranks own-service
+  policies by $P_s$ alone;
+- (b) every policy yields at most $P^*V+(1-P^*)\,a_j$, the payoff of
+  $\varphi^*$.
+
+A general policy is not a two-outcome lottery with a fixed $V$. Suppose
+another player's bit is uniform, $j$'s continuation after success is worth 1
+or 2 according to that bit, and sending surely succeeds. Then always sending
+earns $1.5$, while sending only after seeing one of the bits succeeds with
+probability $\tfrac12$ and earns $\tfrac12$ or $1$, not $\tfrac12\cdot1.5$. Part
+(b) bounds such policies anyway.
+
+*Proof.* Write $Z$ for everything in the run other than $\xi_e$ and $j$'s
+choices for $e$: Nature, the players' private randomization (including $j$'s
+own later randomization), the other seeds and the remainder seed. By (S2–S3),
+$\xi_e$ is independent of $Z$ given $j$'s information at the history. At each
+stage $n$ this is Bayes' rule: the likelihood of $j$'s observations factors
+into a term in $\xi_e$ (activations so far, and no resolution yet) and a term
+in $Z$. The product form survives the limit.
 
 - *Failure* gives $a_j$.
-- *Success.* Two things determine the continuation:
-  - The outcomes of the phase's other events depend only on their own $\xi_f$,
+- *Success.* Given $Z$ and the success of $e$, $j$'s gross payoff is a number
+  $G(Z)$ that does not depend on $s$:
+  - $s$ changes only inclusion timing, order and leaks;
+  - the phase's other events succeed or fail as functions of their own seeds,
     their owners' own-service policies or trembles, and their packets'
-    content. So they do not depend on $s$ (S1–S2).
-  - After the barrier, play is either $\sigma^H$ (if no one failed) or the
-    lift of $\sigma^X$. Both are functions of $\Gamma^X$ information only, by
-    (P).
+    content (S1–S3);
+  - prescribed play within the phase ignores in-phase observations, because
+    it is played at $\Pi(I)$, and after the barrier it is past-blind (P).
 
-  Within the phase, $s$ changes only inclusion timing and leaks. These are
-  information that nobody's prescribed play reads: under $\sigma^*$, a
-  binding's value choice reads no timing (Lemma A3), and the continuation
-  after the barrier is past-blind.
-
-  So $V$ does not depend on $s$. It is at least $m_j$, for three reasons:
+  $G(Z)\ge m_j$ for every $Z$, for three reasons:
   - $j$ is not privately doomed, and its prescribed continuation never fails
     (Proposition 1(2));
   - $\sigma^X$ may prescribe a violating value only where the binding is
-    surely voided by a reset, which is harmless;
+    surely voided by a reset, and the value after a reset is at least $m_j$
+    by never fail;
   - nobody else can exclude $j$.
 
-  So $V$ is an expectation of non-excluded gross payoffs. For a reveal, $P_s$
-  may depend on the value being opened, which is public after success, and
-  $\varphi^*$ reads only that value.
-- *Lifted sets.* The continuation is the lift of $\sigma^X$, which reads no
-  timing. If $j$ itself holds a bad binding, use the own-bad-binding argument
-  below. $\square$
+  So the payoff of $s$ is $a_j+\mathbb E\bigl[(G(Z)-a_j)\,\pi_s(Z)\bigr]$,
+  where $\pi_s(Z)$ is the probability that $e$ succeeds given $Z$.
+- *Given $Z$, every policy acts as an own-service policy.* By (S3), before
+  $e$ resolves, everything $j$ observes is a function of $Z$, of $j$'s
+  activations for $e$, of the clock and of $j$'s own emissions. With $Z$
+  fixed, $s$ is therefore an own-service policy, and $\pi_s(Z)\le P^*$ because
+  $\xi_e$ has its fixed law given $Z$.
+- *Conclusion.* For an own-service $s$, $\pi_s(Z)=P_s$ for every $Z$, which
+  gives (a) with $V=\mathbb E[G(Z)]$. For a general $s$, $G(Z)-a_j\ge0$ and
+  $\pi_s(Z)\le P^*$ give (b).
+
+For a reveal, $P_s$ may depend on the value being opened, which is public
+after success, and $\varphi^*$ reads only that value. At lifted sets the
+continuation is the lift of $\sigma^X$, which reads no timing. If $j$ itself
+holds a bad binding, use the own-bad-binding argument below. $\square$
 
 **Own bad bindings.** Let $j$ hold a bad binding $b$, either native-only or
 guard-violating.
@@ -1624,10 +1699,12 @@ guard-violating.
   $$
   P_s\bigl[\pi\,V_{\mathrm{reset}}+(1-\pi)\,a_j\bigr]+(1-P_s)\,a_j ,
   $$
-  where $\pi$ is the probability of a co-phase failure. By (S1–S2), $\pi$
-  does not depend on $s$. So the payoff is weakly increasing in $P_s$. Sending
-  on time, or by $\varphi^*$ when late, is optimal, and the ranking does not
-  depend on $j$'s type.
+  where $\pi$ is the probability of a co-phase failure. For an own-service
+  $s$, $\pi$ does not depend on $s$ (S1–S3), so the payoff is weakly
+  increasing in $P_s$. A general policy is bounded as in Lemma B3(b), with
+  $G=V_{\mathrm{reset}}$ after a co-phase failure and $G=a_j$ otherwise; both
+  are at least $a_j$. Sending on time, or by $\varphi^*$ when late, is
+  optimal, and the ranking does not depend on $j$'s type.
 - *Choosing a violating value at an honest set* is dominated in the limit,
   since $\pi\to0$ there.
 
@@ -1640,13 +1717,14 @@ neither $\xi_e$ nor the content of $e$'s packets (S1). The cases:
 - **Honest value choice in a commit phase.** It is optimal among honest values
   by Lemma D3. Sending at once succeeds surely, by protected inclusion. The
   alternatives are no better:
-  - late delivery gives $P_sV+(1-P_s)a_j\le V$ (Lemma B3);
+  - late delivery gives at most $P^*V+(1-P^*)a_j\le V$ (Lemma B3);
   - a bad binding gives $a_j$;
   - charged actions are worse (Lemma C).
 - **Reveal at a first activation.** Sending succeeds surely and is worth at
   least $m_j>a_j$, whatever others do in the phase. Withholding gives $a_j$.
   Delaying cannot help, because nothing later reads the timing (P).
-- **Late delivery.** $\varphi^*$ is optimal (Lemma B3).
+- **Late delivery.** $\varphi^*$ is optimal among all policies (Lemma
+  B3(b)).
 - **After the free packet, non-owners, excluded players.** As in Theorem 2.
 - **Own bad bindings.** By the own-bad-binding argument above. At the
   owner's own guard-violating sets, the prescribed play is $\sigma^X_n$'s, and
@@ -1654,17 +1732,19 @@ neither $\xi_e$ nor the content of $e$'s packets (S1). The cases:
   as at lifted sets.
 - **Lifted sets.** These are the sets after an exclusion or with a publicly
   doomed player, including the rest of a phase after an exclusion.
-  - Prescribed moves are $\sigma^X$'s. They are sequentially rational in
-    $\Gamma^X$ at the belief $\mu^X(\Pi(I))$, which is the native belief by
-    Lemma A3.
+  - Prescribed moves are $\sigma^X$'s. In commit phases they are
+    sequentially rational in $\Gamma^X$ at the belief $\mu^X(\Pi(I))$, which
+    is the native belief by Lemma A3(2). In reveal phases the only choice is
+    moving versus failing. Moving is optimal pointwise for a player that is
+    not doomed (D2 of Theorem 4), and a doomed player's payoff is constant.
   - Each $\Gamma^X$ move has the same continuation value natively as in
     $\Gamma^X$. Moving at the first activation succeeds surely (M1), and the
     continuation is the lift of $\sigma^X$.
   - A runtime deviation is one of three kinds:
     - a $\Gamma^X$ deviation, no better by sequential rationality of
       $\sigma^X$;
-    - a timing deviation, which yields $P_sV+(1-P_s)a_j\le V$ (Lemma B3), or
-      $a_j$ for a doomed player;
+    - a timing deviation, which yields at most $P^*V+(1-P^*)a_j\le V$
+      (Lemma B3), or $a_j$ for a doomed player;
     - a charged action (Lemma C).
   - **Finer native information.** Natively, $j$ may observe in-phase events
     that $\Pi(I)$ ignores: others' in-phase expiries, receipts, author-only
@@ -1684,7 +1764,7 @@ neither $\xi_e$ nor the content of $e$'s packets (S1). The cases:
 **Consistency.** There is one tremble sequence: the native profile at stage $n$
 of 4.4 together with the free-region equilibrium at stage $n$. Every belief is
 the limit of its Bayes beliefs, and by Lemma A3 these match $\mu^X$ on forced
-and lifted sets.
+and lifted sets in commit phases.
 
 **Preservation.** On the path every owner sends its free packet at its first
 activation, which succeeds surely. So no exclusion or reset occurs, and play
@@ -1696,7 +1776,7 @@ honest one. $\square$
 Each example has complete information, so every claimed choice is strict and
 every SE makes it.
 
-#### Example 1: coupled late inclusion violates (S1–S2)
+#### Example 1: coupled late inclusion violates (S1–S3)
 
 The example is fully specified below. It adapts, to $C_1$, a game from an
 earlier analysis
@@ -1893,7 +1973,7 @@ strength.
     deals with them.
 - **M4. Nobody's clean actions affect another's success or charges.**
   - For an on-time packet this is M1, under every execution order.
-  - For a late packet it follows from (S1–S2): success depends only on
+  - For a late packet it follows from (S1–S3): success depends only on
     $\xi_e$, whose law is fixed, and on the owner's own emissions.
   - Charges attach to the emitter.
   - The one effect another player's clean action can have is to void your
@@ -1944,21 +2024,25 @@ clean sets put zero weight on unclean histories (Lemma A3).
   sends on time, and its value choices are irrelevant (4.5). Runtime data
   enters only through the client's choice of *when* to send, $\varphi^*$.
 - **E3. Timing deviations are source lotteries.** For an event the owner has
-  not yet sent, every uncharged deviation in send time (silence, late sending,
-  another time) has expected payoff
+  not yet sent, every own-service deviation in send time (silence, late
+  sending, another time) has expected payoff
   $$
   P\cdot V+(1-P)\cdot a_j .
   $$
   This is a lottery between two $\Gamma^X$ outcomes: the honest move, with
   continuation value $V$, and $j$'s own failure. The success probability $P$
-  is a runtime quantity, but it enters only as a weight. The other uncharged
+  is a runtime quantity, but it enters only as a weight. A send time that
+  also reads others' in-flight data can correlate success with the
+  continuation, so it is not such a lottery. It is bounded by the best of
+  them, $P^*V+(1-P^*)a_j$, which $\varphi^*$ attains. The other uncharged
   deviations map directly to $\Gamma^X$ actions:
   - another value maps to another $\Gamma^X$ commit: an honest move, or, at
     lifted sets, possibly a violating commit;
   - another handle slot maps to the same move;
   - a bad binding maps to "commit some value of the domain, then fail".
-- **E4. Timing reads only the delivered value.** Every type ranks send times
-  by $P$ alone. So in equilibrium a player's send time is a function of the
+- **E4. Timing reads only the delivered value.** Every type ranks
+  own-service send rules by $P$ alone, and none of its other send rules does
+  better. So in equilibrium a player's send time is a function of the
   value being delivered (for a reveal) and of operational data, and of
   nothing else it knows. The delivered value is public after success.
 - **E5. Cheap talk carries no meaning.** Handle slots, send times and
@@ -2007,8 +2091,10 @@ others.
 
 **M4.** For on-time packets, this is M1. For late packets, by (S1) success is a
 function of $\xi_e$, the owner's emission clocks and the content of its
-packets. By (S2) the law of $\xi_e$ is fixed and independent of everything
-another player controls. Charges attach to the emitter by 1.3.
+packets. By (S2–S3) the law of $\xi_e$ is fixed, and $\xi_e$ is a seed
+independent of every other player's randomization; another player's
+emissions reach $\xi_e$'s event only through the remainder, which success
+does not read. Charges attach to the emitter by 1.3.
 
 **D1.** This is the computation of Lemma C. It applies at any information set
 where $j$ is uncharged, whatever the continuation.
@@ -2021,9 +2107,10 @@ binding. A non-excluded terminal payoff is at least $m_j$ by definition, and
 $m_j>a_j$.
 
 **E1 and E5.** At clean sets, Lemma A3 gives zero weight to unclean
-histories and to others' bad bindings. It gives honest beliefs over the
-projection before any exclusion or public doom, and $\Gamma^X$ beliefs at doomed
-sets and after exclusions, that is, at every lifted set.
+histories and to others' bad bindings. At clean sets with a value choice,
+which lie in commit phases, it gives honest beliefs over the projection
+before any exclusion or public doom, and $\Gamma^X$ beliefs at doomed sets
+and after exclusions.
 
 Cheap-talk channels carry no information because their native law is
 value-independent:
@@ -2041,13 +2128,15 @@ own guard-violating sets (4.4). On forced sets of owners without a bad binding
 it is $\sigma^H$, by Proposition 1. Native-only bad bindings are the stated
 exception. The only runtime-dependent choice is $\varphi^*$.
 
-**E3.** The timing case is Lemma B3: failure gives $a_j$, success gives a
-continuation value $V$ that does not depend on the policy, and $P$ is the
-policy's success probability. The other deviations change only the move or
+**E3.** The timing case is Lemma B3: for own-service policies, failure
+gives $a_j$, success gives a continuation value $V$ that does not depend on
+the policy, and $P$ is the policy's success probability. Other policies are
+bounded by Lemma B3(b). The other deviations change only the move or
 the handle, which is a $\Gamma^X$ action by M2.
 
-**E4.** This is the type-independence part of Lemma B3: $\arg\max P_s$
-depends only on the fixed law of $\xi_e$, the clock and the delivered value.
+**E4.** This is Lemma B3: $\arg\max P_s$ over own-service policies depends
+only on the fixed law of $\xi_e$, the clock and the delivered value, and by
+B3(b) no other policy does better.
 
 $\square$
 
