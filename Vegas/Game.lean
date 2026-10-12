@@ -50,6 +50,8 @@ import Vegas.Game.OnePacketFirstActivation
 import Vegas.Game.OnePacketEventFailure
 import Vegas.Game.OnePacketPendingPool
 import Vegas.Game.OnePacketFactorization
+import Vegas.Game.OnePacketEnvironmentSteps
+import Vegas.Game.OnePacketComponentSteps
 import Vegas.Game.OnePacketDelivery
 import Vegas.Game.OnePacketLawApproximation
 import Vegas.Game.CompiledPolicyView
