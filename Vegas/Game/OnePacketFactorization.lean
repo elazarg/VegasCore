@@ -116,15 +116,19 @@ def ownerRecall (who : Player) :
   | none => []
   | some control => control.execution.recall who
 
-/-- The chance mass of the event a configuration step completes: the mass the
-graph step gives the reached configuration, which is one at a decision and the
-draw's probability at a sample. It is one when no event completes. -/
+/-- The chance mass of the event a configuration step completes: at an event
+without an actor, a sample, the mass the graph step gives the reached
+configuration, which is the draw's probability; one at a decision, and one when
+no event completes. -/
 def completionMass (before after : EventGraphRuntime.State (graph setup)) : ℝ :=
   match after.config.history.drop before.config.history.length with
   | [⟨event, action⟩] =>
-      if ready : before.config.cut.Ready event then
-        (before.config.step event ready action after.config).toReal
-      else 0
+      match (graph setup).actor? event with
+      | none =>
+          if ready : before.config.cut.Ready event then
+            (before.config.step event ready action after.config).toReal
+          else 0
+      | some _ => 1
   | _ => 1
 
 /-- The source action a transmission decodes to: at a binding event, the
@@ -405,8 +409,10 @@ theorem completionMass_nonneg (before after : EventGraphRuntime.State (graph set
   unfold completionMass
   split
   · split
-    · exact ENNReal.toReal_nonneg
-    · exact le_rfl
+    · split
+      · exact ENNReal.toReal_nonneg
+      · exact le_rfl
+    · exact zero_le_one
   · exact zero_le_one
 
 omit [Fintype Player] in
