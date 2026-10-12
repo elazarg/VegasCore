@@ -121,6 +121,13 @@ Review history:
     phase: they trigger no reset and do not count against $\Phi$.
 
   These fixes have not been re-reviewed.
+- A realism pass followed. It renamed "author-only" leaks to
+  **content-blind** leaks and stated plainly that pending packets may be
+  shown to anyone in full. It explained how the one-packet rule is enforced
+  (signed-packet fraud proofs, with the signed packet separate from the fee
+  transaction). It added an assumptions table (1.7). It also found that the
+  reporting assumption 1.5(4) is unrealistic for packets sent privately to
+  the builder. That is now flagged as open rather than resolved.
 
 ## Summary
 
@@ -153,7 +160,9 @@ builder's reliability.
     honest payoff of theirs, and the others continue.
   - *A free first packet.* A player's first well-formed packet for an event is
     never charged, whether or not it is included. Everything else the player
-    sends is charged.
+    sends is charged. Equivalently: a player may sign at most one packet per
+    move, and it must be well-formed. Violations are proved from signed
+    packets, like double-signing; a packet that never lands proves nothing.
 
   For every program in the class, every forfeit, every deposit above the
   payoff spread and every admissible value-blind builder, every honest SE is
@@ -168,8 +177,10 @@ builder's reliability.
     allowed;
   - the builder is *per-event value-blind*: what it does with an event reads no
     unopened value other than that event's own opening;
-  - its leaks are *author-only*: they depend on who emitted pending packets,
-    not on their content;
+  - its leaks are *content-blind*. Pending packets are visible: the builder
+    may show any of them, in full, to any player, as a public mempool does.
+    What is restricted is only *which* packets are shown to whom and when:
+    that may depend on who sent them, but not on what they contain;
   - the exclusion payoff lies below every payoff the player can receive while
     not excluded.
 
@@ -328,6 +339,10 @@ An opening whose value does not match is not accepted.
 **Mempool and leaks.** An emitted packet is *pending* until it is included.
 At each activation of $i$, the builder may *show* $i$ some pending packets of
 other players. Showing a packet reveals its identifier, call and evidence.
+This is the mempool: the model allows any pending packet to be shown to any
+player before inclusion, and nothing in this note assumes pending packets
+are private. Bindings are opaque, so seeing one reveals no value. A pending
+opening reveals its value to whoever is shown it.
 
 **Builder.** The builder is a public chance process that chooses activations,
 inclusions, leaks, clock advances and expiries. Its law is fixed and known to
@@ -369,8 +384,11 @@ and inclusions.
   one. Under concurrency this is required **per event**: the law concerning
   event $e$ may read the value of $e$'s own opening, but no other unopened
   value;
-- **author-only** if leaks depend only on the observer and on the emitters of
-  pending packets, not on their content;
+- **content-blind** (in its leaks) if which pending packets are shown to
+  whom, and when, depends only on the history, the observer and the emitters
+  of the pending packets, and not on their calls or evidence. A shown packet
+  is still shown in full; the property restricts the choice of what to
+  show, not what showing reveals;
 - **blind to late packets in its inclusion law** if the following holds at
   every history holding a pending late packet $x$. The builder's inclusion law
   is a mixture of two components: including $x$, and the inclusion law at the
@@ -443,6 +461,27 @@ burned.
   collected with conditional probability at least $\alpha>0$. Collection reads
   no unopened value. The verdict reads only signed content, tokens, serials
   and the final record, never send times.
+
+  *Enforcement.* Because a player is charged at most once, the count audit
+  is the same as the rule: **a player may sign at most one packet per move,
+  and it must be well-formed.** Which of two packets counts as "first" never
+  matters. Every violation is proved by signed data alone, as in
+  double-signing slashing:
+  - two distinct packets that the player signed for the same event, with
+    different serials or contents, prove an extra packet;
+  - a single signed packet proves itself if it is malformed, carries
+    evidence other than an opening's own certificate, or addresses an event
+    its signer does not own.
+
+  A packet that is never included proves nothing, so it is never charged.
+  That is the difference from $C_0$'s audit. Rebroadcasting the same signed
+  packet, by its author or by anyone else, creates no second packet. To fit
+  real fee markets, the signed packet must be separate from the fee-bearing
+  transaction that carries it, so that a client can re-wrap and re-price it
+  without signing again. The model leaves fees out (1.2); a fee bump is then
+  a rebroadcast of the same packet, not a second one. What the audit cannot
+  do by itself is *obtain* the packets. That is the reporting assumption,
+  1.5(4).
 - *Deposit.* $\alpha K_i>\operatorname{sp}_i$, where $\operatorname{sp}_i$ is
   the spread of $i$'s gross payoff over all compiled terminal histories.
 
@@ -482,10 +521,14 @@ The quantifier order is **deposit-first**:
    includes the re-runs of at most $n$ resets, since each reset excludes a
    player.
 3. Players are finitely many.
-4. The audit observes every emitted packet, including packets sent privately
-   to the builder, with the collection bounds of 1.3. How dead packets are
-   reported (for example, by watchers submitting signed packets) is outside
-   the model.
+4. **Reporting.** Every charged packet reaches the audit with conditional
+   probability at least $\alpha$ (1.3). The charge itself needs no trust: it
+   is proved from signed packets (1.3, Enforcement). What is assumed is that
+   the packets are *reported*. A packet that is included, or shown to some
+   player, is held by someone who can report it. A packet sent privately to
+   the builder and never shown or included cannot be, and no reward for
+   reporting is modelled. This is the least realistic standing assumption;
+   see 1.7.
 5. **Guard satisfiability.** At every reachable public history of $\Gamma^X$
    (1.6), every commit's guard admits some value of its domain, given its
    owner's information.
@@ -855,6 +898,26 @@ $u_A=0$ otherwise. Let $a_A=-X/2$. Then $a_A<\underline u_A=0$ but
 $a_A>m_A=-X$. After C is excluded, every continuation in which A stays in pays
 $-X<a_A$, so A strictly prefers to fail.
 
+### 1.7 Assumptions at a glance, and how realistic they are
+
+Compiler design choices (exclusion, the payoff $a_j$, the one-packet rule,
+the reset, the deposit) are not assumptions about the world; Sections 7–8
+discuss them. The assumptions are these.
+
+| Assumption | Where | Used by | Realism |
+| --- | --- | --- | --- |
+| Pending packets may be seen by anyone | 1.2 | all | Not an assumption: the model allows it. |
+| Contract guarantees: opportunity, protected inclusion, timeliness, completion | 1.2 | all | Liveness and censorship resistance: an owner's single on-time packet lands within a known bound, whatever others send. Reasonable when deadlines are long against inclusion delays; fails under sustained censorship. |
+| Builder is exogenous, with a law known to players | 1.2 | all | Standard for equilibrium analysis. A profit-seeking builder (MEV) is not covered (Section 9). |
+| Value-blind builder (per event, under concurrency) | 1.2, 4.2 | Theorems 2–4 | Automatic for bindings, which are opaque. For openings in flight it forbids using a value read from the mempool when handling *other* events. Restrictive against content-aware builders. |
+| Content-blind leaks | 1.2 | Theorems 3–4 | Which pending packets reach whom may not depend on their contents. Ordinary gossip roughly fits; selective relaying by content does not. |
+| Success separability (S1–S3) | 4.2 | Theorems 3–4 | The strongest builder assumption: a *late* packet's success rests on luck private to its event. Real congestion is correlated (Section 9). It constrains only late, off-path packets; on-time packets are covered by protected inclusion. Example 1 shows that some such condition is needed. |
+| Reporting: charged packets reach the audit with probability at least $\alpha$ | 1.5(4) | D1, Lemma C, hence Theorems 2–4 | The charge is verifiable from signatures. Getting the packets is not guaranteed: packets sent privately to the builder can stay hidden, and no reporting reward is modelled. **Open** (Section 9). |
+| No off-ledger communication | 1.5(1) | all | Unenforceable; a modelling assumption, as is standard. |
+| Finite domains and horizon | 1.5(2) | all | Excludes sealed-bid auctions over $\mathbb N$. |
+| Guard satisfiability | 1.5(5) | Proposition 1, D2 | A checkable condition on programs. |
+| Unforgeable evidence (signatures, binding commitments) | 1.2 | all | Standard cryptographic assumption. |
+
 ## 2. Theorem 1: the standard compiler does not preserve SE
 
 ### 2.1 The program
@@ -978,7 +1041,7 @@ included with probability $1/(1+mw)$. A sole late opening is therefore
 included with probability $q=w/(1+w)$. Let $\delta=1-q$.
 
 This builder satisfies every condition of 1.2. It is value-blind and
-author-only. It is blind to late packets in its inclusion law: conditioned on
+content-blind. It is blind to late packets in its inclusion law: conditioned on
 not including a given packet, the lottery is the lottery on the remaining
 $m-1$ identifiers. Its leaks are not covered by that property.
 
@@ -1591,7 +1654,7 @@ In particular the builder cannot show $j$ a signal about $j$'s own future
 activations.
 
 The remainder may depend on the whole history, subject to per-event
-value-blindness and author-only leaks:
+value-blindness and content-blind leaks:
 
 - *when* an included packet is included, and in what order relative to
   others (for example a stable priority induced by fees, which are not
@@ -1619,7 +1682,7 @@ phase reset, and fix:
 - $\alpha>0$ and deposits with $\alpha K_i>\operatorname{sp}_i$;
 - an honest SE $(\sigma^H,\mu^H)$, and the SE $(\sigma^X,\mu^X)$ of $\Gamma^X$
   that Proposition 1(2) builds from it, with its tremble sequence $\sigma^X_n$;
-- a per-event value-blind, author-only, success-separable builder satisfying
+- a per-event value-blind, content-blind, success-separable builder satisfying
   the contract of 1.2 (opportunity, protected inclusion, timeliness,
   completion) for every event.
 
@@ -1665,7 +1728,7 @@ built from $\sigma^X_n$:
   between moving and failing. They are read from $\sigma^X_n$ at the projected
   $\Gamma^X$ set $\Pi(I)$.
   - $\Pi(I)$ ignores in-phase observations: others' in-phase expiries,
-    receipts, author-only leaks, and in reveal phases others' openings. It
+    receipts, leaks, and in reveal phases others' openings. It
     also ignores the owner's own timing, so every activation of the owner for
     one event projects to the same $\Gamma^X$ set. This is the same matching
     map as in Theorem 4.
@@ -2050,8 +2113,7 @@ rules are own-service, so they do not react to others' traffic. The cases:
       (Lemma B3), or $a_j$ for a doomed player;
     - a charged action (Lemma C).
   - **Finer native information.** Natively, $j$ may observe in-phase events
-    that $\Pi(I)$ ignores: others' in-phase expiries, receipts, author-only
-    leaks, and in reveal phases others' openings. These do not change what is
+    that $\Pi(I)$ ignores: others' in-phase expiries, receipts, leaks, and in reveal phases others' openings. These do not change what is
     optimal.
     - *Commit phases.* By Lemma D3, $j$'s value matters only when the phase
       has no failure. Given that event, every in-phase observation has a
@@ -2406,7 +2468,7 @@ others.
 - A clean packet is well-formed, or is the first packet for its event (also
   well-formed). Well-formed bindings carry no evidence, and well-formed
   openings carry only their own certificate.
-- The law clause is value-blindness, author-only leaks, and the collection
+- The law clause is value-blindness, content-blind leaks, and the collection
   condition of 1.3.
 - The claim at commit-choice sets uses order rule 1: no reveal is in flight
   during a commit phase. Every opening seen earlier either succeeded
@@ -2643,9 +2705,22 @@ player needs: the source game $\Gamma^X$.
 - *Can the recovery protocol be implemented?*
   - **The reset** is a contract rule: void the phase's bindings and reopen the
     phase. Its cost is extra rounds, bounded by the number of players.
-  - **Collection** with conditional probability at least $\alpha$ needs dead
-    packets to reach the contract. The model assumes that watchers report
-    every emitted packet (1.5), and that assumption is not derived.
+  - **Collection** with conditional probability at least $\alpha$ needs
+    charged packets to reach the contract. Proving a violation is easy (1.3,
+    Enforcement); obtaining the packets is not. Two gaps remain:
+    - *incentives:* the model burns charges, so reporters gain nothing. A
+      bounty paid from the slashed deposit is the natural fix; it is not
+      modelled;
+    - *private submission:* a packet sent only to the builder, and never
+      shown or included, cannot be reported. Such a packet affects other
+      players only through the builder's laws. A disclosure must be shown to
+      someone to matter, and then that someone holds proof. But a late
+      player could send a second, distinct packet for its move privately, to
+      raise its inclusion odds. If only one of the two is ever included and
+      the other never surfaces, the record shows a single packet and nothing
+      is provable. Closing this needs either an assumption that the builder's success
+      law ignores packets it never surfaces, or a version of Theorem 3 in
+      which late delivery may use several packets. Neither is done.
 
 ## Appendix A. Correspondence to the Lean development
 
