@@ -165,8 +165,21 @@ Review history:
     hypotheses (T1)–(T5) that Lemma A3 checks.
 
   Writing Lemma T out also changed one definition: "$\Phi$ is possible" now
-  means possible along clean histories. These changes have not been
-  re-reviewed.
+  means possible along clean histories.
+- A review of Lemma T found four gaps, all fixed:
+  - it transported the focal owner's own future choices, and its check of
+    (T5) treated $\Phi$ as success of every binding, although $\Phi$ excludes
+    the focal owner. It now transports only the other owners' trajectories,
+    after summing out the focal owner's future (new (T0)). $\omega$ is
+    defined the same way;
+  - the bad-binding claim covered the set's own owner, who knows its own
+    bad binding. It now covers other active players only;
+  - the remainder bound is additive, so the conclusion is now convergence in
+    total variation, not uniform relative agreement;
+  - summing out excluded owners needs a product domain. (T3) now requires
+    one, and Lemma A3 derives it from the per-owner structure of $\Gamma^X$.
+
+  These changes have not been re-reviewed.
 
 ## Summary
 
@@ -719,9 +732,9 @@ has first value $1$ given $\Phi$. The forced rule for own-doomed agents
 rules out such selection in $\sigma^X_n$, since failure rates depend only on
 the public region, but the definition below does not rely on it. So the
 object to carry is the whole **phase outcome**
-$\omega$: the active players' hidden values and the other
-owners' choices in the current phase, as they stand when the phase ends,
-earlier hidden values included. Write
+$\omega$: the hidden values of the active players other than $j$, and their
+choices in the current phase, as they stand when the phase ends, earlier
+hidden values included. Write
 $$
 \nu^X_n(I)=\Pr_n(\omega\in\cdot\mid I,\Phi),\qquad \nu^X(I)=\lim_n\nu^X_n(I),
 $$
@@ -1958,67 +1971,79 @@ public history.
 
 **Lemma T (conditional transport).** This lemma isolates the step that
 carries beliefs from $\Gamma^X$ to the native game. Fix a native information
-set $I$ in a commit phase. Fix an event $\Phi$ that depends only on the active
-owners' choices in the current phase. Extend every history in $I$ by its
-native continuation to the end of the phase, and project the clean ones to
-$\Gamma^X$. Write a projection as $x=(x_{\mathrm{pub}},x_{\mathrm{act}},x_{\mathrm{exc}})$:
-- $x_{\mathrm{pub}}$ is the public record;
-- $x_{\mathrm{act}}$ is the private trajectories of the owners active at $I$:
-  their hidden values and their choices in the phase;
-- $x_{\mathrm{exc}}$ is the private choices of excluded owners.
+set $I$ of owner $j$ in a commit phase. Let $\Phi$ be the event that no
+binding of another active owner in the current phase fails. The transported
+object concerns the *other* owners only. $j$'s past is part of $I$. $j$'s
+choices after $I$ are summed out first, by (T0).
+
+Extend the other owners' play in every history of $I$ to the end of the
+phase, and project the clean extended histories to $\Gamma^X$. The public
+record up to $I$ is fixed, so a projection is a pair $x=(o,e)$:
+- $o$ is the private trajectories of the other owners active at $I$: their
+  hidden values and their choices in the phase;
+- $e$ is the private choices of excluded owners.
 
 Call an extended history **regular** if it is clean, $\Phi$ holds in it, and
-no owner active at $I$ holds a native-only bad binding in it. Write $H_n$ for
-the regular histories, and $X_I$ for the projections that are consistent
-with $\Pi(I)$ and in which $\Phi$ holds. Assume, at every stage $n$:
+no *other* owner active at $I$ holds a native-only bad binding in it.
+Assume, at every stage $n$:
 
-- **(T1) Negligible remainder.** The extended histories in $I$ where $\Phi$
-  holds but which are not regular have total weight $o(\Pr_n(H_n))$.
-- **(T2) Factorization.** For $h\in H_n$ with projection $x$,
+- **(T0) The focal owner can be summed out.** The other owners' choices in
+  the phase, the success of their bindings, and $\Phi$ do not depend on $j$'s
+  choices after $I$.
+- **(T1) Negligible remainder.** The extended histories in $I$ in which $\Phi$
+  holds but which are not regular have total weight $o(\Pr_n(\text{regular}))$.
+- **(T2) Factorization.** For a regular $h$ with projection $x$,
   $\Pr_n(h)=\Pr^X_n(x)\,N_n(h)\,(1+o(1))$ uniformly. Here $\Pr^X_n$ is the
   $\Gamma^X$ weight under $\sigma^X_n$.
-- **(T3) Owner separation.** On $X_I$,
-  $\Pr^X_n(x)=A_n(x_{\mathrm{pub}},x_{\mathrm{act}})\,B_n(x_{\mathrm{pub}},x_{\mathrm{exc}})$.
-- **(T4) The operational factor ignores the active state.** For $x\in X_I$,
-  $\sum_{h\in H_n,\ \Pi(h)=x}N_n(h)=K_n(x_{\mathrm{pub}},x_{\mathrm{exc}})\,(1+o(1))$,
-  with $K_n$ not depending on $x_{\mathrm{act}}$. Regular histories project
-  only into $X_I$.
-- **(T5) Possibility and a common record.** $\Pr_n(H_n)>0$. Every $x\in X_I$
-  has the same $x_{\mathrm{pub}}$.
+- **(T3) Product form on a product domain.** There are finite sets $O$ and
+  $E$ such that the projections consistent with $\Pi(I)$ in which $\Phi$
+  holds are exactly $O\times E$, and $\Pr^X_n(o,e)=A_n(o)\,B_n(e)$ on all of
+  $O\times E$, with zeros allowed. In particular the excluded choices
+  available do not depend on $o$.
+- **(T4) The operational factor ignores $o$.** For every $(o,e)\in O\times E$,
+  $\sum_{h\text{ regular},\ \Pi(h)=(o,e)}N_n(h)=K_n(e)\,(1+o(1))$
+  uniformly, with $K_n$ not depending on $o$. Regular histories project only
+  into $O\times E$.
+- **(T5) Possibility.** $\Pr_n(\text{regular})>0$.
 
-Then at every stage $n$, the native law of $x_{\mathrm{act}}$ given $I$ and
-$\Phi$ equals the $\Gamma^X$ law of $x_{\mathrm{act}}$ given $\Pi(I)$ and $\Phi$,
-up to a factor $1+o(1)$ uniformly. So the two have the same limits along any
-subsequence.
+Then, at every stage $n$, the native law of $o$ given $I$ and $\Phi$ and the
+$\Gamma^X$ law of $o$ given $\Pi(I)$ and $\Phi$ are within $o(1)$ in total
+variation. So they have the same limits along any subsequence.
 
-*Proof.* By (T1), up to a factor $1+o(1)$, the native weight of
-$x_{\mathrm{act}}=a$ given $I$ and $\Phi$ is proportional to
+*Proof.* By (T0), $j$'s choices after $I$ affect neither $o$ nor $\Phi$, so
+they sum to one and drop out. Restrict first to regular histories. By (T2)–(T4),
+the native regular weight of $o$ is
 $$
-\sum_{x_{\mathrm{exc}}}\ \sum_{h\in H_n,\ \Pi(h)=(x_{\mathrm{pub}},a,x_{\mathrm{exc}})}\Pr_n(h)
-=A_n(x_{\mathrm{pub}},a)\sum_{x_{\mathrm{exc}}}B_n(x_{\mathrm{pub}},x_{\mathrm{exc}})\,K_n(x_{\mathrm{pub}},x_{\mathrm{exc}})\,(1+o(1)),
+\sum_{e\in E}A_n(o)\,B_n(e)\,K_n(e)\,(1+o(1))=A_n(o)\,C_n\,(1+o(1)),
+\qquad C_n=\sum_{e\in E}B_n(e)K_n(e).
 $$
-by (T2)–(T4). The $\Gamma^X$ weight of $x_{\mathrm{act}}=a$ given $\Pi(I)$
-and $\Phi$ is proportional to
-$A_n(x_{\mathrm{pub}},a)\sum_{x_{\mathrm{exc}}}B_n(x_{\mathrm{pub}},x_{\mathrm{exc}})$,
-by (T3). By (T5), $x_{\mathrm{pub}}$ is the same throughout, so both sums
-over $x_{\mathrm{exc}}$ are constants. Both laws are therefore proportional
-to $A_n(x_{\mathrm{pub}},a)$, up to $1+o(1)$, and normalizing gives the claim.
-Positivity of the native denominator is (T5). In $\Gamma^X$ it holds because
-$\sigma^X_n$ is fully mixed. The game is finite, so the $o(1)$ terms are
-uniform. $\square$
+The sum runs over the same set $E$ for every $o$, by (T3). By (T3), the
+$\Gamma^X$ weight of $o$ given $\Pi(I)$ and $\Phi$ is $A_n(o)\,C'_n$, with
+$C'_n=\sum_{e\in E}B_n(e)$. (T5) gives $C_n>0$. In $\Gamma^X$, $C'_n>0$ because
+$\sigma^X_n$ is fully mixed. After normalizing, the regular native law and
+the $\Gamma^X$ law agree up to a factor $1+o(1)$, uniformly in $o$, so they
+are within $o(1)$ in total variation. By (T1), the irregular histories add
+mass $o(1)$ to the conditional law given $I$ and $\Phi$. That moves it by at
+most $o(1)$ in total variation, though not uniformly state by state.
+$\square$
 
-The order of operations is the point of the lemma. Excluded owners' choices
-are summed out before anything is compared. Nothing is compared history by
-history, so excluded owners' posteriors, which may differ between the two
-games, never enter. Each owner's trajectory is kept whole inside $A_n$, so
-correlations within one owner, such as a guard $y=x$, are preserved.
+The lemma fixes the order of operations:
+- the focal owner's own future is summed out, since others never see it;
+- excluded owners are summed out over a common domain, so their
+  posteriors, which may differ between the two games, never enter;
+- nothing is compared history by history;
+- each other owner's trajectory stays whole inside $A_n$, so correlations
+  within one owner, such as a guard $y=x$, are preserved.
 
 **Lemma A3 (beliefs at forced and lifted sets).** Three claims hold.
 
 1. At every forced or lifted set, the limit belief puts zero weight on
    histories with a charged action. At every forced or lifted set in a
-   commit phase, it also puts zero weight on histories in which a player
-   that is active at the set holds a native-only bad binding.
+   commit phase, it also puts zero weight on histories in which *another*
+   player that is active at the set holds a native-only bad binding. The
+   set's owner may hold one itself. It knows this, and every history in its
+   set contains that binding. Its choices there are settled by the
+   own-bad-binding argument below, which needs no belief transport.
 
    The bad-binding claim is limited on purpose. A bad binding behaves
    differently from an honest one only at its own reveal, where its owner
@@ -2084,62 +2109,68 @@ pending.
 *Proof.* **Claim 1.** Charged histories have weight at most
 $\zeta_n^{M_3}$ against at least $(\zeta_n^2\rho^X_n/c)^{\mathcal T}$ for a clean
 history in the set, so they are negligible by the choice of $M_3$. Take a
-history in which an active player holds a native-only bad binding. That
-player has not yet reached the reveal of its bad binding, since that reveal
-would have excluded it. Its counterpart replaces the bad value with an honest
-one, together with up to $\mathcal T$ earlier choices of the same owner. It
-has the same public record and the same timing, so the same operational
-factors. The bad binding carries $\zeta_n^2$ against at least
-$(\rho^X_n)^{\mathcal T}$, which is negligible by the first condition of 4.4.
-The same comparisons hold inside $\Phi$. The counterpart of a bad-binding
-history has the same in-phase behaviour, so the same $\Phi$ status. A charged
-history in which $\Phi$ holds is compared with a clean one in which $\Phi$
-holds, which exists when $\Phi$ is possible.
+history in which another active player $k$ holds a native-only bad binding.
+$k$ has not yet reached the reveal of that binding, since that reveal would
+have excluded it. Its counterpart replaces the bad value with an honest one,
+together with up to $\mathcal T$ earlier choices of $k$. It is in the same
+information set: the owner of the set is not $k$, and sees neither $k$'s
+values nor $k$'s private choices. It has the same public record and the
+same timing, so the same operational factors. The bad binding carries
+$\zeta_n^2$ against at least $(\rho^X_n)^{\mathcal T}$, which is negligible by
+the first condition of 4.4. The same comparisons hold inside $\Phi$. The
+counterpart of a bad-binding history has the same in-phase behaviour, so
+the same $\Phi$ status. A charged history in which $\Phi$ holds is compared
+with a clean one in which $\Phi$ holds, which exists when $\Phi$ is possible.
 
-**Claim 2** is Lemma T. Its hypotheses hold as follows.
-- (T1) is claim 1, inside $\Phi$.
-- (T2) is the factorization of 4.4. Native source-level play at a set is
-  $\sigma^X_n$ at its projection, and that includes the extension to the end
-  of the phase: each later in-phase choice is made at a native set whose
-  projection is the corresponding $\Gamma^X$ set, because $\Pi$ ignores
-  in-phase observations. So $\Pr^X_n(x)$ is built from the same kernels, each
-  owner's choice given its own private history, with Nature's laws.
-- (T3) holds because in $\Gamma^X$ every choice reads only public data and
-  its owner's own commitments, and Nature's draws are public. The weight
-  splits into a factor per owner given the public record. Group the active
-  owners into $A_n$ and the excluded owners into $B_n$.
-- (T4) holds for four reasons. An excluded owner's private choices enter
-  $N_n$ only through that owner's own factors: its native-only and timing
-  trembles, including a bad binding, and the builder's treatment of its own
-  events, which may read its own delivered values. These terms go into
-  $K_n$ through $x_{\mathrm{exc}}$. Active owners' private choices do not
-  enter $N_n$ at all:
+**Claim 2** is Lemma T, for the set's owner $j$. Its hypotheses hold as
+follows.
+- **(T0).** The other owners' in-phase choices are made at native sets whose
+  source-level play is $\sigma^X_n$ at the projection. $\Pi$ ignores in-phase
+  observations, so that play does not read $j$'s in-phase behaviour. Their
+  delivery is own-service. By (S1)–(S3), their bindings' success depends
+  only on their own seeds and emissions. $\Phi$ concerns them only. A failure
+  of $j$ would trigger a reset, but that comes after the phase's choices,
+  which is where $o$ is measured.
+- **(T1)** is claim 1, inside $\Phi$.
+- **(T2)** is the factorization of 4.4. Native source-level play at a set is
+  $\sigma^X_n$ at its projection, including for the others' later in-phase
+  choices. So $\Pr^X_n(x)$ is built from the same kernels: each owner's choice
+  given its own private history, with Nature's laws.
+- **(T3).** In $\Gamma^X$ every choice reads only public data and its owner's
+  own commitments. Each public result is a function of one owner's choice
+  and earlier public data. So, given the public record up to $I$, the
+  constraint "consistent with $\Pi(I)$" is a separate constraint on each
+  owner's trajectory, and the weight is a product of per-owner factors.
+  $\Phi$ constrains each other owner's in-phase trajectory separately: all
+  its bindings succeed. The domain is therefore a product over owners, and
+  grouping gives $O\times E$ with $A_n$ for the other active owners and $B_n$
+  for the excluded ones. $j$'s own trajectory is fixed by $I$ up to $I$,
+  and summed out after $I$ by (T0).
+- **(T4).** An excluded owner's private choices enter $N_n$ only through that
+  owner's own factors: its native-only and timing trembles, including a bad
+  binding, and the builder's treatment of its own events, which may read its
+  own delivered values. These go into $K_n(e)$. The other active owners'
+  private choices do not enter $N_n$ at all:
   - in a commit phase no opening is in flight (order rule 1), so every value
     $N_n$ could read from earlier phases is already public at $I$;
-  - given $\Phi$, every other active owner's binding in the phase is a move.
-    So the only active choices left are values, and their operational law is
-    value-free: bindings are opaque, the builder is value-blind, binding
-    delivery reads no value, and the timing tier is the same at every set
-    and for every value;
+  - given $\Phi$, every other owner's binding in the phase is a move, so the
+    only choices left in $o$ are values. Their operational law is value-free:
+    bindings are opaque, the builder is value-blind, binding delivery reads
+    no value, and the timing tier is the same at every set and for every
+    value;
   - each move carries the common factor $c^{\mathrm{mv}}_n$ of 4.4, which
     depends only on the event, its public region and $n$.
+- **(T5).** $\Phi$ is possible at $I$, and possibility does not depend on $n$.
 
-  Regular histories project into $X_I$ by construction.
-- (T5): $\Pr_n(H_n)>0$ because $\Phi$ is possible at $I$, and possibility does
-  not depend on $n$. Given $\Phi$, every binding of the phase is accepted, so
-  the public record at the end of the phase is the same for all of $X_I$.
-
-Lemma T then gives the stage-$n$ equality for the active state, which
-carries $\omega$. Taking limits along the subsequence of 4.4 gives
-$\nu(I)=\nu^X(\Pi(I))$.
+Lemma T gives convergence in total variation at each stage, so the limits
+agree: $\nu(I)=\nu^X(\Pi(I))$, along the subsequence of 4.4.
 
 Without $\Phi$, (T4) fails: an observation such as an accepted binding
 depends on whether its owner moved or failed, and a doomed owner's choice
-between them can depend on its hidden values. That is why claim 2 is stated
-given $\Phi$. Without first summing out excluded owners, the comparison would
-also fail. An excluded owner's bad binding may dominate its native
-posterior, and it projects to one fixed value, while $\Gamma^X$ keeps that
-owner's earlier choice spread.
+between them can depend on its hidden values. Without summing out excluded
+owners over a common domain, the comparison would also fail. An excluded
+owner's bad binding may dominate its native posterior, and it projects to
+one fixed value, while $\Gamma^X$ keeps that owner's earlier choice spread.
 
 **Claim 3** is the part of claim 2 that concerns the others' not-yet-chosen
 values. It is a joint law with their earlier hidden values, kept whole in
