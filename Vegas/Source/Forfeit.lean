@@ -12,6 +12,8 @@ publication cells present at setup are not reveal sites and are not listed.
 publications of a player's reveals, and `Vegas.SourceProgram.forfeitUtility`
 subtracts a forfeit for each of them from a utility. Nothing is subtracted on a
 terminal state in which no cell records a failure.
+`Vegas.SourceProgram.exclusionUtility` instead pays a player with a failed
+reveal a fixed exclusion payoff, and every other player its utility.
 -/
 
 noncomputable section
@@ -126,6 +128,39 @@ theorem forfeitUtility_le {Parameter : Type} (p : SourceProgram Player L Γ O)
     mul_nonneg nonnegative (Nat.cast_nonneg _)
   simp only [forfeitUtility]
   linarith
+
+/-- A utility under exclusion: a player with a failed reveal receives its fixed
+exclusion payoff, every other player its utility. -/
+def exclusionUtility {Parameter : Type} (p : SourceProgram Player L Γ O)
+    (excludedPayoff : Player → ℝ) (utility : Parameter × PublicOutcome p → Player → ℝ) :
+    Parameter × PublicOutcome p → Player → ℝ :=
+  fun outcome who =>
+    if failedReveals p who outcome.2 = 0 then utility outcome who else excludedPayoff who
+
+theorem exclusionUtility_of_failedReveals_eq_zero {Parameter : Type}
+    (p : SourceProgram Player L Γ O) (excludedPayoff : Player → ℝ)
+    (utility : Parameter × PublicOutcome p → Player → ℝ) {outcome : Parameter × PublicOutcome p}
+    {who : Player} (noFailure : failedReveals p who outcome.2 = 0) :
+    exclusionUtility p excludedPayoff utility outcome who = utility outcome who := by
+  simp [exclusionUtility, noFailure]
+
+theorem exclusionUtility_of_failedReveals_pos {Parameter : Type}
+    (p : SourceProgram Player L Γ O) (excludedPayoff : Player → ℝ)
+    (utility : Parameter × PublicOutcome p → Player → ℝ) {outcome : Parameter × PublicOutcome p}
+    {who : Player} (failed : 1 ≤ failedReveals p who outcome.2) :
+    exclusionUtility p excludedPayoff utility outcome who = excludedPayoff who := by
+  simp [exclusionUtility, Nat.one_le_iff_ne_zero.mp failed]
+
+/-- Exclusion changes no payoff on a terminal state in which no cell records a
+failure. -/
+theorem exclusionUtility_of_successful {Parameter : Type} (p : SourceProgram Player L Γ O)
+    (excludedPayoff : Player → ℝ) (utility : Parameter × PublicOutcome p → Player → ℝ)
+    (parameter : Parameter) (terminal : State L p.terminalCtx)
+    (successful : Successful terminal) (who : Player) :
+    exclusionUtility p excludedPayoff utility (parameter, publicOutcome p terminal) who =
+      utility (parameter, publicOutcome p terminal) who :=
+  exclusionUtility_of_failedReveals_eq_zero p excludedPayoff utility
+    (failedReveals_publicOutcome_of_successful p terminal successful who)
 
 end SourceProgram
 

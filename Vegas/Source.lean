@@ -19,6 +19,8 @@ import Vegas.Source.BindingRepairInformation
 import Vegas.Source.BindingRepairTrace
 import Vegas.Source.BindingRepairContinuation
 import Vegas.Source.ProtocolValueBindingContinuation
+import Vegas.Source.Exclusion
+import Vegas.Source.ExclusionGame
 import Vegas.Source.FailedBinding
 import Vegas.Source.FailedBindingDeviation
 import Vegas.Source.Disclosure
