@@ -43,6 +43,7 @@ import Vegas.Game.OnePacketExclusionPayoff
 import Vegas.Game.OnePacketForced
 import Vegas.Game.OnePacketTrembles
 import Vegas.Game.OnePacketSlotTrembles
+import Vegas.Game.OnePacketSlotVisibility
 import Vegas.Game.OnePacketPrescribedSupport
 import Vegas.Game.OnePacketCanonicalPermits
 import Vegas.Game.OnePacketCanonicalAcceptance
