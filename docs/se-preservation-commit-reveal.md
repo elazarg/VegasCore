@@ -156,6 +156,17 @@ Review history:
   over excluded owners' private choices. The weight factors into active and
   excluded parts, so the sum is a common factor. It then compares only the
   active state, which is what $\omega$ contains.
+- An overall assessment then asked for three things:
+  - honest framing: the positive results implement the honest equilibrium
+    through compiler-added recovery rules; they are existence results; the
+    examples show necessity of only three conditions;
+  - a concrete builder meeting every condition of Theorem 3, now in 4.2;
+  - the transport step as a standalone result, now Lemma T, with explicit
+    hypotheses (T1)–(T5) that Lemma A3 checks.
+
+  Writing Lemma T out also changed one definition: "$\Phi$ is possible" now
+  means possible along clean histories. These changes have not been
+  re-reviewed.
 
 ## Summary
 
@@ -1734,6 +1745,38 @@ correlated through timing, a player who gains from another's failure prefers
 anticorrelated timing, and how much it prefers it depends on its continuation
 value. (S2–S3) exclude this.
 
+**A builder that meets every condition.** The conditions can be met together.
+Fix, for each owned event $e$, a deadline $d_e$, a bound $1\le b_e<d_e$, a
+law $L_e$ on $\{0,\dots,\mathit{delay}_e\}$ with
+$\mathit{delay}_e+b_e<d_e$, and a probability $p_e\in(0,1]$.
+- *Seeds.* $\xi_e$ consists of a draw $D_e\sim L_e$ and independent coins
+  $c_{e,0},c_{e,1},\dots$ with $\Pr(c_{e,k}=1)=p_e$. All seeds are
+  independent, and the remainder is deterministic.
+- *Activations.* The owner of $e$ is first activated at $r_e+D_e$, and then
+  at every tick while $e$ is ready. Every other player is activated at every
+  tick.
+- *Inclusion.* A packet sent at tick $s$ with $s+b_e<r_e+d_e$ (on time) is
+  included in that tick. A late packet sent at tick $s$ is included at the
+  first tick $t\ge s$ before the deadline with $c_{e,t-r_e}=1$, if there is
+  one. Packets included in the same tick are ordered by a fixed priority
+  over emitters, a stand-in for fees.
+- *Leaks.* At each activation, every pending packet is shown to the
+  activated player.
+
+The contract of 1.2 holds: opportunity by $D_e\le\mathit{delay}_e$, protected
+inclusion with bound $b_e$, timeliness and completion. The builder is
+value-blind, since nothing reads a value, and its leaks are content-blind.
+(S1)–(S3) hold:
+- whether $e$ succeeds depends only on $\xi_e$, the owner's send ticks
+  relative to $r_e$, and the packets' content;
+- the owner's activations for $e$ are determined by $D_e$;
+- everything else is deterministic given the history.
+
+This shows that the interface is consistent and not vacuous. It does not
+show that it is realistic. Late inclusion here is luck private to each
+event, while real congestion is shared across events. Correlated shocks
+violate (S2), and remain open (Section 9).
+
 ### 4.3 Statement
 
 **Theorem 3.** Take the deposit-first order, with compiler $C_1$ including the
@@ -1909,6 +1952,63 @@ public history.
 
 ### 4.5 Proof
 
+**Lemma T (conditional transport).** This lemma isolates the step that
+carries beliefs from $\Gamma^X$ to the native game. Fix a native information
+set $I$ in a commit phase. Fix an event $\Phi$ that depends only on the active
+owners' choices in the current phase. Extend every history in $I$ by its
+native continuation to the end of the phase, and project the clean ones to
+$\Gamma^X$. Write a projection as $x=(x_{\mathrm{pub}},x_{\mathrm{act}},x_{\mathrm{exc}})$:
+- $x_{\mathrm{pub}}$ is the public record;
+- $x_{\mathrm{act}}$ is the private trajectories of the owners active at $I$:
+  their hidden values and their choices in the phase;
+- $x_{\mathrm{exc}}$ is the private choices of excluded owners.
+
+Call an extended history **regular** if it is clean, $\Phi$ holds in it, and
+no owner active at $I$ holds a native-only bad binding in it. Write $H_n$ for
+the regular histories, and $X_I$ for the projections that are consistent
+with $\Pi(I)$ and in which $\Phi$ holds. Assume, at every stage $n$:
+
+- **(T1) Negligible remainder.** The extended histories in $I$ where $\Phi$
+  holds but which are not regular have total weight $o(\Pr_n(H_n))$.
+- **(T2) Factorization.** For $h\in H_n$ with projection $x$,
+  $\Pr_n(h)=\Pr^X_n(x)\,N_n(h)\,(1+o(1))$ uniformly. Here $\Pr^X_n$ is the
+  $\Gamma^X$ weight under $\sigma^X_n$.
+- **(T3) Owner separation.** On $X_I$,
+  $\Pr^X_n(x)=A_n(x_{\mathrm{pub}},x_{\mathrm{act}})\,B_n(x_{\mathrm{pub}},x_{\mathrm{exc}})$.
+- **(T4) The operational factor ignores the active state.** For $x\in X_I$,
+  $\sum_{h\in H_n,\ \Pi(h)=x}N_n(h)=K_n(x_{\mathrm{pub}},x_{\mathrm{exc}})\,(1+o(1))$,
+  with $K_n$ not depending on $x_{\mathrm{act}}$. Regular histories project
+  only into $X_I$.
+- **(T5) Possibility and a common record.** $\Pr_n(H_n)>0$. Every $x\in X_I$
+  has the same $x_{\mathrm{pub}}$.
+
+Then at every stage $n$, the native law of $x_{\mathrm{act}}$ given $I$ and
+$\Phi$ equals the $\Gamma^X$ law of $x_{\mathrm{act}}$ given $\Pi(I)$ and $\Phi$,
+up to a factor $1+o(1)$ uniformly. So the two have the same limits along any
+subsequence.
+
+*Proof.* By (T1), up to a factor $1+o(1)$, the native weight of
+$x_{\mathrm{act}}=a$ given $I$ and $\Phi$ is proportional to
+$$
+\sum_{x_{\mathrm{exc}}}\ \sum_{h\in H_n,\ \Pi(h)=(x_{\mathrm{pub}},a,x_{\mathrm{exc}})}\Pr_n(h)
+=A_n(x_{\mathrm{pub}},a)\sum_{x_{\mathrm{exc}}}B_n(x_{\mathrm{pub}},x_{\mathrm{exc}})\,K_n(x_{\mathrm{pub}},x_{\mathrm{exc}})\,(1+o(1)),
+$$
+by (T2)–(T4). The $\Gamma^X$ weight of $x_{\mathrm{act}}=a$ given $\Pi(I)$
+and $\Phi$ is proportional to
+$A_n(x_{\mathrm{pub}},a)\sum_{x_{\mathrm{exc}}}B_n(x_{\mathrm{pub}},x_{\mathrm{exc}})$,
+by (T3). By (T5), $x_{\mathrm{pub}}$ is the same throughout, so both sums
+over $x_{\mathrm{exc}}$ are constants. Both laws are therefore proportional
+to $A_n(x_{\mathrm{pub}},a)$, up to $1+o(1)$, and normalizing gives the claim.
+Positivity of the native denominator is (T5). In $\Gamma^X$ it holds because
+$\sigma^X_n$ is fully mixed. The game is finite, so the $o(1)$ terms are
+uniform. $\square$
+
+The order of operations is the point of the lemma. Excluded owners' choices
+are summed out before anything is compared. Nothing is compared history by
+history, so excluded owners' posteriors, which may differ between the two
+games, never enter. Each owner's trajectory is kept whole inside $A_n$, so
+correlations within one owner, such as a guard $y=x$, are preserved.
+
 **Lemma A3 (beliefs at forced and lifted sets).** Three claims hold.
 
 1. At every forced or lifted set, the limit belief puts zero weight on
@@ -1927,8 +2027,9 @@ public history.
    player's hidden values reach no payoff, and they are independent of the
    active players' values given the public history.
 2. Call $\Phi$ (no other active owner's binding in the phase fails)
-   **possible** at a native set $I$ if some history in $I$ extends, with
-   positive probability, to one in which $\Phi$ holds. This does not depend
+   **possible** at a native set $I$ if some clean history in $I$ extends,
+   with positive probability and without charged actions, to one in which
+   $\Phi$ holds. This does not depend
    on $n$: every stage-$n$ profile gives every player action positive
    probability, and the network's law is fixed, so the support is the same
    at every stage. At every forced or lifted set $I$ in a commit phase at
@@ -1937,9 +2038,10 @@ public history.
    $\omega$, projected to $\Gamma^X$. Then $\nu(I)=\nu^X(\Pi(I))$. On forced
    sets this is the honest law, by Proposition 1.
 
-   Where $\Phi$ is impossible, no claim is made, and none is needed: some
-   other binding of the phase surely fails, the reset voids the owner's
-   binding, and every value is optimal. This covers an observed failure, and
+   Where $\Phi$ is impossible, no claim is made, and none is needed. Every
+   history in which $\Phi$ holds then has a charged action, so in the limit
+   some other binding of the phase fails with probability one. The reset
+   voids the owner's binding, and every value is optimal. This covers an observed failure, and
    also a failure that is certain before it is observed. For example, A
    missed its protected turn and the network drops every late packet, so A
    will expire, but B has not yet seen the expiry. (Failure means an active
@@ -1975,89 +2077,69 @@ own-bad-binding argument), and Lemma B3 holds at any belief. This matches
 Theorem 2, whose Lemma A asserts honest beliefs only where no reveal is
 pending.
 
-*Proof.* Charged histories, and native-only bad bindings of players active
-at a commit-phase set, are negligible by the choice of $\zeta_n$ and $M_3$,
-which is claim 1. For the latter, an active player has not yet reached the
-reveal of its bad binding, since that reveal would have excluded it. So the
-counterpart differs only in the value drawn. Claim 3 is part of claim 2,
-which compares, at each stage $n$, the native and $\Gamma^X$ laws of the
-end-of-phase source history given $\Phi$. The argument treats each owner's
-trajectory as a whole, and never splits it into a past and a future part.
+*Proof.* **Claim 1.** Charged histories have weight at most
+$\zeta_n^{M_3}$ against at least $(\zeta_n^2\rho^X_n/c)^{\mathcal T}$ for a clean
+history in the set, so they are negligible by the choice of $M_3$. Take a
+history in which an active player holds a native-only bad binding. That
+player has not yet reached the reveal of its bad binding, since that reveal
+would have excluded it. Its counterpart replaces the bad value with an honest
+one, together with up to $\mathcal T$ earlier choices of the same owner. It
+has the same public record and the same timing, so the same operational
+factors. The bad binding carries $\zeta_n^2$ against at least
+$(\rho^X_n)^{\mathcal T}$, which is negligible by the first condition of 4.4.
+The same comparisons hold inside $\Phi$. The counterpart of a bad-binding
+history has the same in-phase behaviour, so the same $\Phi$ status. A charged
+history in which $\Phi$ holds is compared with a clean one in which $\Phi$
+holds, which exists when $\Phi$ is possible.
 
-*Native weights.* Extend each clean native history in $I$ by its native
-continuation to the end of the phase, and project it. By the factorization
-of 4.4, a native history $h$ with projection $x$ has weight
-$\Pr^X_n(x)\,N_n(h)\,(1+o(1))$. Here $\Pr^X_n(x)$ is the $\Gamma^X$ weight of
-$x$. It is a product, over each owner's sets along $x$, of $\sigma^X_n$ at that
-set given the owner's private history there, together with Nature's laws. So
-it keeps every dependence of a choice on its owner's earlier private
-choices. The extension of $h$ to the end of the phase has the same kernels:
-each later in-phase choice is made at a native set whose source-level play
-is $\sigma^X_n$ at its projection, the corresponding $\Gamma^X$ set, because
-$\Pi$ ignores in-phase observations.
+**Claim 2** is Lemma T. Its hypotheses hold as follows.
+- (T1) is claim 1, inside $\Phi$.
+- (T2) is the factorization of 4.4. Native source-level play at a set is
+  $\sigma^X_n$ at its projection, and that includes the extension to the end
+  of the phase: each later in-phase choice is made at a native set whose
+  projection is the corresponding $\Gamma^X$ set, because $\Pi$ ignores
+  in-phase observations. So $\Pr^X_n(x)$ is built from the same kernels, each
+  owner's choice given its own private history, with Nature's laws.
+- (T3) holds because in $\Gamma^X$ every choice reads only public data and
+  its owner's own commitments, and Nature's draws are public. The weight
+  splits into a factor per owner given the public record. Group the active
+  owners into $A_n$ and the excluded owners into $B_n$.
+- (T4) holds for four reasons. An excluded owner's private choices enter
+  $N_n$ only through that owner's own factors: its native-only and timing
+  trembles, including a bad binding, and the builder's treatment of its own
+  events, which may read its own delivered values. These terms go into
+  $K_n$ through $x_{\mathrm{exc}}$. Active owners' private choices do not
+  enter $N_n$ at all:
+  - in a commit phase no opening is in flight (order rule 1), so every value
+    $N_n$ could read from earlier phases is already public at $I$;
+  - given $\Phi$, every other active owner's binding in the phase is a move.
+    So the only active choices left are values, and their operational law is
+    value-free: bindings are opaque, the builder is value-blind, binding
+    delivery reads no value, and the timing tier is the same at every set
+    and for every value;
+  - each move carries the common factor $c^{\mathrm{mv}}_n$ of 4.4, which
+    depends only on the event, its public region and $n$.
 
-*Aggregate excluded owners first.* Split a projected history $x$ into three
-parts:
-- $x_{\mathrm{pub}}$, the public record;
-- $x_{\mathrm{act}}$, the private trajectories of the owners active at $I$;
-- $x_{\mathrm{exc}}$, the private choices of excluded owners.
+  Regular histories project into $X_I$ by construction.
+- (T5): $\Pr_n(H_n)>0$ because $\Phi$ is possible at $I$, and possibility does
+  not depend on $n$. Given $\Phi$, every binding of the phase is accepted, so
+  the public record at the end of the phase is the same for all of $X_I$.
 
-Fix $x_{\mathrm{pub}}$ and the operational record. An excluded owner's private
-choices enter the native weight only through that owner's own factors:
-- its own kernels;
-- its own native-only and timing trembles, including a native-only bad
-  binding, whose posterior Lemma A3(1) leaves unconstrained;
-- the builder's treatment of its own events, which may read its own
-  delivered values.
-
-Active owners' choices read only public data and their own commitments. The
-builder reads no other unopened value. So the native weight factors into an
-active part and an excluded part, and the same holds in $\Gamma^X$. Summing
-over $x_{\mathrm{exc}}$ leaves a factor that depends only on the public and
-operational records, not on $x_{\mathrm{act}}$. All comparisons below are made
-after this sum, on $(x_{\mathrm{pub}},x_{\mathrm{act}})$. That pair carries
-exactly the phase outcome $\omega$, which concerns active players only. The
-full histories need not agree: native projections may concentrate an
-excluded owner's earlier choice on the fixed value that a bad binding maps
-to, while $\Gamma^X$ keeps it spread. That difference lies entirely in the
-excluded part.
-
-*The operational factor given $\Phi$.* For each active state
-$(x_{\mathrm{pub}},x_{\mathrm{act}})$ consistent with $\Pi(I)$ in which $\Phi$
-holds, sum $N_n(h)$, after the aggregation above, over the native histories
-$h$ in $I$, extended to the end of the phase, that project to it. This sum
-is the same for every such state, up to $1+o(1)$:
-- in a commit phase no opening is in flight (order rule 1), so every value
-  that $N_n$ could read from earlier phases is already public at $I$;
-- within the phase, given $\Phi$ every other owner's binding is a move, so
-  the only choices left in $x$ are values. Their operational law is
-  value-free: bindings are opaque, the builder is value-blind, binding
-  delivery reads no value, and the timing tier is the same at every set and
-  for every value;
-- a native move can still fail, through a timing tremble followed by a
-  failed delivery. That factor is $1-O(\zeta_n)$ for every value alike, and
-  $\Phi$ excludes it.
-
-Without $\Phi$ the sum is not constant: an observation such as an accepted
-binding depends on whether its owner moved or failed, and a doomed owner's
-choice between them can depend on its hidden values. That is why claim 2 is
-stated given $\Phi$.
-
-*Conclusion.* So at every stage $n$, the native law of the projected active
-state at the end of the phase, given $I$ and $\Phi$, is the $\Gamma^X$ law
-given $\Pi(I)$ and $\Phi$, times $1+o(1)$. It is a joint law over all active
-owners' trajectories.
-Both are stage-$n$ distributions, at which $\Phi$ has positive probability in
-both games: in $\Gamma^X$ because every profile there is fully mixed, and
-natively because $\Phi$ is possible at $I$. So this holds even where $\Phi$ has
-limit probability zero, and however small the probability of moving is. Taking limits gives
+Lemma T then gives the stage-$n$ equality for the active state, which
+carries $\omega$. Taking limits along the subsequence of 4.4 gives
 $\nu(I)=\nu^X(\Pi(I))$.
 
-Separately, the hidden commitments of different players are independent
-given the public history, because in $\Gamma^X$ every choice reads only public
-data and its owner's own commitments. This is independence *across owners*.
-Within one owner, earlier and later values may be correlated, and the
-argument above keeps that. $\square$
+Without $\Phi$, (T4) fails: an observation such as an accepted binding
+depends on whether its owner moved or failed, and a doomed owner's choice
+between them can depend on its hidden values. That is why claim 2 is stated
+given $\Phi$. Without first summing out excluded owners, the comparison would
+also fail. An excluded owner's bad binding may dominate its native
+posterior, and it projects to one fixed value, while $\Gamma^X$ keeps that
+owner's earlier choice spread.
+
+**Claim 3** is the part of claim 2 that concerns the others' not-yet-chosen
+values. It is a joint law with their earlier hidden values, kept whole in
+$A_n$. $\square$
 
 **Lemma D3 (value choice under reset).** Take a forced set in a commit phase
 at which owner $j$ chooses a value $v$, together with any own-service delivery
