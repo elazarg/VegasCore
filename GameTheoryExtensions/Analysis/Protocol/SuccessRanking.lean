@@ -98,18 +98,23 @@ section Values
 variable (fuel : Nat) (observe : T.History → Outcome) (utility : Outcome → Player → ℝ)
   (assessment : N.BehavioralAssessment) {who : Player} (site : N.InformationSite who)
 
-/-- The observed law of play from one history of a site when its player
-installs a local law there, cut off after `fuel` steps. -/
-def localHistoryLaw (law : PMF (N.Choice who site.1))
-    (history : N.InformationHistory who site.1) : PMF Outcome :=
-  (N.truncatedRunner fuel (Profile.update (sig := N.behavioralSignature) assessment.strategy who
-    ((assessment.strategy who).withLaw site.1 law)) history.1).map observe
+/-- The law of play from one history of a site when its player installs a
+local law there, cut off after `fuel` steps. -/
+def localHistoryRun (law : PMF (N.Choice who site.1))
+    (history : N.InformationHistory who site.1) : PMF T.History :=
+  N.truncatedRunner fuel (Profile.update (sig := N.behavioralSignature) assessment.strategy who
+    ((assessment.strategy who).withLaw site.1 law)) history.1
+
+/-- The law of play from a site's belief when its player installs a local law
+there, cut off after `fuel` steps. -/
+def localRun (law : PMF (N.Choice who site.1)) : PMF T.History :=
+  N.assessmentLawWith (N.truncatedRunner fuel) assessment site
+    ((assessment.strategy who).withLaw site.1 law)
 
 /-- The observed law of installing a local law at a site, from the site's
 belief. -/
 def localLaw (law : PMF (N.Choice who site.1)) : PMF Outcome :=
-  (N.assessmentLawWith (N.truncatedRunner fuel) assessment site
-    ((assessment.strategy who).withLaw site.1 law)).map observe
+  (localRun fuel assessment site law).map observe
 
 /-- The expected utility of installing a local law at a site. -/
 def localValue (law : PMF (N.Choice who site.1)) : ℝ :=
@@ -123,24 +128,30 @@ def localGain (law : PMF (N.Choice who site.1)) : ℝ :=
   expect comparison.alternative (utility · who) - expect comparison.prescribed (utility · who)
 
 open Classical in
-/-- The probability of a failed outcome after installing a local law. -/
-def localFailure (failed : Set Outcome) (law : PMF (N.Choice who site.1)) : ℝ :=
-  expect (localLaw fuel observe assessment site law)
-    (fun outcome => if outcome ∈ failed then 1 else 0)
+/-- The probability of a failed history after installing a local law. -/
+def localFailure (failed : Set T.History) (law : PMF (N.Choice who site.1)) : ℝ :=
+  expect (localRun fuel assessment site law) (fun history => if history ∈ failed then 1 else 0)
 
 open Classical in
-/-- The expected utility on the successful outcomes after installing a local
+/-- The expected utility on the successful histories after installing a local
 law, zero on the failed ones. -/
-def localSuccessValue (failed : Set Outcome) (law : PMF (N.Choice who site.1)) : ℝ :=
-  expect (localLaw fuel observe assessment site law)
-    (fun outcome => if outcome ∈ failed then 0 else utility outcome who)
+def localSuccessValue (failed : Set T.History) (law : PMF (N.Choice who site.1)) : ℝ :=
+  expect (localRun fuel assessment site law)
+    (fun history => if history ∈ failed then 0 else utility (observe history) who)
 
-theorem localLaw_eq_bind (law : PMF (N.Choice who site.1)) :
-    localLaw fuel observe assessment site law =
-      (assessment.belief who site).bind
-        (localHistoryLaw fuel observe assessment site law) := by
-  unfold localLaw localHistoryLaw assessmentLawWith
-  rw [PMF.map_bind]
+theorem localRun_eq_bind (law : PMF (N.Choice who site.1)) :
+    localRun fuel assessment site law =
+      (assessment.belief who site).bind (localHistoryRun fuel assessment site law) := rfl
+
+/-- The local value is the expected utility of the observed outcome under the
+local run. -/
+theorem localValue_eq_expect_localRun (law : PMF (N.Choice who site.1)) :
+    localValue fuel observe utility assessment site law =
+      expect (localRun fuel assessment site law)
+        (fun history => utility (observe history) who) := by
+  unfold localValue localLaw
+  rw [expect_map]
+  rfl
 
 /-- The local gain is the value of the law minus the value of the assessed
 local law. -/
@@ -148,7 +159,7 @@ theorem localGain_eq_sub (law : PMF (N.Choice who site.1)) :
     localGain fuel observe utility assessment site law =
       localValue fuel observe utility assessment site law -
         localValue fuel observe utility assessment site (assessment.strategy who site.1) := by
-  simp only [localGain, localValue, localLaw, assessmentComparisonWith,
+  simp only [localGain, localValue, localLaw, localRun, assessmentComparisonWith,
     BehavioralPolicy.withLaw_eq_self]
 
 /-- The local gain of the assessed local law is zero. -/
@@ -164,7 +175,7 @@ theorem localValue_eq_continuationContext (bounded : T.BoundedHorizon fuel)
           (fun history => utility (observe history) who)).value
         ((assessment.strategy who).withLaw site.1 law) := by
   rw [assessment.continuationContext_eq_truncated_of_bounded _ bounded]
-  simp only [localValue, localLaw, expect_map]
+  simp only [localValue, localLaw, localRun, expect_map]
   rfl
 
 /-- **Local values are affine in the local law.** -/
@@ -195,41 +206,36 @@ theorem localGain_bind [Finite T.History] (bounded : T.BoundedHorizon fuel)
   rw [expect_sub (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _),
     expect_constant]
 
-theorem localFailure_nonneg (failed : Set Outcome) (law : PMF (N.Choice who site.1)) :
-    0 ≤ localFailure fuel observe assessment site failed law := by
+theorem localFailure_nonneg (failed : Set T.History) (law : PMF (N.Choice who site.1)) :
+    0 ≤ localFailure fuel assessment site failed law := by
   classical
   refine expect_nonneg _ _ fun outcome _ => ?_
   split <;> norm_num
 
-theorem localFailure_le_one [Finite T.History] (failed : Set Outcome)
+theorem localFailure_le_one [Finite T.History] (failed : Set T.History)
     (law : PMF (N.Choice who site.1)) :
-    localFailure fuel observe assessment site failed law ≤ 1 := by
+    localFailure fuel assessment site failed law ≤ 1 := by
   classical
-  unfold localFailure localLaw
-  rw [expect_map]
+  unfold localFailure
   exact expect_le_const _ _ (payoffIntegrable_of_finite _ _) 1 fun _ _ => by
-    simp only [Function.comp_apply]
     split <;> norm_num
 
 /-- **Failure pays a fixed payoff.** If the player receives `excluded` on every
 failed outcome, the local value is the successful part plus the failure
 probability times `excluded`. -/
-theorem localValue_eq_successValue_add [Finite T.History] (failed : Set Outcome) (excluded : ℝ)
-    (pays : ∀ outcome ∈ failed, utility outcome who = excluded)
+theorem localValue_eq_successValue_add [Finite T.History] (failed : Set T.History) (excluded : ℝ)
+    (pays : ∀ history ∈ failed, utility (observe history) who = excluded)
     (law : PMF (N.Choice who site.1)) :
     localValue fuel observe utility assessment site law =
       localSuccessValue fuel observe utility assessment site failed law +
-        localFailure fuel observe assessment site failed law * excluded := by
+        localFailure fuel assessment site failed law * excluded := by
   classical
-  unfold localValue localSuccessValue localFailure localLaw
-  simp only [expect_map]
-  have pointwise : ((utility · who) ∘ observe) = fun history =>
-      ((fun outcome => if outcome ∈ failed then 0 else utility outcome who) ∘ observe)
-          history +
-        excluded * ((fun outcome => if outcome ∈ failed then (1 : ℝ) else 0) ∘ observe)
-          history := by
+  rw [localValue_eq_expect_localRun]
+  unfold localSuccessValue localFailure
+  have pointwise : (fun history => utility (observe history) who) = fun history =>
+      (if history ∈ failed then 0 else utility (observe history) who) +
+        excluded * (if history ∈ failed then (1 : ℝ) else 0) := by
     funext history
-    simp only [Function.comp_apply]
     split
     · rename_i member
       rw [pays _ member]
@@ -243,14 +249,14 @@ successful part is the success probability times a continuation value
 `continuation` up to `error`, the local value is the mixture of `continuation`
 with weight the success probability and of `excluded` otherwise, up to
 `error`. -/
-theorem localValue_near_success [Finite T.History] (failed : Set Outcome) (excluded : ℝ)
-    (pays : ∀ outcome ∈ failed, utility outcome who = excluded)
+theorem localValue_near_success [Finite T.History] (failed : Set T.History) (excluded : ℝ)
+    (pays : ∀ history ∈ failed, utility (observe history) who = excluded)
     (continuation error : ℝ) (law : PMF (N.Choice who site.1))
     (successNear : |localSuccessValue fuel observe utility assessment site failed law -
-      (1 - localFailure fuel observe assessment site failed law) * continuation| ≤ error) :
+      (1 - localFailure fuel assessment site failed law) * continuation| ≤ error) :
     |localValue fuel observe utility assessment site law -
-      ((1 - localFailure fuel observe assessment site failed law) * continuation +
-        (1 - (1 - localFailure fuel observe assessment site failed law)) * excluded)| ≤
+      ((1 - localFailure fuel assessment site failed law) * continuation +
+        (1 - (1 - localFailure fuel assessment site failed law)) * excluded)| ≤
       error := by
   rw [localValue_eq_successValue_add fuel observe utility assessment site failed excluded pays]
   convert successNear using 2
@@ -262,15 +268,15 @@ times a common continuation value up to `error`, a law whose success
 probability exceeds that of `best` by at most `slack` has value at most that
 of `best` plus `slack * bound + 3 * error`, provided `excluded` is at most the
 continuation value up to `error` and the gap is at most `bound`. -/
-theorem localValue_le_of_failure_le [Finite T.History] (failed : Set Outcome) (excluded : ℝ)
-    (pays : ∀ outcome ∈ failed, utility outcome who = excluded)
+theorem localValue_le_of_failure_le [Finite T.History] (failed : Set T.History) (excluded : ℝ)
+    (pays : ∀ history ∈ failed, utility (observe history) who = excluded)
     (continuation error slack bound : ℝ) (law best : PMF (N.Choice who site.1))
     (lawNear : |localSuccessValue fuel observe utility assessment site failed law -
-      (1 - localFailure fuel observe assessment site failed law) * continuation| ≤ error)
+      (1 - localFailure fuel assessment site failed law) * continuation| ≤ error)
     (bestNear : |localSuccessValue fuel observe utility assessment site failed best -
-      (1 - localFailure fuel observe assessment site failed best) * continuation| ≤ error)
-    (ranked : localFailure fuel observe assessment site failed best ≤
-      localFailure fuel observe assessment site failed law + slack)
+      (1 - localFailure fuel assessment site failed best) * continuation| ≤ error)
+    (ranked : localFailure fuel assessment site failed best ≤
+      localFailure fuel assessment site failed law + slack)
     (slack_nonneg : 0 ≤ slack) (excluded_le : excluded ≤ continuation + error)
     (gap_le : continuation - excluded ≤ bound) (bound_nonneg : 0 ≤ bound) :
     localValue fuel observe utility assessment site law ≤
@@ -280,20 +286,20 @@ theorem localValue_le_of_failure_le [Finite T.History] (failed : Set Outcome) (e
       continuation error law lawNear)
     (localValue_near_success fuel observe utility assessment site failed excluded pays
       continuation error best bestNear)
-    (by linarith [localFailure_le_one fuel observe assessment site failed law])
-    (by linarith [localFailure_nonneg fuel observe assessment site failed best])
+    (by linarith [localFailure_le_one fuel assessment site failed law])
+    (by linarith [localFailure_nonneg fuel assessment site failed best])
     (by linarith) slack_nonneg excluded_le gap_le bound_nonneg
 
 /-- The ranking of `localValue_le_of_failure_le`, for local gains. -/
-theorem localGain_le_of_failure_le [Finite T.History] (failed : Set Outcome) (excluded : ℝ)
-    (pays : ∀ outcome ∈ failed, utility outcome who = excluded)
+theorem localGain_le_of_failure_le [Finite T.History] (failed : Set T.History) (excluded : ℝ)
+    (pays : ∀ history ∈ failed, utility (observe history) who = excluded)
     (continuation error slack bound : ℝ) (law best : PMF (N.Choice who site.1))
     (lawNear : |localSuccessValue fuel observe utility assessment site failed law -
-      (1 - localFailure fuel observe assessment site failed law) * continuation| ≤ error)
+      (1 - localFailure fuel assessment site failed law) * continuation| ≤ error)
     (bestNear : |localSuccessValue fuel observe utility assessment site failed best -
-      (1 - localFailure fuel observe assessment site failed best) * continuation| ≤ error)
-    (ranked : localFailure fuel observe assessment site failed best ≤
-      localFailure fuel observe assessment site failed law + slack)
+      (1 - localFailure fuel assessment site failed best) * continuation| ≤ error)
+    (ranked : localFailure fuel assessment site failed best ≤
+      localFailure fuel assessment site failed law + slack)
     (slack_nonneg : 0 ≤ slack) (excluded_le : excluded ≤ continuation + error)
     (gap_le : continuation - excluded ≤ bound) (bound_nonneg : 0 ≤ bound) :
     localGain fuel observe utility assessment site law ≤
@@ -303,17 +309,14 @@ theorem localGain_le_of_failure_le [Finite T.History] (failed : Set Outcome) (ex
     continuation error slack bound law best lawNear bestNear ranked slack_nonneg excluded_le gap_le
     bound_nonneg]
 
-/-- An expectation under the site's observed law averages, over the belief,
-the expectations from each history. -/
-theorem expect_localLaw [Finite T.History] (law : PMF (N.Choice who site.1))
-    (payoff : Outcome → ℝ) :
-    expect (localLaw fuel observe assessment site law) payoff =
+/-- An expectation under the site's local run averages, over the belief, the
+expectations from each history. -/
+theorem expect_localRun [Finite T.History] (law : PMF (N.Choice who site.1))
+    (payoff : T.History → ℝ) :
+    expect (localRun fuel assessment site law) payoff =
       expect (assessment.belief who site) (fun history =>
-        expect (localHistoryLaw fuel observe assessment site law history) payoff) := by
-  rw [localLaw_eq_bind]
-  unfold localHistoryLaw
-  simp only [← PMF.map_bind, expect_map]
-  rw [expect_bind_tower _ _ _ (payoffIntegrable_of_finite _ _)]
+        expect (localHistoryRun fuel assessment site law history) payoff) := by
+  rw [localRun_eq_bind, expect_bind_tower _ _ _ (payoffIntegrable_of_finite _ _)]
 
 /-- A belief average of quantities within `error` of their targets is within
 `error` of the average target. -/
@@ -333,15 +336,15 @@ open Classical in
 /-- **A failure probability common to the histories is the site's.** If the
 failure probability after installing a law from every history of the site's
 belief is within `drift` of `failure`, so is the site's. -/
-theorem localFailure_near_of_histories [Finite T.History] (failed : Set Outcome)
+theorem localFailure_near_of_histories [Finite T.History] (failed : Set T.History)
     (law : PMF (N.Choice who site.1)) (failure drift : ℝ)
     (historyFailure : ∀ history ∈ (assessment.belief who site).support,
-      |expect (localHistoryLaw fuel observe assessment site law history)
-        (fun outcome => if outcome ∈ failed then 1 else 0) - failure| ≤ drift) :
-    |localFailure fuel observe assessment site failed law - failure| ≤ drift := by
+      |expect (localHistoryRun fuel assessment site law history)
+        (fun history => if history ∈ failed then 1 else 0) - failure| ≤ drift) :
+    |localFailure fuel assessment site failed law - failure| ≤ drift := by
   have near := expect_near_of_near (assessment.belief who site) _ (fun _ => failure) drift
     historyFailure
-  rwa [expect_constant, ← expect_localLaw] at near
+  rwa [expect_constant, ← expect_localRun] at near
 
 open Classical in
 /-- **From histories to the site.** If every history of the site's belief has
@@ -350,25 +353,25 @@ successful part is `1 - failure` times its own continuation value up to
 `error`, then the site has failure probability `failure` and its successful
 part is `1 - failure` times the belief's average continuation value up to
 `error`. -/
-theorem localFailure_successValue_of_histories [Finite T.History] (failed : Set Outcome)
+theorem localFailure_successValue_of_histories [Finite T.History] (failed : Set T.History)
     (law : PMF (N.Choice who site.1)) (failure error : ℝ)
     (continuation : N.InformationHistory who site.1 → ℝ)
     (historyFailure : ∀ history ∈ (assessment.belief who site).support,
-      expect (localHistoryLaw fuel observe assessment site law history)
-        (fun outcome => if outcome ∈ failed then 1 else 0) = failure)
+      expect (localHistoryRun fuel assessment site law history)
+        (fun history => if history ∈ failed then 1 else 0) = failure)
     (historySuccess : ∀ history ∈ (assessment.belief who site).support,
-      |expect (localHistoryLaw fuel observe assessment site law history)
-          (fun outcome => if outcome ∈ failed then 0 else utility outcome who) -
+      |expect (localHistoryRun fuel assessment site law history)
+          (fun history => if history ∈ failed then 0 else utility (observe history) who) -
         (1 - failure) * continuation history| ≤ error) :
-    localFailure fuel observe assessment site failed law = failure ∧
+    localFailure fuel assessment site failed law = failure ∧
       |localSuccessValue fuel observe utility assessment site failed law -
         (1 - failure) * expect (assessment.belief who site) continuation| ≤ error := by
   classical
   refine ⟨?_, ?_⟩
   · unfold localFailure
-    rw [expect_localLaw, expect_congr_on_support historyFailure, expect_constant]
+    rw [expect_localRun, expect_congr_on_support historyFailure, expect_constant]
   · unfold localSuccessValue
-    rw [expect_localLaw, ← expect_const_mul]
+    rw [expect_localRun, ← expect_const_mul]
     exact expect_near_of_near _ _ _ error historySuccess
 
 /-- **Local values of a mixture.** -/
@@ -386,29 +389,102 @@ theorem localValue_mix [Finite T.History] (bounded : T.BoundedHorizon fuel)
   exact expect_mix _ _ _ _ _ _ (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)
 
 open Classical in
-/-- The failure probability is the local value of the failure indicator. -/
-theorem localFailure_eq_localValue (failed : Set Outcome) (law : PMF (N.Choice who site.1)) :
-    localFailure fuel observe assessment site failed law =
-      localValue fuel observe (fun outcome (_ : Player) => if outcome ∈ failed then 1 else 0)
-        assessment site law := rfl
+/-- The failure probability is the local value of the failure indicator, the
+history being observed as itself. -/
+theorem localFailure_eq_localValue (failed : Set T.History) (law : PMF (N.Choice who site.1)) :
+    localFailure fuel assessment site failed law =
+      localValue fuel id (fun history (_ : Player) => if history ∈ failed then 1 else 0)
+        assessment site law := by
+  rw [localValue_eq_expect_localRun]
+  rfl
 
 /-- Mixing in a law with weight `weight` raises the failure probability by at
 most `weight`. -/
 theorem localFailure_mix_le [Finite T.History] (bounded : T.BoundedHorizon fuel)
-    (actsOnce : N.ActsOnceWhereItMatters) (failed : Set Outcome) (weight : ℝ)
+    (actsOnce : N.ActsOnceWhereItMatters) (failed : Set T.History) (weight : ℝ)
     (nonnegative : 0 ≤ weight) (le_one : weight ≤ 1) (first second : PMF (N.Choice who site.1)) :
-    localFailure fuel observe assessment site failed (mix weight nonnegative le_one first second) ≤
-      weight + localFailure fuel observe assessment site failed second := by
+    localFailure fuel assessment site failed (mix weight nonnegative le_one first second) ≤
+      weight + localFailure fuel assessment site failed second := by
   classical
-  have mixed := localValue_mix fuel observe
-    (fun outcome (_ : Player) => if outcome ∈ failed then (1 : ℝ) else 0) assessment site bounded
+  have mixed := localValue_mix fuel id
+    (fun history (_ : Player) => if history ∈ failed then (1 : ℝ) else 0) assessment site bounded
     actsOnce weight nonnegative le_one first second
   rw [← localFailure_eq_localValue, ← localFailure_eq_localValue,
     ← localFailure_eq_localValue] at mixed
   rw [mixed]
-  have firstLe := localFailure_le_one fuel observe assessment site failed first
-  have secondNonneg := localFailure_nonneg fuel observe assessment site failed second
+  have firstLe := localFailure_le_one fuel assessment site failed first
+  have secondNonneg := localFailure_nonneg fuel assessment site failed second
   nlinarith
+
+/-- **Failure probabilities are affine in the local law.** -/
+theorem localFailure_bind [Finite T.History] (bounded : T.BoundedHorizon fuel)
+    (actsOnce : N.ActsOnceWhereItMatters) (failed : Set T.History) {Part : Type*} [Finite Part]
+    (weights : PMF Part) (component : Part → PMF (N.Choice who site.1)) :
+    localFailure fuel assessment site failed (weights.bind component) =
+      expect weights (fun part => localFailure fuel assessment site failed (component part)) := by
+  classical
+  simp only [localFailure_eq_localValue]
+  exact localValue_bind fuel id _ assessment site bounded actsOnce weights component
+
+/-- **Failure under a mass bound.** If a law gives every choice at least
+`1 - weight` times the mass a main law gives it, it fails with probability at
+most the main law's plus `weight`. -/
+theorem localFailure_le_of_mass [Finite T.History] (bounded : T.BoundedHorizon fuel)
+    (actsOnce : N.ActsOnceWhereItMatters) (failed : Set T.History) (weight : ℝ)
+    (nonnegative : 0 ≤ weight) (law main : PMF (N.Choice who site.1))
+    (mass : ∀ choice, (1 - weight) * (main choice).toReal ≤ (law choice).toReal) :
+    localFailure fuel assessment site failed law ≤
+      weight + localFailure fuel assessment site failed main := by
+  let := Fintype.ofFinite T.History
+  have : Finite (N.Choice who site.1) :=
+    N.finite_choice_of_played (N.site_mem_playedInformation site)
+  let := Fintype.ofFinite (N.Choice who site.1)
+  have pure (law : PMF (N.Choice who site.1)) :
+      localFailure fuel assessment site failed law =
+        ∑ choice, (law choice).toReal *
+          localFailure fuel assessment site failed (PMF.pure choice) := by
+    conv_lhs => rw [← PMF.bind_pure law]
+    rw [localFailure_bind fuel assessment site bounded actsOnce failed law PMF.pure, expect_eq_sum]
+  rw [pure law, pure main]
+  have lawSum : ∑ choice, (law choice).toReal = 1 := by
+    have total := expect_eq_sum law (fun _ => (1 : ℝ))
+    rw [expect_constant] at total
+    simpa using total.symm
+  have mainSum : ∑ choice, (main choice).toReal = 1 := by
+    have total := expect_eq_sum main (fun _ => (1 : ℝ))
+    rw [expect_constant] at total
+    simpa using total.symm
+  have split : ∑ choice, (law choice).toReal *
+        localFailure fuel assessment site failed (PMF.pure choice) ≤
+      ∑ choice, (((law choice).toReal - (1 - weight) * (main choice).toReal) +
+        (main choice).toReal * localFailure fuel assessment site failed (PMF.pure choice)) := by
+    refine Finset.sum_le_sum fun choice _ => ?_
+    have low := localFailure_nonneg fuel assessment site failed (PMF.pure choice)
+    have high := localFailure_le_one fuel assessment site failed (PMF.pure choice)
+    have gap := mass choice
+    have mainNonneg : 0 ≤ (main choice).toReal := ENNReal.toReal_nonneg
+    nlinarith [mul_le_mul_of_nonneg_right gap low,
+      mul_nonneg (mul_nonneg nonnegative mainNonneg) low,
+      mul_le_mul_of_nonneg_left high (sub_nonneg.mpr gap)]
+  rw [Finset.sum_add_distrib, Finset.sum_sub_distrib, ← Finset.mul_sum, lawSum, mainSum] at split
+  linarith
+
+/-- **A law close to a reliable main law fails least.** If a law gives every
+choice at least `1 - weight` times the mass of a main law that fails with
+probability at most `later`, it fails at most as often as any law, up to
+`weight + later`. -/
+theorem localFailure_le_add_of_mass [Finite T.History] (bounded : T.BoundedHorizon fuel)
+    (actsOnce : N.ActsOnceWhereItMatters) (failed : Set T.History) (weight later : ℝ)
+    (nonnegative : 0 ≤ weight) (law main : PMF (N.Choice who site.1))
+    (mass : ∀ choice, (1 - weight) * (main choice).toReal ≤ (law choice).toReal)
+    (mainFails : localFailure fuel assessment site failed main ≤ later)
+    (other : PMF (N.Choice who site.1)) :
+    localFailure fuel assessment site failed law ≤
+      localFailure fuel assessment site failed other + (weight + later) := by
+  have := localFailure_le_of_mass fuel assessment site bounded actsOnce failed weight nonnegative
+    law main mass
+  have := localFailure_nonneg fuel assessment site failed other
+  linarith
 
 end Values
 
@@ -560,8 +636,8 @@ theorem memberRational_of_success [Finite Pool] [DecidableEq Pool]
     (component : ℕ → ∀ agent, Part (pool agent) →
       PMF ((N.agentForm fallback bounded.wellFoundedHistories).sig.Strategy agent))
     (delivery : Set Pool)
-    (failed : Player → Set Outcome) (excluded : Player → ℝ)
-    (pays : ∀ who, ∀ outcome ∈ failed who, utility outcome who = excluded who)
+    (failed : Player → Set T.History) (excluded : Player → ℝ)
+    (pays : ∀ who, ∀ history ∈ failed who, utility (observe history) who = excluded who)
     (bound : ℝ) (bound_nonneg : 0 ≤ bound)
     (oneDimensional : ∀ (weights : ℕ → ∀ p, PMF (Part p))
         (targetSequence : ℕ → N.BehavioralAssessment),
@@ -579,13 +655,13 @@ theorem memberRational_of_success [Finite Pool] [DecidableEq Pool]
           continuation n agent - excluded agent.1 ≤ bound ∧
           (∀ part, |localSuccessValue fuel observe utility (targetSequence n)
               (who := agent.1) ⟨agent.2.1, decision⟩ (failed agent.1) (component n agent part) -
-            (1 - localFailure fuel observe (targetSequence n)
+            (1 - localFailure fuel (targetSequence n)
               (who := agent.1) ⟨agent.2.1, decision⟩
               (failed agent.1) (component n agent part)) * continuation n agent| ≤ error n) ∧
-          ∀ part, localFailure fuel observe (targetSequence n)
+          ∀ part, localFailure fuel (targetSequence n)
               (who := agent.1) ⟨agent.2.1, decision⟩
               (failed agent.1) (component n agent (best n (pool agent))) ≤
-            localFailure fuel observe (targetSequence n)
+            localFailure fuel (targetSequence n)
               (who := agent.1) ⟨agent.2.1, decision⟩
               (failed agent.1) (component n agent part) + slack n)
     (otherMembers : ∀ (weights : ℕ → ∀ p, PMF (Part p))
@@ -700,8 +776,8 @@ theorem localComparisons_of_success [DecidableEq Pool]
       PMF ((N.agentForm fallback bounded.wellFoundedHistories).sig.Strategy agent))
     (free : Finset (N.InformationAgent N.playedInformation))
     (compared : ∀ who (site : N.InformationSite who), N.Choice who site.1 → Prop)
-    (failed : Player → Set Outcome) (excluded : Player → ℝ)
-    (pays : ∀ who, ∀ outcome ∈ failed who, utility outcome who = excluded who)
+    (failed : Player → Set T.History) (excluded : Player → ℝ)
+    (pays : ∀ who, ∀ history ∈ failed who, utility (observe history) who = excluded who)
     (bound : ℝ) (bound_nonneg : 0 ≤ bound)
     (ranking : ∀ (weights : ℕ → ∀ p, PMF (Part p))
         (targetSequence : ℕ → N.BehavioralAssessment),
@@ -719,16 +795,16 @@ theorem localComparisons_of_success [DecidableEq Pool]
           continuation n (N.agentAt site) - excluded who ≤ bound ∧
           |localSuccessValue fuel observe utility (targetSequence n) site (failed who)
               (PMF.pure choice) -
-            (1 - localFailure fuel observe (targetSequence n) site (failed who)
+            (1 - localFailure fuel (targetSequence n) site (failed who)
               (PMF.pure choice)) * continuation n (N.agentAt site)| ≤ error n ∧
           |localSuccessValue fuel observe utility (targetSequence n) site (failed who)
               (component n (N.agentAt site) (best n (pool (N.agentAt site)))) -
-            (1 - localFailure fuel observe (targetSequence n) site (failed who)
+            (1 - localFailure fuel (targetSequence n) site (failed who)
               (component n (N.agentAt site) (best n (pool (N.agentAt site))))) *
               continuation n (N.agentAt site)| ≤ error n ∧
-          localFailure fuel observe (targetSequence n) site (failed who)
+          localFailure fuel (targetSequence n) site (failed who)
               (component n (N.agentAt site) (best n (pool (N.agentAt site)))) ≤
-            localFailure fuel observe (targetSequence n) site (failed who) (PMF.pure choice) +
+            localFailure fuel (targetSequence n) site (failed who) (PMF.pure choice) +
               slack n)
     (otherComparisons : ∀ (weights : ℕ → ∀ p, PMF (Part p))
         (targetSequence : ℕ → N.BehavioralAssessment),
