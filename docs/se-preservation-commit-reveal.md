@@ -10,23 +10,24 @@ Review history:
   - the first found a counterexample, now Example 3, which led to the
     commit-phase reset;
   - the second found nothing fatal.
-- The merged text, with Theorem 4, then had two further reviews. They led to:
+- The merged text, with Theorem 4, then had three further reviews. They led
+  to:
   - the source game $\Gamma^X$ with the source's own deferred guards, and
     Proposition 1 (1.6);
   - the tier split of Theorem 4;
   - fixed laws for the private success randomness in (S2);
-  - most recently:
-    - residual games taken inside $\Gamma^X$, with one selection map;
-    - privately doomed players;
-    - the tremble order for bad bindings;
-    - a domain check on openings;
-    - the guard-satisfiability assumption.
+  - privately doomed players, the tremble order for bad bindings, a domain
+    check on openings, and the guard-satisfiability assumption.
+- Since the last review, Proposition 1 has been rewritten as a single
+  perturbed agent-form construction on all of $\Gamma^X$. Theorem 3 now lifts
+  that one SE wherever its play is not honest. This replaces an earlier
+  induction over residual games, with its prior sequences and selection map.
 
 **Not yet reviewed in their current form:**
-- Proposition 1 and the residual selection map (1.6);
+- Proposition 1, as rewritten (1.6);
 - the treatment of publicly and privately doomed players, including the
   doom-related parts of Theorem 2 (3.1, 3.2);
-- Theorems 3 and 4 as merged here (Sections 4 and 5).
+- Theorem 3's lifted construction (Section 4) and Theorem 4 (Section 5).
 
 ## Summary
 
@@ -127,8 +128,8 @@ lists what is open.
 | guard obligation | A guard retained at a commit and checked at the reveal that completes its reads (1.1). |
 | publicly doomed | A player whose published values admit no guard-satisfying assignment of its hidden commitments, so that a later reveal of its must fail (1.6). |
 | privately doomed | A player whose own commitments admit no guard-satisfying assignment; it knows this, others may not (1.6). |
-| initialized $\Gamma^X$ program | $\Gamma^X$ started from a nonempty public history, possibly with doomed players and published violating values, and a product prior sequence on the active players' hidden commitments (1.6). |
-| selection map $R$ | The fixed rule choosing the residual SE after an exclusion, used by both Proposition 1 and Theorem 3 (1.6). |
+| $(\sigma^X,\mu^X)$ | The SE of $\Gamma^X$ of Proposition 1, with tremble sequence $\sigma^X_n$ (1.6). |
+| lifted region | Clean native sets after an exclusion or with a publicly doomed player, where Theorem 3 plays the lift of $\sigma^X$ (4.4). |
 | $\rho_n$ | The smallest positive probability that an honest tremble profile or Nature gives to any action (1.4). |
 | guard satisfiability | The standing assumption that every commit's guard admits a value at every reachable public history (1.5). |
 | tiers M, D, E | Mechanics, dominance and equilibrium: the three strengths of Theorem 4 (5.2). |
@@ -163,8 +164,7 @@ reveal of $y$, then fail at the reveal of $x$" is ordinary source behaviour.
 The runtime contract reproduces exactly this (1.2). It adds no earlier check.
 
 Programs start from the **empty context**: no initial private inputs, no
-initial commitments and no prior. Every commitment is revealed. Section 4.3
-also uses *initialized* programs, which start from a nonempty state.
+initial commitments and no prior. Every commitment is revealed.
 
 The **honest game** $\Gamma^H$ is the finite extensive-form game in which:
 
@@ -451,128 +451,130 @@ a later reveal of its own. Under concurrency, a failure of another binding in
 the same commit phase can void the violating binding through the reset. So
 there "will fail" holds unless such a reset intervenes.
 
-**Initialized $\Gamma^X$ programs.** Proposition 1 and Theorem 3 also use
-$\Gamma^X$ started from a nonempty state. An initialized $\Gamma^X$ program
-fixes three things:
-- an initial public history of $\Gamma^X$: publications, possibly including
-  published violating values, the exclusion set, and possibly publicly doomed
-  players;
-- for each active player, its existing hidden commitments;
-- a **product prior sequence** $\pi_n\to\pi$ on those commitments, with full
-  support (bad bindings included). The product is across players.
+**Regions of $\Gamma^X$.** Each information set falls in the first region that
+applies:
 
-An empty-context program is the special case with nothing initialized.
-
-**Consistency along a prior sequence.** For an initialized game, an assessment
-is *consistent along $\pi_n$* if its beliefs are limits of Bayes beliefs under
-the prior $\pi_n$ and fully mixed profiles. This perturbs Nature's initial
-draw as well as the players, so it is not Kreps–Wilson consistency for the
-initialized game taken alone. It is only ever used inside a larger game, where
-$\pi_n$ is itself the Bayes posterior that the larger game's fully mixed
-profile induces at the start of the residual game. So the combined assessment
-is Kreps–Wilson consistent in the larger game. At the top level the context is
-empty, there is no initial draw, and samples keep their fixed laws, so the
-final assessment is standard Kreps–Wilson.
-
-**Residual games and the selection map.** Let $h$ be a public history of
-$\Gamma^X$ after an exclusion, and $\pi_n$ a product prior sequence for the
-active players' hidden commitments.
-- The **residual game** at $(h,(\pi_n))$ is $\Gamma^X$ started from $h$ with
-  those players.
-- Its **residual honest game** is the subgame in which no active player that is
-  not privately doomed fails or violates. A doomed player's reveal fails by its
-  guard.
-
-Fix once and for all a **selection map** $R$. It assigns to each
-$(h,(\pi_n))$ an SE of the residual honest game that is consistent along
-$\pi_n$, extended to the residual $\Gamma^X$ game by Proposition 1 applied with
-fewer active players. Such an SE exists: take a limit of perturbed equilibria
-with prior $\pi_n$. $R$ reads $h$ and the sequence only. Proposition 1 and
-Theorem 3 use the same $R$; the recursion is well founded by induction on the
-number of active players.
-
-**Regions of $\Gamma^X$** (the first that applies):
 1. **post-exclusion**: sets after an exclusion;
 2. **doomed**: other sets in which some active player is publicly doomed;
 3. **privately doomed**: other sets of a player that is itself privately
    doomed;
-4. **honest region**: all other sets. Each contains a history with no failure
-   and no violation: others' hidden violations are not publicly doomed, so
-   each has an honest counterpart with the same public record.
+4. **honest region**: all other sets.
 
-**Proposition 1 (an SE of $\Gamma^X$ extending the honest SE).** Fix an
-initialized $\Gamma^X$ program with prior sequence $\pi_n$, and an SE
-$(\sigma^H,\mu^H)$ of its honest game that is consistent along $\pi_n$.
+Each honest-region set contains a history with no failure and no violation:
+other players' hidden violations are not publicly doomed, so each has an
+honest counterpart with the same public record.
+
+**Proposition 1 (an SE of $\Gamma^X$ extending the honest SE).** Fix an honest
+SE $(\sigma^H,\mu^H)$ with tremble sequence $\sigma^H_n$.
 
 1. If $a_j<\underline u_j$ for every $j$, then $\Gamma^X$ has an SE
-   $(\sigma^X,\mu^X)$, consistent along $\pi_n$, whose play on the honest
-   region is $\sigma^H$, with nobody failing and nobody violating. On the honest
-   region, its beliefs about other players' values are $\mu^H$.
-2. If $a_j<m_j$ for every $j$, the SE can moreover be chosen to have two more
-   properties:
-   - **Never fail.** No player that is not privately doomed ever fails.
-   - **Residual play.** After an exclusion at $h$, play is $R(h,(\pi^X_n))$.
-     Here $\pi^X_n$ is the posterior of the active players' hidden commitments
-     at $h$, along the SE's own tremble sequence.
+   $(\sigma^X,\mu^X)$ such that:
+   - on the honest region, play is $\sigma^H$: nobody fails and nobody
+     violates;
+   - on the honest region, beliefs about other players' values are $\mu^H$.
+2. If $a_j<m_j$ for every $j$, the SE can moreover be chosen with
+   **never fail**: at every information set, a player that is not privately
+   doomed fails with probability zero.
 
-*Proof.* We use a perturbed agent-form construction, by induction on the
-number of active players. The construction has four parts:
+The same $(\sigma^X,\mu^X)$ serves both parts. Part 2 is a property of the
+construction under the stronger bound.
 
-- *Honest region.* Play is forced to $\sigma^H_n$, scaled by
-  $1-\eta_n-\eta_n^2$. Failures tremble with probability $\eta_n$, which does
-  not depend on values. Guard-violating values share probability $\eta_n^2$.
-  The sequences satisfy $\eta_n=o(\rho_n)$ and $\eta_n^2=o(\rho_n^{\mathcal T})$.
-- *Post-exclusion (case 2).* Play is forced to $R(h,(\pi^X_n))$, with its own
-  trembles at the common index $n$.
-- *Post-exclusion (case 1), doomed and privately doomed sets.* These sets
-  choose freely, with minimum probability $\eta_n^2$ on every action.
-- *Limit.* A Kakutani fixed point exists for each $n$. Pass to a convergent
-  subsequence of profiles and Bayes beliefs.
+*Construction.* For each $n$ define a constrained agent-form game on
+$\Gamma^X$. Every information set is an agent with its own menu.
 
-*Beliefs on the honest region.* The failure trembles do not depend on values. A
-violating history has a factor $\eta_n^2$. Its honest counterpart with the same
-public record may differ in up to $\mathcal T$ of the author's hidden
-commitments, so its weight is at least $\rho_n^{\mathcal T}$ times the common
-factors. Since $\eta_n^2=o(\rho_n^{\mathcal T})$, violations get zero limit
-weight. So beliefs about other players' values are $\mu^H$.
+- **Honest-region agents are forced.** Their behaviour is
+  $\sigma^H_n\cdot(1-\eta_n-\eta_n^2)$ on honest actions. Failing gets
+  $\eta_n$, the same at every set and for every value. Guard-violating values
+  share $\eta_n^2$ uniformly.
+- **All other agents are free.** They choose any behaviour that gives every
+  action probability at least $\eta_n^M$.
 
-*One-shot deviations on the honest region:*
-- **Failing** yields $a_j$.
-- **Violating** makes $j$ privately doomed, so it yields $a_j$.
-  - Under Stage S, $j$ is excluded at the reveal that completes the violated
-    obligation, or earlier if it fails.
-  - Under concurrency, a co-phase failure could reset the violation away. But
-    under the limit profile nobody fails on the honest region, so this has
-    probability $0$, and the deviation yields $a_j$ in the limit.
-- **Following $\sigma^H$** yields the honest continuation, which is worth at
-  least $\underline u_j>a_j$.
-- **Among honest values**, $\sigma^H$ is optimal by honest sequential
-  rationality.
+The sequences satisfy three conditions:
+$$
+\eta_n=o(\rho_n),\qquad \eta_n^2=o(\rho_n^{\mathcal T}),\qquad M>2\mathcal T,\
+\eta_n^{M}=o\bigl(\eta_n^{2\mathcal T}\rho_n^{\mathcal T}\bigr).
+$$
 
-*Case 2.* Consider a player that is not privately doomed.
-- By guard satisfiability, it can commit acceptable values at every later
-  commit. So it has a continuation that never fails and never violates. That
-  continuation keeps it non-excluded, which is worth at least $m_j>a_j$.
-- Failing yields $a_j$. So at every set where it chooses freely, failing is
-  strictly worse, and gets only the minimum probability, which vanishes in the
-  limit.
-- On the honest region it never fails by construction.
-- After an exclusion it never fails, by induction (the residual play is $R$).
+Each free agent's payoff is continuous in the profile, and its constrained
+strategy set is a nonempty compact convex polytope. Best responses to Bayes
+beliefs, which are well defined because the profile is fully mixed, have
+closed graph and convex values. So the constrained game has an equilibrium
+$\sigma_n$ by Kakutani's theorem. Pass to a subsequence along which $\sigma_n$
+and its Bayes beliefs $\mu_n$ converge, to $(\sigma^X,\mu^X)$.
 
-*Privately doomed sets.* Every action of the doomed player yields $a_j$, up to
-the vanishing reset event, so free choice is optimal there.
+*Consistency.* $(\sigma^X,\mu^X)$ is the limit of Bayes beliefs of fully mixed
+profiles, with Nature's laws fixed. This is Kreps–Wilson consistency.
 
-*Free sets.* The remaining free sets are optimal by the agent-form limit
-argument.
+*Beliefs on the honest region.* Take an honest-region set $I$.
+- It contains a history with no failure and no violation. Its weight is at
+  least $\eta_n^{0}\rho_n^{\mathcal T}$ times factors common to the set.
+- A history in $I$ in which another player violated carries a factor
+  $\eta_n^2$. Its honest counterpart with the same public record may need up
+  to $\mathcal T$ of that author's earlier honest choices to differ, so it
+  weighs at least $\rho_n^{\mathcal T}$ times the same common factors. Since
+  $\eta_n^2=o(\rho_n^{\mathcal T})$, violating histories get zero limit weight.
+- Histories in $I$ contain no failure, because failures are public.
+- On the remaining histories play is $\sigma^H_n$ times the common factor
+  $(1-\eta_n-\eta_n^2)$ per move. So the posterior over other players' values
+  is $\mu^H_n(I)$, up to a factor $1+o(1)$, and its limit is $\mu^H(I)$.
 
-*Consistency.* The post-exclusion entry beliefs are the posterior $\pi^X_n$, so
-$R$'s assessment, which is consistent along $\pi^X_n$, combines with the outer
-sequence into one consistent assessment. $\square$
+*Sequential rationality on the honest region.* By the one-shot deviation
+principle for consistent assessments (Hendon, Jacobsen and Sloth 1996), it
+suffices to compare single deviations at an honest-region set $I$ of player
+$j$, with everyone following the limit profile afterwards.
 
-Under the weaker bound alone, "never fail" can fail after an exclusion. Take a
-Stage S program in which C's reveal precedes A's, with $u_A=-X$ if C's reveal
-failed and $u_A=0$ otherwise, and $a_A=-X/2$. Then $a_A<\underline u_A=0$ but
-$a_A>m_A=-X$, and after C is excluded A strictly prefers to fail.
+- **Following $\sigma^H$.** Under the limit profile nobody fails and nobody
+  violates on the honest region, so play stays in it. The continuation is the
+  honest one, with expected value $V^H\ge\underline u_j>a_j$.
+- **Another honest action.** It also keeps play in the honest region and yields
+  that action's honest continuation value. That value is at most the value of
+  $\sigma^H$'s actions, by sequential rationality of $(\sigma^H,\mu^H)$ at the
+  honest information set with the same beliefs.
+- **Failing** yields $a_j$, since $j$ is excluded.
+- **Violating** makes $j$ privately doomed.
+  - Under Stage S, every commitment is revealed, so $j$ fails at the reveal
+    that completes the violated obligation, or earlier. It is then excluded,
+    and its payoff is $a_j$ whatever happens in between.
+  - Under concurrency, the violating binding is voided only if another binding
+    of the same commit phase fails. Under the limit profile nobody else fails
+    there. So the deviation yields $a_j$ in the limit.
+
+  Neither comparison depends on how the free agents play.
+
+So $\sigma^H$ is optimal at $I$.
+
+*Sequential rationality elsewhere.* Every other agent is free. In the
+constrained game it plays an exact best response to its Bayes beliefs, subject
+to the minimum probability. In the limit, every action that it plays with
+positive probability is a best response to $\mu^X$ and $\sigma^X$. That is the
+standard argument that limits of perturbed agent-form equilibria are
+sequential. With the one-shot deviation principle, this gives sequential
+rationality at every free set.
+
+*Part 2: never fail.* Let $a_j<m_j$, and let $I$ be a set of $j$ at which $j$
+is not privately doomed.
+- If $I$ is in the honest region, $j$ fails with probability $\eta_n\to0$.
+- Otherwise $I$ is free. By guard satisfiability, $j$ can commit an acceptable
+  value at every later commit and open every later reveal, so $j$ has a
+  continuation in which it is never excluded. Its payoff is then that of a
+  terminal history in which $j$ is not excluded, which is at least $m_j$.
+  Under concurrency a reset may void $j$'s binding, but $j$ commits again, so
+  it is still not excluded.
+- Failing yields $a_j<m_j$.
+
+So in the constrained game, failing is strictly worse than some other action
+by a margin bounded away from zero for large $n$. It therefore gets exactly
+the minimum probability $\eta_n^M\to0$. $\square$
+
+A player can be excluded only by its own failure or by its own violation. So
+under "never fail", every exclusion in $\sigma^X$ is the excluded player's own
+doing, through a violation or a failure that is a tremble.
+
+Under the weaker bound alone, "never fail" can break. Take a Stage S program in
+which C's reveal precedes A's, with $u_A=-X$ if C's reveal failed and
+$u_A=0$ otherwise. Let $a_A=-X/2$. Then $a_A<\underline u_A=0$ but
+$a_A>m_A=-X$. After C is excluded, every continuation in which A stays in pays
+$-X<a_A$, so A strictly prefers to fail.
 
 ## 2. Theorem 1: the standard compiler does not preserve SE
 
@@ -952,12 +954,14 @@ into three regions:
 - **free**: all other sets.
 
 Publicly doomed sets are off the honest path but inside $\Gamma^X$: they are
-reached by an ordinary source-level deviation, a guard-violating commit. Under
-Theorem 2's bound $a_j<\underline u_j$ alone, a player's continuation value at
-such a set can fall below $a_j$, as the example after Proposition 1 shows.
-Lemma B's type-independence could then fail there. So Theorem 2 treats these
-sets like sets after an exclusion. Theorem 3, under $a_j<m_j$, lifts the
-$\Gamma^X$ SE of Proposition 1 there instead (4.4).
+reached by an ordinary source-level deviation, a guard-violating commit. The
+delivery lemma (Lemma B) needs the continuation value after success to exceed
+$a_j$. Under Theorem 2's bound $a_j<\underline u_j$ alone, that fails after an
+exclusion or a public doom: a player's continuation value can then fall below
+$a_j$, as the example after Proposition 1 shows. So Theorem 2 fills the sets
+after an exclusion or a public doom with an agent-form equilibrium, and claims
+nothing source-level there. Theorem 3, under $a_j<m_j$, lifts the $\Gamma^X$
+SE of Proposition 1 there instead (4.4).
 
 **Projection.** A binding is *bad* if one of three things holds:
 - its slot holds no value (unopenable);
@@ -1295,212 +1299,144 @@ value. (S2) excludes this.
 
 ### 4.3 Statement
 
-The induction below passes through programs that start from a nonempty state.
-An **initialized program** is an initialized $\Gamma^X$ program in the sense of
-1.6:
-- its initial public state may contain exclusions, publicly doomed players and
-  published violating values;
-- it comes with a product prior sequence $\pi_n\to\pi$ with full support;
-- its honest SE must be consistent along that sequence (1.6).
-
-The sequence matters because a residual game starts from the native
-posterior *along the tremble sequence*, not from its limit. Types with zero
-limit mass, which arise only through trembles, still determine beliefs at
-off-path sets. An honest SE consistent along a given prior sequence exists:
-take a limit of perturbed equilibria with prior $\pi_n$.
-
-An active player holding a bad binding in the prior is handled as in Theorem 2.
-It is projected as if it held a fixed honest value, and its weight vanishes
-against every honest type.
-
-An empty-context program is the special case with nothing initialized.
-Product priors are preserved by honest play: each player's honest choice reads
-only public data and its own commitments, so given the public history the
-players' hidden commitments are independent.
-
 **Theorem 3.** Take the deposit-first order, with compiler $C_1$ including the
 phase reset, and fix:
 
-- an initialized program with an information-respecting order;
+- a program of 1.1 with an information-respecting order;
 - payoffs $a_j<m_j$;
 - $\alpha>0$ and deposits with $\alpha K_i>\operatorname{sp}_i$;
-- an honest SE $(\sigma^H,\mu^H)$, consistent along the program's prior
-  sequence;
+- an honest SE $(\sigma^H,\mu^H)$, and the SE $(\sigma^X,\mu^X)$ of $\Gamma^X$
+  that Proposition 1(2) builds from it, with its tremble sequence $\sigma^X_n$;
 - a per-event value-blind, author-only, success-separable builder satisfying
   the contract of 1.2 (opportunity, protected inclusion, timeliness,
   completion) for every event.
 
-Then some native SE preserves $(\sigma^H,\mu^H)$. Its beliefs are consistent
-along $\pi_n$ together with the native trembles. This holds for every builder
-continuation: after a barrier the remainder's law may depend on earlier data,
-and each such continuation is again a builder of the stated class. The laws of
-the $\xi$ never change.
+Then some native SE preserves $(\sigma^H,\mu^H)$. This holds for every builder
+continuation: after a barrier the remainder's law may depend on earlier data.
+The laws of the $\xi$ never change.
 
 The assessment it constructs has one further property:
 
-**(P) Past-blindness.** On the forced and post-barrier regions (defined in
-4.4), from each barrier on, the prescribed play is a function of four things:
+**(P) Past-blindness.** At every clean native set outside the forced region
+(defined in 4.4), the prescribed source-level play is the lift of $\sigma^X$ at
+the projected $\Gamma^X$ set. These are the sets after an exclusion or with a
+publicly doomed player, including the rest of a phase after an exclusion inside
+it. Source-level play means the choice of value, and the choice between moving
+and failing.
 
-- the public results;
-- the exclusion set;
-- each player's own commitments;
-- data recorded after the barrier.
-
-It does not read operational data (timing, serials, leaks) recorded before the
-barrier. In particular, $\varphi^*$ reads only the fixed law of $\xi_e$, the
-owner's activations and clock relative to $r_e$, and the value being opened.
-Play on the free region may read anything, but the free region has vanishing
-weight at every set outside it.
+$\Gamma^X$ has no operational data, so this play reads none, and it is
+past-blind automatically. The delivery policy $\varphi^*$ reads only the fixed
+law of $\xi_e$, the owner's activations and clock relative to $r_e$, and the
+value being opened. Play on the free region may read anything, but the free
+region has vanishing weight at every set outside it.
 
 ### 4.4 Construction
-
-The construction is by induction on the number $k$ of active players. For
-$k=0$ there is nothing to show. Assume the theorem, with (P), for fewer than
-$k$ active players.
 
 **Regions.** These replace the regions of Theorem 2. Each set belongs to the
 first region that applies:
 
 1. **free**: sets containing no history without charged actions;
-2. **post-barrier**: sets containing a history without charged actions that
-   lies after a barrier preceded by an exclusion. This applies even when
-   publicly doomed players remain active;
-3. **doomed**: sets containing a history without charged actions, in which
-   some active player is publicly doomed;
-4. **forced**: all remaining sets. These contain a history without charged
-   actions in which no exclusion precedes the last barrier and no player is
-   publicly doomed. They include the rest of a phase after an exclusion inside
-   it.
+2. **lifted**: sets containing a history without charged actions in which
+   some player has been excluded, or some active player is publicly doomed.
+   They include the rest of a phase after an exclusion inside it;
+3. **forced**: all remaining sets. These contain a history without charged
+   actions, with no exclusion and nobody publicly doomed.
 
-Excluded players' own sets carry a constant gross payoff, and their only
-uncharged action is silence.
+Exclusions and public doom are functions of public data, so these regions are
+well defined. Excluded players' own sets carry a constant gross payoff, and
+their only uncharged action is silence.
 
-**One tremble structure.** The native construction and Proposition 1 use the
-same perturbation:
-- honest choices follow $\sigma^H_n$;
-- timing deviations, which are the native source of failures, get $\eta_n$;
-- violating and other native-only values get $\eta_n^2$;
-- charged actions get $\eta_n^M$, as in 3.1;
-- doomed sets play the lift of $\sigma^X_n$, the perturbed profile of
-  Proposition 1, at the same index $n$, with native-only actions trembling as
-  in 3.1;
-- post-barrier sets play the lift of $R$, at the same index $n$.
+**The native profile at stage $n$.** At forced and lifted sets the profile is
+built from $\sigma^X_n$:
 
-So the native weight of a clean history equals its $\Gamma^X$ weight under
-$\sigma^X_n$, times a factor that depends on no active player's unopened
-value, up to $1+o(1)$. A native failure arises from a timing tremble followed
-by a failed delivery, so its probability differs from the $\Gamma^X$ failure
-tremble. The difference is a factor that reads only operational data and, for a
-reveal, the failing player's own delivered value. That value belongs to a
-player who is excluded once it fails.
+- **Source-level choices.** These are the choice of a value, and the choice
+  between moving and failing. They follow $\sigma^X_n$ at the projected
+  $\Gamma^X$ set $\Pi(I)$.
+  - *Moving* means sending the free packet at the first activation.
+  - *Failing* means never sending.
+  - On forced sets, $\Pi(I)$ is in the honest region of $\Gamma^X$ or is a set
+    of the owner's own bad binding. On the honest region, $\sigma^X_n$ is
+    $\sigma^H_n$ scaled as in Proposition 1. At the owner's own bad bindings,
+    play is as in Theorem 2 (3.1).
+- **Timing deviations** get a separate tier $\zeta_n$, the same at every set
+  and for every value. These are silence at the first activation followed by
+  late delivery by $\varphi^*$, and a send time that $\varphi^*$ does not
+  choose.
+- **Native-only values** share $\zeta_n^2$. These are unopenable and wrongly
+  typed bindings, and handle slots other than the prescribed one.
+- **Charged actions** share $\zeta_n^M$.
 
-**Within a phase (forced region).** Play follows $\sigma^*$ of 3.1, including
-between an exclusion and the next barrier, with two changes.
-
-- **Delivery policy.** $\varphi^*$ is chosen among *own-service* policies.
-  Their send times depend only on the owner's activations and the clock
-  relative to $r_e$, and, for a reveal, on the value being opened. A binding's
-  delivery policy reads no value. $\varphi^*$ maximizes the event's success
-  probability, computed from the fixed law of $\xi_e$.
-
-  By (S1–S2), conditioning on anything else cannot raise that probability:
-  leaks and others' receipts come from the remainder, which is independent of
-  $\xi_e$. So $\varphi^*$ is optimal among all delivery policies.
-- **Honest values in a commit phase** are drawn from $\sigma^H$ at the
-  projection $\Pi(I)$, whatever the native order of the phase's bindings. In a
-  phase where a failure has already occurred, every binding will be voided,
-  so any value is optimal, and $\sigma^*$ still draws from $\sigma^H$.
-
-**After a barrier preceded by an exclusion (post-barrier region).** Let $h$ be
-the $\Gamma^X$ public history to which the native public history projects
-(M2). It keeps every publication, including published violating values, every
-exclusion, and every publicly doomed player. Under the phase reset, the voided
-bindings are removed and the phase's remaining owners commit again.
-
-The residual program is the initialized $\Gamma^X$ program at $h$, with the
-prior sequence defined **exactly** as
+Let $\rho^X_n$ be the smallest positive probability that $\sigma^X_n$ or Nature
+gives to any action. Choose $\zeta_n\to0$ and $M$ such that
 $$
-\pi_n:=\mu^X_n(h).
+\zeta_n^2=o\bigl((\rho^X_n)^{\mathcal T}\bigr),\qquad M>2\mathcal T,\qquad
+\zeta_n^{M}=o\bigl((\zeta_n^{2}\rho^X_n/c)^{\mathcal T}\bigr),
 $$
-This is the $\Gamma^X$ posterior of the active players' hidden commitments
-(bad ones included) along the tremble sequence $\sigma^X_n$ of Proposition 1.
-Each $\pi_n$ is a product prior: in $\Gamma^X$ each choice reads only public
-data and its owner's own commitments.
+where $c$ bounds the menu sizes. The first condition makes native-only bad
+bindings negligible against their counterparts with the same public record,
+which may differ in up to $\mathcal T$ earlier choices. The others make charged
+histories negligible against clean ones.
 
-Play from the barrier onward is the native lift of $R(h,(\pi_n))$. By
-induction, Theorem 3 with fewer active players provides that lift, for every
-builder continuation, and it is past-blind.
+**Delivery policy.** $\varphi^*$ is chosen among *own-service* policies. Their
+send times depend only on the owner's activations and the clock relative to
+$r_e$, and, for a reveal, on the value being opened. A binding's delivery
+policy reads no value. $\varphi^*$ maximizes the event's success probability,
+computed from the fixed law of $\xi_e$. By (S1–S2), conditioning on anything
+else cannot raise that probability: leaks and others' receipts come from the
+remainder, which is independent of $\xi_e$. So $\varphi^*$ is optimal among all
+delivery policies.
 
-**The native posterior matches $\pi_n$ uniformly.** At any post-barrier entry
-set, the native posterior over the active players' hidden commitments is
-$\pi_n(1+o(1))$, with the $o(1)$ uniform over the finitely many entry sets.
-The reasons:
+**Free region.** For each $n$, take an equilibrium of the agent-form game in
+which forced and lifted sets play the profile above, and free sets choose
+freely with minimum probability $\zeta_n^M$ on every action. It exists by
+Kakutani's theorem. Pass to a subsequence along which the profiles and their
+Bayes beliefs converge.
 
-- by the single tremble structure above, the native weight of each history is
-  its $\Gamma^X$ weight under $\sigma^X_n$, times an operational factor, times
-  $1+o(1)$;
-- the operational factor reads no active player's unopened value: bindings are
-  opaque, the builder is per-event value-blind, and binding policies read no
-  value;
-- every leaked or included-but-failed opening belongs to a player who is
-  excluded or already published;
-- the excluded players' values enter only through the marginal over their own
-  coordinates, which the product structure separates.
+**How native and $\Gamma^X$ weights compare.** For a clean history $h$,
+$$
+\Pr_n(h)=\Pr{}^X_n(\Pi(h))\cdot N_n(h)\cdot(1+o(1)),
+$$
+where $\Pr^X_n$ is the $\Gamma^X$ probability under $\sigma^X_n$. The factor
+$N_n$ collects four things:
+- the builder's draws, the leaks and the collection;
+- the timing tier;
+- the native-only tier;
+- the ratio between the native weight of a failure and its $\Gamma^X$ weight.
 
-A uniform factor $1+o(1)$ on the prior does not change the limit of any ratio
-of tremble probabilities. So the native beliefs inside the residual
-continuation equal $R$'s beliefs in the limit, including at its off-path sets.
-Consistency makes every observer's marginal about player $i$ the same.
-
-**Doomed region.** Play is the lift of $\sigma^X_n$ of Proposition 1(2), at
-the same index $n$ as the native trembles:
-- at each native set, the prescribed $\Gamma^X$ move is drawn from
-  $\sigma^X_n$ at the projected set $\Pi(I)$;
-- the delivery of that move follows $\varphi^*$;
-- native-only actions tremble as in 3.1.
-
-$\sigma^X$ reads no runtime data, so this play is past-blind.
-
-**Excluded players** stay silent, as before.
-
-**Trembles and the free region.** Trembles are as in 3.1, with these
-differences:
-
-- the residual SEs, given by $R$, carry their own tremble sequences, built
-  along the prior sequence $\pi_n$ at the barrier. So the two sequences are
-  indexed together by construction;
-- the free region is filled by perturbed agent-form equilibria, as before.
+A native failure is either a source-level failure (never sending) or a timing
+deviation followed by a failed delivery. So the last ratio reads operational
+data and, for a reveal, the failing player's own delivered value. Every other
+part of $N_n$ reads no unopened value: bindings are opaque, the builder is
+per-event value-blind, and binding policies read no value.
 
 ### 4.5 Proof
 
-**Lemma A3 (beliefs within a phase).** Three claims hold.
+**Lemma A3 (beliefs at forced and lifted sets).** Three claims hold.
 
-1. At every forced set, the limit belief puts zero weight on histories with a
-   charged action or with another player's bad binding.
-2. At every doomed set, the limit belief about other players' values over
-   $\Pi(I)$ is $\mu^X(\Pi(I))$. The operational factor reads no unopened
-   value, so the native posterior is the $\Gamma^X$ posterior.
-3. Suppose, in addition, that the set is forced, in a commit phase, and its
-   owner has an honest choice. Then:
-   - the owner's belief about the others' honest values already chosen is
-     $\mu^H(\Pi(I))$;
-   - the owner predicts the others' not-yet-chosen values of the phase by
-     $\sigma^H$.
+1. At every forced or lifted set, the limit belief puts zero weight on
+   histories with a charged action or with another player's native-only bad
+   binding.
+2. At every forced or lifted set $I$, the limit belief about the active players'
+   values is $\mu^X(\Pi(I))$. On forced sets this is $\mu^H$, by Proposition 1.
+3. At such a set in a commit phase, the owner predicts the others'
+   not-yet-chosen values of the phase by $\sigma^X$ at their sets.
 
-*Proof.* The weights work as in Lemma A, with $\eta_n^2=o(\rho_n^{\mathcal T})$
-for bad bindings. At forced sets nobody is publicly doomed, so every bad
-binding has an honest counterpart with the same public record. The new
-operational data within a phase are the order and timing of others'
-inclusions. Their law reads no unopened binding value: bindings are opaque,
-the builder is per-event value-blind, and binding policies read no value. So
-the factor $N_n$ does not depend on the values. At doomed sets, the prescribed
-moves are $\sigma^X_n$'s at the common index, so the same factorization gives
-the $\Gamma^X$ posterior.
+*Proof.* Charged histories and native-only bad bindings are negligible by the
+choice of $\zeta_n$ and $M$. For the remaining histories, use the
+factorization of 4.4.
+
+The only part of $N_n$ that reads an unopened value is the late-failure ratio.
+It reads the failing player's own delivered value, and that player is excluded
+by the failure. Its value is then payoff-irrelevant, since its later results
+are failed. Given the public history, it is also independent of the active
+players' values: in $\Gamma^X$ every choice reads only public data and its
+owner's own commitments, so the hidden commitments of different players are
+independent given the public history. So the ratio drops out of the posterior
+over active players' values, which is $\mu^X_n(\Pi(I))(1+o(1))$ and converges
+to $\mu^X(\Pi(I))$.
 
 The phase's not-yet-chosen values of other owners are chosen at information
-sets that contain no other owner's value from the phase. An owner's own
-earlier values in the phase are in its own information, as in the honest
-game. $\square$
+sets that contain no other owner's value from the phase. $\square$
 
 **Lemma D3 (value choice under reset).** Take a forced set in a commit phase
 at which owner $j$ chooses a value $v$, together with any own-service delivery
@@ -1515,8 +1451,11 @@ $\mu^H(\Pi(I))$. So the honest choice $\sigma^H$ is optimal.
 
 - *$j$'s own binding fails.* Then $j$ gets $a_j$.
 - *Some other binding of the phase fails, while $j$'s succeeds.* The reset
-  voids $v$. The continuation is the residual SE, which by (P) depends on
-  public results and on commitments that do not include $v$.
+  voids $v$. The continuation is the lift of $\sigma^X$ after the reset. Its
+  value to $j$ does not depend on $v$:
+  - $v$ is never revealed and reaches no payoff;
+  - it tells $j$ nothing about the others' values, which are independent of it
+    given the public history.
 - *No binding fails.* Every value stands, and play continues by $\sigma^H$.
   Conditional on this event, the other values of the phase are still
   distributed by $\sigma^H$, because success is independent of values by
@@ -1538,7 +1477,7 @@ $$
 P_s\,V+(1-P_s)\,a_j ,
 $$
 where $V$ does not depend on $s$ and $V\ge m_j>a_j$. So every type ranks these
-policies by $P_s$ alone. The same holds at doomed sets, with the continuation
+policies by $P_s$ alone. The same holds at lifted sets, with the continuation
 given by $\sigma^X$.
 
 *Proof.*
@@ -1549,21 +1488,23 @@ given by $\sigma^X$.
     their owners' own-service policies or trembles, and their packets'
     content. So they do not depend on $s$ (S1–S2).
   - After the barrier, play is either $\sigma^H$ (if no one failed) or the
-    residual SE. Both depend only on public results, exclusions and
-    commitments, by (P).
+    lift of $\sigma^X$. Both are functions of $\Gamma^X$ information only, by
+    (P).
 
   Within the phase, $s$ changes only inclusion timing and leaks. These are
   information that nobody's prescribed play reads: under $\sigma^*$, a
   binding's value choice reads no timing (Lemma A3), and the continuation
   after the barrier is past-blind.
 
-  So $V$ is an expectation of $j$'s non-excluded gross payoff, which is at
-  least $m_j$, and it does not depend on $s$. For a reveal, $P_s$ may depend
-  on the value being opened, which is public after success, and $\varphi^*$
-  reads only that value.
-- *Doomed sets.* The continuation after the phase is $\sigma^X$, which reads
-  no timing. If $j$ itself is publicly doomed, its payoff is $a_j$ whatever it
-  does. $\square$
+  So $V$ does not depend on $s$. It is at least $m_j$: $j$ is not privately
+  doomed, its prescribed continuation never fails (Proposition 1(2)) and never
+  violates (violating yields $a_j<m_j$), and nobody else can exclude $j$. So
+  $V$ is an expectation of non-excluded gross payoffs. For a reveal, $P_s$ may
+  depend on the value being opened, which is public after success, and
+  $\varphi^*$ reads only that value.
+- *Lifted sets.* The continuation is the lift of $\sigma^X$, which reads no
+  timing. If $j$ itself is doomed, its payoff is $a_j$ whatever it does.
+  $\square$
 
 **Lemma C** (charged one-shot deviations do not pay) holds verbatim.
 
@@ -1583,31 +1524,25 @@ neither $\xi_e$ nor the content of $e$'s packets (S1). The cases:
 - **Late delivery.** $\varphi^*$ is optimal (Lemma B3).
 - **After the free packet, non-owners, own bad bindings, excluded players.**
   As in Theorem 2.
-- **Doomed sets.** Prescribed moves are $\sigma^X$'s, which are sequentially
-  rational in $\Gamma^X$ at the belief $\mu^X(\Pi(I))$ (Lemma A3). A runtime
-  deviation is either a $\Gamma^X$ deviation, a timing deviation (Lemma B3),
-  or a charged action (Lemma C).
-- **From a barrier after an exclusion onward.** Sequential rationality holds
-  by induction, provided the lift of $R(h,(\pi_n))$ is an SE in the native
-  continuation.
+- **Lifted sets.** These are the sets after an exclusion or with a publicly
+  doomed player, including the rest of a phase after an exclusion.
+  - Prescribed moves are $\sigma^X$'s. They are sequentially rational in
+    $\Gamma^X$ at the belief $\mu^X(\Pi(I))$, which is the native belief by
+    Lemma A3.
+  - Each $\Gamma^X$ move has the same continuation value natively as in
+    $\Gamma^X$. Moving at the first activation succeeds surely (M1), and the
+    continuation is the lift of $\sigma^X$.
+  - A runtime deviation is one of three kinds:
+    - a $\Gamma^X$ deviation, no better by sequential rationality of
+      $\sigma^X$;
+    - a timing deviation, which yields $P_sV+(1-P_s)a_j\le V$ (Lemma B3), or
+      $a_j$ for a doomed player;
+    - a charged action (Lemma C).
 
-  It is. By (P), and by Lemma A3 applied to the pre-barrier operational data,
-  that data is independent of every active player's hidden value given the
-  public history. The only values that leaked and were never published belong
-  to excluded players. They are:
-  - uninformative about the active players' values, by the product prior;
-  - payoff-irrelevant, since the excluded players' results are failed;
-  - read by no active player's prescribed strategy, by (P).
-
-  So, along the sequence, conditioning on the pre-barrier data leaves every
-  active player's belief equal to $\pi_n(1+o(1))$ (4.4). The assessment of $R$
-  therefore carries over, beliefs and rationality alike.
-
-**Consistency.** The outer and residual tremble sequences share the index
-$n$. The residual sequence is built along $\pi_n$. Within a residual
-continuation, the remaining entry weights are value-independent common
-factors (Lemma A3), up to a uniform $1+o(1)$. So the native Bayes beliefs
-converge to the residual ones, including at the residual's off-path sets.
+**Consistency.** There is one tremble sequence: the native profile at stage $n$
+of 4.4 together with the free-region equilibrium at stage $n$. Every belief is
+the limit of its Bayes beliefs, and by Lemma A3 these match $\mu^X$ on forced
+and lifted sets.
 
 **Preservation.** On the path every owner sends its free packet at its first
 activation, which succeeds surely. So no exclusion or reset occurs, and play
@@ -1750,7 +1685,8 @@ concurrency the reset. Its equilibrium $\sigma^X$ is the one of Proposition
 1(2). That equilibrium has three properties:
 - it plays $\sigma^H$ on the honest region;
 - no player that is not privately doomed ever fails;
-- after an exclusion it plays the residual SE chosen by the selection map $R$.
+- it is one assessment on all of $\Gamma^X$, including after exclusions and
+  public doom, and Theorem 3 lifts it there.
 
 Under Theorem 2's weaker bound, Proposition 1(1) gives an SE of $\Gamma^X$
 extending $\sigma^H$, but "never fail" can fail after an exclusion (the example
@@ -1763,8 +1699,7 @@ tier E below holds only at sets before any exclusion or public doom.
 
 Call a runtime history **clean** if no player has emitted a charged packet in
 it. Call an information set **clean** if it contains a clean history. The
-clean sets are exactly those in the forced, doomed and post-barrier regions of
-4.4.
+clean sets are exactly those in the forced and lifted regions of 4.4.
 
 The **matching map** sends a clean set $I$ of player $j$ to an information
 set $I^X$ of $\Gamma^X$ at the same event. Every history of nonzero limit
@@ -1939,9 +1874,7 @@ $m_j>a_j$.
 **E1 and E5.** At clean sets, Lemma A3 gives zero weight to unclean
 histories and to others' bad bindings. It gives honest beliefs over the
 projection before any exclusion or public doom, and $\Gamma^X$ beliefs at doomed
-sets. After an exclusion, 4.4 gives beliefs equal in the limit to those of
-$R(h,(\pi_n))$, which is $\sigma^X$ there because Proposition 1 uses the same
-$R$.
+sets and after exclusions, that is, at every lifted set.
 
 Cheap-talk channels carry no information because their native law is
 value-independent:
@@ -1953,13 +1886,9 @@ value-independent:
 
 So these channels drop out of the factor $N_n$.
 
-**E2.** This holds by construction. $\sigma^*$ plays three things:
-- $\sigma^H$ at the projection before any exclusion or public doom;
-- the lift of $\sigma^X$ at doomed sets;
-- the residual SE after an exclusion.
-
-All three are $\sigma^X$, because Proposition 1(2) uses the same tremble
-structure and the same selection map $R$. The only runtime-dependent choice is
+**E2.** This holds by construction. At forced and lifted sets, $\sigma^*$
+plays the lift of $\sigma^X$ at the projected set. On forced sets that is
+$\sigma^H$, by Proposition 1. The only runtime-dependent choice is
 $\varphi^*$.
 
 **E3.** The timing case is Lemma B3: failure gives $a_j$, success gives a
@@ -2077,8 +2006,8 @@ counterexamples.
 
 ## 8. What the compiler implements
 
-Exclusion, the phase reset and post-barrier residual play are a **recovery
-protocol** that the compiler adds. They are not a compilation of the program's
+Exclusion, the phase reset and the play of $\sigma^X$ after an exclusion are a
+**recovery protocol** that the compiler adds. They are not a compilation of the program's
 own failure branches:
 
 - the honest game has no failures, so on its paths none of these rules ever
@@ -2112,9 +2041,8 @@ player needs: the source game $\Gamma^X$.
   - with an empty context, unopened values are conditionally independent
     given the public history, so the excluded player's leaked values are
     uninformative and payoff-irrelevant;
-  - the continuation lifts an SE of the residual honest game, chosen from
-    public results only, by induction on the number of active players (as in
-    4.4);
+  - the continuation lifts an SE of the corresponding source game, which
+    reads only source-level information, as Theorem 3 lifts $\sigma^X$;
   - the excluded player's continuation value is then route-independent and
     below $\underline u_j$.
 - **Coupled builders.** Can a forfeit scaled by $n-1$, or capped fail-stop
@@ -2187,7 +2115,7 @@ A mechanization must also check the following, beyond the statements above:
 - the phase reset in the contract;
 - success separability as a predicate on schedulers, with fixed laws for the
   private components;
-- the induction over initialized $\Gamma^X$ programs with prior sequences,
-  and the single selection map $R$ shared by Proposition 1 and Theorem 3;
+- the perturbed agent-form construction of Proposition 1 on $\Gamma^X$, and
+  its lift in Theorem 3 along one tremble sequence;
 - guard satisfiability (1.5) for the programs in scope;
 - the domain check on openings (1.2, 1.3).
