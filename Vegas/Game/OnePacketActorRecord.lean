@@ -20,6 +20,12 @@ every legal history of the default runtime, under arbitrary responses and
 every scheduler, every completed event with an actor was completed by an
 accepted packet of its actor, or that actor owes a failure at the decoded point
 (`Vegas.actorRecord_history`).
+
+**Silence of the others.** Hence, at a history of the one-packet game in a
+forced state of an event's actor, while that event is ready, every one-packet
+response of another player keeps silence (`Vegas.onePacket_silent_of_pending`):
+a packet for a later event has no readiness token, and a packet for one of the
+player's own completed events is a second packet for it.
 -/
 
 noncomputable section
@@ -455,5 +461,126 @@ theorem actorRecord_history (profile : BehavioralProfile setup.program) (horizon
       refine ⟨0, ⟨residual⟩, fun event completed => ?_⟩
       have below := (residual.checkpoint.ordered.2 event).mp completed
       exact absurd below (Nat.not_lt_zero _)) trace
+
+/-- The event a permitted call names has its sender as actor. -/
+theorem countCallCorrect_actor (earlier : Message Player (WitnessedPacket (graph setup)) → Prop)
+    (message : Message Player (WitnessedPacket (graph setup)))
+    (correct : CountCallCorrect earlier message) {event : (graph setup).EventId}
+    (named : message.payload.call.event? (graph setup) = some event) :
+    (graph setup).actor? event = some message.sender := by
+  unfold CountCallCorrect at correct
+  cases call : message.payload.call with
+  | malformed raw =>
+      rw [call] at named
+      cases named
+  | commitment named' handle =>
+      rw [call] at named correct
+      cases named
+      have owned := correct.1
+      unfold bindingOwnedBy at owned
+      cases view : nodeView (graph setup) event with
+      | bind owner payload outputEq codeEq =>
+          rw [outputEq] at owned
+          have same : owner = message.sender := of_decide_eq_true owned
+          rw [← same]
+          exact nodeView_bind_actor outputEq codeEq
+      | resolve owner payload binding checks outputEq codeEq =>
+          rw [outputEq] at owned
+          cases owned
+      | sample payload law outputEq codeEq =>
+          rw [outputEq] at owned
+          cases owned
+  | opening named' handle raw =>
+      rw [call] at named correct
+      cases named
+      obtain ⟨_, owned⟩ := correct
+      cases view : nodeView (graph setup) event with
+      | resolve owner payload binding checks outputEq codeEq =>
+          rw [view] at owned
+          rw [owned.1]
+          exact nodeView_resolve_actor outputEq codeEq
+      | bind _ _ _ _ =>
+          rw [view] at owned
+          exact owned.elim
+      | sample _ _ _ _ =>
+          rw [view] at owned
+          exact owned.elim
+
+variable [Fintype Player] (bounds : MessageBounds (graph setup))
+
+/-- **Other players are silent while an event is pending.** At a history of the
+one-packet game in a forced state of `owner`, while an event of `owner` is
+ready, every one-packet response of another player keeps silence. A packet for
+a later event has no readiness token, and a packet for one of the player's own
+completed events is a second packet for it: on a forced history its event was
+completed by an accepted packet of the player, since otherwise it would owe a
+failure. -/
+theorem onePacket_silent_of_pending (horizon : Nat)
+    (scheduler : (application setup leaks).Scheduler) (owner : Player)
+    (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+      scheduler).History)
+    (forced : ForcedState setup leaks owner history.state)
+    {control : (application setup leaks).Control} (current : history.state = some control)
+    {event : (graph setup).EventId} (ready : control.execution.application.config.cut.Ready event)
+    (owned : (graph setup).actor? event = some owner) (other : Player) (different : other ≠ owner)
+    (response : (application setup leaks).Action)
+    (member : response ∈ bounds.onePacketActions (runtime setup) leaks other
+      (control.execution.recall other)
+      (control.execution.observe (application setup leaks) other)) :
+    response.transmission = none := by
+  let app := application setup leaks
+  rcases ((bounds.mem_onePacketActions (runtime setup) leaks other _ _ response).mp member).2 with
+    silent | ⟨material, _, permitted⟩
+  · exact silent
+  exfalso
+  have trace : (app.protocol (initialLaw setup) horizon scheduler).Trace (some control) :=
+    current ▸ (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon
+      scheduler history.trace
+  rw [current] at forced
+  obtain ⟨rank, point, ordered, decoded, forcedPoint⟩ := forced
+  obtain ⟨inputRecall, serialRecall, _⟩ := (runtime setup).countRecall_history leaks trace
+  have facts := settledFacts_history (initialLaw setup) horizon scheduler trace
+  obtain ⟨recordRank, ⟨residual⟩, record⟩ :=
+    actorRecord_history (failureProfile setup.program) horizon scheduler trace
+  have sameRank := isPrefix_unique ordered residual.checkpoint.ordered
+  subst sameRank
+  set envelope := (runtime setup).localEnvelope leaks other (control.execution.recall other)
+    (control.execution.observe app other) material with envelopeEq
+  obtain ⟨tokenValid, correct, first⟩ := (countPermits_eq_true_iff _ _).mp permitted
+  obtain ⟨named, namedEvent, tokenEq⟩ := (WitnessedPacket.tokenValid_iff _).mp tokenValid
+  have sender : envelope.sender = other := rfl
+  have actor := countCallCorrect_actor _ envelope correct namedEvent
+  rw [sender] at actor
+  have issued : ∀ predecessor ∈ (graph setup).order.predecessors named,
+      predecessor ∈ control.execution.application.config.cut.completed := by
+    have token : control.execution.application.publicView.tokenFor envelope.payload.call =
+        some ⟨named⟩ := tokenEq
+    unfold PublicView.tokenFor at token
+    rw [namedEvent, Option.bind_some] at token
+    obtain ⟨_, complete⟩ := (PublicView.readinessToken?_eq_some_iff _ named ⟨named⟩).mp token
+    intro predecessor member
+    exact (control.execution.application.config.history_exact predecessor).mp
+      (complete predecessor member)
+  have completed : named ∈ control.execution.application.config.cut.completed := by
+    by_contra open_
+    have same := ready_unique (setup := setup) _ ⟨open_, fun predecessor member =>
+      issued predecessor member⟩ ready
+    subst same
+    exact different (Option.some.inj (actor.symm.trans owned))
+  rcases record named completed other actor with
+    ⟨message, onLedger, _, messageNamed, messageSender⟩ | owed
+  · have emitted : message ∈ control.execution.network.inputs :=
+      facts.carried.ledger message onLedger
+    have recalled : message ∈ app.outputs (control.execution.recall other) := by
+      rw [← inputRecall other]
+      exact List.mem_filter.mpr ⟨emitted, by simp [messageSender]⟩
+    have lower : message.id.2 < envelope.id.2 := by
+      have bound := facts.serials.inputs message emitted
+      change message.id.2 < control.execution.network.nextSerial message.sender at bound
+      rw [messageSender, serialRecall other] at bound
+      exact bound
+    exact first message ⟨recalled, messageSender.trans sender.symm, lower⟩
+      (messageNamed.trans namedEvent.symm)
+  · exact ((forcedPoint.2 other different).2) (owed point decoded)
 
 end Vegas
