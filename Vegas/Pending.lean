@@ -87,6 +87,7 @@ import Vegas.Pending.ReactiveCanonicalResolution
 import Vegas.Pending.ReactiveCompiledMenu
 import Vegas.Pending.ReactiveCompiledResolution
 import Vegas.Pending.ReactiveContinuationObservation
+import Vegas.Pending.ReactiveCountVerdict
 import Vegas.Pending.ReactiveDisclosure
 import Vegas.Pending.ReactiveDisclosureRealization
 import Vegas.Pending.ReactiveDisclosureStability
