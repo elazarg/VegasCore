@@ -1758,8 +1758,12 @@ $\mathit{delay}_e+b_e<d_e$, and a probability $p_e\in(0,1]$.
 - *Inclusion.* A packet sent at tick $s$ with $s+b_e<r_e+d_e$ (on time) is
   included in that tick. A late packet sent at tick $s$ is included at the
   first tick $t\ge s$ before the deadline with $c_{e,t-r_e}=1$, if there is
-  one. Packets included in the same tick are ordered by a fixed priority
-  over emitters, a stand-in for fees.
+  one. The order of packets included in the same tick is left unspecified.
+  It does not matter here: the contract accepts the first included packet
+  from an event's owner, and on clean histories each owner sends one packet
+  per event. The builder never needs to see or rank all pending packets
+  together. Protected inclusion asks only that each owner's own on-time
+  packet lands in time.
 - *Leaks.* At each activation, every pending packet is shown to the
   activated player.
 
