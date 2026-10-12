@@ -584,7 +584,7 @@ everything else about the continuation can be relaxed.
     activation. Player views are the leaked packets plus the ledger, so check
     where expiry is recorded. Region disjointness needs this.
   - "First packet for $e$" means the lowest per-author serial among packets
-    whose `payload.call.event?` is $e$ (`MessageNetwork.submit` allocates
+    whose call addresses $e$ (`Vegas.EventGraphRuntime.Payload.event?`) (`MessageNetwork.submit` allocates
     serials per author). Packets with no event address are not well-formed.
   - The audit verdict: the first well-formed packet per author and event is
     free; everything else is charged, including evidence about unopened
