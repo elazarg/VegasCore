@@ -21,6 +21,22 @@ the law, up to an error, laws are ranked by success probability alone as soon
 as the continuation value is at least the exclusion payoff up to that error
 (`Vegas.exclusionGain_le_of_failure_le`).
 
+**The late-delivery rule.** A late option waits or sends now at one of finitely
+many prepared slots (`Vegas.LateOption`); sending is the as-if-honest value
+committed at that slot at a binding, and the as-if-honest opening at a reveal,
+which has no slot (`Vegas.lateResponse`). A scheduler may treat slots
+differently for late packets, so the rule chooses both the time and the slot.
+Given a success score of each option at each late-delivery key, the prescribed
+option is one of greatest score (`Vegas.lateBest`), so the rule reads an
+information state only through its late-delivery key (`Vegas.lateRule`,
+`Vegas.lateRule_eq_of_lateKey_eq`), and never reads a committed value; its law
+over one-packet choices is `Vegas.latePrescribed`, and each option has a fully
+supported trembled component (`Vegas.lateComponent`). If, from every history
+of a site's belief, each option's component fails with probability within a
+drift of one minus its score at the site's key, the prescribed option fails
+least up to twice the drift, with the same option at every site of that key
+(`Vegas.lateBest_failure_le`).
+
 On the one-packet game, pooling the late-delivery sites whose parts share a
 success probability yields the member-rationality obligation of a pooled limit
 certificate under the exclusion payoff
@@ -153,6 +169,147 @@ theorem exclusionGain_le_of_failure_le [Finite (menu.protocol initial horizon sc
 
 end Menu
 
+section LateRule
+
+variable (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+
+/-- A late-delivery option among `slots` prepared slots: wait, or send now at
+a slot. A reveal has no slot, and every slot sends its opening. -/
+abbrev LateOption (slots : Nat) := Option (Fin slots)
+
+/-- **A late response.** Waiting is silence. Sending at a slot is, at a binding
+of the player's turn, the as-if-honest value committed at that prepared slot,
+normalized as a canonical decision is; at any other event it is the
+as-if-honest response; and silence when it is not the player's turn or the law
+chooses no encodable action. -/
+def lateResponse (assessment : setup.intendedModel.BehavioralAssessment) {slots : Nat}
+    (who : Player) (past : List (application setup leaks).PlayerEntry)
+    (view : (application setup leaks).PlayerView) :
+    LateOption slots → PMF (application setup leaks).Action
+  | none => PMF.pure ⟨none⟩
+  | some slot =>
+      match view.application.publicView.ownTurn? who with
+      | none => PMF.pure ⟨none⟩
+      | some event =>
+          match nodeView (graph setup) event with
+          | .bind _owner payload outputEq _codeEq =>
+              (asIfHonestProfile setup leaks assessment who (some (past, view))).map fun choice =>
+                match choice.bind (encodeEventAction? setup.program event) with
+                | none => ⟨none⟩
+                | some action => ((runtime setup).reactiveNormalization leaks).action who past view
+                    ((runtime setup).reactiveBinding leaks who event payload
+                      (cast (congrArg EventGraph.EventField.Action outputEq) action) slot.val)
+          | _ => honestResponse setup leaks assessment who past view
+
+/-- **The prescribed late-delivery option.** Given a success score of each
+option at each late-delivery key, an option of greatest score, chosen by a
+fixed rule from the key and the score alone. -/
+def lateBest {slots : Nat} (success : LateKey setup leaks → LateOption slots → ℝ)
+    (key : LateKey setup leaks) : LateOption slots :=
+  (Finset.univ.exists_max_image (success key) Finset.univ_nonempty).choose
+
+theorem le_lateBest {slots : Nat} (success : LateKey setup leaks → LateOption slots → ℝ)
+    (key : LateKey setup leaks) (option : LateOption slots) :
+    success key option ≤ success key (lateBest setup leaks success key) :=
+  (Finset.univ.exists_max_image (success key) Finset.univ_nonempty).choose_spec.2 option
+    (Finset.mem_univ option)
+
+/-- The option of the prescribed late-delivery rule at an information state:
+the best option of its late-delivery key, and waiting at a non-decision input.
+It reads the information state only through `Vegas.lateKey`. -/
+def lateRule {slots : Nat} (success : LateKey setup leaks → LateOption slots → ℝ)
+    (who : Player) (info : (application setup leaks).Info) : LateOption slots :=
+  (lateKey setup leaks who info).elim none (lateBest setup leaks success)
+
+/-- Information states with the same late-delivery key get the same option. -/
+theorem lateRule_eq_of_lateKey_eq {slots : Nat}
+    (success : LateKey setup leaks → LateOption slots → ℝ) (who : Player)
+    {info info' : (application setup leaks).Info}
+    (same : lateKey setup leaks who info = lateKey setup leaks who info') :
+    lateRule setup leaks success who info = lateRule setup leaks success who info' := by
+  unfold lateRule
+  rw [same]
+
+variable [Fintype Player] (bounds : MessageBounds (graph setup))
+  (initial : PMF (application setup leaks).State) (horizon : Nat)
+  (scheduler : (application setup leaks).Scheduler)
+
+/-- A late option as a law over one-packet choices. -/
+def lateChoice (assessment : setup.intendedModel.BehavioralAssessment) {slots : Nat}
+    (who : Player) :
+    (info : (application setup leaks).Info) → LateOption slots →
+      PMF ((onePacketModel setup leaks bounds initial horizon scheduler).Choice who info)
+  | none, _ => PMF.pure ⟨none, rfl⟩
+  | some (past, view), option => (lateResponse setup leaks assessment who past view option).map
+      (responseChoice setup leaks bounds initial horizon scheduler who (some (past, view)))
+
+/-- **The late component of an option.** The late option trembled toward the
+uniform law, with silence as its timing deviation. -/
+def lateComponent (assessment : setup.intendedModel.BehavioralAssessment) {slots : Nat}
+    (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) (who : Player)
+    (info : (application setup leaks).Info) (option : LateOption slots) :
+    PMF ((onePacketModel setup leaks bounds initial horizon scheduler).Choice who info) :=
+  trembledChoice setup leaks bounds initial horizon scheduler scale nonnegative le_one who info
+    (lateChoice setup leaks bounds initial horizon scheduler assessment who info option)
+    (PMF.pure (silenceChoice setup leaks bounds initial horizon scheduler who info))
+
+theorem lateComponent_fullSupport (assessment : setup.intendedModel.BehavioralAssessment)
+    {slots : Nat} {scale : ℝ} (positive : 0 < scale) (le_one : scale ≤ 1) (who : Player)
+    (info : (application setup leaks).Info) (option : LateOption slots) :
+    FullSupport (lateComponent setup leaks bounds initial horizon scheduler assessment scale
+      positive.le le_one who info option) :=
+  trembledChoice_fullSupport setup leaks bounds initial horizon scheduler positive le_one who info
+    _ _
+
+/-- **The prescribed late-delivery law.** The late choice of the prescribed
+late-delivery option. -/
+def latePrescribed (assessment : setup.intendedModel.BehavioralAssessment) {slots : Nat}
+    (success : LateKey setup leaks → LateOption slots → ℝ) (who : Player)
+    (info : (application setup leaks).Info) :
+    PMF ((onePacketModel setup leaks bounds initial horizon scheduler).Choice who info) :=
+  lateChoice setup leaks bounds initial horizon scheduler assessment who info
+    (lateRule setup leaks success who info)
+
+variable [Finite ((bounds.onePacketMenu (runtime setup) leaks).protocol initial horizon
+    scheduler).History]
+  [∀ who, DecidableEq ((onePacketModel setup leaks bounds initial horizon scheduler).InfoState who)]
+
+open Classical in
+/-- **The prescribed late-delivery option is a common best response.** Let
+`success` score each late option at each late-delivery key. At a site whose
+late-delivery key is `key`, suppose that from every history of the site's
+belief, each option's component fails with probability within `drift` of one
+minus its score at `key`, as a value-blind scheduler and observation rule are
+to provide. Then the component of the prescribed option fails with probability
+at most that of every option up to `2 * drift`. The prescribed option depends
+on the site only through its key, so this holds with the same option at every
+site of a pool of sites sharing a key. -/
+theorem lateBest_failure_le (fuel : Nat)
+    (assessment : (onePacketModel setup leaks bounds initial horizon
+      scheduler).BehavioralAssessment) {slots : Nat}
+    (success : LateKey setup leaks → LateOption slots → ℝ) (drift : ℝ) {who : Player}
+    (site : (onePacketModel setup leaks bounds initial horizon scheduler).InformationSite who)
+    (key : LateKey setup leaks)
+    (component : LateOption slots →
+      PMF ((onePacketModel setup leaks bounds initial horizon scheduler).Choice who site.1))
+    (common : ∀ option, ∀ history ∈ (assessment.belief who site).support,
+      |expect (localHistoryLaw fuel (fun history => sourceReadout setup leaks history.state)
+          assessment site (component option) history)
+        (fun outcome => if outcome ∈ FailedReadout setup who then 1 else 0) -
+        (1 - success key option)| ≤ drift) (option : LateOption slots) :
+    localFailure fuel (fun history => sourceReadout setup leaks history.state) assessment site
+        (FailedReadout setup who) (component (lateBest setup leaks success key)) ≤
+      localFailure fuel (fun history => sourceReadout setup leaks history.state) assessment site
+        (FailedReadout setup who) (component option) + 2 * drift := by
+  have near (option : LateOption slots) :=
+    localFailure_near_of_histories fuel _ assessment site (FailedReadout setup who)
+      (component option) (1 - success key option) drift (common option)
+  have best := (abs_le.mp (near (lateBest setup leaks success key))).2
+  have other := (abs_le.mp (near option)).1
+  linarith [le_lateBest setup leaks success key option]
+
+end LateRule
+
 section OnePacket
 
 variable [Fintype Player]
@@ -192,7 +349,7 @@ theorem onePacket_memberRational_of_success (fuel : Nat)
     (component : ℕ → ∀ agent, Part (pool agent) →
       PMF (((onePacketModel setup leaks bounds initial horizon scheduler).agentForm fallback
         bounded.wellFoundedHistories).sig.Strategy agent))
-    (delivery : Set Pool) (best : ∀ p, Part p) (bound : ℝ) (bound_nonneg : 0 ≤ bound)
+    (delivery : Set Pool) (bound : ℝ) (bound_nonneg : 0 ≤ bound)
     (oneDimensional : ∀ (weights : ℕ → ∀ p, PMF (Part p))
         (targetSequence : ℕ →
           (onePacketModel setup leaks bounds initial horizon scheduler).BehavioralAssessment),
@@ -205,7 +362,7 @@ theorem onePacket_memberRational_of_success (fuel : Nat)
         targetRecall.decisionInformationAntichain) →
       ∃ (continuation : ℕ → (onePacketModel setup leaks bounds initial horizon
           scheduler).InformationAgent (onePacketModel setup leaks bounds initial horizon
-          scheduler).playedInformation → ℝ) (error slack : ℕ → ℝ),
+          scheduler).playedInformation → ℝ) (best : ℕ → ∀ p, Part p) (error slack : ℕ → ℝ),
         Tendsto error atTop (nhds 0) ∧ Tendsto slack atTop (nhds 0) ∧ (∀ n, 0 ≤ slack n) ∧
         ∀ n agent, pool agent ∈ delivery →
           ∀ decision : (onePacketModel setup leaks bounds initial horizon
@@ -222,7 +379,7 @@ theorem onePacket_memberRational_of_success (fuel : Nat)
             error n) ∧
           ∀ part, localFailure fuel (fun history => sourceReadout setup leaks history.state)
               (targetSequence n) (who := agent.1) ⟨agent.2.1, decision⟩
-              (FailedReadout setup agent.1) (component n agent (best (pool agent))) ≤
+              (FailedReadout setup agent.1) (component n agent (best n (pool agent))) ≤
             localFailure fuel (fun history => sourceReadout setup leaks history.state)
               (targetSequence n) (who := agent.1) ⟨agent.2.1, decision⟩
               (FailedReadout setup agent.1) (component n agent part) + slack n)
@@ -302,11 +459,11 @@ theorem onePacket_memberRational_of_success (fuel : Nat)
   memberRational_of_success fuel bounded targetRecall _ _ fallback pool component delivery
     (FailedReadout setup) excludedPayoff
     (fun who => exclusionReadoutUtility_of_failedReadout setup parameter utility excludedPayoff who)
-    best bound bound_nonneg
+    bound bound_nonneg
     (fun weights targetSequence played mixed bayes => by
-      obtain ⟨continuation, error, slack, errorVanishes, slackVanishes, slack_nonneg, facts⟩ :=
-        oneDimensional weights targetSequence played mixed bayes
-      refine ⟨continuation, error, slack, errorVanishes, slackVanishes, slack_nonneg,
+      obtain ⟨continuation, best, error, slack, errorVanishes, slackVanishes, slack_nonneg,
+        facts⟩ := oneDimensional weights targetSequence played mixed bayes
+      refine ⟨continuation, best, error, slack, errorVanishes, slackVanishes, slack_nonneg,
         fun n agent inDelivery decision => ?_⟩
       obtain ⟨lower_le, gap_le, near, ranked⟩ := facts n agent inDelivery decision
       exact ⟨by linarith [excluded_le_lower agent.1], gap_le, near, ranked⟩)

@@ -28,7 +28,8 @@ as the fixed payoff is at most the continuation value up to the error
 `GameTheory.Protocol.InformationModel.localValue_le_of_failure_le`). The
 site-level hypotheses follow from the same statements at every history of the
 site's belief when the failure probability is common to those histories
-(`GameTheory.Protocol.InformationModel.localFailure_successValue_of_histories`).
+(`GameTheory.Protocol.InformationModel.localFailure_successValue_of_histories`,
+`GameTheory.Protocol.InformationModel.localFailure_near_of_histories`).
 
 For pooled agents sharing component weights, a part that ranks nearly best
 for every member makes every member nearly rational
@@ -296,6 +297,46 @@ theorem localGain_le_of_failure_le [Finite T.History] (failed : Set Outcome) (ex
     continuation error slack bound law best lawNear bestNear ranked slack_nonneg excluded_le gap_le
     bound_nonneg]
 
+/-- An expectation under the site's observed law averages, over the belief,
+the expectations from each history. -/
+theorem expect_localLaw [Finite T.History] (law : PMF (N.Choice who site.1))
+    (payoff : Outcome → ℝ) :
+    expect (localLaw fuel observe assessment site law) payoff =
+      expect (assessment.belief who site) (fun history =>
+        expect (localHistoryLaw fuel observe assessment site law history) payoff) := by
+  rw [localLaw_eq_bind]
+  unfold localHistoryLaw
+  simp only [← PMF.map_bind, expect_map]
+  rw [expect_bind_tower _ _ _ (payoffIntegrable_of_finite _ _)]
+
+/-- A belief average of quantities within `error` of their targets is within
+`error` of the average target. -/
+private theorem expect_near_of_near {α : Type*} [Finite α] (belief : PMF α) (value target : α → ℝ)
+    (error : ℝ) (near : ∀ point ∈ belief.support, |value point - target point| ≤ error) :
+    |expect belief value - expect belief target| ≤ error := by
+  rw [← expect_sub (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)]
+  have upper := expect_le_const belief _ (payoffIntegrable_of_finite _ _) error
+    fun point supported => (abs_le.mp (near point supported)).2
+  have lower := expect_mono (μ := belief) (f := fun _ => -error)
+    (fun point supported => (abs_le.mp (near point supported)).1)
+    (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)
+  rw [expect_constant] at lower
+  exact abs_le.mpr ⟨lower, upper⟩
+
+open Classical in
+/-- **A failure probability common to the histories is the site's.** If the
+failure probability after installing a law from every history of the site's
+belief is within `drift` of `failure`, so is the site's. -/
+theorem localFailure_near_of_histories [Finite T.History] (failed : Set Outcome)
+    (law : PMF (N.Choice who site.1)) (failure drift : ℝ)
+    (historyFailure : ∀ history ∈ (assessment.belief who site).support,
+      |expect (localHistoryLaw fuel observe assessment site law history)
+        (fun outcome => if outcome ∈ failed then 1 else 0) - failure| ≤ drift) :
+    |localFailure fuel observe assessment site failed law - failure| ≤ drift := by
+  have near := expect_near_of_near (assessment.belief who site) _ (fun _ => failure) drift
+    historyFailure
+  rwa [expect_constant, ← expect_localLaw] at near
+
 open Classical in
 /-- **From histories to the site.** If every history of the site's belief has
 the same failure probability `failure` after installing a law, and its
@@ -317,27 +358,12 @@ theorem localFailure_successValue_of_histories [Finite T.History] (failed : Set 
       |localSuccessValue fuel observe utility assessment site failed law -
         (1 - failure) * expect (assessment.belief who site) continuation| ≤ error := by
   classical
-  have tower (payoff : Outcome → ℝ) :
-      expect (localLaw fuel observe assessment site law) payoff =
-        expect (assessment.belief who site) (fun history =>
-          expect (localHistoryLaw fuel observe assessment site law history) payoff) := by
-    rw [localLaw_eq_bind]
-    unfold localHistoryLaw
-    simp only [← PMF.map_bind, expect_map]
-    rw [expect_bind_tower _ _ _ (payoffIntegrable_of_finite _ _)]
   refine ⟨?_, ?_⟩
   · unfold localFailure
-    rw [tower, expect_congr_on_support historyFailure, expect_constant]
+    rw [expect_localLaw, expect_congr_on_support historyFailure, expect_constant]
   · unfold localSuccessValue
-    rw [tower, ← expect_const_mul,
-      ← expect_sub (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)]
-    have upper := expect_le_const (assessment.belief who site) _ (payoffIntegrable_of_finite _ _)
-      error fun history supported => (abs_le.mp (historySuccess history supported)).2
-    have lower := expect_mono (μ := assessment.belief who site) (f := fun _ => -error)
-      (fun history supported => (abs_le.mp (historySuccess history supported)).1)
-      (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)
-    rw [expect_constant] at lower
-    exact abs_le.mpr ⟨lower, upper⟩
+    rw [expect_localLaw, ← expect_const_mul]
+    exact expect_near_of_near _ _ _ error historySuccess
 
 end Values
 
@@ -478,9 +504,10 @@ success probability: failure pays the player a fixed payoff, and the
 successful part of each component is its success probability times a
 continuation value of the site up to `error n`. Suppose also that the fixed
 payoff is at most that continuation value up to `error n`, the gap is at most
-`bound`, and the pool's best part fails with probability at most that of every
-other part at every member's site up to `slack n`, as when the success
-probability of each part is common to the pool and the best part maximizes it
+`bound`, and a best part of the pool at index `n`, which may depend on the
+weights family, fails with probability at most that of every other part at
+every member's site up to `slack n`, as when the success probability of each
+part is common to the pool and the best part maximizes it
 (`failure_le_of_common`). If `error` and `slack` vanish and the members of the
 other pools are rational up to a vanishing error, the member-rationality
 obligation of a pooled limit certificate holds. -/
@@ -490,7 +517,7 @@ theorem memberRational_of_success [Finite Pool] [DecidableEq Pool]
     (delivery : Set Pool)
     (failed : Player → Set Outcome) (excluded : Player → ℝ)
     (pays : ∀ who, ∀ outcome ∈ failed who, utility outcome who = excluded who)
-    (best : ∀ p, Part p) (bound : ℝ) (bound_nonneg : 0 ≤ bound)
+    (bound : ℝ) (bound_nonneg : 0 ≤ bound)
     (oneDimensional : ∀ (weights : ℕ → ∀ p, PMF (Part p))
         (targetSequence : ℕ → N.BehavioralAssessment),
       (∀ n, (targetSequence n).strategy = N.agentBehavior N.playedInformation fallback
@@ -498,7 +525,8 @@ theorem memberRational_of_success [Finite Pool] [DecidableEq Pool]
       (∀ n, (targetSequence n).IsFullyMixed) →
       (∀ n, BehavioralAssessment.IsBayesConsistent N (targetSequence n)
         targetRecall.decisionInformationAntichain) →
-      ∃ (continuation : ℕ → N.InformationAgent N.playedInformation → ℝ) (error slack : ℕ → ℝ),
+      ∃ (continuation : ℕ → N.InformationAgent N.playedInformation → ℝ)
+        (best : ℕ → ∀ p, Part p) (error slack : ℕ → ℝ),
         Tendsto error atTop (nhds 0) ∧ Tendsto slack atTop (nhds 0) ∧ (∀ n, 0 ≤ slack n) ∧
         ∀ n (agent : N.InformationAgent N.playedInformation), pool agent ∈ delivery →
           ∀ decision : N.IsDecisionInfo agent.1 agent.2.1,
@@ -511,7 +539,7 @@ theorem memberRational_of_success [Finite Pool] [DecidableEq Pool]
               (failed agent.1) (component n agent part)) * continuation n agent| ≤ error n) ∧
           ∀ part, localFailure fuel observe (targetSequence n)
               (who := agent.1) ⟨agent.2.1, decision⟩
-              (failed agent.1) (component n agent (best (pool agent))) ≤
+              (failed agent.1) (component n agent (best n (pool agent))) ≤
             localFailure fuel observe (targetSequence n)
               (who := agent.1) ⟨agent.2.1, decision⟩
               (failed agent.1) (component n agent part) + slack n)
@@ -567,8 +595,8 @@ theorem memberRational_of_success [Finite Pool] [DecidableEq Pool]
           expect comparison.alternative (utility · who) -
             expect comparison.prescribed (utility · who) ≤ memberError n := by
   intro weights targetSequence played mixed bayes pooled
-  obtain ⟨continuation, error, slack, errorVanishes, slackVanishes, slack_nonneg, facts⟩ :=
-    oneDimensional weights targetSequence played mixed bayes
+  obtain ⟨continuation, best, error, slack, errorVanishes, slackVanishes, slack_nonneg,
+    facts⟩ := oneDimensional weights targetSequence played mixed bayes
   obtain ⟨otherError, otherVanishes, otherBound⟩ :=
     otherMembers weights targetSequence played mixed bayes pooled
   let deliveryError (n : ℕ) : ℝ :=
@@ -583,15 +611,15 @@ theorem memberRational_of_success [Finite Pool] [DecidableEq Pool]
   · refine le_trans ?_ (le_max_left _ _)
     exact memberGain_le_of_common_best fuel bounded observe utility fallback pool
       targetRecall.actsOnceWhereItMatters (component n) (weights n) (targetSequence n) (played n)
-      (pooled n) (pool (N.agentAt site)) best (slack n * bound + 3 * error n)
+      (pooled n) (pool (N.agentAt site)) (best n) (slack n * bound + 3 * error n)
       (fun agent inPool decision part => by
         obtain ⟨excluded_le, gap_le, near, ranked⟩ :=
           facts n agent (inPool ▸ inDelivery) decision
         have := localGain_le_of_failure_le fuel observe utility (targetSequence n)
           (who := agent.1) ⟨agent.2.1, decision⟩ (failed agent.1) (excluded agent.1)
           (pays agent.1) (continuation n agent) (error n) (slack n) bound
-          (component n agent part) (component n agent (best (pool agent))) (near part)
-          (near (best (pool agent))) (ranked part) (slack_nonneg n) excluded_le gap_le
+          (component n agent part) (component n agent (best n (pool agent))) (near part)
+          (near (best n (pool agent))) (ranked part) (slack_nonneg n) excluded_le gap_le
           bound_nonneg
         linarith)
       who site rfl alternative
