@@ -92,6 +92,20 @@ Review history:
     outcome, past and future, and $W_I$ is defined from it together with the
     unconditioned continuation after the phase; Lemma A3(3) and E1 follow.
 
+  A review of that fix found two errors in its transport argument, fixed in
+  this revision:
+  - Lemma A3 treated an owner's earlier and later values as independent.
+    They need not be: an owner's later commit can read its own hidden
+    values (a guard $y=x$ correlates them perfectly);
+  - it identified the conditioned law of a later choice with $\sigma^X$
+    conditioned on that one move. $\Phi$ requires all of the owner's
+    bindings in the phase to succeed, which conditions its whole
+    trajectory.
+
+  The proof now compares the joint law of all owners' trajectories given
+  $\Phi$, built from the conditional kernels of each owner's choices given its
+  private history.
+
   These fixes have not been re-reviewed.
 
 ## Summary
@@ -564,11 +578,16 @@ that no binding of another owner in the current phase fails. At every stage
 $n$ the profile is fully mixed, so $\Pr_n(\Phi\mid I)>0$.
 
 Conditioning on $\Phi$ changes more than beliefs about the past. It also
-changes the law of other owners' choices later in the same phase: given
-$\Phi$ they move, and an owner whose limit strategy fails surely still has a
-well-defined value distribution conditional on moving at stage $n$, which
-the limit strategy does not record. So the object to carry is the whole
-**phase outcome** $\omega$: the active players' hidden values and the other
+changes the law of other owners' choices later in the same phase, and it
+does so jointly with their earlier private choices. Given $\Phi$, *every*
+binding of each other owner in the phase succeeds. That conditions the
+owner's whole trajectory, not each move separately. A doomed owner may send
+a uniform bit $v$ at its first binding and fail its second iff $v=0$: given
+$\Phi$, $v=1$ surely, although conditioning the first move on moving leaves
+$v$ uniform. And an owner whose limit strategy fails surely still has a
+well-defined conditional trajectory at stage $n$, which the limit strategy
+does not record. So the object to carry is the whole **phase outcome**
+$\omega$: the active players' hidden values and the other
 owners' choices in the current phase, as they stand when the phase ends,
 earlier hidden values included. Write
 $$
@@ -751,8 +770,8 @@ $W_{I,n}(v)=\mathbb E_{\omega\sim\nu^X_n(I)}[U_n(h(v,\omega))]$, with $U_n$ the
 stage-$n$ value from an end-of-phase node and $j$'s later in-phase choices
 drawn from $\sigma_n$. Then $W_{I,n}\to W_I$:
 - $\nu^X_n(I)\to\nu^X(I)$ by the choice of subsequence. This carries the
-  conditioned law of others' future in-phase choices, which $\sigma^X$ alone
-  would not;
+  conditioned joint law of others' trajectories in the phase, which
+  $\sigma^X$ alone would not;
 - $U_n\to U$ pointwise, since the value from a node is a polynomial in the
   profile and $\sigma_n\to\sigma^X$, in a finite game;
 - $j$'s later in-phase choices converge to $\sigma^X$, and are not
@@ -1681,13 +1700,20 @@ values given the public history.
    the phase has been observed, $\Phi$ is false, no claim is made, and none is
    needed: the owner's binding will be voided.
 3. In particular, the owner predicts the others' not-yet-chosen values of
-   the phase by the future part of $\nu^X(\Pi(I))$. Where $\sigma^X$ moves at
-   those owners' sets with positive probability, this is $\sigma^X$
-   conditioned on moving. Where $\sigma^X$ fails surely, it is the limit of
-   $\sigma^X_n$ conditioned on moving. For instance, a doomed owner may play
-   $\Pr_n(\mathrm{fail})=1-3\delta_n$, $\Pr_n(0)=\delta_n$, $\Pr_n(1)=2\delta_n$;
-   its limit strategy fails surely, but given $\Phi$ its value is $0$ or $1$
-   with probabilities $\tfrac13,\tfrac23$.
+   the phase by $\nu^X(\Pi(I))$, jointly with their earlier hidden values.
+   This is neither $\sigma^X$ nor $\sigma^X$ conditioned on each move
+   separately:
+   - a future value can depend on its owner's earlier private choices. If
+     A holds a hidden bit $x$ and commits $y$ under the guard $y=x$, the two
+     are perfectly correlated, even on honest paths;
+   - $\Phi$ conditions each owner's whole trajectory. A doomed A that sends a
+     uniform $v$ and then fails its second binding iff $v=0$ has $v=1$ given
+     $\Phi$;
+   - where $\sigma^X$ fails surely, the conditional trajectory comes from the
+     tremble sequence. A doomed owner may play
+     $\Pr_n(\mathrm{fail})=1-3\delta_n$, $\Pr_n(0)=\delta_n$,
+     $\Pr_n(1)=2\delta_n$; its limit strategy fails surely, but given $\Phi$
+     its value is $0$ or $1$ with probabilities $\tfrac13,\tfrac23$.
 
 The unconditioned belief can be finer than $\mu^X(\Pi(I))$ at lifted sets.
 Suppose a player A is privately doomed for some of its hidden values but not
@@ -1711,44 +1737,56 @@ Theorem 2, whose Lemma A asserts honest beliefs only where no reveal is
 pending.
 
 *Proof.* Charged histories and native-only bad bindings are negligible by the
-choice of $\zeta_n$ and $M_3$. For the remaining histories, use the
-factorization of 4.4. In a commit phase no opening is in flight (order rule
-1), so every value that $N_n$ could read is already public at $I$. The
-in-phase observations (receipts, expiries, leaks, timing) depend on others'
-values only through whether each co-phase owner moves or fails. A privately
-doomed owner's choice between them may depend on its hidden values. Given
-that every owner of the phase moves, their law is value-free: bindings are
-opaque, the builder is value-blind, binding delivery reads no value, and the
-timing tier is the same at every set and for every value. So conditioning on
-no failure in the phase removes the only value-dependent factor. By the
-bound there, $N_n$ reads no other unopened value, up to a factor $1+o(1)$.
-So at every stage $n$ the native posterior over the past part of $\omega$,
-given $\Phi$, is the $\Gamma^X$ posterior at $\Pi(I)$ given $\Phi$, times
-$1+o(1)$.
+choice of $\zeta_n$ and $M_3$, which is claim 1. Claim 3 is part of claim 2,
+which compares, at each stage $n$, the native and $\Gamma^X$ laws of the
+end-of-phase source history given $\Phi$. The argument treats each owner's
+trajectory as a whole, and never splits it into a past and a future part.
 
-For the future part, each other owner's later in-phase choice is made at a
-native set whose source-level play is $\sigma^X_n$ at its projection, which
-is the corresponding $\Gamma^X$ set, since $\Pi$ ignores in-phase
-observations. Natively a move can still fail, through a timing tremble
-followed by a failed delivery. That factor is $1-O(\zeta_n)$ for every value
-alike, because the timing tier is the same at every set and for every value,
-and binding delivery reads no value. So given $\Phi$ the native law of each
-future choice is $\sigma^X_n$ conditioned on moving, times $1+o(1)$. This holds
-even when moving has vanishing probability, because the comparison is a
-ratio among moves.
+*Native weights.* Extend each clean native history in $I$ by its native
+continuation to the end of the phase, and project it. By the factorization
+of 4.4, a native history $h$ with projection $x$ has weight
+$\Pr^X_n(x)\,N_n(h)\,(1+o(1))$. Here $\Pr^X_n(x)$ is the $\Gamma^X$ weight of
+$x$. It is a product, over each owner's sets along $x$, of $\sigma^X_n$ at that
+set given the owner's private history there, together with Nature's laws. So
+it keeps every dependence of a choice on its owner's earlier private
+choices. The extension of $h$ to the end of the phase has the same kernels:
+each later in-phase choice is made at a native set whose source-level play is $\sigma^X_n$ at its
+projection, the corresponding $\Gamma^X$ set, because $\Pi$ ignores in-phase
+observations.
 
-Both comparisons are between stage-$n$ distributions, at which $\Phi$ has
-positive probability in both games, so they hold even where $\Phi$ has limit
-probability zero. Taking limits gives $\nu(I)=\nu^X(\Pi(I))$.
+*The operational factor given $\Phi$.* For each $x$ consistent with $\Pi(I)$ in
+which $\Phi$ holds, sum $N_n(h)$ over the native histories $h$ in $I$, extended
+to the end of the phase, that project to $x$. This sum is the same for every
+such $x$, up to $1+o(1)$:
+- in a commit phase no opening is in flight (order rule 1), so every value
+  that $N_n$ could read from earlier phases is already public at $I$;
+- within the phase, given $\Phi$ every other owner's binding is a move, so
+  the only choices left in $x$ are values. Their operational law is
+  value-free: bindings are opaque, the builder is value-blind, binding
+  delivery reads no value, and the timing tier is the same at every set and
+  for every value;
+- a native move can still fail, through a timing tremble followed by a
+  failed delivery. That factor is $1-O(\zeta_n)$ for every value alike, and
+  $\Phi$ excludes it.
 
-The hidden commitments of different players are independent given the public
-history, because in $\Gamma^X$ every choice reads only public data and its
-owner's own commitments.
+Without $\Phi$ the sum is not constant: an observation such as an accepted
+binding depends on whether its owner moved or failed, and a doomed owner's
+choice between them can depend on its hidden values. That is why claim 2 is
+stated given $\Phi$.
 
-The phase's not-yet-chosen values of other owners are chosen at information
-sets that contain no other owner's value from the phase, so the past and
-future parts of $\omega$ are independent given the public record, at every
-stage $n$. $\square$
+*Conclusion.* So at every stage $n$, the native law of the projected
+end-of-phase history given $I$ and $\Phi$ is the $\Gamma^X$ law given $\Pi(I)$
+and $\Phi$, times $1+o(1)$, as a joint law over all owners' trajectories.
+Both are stage-$n$ distributions, at which $\Phi$ has positive probability in
+both games, so this holds even where $\Phi$ has limit probability zero, and
+however small the probability of moving is. Taking limits gives
+$\nu(I)=\nu^X(\Pi(I))$.
+
+Separately, the hidden commitments of different players are independent
+given the public history, because in $\Gamma^X$ every choice reads only public
+data and its owner's own commitments. This is independence *across owners*.
+Within one owner, earlier and later values may be correlated, and the
+argument above keeps that. $\square$
 
 **Lemma D3 (value choice under reset).** Take a forced set in a commit phase
 at which owner $j$ chooses a value $v$, together with any own-service delivery
@@ -2201,8 +2239,9 @@ clean sets put zero weight on unclean histories (Lemma A3).
   their choices in the phase) given that no other binding of the phase
   fails, taken as a limit of conditioned laws ($\nu$, Lemma A3). That law is
   the one at $I^X$ in $\Gamma^X$. It includes a prediction of others'
-  not-yet-chosen values given that they move, which can come from the
-  tremble sequence where $\sigma^X$ fails surely. The unconditioned belief may be finer: an
+  not-yet-chosen values, jointly with their earlier hidden values, given
+  that all their bindings in the phase succeed. Where $\sigma^X$ fails
+  surely, that prediction comes from the tremble sequence. The unconditioned belief may be finer: an
   accepted binding in the phase shows that its owner moved, and a privately
   doomed owner's move can depend on its hidden values (Lemma A3). Values seen in included openings whose result is
   $\mathsf{fail}$ belong to excluded players. By the product structure they say
