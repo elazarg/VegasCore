@@ -306,4 +306,103 @@ theorem openingClients_recorded_of_seen [Finite Player] (wellFormed : setup.Well
 
 end Recorded
 
+section Repeated
+
+/-- Every transmitting recall entry emitted the packet of its submission. -/
+def TransmissionsEmitted (execution : (application setup leaks).Execution) : Prop :=
+  ∀ who, ∀ entry ∈ execution.recall who, ∀ material, entry.action.transmission = some material →
+    ∃ message, entry.emitted = some message ∧ message.payload.call = material.call.packet
+
+/-- Transmissions are emitted at every history, under arbitrary responses and
+scheduler choices. -/
+theorem transmissionsEmitted_serviceInvariant (scheduler : (application setup leaks).Scheduler) :
+    (application setup leaks).ServiceInvariant scheduler (TransmissionsEmitted (leaks := leaks))
+    where
+  respond execution responder action valid := by
+    intro who entry member material transmits
+    rw [(runtime setup).respond_recall leaks execution responder who action] at member
+    split at member
+    · rename_i same
+      subst same
+      rcases List.mem_append.mp member with old | new
+      · exact valid who entry old material transmits
+      · cases List.mem_singleton.mp new
+        change action.transmission = some material at transmits
+        refine ⟨_, by rw [transmits]; rfl, rfl⟩
+    · exact valid who entry member material transmits
+  environment execution next command valid _ moved := by
+    intro who entry member
+    rw [(application setup leaks).environmentStep_recall execution next command moved] at member
+    exact valid who entry member
+
+/-- **A repeated packet is not a one-packet response.** At every history, under
+arbitrary responses and scheduler choices, a canonical decision of `who` at its
+turn `event` that transmits, after its recall has submitted for `event`, is not
+in the one-packet menu. -/
+theorem canonical_not_onePacket_of_recorded [Fintype Player] (bounds : MessageBounds (graph setup))
+    {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
+    {control : (application setup leaks).Control}
+    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some control))
+    (who : Player) (event : (graph setup).EventId)
+    (recorded : (runtime setup).eventRecorded leaks (control.execution.recall who) event = true)
+    (action : (graph setup).Action event)
+    (material : (application setup leaks).Submission)
+    (submits : ((runtime setup).canonicalServiceDecision leaks who (control.execution.recall who)
+      (control.execution.observe (application setup leaks) who) event action).transmission =
+        some material) :
+    (runtime setup).canonicalServiceDecision leaks who (control.execution.recall who)
+        (control.execution.observe (application setup leaks) who) event action ∉
+      bounds.onePacketActions (runtime setup) leaks who (control.execution.recall who)
+        (control.execution.observe (application setup leaks) who) := by
+  let app := application setup leaks
+  intro member
+  obtain ⟨_, sent⟩ := (bounds.mem_onePacketActions (runtime setup) leaks who _ _ _).mp member
+  rcases sent with silent | ⟨chosen, transmits, permitted⟩
+  · rw [silent] at submits
+    cases submits
+  · rw [submits] at transmits
+    have same := Option.some.inj transmits
+    subst same
+    have named : material.call.packet.event? (graph setup) = some event := by
+      rcases (runtime setup).canonicalServiceDecision_cases leaks who
+          (control.execution.recall who) (control.execution.observe app who) event action with
+        silent | submitted
+      · rw [silent] at submits
+        cases submits
+      · unfold EventGraphRuntime.submittedEvent? at submitted
+        rw [submits] at submitted
+        exact submitted
+    have recalled := (runtime setup).countRecall_history leaks trace
+    rw [(runtime setup).localEnvelope_eq_of_recall leaks control.execution recalled.1
+      recalled.2.1 who material, countPermits_eq_true_iff] at permitted
+    obtain ⟨entry, entryMember, submitted⟩ :=
+      ((runtime setup).eventRecorded_iff leaks _ event).mp recorded
+    obtain ⟨entryMaterial, entryTransmits⟩ : ∃ entryMaterial,
+        entry.action.transmission = some entryMaterial := by
+      unfold EventGraphRuntime.submittedEvent? at submitted
+      cases transmission : entry.action.transmission with
+      | none => rw [transmission] at submitted; cases submitted
+      | some entryMaterial => exact ⟨entryMaterial, rfl⟩
+    have entryNamed : entryMaterial.call.packet.event? (graph setup) = some event := by
+      unfold EventGraphRuntime.submittedEvent? at submitted
+      rw [entryTransmits] at submitted
+      exact submitted
+    obtain ⟨message, emitted, call⟩ :=
+      ((transmissionsEmitted_serviceInvariant scheduler).history (initialLaw setup) horizon
+        (fun _ _ _ entry member => (List.not_mem_nil member).elim) trace) who entry entryMember
+        entryMaterial entryTransmits
+    have output : message ∈ app.outputs (control.execution.recall who) :=
+      List.mem_filterMap.mpr ⟨entry, entryMember, emitted⟩
+    have earlier := earlierOwnPacket_of_output trace who
+      (app.packet (app.submit control.execution.application who material) who
+        (control.execution.network.known who) material) message output
+    have distinct := permitted.2.2 message earlier
+    apply distinct
+    change message.payload.call.event? (graph setup) =
+      material.call.packet.event? (graph setup)
+    rw [call, entryNamed, named]
+
+end Repeated
+
 end Vegas
