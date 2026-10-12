@@ -4,6 +4,9 @@ import Vegas.Game.OnePacketHonestLaw
 import Vegas.Game.CompiledPolicyView
 import Vegas.Game.OnePacketPrescribedSupport
 import Vegas.Game.OnePacketCanonicalPermits
+import Vegas.Game.OnePacketPendingPool
+import Vegas.Game.SourceServiceFirstTurnRisk
+import Interaction.ReactiveTrafficIdentity
 
 /-! # As-if-honest decisions are compiled decisions of the effective opening
 
@@ -230,6 +233,76 @@ theorem openingClients_keeps_unrecorded (scheduler : (application setup leaks).S
         · have grown := app.respond_recall_mono between responder who response
           rw [recallEq] at grown
           exact grown member
+
+/-- **Earlier turns are answered.** For a well-formed setup, under the
+asynchronous contract with timely delays, at every execution the first-turn
+clients of the intended effective opening reach within the horizon, an owner
+that had a turn at its event has submitted for it. -/
+theorem openingClients_recorded_of_seen [Finite Player] (wellFormed : setup.WellFormed)
+    {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
+    {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
+      bound)
+    (timely : AsyncTimely (runtime setup) delay bound) (turns : Nat)
+    (intended : ∀ who, setup.intendedModel.BehavioralPolicy who) {count : Nat}
+    (within : count ≤ horizon) {execution : (application setup leaks).Execution}
+    (supported : execution ∈ ((application setup leaks).roundsFrom (initialLaw setup) scheduler
+      (openingClients setup leaks bound turns intended) count).support)
+    (who : Player) (event : (graph setup).EventId) (owned : (graph setup).actor? event = some who)
+    (seen : SeenTurn who event (execution.recall who)) :
+    (runtime setup).eventRecorded leaks (execution.recall who) event = true := by
+  let app := application setup leaks
+  let players := openingClients setup leaks bound turns intended
+  apply Bool.eq_true_of_not_eq_false
+  intro unrecorded
+  cases node : nodeView (graph setup) event with
+  | sample payload law outputEq codeEq =>
+      have none := nodeView_sample_actor outputEq codeEq
+      rw [owned] at none
+      cases none
+  | bind actor payload outputEq codeEq =>
+      obtain ⟨entry, member, turn⟩ := seen
+      have recorded := (sourceServiceFirstTurn_recallFacts contract timely players who turns
+        (setup.intendedOpeningProfile intended) rfl count within execution supported).1 entry
+        member event actor payload turn outputEq
+      rw [unrecorded] at recorded
+      cases recorded
+  | resolve actor payload binding checks outputEq codeEq =>
+      obtain ⟨final, finalMem⟩ :=
+        (app.runRounds scheduler players (horizon - count) execution).support_nonempty
+      have kept := (openingClients_keeps_unrecorded scheduler bound turns intended who event
+        (horizon - count) execution unrecorded seen final finalMem).1
+      have atHorizon := mem_roundsFrom_of_runRounds (app := app) supported finalMem
+      rw [show count + (horizon - count) = horizon by omega] at atHorizon
+      obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler players
+        horizon le_rfl final atHorizon
+      rw [Nat.sub_self] at trace
+      have terminalCut := contract.completes ⟨0, none, final⟩ trace ⟨rfl, rfl⟩
+      have completed : event ∈ final.application.config.cut.completed := by
+        change final.application.config.cut.completed = Finset.univ at terminalCut
+        rw [terminalCut]
+        exact Finset.mem_univ _
+      obtain ⟨rank, ⟨residual⟩, intendedHolds⟩ := openingClients_intended (profile :=
+        setup.intendedOpeningProfile intended) wellFormed contract timely turns intended horizon
+        le_rfl final atHorizon
+      obtain ⟨recordRank, ⟨recordResidual⟩, record⟩ :=
+        publicationRecord_history (setup.intendedOpeningProfile intended) horizon scheduler trace
+      rcases record with failed | accepted
+      · have sameRank := isPrefix_unique recordResidual.checkpoint.ordered
+          residual.checkpoint.ordered
+        subst sameRank
+        obtain ⟨other, revealFailed⟩ := failed _ residual.decode
+        exact ProtocolState.not_excluded_of_intended other setup.program _
+          (intendedHolds _ residual.decode)
+          (ProtocolState.RevealFailed.excluded setup.program _ revealFailed)
+      · obtain ⟨message, present, _, named, sender⟩ := accepted event completed payload outputEq
+        have senderEq : message.sender = who := Option.some.inj (sender.symm.trans owned)
+        have input := app.ledger_subset_inputs_history (initialLaw setup) horizon scheduler
+          ⟨0, none, final⟩ trace present
+        have output : message ∈ app.outputs (final.recall who) := by
+          rw [← app.history_inputRecall (initialLaw setup) horizon scheduler trace who]
+          exact List.mem_filter.mpr ⟨input, by simp [senderEq]⟩
+        exact output_event trace who event kept message output named
 
 end Recorded
 
