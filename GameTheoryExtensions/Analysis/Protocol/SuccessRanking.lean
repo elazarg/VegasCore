@@ -486,6 +486,16 @@ theorem localFailure_le_add_of_mass [Finite T.History] (bounded : T.BoundedHoriz
   have := localFailure_nonneg fuel assessment site failed other
   linarith
 
+/-- **Sure failure ranks last.** A law that fails surely fails at least as
+often as every law, as every choice of a player whose event is doomed does. -/
+theorem localFailure_le_of_sure_failure [Finite T.History] (failed : Set T.History)
+    (law other : PMF (N.Choice who site.1))
+    (sure : localFailure fuel assessment site failed other = 1) :
+    localFailure fuel assessment site failed law ≤
+      localFailure fuel assessment site failed other := by
+  rw [sure]
+  exact localFailure_le_one fuel assessment site failed law
+
 end Values
 
 section Pooled
