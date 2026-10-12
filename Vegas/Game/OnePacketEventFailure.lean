@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketExclusionPayoff
 import Vegas.Game.RevealServiceRosterContinuation
+import Vegas.Pending.ReactiveAcceptedOutput
 
 /-! # Event-level failure read through the typed readout
 
@@ -23,20 +24,6 @@ store whose event output is not a failure is not one of them
 -/
 
 noncomputable section
-
-namespace Vegas.EventGraph.EventField
-
-variable {Player : Type} {L : IExpr}
-
-/-- A field value records a failed result: a failed binding or a failed
-publication. Other field kinds never fail. -/
-def IsFailure : (kind : EventField Player L) → kind.Value → Prop
-  | .binding _ _, value => value = .failure
-  | .publication _, value => value = .failure
-  | .publicData _, _ => False
-  | .privateInput _ _, _ => False
-
-end Vegas.EventGraph.EventField
 
 namespace Vegas
 
