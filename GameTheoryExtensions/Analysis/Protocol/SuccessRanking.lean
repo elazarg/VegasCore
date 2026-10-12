@@ -38,7 +38,13 @@ part that maximizes a success probability common to the pool
 (`GameTheory.Protocol.InformationModel.failure_le_of_common`), with the value
 of each member's site one-dimensional in it, gives the member-rationality
 obligation of a pooled limit certificate on those pools
-(`GameTheory.Protocol.InformationModel.memberRational_of_success`).
+(`GameTheory.Protocol.InformationModel.memberRational_of_success`). Single
+choices marked for comparison with a best part whose component fails least
+give the local-comparison obligation
+(`GameTheory.Protocol.InformationModel.localComparisons_of_success`). Failure
+probabilities are local values of the failure indicator, so mixing in a law
+with a small weight raises them by at most that weight
+(`GameTheory.Protocol.InformationModel.localFailure_mix_le`).
 -/
 
 noncomputable section
@@ -365,6 +371,45 @@ theorem localFailure_successValue_of_histories [Finite T.History] (failed : Set 
     rw [expect_localLaw, ← expect_const_mul]
     exact expect_near_of_near _ _ _ error historySuccess
 
+/-- **Local values of a mixture.** -/
+theorem localValue_mix [Finite T.History] (bounded : T.BoundedHorizon fuel)
+    (actsOnce : N.ActsOnceWhereItMatters) (weight : ℝ) (nonnegative : 0 ≤ weight)
+    (le_one : weight ≤ 1) (first second : PMF (N.Choice who site.1)) :
+    localValue fuel observe utility assessment site (mix weight nonnegative le_one first second) =
+      weight * localValue fuel observe utility assessment site first +
+        (1 - weight) * localValue fuel observe utility assessment site second := by
+  let := Fintype.ofFinite T.History
+  have : Finite (N.Choice who site.1) :=
+    N.finite_choice_of_played (N.site_mem_playedInformation site)
+  simp only [localValue_eq_continuationContext fuel observe utility assessment site bounded,
+    BehavioralAssessment.continuationContext_withLaw_eq_expect actsOnce]
+  exact expect_mix _ _ _ _ _ _ (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)
+
+open Classical in
+/-- The failure probability is the local value of the failure indicator. -/
+theorem localFailure_eq_localValue (failed : Set Outcome) (law : PMF (N.Choice who site.1)) :
+    localFailure fuel observe assessment site failed law =
+      localValue fuel observe (fun outcome (_ : Player) => if outcome ∈ failed then 1 else 0)
+        assessment site law := rfl
+
+/-- Mixing in a law with weight `weight` raises the failure probability by at
+most `weight`. -/
+theorem localFailure_mix_le [Finite T.History] (bounded : T.BoundedHorizon fuel)
+    (actsOnce : N.ActsOnceWhereItMatters) (failed : Set Outcome) (weight : ℝ)
+    (nonnegative : 0 ≤ weight) (le_one : weight ≤ 1) (first second : PMF (N.Choice who site.1)) :
+    localFailure fuel observe assessment site failed (mix weight nonnegative le_one first second) ≤
+      weight + localFailure fuel observe assessment site failed second := by
+  classical
+  have mixed := localValue_mix fuel observe
+    (fun outcome (_ : Player) => if outcome ∈ failed then (1 : ℝ) else 0) assessment site bounded
+    actsOnce weight nonnegative le_one first second
+  rw [← localFailure_eq_localValue, ← localFailure_eq_localValue,
+    ← localFailure_eq_localValue] at mixed
+  rw [mixed]
+  have firstLe := localFailure_le_one fuel observe assessment site failed first
+  have secondNonneg := localFailure_nonneg fuel observe assessment site failed second
+  nlinarith
+
 end Values
 
 section Pooled
@@ -626,6 +671,174 @@ theorem memberRational_of_success [Finite Pool] [DecidableEq Pool]
   · exact le_trans (otherBound n who site inDelivery alternative) (le_max_right _ _)
 
 end Pooled
+
+section Comparisons
+
+variable [Fintype T.History] {E : ExecutionProtocol Player} {M : InformationModel E}
+  {Outcome : Type*} (sourceObserve : E.History → Outcome) (sourceFuel : Nat)
+  (sourceSequence : ℕ → M.BehavioralAssessment) (fuel : Nat)
+  (bounded : T.BoundedHorizon fuel) (targetRecall : N.DecisionRecall)
+  (observe : T.History → Outcome) (utility : Outcome → Player → ℝ)
+  (fallback : ∀ who, N.Policy who) {Pool : Type*}
+  (pool : N.InformationAgent N.playedInformation → Pool) {Part : Pool → Type*}
+
+open Classical in
+/-- **Local comparisons from a success ranking.** Mark, at each site, the
+single choices to be compared with a best part of the site's pool. Suppose
+that, for every weights family the pooled completion may choose, at every
+compared site and choice: failure pays the player a fixed payoff; the
+successful part of the choice and of the component of the best part are each
+their success probability times a common continuation value up to `error n`;
+the fixed payoff is at most that continuation value up to `error n` and the
+gap is at most `bound`; and the best part's component fails with probability at
+most that of the choice up to `slack n`. If `error` and `slack` vanish and
+the unmarked choices meet the comparisons on their own, the local-comparison
+obligation of a pooled limit certificate holds: a marked choice gains at most
+what the best part's component gains, up to a vanishing error. -/
+theorem localComparisons_of_success [DecidableEq Pool]
+    (component : ℕ → ∀ agent, Part (pool agent) →
+      PMF ((N.agentForm fallback bounded.wellFoundedHistories).sig.Strategy agent))
+    (free : Finset (N.InformationAgent N.playedInformation))
+    (compared : ∀ who (site : N.InformationSite who), N.Choice who site.1 → Prop)
+    (failed : Player → Set Outcome) (excluded : Player → ℝ)
+    (pays : ∀ who, ∀ outcome ∈ failed who, utility outcome who = excluded who)
+    (bound : ℝ) (bound_nonneg : 0 ≤ bound)
+    (ranking : ∀ (weights : ℕ → ∀ p, PMF (Part p))
+        (targetSequence : ℕ → N.BehavioralAssessment),
+      (∀ n, (targetSequence n).strategy = N.agentBehavior N.playedInformation fallback
+        fun agent => (weights n (pool agent)).bind (component n agent)) →
+      (∀ n, (targetSequence n).IsFullyMixed) →
+      (∀ n, BehavioralAssessment.IsBayesConsistent N (targetSequence n)
+        targetRecall.decisionInformationAntichain) →
+      ∃ (continuation : ℕ → N.InformationAgent N.playedInformation → ℝ)
+        (best : ℕ → ∀ p, Part p) (error slack : ℕ → ℝ),
+        Tendsto error atTop (nhds 0) ∧ Tendsto slack atTop (nhds 0) ∧ (∀ n, 0 ≤ slack n) ∧
+        ∀ n who (site : N.InformationSite who) (choice : N.Choice who site.1),
+          N.agentAt site ∉ free → compared who site choice →
+          excluded who ≤ continuation n (N.agentAt site) + error n ∧
+          continuation n (N.agentAt site) - excluded who ≤ bound ∧
+          |localSuccessValue fuel observe utility (targetSequence n) site (failed who)
+              (PMF.pure choice) -
+            (1 - localFailure fuel observe (targetSequence n) site (failed who)
+              (PMF.pure choice)) * continuation n (N.agentAt site)| ≤ error n ∧
+          |localSuccessValue fuel observe utility (targetSequence n) site (failed who)
+              (component n (N.agentAt site) (best n (pool (N.agentAt site)))) -
+            (1 - localFailure fuel observe (targetSequence n) site (failed who)
+              (component n (N.agentAt site) (best n (pool (N.agentAt site))))) *
+              continuation n (N.agentAt site)| ≤ error n ∧
+          localFailure fuel observe (targetSequence n) site (failed who)
+              (component n (N.agentAt site) (best n (pool (N.agentAt site)))) ≤
+            localFailure fuel observe (targetSequence n) site (failed who) (PMF.pure choice) +
+              slack n)
+    (otherComparisons : ∀ (weights : ℕ → ∀ p, PMF (Part p))
+        (targetSequence : ℕ → N.BehavioralAssessment),
+      (∀ n, (targetSequence n).strategy = N.agentBehavior N.playedInformation fallback
+        fun agent => (weights n (pool agent)).bind (component n agent)) →
+      (∀ n, (targetSequence n).IsFullyMixed) →
+      (∀ n, BehavioralAssessment.IsBayesConsistent N (targetSequence n)
+        targetRecall.decisionInformationAntichain) →
+      (∀ n (alternative : ∀ p, PMF (Part p)) p,
+        ∑ agent ∈ Finset.univ.filter (fun agent => pool agent = p),
+          (if decision : N.IsDecisionInfo agent.1 agent.2.1 then
+            let comparison := N.assessmentComparisonWith (N.truncatedRunner fuel)
+              observe (targetSequence n) agent.1
+              (⟨agent.2.1, decision⟩, ((targetSequence n).strategy agent.1).withLaw agent.2.1
+                ((alternative (pool agent)).bind (component n agent)))
+            expect comparison.alternative (utility · agent.1) -
+              expect comparison.prescribed (utility · agent.1)
+          else 0) ≤ 0) →
+      ∃ otherError : ℕ → ℝ, Tendsto otherError atTop (nhds 0) ∧
+        ∀ n who (site : N.InformationSite who), N.agentAt site ∉ free →
+          ∀ choice : N.Choice who site.1, ¬ compared who site choice →
+          let gain := fun law : PMF (N.Choice who site.1) =>
+            let comparison := N.assessmentComparisonWith (N.truncatedRunner
+                fuel) observe (targetSequence n)
+              who (site, ((targetSequence n).strategy who).withLaw site.1 law)
+            expect comparison.alternative (utility · who) -
+              expect comparison.prescribed (utility · who)
+          gain (PMF.pure choice) ≤ otherError n ∨
+            (∃ alternative : PMF (Part (pool (N.agentAt site))),
+              gain (PMF.pure choice) ≤
+                gain (alternative.bind (component n (N.agentAt site))) + otherError n) ∨
+            ∃ mixture : PMF (M.AssessmentDeviation who),
+              gain (PMF.pure choice) ≤
+                expect mixture (fun deviation =>
+                  let sourceComparison := M.assessmentComparisonWith (M.truncatedRunner
+                      sourceFuel) sourceObserve
+                    (sourceSequence n) who deviation
+                  expect sourceComparison.alternative (utility · who) -
+                    expect sourceComparison.prescribed (utility · who)) + otherError n) :
+    ∀ (weights : ℕ → ∀ p, PMF (Part p)) (targetSequence : ℕ → N.BehavioralAssessment),
+      (∀ n, (targetSequence n).strategy = N.agentBehavior N.playedInformation fallback
+        fun agent => (weights n (pool agent)).bind (component n agent)) →
+      (∀ n, (targetSequence n).IsFullyMixed) →
+      (∀ n, BehavioralAssessment.IsBayesConsistent N (targetSequence n)
+        targetRecall.decisionInformationAntichain) →
+      (∀ n (alternative : ∀ p, PMF (Part p)) p,
+        ∑ agent ∈ Finset.univ.filter (fun agent => pool agent = p),
+          (if decision : N.IsDecisionInfo agent.1 agent.2.1 then
+            let comparison := N.assessmentComparisonWith (N.truncatedRunner fuel)
+              observe (targetSequence n) agent.1
+              (⟨agent.2.1, decision⟩, ((targetSequence n).strategy agent.1).withLaw agent.2.1
+                ((alternative (pool agent)).bind (component n agent)))
+            expect comparison.alternative (utility · agent.1) -
+              expect comparison.prescribed (utility · agent.1)
+          else 0) ≤ 0) →
+      ∃ comparisonError : ℕ → ℝ, Tendsto comparisonError atTop (nhds 0) ∧
+        ∀ n who (site : N.InformationSite who), N.agentAt site ∉ free →
+          ∀ choice : N.Choice who site.1,
+          let gain := fun law : PMF (N.Choice who site.1) =>
+            let comparison := N.assessmentComparisonWith (N.truncatedRunner
+                fuel) observe (targetSequence n)
+              who (site, ((targetSequence n).strategy who).withLaw site.1 law)
+            expect comparison.alternative (utility · who) -
+              expect comparison.prescribed (utility · who)
+          gain (PMF.pure choice) ≤ comparisonError n ∨
+            (∃ alternative : PMF (Part (pool (N.agentAt site))),
+              gain (PMF.pure choice) ≤
+                gain (alternative.bind (component n (N.agentAt site))) + comparisonError n) ∨
+            ∃ mixture : PMF (M.AssessmentDeviation who),
+              gain (PMF.pure choice) ≤
+                expect mixture (fun deviation =>
+                  let sourceComparison := M.assessmentComparisonWith (M.truncatedRunner
+                      sourceFuel) sourceObserve
+                    (sourceSequence n) who deviation
+                  expect sourceComparison.alternative (utility · who) -
+                    expect sourceComparison.prescribed (utility · who)) + comparisonError n := by
+  intro weights targetSequence played mixed bayes pooled
+  obtain ⟨continuation, best, error, slack, errorVanishes, slackVanishes, slack_nonneg,
+    facts⟩ := ranking weights targetSequence played mixed bayes
+  obtain ⟨otherError, otherVanishes, otherBound⟩ :=
+    otherComparisons weights targetSequence played mixed bayes pooled
+  let rankedError (n : ℕ) : ℝ := slack n * bound + 3 * error n
+  have rankedVanishes : Tendsto rankedError atTop (nhds 0) := by
+    have := (slackVanishes.mul_const bound).add (errorVanishes.const_mul 3)
+    rwa [zero_mul, mul_zero, zero_add] at this
+  refine ⟨fun n => max (rankedError n) (otherError n), by
+    simpa using rankedVanishes.max otherVanishes, fun n who site notFree choice => ?_⟩
+  by_cases marked : compared who site choice
+  · obtain ⟨excluded_le, gap_le, choiceNear, bestNear, ranked⟩ :=
+      facts n who site choice notFree marked
+    have dominated := localGain_le_of_failure_le fuel observe utility (targetSequence n) site
+      (failed who) (excluded who) (pays who) (continuation n (N.agentAt site)) (error n)
+      (slack n) bound (PMF.pure choice)
+      (component n (N.agentAt site) (best n (pool (N.agentAt site)))) choiceNear bestNear ranked
+      (slack_nonneg n) excluded_le gap_le bound_nonneg
+    refine Or.inr (Or.inl ⟨PMF.pure (best n (pool (N.agentAt site))), ?_⟩)
+    change localGain fuel observe utility (targetSequence n) site (PMF.pure choice) ≤
+      localGain fuel observe utility (targetSequence n) site
+        ((PMF.pure (best n (pool (N.agentAt site)))).bind (component n (N.agentAt site))) + _
+    rw [PMF.pure_bind]
+    linarith [le_max_left (rankedError n) (otherError n)]
+  · have weaker := le_max_right (rankedError n) (otherError n)
+    rcases otherBound n who site notFree choice marked with
+      small | ⟨alternative, dominated⟩ | ⟨mixture, sourced⟩
+    · exact Or.inl (small.trans weaker)
+    · exact Or.inr (Or.inl ⟨alternative, dominated.trans (by linarith)⟩)
+    · exact Or.inr (Or.inr ⟨mixture, sourced.trans (by linarith)⟩)
+
+end Comparisons
+
 
 /-- A failure probability within `drift` of one common to the pool, minimized
 by the pool's best part, ranks the best part first at every member up to

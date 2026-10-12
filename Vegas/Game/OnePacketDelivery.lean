@@ -35,7 +35,15 @@ supported trembled component (`Vegas.lateComponent`). If, from every history
 of a site's belief, each option's component fails with probability within a
 drift of one minus its score at the site's key, the prescribed option fails
 least up to twice the drift, with the same option at every site of that key
-(`Vegas.lateBest_failure_le`).
+(`Vegas.lateBest_failure_le`), and the same holds against any single late
+choice whose failure probability is near one minus the score of its option
+(`Vegas.lateBest_failure_le_of_near`). At a first activation, a trembled
+component fails at most its main law's probability plus the scale and its
+square (`Vegas.trembledChoice_failure_le`), so if the as-if-honest response
+fails with a small probability the prescribed component fails least up to a
+vanishing error (`Vegas.prescribedComponent_failure_le`). These rankings feed
+the local comparisons of a pooled limit certificate
+(`GameTheory.Protocol.InformationModel.localComparisons_of_success`).
 
 On the one-packet game, pooling the late-delivery sites whose parts share a
 success probability yields the member-rationality obligation of a pooled limit
@@ -307,6 +315,109 @@ theorem lateBest_failure_le (fuel : Nat)
   have best := (abs_le.mp (near (lateBest setup leaks success key))).2
   have other := (abs_le.mp (near option)).1
   linarith [le_lateBest setup leaks success key option]
+
+open Classical in
+/-- **A late choice ranks below the prescribed option.** At a site whose
+late-delivery key is `key`, let `bestLaw` realize the prescribed option and
+`law` some option, in the sense that from every history of the site's belief
+each fails with probability within `drift` of one minus its option's score at
+`key`. Then `bestLaw` fails with probability at most that of `law` up to
+`2 * drift`. With `law` a single late choice, as a send now at any slot or a
+wait, this is the ranking of the local comparison at a late-delivery site. -/
+theorem lateBest_failure_le_of_near (fuel : Nat)
+    (assessment : (onePacketModel setup leaks bounds initial horizon
+      scheduler).BehavioralAssessment) {slots : Nat}
+    (success : LateKey setup leaks → LateOption slots → ℝ) (drift : ℝ) {who : Player}
+    (site : (onePacketModel setup leaks bounds initial horizon scheduler).InformationSite who)
+    (key : LateKey setup leaks) (option : LateOption slots)
+    (bestLaw law :
+      PMF ((onePacketModel setup leaks bounds initial horizon scheduler).Choice who site.1))
+    (bestCommon : ∀ history ∈ (assessment.belief who site).support,
+      |expect (localHistoryLaw fuel (fun history => sourceReadout setup leaks history.state)
+          assessment site bestLaw history)
+        (fun outcome => if outcome ∈ FailedReadout setup who then 1 else 0) -
+        (1 - success key (lateBest setup leaks success key))| ≤ drift)
+    (lawCommon : ∀ history ∈ (assessment.belief who site).support,
+      |expect (localHistoryLaw fuel (fun history => sourceReadout setup leaks history.state)
+          assessment site law history)
+        (fun outcome => if outcome ∈ FailedReadout setup who then 1 else 0) -
+        (1 - success key option)| ≤ drift) :
+    localFailure fuel (fun history => sourceReadout setup leaks history.state) assessment site
+        (FailedReadout setup who) bestLaw ≤
+      localFailure fuel (fun history => sourceReadout setup leaks history.state) assessment site
+        (FailedReadout setup who) law + 2 * drift := by
+  have best := (abs_le.mp (localFailure_near_of_histories fuel _ assessment site
+    (FailedReadout setup who) bestLaw _ drift bestCommon)).2
+  have other := (abs_le.mp (localFailure_near_of_histories fuel _ assessment site
+    (FailedReadout setup who) law _ drift lawCommon)).1
+  linarith [le_lateBest setup leaks success key option]
+
+/-- A trembled component fails with probability at most its main law's plus
+the scale and its square. -/
+theorem trembledChoice_failure_le (fuel : Nat)
+    (bounded : ((bounds.onePacketMenu (runtime setup) leaks).protocol initial horizon
+      scheduler).BoundedHorizon fuel)
+    (actsOnce : (onePacketModel setup leaks bounds initial horizon
+      scheduler).ActsOnceWhereItMatters)
+    (assessment : (onePacketModel setup leaks bounds initial horizon
+      scheduler).BehavioralAssessment) {who : Player}
+    (site : (onePacketModel setup leaks bounds initial horizon scheduler).InformationSite who)
+    (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
+    (main alternative :
+      PMF ((onePacketModel setup leaks bounds initial horizon scheduler).Choice who site.1)) :
+    localFailure fuel (fun history => sourceReadout setup leaks history.state) assessment site
+        (FailedReadout setup who)
+        (trembledChoice setup leaks bounds initial horizon scheduler scale nonnegative le_one who
+          site.1 main alternative) ≤
+      scale ^ 2 + scale + localFailure fuel (fun history => sourceReadout setup leaks
+        history.state) assessment site (FailedReadout setup who) main := by
+  unfold trembledChoice
+  have outer := localFailure_mix_le fuel (fun history => sourceReadout setup leaks history.state)
+    assessment site bounded actsOnce
+    (FailedReadout setup who) (scale ^ 2) (sq_nonneg _) (pow_le_one₀ nonnegative le_one)
+    (((bounds.onePacketMenu (runtime setup) leaks).uniformPolicy initial horizon scheduler who
+      site.1))
+    (mix scale nonnegative le_one alternative main)
+  have inner := localFailure_mix_le fuel (fun history => sourceReadout setup leaks history.state)
+    assessment site bounded actsOnce
+    (FailedReadout setup who) scale nonnegative le_one alternative main
+  linarith
+
+/-- **Sending at the first activation ranks first.** If the as-if-honest
+response fails with probability at most `later`, as when the canonical packet
+sent at the first activation is accepted on time on every history and only a
+later event of the player can fail, then the prescribed component fails with
+probability at most that of every law up to `scale ^ 2 + scale + later`. This
+is the ranking of the local comparison of silence, and of every late send,
+against the prescribed component at a first activation. -/
+theorem prescribedComponent_failure_le (fuel : Nat)
+    (bounded : ((bounds.onePacketMenu (runtime setup) leaks).protocol initial horizon
+      scheduler).BoundedHorizon fuel)
+    (actsOnce : (onePacketModel setup leaks bounds initial horizon
+      scheduler).ActsOnceWhereItMatters)
+    (assessment : (onePacketModel setup leaks bounds initial horizon
+      scheduler).BehavioralAssessment) (intended : setup.intendedModel.BehavioralAssessment)
+    {who : Player}
+    (site : (onePacketModel setup leaks bounds initial horizon scheduler).InformationSite who)
+    (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) (later : ℝ)
+    (honestFails : localFailure fuel (fun history => sourceReadout setup leaks history.state)
+      assessment site (FailedReadout setup who)
+      (honestChoice setup leaks bounds initial horizon scheduler intended who site.1) ≤ later)
+    (law : PMF ((onePacketModel setup leaks bounds initial horizon scheduler).Choice who site.1)) :
+    localFailure fuel (fun history => sourceReadout setup leaks history.state) assessment site
+        (FailedReadout setup who)
+        (prescribedComponent setup leaks bounds initial horizon scheduler intended scale
+          nonnegative le_one who site.1) ≤
+      localFailure fuel (fun history => sourceReadout setup leaks history.state) assessment site
+        (FailedReadout setup who) law + (scale ^ 2 + scale + later) := by
+  have trembled := trembledChoice_failure_le setup leaks bounds initial horizon scheduler fuel
+    bounded actsOnce assessment site scale nonnegative le_one
+    (honestChoice setup leaks bounds initial horizon scheduler intended who site.1)
+    (PMF.pure (silenceChoice setup leaks bounds initial horizon scheduler who site.1))
+  have nonneg := localFailure_nonneg fuel (fun history => sourceReadout setup leaks
+    history.state) assessment site (FailedReadout setup who) law
+  unfold prescribedComponent
+  linarith
 
 end LateRule
 
