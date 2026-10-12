@@ -84,6 +84,14 @@ Review history:
     unconditional source beliefs and continuation values. They now use only
     pointwise continuation agreement and the conditional argument.
 
+  A review of those fixes found one more gap, fixed in this revision:
+  - conditioning on phase success also changes the law of other owners'
+    *later* choices in the phase. An owner whose limit strategy fails surely
+    has a value distribution conditional on moving that $\sigma^X$ does not
+    record. $\nu^X$ is now the conditioned limit law of the whole phase
+    outcome, past and future, and $W_I$ is defined from it together with the
+    unconditioned continuation after the phase; Lemma A3(3) and E1 follow.
+
   These fixes have not been re-reviewed.
 
 ## Summary
@@ -553,13 +561,35 @@ properties of the construction.
 
 **Phase success.** At a commit set $I$ of $j$, write $\Phi$ for the event
 that no binding of another owner in the current phase fails. At every stage
-$n$ the profile is fully mixed, so $\Pr_n(\Phi\mid I)>0$. Write $\nu^X(I)$ for
-the limit of the stage-$n$ beliefs at $I$ conditioned on $\Phi$; the
-subsequence below is chosen so that these limits exist too. When
-$\Pr(\Phi\mid I)>0$ in the limit, $\nu^X(I)$ is just $\mu^X(I)$ conditioned on
-$\Phi$. When it is zero, conditioning the limit is undefined, but $\nu^X(I)$
-still is. For a value $v$, let $W_I(v)$ be $j$'s expected payoff from
-committing $v$, given $\Phi$, at belief $\nu^X(I)$, with continuation
+$n$ the profile is fully mixed, so $\Pr_n(\Phi\mid I)>0$.
+
+Conditioning on $\Phi$ changes more than beliefs about the past. It also
+changes the law of other owners' choices later in the same phase: given
+$\Phi$ they move, and an owner whose limit strategy fails surely still has a
+well-defined value distribution conditional on moving at stage $n$, which
+the limit strategy does not record. So the object to carry is the whole
+**phase outcome** $\omega$: the active players' hidden values and the other
+owners' choices in the current phase, as they stand when the phase ends,
+earlier hidden values included. Write
+$$
+\nu^X_n(I)=\Pr_n(\omega\in\cdot\mid I,\Phi),\qquad \nu^X(I)=\lim_n\nu^X_n(I),
+$$
+along the subsequence below, chosen so that these limits exist too. $j$'s
+own choices are not part of $\omega$: given the public record at the start
+of the phase they are independent of $\omega$, and others never observe them
+within the phase, so $\Phi$ does not distort them. When $\Pr(\Phi\mid I)>0$ in
+the limit, $\nu^X(I)$ is just the limit law conditioned on $\Phi$. When it is
+zero, conditioning the limit is undefined, but $\nu^X(I)$ still is.
+
+After the phase ends nothing is conditioned any more. For a $\Gamma^X$
+history $h$ at the end of the phase, a node rather than an information set,
+let $U(h)$ be $j$'s expected payoff from $h$ under $\sigma^X$. For a value
+$v$, let
+$$
+W_I(v)=\mathbb E_{\omega\sim\nu^X(I)}\bigl[U(h(v,\omega))\bigr],
+$$
+where $h(v,\omega)$ is the end-of-phase history with $j$'s commitment $v$,
+the outcome $\omega$, and $j$'s later choices in the phase drawn from
 $\sigma^X$. Part 3 says: every value that $\sigma^X$ plays at $I$ with positive
 probability maximizes $W_I$.
 
@@ -587,8 +617,8 @@ beliefs, which are well defined because the profile is fully mixed, have
 closed graph and convex values. So the constrained game has an equilibrium
 $\sigma_n$ by Kakutani's theorem. Pass to a subsequence along which $\sigma_n$
 and its Bayes beliefs $\mu_n$ converge, to $(\sigma^X,\mu^X)$, and along
-which the beliefs at commit sets conditioned on phase success converge too
-(Part 3). There are finitely many sets, so one subsequence serves.
+which the conditioned laws $\nu^X_n(I)$ of the phase outcome at commit sets
+converge too (Part 3). There are finitely many sets, so one subsequence serves.
 
 *Consistency.* $(\sigma^X,\mu^X)$ is the limit of Bayes beliefs of fully mixed
 profiles, with Nature's laws fixed. This is Kreps–Wilson consistency.
@@ -716,13 +746,22 @@ the reset voids $v$, and it does not depend on $v$:
 
 $\Pr_n(\Phi\mid I)$ does not depend on $v$ either, because others choose
 without observing it. A free agent best-responds exactly, so any value it
-plays above the minimum probability maximizes $W_{I,n}$. $W_{I,n}\to W_I$,
-because the beliefs converge to $\nu^X(I)$ and the continuation profiles to
-$\sigma^X$. So in the limit every value in the support of $\sigma^X$ at $I$
+plays above the minimum probability maximizes $W_{I,n}$. Here
+$W_{I,n}(v)=\mathbb E_{\omega\sim\nu^X_n(I)}[U_n(h(v,\omega))]$, with $U_n$ the
+stage-$n$ value from an end-of-phase node and $j$'s later in-phase choices
+drawn from $\sigma_n$. Then $W_{I,n}\to W_I$:
+- $\nu^X_n(I)\to\nu^X(I)$ by the choice of subsequence. This carries the
+  conditioned law of others' future in-phase choices, which $\sigma^X$ alone
+  would not;
+- $U_n\to U$ pointwise, since the value from a node is a polynomial in the
+  profile and $\sigma_n\to\sigma^X$, in a finite game;
+- $j$'s later in-phase choices converge to $\sigma^X$, and are not
+  conditioned. So in the limit every value in the support of $\sigma^X$ at $I$
 maximizes $W_I$. At honest-region sets, others fail with probability at most
-$\eta_n\to0$ and violators have zero weight, so $\Pr(\Phi\mid I)\to1$,
-$\nu^X(I)=\mu^H(I)$, and $\sigma^H$ maximizes $W_I$ by its sequential
-rationality. $\square$
+$\eta_n\to0$ and violators have zero weight, so $\Pr(\Phi\mid I)\to1$.
+Then $\nu^X(I)$ is the honest law: $\mu^H(I)$ for the past, and $\sigma^H$ for
+others' later choices in the phase. So $W_I$ is the honest continuation
+value, and $\sigma^H$ maximizes it by its sequential rationality. $\square$
 
 Two remarks:
 - Under concurrency, a violating value can tie with an honest one only when
@@ -1598,7 +1637,7 @@ that it still does no better than $\varphi^*$.
 which forced and lifted sets play the profile above, and free sets choose
 freely with minimum probability $\zeta_n^{M_3}$ on every action. It exists by
 Kakutani's theorem. Pass to a subsequence along which the profiles, their
-Bayes beliefs, and the beliefs at commit sets conditioned on phase success
+Bayes beliefs, and the conditioned laws of the phase outcome at commit sets
 (Lemma A3(2)) converge.
 
 **How native and $\Gamma^X$ weights compare.** For a clean history $h$,
@@ -1635,14 +1674,20 @@ values given the public history.
    binding.
 2. At every forced or lifted set $I$ in a commit phase with no observed
    failure in the phase, define $\nu(I)$ as in Proposition 1: the limit of
-   the stage-$n$ beliefs at $I$ about the active players' values,
-   conditioned on $\Phi$ (no other owner's binding in the phase fails). Then
-   $\nu(I)=\nu^X(\Pi(I))$. On forced sets $\Pr(\Phi\mid I)\to1$, and this is
-   $\mu^H$, by Proposition 1. At a set where a failure in the phase has been
-   observed, $\Phi$ is false, no claim is made, and none is needed: the
-   owner's binding will be voided.
-3. At such a set, the owner predicts the others' not-yet-chosen values of
-   the phase by $\sigma^X$ at their sets.
+   the stage-$n$ native laws, given $I$ and $\Phi$ (no other owner's binding
+   in the phase fails), of the phase outcome $\omega$, projected to
+   $\Gamma^X$. Then $\nu(I)=\nu^X(\Pi(I))$. On forced sets $\Pr(\Phi\mid I)\to1$,
+   and this is the honest law, by Proposition 1. At a set where a failure in
+   the phase has been observed, $\Phi$ is false, no claim is made, and none is
+   needed: the owner's binding will be voided.
+3. In particular, the owner predicts the others' not-yet-chosen values of
+   the phase by the future part of $\nu^X(\Pi(I))$. Where $\sigma^X$ moves at
+   those owners' sets with positive probability, this is $\sigma^X$
+   conditioned on moving. Where $\sigma^X$ fails surely, it is the limit of
+   $\sigma^X_n$ conditioned on moving. For instance, a doomed owner may play
+   $\Pr_n(\mathrm{fail})=1-3\delta_n$, $\Pr_n(0)=\delta_n$, $\Pr_n(1)=2\delta_n$;
+   its limit strategy fails surely, but given $\Phi$ its value is $0$ or $1$
+   with probabilities $\tfrac13,\tfrac23$.
 
 The unconditioned belief can be finer than $\mu^X(\Pi(I))$ at lifted sets.
 Suppose a player A is privately doomed for some of its hidden values but not
@@ -1677,10 +1722,23 @@ opaque, the builder is value-blind, binding delivery reads no value, and the
 timing tier is the same at every set and for every value. So conditioning on
 no failure in the phase removes the only value-dependent factor. By the
 bound there, $N_n$ reads no other unopened value, up to a factor $1+o(1)$.
-So at every stage $n$ the native posterior over active players' values,
+So at every stage $n$ the native posterior over the past part of $\omega$,
 given $\Phi$, is the $\Gamma^X$ posterior at $\Pi(I)$ given $\Phi$, times
-$1+o(1)$. This compares stage-$n$ distributions, at which $\Phi$ has positive
-probability in both games, so it holds even where $\Phi$ has limit
+$1+o(1)$.
+
+For the future part, each other owner's later in-phase choice is made at a
+native set whose source-level play is $\sigma^X_n$ at its projection, which
+is the corresponding $\Gamma^X$ set, since $\Pi$ ignores in-phase
+observations. Natively a move can still fail, through a timing tremble
+followed by a failed delivery. That factor is $1-O(\zeta_n)$ for every value
+alike, because the timing tier is the same at every set and for every value,
+and binding delivery reads no value. So given $\Phi$ the native law of each
+future choice is $\sigma^X_n$ conditioned on moving, times $1+o(1)$. This holds
+even when moving has vanishing probability, because the comparison is a
+ratio among moves.
+
+Both comparisons are between stage-$n$ distributions, at which $\Phi$ has
+positive probability in both games, so they hold even where $\Phi$ has limit
 probability zero. Taking limits gives $\nu(I)=\nu^X(\Pi(I))$.
 
 The hidden commitments of different players are independent given the public
@@ -1688,7 +1746,9 @@ history, because in $\Gamma^X$ every choice reads only public data and its
 owner's own commitments.
 
 The phase's not-yet-chosen values of other owners are chosen at information
-sets that contain no other owner's value from the phase. $\square$
+sets that contain no other owner's value from the phase, so the past and
+future parts of $\omega$ are independent given the public record, at every
+stage $n$. $\square$
 
 **Lemma D3 (value choice under reset).** Take a forced set in a commit phase
 at which owner $j$ chooses a value $v$, together with any own-service delivery
@@ -1849,10 +1909,14 @@ rules are own-service, so they do not react to others' traffic. The cases:
     $I$ is worth $\Pr(\Phi\mid I)\,W(v)+R$, with $\Pr(\Phi\mid I)$ and $R$
     independent of $v$ (Lemma D3's decomposition, which holds at lifted sets
     with continuation $\sigma^X$). If $\Pr(\Phi\mid I)=0$, including after an
-    observed failure, every value is optimal. Otherwise $W$ is computed at the
-    limit belief conditioned on $\Phi$, which equals $\nu(I)$, so $W=W_{\Pi(I)}$
-    by Lemma A3(2) and pointwise agreement. $\sigma^X$'s values maximize
-    $W_{\Pi(I)}$ by Proposition 1(3).
+    observed failure, every value is optimal. Otherwise $W(v)$ is the
+    expectation, under the limit assessment given $\Phi$, of the native
+    continuation value from the end of the phase. With a positive
+    denominator, that conditional law of the phase outcome is the limit of
+    the stage-$n$ conditional laws, which is $\nu(I)=\nu^X(\Pi(I))$ by Lemma
+    A3(2). The native value from the end of the phase is $U$ of its
+    projection, by pointwise agreement and past-blindness (P). So
+    $W=W_{\Pi(I)}$, and $\sigma^X$'s values maximize it by Proposition 1(3).
   - *Moving versus failing.* Moving is optimal pointwise for a player that
     is not doomed (D2 of Theorem 4), whatever the beliefs. A doomed player is
     covered by the own-bad-binding argument.
@@ -1882,7 +1946,9 @@ rules are own-service, so they do not react to others' traffic. The cases:
 of 4.4 together with the free-region equilibrium at stage $n$. Every belief is
 the limit of its Bayes beliefs. On forced sets in commit phases they are
 $\mu^H$. On lifted sets they need not equal $\mu^X(\Pi(I))$; what Lemma A3(2)
-gives, and the proof uses, is $\nu(I)=\nu^X(\Pi(I))$.
+gives, and the proof uses, is $\nu(I)=\nu^X(\Pi(I))$, the conditioned law of
+the whole phase outcome. Its limits exist along the subsequence of 4.4,
+which is chosen for them.
 
 **Preservation.** On the path every owner sends its free packet at its first
 activation, which succeeds surely. So no exclusion or reset occurs, and play
@@ -2130,11 +2196,13 @@ strength.
 clean sets put zero weight on unclean histories (Lemma A3).
 
 - **E1. Beliefs are source beliefs.** Take a clean set $I$ at which the owner
-  has a value choice, with no failure observed in its phase. Its belief
-  about others' unopened values given that no other binding of the phase
-  fails, taken as a limit of conditioned beliefs ($\nu$, Lemma A3), is the
-  only belief its value choice reads. That belief, and its prediction of the
-  not-yet-chosen values of its phase, are those at $I^X$ under $\sigma^X$. The unconditioned belief may be finer: an
+  has a value choice, with no failure observed in its phase. What its value
+  choice reads is the law of the phase outcome (others' unopened values and
+  their choices in the phase) given that no other binding of the phase
+  fails, taken as a limit of conditioned laws ($\nu$, Lemma A3). That law is
+  the one at $I^X$ in $\Gamma^X$. It includes a prediction of others'
+  not-yet-chosen values given that they move, which can come from the
+  tremble sequence where $\sigma^X$ fails surely. The unconditioned belief may be finer: an
   accepted binding in the phase shows that its owner moved, and a privately
   doomed owner's move can depend on its hidden values (Lemma A3). Values seen in included openings whose result is
   $\mathsf{fail}$ belong to excluded players. By the product structure they say
