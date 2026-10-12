@@ -31,12 +31,16 @@ Review history:
   - sequential rationality where native information is finer than
     $\Gamma^X$'s.
 
-**Not yet reviewed in their current form:**
-- Proposition 1, with this revision's fixes: the honest-region definition, the
-  belief bounds, and the backward induction for "never fail" (1.6);
-- the treatment of publicly and privately doomed players and of own bad
-  bindings, in Theorems 2 and 3 (3.1, 3.2, 4.4, 4.5);
-- Theorem 3's lifted construction (Section 4) and Theorem 4 (Section 5).
+- A re-review of that revision confirmed every fix and found nothing fatal.
+  It concluded that the note is ready for external review once four minor
+  items were fixed. They are fixed here:
+  - "never fail" now runs its backward induction on $j$'s value, so that
+    violations are covered too;
+  - the value after a reset is stated as at least $a_j$;
+  - the tremble-order step now notes that it needs $\mathcal T\ge2$;
+  - two wording fixes.
+
+  These last fixes have not been re-reviewed.
 
 ## Summary
 
@@ -510,7 +514,7 @@ $\Gamma^X$. Every information set is an agent with its own menu.
   share $\eta_n^2$ uniformly.
 - **All other agents are free.** They choose any behaviour that gives every
   action probability at least $\eta_n^{M_1}$, for a fixed exponent
-  $M_1\ge2$. Any positive minimum that tends to zero would do.
+  $M_1\ge2$. Part 2 below needs the minimum to be $O(\eta_n)$, which this gives.
 
 The sequences satisfy two conditions:
 $$
@@ -529,7 +533,7 @@ profiles, with Nature's laws fixed. This is Kreps–Wilson consistency.
 
 *Beliefs on the honest region.* Take an honest-region set $I$.
 - It contains a history with no failure and no violation. Its weight is at
-  least $\eta_n^{0}\rho_n^{\mathcal T}$ times factors common to the set.
+  least $\rho_n^{\mathcal T}$ times factors common to the set.
 - A history in $I$ in which another player violated carries a factor
   $\eta_n^2$. Its counterpart, with the same public record and a sequentially
   honest assignment (counterpart property), may need up to $\mathcal T$ of
@@ -586,32 +590,46 @@ sequential. With the one-shot deviation principle, this gives sequential
 rationality at every free set.
 
 *Part 2: never fail.* Let $a_j<m_j$. At honest-region sets $j$ fails with
-probability $\eta_n\to0$, by construction. For the free sets we prove the
-following claim by backward induction over $j$'s free sets, at each fixed
-large $n$. There is a constant $C$, depending only on the payoffs and on
-$\mathcal T$, such that at every free set $I$ of $j$ at which $j$ is not
-privately doomed:
-- $j$'s value in the constrained game is at least $m_j-C\eta_n$;
-- failing gets exactly the minimum probability $\eta_n^{M_1}$.
+probability $\eta_n\to0$, by construction. The free sets need a backward
+induction at each fixed large $n$. The induction runs on $j$'s **value**, not
+on its failure probability: a free agent of $j$ might violate rather than fail,
+and under Stage S a violation also excludes.
 
-*Proof of the claim.* Consider the action "move", with a guard-accepted value
-at a commit (one exists by guard satisfiability), or "open" at a reveal.
-After it, $j$ is still not privately doomed, and nobody else can make it so.
-Along the continuation, every later set of $j$ is one of two kinds:
-- a forced honest-region set, where $j$ fails with probability $\eta_n$ and
-  violates with probability $\eta_n^2$;
-- a free set at which $j$ is not privately doomed, where by the induction
-  hypothesis $j$ fails with probability $\eta_n^{M_1}$.
+Write $k$ for the number of $j$'s own later sets, which is at most
+$\mathcal T$. Write $\operatorname{sp}_j$ for the spread of $j$'s gross payoff (1.3).
 
-Under concurrency a reset may void $j$'s binding. Then $j$ commits again and is
-still not excluded. So $j$ is excluded with probability at most
-$\mathcal T(\eta_n+\eta_n^2+\eta_n^{M_1})$, and otherwise receives a
-non-excluded payoff, which is at least $m_j$. Hence the action is worth at least
-$m_j-C\eta_n$, and so is $j$'s value at $I$.
+**Claim.** At every set $I$ of $j$, forced or free, at which $j$ is not
+privately doomed and has at most $k$ later own sets, $j$'s value in the
+constrained game at stage $n$ is at least $m_j-c_k\eta_n$. Here
+$c_0=0$ and $c_{k+1}=c_k+2\operatorname{sp}_j$.
 
-Failing yields $a_j<m_j-C\eta_n$ for large $n$. So failing is strictly worse
-than an available action, by a margin bounded away from zero. In the
-constrained game it therefore gets exactly its minimum $\eta_n^{M_1}\to0$.
+*Proof of the claim.* Consider the action "move": a guard-accepted value at a
+commit, which exists by guard satisfiability, or "open" at a reveal. After it,
+$j$ is still not privately doomed. Its own later sets, if any, satisfy the
+claim with $k-1$, by the induction hypothesis. If it has none, the result is a
+terminal history in which $j$ is not excluded, worth at least $m_j$. Under
+concurrency a reset may void $j$'s binding; $j$ then commits again and is still
+not excluded. So "move" is worth at least $m_j-c_{k-1}\eta_n$.
+
+- At a free set, $j$ best-responds, subject to the minimum probability
+  $\eta_n^{M_1}$ on each of its actions, of which there are at most $\bar c$
+  (the largest menu size). Its value is therefore at
+  least that of "move", minus $\bar c\,\eta_n^{M_1}\operatorname{sp}_j\le\eta_n\operatorname{sp}_j$ for
+  large $n$, since $M_1\ge2$.
+- At a forced honest-region set, $j$ plays $\sigma^H_n$ scaled by
+  $1-\eta_n-\eta_n^2$. Honest actions keep it not privately doomed. Failing
+  and violating cost at most $\operatorname{sp}_j$ each, with total probability
+  $\eta_n+\eta_n^2\le2\eta_n$. So its value is at least
+  $m_j-c_{k-1}\eta_n-2\eta_n\operatorname{sp}_j$.
+
+Either way, the value is at least $m_j-c_k\eta_n$. $\square$
+
+With $C=c_{\mathcal T}=2\mathcal T\operatorname{sp}_j$, failing yields
+$a_j<m_j-C\eta_n$ for large $n$. So at every free set of a non-doomed $j$,
+failing is strictly worse than an available action, by a margin bounded away
+from zero. In the constrained game it therefore gets exactly its minimum
+$\eta_n^{M_1}\to0$. This uses that the minimum is $O(\eta_n)$, which
+$M_1\ge2$ gives.
 
 Two remarks:
 - Under concurrency, a violating value can tie with an honest one only when
@@ -1426,7 +1444,8 @@ built from $\sigma^X_n$:
     On the honest region that is $\sigma^H_n$ scaled as in Proposition 1. At
     the owner's own guard-violating sets it is Proposition 1's play there.
   - Native-only bad bindings (unopenable or wrongly typed) are in the
-    $\zeta_n^2$ tier below, and others' beliefs give them zero weight. Their
+    $\zeta_n^2$ tier below, and others' beliefs give them zero weight
+    (Lemma A3, part 1). Their
     owner sends on time and otherwise plays as if the bad binding held a fixed
     honest value. Any uncharged choice is optimal for it, by the own-bad-binding
     argument of 4.5.
@@ -1478,7 +1497,8 @@ $N_n$ collects four things:
 A native failure is either a source-level failure (never sending) or a
 timing deviation followed by a failed delivery. The first has probability
 $\sigma^X_n(\text{fail})\ge\rho^X_n$. The second has probability at most
-$\zeta_n$, and $\zeta_n=o(\rho^X_n)$ by the first condition above. So the ratio
+$\zeta_n$, and $\zeta_n=o(\rho^X_n)$ by the first condition above, because
+$\mathcal T\ge2$. So the ratio
 is $1+o(1)$, uniformly. Every other part of $N_n$ reads no unopened value:
 bindings are opaque, the builder is per-event value-blind, and binding
 policies read no value.
@@ -1593,8 +1613,10 @@ guard-violating.
   excluded at the reveal that $b$ dooms, or earlier. Its gross payoff is $a_j$
   whatever it does, so every uncharged action is optimal.
 - *If $b$'s commit phase is still open*, a failure of another binding of the
-  phase voids $b$ through the reset. Then $j$ commits again. By never fail,
-  its continuation is then worth $V_{\mathrm{reset}}\ge m_j>a_j$. A delivery
+  phase voids $b$ through the reset. Then $j$ commits again, and its
+  continuation is worth $V_{\mathrm{reset}}\ge a_j$. It is at least $m_j$ by
+  never fail, unless $j$ holds another bad binding that still stands, in which
+  case it equals $a_j$. Either way the conclusion below holds. A delivery
   policy $s$ for $b$ yields
   $$
   P_s\bigl[\pi\,V_{\mathrm{reset}}+(1-\pi)\,a_j\bigr]+(1-P_s)\,a_j ,
