@@ -1,14 +1,14 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.OnePacketTrembles
+import Vegas.Game.OnePacketPrescribedSupport
 import Vegas.Game.OnePacketExclusionPayoff
 import GameTheoryExtensions.Analysis.Protocol.SupportedChoiceContinuation
 
 /-! # The one-packet law under trembles
 
 A trembled component keeps the fraction `(1 - scale²)(1 - scale)` of its main
-law at every choice (`Vegas.trembledChoice_main_le`), so the prescribed
-component dominates the as-if-honest choice (`Vegas.prescribedComponent_honest_le`).
+law at every choice (`Vegas.trembleRetention`), so the prescribed component
+dominates the as-if-honest choice.
 
 The as-if-honest profile plays the as-if-honest choice at every information
 state (`Vegas.honestProfile`). A profile of the one-packet game that dominates
@@ -68,42 +68,6 @@ theorem one_sub_trembleRetention_le {scale : ℝ} (nonnegative : 0 ≤ scale) :
   unfold trembleRetention
   nlinarith [pow_nonneg nonnegative 3]
 
-/-- **A trembled component keeps its main law.** -/
-theorem trembledChoice_main_le (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
-    (who : Player) (info : (application setup leaks).Info)
-    (main alternative :
-      PMF ((onePacketModel setup leaks bounds initial horizon scheduler).Choice who info))
-    (choice : (onePacketModel setup leaks bounds initial horizon scheduler).Choice who info) :
-    trembleRetention scale * (main choice).toReal ≤
-      (trembledChoice setup leaks bounds initial horizon scheduler scale nonnegative le_one who
-        info main alternative choice).toReal := by
-  rw [trembledChoice_apply_toReal]
-  unfold trembleRetention
-  have square : scale ^ 2 ≤ 1 := pow_le_one₀ nonnegative le_one
-  have uniform := ENNReal.toReal_nonneg (a := ((bounds.onePacketMenu (runtime setup)
-    leaks).uniformPolicy initial horizon scheduler who info choice))
-  have other := ENNReal.toReal_nonneg (a := alternative choice)
-  have mainMass := ENNReal.toReal_nonneg (a := main choice)
-  have first : 0 ≤ scale ^ 2 * ((bounds.onePacketMenu (runtime setup) leaks).uniformPolicy
-      initial horizon scheduler who info choice).toReal :=
-    mul_nonneg (sq_nonneg _) uniform
-  have second : 0 ≤ (1 - scale ^ 2) * (scale * (alternative choice).toReal) :=
-    mul_nonneg (sub_nonneg.mpr square) (mul_nonneg nonnegative other)
-  nlinarith
-
-/-- **The prescribed component keeps the as-if-honest choice.** -/
-theorem prescribedComponent_honest_le (assessment : setup.intendedModel.BehavioralAssessment)
-    (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) (who : Player)
-    (info : (application setup leaks).Info)
-    (choice : (onePacketModel setup leaks bounds initial horizon scheduler).Choice who info) :
-    trembleRetention scale *
-        (honestChoice setup leaks bounds initial horizon scheduler assessment who info
-          choice).toReal ≤
-      (prescribedComponent setup leaks bounds initial horizon scheduler assessment scale
-        nonnegative le_one who info choice).toReal :=
-  trembledChoice_main_le setup leaks bounds initial horizon scheduler scale nonnegative le_one
-    who info _ _ choice
-
 end Components
 
 section Law
@@ -157,8 +121,8 @@ theorem dominatesHonestFrom_of_prescribed
       start := by
   intro fuel history reached who choice
   rw [prescribed fuel history reached who]
-  exact prescribedComponent_honest_le setup leaks bounds initial horizon scheduler assessment
-    scale nonnegative le_one who _ choice
+  exact trembledChoice_ge_main setup leaks bounds initial horizon scheduler nonnegative le_one
+    who _ _ _ choice
 
 /-- **Continuations near as-if-honest play.** From every history, a profile
 dominating as-if-honest play from it has, at every fuel, a continuation within
