@@ -78,6 +78,7 @@ import Vegas.Examples.LateOpeningRuntimeBobDirtyFinalRationality
 import Vegas.Examples.LateOpeningRuntimeBobDirtyFinalFiber
 import Vegas.Examples.LateOpeningRuntimeBobDirtyOptionalFiber
 import Vegas.Game.IntendedPreservation
+import Vegas.Game.ExclusionExtension
 import Vegas.Game.IntendedServiceCompilation
 import Vegas.Game.ReactiveSourceObservation
 import Vegas.Pending.ReactivePosteriorUniqueness
@@ -284,6 +285,7 @@ import Vegas.Examples.LateOpeningRuntimeSourceSeObstruction
 import Vegas.Examples.LateOpeningRuntimeUnseenLikelihood
 import Vegas.Examples.LateLeak.SettleLateLikelihood
 import Vegas.Pending.ReactiveLateLottery
+import Vegas.Game.OnePacketExtension
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -455,6 +457,63 @@ theorem intended_sequential_equilibrium [Fintype Player] [IExpr.ResultTypes L]
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.intended_sequential_equilibrium
+
+open Vegas.SourceProgram GameTheory.Protocol in
+/-- **Intended equilibria extend to the source game with exclusion.** In the
+exclusion game events run one at a time in program order; at its own events a
+player binds any value of the domain, with guards deferred to the reveal that
+completes them, or opens, or fails, and once one of its events has failed, it
+can only fail its later events and receives a fixed exclusion payoff. For a
+well-formed setup with finite commitment payload types and a finite initial
+law, and exclusion payoffs no larger than any intended terminal payoff, every
+sequential equilibrium of the intended game extends to a sequential equilibrium
+of the exclusion game that plays the intended laws and keeps the intended
+beliefs at every intended decision site, with the intended joint law of typed
+terminal state and payoff. -/
+theorem exclusion_sequential_equilibrium [Fintype Player] [IExpr.ResultTypes L]
+    (setup : Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
+    (wellFormed : setup.WellFormed) {Parameter : Type}
+    (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (excludedPayoff : Player → ℝ)
+    (below : ∀ (final : setup.intendedProtocol.History) terminal,
+      setup.protocolReadout final.state = some terminal →
+        ∀ who, excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who)
+    (intended : setup.intendedModel.BehavioralAssessment)
+    (equilibrium : intended.IsSequentialEquilibrium setup.intended_decision_antichain
+      setup.intended_bounded.wellFoundedHistories
+      (fun who final => (setup.protocolReadout final.state).elim 0
+        (fun state => utility (setup.parameterOutcome parameter state) who))) :
+    ∃ target : setup.exclusionModel.BehavioralAssessment,
+      target.IsSequentialEquilibrium setup.exclusion_decisionRecall.decisionInformationAntichain
+        setup.exclusion_bounded.wellFoundedHistories
+        (fun who final => (setup.protocolReadout final.state).elim 0
+          (fun state => exclusionUtility setup.program excludedPayoff utility
+            (setup.parameterOutcome parameter state) who)) ∧
+      (setup.exclusionRestriction wellFormed).ExtendsProfile intended.strategy
+        target.strategy ∧
+      (∀ who site, target.belief who ((setup.exclusionRestriction wellFormed).site who site) =
+        (intended.belief who site).map
+          ((setup.exclusionRestriction wellFormed).informationHistory who site)) ∧
+      (setup.exclusionModel.runBehavioralTerminalFrom setup.exclusion_bounded.wellFoundedHistories
+          target.strategy setup.exclusionProtocol.initHistory).map
+          (fun final => (setup.protocolReadout final.state,
+            fun who => (setup.protocolReadout final.state).elim 0
+              (fun state => exclusionUtility setup.program excludedPayoff utility
+                (setup.parameterOutcome parameter state) who))) =
+        (setup.intendedModel.runBehavioralTerminalFrom setup.intended_bounded.wellFoundedHistories
+            intended.strategy setup.intendedProtocol.initHistory).map
+          (fun final => (setup.protocolReadout final.state,
+            fun who => (setup.protocolReadout final.state).elim 0
+              (fun state => utility (setup.parameterOutcome parameter state) who))) :=
+  setup.intended_sequentialEquilibrium_extends_to_exclusion finite wellFormed parameter utility
+    excludedPayoff below _ _ intended equilibrium
+
+/-- info: 'Vegas.Paper.exclusion_sequential_equilibrium' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.exclusion_sequential_equilibrium
 
 /-- info: 'Vegas.SourceServiceSpec.intended_audited_raw_sequentialEquilibrium' depends on
 axioms: [propext, Classical.choice, Quot.sound] -/
@@ -1589,6 +1648,90 @@ theorem late_leak_equilibrium_result_total_variation_gap
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Interaction.ReactiveApplication.runUntil_eventProbability_ge_pow
+
+open Vegas.EventGraphRuntime GameTheory.Protocol GameTheory.Enforcement in
+/-- **One-packet equilibria survive every extra packet under the count audit.**
+The one-packet game admits silence and every bounded response transmitting a
+packet that is well formed and first for its event among the sender's signed
+packets. Under coverage of forbidden count evidence, and a deposit whose
+product with the coverage rate covers the spread of a state utility that
+ignores private response representations, every sequential equilibrium of the
+one-packet game extends to a sequential equilibrium of the bounded raw runtime
+under the utility minus the deposit for each collected count charge. Its law of
+normalized play and its joint law of normalized terminal state and realized
+payoffs are those of the one-packet game, and it charges nobody on its paths.
+The spread ranges over all protocol states, so the deposit does not depend on
+the scheduler. -/
+theorem one_packet_raw_sequential_equilibrium [Fintype Player] [IExpr.ResultTypes L]
+    {graph : Vegas.EventGraph Player L} (bounds : MessageBounds graph)
+    (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (initial : PMF (runtime.reactiveApplication leaks).State) (horizon : Nat)
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    [(runtime.reactiveApplication leaks).FiniteNature initial scheduler]
+    (service : EvidenceReportService (CountEvidence graph))
+    (observationRate deliveryRate : Player → ℝ)
+    (delivery_nonnegative : ∀ who, 0 ≤ deliveryRate who)
+    (coverage : CountEvidenceCoverage service observationRate deliveryRate)
+    (utility : (runtime.reactiveApplication leaks).ProtocolState → Player → ℝ)
+    (normalized : ∀ state,
+      utility ((runtime.reactiveNormalization leaks).state state) = utility state)
+    (lower upper deposit : Player → ℝ)
+    (lower_le : ∀ state who, lower who ≤ utility state who)
+    (le_upper : ∀ state who, utility state who ≤ upper who)
+    (deposit_nonnegative : ∀ who, 0 ≤ deposit who)
+    (sufficient : ∀ who,
+      upper who - lower who ≤ observationRate who * deliveryRate who * deposit who)
+    (source : ((bounds.onePacketMenu runtime leaks).information initial horizon
+      scheduler).BehavioralAssessment)
+    (equilibrium : source.IsSequentialEquilibrium
+      ((bounds.onePacketMenu runtime leaks).decisionInformationAntichain initial horizon
+        scheduler)
+      ((bounds.onePacketMenu runtime leaks).bounded initial horizon
+        scheduler).wellFoundedHistories
+      (fun who final => utility final.state who)) :
+    let payoff := TerminalAudit.utility utility (runtime.reactiveApplication leaks).stateTraffic
+      (runtime.countAudit leaks service.sample) deposit
+    let settle := TerminalAudit.settlement utility
+      (runtime.reactiveApplication leaks).stateTraffic (runtime.countAudit leaks service.sample)
+      deposit
+    ∃ target : ((bounds.rawMenu runtime leaks).information initial horizon
+        scheduler).BehavioralAssessment,
+      target.IsSequentialEquilibriumFor
+        ((bounds.rawMenu runtime leaks).decisionInformationAntichain initial horizon scheduler)
+        (fun who site => target.truncatedContinuationContext site
+          (fun history => payoff history.state who) (2 * horizon + 1)) ∧
+      (∀ final ∈ (((bounds.rawMenu runtime leaks).information initial horizon
+          scheduler).runBehavioral target.strategy (2 * horizon + 1)).support,
+        ∀ who, TerminalAudit.charge (runtime.reactiveApplication leaks).stateTraffic
+          (runtime.countAudit leaks service.sample) final.state who = 0) ∧
+      (((bounds.rawMenu runtime leaks).information initial horizon scheduler).runBehavioral
+          target.strategy (2 * horizon + 1)).map
+          (fun final => (runtime.reactiveNormalization leaks).state final.state) =
+        (((bounds.onePacketMenu runtime leaks).information initial horizon
+          scheduler).runBehavioral source.strategy (2 * horizon + 1)).map
+          GameTheory.Protocol.ExecutionProtocol.History.state ∧
+      (((bounds.rawMenu runtime leaks).information initial horizon scheduler).runBehavioral
+          target.strategy (2 * horizon + 1)).bind
+          (fun final => (settle final.state).map fun payoffs =>
+            ((runtime.reactiveNormalization leaks).state final.state, payoffs)) =
+        (((bounds.onePacketMenu runtime leaks).information initial horizon
+          scheduler).runBehavioral source.strategy (2 * horizon + 1)).map
+          (fun final => (final.state, utility final.state)) :=
+  bounds.onePacket_raw_sequentialEquilibrium runtime leaks initial horizon scheduler service
+    observationRate deliveryRate delivery_nonnegative coverage utility normalized lower upper
+    deposit lower_le le_upper deposit_nonnegative sufficient source equilibrium
+
+/-- info: 'Vegas.Paper.one_packet_raw_sequential_equilibrium' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.one_packet_raw_sequential_equilibrium
+
+/-- info:
+'Vegas.EventGraphRuntime.MessageBounds.onePacket_sequentialEquilibrium_extends' depends on
+axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.MessageBounds.onePacket_sequentialEquilibrium_extends
 
 end Vegas.Paper
 
