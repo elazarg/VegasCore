@@ -1,6 +1,17 @@
 # Concurrency and SE preservation
 
-Status: mathematics, written 2026-10-12, not reviewed and not mechanized.
+Status: mathematics, written 2026-10-12, not mechanized.
+
+Review history:
+- An adversarial review of the first version found a counterexample: a
+  concurrent commit phase let a player choose its value knowing that another
+  player was late. That is now Example 3.
+- The same review found a gap in how play after an exclusion was chosen.
+- Both are fixed here:
+  - commit phases **reset** on failure (§1);
+  - play after an exclusion is a lift of a *residual* honest game, built by
+    induction (§3).
+- This revision has not been reviewed.
 
 This note extends Theorem 2 of
 [the consolidated note](se-preservation-commit-reveal.md) from Stage S (one
@@ -9,304 +20,414 @@ information dependence. Notation, the runtime and compiler $C_1$ are as
 defined there.
 
 Results:
-- **Theorem 3 (positive).** Preservation holds for concurrent execution under
-  two added conditions:
+- **Theorem 3 (positive).** Concurrent execution preserves every honest SE
+  under three conditions:
+  - concurrent commit phases reset on failure;
   - the builder is *success-separable*: whether an event succeeds depends only
     on its owner's delivery and on randomness private to that event, while the
-    *timing and order* of inclusion may depend on anything, including a stable
-    fee priority;
+    timing and order of inclusion are left free, subject to value-blindness,
+    so a stable fee priority is allowed;
   - the exclusion payoff lies below every payoff the player can receive while
     not excluded.
-- **Example 1.** A builder that is not success-separable defeats $C_1$ for
-  every forfeit below a bound proportional to the number of players.
-- **Example 2.** Under concurrency, even a success-separable builder needs the
-  stronger exclusion payoff.
+- **Examples 1–3** show that each condition is needed:
+  - Example 1: a builder that couples late inclusion across events;
+  - Example 2: an exclusion payoff that is only below the honest range;
+  - Example 3: a concurrent commit phase without a reset.
 
 ## 1. Concurrent execution
 
 An **execution order** is a partial order $\prec$ on the program's events. An
-owned event becomes **ready** once all its $\prec$-predecessors have
-completed. The order is **information-respecting** if it satisfies three
-conditions.
+owned event becomes **ready** once all its $\prec$-predecessors have completed.
+The order is **information-respecting** if two conditions hold.
 
 1. **Mixed kinds keep program order.** If a commit and a reveal, or a sample
    and any other event, appear in some order in the program, then $\prec$
-   orders them the same way.
-   - A commit therefore sees exactly the publications that precede it in
-     the program.
-   - No reveal that follows a commit in the program can be sent, or leaked,
-     before that commit completes.
-2. **Same owner keeps program order.** Two events of the same owner are
-   ordered as in the program. Every owner therefore has at most one ready
-   event. This matters because one activation lets a player emit only one
-   packet.
-3. **Guards.** A guard reads only values known to its owner at the commit
-   (assumption of the source language). So it never needs an unordered event.
+   orders them the same way. So a commit sees exactly the publications that
+   precede it in the program. A reveal that follows a commit in the program
+   cannot be sent or leaked before that commit completes.
+2. **Same owner keeps program order.** Two events of one owner are ordered as
+   in the program. So every owner has at most one ready event, which matters
+   because one activation emits at most one packet.
+
+Guards read only values their owner knows at the commit, by assumption of the
+source language, so they impose nothing further.
 
 Consequences:
-- Any two concurrently ready events are of the same kind and have distinct
-  owners.
-- Execution therefore alternates *commit phases* and *reveal phases*,
-  separated by barriers.
+- Two concurrently ready events are of the same kind, with distinct owners.
+- Execution alternates **commit phases** and **reveal phases**, separated by
+  barriers.
 - Stage S is the special case where $\prec$ is the program order.
-- In the honest game a reveal is not a decision. All honest choices happen in
-  commit phases, at moments when no reveal is pending.
+
+**Phase reset (part of the compiler).** Suppose a binding of a commit phase
+fails, through a missed binding or expiry. Then:
+1. its owner is excluded, as in $C_1$;
+2. at the end of the phase, every other binding of that phase is **voided**;
+3. the remaining owners of the phase commit again, in a fresh commit phase
+   with fresh deadlines.
+
+A voided binding is never revealed and reaches no payoff. Reveal phases need
+no reset, because a reveal is not a decision in the honest game. A program
+whose commit phases are singletons (commits in program order) never resets.
 
 ## 2. Builder and compiler conditions
 
-**Success separability.** For each owned event $e$, with owner $j$, the
-builder's randomness splits into a component $\xi_e$ private to $e$ and a
-remainder, such that:
+**Success separability.** For each owned event $e$ with owner $j$, the
+builder's randomness splits into a component $\xi_e$ private to $e$, and a
+remainder.
 
 - **(S1) Success is private.** Whether $e$ succeeds is a function of $\xi_e$
-  and of the clocks at which $j$ emits packets for $e$. That includes $j$'s
-  activations while $e$ is ready, which are part of $\xi_e$.
+  and of the clocks at which $j$ emits packets for $e$, counted from $e$'s
+  readiness clock $r_e$. $j$'s activations while $e$ is ready are determined
+  by $\xi_e$. The packets shown to $j$ at those activations (leaks) come from
+  the remainder.
 - **(S2) Independence.** The family $(\xi_e)_e$ is independent across events,
-  and independent of the remainder of the builder's randomness and of every
-  player's choices.
+  and independent of the remainder of the builder's randomness, of every
+  player's choices, and of every $r_f$.
 
-Everything else may depend on the whole public history and on all packets:
+The following may depend on the public history and on the packets,
+**per-event value-blind**: the law concerning event $e$ may read the value of
+$e$'s own opening, but no other unopened value.
 - *when* an included packet is included, and in what order relative to
-  other packets (for example a stable priority induced by fees, which are not
+  others (for example a stable priority induced by fees, which are not
   modelled);
-- activations other than the owner's own while $e$ is ready;
-- leaks, provided the builder stays value-blind and author-only.
+- activations other than the owner's own while its event is ready;
+- leaks, which are also author-only.
 
-Protected inclusion is the special case in which, for an on-time packet,
-success is sure. (S1–S2) extend this to late packets. A late packet may fail,
-but neither its failure nor its success is correlated with anything another
-player can influence.
+(S1–S2) are an assumption separate from protected inclusion. They say that a
+late packet may fail, but neither its failure nor its success is correlated
+with anything another player can influence.
 
 The marginal version is not enough, that is, requiring only that each event's
-success *probability* be unaffected by others' traffic. If two events' successes
-can be correlated through a choice of timing, a player who benefits from
-another's failure prefers timing anticorrelated with that player's success, and
-that preference depends on the player's continuation value. (S2) excludes this.
+success *probability* be unaffected by others' traffic. If successes can be
+correlated through timing, a player who gains from another's failure prefers
+anticorrelated timing, and how much it prefers it depends on its continuation
+value. (S2) excludes this.
 
-**Exclusion payoff below every non-excluded payoff.** Let $m_j$ be the
-minimum of $j$'s gross payoff over all compiled terminal histories in which
-$j$ is not excluded. That includes histories in which *others* were excluded
-and $u_j$ reads their failures. Require
-$$
-a_j<m_j .
-$$
-At Stage S, $a_j<\underline u_j$ suffices. Under concurrency, another player in
-the same phase may already be late when $j$ decides, so $j$'s continuation
-after its own success can include others' failures. Example 2 shows that the
-weaker bound fails. $m_j$ depends only on the payoffs, so the order stays
-deposit-first.
+**Exclusion payoff.** Let $m_j$ be the minimum of $j$'s gross payoff over all
+compiled terminal histories in which $j$ is not excluded. That includes
+histories in which others were excluded and $u_j$ reads their failures.
+Require $a_j<m_j$.
+
+This bound depends only on the payoffs, so the order stays deposit-first. At
+Stage S, $a_j<\underline u_j$ suffices. Example 2 shows that it does not under
+concurrency.
 
 ## 3. Theorem 3
 
-**Theorem 3.** Take the deposit-first order, with compiler $C_1$, and fix:
-- a program of the consolidated note's §1.1;
-- an information-respecting execution order;
+The induction below passes through programs that start from a nonempty
+state. Call an **initialized program** a program together with:
+- an initial public state (publications so far and the set of excluded
+  players);
+- for each active player, a set of existing hidden commitments, drawn from a
+  prior that is a **product across players**.
+
+An empty-context program is the special case with nothing initialized.
+Product priors are preserved by honest play: each player's honest choice reads
+only public data and its own commitments, so given the public history the
+players' hidden commitments are independent.
+
+**Theorem 3.** Take the deposit-first order, with compiler $C_1$ plus phase
+reset, and fix:
+- an initialized program with an information-respecting order;
 - payoffs $a_j<m_j$;
 - $\alpha>0$ and deposits with $\alpha K_i>\operatorname{sp}_i$;
 - an honest SE $(\sigma^H,\mu^H)$;
-- any value-blind, author-only, success-separable builder satisfying the
-  contract of §1.2 (opportunity, protected inclusion, timeliness, completion)
-  for every event.
+- a per-event value-blind, author-only, success-separable builder satisfying
+  the contract of the consolidated note's §1.2 (opportunity, protected
+  inclusion, timeliness, completion) for every event.
 
 Then some native SE preserves $(\sigma^H,\mu^H)$.
 
+The assessment it constructs has one further property:
+
+**(P) Past-blindness.** At each barrier, the continuation is a function of the
+public results, the exclusion set and each player's own commitments. It does
+not depend on operational data (timing, serials, leaks) recorded before the
+barrier.
+
 ### 3.1 Construction
 
-The construction is the one of §3.1 of the consolidated note, with one
-changed definition and one new remark.
+The construction is by induction on the number $k$ of active players. For
+$k=0$ there is nothing to show. Assume the theorem, with (P), for fewer than
+$k$ active players.
 
-- **The delivery policy $\varphi^*$** is chosen among *own-service* policies:
-  policies whose send times depend only on the owner's activations and the
-  clock while its event is ready, and on the value being delivered. Among
-  these, $\varphi^*$ maximizes the success probability of the event. Under
-  (S1–S2), conditioning on anything else, such as leaks or others' receipts,
-  cannot raise that probability, because the remainder is independent of
+**Phases before any exclusion.** Within a phase, play follows $\sigma^*$ of
+the consolidated note's §3.1, with two changes:
+- **Delivery policy.** $\varphi^*$ is chosen among *own-service* policies,
+  whose send times depend only on the owner's activations and on the clock
+  relative to $r_e$, and, for a reveal, on the value being opened. A binding's
+  delivery policy reads no value. $\varphi^*$ maximizes the event's success
+  probability.
+
+  By (S1–S2), conditioning on anything else cannot raise that probability:
+  leaks and others' receipts come from the remainder, which is independent of
   $\xi_e$. So $\varphi^*$ is optimal among all delivery policies.
-- **Honest choices in a commit phase** follow $\sigma^H$ at the projection
-  $\Pi(I)$, whatever order the phase's bindings take natively. Within a phase,
-  no owner's honest information depends on another's binding of that phase.
-  So the native order of bindings does not change any owner's information in
-  the honest game.
+- **Honest values in a commit phase** are drawn from $\sigma^H$ at the
+  projection $\Pi(I)$, whatever the native order of the phase's bindings.
 
-Regions, trembles, and the agent-form equilibria on the excluded and free
-regions are unchanged.
+**After a phase in which someone was excluded.** At the barrier, the public
+results and the exclusion set define an initialized **residual program**:
+- the excluded players' later events are failed;
+- under phase reset, the voided bindings are removed, and the phase's
+  remaining owners commit again;
+- the prior is the honest posterior $\mu^H$ of the remaining hidden
+  commitments given the public history. It is a product prior.
+
+The residual honest game has an SE $(\sigma^R,\mu^R)$ with that prior, since it
+is finite. By induction, its compiled game has a past-blind native SE
+preserving it. Play from the barrier onward follows that SE.
+
+**Excluded players** stay silent, as before.
+
+**Trembles and the free region.** Trembles are as in the consolidated note,
+with these differences:
+- the residual SEs carry their own tremble sequences;
+- combine them with the outer sequence by multiplying weights at a common
+  index $n$;
+- information sets reached only through a charged action form the free
+  region, filled by perturbed agent-form equilibria as before.
 
 ### 3.2 Proof
 
-**Lemma A′ (beliefs).** At every forced set, the limit belief puts zero weight
-on histories with a charged action or with another player's bad binding.
+**Lemma A″ (beliefs within a phase).** At every forced set, the limit belief
+puts zero weight on histories with a charged action or with another player's
+bad binding. If, in addition, the set is in a commit phase and its owner has
+an honest choice, then the owner's belief about the honest values already
+chosen is $\mu^H(\Pi(I))$, and the owner predicts the not-yet-chosen values of
+the phase by $\sigma^H$.
 
-Let $I$ be a forced set in a commit phase at which the owner has an honest
-choice. Then the owner's limit belief about the *already-chosen* honest values
-of others is $\mu^H(\Pi(I))$. Its prediction of the *not-yet-chosen* values in
-the same phase is $\sigma^H$ at those owners' honest information sets.
+*Proof.* The weights work as in Lemma A. The new operational data within a
+phase are the order and timing of others' inclusions. Their law reads no
+unopened binding value: bindings are opaque, the builder is per-event
+value-blind, and binding policies read no value. So the factor $N_n$ does not
+depend on the values.
 
-*Proof.* The first claim, and the factorization over already-chosen values,
-are as in Lemma A. The only new kind of operational datum is the order and
-timing in which other bindings of the same phase are included. These depend
-only on activations, emitters and timing trembles, none of which reads a
-value, so they leave the factor $N_n$ value-independent.
+The phase's not-yet-chosen values are chosen at information sets that contain
+no value from the phase. $\square$
 
-For the not-yet-chosen values: their owners will choose them at information
-sets that contain no value from the current phase. Their law is therefore
-$\sigma^H$ at those sets, whatever $I$ shows.
-
-In the honest game the same owner, at $\Pi(I)$, faces exactly this
-combination: the already-chosen values with belief $\mu^H$, and the later
-values of the phase drawn independently from $\sigma^H$. So every action has
-the same expected continuation natively as in $\Gamma^H$. $\square$
-
-**Lemma B′ (delivery is one-dimensional under concurrency).** Fix a forced
-history at which $j$'s event $e$ is unresolved, and $j$ has sent nothing for
-it. Other events of the same phase may be unresolved, and their owners may be
-late. For every type of $j$ without a bad binding, every policy $s$ that sends
-at most the free packet yields
+**Lemma D (value choice under reset).** Take a forced set in a commit phase
+at which owner $j$ chooses a value $v$, together with any own-service delivery
+policy. Then $j$'s expected payoff is
 $$
-P_s\,V+(1-P_s)\,a_j .
+\Pr(\text{no failure in the phase})\cdot V^H(v)\;+\;\text{terms independent of }v .
 $$
-Here $P_s$ is $e$'s success probability under $s$, and $V$ is $j$'s expected
-continuation value given that $e$ succeeds. $V$ does not depend on $s$, and
-$V>a_j$.
+Here $V^H(v)$ is $j$'s honest continuation value of $v$, at belief
+$\mu^H(\Pi(I))$. So the honest choice $\sigma^H$ is optimal.
+
+*Proof.* There are three cases.
+- *$j$'s own binding fails.* Then $j$ gets $a_j$.
+- *Some other binding of the phase fails, while $j$'s succeeds.* The reset
+  voids $v$. The continuation is the residual SE, which by (P) depends on
+  public results and on commitments that do not include $v$.
+- *No binding fails.* Every value stands, and play continues by $\sigma^H$.
+  Conditional on this event, the other values of the phase are still
+  distributed by $\sigma^H$, because success is independent of values by
+  (S1–S2) and value-blindness. So the conditional continuation value is
+  $V^H(v)$ by Lemma A″.
+
+The probability of each case does not depend on $v$. A binding's delivery
+reads no value, and by (S2) others' successes do not depend on $j$'s
+choices. $\square$
+
+Without the reset, the second case would keep $v$, and $j$ would optimize
+against a mixture that includes another player's failure. That is Example 3.
+
+**Lemma B″ (delivery is one-dimensional).** Take a forced history at which
+$j$'s event $e$ is unresolved and $j$ has sent nothing for it. Others in the
+phase may be late, or may already be excluded. For every type of $j$ without a
+bad binding, every policy $s$ that sends at most the free packet yields
+$$
+P_s\,V+(1-P_s)\,a_j ,
+$$
+where $V$ does not depend on $s$ and $V\ge m_j>a_j$. So every type ranks these
+policies by $P_s$ alone.
 
 *Proof.*
+- *Failure* gives $a_j$.
+- *Success.* Two things determine the continuation:
+  - The outcomes of the phase's other events depend only on their own $\xi_f$
+    and their owners' own-service policies or trembles, so they do not depend
+    on $s$ (S1–S2).
+  - After the barrier, play is either $\sigma^H$ (if no one failed) or the
+    residual SE. Both depend only on public results, exclusions and
+    commitments, by (P).
 
-- **Failure** gives exactly $a_j$, as before.
-- **Success.**
-  - By (S1–S2), whether the other events of the phase succeed is a function of
-    their own $\xi_f$ and their owners' emissions. Those owners' policies are
-    own-service policies (on the path of $\sigma^*$) or trembles that do not
-    depend on $j$'s choices. So the joint law of the other events' outcomes is
-    independent of $s$, and independent of whether $e$ succeeds.
-  - What $s$ can change is only the *timing* of inclusions and the leaks.
-    Under $\sigma^*$ both are information only, and Lemma A′ neutralizes them.
-  - So $V$ is the expectation, over the others' outcomes and the later honest
-    play, of $j$'s gross payoff with $j$ not excluded. It does not depend on
-    $s$, and it is at least $m_j>a_j$.
+  Within the phase, the only things $s$ changes are inclusion timing and
+  leaks. These are information that nobody's prescribed play reads: under
+  $\sigma^*$, a binding's value choice reads no timing (Lemma A″), and the
+  continuation after the barrier is past-blind.
 
-Hence the payoff increases strictly in $P_s$. By the choice of $\varphi^*$ and
-(S1–S2), $\arg\max P_s$ depends only on $\xi_e$'s law, the clock and the value
-being delivered. It is the same for every type of $j$ that delivers the same
-value. $\square$
+  So $V$ is an expectation of $j$'s non-excluded gross payoff, which is at
+  least $m_j$, and it does not depend on $s$. For a reveal, $P_s$ may depend
+  on the value being opened, which is public after success, and $\varphi^*$
+  reads only that value. $\square$
 
-**Lemma C** (charged one-shot deviations do not pay) holds verbatim. Its proof
-uses only the deposit and that charges attach to the emitter.
+**Lemma C** (charged one-shot deviations do not pay) holds verbatim.
 
-**Sequential rationality, forced region.** Single deviations suffice, as
-before. The claim that "nobody can make another player fail" now follows from
-(S1–S2) rather than from Stage S: another player's emissions do not enter
-$\xi_e$, and only the owner's own emissions enter (S1).
+**Sequential rationality.** Single deviations suffice. No player can make
+another fail without a charged action: another's emissions do not enter
+$\xi_e$ (S1). The cases:
 
-The cases are:
+- **Honest value choice in a commit phase.** It is optimal among honest values
+  by Lemma D. Sending at once succeeds surely, by protected inclusion. The
+  alternatives are no better:
+  - late delivery gives $P_sV+(1-P_s)a_j\le V$ (Lemma B″);
+  - a bad binding gives $a_j$;
+  - charged actions are worse (Lemma C).
+- **Reveal at a first activation.** Sending succeeds surely and is worth at
+  least $m_j>a_j$, whatever others do in the phase. Withholding gives $a_j$.
+  Delaying cannot help, because nothing later reads the timing (P).
+- **Late delivery.** $\varphi^*$ is optimal (Lemma B″).
+- **After the free packet, non-owners, own bad bindings, excluded players.**
+  As in Theorem 2.
+- **From a barrier after an exclusion onward.** Sequential rationality holds
+  by induction, provided the residual SE is an SE in the native continuation.
 
-- **Honest choice at a first activation.** This happens in a commit phase.
-  - The free packet sent at once succeeds surely, by protected inclusion. It is
-    accepted, because the handle is fresh and owned.
-  - By Lemma A′, every action's expected continuation equals its honest
-    continuation. So $\sigma^H$ is optimal among honest actions.
-  - The alternatives are no better:
-    - late delivery gives $P_sV+(1-P_s)a_j\le V$ (Lemma B′);
-    - a bad binding gives exclusion at $a_j<m_j\le$ every non-excluded payoff;
-    - charged actions are worse (Lemma C).
-- **Reveal at a first activation.** Sending succeeds surely, and the
-  continuation, whatever others' late events do, is worth at least $m_j>a_j$.
-  Withholding gives $a_j$. So sending is optimal, even after $j$ has seen other
-  openings or other owners' silence.
-- **Late delivery.** $\varphi^*$ is optimal (Lemma B′).
-- **Own bad binding, after the free packet, non-owners.** Every alternative is
-  charged or yields $a_j$, as before.
+  It is: by (P), and by Lemma A″ applied to the pre-barrier operational data,
+  that data is independent of every hidden value given the public history. The
+  only values that leaked and were never published belong to excluded players,
+  and the product prior makes those uninformative about the active players'
+  values. They are also payoff-irrelevant, since the excluded players' results
+  are failed.
 
-**Excluded and free regions, consistency, preservation.** As in Theorem 2. On
-the path every owner sends its free packet at its first activation, which
-succeeds surely. The phase order changes the order of inclusions but not the
-public results. The joint law of public results and net payoffs is therefore
-the honest one. $\square$
+  So conditioning on the pre-barrier data leaves every active player's belief
+  equal to the residual prior. The residual assessment's beliefs and
+  rationality therefore carry over.
+
+**Consistency.** The outer and residual tremble sequences combine at a common
+index. Within a residual continuation, the entry weights are value-independent
+common factors (Lemma A″), so the residual Bayes beliefs are unchanged.
+
+**Preservation.** On the path every owner sends its free packet at its first
+activation, which succeeds surely. So no exclusion or reset occurs, and play
+follows $\sigma^H$. The joint law of public results and net payoffs is the
+honest one. $\square$
 
 ## 4. Examples showing the conditions are needed
 
-### Example 1: coupled late inclusion
+Each example has complete information, so every claimed choice is strict and
+every SE makes it.
+
+### Example 1: coupled late inclusion violates (S1–S2)
 
 This adapts the finite game of
 [the concurrent-disclosure note](concurrent-disclosure-se-boundary.md) to $C_1$.
-The builder couples late inclusion across events, violating (S1–S2).
 
 **Program.** Three players each commit a value of a one-element type. Then
 their three reveals form one reveal phase. Utilities are
 $$
 u_p=W\cdot\mathbf 1\{\text{some other player's reveal failed}\},\qquad W>0.
 $$
-Every honest payoff is $0$.
+Every honest payoff is $0$, and $m_p=0$.
 
 **Builder.**
-- All three reveals become ready at clock $0$, with deadline $2$, delay $0$
-  and bound $1$.
+- All three reveals become ready at clock $0$, with delay $0$, bound $1$ and
+  deadline $2$.
 - At clock $0$, players $1,2,3$ are activated in that public order. Each sees
   every earlier pending emission.
-- At clock $1$, everyone who has not yet sent is activated.
-- **Inclusion.** If anyone sent at clock $0$, every late opening is
-  included. Otherwise, if all three send late, exactly one late opening,
-  chosen uniformly, is omitted.
+- At clock $1$, everyone who has not sent is activated once.
+- All inclusions happen during clock $1$:
+  - if anyone sent at clock $0$, every packet is included;
+  - if all three send at clock $1$, exactly one of the three, chosen
+    uniformly, is omitted;
+  - otherwise every packet is included.
+- Unresolved reveals expire at clock $2$.
 
-**Analysis.** Backward induction gives, for $a_p>-2W$:
-- after two silences, player 3 strictly waits: $\tfrac23W+\tfrac13a_3>0$;
-- after one silence, player 2 strictly waits;
-- player 1 strictly prefers silence.
+**Analysis.** For $a_p>-2W$:
+- At clock $1$, a player who has not sent strictly sends.
+- After two silences, player 3 strictly waits: $\tfrac23W+\tfrac13a_3>0$.
+- Then player 2 strictly waits after one silence.
+- Then player 1 strictly prefers silence.
 
 So every SE has a failure. With $n$ players the same argument works for
 $a_p>-(n-1)W$.
 
-The game has complete information, so the obstruction is the *incentive to
-induce others' failure*, which coupling makes available. Under (S1–S2) no
-player can change another's success.
-
-### Example 2: the bound $a_j<\underline u_j$ is too weak under concurrency
+### Example 2: the bound $a_j<\underline u_j$ is too weak
 
 **Program.** Alice commits $x$ and Bob commits $y$, both of one-element types.
 Then the reveals of $x$ and $y$ form one reveal phase.
 
-**Utilities.** The honest payoffs are $0$ for both. If Bob's reveal fails while
-Alice's succeeds, Alice gets $-X$ with $X>0$. If Alice's fails while Bob's
-succeeds, Bob gets $W>0$.
+**Utilities.** Honest payoffs are $0$. If Bob's reveal fails while Alice's
+succeeds, Alice gets $-X$, with $X>0$. If Alice's fails while Bob's succeeds,
+Bob gets $W>0$.
 
-Under $C_1$, take $a_A\in(-X,0)$, which satisfies $a_A<\underline u_A=0$ but not
-$a_A<m_A=-X$, and take $a_B<0$.
+Take $a_A\in(-X,0)$, which satisfies $a_A<\underline u_A$ but not $a_A<m_A=-X$.
+Take $a_B<0$.
 
-**Builder (success-separable).**
-- Both reveals become ready at clock $0$.
-- Bob is activated first, and Alice sees his pending emission.
-- At clock $1$, the late owners are activated again.
-- Bob's late opening succeeds with probability $q$, independently of
+**Builder** (success-separable). Both reveals have delay $0$, bound $1$ and
+deadline $2$.
+- At clock $0$, Bob is activated first. A clock-$0$ packet of his is included
+  immediately, before Alice's activation, so Alice knows whether Bob sent.
+- Alice's packets sent after clock $0$ always fail.
+- Bob's clock-$1$ packet succeeds with probability $q$, independently of
   everything else.
 
-**Analysis.** Suppose Bob is silent at clock $0$. He will send at clock $1$,
-since any success beats $a_B$. Alice then compares:
+**Analysis.** If Bob is silent at clock $0$, he sends at clock $1$. Alice then
+compares:
 - sending, which gives $-(1-q)X$;
 - withholding, which gives $a_A$.
 
-She withholds if $a_A>-(1-q)X$. Bob's silence then earns
-$$
-qW+(1-q)a_B ,
-$$
-which beats his honest $0$ when $qW>(1-q)|a_B|$.
+Waiting is equivalent to withholding, since her late packets fail. She
+withholds if $a_A>-(1-q)X$. Bob's silence then earns $qW+(1-q)a_B$, which is
+positive if $qW>(1-q)|a_B|$.
 
-Both inequalities hold together whenever
-$$
-\frac{|a_A|}{X}\Bigl(1+\frac{|a_B|}{W}\Bigr)<1 ,
-$$
-by choosing $q$ in between. Fix such $a_A,a_B$ (for example $a_A=-X/4$ and
-$a_B=-W/2$). Then some success-separable builder makes every SE have a failure.
+Both conditions hold for some $q$ whenever
+$\frac{|a_A|}{X}\bigl(1+\frac{|a_B|}{W}\bigr)<1$. For example, $a_A=-X/4$,
+$a_B=-W/2$ and $q\in(1/3,3/4)$. Then every SE has a failure.
 
-With $a_A<m_A=-X$, Alice never withholds, and Theorem 3 applies.
+### Example 3: a concurrent commit phase without reset
+
+**Program.** `commit a : {0,1} by A` and `commit b : {*} by B` form one commit
+phase, followed by `reveal a` and `reveal b`. No guards.
+
+**Utilities.**
+- $u_A=-\varepsilon a$ if $b$ is published, and $u_A=Ha$ if $b$ failed.
+- $u_B=W\cdot\mathbf 1\{a\text{ published}=1\}$.
+- Take $\varepsilon=0.1$, $H=1$ and $W=4$.
+
+The unique honest SE has $a=0$, with payoffs $(0,0)$. The minima are
+$m_A=-\varepsilon$ and $m_B=0$. Take $a_A=a_B=-1$, so $a_j<m_j$ holds.
+
+**Builder** (success-separable, value-blind). Both commits have delay $0$,
+bound $1$ and deadline $2$.
+- At clock $0$, B is activated first. B's clock-$0$ packet is included
+  immediately.
+- At clock $1$, B's late packet succeeds with probability $q=1/2$,
+  independently of everything else. A's late packets fail.
+
+**Analysis without reset.** Suppose A sees B silent at clock $0$.
+- Binding $a=0$ gives $0$.
+- Binding $a=1$ gives $-q\varepsilon+(1-q)H=0.45$.
+
+So A binds $1$. Then B compares:
+- binding on time, after which A binds $0$, giving $0$;
+- silence, giving $qW+(1-q)a_B=1.5$.
+
+So every SE has a failure.
+
+**With reset.** If B fails, A's binding is voided and A commits again, so A's
+first value matters only when B succeeds. A then binds $0$, and B's silence
+gives $(1-q)a_B<0$.
+
+The same counterexample works with different deadlines instead of a
+leak-revealing schedule: a late A could observe B's expiry before choosing.
+The reset covers that too.
 
 ## 5. Remaining questions
 
-- **Coupled builders.** Can a forfeit scaled by $n-1$, or fail-stop payoffs
-  capped at $\underline u_i$, restore preservation when (S2) fails? Example 1
-  bounds what a forfeit must exceed. Whether coupled late regions can also
-  carry a belief channel like Theorem 1's is open.
-- **Realism of (S2).** Independent per-event service excludes correlated
-  outages that make all late packets fail together. A version that allows
-  common shocks the players cannot influence may suffice, but is not worked
-  out.
-- **Mechanization.** Two points need checking: information-respecting orders
-  as the runtime's dependency modes, and success separability as a predicate
-  on schedulers.
+- **Coupled builders.** Can a forfeit scaled by $n-1$, or capped fail-stop
+  payoffs, restore preservation when (S2) fails? Example 1 bounds what a
+  forfeit must exceed.
+- **Correlated shocks.** (S2) excludes common outages that make all late
+  packets fail together. A version allowing shocks no player can influence may
+  suffice.
+- **Realism of the reset.** It voids opaque commitments of the players who did
+  not fail. This is standard practice (abort and restart a commit round). It
+  lets a player delay the phase at the price of its own exclusion, which costs
+  more than any non-excluded payoff.
+- **Mechanization.** Several definitions need checking:
+  - information-respecting orders as the runtime's dependency modes;
+  - the phase reset in the contract;
+  - success separability as a predicate on schedulers;
+  - the induction over initialized programs (which needs Theorem 2's
+    construction for product priors).
