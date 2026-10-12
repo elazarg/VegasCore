@@ -1,7 +1,9 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-Status: mathematics on paper, not mechanized. Theorems 1 and 2 and
-Proposition 1 have been through several adversarial reviews. Theorem 3 rests
+Status: mathematics on paper, partly mechanized in Lean: Proposition 1(1) for
+events run one at a time, Lemma C, and the finite core of Lemma T (Appendix
+A). Theorems 1 and 2 and Proposition 1 have been through several adversarial
+reviews. Theorem 3 rests
 on the conditional transport step (Lemma T, Section 4.5), whose current form
 has not yet been independently reviewed.
 Section 9 lists what is open.
