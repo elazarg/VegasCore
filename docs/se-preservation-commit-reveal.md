@@ -125,9 +125,10 @@ Review history:
   **content-blind** leaks and stated plainly that pending packets may be
   shown to anyone in full. It explained how the one-packet rule is enforced
   (signed-packet fraud proofs, with the signed packet separate from the fee
-  transaction). It added an assumptions table (1.7). It also found that the
-  reporting assumption 1.5(4) is unrealistic for packets sent privately to
-  the builder. That is now flagged as open rather than resolved.
+  transaction). It added an assumptions table (1.7). It also removed a
+  phrase from 1.5(4) that mentioned packets "sent privately to the builder":
+  the model has no such channel. Every emitted packet enters the public
+  mempool. What remains open about reporting is the incentive to report.
 
 ## Summary
 
@@ -521,14 +522,14 @@ The quantifier order is **deposit-first**:
    includes the re-runs of at most $n$ resets, since each reset excludes a
    player.
 3. Players are finitely many.
-4. **Reporting.** Every charged packet reaches the audit with conditional
-   probability at least $\alpha$ (1.3). The charge itself needs no trust: it
-   is proved from signed packets (1.3, Enforcement). What is assumed is that
-   the packets are *reported*. A packet that is included, or shown to some
-   player, is held by someone who can report it. A packet sent privately to
-   the builder and never shown or included cannot be, and no reward for
-   reporting is modelled. This is the least realistic standing assumption;
-   see 1.7.
+4. **Reporting.** Emitting a packet means broadcasting it to the public
+   mempool; the model has no private channel to the builder. Leaks (1.2)
+   govern what a *player* has seen by the time it acts, not what eventually
+   becomes public. So every emitted packet can eventually be obtained and
+   reported. The charge needs no trust, because it is proved from signed
+   packets (1.3, Enforcement). The assumption is that a charged packet is in
+   fact reported and collected with conditional probability at least
+   $\alpha$ (1.3). No reward for reporting is modelled; see 1.7.
 5. **Guard satisfiability.** At every reachable public history of $\Gamma^X$
    (1.6), every commit's guard admits some value of its domain, given its
    owner's information.
@@ -912,7 +913,7 @@ discuss them. The assumptions are these.
 | Value-blind builder (per event, under concurrency) | 1.2, 4.2 | Theorems 2–4 | Automatic for bindings, which are opaque. For openings in flight it forbids using a value read from the mempool when handling *other* events. Restrictive against content-aware builders. |
 | Content-blind leaks | 1.2 | Theorems 3–4 | Which pending packets reach whom may not depend on their contents. Ordinary gossip roughly fits; selective relaying by content does not. |
 | Success separability (S1–S3) | 4.2 | Theorems 3–4 | The strongest builder assumption: a *late* packet's success rests on luck private to its event. Real congestion is correlated (Section 9). It constrains only late, off-path packets; on-time packets are covered by protected inclusion. Example 1 shows that some such condition is needed. |
-| Reporting: charged packets reach the audit with probability at least $\alpha$ | 1.5(4) | D1, Lemma C, hence Theorems 2–4 | The charge is verifiable from signatures. Getting the packets is not guaranteed: packets sent privately to the builder can stay hidden, and no reporting reward is modelled. **Open** (Section 9). |
+| Reporting: charged packets are reported and collected with probability at least $\alpha$ | 1.5(4) | D1, Lemma C, hence Theorems 2–4 | Every emitted packet is broadcast, so it can be obtained, and the charge is verifiable from signatures. What is assumed is that someone reports it. Charges are burned, so reporting is not rewarded in the model; a bounty from the slashed deposit is the natural fix (Section 9). The factor $\alpha$ absorbs imperfect reporting. |
 | No off-ledger communication | 1.5(1) | all | Unenforceable; a modelling assumption, as is standard. |
 | Finite domains and horizon | 1.5(2) | all | Excludes sealed-bid auctions over $\mathbb N$. |
 | Guard satisfiability | 1.5(5) | Proposition 1, D2 | A checkable condition on programs. |
@@ -2706,21 +2707,11 @@ player needs: the source game $\Gamma^X$.
   - **The reset** is a contract rule: void the phase's bindings and reopen the
     phase. Its cost is extra rounds, bounded by the number of players.
   - **Collection** with conditional probability at least $\alpha$ needs
-    charged packets to reach the contract. Proving a violation is easy (1.3,
-    Enforcement); obtaining the packets is not. Two gaps remain:
-    - *incentives:* the model burns charges, so reporters gain nothing. A
-      bounty paid from the slashed deposit is the natural fix; it is not
-      modelled;
-    - *private submission:* a packet sent only to the builder, and never
-      shown or included, cannot be reported. Such a packet affects other
-      players only through the builder's laws. A disclosure must be shown to
-      someone to matter, and then that someone holds proof. But a late
-      player could send a second, distinct packet for its move privately, to
-      raise its inclusion odds. If only one of the two is ever included and
-      the other never surfaces, the record shows a single packet and nothing
-      is provable. Closing this needs either an assumption that the builder's success
-      law ignores packets it never surfaces, or a version of Theorem 3 in
-      which late delivery may use several packets. Neither is done.
+    charged packets to be reported to the contract. Every emitted packet is
+    broadcast to the mempool, and proving a violation needs only the signed
+    packets (1.3, Enforcement). The gap is incentives: the model burns
+    charges, so reporters gain nothing. A bounty paid from the slashed
+    deposit is the natural fix; it is not modelled.
 
 ## Appendix A. Correspondence to the Lean development
 
