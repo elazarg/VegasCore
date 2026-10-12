@@ -40,6 +40,7 @@ import Vegas.Game.IntendedServiceCompilation
 import Vegas.Game.IntendedServiceNash
 import Vegas.Game.OnePacketExtension
 import Vegas.Game.OnePacketExclusionPayoff
+import Vegas.Game.OnePacketForced
 import Vegas.Game.PurificationEdge
 import Vegas.Game.ReactiveSourceDecision
 import Vegas.Game.ReactiveSourceAcceptance
