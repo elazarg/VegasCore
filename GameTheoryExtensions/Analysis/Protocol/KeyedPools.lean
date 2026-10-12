@@ -345,8 +345,12 @@ part of the choice is its success probability times that continuation value
 up to `error n`; at a keyed site, the same holds for every option's keyed law,
 each option's keyed law fails, at the site level, with probability within
 `drift n` of one minus the option's score at the site's key, and so does the
-choice for some option; at an unkeyed site, the same holds for the prescribed
-law, which fails at most as often as the choice up to `slack n`. If `error`,
+choice for some option, unless the choice fails surely; at an unkeyed site,
+the same holds for the prescribed law, which fails at most as often as the
+choice up to `slack n`, unless the choice fails surely. A surely failing
+choice, such as a packet the contract cannot accept spending the one packet of
+an event, or any choice of an owner whose event is doomed, ranks last
+(`GameTheory.Protocol.InformationModel.localFailure_le_of_sure_failure`). If `error`,
 `drift` and `slack` vanish and the unmarked choices meet the comparisons on
 their own, the local-comparison obligation of a pooled limit certificate holds
 for the keyed pools, with the keyed components. -/
@@ -391,15 +395,18 @@ theorem keyedLocalComparisons [Finite Opt] {E : ExecutionProtocol Player}
             (∀ option, |localFailure fuel (targetSequence n) site (failed who)
                 (keyedLaw n (N.agentAt site) option) -
               (1 - score n (key (N.agentAt site)) option)| ≤ drift n) ∧
-            ∃ option, |localFailure fuel (targetSequence n) site (failed who) (PMF.pure choice) -
-              (1 - score n (key (N.agentAt site)) option)| ≤ drift n) ∧
+            ((∃ option, |localFailure fuel (targetSequence n) site (failed who)
+                (PMF.pure choice) - (1 - score n (key (N.agentAt site)) option)| ≤ drift n) ∨
+              localFailure fuel (targetSequence n) site (failed who) (PMF.pure choice) = 1)) ∧
           (¬ keyed (N.agentAt site) →
             |localSuccessValue fuel observe utility (targetSequence n) site (failed who)
                 (prescribed n (N.agentAt site)) -
               (1 - localFailure fuel (targetSequence n) site (failed who)
                 (prescribed n (N.agentAt site))) * continuation n (N.agentAt site)| ≤ error n ∧
-            localFailure fuel (targetSequence n) site (failed who) (prescribed n (N.agentAt site)) ≤
-              localFailure fuel (targetSequence n) site (failed who) (PMF.pure choice) + slack n))
+            (localFailure fuel (targetSequence n) site (failed who)
+                (prescribed n (N.agentAt site)) ≤
+              localFailure fuel (targetSequence n) site (failed who) (PMF.pure choice) + slack n ∨
+              localFailure fuel (targetSequence n) site (failed who) (PMF.pure choice) = 1)))
     (otherComparisons : ∀ (weights : ℕ → ∀ p, PMF (KeyedPart keyed key Opt p))
         (targetSequence : ℕ → N.BehavioralAssessment),
       (∀ n, (targetSequence n).strategy = N.agentBehavior N.playedInformation fallback
@@ -500,18 +507,27 @@ theorem keyedLocalComparisons [Finite Opt] {E : ExecutionProtocol Player}
         facts n who site choice notFree marked
       refine ⟨excluded_le, gap_le, choiceNear, ?_⟩
       by_cases isKeyed : keyed (N.agentAt site)
-      · obtain ⟨near, common, option, choiceCommon⟩ := keyedFacts isKeyed
+      · obtain ⟨near, common, choiceRanked⟩ := keyedFacts isKeyed
         rw [keyedComponent_best_of_keyed (key := key) (prescribed n) (keyedLaw n)
           (fun k => scoreArgmax (score n k)) isKeyed]
         refine ⟨near _, ?_⟩
-        have ranked := localFailure_scoreArgmax_le fuel (targetSequence n) site (failed who)
-          (score n (key (N.agentAt site))) (drift n) (keyedLaw n (N.agentAt site)) common
-          (PMF.pure choice) option choiceCommon
-        linarith [slack_nonneg n]
+        rcases choiceRanked with ⟨option, choiceCommon⟩ | sure
+        · have ranked := localFailure_scoreArgmax_le fuel (targetSequence n) site (failed who)
+            (score n (key (N.agentAt site))) (drift n) (keyedLaw n (N.agentAt site)) common
+            (PMF.pure choice) option choiceCommon
+          linarith [slack_nonneg n]
+        · have := localFailure_le_of_sure_failure fuel (targetSequence n) site (failed who)
+            (keyedLaw n (N.agentAt site) (scoreArgmax (score n (key (N.agentAt site)))))
+            (PMF.pure choice) sure
+          linarith [slack_nonneg n, drift_nonneg n]
       · obtain ⟨near, ranked⟩ := unkeyedFacts isKeyed
         rw [keyedComponent_of_not_keyed (key := key) (prescribed n) (keyedLaw n) isKeyed]
         refine ⟨near, ?_⟩
-        linarith [drift_nonneg n])
+        rcases ranked with ranked | sure
+        · linarith [drift_nonneg n]
+        · have := localFailure_le_of_sure_failure fuel (targetSequence n) site (failed who)
+            (prescribed n (N.agentAt site)) (PMF.pure choice) sure
+          linarith [slack_nonneg n, drift_nonneg n])
     otherComparisons
 
 end Obligations

@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketExclusionPayoff
 import Vegas.Game.OnePacketSlotTrembles
+import Vegas.Game.OnePacketPrescribedSupport
 import GameTheoryExtensions.Analysis.Protocol.KeyedPools
 
 /-! # Delivery is one-dimensional under the exclusion payoff
@@ -54,7 +55,16 @@ certificate for these pools are
 `GameTheory.Protocol.InformationModel.keyedLocalComparisons`; at a first
 activation the prescribed component's ranking follows from a mass bound
 against a reliable main law
-(`GameTheory.Protocol.InformationModel.localFailure_le_add_of_mass`).
+(`GameTheory.Protocol.InformationModel.localFailure_le_add_of_mass`). With the
+late-delivery agents (`Vegas.LateDeliveryAgent`) keyed by their late-delivery
+key and the typed readout under the exclusion payoff, both obligations are
+stated for the one-packet game (`Vegas.onePacket_keyedMemberRational`,
+`Vegas.onePacket_keyedLocalComparisons`). A marked choice that fails surely
+ranks last whatever the options are
+(`GameTheory.Protocol.InformationModel.localFailure_le_of_sure_failure`): every
+choice of an owner whose event is doomed, and every packet that spends the
+event's one packet without the contract accepting it, such as a commitment at
+a handle other than a fresh prepared slot of the owner.
 -/
 
 noncomputable section
@@ -428,5 +438,384 @@ theorem lateKeyedComponent_fullSupport (late : (onePacketModel setup leaks bound
       assessment positive le_one agent.1 agent.2.1 option) agent part
 
 end Pools
+
+section Obligations
+
+variable [Fintype Player]
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+  (bounds : MessageBounds (graph setup)) (initial : PMF (application setup leaks).State)
+  (horizon : Nat) (scheduler : (application setup leaks).Scheduler)
+  [Fintype ((bounds.onePacketMenu (runtime setup) leaks).protocol initial horizon
+    scheduler).History]
+  [∀ who, DecidableEq ((onePacketModel setup leaks bounds initial horizon scheduler).InfoState who)]
+
+local notation "onePacketN" => onePacketModel setup leaks bounds initial horizon scheduler
+
+/-- The late-delivery agents of the one-packet game: the agents at late
+deliveries (`Vegas.LateDelivery`). -/
+def LateDeliveryAgent (agent : (onePacketN).InformationAgent (onePacketN).playedInformation) :
+    Prop :=
+  LateDelivery setup leaks agent.1 agent.2.1
+
+/-- The typed readout of a native history. -/
+abbrev nativeReadout (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol initial
+    horizon scheduler).History) : Option (State L setup.program.terminalCtx) :=
+  sourceReadout setup leaks history.state
+
+include bounds initial horizon scheduler in
+open Classical in
+/-- **Member rationality of the late pools under the exclusion payoff.** On
+the one-packet game observed through its typed readout, pool the late-delivery
+agents by their late-delivery key with the late options as parts, and every
+other agent in one pool. Suppose, for every weights family the pooled
+completion may choose, at every late-delivery decision site: the continuation
+value is at least the player's least utility up to `error n` and exceeds its
+exclusion payoff by at most `bound`; the successful part of each option's late
+law is its success probability times that continuation value up to `error n`;
+and each option's late law fails on the given failed histories, belief-averaged
+over the site, with probability within `drift n` of one minus its score at the
+site's late-delivery key. If the failed histories pay exactly the exclusion
+payoff, the exclusion payoff is at most the least utility, and `error` and
+`drift` vanish, the member-rationality obligation holds. -/
+theorem onePacket_keyedMemberRational (fuel : Nat)
+    (bounded : ((bounds.onePacketMenu (runtime setup) leaks).protocol initial horizon
+      scheduler).BoundedHorizon fuel)
+    (targetRecall : (onePacketN).DecisionRecall)
+    {Parameter : Type} (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (excludedPayoff lower : Player → ℝ) (excluded_le_lower : ∀ who, excludedPayoff who ≤ lower who)
+    (fallback : ∀ who, (onePacketN).Policy who) {slots : Nat}
+    (prescribed : ℕ → ∀ agent : (onePacketN).InformationAgent (onePacketN).playedInformation,
+      PMF ((onePacketN).Choice agent.1 agent.2.1))
+    (lateLaw : ℕ → ∀ agent : (onePacketN).InformationAgent (onePacketN).playedInformation,
+      LateOption slots → PMF ((onePacketN).Choice agent.1 agent.2.1))
+    (failed : Player → Set ((bounds.onePacketMenu (runtime setup) leaks).protocol initial
+      horizon scheduler).History)
+    (pays : ∀ who, ∀ history ∈ failed who, exclusionReadoutUtility setup parameter utility
+      excludedPayoff (nativeReadout setup leaks bounds initial horizon scheduler history) who =
+        excludedPayoff who)
+    (bound : ℝ) (bound_nonneg : 0 ≤ bound)
+    (oneDimensional : ∀ (weights : ℕ → ∀ p, PMF (KeyedPart
+          (LateDeliveryAgent setup leaks bounds initial horizon scheduler)
+          (agentLateKey setup leaks bounds initial horizon scheduler) (LateOption slots) p))
+        (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
+      (∀ n, (targetSequence n).strategy = (onePacketN).agentBehavior
+        (onePacketN).playedInformation fallback
+        fun agent => (weights n (keyedPool (LateDeliveryAgent setup leaks bounds initial horizon
+          scheduler) (agentLateKey setup leaks bounds initial horizon scheduler) agent)).bind
+          (keyedComponent (prescribed n) (lateLaw n) agent)) →
+      (∀ n, (targetSequence n).IsFullyMixed) →
+      (∀ n, BehavioralAssessment.IsBayesConsistent _ (targetSequence n)
+        targetRecall.decisionInformationAntichain) →
+      ∃ (continuation : ℕ → (onePacketN).InformationAgent (onePacketN).playedInformation → ℝ)
+        (score : ℕ → Option (LateKey setup leaks) → LateOption slots → ℝ) (error drift : ℕ → ℝ),
+        Tendsto error atTop (nhds 0) ∧ Tendsto drift atTop (nhds 0) ∧ (∀ n, 0 ≤ drift n) ∧
+        ∀ n agent, LateDeliveryAgent setup leaks bounds initial horizon scheduler agent →
+          ∀ decision : (onePacketN).IsDecisionInfo agent.1 agent.2.1,
+          lower agent.1 - error n ≤ continuation n agent ∧
+          continuation n agent - excludedPayoff agent.1 ≤ bound ∧
+          (∀ option, |localSuccessValue fuel
+              (nativeReadout setup leaks bounds initial horizon scheduler)
+              (exclusionReadoutUtility setup parameter utility excludedPayoff) (targetSequence n)
+              (who := agent.1) ⟨agent.2.1, decision⟩ (failed agent.1) (lateLaw n agent option) -
+            (1 - localFailure fuel (targetSequence n) (who := agent.1) ⟨agent.2.1, decision⟩
+              (failed agent.1) (lateLaw n agent option)) * continuation n agent| ≤ error n) ∧
+          ∀ option, |localFailure fuel (targetSequence n) (who := agent.1) ⟨agent.2.1, decision⟩
+              (failed agent.1) (lateLaw n agent option) -
+            (1 - score n (agentLateKey setup leaks bounds initial horizon scheduler agent)
+              option)| ≤ drift n) :
+    ∀ (weights : ℕ → ∀ p, PMF (KeyedPart
+        (LateDeliveryAgent setup leaks bounds initial horizon scheduler)
+        (agentLateKey setup leaks bounds initial horizon scheduler) (LateOption slots) p))
+      (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
+      (∀ n, (targetSequence n).strategy = (onePacketN).agentBehavior
+        (onePacketN).playedInformation fallback
+        fun agent => (weights n (keyedPool (LateDeliveryAgent setup leaks bounds initial horizon
+          scheduler) (agentLateKey setup leaks bounds initial horizon scheduler) agent)).bind
+          (keyedComponent (prescribed n) (lateLaw n) agent)) →
+      (∀ n, (targetSequence n).IsFullyMixed) →
+      (∀ n, BehavioralAssessment.IsBayesConsistent _ (targetSequence n)
+        targetRecall.decisionInformationAntichain) →
+      (∀ n (alternative : ∀ p, PMF (KeyedPart
+          (LateDeliveryAgent setup leaks bounds initial horizon scheduler)
+          (agentLateKey setup leaks bounds initial horizon scheduler) (LateOption slots) p)) p,
+        ∑ agent ∈ Finset.univ.filter (fun agent => keyedPool
+            (LateDeliveryAgent setup leaks bounds initial horizon scheduler)
+            (agentLateKey setup leaks bounds initial horizon scheduler) agent = p),
+          (if decision : (onePacketN).IsDecisionInfo agent.1 agent.2.1 then
+            have comparison := (onePacketN).assessmentComparisonWith
+              ((onePacketN).truncatedRunner fuel)
+              (nativeReadout setup leaks bounds initial horizon scheduler) (targetSequence n)
+              agent.1
+              (⟨agent.2.1, decision⟩, ((targetSequence n).strategy agent.1).withLaw agent.2.1
+                ((alternative (keyedPool (LateDeliveryAgent setup leaks bounds initial horizon
+                  scheduler) (agentLateKey setup leaks bounds initial horizon scheduler)
+                  agent)).bind (keyedComponent (prescribed n) (lateLaw n) agent)))
+            expect comparison.alternative
+                (exclusionReadoutUtility setup parameter utility excludedPayoff · agent.1) -
+              expect comparison.prescribed
+                (exclusionReadoutUtility setup parameter utility excludedPayoff · agent.1)
+          else 0) ≤ 0) →
+      ∃ memberError : ℕ → ℝ, Tendsto memberError atTop (nhds 0) ∧
+        ∀ n who (site : (onePacketN).InformationSite who)
+          (alternative : PMF (KeyedPart
+            (LateDeliveryAgent setup leaks bounds initial horizon scheduler)
+            (agentLateKey setup leaks bounds initial horizon scheduler) (LateOption slots)
+            (keyedPool (LateDeliveryAgent setup leaks bounds initial horizon scheduler)
+              (agentLateKey setup leaks bounds initial horizon scheduler)
+              ((onePacketN).agentAt site)))),
+          have comparison := (onePacketN).assessmentComparisonWith
+            ((onePacketN).truncatedRunner fuel)
+            (nativeReadout setup leaks bounds initial horizon scheduler) (targetSequence n) who
+            (site, ((targetSequence n).strategy who).withLaw site.1
+              (alternative.bind (keyedComponent (prescribed n) (lateLaw n)
+                ((onePacketN).agentAt site))))
+          expect comparison.alternative
+              (exclusionReadoutUtility setup parameter utility excludedPayoff · who) -
+            expect comparison.prescribed
+              (exclusionReadoutUtility setup parameter utility excludedPayoff · who) ≤
+            memberError n := by
+  convert keyedMemberRational fuel bounded targetRecall _ _ fallback _ _ prescribed lateLaw failed
+    excludedPayoff pays bound bound_nonneg
+    (fun weights targetSequence played mixed bayes => by
+      obtain ⟨continuation, score, error, drift, errorVanishes, driftVanishes, drift_nonneg,
+        facts⟩ := oneDimensional weights targetSequence played mixed bayes
+      refine ⟨continuation, score, error, drift, errorVanishes, driftVanishes, drift_nonneg,
+        fun n agent late decision => ?_⟩
+      obtain ⟨lower_le, gap_le, near, common⟩ := facts n agent late decision
+      exact ⟨by linarith [excluded_le_lower agent.1], gap_le, near, common⟩)
+
+
+include bounds initial horizon scheduler in
+open Classical in
+/-- **Local comparisons of the late pools under the exclusion payoff.** With the
+pools of `Vegas.onePacket_keyedMemberRational`, mark the single choices to
+compare with the best part of their pool. Suppose, for every weights family
+the pooled completion may choose, at every marked choice of a compared site:
+the continuation value is at least the player's least utility up to `error n`
+and exceeds its exclusion payoff by at most `bound`; the successful part of the
+choice is its success probability times that continuation value up to
+`error n`; at a late delivery, the same holds for every option's late law,
+each option's late law fails on the given failed histories, belief-averaged,
+with probability within `drift n` of one minus its score at the site's
+late-delivery key, and so does the choice for some option unless it fails
+surely; at any other site, the same holds for the prescribed law, which fails
+at most as often as the choice up to `slack n` unless the choice fails surely.
+If the failed histories pay exactly the exclusion payoff, the exclusion payoff
+is at most the least utility, `error`, `drift` and `slack` vanish, and the
+unmarked choices meet the comparisons on their own, the local-comparison
+obligation holds. -/
+theorem onePacket_keyedLocalComparisons {E : ExecutionProtocol Player}
+    {M : InformationModel E} (sourceObserve : E.History → Option (State L
+      setup.program.terminalCtx)) (sourceFuel : Nat)
+    (sourceSequence : ℕ → M.BehavioralAssessment) (fuel : Nat)
+    (bounded : ((bounds.onePacketMenu (runtime setup) leaks).protocol initial horizon
+      scheduler).BoundedHorizon fuel)
+    (targetRecall : (onePacketN).DecisionRecall)
+    {Parameter : Type} (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (excludedPayoff lower : Player → ℝ) (excluded_le_lower : ∀ who, excludedPayoff who ≤ lower who)
+    (fallback : ∀ who, (onePacketN).Policy who) {slots : Nat}
+    (prescribed : ℕ → ∀ agent : (onePacketN).InformationAgent (onePacketN).playedInformation,
+      PMF ((onePacketN).Choice agent.1 agent.2.1))
+    (lateLaw : ℕ → ∀ agent : (onePacketN).InformationAgent (onePacketN).playedInformation,
+      LateOption slots → PMF ((onePacketN).Choice agent.1 agent.2.1))
+    (free : Finset ((onePacketN).InformationAgent (onePacketN).playedInformation))
+    (compared : ∀ who (site : (onePacketN).InformationSite who),
+      (onePacketN).Choice who site.1 → Prop)
+    (failed : Player → Set ((bounds.onePacketMenu (runtime setup) leaks).protocol initial
+      horizon scheduler).History)
+    (pays : ∀ who, ∀ history ∈ failed who, exclusionReadoutUtility setup parameter utility
+      excludedPayoff (nativeReadout setup leaks bounds initial horizon scheduler history) who =
+        excludedPayoff who)
+    (bound : ℝ) (bound_nonneg : 0 ≤ bound)
+    (ranking : ∀ (weights : ℕ → ∀ p, PMF (KeyedPart
+          (LateDeliveryAgent setup leaks bounds initial horizon scheduler)
+          (agentLateKey setup leaks bounds initial horizon scheduler) (LateOption slots) p))
+        (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
+      (∀ n, (targetSequence n).strategy = (onePacketN).agentBehavior
+        (onePacketN).playedInformation fallback
+        fun agent => (weights n (keyedPool (LateDeliveryAgent setup leaks bounds initial horizon
+          scheduler) (agentLateKey setup leaks bounds initial horizon scheduler) agent)).bind
+          (keyedComponent (prescribed n) (lateLaw n) agent)) →
+      (∀ n, (targetSequence n).IsFullyMixed) →
+      (∀ n, BehavioralAssessment.IsBayesConsistent _ (targetSequence n)
+        targetRecall.decisionInformationAntichain) →
+      ∃ (continuation : ℕ → (onePacketN).InformationAgent (onePacketN).playedInformation → ℝ)
+        (score : ℕ → Option (LateKey setup leaks) → LateOption slots → ℝ)
+        (error drift slack : ℕ → ℝ),
+        Tendsto error atTop (nhds 0) ∧ Tendsto drift atTop (nhds 0) ∧
+        Tendsto slack atTop (nhds 0) ∧ (∀ n, 0 ≤ drift n) ∧ (∀ n, 0 ≤ slack n) ∧
+        ∀ n who (site : (onePacketN).InformationSite who) (choice : (onePacketN).Choice who site.1),
+          (onePacketN).agentAt site ∉ free → compared who site choice →
+          lower who - error n ≤ continuation n ((onePacketN).agentAt site) ∧
+          continuation n ((onePacketN).agentAt site) - excludedPayoff who ≤ bound ∧
+          |localSuccessValue fuel (nativeReadout setup leaks bounds initial horizon scheduler)
+              (exclusionReadoutUtility setup parameter utility excludedPayoff) (targetSequence n)
+              site (failed who) (PMF.pure choice) -
+            (1 - localFailure fuel (targetSequence n) site (failed who) (PMF.pure choice)) *
+              continuation n ((onePacketN).agentAt site)| ≤ error n ∧
+          (LateDeliveryAgent setup leaks bounds initial horizon scheduler
+              ((onePacketN).agentAt site) →
+            (∀ option, |localSuccessValue fuel
+                (nativeReadout setup leaks bounds initial horizon scheduler)
+                (exclusionReadoutUtility setup parameter utility excludedPayoff)
+                (targetSequence n) site (failed who)
+                (lateLaw n ((onePacketN).agentAt site) option) -
+              (1 - localFailure fuel (targetSequence n) site (failed who)
+                (lateLaw n ((onePacketN).agentAt site) option)) *
+                continuation n ((onePacketN).agentAt site)| ≤ error n) ∧
+            (∀ option, |localFailure fuel (targetSequence n) site (failed who)
+                (lateLaw n ((onePacketN).agentAt site) option) -
+              (1 - score n (agentLateKey setup leaks bounds initial horizon scheduler
+                ((onePacketN).agentAt site)) option)| ≤ drift n) ∧
+            ((∃ option, |localFailure fuel (targetSequence n) site (failed who)
+                (PMF.pure choice) - (1 - score n (agentLateKey setup leaks bounds initial horizon
+                  scheduler ((onePacketN).agentAt site)) option)| ≤ drift n) ∨
+              localFailure fuel (targetSequence n) site (failed who) (PMF.pure choice) = 1)) ∧
+          (¬ LateDeliveryAgent setup leaks bounds initial horizon scheduler
+              ((onePacketN).agentAt site) →
+            |localSuccessValue fuel (nativeReadout setup leaks bounds initial horizon scheduler)
+                (exclusionReadoutUtility setup parameter utility excludedPayoff)
+                (targetSequence n) site (failed who) (prescribed n ((onePacketN).agentAt site)) -
+              (1 - localFailure fuel (targetSequence n) site (failed who)
+                (prescribed n ((onePacketN).agentAt site))) *
+                continuation n ((onePacketN).agentAt site)| ≤ error n ∧
+            (localFailure fuel (targetSequence n) site (failed who)
+                (prescribed n ((onePacketN).agentAt site)) ≤
+              localFailure fuel (targetSequence n) site (failed who) (PMF.pure choice) + slack n ∨
+              localFailure fuel (targetSequence n) site (failed who) (PMF.pure choice) = 1)))
+    (otherComparisons : ∀ (weights : ℕ → ∀ p, PMF (KeyedPart
+          (LateDeliveryAgent setup leaks bounds initial horizon scheduler)
+          (agentLateKey setup leaks bounds initial horizon scheduler) (LateOption slots) p))
+        (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
+      (∀ n, (targetSequence n).strategy = (onePacketN).agentBehavior
+        (onePacketN).playedInformation fallback
+        fun agent => (weights n (keyedPool (LateDeliveryAgent setup leaks bounds initial horizon
+          scheduler) (agentLateKey setup leaks bounds initial horizon scheduler) agent)).bind
+          (keyedComponent (prescribed n) (lateLaw n) agent)) →
+      (∀ n, (targetSequence n).IsFullyMixed) →
+      (∀ n, BehavioralAssessment.IsBayesConsistent _ (targetSequence n)
+        targetRecall.decisionInformationAntichain) →
+      (∀ n (alternative : ∀ p, PMF (KeyedPart
+          (LateDeliveryAgent setup leaks bounds initial horizon scheduler)
+          (agentLateKey setup leaks bounds initial horizon scheduler) (LateOption slots) p)) p,
+        ∑ agent ∈ Finset.univ.filter (fun agent => keyedPool
+            (LateDeliveryAgent setup leaks bounds initial horizon scheduler)
+            (agentLateKey setup leaks bounds initial horizon scheduler) agent = p),
+          (if decision : (onePacketN).IsDecisionInfo agent.1 agent.2.1 then
+            localGain fuel (nativeReadout setup leaks bounds initial horizon scheduler)
+              (exclusionReadoutUtility setup parameter utility excludedPayoff) (targetSequence n)
+              (who := agent.1) ⟨agent.2.1, decision⟩
+              ((alternative (keyedPool (LateDeliveryAgent setup leaks bounds initial horizon
+                scheduler) (agentLateKey setup leaks bounds initial horizon scheduler)
+                agent)).bind (keyedComponent (prescribed n) (lateLaw n) agent))
+          else 0) ≤ 0) →
+      ∃ otherError : ℕ → ℝ, Tendsto otherError atTop (nhds 0) ∧
+        ∀ n who (site : (onePacketN).InformationSite who), (onePacketN).agentAt site ∉ free →
+          ∀ choice : (onePacketN).Choice who site.1, ¬ compared who site choice →
+          localGain fuel (nativeReadout setup leaks bounds initial horizon scheduler)
+              (exclusionReadoutUtility setup parameter utility excludedPayoff) (targetSequence n)
+              site (PMF.pure choice) ≤ otherError n ∨
+            (∃ alternative : PMF (KeyedPart
+                (LateDeliveryAgent setup leaks bounds initial horizon scheduler)
+                (agentLateKey setup leaks bounds initial horizon scheduler) (LateOption slots)
+                (keyedPool (LateDeliveryAgent setup leaks bounds initial horizon scheduler)
+                  (agentLateKey setup leaks bounds initial horizon scheduler)
+                  ((onePacketN).agentAt site))),
+              localGain fuel (nativeReadout setup leaks bounds initial horizon scheduler)
+                  (exclusionReadoutUtility setup parameter utility excludedPayoff)
+                  (targetSequence n) site (PMF.pure choice) ≤
+                localGain fuel (nativeReadout setup leaks bounds initial horizon scheduler)
+                  (exclusionReadoutUtility setup parameter utility excludedPayoff)
+                  (targetSequence n) site (alternative.bind (keyedComponent (prescribed n)
+                    (lateLaw n) ((onePacketN).agentAt site))) + otherError n) ∨
+            ∃ mixture : PMF (M.AssessmentDeviation who),
+              localGain fuel (nativeReadout setup leaks bounds initial horizon scheduler)
+                  (exclusionReadoutUtility setup parameter utility excludedPayoff)
+                  (targetSequence n) site (PMF.pure choice) ≤
+                expect mixture (fun deviation =>
+                  let sourceComparison := M.assessmentComparisonWith (M.truncatedRunner
+                      sourceFuel) sourceObserve
+                    (sourceSequence n) who deviation
+                  expect sourceComparison.alternative
+                      (exclusionReadoutUtility setup parameter utility excludedPayoff · who) -
+                    expect sourceComparison.prescribed
+                      (exclusionReadoutUtility setup parameter utility excludedPayoff · who)) +
+                  otherError n) :
+    ∀ (weights : ℕ → ∀ p, PMF (KeyedPart
+        (LateDeliveryAgent setup leaks bounds initial horizon scheduler)
+        (agentLateKey setup leaks bounds initial horizon scheduler) (LateOption slots) p))
+      (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
+      (∀ n, (targetSequence n).strategy = (onePacketN).agentBehavior
+        (onePacketN).playedInformation fallback
+        fun agent => (weights n (keyedPool (LateDeliveryAgent setup leaks bounds initial horizon
+          scheduler) (agentLateKey setup leaks bounds initial horizon scheduler) agent)).bind
+          (keyedComponent (prescribed n) (lateLaw n) agent)) →
+      (∀ n, (targetSequence n).IsFullyMixed) →
+      (∀ n, BehavioralAssessment.IsBayesConsistent _ (targetSequence n)
+        targetRecall.decisionInformationAntichain) →
+      (∀ n (alternative : ∀ p, PMF (KeyedPart
+          (LateDeliveryAgent setup leaks bounds initial horizon scheduler)
+          (agentLateKey setup leaks bounds initial horizon scheduler) (LateOption slots) p)) p,
+        ∑ agent ∈ Finset.univ.filter (fun agent => keyedPool
+            (LateDeliveryAgent setup leaks bounds initial horizon scheduler)
+            (agentLateKey setup leaks bounds initial horizon scheduler) agent = p),
+          (if decision : (onePacketN).IsDecisionInfo agent.1 agent.2.1 then
+            localGain fuel (nativeReadout setup leaks bounds initial horizon scheduler)
+              (exclusionReadoutUtility setup parameter utility excludedPayoff) (targetSequence n)
+              (who := agent.1) ⟨agent.2.1, decision⟩
+              ((alternative (keyedPool (LateDeliveryAgent setup leaks bounds initial horizon
+                scheduler) (agentLateKey setup leaks bounds initial horizon scheduler)
+                agent)).bind (keyedComponent (prescribed n) (lateLaw n) agent))
+          else 0) ≤ 0) →
+      ∃ comparisonError : ℕ → ℝ, Tendsto comparisonError atTop (nhds 0) ∧
+        ∀ n who (site : (onePacketN).InformationSite who), (onePacketN).agentAt site ∉ free →
+          ∀ choice : (onePacketN).Choice who site.1,
+          localGain fuel (nativeReadout setup leaks bounds initial horizon scheduler)
+              (exclusionReadoutUtility setup parameter utility excludedPayoff) (targetSequence n)
+              site (PMF.pure choice) ≤ comparisonError n ∨
+            (∃ alternative : PMF (KeyedPart
+                (LateDeliveryAgent setup leaks bounds initial horizon scheduler)
+                (agentLateKey setup leaks bounds initial horizon scheduler) (LateOption slots)
+                (keyedPool (LateDeliveryAgent setup leaks bounds initial horizon scheduler)
+                  (agentLateKey setup leaks bounds initial horizon scheduler)
+                  ((onePacketN).agentAt site))),
+              localGain fuel (nativeReadout setup leaks bounds initial horizon scheduler)
+                  (exclusionReadoutUtility setup parameter utility excludedPayoff)
+                  (targetSequence n) site (PMF.pure choice) ≤
+                localGain fuel (nativeReadout setup leaks bounds initial horizon scheduler)
+                  (exclusionReadoutUtility setup parameter utility excludedPayoff)
+                  (targetSequence n) site (alternative.bind (keyedComponent (prescribed n)
+                    (lateLaw n) ((onePacketN).agentAt site))) + comparisonError n) ∨
+            ∃ mixture : PMF (M.AssessmentDeviation who),
+              localGain fuel (nativeReadout setup leaks bounds initial horizon scheduler)
+                  (exclusionReadoutUtility setup parameter utility excludedPayoff)
+                  (targetSequence n) site (PMF.pure choice) ≤
+                expect mixture (fun deviation =>
+                  let sourceComparison := M.assessmentComparisonWith (M.truncatedRunner
+                      sourceFuel) sourceObserve
+                    (sourceSequence n) who deviation
+                  expect sourceComparison.alternative
+                      (exclusionReadoutUtility setup parameter utility excludedPayoff · who) -
+                    expect sourceComparison.prescribed
+                      (exclusionReadoutUtility setup parameter utility excludedPayoff · who)) +
+                  comparisonError n := by
+  convert keyedLocalComparisons fuel bounded targetRecall _ _ fallback _ _ sourceObserve
+    sourceFuel sourceSequence prescribed lateLaw free compared failed excludedPayoff pays bound
+    bound_nonneg
+    (fun weights targetSequence played mixed bayes => by
+      obtain ⟨continuation, score, error, drift, slack, errorVanishes, driftVanishes,
+        slackVanishes, drift_nonneg, slack_nonneg, facts⟩ :=
+        ranking weights targetSequence played mixed bayes
+      refine ⟨continuation, score, error, drift, slack, errorVanishes, driftVanishes,
+        slackVanishes, drift_nonneg, slack_nonneg, fun n who site choice notFree marked => ?_⟩
+      obtain ⟨lower_le, gap_le, rest⟩ := facts n who site choice notFree marked
+      exact ⟨by linarith [excluded_le_lower who], gap_le, rest⟩)
+    (fun weights targetSequence played mixed bayes pooled =>
+      otherComparisons weights targetSequence played mixed bayes (by convert pooled; rfl))
+  all_goals rfl
+
+end Obligations
 
 end Vegas

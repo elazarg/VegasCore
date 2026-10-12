@@ -496,6 +496,17 @@ theorem localFailure_le_of_sure_failure [Finite T.History] (failed : Set T.Histo
   rw [sure]
   exact localFailure_le_one fuel assessment site failed law
 
+/-- A law under which every reached history from the site's belief has failed
+fails surely. -/
+theorem localFailure_eq_one_of_support (failed : Set T.History)
+    (law : PMF (N.Choice who site.1))
+    (sure : ∀ history ∈ (localRun fuel assessment site law).support, history ∈ failed) :
+    localFailure fuel assessment site failed law = 1 := by
+  classical
+  unfold localFailure
+  rw [expect_congr_on_support (g := fun _ => 1) fun history member => by
+    simp only [sure history member, ↓reduceIte], expect_constant]
+
 end Values
 
 section Pooled
