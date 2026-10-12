@@ -66,6 +66,7 @@ import GameTheoryExtensions.Math.Probability.TotalVariation
 import GameTheoryExtensions.Math.Probability.Uniform
 import GameTheoryExtensions.Protocol.BehavioralContinuation
 import GameTheoryExtensions.Protocol.ContinuationHorizon
+import GameTheoryExtensions.Protocol.FlaggedMenuRestriction
 import GameTheoryExtensions.Protocol.Knowledge
 import GameTheoryExtensions.Protocol.MenuRestriction
 import GameTheoryExtensions.Protocol.ObservationRecall
