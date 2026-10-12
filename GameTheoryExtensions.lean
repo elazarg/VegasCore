@@ -19,6 +19,8 @@ import GameTheoryExtensions.Analysis.Protocol.ComponentCompletion
 import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
 import GameTheoryExtensions.Analysis.Protocol.ContinuationDecision
 import GameTheoryExtensions.Analysis.Protocol.CopiedSiteLimit
+import GameTheoryExtensions.Analysis.Protocol.SuccessRanking
+import GameTheoryExtensions.Analysis.Protocol.SupportedChoiceContinuation
 import GameTheoryExtensions.Analysis.Protocol.DecisionExperiment
 import GameTheoryExtensions.Analysis.Protocol.DecisionPayoff
 import GameTheoryExtensions.Analysis.Protocol.DisclosureObstruction

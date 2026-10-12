@@ -43,6 +43,10 @@ import Vegas.Game.OnePacketExclusionPayoff
 import Vegas.Game.OnePacketForced
 import Vegas.Game.OnePacketTrembles
 import Vegas.Game.OnePacketPrescribedSupport
+import Vegas.Game.OnePacketCanonicalPermits
+import Vegas.Game.OnePacketPendingPool
+import Vegas.Game.OnePacketDelivery
+import Vegas.Game.OnePacketLawApproximation
 import Vegas.Game.PurificationEdge
 import Vegas.Game.ReactiveSourceDecision
 import Vegas.Game.ReactiveSourceAcceptance
