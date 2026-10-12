@@ -47,6 +47,7 @@ import Vegas.Game.OnePacketPrescribedSupport
 import Vegas.Game.OnePacketCanonicalPermits
 import Vegas.Game.OnePacketCanonicalAcceptance
 import Vegas.Game.OnePacketFirstActivation
+import Vegas.Game.OnePacketEventFailure
 import Vegas.Game.OnePacketPendingPool
 import Vegas.Game.OnePacketFactorization
 import Vegas.Game.OnePacketDelivery
