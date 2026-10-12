@@ -937,6 +937,21 @@ first two features below.
   - the excluded player's continuation value is then route-independent and
     below $\underline u_j$.
 - **Concurrency.** Both theorems are for Stage S, one event at a time.
+  [The concurrency note](se-concurrency.md) extends Theorem 2 to concurrent
+  execution that respects information dependence (Theorem 3). It needs three
+  more things:
+  - a success-separable builder, in which inclusion timing and order are
+    free but success is private to each event;
+  - an exclusion payoff below every non-excluded payoff;
+  - a reset of concurrent commit phases on failure.
+
+  Examples there show that each one is needed.
+- **What the compiler implements.** Exclusion, and under concurrency the
+  phase reset, are a recovery protocol that the compiler adds. They are not
+  a compilation of the program's own failure branches. Both theorems concern
+  programs whose intended meaning is the honest game, which has no failures.
+  Programs in which failure is meaningful source behaviour need a different
+  compiler.
 - **Infinite domains**, for example sealed-bid auctions over $\mathbb N$, are
   outside both theorems.
 - **Builder-first order.** If the deposit may depend on the builder's law,

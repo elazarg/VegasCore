@@ -11,7 +11,13 @@ Review history:
   - commit phases **reset** on failure (§1);
   - play after an exclusion is a lift of a *residual* honest game, built by
     induction (§3).
-- This revision has not been reviewed.
+- A re-review of that revision found nothing fatal and five fixable gaps.
+  All are fixed here:
+  - the induction carries prior *sequences*;
+  - bad-binding types are covered in the residual;
+  - the regions are redefined;
+  - phases are maximal same-kind runs;
+  - the builder after a barrier may differ.
 
 This note extends Theorem 2 of
 [the consolidated note](se-preservation-commit-reveal.md) from Stage S (one
@@ -54,8 +60,11 @@ source language, so they impose nothing further.
 
 Consequences:
 - Two concurrently ready events are of the same kind, with distinct owners.
-- Execution alternates **commit phases** and **reveal phases**, separated by
-  barriers.
+- A **phase** is a maximal run, in program order, of events of one kind. It
+  may contain several events of one owner, ordered among themselves, while
+  other owners' events run alongside them.
+- Execution alternates **commit phases** and **reveal phases**, with a barrier
+  between consecutive phases.
 - Stage S is the special case where $\prec$ is the program order.
 
 **Phase reset (part of the compiler).** Suppose a binding of a commit phase
@@ -63,9 +72,11 @@ fails, through a missed binding or expiry. Then:
 1. its owner is excluded, as in $C_1$;
 2. at the end of the phase, every other binding of that phase is **voided**;
 3. the remaining owners of the phase commit again, in a fresh commit phase
-   with fresh deadlines.
+   with fresh deadlines and fresh events.
 
-A voided binding is never revealed and reaches no payoff. Reveal phases need
+A voided binding is never revealed and reaches no payoff. Its free first
+packet stays uncharged. Any later packet for the voided event is charged,
+like any further packet. Reveal phases need
 no reset, because a reveal is not a decision in the honest game. A program
 whose commit phases are singletons (commits in program order) never resets.
 
@@ -82,7 +93,8 @@ remainder.
   the remainder.
 - **(S2) Independence.** The family $(\xi_e)_e$ is independent across events,
   and independent of the remainder of the builder's randomness, of every
-  player's choices, and of every $r_f$.
+  player's choices, and of every $r_f$. An event re-run after a reset is a new
+  event, with a fresh independent $\xi$.
 
 The following may depend on the public history and on the packets,
 **per-event value-blind**: the law concerning event $e$ may read the value of
@@ -119,7 +131,21 @@ state. Call an **initialized program** a program together with:
 - an initial public state (publications so far and the set of excluded
   players);
 - for each active player, a set of existing hidden commitments, drawn from a
-  prior that is a **product across players**.
+  prior that is a **product across players**;
+- a **sequence of product priors** $\pi_n\to\pi$, with full support on each
+  player's hidden commitments, including bad bindings. The honest SE must be
+  consistent along it: its beliefs are limits of Bayes beliefs under
+  $\pi_n$ and fully mixed profiles.
+
+The sequence matters because a residual game starts from the native
+posterior *along the tremble sequence*, not from its limit. Types with zero
+limit mass, which arise only through trembles, still determine beliefs at
+off-path sets. An honest SE consistent along a given prior sequence exists:
+take a limit of perturbed equilibria with prior $\pi_n$.
+
+An active player holding a bad binding in the prior is handled as in Theorem
+2. It is projected as if it held a fixed honest value, and its weight
+vanishes against every honest type.
 
 An empty-context program is the special case with nothing initialized.
 Product priors are preserved by honest play: each player's honest choice reads
@@ -136,14 +162,19 @@ reset, and fix:
   the contract of the consolidated note's §1.2 (opportunity, protected
   inclusion, timeliness, completion) for every event.
 
-Then some native SE preserves $(\sigma^H,\mu^H)$.
+Then some native SE preserves $(\sigma^H,\mu^H)$. Its beliefs are consistent
+along $\pi_n$ together with the native trembles. This holds for every builder
+continuation: after a barrier the builder's law may depend on earlier data,
+and each such continuation is again a builder of the stated class.
 
 The assessment it constructs has one further property:
 
-**(P) Past-blindness.** At each barrier, the continuation is a function of the
-public results, the exclusion set and each player's own commitments. It does
-not depend on operational data (timing, serials, leaks) recorded before the
-barrier.
+**(P) Past-blindness.** On the forced and post-barrier regions (defined in
+§3.1), from each barrier on, the prescribed play is a function of the public
+results, the exclusion set, each player's own commitments, and data recorded
+after the barrier. It does not read operational data (timing, serials, leaks)
+recorded before the barrier. Play on the free region may read anything, but
+the free region has vanishing weight at every set outside it.
 
 ### 3.1 Construction
 
@@ -151,8 +182,20 @@ The construction is by induction on the number $k$ of active players. For
 $k=0$ there is nothing to show. Assume the theorem, with (P), for fewer than
 $k$ active players.
 
-**Phases before any exclusion.** Within a phase, play follows $\sigma^*$ of
-the consolidated note's §3.1, with two changes:
+**Regions.** These replace the regions of Theorem 2.
+- The **forced** region: sets containing a history with no charged action
+  whose last barrier was preceded by no exclusion. This includes the rest of a
+  phase after an exclusion inside it.
+- The **post-barrier** region: sets after a barrier that was preceded by an
+  exclusion, reached without charged actions.
+- The **free** region: sets reached only through a charged action.
+
+Excluded players' own sets carry a constant gross payoff, and their only
+uncharged action is silence.
+
+**Within a phase (forced region).** Play follows $\sigma^*$ of the
+consolidated note's §3.1, including between an exclusion and the next barrier.
+There are two changes:
 - **Delivery policy.** $\varphi^*$ is chosen among *own-service* policies,
   whose send times depend only on the owner's activations and on the clock
   relative to $r_e$, and, for a reveal, on the value being opened. A binding's
@@ -165,25 +208,41 @@ the consolidated note's §3.1, with two changes:
 - **Honest values in a commit phase** are drawn from $\sigma^H$ at the
   projection $\Pi(I)$, whatever the native order of the phase's bindings.
 
-**After a phase in which someone was excluded.** At the barrier, the public
-results and the exclusion set define an initialized **residual program**:
+**After a barrier preceded by an exclusion (post-barrier region).** The
+public results and the exclusion set define an initialized **residual
+program**:
 - the excluded players' later events are failed;
 - under phase reset, the voided bindings are removed, and the phase's
-  remaining owners commit again;
-- the prior is the honest posterior $\mu^H$ of the remaining hidden
-  commitments given the public history. It is a product prior.
+  remaining owners commit again.
 
-The residual honest game has an SE $(\sigma^R,\mu^R)$ with that prior, since it
-is finite. By induction, its compiled game has a past-blind native SE
-preserving it. Play from the barrier onward follows that SE.
+Its prior is defined as follows. The native public history contains failures,
+so it is not an honest history. Remove the excluded players' failed events and
+everything they would have done later; what remains projects to an honest
+public history $h^\circ$. The prior *sequence* is the posterior at $h^\circ$
+of the active players' hidden commitments (bad ones included), along the
+native tremble sequence: $\pi_n=\mu^H_n(h^\circ)(1+o(1))$, which tends to
+$\pi=\mu^H(h^\circ)$. Each $\pi_n$ is a product prior:
+- given the public history, the likelihood factors by player;
+- no public result depends on another player's hidden value;
+- bindings are opaque;
+- every leaked opening belongs to a player who is excluded or already
+  published.
+
+Consistency makes every observer's marginal about player $i$ the same.
+
+Take an honest SE $(\sigma^R,\mu^R)$ of the residual game, consistent along
+$\pi_n$. By induction, the compiled residual game has a past-blind native SE
+preserving it, for every builder continuation. Play from the barrier onward
+follows that SE.
 
 **Excluded players** stay silent, as before.
 
 **Trembles and the free region.** Trembles are as in the consolidated note,
 with these differences:
-- the residual SEs carry their own tremble sequences;
-- combine them with the outer sequence by multiplying weights at a common
-  index $n$;
+- the residual SEs carry their own tremble sequences, built along the prior
+  sequence $\pi_n$ that the outer sequence induces at the barrier. So the two
+  sequences are indexed together by construction, rather than merely
+  multiplied;
 - information sets reached only through a charged action form the free
   region, filled by perturbed agent-form equilibria as before.
 
@@ -202,8 +261,10 @@ unopened binding value: bindings are opaque, the builder is per-event
 value-blind, and binding policies read no value. So the factor $N_n$ does not
 depend on the values.
 
-The phase's not-yet-chosen values are chosen at information sets that contain
-no value from the phase. $\square$
+The phase's not-yet-chosen values of other owners are chosen at information
+sets that contain no other owner's value from the phase. An owner's own
+earlier values in the phase are in its own information, as in the honest game.
+$\square$
 
 **Lemma D (value choice under reset).** Take a forced set in a commit phase
 at which owner $j$ chooses a value $v$, together with any own-service delivery
@@ -284,19 +345,24 @@ $\xi_e$ (S1). The cases:
   by induction, provided the residual SE is an SE in the native continuation.
 
   It is: by (P), and by Lemma A″ applied to the pre-barrier operational data,
-  that data is independent of every hidden value given the public history. The
-  only values that leaked and were never published belong to excluded players,
-  and the product prior makes those uninformative about the active players'
-  values. They are also payoff-irrelevant, since the excluded players' results
-  are failed.
+  that data is independent of every hidden value given the public history.
 
-  So conditioning on the pre-barrier data leaves every active player's belief
-  equal to the residual prior. The residual assessment's beliefs and
-  rationality therefore carry over.
+  The only values that leaked and were never published belong to excluded
+  players. They are:
+  - uninformative about the active players' values, by the product prior;
+  - payoff-irrelevant, since the excluded players' results are failed;
+  - read by no active player's prescribed strategy, by (P).
 
-**Consistency.** The outer and residual tremble sequences combine at a common
-index. Within a residual continuation, the entry weights are value-independent
-common factors (Lemma A″), so the residual Bayes beliefs are unchanged.
+  So, along the sequence, conditioning on the pre-barrier data leaves every
+  active player's belief equal to the residual prior $\pi_n$. The residual
+  assessment's beliefs and rationality therefore carry over.
+
+**Consistency.** The outer and residual tremble sequences share the index
+$n$. The residual sequence is built along the prior sequence $\pi_n$ that the
+outer sequence induces at the barrier. Within a residual continuation, the
+remaining entry weights are value-independent common factors (Lemma A″). So
+the native Bayes beliefs equal the residual ones along the sequence, including
+at the residual's off-path sets.
 
 **Preservation.** On the path every owner sends its free packet at its first
 activation, which succeeds surely. So no exclusion or reset occurs, and play
@@ -413,7 +479,27 @@ The same counterexample works with different deadlines instead of a
 leak-revealing schedule: a late A could observe B's expiry before choosing.
 The reset covers that too.
 
-## 5. Remaining questions
+## 5. What the compiler implements
+
+Exclusion, the phase reset and post-barrier residual play are a **recovery
+protocol** that the compiler adds. They are not a compilation of the program's
+own failure branches:
+- the honest game has no failures, so on its paths none of these rules ever
+  fires;
+- the preservation target constrains only the honest outcome law and the
+  absence of charges on path. Off-path rules are the compiler's to choose, as
+  the forfeit and the deposit are.
+
+Under the program's *full* semantics, where failures are results and
+utilities read them, a reset would change the meaning: there, another
+player's failure leaves a commitment standing. So these compilers are correct
+for programs whose intended meaning is the honest game. Programs in which
+failure is meaningful source behaviour, such as deliberate withholding with
+specified consequences, need a different compiler.
+
+The recovery rules are part of the public contract, known to all players.
+
+## 6. Remaining questions
 
 - **Coupled builders.** Can a forfeit scaled by $n-1$, or capped fail-stop
   payoffs, restore preservation when (S2) fails? Example 1 bounds what a
