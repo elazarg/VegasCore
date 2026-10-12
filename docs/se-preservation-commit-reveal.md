@@ -123,7 +123,7 @@ lists what is open.
 | charged packet | A packet the audit charges (1.3). |
 | clean history / set | A history in which nobody emitted a charged packet; an information set that contains a clean history (5.2). |
 | $m_j$ | The minimum of $j$'s gross payoff over compiled terminal histories in which $j$ is not excluded (1.3). |
-| $\Gamma^X$ | The source game with exclusion: the source's full commit menu, deferred guards, failure and exclusion (1.6). |
+| $\Gamma^X$ | The source game with exclusion (the X stands for exclusion; compare $\Gamma^H$, the honest game): the source's full commit menu, deferred guards, failure and exclusion (1.6). |
 | guard obligation | A guard retained at a commit and checked at the reveal that completes its reads (1.1). |
 | publicly doomed | A player whose published values admit no guard-satisfying assignment of its hidden commitments, so that a later reveal of its must fail (1.6). |
 | privately doomed | A player whose own commitments admit no guard-satisfying assignment; it knows this, others may not (1.6). |
