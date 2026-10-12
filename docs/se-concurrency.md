@@ -35,7 +35,7 @@ Every event that reads a publication waits for it at a barrier.
 - A player who sees another's opening before sending its own learns a value
   that is public anyway on the honest path. Its own choice there is only
   whether, and when, to send an immutable opening.
-- Withholding leads to exclusion at $a_j<L_j\le V$. It is dominated even after
+- Withholding leads to exclusion at $a_j<\underline u_j\le V$. It is dominated even after
   learning others' values, so front-running a reveal gains nothing.
 
 **Single deviations.**
@@ -156,7 +156,7 @@ The game has complete information, so this obstruction is about
    The forfeit would still depend only on payoffs, so the deposit-first order
    is kept.
 3. **No reward for others' failure (open).** Fail-stop with constants
-   $c_i^{(j)}\le L_i$ removes every incentive to induce another player's
+   $c_i^{(j)}\le\underline u_i$ removes every incentive to induce another player's
    failure, and it kills the counterexample above. A coupled builder can
    still make $i$'s timing affect $j$'s success, and so trade $i$'s own risk
    against $j$'s success, which $i$ prefers. That trade depends on $i$'s
