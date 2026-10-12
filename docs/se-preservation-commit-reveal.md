@@ -142,6 +142,14 @@ Review history:
   A restatement of the model with a realistic clock was drafted and set
   aside; Section 9 records what it showed. These changes have not been
   re-reviewed.
+- A further review found that Lemma A3(1) claimed zero weight on every other
+  player's bad binding. After an owner's failed reveal, the honest
+  counterpart of its observed silence can be rarer than the bad binding, so
+  the posterior on the bad binding need not vanish. The claim is now limited
+  to players active at commit-phase sets, where it holds. For excluded
+  players it is not needed. Theorem 2's Lemma A had the same gap at
+  pending-reveal sets. Its bad-binding claim is now limited to sets with no
+  pending reveal; at pending-reveal sets nothing uses it.
 
 ## Summary
 
@@ -1436,7 +1444,9 @@ and Bayes beliefs.
 **Lemma A (forced beliefs are honest).** Two claims hold.
 
 1. At every forced set, the limit belief puts zero weight on histories with a
-   charged action or with another player's bad binding.
+   charged action. At forced sets at which no reveal is pending, it also
+   puts zero weight on histories in which another player holds a bad
+   binding.
 2. At a forced set $I$ at which no reveal is pending, the belief about
    **other players'** values over the $\Gamma^X$ set $\Pi(I)$ is
    $\mu^X(\Pi(I))$. It puts all its mass on nodes where the others are honest,
@@ -1444,8 +1454,12 @@ and Bayes beliefs.
    claim still concerns only the others' values. The owner's own commitments
    are known to it.
 
-At forced sets with a pending reveal, only the first claim is asserted;
-Lemma B covers them.
+At forced sets with a pending reveal, only the charged-action part of the
+first claim is asserted; Lemma B covers them. The bad-binding part can fail
+there. While an unopenable binding's reveal is pending, others may observe
+its owner's silence, and the honest counterpart of that silence needs
+several timing trembles. Nothing needs it, because while a reveal is pending
+the other players' only uncharged action is silence.
 
 *Proof.*
 
@@ -1455,7 +1469,11 @@ Lemma B covers them.
   $\rho_n^{\mathcal T}$ times the common factors, and
   $\eta_n^2=o(\rho_n^{\mathcal T})$. At a forced set nobody is publicly doomed,
   so such a counterpart exists. The two operational records have the same law,
-  since well-formed bindings carry no evidence and are opaque.
+  since well-formed bindings carry no evidence and are opaque. Until the bad
+  binding's reveal, its owner times its moves exactly as the counterpart
+  does. When no reveal is pending, that reveal has not begun: otherwise it
+  would have completed, and a bad binding's reveal fails and excludes its
+  owner, which would take the set out of the forced region.
 - *Every other history* factors as
   $\Pr_n(h)=\Pr^H_n(\Pi(h))\,N_n(h)\,(1+o(1))$. Here $\Pr^H_n$ is the honest
   probability. $N_n$ collects the builder's draws, the leaks, the collection
@@ -1534,9 +1552,11 @@ need not save anything.
 for consistent assessments in finite games (Hendon, Jacobsen and Sloth 1996),
 it suffices to check single deviations.
 
-From a forced set, with probability one under the beliefs (Lemma A), play
-leaves the forced region in only two ways: the deviator's own charged action,
-or the deviator's own exclusion. Nobody can make another player fail.
+From a forced set at which no other player's reveal is pending, with
+probability one under the beliefs (Lemma A), play leaves the forced region
+in only two ways: the deviator's own charged action, or the deviator's own
+exclusion. (While another player's reveal is pending, the deviator's only
+uncharged action is silence, and Lemma C covers the charged ones.) Nobody can make another player fail.
 Protected inclusion holds on every history, and other emitters' packets do not
 void it. Nobody can make another player charged either, since charges attach
 to the emitter.
@@ -1773,8 +1793,8 @@ built from $\sigma^X_n$:
     On the honest region that is $\sigma^H_n$ scaled as in Proposition 1. At
     the owner's own guard-violating sets it is Proposition 1's play there.
   - Native-only bad bindings (unopenable or wrongly typed) are in the
-    $\zeta_n^2$ tier below, and others' beliefs give them zero weight
-    (Lemma A3, part 1). Their
+    $\zeta_n^2$ tier below. At commit-phase sets, others' beliefs give them
+    zero weight while their owner is active (Lemma A3, part 1). Their
     owner sends on time and otherwise plays as if the bad binding held a fixed
     honest value. Any uncharged choice is optimal for it, by the own-bad-binding
     argument of 4.5.
@@ -1792,9 +1812,13 @@ $$
 \zeta_n^{M_3}=o\bigl((\zeta_n^{2}\rho^X_n/c)^{\mathcal T}\bigr),
 $$
 where $c$ bounds the menu sizes. The first condition makes native-only bad
-bindings negligible against their counterparts with the same public record,
-which may differ in up to $\mathcal T$ earlier choices. The others make charged
-histories negligible against clean ones.
+bindings of active players negligible against their counterparts with the
+same public record, which may differ in up to $\mathcal T$ earlier choices.
+The comparison needs no further timing trembles. Until the reveal of the bad
+binding, its owner plays exactly as the honest counterpart does. It draws
+the bad value in place of an honest one, at the same callback. Before that
+reveal, the two histories carry the same timing factors. The others make
+charged histories negligible against clean ones.
 
 **Delivery policy.** $\varphi^*$ is chosen among *own-service* policies. Their
 send times depend only on the owner's activations and the clock relative to
@@ -1864,8 +1888,20 @@ public history.
 **Lemma A3 (beliefs at forced and lifted sets).** Three claims hold.
 
 1. At every forced or lifted set, the limit belief puts zero weight on
-   histories with a charged action or with another player's native-only bad
-   binding.
+   histories with a charged action. At every forced or lifted set in a
+   commit phase, it also puts zero weight on histories in which a player
+   that is active at the set holds a native-only bad binding.
+
+   The bad-binding claim is limited on purpose. A bad binding behaves
+   differently from an honest one only at its own reveal, where its owner
+   has no valid opening. That reveal is in a reveal phase, where no belief
+   claim is made. Afterwards its owner is excluded. There the honest
+   counterpart of an observed silence can be rarer than the bad binding. It
+   needs a source-level failure or several timing trembles, while the bad
+   binding fails at no further cost. So the posterior on an excluded
+   player's bad binding need not vanish. Nothing depends on it: an excluded
+   player's hidden values reach no payoff, and they are independent of the
+   active players' values given the public history.
 2. Call $\Phi$ (no other active owner's binding in the phase fails)
    **possible** at a native set $I$ if some history in $I$ extends, with
    positive probability, to one in which $\Phi$ holds. This does not depend
@@ -1915,8 +1951,11 @@ own-bad-binding argument), and Lemma B3 holds at any belief. This matches
 Theorem 2, whose Lemma A asserts honest beliefs only where no reveal is
 pending.
 
-*Proof.* Charged histories and native-only bad bindings are negligible by the
-choice of $\zeta_n$ and $M_3$, which is claim 1. Claim 3 is part of claim 2,
+*Proof.* Charged histories, and native-only bad bindings of players active
+at a commit-phase set, are negligible by the choice of $\zeta_n$ and $M_3$,
+which is claim 1. For the latter, an active player has not yet reached the
+reveal of its bad binding, since that reveal would have excluded it. So the
+counterpart differs only in the value drawn. Claim 3 is part of claim 2,
 which compares, at each stage $n$, the native and $\Gamma^X$ laws of the
 end-of-phase source history given $\Phi$. The argument treats each owner's
 trajectory as a whole, and never splits it into a past and a future part.
@@ -2527,7 +2566,8 @@ binding. A non-excluded terminal payoff is at least $m_j$ by definition, and
 $m_j>a_j$.
 
 **E1 and E5.** At clean sets, Lemma A3 gives zero weight to unclean
-histories and to others' bad bindings. At clean sets with a value choice,
+histories. At sets with a value choice, it also gives zero weight to active
+players' bad bindings. At clean sets with a value choice,
 which lie in commit phases, it gives honest beliefs over the projection
 before any exclusion or public doom, and $\Gamma^X$ beliefs at doomed sets
 and after exclusions.
