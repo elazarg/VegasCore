@@ -49,8 +49,19 @@ builder's reliability.
   payoff spread and every admissible value-blind builder, every honest SE is
   preserved.
 
-Section 5 explains what the proof of Theorem 2 needs from each change.
-Section 6 lists what is open.
+- **Theorem 4 (source explanation).** Under the hypotheses of Theorem 2,
+  honest players need to reason only about the source program, read with one
+  source-level rule: *a failure to reveal excludes its author with a fixed
+  forfeit*. Every runtime fact an honest player could meet is explained at
+  the source level, with an explicit tier for each:
+  - by the *mechanics* of runtime and compiler, which hold for every strategy
+    profile;
+  - where the mechanics allow more, by *dominance*, which holds whatever
+    others do;
+  - otherwise, by the *equilibrium* that Theorem 2 constructs.
+
+Section 6 explains what the proof of Theorem 2 needs from each change.
+Section 7 lists what is open.
 
 ## 1. Model
 
@@ -868,7 +879,161 @@ path. Bindings follow $\sigma^H$, samples follow their law, and the builder's
 randomness affects no public result. So the joint law of public results and
 net payoffs is the honest one. $\square$
 
-## 4. How the two theorems relate
+## 4. Theorem 4: honest players reason only about the source
+
+Theorem 2 says that an equilibrium outcome survives compilation. The aim here
+is stronger. An honest player, whose client code is compiled from the
+program, should never need to understand runtime behaviour. Whatever happens
+at runtime should be explained by something that can happen in the source.
+The explanation should come from the mechanics wherever possible, and from
+incentives only where the mechanics leave room.
+
+### 4.1 The source game with exclusion
+
+Let $\Gamma^X$ be the honest game extended by one source-level option.
+
+- At each of its own events, a player may **fail**: miss a binding, or fail to
+  reveal.
+- A failing player is excluded:
+  - all its later results are $\mathsf{fail}$;
+  - its payoff is the fixed $a_j$;
+  - the others continue and receive $u_i$ on the public results.
+- Under concurrency (see [the concurrency note](se-concurrency.md)), a failure
+  in a commit phase also voids the phase's other bindings, and their owners
+  commit again.
+
+$\Gamma^X$ contains no blockchain detail: no clocks, packets, builder or
+mempool. Its only addition to the honest game is the meaning of failure.
+
+### 4.2 Statement
+
+**Theorem 4.** Assume the hypotheses of Theorem 2. For concurrent execution,
+assume those of Theorem 3 of the concurrency note instead. Call a runtime
+history *clean* if no player has emitted a charged packet in it. Then the
+following hold, at three tiers of strength.
+
+**(M) Mechanics: for every strategy profile.**
+
+- **M1. On-time honest actions succeed.** A well-formed packet sent at the
+  owner's first activation is accepted before the deadline, whatever anyone
+  else sends. This follows from opportunity, protected inclusion, timeliness
+  and the contract's acceptance rule.
+- **M2. Clean outcomes are source outcomes.** Every clean runtime history has
+  the public results and gross payoffs of some history of $\Gamma^X$. Each
+  event's result is either its owner's honest action or its owner's failure.
+  - An unopenable or wrongly typed binding is followed by a failed reveal.
+  - A guard-violating value is rejected at its reveal.
+
+  Both therefore map to "commit some honest value, then fail".
+- **M3. Clean traffic reveals no unopened value.** Two mechanisms ensure this:
+  - well-formed bindings carry no evidence and are opaque;
+  - the builder is value-blind, and leaks are author-only.
+
+  The one exception is an opening in flight. Seeing it early reveals a value
+  that either becomes public on success, or belongs to a player who is then
+  excluded. In the second case the value reaches no payoff, since that
+  player's results are failed. It is also independent of every active player's
+  unopened values given the public history, since no player's information
+  contains another's unopened value. There is no off-ledger channel.
+- **M4. Nobody's clean actions affect another's success or charges.**
+  - At Stage S this follows from protected inclusion, because only one event
+    is unresolved at a time.
+  - Under concurrency it follows from success separability.
+  - Charges attach to the emitter.
+
+**(D) Dominance: guaranteed incentives, whatever the others do.**
+
+- **D1. Charged packets never pay.** At any information set where $j$ is
+  uncharged, an action that emits a charged packet yields at most
+  $\max\mathrm{gross}_j-\alpha K_j$. Every clean continuation yields at least
+  $\min\mathrm{gross}_j$, which is larger (Lemma C). So disclosures, junk,
+  extra copies and malformed packets are all explained away: rational players
+  never send them.
+- **D2. Failing at an on-time turn never pays,** when $a_j<m_j$ (the bound of
+  Theorem 3). By M1, sending at the first activation succeeds surely. The
+  resulting payoff is a non-excluded payoff, so it is at least $m_j>a_j$,
+  whatever others do. This covers front-running: under concurrency a player
+  may see others' openings before its own reveal, but revealing still
+  dominates. Under Theorem 2's weaker bound $a_j<\underline u_j$, D2 holds only
+  at tier E.
+
+**(E) Equilibrium: in the native SE constructed by Theorem 2 (or Theorem 3).**
+
+- **E1. Beliefs are source beliefs.** At every clean runtime information set,
+  each player's belief about the payoff-relevant unknowns (others' unopened
+  values) equals its belief at the matching information set of $\Gamma^X$:
+  - $\mu^H$ before any exclusion (Lemma A);
+  - the residual honest SE's belief after one.
+- **E2. Play is source play.** Prescribed play is $\sigma^H$, or after an
+  exclusion the residual SE's play, at the matching source information set.
+  Runtime data enters only the client's choice of *when* to send.
+- **E3. Uncharged deviations are source lotteries.** Every uncharged one-shot
+  deviation of $j$, such as silence, late sending or another send time, has
+  expected payoff
+  $$
+  P\cdot V+(1-P)\cdot a_j .
+  $$
+  This is a lottery between two $\Gamma^X$ outcomes: the honest action, with
+  continuation value $V$, and $j$'s own failure. The success probability $P$
+  is a runtime quantity, but it enters only as a weight (Lemmas B and B″).
+- **E4. Timing carries no meaning.**
+  - Every type ranks send times by $P$ alone, so in equilibrium no type
+    signals through timing.
+  - Observers' beliefs ignore timing (E1).
+  - Prescribed play never reads it (E2).
+
+### 4.3 Proof
+
+- **M1** is the argument of Theorem 2's sequential-rationality step for honest
+  choices, and M4 is its remark that nobody can make another player fail,
+  extended by success separability under concurrency.
+- **M2** checks each kind of well-formed packet against the contract's
+  acceptance rule and against exclusion.
+- **M3** is the opaqueness, value-blindness and author-only clause, together
+  with exclusion and the product structure of honest priors. Product structure
+  holds for any profile here, since no player's information contains another
+  player's unopened value.
+- **D1** is Lemma C.
+- **D2** is M1 together with the definition of $m_j$.
+- **E1–E3** are Lemmas A, B and C of Theorem 2, and their concurrent forms A″,
+  B″ and D.
+- **E4** is the type-independence part of Lemma B.
+
+$\square$
+
+### 4.4 What each tier asks of an honest player
+
+| Runtime phenomenon | Explained by | Tier | What it rests on |
+| --- | --- | --- | --- |
+| An honest move takes effect | the move itself | M1 | contract (protected inclusion) |
+| Outcomes after misbehaviour | a $\Gamma^X$ outcome | M2 | exclusion, acceptance rules |
+| Seeing others' bindings or timing | nothing: no value revealed | M3 | opaque bindings, value-blind builder |
+| Seeing a failed opening | an excluded player's irrelevant value | M3 | exclusion |
+| Others interfering with your success | impossible | M4 | protected inclusion or success separability |
+| Disclosures, junk, copies | never sent | D1 | deposit $\alpha K_i>\operatorname{sp}_i$ |
+| Withholding after seeing others' openings | never chosen | D2 | $a_j<m_j$ |
+| When to send if late | maximize success; the client automates this | E3 | equilibrium (Lemma B) |
+| Timing as a signal | carries no information | E4 | equilibrium (no type signals) |
+
+An honest player relies on tiers M and D unconditionally. Tier E is where it
+relies on the others playing the constructed equilibrium. Tier E concerns only
+off-path events: on the path, every owner sends at its first activation, and
+M1 makes that sufficient.
+
+### 4.5 Limits
+
+- **The meaning of failure.** The explanation uses $\Gamma^X$, the honest game
+  together with the source-level failure rule. It does not explain programs
+  whose own failure branches keep the failing player in strategic play.
+  Theorem 1 shows that such programs can require runtime detail, such as
+  whether a failed opening was seen, which no source-level event expresses.
+- **What the client must know.** The off-path delivery policy $\varphi^*$
+  reads the builder's law. On the path the client needs nothing about the
+  builder.
+- **Concurrency.** The tiers depend on Theorem 3's builder condition (success
+  separability), which is an assumption about the chain, not about the source.
+
+## 5. How Theorems 1 and 2 relate
 
 Theorem 1's mechanism has three links:
 
@@ -879,15 +1044,15 @@ Theorem 1's mechanism has three links:
 
 Exclusion cuts the first link. $C_0$ also charges a dead first packet. That
 makes the cost of a late send depend on the route, which would recreate a
-type-dependent choice even after exclusion (Section 5).
+type-dependent choice even after exclusion (Section 6).
 
-## 5. Why the proof needs each change
+## 6. Why the proof needs each change
 
 These are obstructions to the proof of Theorem 2, not counterexamples.
 Theorem 1 is a counterexample only for $C_0$ as a whole, which combines the
 first two features below.
 
-- **Exclusion with a fixed payoff.** Without it, link 1 of Section 4 holds.
+- **Exclusion with a fixed payoff.** Without it, link 1 of Section 5 holds.
   The failing player's payoff then depends on both the type and the route, and
   Lemma B fails. What the proof needs is narrower than ending the game. After
   failure, the failing player's payoff must depend neither on its type nor on
@@ -918,7 +1083,7 @@ first two features below.
 - **Value-blind builder.** Lemma A needs it. The runtime's scheduler view
   contains pending payloads, so this is a real restriction.
 
-## 6. Open questions and limitations
+## 7. Open questions and limitations
 
 - **Isolating the causes.** $C_0$ has two features: failure branches
   continue, and dead packets are charged. Whether either feature alone already
