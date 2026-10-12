@@ -1,0 +1,362 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Pending.ReactiveCountVerdict
+import Interaction.ReactiveAuditCollection
+import Interaction.ReactiveTrafficContinuation
+import Interaction.ReactiveSubmissionSerial
+import Interaction.ChallengeWindow
+
+/-! # The count audit: sampled signed traffic judged by the count verdict
+
+Settlement samples evidence from the actual traffic. Each item of evidence is a
+packet together with the list of all signed envelopes, and the count verdict
+judges the packet against the sender's lower-serial packets in that list. A
+missed binding is not charged: it is an exclusion, handled by the payoffs.
+
+The audit reads only the signed envelopes, in emission order. Two states with
+the same emitted envelopes have the same collected charge, whatever their
+receipts, ledgers, inclusions and application states
+(`countCharge_eq_of_inputs`), so non-inclusion alone is never chargeable.
+
+Every principal's inputs carry the serials `0, 1, …` in emission order, at
+every legal prefix and under arbitrary responses. Hence a forbidden packet
+stays forbidden along every continuation, and coverage of forbidden evidence
+bounds the expected collection below under every later policy.
+-/
+
+noncomputable section
+
+namespace Interaction.ReactiveApplication
+
+open GameTheory.Math.Probability
+
+variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication Principal)
+
+/-- Each principal's network inputs carry the serials `0, 1, …` in emission
+order. -/
+def Execution.InputSerialsInOrder (execution : app.Execution) : Prop :=
+  ∀ who, (execution.network.inputs.filter fun input => input.sender = who).map
+    (fun input => input.id.2) = List.range (execution.network.nextSerial who)
+
+theorem inputSerialsInOrderInvariant (scheduler : app.Scheduler) :
+    app.ServiceInvariant scheduler (fun execution => execution.InputSerialsInOrder app) where
+  respond execution who action valid := by
+    intro observer
+    have earlier := valid observer
+    rcases action with ⟨transmission⟩
+    cases transmission with
+    | none => simpa only [Execution.respond] using earlier
+    | some submission =>
+        by_cases same : observer = who
+        · subst observer
+          simp only [Message.sender] at earlier
+          simp [Execution.respond, MessageNetwork.submit, List.filter_append, Message.sender,
+            earlier, List.range_succ]
+        · simp only [Message.sender] at earlier
+          simp [Execution.respond, MessageNetwork.submit, List.filter_append, Message.sender,
+            same, Ne.symm same, earlier]
+  environment execution next command valid _ reached := by
+    intro observer
+    rw [app.environmentStep_inputs execution next command reached,
+      app.environmentStep_nextSerial execution next command reached]
+    exact valid observer
+
+theorem inputSerialsInOrder_history (scheduler : app.Scheduler) (initial : PMF app.State)
+    (horizon : Nat) {state : app.ProtocolState}
+    (trace : (app.protocol initial horizon scheduler).Trace state) :
+    serviceInvariant (fun execution => execution.InputSerialsInOrder app) state :=
+  (app.inputSerialsInOrderInvariant scheduler).history initial horizon
+    (fun _ _ _ => rfl) trace
+
+variable {app}
+
+/-- Every input's serial is below its sender's next serial. -/
+theorem Execution.InputSerialsInOrder.serial_lt {execution : app.Execution}
+    (valid : execution.InputSerialsInOrder app) {input : Message Principal app.Payload}
+    (member : input ∈ execution.network.inputs) :
+    input.id.2 < execution.network.nextSerial input.sender := by
+  have mapped : input.id.2 ∈ (execution.network.inputs.filter fun other =>
+      other.sender = input.sender).map (fun other => other.id.2) :=
+    List.mem_map.mpr ⟨input, List.mem_filter.mpr ⟨member, by simp⟩, rfl⟩
+  rw [valid input.sender] at mapped
+  exact List.mem_range.mp mapped
+
+/-- Inputs appended after `before` carry serials at least the sender's next
+serial at `before`. So an input of a later execution with a lower serial was
+already an input of `before`. -/
+theorem Execution.InputSerialsInOrder.mem_of_prefix {before after : app.Execution}
+    (beforeValid : before.InputSerialsInOrder app) (afterValid : after.InputSerialsInOrder app)
+    (prefixOf : before.network.inputs <+: after.network.inputs)
+    {input : Message Principal app.Payload} (member : input ∈ after.network.inputs)
+    (lower : input.id.2 < before.network.nextSerial input.sender) :
+    input ∈ before.network.inputs := by
+  obtain ⟨rest, split⟩ := prefixOf
+  rw [← split] at member
+  rcases List.mem_append.mp member with old | new
+  · exact old
+  · exfalso
+    have whole := afterValid input.sender
+    rw [← split, List.filter_append, List.map_append, beforeValid input.sender] at whole
+    have nodup := whole ▸ List.nodup_range
+    have inRest : input.id.2 ∈ (rest.filter fun other => other.sender = input.sender).map
+        (fun other => other.id.2) :=
+      List.mem_map.mpr ⟨input, List.mem_filter.mpr ⟨new, by simp⟩, rfl⟩
+    exact List.disjoint_of_nodup_append nodup (List.mem_range.mpr lower) inRest
+
+end Interaction.ReactiveApplication
+
+namespace Vegas.EventGraphRuntime
+
+open Interaction GameTheory.Protocol GameTheory.Math.Probability GameTheory.Enforcement
+
+variable {Player : Type} [DecidableEq Player]
+  {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
+
+/-- Count evidence: the signed envelopes of the traffic and one packet. -/
+abbrev CountEvidence (graph : Vegas.EventGraph Player L) :=
+  List (Message Player (WitnessedPacket graph)) × Message Player (WitnessedPacket graph)
+
+variable (runtime : EventGraphRuntime graph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+
+/-- The count evidence of one traffic record: all signed envelopes of the
+traffic and the record's packet. -/
+def countEvidence (traffic : List (runtime.reactiveApplication leaks).TrafficRecord)
+    (record : (runtime.reactiveApplication leaks).TrafficRecord) : CountEvidence graph :=
+  (traffic.map ReactiveApplication.TrafficRecord.envelope, record.envelope)
+
+/-- **The count audit.** A sample of count evidence is drawn from the actual
+traffic; a player is charged once if some sampled packet of theirs is forbidden
+by the count verdict. -/
+def countAudit (sample : List (CountEvidence graph) → PMF (List (CountEvidence graph)))
+    (traffic : List (runtime.reactiveApplication leaks).TrafficRecord) : PMF (Player → Bool) :=
+  (runtime.reactiveApplication leaks).sampledTrafficAudit (runtime.countEvidence leaks traffic)
+    (fun evidence => evidence.2.sender) (fun evidence => countPermits evidence.1 evidence.2)
+    sample traffic
+
+/-- The count audit reads the traffic only through its signed envelopes. -/
+theorem countAudit_congr_envelopes
+    (sample : List (CountEvidence graph) → PMF (List (CountEvidence graph)))
+    (left right : List (runtime.reactiveApplication leaks).TrafficRecord)
+    (same : left.map ReactiveApplication.TrafficRecord.envelope =
+      right.map ReactiveApplication.TrafficRecord.envelope) :
+    runtime.countAudit leaks sample left = runtime.countAudit leaks sample right := by
+  have project (traffic : List (runtime.reactiveApplication leaks).TrafficRecord) :
+      traffic.map (runtime.countEvidence leaks traffic) =
+        (traffic.map ReactiveApplication.TrafficRecord.envelope).map fun envelope =>
+          (traffic.map ReactiveApplication.TrafficRecord.envelope, envelope) := by
+    simp only [List.map_map, Function.comp_def]
+    rfl
+  unfold countAudit ReactiveApplication.sampledTrafficAudit
+  rw [project left, project right, same]
+
+/-- **Only signed envelopes are charged.** At two legal states with the same
+emitted envelopes the collected charge is the same, whatever their receipts,
+ledgers, inclusions, application states, schedulers and initial laws. -/
+theorem countCharge_eq_of_inputs
+    (sample : List (CountEvidence graph) → PMF (List (CountEvidence graph)))
+    {initial initial' : PMF (runtime.reactiveApplication leaks).State} {horizon horizon' : Nat}
+    {scheduler scheduler' : (runtime.reactiveApplication leaks).Scheduler}
+    {left right : (runtime.reactiveApplication leaks).Control}
+    (leftTrace : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
+      (some left))
+    (rightTrace : ((runtime.reactiveApplication leaks).protocol initial' horizon'
+      scheduler').Trace (some right))
+    (same : left.execution.network.inputs = right.execution.network.inputs) (who : Player) :
+    TerminalAudit.charge (runtime.reactiveApplication leaks).stateTraffic
+        (runtime.countAudit leaks sample) (some left) who =
+      TerminalAudit.charge (runtime.reactiveApplication leaks).stateTraffic
+        (runtime.countAudit leaks sample) (some right) who := by
+  unfold TerminalAudit.charge
+  rw [runtime.countAudit_congr_envelopes leaks sample _ _ ?_]
+  rw [(runtime.reactiveApplication leaks).stateTraffic_inputs initial horizon scheduler leftTrace,
+    (runtime.reactiveApplication leaks).stateTraffic_inputs initial' horizon' scheduler'
+      rightTrace]
+  exact same
+
+/-- Environment operations, including the inclusion or non-inclusion of any
+pending packet, leave the collected charge unchanged. -/
+theorem countCharge_environmentStep
+    (sample : List (CountEvidence graph) → PMF (List (CountEvidence graph)))
+    {initial : PMF (runtime.reactiveApplication leaks).State} {horizon : Nat}
+    {scheduler : (runtime.reactiveApplication leaks).Scheduler}
+    {before after : (runtime.reactiveApplication leaks).Control}
+    (beforeTrace : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
+      (some before))
+    (afterTrace : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
+      (some after))
+    (command : (runtime.reactiveApplication leaks).Command)
+    (moved : after.execution ∈
+      (before.execution.environmentStep (runtime.reactiveApplication leaks) command).support)
+    (who : Player) :
+    TerminalAudit.charge (runtime.reactiveApplication leaks).stateTraffic
+        (runtime.countAudit leaks sample) (some after) who =
+      TerminalAudit.charge (runtime.reactiveApplication leaks).stateTraffic
+        (runtime.countAudit leaks sample) (some before) who :=
+  runtime.countCharge_eq_of_inputs leaks sample afterTrace beforeTrace
+    ((runtime.reactiveApplication leaks).environmentStep_inputs before.execution after.execution
+      command moved) who
+
+/-- Authentic backend coverage for count evidence the count verdict forbids.
+Delivery is conditional on the entire observed list, allowing arbitrary
+dependence between observation and censorship of reports. -/
+def CountEvidenceCoverage (service : EvidenceReportService (CountEvidence graph))
+    (observationRate deliveryRate : Player → ℝ) : Prop :=
+  ∀ actual evidence, evidence ∈ actual → countPermits evidence.1 evidence.2 = false →
+    observationRate evidence.2.sender ≤
+      ((service.observations actual).toOuterMeasure {seen | evidence ∈ seen}).toReal ∧
+    ∀ seen ∈ (service.observations actual).support, evidence ∈ seen →
+      deliveryRate evidence.2.sender ≤
+        ((service.reports seen).toOuterMeasure {delivered |
+          evidence ∈ EvidenceReport.deliveredEvidence
+            (service.window.reportCutoff + service.window.inclusionBound) delivered}).toReal
+
+/-- A forbidden packet in the actual traffic gives the product of observation
+and conditional delivery coverage as a lower bound on its sender's collected
+charge. -/
+theorem countAudit_collection (service : EvidenceReportService (CountEvidence graph))
+    (observationRate deliveryRate : Player → ℝ)
+    (delivery_nonnegative : ∀ who, 0 ≤ deliveryRate who)
+    (coverage : CountEvidenceCoverage service observationRate deliveryRate)
+    (traffic : List (runtime.reactiveApplication leaks).TrafficRecord)
+    (record : (runtime.reactiveApplication leaks).TrafficRecord) (present : record ∈ traffic)
+    (forbidden : countPermits (traffic.map ReactiveApplication.TrafficRecord.envelope)
+      record.envelope = false) :
+    observationRate record.envelope.sender * deliveryRate record.envelope.sender ≤
+      (((runtime.countAudit leaks service.sample traffic).map
+        (fun verdict => verdict record.envelope.sender)) true).toReal := by
+  unfold countAudit
+  rw [ReactiveApplication.sampledTrafficAudit_collection]
+  have member : runtime.countEvidence leaks traffic record ∈
+      traffic.map (runtime.countEvidence leaks traffic) := List.mem_map_of_mem present
+  obtain ⟨observed, delivered⟩ := coverage _ _ member forbidden
+  refine (service.sample_coverage _ _ _ _ (delivery_nonnegative _) observed delivered).trans ?_
+  apply ENNReal.toReal_mono (outerMeasure_ne_top _ _)
+  apply PMF.toOuterMeasure_mono
+  rintro seen ⟨included, _⟩
+  exact ⟨_, included, rfl, forbidden⟩
+
+/-- Traffic whose packets the count verdict all permits is charged to nobody. -/
+theorem countAudit_charge_zero (service : EvidenceReportService (CountEvidence graph))
+    (traffic : List (runtime.reactiveApplication leaks).TrafficRecord)
+    (clean : ∀ record ∈ traffic,
+      countPermits (traffic.map ReactiveApplication.TrafficRecord.envelope) record.envelope =
+        true)
+    (who : Player) :
+    (((runtime.countAudit leaks service.sample traffic).map
+      (fun verdict => verdict who)) true).toReal = 0 :=
+  (runtime.reactiveApplication leaks).sampledTrafficAudit_sound _ _ _ _ traffic who
+    (fun observed supported => service.sample_authentic _ observed supported)
+    (fun record present _ => clean record present)
+
+variable {runtime leaks}
+
+/-- **A forbidden packet stays forbidden.** Along every legal continuation of
+the complete runtime, a forbidden input remains an input and remains forbidden
+by the count verdict on the later inputs. -/
+theorem countForbidden_reaches {initial : PMF (runtime.reactiveApplication leaks).State}
+    {horizon : Nat} {scheduler : (runtime.reactiveApplication leaks).Scheduler}
+    {first last : ((runtime.reactiveApplication leaks).protocol initial horizon
+      scheduler).History} {fuel : Nat}
+    (path : ((runtime.reactiveApplication leaks).protocol initial horizon
+      scheduler).ReachesWithin fuel first last)
+    (before after : (runtime.reactiveApplication leaks).Control)
+    (firstEq : first.state = some before) (lastEq : last.state = some after)
+    (message : Message Player (WitnessedPacket graph))
+    (present : message ∈ before.execution.network.inputs)
+    (forbidden : countPermits before.execution.network.inputs message = false) :
+    message ∈ after.execution.network.inputs ∧
+      countPermits after.execution.network.inputs message = false := by
+  let app := runtime.reactiveApplication leaks
+  have traffic := app.stateTraffic_reaches initial horizon scheduler path
+  have firstInputs := app.stateTraffic_inputs initial horizon scheduler first.trace
+  have lastInputs := app.stateTraffic_inputs initial horizon scheduler last.trace
+  have firstOrder := app.inputSerialsInOrder_history scheduler initial horizon first.trace
+  have lastOrder := app.inputSerialsInOrder_history scheduler initial horizon last.trace
+  rw [firstEq] at firstInputs firstOrder traffic
+  rw [lastEq] at lastInputs lastOrder traffic
+  have prefixOf : before.execution.network.inputs <+: after.execution.network.inputs := by
+    have mapped := traffic.map ReactiveApplication.TrafficRecord.envelope
+    rw [firstInputs, lastInputs] at mapped
+    exact mapped
+  refine ⟨prefixOf.subset present, ?_⟩
+  rw [countPermits_congr after.execution.network.inputs before.execution.network.inputs message]
+  · exact forbidden
+  intro other
+  constructor
+  · rintro ⟨member, owner, lower⟩
+    refine ⟨firstOrder.mem_of_prefix lastOrder prefixOf member ?_, owner, lower⟩
+    rw [owner]
+    exact lower.trans (firstOrder.serial_lt present)
+  · rintro ⟨member, owner, lower⟩
+    exact ⟨prefixOf.subset member, owner, lower⟩
+
+variable [Fintype Player]
+
+/-- A forbidden packet of `who` among the current inputs bounds `who`'s
+expected collection below by the coverage product, under every later
+behavioral profile of any response menu. -/
+theorem countForbidden_collection_continuation
+    (menu : (runtime.reactiveApplication leaks).ResponseMenu)
+    (initial : PMF (runtime.reactiveApplication leaks).State) (horizon : Nat)
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    (service : EvidenceReportService (CountEvidence graph))
+    (observationRate deliveryRate : Player → ℝ)
+    (delivery_nonnegative : ∀ who, 0 ≤ deliveryRate who)
+    (coverage : CountEvidenceCoverage service observationRate deliveryRate)
+    (profile : ∀ player, (menu.information initial horizon scheduler).BehavioralPolicy player)
+    (fuel : Nat) (history : (menu.protocol initial horizon scheduler).History)
+    (control : (runtime.reactiveApplication leaks).Control)
+    (current : history.state = some control)
+    (message : Message Player (WitnessedPacket graph))
+    (present : message ∈ control.execution.network.inputs)
+    (forbidden : countPermits control.execution.network.inputs message = false) :
+    observationRate message.sender * deliveryRate message.sender ≤
+      expect ((menu.information initial horizon scheduler).runBehavioralFrom profile fuel history)
+        (fun final => TerminalAudit.charge (runtime.reactiveApplication leaks).stateTraffic
+          (runtime.countAudit leaks service.sample) final.state message.sender) := by
+  let app := runtime.reactiveApplication leaks
+  let model := menu.information initial horizon scheduler
+  let protocol := menu.protocol initial horizon scheduler
+  calc
+    observationRate message.sender * deliveryRate message.sender =
+        expect (model.runBehavioralFrom profile fuel history)
+          (fun _ => observationRate message.sender * deliveryRate message.sender) :=
+      (expect_constant _ _).symm
+    _ ≤ _ := by
+      refine expect_mono ?_ (payoffIntegrable_constant _ _)
+        (TerminalAudit.payoffIntegrable_charge _ _ _ _)
+      intro final supported
+      have path := menu.reaches_raw initial horizon scheduler
+        (protocol.runRandomizedFor_reachesWithin (model.randomizedChooser profile) fuel history
+          final supported)
+      have traffic := app.stateTraffic_reaches initial horizon scheduler path
+      change app.stateTraffic history.state <+: app.stateTraffic final.state at traffic
+      rw [current] at traffic
+      have currentInputs := app.stateTraffic_inputs initial horizon scheduler
+        (menu.toRawTrace initial horizon scheduler history.trace)
+      change (app.stateTraffic history.state).map ReactiveApplication.TrafficRecord.envelope =
+        history.state.elim [] (fun control => control.execution.network.inputs) at currentInputs
+      rw [current] at currentInputs
+      obtain ⟨record, recorded, envelope⟩ := List.mem_map.mp (by rw [currentInputs]; exact present :
+        message ∈ (app.stateTraffic (some control)).map ReactiveApplication.TrafficRecord.envelope)
+      have kept : record ∈ app.stateTraffic final.state := traffic.subset recorded
+      cases finalState : final.state with
+      | none =>
+          rw [finalState] at kept
+          exact (List.not_mem_nil kept).elim
+      | some after =>
+          have retained := countForbidden_reaches path control after current finalState message
+            present forbidden
+          have finalInputs := app.stateTraffic_inputs initial horizon scheduler
+            (menu.toRawTrace initial horizon scheduler final.trace)
+          change (app.stateTraffic final.state).map ReactiveApplication.TrafficRecord.envelope =
+            final.state.elim [] (fun control => control.execution.network.inputs) at finalInputs
+          rw [finalState] at finalInputs kept
+          have collected := runtime.countAudit_collection leaks service observationRate
+            deliveryRate delivery_nonnegative coverage (app.stateTraffic (some after)) record kept
+            (by rw [finalInputs, envelope]; exact retained.2)
+          rw [envelope] at collected
+          exact collected
+
+end Vegas.EventGraphRuntime
