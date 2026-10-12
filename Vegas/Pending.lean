@@ -118,6 +118,7 @@ import Vegas.Pending.ReactiveOffTurnRepair
 import Vegas.Pending.ReactiveOffTurnWindow
 import Vegas.Pending.ReactiveOnePacketMenu
 import Vegas.Pending.ReactiveSignedCommitments
+import Vegas.Pending.ReactiveAcceptedOutput
 import Vegas.Pending.ReactiveOpeningConformance
 import Vegas.Pending.ReactiveOpeningEvidence
 import Vegas.Pending.ReactiveOpeningExpiry
