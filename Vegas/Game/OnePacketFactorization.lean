@@ -570,7 +570,7 @@ theorem transition_respond (control : (application setup leaks).Control) {actor 
 omit [Fintype Player] in
 /-- A response appends one entry, with the responder's view and action, to its
 own recall. -/
-theorem respond_recall_self (execution : (application setup leaks).Execution) (who : Player)
+private theorem respond_recall_self (execution : (application setup leaks).Execution) (who : Player)
     (action : (application setup leaks).Action) :
     ∃ emitted, (execution.respond (application setup leaks) who action).recall who =
       execution.recall who ++
