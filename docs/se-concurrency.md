@@ -68,7 +68,7 @@ type, and then the three reveals form one reveal phase. Utilities:
 $$
 u_p=W\cdot\mathbf 1\{\text{some other player's reveal failed}\},\qquad W>0.
 $$
-On the honest game every payoff is $0$, so $Nderline u_p=overline u_p=0$. Under $C_1$, player
+On the honest game every payoff is $0$, so $\underline u_p=\overline u_p=0$. Under $C_1$, player
 $p$'s exclusion payoff is a fixed $a_p<0$, and the others continue with $u$.
 
 **Builder.**
@@ -117,7 +117,7 @@ So in every SE player 1 is silent, and some reveal fails with probability one.
 The honest law (every reveal succeeds) is not preserved. $\square$
 
 With $n$ players and "exactly one late opening omitted, uniformly", the same
-argument works whenever $a_p>-(n-1)W$. The forfeit $Nderline u_p-a_p$ must therefore
+argument works whenever $a_p>-(n-1)W$. The forfeit $\underline u_p-a_p$ must therefore
 exceed $(n-1)$ times the gain from another player's failure. In particular,
 Theorem 2's "the forfeit may be arbitrarily small" is false under concurrency.
 
@@ -126,28 +126,47 @@ The game has complete information, so this obstruction is about
 
 ## 4. Routes to a positive result
 
-1. **Uncoupled builders (conjectured sufficient).**
+1. **Success-separable builders (conjectured sufficient).**
 
-   Call a builder *event-separable* if, for each owned event $e$, two parts of
-   its law are independent of every other event's packets and traffic:
-   - the owner's activations after $e$ becomes ready;
-   - the inclusion and expiry of $e$'s packets.
+   The proof does not need other events' traffic to be ignored altogether. It
+   needs only that no player can change whether *another* event succeeds.
 
-   Leaks may still depend on anything public, since they affect only
-   information.
+   Call a builder *success-separable* if, for each owned event $e$ and each
+   delivery policy of $e$'s owner, the probability that $e$ succeeds does not
+   depend on other events' packets or traffic. A delivery policy says when the
+   owner sends its free packet, as a function of the owner's activations and
+   observations. This probability includes the effect of the owner's later
+   activations.
+
+   Everything else may depend on other events' traffic:
+   - *when* $e$'s packets are included, and in what order relative to other
+     packets;
+   - the activation order;
+   - leaks.
+
+   In particular, a stable priority order on packets is allowed, for example
+   one induced by fees. Such an order may delay a packet behind
+   higher-priority traffic, provided it never turns a success into a failure.
+   This is the natural extension of protected inclusion, which already
+   guarantees an on-time packet's success whatever others send. Late packets
+   may still fail, but for reasons unrelated to other events' traffic.
 
    Under such a builder no player can change another's success without a
    charged action. The proof of Theorem 2 then appears to carry over:
    - Lemma B holds at every uncharged, unexcluded history, including when
-     several players are late at once;
-   - the forced region needs no overlap exception;
-   - seeing others' pending traffic gives only timing information, which
-     Lemma A neutralizes as before.
+     several players are late at once. A player's policy changes only its own
+     success probability, and the timing of others' records.
+   - The forced region needs no overlap exception.
+   - Others' pending traffic and inclusion order give only timing
+     information, which Lemma A neutralizes as before.
 
-   *Realism:* real block builders couple inclusion through scarce block space,
-   so this is a genuine restriction.
+   *Not covered:* congestion that drops low-priority packets so that they miss
+   their deadlines. There, one event's traffic changes another's success. The
+   three-player counterexample is of this kind, and with unrestricted coupling
+   it breaks preservation.
+
 2. **A forfeit scaled with the number of players (open).** The counterexample
-   needs $Nderline u_p-a_p<(n-1)W$. Two questions are open:
+   needs $\underline u_p-a_p<(n-1)W$. Two questions are open:
    - whether a forfeit above $(n-1)$ times each player's spread suffices
      against every coupled builder;
    - whether coupled late regions can carry a belief channel like
@@ -170,7 +189,7 @@ The game has complete information, so this obstruction is about
 - What it adds is **cross-event coupling** of late inclusion. Under $C_1$ with
   a small forfeit this breaks preservation, as the three-player counterexample
   shows.
-- With an event-separable builder, Theorem 2 is conjectured to extend
+- With a success-separable builder, Theorem 2 is conjectured to extend
   unchanged.
 - With coupled builders, a forfeit scaled by $n-1$, or fail-stop payoffs
-  capped at $Nderline u_i$, are candidate fixes. Both are open.
+  capped at $\underline u_i$, are candidate fixes. Both are open.
