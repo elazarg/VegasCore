@@ -134,4 +134,103 @@ theorem honestResponse_eq_openingCanonical
   simp only [Function.comp_apply]
   cases (chosen.1).bind (encodeEventAction? setup.program event) <;> rfl
 
+section Recorded
+
+/-- An earlier turn of `who` at `event` in its recall. -/
+def SeenTurn (who : Player) (event : (graph setup).EventId)
+    (past : List (application setup leaks).PlayerEntry) : Prop :=
+  ∃ entry ∈ past, entry.beforeView.application.publicView.ownTurn? who = some event
+
+/-- After an earlier turn at an event, the first-turn clients are silent at
+every later turn at it. -/
+theorem openingClients_later_silent (bound : (graph setup).EventId → Nat) (turns : Nat)
+    (intended : ∀ who, setup.intendedModel.BehavioralPolicy who) (who : Player)
+    (past : List (application setup leaks).PlayerEntry)
+    (view : (application setup leaks).PlayerView) (event : (graph setup).EventId)
+    (turn : view.application.publicView.ownTurn? who = some event)
+    (seen : SeenTurn who event past) :
+    openingClients setup leaks bound turns intended who past view = PMF.pure ⟨none⟩ := by
+  have owned := (PublicView.ownTurn?_spec _ who event turn).2
+  rw [openingClients, firstTurnPolicy_eq_family owned turn]
+  unfold serviceTurnFamily
+  rw [(application setup leaks).turnScheduledPolicy_unselected _ _ _ _ past view]
+  · rfl
+  · intro slot selected counted
+    cases selected
+    change (if view.application.publicView.ownTurn? who = some event then
+      some (past.countP fun entry =>
+        decide (entry.beforeView.application.publicView.ownTurn? who = some event))
+      else none) = some 0 at counted
+    rw [ite_eq_left turn ..] at counted
+    rw [Option.some.injEq, List.countP_eq_zero] at counted
+    obtain ⟨entry, member, earlier⟩ := seen
+    exact counted entry member (decide_eq_true earlier)
+
+/-- The first-turn clients never submit for an event after an earlier turn at it
+at which they did not. -/
+theorem openingClients_keeps_unrecorded (scheduler : (application setup leaks).Scheduler)
+    (bound : (graph setup).EventId → Nat) (turns : Nat)
+    (intended : ∀ who, setup.intendedModel.BehavioralPolicy who) (who : Player)
+    (event : (graph setup).EventId) :
+    ∀ (more : Nat) (execution : (application setup leaks).Execution),
+      (runtime setup).eventRecorded leaks (execution.recall who) event = false →
+      SeenTurn who event (execution.recall who) →
+      ∀ final ∈ ((application setup leaks).runRounds scheduler
+          (openingClients setup leaks bound turns intended) more execution).support,
+        (runtime setup).eventRecorded leaks (final.recall who) event = false ∧
+          SeenTurn who event (final.recall who) := by
+  let app := application setup leaks
+  intro more
+  induction more with
+  | zero =>
+      intro execution unrecorded seen final reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      exact ⟨unrecorded, seen⟩
+  | succ more ih =>
+      intro execution unrecorded seen final reached
+      obtain ⟨middle, moved, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      refine ih middle ?_ ?_ final rest
+      all_goals
+        obtain ⟨command, _, between, stepped, cases⟩ := round_cases setup leaks moved
+        have recallEq := app.environmentStep_recall execution between command stepped
+      · rcases cases with ⟨_, rfl⟩ | ⟨responder, _, response, chosen, rfl⟩
+        · rw [recallEq]
+          exact unrecorded
+        · by_cases same : responder = who
+          · subst responder
+            obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks between who response
+            rw [recalled]
+            apply Bool.eq_false_of_not_eq_true
+            intro recorded
+            obtain ⟨entry, member, submitted⟩ :=
+              ((runtime setup).eventRecorded_iff leaks _ event).mp recorded
+            rcases List.mem_append.mp member with old | new
+            · have before := ((runtime setup).eventRecorded_iff leaks _ event).mpr
+                ⟨entry, old, submitted⟩
+              rw [recallEq, unrecorded] at before
+              cases before
+            · cases List.mem_singleton.mp new
+              have turn := sourceServiceTurnPolicy_submitsAtTurn setup leaks bound turns
+                (firstTurnTiming setup turns .sequential) (setup.intendedOpeningProfile intended)
+                who _ _ response chosen event submitted
+              have earlier : SeenTurn who event (between.recall who) := by
+                rw [recallEq]
+                exact seen
+              rw [openingClients_later_silent bound turns intended who _ _ event turn earlier,
+                PMF.mem_support_pure_iff] at chosen
+              subst chosen
+              cases submitted
+          · rw [app.respond_recall_other between responder who (Ne.symm same) response, recallEq]
+            exact unrecorded
+      · obtain ⟨entry, member, earlier⟩ := seen
+        refine ⟨entry, ?_, earlier⟩
+        rcases cases with ⟨_, rfl⟩ | ⟨responder, _, response, _, rfl⟩
+        · rw [recallEq]
+          exact member
+        · have grown := app.respond_recall_mono between responder who response
+          rw [recallEq] at grown
+          exact grown member
+
+end Recorded
+
 end Vegas
