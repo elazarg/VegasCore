@@ -933,8 +933,10 @@ following hold, at three tiers of strength.
   that either becomes public on success, or belongs to a player who is then
   excluded. In the second case the value reaches no payoff, since that
   player's results are failed. It is also independent of every active player's
-  unopened values given the public history, since no player's information
-  contains another's unopened value. There is no off-ledger channel.
+  unopened values given the public history. The only unopened values a player
+  can learn are openings in flight, and those belong to players who either
+  publish or are excluded. So no player's information contains another
+  *active* player's unopened value. There is no off-ledger channel.
 - **M4. Nobody's clean actions affect another's success or charges.**
   - At Stage S this follows from protected inclusion, because only one event
     is unresolved at a time.
@@ -992,7 +994,7 @@ following hold, at three tiers of strength.
 - **M3** is the opaqueness, value-blindness and author-only clause, together
   with exclusion and the product structure of honest priors. Product structure
   holds for any profile here, since no player's information contains another
-  player's unopened value.
+  active player's unopened value.
 - **D1** is Lemma C.
 - **D2** is M1 together with the definition of $m_j$.
 - **E1–E3** are Lemmas A, B and C of Theorem 2, and their concurrent forms A″,
