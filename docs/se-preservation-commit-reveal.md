@@ -71,6 +71,19 @@ Review history:
     others' traffic lets them change its emissions. M4 now holds the owner's
     emissions fixed.
 
+  A review of those fixes found three more gaps, fixed in this revision:
+  - the phase-success belief could be undefined: a doomed player may fail
+    its binding surely in the limit, so the event can have limit probability
+    zero, while natively another player sees its rare binding accepted. The
+    belief is now the limit of conditioned stage-$n$ beliefs, and the new
+    Proposition 1(3) shows $\sigma^X$'s values are optimal against it. Sets
+    with an observed failure are an explicit exception;
+  - Proposition 1's forced profile did not sum to one at sets with no
+    guard-violating value. The $\eta_n^2$ now goes to honest actions there;
+  - the lifted-set argument and the consistency paragraph still asserted
+    unconditional source beliefs and continuation values. They now use only
+    pointwise continuation agreement and the conditional argument.
+
   These fixes have not been re-reviewed.
 
 ## Summary
@@ -532,9 +545,23 @@ SE $(\sigma^H,\mu^H)$ with tremble sequence $\sigma^H_n$.
 2. If $a_j<m_j$ for every $j$, the SE can moreover be chosen with
    **never fail**: at every information set, a player that is not privately
    doomed fails with probability zero.
+3. Under concurrency, its value choices are **optimal given phase
+   success**, defined below.
 
-The same $(\sigma^X,\mu^X)$ serves both parts. Part 2 is a property of the
-construction under the stronger bound.
+The same $(\sigma^X,\mu^X)$ serves all three parts. Parts 2 and 3 are
+properties of the construction.
+
+**Phase success.** At a commit set $I$ of $j$, write $\Phi$ for the event
+that no binding of another owner in the current phase fails. At every stage
+$n$ the profile is fully mixed, so $\Pr_n(\Phi\mid I)>0$. Write $\nu^X(I)$ for
+the limit of the stage-$n$ beliefs at $I$ conditioned on $\Phi$; the
+subsequence below is chosen so that these limits exist too. When
+$\Pr(\Phi\mid I)>0$ in the limit, $\nu^X(I)$ is just $\mu^X(I)$ conditioned on
+$\Phi$. When it is zero, conditioning the limit is undefined, but $\nu^X(I)$
+still is. For a value $v$, let $W_I(v)$ be $j$'s expected payoff from
+committing $v$, given $\Phi$, at belief $\nu^X(I)$, with continuation
+$\sigma^X$. Part 3 says: every value that $\sigma^X$ plays at $I$ with positive
+probability maximizes $W_I$.
 
 *Construction.* For each $n$ define a constrained agent-form game on
 $\Gamma^X$. Every information set is an agent with its own menu.
@@ -542,7 +569,9 @@ $\Gamma^X$. Every information set is an agent with its own menu.
 - **Honest-region agents are forced.** Their behaviour is
   $\sigma^H_n\cdot(1-\eta_n-\eta_n^2)$ on honest actions. Failing gets
   $\eta_n$, the same at every set and for every value. Guard-violating values
-  share $\eta_n^2$ uniformly.
+  share $\eta_n^2$ uniformly. A set with no guard-violating value (every
+  reveal, and a commit whose guards accept every value) has nowhere to put
+  $\eta_n^2$; there honest actions get $\sigma^H_n\cdot(1-\eta_n)$.
 - **All other agents are free.** They choose any behaviour that gives every
   action probability at least $\eta_n^{M_1}$, for a fixed exponent
   $M_1\ge2$. Part 2 below needs the minimum to be $O(\eta_n)$, which this gives.
@@ -557,7 +586,9 @@ strategy set is a nonempty compact convex polytope. Best responses to Bayes
 beliefs, which are well defined because the profile is fully mixed, have
 closed graph and convex values. So the constrained game has an equilibrium
 $\sigma_n$ by Kakutani's theorem. Pass to a subsequence along which $\sigma_n$
-and its Bayes beliefs $\mu_n$ converge, to $(\sigma^X,\mu^X)$.
+and its Bayes beliefs $\mu_n$ converge, to $(\sigma^X,\mu^X)$, and along
+which the beliefs at commit sets conditioned on phase success converge too
+(Part 3). There are finitely many sets, so one subsequence serves.
 
 *Consistency.* $(\sigma^X,\mu^X)$ is the limit of Bayes beliefs of fully mixed
 profiles, with Nature's laws fixed. This is Kreps–Wilson consistency.
@@ -579,9 +610,13 @@ profiles, with Nature's laws fixed. This is Kreps–Wilson consistency.
   failure carries a factor $\eta_n$ against at least $\rho_n$ for the honest
   move in its place. Since $\eta_n=o(\rho_n)$, these histories also get zero
   limit weight.
-- On the remaining histories play is $\sigma^H_n$ times the common factor
-  $(1-\eta_n-\eta_n^2)$ per move. So the posterior over other players' values
-  is $\mu^H_n(I)$, up to a factor $1+o(1)$, and its limit is $\mu^H(I)$.
+- On the remaining histories play is $\sigma^H_n$ times a factor
+  $(1-\eta_n-\eta_n^2)$ or $(1-\eta_n)$ per move. Which one applies at a
+  commit can depend on its owner's hidden values, through its guards. The two
+  differ by a ratio $1+O(\eta_n^2)$, and a history has at most $\mathcal T$
+  moves, so the factors agree across the set up to $1+o(1)$. So the
+  posterior over other players' values is $\mu^H_n(I)$, up to a factor
+  $1+o(1)$, and its limit is $\mu^H(I)$.
 
 *Sequential rationality on the honest region.* By the one-shot deviation
 principle for consistent assessments (Hendon, Jacobsen and Sloth 1996), it
@@ -654,10 +689,10 @@ not excluded. So "move" is worth at least $m_j-c_{k-1}\eta_n$.
   (the largest menu size). Its value is therefore at
   least that of "move", minus $\bar c\,\eta_n^{M_1}\operatorname{sp}_j\le\eta_n\operatorname{sp}_j$ for
   large $n$, since $M_1\ge2$.
-- At a forced honest-region set, $j$ plays $\sigma^H_n$ scaled by
-  $1-\eta_n-\eta_n^2$. Honest actions keep it not privately doomed. Failing
-  and violating cost at most $\operatorname{sp}_j$ each, with total probability
-  $\eta_n+\eta_n^2\le2\eta_n$. So its value is at least
+- At a forced honest-region set, $j$ plays $\sigma^H_n$ scaled as in the
+  construction. Honest actions keep it not privately doomed. Failing and
+  violating cost at most $\operatorname{sp}_j$ each, with total probability
+  at most $\eta_n+\eta_n^2\le2\eta_n$. So its value is at least
   $m_j-c_{k-1}\eta_n-2\eta_n\operatorname{sp}_j$.
 
 Either way, the value is at least $m_j-c_k\eta_n$. $\square$
@@ -668,6 +703,26 @@ failing is strictly worse than an available action, by a margin bounded away
 from zero. In the constrained game it therefore gets exactly its minimum
 $\eta_n^{M_1}\to0$. This uses that the minimum is $O(\eta_n)$, which
 $M_1\ge2$ gives.
+
+*Part 3: phase-success optimality.* At stage $n$, the payoff of committing
+$v$ at $I$ is $\Pr_n(\Phi\mid I)\,W_{I,n}(v)+R_n$, where $W_{I,n}$ is the
+stage-$n$ version of $W_I$. The remainder $R_n$ covers $\neg\Phi$, in which
+the reset voids $v$, and it does not depend on $v$:
+- a voided value reaches no payoff;
+- it tells nobody anything, since others never observe it and it is
+  independent of their values;
+- $j$'s own later sets differ only by that value, so they face the same
+  decision problem, and their constrained values agree.
+
+$\Pr_n(\Phi\mid I)$ does not depend on $v$ either, because others choose
+without observing it. A free agent best-responds exactly, so any value it
+plays above the minimum probability maximizes $W_{I,n}$. $W_{I,n}\to W_I$,
+because the beliefs converge to $\nu^X(I)$ and the continuation profiles to
+$\sigma^X$. So in the limit every value in the support of $\sigma^X$ at $I$
+maximizes $W_I$. At honest-region sets, others fail with probability at most
+$\eta_n\to0$ and violators have zero weight, so $\Pr(\Phi\mid I)\to1$,
+$\nu^X(I)=\mu^H(I)$, and $\sigma^H$ maximizes $W_I$ by its sequential
+rationality. $\square$
 
 Two remarks:
 - Under concurrency, a violating value can tie with an honest one only when
@@ -1542,8 +1597,9 @@ that it still does no better than $\varphi^*$.
 **Free region.** For each $n$, take an equilibrium of the agent-form game in
 which forced and lifted sets play the profile above, and free sets choose
 freely with minimum probability $\zeta_n^{M_3}$ on every action. It exists by
-Kakutani's theorem. Pass to a subsequence along which the profiles and their
-Bayes beliefs converge.
+Kakutani's theorem. Pass to a subsequence along which the profiles, their
+Bayes beliefs, and the beliefs at commit sets conditioned on phase success
+(Lemma A3(2)) converge.
 
 **How native and $\Gamma^X$ weights compare.** For a clean history $h$,
 $$
@@ -1577,11 +1633,14 @@ values given the public history.
 1. At every forced or lifted set, the limit belief puts zero weight on
    histories with a charged action or with another player's native-only bad
    binding.
-2. At every forced or lifted set $I$ in a commit phase, the limit belief
-   about the active players' values, **conditioned on no failure in the
-   current phase**, is $\mu^X(\Pi(I))$ conditioned on the same event. On
-   forced sets the conditioning changes nothing, and the belief is $\mu^H$,
-   by Proposition 1.
+2. At every forced or lifted set $I$ in a commit phase with no observed
+   failure in the phase, define $\nu(I)$ as in Proposition 1: the limit of
+   the stage-$n$ beliefs at $I$ about the active players' values,
+   conditioned on $\Phi$ (no other owner's binding in the phase fails). Then
+   $\nu(I)=\nu^X(\Pi(I))$. On forced sets $\Pr(\Phi\mid I)\to1$, and this is
+   $\mu^H$, by Proposition 1. At a set where a failure in the phase has been
+   observed, $\Phi$ is false, no claim is made, and none is needed: the
+   owner's binding will be voided.
 3. At such a set, the owner predicts the others' not-yet-chosen values of
    the phase by $\sigma^X$ at their sets.
 
@@ -1593,7 +1652,10 @@ binding, while the other type moves. If that binding shares a commit phase
 with B's, natively B may see it accepted before choosing, and conclude that A
 is not doomed. $\Gamma^X$'s simultaneity hides this. But B's value matters
 only if nobody fails in the phase (Lemma D3), and given that event A moved in
-both games. So the belief that B's choice reads is the same.
+both games. So the belief that B's choice reads is the same. It must be
+taken as a limit of conditioned stage-$n$ beliefs: if A's doomed type fails
+surely in the limit, $\Phi$ can have limit probability zero in $\Gamma^X$
+while B has natively seen A's binding accepted.
 
 No belief claim is made in reveal phases. There a player may see another's
 opening in flight, or its receipt, and so know a value that $\Pi(I)$ does not
@@ -1615,9 +1677,11 @@ opaque, the builder is value-blind, binding delivery reads no value, and the
 timing tier is the same at every set and for every value. So conditioning on
 no failure in the phase removes the only value-dependent factor. By the
 bound there, $N_n$ reads no other unopened value, up to a factor $1+o(1)$.
-So the posterior over active players' values, given no failure in the phase,
-is $\mu^X_n(\Pi(I))$ given the same event, times $1+o(1)$. It converges to
-$\mu^X(\Pi(I))$ given that event.
+So at every stage $n$ the native posterior over active players' values,
+given $\Phi$, is the $\Gamma^X$ posterior at $\Pi(I)$ given $\Phi$, times
+$1+o(1)$. This compares stage-$n$ distributions, at which $\Phi$ has positive
+probability in both games, so it holds even where $\Phi$ has limit
+probability zero. Taking limits gives $\nu(I)=\nu^X(\Pi(I))$.
 
 The hidden commitments of different players are independent given the public
 history, because in $\Gamma^X$ every choice reads only public data and its
@@ -1773,22 +1837,28 @@ rules are own-service, so they do not react to others' traffic. The cases:
   as at lifted sets.
 - **Lifted sets.** These are the sets after an exclusion or with a publicly
   doomed player, including the rest of a phase after an exclusion.
-  - Prescribed moves are $\sigma^X$'s. In commit phases their value choice
-    is optimal natively. The decomposition of Lemma D3 holds at lifted sets
-    too, with the continuation given by $\sigma^X$: a value matters only if no
-    binding of the phase fails, and the probability of that event does not
-    depend on it. So the optimal value maximizes the continuation value given
-    no failure in the phase, at the belief given that event. That belief is
-    $\mu^X$'s by Lemma A3(2), and $\sigma^X$ maximizes the same quantity in
-    $\Gamma^X$. In reveal phases the only choice is
-    moving versus failing. Moving is optimal pointwise for a player that is
-    not doomed (D2 of Theorem 4), and a doomed player's payoff is constant.
-  - Each $\Gamma^X$ move has the same continuation value natively as in
-    $\Gamma^X$. Moving at the first activation succeeds surely (M1), and the
-    continuation is the lift of $\sigma^X$.
+  - Prescribed moves are $\sigma^X$'s. Native beliefs may be finer than
+    $\Gamma^X$'s (Lemma A3), so unconditional continuation values may differ
+    between the two games. The argument therefore does not compare them. It
+    uses only the following.
+  - *Continuations agree pointwise.* Given the values and the public
+    history, a $\Gamma^X$ move's native continuation is the lift of
+    $\sigma^X$, and its payoff equals the $\Gamma^X$ payoff: moving at the
+    first activation succeeds surely (M1), and outcomes map by M2.
+  - *Value choices.* Natively, under the limit assessment, committing $v$ at
+    $I$ is worth $\Pr(\Phi\mid I)\,W(v)+R$, with $\Pr(\Phi\mid I)$ and $R$
+    independent of $v$ (Lemma D3's decomposition, which holds at lifted sets
+    with continuation $\sigma^X$). If $\Pr(\Phi\mid I)=0$, including after an
+    observed failure, every value is optimal. Otherwise $W$ is computed at the
+    limit belief conditioned on $\Phi$, which equals $\nu(I)$, so $W=W_{\Pi(I)}$
+    by Lemma A3(2) and pointwise agreement. $\sigma^X$'s values maximize
+    $W_{\Pi(I)}$ by Proposition 1(3).
+  - *Moving versus failing.* Moving is optimal pointwise for a player that
+    is not doomed (D2 of Theorem 4), whatever the beliefs. A doomed player is
+    covered by the own-bad-binding argument.
   - A runtime deviation is one of three kinds:
-    - a $\Gamma^X$ deviation, no better by sequential rationality of
-      $\sigma^X$;
+    - a $\Gamma^X$ deviation: another value, or failing, which the two
+      previous items cover;
     - a timing deviation, which yields at most $P^*V+(1-P^*)a_j\le V$
       (Lemma B3), or $a_j$ for a doomed player;
     - a charged action (Lemma C).
@@ -1810,8 +1880,9 @@ rules are own-service, so they do not react to others' traffic. The cases:
 
 **Consistency.** There is one tremble sequence: the native profile at stage $n$
 of 4.4 together with the free-region equilibrium at stage $n$. Every belief is
-the limit of its Bayes beliefs, and by Lemma A3 these match $\mu^X$ on forced
-and lifted sets in commit phases.
+the limit of its Bayes beliefs. On forced sets in commit phases they are
+$\mu^H$. On lifted sets they need not equal $\mu^X(\Pi(I))$; what Lemma A3(2)
+gives, and the proof uses, is $\nu(I)=\nu^X(\Pi(I))$.
 
 **Preservation.** On the path every owner sends its free packet at its first
 activation, which succeeds surely. So no exclusion or reset occurs, and play
@@ -2059,10 +2130,11 @@ strength.
 clean sets put zero weight on unclean histories (Lemma A3).
 
 - **E1. Beliefs are source beliefs.** Take a clean set $I$ at which the owner
-  has a value choice. Its belief about others' unopened values given no
-  failure in the current phase, which is the only belief its value choice
-  reads, and its prediction of the not-yet-chosen values of its phase, are
-  those at $I^X$ under $\sigma^X$. The unconditioned belief may be finer: an
+  has a value choice, with no failure observed in its phase. Its belief
+  about others' unopened values given that no other binding of the phase
+  fails, taken as a limit of conditioned beliefs ($\nu$, Lemma A3), is the
+  only belief its value choice reads. That belief, and its prediction of the
+  not-yet-chosen values of its phase, are those at $I^X$ under $\sigma^X$. The unconditioned belief may be finer: an
   accepted binding in the phase shows that its owner moved, and a privately
   doomed owner's move can depend on its hidden values (Lemma A3). Values seen in included openings whose result is
   $\mathsf{fail}$ belong to excluded players. By the product structure they say
