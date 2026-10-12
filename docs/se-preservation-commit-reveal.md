@@ -150,6 +150,12 @@ Review history:
   players it is not needed. Theorem 2's Lemma A had the same gap at
   pending-reveal sets. Its bad-binding claim is now limited to sets with no
   pending reveal; at pending-reveal sets nothing uses it.
+- A further review noted that Lemma A3's transport proof still compared
+  full histories. Those include excluded owners' private choices, whose
+  native and $\Gamma^X$ posteriors may now differ. The proof now first sums
+  over excluded owners' private choices. The weight factors into active and
+  excluded parts, so the sum is a common factor. It then compares only the
+  active state, which is what $\omega$ contains.
 
 ## Summary
 
@@ -1968,14 +1974,41 @@ $x$. It is a product, over each owner's sets along $x$, of $\sigma^X_n$ at that
 set given the owner's private history there, together with Nature's laws. So
 it keeps every dependence of a choice on its owner's earlier private
 choices. The extension of $h$ to the end of the phase has the same kernels:
-each later in-phase choice is made at a native set whose source-level play is $\sigma^X_n$ at its
-projection, the corresponding $\Gamma^X$ set, because $\Pi$ ignores in-phase
-observations.
+each later in-phase choice is made at a native set whose source-level play
+is $\sigma^X_n$ at its projection, the corresponding $\Gamma^X$ set, because
+$\Pi$ ignores in-phase observations.
 
-*The operational factor given $\Phi$.* For each $x$ consistent with $\Pi(I)$ in
-which $\Phi$ holds, sum $N_n(h)$ over the native histories $h$ in $I$, extended
-to the end of the phase, that project to $x$. This sum is the same for every
-such $x$, up to $1+o(1)$:
+*Aggregate excluded owners first.* Split a projected history $x$ into three
+parts:
+- $x_{\mathrm{pub}}$, the public record;
+- $x_{\mathrm{act}}$, the private trajectories of the owners active at $I$;
+- $x_{\mathrm{exc}}$, the private choices of excluded owners.
+
+Fix $x_{\mathrm{pub}}$ and the operational record. An excluded owner's private
+choices enter the native weight only through that owner's own factors:
+- its own kernels;
+- its own native-only and timing trembles, including a native-only bad
+  binding, whose posterior Lemma A3(1) leaves unconstrained;
+- the builder's treatment of its own events, which may read its own
+  delivered values.
+
+Active owners' choices read only public data and their own commitments. The
+builder reads no other unopened value. So the native weight factors into an
+active part and an excluded part, and the same holds in $\Gamma^X$. Summing
+over $x_{\mathrm{exc}}$ leaves a factor that depends only on the public and
+operational records, not on $x_{\mathrm{act}}$. All comparisons below are made
+after this sum, on $(x_{\mathrm{pub}},x_{\mathrm{act}})$. That pair carries
+exactly the phase outcome $\omega$, which concerns active players only. The
+full histories need not agree: native projections may concentrate an
+excluded owner's earlier choice on the fixed value that a bad binding maps
+to, while $\Gamma^X$ keeps it spread. That difference lies entirely in the
+excluded part.
+
+*The operational factor given $\Phi$.* For each active state
+$(x_{\mathrm{pub}},x_{\mathrm{act}})$ consistent with $\Pi(I)$ in which $\Phi$
+holds, sum $N_n(h)$, after the aggregation above, over the native histories
+$h$ in $I$, extended to the end of the phase, that project to it. This sum
+is the same for every such state, up to $1+o(1)$:
 - in a commit phase no opening is in flight (order rule 1), so every value
   that $N_n$ could read from earlier phases is already public at $I$;
 - within the phase, given $\Phi$ every other owner's binding is a move, so
@@ -1992,9 +2025,10 @@ binding depends on whether its owner moved or failed, and a doomed owner's
 choice between them can depend on its hidden values. That is why claim 2 is
 stated given $\Phi$.
 
-*Conclusion.* So at every stage $n$, the native law of the projected
-end-of-phase history given $I$ and $\Phi$ is the $\Gamma^X$ law given $\Pi(I)$
-and $\Phi$, times $1+o(1)$, as a joint law over all owners' trajectories.
+*Conclusion.* So at every stage $n$, the native law of the projected active
+state at the end of the phase, given $I$ and $\Phi$, is the $\Gamma^X$ law
+given $\Pi(I)$ and $\Phi$, times $1+o(1)$. It is a joint law over all active
+owners' trajectories.
 Both are stage-$n$ distributions, at which $\Phi$ has positive probability in
 both games: in $\Gamma^X$ because every profile there is fully mixed, and
 natively because $\Phi$ is possible at $I$. So this holds even where $\Phi$ has
