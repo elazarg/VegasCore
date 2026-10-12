@@ -410,6 +410,13 @@ rejection's public effect, which is not worked out here.
   Scaling a player's utilities scales that player's threshold with them, so
   the meaningful form is relative: the forfeit above every payoff range,
   $K_A$ above half of Alice's range, and $K_B$ above Bob's range.
+- **Evidence attachments.** Raw packets can carry checkable opening evidence
+  (`WitnessedPacket.evidence`). Step 1 treats a late opening with extra
+  evidence, for example about $t$, as a different emission that leads to a
+  different record. A mechanization must check that the audit charges such
+  attachments, or extend Step 1 to show they are not strictly preferred.
+  The [fail-stop note](empty-context-fail-stop-preservation.md) shows that an
+  uncharged evidence channel alone breaks preservation.
 - **Unopenable bindings.** The proof allows them (they only enlarge the set
   of types) and handles them in Case B.
 - **Honest SE.** It relies on Alice's indifference among her commitments.
