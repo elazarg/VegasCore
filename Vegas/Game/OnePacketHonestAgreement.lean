@@ -305,4 +305,107 @@ theorem honestPolicy_eq_openingClients [Fintype Player] (bounds : MessageBounds 
 
 end Agreement
 
+section Law
+
+/-- **As-if-honest rounds are the first-turn clients' rounds.** Under the
+hypotheses of `honestPolicy_eq_openingClients`, from every execution the
+first-turn clients reach, rounds of as-if-honest play read as native policies
+have, within the horizon, the law of the clients' rounds. -/
+theorem runRounds_honest_eq_openingClients [Fintype Player] (bounds : MessageBounds (graph setup))
+    (wellFormed : setup.WellFormed) {horizon : Nat}
+    {scheduler : (application setup leaks).Scheduler} {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
+      bound)
+    (timely : AsyncTimely (runtime setup) delay bound) (turns : Nat)
+    (assessment : setup.intendedModel.BehavioralAssessment)
+    (retains : RetainsFirstCanonical setup leaks bounds bound) :
+    ∀ (more count : Nat), count + more ≤ horizon →
+      ∀ execution ∈ ((application setup leaks).roundsFrom (initialLaw setup) scheduler
+          (openingClients setup leaks bound turns assessment.strategy) count).support,
+        (application setup leaks).runRounds scheduler
+            ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup) horizon
+              scheduler (honestProfile setup leaks bounds (initialLaw setup) horizon scheduler
+                assessment)) more execution =
+          (application setup leaks).runRounds scheduler
+            (openingClients setup leaks bound turns assessment.strategy) more execution := by
+  let app := application setup leaks
+  let clients := openingClients setup leaks bound turns assessment.strategy
+  let honest := (bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup)
+    horizon scheduler (honestProfile setup leaks bounds (initialLaw setup) horizon scheduler
+      assessment)
+  intro more
+  induction more with
+  | zero => intro _ _ _ _; rfl
+  | succ more ih =>
+      intro count within execution supported
+      have roundEq :
+          app.round scheduler honest execution = app.round scheduler clients execution := by
+        apply bind_congr_on_support _
+        intro command selected
+        apply bind_congr_on_support _
+        intro middle moved
+        cases active : command.actor? app with
+        | none => rfl
+        | some who =>
+            change (honest who (middle.recall who) (middle.observe app who)).map
+                (middle.respond app who) =
+              (clients who (middle.recall who) (middle.observe app who)).map
+                (middle.respond app who)
+            exact congrArg (PMF.map (middle.respond app who))
+              (honestPolicy_eq_openingClients bounds wellFormed contract timely turns assessment
+                retains (by omega) supported selected moved active)
+      change (app.round scheduler honest execution).bind (app.runRounds scheduler honest more) =
+        (app.round scheduler clients execution).bind (app.runRounds scheduler clients more)
+      rw [roundEq]
+      apply bind_congr_on_support _
+      intro next reached
+      apply ih (count + 1) (by omega) next
+      rw [ReactiveApplication.roundsFrom_succ]
+      exact (PMF.mem_support_bind_iff _ _ _).mpr ⟨execution, supported, reached⟩
+
+/-- **The as-if-honest readout law.** For a well-formed setup, under the
+asynchronous contract with timely delays and retention of first canonical
+packets, as-if-honest play of an intended assessment in the one-packet game
+reads out exactly the intended law of typed readouts of its strategy. -/
+theorem honestProfile_readout_law [Fintype Player] (bounds : MessageBounds (graph setup))
+    (wellFormed : setup.WellFormed) {horizon : Nat}
+    {scheduler : (application setup leaks).Scheduler} {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
+      bound)
+    (timely : AsyncTimely (runtime setup) delay bound)
+    (assessment : setup.intendedModel.BehavioralAssessment)
+    (retains : RetainsFirstCanonical setup leaks bounds bound) :
+    ((onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).runBehavioral
+        (honestProfile setup leaks bounds (initialLaw setup) horizon scheduler assessment)
+        (2 * horizon + 1)).map (fun final => sourceReadout setup leaks final.state) =
+      (setup.intendedModel.runBehavioral assessment.strategy
+        (instructionCount setup.program + 1)).map
+        (fun final => setup.protocolReadout final.state) := by
+  let app := application setup leaks
+  let menu := bounds.onePacketMenu (runtime setup) leaks
+  have finishLaw := menu.run_eq_finish (initialLaw setup) horizon scheduler
+    (honestProfile setup leaks bounds (initialLaw setup) horizon scheduler assessment)
+    (2 * horizon + 1) (menu.protocol (initialLaw setup) horizon scheduler).initHistory le_rfl
+  rw [← openingClients_readout_law wellFormed contract timely 0 assessment.strategy]
+  change ((menu.information (initialLaw setup) horizon scheduler).runBehavioralFrom _
+    (2 * horizon + 1) (menu.protocol (initialLaw setup) horizon scheduler).initHistory).map
+      (fun final => sourceReadout setup leaks final.state) = _
+  rw [show (fun final : (menu.protocol (initialLaw setup) horizon scheduler).History =>
+      sourceReadout setup leaks final.state) =
+    (sourceReadout setup leaks) ∘ History.state from rfl, ← PMF.map_comp, finishLaw]
+  change ((initialLaw setup).bind fun state =>
+    (app.runRounds scheduler _ horizon (ReactiveApplication.Execution.initial app state)).map
+      app.finished).map (sourceReadout setup leaks) = _
+  unfold ReactiveApplication.roundsFrom
+  rw [PMF.map_bind, PMF.map_bind]
+  apply bind_congr_on_support _
+  intro state stateMem
+  rw [PMF.map_comp]
+  congr 1
+  exact runRounds_honest_eq_openingClients bounds wellFormed contract timely 0
+    assessment retains horizon 0 (by omega) _
+    ((PMF.mem_support_bind_iff _ _ _).mpr ⟨state, stateMem, (PMF.mem_support_pure_iff _ _).mpr rfl⟩)
+
+end Law
+
 end Vegas
