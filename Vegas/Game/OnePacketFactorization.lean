@@ -915,13 +915,13 @@ assessment of the one-packet game, with a failure probability of each option
 from each history of each site:
 
 * `pathwise`: from every history of the belief at a site with late-delivery key
-  `key`, each option fails with a probability within `pathDrift` of a function of
+  `key`, each option fails with a probability within the path drift of a function of
   the key, the option and the history's operational record. The scheduler and
   the observation rule read only operational data, and on forced histories the
   only hidden value in it is the delivered one, which the key carries
   (`Vegas.onePacket_pending_disclosed_of_forced`).
 * `keyed`: at every site with key `key`, the belief's law of operational
-  records gives each such function an expectation within `beliefDrift` of a law
+  records gives each such function an expectation within the belief drift of a law
   that depends on the key alone. The scheduler's hidden state is independent of
   the owner's hidden values given its information. -/
 structure LateDeliveryBlindness
