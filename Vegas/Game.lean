@@ -65,6 +65,7 @@ import Vegas.Game.OnePacketHonestLaw
 import Vegas.Game.OnePacketHonestDecision
 import Vegas.Game.OnePacketHonestAgreement
 import Vegas.Game.OnePacketHonestForced
+import Vegas.Game.AnchoredFirstTurnLaw
 import Vegas.Game.PurificationEdge
 import Vegas.Game.ReactiveSourceDecision
 import Vegas.Game.ReactiveSourceAcceptance
