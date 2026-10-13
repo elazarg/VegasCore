@@ -51,6 +51,10 @@ import Vegas.Game.OnePacketSlotChoiceMasses
 import Vegas.Game.OnePacketSourceTurn
 import Vegas.Game.OnePacketContentSupport
 import Vegas.Game.OnePacketRealizedCommitment
+import Vegas.Game.OnePacketBindingSite
+import Vegas.Game.OnePacketBindingMasses
+import Vegas.Game.OnePacketSilenceMasses
+import Vegas.Game.OnePacketBindingSilence
 import Vegas.Game.OnePacketSlotMasses
 import Vegas.Game.OnePacketForcedBeliefs
 import Vegas.Game.OnePacketIntendedProjection
