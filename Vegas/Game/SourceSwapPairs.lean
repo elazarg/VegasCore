@@ -296,7 +296,8 @@ variable {setup : Setup (Player := Player) (L := L)} [DecidableEq (CellTy Player
   {succeed : CommitmentCellsSucceed setup first second}
 
 omit [DecidableEq Player] [IExpr.ResultTypes L] [DecidableEq (CellTy Player L)] in
-private theorem cast_option_some {first second : EventGraph.EventField Player L} (same : first = second)
+private theorem cast_option_some {first second : EventGraph.EventField Player L}
+    (same : first = second)
     (value : first.Value) :
     cast (congrArg (fun kind : EventGraph.EventField Player L => Option kind.Value) same)
         (some value) = some (cast (congrArg EventGraph.EventField.Value same) value) := by
@@ -304,7 +305,8 @@ private theorem cast_option_some {first second : EventGraph.EventField Player L}
   rfl
 
 omit [DecidableEq Player] [IExpr.ResultTypes L] [DecidableEq (CellTy Player L)] in
-private theorem cast_option_none {first second : EventGraph.EventField Player L} (same : first = second) :
+private theorem cast_option_none {first second : EventGraph.EventField Player L}
+    (same : first = second) :
     cast (congrArg (fun kind : EventGraph.EventField Player L => Option kind.Value) same)
         (none : Option first.Value) = none := by
   subst same
