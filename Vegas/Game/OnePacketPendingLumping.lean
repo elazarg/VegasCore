@@ -132,6 +132,59 @@ theorem operationalState_wait (remaining : Nat)
     OperationalState.mk.injEq]
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩ <;> trivial
 
+/-- A player's turn is read from the completion order alone. -/
+theorem PublicView.ownTurn?_congr {graph : EventGraph Player L}
+    {first second : PublicView graph} (same : first.observation = second.observation)
+    (who : Player) : first.ownTurn? who = second.ownTurn? who := by
+  unfold PublicView.ownTurn?
+  simp only [PublicView.EventReady, same]
+
+/-- The delivered value of a view is read from the player's turn and its own
+observation. -/
+theorem deliveredValue_congr (who : Player) {first second : (application setup leaks).PlayerView}
+    (turn : first.application.publicView.ownTurn? who =
+      second.application.publicView.ownTurn? who)
+    (store : first.application.observation.store = second.application.observation.store) :
+    deliveredValue setup leaks who first = deliveredValue setup leaks who second := by
+  unfold deliveredValue
+  rw [turn, store]
+
+/-- A new public contract view on the operational state: the scheduler's view
+and every player's current operational view read it. -/
+def OperationalState.contract (view : PublicView (graph setup))
+    (state : OperationalState setup leaks) : OperationalState setup leaks :=
+  { state with
+    environment := { state.environment with application := view }
+    keys := fun observer => (state.keys observer).map fun key =>
+      { key with current := (view, key.current.2) } }
+
+/-- **A contract step that keeps the configuration, on the operational
+state.** -/
+theorem operationalState_contract (remaining : Nat)
+    (execution : (application setup leaks).Execution) (next : EventGraphRuntime.State (graph setup))
+    (config : next.config = execution.application.config)
+    (command : EnvironmentCommand (graph setup)) :
+    operationalState setup leaks (some ⟨remaining, none,
+      { execution with
+        application := next
+        environmentRecall := execution.environmentRecall ++
+          [⟨execution.observeEnvironment (application setup leaks), .application command⟩] }⟩) =
+      (operationalState setup leaks (some ⟨remaining + 1, none, execution⟩)).map fun state =>
+        (state.round remaining none (.application command)).contract next.publicView := by
+  simp only [operationalState, Option.map_some, OperationalState.round,
+    OperationalState.contract, Option.some.injEq, OperationalState.mk.injEq]
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩ <;> try trivial
+  funext observer
+  simp only [Option.map_some, lateKey, Option.some.injEq]
+  have turn := PublicView.ownTurn?_congr (first := next.publicView)
+    (second := execution.application.publicView)
+    (by change (graph setup).publicObserve next.config = _; rw [config]; rfl) observer
+  congr 1
+  exact deliveredValue_congr observer turn (by
+    change ((graph setup).playerObserve observer next.config).store = _
+    rw [config]
+    rfl)
+
 variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (application setup leaks).Scheduler)
 
