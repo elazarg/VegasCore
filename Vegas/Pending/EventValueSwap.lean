@@ -786,25 +786,32 @@ def BindCompatible (swap : HiddenSwap graph) (event : graph.EventId) (handle : H
       cast (congrArg EventField.Value outputEq.symm)
         (candidateResult (swapCandidate (swap.raw handle) candidate) payload)
 
-/-- **Inclusion commutes with the swap** when a commitment's handle is
+/-- The swap fixes a resolution event's binding and every handle accepted for
+it; nothing is asked at other events. -/
+def RevealFixed (swap : HiddenSwap graph) (state : State graph) (event : graph.EventId) : Prop :=
+  match nodeView graph event with
+  | .resolve _ _ binding _ _ _ => swap.values.value binding.field = id ∧
+      ∀ candidate, state.accepted binding.field = some candidate → swap.raw candidate = id
+  | .bind .. | .sample .. => True
+
+/-- **Inclusion commutes with the swap** when an accepted commitment's handle is
 compatible with it at its event, and an opening addresses a ready resolution
-only if the swap fixes the binding it reads and the opened handle. -/
+only if the swap fixes the binding it reads and the handle accepted for it. -/
 theorem handle_swap (runtime : EventGraphRuntime graph) (swap : HiddenSwap graph)
     (state : State graph) (message : Message Player (Payload graph))
-    (compatible : ∀ event candidate, message.payload = .commitment event candidate →
-      BindCompatible swap event candidate)
-    (fixed : ∀ event candidate raw, message.payload = .opening event candidate raw →
-      state.config.cut.Ready event →
-        ResolutionFixed swap.values event ∧ swap.raw candidate = id) :
+    (compatible : ∀ next event candidate, handle runtime state message = some next →
+      message.payload = .commitment event candidate → BindCompatible swap event candidate)
+    (fixed : ∀ event, (∃ candidate raw, message.payload = .opening event candidate raw) →
+      state.config.cut.Ready event → RevealFixed swap state event) :
     handle runtime (state.swap swap) message = (handle runtime state message).map
       (State.swap swap) := by
   rcases message with ⟨id, packet⟩
   cases packet with
   | malformed raw => rfl
   | commitment event candidate =>
-      have compatibleHere := compatible event candidate rfl
       cases original : handle runtime state ⟨id, .commitment event candidate⟩ with
       | some next =>
+          have compatibleHere := compatible next event candidate original rfl
           obtain ⟨ready, timely, owner, payload, outputEq, codeEq, view, sender, handleOwner,
             vacant, unused⟩ :=
             handle_commitment_conditions runtime state next id event candidate original
@@ -843,9 +850,11 @@ theorem handle_swap (runtime : EventGraphRuntime graph) (swap : HiddenSwap graph
             view, sender, handleOwner, associated, rawEq, lookupEq, stored, resolved, nextEq⟩ :=
             handle_opening_conditions runtime state next id event candidate raw original
           subst rawEq nextEq
-          obtain ⟨resolutionFixed, handleFixed⟩ := fixed event candidate _ rfl ready
-          unfold ResolutionFixed at resolutionFixed
-          rw [view] at resolutionFixed
+          have revealFixed := fixed event ⟨candidate, _, rfl⟩ ready
+          unfold RevealFixed at revealFixed
+          rw [view] at revealFixed
+          obtain ⟨resolutionFixed, handlesFixed⟩ := revealFixed
+          have handleFixed := handlesFixed candidate associated
           have storeAt : (swap.values.store state.config.store) binding.field =
               state.config.store binding.field := by
             simp [ValueSwap.store, resolutionFixed]
@@ -880,9 +889,11 @@ theorem handle_swap (runtime : EventGraphRuntime graph) (swap : HiddenSwap graph
                 handle_opening_conditions runtime (state.swap swap) next id event candidate raw
                   swapped
               subst rawEq
-              obtain ⟨resolutionFixed, handleFixed⟩ := fixed event candidate _ rfl ready
-              unfold ResolutionFixed at resolutionFixed
-              rw [view] at resolutionFixed
+              have revealFixed := fixed event ⟨candidate, _, rfl⟩ ready
+              unfold RevealFixed at revealFixed
+              rw [view] at revealFixed
+              obtain ⟨resolutionFixed, handlesFixed⟩ := revealFixed
+              have handleFixed := handlesFixed candidate associated
               have storeAt : (swap.values.store state.config.store) binding.field =
                   state.config.store binding.field := by
                 simp [ValueSwap.store, resolutionFixed]

@@ -31,17 +31,16 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {runtime : EventGraphRuntime graph}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)}
 
-/-- The conditions under which including a call commutes with the swap: a
-commitment's handle is compatible with the swap at its event, and an opening
-addresses a ready resolution only if the swap fixes the binding it reads and
-every handle accepted for that binding. -/
-def InclusionFixed (swap : HiddenSwap graph) (state : State graph)
-    (message : Message Player (Payload graph)) : Prop :=
-  (∀ event candidate, message.payload = .commitment event candidate →
-    BindCompatible swap event candidate) ∧
-  ∀ event candidate raw, message.payload = .opening event candidate raw →
-    state.config.cut.Ready event →
-      ResolutionFixed swap.values event ∧ swap.raw candidate = id
+/-- The conditions under which including a call commutes with the swap: an
+accepted commitment's handle is compatible with the swap at its event, and an
+opening addresses a ready resolution only if the swap fixes the binding it reads
+and every handle accepted for that binding. -/
+def InclusionFixed (runtime : EventGraphRuntime graph) (swap : HiddenSwap graph)
+    (state : State graph) (message : Message Player (Payload graph)) : Prop :=
+  (∀ next event candidate, handle runtime state message = some next →
+    message.payload = .commitment event candidate → BindCompatible swap event candidate) ∧
+  ∀ event, (∃ candidate raw, message.payload = .opening event candidate raw) →
+    state.config.cut.Ready event → RevealFixed swap state event
 
 namespace HiddenSwap
 
@@ -218,7 +217,7 @@ inclusion conditions. -/
 theorem includePending_execution (current : (runtime.reactiveApplication leaks).Execution)
     (id : MessageId Player)
     (fixed : ∀ envelope, current.network.lookup id = some envelope →
-      InclusionFixed swap current.application ⟨envelope.id, envelope.payload.call⟩) :
+      InclusionFixed runtime swap current.application ⟨envelope.id, envelope.payload.call⟩) :
     (swap.execution current).includePending (runtime.reactiveApplication leaks) id =
       swap.execution (current.includePending (runtime.reactiveApplication leaks) id) := by
   unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
@@ -244,7 +243,7 @@ satisfies the inclusion conditions. -/
 theorem environmentStep_execution (current : (runtime.reactiveApplication leaks).Execution)
     (command : (runtime.reactiveApplication leaks).Command)
     (fixed : ∀ id envelope, command = .include id → current.network.lookup id = some envelope →
-      InclusionFixed swap current.application ⟨envelope.id, envelope.payload.call⟩) :
+      InclusionFixed runtime swap current.application ⟨envelope.id, envelope.payload.call⟩) :
     (swap.execution current).environmentStep (runtime.reactiveApplication leaks) command =
       (current.environmentStep (runtime.reactiveApplication leaks) command).map
         swap.execution := by
