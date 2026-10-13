@@ -162,4 +162,102 @@ theorem recordLaw_near_of_baseLaw {who : Player}
     scale₂_pos ε ρ ε_lt close₁ close₂ base₁_pos base₂_pos irregular₁ irregular₂ payoff unit
     agree
 
+
+open Classical in
+/-- Weights whose fibers over a readout are proportional give every payoff of
+the readout the same normalized expectation. -/
+theorem normalized_sum_eq_of_fibers {A B R : Type} [Fintype A] [Fintype B]
+    (weightA : A → ℝ) (weightB : B → ℝ) (readA : A → R) (readB : B → R) (c : ℝ) (c_ne : c ≠ 0)
+    (fiber : ∀ r, ∑ b, (if readB b = r then weightB b else 0) =
+      c * ∑ a, (if readA a = r then weightA a else 0))
+    (payoff : R → ℝ) :
+    ∑ b, weightB b / (∑ b', weightB b') * payoff (readB b) =
+      ∑ a, weightA a / (∑ a', weightA a') * payoff (readA a) := by
+  let readouts : Finset R := Finset.univ.image readB ∪ Finset.univ.image readA
+  have spread : ∀ {X : Type} [Fintype X] (read : X → R) (weight : X → ℝ) (g : R → ℝ),
+      (∀ x, read x ∈ readouts) →
+      ∑ x, weight x * g (read x) =
+        ∑ r ∈ readouts, g r * ∑ x, (if read x = r then weight x else 0) := by
+    intro X _ read weight g inside
+    have each : ∀ x, weight x * g (read x) =
+        ∑ r ∈ readouts, (if read x = r then weight x * g r else 0) := by
+      intro x
+      rw [Finset.sum_ite_eq readouts (read x) (fun r => weight x * g r)]
+      simp only [inside x, ↓reduceIte]
+    rw [Finset.sum_congr rfl fun x _ => each x, Finset.sum_comm]
+    apply Finset.sum_congr rfl
+    intro r _
+    rw [Finset.mul_sum]
+    apply Finset.sum_congr rfl
+    intro x _
+    split <;> ring
+  have insideB : ∀ b, readB b ∈ readouts := fun b =>
+    Finset.mem_union_left _ (Finset.mem_image_of_mem readB (Finset.mem_univ b))
+  have insideA : ∀ a, readA a ∈ readouts := fun a =>
+    Finset.mem_union_right _ (Finset.mem_image_of_mem readA (Finset.mem_univ a))
+  have scaled : ∀ g : R → ℝ, ∑ b, weightB b * g (readB b) = c * ∑ a, weightA a * g (readA a) := by
+    intro g
+    rw [spread readB weightB g insideB, spread readA weightA g insideA, Finset.mul_sum]
+    apply Finset.sum_congr rfl
+    intro r _
+    rw [fiber r]
+    ring
+  have totals : ∑ b, weightB b = c * ∑ a, weightA a := by
+    have := scaled fun _ => 1
+    simpa only [mul_one] using this
+  have rewriteB : ∑ b, weightB b / (∑ b', weightB b') * payoff (readB b) =
+      (∑ b, weightB b * payoff (readB b)) / ∑ b', weightB b' := by
+    rw [Finset.sum_div]
+    apply Finset.sum_congr rfl
+    intro b _
+    ring
+  have rewriteA : ∑ a, weightA a / (∑ a', weightA a') * payoff (readA a) =
+      (∑ a, weightA a * payoff (readA a)) / ∑ a', weightA a' := by
+    rw [Finset.sum_div]
+    apply Finset.sum_congr rfl
+    intro a _
+    ring
+  rw [rewriteB, rewriteA, scaled payoff, totals, mul_div_mul_left _ _ c_ne]
+
+open Classical in
+/-- **Base agreement from proportional fibers.** If, for every operational
+record, the regular base weight of the second site's histories with that
+record is a fixed nonzero multiple of the first site's, the two sites' base
+laws agree on every payoff of the record. -/
+theorem baseLawAgrees_of_fibers {who : Player}
+    [Finite (onePacketProtocol setup leaks bounds horizon scheduler).History]
+    (base : (onePacketProtocol setup leaks bounds horizon scheduler).History → ℝ)
+    (regular : (onePacketProtocol setup leaks bounds horizon scheduler).History → Prop)
+    (first second : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who)
+    (c : ℝ) (c_ne : c ≠ 0)
+    (fiber : ∀ record,
+      ∑' b : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
+          second.1, (if regular b.1 ∧
+            operationalRecord setup leaks bounds horizon scheduler b.1.trace = record then
+          base b.1 else 0) =
+        c * ∑' a : (onePacketInformation setup leaks bounds horizon
+          scheduler).InformationHistory who first.1, (if regular a.1 ∧
+            operationalRecord setup leaks bounds horizon scheduler a.1.trace = record then
+          base a.1 else 0))
+    (payoff : List (Option (OperationalState setup leaks)) → ℝ) :
+    BaseLawAgrees base regular first second payoff := by
+  let := Fintype.ofFinite ((onePacketInformation setup leaks bounds horizon
+    scheduler).InformationHistory who first.1)
+  let := Fintype.ofFinite ((onePacketInformation setup leaks bounds horizon
+    scheduler).InformationHistory who second.1)
+  unfold BaseLawAgrees
+  apply normalized_sum_eq_of_fibers _ _ _ _ c c_ne _ payoff
+  intro record
+  have fibered := fiber record
+  simp only [tsum_fintype] at fibered
+  convert fibered using 2 with b _ a _
+  · by_cases holds : regular b.1 <;> by_cases same :
+        operationalRecord setup leaks bounds horizon scheduler b.1.trace = record <;>
+      simp [holds, same]
+  · apply Finset.sum_congr rfl
+    intro a _
+    by_cases holds : regular a.1 <;> by_cases same :
+        operationalRecord setup leaks bounds horizon scheduler a.1.trace = record <;>
+      simp [holds, same]
+
 end Vegas
