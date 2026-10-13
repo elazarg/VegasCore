@@ -413,4 +413,64 @@ theorem lateSiteValue_mem_Icc (assessment : (onePacketN).BehavioralAssessment)
 
 end Bounds
 
+section Decomposition
+
+variable {Parameter : Type} (parameter : State L setup.context → Parameter)
+  (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+  (excludedPayoff : Player → ℝ)
+
+open Classical in
+/-- **The continuation value of an agent.** At a decision information state with
+a pending event, the continuation value of the late delivery there
+(`Vegas.lateSiteValue`); the exclusion payoff elsewhere. -/
+def lateContinuation (assessment : (onePacketN).BehavioralAssessment)
+    (profile : BehavioralProfile setup.program)
+    (agent : (onePacketN).InformationAgent (onePacketN).playedInformation) : ℝ :=
+  if decision : (onePacketN).IsDecisionInfo agent.1 agent.2.1 then
+    match pendingEvent setup leaks agent.1 agent.2.1 with
+    | some event => lateSiteValue setup leaks bounds horizon scheduler parameter utility
+        excludedPayoff assessment profile ⟨agent.2.1, decision⟩ event
+    | none => excludedPayoff agent.1
+  else excludedPayoff agent.1
+
+theorem lateContinuation_agentAt (assessment : (onePacketN).BehavioralAssessment)
+    (profile : BehavioralProfile setup.program) {who : Player}
+    (site : (onePacketN).InformationSite who) {event : (graph setup).EventId}
+    (pending : pendingEvent setup leaks who site.1 = some event) :
+    lateContinuation setup leaks bounds horizon scheduler parameter utility excludedPayoff
+        assessment profile ((onePacketN).agentAt site) =
+      lateSiteValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+        assessment profile site event := by
+  unfold lateContinuation
+  rw [dite_eq_left_of_eq_true (eq_true site.2)]
+  change (match pendingEvent setup leaks who site.1 with
+    | some event => lateSiteValue setup leaks bounds horizon scheduler parameter utility
+        excludedPayoff assessment profile ⟨site.1, site.2⟩ event
+    | none => excludedPayoff who) = _
+  rw [pending]
+  rfl
+
+/-- Under the hypotheses of `Vegas.lateSiteValue_mem_Icc`, the continuation value
+of every agent lies in `[excludedPayoff who, max (excludedPayoff who) upper]`. -/
+theorem lateContinuation_mem_Icc (assessment : (onePacketN).BehavioralAssessment)
+    (profile : BehavioralProfile setup.program)
+    (agent : (onePacketN).InformationAgent (onePacketN).playedInformation)
+    (upper : ℝ) (le_upper : ∀ outcome, utility outcome agent.1 ≤ upper)
+    (below : ∀ point, ProtocolState.Intended setup.program point →
+      ∀ terminal ∈ (ProtocolState.continuationLaw setup.program profile point).support,
+        excludedPayoff agent.1 ≤ utility (setup.parameterOutcome parameter terminal) agent.1) :
+    excludedPayoff agent.1 ≤ lateContinuation setup leaks bounds horizon scheduler parameter
+        utility excludedPayoff assessment profile agent ∧
+      lateContinuation setup leaks bounds horizon scheduler parameter utility excludedPayoff
+        assessment profile agent ≤ max (excludedPayoff agent.1) upper := by
+  unfold lateContinuation
+  split
+  · split
+    · exact lateSiteValue_mem_Icc setup leaks bounds horizon scheduler parameter utility
+        excludedPayoff assessment profile _ _ upper le_upper below
+    · exact ⟨le_rfl, le_max_left _ _⟩
+  · exact ⟨le_rfl, le_max_left _ _⟩
+
+end Decomposition
+
 end Vegas
