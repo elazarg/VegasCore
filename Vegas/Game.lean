@@ -127,6 +127,7 @@ import Vegas.Game.AnchoredHonestDelivery
 import Vegas.Game.OnePacketLateMasses
 import Vegas.Game.OnePacketLateSuccess
 import Vegas.Game.OnePacketLateDecomposition
+import Vegas.Game.OnePacketCompletionLaw
 import Vegas.Game.PurificationEdge
 import Vegas.Game.ReactiveSourceDecision
 import Vegas.Game.ReactiveSourceAcceptance
