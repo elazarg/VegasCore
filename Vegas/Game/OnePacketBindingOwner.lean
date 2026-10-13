@@ -201,4 +201,76 @@ theorem committed_bindingImage {horizon : Nat} {scheduler : (application setup l
   rw [statuses]
   rfl
 
+omit [Fintype Player] in
+open Classical in
+/-- **The move of an owner's response at a pending binding.** Silence; a
+commitment to the binding at a handle whose candidate succeeds, made while the
+owner has no pending commitment to it; or anything else, unclassified. -/
+def commitMove (event : (graph setup).EventId) (owner : Player) (payload : L.Ty)
+    (execution : (application setup leaks).Execution)
+    (action : (application setup leaks).Action) : Option (Option (Handle (graph setup))) :=
+  if action.transmission = none then some none
+  else if committed : ∃ (submission : (application setup leaks).Submission)
+      (candidate : Handle (graph setup)), action.transmission = some submission ∧
+      submission.call.packet = .commitment event candidate ∧
+      candidateSucceeds ((application setup leaks).submit execution.application owner
+        submission) candidate payload = true ∧
+      commitStatuses event owner payload execution.application execution.network.pending = [] then
+    some (some committed.choose_spec.choose)
+  else none
+
+/-- The image of a move from an operational state and statuses. -/
+def moveImage (event : (graph setup).EventId) (owner : Player)
+    (image : Option (OperationalState setup leaks) × List (MessageId Player × Bool)) :
+    Option (Handle (graph setup)) → BindingImage (setup := setup) (leaks := leaks)
+  | none => .inl (image.1.map (OperationalState.respond owner none), image.2)
+  | some candidate => committedImage event owner candidate image.1
+
+/-- **The owner's step at a pending binding.** If the owner's decoded response,
+sorted into moves, is within `δ` on unit payoffs of a law of moves, its control
+step read through the image is within `2 δ` of that law read through the move
+images. -/
+theorem ownerBindingStep_close {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
+    (profile : ∀ player,
+      (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
+    (history : (onePacketProtocol setup leaks bounds horizon scheduler).History)
+    {remaining : Nat} {owner : Player} {execution : (application setup leaks).Execution}
+    (current : history.state = some ⟨remaining, some owner, execution⟩)
+    {event : (graph setup).EventId} {payload : L.Ty}
+    (pending : event ∉ execution.application.config.cut.completed)
+    (moves : PMF (Option (Handle (graph setup)))) {δ : ℝ}
+    (close : UnitClose δ (((bounds.onePacketMenu (runtime setup) leaks).decodeProfile
+        (initialLaw setup) horizon scheduler profile owner (execution.recall owner)
+        (execution.observe (application setup leaks) owner)).map
+          (commitMove event owner payload execution)) (moves.map some)) :
+    UnitClose (2 * δ) (((application setup leaks).controlStep (initialLaw setup) horizon
+        scheduler ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup)
+          horizon scheduler profile) (some ⟨remaining, some owner, execution⟩)).map
+          (bindingImage event owner payload))
+      (moves.map (moveImage event owner
+        (operationalState setup leaks (some ⟨remaining, some owner, execution⟩),
+          commitStatuses event owner payload execution.application
+            execution.network.pending))) := by
+  rw [controlStep_owner, PMF.map_comp]
+  apply unitClose_map_of_classes _ _ _ _ _ δ _ close
+  intro action supported move classified
+  simp only [Function.comp]
+  unfold commitMove at classified
+  by_cases silent : action.transmission = none
+  · simp only [silent, ↓reduceIte, Option.some.injEq] at classified
+    subst classified
+    rw [bindingImage_respond_silent pending silent]
+    rfl
+  · simp only [silent, ↓reduceIte] at classified
+    split at classified
+    · rename_i committed
+      cases classified
+      obtain ⟨sent, call, succeeds, empty⟩ := committed.choose_spec.choose_spec
+      have member := (bounds.onePacketMenu (runtime setup) leaks).decodeProfile_support
+        (initialLaw setup) horizon scheduler profile owner _ _ action supported
+      rw [committed_bindingImage bounds history current pending empty action member sent call
+        succeeds]
+      rfl
+    · cases classified
+
 end Vegas
