@@ -195,11 +195,25 @@ private theorem apply_eq_one_of_subsingleton {α : Type} [Subsingleton α] (law 
   rw [← law.tsum_coe, tsum_eq_single a (fun other different =>
     (different (Subsingleton.elim other a)).elim)]
 
+variable (setup leaks) in
+/-- An information state of `who` at some history as-if-honest play reaches
+from initialization in the one-packet game. -/
+def HonestReached (horizon : Nat) (scheduler : (application setup leaks).Scheduler)
+    (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
+    (info : (application setup leaks).Info) : Prop :=
+  ∃ fuel, ∃ history ∈ ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+      scheduler).runBehavioral
+      (honestProfile setup leaks bounds (initialLaw setup) horizon scheduler assessment)
+      fuel).support,
+    (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).infoOf who
+      history.trace = info
+
 /-- **Keeping the as-if-honest choice at forced states dominates as-if-honest
 play.** For a well-formed setup, under the asynchronous contract with timely
 delays and retention of first canonical packets, a profile of the one-packet
-game that gives every choice at every forced information state at least
-`retention ∈ [0, 1]` times its as-if-honest mass dominates as-if-honest play
+game that gives every choice at every forced information state as-if-honest
+play reaches at least `retention ∈ [0, 1]` times its as-if-honest mass
+dominates as-if-honest play
 from initialization with that retention, whatever it plays elsewhere. -/
 theorem dominatesHonest_of_forced (wellFormed : setup.WellFormed) {horizon : Nat}
     {scheduler : (application setup leaks).Scheduler} {delay bound : (graph setup).EventId → Nat}
@@ -211,7 +225,7 @@ theorem dominatesHonest_of_forced (wellFormed : setup.WellFormed) {horizon : Nat
     {retention : ℝ} (le_one : retention ≤ 1)
     (profile : ∀ who,
       (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).BehavioralPolicy who)
-    (kept : ∀ who info,
+    (kept : ∀ who info, HonestReached setup leaks bounds horizon scheduler assessment who info →
       forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
         scheduler who info → ∀ choice,
       retention * ((honestProfile setup leaks bounds (initialLaw setup) horizon scheduler
@@ -227,7 +241,7 @@ theorem dominatesHonest_of_forced (wellFormed : setup.WellFormed) {horizon : Nat
     menu.info (initialLaw setup) horizon scheduler who history.trace
   by_cases forced : forcedAgent menu (initialLaw setup) horizon scheduler who
       (model.infoOf who history.trace)
-  · exact kept who _ forced choice
+  · exact kept who _ ⟨fuel, history, reached, rfl⟩ forced choice
   · have info : model.infoOf who history.trace = none := by
       rw [observed]
       cases state : history.state with
@@ -260,6 +274,7 @@ theorem dominatesHonest_of_prescribed_forced (wellFormed : setup.WellFormed) {ho
     (profile : ∀ who,
       (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).BehavioralPolicy who)
     (prescribed : ∀ who info,
+      HonestReached setup leaks bounds horizon scheduler assessment who info →
       forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
         scheduler who info →
       profile who info = prescribedComponent setup leaks bounds (initialLaw setup) horizon
@@ -268,8 +283,9 @@ theorem dominatesHonest_of_prescribed_forced (wellFormed : setup.WellFormed) {ho
       (trembleRetention scale) profile ((bounds.onePacketMenu (runtime setup) leaks).protocol
         (initialLaw setup) horizon scheduler).initHistory :=
   dominatesHonest_of_forced bounds wellFormed contract timely assessment retains
-    (trembleRetention_le_one nonnegative le_one) profile fun who info forced choice => by
-      rw [prescribed who info forced]
+    (trembleRetention_le_one nonnegative le_one) profile
+    fun who info reachedInfo forced choice => by
+      rw [prescribed who info reachedInfo forced]
       exact trembledChoice_ge_main setup leaks bounds (initialLaw setup) horizon scheduler
         nonnegative le_one who _ _ _ choice
 
@@ -302,6 +318,7 @@ theorem onePacket_readout_lawApproximation (wellFormed : setup.WellFormed) {hori
     (profiles : ℕ → ∀ who,
       (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).BehavioralPolicy who)
     (kept : ∀ n who info,
+      HonestReached setup leaks bounds horizon scheduler (assessments n) who info →
       forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
         scheduler who info → ∀ choice,
       retentions n * ((honestProfile setup leaks bounds (initialLaw setup) horizon scheduler
@@ -347,6 +364,7 @@ theorem onePacket_exclusion_lawApproximation (wellFormed : setup.WellFormed) {ho
     (profiles : ℕ → ∀ who,
       (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).BehavioralPolicy who)
     (kept : ∀ n who info,
+      HonestReached setup leaks bounds horizon scheduler (assessments n) who info →
       forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
         scheduler who info → ∀ choice,
       retentions n * ((honestProfile setup leaks bounds (initialLaw setup) horizon scheduler
@@ -388,6 +406,7 @@ theorem onePacket_prescribed_lawApproximation (wellFormed : setup.WellFormed) {h
     (profiles : ℕ → ∀ who,
       (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).BehavioralPolicy who)
     (prescribed : ∀ n who info,
+      HonestReached setup leaks bounds horizon scheduler (assessments n) who info →
       forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
         scheduler who info →
       profiles n who info = prescribedComponent setup leaks bounds (initialLaw setup) horizon
@@ -406,8 +425,8 @@ theorem onePacket_prescribed_lawApproximation (wellFormed : setup.WellFormed) {h
     excludedPayoff assessments (fun n => trembleRetention (scales n))
     (fun n => trembleRetention_nonneg (nonnegative n) (le_one n))
     (fun n => trembleRetention_le_one (nonnegative n) (le_one n))
-    (tendsto_trembleRetention vanishing) profiles fun n who info forced choice => by
-      rw [prescribed n who info forced]
+    (tendsto_trembleRetention vanishing) profiles fun n who info reachedInfo forced choice => by
+      rw [prescribed n who info reachedInfo forced]
       exact trembledChoice_ge_main setup leaks bounds (initialLaw setup) horizon scheduler
         (nonnegative n) (le_one n) who _ _ _ choice
 
