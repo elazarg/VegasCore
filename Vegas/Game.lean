@@ -70,6 +70,7 @@ import Vegas.Game.OnePacketEventSuccess
 import Vegas.Game.OnePacketSureFailure
 import Vegas.Game.OnePacketFailureBridge
 import Vegas.Game.OnePacketSequentialPreservation
+import Vegas.Game.OnePacketCertificateDischarge
 import Vegas.Game.OnePacketPendingPool
 import Vegas.Game.OnePacketFactorization
 import Vegas.Game.OnePacketEnvironmentSteps
