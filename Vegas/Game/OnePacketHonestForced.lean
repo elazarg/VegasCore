@@ -11,7 +11,7 @@ or one at which some player owes a failed reveal
 game stays in it or leaves a debt, and debts persist.
 
 For a well-formed setup under the asynchronous contract with timely delays and
-retention of first canonical packets, as-if-honest play reads out the intended
+retention of first covered canonical packets, as-if-honest play reads out the intended
 law, which records no failed reveal, while a decoded debt would record one on
 every terminal continuation. So at every history as-if-honest play reaches,
 the decoding is an intended point at which nobody is excluded or owes a failed
@@ -124,8 +124,8 @@ theorem mem_runBehavioral_of_terminalFrom {E : ExecutionProtocol Player}
   exact (PMF.mem_support_bind_iff _ _ _).mpr ⟨history, reached, finished⟩
 
 /-- **As-if-honest play stays forced.** For a well-formed setup, under the
-asynchronous contract with timely delays and retention of first canonical
-packets, at every history as-if-honest play of an intended assessment reaches
+asynchronous contract with timely delays and retention of first covered
+canonical packets, at every history as-if-honest play of an intended assessment reaches
 in the one-packet game, the state is forced for every player. -/
 theorem honest_reached_forced (wellFormed : setup.WellFormed) {horizon : Nat}
     {scheduler : (application setup leaks).Scheduler} {delay bound : (graph setup).EventId → Nat}
@@ -133,7 +133,7 @@ theorem honest_reached_forced (wellFormed : setup.WellFormed) {horizon : Nat}
       bound)
     (timely : AsyncTimely (runtime setup) delay bound)
     (assessment : setup.intendedModel.BehavioralAssessment)
-    (retains : RetainsFirstCanonical setup leaks bounds bound) (fuel : Nat)
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound) (fuel : Nat)
     (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
       scheduler).History)
     (reached : history ∈ ((onePacketModel setup leaks bounds (initialLaw setup) horizon
@@ -210,7 +210,7 @@ def HonestReached (horizon : Nat) (scheduler : (application setup leaks).Schedul
 
 /-- **Keeping the as-if-honest choice at forced states dominates as-if-honest
 play.** For a well-formed setup, under the asynchronous contract with timely
-delays and retention of first canonical packets, a profile of the one-packet
+delays and retention of first covered canonical packets, a profile of the one-packet
 game that gives every choice at every forced information state as-if-honest
 play reaches at least `retention ∈ [0, 1]` times its as-if-honest mass
 dominates as-if-honest play
@@ -221,7 +221,7 @@ theorem dominatesHonest_of_forced (wellFormed : setup.WellFormed) {horizon : Nat
       bound)
     (timely : AsyncTimely (runtime setup) delay bound)
     (assessment : setup.intendedModel.BehavioralAssessment)
-    (retains : RetainsFirstCanonical setup leaks bounds bound)
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound)
     {retention : ℝ} (le_one : retention ≤ 1)
     (profile : ∀ who,
       (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).BehavioralPolicy who)
@@ -269,7 +269,7 @@ theorem dominatesHonest_of_prescribed_forced (wellFormed : setup.WellFormed) {ho
       bound)
     (timely : AsyncTimely (runtime setup) delay bound)
     (assessment : setup.intendedModel.BehavioralAssessment)
-    (retains : RetainsFirstCanonical setup leaks bounds bound)
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound)
     {scale : ℝ} (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
     (profile : ∀ who,
       (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).BehavioralPolicy who)
@@ -299,7 +299,7 @@ variable [Fintype Player] (bounds : MessageBounds (graph setup))
 
 /-- **The law approximation of the one-packet game under the contract.** For
 a well-formed setup, under the asynchronous contract with timely delays and
-retention of first canonical packets, along retentions `retentions n` in
+retention of first covered canonical packets, along retentions `retentions n` in
 `[0, 1]` tending to one, every sequence of one-packet profiles that at every
 forced information state give every choice at least `retentions n` times its
 as-if-honest mass under `assessments n`, whatever they play elsewhere, has a
@@ -311,7 +311,7 @@ theorem onePacket_readout_lawApproximation (wellFormed : setup.WellFormed) {hori
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
       bound)
     (timely : AsyncTimely (runtime setup) delay bound)
-    (retains : RetainsFirstCanonical setup leaks bounds bound)
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound)
     (assessments : ℕ → setup.intendedModel.BehavioralAssessment)
     (retentions : ℕ → ℝ) (nonnegative : ∀ n, 0 ≤ retentions n) (le_one : ∀ n, retentions n ≤ 1)
     (converging : Tendsto retentions atTop (nhds 1))
@@ -354,7 +354,7 @@ theorem onePacket_exclusion_lawApproximation (wellFormed : setup.WellFormed) {ho
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
       bound)
     (timely : AsyncTimely (runtime setup) delay bound)
-    (retains : RetainsFirstCanonical setup leaks bounds bound)
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound)
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ)
@@ -396,7 +396,7 @@ theorem onePacket_prescribed_lawApproximation (wellFormed : setup.WellFormed) {h
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
       bound)
     (timely : AsyncTimely (runtime setup) delay bound)
-    (retains : RetainsFirstCanonical setup leaks bounds bound)
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound)
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ)

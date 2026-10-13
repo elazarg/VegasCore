@@ -49,8 +49,7 @@ theorem runRounds_honest_eq_anchoredClients [Fintype Player]
       bound)
     (timely : AsyncTimely (runtime setup) delay bound) (turns : Nat)
     (assessment : setup.intendedModel.BehavioralAssessment)
-    (retains : RetainsOpeningCanonical setup leaks bounds bound horizon scheduler
-      assessment.strategy) {rank : Nat}
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound) {rank : Nat}
     {anchor : (application setup leaks).Execution}
     (reached : ReachedBoundary setup leaks horizon scheduler rank anchor)
     (point : ProtocolState setup.program)
@@ -60,6 +59,9 @@ theorem runRounds_honest_eq_anchoredClients [Fintype Player]
       ∀ execution ∈ ((application setup leaks).runRounds scheduler
           (ReactiveApplication.anchoredPolicy anchor
             (openingClients setup leaks bound turns assessment.strategy)) count anchor).support,
+        Nonempty (((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+          horizon scheduler).Trace
+            (some ⟨horizon - (anchor.environmentRecall.length + count), none, execution⟩)) →
         (application setup leaks).runRounds scheduler
             ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup) horizon
               scheduler (honestProfile setup leaks bounds (initialLaw setup) horizon scheduler
@@ -75,9 +77,9 @@ theorem runRounds_honest_eq_anchoredClients [Fintype Player]
       assessment)
   intro more
   induction more with
-  | zero => intro _ _ _ _; rfl
+  | zero => intro _ _ _ _ _; rfl
   | succ more ih =>
-      intro count within execution supported
+      intro count within execution supported ⟨menuTrace⟩
       have roundEq :
           app.round scheduler honest execution = app.round scheduler players execution := by
         apply bind_congr_on_support _
@@ -103,21 +105,35 @@ theorem runRounds_honest_eq_anchoredClients [Fintype Player]
             rw [show players who (middle.recall who) (middle.observe app who) = _ from agree]
             exact congrArg (PMF.map (middle.respond app who))
               (honestPolicy_eq_anchoredClients bounds contract timely turns assessment retains
-                reached point decoded intendedPoint (by omega) supported selected moved active)
+                reached point decoded intendedPoint (by omega) supported menuTrace selected moved
+                active)
       change (app.round scheduler honest execution).bind (app.runRounds scheduler honest more) =
         (app.round scheduler players execution).bind (app.runRounds scheduler players more)
       rw [roundEq]
       apply bind_congr_on_support _
       intro next nextReached
       apply ih (count + 1) (by omega) next
-      rw [ReactiveApplication.runRounds_add]
-      refine (PMF.mem_support_bind_iff _ _ _).mpr ⟨execution, supported, ?_⟩
-      change next ∈ ((app.round scheduler players execution).bind PMF.pure).support
-      rwa [PMF.bind_pure]
+      · rw [ReactiveApplication.runRounds_add]
+        refine (PMF.mem_support_bind_iff _ _ _).mpr ⟨execution, supported, ?_⟩
+        change next ∈ ((app.round scheduler players execution).bind PMF.pure).support
+        rwa [PMF.bind_pure]
+      · rw [show horizon - (anchor.environmentRecall.length + (count + 1)) =
+          horizon - (anchor.environmentRecall.length + count) - 1 by omega]
+        refine (bounds.onePacketMenu (runtime setup) leaks).trace_round (initialLaw setup) horizon
+          scheduler honest (fun who past view action chosen =>
+            (bounds.onePacketMenu (runtime setup) leaks).decode_embedPolicy_covered
+              (initialLaw setup) horizon scheduler who _ past view action chosen)
+          (horizon - (anchor.environmentRecall.length + count) - 1) execution next
+          (by
+            rw [show horizon - (anchor.environmentRecall.length + count) - 1 + 1 =
+              horizon - (anchor.environmentRecall.length + count) by omega]
+            exact menuTrace) ?_
+        rw [roundEq]
+        exact nextReached
 
 /-- **The as-if-honest continuation law from a reached boundary.** For the
-setup under the asynchronous contract with timely delays and retention of the
-opening's canonical packets, from a one-packet history ending between rounds at
+setup under the asynchronous contract with timely delays and retention of first
+covered canonical packets, from a one-packet history ending between rounds at
 a reached boundary decoding to a point of the intended game, as-if-honest play
 of an intended assessment reads out the source continuation of the intended
 effective opening of its strategy at the boundary. -/
@@ -128,8 +144,7 @@ theorem honestProfile_boundary_readout_law [Fintype Player]
       bound)
     (timely : AsyncTimely (runtime setup) delay bound)
     (assessment : setup.intendedModel.BehavioralAssessment)
-    (retains : RetainsOpeningCanonical setup leaks bounds bound horizon scheduler
-      assessment.strategy) {rank : Nat}
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound) {rank : Nat}
     {anchor : (application setup leaks).Execution}
     (reached : ReachedBoundary setup leaks horizon scheduler rank anchor)
     (point : ProtocolState setup.program)
@@ -164,7 +179,7 @@ theorem honestProfile_boundary_readout_law [Fintype Player]
   rw [PMF.pure_bind, runRounds_honest_eq_anchoredClients bounds contract timely 0 assessment
       retains reached point decoded intendedPoint remaining 0
       (by have := reached.bounded; omega) anchor
-      ((PMF.mem_support_pure_iff _ _).mpr rfl),
+      ((PMF.mem_support_pure_iff _ _).mpr rfl) ⟨by simpa [← state] using start.trace⟩,
     ReactiveApplication.runRounds_anchoredPolicy, PMF.map_comp,
     ← reachedBoundary_continuation contract timely 0 _
       (setup.intendedOpeningProfile_opensEffectively assessment.strategy) reached]
@@ -188,7 +203,7 @@ private theorem mem_runBehavioralFrom_of_terminalFrom [Fintype Player]
 
 /-- **As-if-honest play from a reached boundary stays forced.** For a
 well-formed setup, under the asynchronous contract with timely delays and
-retention of the opening's canonical packets, from a one-packet history ending
+retention of first covered canonical packets, from a one-packet history ending
 between rounds at a reached boundary decoding to a point of the intended game,
 at every history as-if-honest play of an intended assessment reaches, the state
 is forced for every player. -/
@@ -199,8 +214,7 @@ theorem honest_boundary_forced [Fintype Player] (bounds : MessageBounds (graph s
       bound)
     (timely : AsyncTimely (runtime setup) delay bound)
     (assessment : setup.intendedModel.BehavioralAssessment)
-    (retains : RetainsOpeningCanonical setup leaks bounds bound horizon scheduler
-      assessment.strategy) {rank : Nat}
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound) {rank : Nat}
     {anchor : (application setup leaks).Execution}
     (reached : ReachedBoundary setup leaks horizon scheduler rank anchor)
     (point : ProtocolState setup.program)
@@ -310,8 +324,7 @@ theorem dominatesHonestFrom_of_boundary_forced [Fintype Player]
       bound)
     (timely : AsyncTimely (runtime setup) delay bound)
     (assessment : setup.intendedModel.BehavioralAssessment)
-    (retains : RetainsOpeningCanonical setup leaks bounds bound horizon scheduler
-      assessment.strategy) {rank : Nat}
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound) {rank : Nat}
     {anchor : (application setup leaks).Execution}
     (reached : ReachedBoundary setup leaks horizon scheduler rank anchor)
     (point : ProtocolState setup.program)
@@ -370,8 +383,7 @@ theorem dominatesHonestFrom_of_boundary_prescribed [Fintype Player]
       bound)
     (timely : AsyncTimely (runtime setup) delay bound)
     (assessment : setup.intendedModel.BehavioralAssessment)
-    (retains : RetainsOpeningCanonical setup leaks bounds bound horizon scheduler
-      assessment.strategy) {rank : Nat}
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound) {rank : Nat}
     {anchor : (application setup leaks).Execution}
     (reached : ReachedBoundary setup leaks horizon scheduler rank anchor)
     (point : ProtocolState setup.program)
@@ -399,8 +411,8 @@ theorem dominatesHonestFrom_of_boundary_prescribed [Fintype Player]
         nonnegative le_one who _ _ _ choice
 
 /-- **The continuation value from a reached boundary.** For a well-formed
-setup, under the asynchronous contract with timely delays and retention of the
-opening's canonical packets, from a one-packet history ending between rounds at
+setup, under the asynchronous contract with timely delays and retention of first
+covered canonical packets, from a one-packet history ending between rounds at
 a reached boundary decoding to a point of the intended game, every profile that
 gives every choice at every forced information state as-if-honest play of an
 intended assessment reaches from that history at least `retention ∈ [0, 1]`
@@ -418,8 +430,7 @@ theorem onePacket_boundary_expect_exclusion_sub_le [Fintype Player]
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ)
     (assessment : setup.intendedModel.BehavioralAssessment)
-    (retains : RetainsOpeningCanonical setup leaks bounds bound horizon scheduler
-      assessment.strategy) {rank : Nat}
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound) {rank : Nat}
     {anchor : (application setup leaks).Execution}
     (reached : ReachedBoundary setup leaks horizon scheduler rank anchor)
     (point : ProtocolState setup.program)

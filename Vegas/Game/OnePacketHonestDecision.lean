@@ -7,6 +7,7 @@ import Vegas.Game.OnePacketCanonicalPermits
 import Vegas.Game.OnePacketPendingPool
 import Vegas.Game.SourceServiceFirstTurnRisk
 import Interaction.ReactiveTrafficIdentity
+import Vegas.Game.OnePacketRetention
 
 /-! # As-if-honest decisions are compiled decisions of the effective opening
 
@@ -16,7 +17,10 @@ registry and publication status, the as-if-honest native response is the
 canonical source decision of the intended effective opening
 (`Vegas.honestResponse_eq_openingCanonical`): the compiled decision reads the
 source view the projection reads (`Vegas.compilePolicyTable_eq_protocolAction`),
-and there the effective opening plays the intended law.
+and there the effective opening plays the intended law
+(`Vegas.openingCompiled_eq_intended`). Since intended actions bind successful
+values, every such compiled decision is effective
+(`Vegas.openingCompiled_effectiveDecision`).
 -/
 
 noncomputable section
@@ -32,12 +36,12 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
-/-- **As-if-honest play is the effective opening's compiled decision.** At an
+/-- **The effective opening's compiled law is the intended law.** At an
 owner's turn at an execution decoding to an intended point that carries the
-program's registry and publication status, the as-if-honest native response of
-an intended assessment, for any recall, is the canonical source decision of the
-intended effective opening of its strategy. -/
-theorem honestResponse_eq_openingCanonical
+program's registry and publication status, the compiled policy table of the
+intended effective opening, as a law of encoded actions, is the intended law at
+the decoded view, each action encoded at the event. -/
+theorem openingCompiled_eq_intended
     (assessment : setup.intendedModel.BehavioralAssessment)
     (execution : (application setup leaks).Execution) (rank : Nat)
     (ordered : execution.application.config.cut.IsPrefix rank)
@@ -48,27 +52,21 @@ theorem honestResponse_eq_openingCanonical
     (intendedPoint : ProtocolState.Intended setup.program point)
     (who : Player) (event : (graph setup).EventId)
     (turn : execution.application.publicView.ownTurn? who = some event) :
-    honestResponse setup leaks assessment who (execution.recall who)
-        (execution.observe (application setup leaks) who) =
-      sourceServiceCanonicalPolicy setup leaks
-        (setup.intendedOpeningProfile assessment.strategy) who (execution.recall who)
-        (execution.observe (application setup leaks) who) := by
+    (compilePolicyTable setup.program
+        (ContextRefs.initial setup.context (outputLayout setup.program))
+        (outputRef setup.program) who (setup.intendedOpeningProfile assessment.strategy who)
+        event ((graph setup).playerStore who execution.application.config.store)
+        (decodeCompletions setup.program
+          (((graph setup).ownCompletions who execution.application.config.history).map
+            (setup.eventGraph.fromModeCompletion .sequential)))).map some =
+      ((assessment.strategy who (setup.protocolObserve who (some point))).map
+        Subtype.val).map (fun choice => choice.bind (encodeEventAction? setup.program event)) := by
   have owned := (PublicView.ownTurn?_spec _ who event turn).2
   have ready : execution.application.config.cut.Ready event :=
     (execution.application.publicView_eventReady event).mp
       (PublicView.ownTurn?_spec _ who event turn).1
   have atRank := (ready_iff_rank setup _ rank ordered event).mp ready
   let opening := setup.intendedOpeningProfile assessment.strategy
-  have canonical := sourceServiceCanonicalPolicy_at_event setup leaks opening who execution
-    event turn owned
-  rw [show sourceServiceCanonicalPolicy setup leaks opening = serviceCanonicalPolicy setup
-    .sequential (rankDeadline setup .sequential) leaks opening from rfl, canonical]
-  have turnView : (execution.observe (application setup leaks) who).application.publicView.ownTurn?
-      who = some event := turn
-  unfold honestResponse
-  rw [turnView]
-  dsimp only
-  rw [asIfHonestProfile_observe setup leaks assessment who execution rank ordered point decoded]
   have ownerEq : eventOwner? setup.program event = some who :=
     (eventOwner?_eq_actor setup.program event).trans owned
   have viewDecoded : decodeViewPrefix? who setup.program
@@ -109,6 +107,43 @@ theorem honestResponse_eq_openingCanonical
     rw [PMF.map_comp]
     rfl
   rw [actionLaw] at compiled
+  exact compiled
+
+/-- **As-if-honest play is the effective opening's compiled decision.** At an
+owner's turn at an execution decoding to an intended point that carries the
+program's registry and publication status, the as-if-honest native response of
+an intended assessment, for any recall, is the canonical source decision of the
+intended effective opening of its strategy. -/
+theorem honestResponse_eq_openingCanonical
+    (assessment : setup.intendedModel.BehavioralAssessment)
+    (execution : (application setup leaks).Execution) (rank : Nat)
+    (ordered : execution.application.config.cut.IsPrefix rank)
+    (point : ProtocolState setup.program)
+    (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
+    (staticPoint : ProtocolState.StaticAt setup.program [] (Revelations.initial setup.context)
+      point)
+    (intendedPoint : ProtocolState.Intended setup.program point)
+    (who : Player) (event : (graph setup).EventId)
+    (turn : execution.application.publicView.ownTurn? who = some event) :
+    honestResponse setup leaks assessment who (execution.recall who)
+        (execution.observe (application setup leaks) who) =
+      sourceServiceCanonicalPolicy setup leaks
+        (setup.intendedOpeningProfile assessment.strategy) who (execution.recall who)
+        (execution.observe (application setup leaks) who) := by
+  have owned := (PublicView.ownTurn?_spec _ who event turn).2
+  let opening := setup.intendedOpeningProfile assessment.strategy
+  have canonical := sourceServiceCanonicalPolicy_at_event setup leaks opening who execution
+    event turn owned
+  rw [show sourceServiceCanonicalPolicy setup leaks opening = serviceCanonicalPolicy setup
+    .sequential (rankDeadline setup .sequential) leaks opening from rfl, canonical]
+  have turnView : (execution.observe (application setup leaks) who).application.publicView.ownTurn?
+      who = some event := turn
+  unfold honestResponse
+  rw [turnView]
+  dsimp only
+  rw [asIfHonestProfile_observe setup leaks assessment who execution rank ordered point decoded]
+  have compiled := openingCompiled_eq_intended assessment execution rank ordered point decoded
+    staticPoint intendedPoint who event turn
   have expand : (compileEventProfile setup.program opening who event owned
       (setup.eventGraph.fromModeObservation .sequential who
         ((graph setup).playerObserve who execution.application.config))).map
@@ -136,6 +171,133 @@ theorem honestResponse_eq_openingCanonical
   funext chosen
   simp only [Function.comp_apply]
   cases (chosen.1).bind (encodeEventAction? setup.program event) <;> rfl
+
+section Effective
+
+/-- A source action binds a successful value whenever it is a commitment. -/
+def SourceProgram.OwnAction.CommitsValue : OwnAction Player L → Prop
+  | .commit _ _ _ choice => ∃ value, choice = .success value
+  | .reveal .. => True
+
+/-- An intended action binds a successful value whenever it is a commitment. -/
+theorem SourceProgram.ProtocolView.intendedAvailable_commitsValue (who : Player) :
+    {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → (view : ProtocolView who program) →
+      ∀ action ∈ ProtocolView.intendedAvailable who program view, action.CommitsValue
+  | _, _, .ret _, _, _, member => member.elim
+  | _, _, .sample _ _ _ next, view, action, member => by
+      cases view with
+      | inl _ => exact member.elim
+      | inr later => exact intendedAvailable_commitsValue who next later action member
+  | _, _, .commit _ _ _ _ next, view, action, member => by
+      cases view with
+      | inl _ =>
+          obtain ⟨value, _, rfl⟩ := member
+          exact ⟨value, rfl⟩
+      | inr later => exact intendedAvailable_commitsValue who next later action member
+  | _, _, .reveal _ _ _ _ _ _ next, view, action, member => by
+      cases view with
+      | inl _ =>
+          change action = _ at member
+          subst member
+          trivial
+      | inr later => exact intendedAvailable_commitsValue who next later action member
+
+/-- A source action binding a successful value encodes, at a binding event, to a
+successful binding value. -/
+theorem encodeEventAction?_commitsValue :
+    {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → (event : Fin (eventCount program)) →
+    (action : OwnAction Player L) → action.CommitsValue →
+    ∀ encoded, encodeEventAction? program event action = some encoded →
+    ∀ owner payload (binding : outputLayout program event = .binding owner payload),
+      ∃ value : L.Val payload,
+        encoded = cast (congrArg EventGraph.EventField.Action binding.symm)
+          (PublicationResult.success value)
+  | _, _, .ret _, event, _, _, _, _ => nomatch event
+  | _, _, .sample name fresh law next, event, action, commits, encoded, encodes => by
+      cases event using Fin.cases with
+      | zero => cases encodes
+      | succ tail =>
+          exact encodeEventAction?_commitsValue next tail action commits encoded encodes
+  | _, _, .commit name owner fresh guard next, event, action, commits, encoded, encodes => by
+      cases event using Fin.cases with
+      | zero =>
+          intro bindingOwner bindingPayload binding
+          cases binding
+          cases action with
+          | reveal => cases encodes
+          | commit actionOwner actionName actionPayload choice =>
+              obtain ⟨value, rfl⟩ := commits
+              simp only [encodeEventAction?, Fin.cases_zero] at encodes
+              split_ifs at encodes with ownerEq nameEq payloadEq
+              subst payloadEq
+              exact ⟨value, (Option.some.inj encodes).symm⟩
+      | succ tail =>
+          exact encodeEventAction?_commitsValue next tail action commits encoded encodes
+  | _, _, .reveal published owner name fresh selected unresolved next, event, action, commits,
+      encoded, encodes => by
+      cases event using Fin.cases with
+      | zero =>
+          intro _ _ binding
+          cases binding
+      | succ tail =>
+          exact encodeEventAction?_commitsValue next tail action commits encoded encodes
+
+/-- **The effective opening's compiled decisions are effective.** At an
+owner's turn at an execution decoding to an intended point that carries the
+program's registry and publication status, every compiled decision of the
+intended effective opening binds a successful value at a binding. -/
+theorem openingCompiled_effectiveDecision
+    (assessment : setup.intendedModel.BehavioralAssessment)
+    (execution : (application setup leaks).Execution) (rank : Nat)
+    (ordered : execution.application.config.cut.IsPrefix rank)
+    (point : ProtocolState setup.program)
+    (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
+    (staticPoint : ProtocolState.StaticAt setup.program [] (Revelations.initial setup.context)
+      point)
+    (intendedPoint : ProtocolState.Intended setup.program point)
+    (who : Player) (event : (graph setup).EventId)
+    (turn : execution.application.publicView.ownTurn? who = some event)
+    (owned : (graph setup).actor? event = some who) (action : (graph setup).Action event)
+    (chosen : action ∈ (compileEventProfile setup.program
+      (setup.intendedOpeningProfile assessment.strategy) who event owned
+      (setup.eventGraph.fromModeObservation .sequential who
+        ((graph setup).playerObserve who execution.application.config))).support) :
+    EffectiveDecision event action := by
+  have compiled := openingCompiled_eq_intended assessment execution rank ordered point decoded
+    staticPoint intendedPoint who event turn
+  have member : some action ∈ ((compilePolicyTable setup.program
+      (ContextRefs.initial setup.context (outputLayout setup.program))
+      (outputRef setup.program) who (setup.intendedOpeningProfile assessment.strategy who)
+      event ((graph setup).playerStore who execution.application.config.store)
+      (decodeCompletions setup.program
+        (((graph setup).ownCompletions who execution.application.config.history).map
+          (setup.eventGraph.fromModeCompletion .sequential)))).map some).support :=
+    (PMF.mem_support_map_iff _ _ _).mpr ⟨action, chosen, rfl⟩
+  rw [compiled] at member
+  obtain ⟨choice, choiceMem, encodes⟩ := (PMF.mem_support_map_iff _ _ _).mp member
+  obtain ⟨intendedChoice, _, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp choiceMem
+  have legal := intendedChoice.2
+  change ProtocolView.intendedMenu who setup.program (ProtocolState.observe who setup.program point)
+    intendedChoice.1 at legal
+  cases picked : intendedChoice.1 with
+  | none =>
+      rw [picked] at encodes
+      cases encodes
+  | some ownAction =>
+      rw [picked] at legal encodes
+      have commits := ProtocolView.intendedAvailable_commitsValue who setup.program _ ownAction
+        legal.2
+      unfold EffectiveDecision
+      cases node : nodeView (graph setup) event with
+      | bind owner payload outputEq codeEq =>
+          exact encodeEventAction?_commitsValue setup.program event ownAction commits action
+            encodes owner payload outputEq
+      | resolve => trivial
+      | sample => trivial
+
+end Effective
 
 section Recorded
 

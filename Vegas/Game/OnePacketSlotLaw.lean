@@ -64,7 +64,7 @@ theorem onePacket_slot_lawApproximation [Fintype Player] (bounds : MessageBounds
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
       bound)
     (timely : AsyncTimely (runtime setup) delay bound)
-    (retains : RetainsFirstCanonical setup leaks bounds bound)
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound)
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ)

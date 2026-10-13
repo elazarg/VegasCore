@@ -9,10 +9,10 @@ The as-if-honest profile of the one-packet game, read as native policies,
 sends the as-if-honest response when the one-packet menu offers it and is
 silent otherwise (`Vegas.decodeProfile_honestProfile`).
 
-Suppose the canonical menu retains every first canonical packet sent within its
-deadline (`Vegas.RetainsFirstCanonical`). Then, for a well-formed setup under
-the asynchronous contract with timely delays, at every input the scheduler
-queries along a run of the first-turn clients of the intended effective
+Suppose the canonical menu retains every first covered canonical packet sent
+within its deadline (`Vegas.RetainsCoveredCanonical`). Then, for a well-formed
+setup under the asynchronous contract with timely delays, at every input the
+scheduler queries along a run of the first-turn clients of the intended effective
 opening, as-if-honest play responds exactly as those clients do
 (`Vegas.honestPolicy_eq_openingClients`): without an own turn both are silent;
 after an earlier turn at the event both are silent, the clients by their turn
@@ -95,26 +95,9 @@ end Static
 
 section Agreement
 
-variable (setup leaks) in
-/-- **Retention of first canonical packets.** At an owner's turn at an event
-its recall has not submitted for, while a fresh call still fits the deadline,
-every transmitting canonical decision is retained by the canonical menu. -/
-def RetainsFirstCanonical [Fintype Player] (bounds : MessageBounds (graph setup))
-    (bound : (graph setup).EventId → Nat) : Prop :=
-  ∀ who (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView) (event : (graph setup).EventId)
-    (action : (graph setup).Action event),
-    view.application.publicView.ownTurn? who = some event →
-    (runtime setup).eventRecorded leaks past event = false →
-    view.application.publicView.InclusionFitsDeadline (runtime setup) bound event →
-    ((runtime setup).canonicalServiceDecision leaks who past view event action).transmission ≠
-      none →
-    (runtime setup).canonicalServiceDecision leaks who past view event action ∈
-      bounds.canonicalActions (runtime setup) leaks who past view
-
 /-- **As-if-honest play agrees with the first-turn clients.** For a
 well-formed setup, under the asynchronous contract with timely delays and
-retention of first canonical packets, at every input the scheduler queries
+retention of first covered canonical packets, at every input the scheduler queries
 within the horizon along a run of the first-turn clients of the intended
 effective opening, as-if-honest play read as native policies responds exactly
 as those clients do. -/
@@ -125,10 +108,12 @@ theorem honestPolicy_eq_openingClients [Fintype Player] (bounds : MessageBounds 
       bound)
     (timely : AsyncTimely (runtime setup) delay bound) (turns : Nat)
     (assessment : setup.intendedModel.BehavioralAssessment)
-    (retains : RetainsFirstCanonical setup leaks bounds bound) {count : Nat}
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound) {count : Nat}
     (within : count < horizon) {execution : (application setup leaks).Execution}
     (supported : execution ∈ ((application setup leaks).roundsFrom (initialLaw setup) scheduler
       (openingClients setup leaks bound turns assessment.strategy) count).support)
+    (menuTrace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some ⟨horizon - count, none, execution⟩))
     {command : (application setup leaks).Command}
     (selected : command ∈ (scheduler execution.environmentRecall
       (execution.observeEnvironment (application setup leaks))).support)
@@ -158,6 +143,10 @@ theorem honestPolicy_eq_openingClients [Fintype Player] (bounds : MessageBounds 
     (horizon - count - 1) execution middle (.activate who) trace selected moved
   change app.protocol (initialLaw setup) horizon scheduler |>.Trace
     (some ⟨horizon - count - 1, some who, middle⟩) at middleTrace
+  obtain ⟨middleMenuTrace⟩ := (bounds.onePacketMenu (runtime setup) leaks).trace_environment
+    (initialLaw setup) horizon scheduler (horizon - count - 1) execution middle (.activate who)
+    (by rw [show horizon - count - 1 + 1 = horizon - count by omega]; exact menuTrace) selected
+    moved
   have answered := roundsFrom_activationsAnswered count execution supported
   have atTurn : OwnSubmissionsAtTurn setup leaks middle who := by
     have facts := (roundsFrom_turnFacts setup leaks (fun player =>
@@ -278,7 +267,7 @@ theorem honestPolicy_eq_openingClients [Fintype Player] (bounds : MessageBounds 
         intro response chosen
         rw [sourceServiceCanonicalPolicy_at_event setup leaks opening who middle event turnCase
           owned, PMF.mem_support_map_iff] at chosen
-        obtain ⟨graphAction, _, rfl⟩ := chosen
+        obtain ⟨graphAction, graphMem, rfl⟩ := chosen
         cases transmits : ((runtime setup).canonicalServiceDecision leaks who (middle.recall who)
             (middle.observe app who) event graphAction).transmission with
         | none =>
@@ -293,8 +282,11 @@ theorem honestPolicy_eq_openingClients [Fintype Player] (bounds : MessageBounds 
             simp only [reduceCtorEq, ↓reduceIte]
             have member := canonical_mem_onePacket setup leaks bounds who (middle.recall who)
               (middle.observe app who) _
-              (retains who (middle.recall who) (middle.observe app who) event graphAction view
-                unrecorded fitsMiddle (by rw [transmits]; exact Option.some_ne_none material))
+              (retains middleMenuTrace who event graphAction turnCase unrecorded fitsMiddle
+                (openingCompiled_effectiveDecision assessment middle staticRank orderedMiddle _
+                  decodedMiddle (staticHolds _ residual.decode) (intendedHolds _ residual.decode)
+                  who event turnCase owned graphAction graphMem)
+                (by rw [transmits]; exact Option.some_ne_none material))
               (fun chosenMaterial sends => canonicalServiceDecision_countPermits middleTrace who
                 event turnCase unrecorded graphAction chosenMaterial sends)
             simp only [Function.comp_apply, onePacketFilter]
@@ -318,10 +310,12 @@ theorem runRounds_honest_eq_openingClients [Fintype Player] (bounds : MessageBou
       bound)
     (timely : AsyncTimely (runtime setup) delay bound) (turns : Nat)
     (assessment : setup.intendedModel.BehavioralAssessment)
-    (retains : RetainsFirstCanonical setup leaks bounds bound) :
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound) :
     ∀ (more count : Nat), count + more ≤ horizon →
       ∀ execution ∈ ((application setup leaks).roundsFrom (initialLaw setup) scheduler
           (openingClients setup leaks bound turns assessment.strategy) count).support,
+        Nonempty (((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+          horizon scheduler).Trace (some ⟨horizon - count, none, execution⟩)) →
         (application setup leaks).runRounds scheduler
             ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup) horizon
               scheduler (honestProfile setup leaks bounds (initialLaw setup) horizon scheduler
@@ -335,9 +329,9 @@ theorem runRounds_honest_eq_openingClients [Fintype Player] (bounds : MessageBou
       assessment)
   intro more
   induction more with
-  | zero => intro _ _ _ _; rfl
+  | zero => intro _ _ _ _ _; rfl
   | succ more ih =>
-      intro count within execution supported
+      intro count within execution supported ⟨menuTrace⟩
       have roundEq :
           app.round scheduler honest execution = app.round scheduler clients execution := by
         apply bind_congr_on_support _
@@ -353,19 +347,28 @@ theorem runRounds_honest_eq_openingClients [Fintype Player] (bounds : MessageBou
                 (middle.respond app who)
             exact congrArg (PMF.map (middle.respond app who))
               (honestPolicy_eq_openingClients bounds wellFormed contract timely turns assessment
-                retains (by omega) supported selected moved active)
+                retains (by omega) supported menuTrace selected moved active)
       change (app.round scheduler honest execution).bind (app.runRounds scheduler honest more) =
         (app.round scheduler clients execution).bind (app.runRounds scheduler clients more)
       rw [roundEq]
       apply bind_congr_on_support _
       intro next reached
       apply ih (count + 1) (by omega) next
-      rw [ReactiveApplication.roundsFrom_succ]
-      exact (PMF.mem_support_bind_iff _ _ _).mpr ⟨execution, supported, reached⟩
+      · rw [ReactiveApplication.roundsFrom_succ]
+        exact (PMF.mem_support_bind_iff _ _ _).mpr ⟨execution, supported, reached⟩
+      · rw [show horizon - (count + 1) = horizon - count - 1 by omega]
+        refine (bounds.onePacketMenu (runtime setup) leaks).trace_round (initialLaw setup) horizon
+          scheduler honest (fun who past view action chosen =>
+            (bounds.onePacketMenu (runtime setup) leaks).decode_embedPolicy_covered
+              (initialLaw setup) horizon scheduler who _ past view action chosen)
+          (horizon - count - 1) execution next
+          (by rw [show horizon - count - 1 + 1 = horizon - count by omega]; exact menuTrace) ?_
+        rw [roundEq]
+        exact reached
 
 /-- **The as-if-honest readout law.** For a well-formed setup, under the
-asynchronous contract with timely delays and retention of first canonical
-packets, as-if-honest play of an intended assessment in the one-packet game
+asynchronous contract with timely delays and retention of first covered
+canonical packets, as-if-honest play of an intended assessment in the one-packet game
 reads out exactly the intended law of typed readouts of its strategy. -/
 theorem honestProfile_readout_law [Fintype Player] (bounds : MessageBounds (graph setup))
     (wellFormed : setup.WellFormed) {horizon : Nat}
@@ -374,7 +377,7 @@ theorem honestProfile_readout_law [Fintype Player] (bounds : MessageBounds (grap
       bound)
     (timely : AsyncTimely (runtime setup) delay bound)
     (assessment : setup.intendedModel.BehavioralAssessment)
-    (retains : RetainsFirstCanonical setup leaks bounds bound) :
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound) :
     ((onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).runBehavioral
         (honestProfile setup leaks bounds (initialLaw setup) horizon scheduler assessment)
         (2 * horizon + 1)).map (fun final => sourceReadout setup leaks final.state) =
@@ -405,6 +408,7 @@ theorem honestProfile_readout_law [Fintype Player] (bounds : MessageBounds (grap
   exact runRounds_honest_eq_openingClients bounds wellFormed contract timely 0
     assessment retains horizon 0 (by omega) _
     ((PMF.mem_support_bind_iff _ _ _).mpr ⟨state, stateMem, (PMF.mem_support_pure_iff _ _).mpr rfl⟩)
+    (menu.trace_initial (initialLaw setup) horizon scheduler state stateMem)
 
 end Law
 

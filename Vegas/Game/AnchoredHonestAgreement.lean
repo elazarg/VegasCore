@@ -213,34 +213,9 @@ theorem reachedBoundary_recorded_of_seen [Finite Player] {horizon : Nat}
       exact List.mem_filter.mpr ⟨input, by simp [senderEq]⟩
     exact output_event trace who event kept message output named
 
-variable (setup leaks) in
-/-- **Retention of the opening's canonical packets.** At every activation of a
-legal raw history, at the owner's turn at an event its recall has not submitted
-for, while a fresh call still fits the deadline, every transmitting response of
-the canonical source decision of the intended effective opening is retained by
-the canonical menu. -/
-def RetainsOpeningCanonical [Fintype Player] (bounds : MessageBounds (graph setup))
-    (bound : (graph setup).EventId → Nat) (horizon : Nat)
-    (scheduler : (application setup leaks).Scheduler)
-    (intended : ∀ who, setup.intendedModel.BehavioralPolicy who) : Prop :=
-  ∀ remaining who (execution : (application setup leaks).Execution),
-    ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-      (some ⟨remaining, some who, execution⟩) →
-    ∀ event, (execution.observe (application setup leaks) who).application.publicView.ownTurn?
-        who = some event →
-      (runtime setup).eventRecorded leaks (execution.recall who) event = false →
-      (execution.observe (application setup leaks) who).application.publicView.InclusionFitsDeadline
-        (runtime setup) bound event →
-      ∀ response ∈ (sourceServiceCanonicalPolicy setup leaks
-          (setup.intendedOpeningProfile intended) who (execution.recall who)
-          (execution.observe (application setup leaks) who)).support,
-        response.transmission ≠ none →
-        response ∈ bounds.canonicalActions (runtime setup) leaks who (execution.recall who)
-          (execution.observe (application setup leaks) who)
-
 /-- **As-if-honest play agrees with the anchored clients.** For a well-formed
-setup, under the asynchronous contract with timely delays and retention of the
-opening's canonical packets, from a reached boundary decoding to a point of the
+setup, under the asynchronous contract with timely delays and retention of first
+covered canonical packets, from a reached boundary decoding to a point of the
 intended game, at every input the scheduler queries within the horizon along a
 run of the anchored first-turn clients of the intended effective opening,
 as-if-honest play read as native policies responds exactly as those clients
@@ -252,8 +227,7 @@ theorem honestPolicy_eq_anchoredClients [Fintype Player] (bounds : MessageBounds
       bound)
     (timely : AsyncTimely (runtime setup) delay bound) (turns : Nat)
     (assessment : setup.intendedModel.BehavioralAssessment)
-    (retains : RetainsOpeningCanonical setup leaks bounds bound horizon scheduler
-      assessment.strategy) {rank : Nat}
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound) {rank : Nat}
     {anchor : (application setup leaks).Execution}
     (reached : ReachedBoundary setup leaks horizon scheduler rank anchor)
     (point : ProtocolState setup.program)
@@ -266,6 +240,8 @@ theorem honestPolicy_eq_anchoredClients [Fintype Player] (bounds : MessageBounds
         (firstTurnClients setup leaks bound turns (setup.intendedOpeningProfile
           assessment.strategy)))
       more anchor).support)
+    (menuTrace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some ⟨horizon - (anchor.environmentRecall.length + more), none, execution⟩))
     {command : (application setup leaks).Command}
     (selected : command ∈ (scheduler execution.environmentRecall
       (execution.observeEnvironment (application setup leaks))).support)
@@ -301,6 +277,10 @@ theorem honestPolicy_eq_anchoredClients [Fintype Player] (bounds : MessageBounds
     (horizon - count - 1) execution middle (.activate who) trace selected moved
   change app.protocol (initialLaw setup) horizon scheduler |>.Trace
     (some ⟨horizon - count - 1, some who, middle⟩) at middleTrace
+  obtain ⟨middleMenuTrace⟩ := (bounds.onePacketMenu (runtime setup) leaks).trace_environment
+    (initialLaw setup) horizon scheduler (horizon - count - 1) execution middle (.activate who)
+    (by rw [show horizon - count - 1 + 1 = horizon - count by omega]; exact menuTrace) selected
+    moved
   have answered := roundsFrom_activationsAnswered count execution rounds
   have continues := ContinuesAnchor.runRounds (bound := bound) (turns := turns) (profile := opening)
     (scheduler := scheduler) more anchor ⟨fun _ => List.prefix_refl _, reached.turns⟩ execution
@@ -414,10 +394,9 @@ theorem honestPolicy_eq_anchoredClients [Fintype Player] (bounds : MessageBounds
           ← PMF.bind_pure_comp]
         apply bind_congr_on_support _
         intro response chosen
-        have chosenCanonical := chosen
         rw [sourceServiceCanonicalPolicy_at_event setup leaks opening who middle event turnCase
           owned, PMF.mem_support_map_iff] at chosen
-        obtain ⟨graphAction, _, rfl⟩ := chosen
+        obtain ⟨graphAction, graphMem, rfl⟩ := chosen
         cases transmits : ((runtime setup).canonicalServiceDecision leaks who (middle.recall who)
             (middle.observe app who) event graphAction).transmission with
         | none =>
@@ -432,8 +411,11 @@ theorem honestPolicy_eq_anchoredClients [Fintype Player] (bounds : MessageBounds
             simp only [reduceCtorEq, ↓reduceIte]
             have member := canonical_mem_onePacket setup leaks bounds who (middle.recall who)
               (middle.observe app who) _
-              (retains _ who middle middleTrace event view unrecorded fitsMiddle _
-                chosenCanonical (by rw [transmits]; exact Option.some_ne_none material))
+              (retains middleMenuTrace who event graphAction turnCase unrecorded fitsMiddle
+                (openingCompiled_effectiveDecision assessment middle staticRank orderedMiddle _
+                  decodedMiddle (staticHolds _ residual.decode) (intendedHolds _ residual.decode)
+                  who event turnCase owned graphAction graphMem)
+                (by rw [transmits]; exact Option.some_ne_none material))
               (fun chosenMaterial sends => canonicalServiceDecision_countPermits middleTrace who
                 event turnCase unrecorded graphAction chosenMaterial sends)
             simp only [Function.comp_apply, onePacketFilter]
