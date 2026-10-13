@@ -435,11 +435,11 @@ def siteHistoryFailure (assessment : (onePacketN).BehavioralAssessment) {who : P
 
 /-- **Value-blind success from its two parts.** Suppose, from every history of a
 site's belief, the completion value of a law is its success probability from
-that history times the history's continuation value up to `valueFree`
+that history times the history's continuation value up to valueFree
 (value-free success: the committed value is the source decision at the decoded
 point and its success does not depend on it), and the belief average of these
 products is the average success probability times the average continuation
-value up to `decorrelated` (the failure probability and the continuation value
+value up to decorrelated (the failure probability and the continuation value
 are uncorrelated under the belief). Then the site's completion value is its
 success probability times the site's continuation value up to their sum. -/
 theorem abs_siteStopValue_sub_le_of_valueFree (assessment : (onePacketN).BehavioralAssessment)
@@ -686,9 +686,9 @@ variable [Finite ((bounds.onePacketMenu (runtime setup) leaks).protocol (initial
 utilities and vanishing scales, the transport error with the summed payoff
 range of all players tends to zero; every agent's continuation value is at
 least the exclusion payoff and within the gap bound of it; and, at every site,
-a law whose completion value is within `blind` of its success probability times
+a law whose completion value is within blind of its success probability times
 the site's continuation value has its successful part within the transport
-error plus `blind` of that product. -/
+error plus blind of that product. -/
 theorem siteDecomposition_of_completion (wellFormed : setup.WellFormed)
     {delay bound : (graph setup).EventId → Nat}
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
@@ -786,9 +786,9 @@ theorem siteDecomposition_of_completion (wellFormed : setup.WellFormed)
 /-- **The value decomposition at late deliveries.** For a well-formed setup
 under the asynchronous contract with timely delays and retention of first
 covered canonical packets, with bounded utilities and vanishing tremble scales,
-suppose exclusion is a punishment on intended continuations (`below`), the gap
+suppose exclusion is a punishment on intended continuations (below), the gap
 bound covers the upper utility, and success is value-blind at late deliveries
-(`valueBlind`): the completion value of each marked choice and of each late
+(valueBlind): the completion value of each marked choice and of each late
 option is within a vanishing error of its success probability times the
 site's continuation value. Then the late value decomposition of
 `Vegas.OnePacketOpenInputs` holds. -/
@@ -894,7 +894,7 @@ theorem onePacket_lateDecomposition (wellFormed : setup.WellFormed)
 
 /-- **The value decomposition away from late deliveries.** Under the hypotheses
 of `Vegas.onePacket_lateDecomposition`, with value-blind success away from late
-deliveries (`valueBlind`): the completion value of each marked choice and of
+deliveries (valueBlind): the completion value of each marked choice and of
 the prescribed component is within a vanishing error of its success
 probability times the site's continuation value. Then the non-late value
 decomposition of `Vegas.OnePacketOpenInputs` holds. -/
