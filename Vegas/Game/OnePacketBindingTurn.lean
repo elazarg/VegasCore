@@ -480,4 +480,141 @@ theorem handle_commitment_accepted_transfer
   simp only [StoreEventFailed, firstStore, secondStore, Option.some.injEq, exists_eq_left',
     failedIff, successIff, succeeds]
 
+open Classical in
+/-- **Inclusions at a pending binding read off the image.** Two executions with
+the same operational state and the same statuses, with a binding ready, give
+every inclusion the same law of images. -/
+theorem include_bindingImage_congr (remaining : Nat)
+    (first second : (application setup leaks).Execution)
+    (same : operationalState setup leaks (some ⟨remaining + 1, none, first⟩) =
+      operationalState setup leaks (some ⟨remaining + 1, none, second⟩))
+    {event : (graph setup).EventId} {owner : Player} {payload : L.Ty}
+    (statuses : commitStatuses event owner payload first.application first.network.pending =
+      commitStatuses event owner payload second.application second.network.pending)
+    (ready : first.application.config.cut.Ready event)
+    {outputEq : (graph setup).outputLayout event = .binding owner payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .bind owner payload}
+    (view : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
+    (id : MessageId Player) :
+    (first.environmentStep (application setup leaks) (.include id)).map
+        (fun next => bindingImage event owner payload (some ⟨remaining, none, next⟩)) =
+      (second.environmentStep (application setup leaks) (.include id)).map
+        (fun next => bindingImage event owner payload (some ⟨remaining, none, next⟩)) := by
+  have pending := ready.1
+  have ready' : second.application.config.cut.Ready event :=
+    (SameOperational.ready same event).mp ready
+  have networks : first.network = second.network := SameOperational.network same
+  have publics : first.application.publicView = second.application.publicView :=
+    SameOperational.publicView same
+  have statuses' : commitStatuses event owner payload first.application first.network.pending =
+      commitStatuses event owner payload second.application first.network.pending := by
+    rw [statuses, networks]
+  have rejectedBoth (message : Message Player (application setup leaks).Payload)
+      (found : first.network.lookup id = some message)
+      (firstRejected : (application setup leaks).handle first.application message = none)
+      (secondRejected : (application setup leaks).handle second.application message = none) :
+      (first.environmentStep (application setup leaks) (.include id)).map
+          (fun next => bindingImage event owner payload (some ⟨remaining, none, next⟩)) =
+        (second.environmentStep (application setup leaks) (.include id)).map
+          (fun next => bindingImage event owner payload (some ⟨remaining, none, next⟩)) := by
+    have found' : second.network.lookup id = some message := by rw [← networks]; exact found
+    have kept (execution : (application setup leaks).Execution)
+        (lookup : execution.network.lookup id = some message)
+        (rejected : (application setup leaks).handle execution.application message = none) :
+        ∀ next ∈ (execution.environmentStep (application setup leaks) (.include id)).support,
+          stateStatuses event owner payload (some ⟨remaining, none, next⟩) =
+            commitStatuses event owner payload execution.application
+              (MessagePool.removeFirst id execution.network.pending) := by
+      intro next member
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+        PMF.mem_support_pure_iff] at member
+      subst member
+      simp only [stateStatuses, ReactiveApplication.Execution.includePending,
+        MessageNetwork.includePending, lookup, rejected, Option.getD_none]
+    rw [map_bindingImage_of_statuses _ _ _ (kept first found firstRejected),
+      map_bindingImage_of_statuses _ _ _ (kept second found' secondRejected),
+      include_image_congr remaining first second same pending id (fun other member => by
+        rw [found] at member
+        cases member
+        exact ⟨firstRejected, secondRejected⟩),
+      ← networks, commitStatuses_removeFirst_congr id statuses']
+  cases found : first.network.lookup id with
+  | none =>
+      have found' : second.network.lookup id = none := by rw [← networks]; exact found
+      have kept (execution : (application setup leaks).Execution)
+          (lookup : execution.network.lookup id = none) :
+          ∀ next ∈ (execution.environmentStep (application setup leaks) (.include id)).support,
+            stateStatuses event owner payload (some ⟨remaining, none, next⟩) =
+              commitStatuses event owner payload execution.application
+                execution.network.pending := by
+        intro next member
+        simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+          PMF.mem_support_pure_iff] at member
+        subst member
+        simp only [stateStatuses, ReactiveApplication.Execution.includePending,
+          MessageNetwork.includePending, lookup]
+      rw [map_bindingImage_of_statuses _ _ _ (kept first found),
+        map_bindingImage_of_statuses _ _ _ (kept second found'),
+        include_image_congr remaining first second same pending id (fun other member => by
+          rw [found] at member
+          cases member), ← networks, statuses']
+  | some message =>
+      have member : message ∈ first.network.pending := List.mem_of_find?_eq_some found
+      have transfer (one other : EventGraphRuntime.State (graph setup))
+          (publicsEq : one.publicView = other.publicView)
+          (oneReady : one.config.cut.Ready event)
+          (succeeds : ∀ candidate, message.payload.call = .commitment event candidate →
+            message.sender = owner →
+            candidateSucceeds one candidate payload = candidateSucceeds other candidate payload)
+          {next : EventGraphRuntime.State (graph setup)}
+          (accepted : (application setup leaks).handle one message = some next) :
+          ∃ next', (application setup leaks).handle other message = some next' ∧
+            event ∈ next.config.cut.completed ∧ event ∈ next'.config.cut.completed ∧
+            (StoreEventFailed next.config.store event ↔
+              StoreEventFailed next'.config.store event) := by
+        obtain ⟨valid, handled⟩ :=
+          reactiveApplication_handle_eq_some (runtime setup) leaks one next message accepted
+        obtain ⟨candidate, call, sender⟩ :=
+          handle_of_binding_ready one oneReady view message.id message.payload.call handled
+        rw [call] at handled
+        obtain ⟨next', handled', facts⟩ := handle_commitment_accepted_transfer one other
+          publicsEq oneReady view message.id candidate (succeeds candidate call sender) handled
+        refine ⟨next', ?_, facts⟩
+        rw [reactiveApplication_handle_of_tokenValid (runtime setup) leaks _ _ valid, call]
+        exact handled'
+      have succeeds : ∀ candidate, message.payload.call = .commitment event candidate →
+          message.sender = owner →
+          candidateSucceeds first.application candidate payload =
+            candidateSucceeds second.application candidate payload := by
+        intro candidate call sender
+        have statusEq := commitStatus_eq_of_mem statuses' message member
+        unfold commitStatus at statusEq
+        rw [call] at statusEq
+        simp only [true_and, sender, ↓reduceIte, Option.some.injEq, Prod.mk.injEq] at statusEq
+        exact statusEq
+      have found' : second.network.lookup id = some message := by rw [← networks]; exact found
+      cases firstHandle : (application setup leaks).handle first.application message with
+      | none =>
+          cases secondHandle : (application setup leaks).handle second.application message with
+          | none => exact rejectedBoth message found firstHandle secondHandle
+          | some _ =>
+              obtain ⟨_, back, _⟩ := transfer second.application first.application publics.symm
+                ready' (fun candidate call sender => (succeeds candidate call sender).symm)
+                secondHandle
+              rw [firstHandle] at back
+              cases back
+      | some _ =>
+          obtain ⟨_, secondHandle, completed, completed', failed⟩ :=
+            transfer first.application second.application publics ready succeeds firstHandle
+          unfold ReactiveApplication.Execution.environmentStep
+          simp only [PMF.pure_map]
+          congr 1
+          unfold ReactiveApplication.Execution.includePending
+          simp only [MessageNetwork.includePending, found, found', firstHandle, secondHandle,
+            Option.getD_some]
+          simp only [bindingImage, pendingImage, completed, completed', ↓reduceIte,
+            attachStatuses, Sum.inr.injEq, decide_eq_decide]
+          exact failed
+
 end Vegas
