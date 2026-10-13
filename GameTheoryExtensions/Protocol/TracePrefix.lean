@@ -50,6 +50,40 @@ theorem TracePrefix.start : ∀ {state : E.State} (trace : E.Trace state),
   | _, .extend prior joint isLegal realized =>
       .extend (TracePrefix.start prior) joint isLegal realized
 
+/-- A prefix as long as the history is the history. -/
+theorem TracePrefix.eq_of_length {first second : E.State} {prefixTrace : E.Trace first}
+    {trace : E.Trace second} (isPrefix : TracePrefix prefixTrace trace)
+    (sameLength : prefixTrace.length = trace.length) :
+    (⟨first, prefixTrace⟩ : E.History) = ⟨second, trace⟩ := by
+  cases isPrefix with
+  | refl => rfl
+  | extend earlier _ _ _ =>
+      have := earlier.length_le
+      simp only [Trace.length] at sameLength
+      omega
+
+/-- **Two prefixes of one history of the same length are equal.** -/
+theorem TracePrefix.eq_of_same_length {first second third : E.State}
+    {firstTrace : E.Trace first} {secondTrace : E.Trace second} {trace : E.Trace third}
+    (firstPrefix : TracePrefix firstTrace trace) (secondPrefix : TracePrefix secondTrace trace)
+    (sameLength : firstTrace.length = secondTrace.length) :
+    (⟨first, firstTrace⟩ : E.History) = ⟨second, secondTrace⟩ := by
+  induction trace with
+  | start =>
+      cases firstPrefix
+      cases secondPrefix
+      rfl
+  | extend prior joint isLegal realized ih =>
+      cases firstPrefix with
+      | refl =>
+          exact (secondPrefix.eq_of_length sameLength.symm).symm
+      | extend firstEarlier _ _ _ =>
+          cases secondPrefix with
+          | refl =>
+              exact TracePrefix.eq_of_length (.extend firstEarlier joint isLegal realized)
+                sameLength
+          | extend secondEarlier _ _ _ => exact ih firstEarlier secondEarlier
+
 end ExecutionProtocol
 
 end GameTheory.Protocol
