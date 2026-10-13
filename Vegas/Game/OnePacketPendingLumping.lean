@@ -915,6 +915,72 @@ theorem include_opening_image_congr (remaining : Nat)
             decide_eq_decide]
           exact failed
 
+/-- A player reads its own binding through its own view of the store. -/
+private theorem get?_playerStore_own (store : EventGraph.Store (graph setup).layout)
+    {owner : Player} {payload : L.Ty}
+    (binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)) :
+    binding.get? ((graph setup).playerStore owner store) = binding.get? store := by
+  rcases binding with ⟨field, layoutEq⟩
+  apply EventGraph.FieldRef.get?_congr
+  apply EventGraph.playerStore_of_visible
+  change ((graph setup).layout field).VisibleTo owner
+  rw [layoutEq]
+  rfl
+
+/-- At a ready publication event, the owner's delivered value is its binding
+of the event. -/
+theorem deliveredValue_of_ready (execution : (application setup leaks).Execution)
+    (ready : execution.application.config.cut.Ready event)
+    {owner : Player} {payload : L.Ty}
+    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
+    {outputEq : (graph setup).outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .resolve owner payload binding checks}
+    (view : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq) :
+    deliveredValue setup leaks owner (execution.observe (application setup leaks) owner) =
+      some (⟨.binding owner payload, binding.get? execution.application.config.store⟩ :
+        Σ kind : EventGraph.EventField Player L, Option kind.Value) := by
+  have turn : execution.application.publicView.ownTurn? owner = some event :=
+    ownTurn?_of_ready setup _ ready (nodeView_resolve_actor outputEq codeEq)
+  unfold deliveredValue
+  change (match execution.application.publicView.ownTurn? owner with
+    | none => none
+    | some event => _) = _
+  rw [turn]
+  simp only [view]
+  rw [← get?_playerStore_own execution.application.config.store]
+  rfl
+
+/-- **The owner's binding of the ready event is operational.** Two protocol
+states with the same operational state hold the same binding of a ready
+publication event: the owner's late-delivery key carries it. -/
+theorem SameOperational.binding {first second : (application setup leaks).Control}
+    (same : operationalState setup leaks (some first) = operationalState setup leaks (some second))
+    (ready : first.execution.application.config.cut.Ready event)
+    {owner : Player} {payload : L.Ty}
+    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
+    {outputEq : (graph setup).outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .resolve owner payload binding checks}
+    (view : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq) :
+    binding.get? first.execution.application.config.store =
+      binding.get? second.execution.application.config.store := by
+  have ready' : second.execution.application.config.cut.Ready event :=
+    (SameOperational.ready same event).mp ready
+  have keys := congrFun (congrArg OperationalState.keys (Option.some.inj same)) owner
+  simp only [lateKey, Option.some.injEq] at keys
+  have delivered := congrArg LateKey.delivered keys
+  change deliveredValue setup leaks owner
+      (first.execution.observe (application setup leaks) owner) =
+    deliveredValue setup leaks owner
+      (second.execution.observe (application setup leaks) owner) at delivered
+  rw [deliveredValue_of_ready first.execution ready view,
+    deliveredValue_of_ready second.execution ready' view] at delivered
+  simp only [Option.some.injEq, Sigma.mk.inj_iff, heq_eq_eq, true_and] at delivered
+  exact delivered
+
 end Image
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
@@ -1032,5 +1098,65 @@ theorem controlStep_history
                 rw [acting]
                 exact fun equal => same (Option.some.inj equal).symm
             exact ⟨(⟨some control, trace⟩ : protocol.History).extend legal reached, rfl⟩
+
+/-- Every contract state of a one-packet history satisfies the binding
+invariant. -/
+theorem bindingInvariant_of_history
+    (history : (onePacketProtocol setup leaks bounds horizon scheduler).History)
+    {control : (application setup leaks).Control} (current : history.state = some control) :
+    control.execution.application.BindingInvariant := by
+  have raw := (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon
+    scheduler history.trace
+  have binding := ((runtime setup).reactiveBindingInvariant leaks).history (initialLaw setup)
+    horizon scheduler (fun state member => by
+      obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ member
+      exact State.initial_bindingInvariant _) raw
+  rw [current] at binding
+  exact binding
+
+/-- **Scheduler rounds at forced histories read off the operational state.**
+While a publication event is pending and ready at a forced one-packet history,
+a scheduler round from any one-packet history with the same operational state
+has the same law of images: every pending packet is a commitment, which the
+contract rejects, or an opening of the ready event, whose inclusion reads only
+public data and the owner's binding. -/
+theorem round_image_congr_of_forced (who : Player) (remaining : Nat)
+    (firstHistory secondHistory : (onePacketProtocol setup leaks bounds horizon scheduler).History)
+    {first second : (application setup leaks).Execution}
+    (firstCurrent : firstHistory.state = some ⟨remaining + 1, none, first⟩)
+    (secondCurrent : secondHistory.state = some ⟨remaining + 1, none, second⟩)
+    (forced : ForcedState setup leaks who firstHistory.state)
+    (same : operationalState setup leaks (some ⟨remaining + 1, none, first⟩) =
+      operationalState setup leaks (some ⟨remaining + 1, none, second⟩))
+    {event : (graph setup).EventId}
+    (pending : event ∉ first.application.config.cut.completed)
+    (ready : first.application.config.cut.Ready event)
+    {owner : Player} {payload : L.Ty}
+    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
+    {outputEq : (graph setup).outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .resolve owner payload binding checks}
+    (view : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq) :
+    ((application setup leaks).transition (initialLaw setup) horizon scheduler
+        (some ⟨remaining + 1, none, first⟩) (fun _ => none)).map (pendingImage event) =
+      ((application setup leaks).transition (initialLaw setup) horizon scheduler
+        (some ⟨remaining + 1, none, second⟩) (fun _ => none)).map (pendingImage event) := by
+  have firstValid := bindingInvariant_of_history bounds horizon scheduler firstHistory firstCurrent
+  have secondValid :=
+    bindingInvariant_of_history bounds horizon scheduler secondHistory secondCurrent
+  have bindings := SameOperational.binding same ready view
+  apply round_image_congr (initialLaw setup) horizon scheduler remaining first second same pending
+    ready view
+  intro id message found
+  have member : message ∈ first.network.pending := List.mem_of_find?_eq_some found
+  rcases onePacket_pending_of_forced bounds horizon scheduler who firstHistory forced firstCurrent
+      message member with ⟨committed, candidate, call, _⟩ |
+      ⟨opened, candidate, raw, call, _, openedReady, _⟩
+  · exact Or.inl ⟨committed, candidate, call⟩
+  · right
+    rw [ready_unique (setup := setup) _ openedReady ready] at call
+    exact include_opening_image_congr remaining first second same pending ready view firstValid
+      secondValid bindings id found call
 
 end Vegas
