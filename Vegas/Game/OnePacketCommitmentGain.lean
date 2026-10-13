@@ -366,4 +366,189 @@ theorem onePacket_commitment_gain_le_of_regular (wellFormed : setup.WellFormed)
   have baselineBound := abs_le.mp baselineRun
   linarith [deviationBound.2, baselineBound.1]
 
+variable {setup leaks bounds horizon scheduler} in
+omit [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+    scheduler).InfoState who)] in
+/-- **One packet per event.** At every history of the default runtime, a
+response of the one-packet menu transmitting for an event is sent before the
+recall has submitted for that event. -/
+theorem onePacket_unrecorded_of_member {control : (application setup leaks).Control}
+    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some control))
+    (who : Player) (event : (graph setup).EventId) (response : (application setup leaks).Action)
+    (member : response ∈ bounds.onePacketActions (runtime setup) leaks who
+      (control.execution.recall who) (control.execution.observe (application setup leaks) who))
+    (submitted : (runtime setup).submittedEvent? leaks response = some event) :
+    (runtime setup).eventRecorded leaks (control.execution.recall who) event = false := by
+  let app := application setup leaks
+  cases recorded : (runtime setup).eventRecorded leaks (control.execution.recall who) event with
+  | false => rfl
+  | true =>
+      exfalso
+      obtain ⟨_, sent⟩ := (bounds.mem_onePacketActions (runtime setup) leaks who _ _ _).mp member
+      rcases sent with silent | ⟨material, transmits, permitted⟩
+      · unfold EventGraphRuntime.submittedEvent? at submitted
+        rw [silent] at submitted
+        cases submitted
+      · have named : material.call.packet.event? (graph setup) = some event := by
+          unfold EventGraphRuntime.submittedEvent? at submitted
+          rw [transmits] at submitted
+          exact submitted
+        have recalled := (runtime setup).countRecall_history leaks trace
+        rw [(runtime setup).localEnvelope_eq_of_recall leaks control.execution recalled.1
+          recalled.2.1 who material, countPermits_eq_true_iff] at permitted
+        obtain ⟨entry, entryMember, entrySubmitted⟩ :=
+          ((runtime setup).eventRecorded_iff leaks _ event).mp recorded
+        obtain ⟨entryMaterial, entryTransmits⟩ : ∃ entryMaterial,
+            entry.action.transmission = some entryMaterial := by
+          unfold EventGraphRuntime.submittedEvent? at entrySubmitted
+          cases transmission : entry.action.transmission with
+          | none => rw [transmission] at entrySubmitted; cases entrySubmitted
+          | some entryMaterial => exact ⟨entryMaterial, rfl⟩
+        have entryNamed : entryMaterial.call.packet.event? (graph setup) = some event := by
+          unfold EventGraphRuntime.submittedEvent? at entrySubmitted
+          rw [entryTransmits] at entrySubmitted
+          exact entrySubmitted
+        obtain ⟨message, emitted, call⟩ :=
+          ((transmissionsEmitted_serviceInvariant scheduler).history (initialLaw setup) horizon
+            (fun _ _ _ entry member => (List.not_mem_nil member).elim) trace) who entry
+            entryMember entryMaterial entryTransmits
+        have output : message ∈ app.outputs (control.execution.recall who) :=
+          List.mem_filterMap.mpr ⟨entry, entryMember, emitted⟩
+        have earlier := earlierOwnPacket_of_output trace who
+          (app.packet (app.submit control.execution.application who material) who
+            (control.execution.network.known who) material) message output
+        apply permitted.2.2 message earlier
+        change message.payload.call.event? (graph setup) =
+          material.call.packet.event? (graph setup)
+        rw [call, entryNamed, named]
+
+open Classical in
+/-- **The gain of an intended commitment at the player's turn.** Under the
+hypotheses of `Vegas.onePacket_commitment_gain_le_of_regular`, at a forced site
+outside the late pools, a choice committing an intended value at the player's
+own turn has an intended policy at the projected site whose gain at the replay
+of every history of the site whose decoded point has no player owing a failure
+is, up to twice the transport error plus twelve times the scale times the payoff
+range, at least the gain of the choice there. -/
+theorem onePacket_intendedCommitment_gain_le (wellFormed : setup.WellFormed)
+    {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
+      bound)
+    (timely : AsyncTimely (runtime setup) delay bound)
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound)
+    (lowerUtility upperUtility : Player → ℝ)
+    (lower_le : ∀ outcome who, lowerUtility who ≤ utility outcome who)
+    (le_upper : ∀ outcome who, utility outcome who ≤ upperUtility who)
+    (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
+    (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
+    {slots : Nat}
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
+    (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
+    (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
+      scale_le_one weights targetSequence)
+    (n : ℕ) {who : Player} (site : (onePacketN).InformationSite who)
+    (choice : (onePacketN).Choice who site.1)
+    (forced : ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site))
+    (unkeyed : ¬ ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+      (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
+      ((onePacketN).agentAt site))
+    (atTurn : CommitsAtTurn setup leaks bounds horizon scheduler who site choice)
+    (intended : IntendedCommitment setup leaks bounds horizon scheduler site choice)
+    (decision : setup.intendedModel.IsDecisionInfo who (projectView setup leaks who site.1))
+    {past : List (application setup leaks).PlayerEntry}
+    {view : (application setup leaks).PlayerView} (atSite : site.1 = some (past, view)) :
+    ∃ policy : setup.intendedModel.BehavioralPolicy who,
+      ∀ history : (onePacketN).InformationHistory who site.1,
+        (∀ point, nativeDecodedState setup leaks history.1.state = some point →
+          ∀ player, ¬ ProtocolState.OwesFailure player setup.program point) →
+        (onePacketN).historyGain ((onePacketN).truncatedRunner (2 * horizon + 1))
+            (readoutExclusion setup leaks bounds (initialLaw setup) horizon scheduler parameter
+              utility excludedPayoff) (payoffComponent setup) (targetSequence n)
+            (site, ((targetSequence n).strategy who).withLaw site.1 (PMF.pure choice)) history ≤
+          setup.intendedModel.historyGain
+              (setup.intendedModel.truncatedRunner (instructionCount setup.program + 1))
+              (intendedReadoutExclusion setup parameter utility excludedPayoff)
+              (payoffComponent setup) (sequence n) (projectedSite setup leaks decision, policy)
+              (replayProjection setup leaks bounds horizon scheduler
+                (projectedSite setup leaks decision) site atSite rfl history) +
+            (2 * (((Fintype.card Player * (2 * horizon + 1) : ℕ) *
+                (1 - slotRetention (scale n))) *
+                (max 0 (max (excludedPayoff who) (upperUtility who)) -
+                  min 0 (min (excludedPayoff who) (lowerUtility who)))) +
+              12 * scale n * (max 0 (max (excludedPayoff who) (upperUtility who)) -
+                min 0 (min (excludedPayoff who) (lowerUtility who)))) := by
+  obtain ⟨intendedPast, intendedView, response, material, event, serial, payload, outputEq, value,
+    intendedSite, selected, sends, packet, after, offered⟩ := intended
+  rw [atSite] at intendedSite
+  obtain ⟨pastEq, viewEq⟩ := Prod.mk.inj (Option.some.inj intendedSite)
+  subst pastEq viewEq
+  obtain ⟨turnPast, turnView, turnResponse, turnEvent, turnSite, chosen, submitted, turn⟩ :=
+    atTurn
+  rw [atSite] at turnSite
+  obtain ⟨turnPastEq, turnViewEq⟩ := Prod.mk.inj (Option.some.inj turnSite)
+  subst turnPastEq turnViewEq
+  rw [selected] at chosen
+  cases Option.some.inj chosen
+  have namedEvent : turnEvent = event := by
+    unfold EventGraphRuntime.submittedEvent? at submitted
+    rw [sends] at submitted
+    change material.call.packet.event? (graph setup) = some turnEvent at submitted
+    rw [packet] at submitted
+    exact (Option.some.inj submitted).symm
+  subst namedEvent
+  -- The response is in the one-packet menu, so the event is pending.
+  have member : response ∈ bounds.onePacketActions (runtime setup) leaks who past view := by
+    have legal : choice.1 ∈ (onePacketN).menu who site.1 := choice.2
+    generalize choice.1 = picked at legal selected
+    subst selected
+    generalize site.1 = info at legal atSite
+    subst atSite
+    obtain ⟨action, offeredAction, actionEq⟩ := legal
+    cases Option.some.inj actionEq
+    exact offeredAction
+  refine ⟨((sequence n).strategy who).commit (projectView setup leaks who site.1)
+    ⟨sourceOfValue setup turnEvent outputEq value, offered⟩, fun history regular => ?_⟩
+  obtain ⟨_, _, nodePayload, nodeOutputEq, nodeCodeEq, node⟩ :=
+    onePacket_commitment_facts bounds member sends packet
+  have samePayload : nodePayload = payload := by
+    have both := nodeOutputEq.symm.trans outputEq
+    injection both
+  subst samePayload
+  have sameOutput : nodeOutputEq = outputEq := rfl
+  subst sameOutput
+  -- The event is pending at the site.
+  obtain ⟨start, observed⟩ := history
+  have observedState : (application setup leaks).observe who start.state = site.1 :=
+    ((bounds.onePacketMenu (runtime setup) leaks).info (initialLaw setup) horizon scheduler who
+      start.trace).symm.trans observed
+  have pending : pendingEvent setup leaks who site.1 = some turnEvent := by
+    rw [atSite]
+    refine pendingEvent_of_spec turn ?_
+    rcases startState : start.state with _ | ⟨remaining, actor, execution⟩
+    · rw [startState, atSite] at observedState
+      cases observedState
+    rw [startState] at observedState
+    have actorEq : actor = some who := by
+      by_contra different
+      simp only [ReactiveApplication.observe, different, ↓reduceIte] at observedState
+      rw [atSite] at observedState
+      cases observedState
+    subst actorEq
+    simp only [ReactiveApplication.observe, ↓reduceIte] at observedState
+    rw [atSite] at observedState
+    obtain ⟨pastEq, viewEq⟩ := Prod.mk.inj (Option.some.inj observedState)
+    subst pastEq viewEq
+    have trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+        horizon scheduler).Trace (some ⟨remaining, some who, execution⟩) :=
+      startState ▸ start.trace
+    exact onePacket_unrecorded_of_member ((bounds.onePacketMenu (runtime setup) leaks).toRawTrace
+      (initialLaw setup) horizon scheduler trace) who turnEvent response member submitted
+  exact onePacket_commitment_gain_le_of_regular setup leaks bounds horizon scheduler parameter
+    utility excludedPayoff wellFormed contract timely retains lowerUtility upperUtility lower_le
+    le_upper sequence scale scale_pos scale_le_one weights targetSequence assembled n site forced
+    unkeyed atSite pending (outputEq := nodeOutputEq) (codeEq := nodeCodeEq) node choice selected
+    material sends packet after decision offered ⟨start, observed⟩ regular
+
 end Vegas
