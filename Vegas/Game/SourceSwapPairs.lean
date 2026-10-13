@@ -288,4 +288,82 @@ def betweenPairs (publicAgree : PublicCellsAgree setup first second)
 
 end Between
 
+section Correspondence
+
+variable {setup : Setup (Player := Player) (L := L)} [DecidableEq (CellTy Player L)]
+  {first second : ProtocolState setup.program}
+  {publicAgree : PublicCellsAgree setup first second}
+  {succeed : CommitmentCellsSucceed setup first second}
+
+omit [DecidableEq Player] [IExpr.ResultTypes L] [DecidableEq (CellTy Player L)] in
+theorem cast_option_some {first second : EventGraph.EventField Player L} (same : first = second)
+    (value : first.Value) :
+    cast (congrArg (fun kind : EventGraph.EventField Player L => Option kind.Value) same)
+        (some value) = some (cast (congrArg EventGraph.EventField.Value same) value) := by
+  subst same
+  rfl
+
+omit [DecidableEq Player] [IExpr.ResultTypes L] [DecidableEq (CellTy Player L)] in
+theorem cast_option_none {first second : EventGraph.EventField Player L} (same : first = second) :
+    cast (congrArg (fun kind : EventGraph.EventField Player L => Option kind.Value) same)
+        (none : Option first.Value) = none := by
+  subst same
+  rfl
+
+/-- **A reference to a field of a cell corresponds to the swap between the points.** -/
+theorem fieldCorr_betweenPairs {name : VarId} {kind : CellTy Player L}
+    (ref : EventGraph.FieldRef (graph setup).layout (cellField kind))
+    (cell : fieldCell setup ref.field = (name, kind)) :
+    (CellSwap.between setup.program first second).FieldCorr
+      (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed)).store
+      name kind ref := by
+  intro store
+  rcases ref with ⟨field, layoutEq⟩
+  change fieldCell setup field = (name, kind) at cell
+  unfold EventGraph.FieldRef.get?
+  change cast _ ((store field).map (EventGraph.pairSwap (betweenPair setup first second field))) =
+    Option.map _ (cast _ (store field))
+  cases store field with
+  | none => rw [Option.map_none, cast_option_none layoutEq, Option.map_none]
+  | some value =>
+      rw [Option.map_some, cast_option_some layoutEq, cast_option_some layoutEq, Option.map_some,
+        pairSwap_betweenPair cell layoutEq value]
+
+/-- Every initial reference corresponds to the swap between the points. -/
+theorem refsCorr_initial_between :
+    (CellSwap.between setup.program first second).RefsCorr
+      (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed)).store
+      (ContextRefs.initial setup.context (outputLayout setup.program)) := by
+  intro name kind source
+  exact fieldCorr_betweenPairs _ (inputId_get source)
+
+/-- Output references whose fields are the cells their events bind correspond to
+the swap between the points. -/
+theorem outputsCorr_of_cells : ∀ {Γ : SourceCtx Player L} {O : Finset VarId}
+    (program : SourceProgram Player L Γ O)
+    (outputs : ∀ event, EventGraph.FieldRef (graph setup).layout (outputLayout program event)),
+    (∀ event, fieldCell setup (outputs event).field = eventCell program event) →
+    (CellSwap.between setup.program first second).OutputsCorr
+      (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed)).store
+      program outputs
+  | _, _, .ret _, _, _ => trivial
+  | _, _, .sample _ _ _ next, _, cells =>
+      ⟨fieldCorr_betweenPairs _ (cells ⟨0, Nat.succ_pos _⟩),
+        outputsCorr_of_cells next _ fun event => cells event.succ⟩
+  | _, _, .commit _ _ _ _ next, _, cells =>
+      ⟨fieldCorr_betweenPairs _ (cells ⟨0, Nat.succ_pos _⟩),
+        outputsCorr_of_cells next _ fun event => cells event.succ⟩
+  | _, _, .reveal _ _ _ _ _ _ next, _, cells =>
+      ⟨fieldCorr_betweenPairs _ (cells ⟨0, Nat.succ_pos _⟩),
+        outputsCorr_of_cells next _ fun event => cells event.succ⟩
+
+/-- The program's output references correspond to the swap between the points. -/
+theorem outputsCorr_between :
+    (CellSwap.between setup.program first second).OutputsCorr
+      (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed)).store
+      setup.program (outputRef setup.program) :=
+  outputsCorr_of_cells setup.program _ fun _ => rfl
+
+end Correspondence
+
 end Vegas
