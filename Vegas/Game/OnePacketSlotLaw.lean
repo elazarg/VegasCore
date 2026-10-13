@@ -95,7 +95,7 @@ theorem onePacket_slot_lawApproximation [Fintype Player] (bounds : MessageBounds
     excludedPayoff assessments (fun n => slotRetention (scales n))
     (fun n => slotRetention_nonneg (nonnegative n) (le_one n))
     (fun n => slotRetention_le_one (nonnegative n) (le_one n))
-    (tendsto_slotRetention vanishing) profiles fun n who info forced choice => by
+    (tendsto_slotRetention vanishing) profiles fun n who info _ forced choice => by
       obtain ⟨alternative, slot, profileEq⟩ := slotted n who info forced
       rw [profileEq]
       exact slotTrembledChoice_ge_main setup leaks bounds (initialLaw setup) horizon scheduler
