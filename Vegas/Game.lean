@@ -45,6 +45,8 @@ import Vegas.Game.OnePacketTrembles
 import Vegas.Game.OnePacketSlotTrembles
 import Vegas.Game.OnePacketSlotVisibility
 import Vegas.Game.OnePacketSlotLaw
+import Vegas.Game.OnePacketSlotMasses
+import Vegas.Game.OnePacketForcedBeliefs
 import Vegas.Game.OnePacketPrescribedSupport
 import Vegas.Game.OnePacketCanonicalPermits
 import Vegas.Game.OnePacketCanonicalAcceptance
@@ -68,6 +70,8 @@ import Vegas.Game.OnePacketHonestDecision
 import Vegas.Game.OnePacketHonestAgreement
 import Vegas.Game.OnePacketHonestForced
 import Vegas.Game.AnchoredFirstTurnLaw
+import Vegas.Game.IntendedOpeningContinuation
+import Vegas.Game.AnchoredOpeningClients
 import Vegas.Game.PurificationEdge
 import Vegas.Game.ReactiveSourceDecision
 import Vegas.Game.ReactiveSourceAcceptance
