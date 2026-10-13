@@ -88,6 +88,7 @@ import Vegas.Game.AnchoredFirstTurnLaw
 import Vegas.Game.IntendedOpeningContinuation
 import Vegas.Game.AnchoredOpeningClients
 import Vegas.Game.AnchoredHonestAgreement
+import Vegas.Game.OnePacketOwnSubmissions
 import Vegas.Game.AnchoredHonestLaw
 import Vegas.Game.PurificationEdge
 import Vegas.Game.ReactiveSourceDecision
