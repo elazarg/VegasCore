@@ -223,7 +223,10 @@ open Classical in
 /-- **Base agreement from proportional fibers.** If, for every operational
 record, the regular base weight of the second site's histories with that
 record is a fixed nonzero multiple of the first site's, the two sites' base
-laws agree on every payoff of the record. -/
+laws agree on every payoff of the record. The fibers are proportional when a
+record-preserving swap of the owner's committed value at its unrevealed binding
+maps the regular histories of one site onto those of the other, scaling the
+base weight by the ratio of the prior masses of the two values. -/
 theorem baseLawAgrees_of_fibers {who : Player}
     [Finite (onePacketProtocol setup leaks bounds horizon scheduler).History]
     (base : (onePacketProtocol setup leaks bounds horizon scheduler).History → ℝ)
