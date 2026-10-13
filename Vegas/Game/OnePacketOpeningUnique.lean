@@ -390,4 +390,39 @@ theorem onePacket_opening_eq_disclosure {control : (application setup leaks).Con
   simp only [WitnessedSubmission.normalizeReactive, Submission.normalizeReactive, packetIs,
     openingEffective, EvidenceRequest.normalize, afterEq, resolvedEq, ↓reduceIte]
 
+variable (setup leaks) in
+/-- **The disclosure resolves.** At a pending reveal of a player, its canonical
+disclosure transmits. -/
+def DisclosureResolves (who : Player) (past : List (application setup leaks).PlayerEntry)
+    (view : (application setup leaks).PlayerView) : Prop :=
+  ∀ event, pendingEvent setup leaks who (some (past, view)) = some event →
+    ∀ owner payload (binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload))
+      checks outputEq codeEq,
+      nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq →
+      ((runtime setup).canonicalServiceDecision leaks who past view event
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)).transmission ≠
+        none
+
+/-- **A resolving disclosure is canonical.** Along every history of the
+one-packet game, when the player's canonical disclosure transmits at its
+pending reveal, it is canonical. -/
+theorem disclosureCanonical_of_resolves {control : (application setup leaks).Control}
+    (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control))
+    (who : Player)
+    (resolves : DisclosureResolves setup leaks who (control.execution.recall who)
+      (control.execution.observe (application setup leaks) who)) :
+    DisclosureCanonical setup leaks bounds who (control.execution.recall who)
+      (control.execution.observe (application setup leaks) who) := by
+  intro event pending owner payload binding checks outputEq codeEq node
+  have transmits := resolves event pending owner payload binding checks outputEq codeEq node
+  refine ⟨transmits, fun response member material sends named => ?_⟩
+  obtain ⟨_, _, owned, _⟩ := pendingEvent_spec (setup := setup) pending
+  have ownerEq : owner = who :=
+    Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
+  subst ownerEq
+  obtain ⟨disclosed, sendsDisclosure⟩ := Option.ne_none_iff_exists'.mp transmits
+  exact onePacket_opening_eq_disclosure trace owner event node disclosed sendsDisclosure response
+    member material sends named
+
 end Vegas
