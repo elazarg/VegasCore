@@ -11,6 +11,7 @@ import GameTheoryExtensions.Analysis.Protocol.SourceGainTransport
 import Vegas.Game.OnePacketOwnSubmissions
 import Vegas.Game.OnePacketForcedRegular
 import Vegas.Game.OnePacketForcedBeliefs
+import Vegas.Game.OnePacketPathwise
 
 /-! # Discharging inputs of the one-packet certificate
 
@@ -1197,6 +1198,112 @@ def lateHistoryFailure (assessment : (onePacketN).BehavioralAssessment) {who : P
   expect (localHistoryRun (2 * horizon + 1) assessment site law history) fun final =>
     if final ∈ onePacketFailed setup leaks bounds horizon scheduler ((onePacketN).agentAt site)
     then 1 else 0
+
+omit [DecidableEq Player] [Fintype Player] [IExpr.ResultTypes L]
+  [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
+  [Finite setup.intendedProtocol.History] in
+private theorem unit_expect {α : Type*} (μ : PMF α) (f : α → ℝ)
+    (unit : ∀ a, 0 ≤ f a ∧ f a ≤ 1) : 0 ≤ expect μ f ∧ expect μ f ≤ 1 :=
+  ⟨expect_nonneg μ f fun a _ => (unit a).1,
+    expect_le_const μ f (payoffIntegrable_of_bounded μ f (C := 1) fun a => by
+      rw [abs_le]
+      constructor <;> linarith [unit a]) 1 fun a _ => (unit a).2⟩
+
+/-- The failure expectation of `fuel` steps of a lumping's image kernel from the
+image read off an operational record. -/
+def lumpedFailure {assessment : (onePacketN).BehavioralAssessment} {who : Player}
+    {LateOption : Type}
+    {profileOf : (onePacketN).InformationSite who → LateOption → ∀ player,
+      (onePacketN).BehavioralPolicy player}
+    {failedState : LateKey setup leaks → (application setup leaks).ProtocolState → Prop}
+    {δ : ℝ} {Y : Type} (lumping : PendingLumping assessment who profileOf failedState δ Y)
+    (fuel : Nat) (key : LateKey setup leaks) (option : LateOption)
+    (record : List (Option (OperationalState setup leaks))) : ℝ :=
+  expect ((fun law => law.bind (lumping.kernel key option))^[fuel]
+    (PMF.pure (lumping.start key record))) (lumping.failure key)
+
+open Classical in
+omit [Finite setup.intendedProtocol.History] in
+/-- **Value blindness of late deliveries from lumping.** Given a one-step
+lumping of the profiles installing the late options at late-delivery sites,
+whose failed states agree with the failure sets on the final histories of play
+from forced histories of the belief, a law of operational records at each key
+with the keyed belief drift, and the unforced belief drift, the late
+deliveries are value blind with path drift `(2 * horizon + 1) * δ`. -/
+def lateDeliveryBlindness_ofLumping (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
+    (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
+    {slots : Nat} (n : ℕ) (assessment : (onePacketN).BehavioralAssessment) (who : Player)
+    {failedState : LateKey setup leaks → (application setup leaks).ProtocolState → Prop}
+    {δ : ℝ} {Y : Type}
+    (lumping : PendingLumping assessment who
+      (fun site option => Profile.update (sig := (onePacketN).behavioralSignature)
+        assessment.strategy who ((assessment.strategy who).withLaw site.1
+          (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
+            scale_le_one (slots := slots) n ((onePacketN).agentAt site) option)))
+      failedState δ Y)
+    (agrees : ∀ (site : (onePacketN).InformationSite who) key,
+      lateKey setup leaks who site.1 = some key → ∀ option,
+      ∀ history ∈ (assessment.belief who site).support,
+        ForcedState setup leaks who history.1.state →
+        ∀ final ∈ ((onePacketN).runBehavioralFrom (Profile.update
+            (sig := (onePacketN).behavioralSignature) assessment.strategy who
+            ((assessment.strategy who).withLaw site.1
+              (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
+                scale_le_one (slots := slots) n ((onePacketN).agentAt site) option)))
+            (2 * horizon + 1) history.1).support,
+          (final ∈ onePacketFailed setup leaks bounds horizon scheduler
+            ((onePacketN).agentAt site) ↔ failedState key final.state))
+    (recordLaw : LateKey setup leaks → PMF (List (Option (OperationalState setup leaks))))
+    {unforcedDrift beliefDrift : ℝ}
+    (unforced : ∀ (site : (onePacketN).InformationSite who) key,
+      lateKey setup leaks who site.1 = some key →
+      expect (assessment.belief who site) (fun history =>
+        if ForcedState setup leaks who history.1.state then (0 : ℝ) else 1) ≤ unforcedDrift)
+    (keyed : ∀ (site : (onePacketN).InformationSite who) key,
+      lateKey setup leaks who site.1 = some key → ∀ option,
+      |expect ((assessment.belief who site).map fun history =>
+          operationalRecord setup leaks bounds horizon scheduler history.1.trace)
+          (lumpedFailure setup leaks bounds horizon scheduler lumping (2 * horizon + 1) key
+            option) -
+        expect (recordLaw key)
+          (lumpedFailure setup leaks bounds horizon scheduler lumping (2 * horizon + 1) key
+            option)| ≤
+        beliefDrift) :
+    LateDeliveryBlindness setup leaks bounds horizon scheduler assessment who
+      (LateOption := LateOption slots)
+      (fun site option history => lateHistoryFailure setup leaks bounds horizon scheduler
+        assessment site (onePacketLate setup leaks bounds horizon scheduler sequence scale
+          scale_pos scale_le_one (slots := slots) n ((onePacketN).agentAt site) option) history)
+      ((2 * horizon + 1 : ℕ) * δ) unforcedDrift beliefDrift where
+  failureOf := lumpedFailure setup leaks bounds horizon scheduler lumping (2 * horizon + 1)
+  recordLaw := recordLaw
+  historyFailure_unit site option history := unit_expect
+    _ _ fun final => by split <;> norm_num
+  failureOf_unit key option record := unit_expect _ _
+    (lumping.failure_unit key)
+  pathwise site key siteKey option history supported forced := by
+    have near := lumping.pathwise (2 * horizon + 1) site key siteKey option history supported
+      forced
+    have same : lateHistoryFailure setup leaks bounds horizon scheduler assessment site
+        (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
+          scale_le_one (slots := slots) n ((onePacketN).agentAt site) option) history =
+        expect ((onePacketN).runBehavioralFrom (Profile.update
+            (sig := (onePacketN).behavioralSignature) assessment.strategy who
+            ((assessment.strategy who).withLaw site.1
+              (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
+                scale_le_one (slots := slots) n ((onePacketN).agentAt site) option)))
+            (2 * horizon + 1) history.1)
+          (fun final => if failedState key final.state then 1 else 0) := by
+      unfold lateHistoryFailure localHistoryRun
+      refine expect_congr_on_support fun final reached => ?_
+      have iff := agrees site key siteKey option history supported forced final reached
+      by_cases failed : failedState key final.state
+      · simp only [iff.mpr failed, failed, ↓reduceIte]
+      · simp only [mt iff.mp failed, failed, ↓reduceIte]
+    rw [same]
+    exact near
+  unforced site key siteKey := unforced site key siteKey
+  keyed site key siteKey option := keyed site key siteKey option
 
 omit [Finite setup.intendedProtocol.History] in
 /-- **Site commonness from value blindness.** Along a target sequence, if at
