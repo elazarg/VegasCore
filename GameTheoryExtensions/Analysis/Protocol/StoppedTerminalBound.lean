@@ -191,6 +191,37 @@ theorem runBehavioralUntil_update_withLaw_eq_bind [DecidableEq ι]
       draw.2 realized later within later_running
   · rw [Profile.update_of_ne _ _ same, Profile.update_of_ne _ _ same]
 
+/-- Play until a stopping set stays in every set of states closed under legal
+steps. -/
+theorem runBehavioralUntil_support_closed (certificate : E.WellFoundedHistories)
+    (policies : (i : ι) → M.BehavioralPolicy i) (stopped : E.History → Prop)
+    (closed : E.State → Prop)
+    (step : ∀ state joint (legal : E.Legal state joint) target, closed state →
+      target ∈ (E.step state ⟨joint, legal⟩).support → closed target)
+    (start : E.History) (holds : closed start.state) :
+    ∀ stop ∈ (M.runBehavioralUntil certificate policies stopped start).support,
+      closed stop.state := by
+  classical
+  induction start using certificate.induction with
+  | _ history ih =>
+  intro stop member
+  by_cases halt : stopped history
+  · rw [M.runBehavioralUntil_of_stopped certificate policies halt,
+      PMF.mem_support_pure_iff] at member
+    subst member
+    exact holds
+  by_cases ended : E.terminal history.state
+  · rw [M.runBehavioralUntil_of_terminal certificate policies ended,
+      PMF.mem_support_pure_iff] at member
+    subst member
+    exact holds
+  rw [M.runBehavioralUntil_of_running certificate policies halt ended,
+    PMF.mem_support_bind_iff] at member
+  obtain ⟨next, nextMember, reached⟩ := member
+  obtain ⟨⟨joint, legal, realized⟩, _⟩ :=
+    M.mem_support_runBehavioralFrom_one policies ended nextMember
+  exact ih next ⟨joint, legal, realized⟩ (step _ joint legal _ holds realized) stop reached
+
 /-- **Terminal play splits at a stopping set.** Terminal play from a history is
 play until the stopping set followed by terminal play from there. -/
 theorem runBehavioralTerminalFrom_eq_bind_runBehavioralUntil
