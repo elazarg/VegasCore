@@ -2570,12 +2570,12 @@ def intendedSiteGain (assessment : setup.intendedModel.BehavioralAssessment) {wh
     expect comparison.prescribed ((payoffComponent setup) · who)
 
 open Classical in
-/-- **The open inputs of the one-packet certificate other than the value
-decompositions** for one source sequence: the tremble scales and the
-obligations not yet discharged, each a statement along every fully mixed Bayes
-sequence of profiles assembled from the certificate's components, at the forced
-sites. -/
-structure OnePacketCoreInputs (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
+/-- **The base inputs of the one-packet certificate** for one source sequence:
+the tremble scales and the obligations not yet discharged other than the value
+decompositions and late commitments, each a statement along every fully mixed
+Bayes sequence of profiles assembled from the certificate's components, at the
+forced sites. -/
+structure OnePacketBaseInputs (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (slots : Nat) where
   /-- The tremble scale at each index. -/
   scale : ℕ → ℝ
@@ -2702,6 +2702,16 @@ structure OnePacketCoreInputs (sequence : ℕ → setup.intendedModel.Behavioral
               (payoffComponent setup) (sequence n)
               (projectedSite setup leaks (decision), policy) point| ≤
             bound
+  /-- Some late option sends at a slot. -/
+  slots_pos : 0 < slots
+
+open Classical in
+/-- **The open inputs of the one-packet certificate other than the value
+decompositions** for one source sequence: the base inputs and late commitments
+of intended values. -/
+structure OnePacketCoreInputs (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
+    (slots : Nat) extends OnePacketBaseInputs setup leaks bounds horizon scheduler parameter
+      utility excludedPayoff sequence slots where
   /-- **Late commitments of intended values.** At every forced late delivery at
   which the player owes no failure, every choice committing an intended value at
   the player's own turn gains at most what some late option gains plus a weight
@@ -2739,8 +2749,6 @@ structure OnePacketCoreInputs (sequence : ℕ → setup.intendedModel.Behavioral
               weight * intendedSiteGain setup parameter utility excludedPayoff (sequence n)
                 (projectedSite setup leaks decision, policy) +
               lateError n
-  /-- Some late option sends at a slot. -/
-  slots_pos : 0 < slots
 
 open Classical in
 /-- **Best pool weights.** No alternative weights of a pool raise the summed
