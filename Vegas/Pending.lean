@@ -242,3 +242,5 @@ import Vegas.Pending.ReactiveUnilateralSilentExpiry
 import Vegas.Pending.ReactiveUnilateralCallback
 import Vegas.Pending.ReactiveUnilateralCommands
 import Vegas.Pending.EventValueSwap
+import Vegas.Pending.ReactiveValueSwap
+import Vegas.Pending.OnePacketValueSwap

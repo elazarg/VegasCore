@@ -412,3 +412,4 @@ import Vegas.Game.OnePacketOwnerLaws
 import Vegas.Game.OnePacketProjectedDecision
 import Vegas.Game.OnePacketDebtRouting
 import Vegas.Game.OnePacketFirstActivationCompletion
+import Vegas.Game.OnePacketSwapSymmetry
