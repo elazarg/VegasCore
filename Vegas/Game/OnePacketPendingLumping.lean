@@ -613,6 +613,92 @@ theorem handle_commitment_of_publication_ready (state : EventGraphRuntime.State 
     split <;> rfl
   · simp only [handle, dite_eq_right committedReady]
 
+variable (initial : PMF (application setup leaks).State) (horizon : Nat)
+  (scheduler : (application setup leaks).Scheduler) in
+/-- **Scheduler rounds read off the operational state.** While a publication
+event is pending and is the only ready event, two executions with the same
+operational state give a scheduler round the same law of images, provided the
+inclusions of packets other than commitments do. -/
+theorem round_image_congr (remaining : Nat)
+    (first second : (application setup leaks).Execution)
+    (same : operationalState setup leaks (some ⟨remaining + 1, none, first⟩) =
+      operationalState setup leaks (some ⟨remaining + 1, none, second⟩))
+    (pending : event ∉ first.application.config.cut.completed)
+    (ready : first.application.config.cut.Ready event)
+    {owner : Player} {payload : L.Ty}
+    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
+    {outputEq : (graph setup).outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .resolve owner payload binding checks}
+    (view : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
+    (inclusion : ∀ id message, first.network.lookup id = some message →
+      (∃ committed candidate, message.payload.call = .commitment committed candidate) ∨
+        (first.environmentStep (application setup leaks) (.include id)).map
+            (fun next => pendingImage event (some ⟨remaining, none, next⟩)) =
+          (second.environmentStep (application setup leaks) (.include id)).map
+            (fun next => pendingImage event (some ⟨remaining, none, next⟩))) :
+    ((application setup leaks).transition initial horizon scheduler
+        (some ⟨remaining + 1, none, first⟩) (fun _ => none)).map (pendingImage event) =
+      ((application setup leaks).transition initial horizon scheduler
+        (some ⟨remaining + 1, none, second⟩) (fun _ => none)).map (pendingImage event) := by
+  have pending' : event ∉ second.application.config.cut.completed := fun completed =>
+    pending ((SameOperational.completed same event).mpr completed)
+  have ready' : second.application.config.cut.Ready event :=
+    (SameOperational.ready same event).mp ready
+  have networks : first.network = second.network := SameOperational.network same
+  have recalls : first.environmentRecall = second.environmentRecall :=
+    SameOperational.environmentRecall same
+  have views : first.observeEnvironment (application setup leaks) =
+      second.observeEnvironment (application setup leaks) := SameOperational.observeEnvironment same
+  change ((scheduler first.environmentRecall (first.observeEnvironment _)).bind fun command =>
+      (first.environmentStep _ command).map fun next =>
+        some (⟨remaining, command.actor? (application setup leaks), next⟩ :
+          (application setup leaks).Control)).map (pendingImage event) =
+    ((scheduler second.environmentRecall (second.observeEnvironment _)).bind fun command =>
+      (second.environmentStep _ command).map fun next =>
+        some (⟨remaining, command.actor? (application setup leaks), next⟩ :
+          (application setup leaks).Control)).map (pendingImage event)
+  rw [recalls, views, PMF.map_bind, PMF.map_bind]
+  congr 1
+  funext command
+  rw [PMF.map_comp, PMF.map_comp]
+  cases command with
+  | activate who =>
+      change (first.environmentStep _ (.activate who)).map
+          (fun next => pendingImage event (some ⟨remaining, some who, next⟩)) =
+        (second.environmentStep _ (.activate who)).map
+          (fun next => pendingImage event (some ⟨remaining, some who, next⟩))
+      rw [environmentStep_activate_image remaining first pending who,
+        environmentStep_activate_image remaining second pending' who, networks, same]
+  | wait =>
+      change (first.environmentStep _ .wait).map
+          (fun next => pendingImage event (some ⟨remaining, none, next⟩)) =
+        (second.environmentStep _ .wait).map
+          (fun next => pendingImage event (some ⟨remaining, none, next⟩))
+      rw [environmentStep_wait_image remaining first pending,
+        environmentStep_wait_image remaining second pending', same]
+  | «include» id =>
+      change (first.environmentStep _ (.include id)).map
+          (fun next => pendingImage event (some ⟨remaining, none, next⟩)) =
+        (second.environmentStep _ (.include id)).map
+          (fun next => pendingImage event (some ⟨remaining, none, next⟩))
+      cases found : first.network.lookup id with
+      | none =>
+          exact include_image_congr remaining first second same pending id
+            (fun message member => by rw [found] at member; cases member)
+      | some message =>
+          rcases inclusion id message found with ⟨committed, candidate, call⟩ | equal
+          · exact include_image_congr remaining first second same pending id
+              (fun other member => by
+                rw [found] at member
+                cases member
+                exact ⟨handle_commitment_of_publication_ready _ ready view _ call,
+                  handle_commitment_of_publication_ready _ ready' view _ call⟩)
+          · exact equal
+  | application command =>
+      exact application_image_congr remaining first second same pending ready view command
+
 end Image
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
