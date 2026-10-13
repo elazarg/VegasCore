@@ -20,6 +20,17 @@ value at the first completion of the pending event, which is the source
 continuation value of the intended effective opening at the decoded point when
 that point is intended and the event did not fail
 (`Vegas.lateStopValue`, `Vegas.lateSiteValue`).
+
+**The decomposition.** The continuation value of an agent is the belief
+average, over its site, of the source continuation value at the decoded point
+before the pending event (`Vegas.lateContinuation`). It lies between the
+exclusion payoff and the upper utility whenever exclusion is a punishment on
+intended continuations (`Vegas.lateContinuation_mem_Icc`). Given that the
+completion value of each late option and marked choice is its success
+probability times this continuation value up to a vanishing error (value-blind
+success: the success probability depends neither on the committed value nor,
+under the belief, on the hidden values), the late value decomposition follows
+(`Vegas.onePacket_lateValueDecomposition`, `Vegas.onePacket_lateDecomposition`).
 -/
 
 noncomputable section
@@ -669,6 +680,116 @@ theorem onePacket_lateValueDecomposition (wellFormed : setup.WellFormed)
               scale_le_one (slots := slots) n ((onePacketN).agentAt site) option)| + |_ - _| :=
           abs_sub_le _ _ _
       _ ≤ _ := add_le_add (first.trans widen) (second.trans (le_abs_self _))
+
+end Field
+
+section Field
+
+variable [Finite ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+    scheduler).History]
+  {Parameter : Type} (parameter : State L setup.context → Parameter)
+  (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+  (excludedPayoff : Player → ℝ)
+
+/-- **The late value decomposition of the open inputs.** Under the hypotheses of
+`Vegas.onePacket_lateValueDecomposition` for the marked choices of the
+one-packet certificate, the late value decomposition of
+`Vegas.OnePacketOpenInputs` holds. -/
+theorem onePacket_lateDecomposition (wellFormed : setup.WellFormed)
+    {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
+      bound)
+    (timely : AsyncTimely (runtime setup) delay bound)
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound)
+    (lowerUtility upperUtility : Player → ℝ)
+    (lower_le : ∀ outcome who, lowerUtility who ≤ utility outcome who)
+    (le_upper : ∀ outcome who, utility outcome who ≤ upperUtility who)
+    (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
+    (below : ∀ n who point, ProtocolState.Intended setup.program point →
+      ∀ terminal ∈ (ProtocolState.continuationLaw setup.program
+          (setup.intendedOpeningProfile (sequence n).strategy) point).support,
+        excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who)
+    (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
+    (scale_vanishing : Tendsto scale atTop (nhds 0)) {slots : Nat}
+    (gapBound : ℝ) (gap_le : ∀ who, upperUtility who - excludedPayoff who ≤ gapBound)
+    (gapBound_nonneg : 0 ≤ gapBound)
+    (valueBlind : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler
+        slots p)) (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
+      OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
+        scale_le_one weights targetSequence →
+      (∀ n, (targetSequence n).IsFullyMixed) →
+      (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
+        ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
+          (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
+      ∃ blindError : ℕ → ℝ, Tendsto blindError atTop (nhds 0) ∧
+        ∀ n who (site : (onePacketN).InformationSite who) (event : (graph setup).EventId),
+          ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+          ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+            (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
+            ((onePacketN).agentAt site) →
+          pendingEvent setup leaks who site.1 = some event →
+          (∀ choice, onePacketCompared setup leaks bounds horizon scheduler who site choice →
+            |lateStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+                (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site event
+                (PMF.pure choice) -
+              (1 - onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n)
+                site (PMF.pure choice)) *
+              lateSiteValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+                (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site
+                event| ≤ blindError n) ∧
+          ∀ option,
+            |lateStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+                (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site event
+                (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
+                  scale_le_one (slots := slots) n ((onePacketN).agentAt site) option) -
+              (1 - onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n)
+                site (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
+                  scale_le_one (slots := slots) n ((onePacketN).agentAt site) option)) *
+              lateSiteValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+                (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site
+                event| ≤ blindError n) :
+    ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
+      (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
+    OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos scale_le_one
+      weights targetSequence →
+    (∀ n, (targetSequence n).IsFullyMixed) →
+    (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
+      ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
+        (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
+    ∃ (continuation : ℕ → (onePacketN).InformationAgent (onePacketN).playedInformation → ℝ)
+      (error : ℕ → ℝ), Tendsto error atTop (nhds 0) ∧
+      ∀ n who (site : (onePacketN).InformationSite who),
+        ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+        ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+          (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
+          ((onePacketN).agentAt site) →
+        excludedPayoff who ≤ continuation n ((onePacketN).agentAt site) + error n ∧
+        continuation n ((onePacketN).agentAt site) - excludedPayoff who ≤ gapBound ∧
+        (∀ choice, onePacketCompared setup leaks bounds horizon scheduler who site choice →
+          |onePacketSiteSuccess setup leaks bounds horizon scheduler parameter utility
+              excludedPayoff (targetSequence n) site (PMF.pure choice) -
+            (1 - onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n)
+              site (PMF.pure choice)) * continuation n ((onePacketN).agentAt site)| ≤
+            error n) ∧
+        ∀ option,
+          |onePacketSiteSuccess setup leaks bounds horizon scheduler parameter utility
+              excludedPayoff (targetSequence n) site
+              (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
+                scale_le_one (slots := slots) n ((onePacketN).agentAt site) option) -
+            (1 - onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n)
+              site (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
+                scale_le_one (slots := slots) n ((onePacketN).agentAt site) option)) *
+              continuation n ((onePacketN).agentAt site)| ≤ error n := by
+  intro weights targetSequence assembled mixed bayes
+  obtain ⟨continuation, error, limit, holds⟩ := onePacket_lateValueDecomposition setup leaks
+    bounds horizon scheduler parameter utility excludedPayoff wellFormed contract timely retains
+    lowerUtility upperUtility lower_le le_upper sequence below scale scale_pos scale_le_one
+    scale_vanishing gapBound gap_le gapBound_nonneg
+    (onePacketCompared setup leaks bounds horizon scheduler) valueBlind weights targetSequence
+    assembled mixed bayes
+  refine ⟨continuation, error, limit, fun n who site notFree keyed => ?_⟩
+  obtain ⟨lower, gap, late⟩ := holds n who site notFree
+  exact ⟨lower, gap, (late keyed).1, (late keyed).2⟩
 
 end Field
 
