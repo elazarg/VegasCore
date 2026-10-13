@@ -142,4 +142,75 @@ theorem reachedBoundary_completion_accepted [Finite Player] {horizon : Nat}
         rw [configEq, app.respond_ledger, app.respond_receipts]
         exact middleHolds
 
+/-- **Earlier turns are answered from a reached boundary.** For a well-formed
+setup, under the asynchronous contract with timely delays, from a reached
+boundary decoding to a point of the intended game, at every execution the
+anchored first-turn clients of the intended effective opening reach within the
+horizon, an owner that had a turn at its ready event has submitted for it. -/
+theorem reachedBoundary_recorded_of_seen [Finite Player] {horizon : Nat}
+    {scheduler : (application setup leaks).Scheduler} {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
+      bound)
+    (timely : AsyncTimely (runtime setup) delay bound) (turns : Nat)
+    (intended : ∀ who, setup.intendedModel.BehavioralPolicy who) {rank : Nat}
+    {anchor : (application setup leaks).Execution}
+    (reached : ReachedBoundary setup leaks horizon scheduler rank anchor)
+    (point : ProtocolState setup.program)
+    (decoded : sourceServicePrefix? setup rank anchor.application.config = some point)
+    (intendedPoint : ProtocolState.Intended setup.program point) {more : Nat}
+    (within : anchor.environmentRecall.length + more ≤ horizon)
+    {execution : (application setup leaks).Execution}
+    (supported : execution ∈ ((application setup leaks).runRounds scheduler
+      (ReactiveApplication.anchoredPolicy anchor
+        (firstTurnClients setup leaks bound turns (setup.intendedOpeningProfile intended)))
+      more anchor).support)
+    (who : Player) (event : (graph setup).EventId) (owned : (graph setup).actor? event = some who)
+    (ready : execution.application.config.cut.Ready event)
+    (seen : SeenTurn who event (execution.recall who)) :
+    (runtime setup).eventRecorded leaks (execution.recall who) event = true := by
+  have := Fintype.ofFinite Player
+  let app := application setup leaks
+  let clients := firstTurnClients setup leaks bound turns (setup.intendedOpeningProfile intended)
+  let players := ReactiveApplication.anchoredPolicy anchor clients
+  let count := anchor.environmentRecall.length
+  let rest := horizon - (count + more)
+  apply Bool.eq_true_of_not_eq_false
+  intro unrecorded
+  have extends_ := (ContinuesAnchor.runRounds (bound := bound) (turns := turns)
+    (profile := setup.intendedOpeningProfile intended) (scheduler := scheduler) more anchor
+    ⟨fun _ => List.prefix_refl _, reached.turns⟩ execution supported).1
+  obtain ⟨final, finalMem⟩ := (app.runRounds scheduler clients rest execution).support_nonempty
+  have kept := (openingClients_keeps_unrecorded scheduler bound turns intended who event rest
+    execution unrecorded seen final finalMem).1
+  have finalAnchored : final ∈ (app.runRounds scheduler players rest execution).support := by
+    rw [ReactiveApplication.runRounds_anchoredPolicy_of_extends scheduler anchor clients rest
+      execution extends_]
+    exact finalMem
+  have accepted := reachedBoundary_completion_accepted contract timely turns intended reached
+    point decoded intendedPoint event owned more execution supported rest (by omega)
+    (Or.inl ready.1) final finalAnchored
+  have boundary := reachedBoundary_completionBoundary reached clients
+  have finalSupported : final ∈ (app.roundsFrom (initialLaw setup) scheduler players
+      horizon).support := by
+    have composed := mem_roundsFrom_of_runRounds (app := app)
+      (mem_roundsFrom_of_runRounds (app := app) boundary.supported supported) finalAnchored
+    rwa [show count + more + rest = horizon by omega] at composed
+  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler players
+    horizon le_rfl final finalSupported
+  rw [Nat.sub_self] at trace
+  have terminalCut := contract.completes ⟨0, none, final⟩ trace ⟨rfl, rfl⟩
+  have completed : event ∈ final.application.config.cut.completed := by
+    change final.application.config.cut.completed = Finset.univ at terminalCut
+    rw [terminalCut]
+    exact Finset.mem_univ _
+  rcases accepted with open_ | ⟨message, present, _, named, sender⟩
+  · exact open_ completed
+  · have senderEq : message.sender = who := Option.some.inj (sender.symm.trans owned)
+    have input := app.ledger_subset_inputs_history (initialLaw setup) horizon scheduler
+      ⟨0, none, final⟩ trace present
+    have output : message ∈ app.outputs (final.recall who) := by
+      rw [← app.history_inputRecall (initialLaw setup) horizon scheduler trace who]
+      exact List.mem_filter.mpr ⟨input, by simp [senderEq]⟩
+    exact output_event trace who event kept message output named
+
 end Vegas
