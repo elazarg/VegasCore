@@ -279,6 +279,32 @@ theorem environmentStep_wait_image (remaining : Nat)
   simp only [PMF.pure_map]
   rw [pendingImage_of_pending _ pending, ← operationalState_wait]
 
+/-- A contract round that completes nothing, read through the image: the
+operational state records the round and reads the new public contract view. -/
+theorem environmentStep_contract_image (remaining : Nat)
+    (execution : (application setup leaks).Execution)
+    (pending : event ∉ execution.application.config.cut.completed)
+    (command : EnvironmentCommand (graph setup))
+    (stays : ∀ next ∈ (EventGraphRuntime.environmentStep (runtime setup) execution.application
+      command).support, next.config = execution.application.config) :
+    (execution.environmentStep (application setup leaks) (.application command)).map
+        (fun next => pendingImage event (some ⟨remaining, none, next⟩)) =
+      (EventGraphRuntime.environmentStep (runtime setup) execution.application command).map
+        fun next => .inl ((operationalState setup leaks (some ⟨remaining + 1, none, execution⟩)).map
+          fun state => (state.round remaining none (.application command)).contract
+            next.publicView) := by
+  unfold ReactiveApplication.Execution.environmentStep
+  simp only [PMF.map_comp]
+  apply map_congr_on_support
+  intro next member
+  simp only [Function.comp]
+  have config := stays next member
+  rw [pendingImage_of_pending _ (by
+      change event ∉ next.config.cut.completed
+      rw [config]
+      exact pending),
+    ← operationalState_contract remaining execution next config command]
+
 end Image
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
