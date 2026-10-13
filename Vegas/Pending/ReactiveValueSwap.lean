@@ -217,6 +217,7 @@ inclusion conditions. -/
 theorem includePending_execution (current : (runtime.reactiveApplication leaks).Execution)
     (id : MessageId Player)
     (fixed : ∀ envelope, current.network.lookup id = some envelope →
+      envelope.payload.tokenValid = true →
       InclusionFixed runtime swap current.application ⟨envelope.id, envelope.payload.call⟩) :
     (swap.execution current).includePending (runtime.reactiveApplication leaks) id =
       swap.execution (current.includePending (runtime.reactiveApplication leaks) id) := by
@@ -225,14 +226,15 @@ theorem includePending_execution (current : (runtime.reactiveApplication leaks).
   cases found : current.network.lookup id with
   | none => rfl
   | some envelope =>
-      obtain ⟨compatible, openingFixed⟩ := fixed envelope found
       have handled : (runtime.reactiveApplication leaks).handle
           (current.application.swap swap) envelope =
           ((runtime.reactiveApplication leaks).handle current.application envelope).map
             (State.swap swap) := by
         rw [reactiveApplication_handle, reactiveApplication_handle]
         split
-        · exact handle_swap runtime swap current.application _ compatible openingFixed
+        · rename_i valid
+          obtain ⟨compatible, openingFixed⟩ := fixed envelope found valid
+          exact handle_swap runtime swap current.application _ compatible openingFixed
         · rfl
       simp only [execution_application]
       rw [handled]
@@ -243,6 +245,7 @@ satisfies the inclusion conditions. -/
 theorem environmentStep_execution (current : (runtime.reactiveApplication leaks).Execution)
     (command : (runtime.reactiveApplication leaks).Command)
     (fixed : ∀ id envelope, command = .include id → current.network.lookup id = some envelope →
+      envelope.payload.tokenValid = true →
       InclusionFixed runtime swap current.application ⟨envelope.id, envelope.payload.call⟩) :
     (swap.execution current).environmentStep (runtime.reactiveApplication leaks) command =
       (current.environmentStep (runtime.reactiveApplication leaks) command).map
