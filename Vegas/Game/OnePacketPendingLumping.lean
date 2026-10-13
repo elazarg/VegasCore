@@ -83,6 +83,55 @@ theorem operationalState_silent (control : (application setup leaks).Control)
     rw [(application setup leaks).respond_recall_other control.execution responder who same]
     rfl
 
+/-- A scheduler round on the operational state: the remaining rounds and actor
+are set, and the round's command is recorded with the scheduler's view. -/
+def OperationalState.round (remaining : Nat) (actor : Option Player)
+    (command : (application setup leaks).Command) (state : OperationalState setup leaks) :
+    OperationalState setup leaks :=
+  { state with
+    remaining := remaining
+    actor := actor
+    environmentRecall := state.environmentRecall ++ [⟨state.environment, command⟩] }
+
+/-- An activation's observation on the operational state: the activated player
+learns the selected pending packets, and every player's current operational
+view reads the new network. -/
+def OperationalState.learn (who : Player) (selected : Finset (MessageId Player))
+    (state : OperationalState setup leaks) : OperationalState setup leaks :=
+  { state with
+    leaked := (state.network.learn who selected).leaked
+    keys := fun observer => (state.keys observer).map fun key =>
+      { key with current := (key.current.1, (state.network.learn who selected).observe observer,
+        key.current.2.2) } }
+
+/-- **An activation on the operational state.** -/
+theorem operationalState_activate (remaining : Nat)
+    (execution : (application setup leaks).Execution)
+    (who : Player) (selected : Finset (MessageId Player)) :
+    operationalState setup leaks (some ⟨remaining, some who,
+      { execution with
+        network := execution.network.learn who selected
+        environmentRecall := execution.environmentRecall ++
+          [⟨execution.observeEnvironment (application setup leaks), .activate who⟩] }⟩) =
+      (operationalState setup leaks (some ⟨remaining + 1, none, execution⟩)).map fun state =>
+        (state.learn who selected).round remaining (some who) (.activate who) := by
+  simp only [operationalState, Option.map_some, OperationalState.round, OperationalState.learn,
+    Option.some.injEq, OperationalState.mk.injEq]
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩ <;> trivial
+
+/-- **Waiting on the operational state.** -/
+theorem operationalState_wait (remaining : Nat)
+    (execution : (application setup leaks).Execution) :
+    operationalState setup leaks (some ⟨remaining, none,
+      { execution with
+        environmentRecall := execution.environmentRecall ++
+          [⟨execution.observeEnvironment (application setup leaks), .wait⟩] }⟩) =
+      (operationalState setup leaks (some ⟨remaining + 1, none, execution⟩)).map fun state =>
+        state.round remaining none .wait := by
+  simp only [operationalState, Option.map_some, OperationalState.round, Option.some.injEq,
+    OperationalState.mk.injEq]
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩ <;> trivial
+
 variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (application setup leaks).Scheduler)
 
