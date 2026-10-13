@@ -754,7 +754,8 @@ theorem handle_opening_accepted_facts (state next : EventGraphRuntime.State (gra
     · cases accepted
   · simp [EventGraphRuntime.handle, ready, timely] at accepted
 
-private theorem complete_store_output (state : EventGraphRuntime.State (graph setup))
+/-- Completing an event stores its output. -/
+theorem complete_store_output (state : EventGraphRuntime.State (graph setup))
     (ready : state.config.cut.Ready event) (action : (graph setup).Action event)
     (value : ((graph setup).outputLayout event).Value) :
     (state.complete event ready action value).config.store (.inr event) = some value := by

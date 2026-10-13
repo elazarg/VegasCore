@@ -193,6 +193,16 @@ theorem isFailure_cast_binding_failure {kind : EventGraph.EventField Player L} {
   subst kindEq
   rfl
 
+omit [DecidableEq Player] [IExpr.ResultTypes L] in
+/-- A binding result fails exactly when it is the failure. -/
+theorem isFailure_cast_binding_iff {kind : EventGraph.EventField Player L} {owner : Player}
+    {payload : L.Ty} (kindEq : kind = .binding owner payload)
+    (result : PublicationResult (L.Val payload)) :
+    kind.IsFailure (cast (congrArg EventGraph.EventField.Value kindEq.symm) result) ↔
+      result = .failure := by
+  subst kindEq
+  rfl
+
 open Classical in
 /-- Expiring a due binding fails it, read through the pending image. -/
 theorem environmentStep_expire_due_bind_image (remaining : Nat)
@@ -329,5 +339,145 @@ theorem application_image_congr_bind (remaining : Nat)
           (environmentStep_expire_of_not_ready (runtime setup) _ expired expiredReady)
           (environmentStep_expire_of_not_ready (runtime setup) _ expired
             (fun other => expiredReady ((readyIff expired).mpr other)))
+
+/-- **Only the owner's commitment is accepted while a binding is ready.** -/
+theorem handle_of_binding_ready (state : EventGraphRuntime.State (graph setup))
+    {event : (graph setup).EventId} (ready : state.config.cut.Ready event)
+    {owner : Player} {payload : L.Ty}
+    {outputEq : (graph setup).outputLayout event = .binding owner payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .bind owner payload}
+    (view : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
+    (id : MessageId Player) (call : Payload (graph setup))
+    {next : EventGraphRuntime.State (graph setup)}
+    (accepted : EventGraphRuntime.handle (runtime setup) state ⟨id, call⟩ = some next) :
+    ∃ candidate, call = .commitment event candidate ∧ id.1 = owner := by
+  cases call with
+  | malformed raw => simp [EventGraphRuntime.handle] at accepted
+  | commitment named candidate =>
+      by_cases namedReady : state.config.cut.Ready named
+      · have same : named = event := ready_unique (setup := setup) _ namedReady ready
+        subst same
+        refine ⟨candidate, rfl, ?_⟩
+        by_contra foreign
+        by_cases timely : state.WithinDeadline (runtime setup) named
+        · simp [EventGraphRuntime.handle, namedReady, timely, view, Message.sender, foreign]
+            at accepted
+        · simp [EventGraphRuntime.handle, namedReady, timely] at accepted
+      · simp [EventGraphRuntime.handle, namedReady] at accepted
+  | opening named candidate raw =>
+      by_cases namedReady : state.config.cut.Ready named
+      · have same : named = event := ready_unique (setup := setup) _ namedReady ready
+        subst same
+        by_cases timely : state.WithinDeadline (runtime setup) named
+        · simp [EventGraphRuntime.handle, namedReady, timely, view] at accepted
+        · simp [EventGraphRuntime.handle, namedReady, timely] at accepted
+      · simp [EventGraphRuntime.handle, namedReady] at accepted
+
+/-- An accepted commitment to a ready binding was timely, sent by its owner for
+an unused own handle while the binding was vacant, and completes the binding
+with the handle's typed meaning. -/
+theorem handle_commitment_accepted_facts (state : EventGraphRuntime.State (graph setup))
+    {event : (graph setup).EventId} (ready : state.config.cut.Ready event)
+    {owner : Player} {payload : L.Ty}
+    {outputEq : (graph setup).outputLayout event = .binding owner payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .bind owner payload}
+    (view : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
+    (id : MessageId Player) (candidate : Handle (graph setup))
+    {next : EventGraphRuntime.State (graph setup)}
+    (accepted : EventGraphRuntime.handle (runtime setup) state
+      ⟨id, .commitment event candidate⟩ = some next) :
+    state.WithinDeadline (runtime setup) event ∧ id.1 = owner ∧ candidate.1 = owner ∧
+      state.accepted (.inr event) = none ∧ state.HandleUnused candidate := by
+  by_cases timely : state.WithinDeadline (runtime setup) event
+  · by_cases sender : id.1 = owner
+    · by_cases owned : candidate.1 = owner
+      · by_cases vacant : state.accepted (.inr event) = none
+        · by_cases unused : state.HandleUnused candidate
+          · exact ⟨timely, sender, owned, vacant, unused⟩
+          · simp [EventGraphRuntime.handle, ready, timely, view, Message.sender, sender, owned,
+              vacant, unused] at accepted
+        · simp [EventGraphRuntime.handle, ready, timely, view, Message.sender, sender, owned,
+            vacant] at accepted
+      · simp [EventGraphRuntime.handle, ready, timely, view, Message.sender, sender, owned]
+          at accepted
+    · simp [EventGraphRuntime.handle, ready, timely, view, Message.sender, sender] at accepted
+  · simp [EventGraphRuntime.handle, ready, timely] at accepted
+
+/-- **An accepted commitment transfers across equal public data.** Two contract
+states with the same public view, whose candidates for a handle agree on
+success, accept the same commitment to a ready binding together; both
+acceptances complete the binding, failed in one exactly when failed in the
+other. -/
+theorem handle_commitment_accepted_transfer
+    (first second : EventGraphRuntime.State (graph setup))
+    (publics : first.publicView = second.publicView)
+    {event : (graph setup).EventId} (ready : first.config.cut.Ready event)
+    {owner : Player} {payload : L.Ty}
+    {outputEq : (graph setup).outputLayout event = .binding owner payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .bind owner payload}
+    (view : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
+    (id : MessageId Player) (candidate : Handle (graph setup))
+    (succeeds : candidateSucceeds first candidate payload =
+      candidateSucceeds second candidate payload)
+    {next : EventGraphRuntime.State (graph setup)}
+    (accepted : EventGraphRuntime.handle (runtime setup) first
+      ⟨id, .commitment event candidate⟩ = some next) :
+    ∃ next', EventGraphRuntime.handle (runtime setup) second
+        ⟨id, .commitment event candidate⟩ = some next' ∧
+      event ∈ next.config.cut.completed ∧ event ∈ next'.config.cut.completed ∧
+      (StoreEventFailed next.config.store event ↔ StoreEventFailed next'.config.store event) := by
+  obtain ⟨timely, sender, owned, vacant, unused⟩ :=
+    handle_commitment_accepted_facts first ready view id candidate accepted
+  have ready' : second.config.cut.Ready event := by
+    rw [← EventGraphRuntime.State.publicView_eventReady, ← publics,
+      EventGraphRuntime.State.publicView_eventReady]
+    exact ready
+  have acceptedEq : first.accepted = second.accepted := congrArg PublicView.accepted publics
+  have activations : first.activatedAt = second.activatedAt :=
+    congrArg PublicView.activatedAt publics
+  have clocks : first.clock = second.clock := congrArg PublicView.clock publics
+  have timely' : second.WithinDeadline (runtime setup) event := by
+    unfold EventGraphRuntime.State.WithinDeadline at timely ⊢
+    rw [← activations, ← clocks]
+    exact timely
+  have vacant' : second.accepted (.inr event) = none := by rw [← acceptedEq]; exact vacant
+  have unused' : second.HandleUnused candidate := by
+    unfold EventGraphRuntime.State.HandleUnused at unused ⊢
+    rw [← acceptedEq]
+    exact unused
+  rw [EventGraphRuntime.handle_commitment_eq (runtime setup) first id event candidate owner payload
+    outputEq codeEq view ready timely sender owned vacant unused] at accepted
+  cases accepted
+  refine ⟨_, EventGraphRuntime.handle_commitment_eq (runtime setup) second id event candidate owner
+    payload outputEq codeEq view ready' timely' sender owned vacant' unused',
+    (EventOrder.Cut.mem_complete _ event ready event).mpr (Or.inl rfl),
+    (EventOrder.Cut.mem_complete _ event ready' event).mpr (Or.inl rfl), ?_⟩
+  have firstStore := complete_store_output first ready
+    (cast (congrArg EventGraph.EventField.Action outputEq.symm)
+      (first.bindingResult candidate payload))
+    (cast (congrArg EventGraph.EventField.Value outputEq.symm)
+      (first.bindingResult candidate payload))
+  have secondStore := complete_store_output second ready'
+    (cast (congrArg EventGraph.EventField.Action outputEq.symm)
+      (second.bindingResult candidate payload))
+    (cast (congrArg EventGraph.EventField.Value outputEq.symm)
+      (second.bindingResult candidate payload))
+  have failedIff : ∀ result : PublicationResult (L.Val payload),
+      ((graph setup).layout (.inr event)).IsFailure
+        (cast (congrArg EventGraph.EventField.Value outputEq.symm) result) ↔
+        result = .failure := isFailure_cast_binding_iff outputEq
+  have successIff : ∀ state : EventGraphRuntime.State (graph setup),
+      state.bindingResult candidate payload = .failure ↔
+        candidateSucceeds state candidate payload = false := by
+    intro state
+    unfold candidateSucceeds
+    cases state.bindingResult candidate payload <;> simp
+  change StoreEventFailed (first.complete event ready _ _).config.store event ↔
+    StoreEventFailed (second.complete event ready' _ _).config.store event
+  simp only [StoreEventFailed, firstStore, secondStore, Option.some.injEq, exists_eq_left',
+    failedIff, successIff, succeeds]
 
 end Vegas
