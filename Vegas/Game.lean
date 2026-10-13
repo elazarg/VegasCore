@@ -420,3 +420,4 @@ import Vegas.Game.OnePacketSiteLumping
 import Vegas.Game.OnePacketUnintendedCommitment
 import Vegas.Game.OnePacketCertificateAssembly
 import Vegas.Game.OnePacketSwapRecord
+import Vegas.Game.OnePacketKeyedFibers
