@@ -419,3 +419,4 @@ import Vegas.Game.OnePacketSiteLaws
 import Vegas.Game.OnePacketSiteLumping
 import Vegas.Game.OnePacketUnintendedCommitment
 import Vegas.Game.OnePacketCertificateAssembly
+import Vegas.Game.OnePacketSwapRecord
