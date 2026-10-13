@@ -366,4 +366,167 @@ theorem ownerBindingLaw_of_siteComponents {LateOption' : Type}
     rw [turn_unique otherTurn turnBoth]
     exact unsent
 
+open Classical in
+/-- **The owner's opening law for the certificate's components.** -/
+theorem ownerOpeningLaw_of_siteComponents {LateOption' : Type}
+    (assessment : setup.intendedModel.BehavioralAssessment)
+    (covers : bounds.CoversOutputValues) {slots : Nat}
+    (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
+    (options : LateKey setup leaks → LateOption' → LateKey setup leaks →
+      PMF (LateOption slots))
+    (key : LateKey setup leaks) (option : LateOption')
+    (profile : ∀ player,
+      (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
+    (allowed : (application setup leaks).ProtocolState → Prop)
+    (shape : SiteComponentShape assessment scale nonnegative le_one (options key option) key
+      profile allowed) :
+    OwnerOpeningLaw bounds horizon scheduler
+      (fun key option => lateOpeningSilence bounds horizon scheduler assessment scale nonnegative
+        le_one (options key option) key) key option profile (scale ^ 3) (scale ^ 3) allowed := by
+  intro event turn history control current allowedState forced ready acting
+  have turnBoth : PublicationTurn key event ∨ ∃ payload, BindingTurn key event payload :=
+    Or.inl turn
+  have turnEq := turnEvent_of_publicationTurn turn
+  rcases control with ⟨remaining, actor, execution⟩
+  change actor = some key.owner at acting
+  subst acting
+  by_cases recorded : (runtime setup).eventRecorded leaks (execution.recall key.owner) event =
+      true
+  · obtain ⟨_, payload, binding, checks, outputEq, codeEq, view⟩ := turn
+    have trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace
+        (some ⟨remaining, some key.owner, execution⟩) := current ▸ history.trace
+    have turnOwn : execution.application.publicView.ownTurn? key.owner = some event :=
+      ownTurn?_of_ready setup _ ready (nodeView_resolve_actor outputEq codeEq)
+    have silent := prescribedCore_silent assessment trace key.owner event turnOwn recorded scale
+      nonnegative le_one
+    have represented : ∃ witness : (onePacketProtocol setup leaks bounds horizon
+        scheduler).History × Nat × (application setup leaks).Execution,
+        witness.1.state = some ⟨witness.2.1, some key.owner, witness.2.2⟩ ∧
+        witness.2.2.application.config.cut.Ready event ∧
+        operationalState setup leaks (some ⟨witness.2.1, some key.owner, witness.2.2⟩) =
+          operationalState setup leaks (some ⟨remaining, some key.owner, execution⟩) :=
+      ⟨(history, remaining, execution), current, ready, rfl⟩
+    have silenceEq : lateOpeningSilence bounds horizon scheduler assessment scale nonnegative
+        le_one (options key option) key
+        (operationalState setup leaks (some ⟨remaining, some key.owner, execution⟩)) =
+        PMF.pure true := by
+      unfold lateOpeningSilence
+      rw [turnEq]
+      simp only
+      rw [dite_eq_left represented]
+      have spec := represented.choose_spec
+      generalize represented.choose = witness at spec ⊢
+      obtain ⟨chosenHistory, chosenRemaining, chosenExecution⟩ := witness
+      obtain ⟨chosenCurrent, chosenReady, chosenSame⟩ := spec
+      have remainingEq : chosenRemaining = remaining := SameOperational.remaining chosenSame
+      subst remainingEq
+      have chosenTrace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace
+          (some ⟨chosenRemaining, some key.owner, chosenExecution⟩) :=
+        chosenCurrent ▸ chosenHistory.trace
+      have chosenRecorded : (runtime setup).eventRecorded leaks
+          (chosenExecution.recall key.owner) event = true := by
+        rw [recorded_congr chosenHistory history chosenCurrent current chosenSame key.owner
+          event]
+        exact recorded
+      have chosenSilent := lateCore_silent (bounds := bounds) (horizon := horizon)
+        (scheduler := scheduler) assessment chosenTrace key.owner event
+        (ownTurn?_of_ready setup _ chosenReady (nodeView_resolve_actor outputEq codeEq))
+        chosenRecorded scale nonnegative le_one (options key option (LateKey.ofView setup leaks
+          key.owner (chosenExecution.recall key.owner)
+          (chosenExecution.observe (application setup leaks) key.owner)))
+      simp only
+      rw [map_congr_on_support (g := Function.const _ true) _ fun choice supported => by
+        simp only [choiceSilent, chosenSilent choice supported, Function.const_apply,
+          decide_true]]
+      exact PMF.map_const _ _
+    beta_reduce
+    rw [silenceEq, expect_pure, decodeProfile_eq_map,
+      (shape event turnBoth history remaining execution current
+        (by rw [current]; exact allowedState) (by rw [current]; exact forced) ready).2 recorded]
+    unfold slotPrescribedComponent slotTrembledChoice
+    rw [expect_map, expect_map]
+    set core := mix (scale ^ 2) (sq_nonneg _) (pow_le_one₀ nonnegative le_one)
+      (slotChoice setup leaks bounds (initialLaw setup) horizon scheduler assessment key.owner
+        (some (execution.recall key.owner,
+          execution.observe (application setup leaks) key.owner)))
+      (mix scale nonnegative le_one
+        (PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler
+          key.owner (some (execution.recall key.owner,
+            execution.observe (application setup leaks) key.owner))))
+        (honestChoice setup leaks bounds (initialLaw setup) horizon scheduler assessment
+          key.owner (some (execution.recall key.owner,
+            execution.observe (application setup leaks) key.owner)))) with coreEq
+    have close := unitClose_mix (scale ^ 3) (pow_nonneg nonnegative 3)
+      (pow_le_one₀ nonnegative le_one)
+      ((bounds.onePacketMenu (runtime setup) leaks).uniformPolicy (initialLaw setup) horizon
+        scheduler key.owner (some (execution.recall key.owner,
+          execution.observe (application setup leaks) key.owner))) core
+    constructor
+    · have unit : ∀ choice, 0 ≤ ((fun action : (application setup leaks).Action =>
+          if action.transmission = none then (1 : ℝ) else 0) ∘ fun choice :
+            (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).Choice
+              key.owner (some (execution.recall key.owner,
+                execution.observe (application setup leaks) key.owner)) =>
+            choice.1.getD ⟨none⟩) choice ∧
+          ((fun action : (application setup leaks).Action =>
+            if action.transmission = none then (1 : ℝ) else 0) ∘ fun choice :
+              (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).Choice
+                key.owner (some (execution.recall key.owner,
+                  execution.observe (application setup leaks) key.owner)) =>
+              choice.1.getD ⟨none⟩) choice ≤ 1 := fun choice => by
+        simp only [Function.comp]
+        split <;> norm_num
+      have coreOne : expect core ((fun action : (application setup leaks).Action =>
+          if action.transmission = none then (1 : ℝ) else 0) ∘ fun choice :
+            (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).Choice
+              key.owner (some (execution.recall key.owner,
+                execution.observe (application setup leaks) key.owner)) =>
+            choice.1.getD ⟨none⟩) = 1 := by
+        rw [expect_congr_on_support (g := fun _ => (1 : ℝ)) fun choice supported => by
+          simp only [Function.comp, silent choice supported, ↓reduceIte]]
+        exact expect_constant core 1
+      have near := close _ unit
+      rw [coreOne] at near
+      simpa only [↓reduceIte] using near
+    · set rest : (application setup leaks).Action → ℝ := fun action =>
+        if action.transmission = none ∨ OpensTurn event key.owner execution action then 0 else 1
+        with restEq
+      have unit : ∀ choice, 0 ≤ (rest ∘ fun choice :
+            (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).Choice
+              key.owner (some (execution.recall key.owner,
+                execution.observe (application setup leaks) key.owner)) =>
+            choice.1.getD ⟨none⟩) choice ∧
+          (rest ∘ fun choice :
+            (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).Choice
+              key.owner (some (execution.recall key.owner,
+                execution.observe (application setup leaks) key.owner)) =>
+            choice.1.getD ⟨none⟩) choice ≤ 1 := fun choice => by
+        simp only [Function.comp, restEq]
+        split <;> norm_num
+      have coreZero : expect core (rest ∘ fun choice :
+            (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).Choice
+              key.owner (some (execution.recall key.owner,
+                execution.observe (application setup leaks) key.owner)) =>
+            choice.1.getD ⟨none⟩) = 0 := by
+        rw [expect_congr_on_support (g := fun _ => (0 : ℝ)) fun choice supported => by
+          simp only [Function.comp, silent choice supported, restEq, true_or, ↓reduceIte]]
+        exact expect_zero core
+      have near := close _ unit
+      rw [coreZero, sub_zero] at near
+      exact (abs_le.mp near).2
+  · have unsent : (runtime setup).eventRecorded leaks (execution.recall key.owner) event =
+        false := by
+      cases value : (runtime setup).eventRecorded leaks (execution.recall key.owner) event
+      · rfl
+      · exact (recorded value).elim
+    have lateShape := lateComponentShape_of_site assessment scale nonnegative le_one
+      (options key option) key profile allowed shape
+    have law := ownerOpeningLaw_of_lateComponents assessment covers scale nonnegative le_one
+      options key option profile (allowed := fun state => allowed state ∧ OwnerUnsent key state)
+      fun event turn => lateShape event (Or.inl turn)
+    refine law event turn history _ current ⟨allowedState, ?_⟩ forced ready rfl
+    intro other otherTurn
+    rw [turn_unique otherTurn turnBoth]
+    exact unsent
+
 end Vegas
