@@ -66,6 +66,7 @@ import Vegas.Game.OnePacketRevealStep
 import Vegas.Game.OnePacketUnifiedMasses
 import Vegas.Game.OnePacketFactorBounds
 import Vegas.Game.OnePacketSlotLawDischarge
+import Vegas.Game.OnePacketOpeningUnique
 import Vegas.Game.OnePacketSlotMasses
 import Vegas.Game.OnePacketForcedBeliefs
 import Vegas.Game.OnePacketIntendedProjection
