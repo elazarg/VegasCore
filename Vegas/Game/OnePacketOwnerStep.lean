@@ -7,7 +7,19 @@ import Vegas.Game.OnePacketLumpingInstance
 A response changes the operational state only through the envelope it emits:
 the actor clears, the envelope joins the network, and the responder's recall
 gains its current operational view with the envelope
-(`Vegas.operationalState_respond`).
+(`Vegas.operationalState_respond`). A menu opening emits the responder's next
+envelope with the opening, its own certificate and the event's token
+(`Vegas.emittedEnvelope_of_opening`), so an opening of the bound value of a
+ready publication event leads to an image read off the operational state: the
+handle is public and the owner's key carries the value
+(`Vegas.opensBinding_image_congr`).
+
+Hence, if the owner's decoded response keeps silence with mass near a keyed
+weight and leaves little mass outside silence and openings of the bound value
+(`Vegas.OwnerOpeningLaw`), the owner's step is close to a two-point kernel of
+the key, the option and the operational state
+(`Vegas.ownerStepClose_of_openingLaw`), and the one-step lumping holds with
+the sum of the two drifts (`Vegas.onePacketOpeningLumping`).
 -/
 
 noncomputable section
@@ -271,5 +283,190 @@ theorem opensBinding_image_congr {horizon : Nat} {scheduler : (application setup
       emittedEnvelope_of_opening bounds secondHistory secondCurrent owner secondAction
         secondMember secondSent secondCall, networks]
   rw [pendingImage_respond ready.1, pendingImage_respond ready'.1, same, emitted]
+
+omit [Fintype Player] in
+/-- An opening of a publication event by its owner of the binding's value. -/
+def OpensTurn (event : (graph setup).EventId) (owner : Player)
+    (execution : (application setup leaks).Execution) (action : (application setup leaks).Action) :
+    Prop :=
+  ∃ (payload : L.Ty) (binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload))
+    (checks : List (EventGraph.GuardCheck (graph setup).layout payload))
+    (outputEq : (graph setup).outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .resolve owner payload binding checks),
+    nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq ∧
+      OpensBinding execution event binding action
+
+variable (horizon : Nat) (scheduler : (application setup leaks).Scheduler)
+
+open Classical in
+/-- The image after the owner opens the decided event from an operational
+state, read off a representative forced state with the event ready; nothing
+when there is none. -/
+def openedImage (key : LateKey setup leaks) (state : Option (OperationalState setup leaks)) :
+    PendingImage (setup := setup) (leaks := leaks) :=
+  match turnEvent key with
+  | none => .inl none
+  | some event =>
+      if represented : ∃ witness : (onePacketProtocol setup leaks bounds horizon
+          scheduler).History × Nat × (application setup leaks).Execution ×
+            (application setup leaks).Action,
+          witness.1.state = some ⟨witness.2.1, some key.owner, witness.2.2.1⟩ ∧
+          ForcedState setup leaks key.owner witness.1.state ∧
+          witness.2.2.1.application.config.cut.Ready event ∧
+          operationalState setup leaks (some ⟨witness.2.1, some key.owner, witness.2.2.1⟩) =
+            state ∧
+          witness.2.2.2 ∈ bounds.onePacketActions (runtime setup) leaks key.owner
+            (witness.2.2.1.recall key.owner)
+            (witness.2.2.1.observe (application setup leaks) key.owner) ∧
+          OpensTurn event key.owner witness.2.2.1 witness.2.2.2 then
+        pendingImage event (some ⟨represented.choose.2.1, none,
+          represented.choose.2.2.1.respond (application setup leaks) key.owner
+            represented.choose.2.2.2⟩)
+      else .inl none
+
+/-- **The owner's opening kernel.** With the weight a Boolean law gives
+silence, the owner keeps silence; otherwise it opens the decided event. -/
+def openingKernel {LateOption : Type}
+    (silence : LateKey setup leaks → LateOption → Option (OperationalState setup leaks) →
+      PMF Bool)
+    (key : LateKey setup leaks) (option : LateOption)
+    (state : Option (OperationalState setup leaks)) :
+    PMF (PendingImage (setup := setup) (leaks := leaks)) :=
+  (silence key option state).map fun silent =>
+    if silent then .inl (state.map (OperationalState.respond key.owner none))
+    else openedImage bounds horizon scheduler key state
+
+open Classical in
+/-- **The owner's opening law at a key.** At every forced state with the
+decided publication event ready and the owner acting, the owner's decoded
+response keeps silence with mass within `δ₁` of the key's silence weight, and
+leaves at most `δ₂` outside silence and openings of the bound value. -/
+def OwnerOpeningLaw {LateOption : Type}
+    (silence : LateKey setup leaks → LateOption → Option (OperationalState setup leaks) →
+      PMF Bool)
+    (key : LateKey setup leaks) (option : LateOption)
+    (profile : ∀ player,
+      (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
+    (δ₁ δ₂ : ℝ) : Prop :=
+  ∀ event, PublicationTurn key event →
+    ∀ (history : (onePacketProtocol setup leaks bounds horizon scheduler).History)
+      (control : (application setup leaks).Control), history.state = some control →
+      ForcedState setup leaks key.owner (some control) →
+      control.execution.application.config.cut.Ready event →
+      control.actor = some key.owner →
+      |expect ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup)
+          horizon scheduler profile key.owner (control.execution.recall key.owner)
+          (control.execution.observe (application setup leaks) key.owner))
+          (fun action => if action.transmission = none then 1 else 0) -
+        expect (silence key option (operationalState setup leaks (some control)))
+          (fun silent => if silent then 1 else 0)| ≤ δ₁ ∧
+      expect ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup)
+          horizon scheduler profile key.owner (control.execution.recall key.owner)
+          (control.execution.observe (application setup leaks) key.owner))
+          (fun action => if action.transmission = none ∨
+            OpensTurn event key.owner control.execution action then 0 else 1) ≤ δ₂
+
+variable {horizon scheduler}
+
+omit [Fintype Player] in
+/-- The control step at the owner's activation is the owner's decoded response
+followed by the response transition. -/
+theorem controlStep_owner (players : Player → (application setup leaks).Policy)
+    (remaining : Nat) (owner : Player) (execution : (application setup leaks).Execution) :
+    (application setup leaks).controlStep (initialLaw setup) horizon scheduler players
+        (some ⟨remaining, some owner, execution⟩) =
+      (players owner (execution.recall owner) (execution.observe (application setup leaks)
+        owner)).map fun action =>
+          some ⟨remaining, none, execution.respond (application setup leaks) owner action⟩ := by
+  unfold ReactiveApplication.controlStep
+  simp only [ReactiveApplication.actor, Option.bind_some]
+  rw [← PMF.bind_pure_comp]
+  congr 1
+  funext action
+  rw [transition_respond (horizon := horizon) (scheduler := scheduler)
+    ⟨remaining, some owner, execution⟩ rfl]
+  simp only [↓reduceIte, Option.getD_some, Function.comp]
+
+open Classical in
+/-- **The owner's step from its opening law.** -/
+theorem ownerStepClose_of_openingLaw {LateOption : Type}
+    (silence : LateKey setup leaks → LateOption → Option (OperationalState setup leaks) →
+      PMF Bool)
+    (key : LateKey setup leaks) (option : LateOption)
+    (profile : ∀ player,
+      (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
+    {δ₁ δ₂ : ℝ} (law : OwnerOpeningLaw bounds horizon scheduler silence key option profile δ₁ δ₂) :
+    OwnerStepClose (openingKernel bounds horizon scheduler silence) key option profile
+      (δ₁ + δ₂) := by
+  intro event turn history control current forced ready acting
+  have turnEq := turnEvent_of_publicationTurn turn
+  obtain ⟨silentMass, remainder⟩ := law event turn history control current forced ready acting
+  rcases control with ⟨remaining, actor, execution⟩
+  change actor = some key.owner at acting
+  subst acting
+  obtain ⟨_, payload, binding, checks, outputEq, codeEq, view⟩ := turn
+  rw [controlStep_owner, PMF.map_comp]
+  apply unitClose_map_of_two_outcomes _ _ (fun action => action.transmission = none)
+    (fun action => OpensTurn event key.owner execution action) _ _ _ δ₁ δ₂ _ _ silentMass
+    remainder
+  · intro action _ silent
+    simp only [Function.comp]
+    rw [pendingImage_respond ready.1]
+    simp only [emittedEnvelope, silent]
+  · intro action supported _ opens
+    have member := (bounds.onePacketMenu (runtime setup) leaks).decodeProfile_support
+      (initialLaw setup) horizon scheduler profile key.owner _ _ action supported
+    have represented : ∃ witness : (onePacketProtocol setup leaks bounds horizon
+        scheduler).History × Nat × (application setup leaks).Execution ×
+          (application setup leaks).Action,
+        witness.1.state = some ⟨witness.2.1, some key.owner, witness.2.2.1⟩ ∧
+        ForcedState setup leaks key.owner witness.1.state ∧
+        witness.2.2.1.application.config.cut.Ready event ∧
+        operationalState setup leaks (some ⟨witness.2.1, some key.owner, witness.2.2.1⟩) =
+          operationalState setup leaks (some ⟨remaining, some key.owner, execution⟩) ∧
+        witness.2.2.2 ∈ bounds.onePacketActions (runtime setup) leaks key.owner
+          (witness.2.2.1.recall key.owner)
+          (witness.2.2.1.observe (application setup leaks) key.owner) ∧
+        OpensTurn event key.owner witness.2.2.1 witness.2.2.2 :=
+      ⟨(history, remaining, execution, action), current, by rw [current]; exact forced, ready,
+        rfl, member, opens⟩
+    simp only [Function.comp]
+    unfold openedImage
+    rw [turnEq]
+    simp only
+    rw [dite_eq_left represented]
+    have spec := represented.choose_spec
+    generalize represented.choose = witness at spec ⊢
+    obtain ⟨chosenHistory, chosenRemaining, chosenExecution, chosenAction⟩ := witness
+    obtain ⟨chosenCurrent, _, _, chosenSame, chosenMember, chosenOpens⟩ := spec
+    have remainingEq : chosenRemaining = remaining := SameOperational.remaining chosenSame
+    subst remainingEq
+    obtain ⟨_, _, _, _, _, ourView, ourOpens⟩ := opens
+    obtain ⟨_, _, _, _, _, chosenView, chosenOpens⟩ := chosenOpens
+    cases ourView.symm.trans view
+    cases chosenView.symm.trans view
+    exact opensBinding_image_congr bounds history chosenHistory current chosenCurrent
+      chosenSame.symm ready view action chosenAction member chosenMember ourOpens
+      chosenOpens
+
+/-- **The one-step lumping under the owner's opening law.** -/
+def onePacketOpeningLumping
+    (assessment : (onePacketInformation setup leaks bounds horizon
+      scheduler).BehavioralAssessment) (who : Player) {LateOption : Type}
+    (profileOf : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who →
+      LateOption → ∀ player,
+        (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
+    {δ₁ δ₂ : ℝ} (nonneg : 0 ≤ δ₁ + δ₂)
+    (silence : LateKey setup leaks → LateOption → Option (OperationalState setup leaks) →
+      PMF Bool)
+    (law : ∀ site key, lateKey setup leaks who site.1 = some key → ∀ option,
+      OwnerOpeningLaw bounds horizon scheduler silence key option (profileOf site option) δ₁ δ₂) :
+    PendingLumping assessment who profileOf LateEventFailed (δ₁ + δ₂)
+      (PendingImage (setup := setup) (leaks := leaks)) :=
+  onePacketPendingLumping assessment who profileOf nonneg
+    (openingKernel bounds horizon scheduler silence) fun site key siteKey option =>
+      ownerStepClose_of_openingLaw bounds silence key option (profileOf site option)
+        (law site key siteKey option)
 
 end Vegas
