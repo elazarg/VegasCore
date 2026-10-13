@@ -421,3 +421,4 @@ import Vegas.Game.OnePacketUnintendedCommitment
 import Vegas.Game.OnePacketCertificateAssembly
 import Vegas.Game.OnePacketSwapRecord
 import Vegas.Game.OnePacketKeyedFibers
+import Vegas.Game.OnePacketPrescribedCompletion
