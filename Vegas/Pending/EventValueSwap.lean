@@ -16,7 +16,7 @@ the swap of that observation on the fields visible to the player
 
 Completing an event commutes with the swap. A graph step whose evaluator reads
 only fields the swap fixes, such as a sample or a resolution of a binding the
-swap fixes, commutes with it as well (`Vegas.EventGraph.Config.swap_mem_step`).
+swap fixes, commutes with it as well (`Vegas.EventGraph.Config.step_swap`).
 -/
 
 noncomputable section

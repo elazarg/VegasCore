@@ -11,7 +11,7 @@ At a pending reveal of the owner's turn, the owner's resolution packet reads its
 binding and public data only (`Vegas.reactiveResolutionPacket_congr`), so whether
 the canonical disclosure transmits is read off the operational state. Along a
 one-packet history the one-packet menu offers a transmitting disclosure exactly
-when no own envelope names the reveal (`Vegas.disclosure_mem_iff`).
+when no own envelope names the reveal (`Vegas.disclosure_silent_iff`).
 -/
 
 noncomputable section

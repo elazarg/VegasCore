@@ -80,3 +80,4 @@ import GameTheoryExtensions.Protocol.FlaggedMenuRestriction
 import GameTheoryExtensions.Protocol.Knowledge
 import GameTheoryExtensions.Protocol.MenuRestriction
 import GameTheoryExtensions.Protocol.ObservationRecall
+import GameTheoryExtensions.Protocol.StateSymmetry

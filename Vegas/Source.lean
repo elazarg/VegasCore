@@ -52,3 +52,4 @@ import Vegas.Source.SetupProtocolBehavioral
 import Vegas.Source.SetupProtocolRecall
 import Vegas.Source.CommitmentEvidence
 import Vegas.Source.Communication
+import Vegas.Source.DebtObservation

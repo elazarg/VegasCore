@@ -128,7 +128,7 @@ theorem expect_sourcePointValue_behavioralStateStep (profile : BehavioralProfile
 
 /-- **The completion-point law.** From a history, under play of `installed`
 until the event of rank `rank` completes, the law of the completion point,
-as a sub-probability law on source points, is `success` times `stepLaw` up to
+as a sub-probability law on source points, is `success` times stepLaw up to
 `error` against every bounded value. -/
 def CompletionPointLaw
     (installed : ∀ who,
@@ -182,11 +182,11 @@ theorem completionValue_eq_elim (profile : BehavioralProfile setup.program)
 open Classical in
 /-- **The completion value from a history by its completion-point law.** Let
 the completion-point law from a history of a site with `law` installed be
-`success` times `stepLaw` up to `pointError`, and let the stops without a
+`success` times stepLaw up to pointError, and let the stops without a
 completion point at which terminal play does not surely reach the site's
-failure set have mass at most `badMass`. Then, with the payoff of every readout
+failure set have mass at most badMass. Then, with the payoff of every readout
 bounded by `bound`, the completion value from the history is `success` times
-the expected source continuation value under `stepLaw` up to
+the expected source continuation value under stepLaw up to
 `(pointError + badMass) * bound`. -/
 theorem abs_historyStopValue_sub_le_of_completionPointLaw
     [Finite ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon

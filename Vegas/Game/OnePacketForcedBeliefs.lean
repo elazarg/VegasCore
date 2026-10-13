@@ -144,9 +144,9 @@ and the operational steps `steps`:
 * `fiber`: the operational weights of the regular histories projecting to each
   intended history sum to a common mass;
 * `counterpart`: every irregular history has a regular counterpart; the
-  irregular reach is at most `scale n ^ 3` times `commonWeight`, and `slack`
+  irregular reach is at most `scale n ^ 3` times commonWeight, and `slack`
   times the counterpart's reach is at least `scale n ^ 2` times
-  `floors n ^ depth` times `commonWeight`. -/
+  `floors n ^ depth` times commonWeight. -/
 structure ForcedBeliefInputs (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (profiles : ℕ → ∀ player,
       (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
