@@ -71,6 +71,7 @@ import Vegas.Game.OnePacketCompletionContent
 import Vegas.Game.OnePacketPeriodInvariant
 import Vegas.Game.OnePacketActorMatching
 import Vegas.Game.OnePacketForcedInputs
+import Vegas.Game.OnePacketReplayExists
 import Vegas.Game.OnePacketPrescribedSupport
 import Vegas.Game.OnePacketCanonicalPermits
 import Vegas.Game.OnePacketCanonicalAcceptance
