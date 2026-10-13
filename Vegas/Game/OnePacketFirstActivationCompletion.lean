@@ -14,8 +14,8 @@ import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
 acts, the source step is a point mass
 (`Vegas.SourceProgram.ProtocolState.step_eq_pure_of_actor`).
 
-**The stop after a commitment.** Let `who` have sent, from a configuration at
-which the binding event of rank `rank` is ready, a packet committing to a handle
+**The stop after a commitment.** Let who have sent, from a configuration at
+which the binding event of rank rank is ready, a packet committing to a handle
 whose meaning is a successful value, with the acceptance invariant holding and
 the packet settling once the event completes. Under play of any profile until
 that event completes, under a scheduler completing play, every stop completes
@@ -23,8 +23,8 @@ the event from the sending configuration by the action binding that value, and
 the event's output is a success (`Vegas.committed_stop_config`).
 
 **Committing at the first activation.** Under the asynchronous contract and the
-timeliness margin, at a first activation of `who` for a binding of rank `rank`
-whose configuration decodes at `rank` to a point of the intended game, the
+timeliness margin, at a first activation of who for a binding of rank rank
+whose configuration decodes at rank to a point of the intended game, the
 canonical decision committing an intended successful value has, under play of
 any other policies until the event completes, the completion-point law of the
 source step committing that value: success one and no error
@@ -112,10 +112,10 @@ private theorem get_cast {kind : EventGraph.EventField Player L} {owner : Player
   rfl
 
 variable (setup leaks bounds horizon scheduler) in
-/-- After a recorded commitment of `candidate` sent for `event` from `sent`:
-the acceptance invariant, the meaning of `candidate` fixed at `raw`, and, once
+/-- After a recorded commitment of candidate sent for event from sent:
+the acceptance invariant, the meaning of candidate fixed at raw, and, once
 the event has completed, the configuration is one step of the event from
-`sent`. -/
+sent. -/
 private def CommitInvariant (who : Player) (entry : (application setup leaks).PlayerEntry)
     (message : Message Player (WitnessedPacket (graph setup))) (event : (graph setup).EventId)
     (sent : (graph setup).Config) (ready : sent.cut.Ready event)
@@ -131,7 +131,7 @@ private def CommitInvariant (who : Player) (entry : (application setup leaks).Pl
             (sent.step event ready action).support)
 
 /-- The commitment invariant passes along every transition from a state where
-the event of rank `rank` has not completed. -/
+the event of rank rank has not completed. -/
 private theorem commitInvariant_transition {who : Player}
     {entry : (application setup leaks).PlayerEntry}
     {message : Message Player (WitnessedPacket (graph setup))} {event : (graph setup).EventId}
@@ -184,14 +184,14 @@ private theorem commitInvariant_transition {who : Player}
               · exact ⟨action, member⟩
               · exact (pending earlier).elim
 
-/-- **The stop after a commitment.** Let `who` have sent `message`, recorded by
-`entry`, from the configuration `sent` at which the binding `event` of rank
-`rank` is ready, committing to `candidate` whose meaning is the successful
-value `value` of the binding. Suppose the acceptance invariant holds at a
-history at `sent`, and the packet has an accepting receipt at every later
+/-- **The stop after a commitment.** Let who have sent message, recorded by
+entry, from the configuration sent at which the binding event of rank
+rank is ready, committing to candidate whose meaning is the successful
+value value of the binding. Suppose the acceptance invariant holds at a
+history at sent, and the packet has an accepting receipt at every later
 history recording it at which the event has completed. Then, under a scheduler
 completing play, every stop of play of any profile until the event completes
-completes the event from `sent` by `action`, the action binding `value`, and
+completes the event from sent by action, the action binding value, and
 the event's output is a success. -/
 theorem committed_stop_config
     (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
@@ -327,7 +327,7 @@ theorem committed_stop_config
           exact stepMember
 
 omit [Fintype Player] in
-/-- The canonical decision committing a successful value at a binding of `who`
+/-- The canonical decision committing a successful value at a binding of who
 sends a commitment to a handle whose meaning, right after the response, is that
 value. -/
 private theorem canonical_commitment_sent {who : Player}
@@ -388,14 +388,14 @@ private theorem canonical_commitment_sent {who : Player}
         CommitmentCandidates.lookup_freeze_self, CommitmentCandidates.lookup_prepare_self]
 
 /-- **Committing at the first activation.** Under the asynchronous contract and
-the timeliness margin, let `who` be at its first activation for the binding
-`event`, at a history whose configuration is a prefix of `rank` events decoding
-to a point of the intended game. Let the canonical decision of `action`
-transmit, and let the source action `action` decodes to be intended at the
+the timeliness margin, let who be at its first activation for the binding
+event, at a history whose configuration is a prefix of rank events decoding
+to a point of the intended game. Let the canonical decision of action
+transmit, and let the source action action decodes to be intended at the
 decoded point. Then, with that decision committed
 at the history's information state and any other policies, until the event
 completes, the completion-point law is the source step of that source action at
-the decoded point, with success one and no error, for every property `fresh`
+the decoded point, with success one and no error, for every property fresh
 of controls implied by the event not having failed. -/
 theorem firstActivation_commit_completionPointLaw
     [(application setup leaks).FiniteNature (initialLaw setup) scheduler]

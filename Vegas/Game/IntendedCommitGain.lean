@@ -12,7 +12,7 @@ the continuation of its intended effective opening from the history's state
 (`Vegas.intended_expect_readout_runFrom`).
 
 **The gain of committing a choice.** At a history of the intended game at a
-point where `who` acts, committing a choice at the history's information state
+point where who acts, committing a choice at the history's information state
 gains, against intended play of an assessment, the expected source continuation
 value of the assessment's intended effective opening after the source step of
 that choice, less its value at the point
@@ -36,8 +36,8 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
 
 /-- **Intended play from a history reads out the opening's continuation
 value.** For a well-formed setup, from every history of the intended game,
-the expected exclusion payoff of `who` under intended play of a profile, for
-enough steps, is the expected exclusion payoff of `who` at the readout of the
+the expected exclusion payoff of who under intended play of a profile, for
+enough steps, is the expected exclusion payoff of who at the readout of the
 continuation of the profile's intended effective opening from the history's
 state. -/
 theorem intended_expect_readout_runFrom (wellFormed : setup.WellFormed)
@@ -66,8 +66,8 @@ private theorem remaining_le_instructionCount (point : ProtocolState setup.progr
 
 open Classical in
 /-- **The gain of committing a choice.** For a well-formed setup, with the
-exclusion payoff of `who` bounded at every readout, at a history of the
-intended game at a point where `who` acts, committing a choice at the
+exclusion payoff of who bounded at every readout, at a history of the
+intended game at a point where who acts, committing a choice at the
 history's information state gains, against intended play of an assessment
 truncated after as many steps as the program has instructions plus one, the
 expected source continuation value of the assessment's intended effective

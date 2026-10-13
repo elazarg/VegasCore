@@ -7,10 +7,10 @@ import Vegas.Game.OnePacketCompletionLaw
 **The stopped value.** Under play from a history until the event of a rank
 completes, valued at each stop by the completion value at a completion and by a
 bounded payoff elsewhere, a completion-point law of success one with error
-`error` puts the expected value within twice `error` times the bound of the
+error puts the expected value within twice error times the bound of the
 expected source continuation value of its step law
 (`Vegas.abs_expect_stoppedValue_sub_le_of_completionPointLaw`): the stops
-without a completion point have mass at most `error`.
+without a completion point have mass at most error.
 -/
 
 noncomputable section
@@ -43,13 +43,13 @@ omit [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
   scheduler).InfoState who)] in
 open Classical in
 /-- **The stopped value from a completion-point law of full success.** Let the
-completion-point law from a history under `installed`, until the event of rank
-`rank` completes, have success one, step law `stepLaw` and error `error`. Value
-each stop at the completion value of `profile` when the event has completed, with
-fallback `fallback`, and at `payoff` otherwise; let the exclusion payoff of
-`who` at every readout, `fallback` and `payoff` be bounded by `bound`. Then the
-expected value is within twice `error` times `bound` of the expected source
-continuation value of `profile` under `stepLaw`. -/
+completion-point law from a history under installed, until the event of rank
+rank completes, have success one, step law stepLaw and error error. Value
+each stop at the completion value of profile when the event has completed, with
+fallback fallback, and at payoff otherwise; let the exclusion payoff of
+who at every readout, fallback and payoff be bounded by bound. Then the
+expected value is within twice error times bound of the expected source
+continuation value of profile under stepLaw. -/
 theorem abs_expect_stoppedValue_sub_le_of_completionPointLaw
     (installed : ∀ who, (onePacketN).BehavioralPolicy who)
     (profile : BehavioralProfile setup.program) (rank : Nat)

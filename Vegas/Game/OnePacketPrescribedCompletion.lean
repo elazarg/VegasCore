@@ -5,8 +5,8 @@ import Vegas.Game.OnePacketFirstActivationCompletion
 /-! # The completion point of the prescribed component at a first activation
 
 **Trembles move an expectation by the scale.** A slot-trembled mixture whose
-main law has expectation `target` of a function bounded by `bound` has
-expectation within six times the scale times `bound` of `target`
+main law has expectation target of a function bounded by bound has
+expectation within six times the scale times bound of target
 (`Vegas.abs_expect_slotTrembledChoice_sub_le`).
 
 **The behavioral step at an actor's point** draws the actor's choice and steps
@@ -17,8 +17,8 @@ is the step of its intended effective opening
 
 **The prescribed component at a first activation.** Under the asynchronous
 contract, the timeliness margin and retention of covered canonical packets, at
-a transmitting first activation of `who` for a binding of rank `rank` whose
-configuration decodes at `rank` to a point of the intended game, installing the
+a transmitting first activation of who for a binding of rank rank whose
+configuration decodes at rank to a point of the intended game, installing the
 slot-trembled prescribed component of an intended assessment gives, under play
 of any other policies until the event completes, the completion-point law of
 the step of the assessment's intended effective opening at the decoded point,
@@ -36,7 +36,7 @@ open GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-/-- A step at a point where `owner` acts reads only `owner`'s choice. -/
+/-- A step at a point where owner acts reads only owner's choice. -/
 theorem step_eq_of_actor (who owner : Player) : {Γ : SourceCtx Player L} →
     {O : Finset VarId} → (program : SourceProgram Player L Γ O) →
     (state : ProtocolState program) → (joint : Player → Option (OwnAction Player L)) →
@@ -137,8 +137,8 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   {scheduler : (application setup leaks).Scheduler}
 
 omit [DecidableEq Player] [Fintype Player] [IExpr.ResultTypes L] in
-/-- A mixture of two values bounded by `left` and `right` is bounded by the
-weight times `left` plus `right`. -/
+/-- A mixture of two values bounded by left and right is bounded by the
+weight times left plus right. -/
 private theorem abs_mix_le {weight first second left right : ℝ} (nonnegative : 0 ≤ weight)
     (le_one : weight ≤ 1) (firstBound : |first| ≤ left) (secondBound : |second| ≤ right) :
     |weight * first + (1 - weight) * second| ≤ weight * left + right := by
@@ -153,9 +153,9 @@ private theorem abs_mix_le {weight first second left right : ℝ} (nonnegative :
     _ ≤ weight * left + right := by nlinarith
 
 /-- **Trembles move an expectation by the scale.** If the main law of a
-slot-trembled mixture gives a function bounded by `bound` the expectation
-`target`, with `target` bounded by `bound`, the mixture gives it an expectation
-within six times the scale times `bound` of `target`. -/
+slot-trembled mixture gives a function bounded by bound the expectation
+target, with target bounded by bound, the mixture gives it an expectation
+within six times the scale times bound of target. -/
 theorem abs_expect_slotTrembledChoice_sub_le {scale : ℝ} (nonnegative : 0 ≤ scale)
     (le_one : scale ≤ 1) (who : Player) (info : (application setup leaks).Info)
     (main alternative slot :
@@ -251,14 +251,14 @@ theorem asIfHonest_bind_step_eq_behavioralStateStep
 
 /-- **The prescribed component at a first activation.** Under the asynchronous
 contract, the timeliness margin and retention of covered canonical packets, let
-`who` be at its first activation for the binding `event` pending at a history,
-whose configuration is a prefix of `rank` events decoding to a point of the
+who be at its first activation for the binding event pending at a history,
+whose configuration is a prefix of rank events decoding to a point of the
 intended game, and let the canonical decision of every successful encoded
 source action transmit there. Installing at the history's information state
-the slot-trembled prescribed component of an intended assessment `source`, with
+the slot-trembled prescribed component of an intended assessment source, with
 any other policies, until the event completes, the completion-point law is the
-step of the intended effective opening of `source` at the decoded point, with
-success one and error six times the scale, for every property `fresh` of
+step of the intended effective opening of source at the decoded point, with
+success one and error six times the scale, for every property fresh of
 controls implied by the event not having failed. -/
 theorem firstActivation_prescribed_completionPointLaw
     [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
