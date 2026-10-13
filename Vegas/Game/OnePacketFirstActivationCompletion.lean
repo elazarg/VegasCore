@@ -82,7 +82,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
 
 omit [Fintype Player] in
 /-- At a completed prefix, the decoded point is the readout at that prefix. -/
-private theorem decodedPoint_eq_of_isPrefix {config : (graph setup).Config} {rank : Nat}
+theorem decodedPoint_eq_of_isPrefix {config : (graph setup).Config} {rank : Nat}
     (ordered : config.cut.IsPrefix rank) :
     decodedPoint setup config = sourceServicePrefix? setup rank config := by
   have exists_ordered : ∃ rank, config.cut.IsPrefix rank := ⟨rank, ordered⟩

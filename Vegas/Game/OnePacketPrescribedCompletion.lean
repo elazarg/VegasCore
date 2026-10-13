@@ -9,20 +9,119 @@ main law has expectation `target` of a function bounded by `bound` has
 expectation within six times the scale times `bound` of `target`
 (`Vegas.abs_expect_slotTrembledChoice_sub_le`).
 
+**The behavioral step at an actor's point** draws the actor's choice and steps
+with it (`Vegas.SourceProgram.ProtocolState.behavioralStateStep_eq_bind_of_actor`),
+so at a turn the source step of the as-if-honest law of an intended assessment
+is the step of its intended effective opening
+(`Vegas.asIfHonest_bind_step_eq_behavioralStateStep`).
+
 **The prescribed component at a first activation.** Under the asynchronous
 contract, the timeliness margin and retention of covered canonical packets, at
 a transmitting first activation of `who` for a binding of rank `rank` whose
 configuration decodes at `rank` to a point of the intended game, installing the
 slot-trembled prescribed component of an intended assessment gives, under play
 of any other policies until the event completes, the completion-point law of
-the source step of the assessment's as-if-honest law at the decoded point, with
-success one and error six times the scale
+the step of the assessment's intended effective opening at the decoded point,
+with success one and error six times the scale
 (`Vegas.firstActivation_prescribed_completionPointLaw`): the as-if-honest
 choices commit intended values, each completing at the source step committing
 it, and the trembles carry at most the scale's share.
 -/
 
 noncomputable section
+
+namespace Vegas.SourceProgram.ProtocolState
+
+open GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+
+/-- A step at a point where `owner` acts reads only `owner`'s choice. -/
+theorem step_eq_of_actor (who owner : Player) : {Γ : SourceCtx Player L} →
+    {O : Finset VarId} → (program : SourceProgram Player L Γ O) →
+    (state : ProtocolState program) → (joint : Player → Option (OwnAction Player L)) →
+    ProtocolView.actor who program (observe who program state) = some owner →
+    step program state joint = step program state (fun _ => joint owner)
+  | _, _, .ret _, _, _, acts => by
+      simp [ProtocolView.actor] at acts
+  | _, _, .sample _ _ _ next, state, joint, acts => by
+      cases state with
+      | inl config =>
+          change none = some owner at acts
+          cases acts
+      | inr rest =>
+          simp only [step, Sum.elim_inr]
+          rw [step_eq_of_actor who owner next rest joint acts]
+  | _, _, .commit _ _ _ _ next, state, joint, acts => by
+      cases state with
+      | inl config =>
+          change some _ = some owner at acts
+          cases Option.some.inj acts
+          rfl
+      | inr rest =>
+          simp only [step, Sum.elim_inr]
+          rw [step_eq_of_actor who owner next rest joint acts]
+  | _, _, .reveal _ _ _ _ _ _ next, state, joint, acts => by
+      cases state with
+      | inl config =>
+          change some _ = some owner at acts
+          cases Option.some.inj acts
+          rfl
+      | inr rest =>
+          simp only [step, Sum.elim_inr]
+          rw [step_eq_of_actor who owner next rest joint acts]
+
+/-- A point where some player acts is not terminal. -/
+theorem not_terminal_of_actor (who owner : Player) : {Γ : SourceCtx Player L} →
+    {O : Finset VarId} → (program : SourceProgram Player L Γ O) →
+    (state : ProtocolState program) →
+    ProtocolView.actor who program (observe who program state) = some owner →
+    ¬ terminal program state
+  | _, _, .ret _, _, acts => by
+      simp [ProtocolView.actor] at acts
+  | _, _, .sample _ _ _ next, state, acts => by
+      cases state with
+      | inl config => exact id
+      | inr rest => exact not_terminal_of_actor who owner next rest acts
+  | _, _, .commit _ _ _ _ next, state, acts => by
+      cases state with
+      | inl config => exact id
+      | inr rest => exact not_terminal_of_actor who owner next rest acts
+  | _, _, .reveal _ _ _ _ _ _ next, state, acts => by
+      cases state with
+      | inl config => exact id
+      | inr rest => exact not_terminal_of_actor who owner next rest acts
+
+/-- **The behavioral step at an actor's point** draws the actor's choice and
+steps with it. -/
+theorem behavioralStateStep_eq_bind_of_actor [Fintype Player] {Γ : SourceCtx Player L}
+    {O : Finset VarId} (program : SourceProgram Player L Γ O) (profile : BehavioralProfile program)
+    (state : ProtocolState program) (owner : Player)
+    (acts : ∀ player, ProtocolView.actor player program (observe player program state) =
+      some owner) :
+    behavioralStateStep program profile state =
+      ((profile owner).protocolAction program (observe owner program state)).bind
+        fun choice => step program state (fun _ => choice) := by
+  classical
+  unfold behavioralStateStep
+  rw [ite_eq_right_iff.mpr fun stopped =>
+    (not_terminal_of_actor owner owner program state (acts owner) stopped).elim]
+  calc (independentProduct fun player => (profile player).protocolAction program
+          (observe player program state)).bind (step program state)
+      = (independentProduct fun player => (profile player).protocolAction program
+          (observe player program state)).bind
+          (fun joint => step program state (fun _ => joint owner)) := by
+        congr 1
+        funext joint
+        exact step_eq_of_actor owner owner program state joint (acts owner)
+    _ = ((independentProduct fun player => (profile player).protocolAction program
+          (observe player program state)).map (fun joint => joint owner)).bind
+          (fun choice => step program state (fun _ => choice)) := by
+        rw [PMF.bind_map]
+        rfl
+    _ = _ := by rw [independentProduct_map_eval]
+
+end Vegas.SourceProgram.ProtocolState
 
 namespace Vegas
 
@@ -101,6 +200,55 @@ theorem abs_expect_slotTrembledChoice_sub_le {scale : ℝ} (nonnegative : 0 ≤ 
   nlinarith [mul_le_mul_of_nonneg_right cube boundNonneg,
     mul_le_mul_of_nonneg_right square boundNonneg]
 
+/-- **The as-if-honest step is the effective opening's step.** At the player's
+turn at an execution whose configuration decodes at its completed prefix to a
+point of the intended game, the source step at that point of the as-if-honest
+law of an intended assessment, for any recall, is the behavioral step there of
+the assessment's intended effective opening. -/
+theorem asIfHonest_bind_step_eq_behavioralStateStep
+    (source : setup.intendedModel.BehavioralAssessment) (who : Player)
+    (execution : (application setup leaks).Execution) {rank : Nat}
+    (ordered : execution.application.config.cut.IsPrefix rank)
+    {point : ProtocolState setup.program}
+    (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
+    (intendedPoint : ProtocolState.Intended setup.program point) {event : (graph setup).EventId}
+    (turn : execution.application.publicView.ownTurn? who = some event)
+    (past : List (application setup leaks).PlayerEntry) :
+    (asIfHonestProfile setup leaks source who
+        (some (past, execution.observe (application setup leaks) who))).bind
+        (fun choice => ProtocolState.step setup.program point (fun _ => choice)) =
+      ProtocolState.behavioralStateStep setup.program
+        (setup.intendedOpeningProfile source.strategy) point := by
+  have owned := (PublicView.ownTurn?_spec _ who event turn).2
+  have ready := (execution.application.publicView_eventReady event).mp
+    (PublicView.ownTurn?_spec _ who event turn).1
+  have pointDecoded : decodedPoint setup execution.application.config = some point :=
+    (decodedPoint_eq_of_isPrefix ordered).trans decoded
+  have acts : ∀ player, ProtocolView.actor player setup.program
+      (ProtocolState.observe player setup.program point) = some who := fun player =>
+    (decodedPoint_actor player ready pointDecoded).trans owned
+  have disclosing : Disclosing setup.program (setup.decodeBehavioralProfile
+      (CommitmentInterface.values setup.program) (setup.intendedSourceProfile source.strategy)
+      who) :=
+    BehavioralPolicy.disclosing_fromProtocol setup.program _ _
+      (fun view => setup.intendedSourceProfile_notRefusal source.strategy who (some view))
+  have actionLaw : (setup.intendedOpeningProfile source.strategy who).protocolAction
+      setup.program (ProtocolState.observe who setup.program point) =
+      (source.strategy who (setup.protocolObserve who (some point))).map Subtype.val := by
+    change ((setup.decodeBehavioralProfile (CommitmentInterface.values setup.program)
+      (setup.intendedSourceProfile source.strategy) who).effectiveOpening setup.program []
+        (Revelations.initial setup.context)).protocolAction setup.program _ = _
+    rw [BehavioralPolicy.protocolAction_effectiveOpening setup.program _ _ _ disclosing point
+      (decodedPoint_staticAt pointDecoded) intendedPoint]
+    refine (BehavioralPolicy.protocolAction_fromProtocol setup.program _ _ _).trans ?_
+    change ((source.strategy who (some (ProtocolState.observe who setup.program point))).map
+      _).map Subtype.val = _
+    rw [PMF.map_comp]
+    rfl
+  rw [ProtocolState.behavioralStateStep_eq_bind_of_actor setup.program _ point who acts,
+    actionLaw, asIfHonestProfile_observe setup leaks source who execution rank ordered point
+      decoded past]
+
 /-- **The prescribed component at a first activation.** Under the asynchronous
 contract, the timeliness margin and retention of covered canonical packets, let
 `who` be at its first activation for the binding `event` pending at a history,
@@ -109,7 +257,7 @@ intended game, and let the canonical decision of every successful encoded
 source action transmit there. Installing at the history's information state
 the slot-trembled prescribed component of an intended assessment `source`, with
 any other policies, until the event completes, the completion-point law is the
-source step at the decoded point of the as-if-honest law of `source`, with
+step of the intended effective opening of `source` at the decoded point, with
 success one and error six times the scale, for every property `fresh` of
 controls implied by the event not having failed. -/
 theorem firstActivation_prescribed_completionPointLaw
@@ -156,8 +304,8 @@ theorem firstActivation_prescribed_completionPointLaw
           (slotPrescribedComponent setup leaks bounds (initialLaw setup) horizon scheduler source
             scale nonnegative le_one who info)))
       rank fresh history 1
-      ((asIfHonestProfile setup leaks source who info).bind fun choice =>
-        ProtocolState.step setup.program point (fun _ => choice))
+      (ProtocolState.behavioralStateStep setup.program
+        (setup.intendedOpeningProfile source.strategy) point)
       (6 * scale) := by
   classical
   let menu := bounds.onePacketMenu (runtime setup) leaks
@@ -177,6 +325,8 @@ theorem firstActivation_prescribed_completionPointLaw
   have fits := firstActivation_inclusionFits contract timely
     (menu.toRawTrace (initialLaw setup) horizon scheduler trace) rfl event turnExecution never
   have ready := (execution.application.publicView_eventReady event).mp readyView
+  rw [← asIfHonest_bind_step_eq_behavioralStateStep source who execution ordered decoded
+    intendedPoint turnExecution (execution.recall who)]
   have notStopped : ¬ LateStopped setup leaks bounds horizon scheduler rank history := by
     rintro ⟨control, state, prefixed⟩
     rw [current] at state
