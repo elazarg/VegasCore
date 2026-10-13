@@ -98,6 +98,51 @@ theorem pendingTransition {initial : PMF (application setup leaks).State} {horiz
                 exact Nat.lt_irrefl _ ((ordered.2 _).mp rankLt)
             | wait | «include» _ | application _ => rfl
 
+/-- Every execution of a legal history of the default runtime is pending at
+some rank: its configuration is a prefix, and its recorded views saw nothing
+beyond it. -/
+theorem pendingAt_serviceInvariant (scheduler : (application setup leaks).Scheduler) :
+    (application setup leaks).ServiceInvariant scheduler
+      (fun execution => ∃ rank, PendingAt setup leaks rank execution) where
+  respond execution who action valid := by
+    obtain ⟨rank, ordered, seen⟩ := valid
+    refine ⟨rank, ?_, ?_⟩
+    · rw [((runtime setup).reactive_respond_application leaks execution who action).1]
+      exact ordered
+    · intro observer entry member event readyView
+      rcases (application setup leaks).respond_entry_origin execution who observer action entry
+          member with prior | ⟨_, fresh⟩
+      · exact seen observer entry prior event readyView
+      · rw [fresh] at readyView
+        change execution.application.publicView.EventReady event at readyView
+        exact ((ready_iff_rank setup _ rank ordered event).mp
+          ((State.publicView_eventReady _ event).mp readyView)).le
+  environment execution next command valid _ stepped := by
+    obtain ⟨rank, ordered, seen⟩ := valid
+    have recallEq := (application setup leaks).environmentStep_recall execution next command
+      stepped
+    rcases (environmentStep_configStep setup leaks execution next command stepped).prefix rank
+        ordered with same | advanced
+    · refine ⟨rank, by rw [same]; exact ordered, fun observer entry member => ?_⟩
+      rw [recallEq] at member
+      exact seen observer entry member
+    · refine ⟨rank + 1, advanced, fun observer entry member event readyView => ?_⟩
+      rw [recallEq] at member
+      exact (seen observer entry member event readyView).trans (Nat.le_succ _)
+
+/-- Every execution reached along a legal history of the default runtime is
+pending at some rank. -/
+theorem pendingAt_history {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
+    {control : (application setup leaks).Control}
+    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some control)) :
+    ∃ rank, PendingAt setup leaks rank control.execution :=
+  (pendingAt_serviceInvariant scheduler).history (initialLaw setup) horizon
+    (fun state supported => by
+      obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
+      exact ⟨0, EventOrder.Cut.empty_isPrefix _, fun _ entry member =>
+        by simp [ReactiveApplication.Execution.initial] at member⟩) trace
+
 section Success
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
