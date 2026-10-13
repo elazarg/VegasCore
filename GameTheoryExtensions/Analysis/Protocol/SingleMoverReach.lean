@@ -12,6 +12,8 @@ player choosing an action has the mass its policy gives that action
 joint where at most one player moves, the other players' factor of a focal
 player is one when the mover is the focal player, and the mover's mass
 otherwise (`GameTheory.Protocol.InformationModel.opponentsStepProb_eq_of_single`).
+Under fully mixed play a player's own reach is positive
+(`GameTheory.Protocol.InformationModel.playerReachProbability_pos`).
 -/
 
 noncomputable section
@@ -94,5 +96,31 @@ theorem opponentsStepProb_eq_one_of_none [Fintype ι] [DecidableEq ι]
     M.opponentsStepProb policies who trace joint = 1 :=
   Finset.prod_eq_one fun player _ =>
     M.choicesOfLegal_mass_eq_one_of_none policies trace joint (nothing player)
+
+/-- **Own reach is positive under fully mixed play.** A player choosing an
+action chooses it at a decision information state, where a fully mixed policy
+gives it positive mass. -/
+theorem playerReachProbability_pos (strategy : (player : ι) → M.BehavioralPolicy player)
+    (mixed : ∀ player (site : M.InformationSite player) choice,
+      choice ∈ (strategy player site.1).support)
+    (who : ι) : ∀ {state : E.State} (trace : E.Trace state),
+      0 < M.playerReachProbability strategy who trace
+  | _, .start => zero_lt_one
+  | _, .extend (source := source) prior joint isLegal realized => by
+      refine mul_pos (playerReachProbability_pos strategy mixed who prior) ?_
+      unfold playerStepProb
+      cases chosen : joint who with
+      | none =>
+          rw [M.choicesOfLegal_mass_eq_one_of_none strategy prior ⟨joint, isLegal⟩ chosen]
+          exact zero_lt_one
+      | some action =>
+          have offered : some action ∈ M.menu who (M.infoOf who prior) := by
+            have member := (M.choicesOfLegal prior ⟨joint, isLegal⟩ who).2
+            change joint who ∈ _ at member
+            rwa [chosen] at member
+          let site : M.InformationSite who :=
+            ⟨M.infoOf who prior, ⟨⟨source, prior⟩, rfl⟩, isLegal.1, action, offered⟩
+          exact ENNReal.toReal_pos
+            ((PMF.mem_support_iff _ _).mp (mixed who site _)) (PMF.apply_ne_top _ _)
 
 end GameTheory.Protocol.InformationModel
