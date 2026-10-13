@@ -424,3 +424,5 @@ import Vegas.Game.OnePacketKeyedFibers
 import Vegas.Game.OnePacketPrescribedCompletion
 import Vegas.Game.IntendedCommitGain
 import Vegas.Game.OnePacketOwnDisclosure
+import Vegas.Game.SourceSwapDecode
+import Vegas.Game.SourceSwapPairs

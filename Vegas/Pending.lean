@@ -244,3 +244,4 @@ import Vegas.Pending.ReactiveUnilateralCommands
 import Vegas.Pending.EventValueSwap
 import Vegas.Pending.ReactiveValueSwap
 import Vegas.Pending.OnePacketValueSwap
+import Vegas.Pending.ValueSwapPairs

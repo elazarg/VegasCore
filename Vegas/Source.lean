@@ -53,3 +53,6 @@ import Vegas.Source.SetupProtocolRecall
 import Vegas.Source.CommitmentEvidence
 import Vegas.Source.Communication
 import Vegas.Source.DebtObservation
+import Vegas.Source.CellSwap
+import Vegas.Source.IntendedTraceUnique
+import Vegas.Source.IntendedBetween
