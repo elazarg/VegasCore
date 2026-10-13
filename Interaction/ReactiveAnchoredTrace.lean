@@ -165,4 +165,28 @@ theorem mem_roundsFrom_anchoredPolicy_of_trace (initial : PMF app.State) (horizo
   anchored_of_trace initial horizon scheduler execution players trace _ rfl
     (fun _ => List.prefix_refl _)
 
+/-- From every execution whose recall extends the anchor's, the anchored profile
+runs exactly as the continuing profile. -/
+theorem runRounds_anchoredPolicy_of_extends (scheduler : app.Scheduler) (anchor : app.Execution)
+    (players : Principal → app.Policy) (count : Nat) (execution : app.Execution)
+    (extends_ : ∀ who, anchor.recall who <+: execution.recall who) :
+    app.runRounds scheduler (anchoredPolicy anchor players) count execution =
+      app.runRounds scheduler players count execution := by
+  refine PolicyInvariant.runRounds_congr (predicate := fun current =>
+    ∀ who, anchor.recall who <+: current.recall who) ⟨?_, ?_⟩ players ?_ scheduler count
+    execution extends_
+  · intro current responder action valid _ who
+    by_cases same : who = responder
+    · subst same
+      obtain ⟨emitted, recalled⟩ := respond_recall_self' current who action
+      rw [recalled]
+      exact (valid who).trans (List.prefix_append _ _)
+    · rw [app.respond_recall_other current responder who same action]
+      exact valid who
+  · intro current next command valid moved who
+    rw [app.environmentStep_recall current next command moved]
+    exact valid who
+  · intro current valid who
+    exact anchoredPolicy_of_extends anchor players who _ _ (valid who)
+
 end Interaction.ReactiveApplication
