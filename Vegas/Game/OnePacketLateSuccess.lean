@@ -2,6 +2,9 @@
 
 import Vegas.Game.AnchoredHonestDelivery
 import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
+import Vegas.Game.OnePacketEventFailure
+import Vegas.Game.OnePacketEventSuccess
+import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 /-! # The successful part of a late delivery
 
@@ -143,6 +146,104 @@ theorem pendingAt_history {horizon : Nat} {scheduler : (application setup leaks)
       exact ⟨0, EventOrder.Cut.empty_isPrefix _, fun _ entry member =>
         by simp [ReactiveApplication.Execution.initial] at member⟩) trace
 
+/-- A completed event whose output is not a failure stays so under every
+transition. -/
+theorem succeeded_transition {initial : PMF (application setup leaks).State} {horizon : Nat}
+    {scheduler : (application setup leaks).Scheduler} (event : (graph setup).EventId)
+    {control : (application setup leaks).Control}
+    (completed : event ∈ control.execution.application.config.cut.completed)
+    (succeeded : ¬ StoreEventFailed control.execution.application.config.store event)
+    (joint : Player → Option (application setup leaks).Action)
+    {after : (application setup leaks).ProtocolState}
+    (reached : after ∈ ((application setup leaks).transition initial horizon scheduler
+      (some control) joint).support) :
+    ∃ next : (application setup leaks).Control, after = some next ∧
+      event ∈ next.execution.application.config.cut.completed ∧
+      ¬ StoreEventFailed next.execution.application.config.store event := by
+  let app := application setup leaks
+  rcases control with ⟨remaining, actor, execution⟩
+  cases actor with
+  | some who =>
+      change after ∈ (PMF.pure _).support at reached
+      rw [PMF.mem_support_pure_iff] at reached
+      subst reached
+      have configEq := ((runtime setup).reactive_respond_application leaks execution who
+        ((joint who).getD ⟨none⟩)).1
+      refine ⟨_, rfl, ?_, ?_⟩
+      · change event ∈ (execution.respond app who _).application.config.cut.completed
+        rw [configEq]
+        exact completed
+      · change ¬ StoreEventFailed (execution.respond app who _).application.config.store event
+        rw [configEq]
+        exact succeeded
+  | none =>
+      cases remaining with
+      | zero =>
+          change after ∈ (PMF.pure _).support at reached
+          rw [PMF.mem_support_pure_iff] at reached
+          subst reached
+          exact ⟨_, rfl, completed, succeeded⟩
+      | succ remaining =>
+          obtain ⟨command, _, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+          obtain ⟨next, stepped, rfl⟩ := PMF.support_map .. ▸ moved
+          refine ⟨_, rfl, ?_⟩
+          rcases environmentStep_configStep setup leaks execution next command stepped with
+            same | ⟨other, ready, action, member⟩
+          · change event ∈ next.application.config.cut.completed ∧
+              ¬ StoreEventFailed next.application.config.store event
+            rw [same]
+            exact ⟨completed, succeeded⟩
+          · have different : event ≠ other := fun equal => ready.1 (equal ▸ completed)
+            obtain ⟨value, valueEq⟩ := step_complete_of_mem member
+            change event ∈ next.application.config.cut.completed ∧
+              ¬ StoreEventFailed next.application.config.store event
+            rw [valueEq]
+            refine ⟨?_, ?_⟩
+            · change event ∈ (execution.application.config.cut.complete other ready).completed
+              exact (EventOrder.Cut.mem_complete _ _ _ _).mpr (Or.inr completed)
+            · rintro ⟨stored, read, failure⟩
+              apply succeeded
+              refine ⟨stored, ?_, failure⟩
+              change execution.application.config.outputs event = some stored
+              rw [← EventGraph.Config.complete_output_of_ne _ _ _ ready action value different]
+              exact read
+
+/-- **A successful output keeps play off the event's failure.** From a history
+of the one-packet game whose configuration has completed an event without
+recording a failure of it, terminal play under any profile never reaches an
+event-level failed history of any player for that event. -/
+theorem not_eventFailedHistory_of_succeeded (bounds : MessageBounds (graph setup))
+    {horizon : Nat} {scheduler : (application setup leaks).Scheduler} [Fintype Player]
+    (profile : ∀ who,
+      (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).BehavioralPolicy who)
+    (certificate : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+      horizon scheduler).WellFoundedHistories)
+    (event : (graph setup).EventId)
+    (stop : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+      scheduler).History) {control : (application setup leaks).Control}
+    (state : stop.state = some control)
+    (completed : event ∈ control.execution.application.config.cut.completed)
+    (succeeded : ¬ StoreEventFailed control.execution.application.config.store event)
+    (player : Player) :
+    ∀ final ∈ ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+        scheduler).runBehavioralTerminalFrom certificate profile stop).support,
+      final ∉ EventFailedHistory setup leaks bounds horizon scheduler player event := by
+  intro final member
+  obtain ⟨last, lastState, _, lastSucceeded⟩ :=
+    (onePacketModel setup leaks bounds (initialLaw setup) horizon
+      scheduler).runBehavioralTerminalFrom_support_closed certificate profile
+      (fun current => ∃ next : (application setup leaks).Control, current = some next ∧
+        event ∈ next.execution.application.config.cut.completed ∧
+        ¬ StoreEventFailed next.execution.application.config.store event)
+      (fun current joint _ target ⟨now, nowState, nowCompleted, nowSucceeded⟩ realized => by
+        subst nowState
+        exact succeeded_transition (initial := initialLaw setup) (horizon := horizon) event
+          nowCompleted nowSucceeded joint realized)
+      stop ⟨control, state, completed, succeeded⟩ final member
+  change sourceReadout setup leaks final.state ∉ EventFailedReadout setup player event
+  rw [lastState]
+  exact not_mem_eventFailedReadout_of_store setup leaks last player event lastSucceeded
+
 section Success
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
@@ -170,9 +271,11 @@ def sourcePointValue (profile : BehavioralProfile setup.program) (who : Player)
 open Classical in
 variable (setup leaks) in
 /-- **The value after a completion.** At a history whose configuration decodes,
-after `rank + 1` events, to a point of the intended game, the source
-continuation value of `profile` there; elsewhere the fallback. -/
-def completionValue (profile : BehavioralProfile setup.program) (rank : Nat) (who : Player)
+after `rank + 1` events, to a point of the intended game, and whose store does
+not record a failure of `event`, the source continuation value of `profile`
+there; elsewhere the fallback. -/
+def completionValue (profile : BehavioralProfile setup.program) (rank : Nat)
+    (event : (graph setup).EventId) (who : Player)
     (fallback : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
       horizon scheduler).History → ℝ)
     (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
@@ -183,7 +286,8 @@ def completionValue (profile : BehavioralProfile setup.program) (rank : Nat) (wh
       match sourceServicePrefix? setup (rank + 1) control.execution.application.config with
       | none => fallback history
       | some point =>
-          if ProtocolState.Intended setup.program point then
+          if ProtocolState.Intended setup.program point ∧
+              ¬ StoreEventFailed control.execution.application.config.store event then
             sourcePointValue setup parameter utility excludedPayoff profile who point
           else fallback history
 
@@ -254,12 +358,12 @@ theorem abs_expect_offFailed_sub_completionValue_le (wellFormed : setup.WellForm
             assessment who info) choice).toReal ≤ ((profile who info) choice).toReal)
     (failed : Set ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
       horizon scheduler).History)
-    (rank : Nat)
+    (rank : Nat) (event : (graph setup).EventId) (eventRank : event.val = rank)
     (avoids : ∀ (stop : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
-        horizon scheduler).History) (control : (application setup leaks).Control) point,
+        horizon scheduler).History) (control : (application setup leaks).Control),
       stop.state = some control →
-      sourceServicePrefix? setup (rank + 1) control.execution.application.config = some point →
-      ProtocolState.Intended setup.program point →
+      event ∈ control.execution.application.config.cut.completed →
+      ¬ StoreEventFailed control.execution.application.config.store event →
       ∀ final ∈ ((onePacketModel setup leaks bounds (initialLaw setup) horizon
         scheduler).runBehavioralTerminalFrom ((bounds.onePacketMenu (runtime setup) leaks).bounded
           (initialLaw setup) horizon scheduler).wellFoundedHistories profile stop).support,
@@ -285,7 +389,7 @@ theorem abs_expect_offFailed_sub_completionValue_le (wellFormed : setup.WellForm
           (LateStopped setup leaks bounds horizon scheduler rank) start)
         (fun stop => if LateStopped setup leaks bounds horizon scheduler rank stop then
           completionValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-            (setup.intendedOpeningProfile assessment.strategy) rank who
+            (setup.intendedOpeningProfile assessment.strategy) rank event who
             (fun later => expect (model.runBehavioralTerminalFrom certificate profile later)
               payoff) stop
           else payoff stop)| ≤
@@ -316,7 +420,7 @@ theorem abs_expect_offFailed_sub_completionValue_le (wellFormed : setup.WellForm
       (setup.intendedOpeningProfile assessment.strategy) who point| ≤ |low| + |range| :=
     fun point => expect_abs_le_of_bounded (by positivity) fun readout => readoutAbs readout
   have valueBounded : ∀ later, |completionValue setup leaks bounds horizon scheduler parameter
-      utility excludedPayoff (setup.intendedOpeningProfile assessment.strategy) rank who
+      utility excludedPayoff (setup.intendedOpeningProfile assessment.strategy) rank event who
       fallback later| ≤ |low| + |range| := fun later => by
     unfold completionValue
     split
@@ -374,8 +478,10 @@ theorem abs_expect_offFailed_sub_completionValue_le (wellFormed : setup.WellForm
         exact errorNonneg
     | some point =>
         dsimp only
-        by_cases intendedPoint : ProtocolState.Intended setup.program point
-        · rw [ite_eq_left intendedPoint ..]
+        by_cases good : ProtocolState.Intended setup.program point ∧
+            ¬ StoreEventFailed anchor.application.config.store event
+        · obtain ⟨intendedPoint, succeeded⟩ := good
+          rw [ite_eq_left ⟨intendedPoint, succeeded⟩ ..]
           have rawTrace := menu.toRawTrace (initialLaw setup) horizon scheduler next.trace
           rw [nextState] at rawTrace
           have accounted := (application setup leaks).raw_trace_horizon (initialLaw setup) horizon
@@ -404,10 +510,10 @@ theorem abs_expect_offFailed_sub_completionValue_le (wellFormed : setup.WellForm
             (fun final finalMember => by
               simp only [payoff, ite_eq_right_iff]
               intro inFailed
-              exact (avoids next _ point nextState decoding intendedPoint final finalMember
-                inFailed).elim)]
+              exact (avoids next _ nextState
+                ((completed.2 event).mpr (by omega)) succeeded final finalMember inFailed).elim)]
           exact transport
-        · rw [ite_eq_right intendedPoint .., sub_self, abs_zero]
+        · rw [ite_eq_right good .., sub_self, abs_zero]
           exact errorNonneg
   · rintro ⟨control, startState, completed⟩
     rw [state, Option.some.injEq] at startState
