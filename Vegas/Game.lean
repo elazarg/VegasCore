@@ -51,6 +51,8 @@ import Vegas.Game.OnePacketSlotMasses
 import Vegas.Game.OnePacketForcedBeliefs
 import Vegas.Game.OnePacketIntendedProjection
 import Vegas.Game.OnePacketReplayInputs
+import Vegas.Game.OnePacketForcedPrefix
+import Vegas.Game.OnePacketSilence
 import Vegas.Game.OnePacketPrescribedSupport
 import Vegas.Game.OnePacketCanonicalPermits
 import Vegas.Game.OnePacketCanonicalAcceptance
