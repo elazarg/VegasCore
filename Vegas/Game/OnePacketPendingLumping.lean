@@ -230,4 +230,74 @@ theorem controlStep_other_of_pending
       ⟨remaining, some other, execution⟩ rfl]
   simp only [↓reduceIte, Option.getD_some]
 
+/-- **The control step stays on histories.** Every state the control step of a
+decoded profile reaches from the state of a history of the one-packet game is
+the state of a history of the one-packet game. -/
+theorem controlStep_history
+    (profile : ∀ player,
+      (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
+    (history : (onePacketProtocol setup leaks bounds horizon scheduler).History)
+    {next : (application setup leaks).ProtocolState}
+    (member : next ∈ ((application setup leaks).controlStep (initialLaw setup) horizon scheduler
+      ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup) horizon
+        scheduler profile) history.state).support) :
+    ∃ extended : (onePacketProtocol setup leaks bounds horizon scheduler).History,
+      extended.state = next := by
+  let protocol := onePacketProtocol setup leaks bounds horizon scheduler
+  by_cases stopped : (application setup leaks).terminal history.state
+  · rcases history with ⟨state, trace⟩
+    cases state with
+    | none => exact stopped.elim
+    | some control =>
+        obtain ⟨remaining, idle⟩ := stopped
+        rcases control with ⟨remaining', current, execution⟩
+        change remaining' = 0 at remaining
+        change current = none at idle
+        subst remaining idle
+        refine ⟨⟨_, trace⟩, ?_⟩
+        have law : (application setup leaks).controlStep (initialLaw setup) horizon scheduler
+            ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup) horizon
+              scheduler profile) (some ⟨0, none, execution⟩) =
+            PMF.pure (some ⟨0, none, execution⟩) := rfl
+        change next ∈ ((application setup leaks).controlStep (initialLaw setup) horizon scheduler
+          _ (some ⟨0, none, execution⟩)).support at member
+        rw [law, PMF.mem_support_pure_iff] at member
+        exact member.symm
+  · cases acting : (application setup leaks).actor history.state with
+    | none =>
+        have legal : protocol.Legal history.state (fun _ => none) := by
+          refine ⟨stopped, fun who => ?_⟩
+          change ¬ (application setup leaks).actor history.state = some who
+          rw [acting]
+          exact (Option.some_ne_none _).symm
+        have reached : next ∈ (protocol.step history.state ⟨fun _ => none, legal⟩).support := by
+          unfold ReactiveApplication.controlStep at member
+          rw [acting] at member
+          exact member
+        exact ⟨history.extend legal reached, rfl⟩
+    | some who =>
+        rcases history with ⟨state, trace⟩
+        cases state with
+        | none => cases acting
+        | some control =>
+            unfold ReactiveApplication.controlStep at member
+            rw [acting] at member
+            simp only at member
+            rw [PMF.mem_support_bind_iff] at member
+            obtain ⟨action, chosen, reached⟩ := member
+            have menu := (bounds.onePacketMenu (runtime setup) leaks).decodeProfile_support
+              (initialLaw setup) horizon scheduler profile who _ _ action chosen
+            have legal : protocol.Legal (some control)
+                (fun observer => if observer = who then some action else none) := by
+              refine ⟨stopped, fun observer => ?_⟩
+              by_cases same : observer = who
+              · subst same
+                simp only [↓reduceIte]
+                exact ⟨acting, menu⟩
+              · simp only [same, ↓reduceIte]
+                change ¬ (application setup leaks).actor (some control) = some observer
+                rw [acting]
+                exact fun equal => same (Option.some.inj equal).symm
+            exact ⟨(⟨some control, trace⟩ : protocol.History).extend legal reached, rfl⟩
+
 end Vegas
