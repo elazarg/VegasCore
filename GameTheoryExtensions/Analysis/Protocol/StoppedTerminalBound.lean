@@ -7,9 +7,9 @@ import GameTheory.Math.Probability.ExpectationComposition
 
 Terminal behavioral play from a history is a mixture, over the histories one
 step later, of terminal play from them. So a bound on the expectation of a
-terminal payoff transfers from the first histories of a stopping set to every
-earlier history, provided the payoff vanishes at the terminal histories play
-reaches without stopping
+terminal payoff transfers from the first histories of a stopping set that play
+reaches to every earlier history, provided the payoff vanishes at the terminal
+histories play reaches without stopping
 (`GameTheory.Protocol.InformationModel.abs_expect_runBehavioralTerminalFrom_le_of_stopped`).
 -/
 
@@ -28,7 +28,7 @@ namespace InformationModel
 variable (M : InformationModel E)
 
 /-- One step of play from a nonterminal history reaches only its one-step
-extensions. -/
+extensions, and whatever they reach. -/
 theorem mem_support_runBehavioralFrom_one (policies : (i : ι) → M.BehavioralPolicy i)
     {history next : E.History} (running : ¬ E.terminal history.state)
     (member : next ∈ (M.runBehavioralFrom policies 1 history).support) :
@@ -45,32 +45,37 @@ theorem mem_support_runBehavioralFrom_one (policies : (i : ι) → M.BehavioralP
   exact ⟨⟨draw.1, draw.2, realized⟩, fun later reached =>
     ExecutionProtocol.HistoryReaches.step E draw.2 realized reached⟩
 
-/-- **Bounding terminal expectations at a stopping set.** Suppose a bounded
-terminal payoff has expectation at most `ε` in absolute value under terminal
-play from every history of a stopping set reachable from `start`, and vanishes
-at every terminal history reachable from `start` outside the set. Then its
-expectation under terminal play from `start` is at most `ε` in absolute
-value. -/
+/-- **Bounding terminal expectations at a stopping set.** Let `reach` hold at
+`start`, outside the stopping set, and pass from every unstopped nonterminal
+history it holds at to the unstopped histories one step of play reaches. Suppose
+a bounded terminal payoff has expectation at most `ε` in absolute value under
+terminal play from every stopped history one step of play reaches from such a
+history, and vanishes at every unstopped terminal history `reach` holds at.
+Then its expectation under terminal play from `start` is at most `ε` in
+absolute value. -/
 theorem abs_expect_runBehavioralTerminalFrom_le_of_stopped
     (certificate : E.WellFoundedHistories) (policies : (i : ι) → M.BehavioralPolicy i)
-    (stopped : E.History → Prop) (payoff : E.History → ℝ) {bound ε : ℝ}
+    (reach stopped : E.History → Prop) (payoff : E.History → ℝ) {bound ε : ℝ}
     (bounded : ∀ history, |payoff history| ≤ bound) (nonnegative : 0 ≤ ε)
-    (start : E.History)
-    (atStop : ∀ later, E.HistoryReaches start later → stopped later →
-      |expect (M.runBehavioralTerminalFrom certificate policies later) payoff| ≤ ε)
-    (atEnd : ∀ final, E.HistoryReaches start final → E.terminal final.state →
-      ¬ stopped final → payoff final = 0) :
+    (extend : ∀ history next, reach history → ¬ stopped history →
+      ¬ E.terminal history.state → next ∈ (M.runBehavioralFrom policies 1 history).support →
+      ¬ stopped next → reach next)
+    (atStop : ∀ history next, reach history → ¬ stopped history →
+      ¬ E.terminal history.state → next ∈ (M.runBehavioralFrom policies 1 history).support →
+      stopped next →
+      |expect (M.runBehavioralTerminalFrom certificate policies next) payoff| ≤ ε)
+    (atEnd : ∀ final, reach final → ¬ stopped final → E.terminal final.state →
+      payoff final = 0)
+    (start : E.History) (reached : reach start) (running : ¬ stopped start) :
     |expect (M.runBehavioralTerminalFrom certificate policies start) payoff| ≤ ε := by
   classical
   induction start using certificate.induction with
   | _ history ih =>
-  by_cases stop : stopped history
-  · exact atStop history (ExecutionProtocol.HistoryReaches.refl E history) stop
   by_cases ended : E.terminal history.state
   · change |expect (E.randomizedBackwardLaw certificate (M.randomizedChooser policies) history)
       payoff| ≤ ε
     rw [ExecutionProtocol.randomizedBackwardLaw_of_terminal E ended, expect_pure,
-      atEnd history (ExecutionProtocol.HistoryReaches.refl E history) ended stop, abs_zero]
+      atEnd history reached running ended, abs_zero]
     exact nonnegative
   rw [M.runBehavioralTerminalFrom_eq_bind_runBehavioralFrom certificate policies 1 history,
     expect_bind_tower_bounded _ _ _ bounded]
@@ -82,11 +87,10 @@ theorem abs_expect_runBehavioralTerminalFrom_le_of_stopped
   intro next
   split
   · rename_i member
-    obtain ⟨successor, reaches⟩ := M.mem_support_runBehavioralFrom_one policies ended member
-    exact ih next successor
-      (fun later reached stopping => atStop later (reaches later reached) stopping)
-      (fun final reached final_ended outside =>
-        atEnd final (reaches final reached) final_ended outside)
+    by_cases stop : stopped next
+    · exact atStop history next reached running ended member stop
+    · exact ih next (M.mem_support_runBehavioralFrom_one policies ended member).1
+        (extend history next reached running ended member stop) stop
   · rw [abs_zero]
     exact nonnegative
 
