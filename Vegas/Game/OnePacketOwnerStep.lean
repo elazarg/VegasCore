@@ -190,4 +190,86 @@ theorem emittedEnvelope_of_opening {horizon : Nat} {scheduler : (application set
   cases tokenEq
   rfl
 
+omit [Fintype Player] in
+/-- A key decides at most one publication event. -/
+theorem turnEvent_of_publicationTurn {key : LateKey setup leaks} {event : (graph setup).EventId}
+    (turn : PublicationTurn key event) : turnEvent key = some event := by
+  have exists_ : ∃ event, PublicationTurn key event := ⟨event, turn⟩
+  unfold turnEvent
+  rw [dite_eq_left exists_]
+  have chosen := exists_.choose_spec.1
+  rw [turn.1] at chosen
+  exact congrArg some (Option.some.inj chosen).symm
+
+omit [Fintype Player] in
+/-- **The image of a response while the event is pending.** It is the
+operational state after the response's emitted envelope. -/
+theorem pendingImage_respond {remaining : Nat} {who : Player}
+    {execution : (application setup leaks).Execution} {event : (graph setup).EventId}
+    (pending : event ∉ execution.application.config.cut.completed)
+    (action : (application setup leaks).Action) :
+    pendingImage event (some ⟨remaining, none, execution.respond (application setup leaks) who
+        action⟩) =
+      .inl ((operationalState setup leaks (some ⟨remaining, some who, execution⟩)).map
+        (OperationalState.respond who (emittedEnvelope execution who action))) := by
+  rw [pendingImage_of_pending _ (by
+    change event ∉ (execution.respond (application setup leaks) who
+      action).application.config.cut.completed
+    rw [((runtime setup).reactive_respond_application leaks execution who action).1]
+    exact pending)]
+  exact congrArg Sum.inl (operationalState_respond ⟨remaining, some who, execution⟩ who action)
+
+/-- **Openings of the bound value are read off the operational state.** At
+states of one-packet histories with the same operational state, while a
+publication event is ready, menu openings of its binding's value lead to the
+same image. -/
+theorem opensBinding_image_congr {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
+    {remaining : Nat} {owner : Player}
+    (firstHistory secondHistory : (onePacketProtocol setup leaks bounds horizon scheduler).History)
+    {first second : (application setup leaks).Execution}
+    (firstCurrent : firstHistory.state = some ⟨remaining, some owner, first⟩)
+    (secondCurrent : secondHistory.state = some ⟨remaining, some owner, second⟩)
+    (same : operationalState setup leaks (some ⟨remaining, some owner, first⟩) =
+      operationalState setup leaks (some ⟨remaining, some owner, second⟩))
+    {event : (graph setup).EventId} (ready : first.application.config.cut.Ready event)
+    {payload : L.Ty}
+    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
+    {outputEq : (graph setup).outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .resolve owner payload binding checks}
+    (view : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
+    (firstAction secondAction : (application setup leaks).Action)
+    (firstMember : firstAction ∈ bounds.onePacketActions (runtime setup) leaks owner
+      (first.recall owner) (first.observe (application setup leaks) owner))
+    (secondMember : secondAction ∈ bounds.onePacketActions (runtime setup) leaks owner
+      (second.recall owner) (second.observe (application setup leaks) owner))
+    (firstOpens : OpensBinding first event binding firstAction)
+    (secondOpens : OpensBinding second event binding secondAction) :
+    pendingImage event (some ⟨remaining, none, first.respond (application setup leaks) owner
+        firstAction⟩) =
+      pendingImage event (some ⟨remaining, none, second.respond (application setup leaks) owner
+        secondAction⟩) := by
+  have ready' : second.application.config.cut.Ready event :=
+    (SameOperational.ready same event).mp ready
+  obtain ⟨firstSubmission, firstCandidate, firstValue, firstSent, firstCall, firstAccepted,
+    firstStored⟩ := firstOpens
+  obtain ⟨secondSubmission, secondCandidate, secondValue, secondSent, secondCall, secondAccepted,
+    secondStored⟩ := secondOpens
+  have accepted : first.application.accepted = second.application.accepted :=
+    congrArg PublicView.accepted (SameOperational.publicView same)
+  rw [accepted, secondAccepted] at firstAccepted
+  cases Option.some.inj firstAccepted
+  have bindings := SameOperational.binding same ready view
+  rw [firstStored, secondStored] at bindings
+  cases (PublicationResult.success.inj (Option.some.inj bindings))
+  have networks : first.network = second.network := SameOperational.network same
+  have emitted : emittedEnvelope first owner firstAction =
+      emittedEnvelope second owner secondAction := by
+    rw [emittedEnvelope_of_opening bounds firstHistory firstCurrent owner firstAction firstMember
+        firstSent firstCall,
+      emittedEnvelope_of_opening bounds secondHistory secondCurrent owner secondAction
+        secondMember secondSent secondCall, networks]
+  rw [pendingImage_respond ready.1, pendingImage_respond ready'.1, same, emitted]
+
 end Vegas

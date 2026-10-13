@@ -140,14 +140,14 @@ private theorem expect_three_parts {α : Type*} (μ : PMF α) (s r h : α → �
       expect_constant]
   rw [first, second]
 
-open Classical in
 /-- **A law with two outcomes up to a remainder.** If a law maps its silent
 points to `silentImage` and its opening points to `openImage`, gives the silent
 points mass within `δ₁` of the weight a Boolean law gives `true`, and leaves at
 most `δ₂` outside both, then read through the map it is `(δ₁ + δ₂)`-close on
 unit payoffs to the two-point law with that weight. -/
 theorem unitClose_map_of_two_outcomes {α Y : Type*} (ν : PMF α) (F : α → Y)
-    (silent opens : α → Prop) (silentImage openImage : Y) (weight : PMF Bool) (δ₁ δ₂ : ℝ)
+    (silent opens : α → Prop) [DecidablePred silent] [DecidablePred opens]
+    (silentImage openImage : Y) (weight : PMF Bool) (δ₁ δ₂ : ℝ)
     (silentEq : ∀ a ∈ ν.support, silent a → F a = silentImage)
     (openEq : ∀ a ∈ ν.support, ¬ silent a → opens a → F a = openImage)
     (silentMass : |expect ν (fun a => if silent a then 1 else 0) -
