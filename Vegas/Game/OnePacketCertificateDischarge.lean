@@ -127,24 +127,21 @@ private theorem apply_eq_one_of_subsingleton {α : Type} [Subsingleton α] (law 
   rw [← law.tsum_coe, tsum_eq_single a (fun other different =>
     (different (Subsingleton.elim other a)).elim)]
 
-/-- **Mixtures of one-packet components keep as-if-honest play.** Under the
-hypotheses of `Vegas.not_lateDelivery_of_honestReached`, at every forced
-information state as-if-honest play reaches, every mixture of the components
-of the one-packet certificate gives each choice at least the slot retention of
-the scale times its as-if-honest mass: such a state is not a late delivery, so
-its components are all the slot-trembled prescribed component. -/
-theorem onePacketMixture_ge_honest (wellFormed : setup.WellFormed)
-    {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
-      bound)
-    (timely : AsyncTimely (runtime setup) delay bound)
-    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound)
+/-- **Mixtures of one-packet components keep as-if-honest play away from late
+deliveries.** At every forced information state that some history reaches and
+that is not a late delivery, every mixture of the components of the one-packet
+certificate gives each choice at least the slot retention of the scale times
+its as-if-honest mass: its components are all the slot-trembled prescribed
+component. -/
+theorem onePacketMixture_ge_honest_of_not_late
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     {slots : Nat} (n : ℕ)
     (weights : ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
     {who : Player} {info : (application setup leaks).Info}
-    (reachedInfo : HonestReached setup leaks bounds horizon scheduler (sequence n) who info)
+    (notLate : ¬ LateDelivery setup leaks who info)
+    (occurs : ∃ history : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+      horizon scheduler).History, (onePacketN).infoOf who history.trace = info)
     (forced : forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
       scheduler who info)
     (choice : (onePacketN).Choice who info) :
@@ -160,8 +157,6 @@ theorem onePacketMixture_ge_honest (wellFormed : setup.WellFormed)
             (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
               scale_le_one (slots := slots) n) agent)) who info) choice).toReal := by
   classical
-  have notLate := not_lateDelivery_of_honestReached bounds wellFormed contract timely
-    (sequence n) retains reachedInfo
   have retention_le_one := slotRetention_le_one (scale_pos n).le (scale_le_one n)
   by_cases present : info ∈ (onePacketN).playedInformation who
   · let agent : (onePacketN).InformationAgent (onePacketN).playedInformation :=
@@ -225,7 +220,7 @@ theorem onePacketMixture_ge_honest (wellFormed : setup.WellFormed)
       choice) ?_
     exact congrArg (fun law => (law choice).toReal) mixture.symm
   · have none : info = none := by
-      obtain ⟨fuel, history, _, infoEq⟩ := reachedInfo
+      obtain ⟨history, infoEq⟩ := occurs
       cases infoCase : info with
       | none => rfl
       | some observed =>
@@ -251,6 +246,47 @@ theorem onePacketMixture_ge_honest (wellFormed : setup.WellFormed)
     rw [apply_eq_one_of_subsingleton _ choice, apply_eq_one_of_subsingleton _ choice,
       ENNReal.toReal_one, mul_one]
     exact retention_le_one
+
+/-- **Mixtures of one-packet components keep as-if-honest play.** Under the
+hypotheses of `Vegas.not_lateDelivery_of_honestReached`, at every forced
+information state as-if-honest play reaches, every mixture of the components
+of the one-packet certificate gives each choice at least the slot retention of
+the scale times its as-if-honest mass: such a state is not a late delivery, so
+its components are all the slot-trembled prescribed component. -/
+theorem onePacketMixture_ge_honest (wellFormed : setup.WellFormed)
+    {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
+      bound)
+    (timely : AsyncTimely (runtime setup) delay bound)
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound)
+    (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
+    (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
+    {slots : Nat} (n : ℕ)
+    (weights : ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
+    {who : Player} {info : (application setup leaks).Info}
+    (reachedInfo : HonestReached setup leaks bounds horizon scheduler (sequence n) who info)
+    (forced : forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
+      scheduler who info)
+    (choice : (onePacketN).Choice who info) :
+    slotRetention (scale n) * ((honestProfile setup leaks bounds (initialLaw setup) horizon
+        scheduler (sequence n) who info) choice).toReal ≤
+      (((onePacketN).agentBehavior (onePacketN).playedInformation
+        (onePacketFallback setup leaks bounds horizon scheduler)
+        (fun agent => (weights (onePacketPool setup leaks bounds horizon scheduler agent)).bind
+          (freeKeyedComponent
+            (onePacketUnforced setup leaks bounds horizon scheduler scale scale_pos scale_le_one n)
+            (onePacketPrescribed setup leaks bounds horizon scheduler sequence scale scale_pos
+              scale_le_one n)
+            (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
+              scale_le_one (slots := slots) n) agent)) who info) choice).toReal :=
+  onePacketMixture_ge_honest_of_not_late setup leaks bounds horizon scheduler sequence scale
+    scale_pos scale_le_one n weights
+    (not_lateDelivery_of_honestReached bounds wellFormed contract timely (sequence n) retains
+      reachedInfo)
+    (by
+      obtain ⟨_, history, _, infoEq⟩ := reachedInfo
+      exact ⟨history, infoEq⟩)
+    forced choice
 
 /-- **The law approximation of the one-packet certificate.** For a
 well-formed setup, under the asynchronous contract with timely delays and
