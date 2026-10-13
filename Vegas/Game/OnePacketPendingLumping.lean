@@ -577,13 +577,12 @@ theorem include_image_congr (remaining : Nat)
       simp only [operationalState, Sum.inl.injEq, Option.some.injEq, OperationalState.mk.injEq]
       have receipts : first.receipts = second.receipts :=
         congrArg ReactiveApplication.EnvironmentView.receipts views
-      have contract : first.application.publicView = second.application.publicView :=
-        congrArg ReactiveApplication.EnvironmentView.application views
       refine ⟨trivial, trivial, ?_, ?_, ?_, ?_⟩
       · rw [recalls, views]
       · unfold ReactiveApplication.Execution.observeEnvironment
         rw [networks, receipts]
         congr 1
+        exact congrArg ReactiveApplication.EnvironmentView.application views
       · rw [networks]
       · funext who
         exact lateKey_network_congr who _ _ (congrFun keys who) rfl rfl
