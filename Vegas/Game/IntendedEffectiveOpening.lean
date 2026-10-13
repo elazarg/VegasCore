@@ -182,4 +182,25 @@ theorem intendedOpeningProfile_run [Fintype Player] (wellFormed : setup.WellForm
   rw [← law, PMF.map_comp]
   rfl
 
+/-- **Intended play from a history is the effective opening's continuation.**
+For a well-formed setup, from every history of the intended game, play of an
+intended profile for enough steps reads out the continuation of its intended
+effective opening from the history's state. -/
+theorem intendedOpeningProfile_runFrom [Fintype Player] (wellFormed : setup.WellFormed)
+    (intended : ∀ who, setup.intendedModel.BehavioralPolicy who) (fuel : Nat)
+    (history : setup.intendedProtocol.History)
+    (enough : setup.protocolRemaining history.state ≤ fuel) :
+    (setup.intendedModel.runBehavioralFrom intended fuel history).map
+        (fun final => setup.protocolReadout final.state) =
+      (setup.continuationLaw (setup.intendedOpeningProfile intended) history.state).map some := by
+  let restriction := setup.intendedRestriction (CommitmentInterface.values setup.program)
+  have law := restriction.runFrom_law intended _ (setup.intendedOpeningProfile_extends wellFormed
+    intended) fuel history
+  have source := setup.protocol_runBehavioralFrom_eq (CommitmentInterface.values setup.program)
+    (setup.intendedOpeningProfile intended) (setup.intendedOpeningProfile_admitted intended) fuel
+    (restriction.history history) enough
+  rw [InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom] at source
+  rw [← law, PMF.map_comp] at source
+  exact source
+
 end Vegas.SourceProgram.Setup
