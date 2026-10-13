@@ -589,6 +589,30 @@ theorem include_image_congr (remaining : Nat)
           (by change MessageNetwork.observe _ who = MessageNetwork.observe _ who; rw [networks])
           (by change first.receipts ++ _ = second.receipts ++ _; rw [receipts])
 
+/-- While only a publication event is ready, the contract rejects every
+commitment. -/
+theorem handle_commitment_of_publication_ready (state : EventGraphRuntime.State (graph setup))
+    (ready : state.config.cut.Ready event)
+    {owner : Player} {payload : L.Ty}
+    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
+    {outputEq : (graph setup).outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .resolve owner payload binding checks}
+    (view : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
+    (message : Message Player (application setup leaks).Payload) {committed : (graph setup).EventId}
+    {candidate : Handle (graph setup)}
+    (call : message.payload.call = .commitment committed candidate) :
+    (application setup leaks).handle state message = none := by
+  apply reactiveHandle_none
+  rw [call]
+  by_cases committedReady : state.config.cut.Ready committed
+  · have same : committed = event := ready_unique (setup := setup) _ committedReady ready
+    subst same
+    simp only [handle, dite_eq_left committedReady, view]
+    split <;> rfl
+  · simp only [handle, dite_eq_right committedReady]
+
 end Image
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
