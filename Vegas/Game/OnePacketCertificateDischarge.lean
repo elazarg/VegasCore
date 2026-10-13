@@ -18,6 +18,8 @@ import Vegas.Game.OnePacketFailureBridge
 import Vegas.Game.OnePacketUnintendedCommitment
 import Vegas.Game.OnePacketSiteLumping
 import Vegas.Game.OnePacketSlotLawDischarge
+import Vegas.Game.OnePacketOwnDisclosure
+import Vegas.Game.OnePacketOpeningLaw
 
 /-! # Discharging inputs of the one-packet certificate
 
@@ -2062,6 +2064,286 @@ theorem unintendedCommitment_gain_le (wellFormed : setup.WellFormed)
   nlinarith [nearBounds.1]
 
 open Classical in
+/-- The total absolute exclusion payoff over the players and the one-packet
+histories: a bound on every expected payoff. -/
+def onePacketPayoffBound : ℝ :=
+  ∑ who : Player, ∑ history : ((bounds.onePacketMenu (runtime setup) leaks).protocol
+      (initialLaw setup) horizon scheduler).History,
+    |payoffComponent setup (readoutExclusion setup leaks bounds (initialLaw setup) horizon
+      scheduler parameter utility excludedPayoff history) who|
+
+omit [Finite setup.intendedProtocol.History]
+  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+    scheduler).InfoState who)] in
+theorem onePacketPayoffBound_nonneg :
+    0 ≤ onePacketPayoffBound setup leaks bounds horizon scheduler parameter utility
+      excludedPayoff :=
+  Finset.sum_nonneg fun _ _ => Finset.sum_nonneg fun _ _ => abs_nonneg _
+
+omit [Finite setup.intendedProtocol.History] in
+/-- **Site gains are bounded by the payoffs.** Every law's gain at a site is at
+most twice the payoff bound in absolute value. -/
+theorem abs_onePacketSiteGain_le (assessment : (onePacketN).BehavioralAssessment)
+    {who : Player} (site : (onePacketN).InformationSite who)
+    (law : PMF ((onePacketN).Choice who site.1)) :
+    |onePacketSiteGain setup leaks bounds horizon scheduler parameter utility excludedPayoff
+        assessment site law| ≤
+      2 * onePacketPayoffBound setup leaks bounds horizon scheduler parameter utility
+        excludedPayoff := by
+  classical
+  have pointwise : ∀ history : ((bounds.onePacketMenu (runtime setup) leaks).protocol
+      (initialLaw setup) horizon scheduler).History,
+      |payoffComponent setup (readoutExclusion setup leaks bounds (initialLaw setup) horizon
+        scheduler parameter utility excludedPayoff history) who| ≤
+        onePacketPayoffBound setup leaks bounds horizon scheduler parameter utility
+          excludedPayoff := by
+    intro history
+    unfold onePacketPayoffBound
+    refine le_trans ?_ (Finset.single_le_sum (fun player _ =>
+      Finset.sum_nonneg fun _ _ => abs_nonneg _) (Finset.mem_univ who))
+    convert Finset.single_le_sum (f := fun history : ((bounds.onePacketMenu (runtime setup)
+        leaks).protocol (initialLaw setup) horizon scheduler).History =>
+        |payoffComponent setup (readoutExclusion setup leaks bounds (initialLaw setup) horizon
+          scheduler parameter utility excludedPayoff history) who|)
+      (fun _ _ => abs_nonneg _) (Finset.mem_univ history) using 2
+  have boundNonneg := onePacketPayoffBound_nonneg setup leaks bounds horizon scheduler parameter
+    utility excludedPayoff
+  have expectBound : ∀ law' : PMF ((bounds.onePacketMenu (runtime setup) leaks).protocol
+      (initialLaw setup) horizon scheduler).History,
+      |expect (law'.map (readoutExclusion setup leaks bounds (initialLaw setup) horizon scheduler
+        parameter utility excludedPayoff)) ((payoffComponent setup) · who)| ≤
+        onePacketPayoffBound setup leaks bounds horizon scheduler parameter utility
+          excludedPayoff := by
+    intro law'
+    rw [expect_map]
+    exact expect_abs_le_of_bounded boundNonneg pointwise
+  unfold onePacketSiteGain
+  dsimp only
+  unfold InformationModel.assessmentComparisonWith
+  dsimp only
+  have first := expectBound (((onePacketN).assessmentLawWith ((onePacketN).truncatedRunner
+    (2 * horizon + 1)) assessment site ((assessment.strategy who).withLaw site.1 law)))
+  have second := expectBound (((onePacketN).assessmentLawWith ((onePacketN).truncatedRunner
+    (2 * horizon + 1)) assessment site (assessment.strategy who)))
+  have := abs_sub _ _ |>.trans (add_le_add first second)
+  linarith [abs_sub (expect (((onePacketN).assessmentLawWith ((onePacketN).truncatedRunner
+    (2 * horizon + 1)) assessment site ((assessment.strategy who).withLaw site.1 law)).map
+      (readoutExclusion setup leaks bounds (initialLaw setup) horizon scheduler parameter utility
+        excludedPayoff)) ((payoffComponent setup) · who))
+    (expect (((onePacketN).assessmentLawWith ((onePacketN).truncatedRunner
+    (2 * horizon + 1)) assessment site (assessment.strategy who)).map
+      (readoutExclusion setup leaks bounds (initialLaw setup) horizon scheduler parameter utility
+        excludedPayoff)) ((payoffComponent setup) · who))]
+
+omit [Finite setup.intendedProtocol.History] in
+/-- **Trembles move a site gain by the scale.** The gain of a slot-trembled law
+at a site is within six times the scale times bound of the gain of its main
+law, when bound bounds the gain of every choice. -/
+theorem abs_siteGain_slotTrembled_sub_le (assessment : (onePacketN).BehavioralAssessment)
+    {who : Player} (site : (onePacketN).InformationSite who) {scale : ℝ}
+    (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
+    (main alternative slot : PMF ((onePacketN).Choice who site.1)) {bound : ℝ}
+    (bounded : ∀ choice, |onePacketSiteGain setup leaks bounds horizon scheduler parameter
+      utility excludedPayoff assessment site (PMF.pure choice)| ≤ bound) :
+    |onePacketSiteGain setup leaks bounds horizon scheduler parameter utility excludedPayoff
+        assessment site (slotTrembledChoice setup leaks bounds (initialLaw setup) horizon
+          scheduler scale nonnegative le_one who site.1 main alternative slot) -
+      onePacketSiteGain setup leaks bounds horizon scheduler parameter utility excludedPayoff
+        assessment site main| ≤ 6 * scale * bound := by
+  have : Finite ((onePacketN).Choice who site.1) :=
+    (onePacketN).finite_choice_of_played ((onePacketN).site_mem_playedInformation site)
+  let gain := fun law : PMF ((onePacketN).Choice who site.1) =>
+    onePacketSiteGain setup leaks bounds horizon scheduler parameter utility excludedPayoff
+      assessment site law
+  have asExpect : ∀ law, gain law = expect law fun choice => gain (PMF.pure choice) := by
+    intro law
+    have bound := localGain_bind (2 * horizon + 1)
+      (readoutExclusion setup leaks bounds (initialLaw setup) horizon scheduler parameter utility
+        excludedPayoff) (payoffComponent setup) assessment site
+      ((bounds.onePacketMenu (runtime setup) leaks).bounded (initialLaw setup) horizon scheduler)
+      ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall (initialLaw setup) horizon
+        scheduler).actsOnceWhereItMatters law PMF.pure
+    rw [PMF.bind_pure] at bound
+    exact bound
+  have boundNonneg : 0 ≤ bound := by
+    obtain ⟨choice, _⟩ := main.support_nonempty
+    exact (abs_nonneg _).trans (bounded choice)
+  change |gain _ - gain main| ≤ _
+  rw [asExpect, asExpect main]
+  set value := fun choice => gain (PMF.pure choice)
+  set target := expect main value
+  have gap : ∀ law : PMF ((onePacketN).Choice who site.1), |expect law value - target| ≤
+      2 * bound := by
+    intro law
+    have inside := abs_le.mp (expect_abs_le_of_bounded (μ := law) boundNonneg bounded)
+    have targetInside := abs_le.mp (expect_abs_le_of_bounded (μ := main) boundNonneg bounded)
+    exact abs_le.mpr ⟨by linarith, by linarith⟩
+  unfold slotTrembledChoice
+  rw [expect_mix_of_finite, expect_mix_of_finite, expect_mix_of_finite]
+  set uniform := expect ((bounds.onePacketMenu (runtime setup) leaks).uniformPolicy
+    (initialLaw setup) horizon scheduler who site.1) value
+  set slotted := expect slot value
+  set alternate := expect alternative value
+  have regroup : scale ^ 3 * uniform + (1 - scale ^ 3) * (scale ^ 2 * slotted +
+      (1 - scale ^ 2) * (scale * alternate + (1 - scale) * target)) - target =
+      scale ^ 3 * (uniform - target) + (1 - scale ^ 3) * (scale ^ 2 * (slotted - target) +
+        (1 - scale ^ 2) * (scale * (alternate - target))) := by ring
+  rw [regroup]
+  have cube : scale ^ 3 ≤ scale := pow_le_of_le_one nonnegative le_one (by norm_num)
+  have square : scale ^ 2 ≤ scale := pow_le_of_le_one nonnegative le_one (by norm_num)
+  have cubeLe : scale ^ 3 ≤ 1 := pow_le_one₀ nonnegative le_one
+  have squareLe : scale ^ 2 ≤ 1 := pow_le_one₀ nonnegative le_one
+  have u := abs_le.mp (gap ((bounds.onePacketMenu (runtime setup) leaks).uniformPolicy
+    (initialLaw setup) horizon scheduler who site.1))
+  have s := abs_le.mp (gap slot)
+  have a := abs_le.mp (gap alternative)
+  have cubeNonneg : 0 ≤ scale ^ 3 := pow_nonneg nonnegative 3
+  have squareNonneg : 0 ≤ scale ^ 2 := pow_nonneg nonnegative 2
+  rw [abs_le]
+  constructor <;> nlinarith [mul_le_mul_of_nonneg_left u.1 cubeNonneg,
+    mul_le_mul_of_nonneg_left u.2 cubeNonneg, mul_le_mul_of_nonneg_left s.1 squareNonneg,
+    mul_le_mul_of_nonneg_left s.2 squareNonneg, mul_le_mul_of_nonneg_left a.1 nonnegative,
+    mul_le_mul_of_nonneg_left a.2 nonnegative, mul_nonneg (sub_nonneg.mpr cubeLe)
+      (sub_nonneg.mpr squareLe)]
+
+
+omit [Finite setup.intendedProtocol.History] in
+/-- **Late openings are a late option's main choice.** For a well-formed setup,
+at a forced late delivery at which the player owes no failure, a choice
+opening the event of its turn is the canonical disclosure, the main choice of
+every late option sending at a slot, so it gains at most what that option gains,
+up to six times the scale times a bound on the gains of the choices. -/
+theorem lateOpening_siteGain_le (wellFormed : setup.WellFormed)
+    (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
+    (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
+    {slots : Nat} (n : ℕ) (assessment : (onePacketN).BehavioralAssessment) {who : Player}
+    (site : (onePacketN).InformationSite who)
+    (forced : ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site))
+    (late : LateDelivery setup leaks who site.1)
+    (debtFree : SiteDebtFree setup leaks bounds horizon scheduler site)
+    (choice : (onePacketN).Choice who site.1)
+    (atTurn : CommitsAtTurn setup leaks bounds horizon scheduler who site choice)
+    {response : (application setup leaks).Action} (chosen : choice.1 = some response)
+    {material : (application setup leaks).Submission}
+    (sends : response.transmission = some material) {event : (graph setup).EventId}
+    {handle : Handle (graph setup)} {raw : Raw L}
+    (packet : material.call.packet = .opening event handle raw) (slot : Fin slots) {bound : ℝ}
+    (bounded : ∀ choice, |onePacketSiteGain setup leaks bounds horizon scheduler parameter
+      utility excludedPayoff assessment site (PMF.pure choice)| ≤ bound) :
+    onePacketSiteGain setup leaks bounds horizon scheduler parameter utility excludedPayoff
+        assessment site (PMF.pure choice) ≤
+      onePacketSiteGain setup leaks bounds horizon scheduler parameter utility excludedPayoff
+          assessment site (onePacketLate setup leaks bounds horizon scheduler sequence scale
+            scale_pos scale_le_one (slots := slots) n ((onePacketN).agentAt site) (some slot)) +
+        6 * scale n * bound := by
+  have notOwed := debtFree
+  obtain ⟨native, seen, forcedNative⟩ := Classical.not_not.mp forced
+  obtain ⟨past, view, pending', atSite, pending, _⟩ := late
+  rw [atSite] at pending
+  obtain ⟨past, view, turnResponse, turnEvent, turnSite, turnChosen, submitted, turn⟩ :=
+    atTurn
+  rw [atSite, Option.some.injEq, Prod.mk.injEq] at turnSite
+  obtain ⟨pastEq, viewEq⟩ := turnSite
+  subst pastEq viewEq
+  have sameResponse : turnResponse = response := Option.some.inj (turnChosen.symm.trans chosen)
+  subst sameResponse
+  have eventEq : turnEvent = event := by
+    have named : (runtime setup).submittedEvent? leaks turnResponse = some event := by
+      unfold EventGraphRuntime.submittedEvent?
+      rw [sends]
+      exact (congrArg (Payload.event? (graph setup)) packet).trans rfl
+    exact Option.some.inj (submitted.symm.trans named)
+  subst eventEq
+  have pendingEq : pending' = turnEvent :=
+    Option.some.inj ((pendingEvent_spec (setup := setup) pending).1.symm.trans turn)
+  subst pendingEq
+  obtain ⟨response', chosen', member⟩ := choice_response setup leaks bounds horizon scheduler
+    site atSite choice
+  have sameResponse : response' = turnResponse := Option.some.inj (chosen'.symm.trans chosen)
+  subst sameResponse
+  obtain ⟨payload, binding, checks, outputEq, codeEq, node⟩ :=
+    onePacket_opening_node member sends packet
+  -- A native history of the site in a forced state.
+  have owed := notOwed ⟨native, seen⟩
+  obtain ⟨info, decision⟩ := site
+  change info = some (past, view) at atSite
+  subst atSite
+  obtain ⟨state, trace⟩ := native
+  change (onePacketInformation setup leaks bounds horizon scheduler).infoOf who trace =
+    some (past, view) at seen
+  rw [onePacket_infoOf] at seen
+  cases state with
+  | none => cases seen
+  | some control =>
+  rcases control with ⟨remaining, actor, execution⟩
+  by_cases active : actor = some who
+  swap
+  · simp only [ReactiveApplication.observe, active, ↓reduceIte] at seen
+    cases seen
+  subst active
+  simp only [ReactiveApplication.observe, ↓reduceIte] at seen
+  obtain ⟨pastEq, viewEq⟩ := Prod.mk.inj (Option.some.inj seen)
+  subst pastEq viewEq
+  have resolves := disclosureResolves_of_debtFree wellFormed trace who forcedNative owed
+  obtain ⟨disclosed, sendsDisclosure⟩ := Option.ne_none_iff_exists'.mp
+    (resolves _ pending who payload binding checks outputEq codeEq node)
+  have responseEq := onePacket_opening_eq_disclosure trace who _ node disclosed sendsDisclosure
+    response' member material sends ((congrArg (Payload.event? (graph setup)) packet).trans rfl)
+  have lateEq := lateChoice_reveal (sequence n) trace who _ turn node slot
+  have choiceEq : choice = responseChoice setup leaks bounds (initialLaw setup) horizon
+      scheduler who _ ((runtime setup).canonicalServiceDecision leaks who (execution.recall who)
+        (execution.observe (application setup leaks) who) _
+        (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)) := by
+    rw [← responseEq]
+    apply Subtype.ext
+    rw [chosen]
+    simp only [responseChoice, member, ↓reduceDIte]
+  have trembled := abs_siteGain_slotTrembled_sub_le setup leaks bounds horizon scheduler
+    parameter utility excludedPayoff assessment _ (scale_pos n).le (scale_le_one n)
+    (PMF.pure choice) (PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon
+      scheduler who _))
+    (slotChoice setup leaks bounds (initialLaw setup) horizon scheduler (sequence n) who _)
+    bounded
+  have lawEq : onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
+      scale_le_one (slots := slots) n ((onePacketN).agentAt ⟨_, decision⟩) (some slot) =
+      slotTrembledChoice setup leaks bounds (initialLaw setup) horizon scheduler (scale n)
+        (scale_pos n).le (scale_le_one n) who _ (PMF.pure choice)
+        (PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler who _))
+        (slotChoice setup leaks bounds (initialLaw setup) horizon scheduler (sequence n) who
+          _) := by
+    change lateComponent setup leaks bounds (initialLaw setup) horizon scheduler (sequence n)
+      (scale n) (scale_pos n).le (scale_le_one n) who _ (some slot) = _
+    unfold lateComponent
+    rw [lateEq, ← choiceEq]
+  rw [lawEq]
+  linarith [(abs_le.mp trembled).1]
+
+omit [Finite setup.intendedProtocol.History] in
+/-- **Owing sites have no gain.** Under a scheduler completing play, at a
+decision input at which the player owes a failure, every law gains nothing:
+the player gets its exclusion payoff on every continuation. -/
+theorem onePacketSiteGain_eq_zero_of_owing
+    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
+    (assessment : (onePacketN).BehavioralAssessment) {who : Player}
+    (site : (onePacketN).InformationSite who) {past : List (application setup leaks).PlayerEntry}
+    {view : (application setup leaks).PlayerView} (atSite : site.1 = some (past, view))
+    (owing : ¬ SiteDebtFree setup leaks bounds horizon scheduler site)
+    (law : PMF ((onePacketN).Choice who site.1)) :
+    onePacketSiteGain setup leaks bounds horizon scheduler parameter utility excludedPayoff
+      assessment site law = 0 := by
+  have zero := (onePacketN).gain_eq_expect_historyGain
+    ((onePacketN).truncatedRunner (2 * horizon + 1))
+    (readoutExclusion setup leaks bounds (initialLaw setup) horizon scheduler parameter
+      utility excludedPayoff) (payoffComponent setup) assessment
+    (site, (assessment.strategy who).withLaw site.1 law)
+  rw [expect_congr_on_support (g := fun _ => 0) (fun history _ =>
+    historyGain_eq_zero_of_owes setup leaks bounds horizon scheduler parameter utility
+      excludedPayoff completes assessment _ history
+      (owes_of_not_siteDebtFree setup leaks bounds horizon scheduler
+        (failureProfile setup.program) site atSite owing history)), expect_constant] at zero
+  exact zero
+
+open Classical in
 /-- The options of the certificate's lumping at a late key: the installed option
 at the key, and the key's weights at every other key. -/
 def certificateOptions {slots : Nat}
@@ -2276,6 +2558,17 @@ theorem certificate_siteComponentShape
       scale_le_one weights targetSequence assembled n who history remaining execution event
       current forcedState ready activated
 
+/-- The gain of a deviation at a site of the intended game under the exclusion
+payoff: the expected exclusion payoff of the deviation minus that of the
+assessment. -/
+def intendedSiteGain (assessment : setup.intendedModel.BehavioralAssessment) {who : Player}
+    (deviation : setup.intendedModel.AssessmentDeviation who) : ℝ :=
+  let comparison := setup.intendedModel.assessmentComparisonWith
+    (setup.intendedModel.truncatedRunner (instructionCount setup.program + 1))
+    (intendedReadoutExclusion setup parameter utility excludedPayoff) assessment who deviation
+  expect comparison.alternative ((payoffComponent setup) · who) -
+    expect comparison.prescribed ((payoffComponent setup) · who)
+
 open Classical in
 /-- **The open inputs of the one-packet certificate other than the value
 decompositions** for one source sequence: the tremble scales and the
@@ -2403,11 +2696,14 @@ structure OnePacketCoreInputs (sequence : ℕ → setup.intendedModel.Behavioral
               (payoffComponent setup) (sequence n)
               (projectedSite setup leaks (decision), policy) point| ≤
             bound
-  /-- **Late commitments against late options.** At every forced late delivery,
-  every choice committing a value at the player's own turn gains at most what
-  some late option gains, up to a vanishing error: sending now at a slot fails
-  as the late option sending now at that slot does, and the committed value is
-  worth at most the site's continuation value. -/
+  /-- **Late commitments of intended values.** At every forced late delivery at
+  which the player owes no failure, every choice committing an intended value at
+  the player's own turn gains at most what some late option gains plus a weight
+  in [0, 1] times the gain of a source deviation at the projected site, up to a
+  vanishing error. Sending now at a slot fails as the late option sending at
+  that slot does whatever the committed value, and on success the committed
+  value is worth its source continuation: the weight is the success probability
+  and the deviation commits that value. -/
   lateCommitments : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon
       scheduler slots p)) (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
     OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos scale_le_one
@@ -2422,16 +2718,50 @@ structure OnePacketCoreInputs (sequence : ℕ → setup.intendedModel.Behavioral
         ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
           (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
           ((onePacketN).agentAt site) →
-        ¬ onePacketCompared setup leaks bounds horizon scheduler who site choice →
         CommitsAtTurn setup leaks bounds horizon scheduler who site choice →
-        ∃ option : LateOption slots,
+        SiteDebtFree setup leaks bounds horizon scheduler site →
+        IntendedCommitment setup leaks bounds horizon scheduler site choice →
+        ∀ decision : setup.intendedModel.IsDecisionInfo who (projectView setup leaks who site.1),
+        ∃ (option : LateOption slots) (policy : setup.intendedModel.BehavioralPolicy who)
+          (weight : ℝ), 0 ≤ weight ∧ weight ≤ 1 ∧
           onePacketSiteGain setup leaks bounds horizon scheduler parameter utility excludedPayoff
               (targetSequence n) site (PMF.pure choice) ≤
             onePacketSiteGain setup leaks bounds horizon scheduler parameter utility
                 excludedPayoff (targetSequence n) site
                 (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
                   scale_le_one (slots := slots) n ((onePacketN).agentAt site) option) +
+              weight * intendedSiteGain setup parameter utility excludedPayoff (sequence n)
+                (projectedSite setup leaks decision, policy) +
               lateError n
+  /-- Some late option sends at a slot. -/
+  slots_pos : 0 < slots
+
+open Classical in
+/-- **Best pool weights.** No alternative weights of a pool raise the summed
+gain of its agents at the assessments of a sequence. -/
+def OnePacketPoolBest (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
+    (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
+    {slots : Nat} (targetSequence : ℕ → (onePacketN).BehavioralAssessment) : Prop :=
+  ∀ n (alternative : ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p)) p,
+    ∑ agent ∈ Finset.univ.filter (fun agent => onePacketPool setup leaks bounds horizon
+        scheduler agent = p),
+      (if decision : (onePacketN).IsDecisionInfo agent.1 agent.2.1 then
+        let comparison := (onePacketN).assessmentComparisonWith ((onePacketN).truncatedRunner
+            (2 * horizon + 1))
+          (readoutExclusion setup leaks bounds (initialLaw setup) horizon scheduler parameter
+            utility excludedPayoff) (targetSequence n) agent.1
+          (⟨agent.2.1, decision⟩, ((targetSequence n).strategy agent.1).withLaw agent.2.1
+            ((alternative (onePacketPool setup leaks bounds horizon scheduler agent)).bind
+              (freeKeyedComponent
+                (onePacketUnforced setup leaks bounds horizon scheduler scale scale_pos
+                  scale_le_one n)
+                (onePacketPrescribed setup leaks bounds horizon scheduler sequence scale
+                  scale_pos scale_le_one n)
+                (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
+                  scale_le_one (slots := slots) n) agent)))
+        expect comparison.alternative ((payoffComponent setup) · agent.1) -
+          expect comparison.prescribed ((payoffComponent setup) · agent.1)
+      else 0) ≤ 0
 
 open Classical in
 /-- **The open inputs of the one-packet certificate** for one source sequence:
@@ -2604,6 +2934,79 @@ theorem OnePacketOpenInputs.siteCommonness
     (fun n => 1 - slotRetention (inputs.scale n)) pathLimit unforcedLimit beliefLimit markLimit
     (fun n => mul_nonneg (Nat.cast_nonneg _) (δNonneg n)) markNonneg blind marked
 
+omit [Finite setup.intendedProtocol.History] in
+/-- **Late options gain vanishingly.** Under a scheduler completing play, along
+every fully mixed Bayes sequence of assembled profiles with best pool weights,
+every late option at a forced late delivery gains at most a vanishing error:
+the late options of a key fail in common, so the key's best weights are a
+common best response of its pool. -/
+theorem OnePacketOpenInputs.lateMemberGain_le
+    {sequence : ℕ → setup.intendedModel.BehavioralAssessment} {slots : Nat}
+    (inputs : OnePacketOpenInputs setup leaks bounds horizon scheduler parameter utility
+      excludedPayoff sequence slots)
+    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
+    (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
+    (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence inputs.scale
+      inputs.scale_pos inputs.scale_le_one weights targetSequence)
+    (mixed : ∀ n, (targetSequence n).IsFullyMixed)
+    (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
+      ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
+        (initialLaw setup) horizon scheduler).decisionInformationAntichain)
+    (poolBest : OnePacketPoolBest setup leaks bounds horizon scheduler parameter utility
+      excludedPayoff sequence inputs.scale inputs.scale_pos inputs.scale_le_one
+      (slots := slots) targetSequence) :
+    ∃ memberError : ℕ → ℝ, Tendsto memberError atTop (nhds 0) ∧
+      ∀ n who (site : (onePacketN).InformationSite who),
+        ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+          (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
+          ((onePacketN).agentAt site) →
+        ∀ option : LateOption slots,
+          onePacketSiteGain setup leaks bounds horizon scheduler parameter utility excludedPayoff
+              (targetSequence n) site
+              (onePacketLate setup leaks bounds horizon scheduler sequence inputs.scale
+                inputs.scale_pos inputs.scale_le_one (slots := slots) n
+                ((onePacketN).agentAt site) option) ≤
+            memberError n := by
+  classical
+  have rational := freeKeyedMemberRational (2 * horizon + 1)
+    ((bounds.onePacketMenu (runtime setup) leaks).bounded (initialLaw setup) horizon scheduler)
+    ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall (initialLaw setup) horizon
+      scheduler)
+    (readoutExclusion setup leaks bounds (initialLaw setup) horizon scheduler parameter utility
+      excludedPayoff) (payoffComponent setup)
+    (onePacketFallback setup leaks bounds horizon scheduler)
+    (UnforcedAgent setup leaks bounds horizon scheduler)
+    (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
+    (agentLateKey setup leaks bounds (initialLaw setup) horizon scheduler)
+    (fun n => onePacketUnforced setup leaks bounds horizon scheduler inputs.scale
+      inputs.scale_pos inputs.scale_le_one n)
+    (fun n => onePacketPrescribed setup leaks bounds horizon scheduler sequence inputs.scale
+      inputs.scale_pos inputs.scale_le_one n)
+    (fun n => onePacketLate setup leaks bounds horizon scheduler sequence inputs.scale
+      inputs.scale_pos inputs.scale_le_one (slots := slots) n)
+    (onePacketFailed setup leaks bounds horizon scheduler) excludedPayoff
+    (onePacketFailed_pays setup leaks bounds horizon scheduler parameter utility excludedPayoff)
+    inputs.gapBound inputs.gapBound_nonneg
+    (fun weights targetSequence assembled mixed bayes => by
+      obtain ⟨continuation, error, errorLimit, value⟩ :=
+        inputs.lateDecomposition weights targetSequence assembled mixed bayes
+      obtain ⟨score, drift, driftLimit, driftNonneg, common⟩ :=
+        inputs.siteCommonness setup leaks bounds horizon scheduler parameter utility
+          excludedPayoff completes weights targetSequence assembled mixed bayes
+      refine ⟨continuation, score, error, drift, errorLimit, driftLimit, driftNonneg,
+        fun n agent keyed decision => ?_⟩
+      obtain ⟨low, gap, _, late⟩ := value n agent.1 ⟨agent.2.1, decision⟩ keyed.2 keyed
+      exact ⟨low, gap, late, (common n agent.1 ⟨agent.2.1, decision⟩ keyed.2 keyed).1⟩)
+  obtain ⟨memberError, memberLimit, member⟩ := rational weights targetSequence assembled mixed
+    bayes (by unfold OnePacketPoolBest at poolBest; convert poolBest)
+  refine ⟨memberError, memberLimit, fun n who site keyed option => ?_⟩
+  obtain ⟨part, partEq⟩ := exists_part_eq_late setup leaks bounds horizon scheduler sequence
+    inputs.scale inputs.scale_pos inputs.scale_le_one n keyed option
+  have bound := member n who site (PMF.pure part)
+  rw [PMF.pure_bind, partEq] at bound
+  exact bound
+
 /-- **The certificate inputs from the open inputs.** For a well-formed setup,
 under the asynchronous contract with timely delays and retention of first
 covered canonical packets, the open inputs give the inputs of the one-packet
@@ -2679,8 +3082,13 @@ def OnePacketOpenInputs.toCertificateInputs
       refine ⟨by linarith, gap, (chosen choice marked).trans bound,
         fun isKeyed => isKeyed.elim,
         fun _ => ⟨other.trans bound, prescribed n who site choice notFree keyed⟩⟩
-  otherComparisons weights targetSequence assembled mixed bayes _ := by
+  otherComparisons weights targetSequence assembled mixed bayes poolBest := by
     classical
+    obtain ⟨memberError, memberLimit, member⟩ := inputs.lateMemberGain_le setup leaks bounds
+      horizon scheduler parameter utility excludedPayoff contract.completes weights
+      targetSequence assembled mixed bayes poolBest
+    obtain ⟨lateContinuation, lateValueError, lateValueLimit, lateValue⟩ :=
+      inputs.lateDecomposition weights targetSequence assembled mixed bayes
     have decided : ∀ {who : Player} {site : (onePacketN).InformationSite who},
         ValueChangingSite setup leaks bounds horizon scheduler site →
           setup.intendedModel.IsDecisionInfo who (projectView setup leaks who site.1) :=
@@ -2730,13 +3138,26 @@ def OnePacketOpenInputs.toCertificateInputs
             ⟨agent.2.1, present.1⟩ present.2 (decided present.2))
       · simp only [agentDistance, present, ↓reduceDIte]
         exact tendsto_const_nhds
+    let payoffBound := onePacketPayoffBound setup leaks bounds horizon scheduler parameter
+      utility excludedPayoff
     have totalLimit : Tendsto (fun n => |valueError n| + bound * ∑ agent, agentDistance n agent +
-        |lateError n| + 2 * |otherError n|) atTop (nhds 0) := by
-      simpa using ((valueLimit.abs.add (beliefLimit.const_mul bound)).add lateLimit.abs).add
-        (otherLimit.abs.const_mul 2)
+        |lateError n| + 2 * |otherError n| + |memberError n| + 2 * |lateValueError n| +
+        6 * inputs.scale n * (2 * payoffBound)) atTop (nhds 0) := by
+      simpa using (((((valueLimit.abs.add (beliefLimit.const_mul bound)).add lateLimit.abs).add
+        (otherLimit.abs.const_mul 2)).add memberLimit.abs).add
+          (lateValueLimit.abs.const_mul 2)).add
+        ((inputs.scale_vanishing.const_mul 6).mul_const (2 * payoffBound))
     refine ⟨fun n => |valueError n| + bound * ∑ agent, agentDistance n agent + |lateError n| +
-        2 * |otherError n|, totalLimit,
+        2 * |otherError n| + |memberError n| + 2 * |lateValueError n| +
+        6 * inputs.scale n * (2 * payoffBound), totalLimit,
       fun n who site notFree choice unmarked => ?_⟩
+    have payoffNonneg : 0 ≤ payoffBound := onePacketPayoffBound_nonneg setup leaks bounds horizon
+      scheduler parameter utility excludedPayoff
+    have scaleTerm : 0 ≤ 6 * inputs.scale n * (2 * payoffBound) := by
+      have := (inputs.scale_pos n).le
+      positivity
+    have := abs_nonneg (memberError n)
+    have := abs_nonneg (lateValueError n)
     have forced : ¬ UnforcedAgent setup leaks bounds horizon scheduler
         ((onePacketN).agentAt site) := fun unforced =>
       notFree (Finset.mem_filter.mpr ⟨Finset.mem_univ _, unforced⟩)
@@ -2785,23 +3206,110 @@ def OnePacketOpenInputs.toCertificateInputs
     by_cases keyedSite : ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
         (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
         ((onePacketN).agentAt site)
-    · right
-      left
-      obtain ⟨option, optionLe⟩ := late n who site choice forced keyedSite unmarked atTurn
-      obtain ⟨part, partEq⟩ := exists_part_eq_late setup leaks bounds horizon scheduler
-        sequence inputs.scale inputs.scale_pos inputs.scale_le_one n keyedSite option
-      refine ⟨PMF.pure part, ?_⟩
-      rw [PMF.pure_bind, partEq]
-      have := le_abs_self (lateError n)
+    · obtain ⟨past, view, turnResponse, event, atSite, turnChosen, submittedTurn, turn⟩ :=
+        id atTurn
       have := abs_nonneg (valueError n)
+      have := abs_nonneg (lateError n)
       have := abs_nonneg (otherError n)
-      change onePacketSiteGain setup leaks bounds horizon scheduler parameter utility
-          excludedPayoff (targetSequence n) site (PMF.pure choice) ≤
-        onePacketSiteGain setup leaks bounds horizon scheduler parameter utility excludedPayoff
-          (targetSequence n) site (onePacketLate setup leaks bounds horizon scheduler sequence
-            inputs.scale inputs.scale_pos inputs.scale_le_one (slots := slots) n
-            ((onePacketN).agentAt site) option) + _
-      linarith
+      by_cases debtFree : SiteDebtFree setup leaks bounds horizon scheduler site
+      swap
+      · left
+        have zero := onePacketSiteGain_eq_zero_of_owing setup leaks bounds horizon scheduler
+          parameter utility excludedPayoff contract.completes (targetSequence n) site atSite
+          debtFree (PMF.pure choice)
+        change onePacketSiteGain setup leaks bounds horizon scheduler parameter utility
+          excludedPayoff (targetSequence n) site (PMF.pure choice) ≤ _
+        rw [zero]
+        positivity
+      obtain ⟨material, sends⟩ : ∃ material, turnResponse.transmission = some material := by
+        unfold EventGraphRuntime.submittedEvent? at submittedTurn
+        cases transmits : turnResponse.transmission with
+        | none =>
+            rw [transmits] at submittedTurn
+            cases submittedTurn
+        | some material => exact ⟨material, rfl⟩
+      have named : material.call.packet.event? (graph setup) = some event := by
+        unfold EventGraphRuntime.submittedEvent? at submittedTurn
+        rw [sends] at submittedTurn
+        exact submittedTurn
+      cases packet : material.call.packet with
+      | malformed raw =>
+          rw [packet] at named
+          cases named
+      | opening opened handle raw =>
+          right
+          left
+          obtain ⟨part, partEq⟩ := exists_part_eq_late setup leaks bounds horizon scheduler
+            sequence inputs.scale inputs.scale_pos inputs.scale_le_one n keyedSite
+            (some ⟨0, inputs.slots_pos⟩)
+          refine ⟨PMF.pure part, ?_⟩
+          rw [PMF.pure_bind, partEq]
+          have opening := lateOpening_siteGain_le setup leaks bounds horizon scheduler parameter
+            utility excludedPayoff wellFormed sequence inputs.scale inputs.scale_pos
+            inputs.scale_le_one n (targetSequence n) site forced keyedSite.1 debtFree choice
+            atTurn turnChosen sends packet ⟨0, inputs.slots_pos⟩
+            (fun choice => abs_onePacketSiteGain_le setup leaks bounds horizon scheduler
+              parameter utility excludedPayoff (targetSequence n) site (PMF.pure choice))
+          change onePacketSiteGain setup leaks bounds horizon scheduler parameter utility
+              excludedPayoff (targetSequence n) site (PMF.pure choice) ≤
+            onePacketSiteGain setup leaks bounds horizon scheduler parameter utility
+              excludedPayoff (targetSequence n) site (onePacketLate setup leaks bounds horizon
+                scheduler sequence inputs.scale inputs.scale_pos inputs.scale_le_one
+                (slots := slots) n ((onePacketN).agentAt site) (some ⟨0, inputs.slots_pos⟩)) + _
+          linarith
+      | commitment committed handle =>
+          have committedEq : committed = event := by
+            rw [packet] at named
+            exact Option.some.inj named
+          subst committedEq
+          by_cases intended : IntendedCommitment setup leaks bounds horizon scheduler site choice
+          · right
+            right
+            have decision := projectedDecision_of_forcedAgent wellFormed
+              (Classical.not_not.mp forced) atSite turn debtFree
+            obtain ⟨option, policy, weight, weightNonneg, weightLe, lateBound⟩ :=
+              late n who site choice forced keyedSite atTurn debtFree intended decision
+            have memberBound := member n who site keyedSite option
+            let deviations := mix weight weightNonneg weightLe
+              (PMF.pure (projectedSite setup leaks decision, policy))
+              (PMF.pure (projectedSite setup leaks decision, (sequence n).strategy who))
+            refine ⟨deviations, ?_⟩
+            have mixed : expect deviations (fun deviation =>
+                intendedSiteGain setup parameter utility excludedPayoff (sequence n) deviation) =
+                weight * intendedSiteGain setup parameter utility excludedPayoff (sequence n)
+                  (projectedSite setup leaks decision, policy) := by
+              have zero : intendedSiteGain setup parameter utility excludedPayoff (sequence n)
+                  (projectedSite setup leaks decision, (sequence n).strategy who) = 0 :=
+                sub_self _
+              rw [expect_mix _ _ _ _ _ _ (payoffIntegrable_pure _ _) (payoffIntegrable_pure _ _),
+                expect_pure, expect_pure, zero, mul_zero, add_zero]
+            change onePacketSiteGain setup leaks bounds horizon scheduler parameter utility
+                excludedPayoff (targetSequence n) site (PMF.pure choice) ≤
+              expect deviations (fun deviation =>
+                intendedSiteGain setup parameter utility excludedPayoff (sequence n) deviation) +
+                _
+            rw [mixed]
+            linarith [le_abs_self (memberError n), le_abs_self (lateError n)]
+          · right
+            left
+            obtain ⟨low, _, _, lateNear⟩ := lateValue n who site forced keyedSite
+            obtain ⟨part, partEq⟩ := exists_part_eq_late setup leaks bounds horizon scheduler
+              sequence inputs.scale inputs.scale_pos inputs.scale_le_one n keyedSite none
+            refine ⟨PMF.pure part, ?_⟩
+            rw [PMF.pure_bind, partEq]
+            have dominated := unintendedCommitment_gain_le setup leaks bounds horizon scheduler
+              parameter utility excludedPayoff wellFormed contract.completes (targetSequence n)
+              site atSite turn choice turnChosen sends packet debtFree intended
+              (onePacketLate setup leaks bounds horizon scheduler sequence inputs.scale
+                inputs.scale_pos inputs.scale_le_one (slots := slots) n
+                ((onePacketN).agentAt site) none) low (lateNear none)
+            change onePacketSiteGain setup leaks bounds horizon scheduler parameter utility
+                excludedPayoff (targetSequence n) site (PMF.pure choice) ≤
+              onePacketSiteGain setup leaks bounds horizon scheduler parameter utility
+                excludedPayoff (targetSequence n) site (onePacketLate setup leaks bounds horizon
+                  scheduler sequence inputs.scale inputs.scale_pos inputs.scale_le_one
+                  (slots := slots) n ((onePacketN).agentAt site) none) + _
+            linarith [le_abs_self (lateValueError n)]
     have unkeyed := keyedSite
     obtain ⟨response, chosen, material, sends, event', handle, packet⟩ : ∃ response,
         choice.1 = some response ∧ ∃ material, response.transmission = some material ∧
