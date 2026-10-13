@@ -287,6 +287,31 @@ theorem decodeViewPrefix?_intended (who : Player) :
             simp only [eventOwner?, Fin.cases_succ]
             exact actorEq tail (by simpa using named)
 
+/-- **The intended game offers no failure.** Every action it offers commits a
+successful value or discloses. -/
+theorem intendedAvailable_success (who : Player) : ∀ {Γ : SourceCtx Player L}
+    {O : Finset VarId} (program : SourceProgram Player L Γ O) (view : ProtocolView who program)
+    (action : OwnAction Player L), action ∈ ProtocolView.intendedAvailable who program view →
+      (∀ owner name payload, action ≠ .commit owner name payload .failure) ∧
+        ∀ owner name, action ≠ .reveal owner name false
+  | _, _, .ret _, _, _, member => member.elim
+  | _, _, .sample _ _ _ next, view, action, member => by
+      cases view with
+      | inl _ => exact member.elim
+      | inr later => exact intendedAvailable_success who next later action member
+  | _, _, .commit _ _ _ _ next, view, action, member => by
+      cases view with
+      | inl _ =>
+          obtain ⟨value, _, rfl⟩ := member
+          exact ⟨fun _ _ _ same => (by cases same), fun _ _ same => (by cases same)⟩
+      | inr later => exact intendedAvailable_success who next later action member
+  | _, _, .reveal _ _ _ _ _ _ next, view, action, member => by
+      cases view with
+      | inl _ =>
+          obtain rfl := Set.mem_singleton_iff.mp member
+          exact ⟨fun _ _ _ same => (by cases same), fun _ _ same => (by cases same)⟩
+      | inr later => exact intendedAvailable_success who next later action member
+
 end View
 
 section Native
@@ -413,6 +438,30 @@ theorem asIfHonestProfile_eq_pure_none (assessment : setup.intendedModel.Behavio
     exact absurd (decide_eq_true ⟨ready, actorEq⟩)
       (List.find?_eq_none.mp noTurn event (List.mem_finRange event))
   · exact chosen
+
+/-- **As-if-honest play chooses no failure.** At an execution decoding at its
+completed prefix, every source action as-if-honest play supports commits a
+successful value or discloses. -/
+theorem asIfHonestProfile_success (assessment : setup.intendedModel.BehavioralAssessment)
+    (who : Player) (execution : (application setup leaks).Execution) (rank : Nat)
+    (ordered : execution.application.config.cut.IsPrefix rank)
+    (point : ProtocolState setup.program)
+    (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
+    (past : List (application setup leaks).PlayerEntry) (action : OwnAction Player L)
+    (supported : some action ∈ (asIfHonestProfile setup leaks assessment who
+      (some (past, execution.observe (application setup leaks) who))).support) :
+    (∀ owner name payload, action ≠ .commit owner name payload .failure) ∧
+      ∀ owner name, action ≠ .reveal owner name false := by
+  obtain ⟨intended, _, same⟩ := (mem_support_asIfHonestProfile_observe setup leaks assessment who
+    execution rank ordered point decoded past _).mp supported
+  rcases intendedChoice_cases who point intended with
+    ⟨chosen, choiceEq, _, offered⟩ | ⟨choiceEq, _⟩
+  · rw [choiceEq] at same
+    have equal := Option.some.inj same
+    subst equal
+    exact intendedAvailable_success who setup.program _ _ offered
+  · rw [choiceEq] at same
+    cases same
 
 end Native
 
