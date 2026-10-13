@@ -47,6 +47,10 @@ import Vegas.Game.OnePacketSlotVisibility
 import Vegas.Game.OnePacketSlotLaw
 import Vegas.Game.OnePacketRetention
 import Vegas.Game.OnePacketContentFloor
+import Vegas.Game.OnePacketSlotChoiceMasses
+import Vegas.Game.OnePacketSourceTurn
+import Vegas.Game.OnePacketContentSupport
+import Vegas.Game.OnePacketRealizedCommitment
 import Vegas.Game.OnePacketSlotMasses
 import Vegas.Game.OnePacketForcedBeliefs
 import Vegas.Game.OnePacketIntendedProjection
