@@ -141,7 +141,7 @@ private theorem expect_three_parts {α : Type*} (μ : PMF α) (s r h : α → �
   rw [first, second]
 
 /-- **A law with two outcomes up to a remainder.** If a law maps its silent
-points to `silentImage` and its opening points to `openImage`, gives the silent
+points to silentImage and its opening points to openImage, gives the silent
 points mass within `δ₁` of the weight a Boolean law gives `true`, and leaves at
 most `δ₂` outside both, then read through the map it is `(δ₁ + δ₂)`-close on
 unit payoffs to the two-point law with that weight. -/

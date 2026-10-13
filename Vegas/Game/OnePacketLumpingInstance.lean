@@ -115,7 +115,7 @@ def roundKernel (event : (graph setup).EventId) (owner : Player) (remaining : Na
   else PMF.pure (.inl (some state))
 
 /-- **The pending kernel.** Completed and uninitialized images stay put; the
-owner's step is `ownerStep`; another player's step is its silent response; a
+owner's step is ownerStep; another player's step is its silent response; a
 scheduler round is read off a representative. -/
 def pendingKernel (event : (graph setup).EventId) (owner : Player)
     (ownerStep : Option (OperationalState setup leaks) →
