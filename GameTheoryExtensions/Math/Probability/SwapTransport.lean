@@ -10,7 +10,11 @@ irregular part of total at most `ρ` times the regular total. If a bijection
 between the regular parts keeps the base weight and a record, then every payoff
 of the record with values in `[0, 1]` has expectations under the two laws
 within `4 ρ + 4 ε / (1 - ε)`
-(`GameTheory.Math.Probability.abs_normalized_sub_le_of_swap`). The multiples on
+(`GameTheory.Math.Probability.abs_normalized_sub_le_of_swap`). More generally it
+suffices that the normalized regular base weights give every unit payoff of
+the record the same expectation on both sides
+(`GameTheory.Math.Probability.abs_normalized_sub_le_of_base_agree`); this holds
+with correlated priors, where no weight-preserving bijection exists. The multiples on
 the two sides need not agree: normalization cancels them. The swap may exchange
 any coordinates the record and the base weight do not read, such as one
 player's hidden values or the other players' hidden values.
@@ -123,6 +127,44 @@ theorem abs_normalized_sub_base_le {γ : Type*} [Fintype γ] (weight base : γ �
   linarith
 
 open Classical in
+/-- **Normalized laws with a common base law.** If the normalized regular base
+weights of two sides give every unit payoff of the record the same expectation,
+the normalized weights give it expectations within `4 ρ + 4 ε / (1 - ε)`. -/
+theorem abs_normalized_sub_le_of_base_agree {α β : Type*} [Fintype α] [Fintype β]
+    (weight₁ : α → ℝ) (weight₂ : β → ℝ) (base₁ : α → ℝ) (base₂ : β → ℝ)
+    (regular₁ : α → Prop) (regular₂ : β → Prop) (record₁ : α → R) (record₂ : β → R)
+    (weight₁_nonneg : ∀ a, 0 ≤ weight₁ a) (weight₂_nonneg : ∀ b, 0 ≤ weight₂ b)
+    (base₁_nonneg : ∀ a, regular₁ a → 0 ≤ base₁ a)
+    (base₂_nonneg : ∀ b, regular₂ b → 0 ≤ base₂ b)
+    (scale₁ scale₂ : ℝ) (scale₁_pos : 0 < scale₁) (scale₂_pos : 0 < scale₂)
+    (ε ρ : ℝ) (ε_lt : ε < 1)
+    (close₁ : ∀ a, regular₁ a → |weight₁ a - scale₁ * base₁ a| ≤ ε * (scale₁ * base₁ a))
+    (close₂ : ∀ b, regular₂ b → |weight₂ b - scale₂ * base₂ b| ≤ ε * (scale₂ * base₂ b))
+    (base₁_pos : 0 < ∑ a, if regular₁ a then base₁ a else 0)
+    (base₂_pos : 0 < ∑ b, if regular₂ b then base₂ b else 0)
+    (irregular₁ : ∑ a, (if regular₁ a then 0 else weight₁ a) ≤
+      ρ * ∑ a, if regular₁ a then weight₁ a else 0)
+    (irregular₂ : ∑ b, (if regular₂ b then 0 else weight₂ b) ≤
+      ρ * ∑ b, if regular₂ b then weight₂ b else 0)
+    (payoff : R → ℝ) (unit : ∀ r, 0 ≤ payoff r ∧ payoff r ≤ 1)
+    (agree : (∑ b, (if regular₂ b then base₂ b else 0) /
+      (∑ c, if regular₂ c then base₂ c else 0) * payoff (record₂ b)) =
+      ∑ a, (if regular₁ a then base₁ a else 0) /
+        (∑ c, if regular₁ c then base₁ c else 0) * payoff (record₁ a)) :
+    |∑ a, weight₁ a / (∑ c, weight₁ c) * payoff (record₁ a) -
+        ∑ b, weight₂ b / (∑ c, weight₂ c) * payoff (record₂ b)| ≤
+      4 * ρ + 4 * ε / (1 - ε) := by
+  have one := abs_normalized_sub_base_le weight₁ base₁ regular₁ record₁ scale₁ ε ρ ε_lt
+    scale₁_pos weight₁_nonneg base₁_nonneg close₁ base₁_pos irregular₁ payoff unit
+  have two := abs_normalized_sub_base_le weight₂ base₂ regular₂ record₂ scale₂ ε ρ ε_lt
+    scale₂_pos weight₂_nonneg base₂_nonneg close₂ base₂_pos irregular₂ payoff unit
+  rw [agree] at two
+  have doubled : 4 * ε / (1 - ε) = 2 * (2 * ε / (1 - ε)) := by ring
+  rw [doubled]
+  rw [abs_le] at one two ⊢
+  constructor <;> linarith [one.1, one.2, two.1, two.2]
+
+open Classical in
 /-- **Normalized laws related by a swap.** -/
 theorem abs_normalized_sub_le_of_swap {α β : Type*} [Fintype α] [Fintype β]
     (weight₁ : α → ℝ) (weight₂ : β → ℝ) (base₁ : α → ℝ) (base₂ : β → ℝ)
@@ -173,15 +215,9 @@ theorem abs_normalized_sub_le_of_swap {α β : Type*} [Fintype α] [Fintype β]
     rw [reshape₂, reshape₁, left, right]
     exact (Equiv.sum_comp swap (fun b => base₂ b.1 / total * payoff (record₂ b.1))).symm.trans
       (Finset.sum_congr rfl fun a _ => by rw [baseEq, recordEq])
-  have one := abs_normalized_sub_base_le weight₁ base₁ regular₁ record₁ scale₁ ε ρ ε_lt
-    scale₁_pos weight₁_nonneg base₁_nonneg close₁ base_pos irregular₁ payoff unit
-  have two := abs_normalized_sub_base_le weight₂ base₂ regular₂ record₂ scale₂ ε ρ ε_lt
-    scale₂_pos weight₂_nonneg base₂_nonneg close₂ (by rw [baseTotal]; exact base_pos)
-    irregular₂ payoff unit
-  rw [sameLaw] at two
-  have doubled : 4 * ε / (1 - ε) = 2 * (2 * ε / (1 - ε)) := by ring
-  rw [doubled]
-  rw [abs_le] at one two ⊢
-  constructor <;> linarith [one.1, one.2, two.1, two.2]
+  exact abs_normalized_sub_le_of_base_agree weight₁ weight₂ base₁ base₂ regular₁ regular₂
+    record₁ record₂ weight₁_nonneg weight₂_nonneg base₁_nonneg base₂_nonneg scale₁ scale₂
+    scale₁_pos scale₂_pos ε ρ ε_lt close₁ close₂ base_pos (by rw [baseTotal]; exact base_pos)
+    irregular₁ irregular₂ payoff unit sameLaw
 
 end GameTheory.Math.Probability
