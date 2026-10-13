@@ -422,9 +422,12 @@ theorem firstActivation_commit_completionPointLaw
     (submits : ((runtime setup).canonicalServiceDecision leaks who (execution.recall who)
       (execution.observe (application setup leaks) who) event action).transmission =
         some material)
+    (info : (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).InfoState
+      who)
+    (observed : (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).infoOf who
+      history.trace = info)
     (choice : (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).Choice who
-      ((onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).infoOf who
-        history.trace))
+      info)
     (selected : choice.1 = some ((runtime setup).canonicalServiceDecision leaks who
       (execution.recall who) (execution.observe (application setup leaks) who) event action))
     {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
@@ -440,12 +443,11 @@ theorem firstActivation_commit_completionPointLaw
       fresh control) :
     CompletionPointLaw setup leaks bounds horizon scheduler
       (Profile.update (sig := (onePacketModel setup leaks bounds (initialLaw setup) horizon
-        scheduler).behavioralSignature) profile who ((profile who).commit
-          ((onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).infoOf who
-            history.trace) choice))
+        scheduler).behavioralSignature) profile who ((profile who).commit info choice))
       rank fresh history 1 (ProtocolState.step setup.program point (fun _ => some sourceAction))
       0 := by
   classical
+  subst observed
   let menu := bounds.onePacketMenu (runtime setup) leaks
   let model := menu.information (initialLaw setup) horizon scheduler
   let certificate := (menu.bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
