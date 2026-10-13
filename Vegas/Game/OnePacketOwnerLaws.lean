@@ -223,4 +223,167 @@ theorem commitMove_slotChoiceOf {control : (application setup leaks).Control}
     rw [chosen, Option.getD_some]
     exact commitMove_silent control.execution
 
+omit [DecidableEq Player] [IExpr.ResultTypes L] [Fintype Player] in
+/-- A mixture with weight `t` on a law is `t`-close on unit payoffs to its
+other part. -/
+theorem unitClose_mix {α : Type} (t : ℝ) (h0 : 0 ≤ t) (h1 : t ≤ 1) (μ ν : PMF α) :
+    UnitClose t (mix t h0 h1 μ ν) ν := by
+  intro f unit
+  have bound : ∀ a, |f a| ≤ 1 := fun a =>
+    abs_le.mpr ⟨by linarith [(unit a).1], (unit a).2⟩
+  rw [expect_mix t h0 h1 μ ν f (payoffIntegrable_of_bounded μ f bound)
+    (payoffIntegrable_of_bounded ν f bound)]
+  have first := expect_mem_unit μ f unit
+  have second := expect_mem_unit ν f unit
+  have difference : t * expect μ f + (1 - t) * expect ν f - expect ν f =
+      t * (expect μ f - expect ν f) := by ring
+  rw [difference, abs_mul, abs_of_nonneg h0]
+  have : |expect μ f - expect ν f| ≤ 1 := abs_le.mpr ⟨by linarith, by linarith⟩
+  nlinarith
+
+omit [DecidableEq Player] [IExpr.ResultTypes L] [Fintype Player] in
+/-- The first coordinate of a product law built as a bind is the first law. -/
+private theorem bind_map_pair_map_fst_eq {α β : Type} (first : PMF α) (second : PMF β) :
+    (first.bind fun x => second.map (Prod.mk x)).map Prod.fst = first := by
+  rw [PMF.map_bind]
+  conv_rhs => rw [← PMF.bind_pure first]
+  congr 1
+  funext x
+  rw [PMF.map_comp]
+  exact PMF.map_const _ _
+
+/-- The silence choice decodes to silence. -/
+theorem silenceChoice_val (who : Player) (info : (application setup leaks).Info)
+    (active : info.isSome) :
+    (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler who info).1 =
+      some ⟨none⟩ := by
+  rcases info with _ | ⟨past, view⟩
+  · cases active
+  · unfold silenceChoice responseChoice
+    dsimp only
+    split <;> rfl
+
+/-- The moves of a slot-trembled late component at an execution, apart from its
+uniform tier: the slot tier's moves with weight the square of the scale, then
+silence with weight the scale, then the moves of the late options. -/
+def lateMoves (execution : (application setup leaks).Execution) (who : Player)
+    (event : (graph setup).EventId) (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
+    {slots : Nat} (options : PMF (LateOption slots)) : PMF (Option (Handle (graph setup))) :=
+  mix (scale ^ 2) (sq_nonneg _) (pow_le_one₀ nonnegative le_one)
+    ((PMF.uniformOfFinset (trembleSlots setup bounds) (trembleSlots_nonempty setup bounds)).map
+      (slotMove execution who event))
+    (mix scale nonnegative le_one (PMF.pure none)
+      (options.map fun option => option.elim none fun slot =>
+        slotMove execution who event slot.val))
+
+/-- **The moves of a slot-trembled late component.** Along every history of the
+one-packet game, at a covered pending binding of the player's turn, a
+slot-trembled component of a mixture of late options over slots within capacity,
+with silence as its alternative and the slot tier, sorted into moves, is within
+the cube of the scale of the component's moves. -/
+theorem lateComponent_moves_close {control : (application setup leaks).Control}
+    (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control))
+    (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
+    (event : (graph setup).EventId) {payload : L.Ty}
+    {outputEq : (graph setup).outputLayout event = .binding who payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .bind who payload}
+    (site : CoveredPendingBinding setup leaks bounds assessment who (control.execution.recall who)
+      (control.execution.observe (application setup leaks) who) event payload outputEq codeEq)
+    {slots : Nat} (slotsLe : slots ≤ bounds.candidateCount) (options : PMF (LateOption slots))
+    (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) :
+    UnitClose (scale ^ 3)
+      ((slotTrembledChoice setup leaks bounds (initialLaw setup) horizon scheduler scale
+          nonnegative le_one who (some (control.execution.recall who,
+            control.execution.observe (application setup leaks) who))
+          (options.bind (lateChoice setup leaks bounds (initialLaw setup) horizon scheduler
+            assessment who (some (control.execution.recall who,
+              control.execution.observe (application setup leaks) who))))
+          (PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler who
+            (some (control.execution.recall who,
+              control.execution.observe (application setup leaks) who))))
+          (slotChoice setup leaks bounds (initialLaw setup) horizon scheduler assessment who
+            (some (control.execution.recall who,
+              control.execution.observe (application setup leaks) who)))).map
+        fun choice => commitMove event who payload control.execution (choice.1.getD ⟨none⟩))
+      ((lateMoves (bounds := bounds) control.execution who event scale nonnegative le_one
+        options).map some) := by
+  set past := control.execution.recall who
+  set view := control.execution.observe (application setup leaks) who
+  set sort : (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).Choice who
+      (some (past, view)) → Option (Option (Handle (graph setup))) :=
+    fun choice => commitMove event who payload control.execution (choice.1.getD ⟨none⟩)
+    with sortEq
+  have slotSorted : ∀ slot, slot < bounds.candidateCount →
+      ∀ choice ∈ (asIfHonestProfile setup leaks assessment who (some (past, view))).support,
+        sort (slotChoiceOf setup leaks bounds (initialLaw setup) horizon scheduler who past view
+          event slot choice) = some (slotMove control.execution who event slot) :=
+    fun slot capacity choice supported =>
+      commitMove_slotChoiceOf trace assessment who event site slot capacity choice supported
+  have silenceSorted : sort (silenceChoice setup leaks bounds (initialLaw setup) horizon
+      scheduler who (some (past, view))) = some none := by
+    simp only [sort, silenceChoice_val who (some (past, view)) rfl, Option.getD_some]
+    exact commitMove_silent control.execution
+  have slotTier : (slotChoice setup leaks bounds (initialLaw setup) horizon scheduler assessment
+      who (some (past, view))).map sort =
+      ((PMF.uniformOfFinset (trembleSlots setup bounds) (trembleSlots_nonempty setup bounds)).map
+        (slotMove control.execution who event)).map some := by
+    rw [slotChoice_eq_map (initial := initialLaw setup) (horizon := horizon)
+        (scheduler := scheduler) site.turn, PMF.map_comp, PMF.map_comp]
+    have pairs : PMF.uniformOfFinset (trembleSlots setup bounds)
+        (trembleSlots_nonempty setup bounds) =
+        (slotPairs setup leaks bounds assessment who past view).map Prod.fst :=
+      (bind_map_pair_map_fst_eq _ _).symm
+    rw [pairs, PMF.map_comp]
+    apply map_congr_on_support
+    intro pair supported
+    unfold slotPairs at supported
+    obtain ⟨slot, chosen, inner⟩ := (PMF.mem_support_bind_iff _ _ _).mp supported
+    obtain ⟨choice, drawn, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp inner
+    have capacity : slot < bounds.candidateCount :=
+      (mem_trembleSlots_iff setup bounds site.capacity slot).mp
+        ((PMF.mem_support_uniformOfFinset_iff _ _).mp chosen)
+    exact slotSorted slot capacity choice drawn
+  have mainTier : (options.bind (lateChoice setup leaks bounds (initialLaw setup) horizon
+      scheduler assessment who (some (past, view)))).map sort =
+      (options.map fun option => option.elim none fun slot =>
+        slotMove control.execution who event slot.val).map some := by
+    rw [PMF.map_bind, PMF.map_comp, ← PMF.bind_pure_comp]
+    congr 1
+    funext option
+    cases option with
+    | none =>
+        rw [lateChoice_none, PMF.pure_map, silenceSorted]
+        rfl
+    | some slot =>
+        rw [lateChoice_some_eq_map (bounds := bounds) (initial := initialLaw setup)
+          (horizon := horizon) (scheduler := scheduler) assessment who past view event site.turn
+          slot, PMF.map_comp]
+        have constant : (asIfHonestProfile setup leaks assessment who (some (past, view))).map
+            (sort ∘ slotChoiceOf setup leaks bounds (initialLaw setup) horizon scheduler who past
+              view event slot.val) =
+            (asIfHonestProfile setup leaks assessment who (some (past, view))).map
+              (Function.const _ (some (slotMove control.execution who event slot.val))) :=
+          map_congr_on_support _ fun choice supported =>
+            slotSorted slot.val (lt_of_lt_of_le slot.isLt slotsLe) choice supported
+        rw [constant, PMF.map_const]
+        rfl
+  have rest : (mix (scale ^ 2) (sq_nonneg _) (pow_le_one₀ nonnegative le_one)
+      (slotChoice setup leaks bounds (initialLaw setup) horizon scheduler assessment who
+        (some (past, view)))
+      (mix scale nonnegative le_one
+        (PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler who
+          (some (past, view))))
+        (options.bind (lateChoice setup leaks bounds (initialLaw setup) horizon scheduler
+          assessment who (some (past, view)))))).map sort =
+      (lateMoves (bounds := bounds) control.execution who event scale nonnegative le_one
+        options).map some := by
+    rw [mix_map, mix_map, slotTier, mainTier, PMF.pure_map, silenceSorted]
+    unfold lateMoves
+    rw [mix_map, mix_map, PMF.pure_map]
+  unfold slotTrembledChoice
+  rw [mix_map, rest]
+  exact unitClose_mix _ _ _ _ _
+
 end Vegas
