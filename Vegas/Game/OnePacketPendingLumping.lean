@@ -1159,4 +1159,109 @@ theorem round_image_congr_of_forced (who : Player) (remaining : Nat)
     exact include_opening_image_congr remaining first second same pending ready view firstValid
       secondValid bindings id found call
 
+omit [Fintype Player] in
+/-- **The control step changes the configuration by one step.** -/
+theorem controlStep_configStep (players : Player → (application setup leaks).Policy)
+    (control : (application setup leaks).Control) {next : (application setup leaks).ProtocolState}
+    (member : next ∈ ((application setup leaks).controlStep (initialLaw setup) horizon scheduler
+      players (some control)).support) :
+    ∃ control' : (application setup leaks).Control, next = some control' ∧
+      ConfigStep setup control.execution.application.config
+        control'.execution.application.config := by
+  rcases control with ⟨remaining, actor, execution⟩
+  unfold ReactiveApplication.controlStep at member
+  cases actor with
+  | none =>
+      cases remaining with
+      | zero => exact ⟨_, (PMF.mem_support_pure_iff _ _).mp member, Or.inl rfl⟩
+      | succ remaining =>
+          obtain ⟨command, _, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ member)
+          obtain ⟨next', supported, rfl⟩ := PMF.support_map .. ▸ moved
+          exact ⟨_, rfl, environmentStep_configStep setup leaks execution next' command
+            supported⟩
+  | some who =>
+      simp only [ReactiveApplication.actor, Option.bind_some] at member
+      rw [PMF.mem_support_bind_iff] at member
+      obtain ⟨action, _, reached⟩ := member
+      exact ⟨_, (PMF.mem_support_pure_iff _ _).mp reached,
+        Or.inl ((runtime setup).reactive_respond_application leaks execution who _).1⟩
+
+omit [Fintype Player] in
+/-- A forced state is forced at every state with the same configuration. -/
+theorem forcedState_of_config_eq {who : Player}
+    {control control' : (application setup leaks).Control}
+    (forced : ForcedState setup leaks who (some control))
+    (same : control'.execution.application.config = control.execution.application.config) :
+    ForcedState setup leaks who (some control') := by
+  obtain ⟨rank, point, ordered, decoded, forcedPoint⟩ := forced
+  refine ⟨rank, point, ?_, ?_, forcedPoint⟩
+  · rw [same]
+    exact ordered
+  · rw [same]
+    exact decoded
+
+omit [Fintype Player] in
+/-- One configuration step keeps a completed event completed. -/
+theorem completed_of_configStep {config next : (graph setup).Config}
+    (step : ConfigStep setup config next) {event : (graph setup).EventId}
+    (completed : event ∈ config.cut.completed) : event ∈ next.cut.completed := by
+  rcases step with same | ⟨other, ready, action, member⟩
+  · rw [same]
+    exact completed
+  · rw [config.step_cut other ready action next member]
+    exact (EventOrder.Cut.mem_complete _ _ _ _).mpr (Or.inr completed)
+
+omit [Fintype Player] in
+/-- One configuration step keeps the output of a completed event. -/
+theorem output_of_configStep {config next : (graph setup).Config}
+    (step : ConfigStep setup config next) {event : (graph setup).EventId}
+    (completed : event ∈ config.cut.completed) :
+    next.store (.inr event) = config.store (.inr event) := by
+  rcases step with same | ⟨other, ready, action, member⟩
+  · rw [same]
+  · have present : (config.store (.inr event)).isSome := by
+      rw [EventGraph.Config.store_output]
+      exact (config.output_available event).mpr completed
+    obtain ⟨value, stored⟩ := Option.isSome_iff_exists.mp present
+    rw [stored]
+    exact config.step_store_of_some next other ready action member _ value stored
+
+omit [Fintype Player] in
+open Classical in
+/-- Once an event has completed, one configuration step leaves its image
+unchanged. -/
+theorem pendingImage_of_configStep {control control' : (application setup leaks).Control}
+    (step : ConfigStep setup control.execution.application.config
+      control'.execution.application.config)
+    {event : (graph setup).EventId}
+    (completed : event ∈ control.execution.application.config.cut.completed) :
+    pendingImage event (some control') = pendingImage event (some control) := by
+  have completed' := completed_of_configStep step completed
+  have output := output_of_configStep step completed
+  simp only [pendingImage, completed, completed', ↓reduceIte, StoreEventFailed, output,
+    Sum.inr.injEq, decide_eq_decide]
+
+omit [Fintype Player] in
+/-- **While the event is ready at a forced state, one configuration step
+either completes it or keeps the state forced with the event ready.** -/
+theorem forced_or_completed_of_configStep {who : Player}
+    {control control' : (application setup leaks).Control}
+    (step : ConfigStep setup control.execution.application.config
+      control'.execution.application.config)
+    (forced : ForcedState setup leaks who (some control))
+    {event : (graph setup).EventId} (ready : control.execution.application.config.cut.Ready event) :
+    event ∈ control'.execution.application.config.cut.completed ∨
+      (ForcedState setup leaks who (some control') ∧
+        control'.execution.application.config.cut.Ready event) := by
+  rcases step with same | ⟨other, otherReady, action, member⟩
+  · right
+    refine ⟨forcedState_of_config_eq forced same, ?_⟩
+    rw [same]
+    exact ready
+  · left
+    have sameEvent : other = event := ready_unique (setup := setup) _ otherReady ready
+    subst sameEvent
+    rw [control.execution.application.config.step_cut other otherReady action _ member]
+    exact (EventOrder.Cut.mem_complete _ _ _ _).mpr (Or.inl rfl)
+
 end Vegas
