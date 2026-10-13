@@ -50,6 +50,38 @@ private theorem cast_cast_symm {A B : Type} (same : A = B) (value : B) :
   cases same
   rfl
 
+/-- **Every commitment is a terminal cell.** Each binding event of a program
+is a commitment cell of its terminal context, owned by the event's owner, whose
+terminal reference reads the event's output. -/
+theorem terminalRefsWith_commitmentCell {Field : Type} [DecidableEq Field]
+    {layout : Field → EventGraph.EventField Player L} :
+    ∀ {Γ : SourceCtx Player L} {openNames : Finset VarId}
+      (program : SourceProgram Player L Γ openNames) (refs : ContextRefs layout Γ)
+      (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
+      (event : Fin (eventCount program)) {owner : Player} {payload : L.Ty},
+      outputLayout program event = .binding owner payload →
+      ∃ (name : VarId) (cell : HasVar program.terminalCtx name (.commitment owner payload)),
+        ((terminalRefsWith program refs outputs).get cell).field = (outputs event).field
+  | _, _, .ret _, _, _, event, _, _, _ => nomatch event
+  | _, _, .sample _ _ _ next, refs, outputs, event, owner, payload, layoutEq => by
+      refine Fin.cases (fun layoutEq => ?_) (fun later layoutEq => ?_) event layoutEq
+      · simp [outputLayout] at layoutEq
+      · exact terminalRefsWith_commitmentCell next _ (fun tailEvent => outputs (Fin.succ tailEvent))
+          later layoutEq
+  | _, _, .commit name commitOwner _ _ next, refs, outputs, event, owner, payload, layoutEq => by
+      refine Fin.cases (fun layoutEq => ?_) (fun later layoutEq => ?_) event layoutEq
+      · change EventGraph.EventField.binding commitOwner _ = _ at layoutEq
+        obtain ⟨rfl, rfl⟩ := EventGraph.EventField.binding.inj layoutEq
+        exact ⟨name, terminalRef next .here, congrArg EventGraph.FieldRef.field
+          (terminalRefsWith_get_terminalRef next _ _ .here)⟩
+      · exact terminalRefsWith_commitmentCell next _ (fun tailEvent => outputs (Fin.succ tailEvent))
+          later layoutEq
+  | _, _, .reveal _ _ _ _ _ _ next, refs, outputs, event, owner, payload, layoutEq => by
+      refine Fin.cases (fun layoutEq => ?_) (fun later layoutEq => ?_) event layoutEq
+      · simp [outputLayout] at layoutEq
+      · exact terminalRefsWith_commitmentCell next _ (fun tailEvent => outputs (Fin.succ tailEvent))
+          later layoutEq
+
 variable (setup leaks) in
 /-- **A failed disclosure is an event-level failed readout.** On a completed
 configuration, if the output of a disclosure owned by `who` is a failure, the
@@ -108,6 +140,54 @@ theorem eventFailedReadout_of_publicationFailure (control : (application setup l
   · refine ⟨cellName, .publication payload, cellRef, field, ?_⟩
     change cellValue (source.get cellRef) = PublicationResult.failure
     exact cellFailed
+
+variable (setup leaks) in
+/-- **A failed binding with a failed reveal is an event-level failed readout.**
+On a completed configuration, if the output of a binding event is a failure and
+the readout records a failed reveal of `who`, the readout is an event-level
+failed readout of `who` for the binding. -/
+theorem eventFailedReadout_of_bindingFailure (control : (application setup leaks).Control)
+    (terminal : control.execution.application.config.cut.Terminal) {who : Player}
+    {event : (graph setup).EventId} {owner : Player} {payload : L.Ty}
+    (outputEq : (graph setup).outputLayout event = .binding owner payload)
+    (failed : (⟨.inr event, outputEq⟩ : EventGraph.FieldRef (graph setup).layout
+      (.binding owner payload)).get? control.execution.application.config.store =
+        some .failure)
+    (revealed : ∀ source, sourceReadout setup leaks (some control) = some source →
+      1 ≤ failedReveals setup.program who (publicOutcome setup.program source)) :
+    sourceReadout setup leaks (some control) ∈ EventFailedReadout setup who event := by
+  have available : ∀ field,
+      (control.execution.application.config.store field).isSome = true := by
+    intro field
+    cases field with
+    | inl input => rfl
+    | inr other =>
+        exact (control.execution.application.config.output_available other).mpr
+          (by rw [terminal]; exact Finset.mem_univ _)
+  obtain ⟨source, decoded⟩ := Option.isSome_iff_exists.mp
+    (decodeState?_isSome_of_available (terminalRefs setup.program)
+      control.execution.application.config.store available)
+  have read := (sourceReadout_eq_decode setup leaks control).trans decoded
+  have agree : (terminalRefs setup.program).Agrees source
+      control.execution.application.config.store :=
+    decodeState?_agrees _ _ _ decoded
+  obtain ⟨name, cellRef, field⟩ := terminalRefsWith_commitmentCell setup.program
+    (ContextRefs.initial setup.context (outputLayout setup.program)) (outputRef setup.program)
+    event outputEq
+  change ((terminalRefs setup.program).get cellRef).field = .inr event at field
+  have same : (terminalRefs setup.program).get cellRef =
+      (⟨.inr event, outputEq⟩ : EventGraph.FieldRef (graph setup).layout
+        (.binding owner payload)) := by
+    cases selected : (terminalRefs setup.program).get cellRef with
+    | mk selectedField selectedLayout =>
+        rw [selected] at field
+        cases field
+        rfl
+  have cellRead := agree cellRef
+  rw [same, failed] at cellRead
+  refine ⟨source, read, revealed source read, name, .commitment owner payload, cellRef, field, ?_⟩
+  change cellValue (source.get cellRef) = PublicationResult.failure
+  exact (Option.some.inj cellRead).symm
 
 /-- **A doomed disclosure publishes a failure.** Along a run from a
 configuration at which a disclosure is ready and the resolution of an opening
