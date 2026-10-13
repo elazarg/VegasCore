@@ -5,6 +5,8 @@ import Vegas.Game.OnePacketSlotLaw
 import Interaction.ReactiveSupportedRounds
 import Vegas.Game.OnePacketEventSuccess
 import Vegas.Game.OnePacketSourceTurn
+import Vegas.Game.OnePacketBindingSite
+import Vegas.Game.OnePacketSureFailure
 
 /-! # Discharging inputs of the one-packet certificate
 
@@ -341,6 +343,56 @@ theorem onePacket_certificate_lawApproximation (wellFormed : setup.WellFormed)
 
 end Law
 
+section Transmits
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+
+/-- A source action other than withholding encodes, at a publication event, to
+disclosure. -/
+theorem encodeEventAction?_discloses :
+    {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → (event : Fin (eventCount program)) →
+    (action : OwnAction Player L) → (∀ owner name, action ≠ .reveal owner name false) →
+    ∀ encoded, encodeEventAction? program event action = some encoded →
+    ∀ payload (publication : outputLayout program event = .publication payload),
+      cast (congrArg EventGraph.EventField.Action publication) encoded = true
+  | _, _, .ret _, event, _, _, _, _ => nomatch event
+  | _, _, .sample name fresh law next, event, action, discloses, encoded, encodes => by
+      cases event using Fin.cases with
+      | zero => cases encodes
+      | succ tail =>
+          exact encodeEventAction?_discloses next tail action discloses encoded encodes
+  | _, _, .commit name owner fresh guard next, event, action, discloses, encoded, encodes => by
+      cases event using Fin.cases with
+      | zero =>
+          intro _ publication
+          cases publication
+      | succ tail =>
+          exact encodeEventAction?_discloses next tail action discloses encoded encodes
+  | _, _, .reveal published owner name fresh selected unresolved next, event, action, discloses,
+      encoded, encodes => by
+      cases event using Fin.cases with
+      | zero =>
+          intro _ publication
+          cases action with
+          | commit => cases encodes
+          | reveal actionOwner actionName disclose =>
+              simp only [encodeEventAction?, Fin.cases_zero] at encodes
+              split_ifs at encodes with ownerEq nameEq
+              cases encodes
+              cases publication
+              revert encoded
+              change ∀ value : Bool, (∀ owner name, OwnAction.reveal actionOwner actionName value ≠
+                .reveal owner name false) → value = true
+              intro value discloses
+              cases value
+              · exact (discloses actionOwner actionName rfl).elim
+              · rfl
+      | succ tail =>
+          exact encodeEventAction?_discloses next tail action discloses encoded encodes
+
+end Transmits
+
 section FirstActivation
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
@@ -609,6 +661,143 @@ def FirstActivationTransmits : Prop :=
         localFailure (2 * horizon + 1) assessment ⟨some (past, view), decision⟩
           (EventFailedHistory setup leaks bounds horizon scheduler who event)
           (PMF.pure choice) = 1
+
+omit [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
+  [Finite setup.intendedProtocol.History] in
+/-- **First activations transmit or fail surely.** Under the asynchronous
+contract, at every forced first activation: a binding always has a canonical
+slot, so its canonical decisions transmit; a disclosure transmits its opening
+when the owner's binding resolves to a value, and otherwise the resolution
+publishes a failure at every history of the information state, so every choice
+fails the event surely. -/
+theorem firstActivationTransmits_of_contract {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
+      bound) :
+    FirstActivationTransmits setup leaks bounds horizon scheduler := by
+  let app := application setup leaks
+  let menu := bounds.onePacketMenu (runtime setup) leaks
+  intro who past view event forced pending _
+  obtain ⟨turn, _, owned, _⟩ := pendingEvent_spec pending
+  obtain ⟨history, infoEq, forcedState⟩ := forced
+  have observed : app.observe who history.state = some (past, view) :=
+    (menu.info (initialLaw setup) horizon scheduler who history.trace).symm.trans infoEq
+  have menuTrace := history.trace
+  generalize history.state = state at observed forcedState menuTrace
+  rcases state with _ | ⟨remaining, actor, execution⟩
+  · exact forcedState.elim
+  by_cases active : actor = some who
+  swap
+  · simp [ReactiveApplication.observe, active] at observed
+  subst active
+  simp only [ReactiveApplication.observe, ↓reduceIte, Option.some.injEq, Prod.mk.injEq]
+    at observed
+  obtain ⟨pastEq, viewEq⟩ := observed
+  subst pastEq
+  subst viewEq
+  have turnExec : execution.application.publicView.ownTurn? who = some event := turn
+  have ready : execution.application.config.cut.Ready event :=
+    (execution.application.publicView_eventReady event).mp
+      (PublicView.ownTurn?_spec _ who event turnExec).1
+  cases node : nodeView (graph setup) event with
+  | sample payload law outputEq codeEq =>
+      have none := nodeView_sample_actor outputEq codeEq
+      rw [owned] at none
+      cases none
+  | bind owner payload outputEq codeEq =>
+      left
+      intro action graphAction _ _ _
+      obtain ⟨serial, slot⟩ := onePacket_canonicalFreshSlot_exists menuTrace who
+      simp only [EventGraphRuntime.canonicalServiceDecision,
+        EventGraphRuntime.canonicalReactiveDecision, node]
+      dsimp only at slot
+      erw [slot]
+      simp [ReactiveApplication.SubmissionNormalization.action]
+  | resolve owner payload binding checks outputEq codeEq =>
+      have ownerEq : owner = who :=
+        Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
+      subst ownerEq
+      have available : (EventGraph.EventCode.resolveOutput? binding checks true
+          execution.application.config.store).isSome = true := by
+        apply EventGraph.EventCode.resolveOutput?_isSome
+        intro field member
+        apply execution.application.config.read_available ready
+        rw [← EventGraph.EventCode.readFields_cast outputEq ((graph setup).nodes event), codeEq]
+        exact member
+      obtain ⟨result, resolved⟩ := Option.isSome_iff_exists.mp available
+      cases result with
+      | success value =>
+          left
+          intro action graphAction encoded _ discloses
+          have disclose := encodeEventAction?_discloses setup.program event action discloses
+            graphAction encoded payload outputEq
+          let inputs : PMF (graph setup).Inputs := setup.initialLaw.map setup.eventInputs
+          have initialEq : inputs.map
+              (EventGraphRuntime.State.initial (graph := graph setup)) = initialLaw setup := by
+            rw [PMF.map_comp]
+            rfl
+          have valid := (runtime setup).reactiveBindingInvariant_history leaks inputs horizon
+            scheduler (by
+              rw [initialEq]
+              exact menu.toRawTrace (initialLaw setup) horizon scheduler menuTrace)
+          obtain ⟨candidate, _, _, _, packet⟩ :=
+            EventGraphRuntime.reactiveResolutionPacket_provenance (runtime setup) leaks
+              execution.application valid owner event payload binding checks outputEq graphAction
+              disclose value resolved
+          simp only [EventGraphRuntime.canonicalServiceDecision,
+            EventGraphRuntime.canonicalReactiveDecision, node]
+          change ((EventGraphRuntime.reactiveNormalization (runtime setup) leaks).action owner
+            (execution.recall owner) (execution.observe app owner)
+            ⟨(EventGraphRuntime.reactiveResolutionPacket owner event payload binding checks
+              outputEq graphAction ((runtime setup).reactiveApplication leaks |>.observePlayer
+                execution.application owner)).map fun packet =>
+              (disclosureSubmission packet).normalizeReactive owner
+                ((runtime setup).reactiveApplication leaks |>.observePlayer
+                  execution.application owner) []⟩).transmission ≠ none
+          rw [packet]
+          simp only [Option.map_some, ReactiveApplication.SubmissionNormalization.action, ne_eq,
+            reduceCtorEq, not_false_eq_true]
+      | failure =>
+          right
+          intro assessment decision choice
+          refine doomedDisclosure_localFailure_eq_one bounds horizon scheduler contract.completes
+            assessment ⟨_, decision⟩ (PMF.pure choice) outputEq codeEq ?_
+          rintro ⟨other, otherInfo⟩ _
+          have otherObserved : app.observe owner other.state =
+              some (execution.recall owner, execution.observe app owner) :=
+            (menu.info (initialLaw setup) horizon scheduler owner other.trace).symm.trans
+              otherInfo
+          generalize other.state = otherState at otherObserved ⊢
+          rcases otherState with _ | ⟨otherRemaining, otherActor, otherExecution⟩
+          · cases otherObserved
+          by_cases otherActive : otherActor = some owner
+          swap
+          · simp [ReactiveApplication.observe, otherActive] at otherObserved
+          subst otherActive
+          simp only [ReactiveApplication.observe, ↓reduceIte, Option.some.injEq, Prod.mk.injEq]
+            at otherObserved
+          have sameView := otherObserved.2
+          have otherTurn : otherExecution.application.publicView.ownTurn? owner = some event := by
+            have viewed := congrArg (fun view : app.PlayerView =>
+              view.application.publicView.ownTurn? owner) sameView
+            exact viewed.trans turnExec
+          have otherReady : otherExecution.application.config.cut.Ready event :=
+            (otherExecution.application.publicView_eventReady event).mp
+              (PublicView.ownTurn?_spec _ owner event otherTurn).1
+          have sameStore := congrArg (fun view : app.PlayerView =>
+            view.application.observation.store) sameView
+          refine ⟨_, rfl, otherReady, ?_⟩
+          calc EventGraph.EventCode.resolveOutput? binding checks true
+                otherExecution.application.config.store
+              = EventGraph.EventCode.resolveOutput? binding checks true
+                  ((graph setup).playerStore owner otherExecution.application.config.store) :=
+                (EventGraph.EventCode.resolveOutput?_playerStore binding checks _ true).symm
+            _ = EventGraph.EventCode.resolveOutput? binding checks true
+                  ((graph setup).playerStore owner execution.application.config.store) :=
+                congrArg (EventGraph.EventCode.resolveOutput? binding checks true) sameStore
+            _ = EventGraph.EventCode.resolveOutput? binding checks true
+                  execution.application.config.store :=
+                EventGraph.EventCode.resolveOutput?_playerStore binding checks _ true
+            _ = some .failure := resolved
 
 omit [Finite setup.intendedProtocol.History] in
 /-- **The prescribed failure bound.** For a well-formed setup, under the
@@ -902,8 +1091,7 @@ def OnePacketOpenInputs.toCertificateInputs
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
       bound)
     (timely : AsyncTimely (runtime setup) delay bound)
-    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound)
-    (transmitting : FirstActivationTransmits setup leaks bounds horizon scheduler) :
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound) :
     OnePacketCertificateInputs setup leaks bounds horizon scheduler parameter utility
       excludedPayoff sequence slots where
   scale := inputs.scale
@@ -932,7 +1120,8 @@ def OnePacketOpenInputs.toCertificateInputs
       inputs.siteCommonness weights targetSequence assembled mixed bayes
     obtain ⟨slack, slackLimit, slackNonneg, prescribed⟩ :=
       onePacket_prescribedFailure setup leaks bounds horizon scheduler contract timely retains
-        transmitting sequence inputs.scale inputs.scale_pos inputs.scale_le_one
+        (firstActivationTransmits_of_contract setup leaks bounds horizon scheduler contract)
+        sequence inputs.scale inputs.scale_pos inputs.scale_le_one
         inputs.scale_vanishing targetSequence
     refine ⟨continuation, score, error, drift, slack, errorLimit, driftLimit, slackLimit,
       driftNonneg, slackNonneg, fun n who site choice notFree marked => ?_⟩
@@ -960,7 +1149,6 @@ theorem onePacket_intended_sequentialEquilibrium_of_openInputs (wellFormed : set
       bound)
     (timely : AsyncTimely (runtime setup) delay bound)
     (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound)
-    (transmitting : FirstActivationTransmits setup leaks bounds horizon scheduler)
     (intended : setup.intendedModel.BehavioralAssessment)
     (equilibrium : intended.IsSequentialEquilibrium setup.intended_decision_antichain
       setup.intended_bounded.wellFoundedHistories
@@ -995,7 +1183,6 @@ theorem onePacket_intended_sequentialEquilibrium_of_openInputs (wellFormed : set
     fun sequence mixed bayes converges =>
       (inputs sequence mixed bayes converges).toCertificateInputs setup leaks bounds horizon
         scheduler parameter utility excludedPayoff wellFormed contract timely retains
-          transmitting
 
 /-- **Sequential equilibrium of the bounded raw runtime from the open inputs.**
 Under the hypotheses of
@@ -1011,7 +1198,6 @@ theorem onePacket_intended_raw_sequentialEquilibrium_of_openInputs
       bound)
     (timely : AsyncTimely (runtime setup) delay bound)
     (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound)
-    (transmitting : FirstActivationTransmits setup leaks bounds horizon scheduler)
     (intended : setup.intendedModel.BehavioralAssessment)
     (equilibrium : intended.IsSequentialEquilibrium setup.intended_decision_antichain
       setup.intended_bounded.wellFoundedHistories
@@ -1062,8 +1248,7 @@ theorem onePacket_intended_raw_sequentialEquilibrium_of_openInputs
     parameter utility excludedPayoff wellFormed intended equilibrium
     (fun sequence mixed bayes converges =>
       (inputs sequence mixed bayes converges).toCertificateInputs setup leaks bounds horizon
-        scheduler parameter utility excludedPayoff wellFormed contract timely retains
-          transmitting)
+        scheduler parameter utility excludedPayoff wellFormed contract timely retains)
     service observationRate deliveryRate delivery_nonnegative coverage lowerUtility upperUtility
     lower_le le_upper deposit deposit_nonnegative sufficient
 
