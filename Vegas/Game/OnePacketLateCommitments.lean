@@ -121,4 +121,104 @@ def LateCommitBlind (sequence : ℕ → setup.intendedModel.BehavioralAssessment
               (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site
               (sourceOfValue setup event outputEq value)| ≤ blindError n
 
+omit [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+    scheduler).InfoState who)] in
+open Classical in
+/-- **Committing at a forced history is a source gain.** For a well-formed setup,
+at a decision input of `who` showing its own turn, from a history in a forced
+state at which `who` owes no failure, the value of committing a source choice
+less the value at the decoded point is the intended history gain of committing
+that choice at the projected site, at the history's replay. -/
+theorem decodedCommitValue_sub_eq_historyGain (wellFormed : setup.WellFormed)
+    (assessment : setup.intendedModel.BehavioralAssessment) {who : Player}
+    (site : (onePacketN).InformationSite who) {past : List (application setup leaks).PlayerEntry}
+    {view : (application setup leaks).PlayerView} (atSite : site.1 = some (past, view))
+    {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? who = some event)
+    (decision : setup.intendedModel.IsDecisionInfo who (projectView setup leaks who site.1))
+    (choice : setup.intendedModel.Choice who (projectView setup leaks who site.1))
+    (history : (onePacketN).InformationHistory who site.1)
+    (forced : ForcedState setup leaks who history.1.state)
+    (notOwed : ∀ point, nativeDecodedState setup leaks history.1.state = some point →
+      ¬ ProtocolState.OwesFailure who setup.program point)
+    {bound : ℝ} (readoutBounded : ∀ readout,
+      |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ bound) :
+    decodedCommitValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+        (setup.intendedOpeningProfile assessment.strategy) who (siteRank site.1) choice.1
+        history.1 -
+      decodedPointValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+        (setup.intendedOpeningProfile assessment.strategy) who (siteRank site.1) history.1 =
+      setup.intendedModel.historyGain
+        (setup.intendedModel.truncatedRunner (instructionCount setup.program + 1))
+        (intendedReadoutExclusion setup parameter utility excludedPayoff) (payoffComponent setup)
+        assessment (projectedSite setup leaks decision,
+          (assessment.strategy who).commit (projectView setup leaks who site.1) choice)
+        (replayProjection setup leaks bounds horizon scheduler (projectedSite setup leaks decision)
+          site atSite rfl history) := by
+  obtain ⟨native, seen⟩ := history
+  have seenSite : (onePacketInformation setup leaks bounds horizon scheduler).infoOf who
+      native.trace = some (past, view) := seen.trans atSite
+  obtain ⟨state, trace⟩ := native
+  change (onePacketInformation setup leaks bounds horizon scheduler).infoOf who trace = _
+    at seenSite
+  rw [onePacket_infoOf] at seenSite
+  cases state with
+  | none => cases seenSite
+  | some control =>
+  rcases control with ⟨remaining, actor, execution⟩
+  by_cases active : actor = some who
+  swap
+  · simp only [ReactiveApplication.observe, active, ↓reduceIte] at seenSite
+    cases seenSite
+  subst active
+  simp only [ReactiveApplication.observe, ↓reduceIte] at seenSite
+  obtain ⟨pastEq, viewEq⟩ := Prod.mk.inj (Option.some.inj seenSite)
+  subst pastEq viewEq
+  change ForcedState setup leaks who (some ⟨remaining, some who, execution⟩) at forced
+  obtain ⟨point, decoded, forcedPoint⟩ := (forcedState_iff_decodedPoint _).mp forced
+  have free : ∀ point', decodedPoint setup execution.application.config = some point' →
+      ∀ player, ¬ ProtocolState.OwesFailure player setup.program point' := by
+    intro found foundDecoded player
+    rw [decoded, Option.some.injEq] at foundDecoded
+    subst foundDecoded
+    by_cases same : player = who
+    · subst same
+      exact notOwed point decoded
+    · exact (forcedPoint.2 player same).2
+  obtain ⟨replay, replayed⟩ := intendedHistory?_isSome_of_debtFree wellFormed trace _ rfl free
+  have replayState : replay.state = some point :=
+    (intendedHistory?_state trace replayed).trans decoded
+  have projectEq := replayProjection_eq (sourceSite := projectedSite setup leaks decision)
+    atSite rfl ⟨⟨_, trace⟩, seen⟩ replayed
+  -- The site's rank is the configuration's completed prefix.
+  have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some ⟨remaining, some who, execution⟩) :=
+    (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon
+      scheduler trace
+  obtain ⟨rank, ordered, _⟩ := pendingAt_history rawTrace
+  have rankEq : siteRank site.1 = rank := by
+    rw [atSite]
+    change (execution.application.config.history.map EventGraph.Completion.event).length = rank
+    rw [List.length_map]
+    exact history_length_of_isPrefix _ ordered
+  have prefixEq : sourceServicePrefix? setup (siteRank site.1) execution.application.config =
+      some point := by
+    rw [rankEq, ← decodedPoint_eq_of_isPrefix ordered]
+    exact decoded
+  obtain ⟨publicReady, owned⟩ := PublicView.ownTurn?_spec _ who event turn
+  have ready : execution.application.config.cut.Ready event :=
+    (State.publicView_eventReady _ event).mp publicReady
+  have acting : ProtocolView.actor who setup.program
+      (ProtocolState.observe who setup.program point) = some who :=
+    (decodedPoint_actor who ready decoded).trans owned
+  have gain := intendedCommit_historyGain setup parameter utility excludedPayoff wellFormed
+    assessment (projectedSite setup leaks decision) choice
+    (replayProjection setup leaks bounds horizon scheduler (projectedSite setup leaks decision)
+      site atSite rfl ⟨⟨_, trace⟩, seen⟩) (by rw [projectEq]; exact replayState) acting
+    readoutBounded
+  refine Eq.trans ?_ gain.symm
+  have reached : IntendedReached setup point := ⟨replay, replayState⟩
+  unfold decodedCommitValue decodedPointValue
+  simp only [prefixEq, reached, ↓reduceIte]
+
 end Vegas
