@@ -5,13 +5,17 @@ import Vegas.Game.ServiceWithheldForfeit
 import Vegas.Game.ServiceRevealDecode
 import Vegas.Game.OnePacketActorRecord
 
-/-! # Disclosures that fail on every continuation
+/-! # Events that fail on every continuation
 
 **Readout.** On a completed configuration of the default runtime, a failure in
 the output of a disclosure owned by `who` is recorded by the typed readout: the
 disclosure is a reveal cell of `who` reading that output, so the readout
 records a failed reveal of `who` and a failure of the disclosure
-(`Vegas.eventFailedReadout_of_publicationFailure`).
+(`Vegas.eventFailedReadout_of_publicationFailure`). Every binding event is a
+commitment cell of the terminal context
+(`Vegas.terminalRefsWith_commitmentCell`), so a failed binding output together
+with a failed reveal of `who` is an event-level failed readout
+(`Vegas.eventFailedReadout_of_bindingFailure`).
 
 **Doomed disclosures.** A disclosure whose resolution of an opening already
 publishes a failure on the store at which it is ready, because the bound value
@@ -22,7 +26,26 @@ that completes play, every terminal continuation of a history at which such a
 disclosure of `who` is pending is an event-level failed history of `who` for
 it, whatever anyone plays (`Vegas.doomedDisclosure_eventFailedHistory`), and
 every local law at a site whose belief holds only such histories fails surely
-(`Vegas.doomedDisclosure_localFailure_eq_one`).
+(`Vegas.doomedDisclosure_localFailure_eq_one`). The site-level form asks for
+the condition at every history of the belief; deferred checks read only the
+author's own commitments and public data, so for a disclosure of the site's
+own player the condition is read from that player's information.
+
+**Failing commitments.** The one-packet menu sends no malformed packet
+(`Vegas.onePacket_not_malformed`), and a commitment it sends names a prepared
+slot of its sender never committed before. When such a commitment of a binding
+event leaves its candidate with a fixed meaning that is not openable at the
+bound type, as a commitment carrying no value does, the event fails surely:
+the owner's one packet is the only commitment the contract can install at the
+event (`Vegas.onePacket_accepted_new`), so the event's output is a failure
+whether that packet is accepted or the event expires, and the failing decoded
+completion makes the owner owe a failure at the decoded point
+(`Vegas.FailingCommitmentInvariant`,
+`Vegas.failingCommitmentInvariant_transition`). Every terminal continuation is
+then an event-level failed history of the owner
+(`Vegas.failingCommitment_eventFailedHistory`,
+`Vegas.failingCommitment_commit_failed`), and the choice has event-level failure
+one at its site (`Vegas.failingCommitment_localFailure_eq_one`).
 -/
 
 noncomputable section
@@ -656,6 +679,276 @@ theorem failingCommitmentInvariant_transition (profile : BehavioralProfile setup
             exact ProtocolState.owesFailure_of_decode_failing setup.program setup.namesNodup
               completed.val _ _ _ _ _ _ point completed.isLt who _ _ decodedBefore ownedSource
               failing reachedPoint
+
+/-- **A failing commitment fails on every continuation.** Under a scheduler
+that completes play, let `who`, at its turn at a binding event of the
+one-packet game, respond with a commitment of that event to a candidate whose
+meaning after the response is fixed and not openable at the bound type, such as
+a commitment carrying no value. Every terminal history of terminal play from
+the state that response reaches, under any players, is an event-level failed
+history of `who` for the event: the event's output is a failure, and `who` owes
+a failure, so its readout records a failed reveal of `who`. -/
+theorem failingCommitment_eventFailedHistory (profile : BehavioralProfile setup.program)
+    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
+    {remaining : Nat} {who : Player} {execution : (application setup leaks).Execution}
+    {event : (graph setup).EventId}
+    (turn : execution.application.publicView.ownTurn? who = some event) {payload : L.Ty}
+    (outputEq : (graph setup).outputLayout event = .binding who payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .bind who payload)
+    (response : (application setup leaks).Action) (material : (application setup leaks).Submission)
+    (submits : response.transmission = some material) {candidate : Handle (graph setup)}
+    (call : (sentEnvelope setup leaks execution who material).payload.call =
+      .commitment event candidate)
+    (fixed : (execution.respond (application setup leaks) who
+      response).application.candidates.lookup candidate ≠ .fresh)
+    (notOpenable : ∀ value, (execution.respond (application setup leaks) who
+      response).application.candidates.lookup candidate ≠ .openable ⟨payload, value⟩)
+    (certificate : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+      horizon scheduler).WellFoundedHistories)
+    (players : ∀ player, ((bounds.onePacketMenu (runtime setup) leaks).information
+      (initialLaw setup) horizon scheduler).BehavioralPolicy player)
+    (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+      horizon scheduler).History)
+    (current : history.state = some ⟨remaining, none,
+      execution.respond (application setup leaks) who response⟩) :
+    ∀ final ∈ (((bounds.onePacketMenu (runtime setup) leaks).information (initialLaw setup)
+        horizon scheduler).runBehavioralTerminalFrom certificate players history).support,
+      final ∈ EventFailedHistory setup leaks bounds horizon scheduler who event := by
+  intro final supported
+  let menu := bounds.onePacketMenu (runtime setup) leaks
+  let model := menu.information (initialLaw setup) horizon scheduler
+  have afterTrace : (menu.protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨remaining, none, execution.respond (application setup leaks) who response⟩) :=
+    current ▸ history.trace
+  have ready : execution.application.config.cut.Ready event :=
+    (execution.application.publicView_eventReady event).mp
+      (PublicView.ownTurn?_spec _ who event turn).1
+  have start : FailingCommitmentInvariant setup leaks bounds horizon scheduler profile who
+      (respondEntry setup leaks execution who response)
+      (sentEnvelope setup leaks execution who material) event candidate outputEq
+      history.state := by
+    rw [current]
+    refine ⟨⟨afterTrace⟩, recordsEntry_respond execution who response remaining none,
+      by rw [respondEntry_of_transmission execution who response material submits], rfl, call,
+      fixed, notOpenable, fun done => ?_⟩
+    rw [((runtime setup).reactive_respond_application leaks execution who response).1] at done
+    exact (ready.1 done).elim
+  have reachedInvariant := model.runBehavioralTerminalFrom_support_closed certificate players _
+    (fun state joint legal target holds reached =>
+      failingCommitmentInvariant_transition bounds horizon scheduler profile codeEq state target
+        joint legal holds reached)
+    history start final supported
+  have stopped := model.runBehavioralTerminalFrom_support_terminal certificate players history
+    final supported
+  cases state : final.state with
+  | none =>
+      rw [state] at reachedInvariant
+      exact reachedInvariant.elim
+  | some control =>
+      have owedState := reachedInvariant
+      rw [state] at reachedInvariant stopped
+      obtain ⟨⟨finalTrace⟩, _, _, _, _, _, _, settled⟩ := reachedInvariant
+      have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon
+          scheduler).Trace (some control) :=
+        menu.toRawTrace (initialLaw setup) horizon scheduler finalTrace
+      have terminal := completes control rawTrace stopped
+      have done : event ∈ control.execution.application.config.cut.completed := by
+        rw [terminal]
+        exact Finset.mem_univ _
+      obtain ⟨failedOutput, owed⟩ := settled done
+      have self : final ∈ (model.runBehavioralTerminalFrom certificate players final).support := by
+        have terminalFinal : (menu.protocol (initialLaw setup) horizon scheduler).terminal
+            final.state := by
+          rw [state]
+          exact stopped
+        rw [InformationModel.runBehavioralTerminalFrom,
+          (menu.protocol (initialLaw setup) horizon scheduler).randomizedBackwardLaw_of_terminal
+            terminalFinal]
+        exact (PMF.mem_support_pure_iff _ _).mpr rfl
+      rw [← state] at owed
+      obtain ⟨readout, read, revealed⟩ := decoded_owesFailure_failedReveals menu horizon scheduler
+        completes certificate players who final owed final self
+      change sourceReadout setup leaks final.state ∈ EventFailedReadout setup who event
+      rw [state] at read ⊢
+      exact eventFailedReadout_of_bindingFailure setup leaks control terminal outputEq failedOutput
+        fun source sourceRead => by
+          rw [read] at sourceRead
+          cases Option.some.inj sourceRead
+          exact revealed
+
+open Classical in
+/-- **Committing to a failing commitment fails the event surely.** Under a
+scheduler that completes play, at a decision history of `who` at its turn at a
+binding event, committing to a response that commits the event to a candidate
+whose meaning after the response is fixed and not openable at the bound type,
+play for the horizon from the history, under any other policies, reaches only
+event-level failed histories of `who` for the event. -/
+theorem failingCommitment_commit_failed (profile : BehavioralProfile setup.program)
+    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
+    (players : ∀ player, ((bounds.onePacketMenu (runtime setup) leaks).information
+      (initialLaw setup) horizon scheduler).BehavioralPolicy player)
+    (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+      horizon scheduler).History)
+    {remaining : Nat} {who : Player} {execution : (application setup leaks).Execution}
+    (current : history.state = some ⟨remaining, some who, execution⟩)
+    {event : (graph setup).EventId}
+    (turn : execution.application.publicView.ownTurn? who = some event) {payload : L.Ty}
+    (outputEq : (graph setup).outputLayout event = .binding who payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .bind who payload)
+    (response : (application setup leaks).Action) (material : (application setup leaks).Submission)
+    (submits : response.transmission = some material) {candidate : Handle (graph setup)}
+    (call : (sentEnvelope setup leaks execution who material).payload.call =
+      .commitment event candidate)
+    (fixed : (execution.respond (application setup leaks) who
+      response).application.candidates.lookup candidate ≠ .fresh)
+    (notOpenable : ∀ value, (execution.respond (application setup leaks) who
+      response).application.candidates.lookup candidate ≠ .openable ⟨payload, value⟩)
+    (info : ((bounds.onePacketMenu (runtime setup) leaks).information (initialLaw setup)
+      horizon scheduler).InfoState who)
+    (observed : ((bounds.onePacketMenu (runtime setup) leaks).information (initialLaw setup)
+      horizon scheduler).infoOf who history.trace = info)
+    (choice : ((bounds.onePacketMenu (runtime setup) leaks).information (initialLaw setup)
+      horizon scheduler).Choice who info)
+    (selected : choice.1 = some response) :
+    ∀ final ∈ (((bounds.onePacketMenu (runtime setup) leaks).information (initialLaw setup)
+        horizon scheduler).runBehavioralFrom
+        (Profile.update (sig := ((bounds.onePacketMenu (runtime setup) leaks).information
+          (initialLaw setup) horizon scheduler).behavioralSignature) players who
+          ((players who).commit info choice)) (2 * horizon + 1) history).support,
+      final ∈ EventFailedHistory setup leaks bounds horizon scheduler who event := by
+  subst observed
+  intro final supported
+  let model := (bounds.onePacketMenu (runtime setup) leaks).information (initialLaw setup)
+    horizon scheduler
+  let committed := Profile.update (sig := model.behavioralSignature) players who
+    ((players who).commit (model.infoOf who history.trace) choice)
+  have bounded := (bounds.onePacketMenu (runtime setup) leaks).bounded (initialLaw setup)
+    horizon scheduler
+  let certificate := bounded.wellFoundedHistories
+  have longer : final ∈ (model.runBehavioralFrom committed (1 + (2 * horizon + 1))
+      history).support := by
+    rw [Nat.add_comm, model.runBehavioralFrom_add committed (2 * horizon + 1) 1 history,
+      PMF.mem_support_bind_iff]
+    refine ⟨final, supported, ?_⟩
+    have terminal : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+        horizon scheduler).terminal final.state := by
+      rw [← model.runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded certificate bounded]
+        at supported
+      exact model.runBehavioralTerminalFrom_support_terminal certificate committed history final
+        supported
+    rw [model.runBehavioralFrom_of_terminal committed 1 terminal]
+    exact PMF.mem_support_pure_iff _ _ |>.mpr rfl
+  rw [model.runBehavioralFrom_add committed 1 (2 * horizon + 1) history,
+    PMF.mem_support_bind_iff] at longer
+  obtain ⟨middle, stepped, rest⟩ := longer
+  have middleState : middle.state = some ⟨remaining, none,
+      execution.respond (application setup leaks) who response⟩ := by
+    have committedStep := (bounds.onePacketMenu (runtime setup) leaks).run_commit_response
+      (initialLaw setup) horizon scheduler players history who remaining execution current
+      choice _ selected
+    have member : middle.state ∈ (PMF.pure (α := (application setup leaks).ProtocolState)
+        (some ⟨remaining, none, execution.respond (application setup leaks) who
+          response⟩)).support := by
+      rw [← committedStep, PMF.support_map]
+      exact ⟨middle, stepped, rfl⟩
+    exact (PMF.mem_support_pure_iff _ _).mp member
+  rw [← model.runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded certificate bounded]
+    at rest
+  exact failingCommitment_eventFailedHistory bounds horizon scheduler profile completes turn
+    outputEq codeEq response material submits call fixed notOpenable certificate committed
+    middle middleState final rest
+
+open Classical in
+/-- **A failing commitment fails surely at a site.** Under a scheduler that
+completes play, at a site of `who` whose information is a decision at its turn
+at a binding event, if at every history of the site's belief the response of a
+choice commits the event to a candidate whose meaning after the response is
+fixed and not openable at the bound type, that choice has event-level failure
+one. -/
+theorem failingCommitment_localFailure_eq_one (profile : BehavioralProfile setup.program)
+    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
+    (assessment : ((bounds.onePacketMenu (runtime setup) leaks).information (initialLaw setup)
+      horizon scheduler).BehavioralAssessment)
+    {who : Player} (site : ((bounds.onePacketMenu (runtime setup) leaks).information
+      (initialLaw setup) horizon scheduler).InformationSite who)
+    (past : List (application setup leaks).PlayerEntry)
+    (view : (application setup leaks).PlayerView) (atSite : site.1 = some (past, view))
+    {event : (graph setup).EventId}
+    (turn : view.application.publicView.ownTurn? who = some event) {payload : L.Ty}
+    (outputEq : (graph setup).outputLayout event = .binding who payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .bind who payload)
+    (response : (application setup leaks).Action) (material : (application setup leaks).Submission)
+    (submits : response.transmission = some material) {candidate : Handle (graph setup)}
+    (failingAt : ∀ (execution : (application setup leaks).Execution),
+      execution.recall who = past → execution.observe (application setup leaks) who = view →
+        (sentEnvelope setup leaks execution who material).payload.call =
+          .commitment event candidate ∧
+        (execution.respond (application setup leaks) who
+          response).application.candidates.lookup candidate ≠ .fresh ∧
+        ∀ value, (execution.respond (application setup leaks) who
+          response).application.candidates.lookup candidate ≠ .openable ⟨payload, value⟩)
+    (choice : ((bounds.onePacketMenu (runtime setup) leaks).information (initialLaw setup)
+      horizon scheduler).Choice who site.1)
+    (selected : choice.1 = some response) :
+    InformationModel.localFailure (2 * horizon + 1) assessment site
+      (EventFailedHistory setup leaks bounds horizon scheduler who event) (PMF.pure choice) =
+        1 := by
+  apply InformationModel.localFailure_eq_one_of_support
+  intro final supported
+  rw [InformationModel.localRun_eq_bind, PMF.mem_support_bind_iff] at supported
+  obtain ⟨⟨history, observed⟩, _, reached⟩ := supported
+  have infoEq := observed
+  rw [atSite] at infoEq
+  change ((bounds.onePacketMenu (runtime setup) leaks).signals (initialLaw setup) horizon
+    scheduler).infoOf who history.trace = _ at infoEq
+  rw [(bounds.onePacketMenu (runtime setup) leaks).info] at infoEq
+  cases state : history.state with
+  | none =>
+      rw [state] at infoEq
+      cases infoEq
+  | some control =>
+      rcases control with ⟨remaining, actor, execution⟩
+      rw [state] at infoEq
+      by_cases active : actor = some who
+      · subst active
+        simp only [ReactiveApplication.observe, ↓reduceIte] at infoEq
+        obtain ⟨pastEq, viewEq⟩ := Prod.mk.inj (Option.some.inj infoEq)
+        obtain ⟨call, fixed, notOpenable⟩ := failingAt execution pastEq viewEq
+        subst pastEq
+        subst viewEq
+        have localTurn : execution.application.publicView.ownTurn? who = some event := by
+          rw [← turn]
+          rfl
+        exact failingCommitment_commit_failed bounds horizon scheduler profile completes
+          assessment.strategy history state localTurn outputEq codeEq response material submits
+          call fixed notOpenable site.1 observed choice selected final reached
+      · simp only [ReactiveApplication.observe, active, ↓reduceIte] at infoEq
+        cases infoEq
+
+/-- **The one-packet menu sends no malformed packet.** Every transmitting
+response of the one-packet menu is permitted by the count verdict, whose call
+check rejects a malformed packet. -/
+theorem onePacket_not_malformed {who : Player}
+    {past : List (application setup leaks).PlayerEntry}
+    {view : (application setup leaks).PlayerView} {response : (application setup leaks).Action}
+    (member : response ∈ bounds.onePacketActions (runtime setup) leaks who past view)
+    {material : (application setup leaks).Submission}
+    (submits : response.transmission = some material) (raw : Raw L) :
+    material.call.packet ≠ .malformed raw := by
+  intro malformed
+  rcases ((bounds.mem_onePacketActions (runtime setup) leaks who past view response).mp
+      member).2 with silent | ⟨sent, transmits, permitted⟩
+  · rw [submits] at silent
+    cases silent
+  · rw [submits] at transmits
+    cases Option.some.inj transmits
+    have correct := ((countPermits_eq_true_iff _ _).mp permitted).2.1
+    change CountCallCorrect _ ⟨_, ⟨material.call.packet, _, _⟩⟩ at correct
+    unfold CountCallCorrect at correct
+    simp only [malformed] at correct
 
 end OnePacketCommitment
 
