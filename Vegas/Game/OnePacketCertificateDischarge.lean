@@ -903,6 +903,19 @@ theorem onePacket_prescribedFailure {delay bound : (graph setup).EventId → Nat
       · right
         exact sure (targetSequence n) decision choice
 
+/-- A response commits no value: it transmits no commitment packet. -/
+def CommitsNoValue (response : (application setup leaks).Action) : Prop :=
+  ∀ material, response.transmission = some material →
+    ∀ event handle, material.call.packet ≠ .commitment event handle
+
+/-- **The marked choices of the one-packet certificate**: the choices that
+commit no value, such as silence and disclosures. Their success continuation is
+the agent's continuation value; every choice committing a value is compared
+with source deviations instead. -/
+def onePacketCompared (who : Player) (site : (onePacketN).InformationSite who)
+    (choice : (onePacketN).Choice who site.1) : Prop :=
+  ∀ response, choice.1 = some response → CommitsNoValue setup leaks response
+
 open Classical in
 /-- **The open inputs of the one-packet certificate** for one source sequence:
 the tremble scales and the obligations not yet discharged, each a statement
@@ -918,8 +931,6 @@ structure OnePacketOpenInputs (sequence : ℕ → setup.intendedModel.Behavioral
   /-- A bound on the gap between a continuation value and the exclusion payoff. -/
   gapBound : ℝ
   gapBound_nonneg : 0 ≤ gapBound
-  /-- The marked choices of each site. -/
-  compared : ∀ who (site : (onePacketN).InformationSite who), (onePacketN).Choice who site.1 → Prop
   /-- **The value decomposition at late deliveries.** At every forced late
   delivery, the exclusion payoff is at most the agent's continuation value up to
   a vanishing error, with gap at most the gap bound, and the successful part of
@@ -942,7 +953,7 @@ structure OnePacketOpenInputs (sequence : ℕ → setup.intendedModel.Behavioral
           ((onePacketN).agentAt site) →
         excludedPayoff who ≤ continuation n ((onePacketN).agentAt site) + error n ∧
         continuation n ((onePacketN).agentAt site) - excludedPayoff who ≤ gapBound ∧
-        (∀ choice, compared who site choice →
+        (∀ choice, onePacketCompared setup leaks bounds horizon scheduler who site choice →
           |onePacketSiteSuccess setup leaks bounds horizon scheduler parameter utility
               excludedPayoff (targetSequence n) site (PMF.pure choice) -
             (1 - onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n)
@@ -979,7 +990,7 @@ structure OnePacketOpenInputs (sequence : ℕ → setup.intendedModel.Behavioral
           ((onePacketN).agentAt site) →
         excludedPayoff who ≤ continuation n ((onePacketN).agentAt site) + error n ∧
         continuation n ((onePacketN).agentAt site) - excludedPayoff who ≤ gapBound ∧
-        (∀ choice, compared who site choice →
+        (∀ choice, onePacketCompared setup leaks bounds horizon scheduler who site choice →
           |onePacketSiteSuccess setup leaks bounds horizon scheduler parameter utility
               excludedPayoff (targetSequence n) site (PMF.pure choice) -
             (1 - onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n)
@@ -1019,7 +1030,7 @@ structure OnePacketOpenInputs (sequence : ℕ → setup.intendedModel.Behavioral
                 scale_le_one (slots := slots) n ((onePacketN).agentAt site) option) -
             (1 - score n (agentLateKey setup leaks bounds (initialLaw setup) horizon scheduler
               ((onePacketN).agentAt site)) option)| ≤ drift n) ∧
-        ∀ choice, compared who site choice →
+        ∀ choice, onePacketCompared setup leaks bounds horizon scheduler who site choice →
           (∃ option,
             |onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
                 (PMF.pure choice) -
@@ -1071,7 +1082,8 @@ structure OnePacketOpenInputs (sequence : ℕ → setup.intendedModel.Behavioral
         ∃ otherError : ℕ → ℝ, Tendsto otherError atTop (nhds 0) ∧
           ∀ n who (site : (onePacketN).InformationSite who), (onePacketN).agentAt site ∉
               Finset.univ.filter (UnforcedAgent setup leaks bounds horizon scheduler) →
-            ∀ choice : (onePacketN).Choice who site.1, ¬ compared who site choice →
+            ∀ choice : (onePacketN).Choice who site.1,
+              ¬ onePacketCompared setup leaks bounds horizon scheduler who site choice →
             let gain := fun law : PMF ((onePacketN).Choice who site.1) =>
               let comparison := (onePacketN).assessmentComparisonWith ((onePacketN).truncatedRunner
                   (2 * horizon + 1)) (readoutExclusion setup leaks bounds (initialLaw setup) horizon
@@ -1128,7 +1140,7 @@ def OnePacketOpenInputs.toCertificateInputs
     excludedPayoff
   gapBound := inputs.gapBound
   gapBound_nonneg := inputs.gapBound_nonneg
-  compared := inputs.compared
+  compared := onePacketCompared setup leaks bounds horizon scheduler
   decomposition weights targetSequence assembled mixed bayes := by
     obtain ⟨continuation, error, errorLimit, value⟩ :=
       inputs.lateDecomposition weights targetSequence assembled mixed bayes
