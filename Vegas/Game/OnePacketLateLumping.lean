@@ -433,4 +433,159 @@ theorem decisionFailed_eq (key : LateKey setup leaks)
                   completed, false_and, ↓reduceIte, decisionImage, bindingImage, pendingImage,
                   attachStatuses, decisionFailure]
 
+omit [Fintype Player] in
+private theorem unitClose_of_eq' {α : Type} {δ : ℝ} (nonneg : 0 ≤ δ) {μ ν : PMF α}
+    (same : μ = ν) : UnitClose δ μ ν := by
+  intro f _
+  rw [same, sub_self, abs_zero]
+  exact nonneg
+
+omit [Fintype Player] in
+private theorem unitClose_mono {α : Type} {δ δ' : ℝ} {μ ν : PMF α} (close : UnitClose δ μ ν)
+    (le : δ ≤ δ') : UnitClose δ' μ ν := fun f unit => (close f unit).trans le
+
+omit [Fintype Player] in
+private theorem unitClose_map {α β : Type} {δ : ℝ} {μ ν : PMF α} (close : UnitClose δ μ ν)
+    (f : α → β) : UnitClose δ (μ.map f) (ν.map f) := by
+  intro g unit
+  rw [expect_map, expect_map]
+  exact close (g ∘ f) fun a => unit (f a)
+
+/-- **One step at a pending binding.** From a kept state, the control step of
+a decoded profile, read through the binding image, is within `2 δ` on unit
+payoffs of the binding kernel, provided the owner's law of moves is within
+`δ`. -/
+theorem bindingKernel_close {LateOption : Type}
+    (moves : LateKey setup leaks → LateOption →
+      Option (OperationalState setup leaks) × List (MessageId Player × Bool) →
+        PMF (Option (Handle (graph setup))))
+    (key : LateKey setup leaks) (option : LateOption)
+    (profile : ∀ player,
+      (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
+    {δ : ℝ} (nonneg : 0 ≤ δ)
+    (law : OwnerBindingLaw bounds horizon scheduler moves key option profile δ)
+    {event : (graph setup).EventId} {payload : L.Ty} (turn : BindingTurn key event payload)
+    (history : (onePacketProtocol setup leaks bounds horizon scheduler).History)
+    {control : (application setup leaks).Control} (current : history.state = some control)
+    (status : event ∈ control.execution.application.config.cut.completed ∨
+      (ForcedState setup leaks key.owner (some control) ∧
+        control.execution.application.config.cut.Ready event)) :
+    UnitClose (2 * δ) (((application setup leaks).controlStep (initialLaw setup) horizon
+        scheduler ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup)
+          horizon scheduler profile) (some control)).map (bindingImage event key.owner payload))
+      (bindingKernel horizon scheduler event key.owner payload (moves key option)
+        (bindingImage event key.owner payload (some control))) := by
+  have twice : 0 ≤ 2 * δ := by linarith
+  obtain ⟨_, ⟨outputEq, codeEq, view⟩, _⟩ := turn
+  rcases status with completed | ⟨forced, ready⟩
+  · apply unitClose_of_eq' twice
+    have constant : ((application setup leaks).controlStep (initialLaw setup) horizon
+        scheduler ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile
+          (initialLaw setup) horizon scheduler profile) (some control)).map
+          (bindingImage event key.owner payload) =
+        ((application setup leaks).controlStep (initialLaw setup) horizon
+        scheduler ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile
+          (initialLaw setup) horizon scheduler profile) (some control)).map
+          (Function.const _ (bindingImage event key.owner payload (some control))) := by
+      apply map_congr_on_support
+      intro next member
+      obtain ⟨control', rfl, step⟩ :=
+        controlStep_configStep horizon scheduler _ control member
+      have completed' := completed_of_configStep step completed
+      have image := pendingImage_of_configStep step completed
+      simp only [bindingImage, image, Function.const_apply]
+      simp only [pendingImage, completed, ↓reduceIte, attachStatuses]
+    rw [constant, PMF.map_const]
+    simp only [bindingImage, pendingImage, completed, ↓reduceIte, attachStatuses, bindingKernel]
+  · have pending := ready.1
+    have imageEq : bindingImage event key.owner payload (some control) =
+        .inl (operationalState setup leaks (some control),
+          commitStatuses event key.owner payload control.execution.application
+            control.execution.network.pending) := by
+      simp only [bindingImage, stateStatuses, pendingImage_of_pending control pending,
+        attachStatuses]
+    rw [imageEq]
+    rcases control with ⟨remaining, actor, execution⟩
+    cases actor with
+    | some player =>
+        by_cases owned : player = key.owner
+        · subst owned
+          have kernelOwner : bindingKernel horizon scheduler event key.owner payload
+              (moves key option) (.inl (operationalState setup leaks
+                (some ⟨remaining, some key.owner, execution⟩),
+                commitStatuses event key.owner payload execution.application
+                  execution.network.pending)) =
+              (moves key option (operationalState setup leaks
+                (some ⟨remaining, some key.owner, execution⟩),
+                commitStatuses event key.owner payload execution.application
+                  execution.network.pending)).map
+                (moveImage event key.owner (operationalState setup leaks
+                  (some ⟨remaining, some key.owner, execution⟩),
+                  commitStatuses event key.owner payload execution.application
+                    execution.network.pending)) := by
+            simp only [operationalState, bindingKernel, ↓reduceIte]
+          rw [kernelOwner]
+          exact ownerBindingStep_close bounds profile history current pending _
+            (law event payload ⟨‹_›, ⟨outputEq, codeEq, view⟩, ‹_›⟩ history remaining execution
+              current (by rw [current]; exact forced) ready)
+        · apply unitClose_of_eq' twice
+          rw [controlStep_other_of_pending bounds horizon scheduler profile key.owner history
+            (by rw [current]; exact forced) current ready
+            (nodeView_bind_actor outputEq codeEq) rfl owned, PMF.pure_map,
+            bindingImage_respond_silent pending rfl]
+          simp only [operationalState, Option.map_some, bindingKernel, owned, ↓reduceIte]
+    | none =>
+        cases remaining with
+        | zero =>
+            apply unitClose_of_eq' twice
+            have step : (application setup leaks).controlStep (initialLaw setup) horizon
+                scheduler ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile
+                  (initialLaw setup) horizon scheduler profile) (some ⟨0, none, execution⟩) =
+                PMF.pure (some ⟨0, none, execution⟩) := rfl
+            rw [step, PMF.pure_map, ← imageEq]
+            simp only [bindingImage, stateStatuses, pendingImage_of_pending _ pending,
+              attachStatuses, operationalState, bindingKernel]
+        | succ remaining =>
+            apply unitClose_of_eq' twice
+            have step : (application setup leaks).controlStep (initialLaw setup) horizon
+                scheduler ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile
+                  (initialLaw setup) horizon scheduler profile)
+                  (some ⟨remaining + 1, none, execution⟩) =
+                (application setup leaks).transition (initialLaw setup) horizon scheduler
+                  (some ⟨remaining + 1, none, execution⟩) (fun _ => none) := rfl
+            rw [step]
+            obtain ⟨state, stateEq⟩ : ∃ state, operationalState setup leaks
+                (some ⟨remaining + 1, none, execution⟩) = some state := ⟨_, rfl⟩
+            have represented : ∃ other : (application setup leaks).Execution,
+                operationalState setup leaks (some ⟨remaining + 1, none, other⟩) = some state ∧
+                commitStatuses event key.owner payload other.application
+                    other.network.pending =
+                  commitStatuses event key.owner payload execution.application
+                    execution.network.pending ∧
+                other.application.config.cut.Ready event :=
+              ⟨execution, stateEq, rfl, ready⟩
+            have kernelRound : bindingKernel horizon scheduler event key.owner payload
+                (moves key option) (.inl (some state,
+                  commitStatuses event key.owner payload execution.application
+                    execution.network.pending)) =
+                bindingRoundKernel horizon scheduler event key.owner payload remaining
+                  (some state, commitStatuses event key.owner payload execution.application
+                    execution.network.pending) := by
+              have actorNone : state.actor = none := by
+                have := congrArg (Option.map OperationalState.actor) stateEq
+                simpa only [operationalState, Option.map_some, Option.some.injEq] using
+                  this.symm
+              have remainingEq : state.remaining = remaining + 1 := by
+                have := congrArg (Option.map OperationalState.remaining) stateEq
+                simpa only [operationalState, Option.map_some, Option.some.injEq] using
+                  this.symm
+              simp only [bindingKernel, actorNone, remainingEq]
+            rw [stateEq, kernelRound]
+            unfold bindingRoundKernel
+            rw [dite_eq_left represented]
+            obtain ⟨repSame, repStatuses, _⟩ := represented.choose_spec
+            exact binding_round_image_congr (initialLaw setup) horizon scheduler remaining
+              execution represented.choose (stateEq.trans repSame.symm) repStatuses.symm ready
+              view
+
 end Vegas
