@@ -66,6 +66,8 @@ import Interaction.ReactiveMenuInvariant
 import Interaction.ReactiveMenuPolicy
 import Interaction.ReactiveMenuRestriction
 import Interaction.ReactiveAnchoredPolicy
+import Interaction.ReactiveAnchoredTrace
+import Interaction.ReactiveLumping
 import Interaction.ReactiveMessageIdentity
 import Interaction.ReactiveMixtureRounds
 import Interaction.ReactiveMonitoring

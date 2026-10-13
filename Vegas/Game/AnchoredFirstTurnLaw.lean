@@ -13,7 +13,7 @@ import Vegas.Game.ServiceAssignedPolicy
 The first-turn clients of a source profile that opens effectively, continued
 from any completion boundary that any players reached, read out the source
 continuation of the boundary's decoded point, under the asynchronous contract
-with timely delays (`Vegas.anchored_firstTurn_continuation`). The boundary must
+with timely delays (`Vegas.anchored_firstTurn_boundaryContinuation`). The boundary must
 leave every later event untouched and every own submission at its author's
 turn; it need not be reached by the clients.
 
