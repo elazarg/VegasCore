@@ -38,8 +38,10 @@ installing each option at each site, and for each key an image of protocol
 states and a failure set:
 
 * the image of a forced history's state at a site with key `key` is read off
-  its operational record by `start`, and that state is kept for `key`;
-* the control step of each installed profile keeps the kept states for `key`,
+  its operational record by `start`, and that state is kept for the site and
+  `key`;
+* the control step of the profile installed at a site keeps the site's kept
+  states,
   and read through the key's image it is within `δ` on unit payoffs of the
   image kernel of `key` and the option;
 * failure of a kept state is a unit function of its image. -/
@@ -56,8 +58,9 @@ structure PendingLumping (assessment : (onePacketInformation setup leaks bounds 
   kernel : LateKey setup leaks → LateOption → Y → PMF Y
   /-- The image of a forced history's state, read off its operational record. -/
   start : LateKey setup leaks → List (Option (OperationalState setup leaks)) → Y
-  /-- The kept states for a key. -/
-  keep : LateKey setup leaks → Set (application setup leaks).ProtocolState
+  /-- The kept states for a site and its key. -/
+  keep : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who →
+    LateKey setup leaks → Set (application setup leaks).ProtocolState
   /-- Failure as a function of the image. -/
   failure : LateKey setup leaks → Y → ℝ
   failure_unit : ∀ key y, 0 ≤ failure key y ∧ failure key y ≤ 1
@@ -68,19 +71,19 @@ structure PendingLumping (assessment : (onePacketInformation setup leaks bounds 
           start key (operationalRecord setup leaks bounds horizon scheduler history.1.trace)
   start_kept : ∀ site key, lateKey setup leaks who site.1 = some key →
     ∀ history ∈ (assessment.belief who site).support,
-      ForcedState setup leaks who history.1.state → history.1.state ∈ keep key
+      ForcedState setup leaks who history.1.state → history.1.state ∈ keep site key
   kept : ∀ site key, lateKey setup leaks who site.1 = some key → ∀ option,
-    ∀ state ∈ keep key, ∀ next ∈ ((application setup leaks).controlStep (initialLaw setup)
+    ∀ state ∈ keep site key, ∀ next ∈ ((application setup leaks).controlStep (initialLaw setup)
       horizon scheduler ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile
         (initialLaw setup) horizon scheduler (profileOf site option)) state).support,
-      next ∈ keep key
+      next ∈ keep site key
   close : ∀ site key, lateKey setup leaks who site.1 = some key → ∀ option,
-    ∀ state ∈ keep key, UnitClose δ
+    ∀ state ∈ keep site key, UnitClose δ
       (((application setup leaks).controlStep (initialLaw setup) horizon scheduler
         ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup) horizon
           scheduler (profileOf site option)) state).map (image key))
       (kernel key option (image key state))
-  failure_eq : ∀ key, ∀ state ∈ keep key,
+  failure_eq : ∀ site key, ∀ state ∈ keep site key,
     (if failedState key state then (1 : ℝ) else 0) = failure key (image key state)
 
 open Classical in
@@ -112,7 +115,7 @@ theorem PendingLumping.pathwise {assessment : (onePacketInformation setup leaks 
           history.1.trace)))) (lumping.failure key)| ≤ fuel * δ := by
   have lumped := (bounds.onePacketMenu (runtime setup) leaks).run_map_unitClose (initialLaw setup)
     horizon scheduler (profileOf site option) (lumping.image key) (lumping.kernel key option)
-    (lumping.keep key) δ (lumping.kept site key siteKey option)
+    (lumping.keep site key) δ (lumping.kept site key siteKey option)
     (lumping.close site key siteKey option) fuel history.1
     (lumping.start_kept site key siteKey history supported forced) (lumping.failure key)
     (lumping.failure_unit key)
@@ -128,7 +131,7 @@ theorem PendingLumping.pathwise {assessment : (onePacketInformation setup leaks 
     have stateLaw := (bounds.onePacketMenu (runtime setup) leaks).run_map_controlSteps
       (initialLaw setup) horizon scheduler (profileOf site option) fuel history.1
     have inside := (iterate_bind_map_unitClose _ (lumping.image key) (lumping.kernel key option)
-      (lumping.keep key) δ (lumping.kept site key siteKey option)
+      (lumping.keep site key) δ (lumping.kept site key siteKey option)
       (lumping.close site key siteKey option) fuel history.1.state
       (lumping.start_kept site key siteKey history supported forced)).1
     have stateReached : final.state ∈ (((onePacketInformation setup leaks bounds horizon
@@ -137,7 +140,7 @@ theorem PendingLumping.pathwise {assessment : (onePacketInformation setup leaks 
       rw [PMF.support_map]
       exact ⟨final, reached, rfl⟩
     rw [stateLaw] at stateReached
-    exact lumping.failure_eq key final.state (inside final.state stateReached)
+    exact lumping.failure_eq site key final.state (inside final.state stateReached)
   rw [sameFailure]
   exact lumped
 

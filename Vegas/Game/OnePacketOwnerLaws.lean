@@ -535,10 +535,12 @@ theorem ownerBindingLaw_of_lateComponents {LateOption' : Type}
     (key : LateKey setup leaks) (option : LateOption')
     (profile : ∀ player,
       (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
+    {allowed : (application setup leaks).ProtocolState → Prop}
     (shape : ∀ event payload, BindingTurn key event payload →
       ∀ (history : (onePacketProtocol setup leaks bounds horizon scheduler).History)
         (remaining : Nat) (execution : (application setup leaks).Execution),
         history.state = some ⟨remaining, some key.owner, execution⟩ →
+        allowed history.state →
         ForcedState setup leaks key.owner history.state →
         execution.application.config.cut.Ready event →
         profile key.owner (some (execution.recall key.owner,
@@ -560,8 +562,8 @@ theorem ownerBindingLaw_of_lateComponents {LateOption' : Type}
                 execution.observe (application setup leaks) key.owner)))) :
     OwnerBindingLaw bounds horizon scheduler
       (fun key option => lateBindingMoves bounds horizon scheduler scale nonnegative le_one
-        (options key option) key) key option profile (scale ^ 3) := by
-  intro event payload turn history remaining execution current forced ready
+        (options key option) key) key option profile (scale ^ 3) allowed := by
+  intro event payload turn history remaining execution current allowedState forced ready
   have decided := bindingTurn_of_bindingTurn turn
   obtain ⟨_, ⟨outputEq, codeEq, node⟩, _⟩ := turn
   have trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace
@@ -573,7 +575,7 @@ theorem ownerBindingLaw_of_lateComponents {LateOption' : Type}
       (execution.observe (application setup leaks) key.owner))) scale nonnegative le_one
   rw [decodeProfile_eq_map, PMF.map_comp,
     shape event payload ⟨‹_›, ⟨outputEq, codeEq, node⟩, ‹_›⟩ history remaining execution current
-      forced ready]
+      allowedState forced ready]
   have represented : ∃ witness : (onePacketProtocol setup leaks bounds horizon
       scheduler).History × Nat × (application setup leaks).Execution,
       witness.1.state = some ⟨witness.2.1, some key.owner, witness.2.2⟩ ∧

@@ -254,11 +254,13 @@ def OwnerBindingLaw {LateOption : Type}
     (key : LateKey setup leaks) (option : LateOption)
     (profile : ∀ player,
       (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
-    (δ : ℝ) : Prop :=
+    (δ : ℝ) (allowed : (application setup leaks).ProtocolState → Prop := fun _ => True) :
+    Prop :=
   ∀ event payload, BindingTurn key event payload →
     ∀ (history : (onePacketProtocol setup leaks bounds horizon scheduler).History)
       (remaining : Nat) (execution : (application setup leaks).Execution),
       history.state = some ⟨remaining, some key.owner, execution⟩ →
+      allowed history.state →
       ForcedState setup leaks key.owner history.state →
       execution.application.config.cut.Ready event →
       UnitClose δ (((bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup)
@@ -462,11 +464,12 @@ theorem bindingKernel_close {LateOption : Type}
     (key : LateKey setup leaks) (option : LateOption)
     (profile : ∀ player,
       (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
-    {δ : ℝ} (nonneg : 0 ≤ δ)
-    (law : OwnerBindingLaw bounds horizon scheduler moves key option profile δ)
+    {δ : ℝ} (nonneg : 0 ≤ δ) {allowed : (application setup leaks).ProtocolState → Prop}
+    (law : OwnerBindingLaw bounds horizon scheduler moves key option profile δ allowed)
     {event : (graph setup).EventId} {payload : L.Ty} (turn : BindingTurn key event payload)
     (history : (onePacketProtocol setup leaks bounds horizon scheduler).History)
     {control : (application setup leaks).Control} (current : history.state = some control)
+    (allowedState : allowed (some control))
     (status : event ∈ control.execution.application.config.cut.completed ∨
       (ForcedState setup leaks key.owner (some control) ∧
         control.execution.application.config.cut.Ready event)) :
@@ -527,7 +530,7 @@ theorem bindingKernel_close {LateOption : Type}
           rw [kernelOwner]
           exact ownerBindingStep_close bounds profile history current pending _
             (law event payload ⟨‹_›, ⟨outputEq, codeEq, view⟩, ‹_›⟩ history remaining execution
-              current (by rw [current]; exact forced) ready)
+              current (by rw [current]; exact allowedState) (by rw [current]; exact forced) ready)
         · apply unitClose_of_eq' twice
           rw [controlStep_other_of_pending bounds horizon scheduler profile key.owner history
             (by rw [current]; exact forced) current ready
@@ -603,10 +606,11 @@ theorem decisionKernel_close {LateOption : Type}
       (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
     {δ δBinding : ℝ} (nonneg : 0 ≤ δ) (bindingNonneg : 0 ≤ δBinding)
     (bindingLe : 2 * δBinding ≤ δ)
-    (owner : OwnerStepClose ownerKernel key option profile δ)
-    (law : OwnerBindingLaw bounds horizon scheduler moves key option profile δBinding)
+    {allowed : (application setup leaks).ProtocolState → Prop}
+    (owner : OwnerStepClose ownerKernel key option profile δ allowed)
+    (law : OwnerBindingLaw bounds horizon scheduler moves key option profile δBinding allowed)
     {state : (application setup leaks).ProtocolState}
-    (kept : state ∈ decisionKept bounds horizon scheduler key) :
+    (kept : state ∈ decisionKept bounds horizon scheduler key) (allowedState : allowed state) :
     UnitClose δ (((application setup leaks).controlStep (initialLaw setup) horizon scheduler
         ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup) horizon
           scheduler profile) state).map (decisionImage key))
@@ -624,7 +628,7 @@ theorem decisionKernel_close {LateOption : Type}
         simp only [decidedEvent, turn] at kept
         exact kept
       have close := unitClose_map (lateKernel_close ownerKernel key option profile nonneg owner
-        keptPublication) (Sum.inl : PendingImage (setup := setup) (leaks := leaks) →
+        keptPublication allowedState) (Sum.inl : PendingImage (setup := setup) (leaks := leaks) →
           DecisionImage (setup := setup) (leaks := leaks))
       rw [imageEq, ← PMF.map_comp]
       simp only [decisionKernel, turn, Function.comp]
@@ -646,18 +650,20 @@ theorem decisionKernel_close {LateOption : Type}
           simp only [decidedEvent, turn, binding, Option.map_some] at kept
           obtain ⟨⟨history, current⟩, control, rfl, status⟩ := kept
           have close := unitClose_map (bindingKernel_close moves key option profile bindingNonneg
-            law spec history current status) (Sum.inr :
+            law spec history current allowedState status) (Sum.inr :
               BindingImage (setup := setup) (leaks := leaks) →
                 DecisionImage (setup := setup) (leaks := leaks))
           rw [imageEq, ← PMF.map_comp]
           simp only [decisionKernel, turn, binding, Function.comp]
           exact unitClose_mono close bindingLe
 
-/-- **The one-step lumping at late decisions.** For the owner `who` and a
-profile installing each option at each site, if at every site the owner's
-step at a publication turn is within `δ` of a kernel of the key, the option
-and the operational state, and its law of moves at a binding turn is within
-`δ / 2` of a keyed law, the native kernel lumps onto the decision image at
+/-- **The one-step lumping at late decisions.** For the owner `who`, a profile
+installing each option at each site, and a set of allowed states per site that
+contains the site's forced histories and is kept by the control step of the
+site's installed profiles, if at every site the owner's step at a publication
+turn is within `δ` of a kernel of the key, the option and the operational
+state, and its law of moves at a binding turn is within `δ / 2` of a keyed law,
+both at allowed states, the native kernel lumps onto the decision image at
 every key, with failure the failed completion of the decided event. -/
 def onePacketLateLumping
     (assessment : (onePacketInformation setup leaks bounds horizon
@@ -672,17 +678,27 @@ def onePacketLateLumping
     (moves : LateKey setup leaks → LateOption →
       Option (OperationalState setup leaks) × List (MessageId Player × Bool) →
         PMF (Option (Handle (graph setup))))
+    (allowed : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who →
+      (application setup leaks).ProtocolState → Prop)
+    (allowedStart : ∀ site key, lateKey setup leaks who site.1 = some key →
+      ∀ history ∈ (assessment.belief who site).support,
+        ForcedState setup leaks who history.1.state → allowed site history.1.state)
+    (allowedStep : ∀ site option state, allowed site state →
+      ∀ next ∈ ((application setup leaks).controlStep (initialLaw setup) horizon scheduler
+        ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup) horizon
+          scheduler (profileOf site option)) state).support, allowed site next)
     (owner : ∀ site key, lateKey setup leaks who site.1 = some key → ∀ option,
-      OwnerStepClose ownerKernel key option (profileOf site option) δ)
+      OwnerStepClose ownerKernel key option (profileOf site option) δ (allowed site))
     (law : ∀ site key, lateKey setup leaks who site.1 = some key → ∀ option,
       OwnerBindingLaw bounds horizon scheduler moves key option (profileOf site option)
-        δBinding) :
+        δBinding (allowed site)) :
     PendingLumping assessment who profileOf DecisionFailed δ
       (DecisionImage (setup := setup) (leaks := leaks)) where
   image := decisionImage
   kernel := decisionKernel bounds horizon scheduler ownerKernel moves
   start := decisionRecordImage
-  keep := decisionKept bounds horizon scheduler
+  keep site key := {state | state ∈ decisionKept bounds horizon scheduler key ∧
+    allowed site state}
   failure _ := decisionFailure
   failure_unit _ image := by
     rcases image with pending | binding
@@ -695,12 +711,15 @@ def onePacketLateLumping
       · cases failed <;> simp only [decisionFailure, Bool.false_eq_true, ↓reduceIte, le_refl,
           zero_le_one, and_self]
   start_eq _ _ siteKey history _ forced := decisionImage_of_history siteKey history forced
-  start_kept _ _ siteKey history _ forced := decisionKept_of_history siteKey history forced
+  start_kept site key siteKey history supported forced :=
+    ⟨decisionKept_of_history siteKey history forced,
+      allowedStart site key siteKey history supported forced⟩
   kept site key _ option _ kept _ member :=
-    decisionKept_step key (profileOf site option) kept member
+    ⟨decisionKept_step key (profileOf site option) kept.1 member,
+      allowedStep site option _ kept.2 _ member⟩
   close site key siteKey option _ kept := decisionKernel_close ownerKernel moves key option
     (profileOf site option) nonneg bindingNonneg bindingLe (owner site key siteKey option)
-    (law site key siteKey option) kept
-  failure_eq key _ kept := decisionFailed_eq key kept
+    (law site key siteKey option) kept.1 kept.2
+  failure_eq _ key _ kept := decisionFailed_eq key kept.1
 
 end Vegas

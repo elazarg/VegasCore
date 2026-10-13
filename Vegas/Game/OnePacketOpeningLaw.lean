@@ -577,10 +577,12 @@ theorem ownerOpeningLaw_of_lateComponents {LateOption' : Type}
     (key : LateKey setup leaks) (option : LateOption')
     (profile : ∀ player,
       (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
+    {allowed : (application setup leaks).ProtocolState → Prop}
     (shape : ∀ event, PublicationTurn key event →
       ∀ (history : (onePacketProtocol setup leaks bounds horizon scheduler).History)
         (remaining : Nat) (execution : (application setup leaks).Execution),
         history.state = some ⟨remaining, some key.owner, execution⟩ →
+        allowed history.state →
         ForcedState setup leaks key.owner history.state →
         execution.application.config.cut.Ready event →
         profile key.owner (some (execution.recall key.owner,
@@ -602,8 +604,8 @@ theorem ownerOpeningLaw_of_lateComponents {LateOption' : Type}
                 execution.observe (application setup leaks) key.owner)))) :
     OwnerOpeningLaw bounds horizon scheduler
       (fun key option => lateOpeningSilence bounds horizon scheduler assessment scale nonnegative
-        le_one (options key option) key) key option profile (scale ^ 3) (scale ^ 3) := by
-  intro event turn history control current forced ready acting
+        le_one (options key option) key) key option profile (scale ^ 3) (scale ^ 3) allowed := by
+  intro event turn history control current allowedState forced ready acting
   have turnEq := turnEvent_of_publicationTurn turn
   have turnCopy := turn
   rcases control with ⟨remaining, actor, execution⟩
@@ -625,7 +627,7 @@ theorem ownerOpeningLaw_of_lateComponents {LateOption' : Type}
       ((bounds.onePacketMenu (runtime setup) leaks).uniformPolicy (initialLaw setup) horizon
         scheduler key.owner info) core := by
     rw [shape event turnCopy history remaining execution current
-      (by rw [current]; exact forced) ready]
+      (by rw [current]; exact allowedState) (by rw [current]; exact forced) ready]
     rfl
   have close := unitClose_mix (scale ^ 3) (pow_nonneg nonnegative 3)
     (pow_le_one₀ nonnegative le_one)
@@ -769,12 +771,13 @@ def LateComponentShape (assessment : setup.intendedModel.BehavioralAssessment) (
     (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) {slots : Nat}
     (options : LateKey setup leaks → PMF (LateOption slots)) (key : LateKey setup leaks)
     (profile : ∀ player,
-      (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player) :
-    Prop :=
+      (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
+    (allowed : (application setup leaks).ProtocolState → Prop := fun _ => True) : Prop :=
   ∀ event, (PublicationTurn key event ∨ ∃ payload, BindingTurn key event payload) →
     ∀ (history : (onePacketProtocol setup leaks bounds horizon scheduler).History)
       (remaining : Nat) (execution : (application setup leaks).Execution),
       history.state = some ⟨remaining, some key.owner, execution⟩ →
+      allowed history.state →
       ForcedState setup leaks key.owner history.state →
       execution.application.config.cut.Ready event →
       profile key.owner (some (execution.recall key.owner,
@@ -812,9 +815,18 @@ def onePacketLateComponentLumping
     (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
     (options : LateKey setup leaks → LateOption' → LateKey setup leaks →
       PMF (LateOption slots))
+    (allowed : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who →
+      (application setup leaks).ProtocolState → Prop)
+    (allowedStart : ∀ site key, lateKey setup leaks who site.1 = some key →
+      ∀ history ∈ (target.belief who site).support,
+        ForcedState setup leaks who history.1.state → allowed site history.1.state)
+    (allowedStep : ∀ site option state, allowed site state →
+      ∀ next ∈ ((application setup leaks).controlStep (initialLaw setup) horizon scheduler
+        ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup) horizon
+          scheduler (profileOf site option)) state).support, allowed site next)
     (shape : ∀ site key, lateKey setup leaks who site.1 = some key → ∀ option,
       LateComponentShape assessment scale nonnegative le_one (options key option) key
-        (profileOf site option)) :
+        (profileOf site option) (allowed site)) :
     PendingLumping target who profileOf DecisionFailed (scale ^ 3 + scale ^ 3)
       (DecisionImage (setup := setup) (leaks := leaks)) :=
   onePacketLateLumping target who profileOf
@@ -823,7 +835,7 @@ def onePacketLateComponentLumping
       (fun key option => lateOpeningSilence bounds horizon scheduler assessment scale
         nonnegative le_one (options key option) key))
     (fun key option => lateBindingMoves bounds horizon scheduler scale nonnegative le_one
-      (options key option) key)
+      (options key option) key) allowed allowedStart allowedStep
     (fun site key siteKey option => ownerStepClose_of_openingLaw bounds _ key option _
       (ownerOpeningLaw_of_lateComponents assessment covers scale nonnegative le_one options key
         option (profileOf site option) fun event turn =>

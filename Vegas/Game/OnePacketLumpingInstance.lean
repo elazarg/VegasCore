@@ -314,19 +314,21 @@ theorem lateEventFailed_eq (key : LateKey setup leaks)
           pendingImage, imageFailure]
 
 /-- **The owner's step at a key.** Read through the pending image, the
-owner's control step from a forced state with the decided event ready is
-within `δ` on unit payoffs of a kernel of the key, the option and the
-operational state. -/
+owner's control step from an allowed forced state with the decided event ready
+is within `δ` on unit payoffs of a kernel of the key, the option and the
+operational state. Every state is allowed unless a restriction is given. -/
 def OwnerStepClose {LateOption : Type}
     (ownerKernel : LateKey setup leaks → LateOption → Option (OperationalState setup leaks) →
       PMF (PendingImage (setup := setup) (leaks := leaks)))
     (key : LateKey setup leaks) (option : LateOption)
     (profile : ∀ player,
       (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
-    (δ : ℝ) : Prop :=
+    (δ : ℝ) (allowed : (application setup leaks).ProtocolState → Prop := fun _ => True) :
+    Prop :=
   ∀ event, PublicationTurn key event →
     ∀ (history : (onePacketProtocol setup leaks bounds horizon scheduler).History)
       (control : (application setup leaks).Control), history.state = some control →
+      allowed (some control) →
       ForcedState setup leaks key.owner (some control) →
       control.execution.application.config.cut.Ready event →
       control.actor = some key.owner →
@@ -344,9 +346,10 @@ theorem lateKernel_close {LateOption : Type}
     (key : LateKey setup leaks) (option : LateOption)
     (profile : ∀ player,
       (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
-    {δ : ℝ} (nonneg : 0 ≤ δ) (owner : OwnerStepClose ownerKernel key option profile δ)
+    {δ : ℝ} (nonneg : 0 ≤ δ) {allowed : (application setup leaks).ProtocolState → Prop}
+    (owner : OwnerStepClose ownerKernel key option profile δ allowed)
     {state : (application setup leaks).ProtocolState}
-    (kept : state ∈ lateKept bounds horizon scheduler key) :
+    (kept : state ∈ lateKept bounds horizon scheduler key) (allowedState : allowed state) :
     UnitClose δ (((application setup leaks).controlStep (initialLaw setup) horizon scheduler
         ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup) horizon
           scheduler profile) state).map (lateImage key))
@@ -402,8 +405,8 @@ theorem lateKernel_close {LateOption : Type}
                     (some ⟨remaining, some key.owner, execution⟩)) := by
                 simp only [operationalState, pendingKernel, ↓reduceIte]
               rw [kernelOwner]
-              exact owner event (publicationTurn_of_turnEvent turn) history _ current forced ready
-                rfl
+              exact owner event (publicationTurn_of_turnEvent turn) history _ current allowedState
+                forced ready rfl
             · apply unitClose_of_eq nonneg
               rw [controlStep_other_of_pending bounds horizon scheduler profile key.owner history
                 (by rw [current]; exact forced) current ready
@@ -487,7 +490,7 @@ def onePacketPendingLumping
   image := lateImage
   kernel := lateKernel bounds horizon scheduler ownerKernel
   start := recordImage
-  keep := lateKept bounds horizon scheduler
+  keep _ := lateKept bounds horizon scheduler
   failure _ := imageFailure
   failure_unit _ image := by
     cases image with
@@ -498,7 +501,7 @@ def onePacketPendingLumping
   start_kept _ _ siteKey history _ forced := lateKept_of_history siteKey history forced
   kept site key _ option _ kept _ member := lateKept_step key (profileOf site option) kept member
   close site key siteKey option _ kept := lateKernel_close ownerKernel key option
-    (profileOf site option) nonneg (owner site key siteKey option) kept
-  failure_eq key _ kept := lateEventFailed_eq key kept
+    (profileOf site option) nonneg (owner site key siteKey option) kept trivial
+  failure_eq _ key _ kept := lateEventFailed_eq key kept
 
 end Vegas

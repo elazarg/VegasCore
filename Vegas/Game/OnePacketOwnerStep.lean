@@ -348,10 +348,12 @@ def OwnerOpeningLaw {LateOption : Type}
     (key : LateKey setup leaks) (option : LateOption)
     (profile : ∀ player,
       (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
-    (δ₁ δ₂ : ℝ) : Prop :=
+    (δ₁ δ₂ : ℝ) (allowed : (application setup leaks).ProtocolState → Prop := fun _ => True) :
+    Prop :=
   ∀ event, PublicationTurn key event →
     ∀ (history : (onePacketProtocol setup leaks bounds horizon scheduler).History)
       (control : (application setup leaks).Control), history.state = some control →
+      allowed (some control) →
       ForcedState setup leaks key.owner (some control) →
       control.execution.application.config.cut.Ready event →
       control.actor = some key.owner →
@@ -396,12 +398,14 @@ theorem ownerStepClose_of_openingLaw {LateOption : Type}
     (key : LateKey setup leaks) (option : LateOption)
     (profile : ∀ player,
       (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
-    {δ₁ δ₂ : ℝ} (law : OwnerOpeningLaw bounds horizon scheduler silence key option profile δ₁ δ₂) :
+    {δ₁ δ₂ : ℝ} {allowed : (application setup leaks).ProtocolState → Prop}
+    (law : OwnerOpeningLaw bounds horizon scheduler silence key option profile δ₁ δ₂ allowed) :
     OwnerStepClose (openingKernel bounds horizon scheduler silence) key option profile
-      (δ₁ + δ₂) := by
-  intro event turn history control current forced ready acting
+      (δ₁ + δ₂) allowed := by
+  intro event turn history control current allowedState forced ready acting
   have turnEq := turnEvent_of_publicationTurn turn
-  obtain ⟨silentMass, remainder⟩ := law event turn history control current forced ready acting
+  obtain ⟨silentMass, remainder⟩ := law event turn history control current allowedState forced
+    ready acting
   rcases control with ⟨remaining, actor, execution⟩
   change actor = some key.owner at acting
   subst acting
