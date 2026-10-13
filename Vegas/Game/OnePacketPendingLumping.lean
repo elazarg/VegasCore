@@ -373,6 +373,134 @@ theorem SameOperational.ready {first second : (application setup leaks).Control}
     exact ⟨fun completed => open_ ((SameOperational.completed same event).mp completed),
       fun predecessor member => (SameOperational.completed same predecessor).mpr (before member)⟩
 
+/-- Expiring a due publication event, read through the image, is the failure
+image surely. -/
+theorem environmentStep_expire_due_image (remaining : Nat)
+    (execution : (application setup leaks).Execution)
+    (ready : execution.application.config.cut.Ready event) (entered : Nat)
+    (activated : execution.application.activatedAt event = some entered)
+    (due : (runtime setup).deadline event ≤ execution.application.clock - entered)
+    {owner : Player} {payload : L.Ty}
+    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
+    {outputEq : (graph setup).outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .resolve owner payload binding checks}
+    (view : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq) :
+    (execution.environmentStep (application setup leaks) (.application (.expire event))).map
+        (fun next => pendingImage event (some ⟨remaining, none, next⟩)) = PMF.pure (.inr true) := by
+  unfold ReactiveApplication.Execution.environmentStep
+  change (((EventGraphRuntime.environmentStep (runtime setup) execution.application
+    (.expire event)).map _).map _).map _ = _
+  rw [environmentStep_expire_resolve_eq (runtime setup) _ event ready entered activated due owner
+    payload binding checks outputEq codeEq view]
+  simp only [PMF.pure_map]
+  rw [pendingImage_expire_resolve remaining none execution ready outputEq]
+
+/-- **Contract rounds read off the operational state.** While a publication
+event is pending and ready, two executions with the same operational state
+give every contract command the same law of images. -/
+theorem application_image_congr (remaining : Nat)
+    (first second : (application setup leaks).Execution)
+    (same : operationalState setup leaks (some ⟨remaining + 1, none, first⟩) =
+      operationalState setup leaks (some ⟨remaining + 1, none, second⟩))
+    (pending : event ∉ first.application.config.cut.completed)
+    (ready : first.application.config.cut.Ready event)
+    {owner : Player} {payload : L.Ty}
+    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
+    {outputEq : (graph setup).outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .resolve owner payload binding checks}
+    (view : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
+    (command : EnvironmentCommand (graph setup)) :
+    (first.environmentStep (application setup leaks) (.application command)).map
+        (fun next => pendingImage event (some ⟨remaining, none, next⟩)) =
+      (second.environmentStep (application setup leaks) (.application command)).map
+        (fun next => pendingImage event (some ⟨remaining, none, next⟩)) := by
+  have pending' : event ∉ second.application.config.cut.completed := fun completed =>
+    pending ((SameOperational.completed same event).mpr completed)
+  have ready' : second.application.config.cut.Ready event :=
+    (SameOperational.ready same event).mp ready
+  have views : first.application.publicView = second.application.publicView :=
+    SameOperational.publicView same
+  have readyIff : ∀ other, first.application.config.cut.Ready other ↔
+      second.application.config.cut.Ready other := SameOperational.ready same
+  have stutterBoth : ∀ command,
+      EventGraphRuntime.environmentStep (runtime setup) first.application command =
+        PMF.pure first.application →
+      EventGraphRuntime.environmentStep (runtime setup) second.application command =
+        PMF.pure second.application →
+      (first.environmentStep (application setup leaks) (.application command)).map
+          (fun next => pendingImage event (some ⟨remaining, none, next⟩)) =
+        (second.environmentStep (application setup leaks) (.application command)).map
+          (fun next => pendingImage event (some ⟨remaining, none, next⟩)) := by
+    intro command firstStutter secondStutter
+    rw [environmentStep_stutter_image remaining first pending command firstStutter,
+      environmentStep_stutter_image remaining second pending' command secondStutter, same, views]
+  cases command with
+  | advanceClock =>
+      rw [environmentStep_contract_image remaining first pending _ (by
+          intro next member
+          simp only [EventGraphRuntime.environmentStep, PMF.mem_support_pure_iff] at member
+          rw [member]),
+        environmentStep_contract_image remaining second pending' _ (by
+          intro next member
+          simp only [EventGraphRuntime.environmentStep, PMF.mem_support_pure_iff] at member
+          rw [member])]
+      simp only [EventGraphRuntime.environmentStep, PMF.pure_map]
+      rw [same]
+      have ticked : ({ first.application with clock := first.application.clock + 1 } :
+          EventGraphRuntime.State (graph setup)).publicView =
+          ({ second.application with clock := second.application.clock + 1 } :
+            EventGraphRuntime.State (graph setup)).publicView := by
+        change ({ first.application.publicView with
+            clock := first.application.publicView.clock + 1 } : PublicView (graph setup)) =
+          { second.application.publicView with clock := second.application.publicView.clock + 1 }
+        rw [views]
+      rw [ticked]
+  | executeSample sampled =>
+      by_cases sampledReady : first.application.config.cut.Ready sampled
+      · have sameEvent : sampled = event := ready_unique (setup := setup) _ sampledReady ready
+        subst sameEvent
+        exact stutterBoth _
+          (environmentStep_executeSample_of_nonsample (runtime setup) _ sampled ready
+            (fun _ _ _ _ other => by rw [view] at other; cases other))
+          (environmentStep_executeSample_of_nonsample (runtime setup) _ sampled ready'
+            (fun _ _ _ _ other => by rw [view] at other; cases other))
+      · exact stutterBoth _
+          (environmentStep_executeSample_of_not_ready (runtime setup) _ sampled sampledReady)
+          (environmentStep_executeSample_of_not_ready (runtime setup) _ sampled
+            (fun other => sampledReady ((readyIff sampled).mpr other)))
+  | expire expired =>
+      by_cases expiredReady : first.application.config.cut.Ready expired
+      · have sameEvent : expired = event := ready_unique (setup := setup) _ expiredReady ready
+        subst sameEvent
+        have activations : first.application.activatedAt = second.application.activatedAt :=
+          congrArg PublicView.activatedAt views
+        have clocks : first.application.clock = second.application.clock :=
+          congrArg PublicView.clock views
+        cases activated : first.application.activatedAt expired with
+        | none =>
+            exact stutterBoth _
+              (environmentStep_expire_of_not_activated (runtime setup) _ expired ready activated)
+              (environmentStep_expire_of_not_activated (runtime setup) _ expired ready'
+                (by rw [← activations]; exact activated))
+        | some entered =>
+            by_cases due : (runtime setup).deadline expired ≤ first.application.clock - entered
+            · rw [environmentStep_expire_due_image remaining first ready entered activated due view,
+                environmentStep_expire_due_image remaining second ready' entered
+                  (by rw [← activations]; exact activated) (by rw [← clocks]; exact due) view]
+            · exact stutterBoth _
+                (environmentStep_expire_of_not_due (runtime setup) _ expired ready entered
+                  activated due)
+                (environmentStep_expire_of_not_due (runtime setup) _ expired ready' entered
+                  (by rw [← activations]; exact activated) (by rw [← clocks]; exact due))
+      · exact stutterBoth _
+          (environmentStep_expire_of_not_ready (runtime setup) _ expired expiredReady)
+          (environmentStep_expire_of_not_ready (runtime setup) _ expired
+            (fun other => expiredReady ((readyIff expired).mpr other)))
+
 end Image
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
