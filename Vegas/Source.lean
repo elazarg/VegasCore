@@ -23,6 +23,7 @@ import Vegas.Source.Exclusion
 import Vegas.Source.ExclusionGame
 import Vegas.Source.EffectiveOpening
 import Vegas.Source.IntendedDeparture
+import Vegas.Source.IntendedForPlayer
 import Vegas.Source.FailedBinding
 import Vegas.Source.FailedBindingDeviation
 import Vegas.Source.Disclosure
