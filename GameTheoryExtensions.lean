@@ -22,6 +22,8 @@ import GameTheoryExtensions.Analysis.Protocol.CopiedSiteLimit
 import GameTheoryExtensions.Analysis.Protocol.SuccessRanking
 import GameTheoryExtensions.Analysis.Protocol.KeyedPools
 import GameTheoryExtensions.Analysis.Protocol.FreeKeyedPools
+import GameTheoryExtensions.Analysis.Protocol.SingleMoverReach
+import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
 import GameTheoryExtensions.Analysis.Protocol.ProjectedBeliefTransport
 import GameTheoryExtensions.Analysis.Protocol.SupportedChoiceContinuation
 import GameTheoryExtensions.Analysis.Protocol.DecisionExperiment

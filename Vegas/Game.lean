@@ -107,6 +107,8 @@ import Vegas.Game.AnchoredOpeningClients
 import Vegas.Game.AnchoredHonestAgreement
 import Vegas.Game.OnePacketOwnSubmissions
 import Vegas.Game.AnchoredHonestLaw
+import Vegas.Game.AnchoredHonestDelivery
+import Vegas.Game.OnePacketLateMasses
 import Vegas.Game.PurificationEdge
 import Vegas.Game.ReactiveSourceDecision
 import Vegas.Game.ReactiveSourceAcceptance
