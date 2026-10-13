@@ -342,4 +342,204 @@ theorem unintendedCommitmentInvariant_transition (profile : BehavioralProfile se
               obtain rfl := Option.some.inj decodedState
               exact owes
 
+/-- **An unintended commitment pays the exclusion payoff on every
+continuation.** Under a scheduler that completes play, let `who`, at its turn
+at a binding event, at a configuration decoding to a point intended for it,
+respond with a commitment of that event to a candidate whose meaning after the
+response is fixed and opens no value whose decoded action is intended at
+`who`'s view of the point. Every terminal history of terminal play from the
+state that response reaches, under any players, pays `who` its exclusion
+payoff. -/
+theorem unintendedCommitment_exclusionBase (profile : BehavioralProfile setup.program)
+    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
+    {Parameter : Type} (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (excludedPayoff : Player → ℝ)
+    {remaining : Nat} {who : Player} {execution : (application setup leaks).Execution}
+    {event : (graph setup).EventId}
+    (turn : execution.application.publicView.ownTurn? who = some event) {payload : L.Ty}
+    (outputEq : (graph setup).outputLayout event = .binding who payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .bind who payload)
+    {point : ProtocolState setup.program}
+    (decoded : decodedPoint setup execution.application.config = some point)
+    (intendedFor : ProtocolState.IntendedFor who setup.program point)
+    (response : (application setup leaks).Action) (material : (application setup leaks).Submission)
+    (submits : response.transmission = some material) {candidate : Handle (graph setup)}
+    (call : (sentEnvelope setup leaks execution who material).payload.call =
+      .commitment event candidate)
+    (fixed : (execution.respond (application setup leaks) who
+      response).application.candidates.lookup candidate ≠ .fresh)
+    (unintended : ∀ value act, (execution.respond (application setup leaks) who
+        response).application.candidates.lookup candidate = .openable ⟨payload, value⟩ →
+      decodeEventAction setup.program event
+        (cast (congrArg EventGraph.EventField.Action outputEq.symm)
+          (PublicationResult.success value)) = some act →
+      act ∉ ProtocolView.intendedAvailable who setup.program
+        (ProtocolState.observe who setup.program point))
+    (certificate : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+      horizon scheduler).WellFoundedHistories)
+    (players : ∀ player, ((bounds.onePacketMenu (runtime setup) leaks).information
+      (initialLaw setup) horizon scheduler).BehavioralPolicy player)
+    (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+      horizon scheduler).History)
+    (current : history.state = some ⟨remaining, none,
+      execution.respond (application setup leaks) who response⟩) :
+    ∀ final ∈ (((bounds.onePacketMenu (runtime setup) leaks).information (initialLaw setup)
+        horizon scheduler).runBehavioralTerminalFrom certificate players history).support,
+      exclusionBase setup parameter utility excludedPayoff leaks final.state who =
+        excludedPayoff who := by
+  intro final supported
+  let menu := bounds.onePacketMenu (runtime setup) leaks
+  let model := menu.information (initialLaw setup) horizon scheduler
+  have afterTrace : (menu.protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨remaining, none, execution.respond (application setup leaks) who response⟩) :=
+    current ▸ history.trace
+  have ready : execution.application.config.cut.Ready event :=
+    (execution.application.publicView_eventReady event).mp
+      (PublicView.ownTurn?_spec _ who event turn).1
+  have sameConfig := ((runtime setup).reactive_respond_application leaks execution who
+    response).1
+  have start : UnintendedCommitmentInvariant setup leaks bounds horizon scheduler profile who
+      (respondEntry setup leaks execution who response)
+      (sentEnvelope setup leaks execution who material) event candidate outputEq
+      execution.application.config point history.state := by
+    rw [current]
+    refine ⟨⟨afterTrace⟩, recordsEntry_respond execution who response remaining none,
+      by rw [respondEntry_of_transmission execution who response material submits], rfl, call,
+      fixed, unintended, fun _ => sameConfig, fun done => ?_⟩
+    rw [sameConfig] at done
+    exact (ready.1 done).elim
+  have reachedInvariant := model.runBehavioralTerminalFrom_support_closed certificate players _
+    (fun state joint legal target holds reached =>
+      unintendedCommitmentInvariant_transition bounds horizon scheduler profile codeEq decoded
+        intendedFor ready state target joint legal holds reached)
+    history start final supported
+  have stopped := model.runBehavioralTerminalFrom_support_terminal certificate players history
+    final supported
+  cases state : final.state with
+  | none =>
+      rw [state] at reachedInvariant
+      exact reachedInvariant.elim
+  | some control =>
+      have invariantAt := reachedInvariant
+      rw [state] at reachedInvariant stopped
+      obtain ⟨⟨finalTrace⟩, _, _, _, _, _, _, _, settled⟩ := reachedInvariant
+      have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon
+          scheduler).Trace (some control) :=
+        menu.toRawTrace (initialLaw setup) horizon scheduler finalTrace
+      have terminal := completes control rawTrace stopped
+      have done : event ∈ control.execution.application.config.cut.completed := by
+        rw [terminal]
+        exact Finset.mem_univ _
+      have owed := settled done
+      have self : final ∈ (model.runBehavioralTerminalFrom certificate players final).support := by
+        have terminalFinal : (menu.protocol (initialLaw setup) horizon scheduler).terminal
+            final.state := by
+          rw [state]
+          exact stopped
+        rw [InformationModel.runBehavioralTerminalFrom,
+          (menu.protocol (initialLaw setup) horizon scheduler).randomizedBackwardLaw_of_terminal
+            terminalFinal]
+        exact (PMF.mem_support_pure_iff _ _).mpr rfl
+      rw [← state] at owed
+      have paid := decoded_owesFailure_exclusionBase parameter utility excludedPayoff menu
+        horizon scheduler completes certificate players who final owed final self
+      rw [state] at paid
+      exact paid
+
+open Classical in
+/-- **Committing to an unintended commitment pays the exclusion payoff.** Under
+the hypotheses of `Vegas.unintendedCommitment_exclusionBase`, at a decision
+history of `who`, committing to that response, play for the horizon from the
+history, under any other policies, reaches only histories paying `who` its
+exclusion payoff. -/
+theorem unintendedCommitment_commit_exclusionBase (profile : BehavioralProfile setup.program)
+    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
+    {Parameter : Type} (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (excludedPayoff : Player → ℝ)
+    (players : ∀ player, ((bounds.onePacketMenu (runtime setup) leaks).information
+      (initialLaw setup) horizon scheduler).BehavioralPolicy player)
+    (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+      horizon scheduler).History)
+    {remaining : Nat} {who : Player} {execution : (application setup leaks).Execution}
+    (current : history.state = some ⟨remaining, some who, execution⟩)
+    {event : (graph setup).EventId}
+    (turn : execution.application.publicView.ownTurn? who = some event) {payload : L.Ty}
+    (outputEq : (graph setup).outputLayout event = .binding who payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .bind who payload)
+    {point : ProtocolState setup.program}
+    (decoded : decodedPoint setup execution.application.config = some point)
+    (intendedFor : ProtocolState.IntendedFor who setup.program point)
+    (response : (application setup leaks).Action) (material : (application setup leaks).Submission)
+    (submits : response.transmission = some material) {candidate : Handle (graph setup)}
+    (call : (sentEnvelope setup leaks execution who material).payload.call =
+      .commitment event candidate)
+    (fixed : (execution.respond (application setup leaks) who
+      response).application.candidates.lookup candidate ≠ .fresh)
+    (unintended : ∀ value act, (execution.respond (application setup leaks) who
+        response).application.candidates.lookup candidate = .openable ⟨payload, value⟩ →
+      decodeEventAction setup.program event
+        (cast (congrArg EventGraph.EventField.Action outputEq.symm)
+          (PublicationResult.success value)) = some act →
+      act ∉ ProtocolView.intendedAvailable who setup.program
+        (ProtocolState.observe who setup.program point))
+    (info : ((bounds.onePacketMenu (runtime setup) leaks).information (initialLaw setup)
+      horizon scheduler).InfoState who)
+    (observed : ((bounds.onePacketMenu (runtime setup) leaks).information (initialLaw setup)
+      horizon scheduler).infoOf who history.trace = info)
+    (choice : ((bounds.onePacketMenu (runtime setup) leaks).information (initialLaw setup)
+      horizon scheduler).Choice who info)
+    (selected : choice.1 = some response) :
+    ∀ final ∈ (((bounds.onePacketMenu (runtime setup) leaks).information (initialLaw setup)
+        horizon scheduler).runBehavioralFrom
+        (Profile.update (sig := ((bounds.onePacketMenu (runtime setup) leaks).information
+          (initialLaw setup) horizon scheduler).behavioralSignature) players who
+          ((players who).commit info choice)) (2 * horizon + 1) history).support,
+      exclusionBase setup parameter utility excludedPayoff leaks final.state who =
+        excludedPayoff who := by
+  subst observed
+  intro final supported
+  let model := (bounds.onePacketMenu (runtime setup) leaks).information (initialLaw setup)
+    horizon scheduler
+  let committed := Profile.update (sig := model.behavioralSignature) players who
+    ((players who).commit (model.infoOf who history.trace) choice)
+  have bounded := (bounds.onePacketMenu (runtime setup) leaks).bounded (initialLaw setup)
+    horizon scheduler
+  let certificate := bounded.wellFoundedHistories
+  have longer : final ∈ (model.runBehavioralFrom committed (1 + (2 * horizon + 1))
+      history).support := by
+    rw [Nat.add_comm, model.runBehavioralFrom_add committed (2 * horizon + 1) 1 history,
+      PMF.mem_support_bind_iff]
+    refine ⟨final, supported, ?_⟩
+    have terminal : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+        horizon scheduler).terminal final.state := by
+      rw [← model.runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded certificate bounded]
+        at supported
+      exact model.runBehavioralTerminalFrom_support_terminal certificate committed history final
+        supported
+    rw [model.runBehavioralFrom_of_terminal committed 1 terminal]
+    exact PMF.mem_support_pure_iff _ _ |>.mpr rfl
+  rw [model.runBehavioralFrom_add committed 1 (2 * horizon + 1) history,
+    PMF.mem_support_bind_iff] at longer
+  obtain ⟨middle, stepped, rest⟩ := longer
+  have middleState : middle.state = some ⟨remaining, none,
+      execution.respond (application setup leaks) who response⟩ := by
+    have committedStep := (bounds.onePacketMenu (runtime setup) leaks).run_commit_response
+      (initialLaw setup) horizon scheduler players history who remaining execution current
+      choice _ selected
+    have member : middle.state ∈ (PMF.pure (α := (application setup leaks).ProtocolState)
+        (some ⟨remaining, none, execution.respond (application setup leaks) who
+          response⟩)).support := by
+      rw [← committedStep, PMF.support_map]
+      exact ⟨middle, stepped, rfl⟩
+    exact (PMF.mem_support_pure_iff _ _).mp member
+  rw [← model.runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded certificate bounded]
+    at rest
+  exact unintendedCommitment_exclusionBase bounds horizon scheduler profile completes parameter
+    utility excludedPayoff turn outputEq codeEq decoded intendedFor response material submits call
+    fixed unintended certificate committed middle middleState final rest
+
 end Vegas
