@@ -11,6 +11,13 @@ response committing a covered source choice at a slot within capacity moves as
 the slot does: when the count verdict permits the slot's envelope, it commits at
 the slot with a successful candidate, and otherwise it keeps silence
 (`Vegas.commitMove_slotChoiceOf`). The move does not depend on the value.
+
+So a slot-trembled late component, sorted into moves, is within the cube of the
+scale of the mixture of its slot tier, silence and late options read as slot
+moves (`Vegas.lateComponent_moves_close`). Slot moves are read off the
+operational state (`Vegas.slotMove_congr`), so when the owner plays such
+components keyed by its late-delivery key, its law of moves is within the cube
+of the scale of a keyed law (`Vegas.ownerBindingLaw_of_lateComponents`).
 -/
 
 noncomputable section
@@ -385,5 +392,224 @@ theorem lateComponent_moves_close {control : (application setup leaks).Control}
   unfold slotTrembledChoice
   rw [mix_map, rest]
   exact unitClose_mix _ _ _ _ _
+
+/-- The decoded native policy of a menu profile reads the chosen action. -/
+theorem decodeProfile_eq_map
+    (profile : ∀ player,
+      (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
+    (who : Player) (past : List (application setup leaks).PlayerEntry)
+    (view : (application setup leaks).PlayerView) :
+    (bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup) horizon
+        scheduler profile who past view =
+      (profile who (some (past, view))).map fun choice => choice.1.getD ⟨none⟩ := by
+  unfold ReactiveApplication.ResponseMenu.decodeProfile ReactiveApplication.decodePolicy
+    ReactiveApplication.ResponseMenu.embedPolicy
+  rw [PMF.map_comp]
+  rfl
+
+omit [Fintype Player] in
+/-- Protocol states with the same operational state give every player the same
+late-delivery key. -/
+theorem ofView_congr {first second : (application setup leaks).Control}
+    (same : operationalState setup leaks (some first) = operationalState setup leaks (some second))
+    (who : Player) :
+    LateKey.ofView setup leaks who (first.execution.recall who)
+        (first.execution.observe (application setup leaks) who) =
+      LateKey.ofView setup leaks who (second.execution.recall who)
+        (second.execution.observe (application setup leaks) who) :=
+  Option.some.inj (congrFun (congrArg OperationalState.keys (Option.some.inj same)) who)
+
+/-- **Slot moves are read off the operational state.** At states of one-packet
+histories with the same operational state, every slot moves alike. -/
+theorem slotMove_congr {remaining : Nat} {actor : Option Player}
+    (firstHistory secondHistory : (onePacketProtocol setup leaks bounds horizon scheduler).History)
+    {first second : (application setup leaks).Execution}
+    (firstCurrent : firstHistory.state = some ⟨remaining, actor, first⟩)
+    (secondCurrent : secondHistory.state = some ⟨remaining, actor, second⟩)
+    (same : operationalState setup leaks (some ⟨remaining, actor, first⟩) =
+      operationalState setup leaks (some ⟨remaining, actor, second⟩))
+    (who : Player) (event : (graph setup).EventId) :
+    slotMove first who event = slotMove second who event := by
+  have serial (history : (onePacketProtocol setup leaks bounds horizon scheduler).History)
+      {execution : (application setup leaks).Execution}
+      (current : history.state = some ⟨remaining, actor, execution⟩) :
+      (application setup leaks).submissionCount (execution.recall who) =
+        execution.network.nextSerial who := by
+    have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon
+        scheduler).Trace (some ⟨remaining, actor, execution⟩) :=
+      current ▸ (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon
+        scheduler history.trace
+    exact (((runtime setup).countRecall_history leaks rawTrace).2.1 who).symm
+  have keys := ofView_congr same who
+  have recalled := congrArg LateKey.recalled keys
+  simp only [LateKey.ofView] at recalled
+  have emitted := congrArg (List.map Prod.snd) recalled
+  simp only [List.map_map, Function.comp_def] at emitted
+  have viaMap : ∀ entries : List (application setup leaks).PlayerEntry,
+      entries.filterMap ReactiveApplication.PlayerEntry.emitted =
+        (entries.map fun entry => entry.emitted).filterMap id := by
+    intro entries
+    rw [List.filterMap_map]
+    rfl
+  have outputs : (application setup leaks).outputs (first.recall who) =
+      (application setup leaks).outputs (second.recall who) := by
+    unfold ReactiveApplication.outputs
+    rw [viaMap, viaMap, emitted]
+  have publics : first.application.publicView = second.application.publicView :=
+    SameOperational.publicView same
+  have networks : first.network = second.network := SameOperational.network same
+  have envelope : ∀ slot, slotEnvelope setup leaks who (first.recall who)
+      (first.observe (application setup leaks) who) event slot =
+      slotEnvelope setup leaks who (second.recall who)
+        (second.observe (application setup leaks) who) event slot := by
+    intro slot
+    unfold slotEnvelope
+    have tokens : (first.observe (application setup leaks) who).application.publicView =
+        (second.observe (application setup leaks) who).application.publicView := publics
+    rw [serial firstHistory firstCurrent, serial secondHistory secondCurrent, networks, tokens]
+  funext slot
+  unfold slotMove
+  rw [outputs, envelope slot]
+
+omit [Fintype Player] in
+/-- A key decides at most one binding event, with one payload type. -/
+theorem bindingTurn_of_bindingTurn {key : LateKey setup leaks} {event : (graph setup).EventId}
+    {payload : L.Ty} (turn : BindingTurn key event payload) :
+    bindingTurn key = some (event, payload) := by
+  have exists_ : ∃ decided : (graph setup).EventId × L.Ty, BindingTurn key decided.1 decided.2 :=
+    ⟨(event, payload), turn⟩
+  unfold bindingTurn
+  rw [dite_eq_left exists_]
+  obtain ⟨chosenTurn, ⟨chosenOutput, chosenCode, chosenNode⟩, _⟩ := exists_.choose_spec
+  obtain ⟨ownTurn, ⟨outputEq, codeEq, node⟩, _⟩ := turn
+  rw [ownTurn] at chosenTurn
+  have sameEvent := Option.some.inj chosenTurn
+  apply congrArg some
+  apply Prod.ext
+  · exact sameEvent.symm
+  · have kinds : (EventGraph.EventField.binding key.owner exists_.choose.2 :
+        EventGraph.EventField Player L) = .binding key.owner payload := by
+      rw [← chosenOutput, ← sameEvent]
+      exact outputEq
+    exact (EventGraph.EventField.binding.inj kinds).2
+
+variable (bounds horizon scheduler) in
+open Classical in
+/-- **The keyed law of moves.** At a key deciding a binding, the moves of the
+slot-trembled late component at a representative state of a one-packet history
+with the given operational state and statuses, the owner acting; silence when
+there is none. -/
+def lateBindingMoves {slots : Nat} (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
+    (options : LateKey setup leaks → PMF (LateOption slots)) (key : LateKey setup leaks)
+    (image : Option (OperationalState setup leaks) × List (MessageId Player × Bool)) :
+    PMF (Option (Handle (graph setup))) :=
+  match bindingTurn key with
+  | none => PMF.pure none
+  | some decided =>
+      if represented : ∃ witness : (onePacketProtocol setup leaks bounds horizon
+          scheduler).History × Nat × (application setup leaks).Execution,
+          witness.1.state = some ⟨witness.2.1, some key.owner, witness.2.2⟩ ∧
+          (operationalState setup leaks (some ⟨witness.2.1, some key.owner, witness.2.2⟩),
+            commitStatuses decided.1 key.owner decided.2 witness.2.2.application
+              witness.2.2.network.pending) = image then
+        lateMoves (bounds := bounds) represented.choose.2.2 key.owner decided.1 scale nonnegative
+          le_one (options (LateKey.ofView setup leaks key.owner
+            (represented.choose.2.2.recall key.owner)
+            (represented.choose.2.2.observe (application setup leaks) key.owner)))
+      else PMF.pure none
+
+/-- **The owner's law of moves for late components.** Suppose that at every
+forced state of a one-packet history with the decided binding ready and the
+owner acting, the owner's policy is the slot-trembled component, with silence as
+its alternative and the slot tier, of a mixture of late options over slots
+within capacity chosen by the owner's late-delivery key. When every binding value
+is a bounded value and the capacity is at least one, the owner's law of moves
+is within the cube of the scale of the keyed law of moves. -/
+theorem ownerBindingLaw_of_lateComponents {LateOption' : Type}
+    (assessment : setup.intendedModel.BehavioralAssessment)
+    (covers : bounds.CoversOutputValues) (capacity : 1 ≤ bounds.candidateCount)
+    {slots : Nat} (slotsLe : slots ≤ bounds.candidateCount)
+    (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
+    (options : LateKey setup leaks → LateOption' → LateKey setup leaks →
+      PMF (LateOption slots))
+    (key : LateKey setup leaks) (option : LateOption')
+    (profile : ∀ player,
+      (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
+    (shape : ∀ event payload, BindingTurn key event payload →
+      ∀ (history : (onePacketProtocol setup leaks bounds horizon scheduler).History)
+        (remaining : Nat) (execution : (application setup leaks).Execution),
+        history.state = some ⟨remaining, some key.owner, execution⟩ →
+        ForcedState setup leaks key.owner history.state →
+        execution.application.config.cut.Ready event →
+        profile key.owner (some (execution.recall key.owner,
+            execution.observe (application setup leaks) key.owner)) =
+          slotTrembledChoice setup leaks bounds (initialLaw setup) horizon scheduler scale
+            nonnegative le_one key.owner (some (execution.recall key.owner,
+              execution.observe (application setup leaks) key.owner))
+            ((options key option (LateKey.ofView setup leaks key.owner
+                (execution.recall key.owner)
+                (execution.observe (application setup leaks) key.owner))).bind
+              (lateChoice setup leaks bounds (initialLaw setup) horizon scheduler assessment
+                key.owner (some (execution.recall key.owner,
+                  execution.observe (application setup leaks) key.owner))))
+            (PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler
+              key.owner (some (execution.recall key.owner,
+                execution.observe (application setup leaks) key.owner))))
+            (slotChoice setup leaks bounds (initialLaw setup) horizon scheduler assessment
+              key.owner (some (execution.recall key.owner,
+                execution.observe (application setup leaks) key.owner)))) :
+    OwnerBindingLaw bounds horizon scheduler
+      (fun key option => lateBindingMoves bounds horizon scheduler scale nonnegative le_one
+        (options key option) key) key option profile (scale ^ 3) := by
+  intro event payload turn history remaining execution current forced ready
+  have decided := bindingTurn_of_bindingTurn turn
+  obtain ⟨_, ⟨outputEq, codeEq, node⟩, _⟩ := turn
+  have trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace
+      (some ⟨remaining, some key.owner, execution⟩) := current ▸ history.trace
+  have site := onePacket_coveredPendingBinding assessment covers capacity trace key.owner event
+    (ownTurn?_of_ready setup _ ready (nodeView_bind_actor outputEq codeEq)) node
+  have close := lateComponent_moves_close trace assessment key.owner event site slotsLe
+    (options key option (LateKey.ofView setup leaks key.owner (execution.recall key.owner)
+      (execution.observe (application setup leaks) key.owner))) scale nonnegative le_one
+  rw [decodeProfile_eq_map, PMF.map_comp,
+    shape event payload ⟨‹_›, ⟨outputEq, codeEq, node⟩, ‹_›⟩ history remaining execution current
+      forced ready]
+  have represented : ∃ witness : (onePacketProtocol setup leaks bounds horizon
+      scheduler).History × Nat × (application setup leaks).Execution,
+      witness.1.state = some ⟨witness.2.1, some key.owner, witness.2.2⟩ ∧
+      (operationalState setup leaks (some ⟨witness.2.1, some key.owner, witness.2.2⟩),
+        commitStatuses event key.owner payload witness.2.2.application
+          witness.2.2.network.pending) =
+      (operationalState setup leaks (some ⟨remaining, some key.owner, execution⟩),
+        commitStatuses event key.owner payload execution.application
+          execution.network.pending) :=
+    ⟨(history, remaining, execution), current, rfl⟩
+  have movesEq : lateBindingMoves bounds horizon scheduler scale nonnegative le_one
+      (options key option) key
+      (operationalState setup leaks (some ⟨remaining, some key.owner, execution⟩),
+        commitStatuses event key.owner payload execution.application
+          execution.network.pending) =
+      lateMoves (bounds := bounds) execution key.owner event scale nonnegative le_one
+        (options key option (LateKey.ofView setup leaks key.owner (execution.recall key.owner)
+          (execution.observe (application setup leaks) key.owner))) := by
+    unfold lateBindingMoves
+    rw [decided]
+    simp only
+    rw [dite_eq_left represented]
+    have spec := represented.choose_spec
+    generalize represented.choose = witness at spec ⊢
+    obtain ⟨chosenHistory, chosenRemaining, chosenExecution⟩ := witness
+    obtain ⟨chosenCurrent, chosenImage⟩ := spec
+    have same := (Prod.mk.inj chosenImage).1
+    have remainingEq : chosenRemaining = remaining := SameOperational.remaining same
+    subst remainingEq
+    have moves := slotMove_congr chosenHistory history chosenCurrent current same key.owner event
+    have keys := ofView_congr same key.owner
+    simp only at moves keys ⊢
+    unfold lateMoves
+    rw [moves, keys]
+  beta_reduce
+  rw [movesEq]
+  exact close
 
 end Vegas
