@@ -184,6 +184,49 @@ theorem operationalState_contract (remaining : Nat)
     rw [config]
     rfl)
 
+section Congruence
+
+variable {first second : (application setup leaks).Control}
+  (same : operationalState setup leaks (some first) = operationalState setup leaks (some second))
+include same
+
+theorem SameOperational.remaining : first.remaining = second.remaining :=
+  congrArg OperationalState.remaining (Option.some.inj same)
+
+theorem SameOperational.actor : first.actor = second.actor :=
+  congrArg OperationalState.actor (Option.some.inj same)
+
+theorem SameOperational.environmentRecall :
+    first.execution.environmentRecall = second.execution.environmentRecall :=
+  congrArg OperationalState.environmentRecall (Option.some.inj same)
+
+theorem SameOperational.observeEnvironment :
+    first.execution.observeEnvironment (application setup leaks) =
+      second.execution.observeEnvironment (application setup leaks) :=
+  congrArg OperationalState.environment (Option.some.inj same)
+
+theorem SameOperational.network : first.execution.network = second.execution.network :=
+  congrArg (OperationalState.network setup leaks) (Option.some.inj same)
+
+theorem SameOperational.publicView :
+    first.execution.application.publicView = second.execution.application.publicView :=
+  congrArg ReactiveApplication.EnvironmentView.application (SameOperational.observeEnvironment same)
+
+theorem SameOperational.receipts : first.execution.receipts = second.execution.receipts :=
+  congrArg ReactiveApplication.EnvironmentView.receipts (SameOperational.observeEnvironment same)
+
+theorem SameOperational.completed (event : (graph setup).EventId) :
+    event ∈ first.execution.application.config.cut.completed ↔
+      event ∈ second.execution.application.config.cut.completed := by
+  have order := congrArg (fun view : PublicView (graph setup) => view.observation.completionOrder)
+    (SameOperational.publicView same)
+  change first.execution.application.config.history.map EventGraph.Completion.event =
+    second.execution.application.config.history.map EventGraph.Completion.event at order
+  rw [← first.execution.application.config.history_exact,
+    ← second.execution.application.config.history_exact, order]
+
+end Congruence
+
 variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (application setup leaks).Scheduler)
 
