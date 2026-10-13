@@ -1173,6 +1173,19 @@ theorem changingInput_turn {who : Player} {site : (onePacketN).InformationSite w
   (Classical.choose_spec (valueChangingSite_input setup leaks bounds horizon scheduler
     changing)).2
 
+omit [Finite setup.intendedProtocol.History] in
+/-- **Projected decisions at value-changing sites.** For a well-formed setup, the
+projected view of a forced site with a value-changing choice is a decision site
+of the intended game: the site is debt free and shows the player's own turn. -/
+theorem valueChangingSite_projectedDecision (wellFormed : setup.WellFormed) {who : Player}
+    {site : (onePacketN).InformationSite who}
+    (changing : ValueChangingSite setup leaks bounds horizon scheduler site) :
+    setup.intendedModel.IsDecisionInfo who (projectView setup leaks who site.1) :=
+  projectedDecision_of_forcedAgent wellFormed (Classical.not_not.mp changing.1)
+    (changingInput_decision setup leaks bounds horizon scheduler changing)
+    (changingInput_turn setup leaks bounds horizon scheduler changing).choose_spec
+    changing.2.2.1
+
 open Classical in
 /-- **The forced-belief inputs at one own-turn site** along a source sequence
 and a target sequence: operational steps for the target profiles, a tremble
@@ -2317,13 +2330,6 @@ structure OnePacketCoreInputs (sequence : ℕ → setup.intendedModel.Behavioral
             expect (recordLaw key)
               (lumpedFailure setup leaks bounds horizon scheduler lumping (2 * horizon + 1) key
                 option)| ≤ beliefDrift n
-  /-- **Projected decisions.** At every forced site with a value-changing choice,
-  the projected view is a decision site of the intended game. For a well-formed
-  setup this follows from `Vegas.projectedDecision_of_forcedAgent`, since such a
-  site is debt free. -/
-  projectedDecision : ∀ who (site : (onePacketN).InformationSite who),
-    ValueChangingSite setup leaks bounds horizon scheduler site →
-      setup.intendedModel.IsDecisionInfo who (projectView setup leaks who site.1)
   /-- **The forced-belief inputs** at every forced site with a value-changing
   choice, along every fully mixed Bayes sequence of assembled profiles. -/
   beliefInputs : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon
@@ -2335,9 +2341,10 @@ structure OnePacketCoreInputs (sequence : ℕ → setup.intendedModel.Behavioral
       ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
         (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
     ∀ who (site : (onePacketN).InformationSite who)
-      (changing : ValueChangingSite setup leaks bounds horizon scheduler site),
+      (changing : ValueChangingSite setup leaks bounds horizon scheduler site)
+      (decision : setup.intendedModel.IsDecisionInfo who (projectView setup leaks who site.1)),
       OnePacketBeliefInputs setup leaks bounds horizon scheduler sequence targetSequence site
-        (projectedSite setup leaks (projectedDecision who site changing))
+        (projectedSite setup leaks decision)
         (changingInput_decision setup leaks bounds horizon scheduler changing)
         rfl
   /-- **The per-history gain transport.** Away from late deliveries, at a site where
@@ -2369,7 +2376,8 @@ structure OnePacketCoreInputs (sequence : ℕ → setup.intendedModel.Behavioral
         (unmarked : ¬ onePacketCompared setup leaks bounds horizon scheduler who site choice)
         (atTurn : CommitsAtTurn setup leaks bounds horizon scheduler who site choice)
         (debtFree : SiteDebtFree setup leaks bounds horizon scheduler site)
-        (intended : IntendedCommitment setup leaks bounds horizon scheduler site choice),
+        (intended : IntendedCommitment setup leaks bounds horizon scheduler site choice)
+        (decision : setup.intendedModel.IsDecisionInfo who (projectView setup leaks who site.1)),
         ∃ policy : setup.intendedModel.BehavioralPolicy who,
           (∀ history ∈ ((targetSequence n).belief who site).support,
             (onePacketN).historyGain ((onePacketN).truncatedRunner (2 * horizon + 1))
@@ -2381,11 +2389,9 @@ structure OnePacketCoreInputs (sequence : ℕ → setup.intendedModel.Behavioral
                 (setup.intendedModel.truncatedRunner (instructionCount setup.program + 1))
                 (intendedReadoutExclusion setup parameter utility excludedPayoff)
                 (payoffComponent setup) (sequence n)
-                (projectedSite setup leaks (projectedDecision who site
-                  ⟨forced, unkeyed, debtFree, choice, unmarked, atTurn, intended⟩), policy)
+                (projectedSite setup leaks (decision), policy)
                 (replayProjection setup leaks bounds horizon scheduler
-                  (projectedSite setup leaks (projectedDecision who site
-                    ⟨forced, unkeyed, debtFree, choice, unmarked, atTurn, intended⟩)) site
+                  (projectedSite setup leaks (decision)) site
                   (changingInput_decision setup leaks bounds horizon scheduler
                     ⟨forced, unkeyed, debtFree, choice, unmarked, atTurn, intended⟩)
                   rfl
@@ -2395,8 +2401,7 @@ structure OnePacketCoreInputs (sequence : ℕ → setup.intendedModel.Behavioral
               (setup.intendedModel.truncatedRunner (instructionCount setup.program + 1))
               (intendedReadoutExclusion setup parameter utility excludedPayoff)
               (payoffComponent setup) (sequence n)
-              (projectedSite setup leaks (projectedDecision who site
-                ⟨forced, unkeyed, debtFree, choice, unmarked, atTurn, intended⟩), policy) point| ≤
+              (projectedSite setup leaks (decision), policy) point| ≤
             bound
   /-- **Late commitments against late options.** At every forced late delivery,
   every choice committing a value at the player's own turn gains at most what
@@ -2676,6 +2681,11 @@ def OnePacketOpenInputs.toCertificateInputs
         fun _ => ⟨other.trans bound, prescribed n who site choice notFree keyed⟩⟩
   otherComparisons weights targetSequence assembled mixed bayes _ := by
     classical
+    have decided : ∀ {who : Player} {site : (onePacketN).InformationSite who},
+        ValueChangingSite setup leaks bounds horizon scheduler site →
+          setup.intendedModel.IsDecisionInfo who (projectView setup leaks who site.1) :=
+      fun changing => valueChangingSite_projectedDecision setup leaks bounds horizon scheduler
+        wellFormed changing
     obtain ⟨valueError, bound, valueLimit, boundNonneg, transport⟩ :=
       inputs.valueTransport weights targetSequence assembled mixed bayes
     obtain ⟨lateError, lateLimit, late⟩ :=
@@ -2686,11 +2696,11 @@ def OnePacketOpenInputs.toCertificateInputs
         (changing : ValueChangingSite setup leaks bounds horizon scheduler site) =>
       ∑' point, |((((targetSequence n).belief who site).map
           (replayProjection setup leaks bounds horizon scheduler
-          (projectedSite setup leaks (inputs.projectedDecision who site changing)) site
+          (projectedSite setup leaks (decided changing)) site
           (changingInput_decision setup leaks bounds horizon scheduler changing)
           rfl)) point).toReal -
         ((sequence n).belief who
-          (projectedSite setup leaks (inputs.projectedDecision who site changing)) point).toReal|
+          (projectedSite setup leaks (decided changing)) point).toReal|
     let agentDistance := fun (n : ℕ)
         (agent : (onePacketN).InformationAgent (onePacketN).playedInformation) =>
       if present : ∃ decision : (onePacketN).IsDecisionInfo agent.1 agent.2.1,
@@ -2717,7 +2727,7 @@ def OnePacketOpenInputs.toCertificateInputs
           (Classical.not_not.mp present.2.1)
           (changingInput_turn setup leaks bounds horizon scheduler present.2).choose_spec
           (inputs.beliefInputs weights targetSequence assembled mixed bayes agent.1
-            ⟨agent.2.1, present.1⟩ present.2)
+            ⟨agent.2.1, present.1⟩ present.2 (decided present.2))
       · simp only [agentDistance, present, ↓reduceDIte]
         exact tendsto_const_nhds
     have totalLimit : Tendsto (fun n => |valueError n| + bound * ∑ agent, agentDistance n agent +
@@ -2889,7 +2899,7 @@ def OnePacketOpenInputs.toCertificateInputs
     have changing : ValueChangingSite setup leaks bounds horizon scheduler site :=
       ⟨forced, unkeyed, debtFree, choice, unmarked, atTurn, intended⟩
     obtain ⟨policy, close, bounded⟩ := transport n who site choice forced unkeyed unmarked atTurn
-      debtFree intended
+      debtFree intended (decided changing)
     have siteLe : distance n site changing ≤ ∑ agent, agentDistance n agent := by
       have single := Finset.single_le_sum (fun agent _ => distanceNonneg n agent)
         (Finset.mem_univ ((onePacketN).agentAt site))
@@ -2902,7 +2912,7 @@ def OnePacketOpenInputs.toCertificateInputs
       rw [atSite] at single
       exact single
     let := Fintype.ofFinite (setup.intendedModel.InformationHistory who
-      (projectedSite setup leaks (inputs.projectedDecision who site changing)).1)
+      (projectedSite setup leaks (decided changing)).1)
     have transported := (onePacketN).gain_le_sourceGain_add
       ((onePacketN).truncatedRunner (2 * horizon + 1))
       (readoutExclusion setup leaks bounds (initialLaw setup) horizon scheduler parameter utility
@@ -2910,25 +2920,25 @@ def OnePacketOpenInputs.toCertificateInputs
       (setup.intendedModel.truncatedRunner (instructionCount setup.program + 1))
       (intendedReadoutExclusion setup parameter utility excludedPayoff) (payoffComponent setup)
       (sequence n) (site, ((targetSequence n).strategy who).withLaw site.1 (PMF.pure choice))
-      (projectedSite setup leaks (inputs.projectedDecision who site changing), policy)
+      (projectedSite setup leaks (decided changing), policy)
       (replayProjection setup leaks bounds horizon scheduler
-          (projectedSite setup leaks (inputs.projectedDecision who site changing)) site
+          (projectedSite setup leaks (decided changing)) site
           (changingInput_decision setup leaks bounds horizon scheduler changing)
           rfl)
       (valueError n) bound close bounded
     have finiteDistance : distance n site changing = ∑ point,
         |((((targetSequence n).belief who site).map
           (replayProjection setup leaks bounds horizon scheduler
-          (projectedSite setup leaks (inputs.projectedDecision who site changing)) site
+          (projectedSite setup leaks (decided changing)) site
           (changingInput_decision setup leaks bounds horizon scheduler changing)
           rfl)) point).toReal -
         ((sequence n).belief who
-          (projectedSite setup leaks (inputs.projectedDecision who site changing)) point).toReal| :=
+          (projectedSite setup leaks (decided changing)) point).toReal| :=
       tsum_fintype _
     have scaled := mul_le_mul_of_nonneg_left (finiteDistance ▸ siteLe) boundNonneg
     right
     right
-    refine ⟨PMF.pure (projectedSite setup leaks (inputs.projectedDecision who site changing),
+    refine ⟨PMF.pure (projectedSite setup leaks (decided changing),
       policy), ?_⟩
     rw [expect_pure]
     linarith [le_abs_self (valueError n), abs_nonneg (lateError n), abs_nonneg (otherError n)]
