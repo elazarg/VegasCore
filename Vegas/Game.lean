@@ -422,3 +422,5 @@ import Vegas.Game.OnePacketCertificateAssembly
 import Vegas.Game.OnePacketSwapRecord
 import Vegas.Game.OnePacketKeyedFibers
 import Vegas.Game.OnePacketPrescribedCompletion
+import Vegas.Game.IntendedCommitGain
+import Vegas.Game.OnePacketOwnDisclosure
