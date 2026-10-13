@@ -8,7 +8,7 @@ Along play from a late-delivery site, the owner's later activations at the
 decided event follow its late component while it has not sent for the event,
 and its prescribed component once it has (`Vegas.SiteComponentShape`). Once it
 has sent, every part of the prescribed component keeps silence, and so does the
-keyed law (`Vegas.lateMoves_of_recorded`). So the owner's binding and opening
+keyed law (`Vegas.lateMoves_of_silent`). So the owner's binding and opening
 laws hold at every allowed state (`Vegas.ownerBindingLaw_of_siteComponents`,
 `Vegas.ownerOpeningLaw_of_siteComponents`).
 -/

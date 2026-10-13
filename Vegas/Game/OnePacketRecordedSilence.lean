@@ -11,7 +11,7 @@ event, the one-packet choice of every such response keeps silence
 (`Vegas.decoded_silent_of_recorded`). The as-if-honest choice, every late
 option, the slot tier and silence all choose such responses at the player's
 turn, so every slot-trembled component built from them keeps silence outside
-its uniform tier (`Vegas.core_silent_of_recorded`).
+its uniform tier (`Vegas.parts_silent_of_recorded`).
 -/
 
 noncomputable section
