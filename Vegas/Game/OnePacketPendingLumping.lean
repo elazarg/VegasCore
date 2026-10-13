@@ -305,6 +305,41 @@ theorem environmentStep_contract_image (remaining : Nat)
       exact pending),
     ← operationalState_contract remaining execution next config command]
 
+omit [DecidableEq Player] [IExpr.ResultTypes L] in
+/-- The withheld result of a publication event is a failure of its field. -/
+theorem isFailure_cast_failure {kind : EventGraph.EventField Player L} {payload : L.Ty}
+    (kindEq : kind = .publication payload) :
+    kind.IsFailure (cast (congrArg EventGraph.EventField.Value kindEq.symm)
+      (PublicationResult.failure : PublicationResult (L.Val payload))) := by
+  subst kindEq
+  rfl
+
+open Classical in
+/-- Expiring a due publication event fails it, read through the image. -/
+theorem pendingImage_expire_resolve (remaining : Nat) (actor : Option Player)
+    (execution : (application setup leaks).Execution)
+    (ready : execution.application.config.cut.Ready event)
+    {payload : L.Ty} (outputEq : (graph setup).outputLayout event = .publication payload)
+    (entries : List (application setup leaks).EnvironmentEntry) :
+    pendingImage event (some ⟨remaining, actor, { execution with
+      application := execution.application.complete event ready
+        (cast (congrArg EventGraph.EventField.Action outputEq.symm) false)
+        (cast (congrArg EventGraph.EventField.Value outputEq.symm)
+          (PublicationResult.failure : PublicationResult (L.Val payload)))
+      environmentRecall := entries }⟩) = .inr true := by
+  have completed : event ∈ (execution.application.complete event ready
+      (cast (congrArg EventGraph.EventField.Action outputEq.symm) false)
+      (cast (congrArg EventGraph.EventField.Value outputEq.symm)
+        (PublicationResult.failure : PublicationResult (L.Val payload)))).config.cut.completed :=
+    (EventOrder.Cut.mem_complete _ event ready event).mpr (Or.inl rfl)
+  have failed : StoreEventFailed (execution.application.complete event ready
+      (cast (congrArg EventGraph.EventField.Action outputEq.symm) false)
+      (cast (congrArg EventGraph.EventField.Value outputEq.symm)
+        (PublicationResult.failure : PublicationResult (L.Val payload)))).config.store event :=
+    ⟨_, by simp [EventGraphRuntime.State.complete, EventGraph.Config.complete,
+      EventGraph.Config.store], isFailure_cast_failure outputEq⟩
+  simp only [pendingImage, completed, ↓reduceIte, failed, decide_true]
+
 end Image
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
