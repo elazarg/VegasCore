@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketKeyedRecords
+import Vegas.Game.OnePacketSwapRecord
 
 /-! # Record fibers from a correspondence of site histories
 
@@ -18,7 +19,8 @@ namespace Vegas
 
 open SourceProgram
 
-open GameTheory GameTheory.Protocol GameTheory.Math.Probability Interaction EventGraphRuntime
+open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
@@ -78,5 +80,62 @@ theorem baseLawAgrees_of_equiv {who : Player}
     BaseLawAgrees base regular first second payoff :=
   baseLawAgrees_of_fibers base regular first second 1 one_ne_zero
     (fiber_of_equiv base regular first second swap regularEq recordEq baseEq) payoff
+
+open Classical in
+/-- **Base agreement from a hidden swap.** For an involutive hidden swap that
+guards the histories of two sites and exchanges them, the swap keeps every
+operational record, so if it also keeps regularity and the base weight of the
+first site's histories, the two sites' base laws agree on every payoff of the
+record. -/
+theorem baseLawAgrees_of_swap {who : Player}
+    [Finite (onePacketProtocol setup leaks bounds horizon scheduler).History]
+    (base : (onePacketProtocol setup leaks bounds horizon scheduler).History → ℝ)
+    (regular : (onePacketProtocol setup leaks bounds horizon scheduler).History → Prop)
+    (first second : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who)
+    (swap : HiddenSwap (graph setup)) (allowed : Set (graph setup).Inputs)
+    (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
+      state.swap swap ∈ (initialLaw setup).support)
+    (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
+    (allowedClosed : ∀ inputs ∈ allowed,
+      (fun input => swap.values.value (.inl input) (inputs input)) ∈ allowed)
+    (guardedFirst : ∀ history : (onePacketProtocol setup leaks bounds horizon scheduler).History,
+      (onePacketInformation setup leaks bounds horizon scheduler).infoOf who history.trace =
+        first.1 → SwapGuardState setup swap allowed history.state)
+    (guardedSecond : ∀ history : (onePacketProtocol setup leaks bounds horizon scheduler).History,
+      (onePacketInformation setup leaks bounds horizon scheduler).infoOf who history.trace =
+        second.1 → SwapGuardState setup swap allowed history.state)
+    (toSecond : ∀ (history : (onePacketProtocol setup leaks bounds horizon scheduler).History)
+      (member : (onePacketInformation setup leaks bounds horizon scheduler).infoOf who
+        history.trace = first.1),
+      (onePacketInformation setup leaks bounds horizon scheduler).infoOf who
+        ((onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler swap initialClosed
+          bounded).mapHistory history (guardedFirst history member)).trace = second.1)
+    (toFirst : ∀ (history : (onePacketProtocol setup leaks bounds horizon scheduler).History)
+      (member : (onePacketInformation setup leaks bounds horizon scheduler).infoOf who
+        history.trace = second.1),
+      (onePacketInformation setup leaks bounds horizon scheduler).infoOf who
+        ((onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler swap initialClosed
+          bounded).mapHistory history (guardedSecond history member)).trace = first.1)
+    (regularEq : ∀ (history : (onePacketProtocol setup leaks bounds horizon scheduler).History)
+      (member : (onePacketInformation setup leaks bounds horizon scheduler).infoOf who
+        history.trace = first.1),
+      regular ((onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler swap
+        initialClosed bounded).mapHistory history (guardedFirst history member)) ↔
+        regular history)
+    (baseEq : ∀ (history : (onePacketProtocol setup leaks bounds horizon scheduler).History)
+      (member : (onePacketInformation setup leaks bounds horizon scheduler).infoOf who
+        history.trace = first.1),
+      base ((onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler swap
+        initialClosed bounded).mapHistory history (guardedFirst history member)) = base history)
+    (payoff : List (Option (OperationalState setup leaks)) → ℝ) :
+    BaseLawAgrees base regular first second payoff :=
+  baseLawAgrees_of_equiv base regular first second
+    (StateSymmetry.exchange (onePacketSwapSymmetry_involutive bounds (initialLaw setup) horizon
+      scheduler swap initialClosed bounded allowedClosed) _ _ guardedFirst guardedSecond toSecond
+      toFirst)
+    (fun history => regularEq history.1 history.2)
+    (fun history => operationalRecord_mapTrace swap initialClosed bounded history.1.trace
+      (guardedFirst history.1 history.2))
+    (fun history => baseEq history.1 history.2) payoff
 
 end Vegas
