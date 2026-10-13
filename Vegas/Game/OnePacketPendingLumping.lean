@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketPathwise
 import Vegas.Game.OnePacketActorRecord
+import Vegas.Game.OnePacketEventFailure
 
 /-! # One step of the native kernel while a forced owner's event is pending
 
@@ -226,6 +227,59 @@ theorem SameOperational.completed (event : (graph setup).EventId) :
     ← second.execution.application.config.history_exact, order]
 
 end Congruence
+
+section Image
+
+variable (event : (graph setup).EventId)
+
+open Classical in
+/-- **The image of a protocol state.** While `event` is pending, the
+operational state; once it has completed, whether its output failed. -/
+def pendingImage : (application setup leaks).ProtocolState →
+    Option (OperationalState setup leaks) ⊕ Bool
+  | none => .inl none
+  | some control =>
+      if event ∈ control.execution.application.config.cut.completed then
+        .inr (decide (StoreEventFailed control.execution.application.config.store event))
+      else .inl (operationalState setup leaks (some control))
+
+variable {event}
+
+open Classical in
+theorem pendingImage_of_pending (control : (application setup leaks).Control)
+    (pending : event ∉ control.execution.application.config.cut.completed) :
+    pendingImage event (some control) = .inl (operationalState setup leaks (some control)) := by
+  simp only [pendingImage, pending, ↓reduceIte]
+
+/-- An activation round from a pending state, read through the image. -/
+theorem environmentStep_activate_image (remaining : Nat)
+    (execution : (application setup leaks).Execution)
+    (pending : event ∉ execution.application.config.cut.completed) (who : Player) :
+    (execution.environmentStep (application setup leaks) (.activate who)).map
+        (fun next => pendingImage event (some ⟨remaining, some who, next⟩)) =
+      (leaks who execution.network.pending).map fun selected =>
+        .inl ((operationalState setup leaks (some ⟨remaining + 1, none, execution⟩)).map
+          fun state => (state.learn who selected).round remaining (some who) (.activate who)) := by
+  unfold ReactiveApplication.Execution.environmentStep
+  simp only [PMF.map_comp]
+  congr 1
+  funext selected
+  simp only [Function.comp]
+  rw [pendingImage_of_pending _ pending, ← operationalState_activate]
+
+/-- A waiting round from a pending state, read through the image. -/
+theorem environmentStep_wait_image (remaining : Nat)
+    (execution : (application setup leaks).Execution)
+    (pending : event ∉ execution.application.config.cut.completed) :
+    (execution.environmentStep (application setup leaks) .wait).map
+        (fun next => pendingImage event (some ⟨remaining, none, next⟩)) =
+      PMF.pure (.inl ((operationalState setup leaks (some ⟨remaining + 1, none, execution⟩)).map
+        fun state => state.round remaining none .wait)) := by
+  unfold ReactiveApplication.Execution.environmentStep
+  simp only [PMF.pure_map]
+  rw [pendingImage_of_pending _ pending, ← operationalState_wait]
+
+end Image
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (application setup leaks).Scheduler)
