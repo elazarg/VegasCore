@@ -267,4 +267,384 @@ theorem freeKeyedSpanning [Fintype Player]
 
 end Obligations
 
+section Certificate
+
+variable [Fintype Player] [DecidableEq Player] {Outcome : Type*} {Key : Type*}
+  (fuel : Nat) (bounded : T.BoundedHorizon fuel) (targetRecall : N.DecisionRecall)
+  (observe : T.History → Outcome) (utility : Outcome → Player → ℝ)
+  (fallback : ∀ who, N.Policy who)
+  (free keyed : N.InformationAgent N.playedInformation → Prop) [DecidablePred free]
+  (key : N.InformationAgent N.playedInformation → Key) {Opt : Type} [Nonempty Opt]
+
+omit [DecidablePred free] in
+include bounded in
+open Classical in
+/-- **Member rationality with free agents.** As
+`GameTheory.Protocol.InformationModel.keyedMemberRational`, for the keyed
+agents that are not free; a free agent alone in its pool is rational among its
+component mixtures, and every other agent has one component. -/
+theorem freeKeyedMemberRational [Finite Opt]
+    (freeLaw : ℕ → ∀ agent : N.InformationAgent N.playedInformation,
+      N.Choice agent.1 agent.2.1 → PMF (N.Choice agent.1 agent.2.1))
+    (prescribed : ℕ → ∀ agent : N.InformationAgent N.playedInformation,
+      PMF (N.Choice agent.1 agent.2.1))
+    (keyedLaw : ℕ → ∀ agent : N.InformationAgent N.playedInformation,
+      Opt → PMF (N.Choice agent.1 agent.2.1))
+    (failed : N.InformationAgent N.playedInformation → Set T.History) (excluded : Player → ℝ)
+    (pays : ∀ agent, ∀ history ∈ failed agent, utility (observe history) agent.1 =
+      excluded agent.1)
+    (bound : ℝ) (bound_nonneg : 0 ≤ bound)
+    (oneDimensional : ∀ (weights : ℕ → ∀ p, PMF (FreeKeyedPart free keyed key Opt p))
+        (targetSequence : ℕ → N.BehavioralAssessment),
+      (∀ n, (targetSequence n).strategy = N.agentBehavior N.playedInformation fallback
+        fun agent => (weights n (freeKeyedPool free keyed key agent)).bind
+          (freeKeyedComponent (freeLaw n) (prescribed n) (keyedLaw n) agent)) →
+      (∀ n, (targetSequence n).IsFullyMixed) →
+      (∀ n, BehavioralAssessment.IsBayesConsistent N (targetSequence n)
+        targetRecall.decisionInformationAntichain) →
+      ∃ (continuation : ℕ → N.InformationAgent N.playedInformation → ℝ)
+        (score : ℕ → Key → Opt → ℝ) (error drift : ℕ → ℝ),
+        Tendsto error atTop (nhds 0) ∧ Tendsto drift atTop (nhds 0) ∧ (∀ n, 0 ≤ drift n) ∧
+        ∀ n (agent : N.InformationAgent N.playedInformation), ownedKeyed free keyed agent →
+          ∀ decision : N.IsDecisionInfo agent.1 agent.2.1,
+          excluded agent.1 ≤ continuation n agent + error n ∧
+          continuation n agent - excluded agent.1 ≤ bound ∧
+          (∀ option, |localSuccessValue fuel observe utility (targetSequence n)
+              (who := agent.1) ⟨agent.2.1, decision⟩ (failed agent) (keyedLaw n agent option) -
+            (1 - localFailure fuel (targetSequence n) (who := agent.1) ⟨agent.2.1, decision⟩
+              (failed agent) (keyedLaw n agent option)) * continuation n agent| ≤ error n) ∧
+          ∀ option, |localFailure fuel (targetSequence n) (who := agent.1) ⟨agent.2.1, decision⟩
+              (failed agent) (keyedLaw n agent option) - (1 - score n (key agent) option)| ≤
+            drift n) :
+    ∀ (weights : ℕ → ∀ p, PMF (FreeKeyedPart free keyed key Opt p))
+      (targetSequence : ℕ → N.BehavioralAssessment),
+      (∀ n, (targetSequence n).strategy = N.agentBehavior N.playedInformation fallback
+        fun agent => (weights n (freeKeyedPool free keyed key agent)).bind
+          (freeKeyedComponent (freeLaw n) (prescribed n) (keyedLaw n) agent)) →
+      (∀ n, (targetSequence n).IsFullyMixed) →
+      (∀ n, BehavioralAssessment.IsBayesConsistent N (targetSequence n)
+        targetRecall.decisionInformationAntichain) →
+      (∀ n (alternative : ∀ p, PMF (FreeKeyedPart free keyed key Opt p)) p,
+        ∑ agent ∈ Finset.univ.filter (fun agent => freeKeyedPool free keyed key agent = p),
+          (if decision : N.IsDecisionInfo agent.1 agent.2.1 then
+            let comparison := N.assessmentComparisonWith (N.truncatedRunner fuel)
+              observe (targetSequence n) agent.1
+              (⟨agent.2.1, decision⟩, ((targetSequence n).strategy agent.1).withLaw agent.2.1
+                ((alternative (freeKeyedPool free keyed key agent)).bind
+                  (freeKeyedComponent (freeLaw n) (prescribed n) (keyedLaw n) agent)))
+            expect comparison.alternative (utility · agent.1) -
+              expect comparison.prescribed (utility · agent.1)
+          else 0) ≤ 0) →
+      ∃ memberError : ℕ → ℝ, Tendsto memberError atTop (nhds 0) ∧
+        ∀ n who (site : N.InformationSite who)
+          (alternative : PMF (FreeKeyedPart free keyed key Opt
+            (freeKeyedPool free keyed key (N.agentAt site)))),
+          let comparison := N.assessmentComparisonWith (N.truncatedRunner fuel)
+            observe (targetSequence n) who
+            (site, ((targetSequence n).strategy who).withLaw site.1
+              (alternative.bind (freeKeyedComponent (freeLaw n) (prescribed n) (keyedLaw n)
+                (N.agentAt site))))
+          expect comparison.alternative (utility · who) -
+            expect comparison.prescribed (utility · who) ≤ memberError n :=
+  memberRational_of_success fuel bounded targetRecall observe utility fallback
+    (freeKeyedPool free keyed key) (fun n => freeKeyedComponent (freeLaw n) (prescribed n)
+      (keyedLaw n))
+    {p | ∃ k, p = .inr (some k)} failed excluded pays bound bound_nonneg
+    (fun weights targetSequence played mixed bayes => by
+      let := Fintype.ofFinite Opt
+      obtain ⟨continuation, score, error, drift, errorVanishes, driftVanishes, drift_nonneg,
+        facts⟩ := oneDimensional weights targetSequence played mixed bayes
+      refine ⟨continuation, fun n => freeKeyedBest free keyed key Opt
+          (fun k => scoreArgmax (score n k)), error,
+        fun n => 2 * drift n, errorVanishes, by simpa using driftVanishes.const_mul 2,
+        fun n => by linarith [drift_nonneg n], fun n agent inDelivery decision => ?_⟩
+      obtain ⟨k, poolEq⟩ := inDelivery
+      have notFree : ¬ free agent := fun isFree => by
+        rw [freeKeyedPool_of_free isFree] at poolEq
+        cases poolEq
+      have isKeyed : ownedKeyed free keyed agent := by
+        rw [freeKeyedPool_of_not_free notFree] at poolEq
+        exact (isSome_keyedPool_iff agent).mp (by rw [Sum.inr.inj poolEq]; rfl)
+      obtain ⟨excluded_le, gap_le, near, common⟩ := facts n agent isKeyed decision
+      obtain ⟨identify, componentEq⟩ := freeKeyedComponent_of_not_free (key := key)
+        (freeLaw n) (prescribed n) (keyedLaw n) notFree
+      have best := freeKeyedComponent_at_not_free (freeLaw n) (prescribed n) (keyedLaw n)
+        (freeKeyedBest free keyed key Opt (fun k => scoreArgmax (score n k))) notFree
+      rw [show freeKeyedBest free keyed key Opt (fun k => scoreArgmax (score n k))
+          (.inr (keyedPool (ownedKeyed free keyed) key agent)) =
+        keyedBest (fun k => scoreArgmax (score n k))
+          (keyedPool (ownedKeyed free keyed) key agent) from rfl,
+        keyedComponent_best_of_keyed (prescribed n) (keyedLaw n) _ isKeyed] at best
+      refine ⟨excluded_le, gap_le, fun part => ?_, fun part => ?_⟩
+      · obtain ⟨option, equal⟩ := keyedComponent_of_keyed (key := key) (prescribed n)
+          (keyedLaw n) isKeyed (identify part)
+        rw [componentEq, equal]
+        exact near option
+      · obtain ⟨option, equal⟩ := keyedComponent_of_keyed (key := key) (prescribed n)
+          (keyedLaw n) isKeyed (identify part)
+        change localFailure fuel (targetSequence n) (who := agent.1) ⟨agent.2.1, decision⟩
+          (failed agent) (freeKeyedComponent (freeLaw n) (prescribed n) (keyedLaw n) agent
+            (freeKeyedBest free keyed key Opt (fun k => scoreArgmax (score n k))
+              (freeKeyedPool free keyed key agent))) ≤ _
+        rw [best, componentEq, equal]
+        exact localFailure_scoreArgmax_le fuel (targetSequence n) (who := agent.1)
+          ⟨agent.2.1, decision⟩ (failed agent) (score n (key agent)) (drift n)
+          (keyedLaw n agent) common (keyedLaw n agent option) option (common option))
+    (fun weights targetSequence played _ _ pooled => ⟨fun _ => 0, tendsto_const_nhds,
+      fun n who site outside alternative => by
+        change localGain fuel observe utility (targetSequence n) site _ ≤ 0
+        by_cases isFree : free (N.agentAt site)
+        · have single : Finset.univ.filter (fun agent =>
+              freeKeyedPool free keyed key agent = freeKeyedPool free keyed key (N.agentAt site)) =
+              {N.agentAt site} := by
+            ext agent
+            simp only [Finset.mem_filter, Finset.mem_univ, true_and, Finset.mem_singleton]
+            constructor
+            · intro same
+              rw [freeKeyedPool_of_free isFree] at same
+              exact eq_of_freeKeyedPool_eq_inl same
+            · intro same
+              rw [same]
+          have bound := pooled n (Function.update (weights n)
+            (freeKeyedPool free keyed key (N.agentAt site)) alternative)
+            (freeKeyedPool free keyed key (N.agentAt site))
+          rw [single, Finset.sum_singleton, dite_eq_left site.2] at bound
+          simp only [Function.update_self] at bound
+          exact bound
+        · have unkeyed : ¬ ownedKeyed free keyed (N.agentAt site) := fun isKeyed => by
+            apply outside
+            refine ⟨⟨key (N.agentAt site), ⟨N.agentAt site, isKeyed⟩, rfl⟩, ?_⟩
+            rw [freeKeyedPool_of_not_free isFree, keyedPool_of_keyed isKeyed]
+          obtain ⟨identify, componentEq⟩ := freeKeyedComponent_of_not_free (key := key)
+            (freeLaw n) (prescribed n) (keyedLaw n) isFree
+          have constant (law : PMF (FreeKeyedPart free keyed key Opt
+              (freeKeyedPool free keyed key (N.agentAt site)))) :
+              law.bind (freeKeyedComponent (freeLaw n) (prescribed n) (keyedLaw n)
+                (N.agentAt site)) = prescribed n (N.agentAt site) := by
+            have same : freeKeyedComponent (free := free) (keyed := keyed) (key := key)
+                (freeLaw n) (prescribed n) (keyedLaw n) (N.agentAt site) =
+                fun _ => prescribed n (N.agentAt site) := by
+              funext part
+              rw [componentEq]
+              exact keyedComponent_of_not_keyed (prescribed n) (keyedLaw n) unkeyed _
+            rw [same, PMF.bind_const]
+          have current : alternative.bind (freeKeyedComponent (freeLaw n) (prescribed n)
+              (keyedLaw n) (N.agentAt site)) = (targetSequence n).strategy who site.1 := by
+            rw [constant, played]
+            exact ((N.agentBehavior_at N.playedInformation fallback _ (N.agentAt site)).trans
+              (constant _)).symm
+          rw [current, localGain_self]⟩)
+
+include bounded in
+open Classical in
+/-- **Local comparisons with free agents.** As
+`GameTheory.Protocol.InformationModel.keyedLocalComparisons`, required at the
+sites of agents that are not free. -/
+theorem freeKeyedLocalComparisons [Finite Opt] {E : ExecutionProtocol Player}
+    {M : InformationModel E} (sourceObserve : E.History → Outcome) (sourceFuel : Nat)
+    (sourceSequence : ℕ → M.BehavioralAssessment)
+    (freeLaw : ℕ → ∀ agent : N.InformationAgent N.playedInformation,
+      N.Choice agent.1 agent.2.1 → PMF (N.Choice agent.1 agent.2.1))
+    (prescribed : ℕ → ∀ agent : N.InformationAgent N.playedInformation,
+      PMF (N.Choice agent.1 agent.2.1))
+    (keyedLaw : ℕ → ∀ agent : N.InformationAgent N.playedInformation,
+      Opt → PMF (N.Choice agent.1 agent.2.1))
+    (compared : ∀ who (site : N.InformationSite who), N.Choice who site.1 → Prop)
+    (failed : N.InformationAgent N.playedInformation → Set T.History) (excluded : Player → ℝ)
+    (pays : ∀ agent, ∀ history ∈ failed agent, utility (observe history) agent.1 =
+      excluded agent.1)
+    (bound : ℝ) (bound_nonneg : 0 ≤ bound)
+    (ranking : ∀ (weights : ℕ → ∀ p, PMF (FreeKeyedPart free keyed key Opt p))
+        (targetSequence : ℕ → N.BehavioralAssessment),
+      (∀ n, (targetSequence n).strategy = N.agentBehavior N.playedInformation fallback
+        fun agent => (weights n (freeKeyedPool free keyed key agent)).bind
+          (freeKeyedComponent (freeLaw n) (prescribed n) (keyedLaw n) agent)) →
+      (∀ n, (targetSequence n).IsFullyMixed) →
+      (∀ n, BehavioralAssessment.IsBayesConsistent N (targetSequence n)
+        targetRecall.decisionInformationAntichain) →
+      ∃ (continuation : ℕ → N.InformationAgent N.playedInformation → ℝ)
+        (score : ℕ → Key → Opt → ℝ) (error drift slack : ℕ → ℝ),
+        Tendsto error atTop (nhds 0) ∧ Tendsto drift atTop (nhds 0) ∧
+        Tendsto slack atTop (nhds 0) ∧ (∀ n, 0 ≤ drift n) ∧ (∀ n, 0 ≤ slack n) ∧
+        ∀ n who (site : N.InformationSite who) (choice : N.Choice who site.1),
+          ¬ free (N.agentAt site) → compared who site choice →
+          excluded who ≤ continuation n (N.agentAt site) + error n ∧
+          continuation n (N.agentAt site) - excluded who ≤ bound ∧
+          |localSuccessValue fuel observe utility (targetSequence n) site (failed (N.agentAt site))
+              (PMF.pure choice) -
+            (1 - localFailure fuel (targetSequence n) site
+              (failed (N.agentAt site)) (PMF.pure choice)) *
+              continuation n (N.agentAt site)| ≤ error n ∧
+          (ownedKeyed free keyed (N.agentAt site) →
+            (∀ option, |localSuccessValue fuel observe utility (targetSequence n) site
+                (failed (N.agentAt site)) (keyedLaw n (N.agentAt site) option) -
+              (1 - localFailure fuel (targetSequence n) site (failed (N.agentAt site))
+                (keyedLaw n (N.agentAt site) option)) * continuation n (N.agentAt site)| ≤
+              error n) ∧
+            (∀ option, |localFailure fuel (targetSequence n) site (failed (N.agentAt site))
+                (keyedLaw n (N.agentAt site) option) -
+              (1 - score n (key (N.agentAt site)) option)| ≤ drift n) ∧
+            ((∃ option, |localFailure fuel (targetSequence n) site (failed (N.agentAt site))
+                (PMF.pure choice) - (1 - score n (key (N.agentAt site)) option)| ≤ drift n) ∨
+              localFailure fuel (targetSequence n) site
+                (failed (N.agentAt site)) (PMF.pure choice) = 1)) ∧
+          (¬ ownedKeyed free keyed (N.agentAt site) →
+            |localSuccessValue fuel observe utility (targetSequence n) site
+              (failed (N.agentAt site))
+                (prescribed n (N.agentAt site)) -
+              (1 - localFailure fuel (targetSequence n) site (failed (N.agentAt site))
+                (prescribed n (N.agentAt site))) * continuation n (N.agentAt site)| ≤ error n ∧
+            (localFailure fuel (targetSequence n) site (failed (N.agentAt site))
+                (prescribed n (N.agentAt site)) ≤
+              localFailure fuel (targetSequence n) site
+                (failed (N.agentAt site)) (PMF.pure choice) + slack n ∨
+              localFailure fuel (targetSequence n) site
+                (failed (N.agentAt site)) (PMF.pure choice) = 1)))
+    (otherComparisons : ∀ (weights : ℕ → ∀ p, PMF (FreeKeyedPart free keyed key Opt p))
+        (targetSequence : ℕ → N.BehavioralAssessment),
+      (∀ n, (targetSequence n).strategy = N.agentBehavior N.playedInformation fallback
+        fun agent => (weights n (freeKeyedPool free keyed key agent)).bind
+          (freeKeyedComponent (freeLaw n) (prescribed n) (keyedLaw n) agent)) →
+      (∀ n, (targetSequence n).IsFullyMixed) →
+      (∀ n, BehavioralAssessment.IsBayesConsistent N (targetSequence n)
+        targetRecall.decisionInformationAntichain) →
+      (∀ n (alternative : ∀ p, PMF (FreeKeyedPart free keyed key Opt p)) p,
+        ∑ agent ∈ Finset.univ.filter (fun agent => freeKeyedPool free keyed key agent = p),
+          (if decision : N.IsDecisionInfo agent.1 agent.2.1 then
+            let comparison := N.assessmentComparisonWith (N.truncatedRunner fuel)
+              observe (targetSequence n) agent.1
+              (⟨agent.2.1, decision⟩, ((targetSequence n).strategy agent.1).withLaw agent.2.1
+                ((alternative (freeKeyedPool free keyed key agent)).bind
+                  (freeKeyedComponent (freeLaw n) (prescribed n) (keyedLaw n) agent)))
+            expect comparison.alternative (utility · agent.1) -
+              expect comparison.prescribed (utility · agent.1)
+          else 0) ≤ 0) →
+      ∃ otherError : ℕ → ℝ, Tendsto otherError atTop (nhds 0) ∧
+        ∀ n who (site : N.InformationSite who), N.agentAt site ∉ Finset.univ.filter free →
+          ∀ choice : N.Choice who site.1, ¬ compared who site choice →
+          let gain := fun law : PMF (N.Choice who site.1) =>
+            let comparison := N.assessmentComparisonWith (N.truncatedRunner
+                fuel) observe (targetSequence n)
+              who (site, ((targetSequence n).strategy who).withLaw site.1 law)
+            expect comparison.alternative (utility · who) -
+              expect comparison.prescribed (utility · who)
+          gain (PMF.pure choice) ≤ otherError n ∨
+            (∃ alternative : PMF (FreeKeyedPart free keyed key Opt
+                (freeKeyedPool free keyed key (N.agentAt site))),
+              gain (PMF.pure choice) ≤
+                gain (alternative.bind (freeKeyedComponent (freeLaw n) (prescribed n) (keyedLaw n)
+                  (N.agentAt site))) + otherError n) ∨
+            ∃ mixture : PMF (M.AssessmentDeviation who),
+              gain (PMF.pure choice) ≤
+                expect mixture (fun deviation =>
+                  let sourceComparison := M.assessmentComparisonWith (M.truncatedRunner
+                      sourceFuel) sourceObserve
+                    (sourceSequence n) who deviation
+                  expect sourceComparison.alternative (utility · who) -
+                    expect sourceComparison.prescribed (utility · who)) + otherError n) :
+    ∀ (weights : ℕ → ∀ p, PMF (FreeKeyedPart free keyed key Opt p))
+      (targetSequence : ℕ → N.BehavioralAssessment),
+      (∀ n, (targetSequence n).strategy = N.agentBehavior N.playedInformation fallback
+        fun agent => (weights n (freeKeyedPool free keyed key agent)).bind
+          (freeKeyedComponent (freeLaw n) (prescribed n) (keyedLaw n) agent)) →
+      (∀ n, (targetSequence n).IsFullyMixed) →
+      (∀ n, BehavioralAssessment.IsBayesConsistent N (targetSequence n)
+        targetRecall.decisionInformationAntichain) →
+      (∀ n (alternative : ∀ p, PMF (FreeKeyedPart free keyed key Opt p)) p,
+        ∑ agent ∈ Finset.univ.filter (fun agent => freeKeyedPool free keyed key agent = p),
+          (if decision : N.IsDecisionInfo agent.1 agent.2.1 then
+            let comparison := N.assessmentComparisonWith (N.truncatedRunner fuel)
+              observe (targetSequence n) agent.1
+              (⟨agent.2.1, decision⟩, ((targetSequence n).strategy agent.1).withLaw agent.2.1
+                ((alternative (freeKeyedPool free keyed key agent)).bind
+                  (freeKeyedComponent (freeLaw n) (prescribed n) (keyedLaw n) agent)))
+            expect comparison.alternative (utility · agent.1) -
+              expect comparison.prescribed (utility · agent.1)
+          else 0) ≤ 0) →
+      ∃ comparisonError : ℕ → ℝ, Tendsto comparisonError atTop (nhds 0) ∧
+        ∀ n who (site : N.InformationSite who), N.agentAt site ∉ Finset.univ.filter free →
+          ∀ choice : N.Choice who site.1,
+          let gain := fun law : PMF (N.Choice who site.1) =>
+            let comparison := N.assessmentComparisonWith (N.truncatedRunner
+                fuel) observe (targetSequence n)
+              who (site, ((targetSequence n).strategy who).withLaw site.1 law)
+            expect comparison.alternative (utility · who) -
+              expect comparison.prescribed (utility · who)
+          gain (PMF.pure choice) ≤ comparisonError n ∨
+            (∃ alternative : PMF (FreeKeyedPart free keyed key Opt
+                (freeKeyedPool free keyed key (N.agentAt site))),
+              gain (PMF.pure choice) ≤
+                gain (alternative.bind (freeKeyedComponent (freeLaw n) (prescribed n) (keyedLaw n)
+                  (N.agentAt site))) + comparisonError n) ∨
+            ∃ mixture : PMF (M.AssessmentDeviation who),
+              gain (PMF.pure choice) ≤
+                expect mixture (fun deviation =>
+                  let sourceComparison := M.assessmentComparisonWith (M.truncatedRunner
+                      sourceFuel) sourceObserve
+                    (sourceSequence n) who deviation
+                  expect sourceComparison.alternative (utility · who) -
+                    expect sourceComparison.prescribed (utility · who)) + comparisonError n :=
+  localComparisons_of_success sourceObserve sourceFuel sourceSequence fuel bounded targetRecall
+    observe utility fallback (freeKeyedPool free keyed key)
+    (fun n => freeKeyedComponent (freeLaw n) (prescribed n) (keyedLaw n))
+    (Finset.univ.filter free) compared failed excluded pays bound bound_nonneg
+    (fun weights targetSequence played mixed bayes => by
+      let := Fintype.ofFinite Opt
+      obtain ⟨continuation, score, error, drift, slack, errorVanishes, driftVanishes,
+        slackVanishes, drift_nonneg, slack_nonneg, facts⟩ :=
+        ranking weights targetSequence played mixed bayes
+      refine ⟨continuation, fun n => freeKeyedBest free keyed key Opt
+          (fun k => scoreArgmax (score n k)), error,
+        fun n => 2 * drift n + slack n, errorVanishes,
+        by simpa using (driftVanishes.const_mul 2).add slackVanishes,
+        fun n => by linarith [drift_nonneg n, slack_nonneg n],
+        fun n who site choice notFree marked => ?_⟩
+      have isNotFree : ¬ free (N.agentAt site) := fun isFree =>
+        notFree (Finset.mem_filter.mpr ⟨Finset.mem_univ _, isFree⟩)
+      obtain ⟨excluded_le, gap_le, choiceNear, keyedFacts, unkeyedFacts⟩ :=
+        facts n who site choice isNotFree marked
+      refine ⟨excluded_le, gap_le, choiceNear, ?_⟩
+      have best := freeKeyedComponent_at_not_free (freeLaw n) (prescribed n) (keyedLaw n)
+        (freeKeyedBest free keyed key Opt (fun k => scoreArgmax (score n k))) isNotFree
+      rw [show freeKeyedBest free keyed key Opt (fun k => scoreArgmax (score n k))
+          (.inr (keyedPool (ownedKeyed free keyed) key (N.agentAt site))) =
+        keyedBest (fun k => scoreArgmax (score n k))
+          (keyedPool (ownedKeyed free keyed) key (N.agentAt site)) from rfl] at best
+      change |localSuccessValue fuel observe utility (targetSequence n) site
+          (failed (N.agentAt site)) (freeKeyedComponent (freeLaw n) (prescribed n) (keyedLaw n)
+            (N.agentAt site) (freeKeyedBest free keyed key Opt
+              (fun k => scoreArgmax (score n k)) (freeKeyedPool free keyed key
+                (N.agentAt site)))) - _| ≤ _ ∧
+        localFailure fuel (targetSequence n) site (failed (N.agentAt site))
+          (freeKeyedComponent (freeLaw n) (prescribed n) (keyedLaw n) (N.agentAt site)
+            (freeKeyedBest free keyed key Opt (fun k => scoreArgmax (score n k))
+              (freeKeyedPool free keyed key (N.agentAt site)))) ≤ _
+      rw [best]
+      by_cases isKeyed : ownedKeyed free keyed (N.agentAt site)
+      · obtain ⟨near, common, choiceRanked⟩ := keyedFacts isKeyed
+        rw [keyedComponent_best_of_keyed (key := key) (prescribed n) (keyedLaw n)
+          (fun k => scoreArgmax (score n k)) isKeyed]
+        refine ⟨near _, ?_⟩
+        rcases choiceRanked with ⟨option, choiceCommon⟩ | sure
+        · have ranked := localFailure_scoreArgmax_le fuel (targetSequence n) site
+            (failed (N.agentAt site)) (score n (key (N.agentAt site))) (drift n)
+            (keyedLaw n (N.agentAt site)) common (PMF.pure choice) option choiceCommon
+          linarith [slack_nonneg n]
+        · have := localFailure_le_of_sure_failure fuel (targetSequence n) site
+            (failed (N.agentAt site))
+            (keyedLaw n (N.agentAt site) (scoreArgmax (score n (key (N.agentAt site)))))
+            (PMF.pure choice) sure
+          linarith [slack_nonneg n, drift_nonneg n]
+      · obtain ⟨near, ranked⟩ := unkeyedFacts isKeyed
+        rw [keyedComponent_of_not_keyed (key := key) (prescribed n) (keyedLaw n) isKeyed]
+        refine ⟨near, ?_⟩
+        rcases ranked with ranked | sure
+        · linarith [drift_nonneg n]
+        · have := localFailure_le_of_sure_failure fuel (targetSequence n) site
+            (failed (N.agentAt site)) (prescribed n (N.agentAt site)) (PMF.pure choice) sure
+          linarith [slack_nonneg n, drift_nonneg n])
+    otherComparisons
+
+end Certificate
+
 end GameTheory.Protocol.InformationModel
