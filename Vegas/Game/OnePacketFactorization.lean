@@ -217,14 +217,17 @@ def operationalRecord :
       operationalState setup leaks after :: operationalRecord prior
 
 /-- A response of another player is regular when it is made at a forced agent
-of the responder and its content factor is positive. -/
+of the responder, from a forced state of the observer, and its content factor
+is positive. Forcedness for the observer rules out other players' exclusion and
+owed failures, so a regular responder holds no bad binding of its own. -/
 def RegularStep (assessment : setup.intendedModel.BehavioralAssessment) (who : Player) :
     (application setup leaks).ProtocolState →
       (Player → Option (application setup leaks).Action) →
         (application setup leaks).ProtocolState → Prop
   | some before, joint, some after => ∀ actor, before.actor = some actor → actor ≠ who →
-      forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
+      (forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
           scheduler actor ((application setup leaks).observe actor (some before)) ∧
+        ForcedState setup leaks who (some before)) ∧
         0 < contentFactor setup leaks assessment actor before.execution after.execution
           ((joint actor).getD ⟨none⟩)
   | _, _, _ => True
@@ -390,6 +393,7 @@ structure OperationalSteps (sequence : ℕ → setup.intendedModel.BehavioralAss
     control.actor = some actor → actor ≠ who →
     forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
       scheduler actor ((application setup leaks).observe actor (some control)) →
+    ForcedState setup leaks who (some control) →
     0 < contentFactor setup leaks (sequence n) actor control.execution next.execution
       ((joint actor).getD ⟨none⟩) →
     |InformationModel.stepProb (onePacketInformation setup leaks bounds horizon scheduler)
@@ -736,13 +740,13 @@ theorem step_factor {sequence : ℕ → setup.intendedModel.BehavioralAssessment
             simp only [transitionSourceFactor, acting, ↓reduceIte, ownerRecall]
             rw [recallEq, ownerMass_append, ← stepEq]
             ring
-          · obtain ⟨forced, positive⟩ := regular actor acting owner
+          · obtain ⟨⟨forced, observerForced⟩, positive⟩ := regular actor acting owner
             have bound := steps.component n prior joint legal (by
               change _ ∈ ((application setup leaks).transition (initialLaw setup) horizon
                 scheduler (some control) joint).support
               rw [transition_respond control acting joint]
               exact (PMF.mem_support_pure_iff _ _).mpr rfl) control _ actor rfl rfl acting owner
-              forced positive
+              forced observerForced positive
             refine ⟨_, mul_nonneg (contentFactor_nonneg _ _ _ _ _) (steps.mass_nonneg _ _ _),
               bound, ?_⟩
             have actorNe : ¬ control.actor = some who := by

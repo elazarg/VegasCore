@@ -147,6 +147,7 @@ def OperationalSteps.ofSlotComponents
       control.actor = some actor → actor ≠ who →
       forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
         scheduler actor ((application setup leaks).observe actor (some control)) →
+      ForcedState setup leaks who (some control) →
       0 < contentFactor setup leaks (sequence n) actor control.execution next.execution
         ((joint actor).getD ⟨none⟩) →
       ∃ (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
@@ -175,11 +176,11 @@ def OperationalSteps.ofSlotComponents
     OperationalSteps setup leaks bounds horizon scheduler sequence profiles who :=
   OperationalSteps.ofComponents response error response_nonneg error_nonneg error_tendsto
     fun n before after prior joint legal realized control next actor initialized reached acting
-      other forced positive => by
+      other forced observerForced positive => by
     obtain ⟨scale, nonnegative, le_one, main, alternative, slot, mainFactor, alternativeFactor,
       slotFactor, policyEq, mainMass, alternativeMass, slotMass, combination, floor⟩ :=
       slotLaw n prior joint legal realized control next actor initialized reached acting other
-        forced positive
+        forced observerForced positive
     rw [response_stepProb (profiles n) prior joint legal realized control initialized acting,
       ← combination]
     have near := slotTrembledChoice_near setup leaks bounds (initialLaw setup) horizon scheduler

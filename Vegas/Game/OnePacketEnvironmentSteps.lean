@@ -437,6 +437,7 @@ def OperationalSteps.ofComponents {sequence : ℕ → setup.intendedModel.Behavi
       control.actor = some actor → actor ≠ who →
       forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
         scheduler actor ((application setup leaks).observe actor (some control)) →
+      ForcedState setup leaks who (some control) →
       0 < contentFactor setup leaks (sequence n) actor control.execution next.execution
         ((joint actor).getD ⟨none⟩) →
       |InformationModel.stepProb (onePacketInformation setup leaks bounds horizon scheduler)
@@ -467,9 +468,9 @@ def OperationalSteps.ofComponents {sequence : ℕ → setup.intendedModel.Behavi
     change _ = if control.actor = none then _ else _
     simp only [idle, ↓reduceIte]
   component n before after prior joint legal realized control next actor initialized reached
-      acting other forced positive := by
+      acting other forced observerForced positive := by
     have bound := component n prior joint legal realized control next actor initialized reached
-      acting other forced positive
+      acting other forced observerForced positive
     subst initialized
     have active : ¬ control.actor = none := by rw [acting]; exact Option.some_ne_none _
     have massEq : roundOrResponseMass (scheduler := scheduler) (response n)
