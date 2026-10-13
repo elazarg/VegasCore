@@ -390,9 +390,9 @@ private theorem canonical_commitment_sent {who : Player}
 /-- **Committing at the first activation.** Under the asynchronous contract and
 the timeliness margin, let who be at its first activation for the binding
 event, at a history whose configuration is a prefix of rank events decoding
-to a point of the intended game. Let the canonical decision of action
-transmit, and let the source action action decodes to be intended at the
-decoded point. Then, with that decision committed
+to a point of the intended game, and let the source action action decodes to
+be intended at the decoded point; its canonical decision transmits, since a
+canonical slot always exists. Then, with that decision committed
 at the history's information state and any other policies, until the event
 completes, the completion-point law is the source step of that source action at
 the decoded point, with success one and no error, for every property fresh
@@ -418,10 +418,7 @@ theorem firstActivation_commit_completionPointLaw
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind who payload}
     (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
-    (action : (graph setup).Action event) (material : (application setup leaks).Submission)
-    (submits : ((runtime setup).canonicalServiceDecision leaks who (execution.recall who)
-      (execution.observe (application setup leaks) who) event action).transmission =
-        some material)
+    (action : (graph setup).Action event)
     (info : (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).InfoState
       who)
     (observed : (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).infoOf who
@@ -478,6 +475,17 @@ theorem firstActivation_commit_completionPointLaw
         rw [← actionEq, decodes] at failing
         exact ProtocolView.not_failing_of_intendedAvailable who setup.program _ sourceAction
           intendedAction failing
+  -- A canonical slot exists, so the canonical decision transmits.
+  obtain ⟨material, submits⟩ : ∃ material, ((runtime setup).canonicalServiceDecision leaks who
+      (execution.recall who) (execution.observe (application setup leaks) who) event
+      action).transmission = some material := by
+    obtain ⟨serial, selected⟩ := onePacket_canonicalFreshSlot_exists trace who
+    rw [show action = cast (congrArg EventGraph.EventField.Action outputEq.symm)
+        (cast (congrArg EventGraph.EventField.Action outputEq) action :
+          PublicationResult (L.Val payload)) by simp,
+      (runtime setup).canonicalServiceDecision_binding leaks who _ _ event payload outputEq
+        codeEq node serial selected]
+    exact ⟨_, rfl⟩
   -- The source step at the decoded point.
   obtain ⟨found, ⟨residual⟩⟩ := protocol_sourceResidual (failureProfile setup.program) menu
     horizon scheduler trace _ rfl

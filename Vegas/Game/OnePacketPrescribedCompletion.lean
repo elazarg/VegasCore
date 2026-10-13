@@ -15,9 +15,13 @@ so at a turn the source step of the as-if-honest law of an intended assessment
 is the step of its intended effective opening
 (`Vegas.asIfHonest_bind_step_eq_behavioralStateStep`).
 
+**Canonical decisions at a binding transmit.** Along every history of the
+one-packet game, the canonical decision of every encoded source action at a
+binding of the player transmits (`Vegas.canonicalTransmitsAt_of_binding`).
+
 **The prescribed component at a first activation.** Under the asynchronous
 contract, the timeliness margin and retention of covered canonical packets, at
-a transmitting first activation of who for a binding of rank rank whose
+a first activation of who for a binding of rank rank whose
 configuration decodes at rank to a point of the intended game, installing the
 slot-trembled prescribed component of an intended assessment gives, under play
 of any other policies until the event completes, the completion-point law of
@@ -249,12 +253,34 @@ theorem asIfHonest_bind_step_eq_behavioralStateStep
     actionLaw, asIfHonestProfile_observe setup leaks source who execution rank ordered point
       decoded past]
 
+/-- **Canonical decisions at a binding transmit.** Along every history of the
+one-packet game, at a binding of who, the canonical decision of every encoded
+source action transmits. -/
+theorem canonicalTransmitsAt_of_binding {control : (application setup leaks).Control}
+    (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control))
+    (who : Player) (event : (graph setup).EventId) {payload : L.Ty}
+    {outputEq : (graph setup).outputLayout event = .binding who payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .bind who payload}
+    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq) :
+    CanonicalTransmitsAt setup leaks who (control.execution.recall who)
+      (control.execution.observe (application setup leaks) who) event := by
+  intro action graphAction _ _ _
+  obtain ⟨serial, selected⟩ := onePacket_canonicalFreshSlot_exists trace who
+  obtain ⟨choice, rfl⟩ : ∃ choice : PublicationResult (L.Val payload),
+      graphAction = cast (congrArg EventGraph.EventField.Action outputEq.symm) choice :=
+    ⟨cast (congrArg EventGraph.EventField.Action outputEq) graphAction, by simp⟩
+  rw [(runtime setup).canonicalServiceDecision_binding leaks who _ _ event payload outputEq
+    codeEq node serial selected choice]
+  exact Option.some_ne_none _
+
 /-- **The prescribed component at a first activation.** Under the asynchronous
 contract, the timeliness margin and retention of covered canonical packets, let
 who be at its first activation for the binding event pending at a history,
 whose configuration is a prefix of rank events decoding to a point of the
-intended game, and let the canonical decision of every successful encoded
-source action transmit there. Installing at the history's information state
+intended game; the canonical decision of every successful encoded source action
+transmits there, since a canonical slot always exists. Installing at the history's information state
 the slot-trembled prescribed component of an intended assessment source, with
 any other policies, until the event completes, the completion-point law is the
 step of the intended effective opening of source at the decoded point, with
@@ -285,8 +311,6 @@ theorem firstActivation_prescribed_completionPointLaw
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind who payload}
     (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
-    (transmits : CanonicalTransmitsAt setup leaks who (execution.recall who)
-      (execution.observe (application setup leaks) who) event)
     {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
@@ -322,6 +346,7 @@ theorem firstActivation_prescribed_completionPointLaw
   have turnExecution : execution.application.publicView.ownTurn? who = some event := turn
   have trace : (menu.protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨remaining, some who, execution⟩) := current ▸ history.trace
+  have transmits := canonicalTransmitsAt_of_binding trace who event node
   have fits := firstActivation_inclusionFits contract timely
     (menu.toRawTrace (initialLaw setup) horizon scheduler trace) rfl event turnExecution never
   have ready := (execution.application.publicView_eventReady event).mp readyView
@@ -378,7 +403,6 @@ theorem firstActivation_prescribed_completionPointLaw
       have success := asIfHonestProfile_success source who execution rank ordered point decoded
         (execution.recall who) action member
       have sends := transmits action graphAction encoded success.1 success.2
-      obtain ⟨material, submits⟩ := Option.ne_none_iff_exists'.mp sends
       have commits : action.CommitsValue := by
         cases action with
         | commit owner name payload choice =>
@@ -409,7 +433,7 @@ theorem firstActivation_prescribed_completionPointLaw
         (ProtocolState.observe who setup.program point) intended.1 at legal
       rw [same] at legal
       have law := firstActivation_commit_completionPointLaw contract timely profile history
-        current event turnExecution never node graphAction material submits _ observed _ selected
+        current event turnExecution never node graphAction _ observed _ selected
         ordered decoded intendedPoint
         (decodeEventAction_encodeEventAction?_eq_some setup.program event action graphAction
           encoded) legal.2 freshOf value valueBound valueBounded

@@ -10,10 +10,6 @@ import Vegas.Game.IntendedCommitGain
 the late pools, the assembled profile plays the slot-trembled prescribed
 component of the source assessment (`Vegas.assembled_strategy_of_unpooled`).
 
-**Canonical decisions at a binding transmit.** Along every history of the
-one-packet game, the canonical decision of every successful value at a binding
-of the player's turn transmits (`Vegas.canonicalTransmitsAt_of_binding`).
-
 **The gain of an intended commitment.** At a forced first activation outside
 the late pools for a binding, at a history whose decoded point has no player
 owing a failure, a choice committing a value whose source action is intended at
@@ -105,32 +101,6 @@ theorem assembled_strategy_of_unpooled
       fun _ => onePacketPrescribed setup leaks bounds horizon scheduler sequence scale scale_pos
         scale_le_one n ((onePacketN).agentAt site) from funext constant, PMF.bind_const]
   rfl
-
-variable {setup leaks bounds horizon scheduler} in
-omit [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
-    scheduler).InfoState who)] in
-/-- **Canonical decisions at a binding transmit.** Along every history of the
-one-packet game, at a binding of who, the canonical decision of every encoded
-source action transmits. -/
-theorem canonicalTransmitsAt_of_binding {control : (application setup leaks).Control}
-    (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
-      scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId) {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
-    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq) :
-    CanonicalTransmitsAt setup leaks who (control.execution.recall who)
-      (control.execution.observe (application setup leaks) who) event := by
-  intro action graphAction _ _ _
-  obtain ⟨serial, selected⟩ := onePacket_canonicalFreshSlot_exists trace who
-  obtain ⟨choice, rfl⟩ : ∃ choice : PublicationResult (L.Val payload),
-      graphAction = cast (congrArg EventGraph.EventField.Action outputEq.symm) choice :=
-    ⟨cast (congrArg EventGraph.EventField.Action outputEq) graphAction, by simp⟩
-  rw [(runtime setup).canonicalServiceDecision_binding leaks who _ _ event payload outputEq
-    codeEq node serial selected choice]
-  exact Option.some_ne_none _
 
 open Classical in
 /-- **The gain of an intended commitment at a regular history.** For a
@@ -306,7 +276,7 @@ theorem onePacket_commitment_gain_le_of_regular (wellFormed : setup.WellFormed)
   -- The prescribed component completes at the step of the intended effective opening.
   have prescribedLaw := firstActivation_prescribed_completionPointLaw contract timely retains
     (sequence n) (scale_pos n).le (scale_le_one n) (targetSequence n).strategy start startState
-    event pendingAt never node (canonicalTransmitsAt_of_binding trace who event node) ordered
+    event pendingAt never node ordered
     decoded intendedPoint
     (fresh := fun control => ¬ StoreEventFailed control.execution.application.config.store event)
     (fun _ notFailed => notFailed) site.1 observed
