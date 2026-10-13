@@ -501,6 +501,95 @@ theorem application_image_congr (remaining : Nat)
           (environmentStep_expire_of_not_ready (runtime setup) _ expired
             (fun other => expiredReady ((readyIff expired).mpr other)))
 
+/-- Late-delivery keys of views that differ only in their network part and
+receipts agree when the earlier keys agree and the network parts and receipts
+agree. -/
+theorem lateKey_network_congr (who : Player) (firstPast secondPast :
+      List (application setup leaks).PlayerEntry)
+    {first first' second second' : (application setup leaks).PlayerView}
+    (old : lateKey setup leaks who (some (firstPast, first)) =
+      lateKey setup leaks who (some (secondPast, second)))
+    (firstContract : first'.application = first.application)
+    (secondContract : second'.application = second.application)
+    (messages : first'.messages = second'.messages)
+    (receipts : first'.receipts = second'.receipts) :
+    lateKey setup leaks who (some (firstPast, first')) =
+      lateKey setup leaks who (some (secondPast, second')) := by
+  simp only [lateKey, Option.some.injEq, LateKey.mk.injEq, operationalView] at old ⊢
+  obtain ⟨_, current, recalled, delivered⟩ := old
+  refine ⟨trivial, ?_, recalled, ?_⟩
+  · rw [firstContract, secondContract, messages, receipts]
+    rw [(Prod.mk.inj current).1]
+  · have firstDelivered : deliveredValue setup leaks who first' =
+        deliveredValue setup leaks who first := by
+      unfold deliveredValue
+      rw [firstContract]
+    have secondDelivered : deliveredValue setup leaks who second' =
+        deliveredValue setup leaks who second := by
+      unfold deliveredValue
+      rw [secondContract]
+    rw [firstDelivered, secondDelivered, delivered]
+
+/-- **An inclusion the contract rejects, read off the operational state.**
+While an event is pending, two executions with the same operational state give
+an inclusion the same image when the contract rejects the included packet in
+both, or there is none to include. -/
+theorem include_image_congr (remaining : Nat)
+    (first second : (application setup leaks).Execution)
+    (same : operationalState setup leaks (some ⟨remaining + 1, none, first⟩) =
+      operationalState setup leaks (some ⟨remaining + 1, none, second⟩))
+    (pending : event ∉ first.application.config.cut.completed) (id : MessageId Player)
+    (rejected : ∀ message, first.network.lookup id = some message →
+      (application setup leaks).handle first.application message = none ∧
+        (application setup leaks).handle second.application message = none) :
+    (first.environmentStep (application setup leaks) (.include id)).map
+        (fun next => pendingImage event (some ⟨remaining, none, next⟩)) =
+      (second.environmentStep (application setup leaks) (.include id)).map
+        (fun next => pendingImage event (some ⟨remaining, none, next⟩)) := by
+  have networks : first.network = second.network := SameOperational.network same
+  have pending' : event ∉ second.application.config.cut.completed := fun completed =>
+    pending ((SameOperational.completed same event).mpr completed)
+  have fields := Option.some.inj same
+  simp only [OperationalState.mk.injEq] at fields
+  obtain ⟨_, _, recalls, views, _, keys⟩ := fields
+  unfold ReactiveApplication.Execution.environmentStep
+  simp only [PMF.pure_map]
+  congr 1
+  unfold ReactiveApplication.Execution.includePending
+  cases found : first.network.lookup id with
+  | none =>
+      have found' : second.network.lookup id = none := by rw [← networks]; exact found
+      simp only [MessageNetwork.includePending, found, found']
+      rw [pendingImage_of_pending _ pending, pendingImage_of_pending _ pending']
+      simp only [operationalState, Sum.inl.injEq, Option.some.injEq, OperationalState.mk.injEq]
+      refine ⟨trivial, trivial, ?_, ?_, ?_, ?_⟩
+      · rw [recalls, views]
+      · exact views
+      · rw [networks]
+      · funext who
+        exact congrFun keys who
+  | some message =>
+      obtain ⟨firstRejected, secondRejected⟩ := rejected message found
+      have found' : second.network.lookup id = some message := by rw [← networks]; exact found
+      simp only [MessageNetwork.includePending, found, found', firstRejected, secondRejected,
+        Option.getD_none, Option.isSome_none]
+      rw [pendingImage_of_pending _ pending, pendingImage_of_pending _ pending']
+      simp only [operationalState, Sum.inl.injEq, Option.some.injEq, OperationalState.mk.injEq]
+      have receipts : first.receipts = second.receipts :=
+        congrArg ReactiveApplication.EnvironmentView.receipts views
+      have contract : first.application.publicView = second.application.publicView :=
+        congrArg ReactiveApplication.EnvironmentView.application views
+      refine ⟨trivial, trivial, ?_, ?_, ?_, ?_⟩
+      · rw [recalls, views]
+      · unfold ReactiveApplication.Execution.observeEnvironment
+        rw [networks, receipts]
+        congr 1
+      · rw [networks]
+      · funext who
+        exact lateKey_network_congr who _ _ (congrFun keys who) rfl rfl
+          (by change MessageNetwork.observe _ who = MessageNetwork.observe _ who; rw [networks])
+          (by change first.receipts ++ _ = second.receipts ++ _; rw [receipts])
+
 end Image
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
