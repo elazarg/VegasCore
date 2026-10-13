@@ -410,3 +410,5 @@ import Vegas.Game.ReactiveSourcePublicCheckpoint
 import Vegas.Game.OnePacketOpeningLaw
 import Vegas.Game.OnePacketOwnerLaws
 import Vegas.Game.OnePacketProjectedDecision
+import Vegas.Game.OnePacketDebtRouting
+import Vegas.Game.OnePacketFirstActivationCompletion
