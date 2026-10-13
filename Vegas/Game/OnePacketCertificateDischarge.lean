@@ -7,6 +7,7 @@ import Vegas.Game.OnePacketEventSuccess
 import Vegas.Game.OnePacketSourceTurn
 import Vegas.Game.OnePacketBindingSite
 import Vegas.Game.OnePacketSureFailure
+import GameTheoryExtensions.Analysis.Protocol.SourceGainTransport
 
 /-! # Discharging inputs of the one-packet certificate
 
@@ -1038,82 +1039,45 @@ structure OnePacketOpenInputs (sequence : ℕ → setup.intendedModel.Behavioral
                 ((onePacketN).agentAt site)) option)| ≤ drift n) ∨
           onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
             (PMF.pure choice) = 1
-  /-- **The comparisons of unmarked choices.** Every unmarked choice at a forced
-  site meets one of the three local comparisons of a pooled limit certificate
-  on its own: values outside the intended menu, bad bindings, charged packets. -/
-  otherComparisons : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler
-      slots p))
-          (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
-        (∀ n, (targetSequence n).strategy = (onePacketN).agentBehavior
-            (onePacketN).playedInformation (onePacketFallback setup leaks bounds horizon scheduler)
-          fun agent => (weights n (onePacketPool setup leaks bounds horizon scheduler agent)).bind
-            (freeKeyedComponent ((onePacketUnforced setup leaks bounds horizon scheduler scale
-                scale_pos
-            scale_le_one) n) ((onePacketPrescribed setup leaks bounds horizon scheduler sequence
-                scale
-            scale_pos scale_le_one) n) ((onePacketLate setup leaks bounds horizon scheduler
-                sequence scale scale_pos
-            scale_le_one (slots := slots)) n) agent)) →
-        (∀ n, (targetSequence n).IsFullyMixed) →
-        (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
-          ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
-            (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
-        (∀ n (alternative : ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
-            p,
-          ∑ agent ∈ Finset.univ.filter (fun agent => onePacketPool setup leaks bounds horizon
-              scheduler agent = p),
-            (if decision : (onePacketN).IsDecisionInfo agent.1 agent.2.1 then
-              let comparison := (onePacketN).assessmentComparisonWith ((onePacketN).truncatedRunner
-                  (2 * horizon + 1))
-                (readoutExclusion setup leaks bounds (initialLaw setup) horizon
-            scheduler parameter utility excludedPayoff) (targetSequence n) agent.1
-                (⟨agent.2.1, decision⟩, ((targetSequence n).strategy agent.1).withLaw agent.2.1
-                  ((alternative (onePacketPool setup leaks bounds horizon scheduler agent)).bind
-                    (freeKeyedComponent ((onePacketUnforced setup leaks bounds horizon scheduler
-                        scale scale_pos
-            scale_le_one) n) ((onePacketPrescribed setup leaks bounds horizon scheduler sequence
-                scale
-            scale_pos scale_le_one) n) ((onePacketLate setup leaks bounds horizon scheduler
-                sequence scale scale_pos
-            scale_le_one (slots := slots)) n) agent)))
-              expect comparison.alternative ((payoffComponent setup) · agent.1) -
-                expect comparison.prescribed ((payoffComponent setup) · agent.1)
-            else 0) ≤ 0) →
-        ∃ otherError : ℕ → ℝ, Tendsto otherError atTop (nhds 0) ∧
-          ∀ n who (site : (onePacketN).InformationSite who), (onePacketN).agentAt site ∉
-              Finset.univ.filter (UnforcedAgent setup leaks bounds horizon scheduler) →
-            ∀ choice : (onePacketN).Choice who site.1,
-              ¬ onePacketCompared setup leaks bounds horizon scheduler who site choice →
-            let gain := fun law : PMF ((onePacketN).Choice who site.1) =>
-              let comparison := (onePacketN).assessmentComparisonWith ((onePacketN).truncatedRunner
-                  (2 * horizon + 1)) (readoutExclusion setup leaks bounds (initialLaw setup) horizon
-            scheduler parameter utility excludedPayoff) (targetSequence n)
-                who (site, ((targetSequence n).strategy who).withLaw site.1 law)
-              expect comparison.alternative ((payoffComponent setup) · who) -
-                expect comparison.prescribed ((payoffComponent setup) · who)
-            gain (PMF.pure choice) ≤ otherError n ∨
-              (∃ alternative : PMF (OnePacketPart setup leaks bounds horizon scheduler slots
-                  (onePacketPool setup leaks bounds horizon scheduler ((onePacketN).agentAt site))),
-                gain (PMF.pure choice) ≤
-                  gain (alternative.bind (freeKeyedComponent ((onePacketUnforced setup leaks bounds
-                      horizon scheduler scale scale_pos
-            scale_le_one) n) ((onePacketPrescribed setup leaks bounds horizon scheduler sequence
-                scale
-            scale_pos scale_le_one) n) ((onePacketLate setup leaks bounds horizon scheduler
-                sequence scale scale_pos
-            scale_le_one (slots := slots)) n)
-                    ((onePacketN).agentAt site))) + otherError n) ∨
-              ∃ mixture : PMF (setup.intendedModel.AssessmentDeviation who),
-                gain (PMF.pure choice) ≤
-                  expect mixture (fun deviation =>
-                    let sourceComparison := setup.intendedModel.assessmentComparisonWith
-                        (setup.intendedModel.truncatedRunner
-                        (instructionCount setup.program + 1)) (intendedReadoutExclusion setup
-                            parameter utility excludedPayoff)
-                      (sequence n) who deviation
-                    expect sourceComparison.alternative ((payoffComponent setup) · who) -
-                      expect sourceComparison.prescribed ((payoffComponent setup) · who)) +
-                          otherError n
+  /-- **Transport of value-changing choices to source deviations.** At every
+  forced site, every choice committing a value has a source deviation and a map
+  of the site's histories to the source deviation's site, such that the gain at
+  each history of the belief is within a vanishing error of the source gain at
+  its image, the source history gains are bounded, and the pushed-forward
+  belief approaches the source belief in `ℓ¹`. -/
+  sourceTransport : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon
+      scheduler slots p)) (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
+    OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos scale_le_one
+      weights targetSequence →
+    (∀ n, (targetSequence n).IsFullyMixed) →
+    (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
+      ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
+        (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
+    ∃ (valueError beliefError : ℕ → ℝ) (bound : ℝ), Tendsto valueError atTop (nhds 0) ∧
+      Tendsto beliefError atTop (nhds 0) ∧ 0 ≤ bound ∧
+      ∀ n who (site : (onePacketN).InformationSite who),
+        ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+        ∀ choice, ¬ onePacketCompared setup leaks bounds horizon scheduler who site choice →
+        ∃ (sourceDeviation : setup.intendedModel.AssessmentDeviation who)
+          (project : (onePacketN).InformationHistory who site.1 →
+            setup.intendedModel.InformationHistory who sourceDeviation.1.1),
+          (∀ history ∈ ((targetSequence n).belief who site).support,
+            |(onePacketN).historyGain ((onePacketN).truncatedRunner (2 * horizon + 1))
+                (readoutExclusion setup leaks bounds (initialLaw setup) horizon scheduler
+                  parameter utility excludedPayoff) (payoffComponent setup) (targetSequence n)
+                (site, ((targetSequence n).strategy who).withLaw site.1 (PMF.pure choice))
+                history -
+              setup.intendedModel.historyGain
+                (setup.intendedModel.truncatedRunner (instructionCount setup.program + 1))
+                (intendedReadoutExclusion setup parameter utility excludedPayoff)
+                (payoffComponent setup) (sequence n) sourceDeviation (project history)| ≤
+              valueError n) ∧
+          (∀ point, |setup.intendedModel.historyGain
+              (setup.intendedModel.truncatedRunner (instructionCount setup.program + 1))
+              (intendedReadoutExclusion setup parameter utility excludedPayoff)
+              (payoffComponent setup) (sequence n) sourceDeviation point| ≤ bound) ∧
+          ∑' point, |((((targetSequence n).belief who site).map project) point).toReal -
+            ((sequence n).belief who sourceDeviation.1 point).toReal| ≤ beliefError n
 
 /-- **The certificate inputs from the open inputs.** For a well-formed setup,
 under the asynchronous contract with timely delays and retention of first
@@ -1185,7 +1149,34 @@ def OnePacketOpenInputs.toCertificateInputs
       refine ⟨by linarith, gap, (chosen choice marked).trans bound,
         fun isKeyed => isKeyed.elim,
         fun _ => ⟨other.trans bound, prescribed n who site choice notFree keyed⟩⟩
-  otherComparisons := inputs.otherComparisons
+  otherComparisons weights targetSequence assembled mixed bayes _ := by
+    classical
+    obtain ⟨valueError, beliefError, bound, valueLimit, beliefLimit, boundNonneg, transport⟩ :=
+      inputs.sourceTransport weights targetSequence assembled mixed bayes
+    refine ⟨fun n => valueError n + bound * beliefError n, by
+      simpa using valueLimit.add (beliefLimit.const_mul bound),
+      fun n who site notFree choice unmarked => ?_⟩
+    have forced : ¬ UnforcedAgent setup leaks bounds horizon scheduler
+        ((onePacketN).agentAt site) := fun unforced =>
+      notFree (Finset.mem_filter.mpr ⟨Finset.mem_univ _, unforced⟩)
+    obtain ⟨sourceDeviation, project, close, bounded, near⟩ :=
+      transport n who site forced choice unmarked
+    let := Fintype.ofFinite (setup.intendedModel.InformationHistory who sourceDeviation.1.1)
+    rw [tsum_fintype] at near
+    have transported := (onePacketN).gain_le_sourceGain_add
+      ((onePacketN).truncatedRunner (2 * horizon + 1))
+      (readoutExclusion setup leaks bounds (initialLaw setup) horizon scheduler parameter utility
+        excludedPayoff) (payoffComponent setup) (targetSequence n)
+      (setup.intendedModel.truncatedRunner (instructionCount setup.program + 1))
+      (intendedReadoutExclusion setup parameter utility excludedPayoff) (payoffComponent setup)
+      (sequence n) (site, ((targetSequence n).strategy who).withLaw site.1 (PMF.pure choice))
+      sourceDeviation project (valueError n) bound close bounded
+    have scaled := mul_le_mul_of_nonneg_left near boundNonneg
+    right
+    right
+    refine ⟨PMF.pure sourceDeviation, ?_⟩
+    rw [expect_pure]
+    linarith
   lawApproximation weights targetSequence assembled _ _ _ :=
     onePacket_certificate_lawApproximation setup leaks bounds horizon scheduler wellFormed
       contract timely retains parameter utility excludedPayoff sequence inputs.scale
