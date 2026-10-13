@@ -1188,6 +1188,136 @@ def onePacketSiteGain (assessment : (onePacketN).BehavioralAssessment) {who : Pl
   expect comparison.alternative ((payoffComponent setup) · who) -
     expect comparison.prescribed ((payoffComponent setup) · who)
 
+open Classical in
+/-- The failure probability, from one history of a site, of installing a law
+there: the probability of the event-level failure of the site's pending event. -/
+def lateHistoryFailure (assessment : (onePacketN).BehavioralAssessment) {who : Player}
+    (site : (onePacketN).InformationSite who) (law : PMF ((onePacketN).Choice who site.1))
+    (history : (onePacketN).InformationHistory who site.1) : ℝ :=
+  expect (localHistoryRun (2 * horizon + 1) assessment site law history) fun final =>
+    if final ∈ onePacketFailed setup leaks bounds horizon scheduler ((onePacketN).agentAt site)
+    then 1 else 0
+
+omit [Finite setup.intendedProtocol.History] in
+/-- **Site commonness from value blindness.** Along a target sequence, if at
+every stage each player's late deliveries are value blind for the failure of the
+late options with vanishing drifts, and every marked choice at a forced late
+delivery fails within a vanishing drift of some late option or surely, then the
+late options fail within a vanishing drift of one minus a score of the
+late-delivery key, and so does every marked choice or it fails surely. -/
+theorem onePacket_siteCommonness (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
+    (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
+    {slots : Nat} (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
+    (pathDrift unforcedDrift beliefDrift markDrift : ℕ → ℝ)
+    (pathLimit : Tendsto pathDrift atTop (nhds 0))
+    (unforcedLimit : Tendsto unforcedDrift atTop (nhds 0))
+    (beliefLimit : Tendsto beliefDrift atTop (nhds 0))
+    (markLimit : Tendsto markDrift atTop (nhds 0))
+    (pathNonneg : ∀ n, 0 ≤ pathDrift n) (markNonneg : ∀ n, 0 ≤ markDrift n)
+    (blind : ∀ n who, Nonempty (LateDeliveryBlindness setup leaks bounds horizon scheduler
+      (targetSequence n) who (LateOption := LateOption slots)
+      (fun site option history => lateHistoryFailure setup leaks bounds horizon scheduler
+        (targetSequence n) site (onePacketLate setup leaks bounds horizon scheduler sequence
+          scale scale_pos scale_le_one (slots := slots) n ((onePacketN).agentAt site) option)
+        history)
+      (pathDrift n) (unforcedDrift n) (beliefDrift n)))
+    (marked : ∀ n who (site : (onePacketN).InformationSite who),
+      ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+      ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+        (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
+        ((onePacketN).agentAt site) →
+      ∀ choice, onePacketCompared setup leaks bounds horizon scheduler who site choice →
+        (∃ option,
+          |onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
+              (PMF.pure choice) -
+            onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
+              (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
+                scale_le_one (slots := slots) n ((onePacketN).agentAt site) option)| ≤
+            markDrift n) ∨
+        onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
+          (PMF.pure choice) = 1) :
+    ∃ (score : ℕ → Option (LateKey setup leaks) → LateOption slots → ℝ) (drift : ℕ → ℝ),
+      Tendsto drift atTop (nhds 0) ∧ (∀ n, 0 ≤ drift n) ∧
+      ∀ n who (site : (onePacketN).InformationSite who),
+        ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+        ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+          (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
+          ((onePacketN).agentAt site) →
+        (∀ option,
+          |onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
+              (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
+                scale_le_one (slots := slots) n ((onePacketN).agentAt site) option) -
+            (1 - score n (agentLateKey setup leaks bounds (initialLaw setup) horizon scheduler
+              ((onePacketN).agentAt site)) option)| ≤ drift n) ∧
+        ∀ choice, onePacketCompared setup leaks bounds horizon scheduler who site choice →
+          (∃ option,
+            |onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
+                (PMF.pure choice) -
+              (1 - score n (agentLateKey setup leaks bounds (initialLaw setup) horizon scheduler
+                ((onePacketN).agentAt site)) option)| ≤ drift n) ∨
+          onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
+            (PMF.pure choice) = 1 := by
+  let witness := fun n who => Classical.choice (blind n who)
+  refine ⟨fun n key option => match key with
+      | none => 0
+      | some key => 1 - expect ((witness n key.owner).recordLaw key)
+          ((witness n key.owner).failureOf key option),
+    fun n => pathDrift n + |unforcedDrift n| + |beliefDrift n| + markDrift n, ?_,
+    fun n => add_nonneg (add_nonneg (add_nonneg (pathNonneg n) (abs_nonneg _)) (abs_nonneg _))
+      (markNonneg n), ?_⟩
+  · simpa using ((pathLimit.add unforcedLimit.abs).add beliefLimit.abs).add markLimit
+  intro n who site _ keyed
+  obtain ⟨past, view, event, atSite, _, _⟩ := keyed.1
+  obtain ⟨info, decision⟩ := site
+  change info = some (past, view) at atSite
+  subst atSite
+  have optionNear : ∀ option,
+      |onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n)
+          ⟨some (past, view), decision⟩
+          (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
+            scale_le_one (slots := slots) n
+            ((onePacketN).agentAt ⟨some (past, view), decision⟩) option) -
+        (1 - (match agentLateKey setup leaks bounds (initialLaw setup) horizon scheduler
+            ((onePacketN).agentAt ⟨some (past, view), decision⟩) with
+          | none => 0
+          | some key => 1 - expect ((witness n key.owner).recordLaw key)
+              ((witness n key.owner).failureOf key option)))| ≤
+        pathDrift n + |unforcedDrift n| + |beliefDrift n| := by
+    intro option
+    have near := (witness n who).site_failure_near_key (pathNonneg n)
+      ⟨some (past, view), decision⟩ _ rfl option
+    have bridge : onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n)
+        ⟨some (past, view), decision⟩
+        (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
+          scale_le_one (slots := slots) n
+          ((onePacketN).agentAt ⟨some (past, view), decision⟩) option) =
+        expect ((targetSequence n).belief who ⟨some (past, view), decision⟩) fun history =>
+          lateHistoryFailure setup leaks bounds horizon scheduler (targetSequence n)
+            ⟨some (past, view), decision⟩
+            (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
+              scale_le_one (slots := slots) n
+              ((onePacketN).agentAt ⟨some (past, view), decision⟩) option) history :=
+      expect_localRun _ _ _ _ _
+    rw [bridge]
+    change |expect _ _ - (1 - (1 - expect ((witness n who).recordLaw _)
+      ((witness n who).failureOf _ option)))| ≤ _
+    rw [sub_sub_cancel]
+    linarith [le_abs_self (unforcedDrift n), le_abs_self (beliefDrift n)]
+  refine ⟨fun option => (optionNear option).trans (by linarith [markNonneg n]),
+    fun choice isMarked => ?_⟩
+  rcases marked n who ⟨some (past, view), decision⟩ ‹_› keyed choice isMarked with
+    ⟨option, close⟩ | sure
+  · left
+    refine ⟨option, ?_⟩
+    have := optionNear option
+    calc _ ≤ _ := abs_sub_le _ (onePacketSiteFailure setup leaks bounds horizon scheduler
+            (targetSequence n) ⟨some (past, view), decision⟩
+            (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
+              scale_le_one (slots := slots) n
+              ((onePacketN).agentAt ⟨some (past, view), decision⟩) option)) _
+      _ ≤ _ := by linarith
+  · exact Or.inr sure
+
 omit [Finite setup.intendedProtocol.History] in
 /-- At a late delivery every late option is the component of some part of the
 agent's pool. -/
@@ -1322,38 +1452,52 @@ structure OnePacketOpenInputs (sequence : ℕ → setup.intendedModel.Behavioral
             (onePacketPrescribed setup leaks bounds horizon scheduler sequence scale scale_pos
               scale_le_one n ((onePacketN).agentAt site))) *
             continuation n ((onePacketN).agentAt site)| ≤ error n
-  /-- **Site commonness at late deliveries.** There are scores of the late
-  options at each late-delivery key such that, at every forced late delivery,
-  each late option fails within a vanishing drift of one minus its score at the
-  site's key, and every marked choice fails within that drift of one minus the
-  score of some option, or surely. -/
-  siteCommonness : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler
-      slots p)) (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
+  /-- **Value blindness of late deliveries.** At every stage each player's late
+  deliveries are value blind for the failure of the late options, with vanishing
+  path, unforced and belief drifts. -/
+  lateBlindness : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon
+      scheduler slots p)) (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
     OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos scale_le_one
       weights targetSequence →
     (∀ n, (targetSequence n).IsFullyMixed) →
     (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
       ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
         (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
-    ∃ (score : ℕ → Option (LateKey setup leaks) → LateOption slots → ℝ) (drift : ℕ → ℝ),
-      Tendsto drift atTop (nhds 0) ∧ (∀ n, 0 ≤ drift n) ∧
+    ∃ (pathDrift unforcedDrift beliefDrift : ℕ → ℝ),
+      Tendsto pathDrift atTop (nhds 0) ∧ Tendsto unforcedDrift atTop (nhds 0) ∧
+      Tendsto beliefDrift atTop (nhds 0) ∧ (∀ n, 0 ≤ pathDrift n) ∧
+      ∀ n who, Nonempty (LateDeliveryBlindness setup leaks bounds horizon scheduler
+        (targetSequence n) who (LateOption := LateOption slots)
+        (fun site option history => lateHistoryFailure setup leaks bounds horizon scheduler
+          (targetSequence n) site (onePacketLate setup leaks bounds horizon scheduler sequence
+            scale scale_pos scale_le_one (slots := slots) n ((onePacketN).agentAt site) option)
+          history)
+        (pathDrift n) (unforcedDrift n) (beliefDrift n))
+  /-- **Marked choices fail like late options.** At every forced late delivery,
+  every marked choice fails within a vanishing drift of some late option, or
+  surely. -/
+  markedNearOption : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon
+      scheduler slots p)) (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
+    OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos scale_le_one
+      weights targetSequence →
+    (∀ n, (targetSequence n).IsFullyMixed) →
+    (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
+      ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
+        (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
+    ∃ markDrift : ℕ → ℝ, Tendsto markDrift atTop (nhds 0) ∧ (∀ n, 0 ≤ markDrift n) ∧
       ∀ n who (site : (onePacketN).InformationSite who),
         ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
         ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
           (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
           ((onePacketN).agentAt site) →
-        (∀ option,
-          |onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
-              (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
-                scale_le_one (slots := slots) n ((onePacketN).agentAt site) option) -
-            (1 - score n (agentLateKey setup leaks bounds (initialLaw setup) horizon scheduler
-              ((onePacketN).agentAt site)) option)| ≤ drift n) ∧
         ∀ choice, onePacketCompared setup leaks bounds horizon scheduler who site choice →
           (∃ option,
             |onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
                 (PMF.pure choice) -
-              (1 - score n (agentLateKey setup leaks bounds (initialLaw setup) horizon scheduler
-                ((onePacketN).agentAt site)) option)| ≤ drift n) ∨
+              onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
+                (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
+                  scale_le_one (slots := slots) n ((onePacketN).agentAt site) option)| ≤
+              markDrift n) ∨
           onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
             (PMF.pure choice) = 1
   /-- The intended site compared with each forced site carrying a value-changing
@@ -1463,6 +1607,51 @@ structure OnePacketOpenInputs (sequence : ℕ → setup.intendedModel.Behavioral
                   scale_le_one (slots := slots) n ((onePacketN).agentAt site) option) +
               lateError n
 
+omit [Finite setup.intendedProtocol.History] in
+/-- Site commonness of the open inputs, from value blindness and marked choices
+failing like late options. -/
+theorem OnePacketOpenInputs.siteCommonness
+    {sequence : ℕ → setup.intendedModel.BehavioralAssessment} {slots : Nat}
+    (inputs : OnePacketOpenInputs setup leaks bounds horizon scheduler parameter utility
+      excludedPayoff sequence slots)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
+    (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
+    (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence inputs.scale
+      inputs.scale_pos inputs.scale_le_one weights targetSequence)
+    (mixed : ∀ n, (targetSequence n).IsFullyMixed)
+    (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
+      ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
+        (initialLaw setup) horizon scheduler).decisionInformationAntichain) :
+    ∃ (score : ℕ → Option (LateKey setup leaks) → LateOption slots → ℝ) (drift : ℕ → ℝ),
+      Tendsto drift atTop (nhds 0) ∧ (∀ n, 0 ≤ drift n) ∧
+      ∀ n who (site : (onePacketN).InformationSite who),
+        ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+        ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+          (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
+          ((onePacketN).agentAt site) →
+        (∀ option,
+          |onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
+              (onePacketLate setup leaks bounds horizon scheduler sequence inputs.scale
+                inputs.scale_pos inputs.scale_le_one (slots := slots) n
+                ((onePacketN).agentAt site) option) -
+            (1 - score n (agentLateKey setup leaks bounds (initialLaw setup) horizon scheduler
+              ((onePacketN).agentAt site)) option)| ≤ drift n) ∧
+        ∀ choice, onePacketCompared setup leaks bounds horizon scheduler who site choice →
+          (∃ option,
+            |onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
+                (PMF.pure choice) -
+              (1 - score n (agentLateKey setup leaks bounds (initialLaw setup) horizon scheduler
+                ((onePacketN).agentAt site)) option)| ≤ drift n) ∨
+          onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
+            (PMF.pure choice) = 1 := by
+  obtain ⟨pathDrift, unforcedDrift, beliefDrift, pathLimit, unforcedLimit, beliefLimit,
+    pathNonneg, blind⟩ := inputs.lateBlindness weights targetSequence assembled mixed bayes
+  obtain ⟨markDrift, markLimit, markNonneg, marked⟩ :=
+    inputs.markedNearOption weights targetSequence assembled mixed bayes
+  exact onePacket_siteCommonness setup leaks bounds horizon scheduler sequence inputs.scale
+    inputs.scale_pos inputs.scale_le_one targetSequence pathDrift unforcedDrift beliefDrift
+    markDrift pathLimit unforcedLimit beliefLimit markLimit pathNonneg markNonneg blind marked
+
 /-- **The certificate inputs from the open inputs.** For a well-formed setup,
 under the asynchronous contract with timely delays and retention of first
 covered canonical packets, the open inputs give the inputs of the one-packet
@@ -1496,7 +1685,8 @@ def OnePacketOpenInputs.toCertificateInputs
     obtain ⟨continuation, error, errorLimit, value⟩ :=
       inputs.lateDecomposition weights targetSequence assembled mixed bayes
     obtain ⟨score, drift, driftLimit, driftNonneg, common⟩ :=
-      inputs.siteCommonness weights targetSequence assembled mixed bayes
+      inputs.siteCommonness setup leaks bounds horizon scheduler parameter utility
+        excludedPayoff weights targetSequence assembled mixed bayes
     refine ⟨continuation, score, error, drift, errorLimit, driftLimit, driftNonneg,
       fun n agent keyed decision => ?_⟩
     obtain ⟨low, gap, _, late⟩ := value n agent.1 ⟨agent.2.1, decision⟩ keyed.2 keyed
@@ -1508,7 +1698,8 @@ def OnePacketOpenInputs.toCertificateInputs
     obtain ⟨otherContinuation, otherError, otherLimit, otherValue⟩ :=
       inputs.nonLateDecomposition weights targetSequence assembled mixed bayes
     obtain ⟨score, drift, driftLimit, driftNonneg, common⟩ :=
-      inputs.siteCommonness weights targetSequence assembled mixed bayes
+      inputs.siteCommonness setup leaks bounds horizon scheduler parameter utility
+        excludedPayoff weights targetSequence assembled mixed bayes
     obtain ⟨slack, slackLimit, slackNonneg, prescribed⟩ :=
       onePacket_prescribedFailure setup leaks bounds horizon scheduler contract timely retains
         (firstActivationTransmits_of_contract setup leaks bounds horizon scheduler contract)
