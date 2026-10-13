@@ -225,4 +225,77 @@ theorem unitClose_map_of_two_outcomes {α Y : Type*} (ν : PMF α) (F : α → Y
     _ ≤ _ := abs_add_le _ _
     _ ≤ δ₁ + δ₂ := add_le_add weightTerm restTerm
 
+
+/-- **A law classified up to a remainder.** If a law maps each point of a class
+to that class's image, and its law of classes, with the unclassified points as
+`none`, is `δ`-close on unit payoffs to a law of classes, then read through the
+map it is `2 δ`-close on unit payoffs to that law read through the class
+images. -/
+theorem unitClose_map_of_classes {α C Y : Type*} (ν : PMF α) (F : α → Y)
+    (classOf : α → Option C) (image : C → Y) (weight : PMF C) (δ : ℝ)
+    (classEq : ∀ a ∈ ν.support, ∀ c, classOf a = some c → F a = image c)
+    (close : UnitClose δ (ν.map classOf) (weight.map some)) :
+    UnitClose (2 * δ) (ν.map F) (weight.map image) := by
+  intro g unit
+  let lifted : Option C → ℝ := fun o => match o with
+    | some c => g (image c)
+    | none => 0
+  let unclassified : Option C → ℝ := fun o => match o with
+    | some _ => 0
+    | none => 1
+  have liftedUnit : ∀ o, 0 ≤ lifted o ∧ lifted o ≤ 1 := fun o => by
+    cases o with
+    | none => exact ⟨le_refl 0, zero_le_one⟩
+    | some c => exact unit (image c)
+  have unclassifiedUnit : ∀ o, 0 ≤ unclassified o ∧ unclassified o ≤ 1 := fun o => by
+    cases o with
+    | none => exact ⟨zero_le_one, le_refl 1⟩
+    | some c => exact ⟨le_refl 0, zero_le_one⟩
+  have liftedClose := close lifted liftedUnit
+  have unclassifiedClose := close unclassified unclassifiedUnit
+  rw [expect_map, expect_map] at liftedClose unclassifiedClose
+  rw [expect_map, expect_map]
+  have weightLifted : expect weight (lifted ∘ some) = expect weight (g ∘ image) := rfl
+  have weightUnclassified : expect weight (unclassified ∘ some) = 0 := by
+    change expect weight (fun _ => (0 : ℝ)) = 0
+    exact expect_zero weight
+  rw [weightLifted] at liftedClose
+  rw [weightUnclassified, sub_zero] at unclassifiedClose
+  have boundF : ∀ a, |(g ∘ F) a| ≤ 1 := fun a =>
+    abs_le.mpr ⟨by simp only [Function.comp_apply]; linarith [(unit (F a)).1],
+      (unit (F a)).2⟩
+  have boundLifted : ∀ a, |(lifted ∘ classOf) a| ≤ 1 := fun a =>
+    abs_le.mpr ⟨by simp only [Function.comp_apply]; linarith [(liftedUnit (classOf a)).1],
+      (liftedUnit (classOf a)).2⟩
+  have boundUnclassified : ∀ a, |(unclassified ∘ classOf) a| ≤ 1 := fun a =>
+    abs_le.mpr ⟨by simp only [Function.comp_apply]; linarith [(unclassifiedUnit (classOf a)).1],
+      (unclassifiedUnit (classOf a)).2⟩
+  have integrableF := payoffIntegrable_of_bounded ν _ boundF
+  have integrableLifted := payoffIntegrable_of_bounded ν _ boundLifted
+  have integrableUnclassified := payoffIntegrable_of_bounded ν _ boundUnclassified
+  have pointwise : ∀ a ∈ ν.support, 0 ≤ (g ∘ F) a - (lifted ∘ classOf) a ∧
+      (g ∘ F) a - (lifted ∘ classOf) a ≤ (unclassified ∘ classOf) a := by
+    intro a supported
+    cases classified : classOf a with
+    | none =>
+        simp only [Function.comp, classified, lifted, unclassified, sub_zero]
+        exact unit (F a)
+    | some c =>
+        simp only [Function.comp, classified, lifted, unclassified,
+          classEq a supported c classified, sub_self, le_refl, and_self]
+  have lower : expect ν (lifted ∘ classOf) ≤ expect ν (g ∘ F) :=
+    expect_mono (fun a supported => by linarith [(pointwise a supported).1]) integrableLifted
+      integrableF
+  have upper : expect ν (g ∘ F) ≤ expect ν (lifted ∘ classOf) +
+      expect ν (unclassified ∘ classOf) := by
+    rw [← expect_add integrableLifted integrableUnclassified]
+    exact expect_mono (fun a supported => by
+      have := (pointwise a supported).2
+      simp only [Function.comp] at this ⊢
+      linarith) integrableF (payoffIntegrable_add integrableLifted integrableUnclassified)
+  have unclassifiedLe : expect ν (unclassified ∘ classOf) ≤ δ :=
+    (abs_le.mp unclassifiedClose).2
+  rw [abs_le] at liftedClose ⊢
+  constructor <;> linarith [liftedClose.1, liftedClose.2]
+
 end GameTheory.Math.Probability
