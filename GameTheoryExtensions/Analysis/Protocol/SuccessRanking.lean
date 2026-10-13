@@ -657,8 +657,9 @@ theorem memberRational_of_success [Finite Pool] [DecidableEq Pool]
     (component : ℕ → ∀ agent, Part (pool agent) →
       PMF ((N.agentForm fallback bounded.wellFoundedHistories).sig.Strategy agent))
     (delivery : Set Pool)
-    (failed : Player → Set T.History) (excluded : Player → ℝ)
-    (pays : ∀ who, ∀ history ∈ failed who, utility (observe history) who = excluded who)
+    (failed : N.InformationAgent N.playedInformation → Set T.History) (excluded : Player → ℝ)
+    (pays : ∀ agent, ∀ history ∈ failed agent, utility (observe history) agent.1 =
+      excluded agent.1)
     (bound : ℝ) (bound_nonneg : 0 ≤ bound)
     (oneDimensional : ∀ (weights : ℕ → ∀ p, PMF (Part p))
         (targetSequence : ℕ → N.BehavioralAssessment),
@@ -675,16 +676,16 @@ theorem memberRational_of_success [Finite Pool] [DecidableEq Pool]
           excluded agent.1 ≤ continuation n agent + error n ∧
           continuation n agent - excluded agent.1 ≤ bound ∧
           (∀ part, |localSuccessValue fuel observe utility (targetSequence n)
-              (who := agent.1) ⟨agent.2.1, decision⟩ (failed agent.1) (component n agent part) -
+              (who := agent.1) ⟨agent.2.1, decision⟩ (failed agent) (component n agent part) -
             (1 - localFailure fuel (targetSequence n)
               (who := agent.1) ⟨agent.2.1, decision⟩
-              (failed agent.1) (component n agent part)) * continuation n agent| ≤ error n) ∧
+              (failed agent) (component n agent part)) * continuation n agent| ≤ error n) ∧
           ∀ part, localFailure fuel (targetSequence n)
               (who := agent.1) ⟨agent.2.1, decision⟩
-              (failed agent.1) (component n agent (best n (pool agent))) ≤
+              (failed agent) (component n agent (best n (pool agent))) ≤
             localFailure fuel (targetSequence n)
               (who := agent.1) ⟨agent.2.1, decision⟩
-              (failed agent.1) (component n agent part) + slack n)
+              (failed agent) (component n agent part) + slack n)
     (otherMembers : ∀ (weights : ℕ → ∀ p, PMF (Part p))
         (targetSequence : ℕ → N.BehavioralAssessment),
       (∀ n, (targetSequence n).strategy = N.agentBehavior N.playedInformation fallback
@@ -758,8 +759,8 @@ theorem memberRational_of_success [Finite Pool] [DecidableEq Pool]
         obtain ⟨excluded_le, gap_le, near, ranked⟩ :=
           facts n agent (inPool ▸ inDelivery) decision
         have := localGain_le_of_failure_le fuel observe utility (targetSequence n)
-          (who := agent.1) ⟨agent.2.1, decision⟩ (failed agent.1) (excluded agent.1)
-          (pays agent.1) (continuation n agent) (error n) (slack n) bound
+          (who := agent.1) ⟨agent.2.1, decision⟩ (failed agent) (excluded agent.1)
+          (pays agent) (continuation n agent) (error n) (slack n) bound
           (component n agent part) (component n agent (best n (pool agent))) (near part)
           (near (best n (pool agent))) (ranked part) (slack_nonneg n) excluded_le gap_le
           bound_nonneg
@@ -797,8 +798,9 @@ theorem localComparisons_of_success [DecidableEq Pool]
       PMF ((N.agentForm fallback bounded.wellFoundedHistories).sig.Strategy agent))
     (free : Finset (N.InformationAgent N.playedInformation))
     (compared : ∀ who (site : N.InformationSite who), N.Choice who site.1 → Prop)
-    (failed : Player → Set T.History) (excluded : Player → ℝ)
-    (pays : ∀ who, ∀ history ∈ failed who, utility (observe history) who = excluded who)
+    (failed : N.InformationAgent N.playedInformation → Set T.History) (excluded : Player → ℝ)
+    (pays : ∀ agent, ∀ history ∈ failed agent, utility (observe history) agent.1 =
+      excluded agent.1)
     (bound : ℝ) (bound_nonneg : 0 ≤ bound)
     (ranking : ∀ (weights : ℕ → ∀ p, PMF (Part p))
         (targetSequence : ℕ → N.BehavioralAssessment),
@@ -814,18 +816,18 @@ theorem localComparisons_of_success [DecidableEq Pool]
           N.agentAt site ∉ free → compared who site choice →
           excluded who ≤ continuation n (N.agentAt site) + error n ∧
           continuation n (N.agentAt site) - excluded who ≤ bound ∧
-          |localSuccessValue fuel observe utility (targetSequence n) site (failed who)
+          |localSuccessValue fuel observe utility (targetSequence n) site (failed (N.agentAt site))
               (PMF.pure choice) -
-            (1 - localFailure fuel (targetSequence n) site (failed who)
+            (1 - localFailure fuel (targetSequence n) site (failed (N.agentAt site))
               (PMF.pure choice)) * continuation n (N.agentAt site)| ≤ error n ∧
-          |localSuccessValue fuel observe utility (targetSequence n) site (failed who)
+          |localSuccessValue fuel observe utility (targetSequence n) site (failed (N.agentAt site))
               (component n (N.agentAt site) (best n (pool (N.agentAt site)))) -
-            (1 - localFailure fuel (targetSequence n) site (failed who)
+            (1 - localFailure fuel (targetSequence n) site (failed (N.agentAt site))
               (component n (N.agentAt site) (best n (pool (N.agentAt site))))) *
               continuation n (N.agentAt site)| ≤ error n ∧
-          localFailure fuel (targetSequence n) site (failed who)
+          localFailure fuel (targetSequence n) site (failed (N.agentAt site))
               (component n (N.agentAt site) (best n (pool (N.agentAt site)))) ≤
-            localFailure fuel (targetSequence n) site (failed who) (PMF.pure choice) +
+            localFailure fuel (targetSequence n) site (failed (N.agentAt site)) (PMF.pure choice) +
               slack n)
     (otherComparisons : ∀ (weights : ℕ → ∀ p, PMF (Part p))
         (targetSequence : ℕ → N.BehavioralAssessment),
@@ -917,8 +919,8 @@ theorem localComparisons_of_success [DecidableEq Pool]
   · obtain ⟨excluded_le, gap_le, choiceNear, bestNear, ranked⟩ :=
       facts n who site choice notFree marked
     have dominated := localGain_le_of_failure_le fuel observe utility (targetSequence n) site
-      (failed who) (excluded who) (pays who) (continuation n (N.agentAt site)) (error n)
-      (slack n) bound (PMF.pure choice)
+      (failed (N.agentAt site)) (excluded who) (pays (N.agentAt site))
+      (continuation n (N.agentAt site)) (error n) (slack n) bound (PMF.pure choice)
       (component n (N.agentAt site) (best n (pool (N.agentAt site)))) choiceNear bestNear ranked
       (slack_nonneg n) excluded_le gap_le bound_nonneg
     refine Or.inr (Or.inl ⟨PMF.pure (best n (pool (N.agentAt site))), ?_⟩)

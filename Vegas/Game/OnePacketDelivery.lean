@@ -489,11 +489,12 @@ theorem onePacket_keyedMemberRational (fuel : Nat)
       PMF ((onePacketN).Choice agent.1 agent.2.1))
     (lateLaw : ℕ → ∀ agent : (onePacketN).InformationAgent (onePacketN).playedInformation,
       LateOption slots → PMF ((onePacketN).Choice agent.1 agent.2.1))
-    (failed : Player → Set ((bounds.onePacketMenu (runtime setup) leaks).protocol initial
-      horizon scheduler).History)
-    (pays : ∀ who, ∀ history ∈ failed who, exclusionReadoutUtility setup parameter utility
-      excludedPayoff (nativeReadout setup leaks bounds initial horizon scheduler history) who =
-        excludedPayoff who)
+    (failed : (onePacketN).InformationAgent (onePacketN).playedInformation →
+      Set ((bounds.onePacketMenu (runtime setup) leaks).protocol initial horizon
+        scheduler).History)
+    (pays : ∀ agent, ∀ history ∈ failed agent, exclusionReadoutUtility setup parameter utility
+      excludedPayoff (nativeReadout setup leaks bounds initial horizon scheduler history)
+        agent.1 = excludedPayoff agent.1)
     (bound : ℝ) (bound_nonneg : 0 ≤ bound)
     (oneDimensional : ∀ (weights : ℕ → ∀ p, PMF (KeyedPart
           (LateDeliveryAgent setup leaks bounds initial horizon scheduler)
@@ -517,11 +518,11 @@ theorem onePacket_keyedMemberRational (fuel : Nat)
           (∀ option, |localSuccessValue fuel
               (nativeReadout setup leaks bounds initial horizon scheduler)
               (exclusionReadoutUtility setup parameter utility excludedPayoff) (targetSequence n)
-              (who := agent.1) ⟨agent.2.1, decision⟩ (failed agent.1) (lateLaw n agent option) -
+              (who := agent.1) ⟨agent.2.1, decision⟩ (failed agent) (lateLaw n agent option) -
             (1 - localFailure fuel (targetSequence n) (who := agent.1) ⟨agent.2.1, decision⟩
-              (failed agent.1) (lateLaw n agent option)) * continuation n agent| ≤ error n) ∧
+              (failed agent) (lateLaw n agent option)) * continuation n agent| ≤ error n) ∧
           ∀ option, |localFailure fuel (targetSequence n) (who := agent.1) ⟨agent.2.1, decision⟩
-              (failed agent.1) (lateLaw n agent option) -
+              (failed agent) (lateLaw n agent option) -
             (1 - score n (agentLateKey setup leaks bounds initial horizon scheduler agent)
               option)| ≤ drift n) :
     ∀ (weights : ℕ → ∀ p, PMF (KeyedPart
@@ -623,11 +624,12 @@ theorem onePacket_keyedLocalComparisons {E : ExecutionProtocol Player}
     (free : Finset ((onePacketN).InformationAgent (onePacketN).playedInformation))
     (compared : ∀ who (site : (onePacketN).InformationSite who),
       (onePacketN).Choice who site.1 → Prop)
-    (failed : Player → Set ((bounds.onePacketMenu (runtime setup) leaks).protocol initial
-      horizon scheduler).History)
-    (pays : ∀ who, ∀ history ∈ failed who, exclusionReadoutUtility setup parameter utility
-      excludedPayoff (nativeReadout setup leaks bounds initial horizon scheduler history) who =
-        excludedPayoff who)
+    (failed : (onePacketN).InformationAgent (onePacketN).playedInformation →
+      Set ((bounds.onePacketMenu (runtime setup) leaks).protocol initial horizon
+        scheduler).History)
+    (pays : ∀ agent, ∀ history ∈ failed agent, exclusionReadoutUtility setup parameter utility
+      excludedPayoff (nativeReadout setup leaks bounds initial horizon scheduler history)
+        agent.1 = excludedPayoff agent.1)
     (bound : ℝ) (bound_nonneg : 0 ≤ bound)
     (ranking : ∀ (weights : ℕ → ∀ p, PMF (KeyedPart
           (LateDeliveryAgent setup leaks bounds initial horizon scheduler)
@@ -652,39 +654,46 @@ theorem onePacket_keyedLocalComparisons {E : ExecutionProtocol Player}
           continuation n ((onePacketN).agentAt site) - excludedPayoff who ≤ bound ∧
           |localSuccessValue fuel (nativeReadout setup leaks bounds initial horizon scheduler)
               (exclusionReadoutUtility setup parameter utility excludedPayoff) (targetSequence n)
-              site (failed who) (PMF.pure choice) -
-            (1 - localFailure fuel (targetSequence n) site (failed who) (PMF.pure choice)) *
+              site (failed ((onePacketN).agentAt site)) (PMF.pure choice) -
+            (1 - localFailure fuel (targetSequence n) site
+              (failed ((onePacketN).agentAt site)) (PMF.pure choice)) *
               continuation n ((onePacketN).agentAt site)| ≤ error n ∧
           (LateDeliveryAgent setup leaks bounds initial horizon scheduler
               ((onePacketN).agentAt site) →
             (∀ option, |localSuccessValue fuel
                 (nativeReadout setup leaks bounds initial horizon scheduler)
                 (exclusionReadoutUtility setup parameter utility excludedPayoff)
-                (targetSequence n) site (failed who)
+                (targetSequence n) site (failed ((onePacketN).agentAt site))
                 (lateLaw n ((onePacketN).agentAt site) option) -
-              (1 - localFailure fuel (targetSequence n) site (failed who)
+              (1 - localFailure fuel (targetSequence n) site (failed ((onePacketN).agentAt site))
                 (lateLaw n ((onePacketN).agentAt site) option)) *
                 continuation n ((onePacketN).agentAt site)| ≤ error n) ∧
-            (∀ option, |localFailure fuel (targetSequence n) site (failed who)
+            (∀ option, |localFailure fuel (targetSequence n) site
+              (failed ((onePacketN).agentAt site))
                 (lateLaw n ((onePacketN).agentAt site) option) -
               (1 - score n (agentLateKey setup leaks bounds initial horizon scheduler
                 ((onePacketN).agentAt site)) option)| ≤ drift n) ∧
-            ((∃ option, |localFailure fuel (targetSequence n) site (failed who)
+            ((∃ option, |localFailure fuel (targetSequence n) site
+              (failed ((onePacketN).agentAt site))
                 (PMF.pure choice) - (1 - score n (agentLateKey setup leaks bounds initial horizon
                   scheduler ((onePacketN).agentAt site)) option)| ≤ drift n) ∨
-              localFailure fuel (targetSequence n) site (failed who) (PMF.pure choice) = 1)) ∧
+              localFailure fuel (targetSequence n) site
+                (failed ((onePacketN).agentAt site)) (PMF.pure choice) = 1)) ∧
           (¬ LateDeliveryAgent setup leaks bounds initial horizon scheduler
               ((onePacketN).agentAt site) →
             |localSuccessValue fuel (nativeReadout setup leaks bounds initial horizon scheduler)
                 (exclusionReadoutUtility setup parameter utility excludedPayoff)
-                (targetSequence n) site (failed who) (prescribed n ((onePacketN).agentAt site)) -
-              (1 - localFailure fuel (targetSequence n) site (failed who)
+                (targetSequence n) site
+                  (failed ((onePacketN).agentAt site)) (prescribed n ((onePacketN).agentAt site)) -
+              (1 - localFailure fuel (targetSequence n) site (failed ((onePacketN).agentAt site))
                 (prescribed n ((onePacketN).agentAt site))) *
                 continuation n ((onePacketN).agentAt site)| ≤ error n ∧
-            (localFailure fuel (targetSequence n) site (failed who)
+            (localFailure fuel (targetSequence n) site (failed ((onePacketN).agentAt site))
                 (prescribed n ((onePacketN).agentAt site)) ≤
-              localFailure fuel (targetSequence n) site (failed who) (PMF.pure choice) + slack n ∨
-              localFailure fuel (targetSequence n) site (failed who) (PMF.pure choice) = 1)))
+              localFailure fuel (targetSequence n) site
+                (failed ((onePacketN).agentAt site)) (PMF.pure choice) + slack n ∨
+              localFailure fuel (targetSequence n) site
+                (failed ((onePacketN).agentAt site)) (PMF.pure choice) = 1)))
     (otherComparisons : ∀ (weights : ℕ → ∀ p, PMF (KeyedPart
           (LateDeliveryAgent setup leaks bounds initial horizon scheduler)
           (agentLateKey setup leaks bounds initial horizon scheduler) (LateOption slots) p))

@@ -244,8 +244,9 @@ theorem keyedMemberRational [Finite Opt]
       PMF (N.Choice agent.1 agent.2.1))
     (keyedLaw : ℕ → ∀ agent : N.InformationAgent N.playedInformation,
       Opt → PMF (N.Choice agent.1 agent.2.1))
-    (failed : Player → Set T.History) (excluded : Player → ℝ)
-    (pays : ∀ who, ∀ history ∈ failed who, utility (observe history) who = excluded who)
+    (failed : N.InformationAgent N.playedInformation → Set T.History) (excluded : Player → ℝ)
+    (pays : ∀ agent, ∀ history ∈ failed agent, utility (observe history) agent.1 =
+      excluded agent.1)
     (bound : ℝ) (bound_nonneg : 0 ≤ bound)
     (oneDimensional : ∀ (weights : ℕ → ∀ p, PMF (KeyedPart keyed key Opt p))
         (targetSequence : ℕ → N.BehavioralAssessment),
@@ -263,11 +264,11 @@ theorem keyedMemberRational [Finite Opt]
           excluded agent.1 ≤ continuation n agent + error n ∧
           continuation n agent - excluded agent.1 ≤ bound ∧
           (∀ option, |localSuccessValue fuel observe utility (targetSequence n)
-              (who := agent.1) ⟨agent.2.1, decision⟩ (failed agent.1) (keyedLaw n agent option) -
+              (who := agent.1) ⟨agent.2.1, decision⟩ (failed agent) (keyedLaw n agent option) -
             (1 - localFailure fuel (targetSequence n) (who := agent.1) ⟨agent.2.1, decision⟩
-              (failed agent.1) (keyedLaw n agent option)) * continuation n agent| ≤ error n) ∧
+              (failed agent) (keyedLaw n agent option)) * continuation n agent| ≤ error n) ∧
           ∀ option, |localFailure fuel (targetSequence n) (who := agent.1) ⟨agent.2.1, decision⟩
-              (failed agent.1) (keyedLaw n agent option) - (1 - score n (key agent) option)| ≤
+              (failed agent) (keyedLaw n agent option) - (1 - score n (key agent) option)| ≤
             drift n) :
     ∀ (weights : ℕ → ∀ p, PMF (KeyedPart keyed key Opt p))
       (targetSequence : ℕ → N.BehavioralAssessment),
@@ -320,7 +321,7 @@ theorem keyedMemberRational [Finite Opt]
           keyedComponent_of_keyed (key := key) (prescribed n) (keyedLaw n) isKeyed part
         rw [equal, best]
         exact localFailure_scoreArgmax_le fuel (targetSequence n) (who := agent.1)
-          ⟨agent.2.1, decision⟩ (failed agent.1) (score n (key agent)) (drift n)
+          ⟨agent.2.1, decision⟩ (failed agent) (score n (key agent)) (drift n)
           (keyedLaw n agent) common (keyedLaw n agent option) option (common option))
     (fun weights targetSequence played _ _ _ => ⟨fun _ => 0, tendsto_const_nhds,
       fun n who site outside alternative => by
@@ -363,8 +364,9 @@ theorem keyedLocalComparisons [Finite Opt] {E : ExecutionProtocol Player}
       Opt → PMF (N.Choice agent.1 agent.2.1))
     (free : Finset (N.InformationAgent N.playedInformation))
     (compared : ∀ who (site : N.InformationSite who), N.Choice who site.1 → Prop)
-    (failed : Player → Set T.History) (excluded : Player → ℝ)
-    (pays : ∀ who, ∀ history ∈ failed who, utility (observe history) who = excluded who)
+    (failed : N.InformationAgent N.playedInformation → Set T.History) (excluded : Player → ℝ)
+    (pays : ∀ agent, ∀ history ∈ failed agent, utility (observe history) agent.1 =
+      excluded agent.1)
     (bound : ℝ) (bound_nonneg : 0 ≤ bound)
     (ranking : ∀ (weights : ℕ → ∀ p, PMF (KeyedPart keyed key Opt p))
         (targetSequence : ℕ → N.BehavioralAssessment),
@@ -382,31 +384,36 @@ theorem keyedLocalComparisons [Finite Opt] {E : ExecutionProtocol Player}
           N.agentAt site ∉ free → compared who site choice →
           excluded who ≤ continuation n (N.agentAt site) + error n ∧
           continuation n (N.agentAt site) - excluded who ≤ bound ∧
-          |localSuccessValue fuel observe utility (targetSequence n) site (failed who)
+          |localSuccessValue fuel observe utility (targetSequence n) site (failed (N.agentAt site))
               (PMF.pure choice) -
-            (1 - localFailure fuel (targetSequence n) site (failed who) (PMF.pure choice)) *
+            (1 - localFailure fuel (targetSequence n) site
+              (failed (N.agentAt site)) (PMF.pure choice)) *
               continuation n (N.agentAt site)| ≤ error n ∧
           (keyed (N.agentAt site) →
             (∀ option, |localSuccessValue fuel observe utility (targetSequence n) site
-                (failed who) (keyedLaw n (N.agentAt site) option) -
-              (1 - localFailure fuel (targetSequence n) site (failed who)
+                (failed (N.agentAt site)) (keyedLaw n (N.agentAt site) option) -
+              (1 - localFailure fuel (targetSequence n) site (failed (N.agentAt site))
                 (keyedLaw n (N.agentAt site) option)) * continuation n (N.agentAt site)| ≤
               error n) ∧
-            (∀ option, |localFailure fuel (targetSequence n) site (failed who)
+            (∀ option, |localFailure fuel (targetSequence n) site (failed (N.agentAt site))
                 (keyedLaw n (N.agentAt site) option) -
               (1 - score n (key (N.agentAt site)) option)| ≤ drift n) ∧
-            ((∃ option, |localFailure fuel (targetSequence n) site (failed who)
+            ((∃ option, |localFailure fuel (targetSequence n) site (failed (N.agentAt site))
                 (PMF.pure choice) - (1 - score n (key (N.agentAt site)) option)| ≤ drift n) ∨
-              localFailure fuel (targetSequence n) site (failed who) (PMF.pure choice) = 1)) ∧
+              localFailure fuel (targetSequence n) site
+                (failed (N.agentAt site)) (PMF.pure choice) = 1)) ∧
           (¬ keyed (N.agentAt site) →
-            |localSuccessValue fuel observe utility (targetSequence n) site (failed who)
+            |localSuccessValue fuel observe utility (targetSequence n) site
+              (failed (N.agentAt site))
                 (prescribed n (N.agentAt site)) -
-              (1 - localFailure fuel (targetSequence n) site (failed who)
+              (1 - localFailure fuel (targetSequence n) site (failed (N.agentAt site))
                 (prescribed n (N.agentAt site))) * continuation n (N.agentAt site)| ≤ error n ∧
-            (localFailure fuel (targetSequence n) site (failed who)
+            (localFailure fuel (targetSequence n) site (failed (N.agentAt site))
                 (prescribed n (N.agentAt site)) ≤
-              localFailure fuel (targetSequence n) site (failed who) (PMF.pure choice) + slack n ∨
-              localFailure fuel (targetSequence n) site (failed who) (PMF.pure choice) = 1)))
+              localFailure fuel (targetSequence n) site
+                (failed (N.agentAt site)) (PMF.pure choice) + slack n ∨
+              localFailure fuel (targetSequence n) site
+                (failed (N.agentAt site)) (PMF.pure choice) = 1)))
     (otherComparisons : ∀ (weights : ℕ → ∀ p, PMF (KeyedPart keyed key Opt p))
         (targetSequence : ℕ → N.BehavioralAssessment),
       (∀ n, (targetSequence n).strategy = N.agentBehavior N.playedInformation fallback
@@ -512,11 +519,13 @@ theorem keyedLocalComparisons [Finite Opt] {E : ExecutionProtocol Player}
           (fun k => scoreArgmax (score n k)) isKeyed]
         refine ⟨near _, ?_⟩
         rcases choiceRanked with ⟨option, choiceCommon⟩ | sure
-        · have ranked := localFailure_scoreArgmax_le fuel (targetSequence n) site (failed who)
+        · have ranked := localFailure_scoreArgmax_le fuel (targetSequence n) site
+            (failed (N.agentAt site))
             (score n (key (N.agentAt site))) (drift n) (keyedLaw n (N.agentAt site)) common
             (PMF.pure choice) option choiceCommon
           linarith [slack_nonneg n]
-        · have := localFailure_le_of_sure_failure fuel (targetSequence n) site (failed who)
+        · have := localFailure_le_of_sure_failure fuel (targetSequence n) site
+            (failed (N.agentAt site))
             (keyedLaw n (N.agentAt site) (scoreArgmax (score n (key (N.agentAt site)))))
             (PMF.pure choice) sure
           linarith [slack_nonneg n, drift_nonneg n]
@@ -525,7 +534,8 @@ theorem keyedLocalComparisons [Finite Opt] {E : ExecutionProtocol Player}
         refine ⟨near, ?_⟩
         rcases ranked with ranked | sure
         · linarith [drift_nonneg n]
-        · have := localFailure_le_of_sure_failure fuel (targetSequence n) site (failed who)
+        · have := localFailure_le_of_sure_failure fuel (targetSequence n) site
+            (failed (N.agentAt site))
             (prescribed n (N.agentAt site)) (PMF.pure choice) sure
           linarith [slack_nonneg n, drift_nonneg n])
     otherComparisons
