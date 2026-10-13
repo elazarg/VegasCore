@@ -15,7 +15,9 @@ have action lists of the same shape: an entry records a commitment whose
 choice is the current value of the committed cell, or an opening reveal. Hence
 the swap between the two states (`Vegas.SourceProgram.CellSwap.between`) maps
 the first to the second
-(`Vegas.SourceProgram.Setup.intended_eq_between`). Equal observations of one
+(`Vegas.SourceProgram.Setup.intended_eq_between`); so does any swap that agrees
+with it on the values found in the first state
+(`Vegas.SourceProgram.Setup.intended_eq_swap`). Equal observations of one
 player put two states at the same program point, hence at the same history
 length (`Vegas.SourceProgram.Setup.intendedProtocol_length_eq_of_observe`), so
 the same holds for two intended states one player cannot tell apart
@@ -126,14 +128,15 @@ private theorem ActionMatched.weaken {Γ : SourceCtx Player L} {x : VarId}
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
 private theorem ActionMatched.swap_action {Γ : SourceCtx Player L} {first second : State L Γ}
     (swap : CellSwap Player L)
-    (cells : ∀ name kind, swap.cell name kind =
-      swapFound (State.cell? first name kind) (State.cell? second name kind))
+    (cells : ∀ name kind value, State.cell? first name kind = some value →
+      swap.cell name kind value =
+        swapFound (State.cell? first name kind) (State.cell? second name kind) value)
     {firstAction secondAction : OwnAction Player L}
     (matched : ActionMatched first second firstAction secondAction) :
     swap.action firstAction = secondAction := by
   cases matched with
   | commit firstCell secondCell =>
-      simp only [CellSwap.action, cells, firstCell, secondCell, swapFound,
+      simp only [CellSwap.action, cells _ _ _ firstCell, firstCell, secondCell, swapFound,
         Equiv.swap_apply_left]
   | reveal => rfl
 
@@ -151,14 +154,17 @@ configurations maps the first to the second. -/
 private theorem ConfigMatched.swap_config {Γ : SourceCtx Player L}
     (distinct : (Γ.map Prod.fst).Nodup) {first second : Config Player L Γ}
     (swap : CellSwap Player L)
-    (cells : ∀ name kind, swap.cell name kind =
-      swapFound (State.cell? first.state name kind) (State.cell? second.state name kind))
+    (cells : ∀ name kind value, State.cell? first.state name kind = some value →
+      swap.cell name kind value =
+        swapFound (State.cell? first.state name kind) (State.cell? second.state name kind)
+          value)
     (matched : ConfigMatched first second) : swap.config first = second := by
   obtain ⟨registry, revelations, histories⟩ := matched
   have stateEq : swap.state first.state = second.state := by
     funext name kind source
-    simp only [CellSwap.state, cells, State.cell?_eq_of_hasVar source distinct, swapFound,
-      Equiv.swap_apply_left]
+    have found := State.cell?_eq_of_hasVar source distinct first.state
+    simp only [CellSwap.state, cells _ _ _ found, found,
+      State.cell?_eq_of_hasVar source distinct second.state, swapFound, Equiv.swap_apply_left]
   have historyEq : swap.history first.history = second.history := by
     funext who
     simp only [CellSwap.history]
@@ -205,8 +211,9 @@ the first to the second. -/
 private theorem matched_swap : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → (Γ.map Prod.fst).Nodup →
     (swap : CellSwap Player L) → {first second : ProtocolState program} →
-    (∀ name kind, swap.cell name kind = swapFound (ProtocolState.cell? program first name kind)
-      (ProtocolState.cell? program second name kind)) →
+    (∀ name kind value, ProtocolState.cell? program first name kind = some value →
+      swap.cell name kind value = swapFound (ProtocolState.cell? program first name kind)
+        (ProtocolState.cell? program second name kind) value) →
     Matched program first second → second = swap.protocolState program first
   | _, _, .ret _, distinct, swap, _, _, cells, matched =>
       (ConfigMatched.swap_config distinct swap cells matched).symm
@@ -478,6 +485,24 @@ private theorem setupMatched_of_length (setup : Setup (Player := Player) (L := L
       exact setup.setupMatched_step (setup.setupMatched_of_length firstPrior secondPrior same)
         firstLegal secondLegal firstReached secondReached
 
+/-- **Intended states at the same history length differ by any swap
+transposing their found values.** For two states of the intended game reached
+in the same number of steps, a swap that sends every value found in the first
+state to the value found under the same name and kind in the second maps the
+first state to the second. Only the found values of the first state matter. -/
+theorem intended_eq_swap (setup : Setup (Player := Player) (L := L))
+    {first second : setup.intendedProtocol.History}
+    {p q : SourceProgram.ProtocolState setup.program}
+    (firstState : first.state = some p) (secondState : second.state = some q)
+    (sameLength : first.trace.length = second.trace.length) (swap : CellSwap Player L)
+    (cells : ∀ name kind value, ProtocolState.cell? setup.program p name kind = some value →
+      swap.cell name kind value = swapFound (ProtocolState.cell? setup.program p name kind)
+        (ProtocolState.cell? setup.program q name kind) value) :
+    q = swap.protocolState setup.program p := by
+  have matched := setup.setupMatched_of_length first.trace second.trace sameLength
+  rw [firstState, secondState] at matched
+  exact matched_swap setup.program setup.namesNodup swap cells matched
+
 /-- **Intended states at the same history length differ by the swap between
 them.** Two states of the intended game reached in the same number of steps
 are at the same program point, and the transposition, at every cell, of the
@@ -488,10 +513,8 @@ theorem intended_eq_between (setup : Setup (Player := Player) (L := L))
     {p q : SourceProgram.ProtocolState setup.program}
     (firstState : first.state = some p) (secondState : second.state = some q)
     (sameLength : first.trace.length = second.trace.length) :
-    q = (CellSwap.between setup.program p q).protocolState setup.program p := by
-  have matched := setup.setupMatched_of_length first.trace second.trace sameLength
-  rw [firstState, secondState] at matched
-  exact matched_swap setup.program setup.namesNodup _ (fun _ _ => rfl) matched
+    q = (CellSwap.between setup.program p q).protocolState setup.program p :=
+  setup.intended_eq_swap firstState secondState sameLength _ fun _ _ _ _ => rfl
 
 end Matching
 
