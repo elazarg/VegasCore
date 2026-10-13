@@ -115,6 +115,82 @@ theorem mem_support_runBehavioralUntil (certificate : E.WellFoundedHistories)
   obtain ⟨next, nextMember, reached⟩ := member
   exact ih next (M.mem_support_runBehavioralFrom_one policies ended nextMember).1 stop reached
 
+omit [Fintype ι] in
+/-- A bind after a support-dependent bind distributes into its branches. -/
+private theorem bindOnSupport_bind {α β γ : Type*} (law : PMF α)
+    (first : ∀ a ∈ law.support, PMF β) (second : β → PMF γ) :
+    (law.bindOnSupport first).bind second =
+      law.bindOnSupport fun a member => (first a member).bind second := by
+  rw [← PMF.bindOnSupport_eq_bind, PMF.bindOnSupport_bindOnSupport]
+  refine bindOnSupport_congr _ fun a member => ?_
+  rw [PMF.bindOnSupport_eq_bind]
+
+/-- Profiles that answer alike at every nonterminal history play can reach
+induce the same play until a stopping set. -/
+theorem runBehavioralUntil_congr (certificate : E.WellFoundedHistories)
+    {first second : (i : ι) → M.BehavioralPolicy i} (stopped : E.History → Prop)
+    (start : E.History)
+    (agree : ∀ later, E.HistoryReaches start later → ¬ E.terminal later.state →
+      ∀ i, first i (M.infoOf i later.trace) = second i (M.infoOf i later.trace)) :
+    M.runBehavioralUntil certificate first stopped start =
+      M.runBehavioralUntil certificate second stopped start := by
+  classical
+  induction start using certificate.induction with
+  | _ history ih =>
+  by_cases halt : stopped history
+  · rw [M.runBehavioralUntil_of_stopped certificate first halt,
+      M.runBehavioralUntil_of_stopped certificate second halt]
+  by_cases ended : E.terminal history.state
+  · rw [M.runBehavioralUntil_of_terminal certificate first ended,
+      M.runBehavioralUntil_of_terminal certificate second ended]
+  rw [M.runBehavioralUntil_of_running certificate first halt ended,
+    M.runBehavioralUntil_of_running certificate second halt ended,
+    M.runBehavioralFrom_congr 1 history fun later reached running =>
+      agree later ⟨1, reached⟩ running]
+  apply bind_congr_on_support
+  intro next member
+  obtain ⟨successor, reaches⟩ := M.mem_support_runBehavioralFrom_one second ended member
+  exact ih next successor fun later reached running =>
+    agree later (reaches later reached) running
+
+/-- **Play until a stopping set from a decision is affine in its law.** From an
+unstopped nonterminal history at an information state where `who` acts and
+which cannot matter twice, play until the stopping set with a law installed
+there draws a choice from the law and plays the corresponding commitment. -/
+theorem runBehavioralUntil_update_withLaw_eq_bind [DecidableEq ι]
+    (certificate : E.WellFoundedHistories) (actsOnce : M.ActsOnceWhereItMatters)
+    (profile : (i : ι) → M.BehavioralPolicy i) (who : ι) (policy : M.BehavioralPolicy who)
+    [DecidableEq (M.InfoState who)] (info : M.InfoState who) (law : PMF (M.Choice who info))
+    (stopped : E.History → Prop) (history : E.History)
+    (atInfo : M.infoOf who history.trace = info) (going : ¬ stopped history)
+    (running : ¬ E.terminal history.state) (active : E.active history.state who) :
+    M.runBehavioralUntil certificate
+        (Profile.update (sig := M.behavioralSignature) profile who (policy.withLaw info law))
+        stopped history =
+      law.bind fun choice => M.runBehavioralUntil certificate
+        (Profile.update (sig := M.behavioralSignature) profile who (policy.commit info choice))
+        stopped history := by
+  rw [M.runBehavioralUntil_of_running certificate _ going running,
+    M.runBehavioralFrom_update_withLaw_eq_bind actsOnce profile who policy info law history
+      atInfo running active 0, PMF.bind_bind]
+  refine bind_congr_on_support law fun choice _ => ?_
+  rw [M.runBehavioralUntil_of_running certificate _ going running,
+    M.runBehavioralFrom_succ_of_not_terminal _ 0 running, PMF.bind_bind, PMF.bind_bind]
+  refine bind_congr_on_support _ fun draw _ => ?_
+  rw [bindOnSupport_bind, bindOnSupport_bind]
+  refine bindOnSupport_congr _ fun target realized => ?_
+  change (PMF.pure _).bind _ = (PMF.pure _).bind _
+  rw [PMF.pure_bind, PMF.pure_bind]
+  refine M.runBehavioralUntil_congr certificate stopped _ fun later reached later_running
+    player => ?_
+  obtain ⟨fuel, within⟩ := reached
+  by_cases same : player = who
+  · subst player
+    rw [Profile.update_same, Profile.update_same]
+    exact M.withLaw_eq_commit_after_actsOnce actsOnce policy info law choice atInfo active
+      draw.2 realized later within later_running
+  · rw [Profile.update_of_ne _ _ same, Profile.update_of_ne _ _ same]
+
 /-- **Terminal play splits at a stopping set.** Terminal play from a history is
 play until the stopping set followed by terminal play from there. -/
 theorem runBehavioralTerminalFrom_eq_bind_runBehavioralUntil
