@@ -82,6 +82,7 @@ import Vegas.Game.OnePacketAcceptedTable
 import Vegas.Game.OnePacketCompletionCases
 import Vegas.Game.OnePacketForcedRegular
 import Vegas.Game.OnePacketCounterpartDomination
+import Vegas.Game.OnePacketIrregularBound
 import Vegas.Game.OnePacketPrescribedSupport
 import Vegas.Game.OnePacketCanonicalPermits
 import Vegas.Game.OnePacketCanonicalAcceptance
