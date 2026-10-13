@@ -2623,8 +2623,11 @@ structure OnePacketCoreInputs (sequence : ℕ → setup.intendedModel.Behavioral
             expect (recordLaw key)
               (lumpedFailure setup leaks bounds horizon scheduler lumping (2 * horizon + 1) key
                 option)| ≤ beliefDrift n
-  /-- **The forced-belief inputs** at every forced site with a value-changing
-  choice, along every fully mixed Bayes sequence of assembled profiles. -/
+  /-- **The forced-belief inputs** at every forced decision input at the
+  player's own turn at which the player owes no failure, along every fully mixed
+  Bayes sequence of assembled profiles. These are the sites with a projected
+  decision (`Vegas.projectedDecision_of_forcedAgent`), late deliveries
+  included. -/
   beliefInputs : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon
       scheduler slots p)) (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
     OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos scale_le_one
@@ -2633,13 +2636,16 @@ structure OnePacketCoreInputs (sequence : ℕ → setup.intendedModel.Behavioral
     (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
       ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
         (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
-    ∀ who (site : (onePacketN).InformationSite who)
-      (changing : ValueChangingSite setup leaks bounds horizon scheduler site)
-      (decision : setup.intendedModel.IsDecisionInfo who (projectView setup leaks who site.1)),
+    ∀ who (site : (onePacketN).InformationSite who),
+      ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+      SiteDebtFree setup leaks bounds horizon scheduler site →
+      ∀ {past : List (application setup leaks).PlayerEntry}
+        {view : (application setup leaks).PlayerView} (atSite : site.1 = some (past, view))
+        {event : (graph setup).EventId},
+      view.application.publicView.ownTurn? who = some event →
+      ∀ decision : setup.intendedModel.IsDecisionInfo who (projectView setup leaks who site.1),
       OnePacketBeliefInputs setup leaks bounds horizon scheduler sequence targetSequence site
-        (projectedSite setup leaks decision)
-        (changingInput_decision setup leaks bounds horizon scheduler changing)
-        rfl
+        (projectedSite setup leaks decision) atSite rfl
   /-- **The per-history gain transport.** Away from late deliveries, at a site where
   the player owes no failure, every choice committing an intended value at the
   player's own turn has an
@@ -3135,7 +3141,10 @@ def OnePacketOpenInputs.toCertificateInputs
           (Classical.not_not.mp present.2.1)
           (changingInput_turn setup leaks bounds horizon scheduler present.2).choose_spec
           (inputs.beliefInputs weights targetSequence assembled mixed bayes agent.1
-            ⟨agent.2.1, present.1⟩ present.2 (decided present.2))
+            ⟨agent.2.1, present.1⟩ present.2.1 present.2.2.2.1
+            (changingInput_decision setup leaks bounds horizon scheduler present.2)
+            (changingInput_turn setup leaks bounds horizon scheduler present.2).choose_spec
+            (decided present.2))
       · simp only [agentDistance, present, ↓reduceDIte]
         exact tendsto_const_nhds
     let payoffBound := onePacketPayoffBound setup leaks bounds horizon scheduler parameter
