@@ -38,6 +38,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {allowed : Set (graph setup).Inputs}
 
 namespace EventGraphRuntime.HiddenSwap
 
@@ -105,8 +106,9 @@ end EventGraphRuntime.HiddenSwap
 
 variable (setup) in
 /-- **The swap guard** at an execution of the default runtime. -/
-structure SwapGuard (swap : HiddenSwap (graph setup))
+structure SwapGuard (swap : HiddenSwap (graph setup)) (allowed : Set (graph setup).Inputs)
     (current : (application setup leaks).Execution) : Prop where
+  inputs : current.application.config.inputs ∈ allowed
   compatible : ∀ event candidate,
     current.application.accepted (.inr event) = some candidate →
       BindCompatible swap event candidate
@@ -117,10 +119,10 @@ structure SwapGuard (swap : HiddenSwap (graph setup))
 
 variable (setup) in
 /-- The swap guard at a protocol state; nothing is asked before setup. -/
-def SwapGuardState (swap : HiddenSwap (graph setup)) :
+def SwapGuardState (swap : HiddenSwap (graph setup)) (allowed : Set (graph setup).Inputs) :
     (application setup leaks).ProtocolState → Prop
   | none => True
-  | some current => SwapGuard setup swap current.execution
+  | some current => SwapGuard setup swap allowed current.execution
 
 /-- Accepted handles are never removed. -/
 def AcceptedGrows (before after : EventGraphRuntime.State (graph setup)) : Prop :=
@@ -203,17 +205,27 @@ theorem swapGuard_of_transition (swap : HiddenSwap (graph setup))
     (joint : Player → Option (application setup leaks).Action)
     (reached : some after ∈ ((application setup leaks).transition initial horizon scheduler
       (some before) joint).support)
-    (guarded : SwapGuard setup swap after.execution) : SwapGuard setup swap before.execution := by
+    (guarded : SwapGuard setup swap allowed after.execution) :
+    SwapGuard setup swap allowed before.execution := by
   have grows := (acceptedGrows_step leaks).transition initial horizon scheduler before after joint
     reached
   have step := transition_configStep initial horizon scheduler before after joint reached
   obtain ⟨next, nextEq, prefixes⟩ := (application setup leaks).transition_recall_prefix initial
     horizon scheduler before (some after) joint reached
   cases Option.some.inj nextEq
-  refine ⟨fun event candidate held => guarded.compatible event candidate (grows _ _ held),
+  refine ⟨?_, fun event candidate held => guarded.compatible event candidate (grows _ _ held),
     fun event held => revealFixed_of_grows swap grows event
       (guarded.reveals event (readyOrCompleted_of_configStep step event held)),
     fun who recalled member => guarded.requests who recalled ((prefixes who).subset member)⟩
+  rcases step with same | ⟨other, ready, action, member⟩
+  · rw [← same]
+    exact guarded.inputs
+  · rw [EventGraph.Config.step, PMF.support_map] at member
+    obtain ⟨_, _, completed⟩ := member
+    have inputsEq := congrArg EventGraph.Config.inputs completed
+    change before.execution.application.config.inputs = _ at inputsEq
+    rw [inputsEq]
+    exact guarded.inputs
 
 
 /-- Including a packet with a valid token satisfies the inclusion conditions
@@ -224,7 +236,7 @@ theorem inclusionFixed_of_guard (swap : HiddenSwap (graph setup))
     (envelope : Message Player (WitnessedPacket (graph setup)))
     (found : current.network.lookup id = some envelope)
     (valid : envelope.payload.tokenValid = true)
-    (sourceGuard : SwapGuard setup swap current)
+    (sourceGuard : SwapGuard setup swap allowed current)
     (targetCompatible : ∀ event candidate,
       (current.includePending (application setup leaks) id).application.accepted (.inr event) =
         some candidate → BindCompatible swap event candidate) :
@@ -248,13 +260,14 @@ theorem inclusionFixed_of_guard (swap : HiddenSwap (graph setup))
 /-- **Transitions into guarded states commute with the swap.** -/
 theorem transition_swap (swap : HiddenSwap (graph setup))
     (initial : PMF (application setup leaks).State)
-    (initialClosed : ∀ state ∈ initial.support, state.swap swap ∈ initial.support)
+    (initialClosed : ∀ state ∈ initial.support, state.config.inputs ∈ allowed →
+      state.swap swap ∈ initial.support)
     (horizon : Nat) (scheduler : (application setup leaks).Scheduler)
     (source target : (application setup leaks).ProtocolState)
     (joint : Player → Option (application setup leaks).Action)
     (reached : target ∈ ((application setup leaks).transition initial horizon scheduler source
       joint).support)
-    (guarded : SwapGuardState setup swap target) :
+    (guarded : SwapGuardState setup swap allowed target) :
     swap.protocolState target ∈ ((application setup leaks).transition initial horizon scheduler
       (swap.protocolState source) (swap.joint joint)).support := by
   cases source with
@@ -264,7 +277,7 @@ theorem transition_swap (swap : HiddenSwap (graph setup))
       change some (swap.control ⟨horizon, none, ReactiveApplication.Execution.initial _ state⟩) ∈
         ((application setup leaks).transition initial horizon scheduler none _).support
       rw [ReactiveApplication.transition, PMF.support_map]
-      exact ⟨state.swap swap, initialClosed state member, rfl⟩
+      exact ⟨state.swap swap, initialClosed state member guarded.inputs, rfl⟩
   | some before =>
       rcases before with ⟨remaining, actor, current⟩
       cases target with
@@ -287,7 +300,7 @@ theorem transition_swap (swap : HiddenSwap (graph setup))
             ((swap.joint joint who).getD ⟨none⟩)⟩ : (application setup leaks).Control)
           rw [swap.getD_joint, swap.respond_execution]
           · rfl
-          · change SwapGuard setup swap (current.respond (application setup leaks) who
+          · change SwapGuard setup swap allowed (current.respond (application setup leaks) who
               ((joint who).getD ⟨none⟩)) at guarded
             generalize (joint who).getD ⟨none⟩ = response at guarded ⊢
             have member : ∃ recalled ∈ (current.respond (application setup leaks) who
@@ -335,7 +348,8 @@ theorem transition_swap (swap : HiddenSwap (graph setup))
 theorem requestFixed_of_respond (swap : HiddenSwap (graph setup))
     (current : (application setup leaks).Execution) (who : Player)
     (response : (application setup leaks).Action)
-    (guarded : SwapGuard setup swap (current.respond (application setup leaks) who response)) :
+    (guarded : SwapGuard setup swap allowed
+      (current.respond (application setup leaks) who response)) :
     swap.RequestFixed response := by
   have member : ∃ recalled ∈ (current.respond (application setup leaks) who
       response).recall who, recalled.action = response := by
@@ -354,13 +368,14 @@ the initial law and the bounded values are closed under it. -/
 def onePacketSwapSymmetry (bounds : MessageBounds (graph setup))
     (initial : PMF (application setup leaks).State) (horizon : Nat)
     (scheduler : (application setup leaks).Scheduler) (swap : HiddenSwap (graph setup))
-    (initialClosed : ∀ state ∈ initial.support, state.swap swap ∈ initial.support)
+    (initialClosed : ∀ state ∈ initial.support, state.config.inputs ∈ allowed →
+      state.swap swap ∈ initial.support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values) :
     ((bounds.onePacketMenu (runtime setup) leaks).protocol initial horizon
       scheduler).StateSymmetry where
   map := swap.protocolState
   act _ := swap.joint
-  Guard := SwapGuardState setup swap
+  Guard := SwapGuardState setup swap allowed
   map_init := rfl
   guard_source := by
     intro source target joint _ reached guarded
@@ -423,8 +438,11 @@ def onePacketSwapSymmetry (bounds : MessageBounds (graph setup))
 theorem onePacketSwapSymmetry_involutive (bounds : MessageBounds (graph setup))
     (initial : PMF (application setup leaks).State) (horizon : Nat)
     (scheduler : (application setup leaks).Scheduler) (swap : HiddenSwap (graph setup))
-    (initialClosed : ∀ state ∈ initial.support, state.swap swap ∈ initial.support)
-    (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values) :
+    (initialClosed : ∀ state ∈ initial.support, state.config.inputs ∈ allowed →
+      state.swap swap ∈ initial.support)
+    (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
+    (allowedClosed : ∀ inputs ∈ allowed,
+      (fun input => swap.values.value (.inl input) (inputs input)) ∈ allowed) :
     (onePacketSwapSymmetry bounds initial horizon scheduler swap initialClosed
       bounded).Involutive where
   map_map state _ := swap.protocolState_involutive state
@@ -432,8 +450,8 @@ theorem onePacketSwapSymmetry_involutive (bounds : MessageBounds (graph setup))
     cases state with
     | none => trivial
     | some current =>
-        obtain ⟨compatible, reveals, requests⟩ := guarded
-        refine ⟨compatible, reveals, fun who recalled member => ?_⟩
+        obtain ⟨inputs, compatible, reveals, requests⟩ := guarded
+        refine ⟨allowedClosed _ inputs, compatible, reveals, fun who recalled member => ?_⟩
         obtain ⟨original, originalMember, rfl⟩ := List.mem_map.mp member
         exact (swap.requestFixed_action original.action).mpr
           (requests who original originalMember)

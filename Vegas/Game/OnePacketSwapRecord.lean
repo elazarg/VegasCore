@@ -31,6 +31,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {allowed : Set (graph setup).Inputs}
 
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
 theorem swapCandidate_id : swapCandidate (id : Raw L → Raw L) = id := by
@@ -77,7 +78,7 @@ end EventGraphRuntime.HiddenSwap
 /-- **The swap keeps the operational state** of a guarded protocol state. -/
 theorem operationalState_swap (swap : HiddenSwap (graph setup))
     (state : (application setup leaks).ProtocolState)
-    (guarded : SwapGuardState setup swap state) :
+    (guarded : SwapGuardState setup swap allowed state) :
     operationalState setup leaks (swap.protocolState state) =
       operationalState setup leaks state := by
   cases state with
@@ -110,7 +111,8 @@ variable [Fintype Player] {bounds : MessageBounds (graph setup)}
 
 /-- Every state along a history ending at a guarded state is guarded. -/
 theorem swapGuard_of_trace (swap : HiddenSwap (graph setup))
-    (initialClosed : ∀ state ∈ initial.support, state.swap swap ∈ initial.support)
+    (initialClosed : ∀ state ∈ initial.support, state.config.inputs ∈ allowed →
+      state.swap swap ∈ initial.support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
     {source target : (application setup leaks).ProtocolState}
     {joint : Player → Option (application setup leaks).Action}
@@ -118,17 +120,18 @@ theorem swapGuard_of_trace (swap : HiddenSwap (graph setup))
       scheduler).Legal source joint)
     (reached : target ∈ (((bounds.onePacketMenu (runtime setup) leaks).protocol initial horizon
       scheduler).step source ⟨joint, isLegal⟩).support)
-    (guarded : SwapGuardState setup swap target) : SwapGuardState setup swap source :=
+    (guarded : SwapGuardState setup swap allowed target) :
+    SwapGuardState setup swap allowed source :=
   (onePacketSwapSymmetry bounds initial horizon scheduler swap initialClosed bounded).guard_source
     isLegal reached guarded
 
 /-- **The image of a history has the same operational record.** -/
 theorem operationalRecord_mapTrace (swap : HiddenSwap (graph setup))
-    (initialClosed : ∀ state ∈ (initialLaw setup).support, state.swap swap ∈
-      (initialLaw setup).support)
+    (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
+      state.swap swap ∈ (initialLaw setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values) :
     ∀ {state} (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace state)
-      (guarded : SwapGuardState setup swap state),
+      (guarded : SwapGuardState setup swap allowed state),
     operationalRecord setup leaks bounds horizon scheduler
         ((onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler swap initialClosed
           bounded).mapTrace trace guarded) =
@@ -252,11 +255,12 @@ theorem recall_swap_of_fixes (swap : HiddenSwap (graph setup)) {who : Player}
 /-- **The image of a history leaves a fixed player in the same information
 state** at each of its decisions. -/
 theorem infoOf_mapTrace_of_fixes (swap : HiddenSwap (graph setup))
-    (initialClosed : ∀ state ∈ initial.support, state.swap swap ∈ initial.support)
+    (initialClosed : ∀ state ∈ initial.support, state.config.inputs ∈ allowed →
+      state.swap swap ∈ initial.support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
     {who : Player} (fixes : swap.Fixes who)
     (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol initial horizon
-      scheduler).History) (guarded : SwapGuardState setup swap history.state)
+      scheduler).History) (guarded : SwapGuardState setup swap allowed history.state)
     {past : List (application setup leaks).PlayerEntry}
     {observed : (application setup leaks).PlayerView}
     (decision : ((bounds.onePacketMenu (runtime setup) leaks).information initial horizon
