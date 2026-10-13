@@ -429,3 +429,8 @@ import Vegas.Game.SourceSwapPairs
 import Vegas.Game.OnePacketCompletionTransport
 import Vegas.Game.OnePacketCommitmentCompletion
 import Vegas.Game.OnePacketCommitmentGain
+import Vegas.Game.OnePacketActingJoint
+import Vegas.Game.OnePacketLateCompletion
+import Vegas.Game.OnePacketLateCompletionLaw
+import Vegas.Game.OnePacketLateSending
+import Vegas.Game.OnePacketOpenableCommitment

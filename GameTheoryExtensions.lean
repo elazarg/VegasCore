@@ -81,3 +81,5 @@ import GameTheoryExtensions.Protocol.Knowledge
 import GameTheoryExtensions.Protocol.MenuRestriction
 import GameTheoryExtensions.Protocol.ObservationRecall
 import GameTheoryExtensions.Protocol.StateSymmetry
+import GameTheoryExtensions.Analysis.Protocol.StoppedExitBound
+import GameTheoryExtensions.Protocol.TracePrefix
