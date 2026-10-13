@@ -46,6 +46,7 @@ import Vegas.Game.OnePacketSlotTrembles
 import Vegas.Game.OnePacketSlotVisibility
 import Vegas.Game.OnePacketSlotLaw
 import Vegas.Game.OnePacketRetention
+import Vegas.Game.OnePacketContentFloor
 import Vegas.Game.OnePacketSlotMasses
 import Vegas.Game.OnePacketForcedBeliefs
 import Vegas.Game.OnePacketPrescribedSupport
