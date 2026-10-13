@@ -123,4 +123,71 @@ theorem operationalState_respond (control : (application setup leaks).Control)
           rw [(application setup leaks).respond_recall_other execution responder who same]
           exact ⟨trivial, current, rfl, delivered⟩
 
+/-- **An opening of a bound value.** The response opens the event with the
+handle accepted at the binding, carrying the binding's successful value. -/
+def OpensBinding (execution : (application setup leaks).Execution) (event : (graph setup).EventId)
+    {owner : Player} {payload : L.Ty}
+    (binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload))
+    (action : (application setup leaks).Action) : Prop :=
+  ∃ submission candidate value, action.transmission = some submission ∧
+    submission.call.packet = .opening event candidate ⟨payload, value⟩ ∧
+    execution.application.accepted binding.field = some candidate ∧
+    binding.get? execution.application.config.store = some (.success value)
+
+variable [Fintype Player] (bounds : MessageBounds (graph setup))
+
+/-- **The envelope of a menu opening.** At a state of a one-packet history, a
+one-packet response opening an event emits the next envelope of the responder
+carrying that opening, its own certificate, and the event's token. -/
+theorem emittedEnvelope_of_opening {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
+    (history : (onePacketProtocol setup leaks bounds horizon scheduler).History)
+    {control : (application setup leaks).Control} (current : history.state = some control)
+    (who : Player) (action : (application setup leaks).Action)
+    (member : action ∈ bounds.onePacketActions (runtime setup) leaks who
+      (control.execution.recall who) (control.execution.observe (application setup leaks) who))
+    {submission : (application setup leaks).Submission}
+    (sent : action.transmission = some submission)
+    {event : (graph setup).EventId} {candidate : Handle (graph setup)} {raw : Raw L}
+    (call : submission.call.packet = .opening event candidate raw) :
+    emittedEnvelope control.execution who action =
+      some ⟨(who, control.execution.network.nextSerial who),
+        ⟨.opening event candidate raw, some ⟨candidate, raw⟩, some ⟨event⟩⟩⟩ := by
+  rcases ((bounds.mem_onePacketActions (runtime setup) leaks who _ _ action).mp member).2 with
+    silent | ⟨material, sentMaterial, permitted⟩
+  · rw [sent] at silent
+    cases silent
+  rw [sent] at sentMaterial
+  cases sentMaterial
+  have trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some control) :=
+    current ▸ (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon
+      scheduler history.trace
+  obtain ⟨inputRecall, serialRecall, _⟩ := (runtime setup).countRecall_history leaks trace
+  have local_ := (runtime setup).localEnvelope_eq_of_recall leaks control.execution inputRecall
+    serialRecall who submission
+  obtain ⟨tokenValid, correct, _⟩ := (countPermits_eq_true_iff _ _).mp permitted
+  rw [local_] at tokenValid correct
+  unfold emittedEnvelope
+  rw [sent]
+  simp only [Option.some.injEq, Message.mk.injEq, true_and]
+  set packet := (application setup leaks).packet ((application setup leaks).submit
+    control.execution.application who submission) who (control.execution.network.known who)
+    submission with packetEq
+  have packetCall : packet.call = .opening event candidate raw := call
+  have certified : certifiedOpening packet = true := by
+    unfold CountCallCorrect at correct
+    simp only [packetCall] at correct
+    exact correct.1
+  obtain ⟨tokenEvent, tokenNamed, tokenEq⟩ := (WitnessedPacket.tokenValid_iff packet).mp tokenValid
+  rw [packetCall] at tokenNamed
+  cases tokenNamed
+  obtain ⟨shapeEvent, shapeCandidate, shapeRaw, shapeToken, shape⟩ :=
+    (certifiedOpening_iff packet).mp certified
+  have shapeCall := congrArg WitnessedPacket.call shape
+  rw [packetCall] at shapeCall
+  cases shapeCall
+  rw [shape] at tokenEq ⊢
+  cases tokenEq
+  rfl
+
 end Vegas
