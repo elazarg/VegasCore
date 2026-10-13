@@ -917,13 +917,54 @@ def CommitsNoValue (response : (application setup leaks).Action) : Prop :=
   ∀ material, response.transmission = some material →
     ∀ event handle, material.call.packet ≠ .commitment event handle
 
-/-- **The marked choices of the one-packet certificate**: the choices that
-commit no value, such as silence and disclosures. Their success continuation is
-the agent's continuation value; every choice committing a value is compared
-with source deviations instead. -/
+/-- **The marked choices of the one-packet certificate**: silence at a late
+delivery, and elsewhere the choices that commit no value and send only for the
+event at the player's own turn. Their success continuation is the agent's
+continuation value; every other choice is compared with a late option, a
+source deviation, the prescribed component, or has no gain. -/
 def onePacketCompared (who : Player) (site : (onePacketN).InformationSite who)
     (choice : (onePacketN).Choice who site.1) : Prop :=
-  ∀ response, choice.1 = some response → CommitsNoValue setup leaks response
+  (LateDelivery setup leaks who site.1 → choice.1 = some ⟨none⟩) ∧
+    ∀ response, choice.1 = some response → CommitsNoValue setup leaks response ∧
+      ∀ event, (runtime setup).submittedEvent? leaks response = some event →
+        ∃ past view, site.1 = some (past, view) ∧
+          view.application.publicView.ownTurn? who = some event
+
+omit [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
+  [Finite setup.intendedProtocol.History]
+  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+      scheduler).InfoState who)] in
+/-- At a decision input, every choice is some response of the one-packet menu. -/
+theorem choice_response {who : Player} (site : (onePacketN).InformationSite who)
+    {past : List (application setup leaks).PlayerEntry}
+    {view : (application setup leaks).PlayerView} (atSite : site.1 = some (past, view))
+    (choice : (onePacketN).Choice who site.1) :
+    ∃ response, choice.1 = some response ∧
+      response ∈ bounds.onePacketActions (runtime setup) leaks who past view := by
+  obtain ⟨info, decision⟩ := site
+  change info = some (past, view) at atSite
+  subst atSite
+  obtain ⟨action, member, actionEq⟩ := choice.2
+  exact ⟨action, actionEq, member⟩
+
+omit [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
+  [Finite setup.intendedProtocol.History]
+  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+      scheduler).InfoState who)] in
+/-- A transmitting response of the one-packet menu names an event. -/
+theorem submittedEvent_of_transmits {who : Player}
+    {past : List (application setup leaks).PlayerEntry}
+    {view : (application setup leaks).PlayerView} {response : (application setup leaks).Action}
+    (member : response ∈ bounds.onePacketActions (runtime setup) leaks who past view)
+    {material : (application setup leaks).Submission}
+    (sends : response.transmission = some material) :
+    ∃ event, (runtime setup).submittedEvent? leaks response = some event := by
+  unfold EventGraphRuntime.submittedEvent?
+  rw [sends]
+  cases packet : material.call.packet with
+  | commitment event _ => exact ⟨event, by simp only [packet, Payload.event?]⟩
+  | opening event _ _ => exact ⟨event, by simp only [packet, Payload.event?]⟩
+  | malformed raw => exact (onePacket_not_malformed bounds member sends raw packet).elim
 
 /-- A choice at a site transmits a packet for the event at the player's own
 turn. -/
@@ -2059,33 +2100,6 @@ structure OnePacketCoreInputs (sequence : ℕ → setup.intendedModel.Behavioral
             expect (recordLaw key)
               (lumpedFailure setup leaks bounds horizon scheduler lumping (2 * horizon + 1) key
                 option)| ≤ beliefDrift n
-  /-- **Marked choices fail like late options.** At every forced late delivery,
-  every marked choice fails within a vanishing drift of some late option, or
-  surely. -/
-  markedNearOption : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon
-      scheduler slots p)) (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
-    OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos scale_le_one
-      weights targetSequence →
-    (∀ n, (targetSequence n).IsFullyMixed) →
-    (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
-      ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
-        (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
-    ∃ markDrift : ℕ → ℝ, Tendsto markDrift atTop (nhds 0) ∧ (∀ n, 0 ≤ markDrift n) ∧
-      ∀ n who (site : (onePacketN).InformationSite who),
-        ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-        ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
-          (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
-          ((onePacketN).agentAt site) →
-        ∀ choice, onePacketCompared setup leaks bounds horizon scheduler who site choice →
-          (∃ option,
-            |onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
-                (PMF.pure choice) -
-              onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
-                (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
-                  scale_le_one (slots := slots) n ((onePacketN).agentAt site) option)| ≤
-              markDrift n) ∨
-          onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
-            (PMF.pure choice) = 1
   /-- **Projected decisions.** At every forced site with a value-changing choice,
   the projected view is a decision site of the intended game. For a well-formed
   setup this follows from `Vegas.projectedDecision_of_forcedAgent`, since such a
@@ -2336,12 +2350,36 @@ theorem OnePacketOpenInputs.siteCommonness
       recordLaw (beliefNonneg n) unforced keyed⟩
   have pathLimit : Tendsto (fun n => ((2 * horizon + 1 : ℕ) : ℝ) * δ n) atTop (nhds 0) := by
     simpa using δLimit.const_mul ((2 * horizon + 1 : ℕ) : ℝ)
-  obtain ⟨markDrift, markLimit, markNonneg, marked⟩ :=
-    inputs.markedNearOption weights targetSequence assembled mixed bayes
+  have markLimit : Tendsto (fun n => 1 - slotRetention (inputs.scale n)) atTop (nhds 0) := by
+    simpa using (tendsto_const_nhds (x := (1 : ℝ))).sub
+      (tendsto_slotRetention inputs.scale_vanishing)
+  have markNonneg : ∀ n, 0 ≤ 1 - slotRetention (inputs.scale n) := fun n =>
+    sub_nonneg.mpr (slotRetention_le_one (inputs.scale_pos n).le (inputs.scale_le_one n))
+  have marked : ∀ n who (site : (onePacketN).InformationSite who),
+      ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+      ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+        (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
+        ((onePacketN).agentAt site) →
+      ∀ choice, onePacketCompared setup leaks bounds horizon scheduler who site choice →
+        (∃ option,
+          |onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
+              (PMF.pure choice) -
+            onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
+              (onePacketLate setup leaks bounds horizon scheduler sequence inputs.scale
+                inputs.scale_pos inputs.scale_le_one (slots := slots) n
+                ((onePacketN).agentAt site) option)| ≤
+            1 - slotRetention (inputs.scale n)) ∨
+        onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
+          (PMF.pure choice) = 1 := by
+    intro n who site _ keyed choice isMarked
+    obtain ⟨past, view, _, atSite, _⟩ := keyed.1
+    exact Or.inl ⟨none, abs_localFailure_silence_sub_wait_le setup leaks bounds horizon scheduler
+      sequence inputs.scale inputs.scale_pos inputs.scale_le_one n (targetSequence n) site _
+      atSite choice (isMarked.1 keyed.1)⟩
   exact onePacket_siteCommonness setup leaks bounds horizon scheduler sequence inputs.scale
     inputs.scale_pos inputs.scale_le_one targetSequence
     (fun n => ((2 * horizon + 1 : ℕ) : ℝ) * δ n) unforcedDrift beliefDrift
-    markDrift pathLimit unforcedLimit beliefLimit markLimit
+    (fun n => 1 - slotRetention (inputs.scale n)) pathLimit unforcedLimit beliefLimit markLimit
     (fun n => mul_nonneg (Nat.cast_nonneg _) (δNonneg n)) markNonneg blind marked
 
 /-- **The certificate inputs from the open inputs.** For a well-formed setup,
@@ -2480,18 +2518,29 @@ def OnePacketOpenInputs.toCertificateInputs
     by_cases atTurn : CommitsAtTurn setup leaks bounds horizon scheduler who site choice
     swap
     · left
-      obtain ⟨response, chosen, material, sends, committed⟩ : ∃ response, choice.1 = some response ∧
-          ∃ material, response.transmission = some material ∧
-            ∃ event handle, material.call.packet = .commitment event handle := by
+      obtain ⟨response, chosen, event, submitted⟩ : ∃ response, choice.1 = some response ∧
+          ∃ event, (runtime setup).submittedEvent? leaks response = some event := by
         by_contra none
+        push Not at none
         apply unmarked
-        intro response chosen material sends event handle packet
-        exact none ⟨response, chosen, material, sends, event, handle, packet⟩
-      obtain ⟨event, handle, packet⟩ := committed
-      have submitted : (runtime setup).submittedEvent? leaks response = some event := by
-        unfold EventGraphRuntime.submittedEvent?
-        rw [sends]
-        exact (congrArg (Payload.event? (graph setup)) packet).trans rfl
+        refine ⟨fun late => ?_, fun response chosen => ⟨?_, fun event submitted =>
+          (none response chosen event submitted).elim⟩⟩
+        · obtain ⟨past, view, _, atSite, _⟩ := late
+          obtain ⟨response, chosen, member⟩ := choice_response setup leaks bounds horizon
+            scheduler site atSite choice
+          rw [chosen]
+          rcases response with ⟨transmission⟩
+          cases transmission with
+          | none => rfl
+          | some material =>
+              obtain ⟨event, submitted⟩ := submittedEvent_of_transmits setup leaks bounds member
+                (material := material) rfl
+              exact (none _ chosen event submitted).elim
+        · intro material sends event handle packet
+          apply none response chosen event
+          unfold EventGraphRuntime.submittedEvent?
+          rw [sends]
+          exact (congrArg (Payload.event? (graph setup)) packet).trans rfl
       have zero := (onePacketN).gain_eq_expect_historyGain
         ((onePacketN).truncatedRunner (2 * horizon + 1))
         (readoutExclusion setup leaks bounds (initialLaw setup) horizon scheduler parameter
@@ -2532,8 +2581,18 @@ def OnePacketOpenInputs.toCertificateInputs
           ∃ event handle, material.call.packet = .commitment event handle := by
       by_contra none
       apply unmarked
-      intro response chosen material sends event handle packet
-      exact none ⟨response, chosen, material, sends, event, handle, packet⟩
+      refine ⟨fun late => (keyedSite ⟨late, forced⟩).elim, fun response chosen =>
+        ⟨fun material sends event handle packet =>
+          none ⟨response, chosen, material, sends, event, handle, packet⟩,
+        fun event submitted => ?_⟩⟩
+      obtain ⟨past, view, turnResponse, turnEvent, atSite, turnChosen, submittedTurn, turn⟩ :=
+        atTurn
+      have sameResponse : turnResponse = response :=
+        Option.some.inj (turnChosen.symm.trans chosen)
+      subst sameResponse
+      have sameEvent : turnEvent = event := Option.some.inj (submittedTurn.symm.trans submitted)
+      subst sameEvent
+      exact ⟨past, view, atSite, turn⟩
     obtain ⟨past, view, turnResponse, event, atSite, turnChosen, submittedTurn, turn⟩ := atTurn
     have sameResponse : turnResponse = response :=
       Option.some.inj (turnChosen.symm.trans chosen)
