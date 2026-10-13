@@ -17,7 +17,10 @@ owe a failure, and its decoded action receives positive mass from the intended
 assessment at that player's view of the decoded point
 (`Vegas.completion_choice_pos`). So the intended replay of a regular history
 ending in a forced state of `who` exists whenever `who`'s own completions along
-it decode to intended actions (`Vegas.intendedHistory?_isSome`).
+it decode to intended actions (`Vegas.intendedHistory?_isSome`). Together with
+the period invariant this assembles the source weights of forced beliefs from
+forcedness of the regular histories of a site and intended own completions
+(`Vegas.ForcedBeliefInputs.ofForcedHistories`).
 -/
 
 noncomputable section
@@ -425,5 +428,85 @@ theorem intendedHistory?_isSome (assessment : setup.intendedModel.BehavioralAsse
                   rw [currentState, protocolStep_actingJoint, decodedNext]
                   exact (PMF.mem_support_map_iff _ _ _).mpr ⟨target, reachedPoint, rfl⟩
                 exact extendIntended?_isSome legalStep reachedStep
+
+section Assembly
+
+variable {who : Player}
+  {site : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who}
+  {sourceSite : setup.intendedModel.InformationSite who}
+  {past : List (application setup leaks).PlayerEntry}
+  {view : (application setup leaks).PlayerView}
+
+open Classical in
+/-- **Forced-belief inputs from forced regular histories.** At a forced
+decision site of `who` whose view shows `who`'s own ready event and whose
+projected view is an intended site, under a fully mixed intended assessment at
+stage `n`, the replay projection supplies the source weights of
+`Vegas.ForcedBeliefInputs` as soon as every regular history of the site ends in
+a forced state of `who` and `who`'s own completions along it decode to
+intended actions. The common fibers and the honest counterparts remain
+inputs. -/
+def ForcedBeliefInputs.ofForcedHistories
+    {sequence : ℕ → setup.intendedModel.BehavioralAssessment}
+    {profiles : ℕ → ∀ player,
+      (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player}
+    {steps : OperationalSteps setup leaks bounds horizon scheduler sequence profiles who}
+    [Fintype ((onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
+      site.1)]
+    [DecidableEq (setup.intendedModel.InformationHistory who sourceSite.1)]
+    {scale floors : ℕ → ℝ} {depth : ℕ} {slack : ℝ} {n : ℕ}
+    (forced : forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
+      scheduler who site.1)
+    (decision : site.1 = some (past, view)) {event : (graph setup).EventId}
+    (turn : view.application.publicView.ownTurn? who = some event)
+    (projected : sourceSite.1 = projectView setup leaks who site.1)
+    (mixed : (sequence n).IsFullyMixed)
+    (forcedHistories : ∀ history : (onePacketInformation setup leaks bounds horizon
+        scheduler).InformationHistory who site.1,
+      RegularTrace setup leaks bounds horizon scheduler (sequence n) who history.1.trace →
+      ForcedState setup leaks who history.1.state)
+    (ownIntended : ∀ history : (onePacketInformation setup leaks bounds horizon
+        scheduler).InformationHistory who site.1,
+      RegularTrace setup leaks bounds horizon scheduler (sequence n) who history.1.trace →
+      OwnCompletionsIntended (bounds := bounds) (horizon := horizon) (scheduler := scheduler)
+        who history.1.trace)
+    (fiberMass : ℝ)
+    (fiber : ∀ point, ∑ history with RegularTrace setup leaks bounds horizon scheduler
+        (sequence n) who history.1.trace ∧
+        replayProjection setup leaks bounds horizon scheduler sourceSite site decision projected
+          history = point,
+      operationalWeight setup leaks who (steps.mass n)
+        (operationalRecord setup leaks bounds horizon scheduler history.1.trace) = fiberMass)
+    (counterpart : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory
+        who site.1 →
+      (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who site.1)
+    (commonWeight : (onePacketInformation setup leaks bounds horizon
+      scheduler).InformationHistory who site.1 → ℝ)
+    (counterpart_regular : ∀ history, ¬ RegularTrace setup leaks bounds horizon scheduler
+        (sequence n) who history.1.trace →
+      RegularTrace setup leaks bounds horizon scheduler (sequence n) who
+        (counterpart history).1.trace)
+    (irregular_le : ∀ history, ¬ RegularTrace setup leaks bounds horizon scheduler (sequence n)
+        who history.1.trace →
+      ((onePacketInformation setup leaks bounds horizon scheduler).historyReachWeight
+          (profiles n) history.1).toReal ≤ scale n ^ 3 * commonWeight history)
+    (counterpart_ge : ∀ history, ¬ RegularTrace setup leaks bounds horizon scheduler
+        (sequence n) who history.1.trace →
+      scale n ^ 2 * floors n ^ depth * commonWeight history ≤
+        slack * ((onePacketInformation setup leaks bounds horizon scheduler).historyReachWeight
+          (profiles n) (counterpart history).1).toReal) :
+    ForcedBeliefInputs setup leaks bounds horizon scheduler sequence profiles steps site
+      sourceSite (replayProjection setup leaks bounds horizon scheduler sourceSite site decision
+        projected) scale floors depth slack n :=
+  ForcedBeliefInputs.ofForcedReplay forced decision turn projected mixed forcedHistories
+    (fun history regular => by
+      have forcedHistory := forcedHistories history regular
+      have own := ownIntended history regular
+      obtain ⟨control, stateEq, _⟩ := state_of_decision history decision
+      exact intendedHistory?_isSome (sequence n) who history.1.trace control stateEq
+        (stateEq ▸ forcedHistory) regular own)
+    fiberMass fiber counterpart commonWeight counterpart_regular irregular_le counterpart_ge
+
+end Assembly
 
 end Vegas
