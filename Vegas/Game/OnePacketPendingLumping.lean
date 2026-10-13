@@ -133,11 +133,10 @@ theorem operationalState_wait (remaining : Nat)
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩ <;> trivial
 
 /-- A player's turn is read from the completion order alone. -/
-theorem PublicView.ownTurn?_congr {graph : EventGraph Player L}
-    {first second : PublicView graph} (same : first.observation = second.observation)
-    (who : Player) : first.ownTurn? who = second.ownTurn? who := by
-  unfold PublicView.ownTurn?
-  simp only [PublicView.EventReady, same]
+private theorem publicView_ownTurn?_congr {first second : PublicView (graph setup)}
+    (same : first.observation = second.observation) (who : Player) :
+    first.ownTurn? who = second.ownTurn? who := by
+  simp only [PublicView.ownTurn?, PublicView.EventReady, same]
 
 /-- The delivered value of a view is read from the player's turn and its own
 observation. -/
@@ -176,7 +175,7 @@ theorem operationalState_contract (remaining : Nat)
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩ <;> try trivial
   funext observer
   simp only [Option.map_some, lateKey, Option.some.injEq]
-  have turn := PublicView.ownTurn?_congr (first := next.publicView)
+  have turn := publicView_ownTurn?_congr (first := next.publicView)
     (second := execution.application.publicView)
     (by change (graph setup).publicObserve next.config = _; rw [config]; rfl) observer
   congr 1
