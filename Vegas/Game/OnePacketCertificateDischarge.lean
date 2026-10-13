@@ -16,6 +16,8 @@ import Vegas.Game.OnePacketLateLumping
 import Vegas.Game.OnePacketOperationalReads
 import Vegas.Game.OnePacketFailureBridge
 import Vegas.Game.OnePacketUnintendedCommitment
+import Vegas.Game.OnePacketSiteLumping
+import Vegas.Game.OnePacketSlotLawDischarge
 
 /-! # Discharging inputs of the one-packet certificate
 
@@ -2045,6 +2047,170 @@ theorem unintendedCommitment_gain_le (wellFormed : setup.WellFormed)
       law + 2 * error
   rw [localGain_eq_sub, localGain_eq_sub, valueChoice, valueLaw]
   nlinarith [nearBounds.1]
+
+open Classical in
+/-- The options of the certificate's lumping at a late key: the installed option
+at the key, and the key's weights at every other key. -/
+def certificateOptions {slots : Nat}
+    (weights : ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
+    (key : LateKey setup leaks) (option : LateOption slots) (other : LateKey setup leaks) :
+    PMF (LateOption slots) :=
+  if other = key then PMF.pure option
+  else keyWeights setup leaks bounds horizon scheduler weights (some other)
+
+omit [Finite setup.intendedProtocol.History] in
+/-- **The certificate's components at forced decisions.** At a history in a
+forced state of `who` acting at a decision with an event ready that `who` was
+activated for, a profile assembled from the certificate's components plays the
+late component of the key's weights while `who` has not sent for the event, and
+the slot-trembled prescribed component once it has. -/
+theorem certificate_strategyShape (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
+    (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
+    {slots : Nat}
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
+    (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
+    (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
+      scale_le_one weights targetSequence) (n : ℕ) (who : Player)
+    (history : (onePacketProtocol setup leaks bounds horizon scheduler).History)
+    (remaining : Nat) (execution : (application setup leaks).Execution)
+    (event : (graph setup).EventId)
+    (current : history.state = some ⟨remaining, some who, execution⟩)
+    (forcedState : ForcedState setup leaks who history.state)
+    (ready : execution.application.config.cut.Ready event)
+    (activated : ∃ entry ∈ execution.recall who, ActivatedAt setup leaks who event entry) :
+    ((runtime setup).eventRecorded leaks (execution.recall who) event = false →
+      (targetSequence n).strategy who
+          (some (execution.recall who, execution.observe (application setup leaks) who)) =
+        slotTrembledChoice setup leaks bounds (initialLaw setup) horizon scheduler (scale n)
+          (scale_pos n).le (scale_le_one n) who
+          (some (execution.recall who, execution.observe (application setup leaks) who))
+          ((keyWeights setup leaks bounds horizon scheduler (weights n)
+              (some (LateKey.ofView setup leaks who (execution.recall who)
+                (execution.observe (application setup leaks) who)))).bind
+            (lateChoice setup leaks bounds (initialLaw setup) horizon scheduler (sequence n) who
+              (some (execution.recall who, execution.observe (application setup leaks) who))))
+          (PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler who
+            (some (execution.recall who, execution.observe (application setup leaks) who))))
+          (slotChoice setup leaks bounds (initialLaw setup) horizon scheduler (sequence n) who
+            (some (execution.recall who, execution.observe (application setup leaks) who)))) ∧
+    ((runtime setup).eventRecorded leaks (execution.recall who) event = true →
+      ∃ main : PMF ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+          scheduler).Choice who (some (execution.recall who,
+            execution.observe (application setup leaks) who))),
+        (main = honestChoice setup leaks bounds (initialLaw setup) horizon scheduler
+            (sequence n) who (some (execution.recall who,
+              execution.observe (application setup leaks) who)) ∨
+          ∃ others : PMF (LateOption slots), main = others.bind
+            (lateChoice setup leaks bounds (initialLaw setup) horizon scheduler (sequence n) who
+              (some (execution.recall who,
+                execution.observe (application setup leaks) who)))) ∧
+        (targetSequence n).strategy who (some (execution.recall who,
+            execution.observe (application setup leaks) who)) =
+          slotTrembledChoice setup leaks bounds (initialLaw setup) horizon scheduler (scale n)
+            (scale_pos n).le (scale_le_one n) who (some (execution.recall who,
+              execution.observe (application setup leaks) who)) main
+            (PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler
+              who (some (execution.recall who,
+                execution.observe (application setup leaks) who))))
+            (slotChoice setup leaks bounds (initialLaw setup) horizon scheduler (sequence n) who
+              (some (execution.recall who,
+                execution.observe (application setup leaks) who)))) := by
+  have observed : (onePacketN).infoOf who history.trace =
+      some (execution.recall who, execution.observe (application setup leaks) who) := by
+    refine ((bounds.onePacketMenu (runtime setup) leaks).info (initialLaw setup) horizon
+      scheduler who history.trace).trans ?_
+    rw [current]
+    simp [ReactiveApplication.observe]
+  have running : ¬ (onePacketProtocol setup leaks bounds horizon scheduler).terminal
+      history.state := by
+    rw [current]
+    rintro ⟨_, actorNone⟩
+    cases actorNone
+  have played := (onePacketN).mem_playedInformation (who := who) running
+  rw [observed] at played
+  have forced : forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup)
+      horizon scheduler who (some (execution.recall who,
+        execution.observe (application setup leaks) who)) :=
+    observed ▸ forcedAgent_of_history history forcedState
+  let agent : (onePacketN).InformationAgent (onePacketN).playedInformation :=
+    ⟨who, ⟨_, played⟩⟩
+  have notFree : ¬ UnforcedAgent setup leaks bounds horizon scheduler agent :=
+    fun unforced => unforced forced
+  have atAgent := (onePacketN).agentBehavior_at (onePacketN).playedInformation
+    (onePacketFallback setup leaks bounds horizon scheduler)
+    (fun agent => (weights n (onePacketPool setup leaks bounds horizon scheduler agent)).bind
+      (freeKeyedComponent
+        (onePacketUnforced setup leaks bounds horizon scheduler scale scale_pos scale_le_one n)
+        (onePacketPrescribed setup leaks bounds horizon scheduler sequence scale scale_pos
+          scale_le_one n)
+        (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
+          scale_le_one (slots := slots) n) agent)) agent
+  obtain ⟨entry, member, activatedAt⟩ := activated
+  have owned : (graph setup).actor? event = some who :=
+    (PublicView.ownTurn?_spec _ who event activatedAt).2
+  have turn : execution.application.publicView.ownTurn? who = some event :=
+    ownTurn?_of_ready setup execution.application ready owned
+  constructor
+  · intro unrecorded
+    have late : LateDelivery setup leaks who (some (execution.recall who,
+        execution.observe (application setup leaks) who)) :=
+      ⟨_, _, event, rfl, pendingEvent_of_spec turn unrecorded, entry, member, activatedAt⟩
+    have keyed : ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+        (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler) agent :=
+      ⟨late, notFree⟩
+    have weightsEq : keyWeights setup leaks bounds horizon scheduler (weights n)
+        (some (LateKey.ofView setup leaks who (execution.recall who)
+          (execution.observe (application setup leaks) who))) =
+        weights n (.inr (some ⟨agentLateKey setup leaks bounds (initialLaw setup) horizon
+          scheduler agent, ⟨agent, keyed⟩, rfl⟩)) := by
+      have present : some (LateKey.ofView setup leaks who (execution.recall who)
+          (execution.observe (application setup leaks) who)) ∈ Set.range
+            fun agent : {agent : (onePacketN).InformationAgent (onePacketN).playedInformation //
+              ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+                (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
+                  agent} =>
+            agentLateKey setup leaks bounds (initialLaw setup) horizon scheduler agent.1 :=
+        ⟨⟨agent, keyed⟩, rfl⟩
+      unfold keyWeights
+      rw [dite_eq_left_of_eq_true (eq_true present)]
+      rfl
+    have mixture := freeKeyedMixture_of_keyed (key := agentLateKey setup leaks bounds
+      (initialLaw setup) horizon scheduler) (weights n)
+      (onePacketUnforced setup leaks bounds horizon scheduler scale scale_pos scale_le_one n)
+      (onePacketPrescribed setup leaks bounds horizon scheduler sequence scale scale_pos
+        scale_le_one n)
+      (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
+        scale_le_one (slots := slots) n) notFree keyed
+    rw [assembled n]
+    change (onePacketN).agentBehavior _ _ _ agent.1 agent.2.1 = _
+    rw [atAgent, mixture, weightsEq]
+    exact bind_lateComponent setup leaks bounds (initialLaw setup) horizon scheduler
+      (sequence n) _ (scale n) (scale_pos n).le (scale_le_one n) who _
+  · intro recorded
+    have notLate : ¬ LateDelivery setup leaks who (some (execution.recall who,
+        execution.observe (application setup leaks) who)) := by
+      rintro ⟨_, _, other, same, pending, _⟩
+      obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj same)
+      obtain ⟨otherTurn, _, _, unrecorded⟩ := pendingEvent_spec pending
+      have sameEvent : other = event := Option.some.inj (otherTurn.symm.trans turn)
+      subst sameEvent
+      rw [recorded] at unrecorded
+      cases unrecorded
+    have unkeyed : ¬ ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+        (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler) agent :=
+      fun keyed => notLate keyed.1
+    have mixture := freeKeyedMixture_of_not_keyed (key := agentLateKey setup leaks bounds
+      (initialLaw setup) horizon scheduler) (weights n)
+      (onePacketUnforced setup leaks bounds horizon scheduler scale scale_pos scale_le_one n)
+      (onePacketPrescribed setup leaks bounds horizon scheduler sequence scale scale_pos
+        scale_le_one n)
+      (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
+        scale_le_one (slots := slots) n) notFree unkeyed
+    refine ⟨_, Or.inl rfl, ?_⟩
+    rw [assembled n]
+    change (onePacketN).agentBehavior _ _ _ agent.1 agent.2.1 = _
+    rw [atAgent, mixture]
+    rfl
 
 open Classical in
 /-- **The open inputs of the one-packet certificate other than the value
