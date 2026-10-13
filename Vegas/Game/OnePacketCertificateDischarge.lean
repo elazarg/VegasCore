@@ -2212,6 +2212,57 @@ theorem certificate_strategyShape (sequence : ℕ → setup.intendedModel.Behavi
     rw [atAgent, mixture]
     rfl
 
+omit [Finite setup.intendedProtocol.History] in
+/-- **The site shape of the certificate at a late delivery.** At a late
+delivery of `who`, the profile installing a late option at the site and
+otherwise following a profile assembled from the certificate's components has
+the site shape, with the installed option at the site's key and the key weights
+elsewhere. -/
+theorem certificate_siteComponentShape
+    (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
+    (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
+    {slots : Nat}
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
+    (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
+    (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
+      scale_le_one weights targetSequence) (n : ℕ) {who : Player}
+    (site : (onePacketN).InformationSite who) (late : LateDelivery setup leaks who site.1)
+    {key : LateKey setup leaks} (siteKey : lateKey setup leaks who site.1 = some key)
+    (option : LateOption slots) :
+    SiteComponentShape (sequence n) (scale n) (scale_pos n).le (scale_le_one n)
+      (certificateOptions setup leaks bounds horizon scheduler (weights n) key option) key
+      (Profile.update (sig := (onePacketN).behavioralSignature) (targetSequence n).strategy who
+        (((targetSequence n).strategy who).withLaw site.1
+          (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
+            scale_le_one (slots := slots) n ((onePacketN).agentAt site) option)))
+      (SiteConsistent who site.1) := by
+  obtain ⟨past, view, pendingEvent', atSite, pending, entry, member, activatedAt⟩ := late
+  rw [atSite] at pending
+  have turn := (pendingEvent_spec pending).1
+  refine siteComponentShape_of_installed (sequence n) (scale n) (scale_pos n).le
+    (scale_le_one n) site siteKey option
+    (fun other => keyWeights setup leaks bounds horizon scheduler (weights n) (some other))
+    _ ((targetSequence n).strategy who) ?_ ?_ ?_ ?_
+  · rw [Profile.update_same, BehavioralPolicy.withLaw_self, PMF.pure_bind]
+    rfl
+  · intro info different
+    rw [Profile.update_same, BehavioralPolicy.withLaw_of_ne _ _ _ different]
+  · intro event decided
+    have keyTurn : key.current.1.ownTurn? key.owner = some event := by
+      rcases decided with publication | ⟨payload, binding⟩
+      · exact publication.1
+      · exact binding.1
+    rw [atSite] at siteKey
+    simp only [lateKey, Option.some.injEq] at siteKey
+    subst siteKey
+    have sameEvent : event = pendingEvent' := Option.some.inj (keyTurn.symm.trans turn)
+    subst sameEvent
+    exact ⟨entry, by rw [atSite]; exact member, activatedAt⟩
+  · intro history remaining execution event current forcedState ready activated
+    exact certificate_strategyShape setup leaks bounds horizon scheduler sequence scale scale_pos
+      scale_le_one weights targetSequence assembled n who history remaining execution event
+      current forcedState ready activated
+
 open Classical in
 /-- **The open inputs of the one-packet certificate other than the value
 decompositions** for one source sequence: the tremble scales and the
