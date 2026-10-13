@@ -15,6 +15,7 @@ import Vegas.Game.OnePacketPathwise
 import Vegas.Game.OnePacketLateLumping
 import Vegas.Game.OnePacketOperationalReads
 import Vegas.Game.OnePacketFailureBridge
+import Vegas.Game.OnePacketUnintendedCommitment
 
 /-! # Discharging inputs of the one-packet certificate
 
@@ -1036,6 +1037,57 @@ theorem owes_of_not_commitsAtTurn (wellFormed : setup.WellFormed)
   · exact (offTurn ⟨_, _, response, event, rfl, chosen, submitted, turn⟩).elim
   · exact ⟨rank, ⟨residual⟩, owes⟩
 
+/-- A site at which `who` owes no failure at the decoded point of any history. -/
+def SiteDebtFree {who : Player} (site : (onePacketN).InformationSite who) : Prop :=
+  ∀ history : (onePacketN).InformationHistory who site.1,
+    ∀ point, nativeDecodedState setup leaks history.1.state = some point →
+      ¬ ProtocolState.OwesFailure who setup.program point
+
+omit [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
+  [Finite setup.intendedProtocol.History]
+  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+      scheduler).InfoState who)] in
+/-- **Owing is uniform over a decision input.** At a decision input of `who`
+at which `who` owes a failure at the decoded point of some history, `who` owes
+one at the decoded point of every history. -/
+theorem owes_of_not_siteDebtFree (profile : BehavioralProfile setup.program) {who : Player}
+    (site : (onePacketN).InformationSite who) {past : List (application setup leaks).PlayerEntry}
+    {view : (application setup leaks).PlayerView} (atSite : site.1 = some (past, view))
+    (owing : ¬ SiteDebtFree setup leaks bounds horizon scheduler site)
+    (history : (onePacketN).InformationHistory who site.1) :
+    DecodedState setup leaks profile (ProtocolState.OwesFailure who setup.program)
+      history.1.state := by
+  obtain ⟨info, decision⟩ := site
+  change info = some (past, view) at atSite
+  subst atSite
+  unfold SiteDebtFree at owing
+  push Not at owing
+  obtain ⟨first, firstPoint, firstDecoded, firstOwes⟩ := owing
+  obtain ⟨full, infoEq⟩ := history
+  have observed : (application setup leaks).observe who full.state = some (past, view) :=
+    ((bounds.onePacketMenu (runtime setup) leaks).info (initialLaw setup) horizon scheduler who
+      full.trace).symm.trans infoEq
+  have fullTrace := full.trace
+  change DecodedState setup leaks profile _ full.state
+  cases state : full.state with
+  | none =>
+      rw [state] at observed
+      cases observed
+  | some control =>
+      rw [state] at fullTrace
+      obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual profile
+        (bounds.onePacketMenu (runtime setup) leaks) horizon scheduler fullTrace control rfl
+      have decoded : nativeDecodedState setup leaks full.state = some
+          (residual.lift (ProtocolState.entry residual.program residual.source)) := by
+        rw [state]
+        exact decodedPoint_eq residual
+      have owes := (owesFailure_iff_of_infoOf first ⟨full, infoEq⟩ firstDecoded decoded).mp
+        firstOwes
+      refine ⟨rank, ⟨residual⟩, fun point decodedPoint => ?_⟩
+      rw [residual.decode] at decodedPoint
+      cases Option.some.inj decodedPoint
+      exact owes
+
 /-- A forced site outside late deliveries with a choice committing a value at the
 player's own turn. -/
 def ValueChangingSite {who : Player} (site : (onePacketN).InformationSite who) : Prop :=
@@ -1880,6 +1932,76 @@ def projectedSite {who : Player} {info : (application setup leaks).Info}
     (decision : setup.intendedModel.IsDecisionInfo who (projectView setup leaks who info)) :
     setup.intendedModel.InformationSite who :=
   ⟨projectView setup leaks who info, decision⟩
+
+omit [Finite setup.intendedProtocol.History] in
+/-- **Unintended commitments are dominated by any law with a decomposed
+value.** For a well-formed setup, under a scheduler completing play, at a
+debt-free decision input of `who` showing its turn at `event`, a choice
+committing `event` without committing an intended value gains at most what a
+law gains, up to twice the error of that law's decomposition against a
+continuation value at least the exclusion payoff up to the error. -/
+theorem unintendedCommitment_gain_le (wellFormed : setup.WellFormed)
+    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
+    (assessment : (onePacketN).BehavioralAssessment) {who : Player}
+    (site : (onePacketN).InformationSite who) {past : List (application setup leaks).PlayerEntry}
+    {view : (application setup leaks).PlayerView} (atSite : site.1 = some (past, view))
+    {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? who = some event)
+    (choice : (onePacketN).Choice who site.1) {response : (application setup leaks).Action}
+    (chosen : choice.1 = some response) {material : (application setup leaks).Submission}
+    (sends : response.transmission = some material) {candidate : Handle (graph setup)}
+    (packet : material.call.packet = .commitment event candidate)
+    (debtFree : SiteDebtFree setup leaks bounds horizon scheduler site)
+    (unintended : ¬ IntendedCommitment setup leaks bounds horizon scheduler site choice)
+    (law : PMF ((onePacketN).Choice who site.1)) {continuation error : ℝ}
+    (low : excludedPayoff who ≤ continuation + error)
+    (near : |onePacketSiteSuccess setup leaks bounds horizon scheduler parameter utility
+        excludedPayoff assessment site law -
+      (1 - onePacketSiteFailure setup leaks bounds horizon scheduler assessment site law) *
+        continuation| ≤ error) :
+    onePacketSiteGain setup leaks bounds horizon scheduler parameter utility excludedPayoff
+        assessment site (PMF.pure choice) ≤
+      onePacketSiteGain setup leaks bounds horizon scheduler parameter utility excludedPayoff
+        assessment site law + 2 * error := by
+  have support := unintendedCommitment_localRun_support bounds horizon scheduler wellFormed
+    completes parameter utility excludedPayoff assessment site atSite turn choice chosen sends
+    packet debtFree unintended
+  have valueChoice : localValue (2 * horizon + 1)
+      (readoutExclusion setup leaks bounds (initialLaw setup) horizon scheduler parameter utility
+        excludedPayoff) (payoffComponent setup) assessment site (PMF.pure choice) =
+      excludedPayoff who := by
+    unfold localValue localLaw
+    rw [expect_map]
+    have constant := (expect_congr_on_support (g := fun _ => excludedPayoff who)
+      fun final reached => support final reached).trans (expect_constant _ _)
+    convert constant using 3
+    rfl
+  have valueLaw := localValue_eq_successValue_add (2 * horizon + 1)
+    (readoutExclusion setup leaks bounds (initialLaw setup) horizon scheduler parameter utility
+      excludedPayoff) (payoffComponent setup) assessment site
+    (onePacketFailed setup leaks bounds horizon scheduler ((onePacketN).agentAt site))
+    (excludedPayoff who)
+    (onePacketFailed_pays setup leaks bounds horizon scheduler parameter utility excludedPayoff
+      ((onePacketN).agentAt site)) law
+  have failureNonneg := localFailure_nonneg (2 * horizon + 1) assessment site
+    (onePacketFailed setup leaks bounds horizon scheduler ((onePacketN).agentAt site)) law
+  have failureLe := localFailure_le_one (2 * horizon + 1) assessment site
+    (onePacketFailed setup leaks bounds horizon scheduler ((onePacketN).agentAt site)) law
+  have nearBounds := abs_le.mp near
+  have errorNonneg : 0 ≤ error := (abs_nonneg _).trans near
+  unfold onePacketSiteSuccess onePacketSiteFailure at nearBounds
+  have scaled := mul_le_mul_of_nonneg_left (show excludedPayoff who - error ≤ continuation by
+    linarith) (show 0 ≤ 1 - localFailure (2 * horizon + 1) assessment site
+      (onePacketFailed setup leaks bounds horizon scheduler ((onePacketN).agentAt site)) law by
+    linarith)
+  have product := mul_nonneg failureNonneg errorNonneg
+  change localGain (2 * horizon + 1) (readoutExclusion setup leaks bounds (initialLaw setup)
+      horizon scheduler parameter utility excludedPayoff) (payoffComponent setup) assessment site
+      (PMF.pure choice) ≤
+    localGain (2 * horizon + 1) (readoutExclusion setup leaks bounds (initialLaw setup)
+      horizon scheduler parameter utility excludedPayoff) (payoffComponent setup) assessment site
+      law + 2 * error
+  rw [localGain_eq_sub, localGain_eq_sub, valueChoice, valueLaw]
+  nlinarith [nearBounds.1]
 
 open Classical in
 /-- **The open inputs of the one-packet certificate** for one source sequence:
