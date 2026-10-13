@@ -9,7 +9,18 @@ From a point intended for a player at which no reveal of the player has failed,
 a step in which the player discloses leaves no failed reveal of the player
 (`Vegas.SourceProgram.ProtocolState.not_revealFailed_step`). The source action
 decoded from a disclosure discloses
-(`Vegas.SourceProgram.decodeEventAction_disclosure_true`).
+(`Vegas.SourceProgram.decodeEventAction_disclosure_true`), and a point decoded
+past a reveal whose stored publication is a failure shows that reveal failed
+(`Vegas.SourceProgram.ProtocolState.revealFailed_of_decode_failure`).
+
+For a well-formed setup, along every history the configuration decodes to a
+point intended for a given player or at which it owes a failed reveal
+(`Vegas.decodedState_intendedFor_or_owes`). At a state forced for the observer,
+another player owes no failed reveal, so its point is intended for it; were its
+disclosure's resolution a failure, completing the reveal by disclosing would
+decode to a failed reveal of a disclosing player intended for, which cannot be.
+So every other player's canonical disclosure resolves
+(`Vegas.disclosureResolves_of_forced`).
 -/
 
 noncomputable section
@@ -178,3 +189,171 @@ theorem revealFailed_of_decode_failure {Field : Type} [DecidableEq Field]
 end ProtocolState
 
 end Vegas.SourceProgram
+
+namespace Vegas
+
+open SourceProgram
+
+open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
+  GameTheory.Math.Probability Interaction EventGraphRuntime
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {setup : Setup (Player := Player) (L := L)}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+
+/-- Being intended for a player or owing a failed reveal is closed under every
+source step. -/
+theorem intendedForOrOwes_stepClosed (who : Player) :
+    StepClosed setup (fun point => ProtocolState.IntendedFor who setup.program point ∨
+      ProtocolState.OwesFailure who setup.program point) :=
+  fun state joint target holds reached =>
+    ProtocolState.intendedForOrOwes_step who setup.program state joint target holds reached
+
+/-- **Intended for a player or owing along every history.** For a well-formed
+setup, along every history of a response menu of the default runtime, under any
+scheduler, the configuration decodes to a point intended for the player or at
+which the player owes a failed reveal. -/
+theorem decodedState_intendedFor_or_owes (wellFormed : setup.WellFormed) (who : Player)
+    (profile : BehavioralProfile setup.program)
+    (menu : (application setup leaks).ResponseMenu) (horizon : Nat)
+    (scheduler : (application setup leaks).Scheduler) :
+    ∀ {state} (_ : (menu.protocol (initialLaw setup) horizon scheduler).Trace state)
+      (control : (application setup leaks).Control), state = some control →
+      DecodedState setup leaks profile (fun point =>
+        ProtocolState.IntendedFor who setup.program point ∨
+          ProtocolState.OwesFailure who setup.program point) (some control) := by
+  intro state trace
+  induction trace with
+  | start => intro _ initialized; cases initialized
+  | @extend before after prior joint _ realized ih =>
+      intro control current
+      subst current
+      cases before with
+      | none =>
+          change some control ∈ ((initialLaw setup).map fun state =>
+            some ⟨horizon, none, ReactiveApplication.Execution.initial
+              (application setup leaks) state⟩).support at realized
+          obtain ⟨state, supported, same⟩ := PMF.support_map .. ▸ realized
+          cases Option.some.inj same
+          obtain ⟨initial, initialMem, rfl⟩ := PMF.support_map .. ▸ supported
+          let residual := SourceResidual.initial setup profile initial
+          refine ⟨0, ⟨residual⟩, fun point decoded => ?_⟩
+          change sourceServicePrefix? setup 0 (EventGraphRuntime.State.initial
+            (graph := graph setup) (setup.eventInputs initial)).config = some point at decoded
+          rw [residual.decode, Option.some.injEq] at decoded
+          subst decoded
+          exact Or.inl (ProtocolState.intendedFor_entry setup.program _
+            ((setup.initialConfig_intended wellFormed initialMem).intendedFor who))
+      | some previous =>
+          exact decodedHolds_transition (intendedForOrOwes_stepClosed who) (initialLaw setup)
+            horizon scheduler (some previous) (some control) joint (ih previous rfl) realized
+
+variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {scheduler : (application setup leaks).Scheduler}
+
+/-- **Disclosures resolve at states forced for the observer.** For a
+well-formed setup, along every history of the one-packet game at a state forced
+for the observer, every other player's canonical disclosure at its pending
+reveal transmits: the player owes no failed reveal, so the decoded point is
+intended for it, and its disclosure there publishes a value. -/
+theorem disclosureResolves_of_forced (wellFormed : setup.WellFormed)
+    {control : (application setup leaks).Control}
+    (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control))
+    (who actor : Player) (forced : ForcedState setup leaks who (some control))
+    (other : actor ≠ who) :
+    DisclosureResolves setup leaks actor (control.execution.recall actor)
+      (control.execution.observe (application setup leaks) actor) := by
+  intro event pending owner payload binding checks outputEq codeEq node
+  obtain ⟨turn, _, owned, _⟩ := pendingEvent_spec (setup := setup) pending
+  have ownerEq : owner = actor :=
+    Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
+  subst ownerEq
+  have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some control) :=
+    (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon scheduler
+      trace
+  have facts := legalFacts setup leaks horizon scheduler control rawTrace
+  have ready : control.execution.application.config.cut.Ready event :=
+    (control.execution.application.publicView_eventReady event).mp
+      (PublicView.ownTurn?_spec _ owner event turn).1
+  have available : (EventGraph.EventCode.resolveOutput? binding checks true
+      control.execution.application.config.store).isSome = true := by
+    apply EventGraph.EventCode.resolveOutput?_isSome
+    intro field member
+    apply control.execution.application.config.read_available ready
+    rw [← EventGraph.EventCode.readFields_cast outputEq ((graph setup).nodes event), codeEq]
+    exact member
+  obtain ⟨result, resolved⟩ := Option.isSome_iff_exists.mp available
+  have discloses : (cast (congrArg EventGraph.EventField.Action outputEq)
+      (cast (congrArg EventGraph.EventField.Action outputEq.symm) true) : Bool) = true := by
+    simp
+  cases result with
+  | success value =>
+      obtain ⟨_, _, _, _, packet⟩ := EventGraphRuntime.reactiveResolutionPacket_provenance
+        (runtime setup) leaks control.execution.application facts.binding owner event payload
+        binding checks outputEq _ discloses value resolved
+      simp only [EventGraphRuntime.canonicalServiceDecision,
+        EventGraphRuntime.canonicalReactiveDecision, node]
+      change ((EventGraphRuntime.reactiveNormalization (runtime setup) leaks).action owner
+        (control.execution.recall owner) (control.execution.observe (application setup leaks)
+          owner)
+        ⟨(EventGraphRuntime.reactiveResolutionPacket owner event payload binding checks
+          outputEq _ ((runtime setup).reactiveApplication leaks |>.observePlayer
+            control.execution.application owner)).map fun packet =>
+          (disclosureSubmission packet).normalizeReactive owner
+            ((runtime setup).reactiveApplication leaks |>.observePlayer
+              control.execution.application owner) []⟩).transmission ≠ none
+      rw [packet]
+      simp only [Option.map_some, ReactiveApplication.SubmissionNormalization.action, ne_eq,
+        reduceCtorEq, not_false_eq_true]
+  | failure =>
+      exfalso
+      -- The decoded point is intended for the actor and shows no failed reveal of it.
+      obtain ⟨rank, ⟨residual⟩, holds⟩ := decodedState_intendedFor_or_owes wellFormed owner
+        (failureProfile setup.program) _ horizon scheduler trace
+        control rfl
+      obtain ⟨forcedRank, point, ordered, decoded, forcedPoint⟩ := forced
+      have sameRank := isPrefix_unique ordered residual.checkpoint.ordered
+      subst sameRank
+      have pointEq : residual.lift (ProtocolState.entry residual.program residual.source) =
+          point := Option.some.inj (residual.decode.symm.trans decoded)
+      obtain ⟨notExcluded, notOwed⟩ := forcedPoint.2 owner other
+      have intended : ProtocolState.IntendedFor owner setup.program point := by
+        rcases holds _ decoded with intended | owed
+        · exact intended
+        · exact (notOwed owed).elim
+      have clean : ¬ ProtocolState.RevealFailed owner setup.program point := fun failed =>
+        notExcluded (ProtocolState.RevealFailed.excluded setup.program _ failed)
+      -- Complete the reveal by disclosing: its output is a failure.
+      have stepEq := control.execution.application.config.step_eq_map_of_code event ready
+        outputEq _ codeEq true (PMF.pure .failure)
+        (by rw [EventGraph.EventCode.resolve_eval?, resolved]; rfl)
+      rw [PMF.pure_map] at stepEq
+      have member : control.execution.application.config.complete event ready
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
+          (cast (congrArg EventGraph.EventField.Value outputEq.symm)
+            (PublicationResult.failure : PublicationResult (L.Val payload))) ∈
+          (control.execution.application.config.step event ready
+            (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)).support := by
+        rw [stepEq]
+        exact (PMF.mem_support_pure_iff _ _).mpr rfl
+      obtain ⟨next, reached⟩ := residual.step event ready _ _ member
+      rw [pointEq] at reached
+      have atRank := (ready_iff_rank setup _ forcedRank ordered event).mp ready
+      subst atRank
+      have nextDecoded := next.decode
+      unfold sourceServicePrefix? serviceSourcePrefix? at nextDecoded
+      have failedNext := ProtocolState.revealFailed_of_decode_failure setup.program event.val
+        (ContextRefs.initial setup.context (outputLayout setup.program)) []
+        (Revelations.initial setup.context) (outputRef setup.program) _ _ _ event.isLt owner
+        payload outputEq nextDecoded ((eventOwner?_eq_actor setup.program event).trans owned)
+        (by
+          change (control.execution.application.config.complete event ready _ _).outputs
+            event = _
+          rw [EventGraph.Config.complete_output_same])
+      exact ProtocolState.not_revealFailed_step owner setup.program _ _ _ intended clean
+        (decodeEventAction_disclosure_true setup.program event.val event.isLt outputEq)
+        reached failedNext
+
+end Vegas
