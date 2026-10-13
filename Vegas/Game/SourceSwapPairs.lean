@@ -367,3 +367,186 @@ theorem outputsCorr_between :
 end Correspondence
 
 end Vegas
+
+namespace Vegas.SourceProgram
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+
+/-- A binding event decodes to the commitment of its cell's name. -/
+theorem decodeEventAction_binding_cell {Γ : SourceCtx Player L} {O : Finset VarId}
+    (program : SourceProgram Player L Γ O) :
+    ∀ (count : Nat) (bound : count < eventCount program) {owner : Player} {payload : L.Ty}
+      (outputEq : outputLayout program ⟨count, bound⟩ = .binding owner payload)
+      (choice : PublicationResult (L.Val payload)),
+      decodeEventAction program ⟨count, bound⟩
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice) =
+        some (.commit owner (eventCell program ⟨count, bound⟩).1 payload choice) := by
+  induction program with
+  | ret _ =>
+      intro count bound
+      simp [eventCount] at bound
+  | sample _ _ _ next ih =>
+      intro count bound owner payload outputEq
+      cases count with
+      | zero => cases outputEq
+      | succ count => exact ih count (Nat.lt_of_succ_lt_succ bound) outputEq
+  | commit name commitOwner fresh guard next ih =>
+      intro count bound owner payload outputEq
+      cases count with
+      | zero =>
+          change EventGraph.EventField.binding commitOwner _ = _ at outputEq
+          obtain ⟨rfl, rfl⟩ := EventGraph.EventField.binding.inj outputEq
+          intro choice
+          rfl
+      | succ count => exact ih count (Nat.lt_of_succ_lt_succ bound) outputEq
+  | reveal published revealOwner name fresh source unresolved next ih =>
+      intro count bound owner payload outputEq
+      cases count with
+      | zero => cases outputEq
+      | succ count => exact ih count (Nat.lt_of_succ_lt_succ bound) outputEq
+
+/-- A non-binding event decodes to no commitment, so every cell swap fixes its
+decoded action. -/
+theorem decodeEventAction_swap_of_not_binding (swap : CellSwap Player L)
+    {Γ : SourceCtx Player L} {O : Finset VarId} (program : SourceProgram Player L Γ O) :
+    ∀ (count : Nat) (bound : count < eventCount program)
+      (_ : ∀ owner payload, outputLayout program ⟨count, bound⟩ ≠ .binding owner payload)
+      (action : EventGraph.EventField.Action (outputLayout program ⟨count, bound⟩)),
+      (decodeEventAction program ⟨count, bound⟩ action).map swap.action =
+        decodeEventAction program ⟨count, bound⟩ action := by
+  induction program with
+  | ret _ =>
+      intro count bound
+      simp [eventCount] at bound
+  | sample _ _ _ next ih =>
+      intro count bound notBinding action
+      cases count with
+      | zero => rfl
+      | succ count => exact ih count (Nat.lt_of_succ_lt_succ bound) notBinding action
+  | commit name commitOwner fresh guard next ih =>
+      intro count bound notBinding action
+      cases count with
+      | zero => exact (notBinding commitOwner _ rfl).elim
+      | succ count => exact ih count (Nat.lt_of_succ_lt_succ bound) notBinding action
+  | reveal published revealOwner name fresh source unresolved next ih =>
+      intro count bound notBinding action
+      cases count with
+      | zero => rfl
+      | succ count => exact ih count (Nat.lt_of_succ_lt_succ bound) notBinding action
+
+end Vegas.SourceProgram
+
+namespace Vegas
+
+open SourceProgram EventGraphRuntime
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+
+omit [DecidableEq Player] in
+theorem EventGraph.SwapPairs.action_of_not_binding {graph : Vegas.EventGraph Player L}
+    (pairs : graph.SwapPairs) (event : graph.EventId)
+    (notBinding : ∀ owner payload, graph.outputLayout event ≠ .binding owner payload) :
+    pairs.action event = id := by
+  unfold EventGraph.SwapPairs.action
+  cases view : nodeView graph event with
+  | bind owner payload outputEq _ => exact (notBinding owner payload outputEq).elim
+  | resolve | sample => rfl
+
+variable {setup : Setup (Player := Player) (L := L)} [DecidableEq (CellTy Player L)]
+  {first second : ProtocolState setup.program}
+  {publicAgree : PublicCellsAgree setup first second}
+  {succeed : CommitmentCellsSucceed setup first second}
+
+/-- **A swapped event decodes to the swapped action.** -/
+theorem decodeEventAction_betweenPairs (event : (graph setup).EventId)
+    (action : (graph setup).Action event) :
+    decodeEventAction setup.program event
+        ((EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed)).action event action) =
+      (decodeEventAction setup.program event action).map
+        (CellSwap.between setup.program first second).action := by
+  rcases event with ⟨count, bound⟩
+  by_cases binding : ∃ owner payload, (graph setup).outputLayout ⟨count, bound⟩ =
+      .binding owner payload
+  · obtain ⟨owner, payload, outputEq⟩ := binding
+    obtain ⟨choice, rfl⟩ : ∃ choice : PublicationResult (L.Val payload),
+        action = cast (congrArg EventGraph.EventField.Action outputEq.symm) choice :=
+      ⟨cast (congrArg EventGraph.EventField.Action outputEq) action, by simp⟩
+    have cellKind : (eventCell setup.program ⟨count, bound⟩).2 = .commitment owner payload := by
+      have layoutEq := (outputLayout_eventCell setup.program ⟨count, bound⟩).symm.trans outputEq
+      revert layoutEq
+      rcases (eventCell setup.program ⟨count, bound⟩).2 with _ | _ | _ | _
+      all_goals intro layoutEq
+      all_goals cases layoutEq
+      rfl
+    have cell : fieldCell setup (.inr ⟨count, bound⟩) =
+        ((eventCell setup.program ⟨count, bound⟩).1, .commitment owner payload) := by
+      change eventCell setup.program ⟨count, bound⟩ = _
+      rw [← cellKind]
+    have key : cast (congrArg EventGraph.EventField.Value outputEq)
+        (EventGraph.pairSwap (betweenPair setup first second (.inr ⟨count, bound⟩))
+          (cast (congrArg EventGraph.EventField.Value outputEq.symm) choice)) =
+        (CellSwap.between setup.program first second).cell
+          (eventCell setup.program ⟨count, bound⟩).1 (.commitment owner payload) choice := by
+      have swapped := pairSwap_betweenPair (first := first) (second := second) cell outputEq
+        (cast (congrArg EventGraph.EventField.Value outputEq.symm) choice)
+      rw [cast_cast, cast_eq] at swapped
+      exact swapped
+    change decodeEventAction setup.program ⟨count, bound⟩
+        ((betweenPairs publicAgree succeed).action ⟨count, bound⟩
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice)) = _
+    rw [EventGraph.SwapPairs.action_binding _ _ owner payload outputEq choice]
+    change decodeEventAction setup.program ⟨count, bound⟩
+        (cast (congrArg EventGraph.EventField.Action outputEq.symm)
+          (cast (congrArg EventGraph.EventField.Value outputEq)
+            (EventGraph.pairSwap (betweenPair setup first second (.inr ⟨count, bound⟩))
+              (cast (congrArg EventGraph.EventField.Value outputEq.symm) choice)))) = _
+    rw [key, decodeEventAction_binding_cell setup.program count bound outputEq,
+      decodeEventAction_binding_cell setup.program count bound outputEq]
+    rfl
+  · have notBinding : ∀ owner payload,
+        (graph setup).outputLayout ⟨count, bound⟩ ≠ .binding owner payload :=
+      fun owner payload same => binding ⟨owner, payload, same⟩
+    change decodeEventAction setup.program ⟨count, bound⟩
+      ((betweenPairs publicAgree succeed).action ⟨count, bound⟩ action) = _
+    rw [EventGraph.SwapPairs.action_of_not_binding _ _ notBinding, id_eq,
+      decodeEventAction_swap_of_not_binding _ setup.program count bound notBinding]
+
+end Vegas
+
+namespace Vegas
+
+open SourceProgram EventGraphRuntime
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {setup : Setup (Player := Player) (L := L)} [DecidableEq (CellTy Player L)]
+  {first second : ProtocolState setup.program}
+  {publicAgree : PublicCellsAgree setup first second}
+  {succeed : CommitmentCellsSucceed setup first second}
+
+/-- **Swapped completions decode to swapped action lists.** -/
+theorem decodeHistory_betweenPairs (completions : List (graph setup).Completion) :
+    decodeHistory setup.program ((completions.map
+        (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed)).completion).map
+          (setup.eventGraph.fromModeCompletion .sequential)) =
+      (CellSwap.between setup.program first second).history
+        (decodeHistory setup.program
+          (completions.map (setup.eventGraph.fromModeCompletion .sequential))) := by
+  funext who
+  simp only [decodeHistory, CellSwap.history, decodeCompletions, EventGraph.ownCompletions,
+    List.map_map, List.filter_map, List.filterMap_map, List.map_filterMap]
+  congr 1
+  · funext completion
+    exact decodeEventAction_betweenPairs completion.event completion.action
+
+/-- **Reading a swapped configuration reads the swapped point.** -/
+theorem sourceServicePrefix?_betweenPairs (rank : Nat) (config : (graph setup).Config) :
+    sourceServicePrefix? setup rank (config.swap (EventGraph.ValueSwap.ofPairs
+        (betweenPairs publicAgree succeed))) =
+      (sourceServicePrefix? setup rank config).map
+        ((CellSwap.between setup.program first second).protocolState setup.program) := by
+  unfold sourceServicePrefix? serviceSourcePrefix?
+  rw [EventGraph.Config.swap_store, EventGraph.Config.swap_history, decodeHistory_betweenPairs]
+  exact decodeSourcePrefix?_swap _ _ rank setup.program _ [] _ _ refsCorr_initial_between
+    outputsCorr_between config.store _
+
+end Vegas
