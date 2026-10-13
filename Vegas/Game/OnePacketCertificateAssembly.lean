@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketLateDecomposition
+import Vegas.Game.OnePacketLateCommitments
 
 /-! # Assembling the one-packet certificate from value blindness
 
@@ -8,7 +9,9 @@ The value decompositions of the one-packet certificate follow from the bounds on
 the utility, the exclusion payoff at most every intended outcome, a gap bound,
 and value blindness of the completion value at forced sites
 (`Vegas.onePacket_lateDecomposition`, `Vegas.onePacket_nonLateDecomposition`).
-So the other open inputs with these hypotheses give the open inputs
+Late commitments of intended values follow from value-blind late options and
+value-blind late commitments (`Vegas.OnePacketBaseInputs.lateCommitments_of_blind`).
+So the base inputs with these hypotheses give the open inputs
 (`Vegas.OnePacketBlindInputs.toOpenInputs`) and sequential equilibrium of the
 one-packet game and of the bounded raw runtime with the intended joint law
 (`Vegas.onePacket_intended_sequentialEquilibrium_of_blindInputs`,
@@ -43,13 +46,13 @@ local notation "onePacketN" =>
   onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
 
 open Classical in
-/-- **The open inputs by value blindness.** The open inputs other than the value
-decompositions, a gap bound above the spread of the utility over the exclusion
-payoff, and value blindness of the completion value at forced late deliveries
-and at the other forced sites. -/
+/-- **The open inputs by value blindness.** The base inputs, a gap bound above
+the spread of the utility over the exclusion payoff, late options covering the
+bounded slots, value blindness of the completion value at forced late
+deliveries and at the other forced sites, and value-blind late commitments. -/
 structure OnePacketBlindInputs (upperUtility : Player → ℝ)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment) (slots : Nat) extends
-    OnePacketCoreInputs setup leaks bounds horizon scheduler parameter utility excludedPayoff
+    OnePacketBaseInputs setup leaks bounds horizon scheduler parameter utility excludedPayoff
       sequence slots where
   /-- The gap bound is at least the spread of the utility over the exclusion
   payoff. -/
@@ -89,6 +92,20 @@ structure OnePacketBlindInputs (upperUtility : Player → ℝ)
               siteValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
                 (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site| ≤
               blindError n
+  /-- The late options cover the bounded prepared slots. -/
+  slotsCover : bounds.candidateCount ≤ slots
+  /-- **Value-blind late commitments.** -/
+  lateCommitBlind : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler
+        slots p)) (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
+      OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
+        scale_le_one weights targetSequence →
+      (∀ n, (targetSequence n).IsFullyMixed) →
+      (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
+        ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
+          (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
+      ∃ blindError : ℕ → ℝ, Tendsto blindError atTop (nhds 0) ∧
+        LateCommitBlind setup leaks bounds horizon scheduler parameter utility excludedPayoff
+          sequence scale scale_pos scale_le_one (slots := slots) targetSequence blindError
   /-- **Value blindness away from late deliveries.** -/
   nonLateValueBlind : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler
         slots p)) (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
@@ -142,10 +159,22 @@ def OnePacketBlindInputs.toOpenInputs {lowerUtility upperUtility : Player → �
     (le_upper : ∀ outcome who, utility outcome who ≤ upperUtility who)
     (below : ∀ (final : setup.intendedProtocol.History) terminal,
       setup.protocolReadout final.state = some terminal →
-        ∀ who, excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who) :
+        ∀ who, excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who)
+    (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
+    (sourceBayes : ∀ n, BehavioralAssessment.IsBayesConsistent setup.intendedModel (sequence n)
+      setup.intended_decision_antichain) :
     OnePacketOpenInputs setup leaks bounds horizon scheduler parameter utility excludedPayoff
       sequence slots where
-  toOnePacketCoreInputs := inputs.toOnePacketCoreInputs
+  toOnePacketBaseInputs := inputs.toOnePacketBaseInputs
+  lateCommitments := inputs.toOnePacketBaseInputs.lateCommitments_of_blind setup leaks bounds
+    horizon scheduler parameter utility excludedPayoff wellFormed contract timely retains
+    lowerUtility upperUtility lower_le le_upper sourceMixed sourceBayes inputs.slotsCover
+    (fun weights targetSequence assembled mixed bayes => by
+      obtain ⟨blindError, blindLimit, blind⟩ :=
+        inputs.lateValueBlind weights targetSequence assembled mixed bayes
+      exact ⟨blindError, blindLimit, fun n who site forced keyed =>
+        (blind n who site forced keyed).2⟩)
+    inputs.lateCommitBlind
   lateDecomposition := onePacket_lateDecomposition setup leaks bounds horizon scheduler parameter
     utility excludedPayoff wellFormed contract timely retains lowerUtility upperUtility lower_le
     le_upper sequence below inputs.scale inputs.scale_pos inputs.scale_le_one
@@ -211,7 +240,7 @@ theorem onePacket_intended_sequentialEquilibrium_of_blindInputs (wellFormed : se
     fun sequence mixed bayes converges =>
       (inputs sequence mixed bayes converges).toOpenInputs setup leaks bounds horizon scheduler
         parameter utility excludedPayoff wellFormed contract timely retains lower_le le_upper
-        below
+        below mixed bayes
 
 /-- **Sequential equilibrium of the bounded raw runtime from value blindness.**
 Under the hypotheses of
@@ -281,7 +310,7 @@ theorem onePacket_intended_raw_sequentialEquilibrium_of_blindInputs
     (fun sequence mixed bayes converges =>
       (inputs sequence mixed bayes converges).toOpenInputs setup leaks bounds horizon scheduler
         parameter utility excludedPayoff wellFormed contract timely retains lower_le le_upper
-        below)
+        below mixed bayes)
     service observationRate deliveryRate delivery_nonnegative coverage lowerUtility upperUtility
     lower_le le_upper deposit deposit_nonnegative sufficient
 
