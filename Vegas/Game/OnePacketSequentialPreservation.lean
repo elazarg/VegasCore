@@ -4,6 +4,8 @@ import Vegas.Game.OnePacketExtension
 import Vegas.Game.OnePacketLawApproximation
 import Vegas.Game.OnePacketExclusionPayoff
 import GameTheoryExtensions.Analysis.Protocol.CopiedSiteLimit
+import GameTheoryExtensions.Analysis.Protocol.FreeKeyedPools
+import Vegas.Game.OnePacketDelivery
 
 /-! # Sequential preservation for the one-packet game
 
@@ -39,7 +41,8 @@ namespace Vegas
 open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-  GameTheory.Math.Probability GameTheory.Enforcement Interaction EventGraphRuntime
+  GameTheory.Protocol.InformationModel GameTheory.Math.Probability GameTheory.Enforcement
+  Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
@@ -201,5 +204,88 @@ theorem onePacket_intended_raw_sequentialEquilibrium (wellFormed : setup.WellFor
     sourceReadout_normalization] at pairs
   rw [pairs, ← law]
   rfl
+
+section Components
+
+local notation "onePacketN" =>
+  onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
+
+variable [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+  scheduler).InfoState who)]
+
+/-- The agents of the one-packet game outside the forced region. -/
+def UnforcedAgent (agent : (onePacketN).InformationAgent (onePacketN).playedInformation) : Prop :=
+  ¬ forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
+    scheduler agent.1 agent.2.1
+
+/-- **The pools of the one-packet certificate.** An unforced agent sits alone,
+choosing among its choices; forced late deliveries sharing a late-delivery key
+form a pool with the late options as parts; every other agent sits in one pool
+with one part. -/
+abbrev onePacketPool :=
+  freeKeyedPool (UnforcedAgent setup leaks bounds horizon scheduler)
+    (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
+    (agentLateKey setup leaks bounds (initialLaw setup) horizon scheduler)
+
+/-- The parts of the pools of the one-packet certificate. -/
+abbrev OnePacketPart (slots : Nat) :=
+  FreeKeyedPart (UnforcedAgent setup leaks bounds horizon scheduler)
+    (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
+    (agentLateKey setup leaks bounds (initialLaw setup) horizon scheduler) (LateOption slots)
+
+/-- The free law of an unforced agent's choice: the choice trembled toward the
+uniform law over its menu with weight `scale`. -/
+def unforcedLaw (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
+    (agent : (onePacketN).InformationAgent (onePacketN).playedInformation)
+    (choice : (onePacketN).Choice agent.1 agent.2.1) :
+    PMF ((onePacketN).Choice agent.1 agent.2.1) :=
+  mix scale nonnegative le_one
+    ((bounds.onePacketMenu (runtime setup) leaks).uniformPolicy (initialLaw setup) horizon
+      scheduler agent.1 agent.2.1) (PMF.pure choice)
+
+/-- **The components of the one-packet certificate.** Unforced agents tremble
+each choice; forced late deliveries play the late component of each option;
+every other agent plays the slot-trembled prescribed component, all with the
+intended assessment `assessment` and the tremble scale `scale`. -/
+def onePacketComponent (assessment : setup.intendedModel.BehavioralAssessment) {slots : Nat}
+    (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
+    (agent : (onePacketN).InformationAgent (onePacketN).playedInformation) :
+    OnePacketPart setup leaks bounds horizon scheduler slots
+        (onePacketPool setup leaks bounds horizon scheduler agent) →
+      PMF ((onePacketN).Choice agent.1 agent.2.1) :=
+  freeKeyedComponent (unforcedLaw setup leaks bounds horizon scheduler scale nonnegative le_one)
+    (fun agent => slotPrescribedComponent setup leaks bounds (initialLaw setup) horizon scheduler
+      assessment scale nonnegative le_one agent.1 agent.2.1)
+    (fun agent option => lateComponent setup leaks bounds (initialLaw setup) horizon scheduler
+      assessment scale nonnegative le_one agent.1 agent.2.1 option) agent
+
+omit [Finite setup.intendedProtocol.History] in
+theorem unforcedLaw_fullSupport {scale : ℝ} (positive : 0 < scale) (le_one : scale ≤ 1)
+    (agent : (onePacketN).InformationAgent (onePacketN).playedInformation)
+    (choice : (onePacketN).Choice agent.1 agent.2.1) :
+    FullSupport (unforcedLaw setup leaks bounds horizon scheduler scale positive.le le_one agent
+      choice) := by
+  intro other
+  let := Fintype.ofFinite ((onePacketN).Choice agent.1 agent.2.1)
+  exact mem_support_mix_left _ _ _ positive (PMF.mem_support_uniformOfFintype other)
+
+omit [Finite setup.intendedProtocol.History] in
+theorem onePacketComponent_fullSupport (assessment : setup.intendedModel.BehavioralAssessment)
+    {slots : Nat} {scale : ℝ} (positive : 0 < scale) (le_one : scale ≤ 1)
+    (agent : (onePacketN).InformationAgent (onePacketN).playedInformation)
+    (part : OnePacketPart setup leaks bounds horizon scheduler slots
+      (onePacketPool setup leaks bounds horizon scheduler agent)) :
+    FullSupport (onePacketComponent setup leaks bounds horizon scheduler assessment scale
+      positive.le le_one agent part) :=
+  freeKeyedComponent_fullSupport _ _ _
+    (unforcedLaw_fullSupport setup leaks bounds horizon scheduler positive le_one)
+    (fun agent => by
+      unfold slotPrescribedComponent
+      exact slotTrembledChoice_fullSupport setup leaks bounds (initialLaw setup) horizon
+        scheduler positive le_one agent.1 agent.2.1 _ _ _)
+    (fun agent option => lateComponent_fullSupport setup leaks bounds (initialLaw setup) horizon
+      scheduler assessment positive le_one agent.1 agent.2.1 option) agent part
+
+end Components
 
 end Vegas
