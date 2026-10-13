@@ -60,6 +60,7 @@ import Vegas.Game.OnePacketEnvironmentSteps
 import Vegas.Game.OnePacketComponentSteps
 import Vegas.Game.OnePacketFreshSlots
 import Vegas.Game.OnePacketActorRecord
+import Vegas.Game.OnePacketKeyedRecords
 import Vegas.Game.OnePacketDelivery
 import Vegas.Game.OnePacketLawApproximation
 import Vegas.Game.CompiledPolicyView

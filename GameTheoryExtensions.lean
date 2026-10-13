@@ -62,6 +62,7 @@ import GameTheoryExtensions.Math.Probability.PresentConditional
 import GameTheoryExtensions.Math.Probability.PriorityChoice
 import GameTheoryExtensions.Math.Probability.ProductTransport
 import GameTheoryExtensions.Math.Probability.ApproximateLumping
+import GameTheoryExtensions.Math.Probability.SwapTransport
 import GameTheoryExtensions.Math.Probability.Regularity
 import GameTheoryExtensions.Math.Probability.Regret
 import GameTheoryExtensions.Math.Probability.SiteDraw
