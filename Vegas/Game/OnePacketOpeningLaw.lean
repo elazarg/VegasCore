@@ -382,4 +382,81 @@ theorem lateChoice_reveal (assessment : setup.intendedModel.BehavioralAssessment
     simp only [node, Function.const_apply]
   rw [constant, PMF.map_const]
 
+/-- The part of a slot-trembled late component outside its uniform tier. -/
+def lateCore (assessment : setup.intendedModel.BehavioralAssessment) (scale : ℝ)
+    (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) {slots : Nat}
+    (options : PMF (LateOption slots)) (who : Player) (info : (application setup leaks).Info) :
+    PMF ((onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).Choice who
+      info) :=
+  mix (scale ^ 2) (sq_nonneg _) (pow_le_one₀ nonnegative le_one)
+    (slotChoice setup leaks bounds (initialLaw setup) horizon scheduler assessment who info)
+    (mix scale nonnegative le_one
+      (PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler who info))
+      (options.bind (lateChoice setup leaks bounds (initialLaw setup) horizon scheduler
+        assessment who info)))
+
+/-- Whether a one-packet choice keeps silence. -/
+def choiceSilent {who : Player} {info : (application setup leaks).Info}
+    (choice : (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).Choice who
+      info) : Bool :=
+  decide ((choice.1.getD ⟨none⟩).transmission = none)
+
+omit [Fintype Player] in
+/-- The silence law of a late component outside its uniform tier, given whether
+the disclosure keeps silence. -/
+def openingSilence (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) {slots : Nat}
+    (options : PMF (LateOption slots)) (disclosureSilent : Bool) : PMF Bool :=
+  mix (scale ^ 2) (sq_nonneg _) (pow_le_one₀ nonnegative le_one) (PMF.pure disclosureSilent)
+    (mix scale nonnegative le_one (PMF.pure true)
+      (options.map fun option => option.isNone || disclosureSilent))
+
+/-- **The silence of a late component at a reveal.** Along every history of the
+one-packet game, at a reveal of the player's turn, the core of a late component
+keeps silence with the law of its options and whether the disclosure keeps
+silence. -/
+theorem lateCore_silence {control : (application setup leaks).Control}
+    (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control))
+    (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
+    (event : (graph setup).EventId)
+    (turn : control.execution.application.publicView.ownTurn? who = some event)
+    {owner : Player} {payload : L.Ty}
+    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
+    {outputEq : (graph setup).outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .resolve owner payload binding checks}
+    (node : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
+    (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) {slots : Nat}
+    (options : PMF (LateOption slots)) :
+    (lateCore (bounds := bounds) (horizon := horizon) (scheduler := scheduler) assessment scale
+        nonnegative le_one options who (some (control.execution.recall who,
+          control.execution.observe (application setup leaks) who))).map choiceSilent =
+      openingSilence scale nonnegative le_one options
+        (choiceSilent (responseChoice setup leaks bounds (initialLaw setup) horizon scheduler who
+          (some (control.execution.recall who,
+            control.execution.observe (application setup leaks) who))
+          ((runtime setup).canonicalServiceDecision leaks who (control.execution.recall who)
+            (control.execution.observe (application setup leaks) who) event
+            (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)))) := by
+  have silenceFlag : choiceSilent (silenceChoice setup leaks bounds (initialLaw setup) horizon
+      scheduler who (some (control.execution.recall who,
+        control.execution.observe (application setup leaks) who))) = true := by
+    unfold choiceSilent
+    rw [silenceChoice_val who _ rfl]
+    rfl
+  unfold lateCore openingSilence
+  rw [mix_map, mix_map, onePacket_slotChoice_reveal assessment trace who event turn node,
+    PMF.pure_map, PMF.pure_map, silenceFlag, PMF.map_bind, ← PMF.bind_pure_comp]
+  congr 2
+  congr 1
+  funext option
+  cases option with
+  | none =>
+      rw [lateChoice_none, PMF.pure_map, silenceFlag]
+      rfl
+  | some slot =>
+      rw [lateChoice_reveal assessment trace who event turn node slot, PMF.pure_map]
+      rfl
+
 end Vegas
