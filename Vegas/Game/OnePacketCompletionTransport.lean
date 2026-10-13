@@ -177,4 +177,116 @@ theorem abs_expect_stoppedValue_sub_le_of_completionPointLaw
     _ ≤ error * bound + bound * error := add_le_add pointPart restAbs
     _ = 2 * error * bound := by ring
 
+open Classical in
+/-- **The value of play from a history by its completion-point law.** For a
+well-formed setup under the asynchronous contract with timely delays and
+retention of first covered canonical packets, at a history of a decision of who
+in an assembled profile, with a law installed at an information state info,
+whose configuration is a prefix of the rank of info: if the completion-point
+law from the history has success one, step law stepLaw and error error, the
+expected exclusion payoff of who under truncated play is within the transport
+error plus twice error times the payoff range of the expected source
+continuation value of the intended effective opening under stepLaw. -/
+theorem abs_expect_historyRun_sub_le_of_completionPointLaw (wellFormed : setup.WellFormed)
+    {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
+      bound)
+    (timely : AsyncTimely (runtime setup) delay bound)
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound)
+    (lowerUtility upperUtility : Player → ℝ)
+    (lower_le : ∀ outcome who, lowerUtility who ≤ utility outcome who)
+    (le_upper : ∀ outcome who, utility outcome who ≤ upperUtility who)
+    (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
+    (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
+    {slots : Nat}
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
+    (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
+    (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
+      scale_le_one weights targetSequence)
+    (n : ℕ) {who : Player} (info : (application setup leaks).Info) (decision : info.isSome)
+    (law : PMF ((onePacketN).Choice who info))
+    (start : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+      scheduler).History) {remaining : Nat} {execution : (application setup leaks).Execution}
+    (startState : start.state = some ⟨remaining, some who, execution⟩)
+    (ordered : execution.application.config.cut.IsPrefix (siteRank info))
+    (fresh : (application setup leaks).Control → Prop) (stepLaw : PMF (ProtocolState setup.program))
+    {error : ℝ}
+    (pointLaw : CompletionPointLaw setup leaks bounds horizon scheduler
+      (Profile.update (sig := (onePacketN).behavioralSignature) (targetSequence n).strategy who
+        (((targetSequence n).strategy who).withLaw info law))
+      (siteRank info) fresh start 1 stepLaw error) :
+    |expect (((onePacketN).runBehavioralFrom
+        (Profile.update (sig := (onePacketN).behavioralSignature) (targetSequence n).strategy who
+          (((targetSequence n).strategy who).withLaw info law)) (2 * horizon + 1) start).map
+        (readoutExclusion setup leaks bounds (initialLaw setup) horizon scheduler parameter utility
+          excludedPayoff)) (payoffComponent setup · who) -
+      expect stepLaw (sourcePointValue setup parameter utility excludedPayoff
+        (setup.intendedOpeningProfile (sequence n).strategy) who)| ≤
+      ((Fintype.card Player * (2 * horizon + 1) : ℕ) * (1 - slotRetention (scale n))) *
+          (max 0 (max (excludedPayoff who) (upperUtility who)) -
+            min 0 (min (excludedPayoff who) (lowerUtility who))) +
+        2 * error * (max 0 (max (excludedPayoff who) (upperUtility who)) -
+            min 0 (min (excludedPayoff who) (lowerUtility who))) := by
+  let menu := bounds.onePacketMenu (runtime setup) leaks
+  let model := onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
+  have bounded := menu.bounded (initialLaw setup) horizon scheduler
+  let certificate := bounded.wellFoundedHistories
+  let installed := Profile.update (sig := model.behavioralSignature) (targetSequence n).strategy
+    who (((targetSequence n).strategy who).withLaw info law)
+  let low := min 0 (min (excludedPayoff who) (lowerUtility who))
+  let range := max 0 (max (excludedPayoff who) (upperUtility who)) - low
+  have boundedReadout : ∀ readout, low ≤ exclusionReadoutUtility setup parameter utility
+      excludedPayoff readout who ∧
+      exclusionReadoutUtility setup parameter utility excludedPayoff readout who ≤ low + range :=
+    fun readout => by
+      have within := exclusionReadoutUtility_mem_Icc setup parameter utility excludedPayoff
+        lowerUtility upperUtility lower_le le_upper readout who
+      exact ⟨within.1, by simp only [low, range]; linarith [within.2]⟩
+  have zeroWithin : low ≤ 0 ∧ 0 ≤ low + range :=
+    ⟨min_le_left _ _, by
+      simp only [low, range]
+      linarith [le_max_left 0 (max (excludedPayoff who) (upperUtility who))]⟩
+  have readoutBounded : ∀ readout, |exclusionReadoutUtility setup parameter utility
+      excludedPayoff readout who| ≤ range := fun readout => by
+    obtain ⟨lowerBound, upperBound⟩ := boundedReadout readout
+    exact abs_le.mpr ⟨by linarith [zeroWithin.2], by linarith [zeroWithin.1]⟩
+  have retentionNonneg := slotRetention_nonneg (scale_pos n).le (scale_le_one n)
+  have retentionLe := slotRetention_le_one (scale_pos n).le (scale_le_one n)
+  have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some ⟨remaining, some who, execution⟩) :=
+    startState ▸ menu.toRawTrace (initialLaw setup) horizon scheduler start.trace
+  obtain ⟨found, foundOrdered, seen⟩ := pendingAt_history rawTrace
+  have sameRank := isPrefix_unique foundOrdered ordered
+  subst sameRank
+  let payoff := fun final : (menu.protocol (initialLaw setup) horizon scheduler).History =>
+    exclusionBase setup parameter utility excludedPayoff leaks final.state who
+  have transport := abs_expect_offFailed_sub_completionValue_le bounds parameter utility
+    excludedPayoff wellFormed contract timely (sequence n) retains retentionNonneg retentionLe
+    installed (siteRank info)
+    (fun start anchor state reached point decoded intendedPoint =>
+      installed_dominates setup leaks bounds horizon scheduler contract timely retains
+        sequence scale scale_pos scale_le_one weights targetSequence assembled n info decision
+        law start anchor state reached point decoded intendedPoint)
+    ∅ fresh (fun _ _ _ _ _ _ _ impossible => impossible) who low range boundedReadout zeroWithin
+    start startState ⟨foundOrdered, seen⟩
+  have payoffBounded : ∀ final, |payoff final| ≤ range := fun final => readoutBounded _
+  have stopped := abs_expect_stoppedValue_sub_le_of_completionPointLaw setup leaks bounds horizon
+    scheduler parameter utility excludedPayoff installed
+    (setup.intendedOpeningProfile (sequence n).strategy) (siteRank info) fresh who start stepLaw
+    readoutBounded pointLaw
+    (fun later => expect (model.runBehavioralTerminalFrom certificate installed later) payoff)
+    payoff (fun later => expect_abs_le_of_bounded ((abs_nonneg _).trans (readoutBounded none))
+      payoffBounded) payoffBounded
+  have runEq : expect ((model.runBehavioralFrom installed (2 * horizon + 1) start).map
+      (readoutExclusion setup leaks bounds (initialLaw setup) horizon scheduler parameter utility
+        excludedPayoff)) (payoffComponent setup · who) =
+      expect (model.runBehavioralTerminalFrom certificate installed start) payoff := by
+    rw [expect_map, ← model.runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded certificate
+      bounded]
+    rfl
+  change |expect ((model.runBehavioralFrom installed (2 * horizon + 1) start).map _) _ - _| ≤ _
+  rw [runEq]
+  simp only [Set.mem_empty_iff_false, ite_false] at transport
+  exact (abs_sub_le _ _ _).trans (add_le_add transport stopped)
+
 end Vegas
