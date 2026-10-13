@@ -90,6 +90,31 @@ theorem runBehavioralUntil_of_running (certificate : E.WellFoundedHistories)
     dite_eq_right running]
   exact PMF.bindOnSupport_eq_bind _ _
 
+/-- Play until a stopping set ends at stopped or terminal histories. -/
+theorem mem_support_runBehavioralUntil (certificate : E.WellFoundedHistories)
+    (policies : (i : ι) → M.BehavioralPolicy i) (stopped : E.History → Prop)
+    (start : E.History) :
+    ∀ stop ∈ (M.runBehavioralUntil certificate policies stopped start).support,
+      stopped stop ∨ E.terminal stop.state := by
+  classical
+  induction start using certificate.induction with
+  | _ history ih =>
+  intro stop member
+  by_cases halt : stopped history
+  · rw [M.runBehavioralUntil_of_stopped certificate policies halt,
+      PMF.mem_support_pure_iff] at member
+    subst member
+    exact Or.inl halt
+  by_cases ended : E.terminal history.state
+  · rw [M.runBehavioralUntil_of_terminal certificate policies ended,
+      PMF.mem_support_pure_iff] at member
+    subst member
+    exact Or.inr ended
+  rw [M.runBehavioralUntil_of_running certificate policies halt ended,
+    PMF.mem_support_bind_iff] at member
+  obtain ⟨next, nextMember, reached⟩ := member
+  exact ih next (M.mem_support_runBehavioralFrom_one policies ended nextMember).1 stop reached
+
 /-- **Terminal play splits at a stopping set.** Terminal play from a history is
 play until the stopping set followed by terminal play from there. -/
 theorem runBehavioralTerminalFrom_eq_bind_runBehavioralUntil
