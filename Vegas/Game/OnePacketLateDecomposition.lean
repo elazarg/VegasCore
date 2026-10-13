@@ -27,9 +27,11 @@ fail (`Vegas.siteStopValue`).
 
 **The decomposition.** The continuation value of an agent is the belief
 average, over its site, of the source continuation value at the decoded point
-of the site's rank (`Vegas.siteContinuation`). It lies between the exclusion
-payoff and the upper utility whenever exclusion is a punishment on intended
-continuations (`Vegas.siteContinuation_mem_Icc`). Given that the completion
+of the site's rank, at points the intended game reaches
+(`Vegas.siteContinuation`). It lies between the exclusion payoff and the upper
+utility whenever exclusion is a punishment at every terminal readout of the
+intended game (`Vegas.excludedPayoff_le_of_reached`,
+`Vegas.siteContinuation_mem_Icc`). Given that the completion
 value of each law the decomposition compares is its success probability times
 this continuation value up to a vanishing error, the value decompositions at
 late deliveries and away from them follow
@@ -38,7 +40,9 @@ That premise is value-blind success: the success probability depends neither
 on the committed value nor, under the belief, on the hidden values the
 continuation value depends on. It is discharged by value-blind binding
 inclusion (opaque commitments) together with the fiber results of the forced
-beliefs.
+beliefs. It splits into value-free success from each history of the site and
+the decorrelation of failure and continuation value under the site's belief
+(`Vegas.abs_siteStopValue_sub_le_of_valueFree`).
 -/
 
 noncomputable section
@@ -163,6 +167,10 @@ theorem installed_dominates {delay bound : (graph setup).EventId → Nat}
   rw [agrees, assembled n]
   exact base
 
+/-- A source point at which some history of the intended game ends. -/
+def IntendedReached (point : ProtocolState setup.program) : Prop :=
+  ∃ history : setup.intendedProtocol.History, history.state = some point
+
 section Values
 
 variable {Parameter : Type} (parameter : State L setup.context → Parameter)
@@ -182,7 +190,7 @@ def decodedPointValue (profile : BehavioralProfile setup.program) (who : Player)
       match sourceServicePrefix? setup rank control.execution.application.config with
       | none => excludedPayoff who
       | some point =>
-          if ProtocolState.Intended setup.program point then
+          if IntendedReached setup point then
             sourcePointValue setup parameter utility excludedPayoff profile who point
           else excludedPayoff who
 
@@ -205,16 +213,17 @@ def siteFresh (who : Player) (info : (application setup leaks).Info)
   | none => True
 
 open Classical in
-/-- **The completion value of a site.** The belief average, over the histories
-of a site, of the expected completion value under play, with `law` installed at
-the site, until the event of the site's rank completes: the source continuation
-value of `profile` at the decoded point after that event, when it is intended
-and the site's pending event did not fail, and the expected payoff of `who` off
-the site's failure set otherwise. -/
-def siteStopValue (assessment : (onePacketN).BehavioralAssessment)
+/-- **The completion value from a history.** The expected completion value under
+play from a history, with `law` installed at the site, until the event of the
+site's rank completes: the source continuation value of `profile` at the
+decoded point after that event, when the intended game reaches it and the
+site's pending event did not fail, and the expected payoff of `who` off the
+site's failure set otherwise. -/
+def historyStopValue (assessment : (onePacketN).BehavioralAssessment)
     (profile : BehavioralProfile setup.program) {who : Player}
-    (site : (onePacketN).InformationSite who) (law : PMF ((onePacketN).Choice who site.1)) :
-    ℝ :=
+    (site : (onePacketN).InformationSite who) (law : PMF ((onePacketN).Choice who site.1))
+    (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+      horizon scheduler).History) : ℝ :=
   let menu := bounds.onePacketMenu (runtime setup) leaks
   let certificate := (menu.bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
   let installed := Profile.update (sig := (onePacketN).behavioralSignature) assessment.strategy
@@ -222,15 +231,24 @@ def siteStopValue (assessment : (onePacketN).BehavioralAssessment)
   let payoff := fun final : (menu.protocol (initialLaw setup) horizon scheduler).History =>
     if final ∈ onePacketFailed setup leaks bounds horizon scheduler ((onePacketN).agentAt site)
     then 0 else exclusionBase setup parameter utility excludedPayoff leaks final.state who
+  expect ((onePacketN).runBehavioralUntil certificate installed
+      (LateStopped setup leaks bounds horizon scheduler (siteRank site.1)) history)
+    (fun stop => if LateStopped setup leaks bounds horizon scheduler (siteRank site.1) stop then
+      completionValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+        profile (siteRank site.1) (siteFresh who site.1) who
+        (fun later => expect ((onePacketN).runBehavioralTerminalFrom certificate installed later)
+          payoff) stop
+      else payoff stop)
+
+/-- **The completion value of a site.** The belief average, over the histories
+of a site, of their completion values (`Vegas.historyStopValue`). -/
+def siteStopValue (assessment : (onePacketN).BehavioralAssessment)
+    (profile : BehavioralProfile setup.program) {who : Player}
+    (site : (onePacketN).InformationSite who) (law : PMF ((onePacketN).Choice who site.1)) :
+    ℝ :=
   expect (assessment.belief who site) fun history =>
-    expect ((onePacketN).runBehavioralUntil certificate installed
-        (LateStopped setup leaks bounds horizon scheduler (siteRank site.1)) history.1)
-      (fun stop => if LateStopped setup leaks bounds horizon scheduler (siteRank site.1) stop then
-        completionValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-          profile (siteRank site.1) (siteFresh who site.1) who
-          (fun later => expect ((onePacketN).runBehavioralTerminalFrom certificate installed later)
-            payoff) stop
-        else payoff stop)
+    historyStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+      assessment profile site law history.1
 
 end Values
 
@@ -315,6 +333,7 @@ theorem abs_siteSuccess_sub_siteStopValue_le [Finite ((bounds.onePacketMenu (run
   have rangeNonneg : 0 ≤ range := by linarith [zeroWithin.1, zeroWithin.2]
   unfold onePacketSiteSuccess localSuccessValue siteStopValue
   rw [expect_localRun]
+  unfold historyStopValue
   apply abs_expect_sub_le_of_near _ _ _
     (mul_nonneg (mul_nonneg (Nat.cast_nonneg _) (by linarith)) rangeNonneg)
   intro history _
@@ -396,6 +415,83 @@ theorem abs_siteSuccess_sub_siteStopValue_le [Finite ((bounds.onePacketMenu (run
 
 end Site
 
+section ValueBlind
+
+variable [Finite ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+    scheduler).History]
+  {Parameter : Type} (parameter : State L setup.context → Parameter)
+  (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+  (excludedPayoff : Player → ℝ)
+
+open Classical in
+/-- The failure probability of the site's failure set, from one history of the
+site, when `law` is installed there. -/
+def siteHistoryFailure (assessment : (onePacketN).BehavioralAssessment) {who : Player}
+    (site : (onePacketN).InformationSite who) (law : PMF ((onePacketN).Choice who site.1))
+    (history : (onePacketN).InformationHistory who site.1) : ℝ :=
+  expect (localHistoryRun (2 * horizon + 1) assessment site law history) fun final =>
+    if final ∈ onePacketFailed setup leaks bounds horizon scheduler ((onePacketN).agentAt site)
+    then 1 else 0
+
+/-- **Value-blind success from its two parts.** Suppose, from every history of a
+site's belief, the completion value of a law is its success probability from
+that history times the history's continuation value up to `valueFree`
+(value-free success: the committed value is the source decision at the decoded
+point and its success does not depend on it), and the belief average of these
+products is the average success probability times the average continuation
+value up to `decorrelated` (the failure probability and the continuation value
+are uncorrelated under the belief). Then the site's completion value is its
+success probability times the site's continuation value up to their sum. -/
+theorem abs_siteStopValue_sub_le_of_valueFree (assessment : (onePacketN).BehavioralAssessment)
+    (profile : BehavioralProfile setup.program) {who : Player}
+    (site : (onePacketN).InformationSite who) (law : PMF ((onePacketN).Choice who site.1))
+    {valueFree decorrelated : ℝ}
+    (historyNear : ∀ history ∈ (assessment.belief who site).support,
+      |historyStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+          assessment profile site law history.1 -
+        (1 - siteHistoryFailure setup leaks bounds horizon scheduler assessment site law
+          history) *
+          decodedPointValue setup leaks bounds horizon scheduler parameter utility
+            excludedPayoff profile who (siteRank site.1) history.1| ≤ valueFree)
+    (uncorrelated : |expect (assessment.belief who site) (fun history =>
+        (1 - siteHistoryFailure setup leaks bounds horizon scheduler assessment site law
+          history) *
+          decodedPointValue setup leaks bounds horizon scheduler parameter utility
+            excludedPayoff profile who (siteRank site.1) history.1) -
+      (1 - expect (assessment.belief who site)
+          (siteHistoryFailure setup leaks bounds horizon scheduler assessment site law)) *
+        expect (assessment.belief who site) (fun history =>
+          decodedPointValue setup leaks bounds horizon scheduler parameter utility
+            excludedPayoff profile who (siteRank site.1) history.1)| ≤ decorrelated) :
+    |siteStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+        assessment profile site law -
+      (1 - onePacketSiteFailure setup leaks bounds horizon scheduler assessment site law) *
+        siteValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+          assessment profile site| ≤ valueFree + decorrelated := by
+  obtain ⟨witness, witnessed⟩ := (assessment.belief who site).support_nonempty
+  have freeNonneg : 0 ≤ valueFree := (abs_nonneg _).trans (historyNear witness witnessed)
+  have failureEq : onePacketSiteFailure setup leaks bounds horizon scheduler assessment site law =
+      expect (assessment.belief who site)
+        (siteHistoryFailure setup leaks bounds horizon scheduler assessment site law) := by
+    unfold onePacketSiteFailure localFailure siteHistoryFailure
+    exact expect_localRun _ _ _ _ _
+  rw [failureEq]
+  unfold siteStopValue siteValue
+  have first := abs_expect_sub_le_of_near (assessment.belief who site) _ _ freeNonneg
+    historyNear
+  calc _ ≤ |expect (assessment.belief who site) (fun history =>
+          historyStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+            assessment profile site law history.1) -
+        expect (assessment.belief who site) (fun history =>
+          (1 - siteHistoryFailure setup leaks bounds horizon scheduler assessment site law
+            history) *
+            decodedPointValue setup leaks bounds horizon scheduler parameter utility
+              excludedPayoff profile who (siteRank site.1) history.1)| + |_ - _| :=
+        abs_sub_le _ _ _
+    _ ≤ _ := add_le_add first uncorrelated
+
+end ValueBlind
+
 section Bounds
 
 variable {Parameter : Type} (parameter : State L setup.context → Parameter)
@@ -427,11 +523,11 @@ of `profile` at every point of the intended game lies in
 `[excludedPayoff who, max (excludedPayoff who) upper]`. -/
 theorem sourcePointValue_mem_Icc (profile : BehavioralProfile setup.program) (who : Player)
     (upper : ℝ) (le_upper : ∀ outcome, utility outcome who ≤ upper)
-    (below : ∀ point, ProtocolState.Intended setup.program point →
+    (below : ∀ point, IntendedReached setup point →
       ∀ terminal ∈ (ProtocolState.continuationLaw setup.program profile point).support,
         excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who)
     (point : ProtocolState setup.program)
-    (intendedPoint : ProtocolState.Intended setup.program point) :
+    (reachedPoint : IntendedReached setup point) :
     excludedPayoff who ≤ sourcePointValue setup parameter utility excludedPayoff profile who point ∧
       sourcePointValue setup parameter utility excludedPayoff profile who point ≤
         max (excludedPayoff who) upper := by
@@ -450,7 +546,7 @@ theorem sourcePointValue_mem_Icc (profile : BehavioralProfile setup.program) (wh
         (setup.parameterOutcome parameter terminal) who ≤ max (excludedPayoff who) upper
     unfold exclusionUtility
     split
-    · exact ⟨below point intendedPoint terminal member,
+    · exact ⟨below point reachedPoint terminal member,
         (le_upper _).trans (le_max_right _ _)⟩
     · exact ⟨le_rfl, le_max_left _ _⟩
   rw [expect_congr_on_support (g := fun terminal =>
@@ -475,7 +571,7 @@ theorem siteValue_mem_Icc (assessment : (onePacketN).BehavioralAssessment)
     (profile : BehavioralProfile setup.program) {who : Player}
     (site : (onePacketN).InformationSite who)
     (upper : ℝ) (le_upper : ∀ outcome, utility outcome who ≤ upper)
-    (below : ∀ point, ProtocolState.Intended setup.program point →
+    (below : ∀ point, IntendedReached setup point →
       ∀ terminal ∈ (ProtocolState.continuationLaw setup.program profile point).support,
         excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who) :
     excludedPayoff who ≤ siteValue setup leaks bounds horizon scheduler parameter utility
@@ -490,10 +586,41 @@ theorem siteValue_mem_Icc (assessment : (onePacketN).BehavioralAssessment)
   · split
     · exact ⟨le_rfl, le_max_left _ _⟩
     · split
-      · rename_i intendedPoint
+      · rename_i reachedPoint
         exact sourcePointValue_mem_Icc setup parameter utility excludedPayoff profile who upper
-          le_upper below _ intendedPoint
+          le_upper below _ reachedPoint
       · exact ⟨le_rfl, le_max_left _ _⟩
+
+omit [Fintype Player] [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+    scheduler).InfoState who)] in
+/-- **Exclusion is a punishment on reached continuations.** If the exclusion
+payoff of every player is at most its utility at every terminal readout of the
+intended game, it is at most its utility at every terminal state the
+continuation of the intended effective opening of an intended profile reaches
+from a point the intended game reaches. -/
+theorem excludedPayoff_le_of_reached [Finite Player] (wellFormed : setup.WellFormed)
+    (below : ∀ (final : setup.intendedProtocol.History) terminal,
+      setup.protocolReadout final.state = some terminal →
+        ∀ who, excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who)
+    (intended : ∀ who, setup.intendedModel.BehavioralPolicy who)
+    (point : ProtocolState setup.program) (reachedPoint : IntendedReached setup point)
+    (who : Player) :
+    ∀ terminal ∈ (ProtocolState.continuationLaw setup.program
+        (setup.intendedOpeningProfile intended) point).support,
+      excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who := by
+  have := Fintype.ofFinite Player
+  obtain ⟨history, state⟩ := reachedPoint
+  intro terminal member
+  have law := setup.intendedOpeningProfile_runFrom wellFormed intended
+    (setup.protocolRemaining history.state) history le_rfl
+  have readout : some terminal ∈ ((setup.continuationLaw (setup.intendedOpeningProfile intended)
+      history.state).map some).support := by
+    rw [state]
+    exact (PMF.mem_support_map_iff _ _ _).mpr ⟨terminal, member, rfl⟩
+  rw [← law] at readout
+  obtain ⟨final, _, read⟩ := (PMF.mem_support_map_iff _ _ _).mp readout
+  exact below final terminal read who
 
 end Bounds
 
@@ -532,7 +659,7 @@ theorem siteContinuation_mem_Icc (assessment : (onePacketN).BehavioralAssessment
     (profile : BehavioralProfile setup.program)
     (agent : (onePacketN).InformationAgent (onePacketN).playedInformation)
     (upper : ℝ) (le_upper : ∀ outcome, utility outcome agent.1 ≤ upper)
-    (below : ∀ point, ProtocolState.Intended setup.program point →
+    (below : ∀ point, IntendedReached setup point →
       ∀ terminal ∈ (ProtocolState.continuationLaw setup.program profile point).support,
         excludedPayoff agent.1 ≤ utility (setup.parameterOutcome parameter terminal) agent.1) :
     excludedPayoff agent.1 ≤ siteContinuation setup leaks bounds horizon scheduler parameter
@@ -572,10 +699,9 @@ theorem siteDecomposition_of_completion (wellFormed : setup.WellFormed)
     (lower_le : ∀ outcome who, lowerUtility who ≤ utility outcome who)
     (le_upper : ∀ outcome who, utility outcome who ≤ upperUtility who)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
-    (below : ∀ n who point, ProtocolState.Intended setup.program point →
-      ∀ terminal ∈ (ProtocolState.continuationLaw setup.program
-          (setup.intendedOpeningProfile (sequence n).strategy) point).support,
-        excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who)
+    (below : ∀ (final : setup.intendedProtocol.History) terminal,
+      setup.protocolReadout final.state = some terminal →
+        ∀ who, excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     (scale_vanishing : Tendsto scale atTop (nhds 0)) {slots : Nat}
     (gapBound : ℝ) (gap_le : ∀ who, upperUtility who - excludedPayoff who ≤ gapBound)
@@ -630,7 +756,9 @@ theorem siteDecomposition_of_completion (wellFormed : setup.WellFormed)
   obtain ⟨lower, upper⟩ := siteContinuation_mem_Icc setup leaks bounds horizon scheduler
     parameter utility excludedPayoff (targetSequence n)
     (setup.intendedOpeningProfile (sequence n).strategy) ((onePacketN).agentAt site)
-    (upperUtility who) (fun outcome => le_upper outcome who) (below n who)
+    (upperUtility who) (fun outcome => le_upper outcome who)
+    (fun point reachedPoint => excludedPayoff_le_of_reached setup parameter utility excludedPayoff
+      wellFormed below (sequence n).strategy point reachedPoint who)
   refine ⟨lower, ?_, fun law blind near => ?_⟩
   · have := gap_le who
     rcases le_total (excludedPayoff who) (upperUtility who) with low | high
@@ -674,10 +802,9 @@ theorem onePacket_lateDecomposition (wellFormed : setup.WellFormed)
     (lower_le : ∀ outcome who, lowerUtility who ≤ utility outcome who)
     (le_upper : ∀ outcome who, utility outcome who ≤ upperUtility who)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
-    (below : ∀ n who point, ProtocolState.Intended setup.program point →
-      ∀ terminal ∈ (ProtocolState.continuationLaw setup.program
-          (setup.intendedOpeningProfile (sequence n).strategy) point).support,
-        excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who)
+    (below : ∀ (final : setup.intendedProtocol.History) terminal,
+      setup.protocolReadout final.state = some terminal →
+        ∀ who, excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     (scale_vanishing : Tendsto scale atTop (nhds 0)) {slots : Nat}
     (gapBound : ℝ) (gap_le : ∀ who, upperUtility who - excludedPayoff who ≤ gapBound)
@@ -781,10 +908,9 @@ theorem onePacket_nonLateDecomposition (wellFormed : setup.WellFormed)
     (lower_le : ∀ outcome who, lowerUtility who ≤ utility outcome who)
     (le_upper : ∀ outcome who, utility outcome who ≤ upperUtility who)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
-    (below : ∀ n who point, ProtocolState.Intended setup.program point →
-      ∀ terminal ∈ (ProtocolState.continuationLaw setup.program
-          (setup.intendedOpeningProfile (sequence n).strategy) point).support,
-        excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who)
+    (below : ∀ (final : setup.intendedProtocol.History) terminal,
+      setup.protocolReadout final.state = some terminal →
+        ∀ who, excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     (scale_vanishing : Tendsto scale atTop (nhds 0))
     (gapBound : ℝ) (gap_le : ∀ who, upperUtility who - excludedPayoff who ≤ gapBound)
