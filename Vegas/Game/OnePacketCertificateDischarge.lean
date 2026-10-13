@@ -4,6 +4,7 @@ import Vegas.Game.OnePacketSequentialPreservation
 import Vegas.Game.OnePacketSlotLaw
 import Interaction.ReactiveSupportedRounds
 import Vegas.Game.OnePacketEventSuccess
+import Vegas.Game.OnePacketSourceTurn
 
 /-! # Discharging inputs of the one-packet certificate
 
@@ -340,6 +341,177 @@ theorem onePacket_certificate_lawApproximation (wellFormed : setup.WellFormed)
 
 end Law
 
+section FirstActivation
+
+variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
+  [IExpr.ResultTypes L]
+  (setup : Setup (Player := Player) (L := L))
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+  (bounds : MessageBounds (graph setup)) (horizon : Nat)
+  (scheduler : (application setup leaks).Scheduler)
+
+omit [DecidableEq Player] [Fintype Player] [IExpr.ResultTypes L] in
+private theorem commitsValue_of_success {action : OwnAction Player L}
+    (success : ∀ owner name payload, action ≠ .commit owner name payload .failure) :
+    action.CommitsValue := by
+  cases action with
+  | commit owner name payload choice =>
+      cases choice with
+      | failure => exact (success owner name payload rfl).elim
+      | success value => exact ⟨value, rfl⟩
+  | reveal => trivial
+
+omit [Fintype Player] in
+private theorem effectiveDecision_of_encode {event : (graph setup).EventId}
+    {action : OwnAction Player L} {graphAction : (graph setup).Action event}
+    (encoded : encodeEventAction? setup.program event action = some graphAction)
+    (commits : action.CommitsValue) : EffectiveDecision event graphAction := by
+  unfold EffectiveDecision
+  cases node : nodeView (graph setup) event with
+  | bind owner payload outputEq codeEq =>
+      exact encodeEventAction?_commitsValue setup.program event action commits graphAction
+        encoded owner payload outputEq
+  | resolve => trivial
+  | sample => trivial
+
+omit [Fintype Player] in
+private theorem bindSuccess_of_effective {event : (graph setup).EventId}
+    {action : (graph setup).Action event} (effective : EffectiveDecision event action) :
+    ∀ owner payload outputEq codeEq,
+      nodeView (graph setup) event = .bind owner payload outputEq codeEq →
+        ∃ value, (cast (congrArg EventGraph.EventField.Action outputEq) action :
+          PublicationResult (L.Val payload)) = .success value := by
+  intro owner payload outputEq codeEq node
+  unfold EffectiveDecision at effective
+  rw [node] at effective
+  obtain ⟨value, rfl⟩ := effective
+  exact ⟨value, by simp⟩
+
+/-- **Transmitting first activations.** At a forced first activation for
+`event` with recall `past` and view `view`, the canonical decision of every
+source action encoding at the event, committing no failure and disclosing,
+transmits. -/
+def CanonicalTransmitsAt (who : Player) (past : List (application setup leaks).PlayerEntry)
+    (view : (application setup leaks).PlayerView) (event : (graph setup).EventId) : Prop :=
+  ∀ action graphAction, encodeEventAction? setup.program event action = some graphAction →
+    (∀ owner name payload, action ≠ .commit owner name payload .failure) →
+    (∀ owner name, action ≠ .reveal owner name false) →
+    ((runtime setup).canonicalServiceDecision leaks who past view event graphAction).transmission ≠
+      none
+
+open Classical in
+/-- **As-if-honest play never fails a transmitting first activation.** Under
+the asynchronous contract with timely delays and retention of first covered
+canonical packets, at a forced site of `who` that is a first activation for
+`event` and at which the canonical decisions of as-if-honest play transmit,
+as-if-honest play has event-level failure zero for `event`, for every
+assessment and every player. -/
+theorem honestChoice_localFailure_eq_zero
+    [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+      scheduler).InfoState who)]
+    [Finite ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+      scheduler).History]
+    {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
+      bound)
+    (timely : AsyncTimely (runtime setup) delay bound)
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound)
+    (source : setup.intendedModel.BehavioralAssessment)
+    (assessment : (onePacketModel setup leaks bounds (initialLaw setup) horizon
+      scheduler).BehavioralAssessment)
+    {who : Player} (past : List (application setup leaks).PlayerEntry)
+    (view : (application setup leaks).PlayerView) (event : (graph setup).EventId)
+    (decision : (onePacketModel setup leaks bounds (initialLaw setup) horizon
+      scheduler).IsDecisionInfo who (some (past, view)))
+    (forced : forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
+      scheduler who (some (past, view)))
+    (pending : pendingEvent setup leaks who (some (past, view)) = some event)
+    (never : ∀ entry ∈ past, ¬ ActivatedAt setup leaks who event entry)
+    (transmits : CanonicalTransmitsAt setup leaks who past view event) (player : Player) :
+    InformationModel.localFailure (2 * horizon + 1) assessment ⟨some (past, view), decision⟩
+      (EventFailedHistory setup leaks bounds horizon scheduler player event)
+      (honestChoice setup leaks bounds (initialLaw setup) horizon scheduler source who
+        (some (past, view))) = 0 := by
+  let menu := bounds.onePacketMenu (runtime setup) leaks
+  let model := onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
+  let site : model.InformationSite who := ⟨some (past, view), decision⟩
+  let := Fintype.ofFinite (menu.protocol (initialLaw setup) horizon scheduler).History
+  obtain ⟨turn, _, _, unrecorded⟩ := pendingEvent_spec pending
+  obtain ⟨history, infoEq, forcedState⟩ := forced
+  have observed : (application setup leaks).observe who history.state = some (past, view) :=
+    (menu.info (initialLaw setup) horizon scheduler who history.trace).symm.trans infoEq
+  have menuTrace := history.trace
+  generalize history.state = state at observed forcedState menuTrace
+  rcases state with _ | ⟨remaining, actor, execution⟩
+  · exact forcedState.elim
+  by_cases active : actor = some who
+  swap
+  · simp [ReactiveApplication.observe, active] at observed
+  subst active
+  simp only [ReactiveApplication.observe, ↓reduceIte, Option.some.injEq, Prod.mk.injEq]
+    at observed
+  obtain ⟨pastEq, viewEq⟩ := observed
+  subst pastEq
+  subst viewEq
+  obtain ⟨rank, point, ordered, decoded, _⟩ := forcedState
+  have turnExec : execution.application.publicView.ownTurn? who = some event := turn
+  have fits := firstActivation_inclusionFits contract timely
+    (menu.toRawTrace (initialLaw setup) horizon scheduler menuTrace) rfl event turnExec never
+  have zero : ∀ choice ∈ (honestChoice setup leaks bounds (initialLaw setup) horizon scheduler
+      source who (some (execution.recall who,
+        execution.observe (application setup leaks) who))).support,
+      InformationModel.localFailure (2 * horizon + 1) assessment site
+        (EventFailedHistory setup leaks bounds horizon scheduler player event)
+        (PMF.pure choice) = 0 := by
+    intro choice supported
+    obtain ⟨response, responded, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
+    have responded' := responded
+    unfold honestResponse at responded'
+    rw [turn] at responded'
+    obtain ⟨sourceChoice, chosen, responseEq⟩ := (PMF.mem_support_map_iff _ _ _).mp responded'
+    have encodes := asIfHonestProfile_encodes source who execution rank ordered point
+      decoded (execution.recall who) event turnExec sourceChoice chosen
+    rcases sourceChoice with _ | action
+    · simp at encodes
+    cases encoded : encodeEventAction? setup.program event action with
+    | none => simp [encoded] at encodes
+    | some graphAction =>
+        have success := asIfHonestProfile_success source who execution rank ordered
+          point decoded (execution.recall who) action chosen
+        have sends := transmits action graphAction encoded success.1 success.2
+        obtain ⟨material, submits⟩ := Option.ne_none_iff_exists'.mp sends
+        have effective := effectiveDecision_of_encode setup encoded
+          (commitsValue_of_success success.1)
+        have member := canonical_mem_onePacket_of_pending bounds menuTrace who event turnExec
+          unrecorded graphAction
+          (retains menuTrace who event graphAction turnExec unrecorded fits effective sends)
+        simp only [Option.bind_some, encoded] at responseEq
+        subst responseEq
+        have selected : (responseChoice setup leaks bounds (initialLaw setup) horizon scheduler who
+            (some (execution.recall who, execution.observe (application setup leaks) who))
+            ((runtime setup).canonicalServiceDecision leaks who (execution.recall who)
+              (execution.observe (application setup leaks) who) event graphAction)).1 =
+            some ((runtime setup).canonicalServiceDecision leaks who (execution.recall who)
+              (execution.observe (application setup leaks) who) event graphAction) := by
+          unfold responseChoice
+          simp only [member, ↓reduceDIte]
+        convert firstActivation_localFailure_eq_zero bounds horizon scheduler contract timely
+          assessment site (execution.recall who) (execution.observe (application setup leaks) who)
+          rfl event turn never graphAction material submits
+          (bindSuccess_of_effective setup effective) _ selected player
+  have finiteChoice : Finite (model.Choice who site.1) :=
+    model.finite_choice_of_played (model.site_mem_playedInformation site)
+  have bounded := menu.bounded (initialLaw setup) horizon scheduler
+  have actsOnce := (menu.decisionRecall (initialLaw setup) horizon
+    scheduler).actsOnceWhereItMatters
+  change InformationModel.localFailure (2 * horizon + 1) assessment site _ _ = 0
+  rw [← PMF.bind_pure (honestChoice setup leaks bounds (initialLaw setup) horizon scheduler
+    source who _), InformationModel.localFailure_bind (2 * horizon + 1) assessment site bounded
+    actsOnce]
+  exact (expect_congr_on_support (g := fun _ => 0) zero).trans (expect_constant _ _)
+
+end FirstActivation
+
 section Open
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
@@ -418,6 +590,129 @@ def onePacketSiteSuccess (assessment : (onePacketN).BehavioralAssessment) {who :
     (readoutExclusion setup leaks bounds (initialLaw setup) horizon scheduler parameter utility
       excludedPayoff) (payoffComponent setup) assessment site
     (onePacketFailed setup leaks bounds horizon scheduler ((onePacketN).agentAt site)) law
+
+/-- **First activations transmit or fail surely.** At every forced first
+activation of `who` for `event`, either the canonical decisions of encoded
+source actions committing no failure and disclosing transmit, or every choice
+fails `event` surely, under every assessment. -/
+def FirstActivationTransmits : Prop :=
+  ∀ who (past : List (application setup leaks).PlayerEntry)
+    (view : (application setup leaks).PlayerView) (event : (graph setup).EventId),
+    forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
+      scheduler who (some (past, view)) →
+    pendingEvent setup leaks who (some (past, view)) = some event →
+    (∀ entry ∈ past, ¬ ActivatedAt setup leaks who event entry) →
+    CanonicalTransmitsAt setup leaks who past view event ∨
+      ∀ (assessment : (onePacketN).BehavioralAssessment)
+        (decision : (onePacketN).IsDecisionInfo who (some (past, view)))
+        (choice : (onePacketN).Choice who (some (past, view))),
+        localFailure (2 * horizon + 1) assessment ⟨some (past, view), decision⟩
+          (EventFailedHistory setup leaks bounds horizon scheduler who event)
+          (PMF.pure choice) = 1
+
+omit [Finite setup.intendedProtocol.History] in
+/-- **The prescribed failure bound.** For a well-formed setup, under the
+asynchronous contract with timely delays and retention of first covered
+canonical packets, if first activations transmit or fail surely, then along
+vanishing tremble scales, at every forced site outside late deliveries, the
+prescribed component fails at most as often as every choice up to one minus
+the slot retention of the scale, or the choice fails surely. -/
+theorem onePacket_prescribedFailure {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
+      bound)
+    (timely : AsyncTimely (runtime setup) delay bound)
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound)
+    (transmitting : FirstActivationTransmits setup leaks bounds horizon scheduler)
+    (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
+    (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
+    (scale_vanishing : Tendsto scale atTop (nhds 0))
+    (targetSequence : ℕ → (onePacketN).BehavioralAssessment) :
+    ∃ slack : ℕ → ℝ, Tendsto slack atTop (nhds 0) ∧ (∀ n, 0 ≤ slack n) ∧
+      ∀ n who (site : (onePacketN).InformationSite who) choice,
+        ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+        ¬ ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+          (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
+          ((onePacketN).agentAt site) →
+        onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
+            (onePacketPrescribed setup leaks bounds horizon scheduler sequence scale scale_pos
+              scale_le_one n ((onePacketN).agentAt site)) ≤
+          onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
+            (PMF.pure choice) + slack n ∨
+        onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
+          (PMF.pure choice) = 1 := by
+  refine ⟨fun n => 1 - slotRetention (scale n), ?_, fun n =>
+    sub_nonneg.mpr (slotRetention_le_one (scale_pos n).le (scale_le_one n)), ?_⟩
+  · simpa using (tendsto_const_nhds (x := (1 : ℝ))).sub (tendsto_slotRetention scale_vanishing)
+  intro n who site choice notFree unkeyed
+  obtain ⟨info, decision⟩ := site
+  have failureNonneg := localFailure_nonneg (2 * horizon + 1) (targetSequence n)
+    (⟨info, decision⟩ : (onePacketN).InformationSite who)
+    (onePacketFailed setup leaks bounds horizon scheduler
+      ((onePacketN).agentAt ⟨info, decision⟩)) (PMF.pure choice)
+  have slackNonneg : 0 ≤ 1 - slotRetention (scale n) :=
+    sub_nonneg.mpr (slotRetention_le_one (scale_pos n).le (scale_le_one n))
+  cases pendCase : pendingEvent setup leaks who info with
+  | none =>
+      left
+      have empty : onePacketFailed setup leaks bounds horizon scheduler
+          ((onePacketN).agentAt ⟨info, decision⟩) = ∅ := by
+        unfold onePacketFailed
+        simp only [pendCase]
+      have zero : onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n)
+          ⟨info, decision⟩ (onePacketPrescribed setup leaks bounds horizon scheduler sequence
+            scale scale_pos scale_le_one n ((onePacketN).agentAt ⟨info, decision⟩)) = 0 := by
+        unfold onePacketSiteFailure localFailure
+        rw [empty]
+        simp only [Set.mem_empty_iff_false, ↓reduceIte]
+        exact expect_constant _ _
+      unfold onePacketSiteFailure at zero ⊢
+      rw [zero]
+      linarith
+  | some event =>
+      rcases info with _ | ⟨past, view⟩
+      · cases pendCase
+      have notLate : ¬ LateDelivery setup leaks who (some (past, view)) :=
+        fun late => unkeyed ⟨late, notFree⟩
+      have never : ∀ entry ∈ past, ¬ ActivatedAt setup leaks who event entry := by
+        intro entry member activated
+        exact notLate ⟨past, view, event, rfl, pendCase, entry, member, activated⟩
+      have forced : forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup)
+          horizon scheduler who (some (past, view)) := Classical.not_not.mp notFree
+      have failEq : onePacketFailed setup leaks bounds horizon scheduler
+          ((onePacketN).agentAt ⟨some (past, view), decision⟩) =
+          EventFailedHistory setup leaks bounds horizon scheduler who event := by
+        unfold onePacketFailed
+        simp only [pendCase]
+      unfold onePacketSiteFailure
+      rw [failEq]
+      rcases transmitting who past view event forced pendCase never with transmits | sure
+      · left
+        have honestZero := honestChoice_localFailure_eq_zero setup leaks bounds horizon scheduler
+          contract timely retains (sequence n) (targetSequence n) past view event decision forced
+          pendCase never transmits who
+        have bounded := (bounds.onePacketMenu (runtime setup) leaks).bounded (initialLaw setup)
+          horizon scheduler
+        have actsOnce := ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
+          (initialLaw setup) horizon scheduler).actsOnceWhereItMatters
+        have prescribedLe := localFailure_le_of_mass (2 * horizon + 1) (targetSequence n)
+          (⟨some (past, view), decision⟩ : (onePacketN).InformationSite who) bounded actsOnce
+          (EventFailedHistory setup leaks bounds horizon scheduler who event)
+          (1 - slotRetention (scale n)) slackNonneg
+          (onePacketPrescribed setup leaks bounds horizon scheduler sequence scale scale_pos
+            scale_le_one n ((onePacketN).agentAt ⟨some (past, view), decision⟩))
+          (honestChoice setup leaks bounds (initialLaw setup) horizon scheduler (sequence n) who
+            (some (past, view)))
+          (fun chosen => by
+            rw [sub_sub_cancel]
+            exact slotTrembledChoice_ge_main setup leaks bounds (initialLaw setup) horizon
+              scheduler (scale_pos n).le (scale_le_one n) who (some (past, view)) _ _ _ chosen)
+        have choiceNonneg := localFailure_nonneg (2 * horizon + 1) (targetSequence n)
+          (⟨some (past, view), decision⟩ : (onePacketN).InformationSite who)
+          (EventFailedHistory setup leaks bounds horizon scheduler who event) (PMF.pure choice)
+        rw [honestZero] at prescribedLe
+        linarith
+      · right
+        exact sure (targetSequence n) decision choice
 
 open Classical in
 /-- **The open inputs of the one-packet certificate** for one source sequence:
@@ -518,31 +813,6 @@ structure OnePacketOpenInputs (sequence : ℕ → setup.intendedModel.Behavioral
                 ((onePacketN).agentAt site)) option)| ≤ drift n) ∨
           onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
             (PMF.pure choice) = 1
-  /-- **The prescribed failure bound.** At every forced site outside late
-  deliveries, the prescribed component fails at most as often as each marked
-  choice up to a vanishing slack, or the marked choice fails surely. -/
-  prescribedFailure : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon
-      scheduler slots p)) (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
-    OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos scale_le_one
-      weights targetSequence →
-    (∀ n, (targetSequence n).IsFullyMixed) →
-    (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
-      ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
-        (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
-    ∃ slack : ℕ → ℝ, Tendsto slack atTop (nhds 0) ∧ (∀ n, 0 ≤ slack n) ∧
-      ∀ n who (site : (onePacketN).InformationSite who) choice,
-        ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-        ¬ ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
-          (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
-          ((onePacketN).agentAt site) →
-        compared who site choice →
-        onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
-            (onePacketPrescribed setup leaks bounds horizon scheduler sequence scale scale_pos
-              scale_le_one n ((onePacketN).agentAt site)) ≤
-          onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
-            (PMF.pure choice) + slack n ∨
-        onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
-          (PMF.pure choice) = 1
   /-- **The comparisons of unmarked choices.** Every unmarked choice at a forced
   site meets one of the three local comparisons of a pooled limit certificate
   on its own: values outside the intended menu, bad bindings, charged packets. -/
@@ -632,7 +902,8 @@ def OnePacketOpenInputs.toCertificateInputs
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
       bound)
     (timely : AsyncTimely (runtime setup) delay bound)
-    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound) :
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound)
+    (transmitting : FirstActivationTransmits setup leaks bounds horizon scheduler) :
     OnePacketCertificateInputs setup leaks bounds horizon scheduler parameter utility
       excludedPayoff sequence slots where
   scale := inputs.scale
@@ -660,12 +931,14 @@ def OnePacketOpenInputs.toCertificateInputs
     obtain ⟨score, drift, driftLimit, driftNonneg, common⟩ :=
       inputs.siteCommonness weights targetSequence assembled mixed bayes
     obtain ⟨slack, slackLimit, slackNonneg, prescribed⟩ :=
-      inputs.prescribedFailure weights targetSequence assembled mixed bayes
+      onePacket_prescribedFailure setup leaks bounds horizon scheduler contract timely retains
+        transmitting sequence inputs.scale inputs.scale_pos inputs.scale_le_one
+        inputs.scale_vanishing targetSequence
     refine ⟨continuation, score, error, drift, slack, errorLimit, driftLimit, slackLimit,
       driftNonneg, slackNonneg, fun n who site choice notFree marked => ?_⟩
     obtain ⟨low, gap, chosen, late, other⟩ := value n who site notFree
     refine ⟨low, gap, chosen choice marked, fun keyed => ?_, fun unkeyed =>
-      ⟨other unkeyed, prescribed n who site choice notFree unkeyed marked⟩⟩
+      ⟨other unkeyed, prescribed n who site choice notFree unkeyed⟩⟩
     obtain ⟨options, near⟩ := common n who site notFree keyed
     exact ⟨late keyed, options, near choice marked⟩
   otherComparisons := inputs.otherComparisons
@@ -687,6 +960,7 @@ theorem onePacket_intended_sequentialEquilibrium_of_openInputs (wellFormed : set
       bound)
     (timely : AsyncTimely (runtime setup) delay bound)
     (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound)
+    (transmitting : FirstActivationTransmits setup leaks bounds horizon scheduler)
     (intended : setup.intendedModel.BehavioralAssessment)
     (equilibrium : intended.IsSequentialEquilibrium setup.intended_decision_antichain
       setup.intended_bounded.wellFoundedHistories
@@ -721,6 +995,7 @@ theorem onePacket_intended_sequentialEquilibrium_of_openInputs (wellFormed : set
     fun sequence mixed bayes converges =>
       (inputs sequence mixed bayes converges).toCertificateInputs setup leaks bounds horizon
         scheduler parameter utility excludedPayoff wellFormed contract timely retains
+          transmitting
 
 /-- **Sequential equilibrium of the bounded raw runtime from the open inputs.**
 Under the hypotheses of
@@ -736,6 +1011,7 @@ theorem onePacket_intended_raw_sequentialEquilibrium_of_openInputs
       bound)
     (timely : AsyncTimely (runtime setup) delay bound)
     (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound)
+    (transmitting : FirstActivationTransmits setup leaks bounds horizon scheduler)
     (intended : setup.intendedModel.BehavioralAssessment)
     (equilibrium : intended.IsSequentialEquilibrium setup.intended_decision_antichain
       setup.intended_bounded.wellFoundedHistories
@@ -786,7 +1062,8 @@ theorem onePacket_intended_raw_sequentialEquilibrium_of_openInputs
     parameter utility excludedPayoff wellFormed intended equilibrium
     (fun sequence mixed bayes converges =>
       (inputs sequence mixed bayes converges).toCertificateInputs setup leaks bounds horizon
-        scheduler parameter utility excludedPayoff wellFormed contract timely retains)
+        scheduler parameter utility excludedPayoff wellFormed contract timely retains
+          transmitting)
     service observationRate deliveryRate delivery_nonnegative coverage lowerUtility upperUtility
     lower_le le_upper deposit deposit_nonnegative sufficient
 
