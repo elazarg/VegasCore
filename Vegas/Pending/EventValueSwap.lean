@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.EventApplication
+import Vegas.Pending.OpeningEvidence
 
 /-! # Swapping hidden values in event-graph configurations
 
@@ -645,5 +645,496 @@ theorem PlayerView.swap_involutive [DecidableEq Player] (swap : HiddenSwap graph
       exact List.map_congr_left fun completion _ => swap.values.completion_involutive completion
   · funext slot
     exact swapCandidate_involutive (swap.raw_involutive (who, slot)) _
+
+end Vegas.EventGraphRuntime
+
+namespace Vegas.EventGraphRuntime
+
+open Interaction Vegas.EventGraph
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {graph : Vegas.EventGraph Player L}
+
+/-! ### Inclusion -/
+
+/-- **The conditions of an accepted commitment.** -/
+theorem handle_commitment_conditions (runtime : EventGraphRuntime graph) (state next : State graph)
+    (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
+    (accepted : handle runtime state ⟨id, .commitment event candidate⟩ = some next) :
+    ∃ (_ : state.config.cut.Ready event) (_ : state.WithinDeadline runtime event)
+      (owner : Player) (payload : L.Ty)
+      (outputEq : graph.outputLayout event = .binding owner payload)
+      (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+        (graph.nodes event) = .bind owner payload),
+      nodeView graph event = .bind owner payload outputEq codeEq ∧ id.1 = owner ∧
+        candidate.1 = owner ∧ state.accepted (.inr event) = none ∧
+          state.HandleUnused candidate := by
+  by_cases ready : state.config.cut.Ready event
+  · by_cases timely : state.WithinDeadline runtime event
+    · cases view : nodeView graph event with
+      | resolve owner payload binding checks outputEq codeEq =>
+          simp [handle, ready, timely, view] at accepted
+      | sample payload law outputEq codeEq =>
+          simp [handle, ready, timely, view] at accepted
+      | bind owner payload outputEq codeEq =>
+          simp only [handle, dite_eq_left ready, dite_eq_left timely, view] at accepted
+          split at accepted
+          · rename_i sender
+            simp only [dite_eq_ite, Option.ite_none_right_eq_some] at accepted
+            rcases accepted with ⟨handleOwner, vacant, unused, _⟩
+            exact ⟨ready, timely, owner, payload, outputEq, codeEq, rfl, sender, handleOwner,
+              vacant, unused⟩
+          · simp_all only [reduceCtorEq]
+    · simp [handle, ready, timely] at accepted
+  · simp [handle, ready] at accepted
+
+/-- **The conditions of an accepted opening.** -/
+theorem handle_opening_conditions (runtime : EventGraphRuntime graph) (state next : State graph)
+    (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
+    (accepted : handle runtime state ⟨id, .opening event candidate raw⟩ = some next) :
+    ∃ (ready : state.config.cut.Ready event) (_ : state.WithinDeadline runtime event)
+      (owner : Player) (payload : L.Ty)
+      (binding : FieldRef graph.layout (.binding owner payload))
+      (checks : List (GuardCheck graph.layout payload))
+      (outputEq : graph.outputLayout event = .publication payload)
+      (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+        (graph.nodes event) = .resolve owner payload binding checks) (value : L.Val payload)
+      (result : PublicationResult (L.Val payload)),
+      nodeView graph event = .resolve owner payload binding checks outputEq codeEq ∧
+        id.1 = owner ∧ candidate.1 = owner ∧ state.accepted binding.field = some candidate ∧
+        raw = ⟨payload, value⟩ ∧ state.candidates.lookup candidate = .openable ⟨payload, value⟩ ∧
+        binding.get? state.config.store = some (.success value) ∧
+        EventCode.resolveOutput? binding checks true state.config.store = some result ∧
+        next = state.complete event ready (cast (congrArg EventField.Action outputEq.symm) true)
+          (cast (congrArg EventField.Value outputEq.symm) result) := by
+  by_cases ready : state.config.cut.Ready event
+  · by_cases timely : state.WithinDeadline runtime event
+    · cases view : nodeView graph event with
+      | bind owner payload outputEq codeEq =>
+          simp [handle, ready, timely, view] at accepted
+      | sample payload law outputEq codeEq =>
+          simp [handle, ready, timely, view] at accepted
+      | resolve owner payload binding checks outputEq codeEq =>
+          have accepted' := accepted
+          simp only [handle, dite_eq_left ready, dite_eq_left timely, view] at accepted
+          split at accepted
+          · rename_i sender
+            simp only [dite_eq_ite, Option.ite_none_right_eq_some] at accepted
+            rcases accepted with ⟨handleOwner, associated, verified, accepted⟩
+            split at accepted
+            · simp at accepted
+            · rename_i value typed
+              have rawEq : raw = ⟨payload, value⟩ := by
+                rcases raw with ⟨rawType, rawValue⟩
+                unfold Raw.as? at typed
+                split at typed
+                · rename_i same
+                  subst same
+                  simp only [Option.some.injEq] at typed
+                  subst typed
+                  rfl
+                · cases typed
+              subst rawEq
+              have lookupEq := (CommitmentCandidates.verify_eq_true_iff _ _ _).mp verified
+              by_cases stored : binding.get? state.config.store = some (.success value)
+              · simp only [stored, ite_eq_left] at accepted
+                cases resolved : EventCode.resolveOutput? binding checks true
+                    state.config.store with
+                | none =>
+                    have available : ∀ field ∈ insert binding.field
+                        (GuardCheck.listReadFields checks),
+                        (state.config.store field).isSome = true := by
+                      intro field member
+                      apply state.config.read_available ready
+                      rw [← EventCode.readFields_cast outputEq (graph.nodes event), codeEq]
+                      exact member
+                    have defined := EventCode.resolveOutput?_isSome binding checks true
+                      state.config.store available
+                    rw [resolved] at defined
+                    cases defined
+                | some result =>
+                    refine ⟨ready, timely, owner, payload, binding, checks, outputEq, codeEq, value,
+                      result, rfl, sender, handleOwner, associated, rfl, lookupEq, stored,
+                      resolved, ?_⟩
+                    have direct := handle_opening_eq runtime state id event candidate owner payload
+                      binding checks outputEq codeEq view ready timely sender handleOwner associated
+                      value lookupEq stored result resolved
+                    exact Option.some.inj (accepted'.symm.trans direct)
+              · simp [stored] at accepted
+          · simp_all only [reduceCtorEq]
+    · simp [handle, ready, timely] at accepted
+  · simp [handle, ready] at accepted
+
+end Vegas.EventGraphRuntime
+
+namespace Vegas.EventGraphRuntime
+
+open Interaction Vegas.EventGraph
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {graph : Vegas.EventGraph Player L}
+
+/-- A handle accepted at a binding event is *compatible* with the swap when the
+swap of the result any candidate gives the binding is the result of the
+swapped candidate. -/
+def BindCompatible (swap : HiddenSwap graph) (event : graph.EventId) (handle : Handle graph) :
+    Prop :=
+  ∀ owner payload (outputEq : graph.outputLayout event = .binding owner payload)
+    (candidate : CommitmentCandidate (Raw L)),
+    swap.values.value (.inr event)
+        (cast (congrArg EventField.Value outputEq.symm) (candidateResult candidate payload)) =
+      cast (congrArg EventField.Value outputEq.symm)
+        (candidateResult (swapCandidate (swap.raw handle) candidate) payload)
+
+/-- **Inclusion commutes with the swap** when a commitment's handle is
+compatible with it at its event, and an opening addresses a ready resolution
+only if the swap fixes the binding it reads and the opened handle. -/
+theorem handle_swap (runtime : EventGraphRuntime graph) (swap : HiddenSwap graph)
+    (state : State graph) (message : Message Player (Payload graph))
+    (compatible : ∀ event candidate, message.payload = .commitment event candidate →
+      BindCompatible swap event candidate)
+    (fixed : ∀ event candidate raw, message.payload = .opening event candidate raw →
+      state.config.cut.Ready event →
+        ResolutionFixed swap.values event ∧ swap.raw candidate = id) :
+    handle runtime (state.swap swap) message = (handle runtime state message).map
+      (State.swap swap) := by
+  rcases message with ⟨id, packet⟩
+  cases packet with
+  | malformed raw => rfl
+  | commitment event candidate =>
+      have compatibleHere := compatible event candidate rfl
+      cases original : handle runtime state ⟨id, .commitment event candidate⟩ with
+      | some next =>
+          obtain ⟨ready, timely, owner, payload, outputEq, codeEq, view, sender, handleOwner,
+            vacant, unused⟩ :=
+            handle_commitment_conditions runtime state next id event candidate original
+          rw [handle_commitment_eq runtime state id event candidate owner payload outputEq codeEq
+            view ready timely sender handleOwner vacant unused, Option.some.injEq] at original
+          subst original
+          rw [handle_commitment_eq runtime (state.swap swap) id event candidate owner payload
+            outputEq codeEq view ready timely sender handleOwner vacant unused, Option.map_some]
+          congr 1
+          have resultEq := compatibleHere owner payload outputEq (state.candidates.lookup candidate)
+          rw [← State.bindingResult_eq] at resultEq
+          change State.mk _ _ _ _ _ = State.mk _ _ _ _ _
+          simp only [State.mk.injEq]
+          refine ⟨?_, rfl, ?_, rfl, rfl⟩
+          · change ((state.swap swap).complete event ready _ _).config =
+              ((state.complete event ready _ _).swap swap).config
+            rw [State.swap_complete, swap.values.action_binding event owner payload outputEq,
+              resultEq, State.swap_bindingResult]
+            simp only [cast_cast, cast_eq]
+          · exact (swap.candidates_freeze state.candidates candidate).symm
+      | none =>
+          cases swapped : handle runtime (state.swap swap) ⟨id, .commitment event candidate⟩ with
+          | none => rfl
+          | some next =>
+              obtain ⟨ready, timely, owner, payload, outputEq, codeEq, view, sender, handleOwner,
+                vacant, unused⟩ :=
+                handle_commitment_conditions runtime (state.swap swap) next id event candidate
+                  swapped
+              rw [handle_commitment_eq runtime state id event candidate owner payload outputEq
+                codeEq view ready timely sender handleOwner vacant unused] at original
+              cases original
+  | opening event candidate raw =>
+      cases original : handle runtime state ⟨id, .opening event candidate raw⟩ with
+      | some next =>
+          obtain ⟨ready, timely, owner, payload, binding, checks, outputEq, codeEq, value, result,
+            view, sender, handleOwner, associated, rawEq, lookupEq, stored, resolved, nextEq⟩ :=
+            handle_opening_conditions runtime state next id event candidate raw original
+          subst rawEq nextEq
+          obtain ⟨resolutionFixed, handleFixed⟩ := fixed event candidate _ rfl ready
+          unfold ResolutionFixed at resolutionFixed
+          rw [view] at resolutionFixed
+          have storeAt : (swap.values.store state.config.store) binding.field =
+              state.config.store binding.field := by
+            simp [ValueSwap.store, resolutionFixed]
+          have swappedLookup : (state.swap swap).candidates.lookup candidate =
+              .openable ⟨payload, value⟩ := by
+            rw [State.swap_candidates, HiddenSwap.lookup_candidates, lookupEq, handleFixed]
+            rfl
+          have swappedStored : binding.get? (state.swap swap).config.store =
+              some (.success value) := by
+            rw [State.swap_config, Config.swap_store, binding.get?_congr _ _ storeAt]
+            exact stored
+          have swappedResolved : EventCode.resolveOutput? binding checks true
+              (state.swap swap).config.store = some result := by
+            rw [State.swap_config, Config.swap_store,
+              EventCode.resolveOutput?_publicAgree binding checks true
+                (swap.values.store_publicAgree state.config.store) storeAt]
+            exact resolved
+          rw [handle_opening_eq runtime (state.swap swap) id event candidate owner payload binding
+            checks outputEq codeEq view ready timely sender handleOwner associated value
+            swappedLookup swappedStored result swappedResolved, Option.map_some,
+            State.swap_complete, swap.values.action_publication event payload outputEq,
+            swap.values.value_public (.inr event)
+              (show (graph.outputLayout event).IsPublic by rw [outputEq]; trivial)]
+          rfl
+      | none =>
+          cases swapped : handle runtime (state.swap swap) ⟨id, .opening event candidate raw⟩ with
+          | none => rfl
+          | some next =>
+              obtain ⟨ready, timely, owner, payload, binding, checks, outputEq, codeEq, value,
+                result, view, sender, handleOwner, associated, rawEq, lookupEq, stored, resolved,
+                _⟩ :=
+                handle_opening_conditions runtime (state.swap swap) next id event candidate raw
+                  swapped
+              subst rawEq
+              obtain ⟨resolutionFixed, handleFixed⟩ := fixed event candidate _ rfl ready
+              unfold ResolutionFixed at resolutionFixed
+              rw [view] at resolutionFixed
+              have storeAt : (swap.values.store state.config.store) binding.field =
+                  state.config.store binding.field := by
+                simp [ValueSwap.store, resolutionFixed]
+              have originalLookup : state.candidates.lookup candidate =
+                  .openable ⟨payload, value⟩ := by
+                rw [State.swap_candidates, HiddenSwap.lookup_candidates, handleFixed] at lookupEq
+                cases meaning : state.candidates.lookup candidate <;>
+                  simp_all [swapCandidate]
+              have originalStored : binding.get? state.config.store = some (.success value) := by
+                rw [State.swap_config, Config.swap_store, binding.get?_congr _ _ storeAt] at stored
+                exact stored
+              have originalResolved : EventCode.resolveOutput? binding checks true
+                  state.config.store = some result := by
+                rw [State.swap_config, Config.swap_store,
+                  EventCode.resolveOutput?_publicAgree binding checks true
+                    (swap.values.store_publicAgree state.config.store) storeAt] at resolved
+                exact resolved
+              rw [handle_opening_eq runtime state id event candidate owner payload binding checks
+                outputEq codeEq view ready timely sender handleOwner associated value
+                originalLookup originalStored result originalResolved] at original
+              cases original
+
+end Vegas.EventGraphRuntime
+
+namespace Vegas.EventGraphRuntime
+
+open Interaction Vegas.EventGraph
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {graph : Vegas.EventGraph Player L}
+
+/-! ### Environment operations -/
+
+omit [DecidableEq Player] in
+/-- **Environment operations commute with the swap.** Clocks, samples and
+expiries read no hidden value, and an expired binding fails on both sides. -/
+theorem environmentStep_swap (runtime : EventGraphRuntime graph) (swap : HiddenSwap graph)
+    (state : State graph) (command : EnvironmentCommand graph) :
+    environmentStep runtime (state.swap swap) command =
+      (environmentStep runtime state command).map (State.swap swap) := by
+  cases command with
+  | advanceClock =>
+      simp only [environmentStep, PMF.pure_map]
+      rfl
+  | executeSample event =>
+      by_cases ready : state.config.cut.Ready event
+      · cases view : nodeView graph event with
+        | sample payload law outputEq codeEq =>
+            have actionFixed : swap.values.action event
+                (cast (congrArg EventField.Action outputEq.symm) PUnit.unit) =
+                cast (congrArg EventField.Action outputEq.symm) PUnit.unit := by
+              generalize swap.values.action event
+                (cast (congrArg EventField.Action outputEq.symm) PUnit.unit) = other
+              obtain ⟨marker, rfl⟩ : ∃ marker : PUnit,
+                  other = cast (congrArg EventField.Action outputEq.symm) marker :=
+                ⟨cast (congrArg EventField.Action outputEq) other, by simp⟩
+              rfl
+            have stepEq := Config.step_swap swap.values state.config event ready
+              (cast (congrArg EventField.Action outputEq.symm) PUnit.unit)
+              (by unfold ResolutionFixed; rw [view]; trivial)
+            rw [actionFixed] at stepEq
+            rw [environmentStep_executeSample_eq runtime (state.swap swap) event ready payload law
+                outputEq codeEq view,
+              environmentStep_executeSample_eq runtime state event ready payload law outputEq
+                codeEq view]
+            change PMF.map _ ((state.config.swap swap.values).step event ready _) = _
+            rw [stepEq, PMF.map_comp, PMF.map_comp]
+            rfl
+        | bind owner payload outputEq codeEq =>
+            have nonsample : ∀ payload law outputEq codeEq,
+                nodeView graph event ≠ .sample payload law outputEq codeEq := by
+              intro _ _ _ _ same
+              rw [view] at same
+              cases same
+            rw [environmentStep_executeSample_of_nonsample runtime (state.swap swap) event ready
+              nonsample, environmentStep_executeSample_of_nonsample runtime state event ready
+              nonsample, PMF.pure_map]
+        | resolve owner payload binding checks outputEq codeEq =>
+            have nonsample : ∀ payload law outputEq codeEq,
+                nodeView graph event ≠ .sample payload law outputEq codeEq := by
+              intro _ _ _ _ same
+              rw [view] at same
+              cases same
+            rw [environmentStep_executeSample_of_nonsample runtime (state.swap swap) event ready
+              nonsample, environmentStep_executeSample_of_nonsample runtime state event ready
+              nonsample, PMF.pure_map]
+      · rw [environmentStep_executeSample_of_not_ready runtime (state.swap swap) event ready,
+          environmentStep_executeSample_of_not_ready runtime state event ready, PMF.pure_map]
+  | expire event =>
+      by_cases ready : state.config.cut.Ready event
+      · cases activated : state.activatedAt event with
+        | none =>
+            rw [environmentStep_expire_of_not_activated runtime (state.swap swap) event ready
+              activated, environmentStep_expire_of_not_activated runtime state event ready
+              activated, PMF.pure_map]
+        | some entered =>
+            by_cases due : runtime.deadline event ≤ state.clock - entered
+            · cases view : nodeView graph event with
+              | bind owner payload outputEq codeEq =>
+                  rw [environmentStep_expire_bind_eq runtime (state.swap swap) event ready entered
+                    activated due owner payload outputEq codeEq view,
+                    environmentStep_expire_bind_eq runtime state event ready entered activated due
+                    owner payload outputEq codeEq view, PMF.pure_map, State.swap_complete,
+                    swap.values.action_binding event owner payload outputEq,
+                    swap.values.output_failure event owner payload outputEq]
+                  simp only [cast_cast, cast_eq]
+              | resolve owner payload binding checks outputEq codeEq =>
+                  rw [environmentStep_expire_resolve_eq runtime (state.swap swap) event ready
+                    entered activated due owner payload binding checks outputEq codeEq view,
+                    environmentStep_expire_resolve_eq runtime state event ready entered activated
+                    due owner payload binding checks outputEq codeEq view, PMF.pure_map,
+                    State.swap_complete, swap.values.action_publication event payload outputEq,
+                    swap.values.value_public (.inr event)
+                      (show (graph.outputLayout event).IsPublic by rw [outputEq]; trivial)]
+                  rfl
+              | sample payload law outputEq codeEq =>
+                  rw [environmentStep_expire_sample_eq runtime (state.swap swap) event ready
+                    entered activated due payload law outputEq codeEq view,
+                    environmentStep_expire_sample_eq runtime state event ready entered activated
+                    due payload law outputEq codeEq view, PMF.pure_map]
+            · rw [environmentStep_expire_of_not_due runtime (state.swap swap) event ready entered
+                activated due, environmentStep_expire_of_not_due runtime state event ready entered
+                activated due, PMF.pure_map]
+      · rw [environmentStep_expire_of_not_ready runtime (state.swap swap) event ready,
+          environmentStep_expire_of_not_ready runtime state event ready, PMF.pure_map]
+
+/-! ### Submissions -/
+
+/-- **The swap of a submission**: the value a commitment prepares at its handle
+is swapped at that handle. The packet is unchanged. -/
+def Submission.swap (swap : HiddenSwap graph) (submission : Submission graph) :
+    Submission graph :=
+  ⟨submission.packet, match submission.packet with
+    | .commitment _ candidate => submission.opening.map (swap.raw candidate)
+    | .opening .. | .malformed _ => submission.opening⟩
+
+omit [DecidableEq Player] in
+@[simp] theorem Submission.swap_packet (swap : HiddenSwap graph) (submission : Submission graph) :
+    (submission.swap swap).packet = submission.packet := rfl
+
+omit [DecidableEq Player] in
+theorem Submission.swap_involutive (swap : HiddenSwap graph) :
+    Function.Involutive (Submission.swap swap) := by
+  rintro ⟨packet, opening⟩
+  cases packet with
+  | commitment event candidate =>
+      simp only [Submission.swap, Option.map_map]
+      congr 1
+      cases opening with
+      | none => rfl
+      | some raw => exact congrArg some (swap.raw_involutive candidate raw)
+  | opening | malformed => rfl
+
+/-- Registration commutes with the swap. -/
+theorem Submission.register_swap (swap : HiddenSwap graph) (submission : Submission graph)
+    (state : State graph) (who : Player) :
+    (submission.swap swap).register (state.swap swap) who =
+      (submission.register state who).swap swap := by
+  rcases submission with ⟨packet, opening⟩
+  cases packet with
+  | commitment event candidate =>
+      rcases candidate with ⟨owner, slot⟩
+      cases slot with
+      | initial input =>
+          cases opening <;> rfl
+      | prepared serial =>
+          cases opening with
+          | none => rfl
+          | some raw =>
+              simp only [Submission.swap, Submission.register, Option.map_some]
+              split
+              · rename_i owned
+                subst owned
+                simp only [State.swap, State.mk.injEq, true_and]
+                exact ⟨(swap.candidates_prepare state.candidates owner (.prepared serial) raw).symm,
+                  trivial⟩
+              · rfl
+  | opening event candidate raw => cases opening <;> rfl
+  | malformed raw => cases opening <;> rfl
+
+/-- Freezing an authored handle commutes with the swap. -/
+theorem submitStep_swap (swap : HiddenSwap graph) (state : State graph) (who : Player)
+    (packet : Payload graph) :
+    submitStep (state.swap swap) who packet = (submitStep state who packet).swap swap := by
+  cases packet with
+  | commitment event candidate =>
+      simp only [submitStep]
+      split
+      · simp only [State.swap, State.mk.injEq, true_and]
+        exact ⟨(swap.candidates_freeze state.candidates candidate).symm, trivial⟩
+      · rfl
+  | opening | malformed => rfl
+
+end Vegas.EventGraphRuntime
+
+namespace Vegas.EventGraphRuntime
+
+open Interaction Vegas.EventGraph
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {graph : Vegas.EventGraph Player L}
+
+/-- The swap of a witnessed submission: of its call; the evidence request is
+unchanged. -/
+def WitnessedSubmission.swap (swap : HiddenSwap graph) (submission : WitnessedSubmission graph) :
+    WitnessedSubmission graph :=
+  ⟨submission.call.swap swap, submission.evidence⟩
+
+omit [DecidableEq Player] in
+@[simp] theorem WitnessedSubmission.swap_call (swap : HiddenSwap graph)
+    (submission : WitnessedSubmission graph) :
+    (submission.swap swap).call = submission.call.swap swap := rfl
+
+omit [DecidableEq Player] in
+@[simp] theorem WitnessedSubmission.swap_evidence (swap : HiddenSwap graph)
+    (submission : WitnessedSubmission graph) :
+    (submission.swap swap).evidence = submission.evidence := rfl
+
+omit [DecidableEq Player] in
+theorem WitnessedSubmission.swap_involutive (swap : HiddenSwap graph) :
+    Function.Involutive (WitnessedSubmission.swap swap) := by
+  rintro ⟨call, evidence⟩
+  simp only [WitnessedSubmission.swap, Submission.swap_involutive swap call]
+
+/-- A request for an owned certificate is *fixed* by the swap when the swap
+fixes the certified value at its handle. -/
+def EvidenceRequest.FixedBy (swap : HiddenSwap graph) : EvidenceRequest graph → Prop
+  | .owned fact => swap.raw fact.handle fact.raw = fact.raw
+  | .none | .forward _ => True
+
+/-- **Emission commutes with the swap** for a request the swap fixes. -/
+theorem WitnessedSubmission.emit_swap (swap : HiddenSwap graph)
+    (submission : WitnessedSubmission graph) (state : State graph) (who : Player)
+    (known : List (Message Player (WitnessedPacket graph)))
+    (fixed : submission.evidence.FixedBy swap) :
+    (submission.swap swap).emit (state.swap swap) who known = submission.emit state who known := by
+  rcases submission with ⟨call, evidence⟩
+  cases evidence with
+  | none => simp [emit, WitnessedSubmission.swap]
+  | forward id => simp [emit, WitnessedSubmission.swap]
+  | owned fact =>
+      change swap.raw fact.handle fact.raw = fact.raw at fixed
+      simp only [emit, WitnessedSubmission.swap, Submission.swap_packet, State.swap_publicView,
+        State.swap_candidates, HiddenSwap.verify_candidates, fixed]
+
+/-- Submission commutes with the swap. -/
+theorem WitnessedSubmission.submit_swap (swap : HiddenSwap graph)
+    (submission : WitnessedSubmission graph) (state : State graph) (who : Player) :
+    submitStep ((submission.swap swap).call.register (state.swap swap) who) who
+        (submission.swap swap).call.packet =
+      (submitStep (submission.call.register state who) who submission.call.packet).swap swap := by
+  rw [WitnessedSubmission.swap_call, Submission.register_swap, Submission.swap_packet,
+    submitStep_swap]
 
 end Vegas.EventGraphRuntime
