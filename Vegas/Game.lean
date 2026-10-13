@@ -413,3 +413,7 @@ import Vegas.Game.OnePacketProjectedDecision
 import Vegas.Game.OnePacketDebtRouting
 import Vegas.Game.OnePacketFirstActivationCompletion
 import Vegas.Game.OnePacketSwapSymmetry
+import Vegas.Game.OnePacketSiteConsistent
+import Vegas.Game.OnePacketRecordedSilence
+import Vegas.Game.OnePacketSiteLaws
+import Vegas.Game.OnePacketSiteLumping
