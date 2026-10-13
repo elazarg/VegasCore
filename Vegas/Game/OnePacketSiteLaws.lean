@@ -41,8 +41,9 @@ variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
 /-- **The owner's components at a late site.** At every allowed forced state of a
 one-packet history with the key's decided event ready and the owner acting, the
 owner plays the slot-trembled late component of a mixture of late options chosen
-by its late-delivery key while it has not sent for the event, and its
-slot-trembled prescribed component once it has. -/
+by its late-delivery key while it has not sent for the event; once it has, it
+plays a slot-trembled component whose main part is the as-if-honest choice, as
+the prescribed component does, or a mixture of late options. -/
 def SiteComponentShape (assessment : setup.intendedModel.BehavioralAssessment) (scale : ℝ)
     (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) {slots : Nat}
     (options : LateKey setup leaks → PMF (LateOption slots)) (key : LateKey setup leaks)
@@ -74,11 +75,27 @@ def SiteComponentShape (assessment : setup.intendedModel.BehavioralAssessment) (
               key.owner (some (execution.recall key.owner,
                 execution.observe (application setup leaks) key.owner)))) ∧
       ((runtime setup).eventRecorded leaks (execution.recall key.owner) event = true →
-        profile key.owner (some (execution.recall key.owner,
-            execution.observe (application setup leaks) key.owner)) =
-          slotPrescribedComponent setup leaks bounds (initialLaw setup) horizon scheduler
-            assessment scale nonnegative le_one key.owner (some (execution.recall key.owner,
-              execution.observe (application setup leaks) key.owner)))
+        ∃ main : PMF ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+            scheduler).Choice key.owner (some (execution.recall key.owner,
+              execution.observe (application setup leaks) key.owner))),
+          (main = honestChoice setup leaks bounds (initialLaw setup) horizon scheduler
+              assessment key.owner (some (execution.recall key.owner,
+                execution.observe (application setup leaks) key.owner)) ∨
+            ∃ others : PMF (LateOption slots), main = others.bind
+              (lateChoice setup leaks bounds (initialLaw setup) horizon scheduler assessment
+                key.owner (some (execution.recall key.owner,
+                  execution.observe (application setup leaks) key.owner)))) ∧
+          profile key.owner (some (execution.recall key.owner,
+              execution.observe (application setup leaks) key.owner)) =
+            slotTrembledChoice setup leaks bounds (initialLaw setup) horizon scheduler scale
+              nonnegative le_one key.owner (some (execution.recall key.owner,
+                execution.observe (application setup leaks) key.owner)) main
+              (PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler
+                key.owner (some (execution.recall key.owner,
+                  execution.observe (application setup leaks) key.owner))))
+              (slotChoice setup leaks bounds (initialLaw setup) horizon scheduler assessment
+                key.owner (some (execution.recall key.owner,
+                  execution.observe (application setup leaks) key.owner))))
 
 omit [Fintype Player] in
 /-- A key decides one event: the owner's turn. -/
@@ -168,15 +185,26 @@ theorem lateMoves_of_silent (execution : (application setup leaks).Execution) (w
   rw [optionConst, slotConst, PMF.map_const, PMF.map_const, mix_self, mix_self]
 
 /-- At a state of a one-packet history whose owner has sent for an event, every
-choice the prescribed component's core can make keeps silence. -/
-theorem prescribedCore_silent (assessment : setup.intendedModel.BehavioralAssessment)
+choice of a component's core keeps silence when its main part is the as-if-honest
+choice or a mixture of late options. -/
+theorem core_silent (assessment : setup.intendedModel.BehavioralAssessment)
     {control : (application setup leaks).Control}
     (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
     (recorded : (runtime setup).eventRecorded leaks (control.execution.recall who) event = true)
-    (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) :
+    (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) {slots : Nat}
+    (main : PMF ((onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).Choice
+      who (some (control.execution.recall who,
+        control.execution.observe (application setup leaks) who))))
+    (mainCases : main = honestChoice setup leaks bounds (initialLaw setup) horizon scheduler
+        assessment who (some (control.execution.recall who,
+          control.execution.observe (application setup leaks) who)) ∨
+      ∃ others : PMF (LateOption slots), main = others.bind
+        (lateChoice setup leaks bounds (initialLaw setup) horizon scheduler assessment who
+          (some (control.execution.recall who,
+            control.execution.observe (application setup leaks) who)))) :
     ∀ choice ∈ (mix (scale ^ 2) (sq_nonneg _) (pow_le_one₀ nonnegative le_one)
         (slotChoice setup leaks bounds (initialLaw setup) horizon scheduler assessment who
           (some (control.execution.recall who,
@@ -185,20 +213,21 @@ theorem prescribedCore_silent (assessment : setup.intendedModel.BehavioralAssess
           (PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler who
             (some (control.execution.recall who,
               control.execution.observe (application setup leaks) who))))
-          (honestChoice setup leaks bounds (initialLaw setup) horizon scheduler assessment who
-            (some (control.execution.recall who,
-              control.execution.observe (application setup leaks) who))))).support,
+          main)).support,
       choice.1.getD ⟨none⟩ = ⟨none⟩ := by
-  obtain ⟨honest, slot, _, silence⟩ :=
+  obtain ⟨honest, slot, late, silence⟩ :=
     parts_silent_of_recorded assessment trace who event turn recorded
   intro choice member
   rcases mem_support_mix_cases member with slotted | inner
   · exact slot choice slotted
-  · rcases mem_support_mix_cases inner with silent | honestly
+  · rcases mem_support_mix_cases inner with silent | mainly
     · rw [PMF.mem_support_pure_iff] at silent
       rw [silent]
       exact silence
-    · exact honest choice honestly
+    · rcases mainCases with rfl | ⟨others, rfl⟩
+      · exact honest choice mainly
+      · obtain ⟨option, _, drawn⟩ := (PMF.mem_support_bind_iff _ _ _).mp mainly
+        exact late option choice drawn
 
 /-- At a state of a one-packet history whose owner has sent for an event, every
 choice the late component's core can make keeps silence. -/
@@ -283,12 +312,13 @@ theorem ownerBindingLaw_of_siteComponents {LateOption' : Type}
         (some ⟨remaining, some key.owner, execution⟩) := current ▸ history.trace
     have turnOwn : execution.application.publicView.ownTurn? key.owner = some event :=
       ownTurn?_of_ready setup _ ready (nodeView_bind_actor outputEq codeEq)
-    have silent := prescribedCore_silent assessment trace key.owner event turnOwn recorded scale
-      nonnegative le_one
-    rw [decodeProfile_eq_map, PMF.map_comp,
+    obtain ⟨main, mainCases, profileEq⟩ :=
       (shape event turnBoth history remaining execution current allowedState forced ready).2
-        recorded]
-    unfold slotPrescribedComponent slotTrembledChoice
+        recorded
+    have silent := core_silent assessment trace key.owner event turnOwn recorded scale
+      nonnegative le_one main mainCases
+    rw [decodeProfile_eq_map, PMF.map_comp, profileEq]
+    unfold slotTrembledChoice
     rw [mix_map]
     have coreEq : PMF.map (commitMove event key.owner payload execution ∘
         fun choice : (onePacketModel setup leaks bounds (initialLaw setup) horizon
@@ -301,10 +331,7 @@ theorem ownerBindingLaw_of_siteComponents {LateOption' : Type}
           (mix scale nonnegative le_one
             (PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler
               key.owner (some (execution.recall key.owner,
-                execution.observe (application setup leaks) key.owner))))
-            (honestChoice setup leaks bounds (initialLaw setup) horizon scheduler assessment
-              key.owner (some (execution.recall key.owner,
-                execution.observe (application setup leaks) key.owner))))) =
+                execution.observe (application setup leaks) key.owner)))) main)) =
         PMF.pure (some none) := by
       rw [map_congr_on_support (g := Function.const _ (some none)) _ fun choice supported => by
         simp only [Function.comp, silent choice supported]
@@ -397,8 +424,11 @@ theorem ownerOpeningLaw_of_siteComponents {LateOption' : Type}
         (some ⟨remaining, some key.owner, execution⟩) := current ▸ history.trace
     have turnOwn : execution.application.publicView.ownTurn? key.owner = some event :=
       ownTurn?_of_ready setup _ ready (nodeView_resolve_actor outputEq codeEq)
-    have silent := prescribedCore_silent assessment trace key.owner event turnOwn recorded scale
-      nonnegative le_one
+    obtain ⟨main, mainCases, profileEq⟩ :=
+      (shape event turnBoth history remaining execution current
+        (by rw [current]; exact allowedState) (by rw [current]; exact forced) ready).2 recorded
+    have silent := core_silent assessment trace key.owner event turnOwn recorded scale
+      nonnegative le_one main mainCases
     have represented : ∃ witness : (onePacketProtocol setup leaks bounds horizon
         scheduler).History × Nat × (application setup leaks).Execution,
         witness.1.state = some ⟨witness.2.1, some key.owner, witness.2.2⟩ ∧
@@ -440,10 +470,8 @@ theorem ownerOpeningLaw_of_siteComponents {LateOption' : Type}
           decide_true]]
       exact PMF.map_const _ _
     beta_reduce
-    rw [silenceEq, expect_pure, decodeProfile_eq_map,
-      (shape event turnBoth history remaining execution current
-        (by rw [current]; exact allowedState) (by rw [current]; exact forced) ready).2 recorded]
-    unfold slotPrescribedComponent slotTrembledChoice
+    rw [silenceEq, expect_pure, decodeProfile_eq_map, profileEq]
+    unfold slotTrembledChoice
     rw [expect_map, expect_map]
     set core := mix (scale ^ 2) (sq_nonneg _) (pow_le_one₀ nonnegative le_one)
       (slotChoice setup leaks bounds (initialLaw setup) horizon scheduler assessment key.owner
@@ -452,10 +480,7 @@ theorem ownerOpeningLaw_of_siteComponents {LateOption' : Type}
       (mix scale nonnegative le_one
         (PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler
           key.owner (some (execution.recall key.owner,
-            execution.observe (application setup leaks) key.owner))))
-        (honestChoice setup leaks bounds (initialLaw setup) horizon scheduler assessment
-          key.owner (some (execution.recall key.owner,
-            execution.observe (application setup leaks) key.owner)))) with coreEq
+            execution.observe (application setup leaks) key.owner)))) main) with coreEq
     have close := unitClose_mix (scale ^ 3) (pow_nonneg nonnegative 3)
       (pow_le_one₀ nonnegative le_one)
       ((bounds.onePacketMenu (runtime setup) leaks).uniformPolicy (initialLaw setup) horizon
