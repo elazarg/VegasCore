@@ -459,4 +459,77 @@ theorem lateCore_silence {control : (application setup leaks).Control}
       rw [lateChoice_reveal assessment trace who event turn node slot, PMF.pure_map]
       rfl
 
+omit [Fintype Player] in
+/-- Protocol states with the same operational state give every player the same
+own envelopes. -/
+theorem outputs_congr {first second : (application setup leaks).Control}
+    (same : operationalState setup leaks (some first) = operationalState setup leaks (some second))
+    (who : Player) :
+    (application setup leaks).outputs (first.execution.recall who) =
+      (application setup leaks).outputs (second.execution.recall who) := by
+  have recalled := congrArg LateKey.recalled (ofView_congr same who)
+  simp only [LateKey.ofView] at recalled
+  have emitted := congrArg (List.map Prod.snd) recalled
+  simp only [List.map_map, Function.comp_def] at emitted
+  have viaMap : ∀ entries : List (application setup leaks).PlayerEntry,
+      entries.filterMap ReactiveApplication.PlayerEntry.emitted =
+        (entries.map fun entry => entry.emitted).filterMap id := by
+    intro entries
+    rw [List.filterMap_map]
+    rfl
+  unfold ReactiveApplication.outputs
+  rw [viaMap, viaMap, emitted]
+
+/-- **Whether the disclosure keeps silence is read off the operational state.** -/
+theorem disclosureSilent_congr (covers : bounds.CoversOutputValues) {remaining : Nat}
+    {owner : Player}
+    (firstHistory secondHistory : (onePacketProtocol setup leaks bounds horizon scheduler).History)
+    {first second : (application setup leaks).Execution}
+    (firstCurrent : firstHistory.state = some ⟨remaining, some owner, first⟩)
+    (secondCurrent : secondHistory.state = some ⟨remaining, some owner, second⟩)
+    (same : operationalState setup leaks (some ⟨remaining, some owner, first⟩) =
+      operationalState setup leaks (some ⟨remaining, some owner, second⟩))
+    {event : (graph setup).EventId} (ready : first.application.config.cut.Ready event)
+    {payload : L.Ty} {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
+    {outputEq : (graph setup).outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .resolve owner payload binding checks}
+    (node : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq) :
+    choiceSilent (responseChoice setup leaks bounds (initialLaw setup) horizon scheduler owner
+        (some (first.recall owner, first.observe (application setup leaks) owner))
+        ((runtime setup).canonicalServiceDecision leaks owner (first.recall owner)
+          (first.observe (application setup leaks) owner) event
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) true))) =
+      choiceSilent (responseChoice setup leaks bounds (initialLaw setup) horizon scheduler owner
+        (some (second.recall owner, second.observe (application setup leaks) owner))
+        ((runtime setup).canonicalServiceDecision leaks owner (second.recall owner)
+          (second.observe (application setup leaks) owner) event
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) true))) := by
+  have ready' : second.application.config.cut.Ready event :=
+    (SameOperational.ready same event).mp ready
+  have actor := nodeView_resolve_actor outputEq codeEq
+  have firstTrace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace
+      (some ⟨remaining, some owner, first⟩) := firstCurrent ▸ firstHistory.trace
+  have secondTrace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace
+      (some ⟨remaining, some owner, second⟩) := secondCurrent ▸ secondHistory.trace
+  have firstIff := disclosure_silent_iff covers firstTrace owner event
+    (ownTurn?_of_ready setup _ ready actor) node
+  have secondIff := disclosure_silent_iff covers secondTrace owner event
+    (ownTurn?_of_ready setup _ ready' actor) node
+  have packets := reactiveResolutionPacket_congr same ready node
+    (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
+  have outputs := outputs_congr same owner
+  unfold choiceSilent
+  rw [decide_eq_decide]
+  refine firstIff.trans (Iff.trans ?_ secondIff.symm)
+  change ¬ ((reactiveResolutionPacket owner event payload binding checks outputEq _
+      (first.observe (application setup leaks) owner).application).isSome ∧ _) ↔
+    ¬ ((reactiveResolutionPacket owner event payload binding checks outputEq _
+      (second.observe (application setup leaks) owner).application).isSome ∧ _)
+  rw [packets]
+  change ¬ (_ ∧ ¬ ∃ message ∈ (application setup leaks).outputs (first.recall owner), _) ↔
+    ¬ (_ ∧ ¬ ∃ message ∈ (application setup leaks).outputs (second.recall owner), _)
+  rw [outputs]
+
 end Vegas
