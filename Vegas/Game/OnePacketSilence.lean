@@ -109,21 +109,21 @@ theorem onePacket_silent_of_forcedObserver (horizon : Nat)
     exact earlierFirst message present (by simpa using fromOther) messageNamed
 
 /-- **A transmission of another player names the ready event.** At a history
-of the one-packet game in a forced state of `who`, while an event is ready,
-every transmitting one-packet response of a player other than `who` names the
-ready event, of which that player is the actor. -/
+of the one-packet game in a forced state of `who`, every transmitting
+one-packet response of a player other than `who` names a ready event, of which
+that player is the actor. -/
 theorem onePacket_named_of_forcedObserver (horizon : Nat)
     (scheduler : (application setup leaks).Scheduler) (who : Player)
     {control : (application setup leaks).Control}
     (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
     (forced : ForcedState setup leaks who (some control))
-    {event : (graph setup).EventId} (ready : control.execution.application.config.cut.Ready event)
     (other : Player) (notWho : other ≠ who)
     {material : (application setup leaks).Submission}
     (member : (⟨some material⟩ : (application setup leaks).Action) ∈
       bounds.onePacketActions (runtime setup) leaks other (control.execution.recall other)
         (control.execution.observe (application setup leaks) other)) :
-    material.call.packet.event? (graph setup) = some event ∧
+    ∃ event, control.execution.application.config.cut.Ready event ∧
+      material.call.packet.event? (graph setup) = some event ∧
       (graph setup).actor? event = some other := by
   let app := application setup leaks
   rcases ((bounds.mem_onePacketActions (runtime setup) leaks other _ _ _).mp member).2 with
@@ -174,9 +174,7 @@ theorem onePacket_named_of_forcedObserver (horizon : Nat)
       exact first message ⟨recalled, messageSender.trans sender.symm, lower⟩
         (messageNamed.trans namedEvent.symm)
     · exact ((forcedPoint.2 other notWho).2) (owed point decoded)
-  · have same := ready_unique (setup := setup) _ ⟨completed, fun predecessor member =>
-      issued predecessor member⟩ ready
-    subst same
-    exact ⟨namedEvent, actor⟩
+  · exact ⟨named, ⟨completed, fun predecessor member => issued predecessor member⟩, namedEvent,
+      actor⟩
 
 end Vegas
