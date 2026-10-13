@@ -616,6 +616,202 @@ structure OnePacketCertificateInputs (sequence : ℕ → setup.intendedModel.Beh
                 excludedPayoff))
               outcome).toReal| ≤ lawError n
 
+open Classical in
+/-- **The one-packet certificate.** The pooled limit certificate on the
+one-packet game built from its open inputs: unforced agents tremble each
+choice and span their laws; forced late deliveries pool by late-delivery key
+over the late options; every other agent plays the slot-trembled prescribed
+component. Member rationality and the local comparisons are derived from the
+inputs; the law approximation is an input. -/
+def onePacketCertificate (sequence : ℕ → setup.intendedModel.BehavioralAssessment) {slots : Nat}
+    (inputs : OnePacketCertificateInputs setup leaks bounds horizon scheduler parameter utility
+      excludedPayoff sequence slots) :
+    InformationModel.PooledLimitCertificate
+      (N := onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler)
+      (intendedReadoutExclusion setup parameter utility excludedPayoff)
+      (readoutExclusion setup leaks bounds (initialLaw setup) horizon scheduler parameter
+        utility excludedPayoff)
+      (instructionCount setup.program + 1) (2 * horizon + 1)
+      ((bounds.onePacketMenu (runtime setup) leaks).bounded (initialLaw setup) horizon scheduler)
+      ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall (initialLaw setup) horizon
+        scheduler)
+      (payoffComponent setup) sequence where
+  fallback := onePacketFallback setup leaks bounds horizon scheduler
+  Pool := FreeKeyedPool (UnforcedAgent setup leaks bounds horizon scheduler)
+    (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
+    (agentLateKey setup leaks bounds (initialLaw setup) horizon scheduler)
+  poolDecidable := inferInstance
+  pool := onePacketPool setup leaks bounds horizon scheduler
+  Part := OnePacketPart setup leaks bounds horizon scheduler slots
+  component n := freeKeyedComponent
+    (onePacketUnforced setup leaks bounds horizon scheduler inputs.scale inputs.scale_pos
+      inputs.scale_le_one n)
+    (onePacketPrescribed setup leaks bounds horizon scheduler sequence inputs.scale
+      inputs.scale_pos inputs.scale_le_one n)
+    (onePacketLate setup leaks bounds horizon scheduler sequence inputs.scale inputs.scale_pos
+      inputs.scale_le_one (slots := slots) n)
+  componentFull n agent part := onePacketComponent_fullSupport setup leaks bounds horizon
+    scheduler (sequence n) (inputs.scale_pos n) (inputs.scale_le_one n) agent part
+  free := Finset.univ.filter (UnforcedAgent setup leaks bounds horizon scheduler)
+  freeSpanning := freeKeyedSpanning
+    (fun n => onePacketUnforced setup leaks bounds horizon scheduler inputs.scale
+      inputs.scale_pos inputs.scale_le_one n)
+    (fun n => onePacketPrescribed setup leaks bounds horizon scheduler sequence inputs.scale
+      inputs.scale_pos inputs.scale_le_one n)
+    (fun n => onePacketLate setup leaks bounds horizon scheduler sequence inputs.scale
+      inputs.scale_pos inputs.scale_le_one (slots := slots) n)
+    (fun agent choice => pmfConvergesPointwise_mix_zero inputs.scale
+      (fun n => (inputs.scale_pos n).le) inputs.scale_le_one inputs.scale_vanishing _ _)
+  memberRational := by
+    convert freeKeyedMemberRational (2 * horizon + 1)
+      ((bounds.onePacketMenu (runtime setup) leaks).bounded (initialLaw setup) horizon scheduler)
+      ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall (initialLaw setup) horizon
+        scheduler)
+      (readoutExclusion setup leaks bounds (initialLaw setup) horizon scheduler parameter utility
+        excludedPayoff) (payoffComponent setup) (onePacketFallback setup leaks bounds horizon
+          scheduler)
+      (UnforcedAgent setup leaks bounds horizon scheduler)
+      (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
+      (agentLateKey setup leaks bounds (initialLaw setup) horizon scheduler)
+      (fun n => onePacketUnforced setup leaks bounds horizon scheduler inputs.scale
+        inputs.scale_pos inputs.scale_le_one n)
+      (fun n => onePacketPrescribed setup leaks bounds horizon scheduler sequence inputs.scale
+        inputs.scale_pos inputs.scale_le_one n)
+      (fun n => onePacketLate setup leaks bounds horizon scheduler sequence inputs.scale
+        inputs.scale_pos inputs.scale_le_one (slots := slots) n)
+      inputs.failed excludedPayoff inputs.failed_pays inputs.gapBound inputs.gapBound_nonneg
+      inputs.decomposition
+  localComparisons := by
+    convert freeKeyedLocalComparisons (2 * horizon + 1)
+      ((bounds.onePacketMenu (runtime setup) leaks).bounded (initialLaw setup) horizon scheduler)
+      ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall (initialLaw setup) horizon
+        scheduler)
+      (readoutExclusion setup leaks bounds (initialLaw setup) horizon scheduler parameter utility
+        excludedPayoff) (payoffComponent setup) (onePacketFallback setup leaks bounds horizon
+          scheduler)
+      (UnforcedAgent setup leaks bounds horizon scheduler)
+      (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
+      (agentLateKey setup leaks bounds (initialLaw setup) horizon scheduler)
+      (intendedReadoutExclusion setup parameter utility excludedPayoff)
+      (instructionCount setup.program + 1) sequence
+      (fun n => onePacketUnforced setup leaks bounds horizon scheduler inputs.scale
+        inputs.scale_pos inputs.scale_le_one n)
+      (fun n => onePacketPrescribed setup leaks bounds horizon scheduler sequence inputs.scale
+        inputs.scale_pos inputs.scale_le_one n)
+      (fun n => onePacketLate setup leaks bounds horizon scheduler sequence inputs.scale
+        inputs.scale_pos inputs.scale_le_one (slots := slots) n)
+      inputs.compared inputs.failed excludedPayoff inputs.failed_pays inputs.gapBound
+      inputs.gapBound_nonneg inputs.ranking
+      (by convert inputs.otherComparisons)
+  lawApproximation := by convert inputs.lawApproximation
+
+open Classical in
+/-- **Sequential equilibrium of the one-packet game from its open inputs.** For
+a well-formed setup and every sequential equilibrium of the intended game, if
+every fully mixed Bayes sequence converging to it supplies the open inputs of
+the one-packet certificate, there is a sequential equilibrium of the one-packet
+game under the exclusion payoff whose joint law of typed readout and exclusion
+payoff is the intended one. -/
+theorem onePacket_intended_sequentialEquilibrium_of_inputs (wellFormed : setup.WellFormed)
+    (intended : setup.intendedModel.BehavioralAssessment)
+    (equilibrium : intended.IsSequentialEquilibrium setup.intended_decision_antichain
+      setup.intended_bounded.wellFoundedHistories
+      (fun who final => (setup.protocolReadout final.state).elim 0
+        (fun state => utility (setup.parameterOutcome parameter state) who)))
+    {slots : Nat}
+    (inputs : ∀ sequence : ℕ → setup.intendedModel.BehavioralAssessment,
+      (∀ n, (sequence n).IsFullyMixed) →
+      (∀ n, InformationModel.BehavioralAssessment.IsBayesConsistent setup.intendedModel
+        (sequence n) setup.intended_decision_antichain) →
+      InformationModel.BehavioralAssessmentConvergesPointwise sequence intended →
+      OnePacketCertificateInputs setup leaks bounds horizon scheduler parameter utility
+        excludedPayoff sequence slots) :
+    ∃ target : (onePacketModel setup leaks bounds (initialLaw setup) horizon
+        scheduler).BehavioralAssessment,
+      target.IsSequentialEquilibrium
+        ((bounds.onePacketMenu (runtime setup) leaks).decisionInformationAntichain
+          (initialLaw setup) horizon scheduler)
+        ((bounds.onePacketMenu (runtime setup) leaks).bounded (initialLaw setup) horizon
+          scheduler).wellFoundedHistories
+        (fun who final => exclusionBase setup parameter utility excludedPayoff leaks final.state
+          who) ∧
+      ((onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).runBehavioral
+          target.strategy (2 * horizon + 1)).map
+          (readoutExclusion setup leaks bounds (initialLaw setup) horizon scheduler parameter
+            utility excludedPayoff) =
+        (setup.intendedModel.runBehavioral intended.strategy
+          (instructionCount setup.program + 1)).map
+          (intendedReadoutExclusion setup parameter utility excludedPayoff) :=
+  onePacket_intended_sequentialEquilibrium_of_certificates setup leaks bounds horizon scheduler
+    parameter utility excludedPayoff wellFormed intended equilibrium
+    fun sequence mixed bayes converges => by
+      convert onePacketCertificate setup leaks bounds horizon scheduler parameter utility
+        excludedPayoff sequence (inputs sequence mixed bayes converges)
+
+open Classical in
+/-- **Sequential equilibrium of the bounded raw runtime from the open inputs.**
+Under the hypotheses of `Vegas.onePacket_intended_sequentialEquilibrium_of_inputs`,
+bounds on the utility, and a count-evidence service with a deposit covering the
+spread of the exclusion payoff, there is a sequential equilibrium of the bounded
+raw runtime under the exclusion payoff minus the deposit for each collected
+count charge, that charges nobody on its paths, whose joint law of typed
+readout and realized payoffs is the intended joint law of typed readout and
+exclusion payoff. -/
+theorem onePacket_intended_raw_sequentialEquilibrium_of_inputs (wellFormed : setup.WellFormed)
+    (intended : setup.intendedModel.BehavioralAssessment)
+    (equilibrium : intended.IsSequentialEquilibrium setup.intended_decision_antichain
+      setup.intended_bounded.wellFoundedHistories
+      (fun who final => (setup.protocolReadout final.state).elim 0
+        (fun state => utility (setup.parameterOutcome parameter state) who)))
+    {slots : Nat}
+    (inputs : ∀ sequence : ℕ → setup.intendedModel.BehavioralAssessment,
+      (∀ n, (sequence n).IsFullyMixed) →
+      (∀ n, InformationModel.BehavioralAssessment.IsBayesConsistent setup.intendedModel
+        (sequence n) setup.intended_decision_antichain) →
+      InformationModel.BehavioralAssessmentConvergesPointwise sequence intended →
+      OnePacketCertificateInputs setup leaks bounds horizon scheduler parameter utility
+        excludedPayoff sequence slots)
+    (service : EvidenceReportService (CountEvidence (graph setup)))
+    (observationRate deliveryRate : Player → ℝ)
+    (delivery_nonnegative : ∀ who, 0 ≤ deliveryRate who)
+    (coverage : CountEvidenceCoverage service observationRate deliveryRate)
+    (lowerUtility upperUtility : Player → ℝ)
+    (lower_le : ∀ outcome who, lowerUtility who ≤ utility outcome who)
+    (le_upper : ∀ outcome who, utility outcome who ≤ upperUtility who)
+    (deposit : Player → ℝ) (deposit_nonnegative : ∀ who, 0 ≤ deposit who)
+    (sufficient : ∀ who,
+      max 0 (max (excludedPayoff who) (upperUtility who)) -
+          min 0 (min (excludedPayoff who) (lowerUtility who)) ≤
+        observationRate who * deliveryRate who * deposit who) :
+    let raw := bounds.rawMenu (runtime setup) leaks
+    let observe := (application setup leaks).stateTraffic
+    let audit := (runtime setup).countAudit leaks service.sample
+    let base := exclusionBase setup parameter utility excludedPayoff leaks
+    let payoff := TerminalAudit.utility base observe audit deposit
+    let settle := TerminalAudit.settlement base observe audit deposit
+    ∃ target : (raw.information (initialLaw setup) horizon scheduler).BehavioralAssessment,
+      target.IsSequentialEquilibriumFor
+        (raw.decisionInformationAntichain (initialLaw setup) horizon scheduler)
+        (fun who site => target.truncatedContinuationContext site
+          (fun history => payoff history.state who) (2 * horizon + 1)) ∧
+      (∀ final ∈ ((raw.information (initialLaw setup) horizon scheduler).runBehavioral
+          target.strategy (2 * horizon + 1)).support,
+        ∀ who, TerminalAudit.charge observe audit final.state who = 0) ∧
+      ((raw.information (initialLaw setup) horizon scheduler).runBehavioral target.strategy
+          (2 * horizon + 1)).bind
+          (fun final => (settle final.state).map fun payoffs =>
+            (sourceReadout setup leaks final.state, payoffs)) =
+        (setup.intendedModel.runBehavioral intended.strategy
+          (instructionCount setup.program + 1)).map
+          (intendedReadoutExclusion setup parameter utility excludedPayoff) :=
+  onePacket_intended_raw_sequentialEquilibrium setup leaks bounds horizon scheduler parameter
+    utility excludedPayoff wellFormed intended equilibrium
+    (fun sequence mixed bayes converges => by
+      convert onePacketCertificate setup leaks bounds horizon scheduler parameter utility
+        excludedPayoff sequence (inputs sequence mixed bayes converges))
+    service observationRate deliveryRate delivery_nonnegative coverage lowerUtility upperUtility
+    lower_le le_upper deposit deposit_nonnegative sufficient
+
 end Certificate
 
 end Vegas
