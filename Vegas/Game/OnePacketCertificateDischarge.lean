@@ -1604,6 +1604,92 @@ def lateDeliveryBlindness_ofLumping (sequence : ℕ → setup.intendedModel.Beha
       exact beliefDrift_nonneg
 
 omit [Finite setup.intendedProtocol.History] in
+/-- A law fails at least as often as its mass on a choice times that choice's
+failure. -/
+theorem localFailure_ge_apply (assessment : (onePacketN).BehavioralAssessment) {who : Player}
+    (site : (onePacketN).InformationSite who)
+    (failed : Set ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+      horizon scheduler).History)
+    (law : PMF ((onePacketN).Choice who site.1)) (choice : (onePacketN).Choice who site.1) :
+    (law choice).toReal * localFailure (2 * horizon + 1) assessment site failed
+        (PMF.pure choice) ≤
+      localFailure (2 * horizon + 1) assessment site failed law := by
+  have finiteChoice : Finite ((onePacketN).Choice who site.1) :=
+    (onePacketN).finite_choice_of_played ((onePacketN).site_mem_playedInformation site)
+  let := Fintype.ofFinite ((onePacketN).Choice who site.1)
+  have bounded := (bounds.onePacketMenu (runtime setup) leaks).bounded (initialLaw setup)
+    horizon scheduler
+  have actsOnce := ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
+    (initialLaw setup) horizon scheduler).actsOnceWhereItMatters
+  conv_rhs => rw [← PMF.bind_pure law]
+  rw [localFailure_bind (2 * horizon + 1) assessment site bounded actsOnce, expect_eq_sum]
+  exact Finset.single_le_sum (f := fun other => (law other).toReal *
+      localFailure (2 * horizon + 1) assessment site failed (PMF.pure other))
+    (fun other _ => mul_nonneg ENNReal.toReal_nonneg (localFailure_nonneg _ _ _ _ _))
+    (Finset.mem_univ choice)
+
+omit [Finite setup.intendedProtocol.History] in
+/-- **Silence fails like waiting.** At a decision input, silence fails within
+one minus the slot retention of the scale of the late option that waits. -/
+theorem abs_localFailure_silence_sub_wait_le
+    (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
+    (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
+    {slots : Nat} (n : ℕ) (assessment : (onePacketN).BehavioralAssessment) {who : Player}
+    (site : (onePacketN).InformationSite who)
+    (failed : Set ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+      horizon scheduler).History)
+    {past : List (application setup leaks).PlayerEntry}
+    {view : (application setup leaks).PlayerView} (atSite : site.1 = some (past, view))
+    (choice : (onePacketN).Choice who site.1) (silent : choice.1 = some ⟨none⟩) :
+    |localFailure (2 * horizon + 1) assessment site failed (PMF.pure choice) -
+        localFailure (2 * horizon + 1) assessment site failed
+          (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
+            scale_le_one (slots := slots) n ((onePacketN).agentAt site) none)| ≤
+      1 - slotRetention (scale n) := by
+  obtain ⟨info, decision⟩ := site
+  change info = some (past, view) at atSite
+  subst atSite
+  have bounded := (bounds.onePacketMenu (runtime setup) leaks).bounded (initialLaw setup)
+    horizon scheduler
+  have actsOnce := ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
+    (initialLaw setup) horizon scheduler).actsOnceWhereItMatters
+  have retentionLe := slotRetention_le_one (scale_pos n).le (scale_le_one n)
+  have retentionNonneg := slotRetention_nonneg (scale_pos n).le (scale_le_one n)
+  have isSilence : choice = silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler
+      who (some (past, view)) :=
+    Subtype.ext (silent.trans (by
+      simp only [silenceChoice, responseChoice]
+      split <;> rfl))
+  have mainEq : lateChoice setup leaks bounds (initialLaw setup) horizon scheduler (sequence n)
+      who (some (past, view)) (none : LateOption slots) = PMF.pure choice := by
+    rw [isSilence]
+    simp only [lateChoice, lateResponse, PMF.pure_map]
+    rfl
+  have mass : ∀ other, (1 - (1 - slotRetention (scale n))) * ((PMF.pure choice) other).toReal ≤
+      ((onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos scale_le_one
+        (slots := slots) n ((onePacketN).agentAt ⟨some (past, view), decision⟩) none)
+          other).toReal := fun other => by
+    rw [sub_sub_cancel, ← mainEq]
+    exact slotTrembledChoice_ge_main setup leaks bounds (initialLaw setup) horizon scheduler
+      (scale_pos n).le (scale_le_one n) who _ _ _ _ other
+  have upper := localFailure_le_of_mass (2 * horizon + 1) assessment
+    (⟨some (past, view), decision⟩ : (onePacketN).InformationSite who) bounded actsOnce failed
+    (1 - slotRetention (scale n)) (by linarith) _ _ mass
+  have lower := localFailure_ge_apply setup leaks bounds horizon scheduler assessment
+    (⟨some (past, view), decision⟩ : (onePacketN).InformationSite who) failed
+    (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos scale_le_one
+      (slots := slots) n ((onePacketN).agentAt ⟨some (past, view), decision⟩) none) choice
+  have massSelf := mass choice
+  rw [PMF.pure_apply_self, ENNReal.toReal_one, mul_one, sub_sub_cancel] at massSelf
+  have failureLe := localFailure_le_one (2 * horizon + 1) assessment
+    (⟨some (past, view), decision⟩ : (onePacketN).InformationSite who) failed (PMF.pure choice)
+  have failureNonneg := localFailure_nonneg (2 * horizon + 1) assessment
+    (⟨some (past, view), decision⟩ : (onePacketN).InformationSite who) failed (PMF.pure choice)
+  have scaled := mul_le_mul_of_nonneg_right massSelf failureNonneg
+  rw [abs_le]
+  constructor <;> nlinarith
+
+omit [Finite setup.intendedProtocol.History] in
 /-- **Site commonness from value blindness.** Along a target sequence, if at
 every stage each player's late deliveries are value blind for the failure of the
 late options with vanishing drifts, and every marked choice at a forced late
