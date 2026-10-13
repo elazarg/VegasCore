@@ -10,8 +10,8 @@ probability is round-supported for the decoded profile: at scheduler control
 it is the result of complete rounds of that profile, and at a pending
 activation it follows an environment step from such a result
 (`Interaction.ReactiveApplication.ResponseMenu.roundSupported_of_mem_run`).
-Unlike `Interaction.ReactiveApplication.ResponseMenu.roundSupported_history`,
-this needs no full support of the profile, only that the history is reached.
+Unlike round support of every legal history, this needs no full support of
+the profile, only that the history is reached.
 -/
 
 noncomputable section

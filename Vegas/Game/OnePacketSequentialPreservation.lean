@@ -354,7 +354,7 @@ structure OnePacketCertificateInputs (sequence : ℕ → setup.intendedModel.Beh
   /-- **The one-dimensional decomposition of late delivery, with its value
   bounds and site-level commonness.** At every forced late-delivery decision
   site, failure pays the exclusion payoff at most the site's continuation value
-  up to a vanishing error with gap at most `gapBound`, the successful part of
+  up to a vanishing error with gap at most the gap bound, the successful part of
   each late option is its success probability times that continuation value up
   to the error, and each option fails, belief-averaged, within a vanishing drift
   of one minus its score at the site's late-delivery key. -/
