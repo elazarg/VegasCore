@@ -60,6 +60,8 @@ import Vegas.Game.OnePacketOperationalFactors
 import Vegas.Game.OnePacketSlotError
 import Vegas.Game.OnePacketStepGlue
 import Vegas.Game.OnePacketRevealMasses
+import Vegas.Game.OnePacketStepFactors
+import Vegas.Game.OnePacketStepMasses
 import Vegas.Game.OnePacketSlotMasses
 import Vegas.Game.OnePacketForcedBeliefs
 import Vegas.Game.OnePacketIntendedProjection
@@ -92,6 +94,7 @@ import Vegas.Game.OnePacketKeyedRecords
 import Vegas.Game.OnePacketPathwise
 import Vegas.Game.OnePacketPendingLumping
 import Vegas.Game.OnePacketLumpingInstance
+import Vegas.Game.OnePacketOwnerStep
 import Vegas.Game.OnePacketDelivery
 import Vegas.Game.OnePacketLawApproximation
 import Vegas.Game.CompiledPolicyView
@@ -109,6 +112,8 @@ import Vegas.Game.OnePacketOwnSubmissions
 import Vegas.Game.AnchoredHonestLaw
 import Vegas.Game.AnchoredHonestDelivery
 import Vegas.Game.OnePacketLateMasses
+import Vegas.Game.OnePacketLateSuccess
+import Vegas.Game.OnePacketLateDecomposition
 import Vegas.Game.PurificationEdge
 import Vegas.Game.ReactiveSourceDecision
 import Vegas.Game.ReactiveSourceAcceptance
