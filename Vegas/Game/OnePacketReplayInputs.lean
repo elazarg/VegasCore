@@ -24,7 +24,8 @@ completion matches, and whose unsettled content is one, the source weight times
 that common own reach is the intended reach of the replay projection
 (`Vegas.othersSourceWeight_mul_ownReach`). These are the source weights of
 `Vegas.ForcedBeliefInputs`, which can be assembled from the replay projection
-(`Vegas.ForcedBeliefInputs.ofReplay`).
+(`Vegas.ForcedBeliefInputs.ofReplay`). Common fibers follow from bijections
+between fibers that keep the operational record (`Vegas.fiber_sum_eq_of_swap`).
 -/
 
 noncomputable section
@@ -303,6 +304,42 @@ def ForcedBeliefInputs.ofReplay {sequence : ℕ → setup.intendedModel.Behavior
   counterpart_regular := counterpart_regular
   irregular_le := irregular_le
   counterpart_ge := counterpart_ge
+
+open Classical in
+/-- **Common fibers from swaps.** If, between the regular histories of the site
+projecting to an intended history and those projecting to a base intended
+history, a bijection keeps the operational record, then their operational
+weights have the same sum. Such a bijection exchanges the other players' hidden
+values, which the operational record does not read while no reveal is
+pending. -/
+theorem fiber_sum_eq_of_swap {sequence : ℕ → setup.intendedModel.BehavioralAssessment}
+    {profiles : ℕ → ∀ player,
+      (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player}
+    {steps : OperationalSteps setup leaks bounds horizon scheduler sequence profiles who}
+    [Fintype ((onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
+      site.1)]
+    [DecidableEq (setup.intendedModel.InformationHistory who sourceSite.1)] {n : ℕ}
+    (project : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
+      site.1 → setup.intendedModel.InformationHistory who sourceSite.1)
+    (point base : setup.intendedModel.InformationHistory who sourceSite.1)
+    (swap : {history // RegularTrace setup leaks bounds horizon scheduler (sequence n) who
+        history.1.trace ∧ project history = point} ≃
+      {history // RegularTrace setup leaks bounds horizon scheduler (sequence n) who
+        history.1.trace ∧ project history = base})
+    (record : ∀ history, operationalRecord setup leaks bounds horizon scheduler
+        (swap history).1.1.trace =
+      operationalRecord setup leaks bounds horizon scheduler history.1.1.trace) :
+    ∑ history with RegularTrace setup leaks bounds horizon scheduler (sequence n) who
+        history.1.trace ∧ project history = point,
+      operationalWeight setup leaks who (steps.mass n)
+        (operationalRecord setup leaks bounds horizon scheduler history.1.trace) =
+    ∑ history with RegularTrace setup leaks bounds horizon scheduler (sequence n) who
+        history.1.trace ∧ project history = base,
+      operationalWeight setup leaks who (steps.mass n)
+        (operationalRecord setup leaks bounds horizon scheduler history.1.trace) := by
+  rw [← Finset.sum_subtype_eq_sum_filter, ← Finset.sum_subtype_eq_sum_filter,
+    Finset.subtype_univ, Finset.subtype_univ]
+  exact Fintype.sum_equiv swap _ _ fun history => by rw [record history]
 
 end Projection
 
