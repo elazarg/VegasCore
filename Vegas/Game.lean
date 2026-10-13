@@ -417,3 +417,5 @@ import Vegas.Game.OnePacketSiteConsistent
 import Vegas.Game.OnePacketRecordedSilence
 import Vegas.Game.OnePacketSiteLaws
 import Vegas.Game.OnePacketSiteLumping
+import Vegas.Game.OnePacketUnintendedCommitment
+import Vegas.Game.OnePacketCertificateAssembly
