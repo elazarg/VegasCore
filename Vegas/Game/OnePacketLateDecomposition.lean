@@ -312,4 +312,105 @@ theorem abs_lateSiteSuccess_sub_lateStopValue_le [Finite ((bounds.onePacketMenu 
 
 end Site
 
+section Bounds
+
+variable {Parameter : Type} (parameter : State L setup.context → Parameter)
+  (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+  (excludedPayoff : Player → ℝ)
+
+omit [DecidableEq Player] [Fintype Player] [IExpr.ResultTypes L] in
+/-- An expectation of a payoff within `[low, high]` on the support lies in
+`[low, high]`. -/
+private theorem expect_mem_Icc {α : Type*} (law : PMF α) (payoff : α → ℝ) {low high : ℝ}
+    (within : ∀ point, low ≤ payoff point ∧ payoff point ≤ high) :
+    low ≤ expect law payoff ∧ expect law payoff ≤ high := by
+  have integrable : PayoffIntegrable law payoff :=
+    payoffIntegrable_of_bounded law payoff (C := |low| + |high|) fun point => by
+      have := within point
+      rw [abs_le]
+      constructor <;> cases abs_cases low <;> cases abs_cases high <;> linarith
+  refine ⟨?_, expect_le_const law payoff integrable high fun point _ => (within point).2⟩
+  have lower := expect_mono (μ := law) (f := fun _ => low) (g := payoff)
+    (fun point _ => (within point).1) (payoffIntegrable_constant law low) integrable
+  rwa [expect_constant] at lower
+
+omit [Fintype Player] in
+/-- **The source continuation value is between the exclusion payoff and the
+upper utility.** If the exclusion payoff of `who` is at most its utility at
+every terminal state the continuation of `profile` from a point of the intended
+game reaches, and the utility is at most `upper`, the source continuation value
+of `profile` at every point of the intended game lies in
+`[excludedPayoff who, max (excludedPayoff who) upper]`. -/
+theorem sourcePointValue_mem_Icc (profile : BehavioralProfile setup.program) (who : Player)
+    (upper : ℝ) (le_upper : ∀ outcome, utility outcome who ≤ upper)
+    (below : ∀ point, ProtocolState.Intended setup.program point →
+      ∀ terminal ∈ (ProtocolState.continuationLaw setup.program profile point).support,
+        excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who)
+    (point : ProtocolState setup.program)
+    (intendedPoint : ProtocolState.Intended setup.program point) :
+    excludedPayoff who ≤ sourcePointValue setup parameter utility excludedPayoff profile who point ∧
+      sourcePointValue setup parameter utility excludedPayoff profile who point ≤
+        max (excludedPayoff who) upper := by
+  classical
+  unfold sourcePointValue
+  rw [expect_map]
+  have within : ∀ terminal ∈ (ProtocolState.continuationLaw setup.program profile point).support,
+      excludedPayoff who ≤ exclusionReadoutUtility setup parameter utility excludedPayoff
+        (some terminal) who ∧
+      exclusionReadoutUtility setup parameter utility excludedPayoff (some terminal) who ≤
+        max (excludedPayoff who) upper := by
+    intro terminal member
+    change excludedPayoff who ≤ exclusionUtility setup.program excludedPayoff utility
+        (setup.parameterOutcome parameter terminal) who ∧
+      exclusionUtility setup.program excludedPayoff utility
+        (setup.parameterOutcome parameter terminal) who ≤ max (excludedPayoff who) upper
+    unfold exclusionUtility
+    split
+    · exact ⟨below point intendedPoint terminal member,
+        (le_upper _).trans (le_max_right _ _)⟩
+    · exact ⟨le_rfl, le_max_left _ _⟩
+  rw [expect_congr_on_support (g := fun terminal =>
+    if terminal ∈ (ProtocolState.continuationLaw setup.program profile point).support then
+      exclusionReadoutUtility setup parameter utility excludedPayoff (some terminal) who
+    else excludedPayoff who) (fun terminal member => by rw [ite_eq_left member ..]; rfl)]
+  apply expect_mem_Icc
+  intro terminal
+  split
+  · rename_i member
+    exact within terminal member
+  · exact ⟨le_rfl, le_max_left _ _⟩
+
+omit [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+    scheduler).InfoState who)] in
+/-- **The continuation value of a late delivery is between the exclusion payoff
+and the upper utility.** Under the hypotheses of
+`Vegas.sourcePointValue_mem_Icc` for `profile`, the continuation value of a late
+delivery lies in `[excludedPayoff who, max (excludedPayoff who) upper]`. -/
+theorem lateSiteValue_mem_Icc (assessment : (onePacketN).BehavioralAssessment)
+    (profile : BehavioralProfile setup.program) {who : Player}
+    (site : (onePacketN).InformationSite who) (event : (graph setup).EventId)
+    (upper : ℝ) (le_upper : ∀ outcome, utility outcome who ≤ upper)
+    (below : ∀ point, ProtocolState.Intended setup.program point →
+      ∀ terminal ∈ (ProtocolState.continuationLaw setup.program profile point).support,
+        excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who) :
+    excludedPayoff who ≤ lateSiteValue setup leaks bounds horizon scheduler parameter utility
+        excludedPayoff assessment profile site event ∧
+      lateSiteValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+        assessment profile site event ≤ max (excludedPayoff who) upper := by
+  apply expect_mem_Icc
+  intro history
+  unfold decodedPointValue
+  split
+  · exact ⟨le_rfl, le_max_left _ _⟩
+  · split
+    · exact ⟨le_rfl, le_max_left _ _⟩
+    · split
+      · rename_i intendedPoint
+        exact sourcePointValue_mem_Icc setup parameter utility excludedPayoff profile who upper
+          le_upper below _ intendedPoint
+      · exact ⟨le_rfl, le_max_left _ _⟩
+
+end Bounds
+
 end Vegas
