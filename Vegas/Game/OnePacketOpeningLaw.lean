@@ -101,4 +101,172 @@ theorem reactiveResolutionPacket_congr {first second : (application setup leaks)
   rw [firstStore, secondStore, firstPublic, secondPublic]
   rw [resolved, publics]
 
+/-- The canonical disclosure transmits exactly when the resolution packet
+exists. -/
+theorem disclosure_transmission_isSome (who : Player)
+    (past : List (application setup leaks).PlayerEntry)
+    (view : (application setup leaks).PlayerView) {event : (graph setup).EventId}
+    {owner : Player} {payload : L.Ty}
+    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
+    {outputEq : (graph setup).outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .resolve owner payload binding checks}
+    (node : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
+    (action : (graph setup).Action event) :
+    ((runtime setup).canonicalServiceDecision leaks who past view event
+        action).transmission.isSome =
+      (reactiveResolutionPacket who event payload binding checks outputEq action
+        view.application).isSome := by
+  unfold EventGraphRuntime.canonicalServiceDecision
+  cases packet : reactiveResolutionPacket who event payload binding checks outputEq action
+      view.application with
+  | none =>
+      simp only [EventGraphRuntime.canonicalReactiveDecision, node, packet, Option.map_none,
+        ReactiveApplication.SubmissionNormalization.action, Option.isSome_none]
+  | some sent =>
+      simp only [EventGraphRuntime.canonicalReactiveDecision, node, packet, Option.map_some,
+        ReactiveApplication.SubmissionNormalization.action, Option.isSome_some]
+
+variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {scheduler : (application setup leaks).Scheduler}
+
+/-- **When the disclosure is silent.** Along every history of the one-packet
+game, at a reveal of the player's turn, when every publication value is a
+bounded value, the chosen canonical disclosure keeps silence exactly when its
+resolution packet is missing or an own envelope already names the reveal. -/
+theorem disclosure_silent_iff (covers : bounds.CoversOutputValues)
+    {control : (application setup leaks).Control}
+    (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control))
+    (who : Player) (event : (graph setup).EventId)
+    (turn : control.execution.application.publicView.ownTurn? who = some event)
+    {owner : Player} {payload : L.Ty}
+    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
+    {outputEq : (graph setup).outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .resolve owner payload binding checks}
+    (node : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq) :
+    ((responseChoice setup leaks bounds (initialLaw setup) horizon scheduler who
+        (some (control.execution.recall who,
+          control.execution.observe (application setup leaks) who))
+        ((runtime setup).canonicalServiceDecision leaks who (control.execution.recall who)
+          (control.execution.observe (application setup leaks) who) event
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) true))).1.getD
+          ⟨none⟩).transmission = none ↔
+      ¬ ((reactiveResolutionPacket who event payload binding checks outputEq
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
+          (control.execution.observe (application setup leaks) who).application).isSome ∧
+        ¬ ∃ message ∈ (application setup leaks).outputs (control.execution.recall who),
+          message.payload.call.event? (graph setup) = some event) := by
+  set disclosure := (runtime setup).canonicalServiceDecision leaks who
+    (control.execution.recall who) (control.execution.observe (application setup leaks) who) event
+    (cast (congrArg EventGraph.EventField.Action outputEq.symm) true) with disclosureEq
+  have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some control) :=
+    (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon scheduler
+      trace
+  have transmits := disclosure_transmission_isSome (leaks := leaks) who
+    (control.execution.recall who) (control.execution.observe (application setup leaks) who) node
+    (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
+  rw [← disclosureEq] at transmits
+  have decodedMember : ∀ response : (application setup leaks).Action,
+      response ∈ bounds.onePacketActions (runtime setup) leaks who (control.execution.recall who)
+        (control.execution.observe (application setup leaks) who) →
+      (responseChoice setup leaks bounds (initialLaw setup) horizon scheduler who
+        (some (control.execution.recall who,
+          control.execution.observe (application setup leaks) who)) response).1.getD ⟨none⟩ =
+        response := by
+    intro response member
+    simp only [responseChoice, member, ↓reduceDIte, Option.getD_some]
+  have decodedSilent : ∀ response : (application setup leaks).Action,
+      response ∉ bounds.onePacketActions (runtime setup) leaks who (control.execution.recall who)
+        (control.execution.observe (application setup leaks) who) →
+      (responseChoice setup leaks bounds (initialLaw setup) horizon scheduler who
+        (some (control.execution.recall who,
+          control.execution.observe (application setup leaks) who)) response).1.getD ⟨none⟩ =
+        ⟨none⟩ := by
+    intro response notMember
+    simp only [responseChoice, notMember, ↓reduceDIte, Option.getD_some]
+  cases sends : disclosure.transmission with
+  | none =>
+      rw [sends, Option.isSome_none] at transmits
+      constructor
+      · intro _ both
+        rw [← transmits] at both
+        cases both.1
+      · intro _
+        by_cases member : disclosure ∈ bounds.onePacketActions (runtime setup) leaks who
+            (control.execution.recall who)
+            (control.execution.observe (application setup leaks) who)
+        · rw [decodedMember _ member]
+          exact sends
+        · rw [decodedSilent _ member]
+  | some material =>
+      rw [sends, Option.isSome_some] at transmits
+      by_cases unsent : (runtime setup).eventRecorded leaks (control.execution.recall who) event =
+          false
+      · have member := onePacket_disclosure_offered covers trace who event turn unsent node
+          material sends
+        rw [decodedMember _ member, sends]
+        have noOutput : ¬ ∃ message ∈ (application setup leaks).outputs
+            (control.execution.recall who), message.payload.call.event? (graph setup) =
+              some event := by
+          intro named
+          have recorded := (history_eventRecorded_iff rawTrace who event).mpr named
+          rw [unsent] at recorded
+          cases recorded
+        constructor
+        · intro silent
+          cases silent
+        · intro claim
+          exact (claim ⟨transmits.symm, noOutput⟩).elim
+      · have recorded : (runtime setup).eventRecorded leaks (control.execution.recall who) event =
+            true := by
+          cases value : (runtime setup).eventRecorded leaks (control.execution.recall who) event
+          · exact (unsent value).elim
+          · rfl
+        obtain ⟨message, output, named⟩ := (history_eventRecorded_iff rawTrace who event).mp
+          recorded
+        have notMember : disclosure ∉ bounds.onePacketActions (runtime setup) leaks who
+            (control.execution.recall who)
+            (control.execution.observe (application setup leaks) who) := by
+          intro member
+          rcases ((bounds.mem_onePacketActions (runtime setup) leaks who _ _ disclosure).mp
+              member).2 with silent | ⟨other, otherSends, permitted⟩
+          · rw [sends] at silent
+            cases silent
+          rw [sends] at otherSends
+          cases Option.some.inj otherSends
+          have recalled := (runtime setup).countRecall_history leaks rawTrace
+          have first := ((countPermits_eq_true_iff _ _).mp permitted).2.2
+          rw [(runtime setup).localEnvelope_eq_of_recall leaks control.execution recalled.1
+            recalled.2.1 who material] at first
+          have earlier := earlierOwnPacket_of_output rawTrace who
+            ((application setup leaks).packet ((application setup leaks).submit
+              control.execution.application who material) who
+              (control.execution.network.known who) material) message output
+          apply first message earlier
+          rw [named]
+          rcases (runtime setup).canonicalServiceDecision_cases leaks who
+              (control.execution.recall who)
+              (control.execution.observe (application setup leaks) who) event
+              (cast (congrArg EventGraph.EventField.Action outputEq.symm) true) with
+            silent | submitted
+          · have silent' : disclosure = ⟨none⟩ := silent
+            rw [silent'] at sends
+            cases sends
+          · have submitted' : (runtime setup).submittedEvent? leaks disclosure = some event :=
+              submitted
+            unfold EventGraphRuntime.submittedEvent? at submitted'
+            rw [sends] at submitted'
+            exact submitted'.symm
+        rw [decodedSilent _ notMember]
+        constructor
+        · intro _ both
+          exact both.2 ⟨message, output, named⟩
+        · intro _
+          rfl
+
 end Vegas
