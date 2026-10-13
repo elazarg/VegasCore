@@ -11,6 +11,15 @@ information state as-if-honest play reaches from a reached boundary: such a
 state is not a late delivery (`Vegas.not_lateDelivery_of_honestReachedFrom`), so
 it is not the late delivery, and its components are the slot-trembled prescribed
 component (`Vegas.installedLate_dominates`).
+
+**The successful part of a late delivery.** So, at a late delivery of an
+assembled profile, the successful part of every law installed at the site is
+within a vanishing error of its completion value
+(`Vegas.abs_lateSiteSuccess_sub_lateStopValue_le`): the belief average of the
+value at the first completion of the pending event, which is the source
+continuation value of the intended effective opening at the decoded point when
+that point is intended and the event did not fail
+(`Vegas.lateStopValue`, `Vegas.lateSiteValue`).
 -/
 
 noncomputable section
@@ -95,5 +104,212 @@ theorem installedLate_dominates {delay bound : (graph setup).EventId → Nat}
     · rw [Profile.update_of_ne _ _ same]
   rw [agrees, assembled n]
   exact base
+
+section Values
+
+variable {Parameter : Type} (parameter : State L setup.context → Parameter)
+  (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+  (excludedPayoff : Player → ℝ)
+
+open Classical in
+/-- **The value at a site history.** The source continuation value of `profile`
+at the point the history's configuration decodes to after `rank` events, when
+that point is a point of the intended game; the exclusion payoff otherwise. -/
+def decodedPointValue (profile : BehavioralProfile setup.program) (who : Player) (rank : Nat)
+    (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+      horizon scheduler).History) : ℝ :=
+  match history.state with
+  | none => excludedPayoff who
+  | some control =>
+      match sourceServicePrefix? setup rank control.execution.application.config with
+      | none => excludedPayoff who
+      | some point =>
+          if ProtocolState.Intended setup.program point then
+            sourcePointValue setup parameter utility excludedPayoff profile who point
+          else excludedPayoff who
+
+/-- **The continuation value of a late delivery.** The belief average, over the
+histories of a site, of the source continuation value of `profile` at their
+decoded point before the site's event. -/
+def lateSiteValue (assessment : (onePacketN).BehavioralAssessment)
+    (profile : BehavioralProfile setup.program) {who : Player}
+    (site : (onePacketN).InformationSite who) (event : (graph setup).EventId) : ℝ :=
+  expect (assessment.belief who site) fun history =>
+    decodedPointValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+      profile who event.val history.1
+
+open Classical in
+/-- **The completion value of a late delivery.** The belief average, over the
+histories of a site, of the expected completion value under play, with `law`
+installed at the site, until the site's event completes: the source
+continuation value of `profile` at the decoded point after the event, when it
+is intended and the event did not fail, and the expected payoff of `who` off
+the site's failure set otherwise. -/
+def lateStopValue (assessment : (onePacketN).BehavioralAssessment)
+    (profile : BehavioralProfile setup.program) {who : Player}
+    (site : (onePacketN).InformationSite who) (event : (graph setup).EventId)
+    (law : PMF ((onePacketN).Choice who site.1)) : ℝ :=
+  let menu := bounds.onePacketMenu (runtime setup) leaks
+  let certificate := (menu.bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
+  let installed := Profile.update (sig := (onePacketN).behavioralSignature) assessment.strategy
+    who ((assessment.strategy who).withLaw site.1 law)
+  let payoff := fun final : (menu.protocol (initialLaw setup) horizon scheduler).History =>
+    if final ∈ EventFailedHistory setup leaks bounds horizon scheduler who event then 0
+    else exclusionBase setup parameter utility excludedPayoff leaks final.state who
+  expect (assessment.belief who site) fun history =>
+    expect ((onePacketN).runBehavioralUntil certificate installed
+        (LateStopped setup leaks bounds horizon scheduler event.val) history.1)
+      (fun stop => if LateStopped setup leaks bounds horizon scheduler event.val stop then
+        completionValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+          profile event.val event who
+          (fun later => expect ((onePacketN).runBehavioralTerminalFrom certificate installed later)
+            payoff) stop
+        else payoff stop)
+
+end Values
+
+section Site
+
+variable {Parameter : Type} (parameter : State L setup.context → Parameter)
+  (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+  (excludedPayoff : Player → ℝ)
+
+omit [DecidableEq Player] [Fintype Player] [IExpr.ResultTypes L] in
+/-- A belief average of quantities within `error` of their targets is within
+`error` of the average target. -/
+private theorem abs_expect_sub_le_of_near {α : Type*} [Finite α] (belief : PMF α)
+    (value target : α → ℝ) {error : ℝ} (nonnegative : 0 ≤ error)
+    (near : ∀ point ∈ belief.support, |value point - target point| ≤ error) :
+    |expect belief value - expect belief target| ≤ error := by
+  classical
+  rw [← expect_sub (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)]
+  rw [expect_congr_on_support (g := fun point =>
+    if point ∈ belief.support then value point - target point else 0)
+    (fun point member => by rw [ite_eq_left member ..])]
+  apply expect_abs_le_of_bounded nonnegative
+  intro point
+  split
+  · rename_i member
+    exact near point member
+  · rw [abs_zero]
+    exact nonnegative
+
+/-- **The successful part of a late delivery is its completion value.** For a
+well-formed setup under the asynchronous contract with timely delays and
+retention of first covered canonical packets, at a late delivery of an
+assembled profile with pending event `event`, the successful part of every law
+installed at the site is within
+`|Player| * (2 * horizon + 1) * (1 - slotRetention (scale n)) * range` of its
+completion value, the source continuation values being those of the intended
+effective opening of the source assessment. -/
+theorem abs_lateSiteSuccess_sub_lateStopValue_le [Finite ((bounds.onePacketMenu (runtime setup)
+      leaks).protocol (initialLaw setup) horizon scheduler).History]
+    (wellFormed : setup.WellFormed) {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
+      bound)
+    (timely : AsyncTimely (runtime setup) delay bound)
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound)
+    (lowerUtility upperUtility : Player → ℝ)
+    (lower_le : ∀ outcome who, lowerUtility who ≤ utility outcome who)
+    (le_upper : ∀ outcome who, utility outcome who ≤ upperUtility who)
+    (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
+    (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
+    {slots : Nat}
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
+    (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
+    (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
+      scale_le_one weights targetSequence)
+    (n : ℕ) {who : Player} (site : (onePacketN).InformationSite who)
+    (lateDelivery : LateDelivery setup leaks who site.1) {event : (graph setup).EventId}
+    (pending : pendingEvent setup leaks who site.1 = some event)
+    (law : PMF ((onePacketN).Choice who site.1)) :
+    |onePacketSiteSuccess setup leaks bounds horizon scheduler parameter utility excludedPayoff
+        (targetSequence n) site law -
+      lateStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+        (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site event law| ≤
+      ((Fintype.card Player * (2 * horizon + 1) : ℕ) * (1 - slotRetention (scale n))) *
+        (max 0 (max (excludedPayoff who) (upperUtility who)) -
+          min 0 (min (excludedPayoff who) (lowerUtility who))) := by
+  let menu := bounds.onePacketMenu (runtime setup) leaks
+  let model := onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
+  have bounded := menu.bounded (initialLaw setup) horizon scheduler
+  let certificate := bounded.wellFoundedHistories
+  let low := min 0 (min (excludedPayoff who) (lowerUtility who))
+  let range := max 0 (max (excludedPayoff who) (upperUtility who)) - low
+  have boundedReadout : ∀ readout, low ≤ exclusionReadoutUtility setup parameter utility
+      excludedPayoff readout who ∧
+      exclusionReadoutUtility setup parameter utility excludedPayoff readout who ≤ low + range :=
+    fun readout => by
+      have within := exclusionReadoutUtility_mem_Icc setup parameter utility excludedPayoff
+        lowerUtility upperUtility lower_le le_upper readout who
+      exact ⟨within.1, by simp only [low, range]; linarith [within.2]⟩
+  have zeroWithin : low ≤ 0 ∧ 0 ≤ low + range :=
+    ⟨min_le_left _ _, by
+      simp only [low, range]
+      linarith [le_max_left 0 (max (excludedPayoff who) (upperUtility who))]⟩
+  have retentionNonneg := slotRetention_nonneg (scale_pos n).le (scale_le_one n)
+  have retentionLe := slotRetention_le_one (scale_pos n).le (scale_le_one n)
+  have rangeNonneg : 0 ≤ range := by linarith [zeroWithin.1, zeroWithin.2]
+  have failedEq : onePacketFailed setup leaks bounds horizon scheduler (model.agentAt site) =
+      EventFailedHistory setup leaks bounds horizon scheduler who event := by
+    change (match pendingEvent setup leaks who site.1 with
+      | none => ∅
+      | some event => EventFailedHistory setup leaks bounds horizon scheduler who event) = _
+    rw [pending]
+  obtain ⟨past, view, lateEvent, infoEq, latePending, activated⟩ := lateDelivery
+  rw [pending, Option.some.injEq] at latePending
+  subst latePending
+  unfold onePacketSiteSuccess localSuccessValue lateStopValue
+  rw [failedEq, expect_localRun]
+  apply abs_expect_sub_le_of_near _ _ _
+    (mul_nonneg (mul_nonneg (Nat.cast_nonneg _) (by linarith)) rangeNonneg)
+  intro history _
+  obtain ⟨start, observed⟩ := history
+  have observedState : (application setup leaks).observe who start.state = some (past, view) :=
+    ((menu.info (initialLaw setup) horizon scheduler who start.trace).symm.trans observed).trans
+      infoEq
+  rcases startState : start.state with _ | ⟨remaining, actor, execution⟩
+  · rw [startState] at observedState
+    cases observedState
+  rw [startState] at observedState
+  have actorEq : actor = some who := by
+    by_contra different
+    simp [ReactiveApplication.observe, different] at observedState
+  subst actorEq
+  simp only [ReactiveApplication.observe, ↓reduceIte, Option.some.injEq, Prod.mk.injEq]
+    at observedState
+  obtain ⟨_, viewEq⟩ := observedState
+  have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some ⟨remaining, some who, execution⟩) :=
+    startState ▸ menu.toRawTrace (initialLaw setup) horizon scheduler start.trace
+  obtain ⟨rank, ordered, seen⟩ := pendingAt_history rawTrace
+  have rankEq : event.val = rank := by
+    have pendingSome := pending
+    rw [infoEq] at pendingSome
+    obtain ⟨_, eventReady, _, _⟩ := pendingEvent_spec pendingSome
+    rw [← viewEq] at eventReady
+    exact (ready_iff_rank setup _ rank ordered event).mp
+      ((execution.application.publicView_eventReady event).mp eventReady)
+  subst rankEq
+  have transport := abs_expect_offFailed_sub_completionValue_le bounds parameter utility
+    excludedPayoff wellFormed contract timely (sequence n) retains retentionNonneg retentionLe
+    (Profile.update (sig := model.behavioralSignature) (targetSequence n).strategy who
+      (((targetSequence n).strategy who).withLaw site.1 law))
+    (fun start anchor rank state reached point decoded intendedPoint =>
+      installedLate_dominates setup leaks bounds horizon scheduler contract timely retains
+        sequence scale scale_pos scale_le_one weights targetSequence assembled n
+        ⟨past, view, event, infoEq, pending, activated⟩ law start anchor rank state
+        reached point decoded intendedPoint)
+    (EventFailedHistory setup leaks bounds horizon scheduler who event) event.val
+    event rfl
+    (fun stop control stopState completed succeeded =>
+      not_eventFailedHistory_of_succeeded bounds _ certificate event stop stopState
+        completed succeeded who)
+    who low range boundedReadout zeroWithin start startState ⟨ordered, seen⟩
+  change |expect (model.runBehavioralFrom _ (2 * horizon + 1) start) _ - _| ≤ _
+  rw [← model.runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded certificate bounded]
+  exact transport
+
+end Site
 
 end Vegas
