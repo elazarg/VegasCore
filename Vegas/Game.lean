@@ -90,6 +90,7 @@ import Vegas.Game.OnePacketActorRecord
 import Vegas.Game.OnePacketKeyedRecords
 import Vegas.Game.OnePacketPathwise
 import Vegas.Game.OnePacketPendingLumping
+import Vegas.Game.OnePacketLumpingInstance
 import Vegas.Game.OnePacketDelivery
 import Vegas.Game.OnePacketLawApproximation
 import Vegas.Game.CompiledPolicyView
