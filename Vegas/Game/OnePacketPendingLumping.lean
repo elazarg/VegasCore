@@ -699,6 +699,222 @@ theorem round_image_congr (remaining : Nat)
   | application command =>
       exact application_image_congr remaining first second same pending ready view command
 
+omit [DecidableEq Player] [IExpr.ResultTypes L] in
+private theorem raw_eq_of_as {raw : Raw L} {payload : L.Ty} {value : L.Val payload}
+    (typed : raw.as? payload = some value) : raw = ⟨payload, value⟩ := by
+  rcases raw with ⟨kind, input⟩
+  unfold Raw.as? at typed
+  split at typed
+  · rename_i same
+    change kind = payload at same
+    subst kind
+    cases Option.some.inj typed
+    rfl
+  · cases typed
+
+/-- An accepted opening of a ready publication event was timely, was sent by
+the event's owner for one of its own handles associated with the event's
+binding, and carried the bound successful value. -/
+theorem handle_opening_accepted_facts (state next : EventGraphRuntime.State (graph setup))
+    (ready : state.config.cut.Ready event)
+    {owner : Player} {payload : L.Ty}
+    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
+    {outputEq : (graph setup).outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .resolve owner payload binding checks}
+    (view : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
+    (id : MessageId Player) (candidate : Handle (graph setup)) (raw : Raw L)
+    (accepted : EventGraphRuntime.handle (runtime setup) state
+      ⟨id, .opening event candidate raw⟩ = some next) :
+    state.WithinDeadline (runtime setup) event ∧ id.1 = owner ∧ candidate.1 = owner ∧
+      state.accepted binding.field = some candidate ∧
+      ∃ value, raw = ⟨payload, value⟩ ∧
+        binding.get? state.config.store = some (.success value) := by
+  by_cases timely : state.WithinDeadline (runtime setup) event
+  · simp only [EventGraphRuntime.handle, dite_eq_left ready, dite_eq_left timely, view]
+      at accepted
+    split at accepted
+    · rename_i sender
+      split at accepted
+      · rename_i owned
+        split at accepted
+        · rename_i associated
+          split at accepted
+          · split at accepted
+            · cases accepted
+            · rename_i value typed
+              split at accepted
+              · rename_i stored
+                exact ⟨timely, sender, owned, associated, value, raw_eq_of_as typed, stored⟩
+              · cases accepted
+          · cases accepted
+        · cases accepted
+      · cases accepted
+    · cases accepted
+  · simp [EventGraphRuntime.handle, ready, timely] at accepted
+
+private theorem complete_store_output (state : EventGraphRuntime.State (graph setup))
+    (ready : state.config.cut.Ready event) (action : (graph setup).Action event)
+    (value : ((graph setup).outputLayout event).Value) :
+    (state.complete event ready action value).config.store (.inr event) = some value := by
+  simp [EventGraphRuntime.State.complete, EventGraph.Config.complete, EventGraph.Config.store]
+
+/-- **An accepted opening transfers across equal public data.** Two contract
+states with the same public view and the same binding of a ready publication
+event, both satisfying the binding invariant, accept the same opening of that
+event together; both acceptances complete the event, failed in one exactly
+when failed in the other. -/
+theorem handle_opening_accepted_transfer (first second : EventGraphRuntime.State (graph setup))
+    (publics : first.publicView = second.publicView)
+    (firstValid : first.BindingInvariant) (secondValid : second.BindingInvariant)
+    (ready : first.config.cut.Ready event)
+    {owner : Player} {payload : L.Ty}
+    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
+    {outputEq : (graph setup).outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .resolve owner payload binding checks}
+    (view : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
+    (bindings : binding.get? first.config.store = binding.get? second.config.store)
+    (id : MessageId Player) (candidate : Handle (graph setup)) (raw : Raw L)
+    {next : EventGraphRuntime.State (graph setup)}
+    (accepted : EventGraphRuntime.handle (runtime setup) first
+      ⟨id, .opening event candidate raw⟩ = some next) :
+    ∃ next', EventGraphRuntime.handle (runtime setup) second
+        ⟨id, .opening event candidate raw⟩ = some next' ∧
+      event ∈ next.config.cut.completed ∧ event ∈ next'.config.cut.completed ∧
+      (StoreEventFailed next.config.store event ↔ StoreEventFailed next'.config.store event) := by
+  obtain ⟨timely, sender, owned, associated, value, rawEq, stored⟩ :=
+    handle_opening_accepted_facts first next ready view id candidate raw accepted
+  subst rawEq
+  have secondStored : binding.get? second.config.store = some (.success value) :=
+    bindings ▸ stored
+  obtain ⟨provenance, provenanceAccepted, _, fixed⟩ :=
+    firstValid.success_provenance binding value stored
+  rw [Option.some.inj (provenanceAccepted.symm.trans associated)] at fixed
+  have available : (EventGraph.EventCode.resolveOutput? binding checks true
+      first.config.store).isSome = true := by
+    apply EventGraph.EventCode.resolveOutput?_isSome
+    intro field member
+    apply first.config.read_available ready
+    rw [← EventGraph.EventCode.readFields_cast outputEq ((graph setup).nodes event), codeEq]
+    exact member
+  obtain ⟨result, resolved⟩ := Option.isSome_iff_exists.mp available
+  obtain ⟨ready', secondTimely, secondAssociated, secondResolved⟩ :=
+    EventGraphRuntime.opening_right_facts (runtime setup) first second publics event owner payload
+      binding checks candidate ready timely associated value stored secondStored result resolved
+  obtain ⟨secondProvenance, secondProvenanceAccepted, _, secondFixed⟩ :=
+    secondValid.success_provenance binding value secondStored
+  rw [Option.some.inj (secondProvenanceAccepted.symm.trans secondAssociated)] at secondFixed
+  rw [EventGraphRuntime.handle_opening_eq (runtime setup) first id event candidate owner payload
+    binding checks outputEq codeEq view ready timely sender owned associated value fixed stored
+    result resolved] at accepted
+  cases accepted
+  refine ⟨_, EventGraphRuntime.handle_opening_eq (runtime setup) second id event candidate owner
+    payload binding checks outputEq codeEq view ready' secondTimely sender owned secondAssociated
+    value secondFixed secondStored result secondResolved,
+    (EventOrder.Cut.mem_complete _ event ready event).mpr (Or.inl rfl),
+    (EventOrder.Cut.mem_complete _ event ready' event).mpr (Or.inl rfl), ?_⟩
+  simp only [StoreEventFailed, complete_store_output]
+
+open Classical in
+/-- **An opening of the pending event, read off the operational state.** While
+a publication event is pending and ready, two executions with the same
+operational state, both satisfying the binding invariant and holding the same
+binding of the event, give the inclusion of an opening of the event the same
+image. -/
+theorem include_opening_image_congr (remaining : Nat)
+    (first second : (application setup leaks).Execution)
+    (same : operationalState setup leaks (some ⟨remaining + 1, none, first⟩) =
+      operationalState setup leaks (some ⟨remaining + 1, none, second⟩))
+    (pending : event ∉ first.application.config.cut.completed)
+    (ready : first.application.config.cut.Ready event)
+    {owner : Player} {payload : L.Ty}
+    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
+    {outputEq : (graph setup).outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .resolve owner payload binding checks}
+    (view : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
+    (firstValid : first.application.BindingInvariant)
+    (secondValid : second.application.BindingInvariant)
+    (bindings : binding.get? first.application.config.store =
+      binding.get? second.application.config.store)
+    (id : MessageId Player) {message : Message Player (application setup leaks).Payload}
+    (found : first.network.lookup id = some message)
+    {candidate : Handle (graph setup)} {raw : Raw L}
+    (call : message.payload.call = .opening event candidate raw) :
+    (first.environmentStep (application setup leaks) (.include id)).map
+        (fun next => pendingImage event (some ⟨remaining, none, next⟩)) =
+      (second.environmentStep (application setup leaks) (.include id)).map
+        (fun next => pendingImage event (some ⟨remaining, none, next⟩)) := by
+  have publics : first.application.publicView = second.application.publicView :=
+    SameOperational.publicView same
+  have ready' : second.application.config.cut.Ready event :=
+    (SameOperational.ready same event).mp ready
+  have found' : second.network.lookup id = some message := by
+    rw [← SameOperational.network same]
+    exact found
+  have bothRejected
+      (firstRejected : EventGraphRuntime.handle (runtime setup) first.application
+        ⟨message.id, message.payload.call⟩ = none ∨ message.payload.tokenValid = false)
+      (secondRejected : EventGraphRuntime.handle (runtime setup) second.application
+        ⟨message.id, message.payload.call⟩ = none ∨ message.payload.tokenValid = false) :
+      (first.environmentStep (application setup leaks) (.include id)).map
+          (fun next => pendingImage event (some ⟨remaining, none, next⟩)) =
+        (second.environmentStep (application setup leaks) (.include id)).map
+          (fun next => pendingImage event (some ⟨remaining, none, next⟩)) := by
+    apply include_image_congr remaining first second same pending id
+    intro other member
+    rw [found] at member
+    cases member
+    constructor
+    · rcases firstRejected with rejected | invalid
+      · exact reactiveHandle_none rejected
+      · exact reactiveApplication_handle_of_not_tokenValid (runtime setup) leaks _ _ invalid
+    · rcases secondRejected with rejected | invalid
+      · exact reactiveHandle_none rejected
+      · exact reactiveApplication_handle_of_not_tokenValid (runtime setup) leaks _ _ invalid
+  cases firstHandle : EventGraphRuntime.handle (runtime setup) first.application
+      ⟨message.id, .opening event candidate raw⟩ with
+  | none =>
+      cases secondHandle : EventGraphRuntime.handle (runtime setup) second.application
+          ⟨message.id, .opening event candidate raw⟩ with
+      | none =>
+          exact bothRejected (Or.inl (by rw [call]; exact firstHandle))
+            (Or.inl (by rw [call]; exact secondHandle))
+      | some _ =>
+          obtain ⟨_, accepted, _⟩ := handle_opening_accepted_transfer second.application
+            first.application publics.symm secondValid firstValid ready' view bindings.symm
+            message.id candidate raw secondHandle
+          rw [firstHandle] at accepted
+          cases accepted
+  | some next =>
+      obtain ⟨next', secondHandle, completed, completed', failed⟩ :=
+        handle_opening_accepted_transfer first.application second.application publics firstValid
+          secondValid ready view bindings message.id candidate raw firstHandle
+      cases valid : message.payload.tokenValid with
+      | false => exact bothRejected (Or.inr valid) (Or.inr valid)
+      | true =>
+          have firstAccepted : (application setup leaks).handle first.application message =
+              some next :=
+            (reactiveApplication_handle_of_tokenValid (runtime setup) leaks _ _ valid).trans
+              (by rw [call]; exact firstHandle)
+          have secondAccepted : (application setup leaks).handle second.application message =
+              some next' :=
+            (reactiveApplication_handle_of_tokenValid (runtime setup) leaks _ _ valid).trans
+              (by rw [call]; exact secondHandle)
+          unfold ReactiveApplication.Execution.environmentStep
+          simp only [PMF.pure_map]
+          congr 1
+          unfold ReactiveApplication.Execution.includePending
+          simp only [MessageNetwork.includePending, found, found', firstAccepted, secondAccepted,
+            Option.getD_some]
+          simp only [pendingImage, completed, completed', ↓reduceIte, Sum.inr.injEq,
+            decide_eq_decide]
+          exact failed
+
 end Image
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
