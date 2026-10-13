@@ -55,6 +55,9 @@ import Vegas.Game.OnePacketBindingSite
 import Vegas.Game.OnePacketBindingMasses
 import Vegas.Game.OnePacketSilenceMasses
 import Vegas.Game.OnePacketBindingSilence
+import Vegas.Game.OnePacketOperationalReads
+import Vegas.Game.OnePacketOperationalFactors
+import Vegas.Game.OnePacketSlotError
 import Vegas.Game.OnePacketSlotMasses
 import Vegas.Game.OnePacketForcedBeliefs
 import Vegas.Game.OnePacketIntendedProjection
