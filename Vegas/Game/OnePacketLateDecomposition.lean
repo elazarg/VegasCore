@@ -504,7 +504,7 @@ scales, suppose:
   `below` of `Vegas.SourceProgram.Setup.intended_sequentialEquilibrium_extends_to_exclusion`
   gives for points the intended game reaches);
 * *the gap bound covers the upper utility*;
-* *value-blind success* (`valueBlind`): at every forced late delivery of every
+* *value-blind success* (valueBlind): at every forced late delivery of every
   assembled fully mixed Bayes profile sequence, the completion value
   (`Vegas.lateStopValue`) of each late option and of each marked choice is
   within a vanishing error of its success probability times the continuation

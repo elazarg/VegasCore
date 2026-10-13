@@ -134,7 +134,7 @@ theorem ownerRecall_eq_of_infoOf {who : Player} {past : List (application setup 
 
 open Classical in
 /-- **The inputs of honest forced beliefs at one stage.** For a site `site` of
-`who` in the one-packet game, an intended site `sourceSite` at its projected
+`who` in the one-packet game, an intended site sourceSite at its projected
 view, and the projection `project` of native histories to intended ones, at
 stage `n` of the intended sequence `sequence`, the native profiles `profiles`
 and the operational steps `steps`:
