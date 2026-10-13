@@ -244,6 +244,53 @@ theorem not_eventFailedHistory_of_succeeded (bounds : MessageBounds (graph setup
   rw [lastState]
   exact not_mem_eventFailedReadout_of_store setup leaks last player event lastSucceeded
 
+/-- Complete rounds only extend a completed prefix. -/
+theorem runRounds_isPrefix (scheduler : (application setup leaks).Scheduler)
+    (players : Player → (application setup leaks).Policy) :
+    ∀ (count : Nat) (execution next : (application setup leaks).Execution) (rank : Nat),
+      execution.application.config.cut.IsPrefix rank →
+      next ∈ ((application setup leaks).runRounds scheduler players count execution).support →
+      ∃ later, rank ≤ later ∧ next.application.config.cut.IsPrefix later := by
+  intro count
+  induction count with
+  | zero =>
+      intro execution next rank ordered reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      exact ⟨rank, le_rfl, ordered⟩
+  | succ count ih =>
+      intro execution next rank ordered reached
+      obtain ⟨middle, moved, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      rcases (round_configStep setup leaks scheduler players execution middle moved).prefix rank
+          ordered with same | advanced
+      · obtain ⟨later, grows, holds⟩ := ih middle next rank (by rw [same]; exact ordered) rest
+        exact ⟨later, grows, holds⟩
+      · obtain ⟨later, grows, holds⟩ := ih middle next (rank + 1) advanced rest
+        exact ⟨later, by omega, holds⟩
+
+/-- States reached by rounds from an anchor only extend its completed prefix. -/
+theorem runRoundsSupported_isPrefix {scheduler : (application setup leaks).Scheduler}
+    {players : Player → (application setup leaks).Policy}
+    {anchor : (application setup leaks).Execution} {rank : Nat}
+    (ordered : anchor.application.config.cut.IsPrefix rank)
+    {state : (application setup leaks).ProtocolState}
+    (supported : (application setup leaks).RunRoundsSupported scheduler players anchor state)
+    {control : (application setup leaks).Control} (current : state = some control) :
+    ∃ later, rank ≤ later ∧ control.execution.application.config.cut.IsPrefix later := by
+  subst current
+  rcases control with ⟨remaining, actor, execution⟩
+  cases actor with
+  | none =>
+      obtain ⟨count, reached⟩ := supported
+      exact runRounds_isPrefix scheduler players count anchor execution rank ordered reached
+  | some who =>
+      obtain ⟨count, prior, command, priorMem, _, _, stepped⟩ := supported
+      obtain ⟨middle, grows, holds⟩ :=
+        runRounds_isPrefix scheduler players count anchor prior rank ordered priorMem
+      rcases (environmentStep_configStep setup leaks prior execution command stepped).prefix
+          middle holds with same | advanced
+      · exact ⟨middle, grows, by rw [same]; exact holds⟩
+      · exact ⟨middle + 1, by omega, advanced⟩
+
 section Success
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
@@ -271,11 +318,11 @@ def sourcePointValue (profile : BehavioralProfile setup.program) (who : Player)
 open Classical in
 variable (setup leaks) in
 /-- **The value after a completion.** At a history whose configuration decodes,
-after `rank + 1` events, to a point of the intended game, and whose store does
-not record a failure of `event`, the source continuation value of `profile`
-there; elsewhere the fallback. -/
+after `rank + 1` events, to a point of the intended game, and whose control
+satisfies `fresh`, the source continuation value of `profile` there; elsewhere
+the fallback. -/
 def completionValue (profile : BehavioralProfile setup.program) (rank : Nat)
-    (event : (graph setup).EventId) (who : Player)
+    (fresh : (application setup leaks).Control → Prop) (who : Player)
     (fallback : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
       horizon scheduler).History → ℝ)
     (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
@@ -286,8 +333,7 @@ def completionValue (profile : BehavioralProfile setup.program) (rank : Nat)
       match sourceServicePrefix? setup (rank + 1) control.execution.application.config with
       | none => fallback history
       | some point =>
-          if ProtocolState.Intended setup.program point ∧
-              ¬ StoreEventFailed control.execution.application.config.store event then
+          if ProtocolState.Intended setup.program point ∧ fresh control then
             sourcePointValue setup parameter utility excludedPayoff profile who point
           else fallback history
 
@@ -343,12 +389,13 @@ theorem abs_expect_offFailed_sub_completionValue_le (wellFormed : setup.WellForm
     {retention : ℝ} (nonnegative : 0 ≤ retention) (le_one : retention ≤ 1)
     (profile : ∀ who,
       (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).BehavioralPolicy who)
+    (rank : Nat)
     (dominates : ∀ (start : ((bounds.onePacketMenu (runtime setup) leaks).protocol
         (initialLaw setup) horizon scheduler).History)
-        (anchor : (application setup leaks).Execution) (rank : Nat),
+        (anchor : (application setup leaks).Execution),
       start.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩ →
-      ReachedBoundary setup leaks horizon scheduler rank anchor →
-      ∀ point, sourceServicePrefix? setup rank anchor.application.config = some point →
+      ReachedBoundary setup leaks horizon scheduler (rank + 1) anchor →
+      ∀ point, sourceServicePrefix? setup (rank + 1) anchor.application.config = some point →
       ProtocolState.Intended setup.program point →
       ∀ who info,
         HonestReachedFrom setup leaks bounds horizon scheduler assessment start who info →
@@ -358,12 +405,11 @@ theorem abs_expect_offFailed_sub_completionValue_le (wellFormed : setup.WellForm
             assessment who info) choice).toReal ≤ ((profile who info) choice).toReal)
     (failed : Set ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
       horizon scheduler).History)
-    (rank : Nat) (event : (graph setup).EventId) (eventRank : event.val = rank)
+    (fresh : (application setup leaks).Control → Prop)
     (avoids : ∀ (stop : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
         horizon scheduler).History) (control : (application setup leaks).Control),
       stop.state = some control →
-      event ∈ control.execution.application.config.cut.completed →
-      ¬ StoreEventFailed control.execution.application.config.store event →
+      control.execution.application.config.cut.IsPrefix (rank + 1) → fresh control →
       ∀ final ∈ ((onePacketModel setup leaks bounds (initialLaw setup) horizon
         scheduler).runBehavioralTerminalFrom ((bounds.onePacketMenu (runtime setup) leaks).bounded
           (initialLaw setup) horizon scheduler).wellFoundedHistories profile stop).support,
@@ -389,7 +435,7 @@ theorem abs_expect_offFailed_sub_completionValue_le (wellFormed : setup.WellForm
           (LateStopped setup leaks bounds horizon scheduler rank) start)
         (fun stop => if LateStopped setup leaks bounds horizon scheduler rank stop then
           completionValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-            (setup.intendedOpeningProfile assessment.strategy) rank event who
+            (setup.intendedOpeningProfile assessment.strategy) rank fresh who
             (fun later => expect (model.runBehavioralTerminalFrom certificate profile later)
               payoff) stop
           else payoff stop)| ≤
@@ -420,7 +466,7 @@ theorem abs_expect_offFailed_sub_completionValue_le (wellFormed : setup.WellForm
       (setup.intendedOpeningProfile assessment.strategy) who point| ≤ |low| + |range| :=
     fun point => expect_abs_le_of_bounded (by positivity) fun readout => readoutAbs readout
   have valueBounded : ∀ later, |completionValue setup leaks bounds horizon scheduler parameter
-      utility excludedPayoff (setup.intendedOpeningProfile assessment.strategy) rank event who
+      utility excludedPayoff (setup.intendedOpeningProfile assessment.strategy) rank fresh who
       fallback later| ≤ |low| + |range| := fun later => by
     unfold completionValue
     split
@@ -479,7 +525,7 @@ theorem abs_expect_offFailed_sub_completionValue_le (wellFormed : setup.WellForm
     | some point =>
         dsimp only
         by_cases good : ProtocolState.Intended setup.program point ∧
-            ¬ StoreEventFailed anchor.application.config.store event
+            fresh ⟨remaining, none, anchor⟩
         · obtain ⟨intendedPoint, succeeded⟩ := good
           rw [ite_eq_left ⟨intendedPoint, succeeded⟩ ..]
           have rawTrace := menu.toRawTrace (initialLaw setup) horizon scheduler next.trace
@@ -501,7 +547,7 @@ theorem abs_expect_offFailed_sub_completionValue_le (wellFormed : setup.WellForm
             timely parameter utility excludedPayoff assessment retains reachedBoundary point
             decoding intendedPoint next boundaryState (2 * horizon + 1) (by omega) nonnegative
             le_one profile
-            (dominates next anchor (rank + 1) boundaryState reachedBoundary point decoding
+            (dominates next anchor boundaryState reachedBoundary point decoding
               intendedPoint) who low range boundedReadout
           rw [← model.runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded certificate
             bounded] at transport
@@ -510,8 +556,8 @@ theorem abs_expect_offFailed_sub_completionValue_le (wellFormed : setup.WellForm
             (fun final finalMember => by
               simp only [payoff, ite_eq_right_iff]
               intro inFailed
-              exact (avoids next _ nextState
-                ((completed.2 event).mpr (by omega)) succeeded final finalMember inFailed).elim)]
+              exact (avoids next _ nextState completed succeeded final finalMember
+                inFailed).elim)]
           exact transport
         · rw [ite_eq_right good .., sub_self, abs_zero]
           exact errorNonneg
