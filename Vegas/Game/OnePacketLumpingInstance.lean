@@ -313,4 +313,192 @@ theorem lateEventFailed_eq (key : LateKey setup leaks)
       · simp only [LateEventFailed, turn, completed, false_and, ↓reduceIte, lateImage,
           pendingImage, imageFailure]
 
+/-- **The owner's step at a key.** Read through the pending image, the
+owner's control step from a forced state with the decided event ready is
+within `δ` on unit payoffs of a kernel of the key, the option and the
+operational state. -/
+def OwnerStepClose {LateOption : Type}
+    (ownerKernel : LateKey setup leaks → LateOption → Option (OperationalState setup leaks) →
+      PMF (PendingImage (setup := setup) (leaks := leaks)))
+    (key : LateKey setup leaks) (option : LateOption)
+    (profile : ∀ player,
+      (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
+    (δ : ℝ) : Prop :=
+  ∀ event, PublicationTurn key event →
+    ∀ (history : (onePacketProtocol setup leaks bounds horizon scheduler).History)
+      (control : (application setup leaks).Control), history.state = some control →
+      ForcedState setup leaks key.owner (some control) →
+      control.execution.application.config.cut.Ready event →
+      control.actor = some key.owner →
+      UnitClose δ (((application setup leaks).controlStep (initialLaw setup) horizon scheduler
+          ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup) horizon
+            scheduler profile) (some control)).map (pendingImage event))
+        (ownerKernel key option (operationalState setup leaks (some control)))
+
+/-- **One step of the native kernel at a key.** From a kept state, the control
+step of a decoded profile, read through the key's image, is within `δ` on unit
+payoffs of the key's kernel, provided the owner's own step is. -/
+theorem lateKernel_close {LateOption : Type}
+    (ownerKernel : LateKey setup leaks → LateOption → Option (OperationalState setup leaks) →
+      PMF (PendingImage (setup := setup) (leaks := leaks)))
+    (key : LateKey setup leaks) (option : LateOption)
+    (profile : ∀ player,
+      (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
+    {δ : ℝ} (nonneg : 0 ≤ δ) (owner : OwnerStepClose ownerKernel key option profile δ)
+    {state : (application setup leaks).ProtocolState}
+    (kept : state ∈ lateKept bounds horizon scheduler key) :
+    UnitClose δ (((application setup leaks).controlStep (initialLaw setup) horizon scheduler
+        ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup) horizon
+          scheduler profile) state).map (lateImage key))
+      (lateKernel bounds horizon scheduler ownerKernel key option (lateImage key state)) := by
+  unfold lateKept at kept
+  cases turn : turnEvent key with
+  | none =>
+      apply unitClose_of_eq nonneg
+      have constant : lateImage key = Function.const _ (.inr false) := by
+        funext state
+        simp only [lateImage, turn, Function.const_apply]
+      simp only [constant, lateKernel, turn, PMF.map_const]
+  | some event =>
+      rw [turn] at kept
+      obtain ⟨⟨history, current⟩, control, rfl, status⟩ := kept
+      obtain ⟨_, payload, binding, checks, outputEq, codeEq, view⟩ :=
+        publicationTurn_of_turnEvent turn
+      have imageEq : lateImage key = pendingImage event := by
+        funext state
+        simp only [lateImage, turn]
+      have kernelEq : lateKernel bounds horizon scheduler ownerKernel key option =
+          pendingKernel bounds horizon scheduler event key.owner (ownerKernel key option) := by
+        simp only [lateKernel, turn]
+      rw [imageEq, kernelEq]
+      rcases status with completed | ⟨forced, ready⟩
+      · apply unitClose_of_eq nonneg
+        have constant : ((application setup leaks).controlStep (initialLaw setup) horizon
+            scheduler ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile
+              (initialLaw setup) horizon scheduler profile) (some control)).map
+              (pendingImage event) =
+            ((application setup leaks).controlStep (initialLaw setup) horizon
+            scheduler ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile
+              (initialLaw setup) horizon scheduler profile) (some control)).map
+              (Function.const _ (pendingImage event (some control))) := by
+          apply map_congr_on_support
+          intro next member
+          obtain ⟨control', rfl, step⟩ :=
+            controlStep_configStep horizon scheduler _ control member
+          exact pendingImage_of_configStep step completed
+        rw [constant, PMF.map_const]
+        simp only [pendingImage, completed, ↓reduceIte, pendingKernel]
+      · have pending := ready.1
+        rw [pendingImage_of_pending control pending]
+        rcases control with ⟨remaining, actor, execution⟩
+        cases actor with
+        | some player =>
+            by_cases owned : player = key.owner
+            · subst owned
+              have kernelOwner : pendingKernel bounds horizon scheduler event key.owner
+                  (ownerKernel key option) (.inl (operationalState setup leaks
+                    (some ⟨remaining, some key.owner, execution⟩))) =
+                  ownerKernel key option (operationalState setup leaks
+                    (some ⟨remaining, some key.owner, execution⟩)) := by
+                simp only [operationalState, pendingKernel, ↓reduceIte]
+              rw [kernelOwner]
+              exact owner event (publicationTurn_of_turnEvent turn) history _ current forced ready
+                rfl
+            · apply unitClose_of_eq nonneg
+              rw [controlStep_other_of_pending bounds horizon scheduler profile key.owner history
+                (by rw [current]; exact forced) current ready
+                (nodeView_resolve_actor outputEq codeEq) rfl owned, PMF.pure_map,
+                pendingImage_of_pending _ (by
+                  change event ∉ (execution.respond (application setup leaks) player
+                    ⟨none⟩).application.config.cut.completed
+                  rw [((runtime setup).reactive_respond_application leaks execution player _).1]
+                  exact pending),
+                operationalState_silent]
+              simp only [operationalState, Option.map_some, pendingKernel, owned, ↓reduceIte]
+        | none =>
+            cases remaining with
+            | zero =>
+                apply unitClose_of_eq nonneg
+                have law : (application setup leaks).controlStep (initialLaw setup) horizon
+                    scheduler ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile
+                      (initialLaw setup) horizon scheduler profile) (some ⟨0, none, execution⟩) =
+                    PMF.pure (some ⟨0, none, execution⟩) := rfl
+                rw [law, PMF.pure_map, pendingImage_of_pending _ pending]
+                rfl
+            | succ remaining =>
+                apply unitClose_of_eq nonneg
+                have law : (application setup leaks).controlStep (initialLaw setup) horizon
+                    scheduler ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile
+                      (initialLaw setup) horizon scheduler profile)
+                      (some ⟨remaining + 1, none, execution⟩) =
+                    (application setup leaks).transition (initialLaw setup) horizon scheduler
+                      (some ⟨remaining + 1, none, execution⟩) (fun _ => none) := rfl
+                rw [law]
+                obtain ⟨state, stateEq⟩ : ∃ state, operationalState setup leaks
+                    (some ⟨remaining + 1, none, execution⟩) = some state := ⟨_, rfl⟩
+                have represented : ∃ (history : (onePacketProtocol setup leaks bounds horizon
+                      scheduler).History) (execution : (application setup leaks).Execution),
+                    history.state = some ⟨remaining + 1, none, execution⟩ ∧
+                      ForcedState setup leaks key.owner history.state ∧
+                      execution.application.config.cut.Ready event ∧
+                      operationalState setup leaks (some ⟨remaining + 1, none, execution⟩) =
+                        some state :=
+                  ⟨history, execution, current, by rw [current]; exact forced, ready, stateEq⟩
+                have kernelRound : pendingKernel bounds horizon scheduler event key.owner
+                    (ownerKernel key option) (.inl (some state)) =
+                    roundKernel bounds horizon scheduler event key.owner remaining state := by
+                  have actorNone : state.actor = none := by
+                    have := congrArg (Option.map OperationalState.actor) stateEq
+                    simpa only [operationalState, Option.map_some, Option.some.injEq] using
+                      this.symm
+                  have remainingEq : state.remaining = remaining + 1 := by
+                    have := congrArg (Option.map OperationalState.remaining) stateEq
+                    simpa only [operationalState, Option.map_some, Option.some.injEq] using
+                      this.symm
+                  simp only [pendingKernel, actorNone, remainingEq]
+                rw [stateEq, kernelRound]
+                unfold roundKernel
+                rw [dite_eq_left represented]
+                obtain ⟨repCurrent, _, _, repSame⟩ :=
+                  represented.choose_spec.choose_spec
+                exact round_image_congr_of_forced bounds horizon scheduler key.owner remaining
+                  history represented.choose current repCurrent (by rw [current]; exact forced)
+                  (stateEq.trans repSame.symm) pending ready view
+
+/-- **The one-step lumping of the one-packet game.** For the owner `who` and a
+profile installing each option at each site, if at every site the owner's own
+step is within `δ` of a kernel of the key, the option and the operational state
+(`Vegas.OwnerStepClose`), the native kernel lumps onto the pending image at
+every key, with failure the failed completion of the decided publication
+event. -/
+def onePacketPendingLumping
+    (assessment : (onePacketInformation setup leaks bounds horizon
+      scheduler).BehavioralAssessment) (who : Player) {LateOption : Type}
+    (profileOf : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who →
+      LateOption → ∀ player,
+        (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
+    {δ : ℝ} (nonneg : 0 ≤ δ)
+    (ownerKernel : LateKey setup leaks → LateOption → Option (OperationalState setup leaks) →
+      PMF (PendingImage (setup := setup) (leaks := leaks)))
+    (owner : ∀ site key, lateKey setup leaks who site.1 = some key → ∀ option,
+      OwnerStepClose ownerKernel key option (profileOf site option) δ) :
+    PendingLumping assessment who profileOf LateEventFailed δ
+      (PendingImage (setup := setup) (leaks := leaks)) where
+  image := lateImage
+  kernel := lateKernel bounds horizon scheduler ownerKernel
+  start := recordImage
+  keep := lateKept bounds horizon scheduler
+  failure _ := imageFailure
+  failure_unit _ image := by
+    cases image with
+    | inl _ => simp only [imageFailure, le_refl, zero_le_one, and_self]
+    | inr failed => cases failed <;> simp only [imageFailure, Bool.false_eq_true, ↓reduceIte,
+        le_refl, zero_le_one, and_self]
+  start_eq _ _ siteKey history _ forced := lateImage_of_history siteKey history forced
+  start_kept _ _ siteKey history _ forced := lateKept_of_history siteKey history forced
+  kept site key _ option _ kept _ member := lateKept_step key (profileOf site option) kept member
+  close site key siteKey option _ kept := lateKernel_close ownerKernel key option
+    (profileOf site option) nonneg (owner site key siteKey option) kept
+  failure_eq key _ kept := lateEventFailed_eq key kept
+
 end Vegas
