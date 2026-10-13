@@ -340,6 +340,39 @@ theorem pendingImage_expire_resolve (remaining : Nat) (actor : Option Player)
       EventGraph.Config.store], isFailure_cast_failure outputEq⟩
   simp only [pendingImage, completed, ↓reduceIte, failed, decide_true]
 
+/-- A contract round that leaves the contract state unchanged, read through the
+image. -/
+theorem environmentStep_stutter_image (remaining : Nat)
+    (execution : (application setup leaks).Execution)
+    (pending : event ∉ execution.application.config.cut.completed)
+    (command : EnvironmentCommand (graph setup))
+    (stutter : EventGraphRuntime.environmentStep (runtime setup) execution.application command =
+      PMF.pure execution.application) :
+    (execution.environmentStep (application setup leaks) (.application command)).map
+        (fun next => pendingImage event (some ⟨remaining, none, next⟩)) =
+      PMF.pure (.inl ((operationalState setup leaks (some ⟨remaining + 1, none, execution⟩)).map
+        fun state => (state.round remaining none (.application command)).contract
+          execution.application.publicView)) := by
+  rw [environmentStep_contract_image remaining execution pending command (by
+    rw [stutter]
+    intro next member
+    rw [(PMF.mem_support_pure_iff _ _).mp member]), stutter, PMF.pure_map]
+
+/-- Readiness is read off equal operational states. -/
+theorem SameOperational.ready {first second : (application setup leaks).Control}
+    (same : operationalState setup leaks (some first) = operationalState setup leaks (some second))
+    (event : (graph setup).EventId) :
+    first.execution.application.config.cut.Ready event ↔
+      second.execution.application.config.cut.Ready event := by
+  unfold EventOrder.Cut.Ready
+  constructor
+  · rintro ⟨open_, before⟩
+    exact ⟨fun completed => open_ ((SameOperational.completed same event).mpr completed),
+      fun predecessor member => (SameOperational.completed same predecessor).mp (before member)⟩
+  · rintro ⟨open_, before⟩
+    exact ⟨fun completed => open_ ((SameOperational.completed same event).mp completed),
+      fun predecessor member => (SameOperational.completed same predecessor).mpr (before member)⟩
+
 end Image
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
