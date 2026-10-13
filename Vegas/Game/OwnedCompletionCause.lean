@@ -238,3 +238,58 @@ theorem owned_completion_cause (execution next : (application setup leaks).Execu
                 exact List.mem_append_right _ (List.mem_singleton.mpr rfl)
 
 end Vegas
+
+namespace Vegas
+
+open SourceProgram
+
+open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {setup : Setup (Player := Player) (L := L)}
+
+/-- **Expiry leaves the intended game.** Completing the ready event of a
+decoded configuration with its expiry action reaches a configuration whose
+decoding is no point of the intended game. -/
+theorem SourceResidual.expiry_not_intended {profile : BehavioralProfile setup.program}
+    {rank : Nat} {before after : (graph setup).Config}
+    (residual : SourceResidual setup profile rank before) (event : (graph setup).EventId)
+    (ready : before.cut.Ready event) (action : (graph setup).Action event)
+    (expiring : ExpiryAction event action)
+    (member : after ∈ (before.step event ready action).support) :
+    ∀ point, sourceServicePrefix? setup (rank + 1) after = some point →
+      ¬ ProtocolState.Intended setup.program point := by
+  intro point decoded
+  obtain ⟨next, reachedPoint⟩ := residual.step event ready action after member
+  rw [next.decode, Option.some.injEq] at decoded
+  subst decoded
+  have rankEq : event.val = rank :=
+    (ready_iff_rank setup _ rank residual.checkpoint.ordered event).mp ready
+  have decodedBefore := residual.decode
+  generalize residual.lift (ProtocolState.entry residual.program residual.source) =
+    before' at decodedBefore reachedPoint
+  rw [← rankEq] at decodedBefore
+  revert expiring
+  unfold ExpiryAction
+  cases node : nodeView (graph setup) event with
+  | sample => exact False.elim
+  | bind owner payload outputEq codeEq =>
+      intro failed
+      have actionEq : action = cast (congrArg EventGraph.EventField.Action outputEq.symm)
+          (PublicationResult.failure : PublicationResult (L.Val payload)) := by
+        rw [← failed, cast_cast, cast_eq]
+      subst actionEq
+      exact ProtocolState.not_intended_of_decode_failure setup.program event.val _ _ _ _ _ _ _
+        event.isLt outputEq _ decodedBefore reachedPoint
+  | resolve owner payload binding checks outputEq codeEq =>
+      intro withheld
+      have actionEq : action = cast (congrArg EventGraph.EventField.Action outputEq.symm)
+          false := by
+        rw [← withheld, cast_cast, cast_eq]
+      subst actionEq
+      obtain ⟨who, failed⟩ := ProtocolState.revealFailed_of_decode_withhold setup.program
+        event.val _ _ _ _ _ _ _ event.isLt outputEq _ decodedBefore reachedPoint
+      exact fun intended => ProtocolState.not_excluded_of_intended who setup.program _ intended
+        (ProtocolState.RevealFailed.excluded setup.program _ failed)
+
+end Vegas
