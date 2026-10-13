@@ -426,3 +426,6 @@ import Vegas.Game.IntendedCommitGain
 import Vegas.Game.OnePacketOwnDisclosure
 import Vegas.Game.SourceSwapDecode
 import Vegas.Game.SourceSwapPairs
+import Vegas.Game.OnePacketCompletionTransport
+import Vegas.Game.OnePacketCommitmentCompletion
+import Vegas.Game.OnePacketCommitmentGain
