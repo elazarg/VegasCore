@@ -12,6 +12,9 @@ import Vegas.Game.OnePacketOwnSubmissions
 import Vegas.Game.OnePacketForcedRegular
 import Vegas.Game.OnePacketForcedBeliefs
 import Vegas.Game.OnePacketPathwise
+import Vegas.Game.OnePacketLateLumping
+import Vegas.Game.OnePacketOperationalReads
+import Vegas.Game.OnePacketFailureBridge
 
 /-! # Discharging inputs of the one-packet certificate
 
@@ -1208,6 +1211,173 @@ private theorem unit_expect {α : Type*} (μ : PMF α) (f : α → ℝ)
     expect_le_const μ f (payoffIntegrable_of_bounded μ f (C := 1) fun a => by
       rw [abs_le]
       constructor <;> linarith [unit a]) 1 fun a _ => (unit a).2⟩
+
+omit [Fintype Player] [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
+  [Finite setup.intendedProtocol.History]
+  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+      scheduler).InfoState who)] in
+/-- **A late delivery decides its pending event.** At a decision input of `who`
+with pending event `event`, along a history whose recall of `who` is the
+input's, the late-delivery key decides `event`. -/
+theorem decidedEvent_eq_of_pending {who : Player}
+    {past : List (application setup leaks).PlayerEntry}
+    {view : (application setup leaks).PlayerView} {event : (graph setup).EventId}
+    (pending : pendingEvent setup leaks who (some (past, view)) = some event)
+    {control : (application setup leaks).Control}
+    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some control))
+    (recallEq : control.execution.recall who = past) {key : LateKey setup leaks}
+    (siteKey : lateKey setup leaks who (some (past, view)) = some key) :
+    decidedEvent key = some event := by
+  obtain ⟨turn, _, owned, unrecorded⟩ := pendingEvent_spec pending
+  simp only [lateKey, Option.some.injEq] at siteKey
+  subst siteKey
+  cases node : nodeView (graph setup) event with
+  | sample payload law outputEq codeEq =>
+      have none := nodeView_sample_actor outputEq codeEq
+      rw [owned] at none
+      cases none
+  | resolve owner payload binding checks outputEq codeEq =>
+      have ownerEq : owner = who :=
+        Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
+      subst ownerEq
+      unfold decidedEvent
+      rw [turnEvent_of_publicationTurn ⟨turn, payload, binding, checks, outputEq, codeEq, node⟩]
+  | bind owner payload outputEq codeEq =>
+      have ownerEq : owner = who :=
+        Option.some.inj ((EventGraph.actor?_of_outputLayout_binding _ outputEq).symm.trans
+          owned)
+      subst ownerEq
+      have noPublication : turnEvent (setup := setup) (leaks := leaks)
+          { owner := owner, current := operationalView setup leaks view,
+            recalled := past.map fun entry =>
+              (operationalView setup leaks entry.beforeView, entry.emitted),
+            delivered := deliveredValue setup leaks owner view } = none := by
+        cases found : turnEvent (setup := setup) (leaks := leaks) _ with
+        | none => rfl
+        | some other =>
+            obtain ⟨otherTurn, _, _, _, _, _, otherNode⟩ := publicationTurn_of_turnEvent found
+            have same : other = event := Option.some.inj (otherTurn.symm.trans turn)
+            subst same
+            rw [node] at otherNode
+            cases otherNode
+      have unsent : UnsentFor (setup := setup) (leaks := leaks)
+          { owner := owner, current := operationalView setup leaks view,
+            recalled := past.map fun entry =>
+              (operationalView setup leaks entry.beforeView, entry.emitted),
+            delivered := deliveredValue setup leaks owner view } event := by
+        intro recalledEntry member message emitted named
+        obtain ⟨entry, entryMember, rfl⟩ := List.mem_map.mp member
+        have recorded := (history_eventRecorded_iff trace owner event).mpr
+          ⟨message, by
+            rw [recallEq]
+            exact List.mem_filterMap.mpr ⟨entry, entryMember, emitted⟩, named⟩
+        rw [recallEq, unrecorded] at recorded
+        cases recorded
+      have binding : BindingTurn (setup := setup) (leaks := leaks)
+          { owner := owner, current := operationalView setup leaks view,
+            recalled := past.map fun entry =>
+              (operationalView setup leaks entry.beforeView, entry.emitted),
+            delivered := deliveredValue setup leaks owner view } event payload :=
+        ⟨turn, ⟨outputEq, codeEq, node⟩, unsent⟩
+      unfold decidedEvent
+      rw [noPublication]
+      cases found : bindingTurn (setup := setup) (leaks := leaks) _ with
+      | none =>
+          unfold bindingTurn at found
+          split at found
+          · cases found
+          · rename_i noTurn
+            exact (noTurn ⟨(event, payload), binding⟩).elim
+      | some decided =>
+          obtain ⟨decidedTurn, _, _⟩ := bindingTurn_spec found
+          exact congrArg some (Option.some.inj (decidedTurn.symm.trans turn))
+
+omit [Finite setup.intendedProtocol.History] in
+/-- **Event-level failure is store-level failure of the decided event.** Under a
+scheduler completing play, at a late delivery of `who`, every final history of
+play for the horizon from a history of the site is an event-level failed history
+of the site's agent exactly when its store records a failure of the event the
+late-delivery key decides. -/
+theorem onePacketFailed_iff_decisionFailed
+    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
+    (decoding : BehavioralProfile setup.program)
+    {who : Player} (site : (onePacketN).InformationSite who)
+    (late : LateDelivery setup leaks who site.1) {key : LateKey setup leaks}
+    (siteKey : lateKey setup leaks who site.1 = some key)
+    (history : (onePacketN).InformationHistory who site.1)
+    (profile : ∀ player, (onePacketN).BehavioralPolicy player)
+    (final : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+      scheduler).History)
+    (reached : final ∈ ((onePacketN).runBehavioralFrom profile (2 * horizon + 1)
+      history.1).support) :
+    final ∈ onePacketFailed setup leaks bounds horizon scheduler ((onePacketN).agentAt site) ↔
+      DecisionFailed key final.state := by
+  let menu := bounds.onePacketMenu (runtime setup) leaks
+  have bounded := menu.bounded (initialLaw setup) horizon scheduler
+  let certificate := bounded.wellFoundedHistories
+  obtain ⟨past, view, event, atSite, pending, _⟩ := late
+  rw [atSite] at pending
+  obtain ⟨_, _, owned, _⟩ := pendingEvent_spec pending
+  -- the decided event, read at the site's history
+  obtain ⟨fullHistory, infoEq⟩ := history
+  have observed : (application setup leaks).observe who fullHistory.state = some (past, view) :=
+    (menu.info (initialLaw setup) horizon scheduler who fullHistory.trace).symm.trans
+      (infoEq.trans atSite)
+  have historyTrace := fullHistory.trace
+  have decided : decidedEvent key = some event := by
+    generalize fullHistory.state = state at observed historyTrace
+    rcases state with _ | ⟨remaining, actor, execution⟩
+    · cases observed
+    by_cases active : actor = some who
+    swap
+    · simp [ReactiveApplication.observe, active] at observed
+    subst active
+    simp only [ReactiveApplication.observe, ↓reduceIte, Option.some.injEq, Prod.mk.injEq]
+      at observed
+    exact decidedEvent_eq_of_pending setup leaks horizon scheduler pending
+      (menu.toRawTrace (initialLaw setup) horizon scheduler historyTrace) observed.1
+      (atSite ▸ siteKey)
+  -- the final history is terminal
+  have terminalReached : final ∈ ((onePacketN).runBehavioralTerminalFrom certificate profile
+      fullHistory).support := by
+    rw [(onePacketN).runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded certificate
+      bounded]
+    exact reached
+  have stopped := (onePacketN).runBehavioralTerminalFrom_support_terminal certificate profile
+    fullHistory final terminalReached
+  have failedEq : onePacketFailed setup leaks bounds horizon scheduler
+      ((onePacketN).agentAt ⟨site.1, site.2⟩) =
+      EventFailedHistory setup leaks bounds horizon scheduler who event := by
+    unfold onePacketFailed
+    change (match pendingEvent setup leaks who site.1 with
+      | none => ∅
+      | some event => EventFailedHistory setup leaks bounds horizon scheduler who event) = _
+    rw [atSite, pending]
+  change final ∈ onePacketFailed setup leaks bounds horizon scheduler
+    ((onePacketN).agentAt ⟨site.1, site.2⟩) ↔ _
+  rw [failedEq]
+  have finalTrace := final.trace
+  cases finalState : final.state with
+  | none => rw [finalState] at stopped; exact stopped.elim
+  | some control =>
+      have rawTrace := menu.toRawTrace (initialLaw setup) horizon scheduler finalTrace
+      rw [finalState] at rawTrace stopped
+      have cutTerminal := completes control rawTrace stopped
+      unfold DecisionFailed
+      rw [decided]
+      constructor
+      · intro failedHistory
+        change sourceReadout setup leaks final.state ∈ EventFailedReadout setup who event
+          at failedHistory
+        rw [finalState] at failedHistory
+        obtain ⟨terminal, read, _, cellFailed⟩ := failedHistory
+        exact ⟨by rw [cutTerminal]; exact Finset.mem_univ _,
+          storeEventFailed_of_readout setup leaks control event read cellFailed⟩
+      · rintro ⟨_, storeFailed⟩
+        exact eventFailedHistory_of_storeEventFailed bounds horizon scheduler decoding
+          completes certificate profile final
+          (by rw [finalState]; exact stopped) finalState owned storeFailed
 
 /-- The failure expectation of `fuel` steps of a lumping's image kernel from the
 image read off an operational record. -/
