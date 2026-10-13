@@ -41,8 +41,10 @@ theorem completion_cases
       message.payload.call.event? (graph setup) = some event ∧
       decodeEventAction setup.program event action =
         callContent setup execution.application message.payload.call ∧
-      ∀ named candidate, message.payload.call = .commitment named candidate →
-        candidate.1 = actor) ∨
+      (∀ named candidate, message.payload.call = .commitment named candidate →
+        candidate.1 = actor) ∧
+      ∀ owner payload, (graph setup).outputLayout event = .binding owner payload →
+        next.application.accepted (.inr event) ≠ none) ∨
     (next.application.accepted = execution.application.accepted ∧
       Failing (decodeEventAction setup.program event action)) := by
   have stutter : next.application.config = execution.application.config → False :=
@@ -121,13 +123,18 @@ theorem completion_cases
                   cases step_completion_unique otherMember member
                   rw [packet] at named
                   cases Option.some.inj named
+                  obtain ⟨_, _, table, _⟩ := handle_commitment_accepted execution.application
+                    after message.id _ candidate call
                   refine ⟨message, onLedger, Option.some.inj (sender.symm.trans acts),
-                    by rw [packet]; rfl, ?_, fun named' candidate' same => ?_⟩
+                    by rw [packet]; rfl, ?_, fun named' candidate' same => ?_,
+                    fun _ _ _ => ?_⟩
                   · rw [packet]
                     simp only [callContent, view]
                   · rw [packet] at same
                     cases same
                     exact owned.trans (Option.some.inj (sender.symm.trans acts))
+                  · rw [applicationEq, table, Function.update_self]
+                    exact Option.some_ne_none _
               | opening other candidate raw =>
                   rw [packet] at call
                   obtain ⟨otherReady, otherAction, otherMember, _, _, owner, payload, binding,
@@ -137,8 +144,15 @@ theorem completion_cases
                   cases step_completion_unique otherMember member
                   rw [packet] at named
                   cases Option.some.inj named
-                  refine ⟨message, onLedger, Option.some.inj (sender.symm.trans acts),
-                    by rw [packet]; rfl, ?_, fun _ _ same => by rw [packet] at same; cases same⟩
+                  refine ⟨message, onLedger, Option.some.inj (sender.symm.trans acts), ?_, ?_,
+                    fun _ _ same => ?_, fun _ _ layout => ?_⟩
+                  · rw [packet]
+                    rfl
+                  rotate_left
+                  · rw [packet] at same
+                    cases same
+                  · rw [outputEq] at layout
+                    cases layout
                   rw [actionEq, packet]
                   simp only [callContent, view]
   | application command =>
