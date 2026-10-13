@@ -617,4 +617,115 @@ theorem include_bindingImage_congr (remaining : Nat)
             attachStatuses, Sum.inr.injEq, decide_eq_decide]
           exact failed
 
+variable (initial : PMF (application setup leaks).State) (horizon : Nat)
+  (scheduler : (application setup leaks).Scheduler) in
+/-- **Scheduler rounds at a pending binding read off the image.** Two
+executions with the same operational state and statuses, with a binding
+ready, give a scheduler round the same law of images. -/
+theorem binding_round_image_congr (remaining : Nat)
+    (first second : (application setup leaks).Execution)
+    (same : operationalState setup leaks (some ⟨remaining + 1, none, first⟩) =
+      operationalState setup leaks (some ⟨remaining + 1, none, second⟩))
+    {event : (graph setup).EventId} {owner : Player} {payload : L.Ty}
+    (statuses : commitStatuses event owner payload first.application first.network.pending =
+      commitStatuses event owner payload second.application second.network.pending)
+    (ready : first.application.config.cut.Ready event)
+    {outputEq : (graph setup).outputLayout event = .binding owner payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .bind owner payload}
+    (view : nodeView (graph setup) event = .bind owner payload outputEq codeEq) :
+    ((application setup leaks).transition initial horizon scheduler
+        (some ⟨remaining + 1, none, first⟩) (fun _ => none)).map
+        (bindingImage event owner payload) =
+      ((application setup leaks).transition initial horizon scheduler
+        (some ⟨remaining + 1, none, second⟩) (fun _ => none)).map
+        (bindingImage event owner payload) := by
+  have pending := ready.1
+  have pending' : event ∉ second.application.config.cut.completed := fun completed =>
+    pending ((SameOperational.completed same event).mpr completed)
+  have networks : first.network = second.network := SameOperational.network same
+  have recalls : first.environmentRecall = second.environmentRecall :=
+    SameOperational.environmentRecall same
+  have views : first.observeEnvironment (application setup leaks) =
+      second.observeEnvironment (application setup leaks) :=
+    SameOperational.observeEnvironment same
+  change ((scheduler first.environmentRecall (first.observeEnvironment _)).bind fun command =>
+      (first.environmentStep _ command).map fun next =>
+        some (⟨remaining, command.actor? (application setup leaks), next⟩ :
+          (application setup leaks).Control)).map (bindingImage event owner payload) =
+    ((scheduler second.environmentRecall (second.observeEnvironment _)).bind fun command =>
+      (second.environmentStep _ command).map fun next =>
+        some (⟨remaining, command.actor? (application setup leaks), next⟩ :
+          (application setup leaks).Control)).map (bindingImage event owner payload)
+  rw [recalls, views, PMF.map_bind, PMF.map_bind]
+  congr 1
+  funext command
+  rw [PMF.map_comp, PMF.map_comp]
+  cases command with
+  | activate who =>
+      change (first.environmentStep _ (.activate who)).map
+          (fun next => bindingImage event owner payload (some ⟨remaining, some who, next⟩)) =
+        (second.environmentStep _ (.activate who)).map
+          (fun next => bindingImage event owner payload (some ⟨remaining, some who, next⟩))
+      have kept (execution : (application setup leaks).Execution) :
+          ∀ next ∈ (execution.environmentStep (application setup leaks) (.activate who)).support,
+            stateStatuses event owner payload (some ⟨remaining, some who, next⟩) =
+              commitStatuses event owner payload execution.application
+                execution.network.pending := by
+        intro next member
+        unfold ReactiveApplication.Execution.environmentStep at member
+        rw [PMF.support_map] at member
+        obtain ⟨updated, supported, rfl⟩ := member
+        rw [PMF.support_map] at supported
+        obtain ⟨_, _, rfl⟩ := supported
+        rfl
+      rw [map_bindingImage_of_statuses _ _ _ (kept first),
+        map_bindingImage_of_statuses _ _ _ (kept second),
+        environmentStep_activate_image remaining first pending who,
+        environmentStep_activate_image remaining second pending' who, statuses, networks, same]
+  | wait =>
+      change (first.environmentStep _ .wait).map
+          (fun next => bindingImage event owner payload (some ⟨remaining, none, next⟩)) =
+        (second.environmentStep _ .wait).map
+          (fun next => bindingImage event owner payload (some ⟨remaining, none, next⟩))
+      have kept (execution : (application setup leaks).Execution) :
+          ∀ next ∈ (execution.environmentStep (application setup leaks) .wait).support,
+            stateStatuses event owner payload (some ⟨remaining, none, next⟩) =
+              commitStatuses event owner payload execution.application
+                execution.network.pending := by
+        intro next member
+        simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+          PMF.mem_support_pure_iff] at member
+        subst member
+        rfl
+      rw [map_bindingImage_of_statuses _ _ _ (kept first),
+        map_bindingImage_of_statuses _ _ _ (kept second),
+        environmentStep_wait_image remaining first pending,
+        environmentStep_wait_image remaining second pending', same, statuses]
+  | «include» id =>
+      exact include_bindingImage_congr remaining first second same statuses ready view id
+  | application command =>
+      change (first.environmentStep _ (.application command)).map
+          (fun next => bindingImage event owner payload (some ⟨remaining, none, next⟩)) =
+        (second.environmentStep _ (.application command)).map
+          (fun next => bindingImage event owner payload (some ⟨remaining, none, next⟩))
+      have kept (execution : (application setup leaks).Execution) :
+          ∀ next ∈ (execution.environmentStep (application setup leaks)
+            (.application command)).support,
+            stateStatuses event owner payload (some ⟨remaining, none, next⟩) =
+              commitStatuses event owner payload execution.application
+                execution.network.pending := by
+        intro next member
+        unfold ReactiveApplication.Execution.environmentStep at member
+        rw [PMF.support_map] at member
+        obtain ⟨updated, supported, rfl⟩ := member
+        rw [PMF.support_map] at supported
+        obtain ⟨contract, stepped, rfl⟩ := supported
+        exact commitStatuses_congr_candidates
+          (EventGraphRuntime.environmentStep_tables (runtime setup) _ contract command
+            stepped).2 _
+      rw [map_bindingImage_of_statuses _ _ _ (kept first),
+        map_bindingImage_of_statuses _ _ _ (kept second),
+        application_image_congr_bind remaining first second same ready view command, statuses]
+
 end Vegas
