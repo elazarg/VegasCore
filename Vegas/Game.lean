@@ -105,6 +105,9 @@ import Vegas.Game.OnePacketPathwise
 import Vegas.Game.OnePacketPendingLumping
 import Vegas.Game.OnePacketLumpingInstance
 import Vegas.Game.OnePacketOwnerStep
+import Vegas.Game.OnePacketBindingTurn
+import Vegas.Game.OnePacketBindingOwner
+import Vegas.Game.OnePacketLateLumping
 import Vegas.Game.OnePacketDelivery
 import Vegas.Game.OnePacketLawApproximation
 import Vegas.Game.CompiledPolicyView
