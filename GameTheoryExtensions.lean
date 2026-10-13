@@ -24,6 +24,7 @@ import GameTheoryExtensions.Analysis.Protocol.KeyedPools
 import GameTheoryExtensions.Analysis.Protocol.FreeKeyedPools
 import GameTheoryExtensions.Analysis.Protocol.SingleMoverReach
 import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
+import GameTheoryExtensions.Analysis.Protocol.SourceGainTransport
 import GameTheoryExtensions.Analysis.Protocol.ProjectedBeliefTransport
 import GameTheoryExtensions.Analysis.Protocol.SupportedChoiceContinuation
 import GameTheoryExtensions.Analysis.Protocol.DecisionExperiment
