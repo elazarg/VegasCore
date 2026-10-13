@@ -588,4 +588,119 @@ theorem bindingKernel_close {LateOption : Type}
               execution represented.choose (stateEq.trans repSame.symm) repStatuses.symm ready
               view
 
+/-- **One step of the native kernel at a late decision.** From a kept state,
+the control step of a decoded profile, read through the key's image, is within
+`δ` on unit payoffs of the key's kernel, provided the owner's step at a
+publication is within `δ` and its law of moves at a binding within `δ / 2`. -/
+theorem decisionKernel_close {LateOption : Type}
+    (ownerKernel : LateKey setup leaks → LateOption → Option (OperationalState setup leaks) →
+      PMF (PendingImage (setup := setup) (leaks := leaks)))
+    (moves : LateKey setup leaks → LateOption →
+      Option (OperationalState setup leaks) × List (MessageId Player × Bool) →
+        PMF (Option (Handle (graph setup))))
+    (key : LateKey setup leaks) (option : LateOption)
+    (profile : ∀ player,
+      (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
+    {δ δBinding : ℝ} (nonneg : 0 ≤ δ) (bindingNonneg : 0 ≤ δBinding)
+    (bindingLe : 2 * δBinding ≤ δ)
+    (owner : OwnerStepClose ownerKernel key option profile δ)
+    (law : OwnerBindingLaw bounds horizon scheduler moves key option profile δBinding)
+    {state : (application setup leaks).ProtocolState}
+    (kept : state ∈ decisionKept bounds horizon scheduler key) :
+    UnitClose δ (((application setup leaks).controlStep (initialLaw setup) horizon scheduler
+        ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup) horizon
+          scheduler profile) state).map (decisionImage key))
+      (decisionKernel bounds horizon scheduler ownerKernel moves key option
+        (decisionImage key state)) := by
+  unfold decisionKept at kept
+  cases turn : turnEvent key with
+  | some event =>
+      have imageEq : decisionImage key = Sum.inl ∘ lateImage key := by
+        funext state
+        simp only [decisionImage, lateImage, turn, Function.comp]
+      have keptPublication : state ∈ lateKept bounds horizon scheduler key := by
+        unfold lateKept
+        rw [turn]
+        simp only [decidedEvent, turn] at kept
+        exact kept
+      have close := unitClose_map (lateKernel_close ownerKernel key option profile nonneg owner
+        keptPublication) (Sum.inl : PendingImage (setup := setup) (leaks := leaks) →
+          DecisionImage (setup := setup) (leaks := leaks))
+      rw [imageEq, ← PMF.map_comp]
+      simp only [decisionKernel, turn, Function.comp]
+      exact close
+  | none =>
+      cases binding : bindingTurn key with
+      | none =>
+          apply unitClose_of_eq' nonneg
+          have constant : decisionImage key = Function.const _ (.inl (.inr false)) := by
+            funext state
+            simp only [decisionImage, turn, binding, Function.const_apply]
+          simp only [constant, decisionKernel, turn, binding, PMF.map_const]
+      | some decided =>
+          have spec := bindingTurn_spec binding
+          have imageEq : decisionImage key =
+              Sum.inr ∘ bindingImage decided.1 key.owner decided.2 := by
+            funext state
+            simp only [decisionImage, turn, binding, Function.comp]
+          simp only [decidedEvent, turn, binding, Option.map_some] at kept
+          obtain ⟨⟨history, current⟩, control, rfl, status⟩ := kept
+          have close := unitClose_map (bindingKernel_close moves key option profile bindingNonneg
+            law spec history current status) (Sum.inr :
+              BindingImage (setup := setup) (leaks := leaks) →
+                DecisionImage (setup := setup) (leaks := leaks))
+          rw [imageEq, ← PMF.map_comp]
+          simp only [decisionKernel, turn, binding, Function.comp]
+          exact unitClose_mono close bindingLe
+
+/-- **The one-step lumping at late decisions.** For the owner `who` and a
+profile installing each option at each site, if at every site the owner's
+step at a publication turn is within `δ` of a kernel of the key, the option
+and the operational state, and its law of moves at a binding turn is within
+`δ / 2` of a keyed law, the native kernel lumps onto the decision image at
+every key, with failure the failed completion of the decided event. -/
+def onePacketLateLumping
+    (assessment : (onePacketInformation setup leaks bounds horizon
+      scheduler).BehavioralAssessment) (who : Player) {LateOption : Type}
+    (profileOf : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who →
+      LateOption → ∀ player,
+        (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
+    {δ δBinding : ℝ} (nonneg : 0 ≤ δ) (bindingNonneg : 0 ≤ δBinding)
+    (bindingLe : 2 * δBinding ≤ δ)
+    (ownerKernel : LateKey setup leaks → LateOption → Option (OperationalState setup leaks) →
+      PMF (PendingImage (setup := setup) (leaks := leaks)))
+    (moves : LateKey setup leaks → LateOption →
+      Option (OperationalState setup leaks) × List (MessageId Player × Bool) →
+        PMF (Option (Handle (graph setup))))
+    (owner : ∀ site key, lateKey setup leaks who site.1 = some key → ∀ option,
+      OwnerStepClose ownerKernel key option (profileOf site option) δ)
+    (law : ∀ site key, lateKey setup leaks who site.1 = some key → ∀ option,
+      OwnerBindingLaw bounds horizon scheduler moves key option (profileOf site option)
+        δBinding) :
+    PendingLumping assessment who profileOf DecisionFailed δ
+      (DecisionImage (setup := setup) (leaks := leaks)) where
+  image := decisionImage
+  kernel := decisionKernel bounds horizon scheduler ownerKernel moves
+  start := decisionRecordImage
+  keep := decisionKept bounds horizon scheduler
+  failure _ := decisionFailure
+  failure_unit _ image := by
+    rcases image with pending | binding
+    · rcases pending with _ | failed
+      · simp only [decisionFailure, imageFailure, le_refl, zero_le_one, and_self]
+      · cases failed <;> simp only [decisionFailure, imageFailure, Bool.false_eq_true,
+          ↓reduceIte, le_refl, zero_le_one, and_self]
+    · rcases binding with _ | failed
+      · simp only [decisionFailure, le_refl, zero_le_one, and_self]
+      · cases failed <;> simp only [decisionFailure, Bool.false_eq_true, ↓reduceIte, le_refl,
+          zero_le_one, and_self]
+  start_eq _ _ siteKey history _ forced := decisionImage_of_history siteKey history forced
+  start_kept _ _ siteKey history _ forced := decisionKept_of_history siteKey history forced
+  kept site key _ option _ kept _ member :=
+    decisionKept_step key (profileOf site option) kept member
+  close site key siteKey option _ kept := decisionKernel_close ownerKernel moves key option
+    (profileOf site option) nonneg bindingNonneg bindingLe (owner site key siteKey option)
+    (law site key siteKey option) kept
+  failure_eq key _ kept := decisionFailed_eq key kept
+
 end Vegas
