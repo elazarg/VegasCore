@@ -28,15 +28,26 @@ assessments and native profiles, the inputs at stage `n` are
   outside the as-if-honest support of another player) has a regular
   counterpart at the same site: the same public record and slot, with each of
   the author's offending commitments replaced by an honest value. The irregular
-  history has reach at most the cube of the tremble scale times a common
-  weight; the counterpart at least the square of the scale times the floor to
-  the depth times that weight, up to a fixed slack. At a forced site nobody is
-  publicly doomed, so such a counterpart exists.
+  history has reach at most the cube of a scale times a common weight; the
+  counterpart at least the square of the scale times a floor to the depth
+  times that weight, up to a fixed slack. At a forced site nobody is publicly
+  doomed, so such a counterpart exists.
 
-**Negligible irregular histories.** The tremble scale is negligible against the
-floor to the depth (`Vegas.tendsto_trembleScale_div_floor_pow`), so the Bayes
-belief of the irregular histories at the site is at most the number of its
-histories times the slack times that ratio
+The scale and the floor are parameters: the results hold for every scale
+sequence negligible against the floor to the depth. The tremble scale of a
+floor sequence in `(0, 1]` is one (`Vegas.tendsto_trembleScale_div_floor_pow`).
+
+Each input quantifies only over what the proofs read: the regular histories
+of the site, the irregular histories of the site, and the intended histories
+of the intended site. The common fibers force every intended history of the
+intended site to have regular preimages at the native site, which holds when
+the two sites differ only in values hidden from `who`. The inputs are meant at
+own-turn sites with no pending reveal; elsewhere the fibers need not be
+common.
+
+**Negligible irregular histories.** When the scale is negligible against the
+floor to the depth, the Bayes belief of the irregular histories at the site
+is at most the number of its histories times the slack times that ratio
 (`Vegas.ForcedBeliefInputs.irregular_belief_le`), and vanishes
 (`Vegas.tendsto_irregular_belief`).
 
@@ -133,9 +144,9 @@ and the operational steps `steps`:
 * `fiber`: the operational weights of the regular histories projecting to each
   intended history sum to a common mass;
 * `counterpart`: every irregular history has a regular counterpart; the
-  irregular reach is at most the cube of the tremble scale times
-  `commonWeight`, and `slack` times the counterpart's reach is at least the
-  square of the scale times `floors n ^ depth` times `commonWeight`. -/
+  irregular reach is at most `scale n ^ 3` times `commonWeight`, and `slack`
+  times the counterpart's reach is at least `scale n ^ 2` times
+  `floors n ^ depth` times `commonWeight`. -/
 structure ForcedBeliefInputs (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (profiles : ℕ → ∀ player,
       (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
@@ -148,7 +159,7 @@ structure ForcedBeliefInputs (sequence : ℕ → setup.intendedModel.BehavioralA
     [DecidableEq (setup.intendedModel.InformationHistory who sourceSite.1)]
     (project : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
       site.1 → setup.intendedModel.InformationHistory who sourceSite.1)
-    (floors : ℕ → ℝ) (depth : ℕ) (slack : ℝ) (n : ℕ) where
+    (scale floors : ℕ → ℝ) (depth : ℕ) (slack : ℝ) (n : ℕ) where
   /-- The site is forced for its owner. -/
   forced : forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
     scheduler who site.1
@@ -183,10 +194,10 @@ structure ForcedBeliefInputs (sequence : ℕ → setup.intendedModel.BehavioralA
       history.1.trace →
     ((onePacketInformation setup leaks bounds horizon scheduler).historyReachWeight (profiles n)
         history.1).toReal ≤
-      trembleScale (floors n) depth n ^ 3 * commonWeight history
+      scale n ^ 3 * commonWeight history
   counterpart_ge : ∀ history, ¬ RegularTrace setup leaks bounds horizon scheduler (sequence n)
       who history.1.trace →
-    trembleScale (floors n) depth n ^ 2 * floors n ^ depth * commonWeight history ≤
+    scale n ^ 2 * floors n ^ depth * commonWeight history ≤
       slack * ((onePacketInformation setup leaks bounds horizon scheduler).historyReachWeight
         (profiles n) (counterpart history).1).toReal
 
@@ -206,24 +217,25 @@ variable {sequence : ℕ → setup.intendedModel.BehavioralAssessment}
   [DecidableEq (setup.intendedModel.InformationHistory who sourceSite.1)]
   {project : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
     site.1 → setup.intendedModel.InformationHistory who sourceSite.1}
-  {floors : ℕ → ℝ} {depth : ℕ} {slack : ℝ} {n : ℕ}
+  {scale floors : ℕ → ℝ} {depth : ℕ} {slack : ℝ} {n : ℕ}
 
 open Classical in
 /-- The ratio of the native reach of an irregular history to that of its
 counterpart is at most `slack * scale / floor ^ depth`. -/
 theorem ForcedBeliefInputs.reach_le_counterpart
     (inputs : ForcedBeliefInputs setup leaks bounds horizon scheduler sequence profiles steps site
-      sourceSite project floors depth slack n)
-    (floorPos : 0 < floors n) (history : (onePacketInformation setup leaks bounds horizon
+      sourceSite project scale floors depth slack n)
+    (floorPos : 0 < floors n) (scaleNonneg : 0 ≤ scale n)
+    (history : (onePacketInformation setup leaks bounds horizon
       scheduler).InformationHistory who site.1)
     (irregular : ¬ RegularTrace setup leaks bounds horizon scheduler (sequence n) who
       history.1.trace) :
     ((onePacketInformation setup leaks bounds horizon scheduler).historyReachWeight (profiles n)
         history.1).toReal ≤
-      slack * trembleScale (floors n) depth n / floors n ^ depth *
+      slack * scale n / floors n ^ depth *
         ((onePacketInformation setup leaks bounds horizon scheduler).historyReachWeight
           (profiles n) (inputs.counterpart history).1).toReal :=
-  le_mul_of_tremble_counterpart (trembleScale_nonneg floorPos.le) floorPos
+  le_mul_of_tremble_counterpart (scaleNonneg) floorPos
     (inputs.irregular_le history irregular) (inputs.counterpart_ge history irregular)
 
 open Classical in
@@ -233,7 +245,7 @@ positive mass, the belief of the irregular histories is at most the number of
 the site's histories times `slack * scale / floor ^ depth`. -/
 theorem ForcedBeliefInputs.irregular_belief_le
     (inputs : ForcedBeliefInputs setup leaks bounds horizon scheduler sequence profiles steps site
-      sourceSite project floors depth slack n)
+      sourceSite project scale floors depth slack n)
     {target : (onePacketInformation setup leaks bounds horizon scheduler).BehavioralAssessment}
     {antichain : (onePacketInformation setup leaks bounds horizon
       scheduler).DecisionInformationAntichain}
@@ -241,27 +253,27 @@ theorem ForcedBeliefInputs.irregular_belief_le
     (bayes : BehavioralAssessment.IsBayesConsistent _ target antichain)
     (positive : 0 < (onePacketInformation setup leaks bounds horizon scheduler).informationMass
       target.strategy who site)
-    (floorPos : 0 < floors n) (slackNonneg : 0 ≤ slack) :
+    (floorPos : 0 < floors n) (scaleNonneg : 0 ≤ scale n) (slackNonneg : 0 ≤ slack) :
     ∑ history with ¬ RegularTrace setup leaks bounds horizon scheduler (sequence n) who
         history.1.trace, (target.belief who site history).toReal ≤
       Fintype.card ((onePacketInformation setup leaks bounds horizon
           scheduler).InformationHistory who site.1) *
-        (slack * trembleScale (floors n) depth n / floors n ^ depth) := by
+        (slack * scale n / floors n ^ depth) := by
   refine sum_belief_le_of_counterpart _ inputs.counterpart bayes positive
-    (div_nonneg (mul_nonneg slackNonneg (trembleScale_nonneg floorPos.le))
+    (div_nonneg (mul_nonneg slackNonneg (scaleNonneg))
       (pow_nonneg floorPos.le _))
     (fun history irregular => not_not.mpr (inputs.counterpart_regular history irregular))
     fun history irregular => ?_
   rw [played]
-  exact inputs.reach_le_counterpart floorPos history irregular
+  exact inputs.reach_le_counterpart floorPos scaleNonneg history irregular
 
 open Classical in
 /-- The irregular reach is at most the number of the site's histories times
 `slack * scale / floor ^ depth` times the regular reach. -/
 theorem ForcedBeliefInputs.irregular_reach_le
     (inputs : ForcedBeliefInputs setup leaks bounds horizon scheduler sequence profiles steps site
-      sourceSite project floors depth slack n)
-    (floorPos : 0 < floors n) (slackNonneg : 0 ≤ slack) :
+      sourceSite project scale floors depth slack n)
+    (floorPos : 0 < floors n) (scaleNonneg : 0 ≤ scale n) (slackNonneg : 0 ≤ slack) :
     ∑ history : (onePacketInformation setup leaks bounds horizon
         scheduler).InformationHistory who site.1 with ¬ RegularTrace setup leaks bounds horizon
           scheduler (sequence n) who history.1.trace,
@@ -269,7 +281,7 @@ theorem ForcedBeliefInputs.irregular_reach_le
         history.1).toReal ≤
       (Fintype.card ((onePacketInformation setup leaks bounds horizon
           scheduler).InformationHistory who site.1) *
-        (slack * trembleScale (floors n) depth n / floors n ^ depth)) *
+        (slack * scale n / floors n ^ depth)) *
       ∑ history : (onePacketInformation setup leaks bounds horizon
           scheduler).InformationHistory who site.1 with RegularTrace setup leaks bounds horizon
             scheduler (sequence n) who history.1.trace,
@@ -280,10 +292,10 @@ theorem ForcedBeliefInputs.irregular_reach_le
       scheduler).InformationHistory who site.1 =>
       ¬ RegularTrace setup leaks bounds horizon scheduler (sequence n) who history.1.trace)
     inputs.counterpart
-    (div_nonneg (mul_nonneg slackNonneg (trembleScale_nonneg floorPos.le))
+    (div_nonneg (mul_nonneg slackNonneg (scaleNonneg))
       (pow_nonneg floorPos.le _))
     (fun history irregular => not_not.mpr (inputs.counterpart_regular history irregular))
-    fun history irregular => inputs.reach_le_counterpart floorPos history irregular
+    fun history irregular => inputs.reach_le_counterpart floorPos scaleNonneg history irregular
   simpa only [not_not] using bound
 
 /-- The operational weight of a regular history at stage `n`: its operational
@@ -291,7 +303,7 @@ weight times the observer's own mass at the site's recall, divided by the
 source scale. -/
 def ForcedBeliefInputs.projectedOperational
     (inputs : ForcedBeliefInputs setup leaks bounds horizon scheduler sequence profiles steps site
-      sourceSite project floors depth slack n)
+      sourceSite project scale floors depth slack n)
     (past : List (application setup leaks).PlayerEntry)
     (history : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
       site.1) : ℝ :=
@@ -301,7 +313,7 @@ def ForcedBeliefInputs.projectedOperational
 
 theorem ForcedBeliefInputs.projectedOperational_nonneg
     (inputs : ForcedBeliefInputs setup leaks bounds horizon scheduler sequence profiles steps site
-      sourceSite project floors depth slack n)
+      sourceSite project scale floors depth slack n)
     (past : List (application setup leaks).PlayerEntry)
     (history : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
       site.1) :
@@ -314,7 +326,7 @@ history is the intended reach of its projection times its projected
 operational weight. -/
 theorem ForcedBeliefInputs.factoredWeight_eq
     (inputs : ForcedBeliefInputs setup leaks bounds horizon scheduler sequence profiles steps site
-      sourceSite project floors depth slack n)
+      sourceSite project scale floors depth slack n)
     {past : List (application setup leaks).PlayerEntry}
     {view : (application setup leaks).PlayerView} (decision : site.1 = some (past, view))
     (history : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
@@ -336,7 +348,7 @@ factorization error of the intended reach of the projection times the
 projected operational weight. -/
 theorem ForcedBeliefInputs.factor_close
     (inputs : ForcedBeliefInputs setup leaks bounds horizon scheduler sequence profiles steps site
-      sourceSite project floors depth slack n)
+      sourceSite project scale floors depth slack n)
     {past : List (application setup leaks).PlayerEntry}
     {view : (application setup leaks).PlayerView} (decision : site.1 = some (past, view))
     (history : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
@@ -358,7 +370,7 @@ open Classical in
 times the observer's own mass divided by the source scale. -/
 theorem ForcedBeliefInputs.fiber_sum
     (inputs : ForcedBeliefInputs setup leaks bounds horizon scheduler sequence profiles steps site
-      sourceSite project floors depth slack n)
+      sourceSite project scale floors depth slack n)
     (past : List (application setup leaks).PlayerEntry)
     (point : setup.intendedModel.InformationHistory who sourceSite.1) :
     ∑ history with RegularTrace setup leaks bounds horizon scheduler (sequence n) who
@@ -372,7 +384,7 @@ theorem ForcedBeliefInputs.fiber_sum
 open Classical in
 theorem ForcedBeliefInputs.fiberMass_nonneg
     (inputs : ForcedBeliefInputs setup leaks bounds horizon scheduler sequence profiles steps site
-      sourceSite project floors depth slack n) :
+      sourceSite project scale floors depth slack n) :
     0 ≤ inputs.fiberMass := by
   obtain ⟨point, _⟩ := sourceSite.2
   rw [← inputs.fiber point]
@@ -388,7 +400,7 @@ ratio of the intended belief, in `ℓ¹`. -/
 theorem ForcedBeliefInputs.sum_abs_projectedBelief_sub_le
     [Fintype (setup.intendedModel.InformationHistory who sourceSite.1)]
     (inputs : ForcedBeliefInputs setup leaks bounds horizon scheduler sequence profiles steps site
-      sourceSite project floors depth slack n)
+      sourceSite project scale floors depth slack n)
     {past : List (application setup leaks).PlayerEntry}
     {view : (application setup leaks).PlayerView} (decision : site.1 = some (past, view))
     {target : (onePacketInformation setup leaks bounds horizon scheduler).BehavioralAssessment}
@@ -401,14 +413,14 @@ theorem ForcedBeliefInputs.sum_abs_projectedBelief_sub_le
     (positive : 0 < (onePacketInformation setup leaks bounds horizon scheduler).informationMass
       target.strategy who site)
     (sourcePositive : 0 < setup.intendedModel.informationMass (sequence n).strategy who sourceSite)
-    (floorPos : 0 < floors n) (slackNonneg : 0 ≤ slack)
+    (floorPos : 0 < floors n) (scaleNonneg : 0 ≤ scale n) (slackNonneg : 0 ≤ slack)
     (factorSmall : (1 + steps.error n) ^ (2 * horizon + 1) - 1 < 1) :
     ∑ point, |(((target.belief who site).map project) point).toReal -
         ((sequence n).belief who sourceSite point).toReal| ≤
       projectionErrorBound ((1 + steps.error n) ^ (2 * horizon + 1) - 1) 0
         (Fintype.card ((onePacketInformation setup leaks bounds horizon
             scheduler).InformationHistory who site.1) *
-          (slack * trembleScale (floors n) depth n / floors n ^ depth)) := by
+          (slack * scale n / floors n ^ depth)) := by
   have factorNonneg : 0 ≤ (1 + steps.error n) ^ (2 * horizon + 1) - 1 := by
     have := one_le_pow₀ (n := 2 * horizon + 1)
       (show (1 : ℝ) ≤ 1 + steps.error n by linarith [steps.error_nonneg n])
@@ -430,7 +442,7 @@ theorem ForcedBeliefInputs.sum_abs_projectedBelief_sub_le
     exact inputs.factor_close decision history regular
   · rw [inputs.fiber_sum past point, sub_self, abs_zero, zero_mul]
   · rw [played]
-    exact inputs.irregular_reach_le floorPos slackNonneg
+    exact inputs.irregular_reach_le floorPos scaleNonneg slackNonneg
 
 end Stage
 
@@ -448,15 +460,13 @@ variable {sequence : ℕ → setup.intendedModel.BehavioralAssessment}
   [DecidableEq (setup.intendedModel.InformationHistory who sourceSite.1)]
   {project : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
     site.1 → setup.intendedModel.InformationHistory who sourceSite.1}
-  {floors : ℕ → ℝ} {depth : ℕ} {slack : ℝ}
+  {scale floors : ℕ → ℝ} {depth : ℕ} {slack : ℝ}
 
 /-- The irregular ratio vanishes along floors in `(0, 1]`. -/
-theorem tendsto_irregularRatio (positive : ∀ n, 0 < floors n) (le_one : ∀ n, floors n ≤ 1)
-    (count : ℕ) :
-    Tendsto (fun n => (count : ℝ) * (slack * trembleScale (floors n) depth n / floors n ^ depth))
-      atTop (nhds 0) := by
-  have limit := ((tendsto_trembleScale_div_floor_pow floors positive le_one depth).const_mul
-    slack).const_mul (count : ℝ)
+theorem tendsto_irregularRatio
+    (negligible : Tendsto (fun n => scale n / floors n ^ depth) atTop (nhds 0)) (count : ℕ) :
+    Tendsto (fun n => (count : ℝ) * (slack * scale n / floors n ^ depth)) atTop (nhds 0) := by
+  have limit := (negligible.const_mul slack).const_mul (count : ℝ)
   simp only [mul_zero] at limit
   refine limit.congr fun n => ?_
   ring
@@ -468,7 +478,7 @@ stage and floors in `(0, 1]`, the belief of the irregular histories at the site
 vanishes. -/
 theorem tendsto_irregular_belief
     (inputs : ∀ n, ForcedBeliefInputs setup leaks bounds horizon scheduler sequence profiles steps
-      site sourceSite project floors depth slack n)
+      site sourceSite project scale floors depth slack n)
     {targetSequence : ℕ →
       (onePacketInformation setup leaks bounds horizon scheduler).BehavioralAssessment}
     {antichain : (onePacketInformation setup leaks bounds horizon
@@ -476,15 +486,17 @@ theorem tendsto_irregular_belief
     (played : ∀ n, (targetSequence n).strategy = profiles n)
     (mixed : ∀ n, (targetSequence n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent _ (targetSequence n) antichain)
-    (positive : ∀ n, 0 < floors n) (le_one : ∀ n, floors n ≤ 1) (slackNonneg : 0 ≤ slack) :
+    (positive : ∀ n, 0 < floors n) (scaleNonneg : ∀ n, 0 ≤ scale n)
+    (negligible : Tendsto (fun n => scale n / floors n ^ depth) atTop (nhds 0))
+    (slackNonneg : 0 ≤ slack) :
     Tendsto (fun n => ∑ history with ¬ RegularTrace setup leaks bounds horizon scheduler
         (sequence n) who history.1.trace, ((targetSequence n).belief who site history).toReal)
       atTop (nhds 0) :=
   squeeze_zero (fun _ => sum_nonneg fun _ _ => ENNReal.toReal_nonneg)
     (fun n => (inputs n).irregular_belief_le (played n) (bayes n)
       (InformationModel.informationMass_pos_of_fullSupport _ _ (mixed n) who site) (positive n)
-      slackNonneg)
-    (tendsto_irregularRatio positive le_one _)
+      (scaleNonneg n) slackNonneg)
+    (tendsto_irregularRatio negligible _)
 
 open Classical in
 /-- **Honest forced beliefs.** At a decision site of `who`, along native
@@ -495,7 +507,7 @@ every stage and floors in `(0, 1]`, the native beliefs pushed forward along
 theorem tendsto_projectedBelief_sub [Fintype (setup.intendedModel.InformationHistory who
       sourceSite.1)]
     (inputs : ∀ n, ForcedBeliefInputs setup leaks bounds horizon scheduler sequence profiles steps
-      site sourceSite project floors depth slack n)
+      site sourceSite project scale floors depth slack n)
     {past : List (application setup leaks).PlayerEntry}
     {view : (application setup leaks).PlayerView} (decision : site.1 = some (past, view))
     {targetSequence : ℕ →
@@ -508,7 +520,9 @@ theorem tendsto_projectedBelief_sub [Fintype (setup.intendedModel.InformationHis
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent _ (targetSequence n) antichain)
     (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
     (sourceBayes : ∀ n, BehavioralAssessment.IsBayesConsistent _ (sequence n) sourceAntichain)
-    (positive : ∀ n, 0 < floors n) (le_one : ∀ n, floors n ≤ 1) (slackNonneg : 0 ≤ slack) :
+    (positive : ∀ n, 0 < floors n) (scaleNonneg : ∀ n, 0 ≤ scale n)
+    (negligible : Tendsto (fun n => scale n / floors n ^ depth) atTop (nhds 0))
+    (slackNonneg : 0 ≤ slack) :
     Tendsto (fun n => ∑ point, |((((targetSequence n).belief who site).map project)
         point).toReal - ((sequence n).belief who sourceSite point).toReal|) atTop (nhds 0) :=
   InformationModel.tendsto_sum_abs_projectedBelief_sub bayes sourceBayes
@@ -530,14 +544,14 @@ theorem tendsto_projectedBelief_sub [Fintype (setup.intendedModel.InformationHis
         (show (1 : ℝ) ≤ 1 + steps.error n by linarith [steps.error_nonneg n])
       linarith)
     (fun _ => le_rfl) (onePacketReachFactorization steps).1 tendsto_const_nhds
-    (tendsto_irregularRatio positive le_one _)
+    (tendsto_irregularRatio negligible _)
     (fun n history regular => by
       rw [played n]
       exact (inputs n).factor_close decision history regular)
     (fun n point => by rw [(inputs n).fiber_sum past point, sub_self, abs_zero, zero_mul])
     (fun n => by
       rw [played n]
-      exact (inputs n).irregular_reach_le (positive n) slackNonneg)
+      exact (inputs n).irregular_reach_le (positive n) (scaleNonneg n) slackNonneg)
 
 open Classical in
 /-- **Forced beliefs converge to the intended limit.** Under the hypotheses of
@@ -547,7 +561,7 @@ the site converges to that assessment's belief. -/
 theorem tendsto_projectedBelief [Finite (setup.intendedModel.InformationHistory who
       sourceSite.1)]
     (inputs : ∀ n, ForcedBeliefInputs setup leaks bounds horizon scheduler sequence profiles steps
-      site sourceSite project floors depth slack n)
+      site sourceSite project scale floors depth slack n)
     {past : List (application setup leaks).PlayerEntry}
     {view : (application setup leaks).PlayerView} (decision : site.1 = some (past, view))
     {targetSequence : ℕ →
@@ -562,14 +576,16 @@ theorem tendsto_projectedBelief [Finite (setup.intendedModel.InformationHistory 
     (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
     (sourceBayes : ∀ n, BehavioralAssessment.IsBayesConsistent _ (sequence n) sourceAntichain)
     (converges : BehavioralAssessmentConvergesPointwise sequence intended)
-    (positive : ∀ n, 0 < floors n) (le_one : ∀ n, floors n ≤ 1) (slackNonneg : 0 ≤ slack)
+    (positive : ∀ n, 0 < floors n) (scaleNonneg : ∀ n, 0 ≤ scale n)
+    (negligible : Tendsto (fun n => scale n / floors n ^ depth) atTop (nhds 0))
+    (slackNonneg : 0 ≤ slack)
     (point : setup.intendedModel.InformationHistory who sourceSite.1) :
     Tendsto (fun n => ((((targetSequence n).belief who site).map project) point).toReal) atTop
       (nhds ((intended.belief who sourceSite point).toReal)) := by
   let := Fintype.ofFinite (setup.intendedModel.InformationHistory who sourceSite.1)
   exact InformationModel.tendsto_projectedBelief_of_converges converges project
     (tendsto_projectedBelief_sub inputs decision played mixed bayes sourceMixed sourceBayes
-      positive le_one slackNonneg) point
+      positive scaleNonneg negligible slackNonneg) point
 
 end Sequence
 
