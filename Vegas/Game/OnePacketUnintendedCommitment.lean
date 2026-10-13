@@ -542,4 +542,200 @@ theorem unintendedCommitment_commit_exclusionBase (profile : BehavioralProfile s
     utility excludedPayoff turn outputEq codeEq decoded intendedFor response material submits call
     fixed unintended certificate committed middle middleState final rest
 
+/-- **One-packet commitments are well formed.** A transmitting response of the
+one-packet menu that commits an event commits a binding event of the
+responder to one of its own prepared slots: the count verdict checks the
+call. -/
+theorem onePacket_commitment_facts {who : Player}
+    {past : List (application setup leaks).PlayerEntry}
+    {view : (application setup leaks).PlayerView} {response : (application setup leaks).Action}
+    (member : response ∈ bounds.onePacketActions (runtime setup) leaks who past view)
+    {material : (application setup leaks).Submission}
+    (sends : response.transmission = some material) {event : (graph setup).EventId}
+    {candidate : Handle (graph setup)}
+    (packet : material.call.packet = .commitment event candidate) :
+    candidate.1 = who ∧ (∃ serial, candidate.2 = .prepared serial) ∧
+      ∃ (payload : L.Ty) (outputEq : (graph setup).outputLayout event = .binding who payload)
+        (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+          ((graph setup).nodes event) = .bind who payload),
+        nodeView (graph setup) event = .bind who payload outputEq codeEq := by
+  obtain ⟨_, either⟩ := (bounds.mem_onePacketActions (runtime setup) leaks who past view
+    response).mp member
+  rcases either with silent | ⟨material', transmits, permitted⟩
+  · rw [silent] at sends
+    cases sends
+  have same : material' = material := Option.some.inj (transmits.symm.trans sends)
+  subst same
+  obtain ⟨_, correct, _⟩ := (countPermits_eq_true_iff _ _).mp permitted
+  unfold CountCallCorrect at correct
+  have callEq : ((runtime setup).localEnvelope leaks who past view material').payload.call =
+      .commitment event candidate := packet
+  rw [callEq] at correct
+  obtain ⟨owned, _, candidateOwner, prepared, _⟩ := correct
+  refine ⟨candidateOwner, prepared, ?_⟩
+  unfold bindingOwnedBy at owned
+  cases node : nodeView (graph setup) event with
+  | bind owner payload outputEq codeEq =>
+      rw [outputEq] at owned
+      have ownerEq : owner = who := of_decide_eq_true owned
+      subst ownerEq
+      exact ⟨payload, outputEq, codeEq, rfl⟩
+  | resolve owner payload binding checks outputEq codeEq =>
+      rw [outputEq] at owned
+      cases owned
+  | sample payload law outputEq codeEq =>
+      rw [outputEq] at owned
+      cases owned
+
+variable (setup leaks) in
+/-- **A commitment of an intended value.** A choice at a decision input whose
+response commits an event to a prepared slot of the player, whose meaning after
+the submission opens a value whose decoded source action is in the intended
+menu at the projected view. -/
+def IntendedCommitment {who : Player}
+    (site : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who)
+    (choice : (onePacketInformation setup leaks bounds horizon scheduler).Choice who site.1) :
+    Prop :=
+  ∃ (past : List (application setup leaks).PlayerEntry)
+    (view : (application setup leaks).PlayerView) (response : (application setup leaks).Action)
+    (material : (application setup leaks).Submission) (event : (graph setup).EventId)
+    (serial : Nat) (payload : L.Ty)
+    (outputEq : (graph setup).outputLayout event = .binding who payload) (value : L.Val payload),
+    site.1 = some (past, view) ∧ choice.1 = some response ∧
+      response.transmission = some material ∧
+      material.call.packet = .commitment event (who, .prepared serial) ∧
+      material.call.candidateAfter who view.application.candidates (.prepared serial) =
+        .openable ⟨payload, value⟩ ∧
+      sourceOfValue setup event outputEq value ∈
+        setup.intendedMenu who (projectView setup leaks who site.1)
+
+open Classical in
+/-- **An unintended commitment at a debt-free site pays the exclusion
+payoff.** For a well-formed setup, under a scheduler completing play, at a
+decision input of `who` showing its turn at `event`, where `who` owes no
+failure at the decoded point of any history, a choice committing `event`
+without committing an intended value reaches, from every history of the site's
+belief, only histories paying `who` its exclusion payoff. -/
+theorem unintendedCommitment_localRun_support (wellFormed : setup.WellFormed)
+    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
+    {Parameter : Type} (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (excludedPayoff : Player → ℝ)
+    (assessment : (onePacketInformation setup leaks bounds horizon
+      scheduler).BehavioralAssessment)
+    {who : Player}
+    (site : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who)
+    {past : List (application setup leaks).PlayerEntry}
+    {view : (application setup leaks).PlayerView} (atSite : site.1 = some (past, view))
+    {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? who = some event)
+    (choice : (onePacketInformation setup leaks bounds horizon scheduler).Choice who site.1)
+    {response : (application setup leaks).Action} (selected : choice.1 = some response)
+    {material : (application setup leaks).Submission}
+    (sends : response.transmission = some material) {candidate : Handle (graph setup)}
+    (packet : material.call.packet = .commitment event candidate)
+    (debtFree : ∀ history : (onePacketInformation setup leaks bounds horizon
+        scheduler).InformationHistory who site.1,
+      ∀ point, nativeDecodedState setup leaks history.1.state = some point →
+        ¬ ProtocolState.OwesFailure who setup.program point)
+    (unintended : ¬ IntendedCommitment setup leaks bounds horizon scheduler site choice) :
+    ∀ final ∈ (InformationModel.localRun (2 * horizon + 1) assessment site
+        (PMF.pure choice)).support,
+      exclusionBase setup parameter utility excludedPayoff leaks final.state who =
+        excludedPayoff who := by
+  let menu := bounds.onePacketMenu (runtime setup) leaks
+  have member : response ∈ bounds.onePacketActions (runtime setup) leaks who past view := by
+    have legal := choice.2
+    obtain ⟨info, decision⟩ := site
+    change info = some (past, view) at atSite
+    subst atSite
+    obtain ⟨action, actionMember, actionEq⟩ := legal
+    rw [selected] at actionEq
+    cases Option.some.inj actionEq
+    exact actionMember
+  obtain ⟨candidateOwner, ⟨serial, candidateSlot⟩, payload, outputEq, codeEq, _⟩ :=
+    onePacket_commitment_facts bounds member sends packet
+  have candidateEq : candidate = (who, .prepared serial) :=
+    Prod.ext candidateOwner candidateSlot
+  subst candidateEq
+  intro final supported
+  rw [InformationModel.localRun_eq_bind, PMF.mem_support_bind_iff] at supported
+  obtain ⟨⟨history, observed⟩, _, reached⟩ := supported
+  have infoEq := observed
+  rw [atSite] at infoEq
+  change (menu.signals (initialLaw setup) horizon scheduler).infoOf who history.trace = _
+    at infoEq
+  rw [menu.info] at infoEq
+  cases state : history.state with
+  | none =>
+      rw [state] at infoEq
+      cases infoEq
+  | some control =>
+      rcases control with ⟨remaining, actor, execution⟩
+      rw [state] at infoEq
+      by_cases active : actor = some who
+      swap
+      · simp only [ReactiveApplication.observe, active, ↓reduceIte] at infoEq
+        cases infoEq
+      subst active
+      simp only [ReactiveApplication.observe, ↓reduceIte] at infoEq
+      obtain ⟨pastEq, viewEq⟩ := Prod.mk.inj (Option.some.inj infoEq)
+      subst pastEq
+      subst viewEq
+      have localTurn : execution.application.publicView.ownTurn? who = some event := turn
+      have ready : execution.application.config.cut.Ready event :=
+        (execution.application.publicView_eventReady event).mp
+          (PublicView.ownTurn?_spec _ who event localTurn).1
+      have historyTrace := history.trace
+      rw [state] at historyTrace
+      obtain ⟨rank, ⟨residual⟩, holds⟩ := decodedState_intendedFor_or_owes wellFormed who
+        (failureProfile setup.program) menu horizon scheduler historyTrace _ rfl
+      have decoded := decodedPoint_eq residual
+      have intendedFor : ProtocolState.IntendedFor who setup.program
+          (residual.lift (ProtocolState.entry residual.program residual.source)) := by
+        rcases holds _ residual.decode with intended | owes
+        · exact intended
+        · exact (debtFree ⟨history, observed⟩ _ (by rw [state]; exact decoded) owes).elim
+      have afterLookup : ∀ slot, (execution.respond (application setup leaks) who
+          response).application.candidates.lookup (who, slot) =
+          material.call.candidateAfter who
+            (execution.observe (application setup leaks) who).application.candidates slot := by
+        intro slot
+        rcases response with ⟨transmission⟩
+        change transmission = some material at sends
+        subst sends
+        exact material.call.candidateAfter_eq who execution.application slot
+      have fixed : (execution.respond (application setup leaks) who
+          response).application.candidates.lookup (who, .prepared serial) ≠ .fresh := by
+        rw [afterLookup]
+        unfold Submission.candidateAfter
+        rw [packet]
+        simp only [and_self, ↓reduceIte]
+        split
+        · split <;> simp
+        · assumption
+      have projected : projectView setup leaks who
+          (some (execution.recall who, execution.observe (application setup leaks) who)) =
+          some (ProtocolState.observe who setup.program
+            (residual.lift (ProtocolState.entry residual.program residual.source))) :=
+        projectView_observe setup leaks who execution rank residual.checkpoint.ordered _
+          residual.decode _
+      have acting : ProtocolView.actor who setup.program (ProtocolState.observe who setup.program
+          (residual.lift (ProtocolState.entry residual.program residual.source))) = some who :=
+        (decodedPoint_actor who ready decoded).trans (PublicView.ownTurn?_spec _ who event
+          localTurn).2
+      exact unintendedCommitment_commit_exclusionBase bounds horizon scheduler
+        (failureProfile setup.program) completes parameter utility excludedPayoff
+        assessment.strategy history state localTurn outputEq codeEq decoded intendedFor response
+        material sends packet fixed
+        (fun value act opened decodedAct actMember => unintended
+          ⟨_, _, response, material, event, serial, payload, outputEq, value, atSite, selected,
+            sends, packet, (afterLookup _).symm.trans opened, by
+              rw [atSite, projected]
+              change ProtocolView.intendedMenu who setup.program _ (sourceOfValue setup event
+                outputEq value)
+              unfold sourceOfValue
+              rw [decodedAct]
+              exact ⟨acting, actMember⟩⟩)
+        site.1 observed choice selected final reached
+
 end Vegas
