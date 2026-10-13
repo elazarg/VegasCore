@@ -269,4 +269,117 @@ theorem disclosure_silent_iff (covers : bounds.CoversOutputValues)
         · intro _
           rfl
 
+/-- **A disclosure that speaks opens the bound value.** Along every history of
+the one-packet game, at a reveal of the player's turn, the chosen canonical
+disclosure, when it transmits, opens the reveal's binding at its stored value
+with the accepted handle. -/
+theorem disclosure_opens {control : (application setup leaks).Control}
+    (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control))
+    (who : Player) (event : (graph setup).EventId) {payload : L.Ty}
+    {binding : EventGraph.FieldRef (graph setup).layout (.binding who payload)}
+    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
+    {outputEq : (graph setup).outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .resolve who payload binding checks}
+    (node : nodeView (graph setup) event = .resolve who payload binding checks outputEq codeEq)
+    (speaks : ((responseChoice setup leaks bounds (initialLaw setup) horizon scheduler who
+        (some (control.execution.recall who,
+          control.execution.observe (application setup leaks) who))
+        ((runtime setup).canonicalServiceDecision leaks who (control.execution.recall who)
+          (control.execution.observe (application setup leaks) who) event
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) true))).1.getD
+          ⟨none⟩).transmission ≠ none) :
+    OpensTurn event who control.execution
+      ((responseChoice setup leaks bounds (initialLaw setup) horizon scheduler who
+        (some (control.execution.recall who,
+          control.execution.observe (application setup leaks) who))
+        ((runtime setup).canonicalServiceDecision leaks who (control.execution.recall who)
+          (control.execution.observe (application setup leaks) who) event
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) true))).1.getD ⟨none⟩) := by
+  set disclosure := (runtime setup).canonicalServiceDecision leaks who
+    (control.execution.recall who) (control.execution.observe (application setup leaks) who)
+    event (cast (congrArg EventGraph.EventField.Action outputEq.symm) true) with disclosureEq
+  have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some control) :=
+    (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon scheduler
+      trace
+  by_cases member : disclosure ∈ bounds.onePacketActions (runtime setup) leaks who
+      (control.execution.recall who) (control.execution.observe (application setup leaks) who)
+  · have decoded : (responseChoice setup leaks bounds (initialLaw setup) horizon scheduler who
+        (some (control.execution.recall who,
+          control.execution.observe (application setup leaks) who)) disclosure).1.getD ⟨none⟩ =
+        disclosure := by
+      simp only [responseChoice, member, ↓reduceDIte, Option.getD_some]
+    rw [decoded] at speaks ⊢
+    obtain ⟨material, sends⟩ := Option.ne_none_iff_exists'.mp speaks
+    obtain ⟨handle, value, accepted, _, openable, shape⟩ :=
+      disclosure_normal_form rawTrace who event node material sends
+    have valid := bindingInvariant_of_history bounds horizon scheduler ⟨_, trace⟩ rfl
+    have stored := valid.toAssociationInvariant.opening_stored binding handle value accepted
+      openable
+    refine ⟨payload, binding, checks, outputEq, codeEq, node, ?_⟩
+    have shape' : disclosure = _ := shape
+    rw [shape']
+    exact ⟨_, handle, value, rfl, rfl, accepted, stored⟩
+  · have decoded : (responseChoice setup leaks bounds (initialLaw setup) horizon scheduler who
+        (some (control.execution.recall who,
+          control.execution.observe (application setup leaks) who)) disclosure).1.getD ⟨none⟩ =
+        ⟨none⟩ := by
+      simp only [responseChoice, member, ↓reduceDIte, Option.getD_some]
+    rw [decoded] at speaks
+    exact (speaks rfl).elim
+
+/-- **A late option at a reveal is the disclosure.** Along every history of the
+one-packet game, at a reveal of the player's turn, sending at any slot is the
+chosen canonical disclosure. -/
+theorem lateChoice_reveal (assessment : setup.intendedModel.BehavioralAssessment)
+    {control : (application setup leaks).Control}
+    (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control))
+    (who : Player) (event : (graph setup).EventId)
+    (turn : control.execution.application.publicView.ownTurn? who = some event)
+    {owner : Player} {payload : L.Ty}
+    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
+    {outputEq : (graph setup).outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .resolve owner payload binding checks}
+    (node : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
+    {slots : Nat} (slot : Fin slots) :
+    lateChoice setup leaks bounds (initialLaw setup) horizon scheduler assessment who
+        (some (control.execution.recall who,
+          control.execution.observe (application setup leaks) who)) (some slot) =
+      PMF.pure (responseChoice setup leaks bounds (initialLaw setup) horizon scheduler who
+        (some (control.execution.recall who,
+          control.execution.observe (application setup leaks) who))
+        ((runtime setup).canonicalServiceDecision leaks who (control.execution.recall who)
+          (control.execution.observe (application setup leaks) who) event
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) true))) := by
+  rw [lateChoice_some_eq_map (bounds := bounds) (initial := initialLaw setup) (horizon := horizon)
+    (scheduler := scheduler) assessment who _ _ event turn slot]
+  have constant : (asIfHonestProfile setup leaks assessment who
+      (some (control.execution.recall who,
+        control.execution.observe (application setup leaks) who))).map
+      (slotChoiceOf setup leaks bounds (initialLaw setup) horizon scheduler who
+        (control.execution.recall who) (control.execution.observe (application setup leaks) who)
+        event slot.val) =
+      (asIfHonestProfile setup leaks assessment who
+        (some (control.execution.recall who,
+          control.execution.observe (application setup leaks) who))).map
+      (Function.const _ (responseChoice setup leaks bounds (initialLaw setup) horizon scheduler
+        who (some (control.execution.recall who,
+          control.execution.observe (application setup leaks) who))
+        ((runtime setup).canonicalServiceDecision leaks who (control.execution.recall who)
+          (control.execution.observe (application setup leaks) who) event
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)))) := by
+    apply map_congr_on_support
+    intro choice supported
+    change responseChoice setup leaks bounds (initialLaw setup) horizon scheduler who _
+      (slotResponse setup leaks who _ _ event slot.val choice) = _
+    unfold slotResponse
+    rw [onePacket_honest_discloses assessment trace who event turn outputEq choice supported]
+    simp only [node, Function.const_apply]
+  rw [constant, PMF.map_const]
+
 end Vegas
