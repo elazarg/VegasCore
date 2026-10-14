@@ -52,7 +52,7 @@ local notation "onePacketN" =>
 omit [Fintype Player] in
 /-- The exclusion payoff of every readout is bounded in absolute value by the
 payoff range. -/
-private theorem abs_exclusionReadoutUtility_le (lowerUtility upperUtility : Player → ℝ)
+theorem abs_exclusionReadoutUtility_le (lowerUtility upperUtility : Player → ℝ)
     (lower_le : ∀ outcome who, lowerUtility who ≤ utility outcome who)
     (le_upper : ∀ outcome who, utility outcome who ≤ upperUtility who)
     (readout : Option (State L setup.program.terminalCtx)) (who : Player) :
