@@ -12,7 +12,10 @@ failure probability within `ε`, in mean, of a function of the record, and a
 bounded value read off the hidden part, have the expectation of the success
 probability times the value within twice the bound times `ε` of the product of
 their expectations
-(`GameTheory.Math.Probability.abs_expect_mul_sub_le_of_product`).
+(`GameTheory.Math.Probability.abs_expect_mul_sub_le_of_product`); when the
+lumped success probability and the value are only uncorrelated up to `γ`, the
+error grows by `γ`
+(`GameTheory.Math.Probability.abs_expect_mul_sub_le_of_uncorrelated`).
 -/
 
 noncomputable section
@@ -57,28 +60,24 @@ theorem expect_mul_eq_of_product {H R T : Type*} (law : PMF H) (record : H → R
         rw [expect_mul_const, expect_map, expect_map]
         rfl
 
-/-- **Decorrelation through independent coordinates.** Let a law make a record
-and a hidden part independent. Let `failure` be within `ε`, in mean absolute
-deviation, of a function of the record bounded by one, and let `value` be a
-function of the hidden part bounded by `bound`. Then the expected success
-probability times the value is within twice the bound times `ε` of the
-expected success probability times the expected value. -/
-theorem abs_expect_mul_sub_le_of_product {H R T : Type*} (law : PMF H) (record : H → R)
-    (hidden : H → T)
-    (product : law.map (fun h => (record h, hidden h)) =
-      (law.map record).bind fun ρ => (law.map hidden).map (Prod.mk ρ))
-    (failure value : H → ℝ) (lumped : R → ℝ) (valueOf : T → ℝ) {bound ε : ℝ}
+/-- **Decorrelation through a lumped failure.** Let `failure` be within `ε`, in
+mean absolute deviation, of a function of a record bounded by one, let `value`
+be bounded by `bound`, and let the lumped success probability and the value be
+uncorrelated up to `γ`. Then the expected success probability times the value
+is within twice the bound times `ε` plus `γ` of the expected success
+probability times the expected value. -/
+theorem abs_expect_mul_sub_le_of_uncorrelated {H R : Type*} (law : PMF H) (record : H → R)
+    (failure value : H → ℝ) (lumped : R → ℝ) {bound ε γ : ℝ}
     (failureBounded : ∀ h, |failure h| ≤ 1) (lumpedBounded : ∀ ρ, |lumped ρ| ≤ 1)
-    (valueBounded : ∀ τ, |valueOf τ| ≤ bound) (valueEq : ∀ h, value h = valueOf (hidden h))
-    (near : expect law (fun h => |failure h - lumped (record h)|) ≤ ε) :
+    (valueBounded' : ∀ h, |value h| ≤ bound)
+    (near : expect law (fun h => |failure h - lumped (record h)|) ≤ ε)
+    (uncorrelated : |expect law (fun h => (1 - lumped (record h)) * value h) -
+      (1 - expect law (fun h => lumped (record h))) * expect law value| ≤ γ) :
     |expect law (fun h => (1 - failure h) * value h) -
-      (1 - expect law failure) * expect law value| ≤ 2 * bound * ε := by
+      (1 - expect law failure) * expect law value| ≤ 2 * bound * ε + γ := by
   have boundNonneg : 0 ≤ bound := by
     obtain ⟨witness, _⟩ := law.support_nonempty
-    exact (abs_nonneg _).trans (valueBounded (hidden witness))
-  have valueBounded' : ∀ h, |value h| ≤ bound := fun h => by
-    rw [valueEq]
-    exact valueBounded _
+    exact (abs_nonneg _).trans (valueBounded' witness)
   have twoBound : ∀ x : ℝ, |x| ≤ 1 → |1 - x| ≤ 2 := fun x bounded => by
     rw [abs_le] at bounded ⊢
     constructor <;> linarith
@@ -87,12 +86,6 @@ theorem abs_expect_mul_sub_le_of_product {H R T : Type*} (law : PMF H) (record :
       rw [abs_abs]
       calc |failure h - lumped (record h)| ≤ |failure h| + |lumped (record h)| := abs_sub _ _
         _ ≤ 2 := by linarith [failureBounded h, lumpedBounded (record h)]
-  -- The lumped success probability and the value are uncorrelated.
-  have independent := expect_mul_eq_of_product law record hidden product
-    (fun ρ => 1 - lumped ρ) valueOf (bound := max 2 bound)
-    (fun ρ => (twoBound _ (lumpedBounded ρ)).trans (le_max_left _ _))
-    (fun τ => (valueBounded τ).trans (le_max_right _ _))
-  simp only [← valueEq] at independent
   have integrable : ∀ f : H → ℝ, ∀ C, (∀ h, |f h| ≤ C) → PayoffIntegrable law f :=
     fun f C bounded => payoffIntegrable_of_bounded _ _ bounded
   have failureIntegrable := integrable failure 1 failureBounded
@@ -172,27 +165,61 @@ theorem abs_expect_mul_sub_le_of_product {H R T : Type*} (law : PMF H) (record :
     · exact expect_mono (fun h _ => le_abs_self _)
         (payoffIntegrable_sub failureIntegrable lumpedIntegrable) deviationIntegrable
   have valueMean : |expect law value| ≤ bound := expect_abs_le_of_bounded boundNonneg valueBounded'
-  have lumpedMean : expect law (fun h => 1 - lumped (record h)) =
-      1 - expect law (fun h => lumped (record h)) := by
-    rw [expect_sub (payoffIntegrable_constant _ 1) lumpedIntegrable, expect_constant]
-  rw [lumpedMean] at independent
   calc _ = |(expect law (fun h => (1 - failure h) * value h) -
           expect law (fun h => (1 - lumped (record h)) * value h)) +
-        (expect law failure - expect law (fun h => lumped (record h))) * expect law value| := by
-        have key : expect law (fun h => (1 - lumped (record h)) * value h) =
-            (1 - expect law (fun h => lumped (record h))) * expect law value := independent
-        rw [key]
+        (expect law failure - expect law (fun h => lumped (record h))) * expect law value +
+        (expect law (fun h => (1 - lumped (record h)) * value h) -
+          (1 - expect law (fun h => lumped (record h))) * expect law value)| := by
         congr 1
         ring
     _ ≤ |expect law (fun h => (1 - failure h) * value h) -
           expect law (fun h => (1 - lumped (record h)) * value h)| +
         |expect law failure - expect law (fun h => lumped (record h))| *
-          |expect law value| := by
+          |expect law value| + γ := by
         rw [← abs_mul]
-        exact abs_add_le _ _
-    _ ≤ bound * ε + ε * bound := by
-        exact add_le_add firstError (mul_le_mul meanError valueMean (abs_nonneg _)
-          ((abs_nonneg _).trans meanError))
-    _ = 2 * bound * ε := by ring
+        exact (abs_add_le _ _).trans (add_le_add (abs_add_le _ _) uncorrelated)
+    _ ≤ bound * ε + ε * bound + γ := by
+        exact add_le_add (add_le_add firstError (mul_le_mul meanError valueMean (abs_nonneg _)
+          ((abs_nonneg _).trans meanError))) le_rfl
+    _ = 2 * bound * ε + γ := by ring
+
+
+/-- **Decorrelation through independent coordinates.** Let a law make a record
+and a hidden part independent. Let `failure` be within `ε`, in mean absolute
+deviation, of a function of the record bounded by one, and let `value` be a
+function of the hidden part bounded by `bound`. Then the expected success
+probability times the value is within twice the bound times `ε` of the
+expected success probability times the expected value. -/
+theorem abs_expect_mul_sub_le_of_product {H R T : Type*} (law : PMF H) (record : H → R)
+    (hidden : H → T)
+    (product : law.map (fun h => (record h, hidden h)) =
+      (law.map record).bind fun ρ => (law.map hidden).map (Prod.mk ρ))
+    (failure value : H → ℝ) (lumped : R → ℝ) (valueOf : T → ℝ) {bound ε : ℝ}
+    (failureBounded : ∀ h, |failure h| ≤ 1) (lumpedBounded : ∀ ρ, |lumped ρ| ≤ 1)
+    (valueBounded : ∀ τ, |valueOf τ| ≤ bound) (valueEq : ∀ h, value h = valueOf (hidden h))
+    (near : expect law (fun h => |failure h - lumped (record h)|) ≤ ε) :
+    |expect law (fun h => (1 - failure h) * value h) -
+      (1 - expect law failure) * expect law value| ≤ 2 * bound * ε := by
+  have valueBounded' : ∀ h, |value h| ≤ bound := fun h => by
+    rw [valueEq]
+    exact valueBounded _
+  have twoBound : ∀ x : ℝ, |x| ≤ 1 → |1 - x| ≤ 2 := fun x bounded => by
+    rw [abs_le] at bounded ⊢
+    constructor <;> linarith
+  have independent := expect_mul_eq_of_product law record hidden product
+    (fun ρ => 1 - lumped ρ) valueOf (bound := max 2 bound)
+    (fun ρ => (twoBound _ (lumpedBounded ρ)).trans (le_max_left _ _))
+    (fun τ => (valueBounded τ).trans (le_max_right _ _))
+  simp only [← valueEq] at independent
+  have lumpedMean : expect law (fun h => 1 - lumped (record h)) =
+      1 - expect law (fun h => lumped (record h)) := by
+    rw [expect_sub (payoffIntegrable_constant _ 1)
+      (payoffIntegrable_of_bounded _ _ fun h => lumpedBounded (record h)), expect_constant]
+  rw [lumpedMean] at independent
+  have key : expect law (fun h => (1 - lumped (record h)) * value h) =
+      (1 - expect law (fun h => lumped (record h))) * expect law value := independent
+  have bounded := abs_expect_mul_sub_le_of_uncorrelated law record failure value lumped
+    failureBounded lumpedBounded valueBounded' near (γ := 0) (by rw [key, sub_self, abs_zero])
+  linarith
 
 end GameTheory.Math.Probability
