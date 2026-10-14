@@ -1,0 +1,149 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.OnePacketOwnerBase
+import Vegas.Game.OnePacketKeyedScaling
+
+/-! # Agreeing base laws at two sites with one late key
+
+Take two decision sites of `who` with the same late-delivery key, at neither of
+which `who` owes a failure, in a well-formed setup whose hidden initial cells
+are independent. The owner swap between the two sites' views is guarded at both
+sites, moves values within the bounds, keeps regularity, and multiplies the
+others' source weight of every history of the first site by a common positive
+ratio; when it also sends the first site's information state to the second's,
+the base laws of the two sites agree on every payoff of the operational record
+(`Vegas.ownerSwap_baseLawAgrees`).
+-/
+
+noncomputable section
+
+namespace Vegas
+
+open SourceProgram
+
+open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Interaction
+  EventGraphRuntime
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {setup : Setup (Player := Player) (L := L)} [Fintype Player]
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {scheduler : (application setup leaks).Scheduler}
+
+/-- **Agreeing base laws at two sites with one late key.** -/
+theorem ownerSwap_baseLawAgrees
+    [Finite (onePacketProtocol setup leaks bounds horizon scheduler).History]
+    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependent)
+    (covers : bounds.CoversInputValues)
+    (assessment : setup.intendedModel.BehavioralAssessment)
+    (weight : List (Option (OperationalState setup leaks)) → ℝ) {who : Player}
+    (observer : Player) (distinct : observer ≠ who)
+    {site₁ site₂ : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who}
+    {past₁ past₂ : List (application setup leaks).PlayerEntry}
+    {view₁ view₂ : (application setup leaks).PlayerView}
+    (firstSite : site₁.1 = some (past₁, view₁)) (secondSite : site₂.1 = some (past₂, view₂))
+    (sameKey : lateKey setup leaks who site₁.1 = lateKey setup leaks who site₂.1)
+    (firstDebtFree : ∀ history : (onePacketInformation setup leaks bounds horizon
+        scheduler).InformationHistory who site₁.1, ∀ point,
+      nativeDecodedState setup leaks history.1.state = some point →
+        ¬ ProtocolState.OwesFailure who setup.program point)
+    (secondDebtFree : ∀ history : (onePacketInformation setup leaks bounds horizon
+        scheduler).InformationHistory who site₂.1, ∀ point,
+      nativeDecodedState setup leaks history.1.state = some point →
+        ¬ ProtocolState.OwesFailure who setup.program point)
+    (infoEq : (ownerSwap who view₁.application view₂.application).info site₁.1 = site₂.1)
+    (payoff : List (Option (OperationalState setup leaks)) → ℝ) :
+    BaseLawAgrees
+      (fun history => othersSourceWeight setup leaks bounds horizon scheduler assessment who
+        history.trace * weight (operationalRecord setup leaks bounds horizon scheduler
+          history.trace))
+      (fun history => RegularTrace setup leaks bounds horizon scheduler assessment who
+        history.trace) site₁ site₂ payoff := by
+  set swap := ownerSwap who view₁.application view₂.application with swapEq
+  have bounded := ownerSwap_bounded_sites covers firstSite secondSite
+  have fixesOthers : ∀ other, other ≠ who → swap.Fixes other := fun other different =>
+    ownerSwap_fixes who _ _ different
+  have guardedFirst := ownerSwap_guard firstSite secondSite sameKey firstDebtFree secondDebtFree
+    (ownerSwap_priorClosed wellFormed independent firstSite secondSite)
+  have guardedSecond : ∀ history : (onePacketProtocol setup leaks bounds horizon
+      scheduler).History,
+      (onePacketInformation setup leaks bounds horizon scheduler).infoOf who history.trace =
+        site₂.1 → SwapGuardState setup swap (swapAllowed swap) history.state := by
+    intro history member
+    have guarded := ownerSwap_guard secondSite firstSite sameKey.symm secondDebtFree
+      firstDebtFree (ownerSwap_priorClosed wellFormed independent secondSite firstSite)
+      history member
+    rwa [ownerSwap_comm] at guarded
+  -- A draw of each site.
+  obtain ⟨history₁, -⟩ := site₁.2
+  obtain ⟨history₂, -⟩ := site₂.2
+  obtain ⟨-, base, -, baseMember, -, baseStore⟩ := siteDraw firstSite history₁
+  obtain ⟨-, other, -, otherMember, -, otherStore⟩ := siteDraw secondSite history₂
+  set ratio := (setup.initialLaw (splice who other base)).toReal /
+    (setup.initialLaw base).toReal with ratioEq
+  have ratioPos : 0 < ratio := by
+    have spliceMember := setup.splice_mem_support independent who otherMember baseMember
+    exact div_pos
+      (ENNReal.toReal_pos ((PMF.mem_support_iff _ _).mp spliceMember) (PMF.apply_ne_top _ _))
+      (ENNReal.toReal_pos ((PMF.mem_support_iff _ _).mp baseMember) (PMF.apply_ne_top _ _))
+  let shared : Set (graph setup).Inputs := {inputs | ∃ draw ∈ setup.initialLaw.support,
+    inputs = setup.eventInputs draw ∧ HiddenAgree who draw base}
+  have sharedClosed : ∀ state ∈ (initialLaw setup).support,
+      state.config.inputs ∈ swapAllowed swap ∩ shared →
+        state.swap swap ∈ (initialLaw setup).support :=
+    fun state member inside => initialClosed_swapAllowed swap state member inside.1
+  have scaled := ownerSwap_priorScaled wellFormed independent (view₁ := view₁) (view₂ := view₂)
+    baseMember otherMember baseStore otherStore
+  refine baseLawAgrees_of_swap_scaled _ _ site₁ site₂ swap (swapAllowed swap)
+    (initialClosed_swapAllowed swap) bounded (swapAllowed_closed swap) guardedFirst guardedSecond
+    (fun history member => ?_) (fun history member => ?_) (fun history member => ?_) ratio
+    ratioPos.ne' (fun history member => ?_) payoff
+  · change (onePacketInformation setup leaks bounds horizon scheduler).infoOf who
+      ((onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler swap
+        (initialClosed_swapAllowed swap) bounded).mapTrace history.trace
+          (guardedFirst history member)) = site₂.1
+    rw [infoOf_mapTrace, member]
+    exact infoEq
+  · change (onePacketInformation setup leaks bounds horizon scheduler).infoOf who
+      ((onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler swap
+        (initialClosed_swapAllowed swap) bounded).mapTrace history.trace
+          (guardedSecond history member)) = site₁.1
+    rw [infoOf_mapTrace, member, ← infoEq]
+    exact swap.info_involutive _
+  · exact regularTrace_mapTrace_iff_of_fixes swap _ bounded assessment who fixesOthers
+      observer distinct history.trace _
+  · obtain ⟨state, trace⟩ := history
+    obtain ⟨control, draw, stateEq, drawMember, inputsEq, drawStore⟩ :=
+      siteDraw firstSite ⟨⟨state, trace⟩, member⟩
+    change state = some control at stateEq
+    subst stateEq
+    have inside : ∀ current : (application setup leaks).Control, some control = some current →
+        current.execution.application.config.inputs ∈ shared := by
+      rintro current same
+      cases Option.some.inj same
+      refine ⟨draw, drawMember, inputsEq, hiddenAgree_iff_inputs.mpr fun input privateTo => ?_⟩
+      have first := drawStore input privateTo
+      rw [baseStore input privateTo] at first
+      exact (Option.some.inj first).symm
+    have restricted := swapGuardState_inter swap (guardedFirst ⟨some control, trace⟩ member)
+      inside
+    have recordEq := operationalRecord_mapTrace swap (initialClosed_swapAllowed swap) bounded
+      trace (guardedFirst ⟨some control, trace⟩ member)
+    have congrTrace := mapTrace_allowed_congr swap (initialClosed_swapAllowed swap)
+      sharedClosed bounded trace (guardedFirst ⟨some control, trace⟩ member) restricted
+    have weightEq := othersSourceWeight_mapTrace_scaled swap sharedClosed bounded assessment who
+      fixesOthers ratio scaled trace restricted
+    change othersSourceWeight setup leaks bounds horizon scheduler assessment who
+        ((onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler swap
+          (initialClosed_swapAllowed swap) bounded).mapTrace trace
+            (guardedFirst ⟨some control, trace⟩ member)) *
+        weight (operationalRecord setup leaks bounds horizon scheduler
+          ((onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler swap
+            (initialClosed_swapAllowed swap) bounded).mapTrace trace
+              (guardedFirst ⟨some control, trace⟩ member))) =
+      ratio * (othersSourceWeight setup leaks bounds horizon scheduler assessment who trace *
+        weight (operationalRecord setup leaks bounds horizon scheduler trace))
+    rw [recordEq, congrTrace, weightEq]
+    ring
+
+end Vegas
