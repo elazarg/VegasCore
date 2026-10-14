@@ -325,13 +325,15 @@ theorem OnePacketBaseInputs.lateRecords_of_keyed
               operationalRecord setup leaks bounds horizon scheduler history.1.trace)
               (lumpedFailure setup leaks bounds horizon scheduler
                 (certificateLumping setup leaks bounds horizon scheduler sequence inputs.scale
-                  inputs.scale_pos inputs.scale_le_one inputs.covers inputs.capacity
+                  inputs.scale_pos inputs.scale_le_one inputs.covers
+                  (inputs.one_le_candidateCount setup leaks bounds horizon scheduler who)
                   inputs.slotsLe weights targetSequence assembled n who)
                 (2 * horizon + 1) key option) -
             expect (recordLaw key)
               (lumpedFailure setup leaks bounds horizon scheduler
                 (certificateLumping setup leaks bounds horizon scheduler sequence inputs.scale
-                  inputs.scale_pos inputs.scale_le_one inputs.covers inputs.capacity
+                  inputs.scale_pos inputs.scale_le_one inputs.covers
+                  (inputs.one_le_candidateCount setup leaks bounds horizon scheduler who)
                   inputs.slotsLe weights targetSequence assembled n who)
                 (2 * horizon + 1) key option)| ≤ beliefDrift n := by
   let LateSite := fun {who : Player} (site : (onePacketN).InformationSite who) =>
@@ -348,7 +350,8 @@ theorem OnePacketBaseInputs.lateRecords_of_keyed
         operationalRecord setup leaks bounds horizon scheduler history.1.trace
     else PMF.pure []
   let lumping := fun n who => certificateLumping setup leaks bounds horizon scheduler sequence
-    inputs.scale inputs.scale_pos inputs.scale_le_one inputs.covers inputs.capacity
+    inputs.scale inputs.scale_pos inputs.scale_le_one inputs.covers
+    (inputs.one_le_candidateCount setup leaks bounds horizon scheduler who)
     inputs.slotsLe weights targetSequence assembled n who
   have lumpedUnit : ∀ n who key option record, 0 ≤ lumpedFailure setup leaks bounds horizon
       scheduler (lumping n who) (2 * horizon + 1) key option record ∧ lumpedFailure setup leaks

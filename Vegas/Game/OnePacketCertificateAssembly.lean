@@ -4,6 +4,7 @@ import Vegas.Game.OnePacketLateDecomposition
 import Vegas.Game.OnePacketLateCommitments
 import Vegas.Game.OnePacketValueTransport
 import Vegas.Game.OnePacketNonLateDecomposition
+import Vegas.Game.OnePacketLateRecords
 
 /-! # Assembling the one-packet certificate from value blindness
 
@@ -59,56 +60,8 @@ structure OnePacketBlindInputs (upperUtility : Player → ℝ)
   /-- The gap bound is at least the spread of the utility over the exclusion
   payoff. -/
   gap_le : ∀ who, upperUtility who - excludedPayoff who ≤ gapBound
-  /-- **Value blindness at late deliveries.** -/
-  lateValueBlind : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler
-        slots p)) (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
-      OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
-        scale_le_one weights targetSequence →
-      (∀ n, (targetSequence n).IsFullyMixed) →
-      (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
-        ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
-          (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
-      ∃ blindError : ℕ → ℝ, Tendsto blindError atTop (nhds 0) ∧
-        ∀ n who (site : (onePacketN).InformationSite who),
-          ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-          ¬ OwingAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-          ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
-            (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
-            ((onePacketN).agentAt site) →
-          (∀ choice, onePacketCompared setup leaks bounds horizon scheduler who site choice →
-            |siteStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-                (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site
-                (PMF.pure choice) -
-              (1 - onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n)
-                site (PMF.pure choice)) *
-              siteValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-                (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site| ≤
-              blindError n) ∧
-          ∀ option,
-            |siteStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-                (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site
-                (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
-                  scale_le_one (slots := slots) n ((onePacketN).agentAt site) option) -
-              (1 - onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n)
-                site (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
-                  scale_le_one (slots := slots) n ((onePacketN).agentAt site) option)) *
-              siteValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-                (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site| ≤
-              blindError n
   /-- The late options cover the bounded prepared slots. -/
   slotsCover : bounds.candidateCount ≤ slots
-  /-- **Value-blind late commitments.** -/
-  lateCommitBlind : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler
-        slots p)) (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
-      OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
-        scale_le_one weights targetSequence →
-      (∀ n, (targetSequence n).IsFullyMixed) →
-      (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
-        ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
-          (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
-      ∃ blindError : ℕ → ℝ, Tendsto blindError atTop (nhds 0) ∧
-        LateCommitBlind setup leaks bounds horizon scheduler parameter utility excludedPayoff
-          sequence scale scale_pos scale_le_one (slots := slots) targetSequence blindError
   /-- **Value blindness away from late deliveries.** -/
   nonLateValueBlind : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler
         slots p)) (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
@@ -146,6 +99,167 @@ structure OnePacketBlindInputs (upperUtility : Player → ℝ)
               (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site| ≤
             blindError n
 
+omit [Finite setup.intendedProtocol.History]
+  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+    scheduler).InfoState who)] in
+/-- **The exclusion payoffs are bounded** by the sum over players of the spread
+between the exclusion payoff, zero and the utility bounds. -/
+theorem exclusionPayoffs_bounded (lowerUtility upperUtility : Player → ℝ)
+    (lower_le : ∀ outcome who, lowerUtility who ≤ utility outcome who)
+    (le_upper : ∀ outcome who, utility outcome who ≤ upperUtility who) :
+    (∀ who readout, |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤
+      ∑ player, (max 0 (max (excludedPayoff player) (upperUtility player)) -
+        min 0 (min (excludedPayoff player) (lowerUtility player)))) ∧
+    ∀ who, |excludedPayoff who| ≤
+      ∑ player, (max 0 (max (excludedPayoff player) (upperUtility player)) -
+        min 0 (min (excludedPayoff player) (lowerUtility player))) := by
+  let range := fun who : Player => max 0 (max (excludedPayoff who) (upperUtility who)) -
+    min 0 (min (excludedPayoff who) (lowerUtility who))
+  have rangeNonneg : ∀ who, 0 ≤ range who := fun who => by
+    have := le_max_left 0 (max (excludedPayoff who) (upperUtility who))
+    have := min_le_left 0 (min (excludedPayoff who) (lowerUtility who))
+    simp only [range]
+    linarith
+  have rangeLe : ∀ who, range who ≤ ∑ player, range player := fun who =>
+    Finset.single_le_sum (fun player _ => rangeNonneg player) (Finset.mem_univ who)
+  have zeroLow := fun who => min_le_left 0 (min (excludedPayoff who) (lowerUtility who))
+  have zeroHigh := fun who => le_max_left 0 (max (excludedPayoff who) (upperUtility who))
+  refine ⟨fun who readout => (abs_le.mpr ⟨?_, ?_⟩).trans (rangeLe who), fun who =>
+    (abs_le.mpr ⟨?_, ?_⟩).trans (rangeLe who)⟩
+  · have within := (exclusionReadoutUtility_mem_Icc setup parameter utility excludedPayoff
+      lowerUtility upperUtility lower_le le_upper readout who).1
+    simp only [range]
+    linarith [zeroHigh who]
+  · have within := (exclusionReadoutUtility_mem_Icc setup parameter utility excludedPayoff
+      lowerUtility upperUtility lower_le le_upper readout who).2
+    simp only [range]
+    linarith [zeroLow who]
+  · have low := min_le_left (excludedPayoff who) (lowerUtility who)
+    have lower := min_le_right 0 (min (excludedPayoff who) (lowerUtility who))
+    simp only [range]
+    linarith [zeroHigh who]
+  · have high := le_max_left (excludedPayoff who) (upperUtility who)
+    have higher := le_max_right 0 (max (excludedPayoff who) (upperUtility who))
+    simp only [range]
+    linarith [zeroLow who]
+
+/-- **Value blindness at late deliveries**, from the vanishing mass outside the
+forced region and the vanishing decorrelation at late deliveries
+(`Vegas.lateValueBlind_of_bounds`). -/
+theorem OnePacketBlindInputs.lateValueBlind
+    {lowerUtility upperUtility : Player → ℝ}
+    {sequence : ℕ → setup.intendedModel.BehavioralAssessment} {slots : Nat}
+    (inputs : OnePacketBlindInputs setup leaks bounds horizon scheduler parameter utility
+      excludedPayoff upperUtility sequence slots)
+    (wellFormed : setup.WellFormed) {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
+      bound)
+    (lower_le : ∀ outcome who, lowerUtility who ≤ utility outcome who)
+    (le_upper : ∀ outcome who, utility outcome who ≤ upperUtility who)
+    (sourceMixed : ∀ n, (sequence n).IsFullyMixed) :
+    ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler
+        slots p)) (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
+      OnePacketAssembled setup leaks bounds horizon scheduler sequence inputs.scale inputs.scale_pos
+        inputs.scale_le_one weights targetSequence →
+      (∀ n, (targetSequence n).IsFullyMixed) →
+      (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
+        ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
+          (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
+      ∃ blindError : ℕ → ℝ, Tendsto blindError atTop (nhds 0) ∧
+        ∀ n who (site : (onePacketN).InformationSite who),
+          ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+          ¬ OwingAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+          ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
+            (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
+            ((onePacketN).agentAt site) →
+          (∀ choice, onePacketCompared setup leaks bounds horizon scheduler who site choice →
+            |siteStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+                (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site
+                (PMF.pure choice) -
+              (1 - onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n)
+                site (PMF.pure choice)) *
+              siteValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+                (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site| ≤
+              blindError n) ∧
+          ∀ option,
+            |siteStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+                (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site
+                (onePacketLate setup leaks bounds horizon scheduler sequence inputs.scale
+                  inputs.scale_pos
+                  inputs.scale_le_one (slots := slots) n ((onePacketN).agentAt site) option) -
+              (1 - onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n)
+                site (onePacketLate setup leaks bounds horizon scheduler sequence inputs.scale
+                  inputs.scale_pos
+                  inputs.scale_le_one (slots := slots) n ((onePacketN).agentAt site) option)) *
+              siteValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+                (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site| ≤
+              blindError n := by
+  intro weights targetSequence assembled mixed bayes
+  obtain ⟨readoutBounded, excludedBounded⟩ := exclusionPayoffs_bounded setup parameter utility
+    excludedPayoff lowerUtility upperUtility lower_le le_upper
+  obtain ⟨unforcedDrift, unforcedLimit, unforced⟩ := inputs.lateUnforced setup leaks bounds
+    horizon scheduler wellFormed weights targetSequence assembled mixed bayes
+  obtain ⟨decorrelation, decorrelationLimit, decorrelated⟩ := inputs.lateDecorrelated setup
+    leaks bounds horizon scheduler wellFormed sourceMixed weights targetSequence assembled mixed
+    bayes
+  by_cases players : Nonempty Player
+  swap
+  · exact ⟨fun _ => 0, tendsto_const_nhds, fun n who => (players ⟨who⟩).elim⟩
+  obtain ⟨somebody⟩ := players
+  exact lateValueBlind_of_bounds setup leaks bounds horizon scheduler parameter utility
+    excludedPayoff wellFormed sequence inputs.scale inputs.scale_pos inputs.scale_le_one
+    inputs.scale_vanishing weights targetSequence assembled contract.completes inputs.covers
+    (inputs.one_le_candidateCount setup leaks bounds horizon scheduler somebody) inputs.slotsLe
+    unforcedDrift decorrelation unforcedLimit decorrelationLimit unforced decorrelated
+    readoutBounded excludedBounded
+
+/-- **Value-blind late commitments**, from the vanishing mass outside the forced
+region and the vanishing decorrelation at late deliveries
+(`Vegas.lateCommitBlind_of_bounds`). -/
+theorem OnePacketBlindInputs.lateCommitBlind
+    {lowerUtility upperUtility : Player → ℝ}
+    {sequence : ℕ → setup.intendedModel.BehavioralAssessment} {slots : Nat}
+    (inputs : OnePacketBlindInputs setup leaks bounds horizon scheduler parameter utility
+      excludedPayoff upperUtility sequence slots)
+    (wellFormed : setup.WellFormed) {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
+      bound)
+    (lower_le : ∀ outcome who, lowerUtility who ≤ utility outcome who)
+    (le_upper : ∀ outcome who, utility outcome who ≤ upperUtility who)
+    (sourceMixed : ∀ n, (sequence n).IsFullyMixed) :
+    ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler
+        slots p)) (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
+      OnePacketAssembled setup leaks bounds horizon scheduler sequence inputs.scale inputs.scale_pos
+        inputs.scale_le_one weights targetSequence →
+      (∀ n, (targetSequence n).IsFullyMixed) →
+      (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
+        ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
+          (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
+      ∃ blindError : ℕ → ℝ, Tendsto blindError atTop (nhds 0) ∧
+        LateCommitBlind setup leaks bounds horizon scheduler parameter utility excludedPayoff
+          sequence inputs.scale inputs.scale_pos inputs.scale_le_one (slots := slots)
+          targetSequence blindError := by
+  intro weights targetSequence assembled mixed bayes
+  obtain ⟨readoutBounded, excludedBounded⟩ := exclusionPayoffs_bounded setup parameter utility
+    excludedPayoff lowerUtility upperUtility lower_le le_upper
+  obtain ⟨unforcedDrift, unforcedLimit, unforced⟩ := inputs.lateUnforced setup leaks bounds
+    horizon scheduler wellFormed weights targetSequence assembled mixed bayes
+  obtain ⟨decorrelation, decorrelationLimit, decorrelated⟩ := inputs.lateDecorrelated setup
+    leaks bounds horizon scheduler wellFormed sourceMixed weights targetSequence assembled mixed
+    bayes
+  by_cases players : Nonempty Player
+  swap
+  · exact ⟨fun _ => 0, tendsto_const_nhds, fun n who => (players ⟨who⟩).elim⟩
+  obtain ⟨somebody⟩ := players
+  exact lateCommitBlind_of_bounds setup leaks bounds horizon scheduler parameter utility
+    excludedPayoff wellFormed sequence inputs.scale inputs.scale_pos inputs.scale_le_one
+    inputs.scale_vanishing weights targetSequence assembled contract.completes inputs.covers
+    (inputs.one_le_candidateCount setup leaks bounds horizon scheduler somebody) inputs.slotsLe
+    unforcedDrift decorrelation unforcedLimit decorrelationLimit
+    (fun n who site notFree notOwing keyed _ => unforced n who site notFree notOwing keyed)
+    (fun n who site notFree notOwing keyed _ => decorrelated n who site notFree notOwing keyed)
+    readoutBounded excludedBounded
+
 /-- **The open inputs from value blindness.** For a well-formed setup, under the
 asynchronous contract with timely delays and retention of first covered
 canonical packets, with the utility between the bounds and the exclusion payoff
@@ -155,7 +269,8 @@ def OnePacketBlindInputs.toOpenInputs {lowerUtility upperUtility : Player → �
     {sequence : ℕ → setup.intendedModel.BehavioralAssessment} {slots : Nat}
     (inputs : OnePacketBlindInputs setup leaks bounds horizon scheduler parameter utility
       excludedPayoff upperUtility sequence slots)
-    (wellFormed : setup.WellFormed) {delay bound : (graph setup).EventId → Nat}
+    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependent)
+    {delay bound : (graph setup).EventId → Nat}
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
       bound)
     (timely : AsyncTimely (runtime setup) delay bound)
@@ -171,6 +286,8 @@ def OnePacketBlindInputs.toOpenInputs {lowerUtility upperUtility : Player → �
     OnePacketOpenInputs setup leaks bounds horizon scheduler parameter utility excludedPayoff
       sequence slots where
   toOnePacketBaseInputs := inputs.toOnePacketBaseInputs
+  lateRecords := inputs.lateRecords_of_keyed setup leaks bounds horizon scheduler wellFormed
+    independent
   valueTransport weights targetSequence assembled mixed bayes := by
     classical
     let range := fun who : Player => max 0 (max (excludedPayoff who) (upperUtility who)) -
@@ -231,15 +348,20 @@ def OnePacketBlindInputs.toOpenInputs {lowerUtility upperUtility : Player → �
     lowerUtility upperUtility lower_le le_upper sourceMixed sourceBayes inputs.slotsCover
     (fun weights targetSequence assembled mixed bayes => by
       obtain ⟨blindError, blindLimit, blind⟩ :=
-        inputs.lateValueBlind weights targetSequence assembled mixed bayes
+        (inputs.lateValueBlind setup leaks bounds horizon scheduler parameter utility
+        excludedPayoff wellFormed contract lower_le le_upper sourceMixed) weights targetSequence
+          assembled mixed
+          bayes
       exact ⟨blindError, blindLimit, fun n who site forced notOwing keyed =>
         (blind n who site forced notOwing keyed).2⟩)
-    inputs.lateCommitBlind
+    (inputs.lateCommitBlind setup leaks bounds horizon scheduler parameter utility excludedPayoff
+      wellFormed contract lower_le le_upper sourceMixed)
   lateDecomposition := onePacket_lateDecomposition setup leaks bounds horizon scheduler parameter
     utility excludedPayoff wellFormed contract timely retains lowerUtility upperUtility lower_le
     le_upper sequence below inputs.scale inputs.scale_pos inputs.scale_le_one
     inputs.scale_vanishing inputs.gapBound inputs.gap_le inputs.gapBound_nonneg
-    inputs.lateValueBlind
+    (inputs.lateValueBlind setup leaks bounds horizon scheduler parameter utility excludedPayoff
+      wellFormed contract lower_le le_upper sourceMixed)
   nonLateDecomposition := onePacket_nonLateDecomposition_of_pending setup leaks bounds horizon
     scheduler parameter utility excludedPayoff wellFormed contract timely retains lowerUtility
     upperUtility lower_le le_upper sequence below inputs.scale inputs.scale_pos inputs.scale_le_one
@@ -304,12 +426,11 @@ theorem onePacket_intended_sequentialEquilibrium_of_blindInputs (wellFormed : se
           (instructionCount setup.program + 1)).map
           (intendedReadoutExclusion setup parameter utility excludedPayoff) :=
   onePacket_intended_sequentialEquilibrium_of_openInputs setup leaks bounds horizon scheduler
-    parameter utility excludedPayoff wellFormed independent contract timely retains intended
-    equilibrium
+    parameter utility excludedPayoff wellFormed contract timely retains intended equilibrium
     fun sequence mixed bayes converges =>
       (inputs sequence mixed bayes converges).toOpenInputs setup leaks bounds horizon scheduler
-        parameter utility excludedPayoff wellFormed contract timely retains lower_le le_upper
-        below mixed bayes
+        parameter utility excludedPayoff wellFormed independent contract timely retains lower_le
+        le_upper below mixed bayes
 
 /-- **Sequential equilibrium of the bounded raw runtime from value blindness.**
 Under the hypotheses of
@@ -376,12 +497,11 @@ theorem onePacket_intended_raw_sequentialEquilibrium_of_blindInputs
           (instructionCount setup.program + 1)).map
           (intendedReadoutExclusion setup parameter utility excludedPayoff) :=
   onePacket_intended_raw_sequentialEquilibrium_of_openInputs setup leaks bounds horizon scheduler
-    parameter utility excludedPayoff wellFormed independent contract timely retains intended
-    equilibrium
+    parameter utility excludedPayoff wellFormed contract timely retains intended equilibrium
     (fun sequence mixed bayes converges =>
       (inputs sequence mixed bayes converges).toOpenInputs setup leaks bounds horizon scheduler
-        parameter utility excludedPayoff wellFormed contract timely retains lower_le le_upper
-        below mixed bayes)
+        parameter utility excludedPayoff wellFormed independent contract timely retains lower_le
+        le_upper below mixed bayes)
     service observationRate deliveryRate delivery_nonnegative coverage lowerUtility upperUtility
     lower_le le_upper deposit deposit_nonnegative sufficient
 

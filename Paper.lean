@@ -286,6 +286,9 @@ import Vegas.Examples.LateOpeningRuntimeUnseenLikelihood
 import Vegas.Examples.LateLeak.SettleLateLikelihood
 import Vegas.Pending.ReactiveLateLottery
 import Vegas.Game.OnePacketExtension
+import Vegas.Game.OnePacketSequentialCompilation
+import Vegas.Game.OnePacketCounterpartCompatibility
+import Vegas.Game.OnePacketRepairResponseBound
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -1732,6 +1735,33 @@ theorem one_packet_raw_sequential_equilibrium [Fintype Player] [IExpr.ResultType
 axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.EventGraphRuntime.MessageBounds.onePacket_sequentialEquilibrium_extends
+
+/-- info:
+'Vegas.onePacket_intended_raw_sequentialEquilibrium_of_counterparts' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.onePacket_intended_raw_sequentialEquilibrium_of_counterparts
+
+/-- info: 'Vegas.OnePacketOwnInputs.ofAssembled' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.OnePacketOwnInputs.ofAssembled
+
+/-- info: 'Vegas.OnePacketBaseInputs.toBlindInputs' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.OnePacketBaseInputs.toBlindInputs
+
+/-- info: 'Vegas.SwapGuard.value_eq_failure_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SwapGuard.value_eq_failure_iff
+
+/-- info:
+'Vegas.certificate_irregularResponseMass_le_of_operationally_equal' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.certificate_irregularResponseMass_le_of_operationally_equal
 
 end Vegas.Paper
 

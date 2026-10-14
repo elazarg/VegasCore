@@ -22,7 +22,6 @@ import Vegas.Game.OnePacketOwnDisclosure
 import Vegas.Game.OnePacketOpeningLaw
 import Vegas.Game.OnePacketRelevantLumping
 import Vegas.Game.OnePacketSwapFiberSum
-import Vegas.Source.PrivateInputsIndependent
 
 /-! # Discharging inputs of the one-packet certificate
 
@@ -3342,43 +3341,10 @@ structure OnePacketBaseInputs (sequence : ℕ → setup.intendedModel.Behavioral
   covers : bounds.CoversOutputValues
   /-- Every value of an initial binding input is a bounded value. -/
   coversInputs : bounds.CoversInputValues
-  /-- At least one prepared slot is bounded. -/
-  capacity : 1 ≤ bounds.candidateCount
+  /-- Every player's binding events fit in the prepared slots. -/
+  capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount
   /-- The late options use bounded slots. -/
   slotsLe : slots ≤ bounds.candidateCount
-  /-- **Late records.** At late deliveries of agents that are not free and owe
-  no failure, the belief's operational records give the certificate's lumped failure within a
-  vanishing drift of its expectation under a law of records at the key. -/
-  lateRecords : setup.PrivateInputsIndependent →
-    ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon
-      scheduler slots p)) (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
-    (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
-      scale_le_one weights targetSequence),
-    (∀ n, (targetSequence n).IsFullyMixed) →
-    (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
-      ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
-        (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
-    ∃ beliefDrift : ℕ → ℝ, Tendsto beliefDrift atTop (nhds 0) ∧
-      ∀ n who, ∃ recordLaw : LateKey setup leaks →
-          PMF (List (Option (OperationalState setup leaks))),
-        ∀ (site : (onePacketN).InformationSite who),
-          ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-          ¬ OwingAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-          ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
-            (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
-            ((onePacketN).agentAt site) →
-          ∀ key, lateKey setup leaks who site.1 = some key → ∀ option,
-          |expect (((targetSequence n).belief who site).map fun history =>
-              operationalRecord setup leaks bounds horizon scheduler history.1.trace)
-              (lumpedFailure setup leaks bounds horizon scheduler
-                (certificateLumping setup leaks bounds horizon scheduler sequence scale scale_pos
-                  scale_le_one covers capacity slotsLe weights targetSequence assembled n who)
-                (2 * horizon + 1) key option) -
-            expect (recordLaw key)
-              (lumpedFailure setup leaks bounds horizon scheduler
-                (certificateLumping setup leaks bounds horizon scheduler sequence scale scale_pos
-                  scale_le_one covers capacity slotsLe weights targetSequence assembled n who)
-                (2 * horizon + 1) key option)| ≤ beliefDrift n
   /-- **The honest counterparts** at every forced decision input at the player's
   own turn at which the player owes no failure, along every fully mixed Bayes
   sequence of assembled profiles. -/
@@ -3423,6 +3389,14 @@ structure OnePacketBaseInputs (sequence : ℕ → setup.intendedModel.Behavioral
         (projectedSite setup leaks decision) atSite rfl
   /-- Some late option sends at a slot. -/
   slots_pos : 0 < slots
+
+omit [Finite setup.intendedProtocol.History] in
+/-- Some prepared slot is bounded, once there is a player. -/
+theorem OnePacketBaseInputs.one_le_candidateCount
+    {sequence : ℕ → setup.intendedModel.BehavioralAssessment} {slots : Nat}
+    (inputs : OnePacketBaseInputs setup leaks bounds horizon scheduler sequence slots)
+    (who : Player) : 1 ≤ bounds.candidateCount :=
+  Nat.zero_lt_of_lt (inputs.capacity who)
 
 /-- **The forced-belief inputs** at a forced decision input at the player's own
 turn at which the player owes no failure: the honest counterparts and the own
@@ -3539,6 +3513,41 @@ of intended values. -/
 structure OnePacketCoreInputs (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (slots : Nat) extends OnePacketBaseInputs setup leaks bounds horizon scheduler sequence
       slots where
+  /-- **Late records.** At late deliveries of agents that are not free and owe
+  no failure, the belief's operational records give the certificate's lumped
+  failure within a vanishing drift of its expectation under a law of records at
+  the key. -/
+  lateRecords : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon
+      scheduler slots p)) (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
+    (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
+      scale_le_one weights targetSequence),
+    (∀ n, (targetSequence n).IsFullyMixed) →
+    (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
+      ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
+        (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
+    ∃ beliefDrift : ℕ → ℝ, Tendsto beliefDrift atTop (nhds 0) ∧
+      ∀ n who, ∃ recordLaw : LateKey setup leaks →
+          PMF (List (Option (OperationalState setup leaks))),
+        ∀ (site : (onePacketN).InformationSite who),
+          ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+          ¬ OwingAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+          ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
+            (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
+            ((onePacketN).agentAt site) →
+          ∀ key, lateKey setup leaks who site.1 = some key → ∀ option,
+          |expect (((targetSequence n).belief who site).map fun history =>
+              operationalRecord setup leaks bounds horizon scheduler history.1.trace)
+              (lumpedFailure setup leaks bounds horizon scheduler
+                (certificateLumping setup leaks bounds horizon scheduler sequence scale scale_pos
+                  scale_le_one covers (Nat.zero_lt_of_lt (capacity who)) slotsLe weights
+                  targetSequence assembled n who)
+                (2 * horizon + 1) key option) -
+            expect (recordLaw key)
+              (lumpedFailure setup leaks bounds horizon scheduler
+                (certificateLumping setup leaks bounds horizon scheduler sequence scale scale_pos
+                  scale_le_one covers (Nat.zero_lt_of_lt (capacity who)) slotsLe weights
+                  targetSequence assembled n who)
+                (2 * horizon + 1) key option)| ≤ beliefDrift n
   /-- **The gain transport.** Away from late deliveries, at a site where the
   player owes no failure, every choice committing an intended value at the
   player's own turn has an intended policy at the projected site whose gain at
@@ -3745,7 +3754,6 @@ theorem OnePacketOpenInputs.siteCommonness
     (inputs : OnePacketOpenInputs setup leaks bounds horizon scheduler parameter utility
       excludedPayoff sequence slots)
     (wellFormed : setup.WellFormed)
-    (independent : setup.PrivateInputsIndependent)
     (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
     (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
@@ -3779,11 +3787,12 @@ theorem OnePacketOpenInputs.siteCommonness
           onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
             (PMF.pure choice) = 1 := by
   obtain ⟨beliefDrift, beliefLimit, records⟩ :=
-    inputs.lateRecords independent weights targetSequence assembled mixed bayes
+    inputs.lateRecords weights targetSequence assembled mixed bayes
   obtain ⟨unforcedDrift, unforcedLimit, unforced⟩ := inputs.lateUnforced setup leaks bounds
     horizon scheduler wellFormed weights targetSequence assembled mixed bayes
   let lumping := fun n who => certificateLumping setup leaks bounds horizon scheduler sequence
-    inputs.scale inputs.scale_pos inputs.scale_le_one inputs.covers inputs.capacity
+    inputs.scale inputs.scale_pos inputs.scale_le_one inputs.covers
+    (inputs.one_le_candidateCount setup leaks bounds horizon scheduler who)
     inputs.slotsLe weights targetSequence assembled n who
   let recordLaw := fun n (key : LateKey setup leaks) => (records n key.owner).choose key
   let failureOf := fun n (key : LateKey setup leaks) option record =>
@@ -3868,7 +3877,6 @@ theorem OnePacketOpenInputs.lateMemberGain_le
     (inputs : OnePacketOpenInputs setup leaks bounds horizon scheduler parameter utility
       excludedPayoff sequence slots)
     (wellFormed : setup.WellFormed)
-    (independent : setup.PrivateInputsIndependent)
     (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
     (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
@@ -3921,7 +3929,7 @@ theorem OnePacketOpenInputs.lateMemberGain_le
         inputs.lateDecomposition weights targetSequence assembled mixed bayes
       obtain ⟨score, drift, driftLimit, driftNonneg, common⟩ :=
         inputs.siteCommonness setup leaks bounds horizon scheduler parameter utility
-          excludedPayoff wellFormed independent completes weights targetSequence assembled mixed
+          excludedPayoff wellFormed completes weights targetSequence assembled mixed
           bayes
       refine ⟨continuation, score, error, drift, errorLimit, driftLimit, driftNonneg,
         fun n agent keyed notOwing decision => ?_⟩
@@ -3946,8 +3954,7 @@ def OnePacketOpenInputs.toCertificateInputs
     {sequence : ℕ → setup.intendedModel.BehavioralAssessment} {slots : Nat}
     (inputs : OnePacketOpenInputs setup leaks bounds horizon scheduler parameter utility
       excludedPayoff sequence slots)
-    (wellFormed : setup.WellFormed)
-    (independent : setup.PrivateInputsIndependent) {delay bound : (graph setup).EventId → Nat}
+    (wellFormed : setup.WellFormed) {delay bound : (graph setup).EventId → Nat}
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
       bound)
     (timely : AsyncTimely (runtime setup) delay bound)
@@ -3974,7 +3981,7 @@ def OnePacketOpenInputs.toCertificateInputs
       inputs.lateDecomposition weights targetSequence assembled mixed bayes
     obtain ⟨score, drift, driftLimit, driftNonneg, common⟩ :=
       inputs.siteCommonness setup leaks bounds horizon scheduler parameter utility
-        excludedPayoff wellFormed independent contract.completes weights targetSequence assembled
+        excludedPayoff wellFormed contract.completes weights targetSequence assembled
         mixed bayes
     refine ⟨continuation, score, error, drift, errorLimit, driftLimit, driftNonneg,
       fun n agent keyed notOwing decision => ?_⟩
@@ -3988,7 +3995,7 @@ def OnePacketOpenInputs.toCertificateInputs
       inputs.nonLateDecomposition weights targetSequence assembled mixed bayes
     obtain ⟨score, drift, driftLimit, driftNonneg, common⟩ :=
       inputs.siteCommonness setup leaks bounds horizon scheduler parameter utility
-        excludedPayoff wellFormed independent contract.completes weights targetSequence assembled
+        excludedPayoff wellFormed contract.completes weights targetSequence assembled
         mixed bayes
     obtain ⟨slack, slackLimit, slackNonneg, prescribed⟩ :=
       onePacket_prescribedFailure setup leaks bounds horizon scheduler contract timely retains
@@ -4028,7 +4035,7 @@ def OnePacketOpenInputs.toCertificateInputs
   otherComparisons weights targetSequence assembled mixed bayes poolBest := by
     classical
     obtain ⟨memberError, memberLimit, member⟩ := inputs.lateMemberGain_le setup leaks bounds
-      horizon scheduler parameter utility excludedPayoff wellFormed independent contract.completes
+      horizon scheduler parameter utility excludedPayoff wellFormed contract.completes
       weights targetSequence assembled mixed bayes poolBest
     obtain ⟨lateContinuation, lateValueError, lateValueLimit, lateValue⟩ :=
       inputs.lateDecomposition weights targetSequence assembled mixed bayes
@@ -4452,7 +4459,6 @@ supplies the open inputs, there is a sequential equilibrium of the one-packet
 game under the exclusion payoff whose joint law of typed readout and exclusion
 payoff is the intended one. -/
 theorem onePacket_intended_sequentialEquilibrium_of_openInputs (wellFormed : setup.WellFormed)
-    (independent : setup.PrivateInputsIndependent)
     {delay bound : (graph setup).EventId → Nat}
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
       bound)
@@ -4491,7 +4497,7 @@ theorem onePacket_intended_sequentialEquilibrium_of_openInputs (wellFormed : set
     parameter utility excludedPayoff wellFormed intended equilibrium
     fun sequence mixed bayes converges =>
       (inputs sequence mixed bayes converges).toCertificateInputs setup leaks bounds horizon
-        scheduler parameter utility excludedPayoff wellFormed independent contract timely
+        scheduler parameter utility excludedPayoff wellFormed contract timely
         retains mixed bayes
 
 /-- **Sequential equilibrium of the bounded raw runtime from the open inputs.**
@@ -4503,8 +4509,7 @@ under the exclusion payoff minus the deposit for each collected count charge,
 that charges nobody on its paths, whose joint law of typed readout and realized
 payoffs is the intended joint law of typed readout and exclusion payoff. -/
 theorem onePacket_intended_raw_sequentialEquilibrium_of_openInputs
-    (wellFormed : setup.WellFormed)
-    (independent : setup.PrivateInputsIndependent) {delay bound : (graph setup).EventId → Nat}
+    (wellFormed : setup.WellFormed) {delay bound : (graph setup).EventId → Nat}
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
       bound)
     (timely : AsyncTimely (runtime setup) delay bound)
@@ -4559,7 +4564,7 @@ theorem onePacket_intended_raw_sequentialEquilibrium_of_openInputs
     parameter utility excludedPayoff wellFormed intended equilibrium
     (fun sequence mixed bayes converges =>
       (inputs sequence mixed bayes converges).toCertificateInputs setup leaks bounds horizon
-        scheduler parameter utility excludedPayoff wellFormed independent contract timely
+        scheduler parameter utility excludedPayoff wellFormed contract timely
         retains mixed bayes)
     service observationRate deliveryRate delivery_nonnegative coverage lowerUtility upperUtility
     lower_le le_upper deposit deposit_nonnegative sufficient

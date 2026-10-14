@@ -1,12 +1,13 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-Status: mathematics on paper, partly mechanized in Lean: Proposition 1(1) for
-events run one at a time, Lemma C, and the finite core of Lemma T (Appendix
-A). Theorems 1 and 2 and Proposition 1 have been through several adversarial
-reviews. Theorem 3 rests
-on the conditional transport step (Lemma T, Section 4.5), whose current form
-has not yet been independently reviewed.
-Section 9 lists what is open.
+Status: partly mechanized mathematics. The checked results include Proposition
+1(1) for events run one at a time, Lemma C, the finite core of Lemma T, and a
+conditional sequential compilation theorem. In that theorem, own-history replay,
+common operational fibers and value-blind continuation estimates are derived;
+construction of honest counterparts remains an input. The unconditional
+sequential theorem and the concurrent preservation theorem remain open.
+Appendix A identifies the checked declarations; Section 9 lists the broader
+limitations.
 
 ## Summary
 
@@ -2873,6 +2874,18 @@ needs its own review. What is known:
 | Count audit verdict (one signed packet per move) | `Vegas.EventGraphRuntime.CountPermits` |
 | Lemma C: one-packet equilibria extend with no charges | `Vegas.EventGraphRuntime.MessageBounds.onePacket_raw_sequentialEquilibrium` |
 | Lemma T, finite core: transport of a marginal through an approximate product factorization, with remainder | `GameTheory.Math.Probability.NearProductWeights.tendsto_sum_abs_nativeLaw_sub_sourceLaw` |
+| Intended own completions and common operational replay fibers | `Vegas.OnePacketOwnInputs.ofAssembled` |
+| Value-blind continuation estimates from the base certificate inputs and service contract | `Vegas.OnePacketBaseInputs.toBlindInputs` |
+| Sequential raw-runtime preservation, conditional on honest-counterpart construction | `Vegas.onePacket_intended_raw_sequentialEquilibrium_of_counterparts` |
+
+The conditional compilation theorem derives zero on-path count charges and the
+joint typed-readout and realized-payoff law. Its honest-counterpart premise is
+not yet discharged. Guarded swaps of raw values preserve the failure status of
+completed bindings (`Vegas.SwapGuard.value_eq_failure_iff`), so they cannot
+replace an accepted unopenable binding by a valid value. Such a replacement
+requires a directed repair preserving the actual operational record and the
+observing player's full information. The local repair frame and response-mass
+bounds do not by themselves supply that whole-history construction.
 
 A mechanization must also check the following, beyond the statements above:
 
