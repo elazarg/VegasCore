@@ -3,6 +3,7 @@
 import Vegas.Game.OnePacketLateDecomposition
 import Vegas.Game.OnePacketLateCommitments
 import Vegas.Game.OnePacketValueTransport
+import Vegas.Game.OnePacketNonLateDecomposition
 
 /-! # Assembling the one-packet certificate from value blindness
 
@@ -122,6 +123,7 @@ structure OnePacketBlindInputs (upperUtility : Player → ℝ)
           ¬ ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
             (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
             ((onePacketN).agentAt site) →
+          pendingEvent setup leaks who site.1 ≠ none →
           (∀ choice, onePacketCompared setup leaks bounds horizon scheduler who site choice →
             |siteStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
                 (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site
@@ -236,9 +238,9 @@ def OnePacketBlindInputs.toOpenInputs {lowerUtility upperUtility : Player → �
     le_upper sequence below inputs.scale inputs.scale_pos inputs.scale_le_one
     inputs.scale_vanishing inputs.gapBound inputs.gap_le inputs.gapBound_nonneg
     inputs.lateValueBlind
-  nonLateDecomposition := onePacket_nonLateDecomposition setup leaks bounds horizon scheduler
-    parameter utility excludedPayoff wellFormed contract timely retains lowerUtility upperUtility
-    lower_le le_upper sequence below inputs.scale inputs.scale_pos inputs.scale_le_one
+  nonLateDecomposition := onePacket_nonLateDecomposition_of_pending setup leaks bounds horizon
+    scheduler parameter utility excludedPayoff wellFormed contract timely retains lowerUtility
+    upperUtility lower_le le_upper sequence below inputs.scale inputs.scale_pos inputs.scale_le_one
     inputs.scale_vanishing inputs.gapBound inputs.gap_le inputs.gapBound_nonneg
     inputs.nonLateValueBlind
 

@@ -250,50 +250,6 @@ theorem compared_transmission_names {who : Player} (site : (onePacketN).Informat
       subst sameEvent
       exact ⟨rfl, onePacket_opening_node member sends packet⟩
 
-omit [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
-    scheduler).InfoState who)] in
-/-- **A submission for the turn's event leaves it pending.** At a site whose
-view has `event` as the player's turn, if some choice submits for `event`, then
-`event` is pending: the one-packet menu sends for an event only before the
-recall has submitted for it. -/
-theorem pendingEvent_of_turnSubmission {who : Player} (site : (onePacketN).InformationSite who)
-    {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView} (atSite : site.1 = some (past, view))
-    {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? who = some event)
-    (choice : (onePacketN).Choice who site.1) {response : (application setup leaks).Action}
-    (selected : choice.1 = some response)
-    (submitted : (runtime setup).submittedEvent? leaks response = some event) :
-    pendingEvent setup leaks who site.1 = some event := by
-  let menu := bounds.onePacketMenu (runtime setup) leaks
-  obtain ⟨offered, offeredEq, member⟩ := choice_response setup leaks bounds horizon scheduler
-    site atSite choice
-  rw [selected, Option.some.injEq] at offeredEq
-  rw [← offeredEq] at member
-  obtain ⟨⟨start, observed⟩, _⟩ := site.2
-  have observedState : (application setup leaks).observe who start.state =
-      some (past, view) :=
-    (menu.info (initialLaw setup) horizon scheduler who start.trace).symm.trans
-      (observed.trans atSite)
-  rcases startState : start.state with _ | ⟨remaining, actor, execution⟩
-  · rw [startState] at observedState
-    cases observedState
-  rw [startState] at observedState
-  have actorEq : actor = some who := by
-    by_contra different
-    simp only [ReactiveApplication.observe, different, ↓reduceIte] at observedState
-    cases observedState
-  subst actorEq
-  simp only [ReactiveApplication.observe, ↓reduceIte, Option.some.injEq, Prod.mk.injEq]
-    at observedState
-  obtain ⟨rfl, rfl⟩ := observedState
-  have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon
-      scheduler).Trace (some ⟨remaining, some who, execution⟩) :=
-    menu.toRawTrace (initialLaw setup) horizon scheduler (startState ▸ start.trace)
-  rw [atSite]
-  exact pendingEvent_of_spec turn
-    (onePacket_unrecorded_of_member rawTrace who event response member submitted)
-
 section Values
 
 variable {Parameter : Type} (parameter : State L setup.context → Parameter)

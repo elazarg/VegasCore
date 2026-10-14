@@ -336,63 +336,6 @@ theorem onePacket_commitment_gain_le_of_regular (wellFormed : setup.WellFormed)
   have baselineBound := abs_le.mp baselineRun
   linarith [deviationBound.2, baselineBound.1]
 
-variable {setup leaks bounds horizon scheduler} in
-omit [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
-    scheduler).InfoState who)] in
-/-- **One packet per event.** At every history of the default runtime, a
-response of the one-packet menu transmitting for an event is sent before the
-recall has submitted for that event. -/
-theorem onePacket_unrecorded_of_member {control : (application setup leaks).Control}
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-      (some control))
-    (who : Player) (event : (graph setup).EventId) (response : (application setup leaks).Action)
-    (member : response ∈ bounds.onePacketActions (runtime setup) leaks who
-      (control.execution.recall who) (control.execution.observe (application setup leaks) who))
-    (submitted : (runtime setup).submittedEvent? leaks response = some event) :
-    (runtime setup).eventRecorded leaks (control.execution.recall who) event = false := by
-  let app := application setup leaks
-  cases recorded : (runtime setup).eventRecorded leaks (control.execution.recall who) event with
-  | false => rfl
-  | true =>
-      exfalso
-      obtain ⟨_, sent⟩ := (bounds.mem_onePacketActions (runtime setup) leaks who _ _ _).mp member
-      rcases sent with silent | ⟨material, transmits, permitted⟩
-      · unfold EventGraphRuntime.submittedEvent? at submitted
-        rw [silent] at submitted
-        cases submitted
-      · have named : material.call.packet.event? (graph setup) = some event := by
-          unfold EventGraphRuntime.submittedEvent? at submitted
-          rw [transmits] at submitted
-          exact submitted
-        have recalled := (runtime setup).countRecall_history leaks trace
-        rw [(runtime setup).localEnvelope_eq_of_recall leaks control.execution recalled.1
-          recalled.2.1 who material, countPermits_eq_true_iff] at permitted
-        obtain ⟨entry, entryMember, entrySubmitted⟩ :=
-          ((runtime setup).eventRecorded_iff leaks _ event).mp recorded
-        obtain ⟨entryMaterial, entryTransmits⟩ : ∃ entryMaterial,
-            entry.action.transmission = some entryMaterial := by
-          unfold EventGraphRuntime.submittedEvent? at entrySubmitted
-          cases transmission : entry.action.transmission with
-          | none => rw [transmission] at entrySubmitted; cases entrySubmitted
-          | some entryMaterial => exact ⟨entryMaterial, rfl⟩
-        have entryNamed : entryMaterial.call.packet.event? (graph setup) = some event := by
-          unfold EventGraphRuntime.submittedEvent? at entrySubmitted
-          rw [entryTransmits] at entrySubmitted
-          exact entrySubmitted
-        obtain ⟨message, emitted, call⟩ :=
-          ((transmissionsEmitted_serviceInvariant scheduler).history (initialLaw setup) horizon
-            (fun _ _ _ entry member => (List.not_mem_nil member).elim) trace) who entry
-            entryMember entryMaterial entryTransmits
-        have output : message ∈ app.outputs (control.execution.recall who) :=
-          List.mem_filterMap.mpr ⟨entry, entryMember, emitted⟩
-        have earlier := earlierOwnPacket_of_output trace who
-          (app.packet (app.submit control.execution.application who material) who
-            (control.execution.network.known who) material) message output
-        apply permitted.2.2 message earlier
-        change message.payload.call.event? (graph setup) =
-          material.call.packet.event? (graph setup)
-        rw [call, entryNamed, named]
 
 open Classical in
 /-- **The gain of an intended commitment at the player's turn.** Under the
