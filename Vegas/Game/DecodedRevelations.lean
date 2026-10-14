@@ -129,7 +129,8 @@ theorem nodes_revealedCell (setup : Setup (Player := Player) (L := L))
     rfl
 
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
-private theorem cellField_eq_binding {kind : CellTy Player L} {owner : Player} {payload : L.Ty}
+/-- A cell whose field is a binding is a commitment cell. -/
+theorem cellField_eq_binding {kind : CellTy Player L} {owner : Player} {payload : L.Ty}
     (same : cellField kind = .binding owner payload) : kind = .commitment owner payload := by
   cases kind with
   | publicData | privateInput | publication => cases same
