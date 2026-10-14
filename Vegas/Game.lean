@@ -451,3 +451,6 @@ import Vegas.Game.OnePacketBeliefWiring
 import Vegas.Game.OnePacketBeliefPartsWiring
 import Vegas.Game.OnePacketLateCertificate
 import Vegas.Game.OnePacketNonLateDecomposition
+import Vegas.Game.OnePacketCertificateField
+import Vegas.Game.OnePacketNextEvent
+import Vegas.Game.OnePacketOwnIntended
