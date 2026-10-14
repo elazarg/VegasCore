@@ -295,6 +295,12 @@ import Vegas.Game.OnePacketDirectedRepairOpeningTrace
 import GameTheoryExtensions.Analysis.Protocol.RestrictedComponentCompletion
 import Vegas.Source.ExclusionFailure
 import Vegas.Game.ExclusionMoveExtension
+import Vegas.Game.OnePacketForeignBindingRegularity
+import Vegas.Game.OnePacketDirectedRepairPrefixSuccess
+import Vegas.Game.OnePacketPairedWeight
+import Vegas.Game.OnePacketPairedCompletionMass
+import Vegas.Pending.ReactiveBindingAcceptedRecords
+import Vegas.Game.OnePacketBindingRepairWitness
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -1807,6 +1813,43 @@ open Vegas.SourceProgram.Setup in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms intended_sequentialEquilibrium_extends_without_voluntary_failure
+
+/-- info: 'Vegas.counterpart_of_successful_foreign_bindings' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.counterpart_of_successful_foreign_bindings
+
+/-- info: 'Vegas.binding_success_of_tracePrefix' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.binding_success_of_tracePrefix
+
+/-- info: 'Vegas.upperSourceWeight_le_of_paired_steps' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.upperSourceWeight_le_of_paired_steps
+
+/-- info: 'Vegas.completionMass_eq_of_operational_transitions' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.completionMass_eq_of_operational_transitions
+
+/-- info: 'Vegas.repair_binding_history' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.repair_binding_history
+
+/-- info: 'Vegas.counterpart_of_intended_witness_repairs' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.counterpart_of_intended_witness_repairs
+
+open Vegas.EventGraphRuntime.BindingMemory.RecordsSubmittedBindings in
+/-- info:
+'Vegas.EventGraphRuntime.BindingMemory.RecordsSubmittedBindings.accepted_output_succeeded'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms accepted_output_succeeded
 
 end Vegas.Paper
 

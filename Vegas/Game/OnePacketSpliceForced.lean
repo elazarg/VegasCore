@@ -208,10 +208,11 @@ theorem swapGuardState_of_tracePrefix (swap : HiddenSwap (graph setup))
 /-- **Responders along a history at a forced site are forced.** Take a history
 ending at a state `current` with decoded point `p`, at which every ready reveal
 belongs to `who`, and the end `w` of an intended history that `who` observes like
-`p`, at which nobody owes a failure, with successful commitments where `p` and
-`w` differ. With independent hidden initial cells and message bounds covering
-every binding field, every player `r ≠ who` acting at a state along the history
-acts at an information state forced for it. -/
+`p`, at which nobody owes a failure. Assume the commitments changed by the splice
+that retains the responder's hidden cells are successful. With independent hidden
+initial cells and message bounds covering every binding field, every player
+`r ≠ who` acting at a state along the history acts at an information state
+forced for it. -/
 theorem forcedAgent_of_splice (wellFormed : setup.WellFormed)
     (independent : setup.PrivateInputsIndependent) (covered : BindingFieldsCovered bounds)
     {who : Player} {current : (application setup leaks).Control}
@@ -226,17 +227,18 @@ theorem forcedAgent_of_splice (wellFormed : setup.WellFormed)
       ∀ owner payload binding checks outputEq codeEq,
         nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq →
           owner = who)
-    (succeed : CommitmentCellsSucceed setup p w)
+    {r : Player}
+    (succeed : CommitmentCellsSucceed setup p (ProtocolState.splicePoint setup.program r p w))
     {control : (application setup leaks).Control}
     (prior : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
-    (isPrefix : TracePrefix prior trace) {r : Player} (different : r ≠ who) :
+    (isPrefix : TracePrefix prior trace) (different : r ≠ who) :
     forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon scheduler
       r ((application setup leaks).observe r (some control)) := by
   have publicAgree := publicCellsAgree_of_observe sameView
   have shape := ProtocolState.sameShape_of_observe_eq who setup.program p w sameView
   let q := ProtocolState.splicePoint setup.program r p w
   have publicAgreeQ : PublicCellsAgree setup p q := publicCellsAgree_splicePoint publicAgree
-  have succeedQ : CommitmentCellsSucceed setup p q := commitmentCellsSucceed_splicePoint succeed
+  have succeedQ : CommitmentCellsSucceed setup p q := succeed
   let swap := HiddenSwap.ofPairs (betweenPairs publicAgreeQ succeedQ)
     (betweenHandlePairs setup p q current.execution.application.accepted)
   -- The swap toward the splice is guarded at the end of the history.

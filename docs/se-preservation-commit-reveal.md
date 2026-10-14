@@ -1,5 +1,7 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
+**Progress: 2/4 stages checked · sequential runtime: assembling · concurrency: pending.**
+
 Status: partly mechanized mathematics. The checked results include Proposition
 1(1) for events run one at a time, Lemma C, the finite core of Lemma T, and a
 conditional sequential compilation theorem. In that theorem, own-history replay,
@@ -2884,6 +2886,12 @@ needs its own review. What is known:
 | Failure has the exclusion payoff at every full source information set | `Vegas.SourceProgram.Setup.exclusion_failure_context_value` |
 | Source equilibrium extension without voluntary failure at any nonexcluded site, under the nonexcluded payoff floor | `Vegas.SourceProgram.Setup.intended_sequentialEquilibrium_extends_without_voluntary_failure` |
 | Each voluntary-failure atom in its common source tremble sequence has exactly the reference mass times the tremble scale | `Vegas.SourceProgram.Setup.exclusionMoveApproximation_failure_mass` |
+| Successful completed foreign bindings give a regular counterpart with the same operational record | `Vegas.counterpart_of_successful_foreign_bindings` |
+| A reveal ready at an earlier actual prefix reads a successful binding under the final intended witness | `Vegas.binding_success_of_tracePrefix` |
+| Equal operational endpoints fix the public chance-completion factor | `Vegas.completionMass_eq_of_operational_transitions` |
+| Source-weight domination from bounds on paired actual history steps | `Vegas.upperSourceWeight_le_of_paired_steps` |
+| Actual whole-history repair through arbitrary responses and scheduler steps, under original-prefix guards | `Vegas.repair_binding_history` |
+| Regular counterpart from concrete private-binding repairs and an intended witness | `Vegas.counterpart_of_intended_witness_repairs` |
 
 The conditional compilation theorem derives zero on-path count charges and the
 joint typed-readout and realized-payoff law. Its honest-counterpart premise is
@@ -2891,9 +2899,10 @@ not yet discharged. Guarded swaps of raw values preserve the failure status of
 completed bindings (`Vegas.SwapGuard.value_eq_failure_iff`), so they cannot
 replace an accepted unopenable binding by a valid value. Such a replacement
 requires a directed repair preserving the actual operational record and the
-observing player's full information. The local repair frame and response-mass
-bounds, and the actual binding-submission trace repair, do not by themselves
-supply that whole-history construction.
+observing player's full information. The whole-history repair and its finite
+composition now construct such regular counterparts from an intended witness.
+The remaining sequential obligation is their likelihood bound and its assembly
+into the compilation theorem's counterpart inputs.
 
 A mechanization must also check the following, beyond the statements above:
 

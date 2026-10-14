@@ -246,3 +246,13 @@ import Vegas.Pending.ReactiveValueSwap
 import Vegas.Pending.OnePacketValueSwap
 import Vegas.Pending.ValueSwapPairs
 import Vegas.Pending.ReactiveOnePacketFreshness
+import Vegas.Pending.ReactiveBindingPreparationRecord
+import Vegas.Pending.ReactiveBindingSubmittedRecords
+import Vegas.Pending.ReactiveBindingSubmittedResponse
+import Vegas.Pending.ReactiveBindingAcceptedRecords
+import Vegas.Pending.ReactiveBindingSubmittedInclusion
+import Vegas.Pending.ReactiveBindingSubmittedRepair
+import Vegas.Pending.ReactiveBindingRejectedInclusion
+import Vegas.Pending.ReactiveBindingExpiryAccepted
+import Vegas.Pending.ReactiveBindingCountedInclusion
+import Vegas.Pending.ReactiveCountedResponseForms

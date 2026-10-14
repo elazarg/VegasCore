@@ -371,7 +371,8 @@ theorem counterpart_bound_of_witness (wellFormed : setup.WellFormed)
     exact responseBound swap (swapAllowed swap) prior joint legal realized guardAfter imagePrior
       imageLegal imageRealized control next actor rfl afterEq acting other
       (forcedAgent_of_splice wellFormed independent covered trace decodedP secondState sameView
-        staticW readyOwn succeed prior priorPrefix other)
+        staticW readyOwn (commitmentCellsSucceed_splicePoint (r := actor) succeed) prior
+        priorPrefix other)
       (disclosureCanonical_of_resolves prior actor (disclosureResolves_along wellFormed trace
         decodedP secondState sameView readyOwn prior priorPrefix other)) imageStep
   have weight := upperSourceWeight_le_swap positive swap (initialClosed_swapAllowed swap)

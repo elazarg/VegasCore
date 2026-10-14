@@ -86,3 +86,4 @@ import GameTheoryExtensions.Protocol.TracePrefix
 import GameTheoryExtensions.Math.Probability.ProductDecorrelation
 import GameTheoryExtensions.Math.Probability.NearDecorrelation
 import GameTheoryExtensions.Analysis.Protocol.RestrictedComponentCompletion
+import GameTheoryExtensions.Protocol.OwnPlayPrefix
