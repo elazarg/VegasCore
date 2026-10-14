@@ -448,3 +448,6 @@ import Vegas.Game.OnePacketLateBadMass
 import Vegas.Game.OnePacketLateHistoryNear
 import Vegas.Game.OnePacketSwapGuard
 import Vegas.Game.OnePacketBeliefWiring
+import Vegas.Game.OnePacketBeliefPartsWiring
+import Vegas.Game.OnePacketLateCertificate
+import Vegas.Game.OnePacketNonLateDecomposition
