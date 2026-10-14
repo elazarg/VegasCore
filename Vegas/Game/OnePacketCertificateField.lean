@@ -174,6 +174,78 @@ theorem ownedRequestsEmitted_history {horizon : Nat}
         ownedRequestsEmitted_environment leaks execution next command valid reached }).history
     (initialLaw setup) horizon (fun _ _ _ _ member => (List.not_mem_nil member).elim) trace
 
+/-- Along every history of the one-packet game, every packet a player recalls
+emitting is in the network. -/
+theorem output_mem_inputs_of_trace {horizon : Nat}
+    {scheduler : (application setup leaks).Scheduler}
+    {control : (application setup leaks).Control}
+    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
+    (who : Player) (packet : Message Player (WitnessedPacket (graph setup)))
+    (output : packet ∈ (application setup leaks).outputs (control.execution.recall who)) :
+    packet ∈ control.execution.network.inputs := by
+  have clean := (bounds.onePacketMenu_countClean (runtime setup) leaks scheduler).history
+    (initialLaw setup) horizon (fun state _ => (runtime setup).countClean_initial leaks state)
+    trace
+  rw [← clean.1.1 who] at output
+  exact (List.mem_filter.mp output).1
+
+/-- **Commitments name fresh prepared handles of their sender.** Along every
+history of the one-packet game, a commitment in the network names a prepared
+handle of its sender that no earlier packet of the sender named. -/
+theorem commitment_facts_of_trace {horizon : Nat}
+    {scheduler : (application setup leaks).Scheduler}
+    {control : (application setup leaks).Control}
+    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
+    (packet : Message Player (WitnessedPacket (graph setup)))
+    (input : packet ∈ control.execution.network.inputs) (named : (graph setup).EventId)
+    (candidate : Handle (graph setup))
+    (call : packet.payload.call = .commitment named candidate) :
+    candidate.1 = packet.sender ∧ (∃ serial, candidate.2 = .prepared serial) ∧
+      ∀ other, EarlierOwnPacket control.execution.network.inputs packet other →
+        ∀ named', other.payload.call ≠ .commitment named' candidate := by
+  have clean := (bounds.onePacketMenu_countClean (runtime setup) leaks scheduler).history
+    (initialLaw setup) horizon (fun state _ => (runtime setup).countClean_initial leaks state)
+    trace
+  have correct := ((countPermits_eq_true_iff _ _).mp (clean.2 packet input)).2.1
+  unfold CountCallCorrect at correct
+  rw [call] at correct
+  exact ⟨correct.2.2.1, correct.2.2.2.1, correct.2.2.2.2⟩
+
+/-- **Commitments never share a handle.** Along every history of the one-packet
+game, two commitments in the network never name one handle for two events. -/
+theorem commitment_unique_of_trace {horizon : Nat}
+    {scheduler : (application setup leaks).Scheduler}
+    {control : (application setup leaks).Control}
+    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
+    (first : Message Player (WitnessedPacket (graph setup)))
+    (firstInput : first ∈ control.execution.network.inputs)
+    (second : Message Player (WitnessedPacket (graph setup)))
+    (secondInput : second ∈ control.execution.network.inputs)
+    (firstEvent secondEvent : (graph setup).EventId) (candidate : Handle (graph setup))
+    (firstCall : first.payload.call = .commitment firstEvent candidate)
+    (secondCall : second.payload.call = .commitment secondEvent candidate) :
+    firstEvent = secondEvent := by
+  have clean := (bounds.onePacketMenu_countClean (runtime setup) leaks scheduler).history
+    (initialLaw setup) horizon (fun state _ => (runtime setup).countClean_initial leaks state)
+    trace
+  obtain ⟨firstOwner, _, firstFresh⟩ :=
+    commitment_facts_of_trace bounds trace first firstInput firstEvent candidate firstCall
+  obtain ⟨secondOwner, _, secondFresh⟩ :=
+    commitment_facts_of_trace bounds trace second secondInput secondEvent candidate secondCall
+  have sameSender : first.sender = second.sender := firstOwner.symm.trans secondOwner
+  rcases lt_trichotomy first.id.2 second.id.2 with lower | same | higher
+  · exact absurd firstCall (secondFresh first ⟨firstInput, sameSender, lower⟩ firstEvent)
+  · have nodup := (clean.1.2.2 second.sender) ▸ List.nodup_range
+    have equal : first = second := List.inj_on_of_nodup_map nodup
+      (List.mem_filter.mpr ⟨firstInput, by simpa using sameSender⟩)
+      (List.mem_filter.mpr ⟨secondInput, by simp⟩) same
+    subst equal
+    rw [firstCall] at secondCall
+    cases secondCall
+    rfl
+  · exact absurd secondCall
+      (firstFresh second ⟨secondInput, sameSender.symm, higher⟩ secondEvent)
+
 /-- **The field certified by an owned evidence request.** Along every history of
 the one-packet game, a recalled transmission requesting owned evidence opens a
 resolve event that is ready or completed, and the requested handle is accepted,
@@ -205,56 +277,15 @@ theorem certificate_field {horizon : Nat} {scheduler : (application setup leaks)
   obtain ⟨message, emitted, evidence, issued⟩ :=
     ownedRequestsEmitted_history bounds trace sender recalled member submission sent
   have carried := evidence fact owned
-  have inputOf (who : Player) (packet : Message Player (WitnessedPacket (graph setup)))
-      (output : packet ∈ (application setup leaks).outputs (control.execution.recall who)) :
-      packet ∈ inputs := by
-    rw [← clean.1.1 who] at output
-    exact (List.mem_filter.mp output).1
+  have inputOf := output_mem_inputs_of_trace bounds trace
   have messageInput : message ∈ inputs :=
     inputOf sender message (List.mem_filterMap.mpr ⟨recalled, member, emitted⟩)
-  have permitted (packet : Message Player (WitnessedPacket (graph setup)))
-      (input : packet ∈ inputs) : CountPermits inputs packet :=
-    (countPermits_eq_true_iff _ _).mp (clean.2 packet input)
-  -- A commitment in the network names a prepared handle of its sender that no
-  -- earlier packet of the sender named.
-  have commitmentFacts (packet : Message Player (WitnessedPacket (graph setup)))
-      (input : packet ∈ inputs) (named : (graph setup).EventId)
-      (candidate : Handle (graph setup))
-      (call : packet.payload.call = .commitment named candidate) :
-      candidate.1 = packet.sender ∧ (∃ serial, candidate.2 = .prepared serial) ∧
-        ∀ other, EarlierOwnPacket inputs packet other →
-          ∀ named', other.payload.call ≠ .commitment named' candidate := by
-    have correct := (permitted packet input).2.1
-    unfold CountCallCorrect at correct
-    rw [call] at correct
-    exact ⟨correct.2.2.1, correct.2.2.2.1, correct.2.2.2.2⟩
-  -- Two commitments in the network never name one handle for two events.
-  have commitmentUnique (first : Message Player (WitnessedPacket (graph setup)))
-      (firstInput : first ∈ inputs) (second : Message Player (WitnessedPacket (graph setup)))
-      (secondInput : second ∈ inputs) (firstEvent secondEvent : (graph setup).EventId)
-      (candidate : Handle (graph setup))
-      (firstCall : first.payload.call = .commitment firstEvent candidate)
-      (secondCall : second.payload.call = .commitment secondEvent candidate) :
-      firstEvent = secondEvent := by
-    obtain ⟨firstOwner, _, firstFresh⟩ :=
-      commitmentFacts first firstInput firstEvent candidate firstCall
-    obtain ⟨secondOwner, _, secondFresh⟩ :=
-      commitmentFacts second secondInput secondEvent candidate secondCall
-    have sameSender : first.sender = second.sender := firstOwner.symm.trans secondOwner
-    rcases lt_trichotomy first.id.2 second.id.2 with lower | same | higher
-    · exact absurd firstCall (secondFresh first ⟨firstInput, sameSender, lower⟩ firstEvent)
-    · have nodup := (clean.1.2.2 second.sender) ▸ List.nodup_range
-      have equal : first = second := List.inj_on_of_nodup_map nodup
-        (List.mem_filter.mpr ⟨firstInput, by simpa using sameSender⟩)
-        (List.mem_filter.mpr ⟨secondInput, by simp⟩) same
-      subst equal
-      rw [firstCall] at secondCall
-      cases secondCall
-      rfl
-    · exact absurd secondCall
-        (firstFresh second ⟨secondInput, sameSender.symm, higher⟩ secondEvent)
-  have correct := (permitted message messageInput).2.1
-  have tokenValid := (permitted message messageInput).1
+  have commitmentFacts := commitment_facts_of_trace bounds trace
+  have commitmentUnique := commitment_unique_of_trace bounds trace
+  have permitted : CountPermits inputs message :=
+    (countPermits_eq_true_iff _ _).mp (clean.2 message messageInput)
+  have correct := permitted.2.1
+  have tokenValid := permitted.1
   unfold CountCallCorrect at correct
   cases call : message.payload.call with
   | malformed raw =>
