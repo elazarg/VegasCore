@@ -3,7 +3,7 @@
 import Vegas.Game.OnePacketCounterpartImage
 import Vegas.Game.OnePacketCounterpartSteps
 import Vegas.Game.OnePacketOwnIntended
-import Vegas.Game.OnePacketSpliceForced
+import Vegas.Game.OnePacketDisclosureAlong
 
 /-! # Regular counterparts with dominated weight
 
@@ -15,7 +15,8 @@ irregular response (`Vegas.SwapFirstBound`), an irregular history's upper source
 weight is at most `ε (1 + error)` times `K` to the length bound times the source
 weight of its counterpart (`Vegas.counterpart_bound_of_witness`). With
 independent hidden initial cells, every player responding along the history
-acts at forced information (`Vegas.forcedAgent_of_splice`).
+acts at forced information (`Vegas.forcedAgent_of_splice`), and its pending
+reveals resolve (`Vegas.disclosureResolves_along`).
 -/
 
 noncomputable section
@@ -39,9 +40,9 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
 variable (setup leaks bounds horizon scheduler sequence profiles) in
 /-- **Response masses compared under hidden swaps.** At stage `n`, every
 response of a player other than `who`, acting at an information state forced for
-it, along a history ending at a state guarded for a hidden swap, whose image
-under the swap is regular, has response mass at most `K₁` times that of its
-image. -/
+it with a canonical disclosure, along a history ending at a state guarded for a
+hidden swap, whose image under the swap is regular, has response mass at most
+`K₁` times that of its image. -/
 def SwapResponseBound (n : ℕ) (who : Player) (K₁ : ℝ) : Prop :=
   ∀ (swap : HiddenSwap (graph setup)) (allowed : Set (graph setup).Inputs) {before after}
     (_ : (onePacketProtocol setup leaks bounds horizon scheduler).Trace before) joint
@@ -52,6 +53,8 @@ def SwapResponseBound (n : ℕ) (who : Player) (K₁ : ℝ) : Prop :=
     before = some control → after = some next → control.actor = some actor → actor ≠ who →
     forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon scheduler
       actor ((application setup leaks).observe actor (some control)) →
+    DisclosureCanonical setup leaks bounds actor (control.execution.recall actor)
+      (control.execution.observe (application setup leaks) actor) →
     RegularStep setup leaks bounds horizon scheduler (sequence n) who
       (swap.protocolState before) (swap.joint joint) (swap.protocolState after) →
     responseMass setup leaks bounds horizon scheduler (profiles n) control joint ≤
@@ -351,11 +354,14 @@ theorem counterpart_bound_of_witness (wellFormed : setup.WellFormed)
     intro before after prior joint legal realized isPrefix guardAfter control next actor beforeEq
       afterEq acting other imageStep
     subst beforeEq
+    have priorPrefix : TracePrefix prior trace :=
+      (TracePrefix.extend .refl joint legal realized).trans isPrefix
     exact responseBound swap (swapAllowed swap) prior joint legal realized guardAfter control next
       actor rfl afterEq acting other
       (forcedAgent_of_splice wellFormed independent covered trace decodedP secondState sameView
-        staticW readyOwn succeed prior ((TracePrefix.extend .refl joint legal realized).trans
-          isPrefix) other) imageStep
+        staticW readyOwn succeed prior priorPrefix other)
+      (disclosureCanonical_of_resolves prior actor (disclosureResolves_along wellFormed trace
+        decodedP secondState sameView readyOwn prior priorPrefix other)) imageStep
   have weight := upperSourceWeight_le_swap positive swap (initialClosed_swapAllowed swap)
     bounded n ιPos initialFloored K₁Nonneg εNonneg trace guarded
     responseStep firstStep imageRegular irregularHistory

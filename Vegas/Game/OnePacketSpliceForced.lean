@@ -139,7 +139,8 @@ variable [Fintype Player]
   {scheduler : (application setup leaks).Scheduler}
 
 omit [DecidableEq (CellTy Player L)] in
-private theorem not_tracePrefix_start {control : (application setup leaks).Control}
+/-- An initialized history is no prefix of the empty history. -/
+theorem not_tracePrefix_start {control : (application setup leaks).Control}
     {prior : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control)}
     (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace none) :
     ¬ TracePrefix prior trace := by
