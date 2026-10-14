@@ -20,7 +20,9 @@ site's value of committing, up to errors that vanish with the scale, the belief
 mass outside the forced region and the decorrelation
 (`Vegas.certificate_lateCommit_siteValue`). With a vanishing scale, unforced mass
 and decorrelation, late commitments are value-blind with a vanishing error
-(`Vegas.lateCommitBlind_of_bounds`).
+(`Vegas.lateCommitBlind_of_bounds`). Errors vanishing at each of the finitely
+many sites give one vanishing error for all of them
+(`Vegas.exists_uniform_of_sites`, `Vegas.exists_uniform_decorrelation`).
 -/
 
 noncomputable section
@@ -583,5 +585,82 @@ theorem lateCommitBlind_of_bounds
     have boundEq : |bound| = bound := abs_of_nonneg boundNonneg
     simp only [valueError, boundEq]
     linarith
+
+omit [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+    scheduler).InfoState who)] in
+open Classical Filter in
+/-- **Uniform errors from errors at each site.** For a property of errors at a
+site that weakens as the error grows, if every site satisfying a condition has
+a vanishing sequence of errors satisfying the property, then one vanishing
+sequence serves every such site: the sum over the finitely many agents. -/
+theorem exists_uniform_of_sites
+    (property : ℕ → ∀ who, (onePacketN).InformationSite who → ℝ → Prop)
+    (mono : ∀ n who site first second, first ≤ second → property n who site first →
+      property n who site second)
+    (condition : ∀ who, (onePacketN).InformationSite who → Prop)
+    (perSite : ∀ who (site : (onePacketN).InformationSite who), condition who site →
+      ∃ error : ℕ → ℝ, Tendsto error atTop (nhds 0) ∧ ∀ n, property n who site (error n)) :
+    ∃ error : ℕ → ℝ, Tendsto error atTop (nhds 0) ∧
+      ∀ n who (site : (onePacketN).InformationSite who), condition who site →
+        property n who site (error n) := by
+  let agentError := fun (agent : (onePacketN).InformationAgent (onePacketN).playedInformation)
+      (n : ℕ) =>
+    if present : ∃ decision : (onePacketN).IsDecisionInfo agent.1 agent.2.1,
+        condition agent.1 ⟨agent.2.1, decision⟩ then
+      |(perSite agent.1 ⟨agent.2.1, present.1⟩ present.2).choose n| else 0
+  refine ⟨fun n => ∑ agent, agentError agent n, ?_, ?_⟩
+  · rw [show (0 : ℝ) = ∑ _agent : (onePacketN).InformationAgent (onePacketN).playedInformation,
+      (0 : ℝ) by simp]
+    refine tendsto_finsetSum _ fun agent _ => ?_
+    by_cases present : ∃ decision : (onePacketN).IsDecisionInfo agent.1 agent.2.1,
+        condition agent.1 ⟨agent.2.1, decision⟩
+    · simp only [agentError, present, ↓reduceDIte]
+      simpa using (perSite agent.1 ⟨agent.2.1, present.1⟩ present.2).choose_spec.1.abs
+    · simp only [agentError, present, ↓reduceDIte]
+      exact tendsto_const_nhds
+  · intro n who site holds
+    have present : ∃ decision : (onePacketN).IsDecisionInfo ((onePacketN).agentAt site).1
+        ((onePacketN).agentAt site).2.1,
+        condition ((onePacketN).agentAt site).1 ⟨((onePacketN).agentAt site).2.1, decision⟩ :=
+      ⟨site.2, holds⟩
+    have nonneg : ∀ agent, 0 ≤ agentError agent n := fun agent => by
+      simp only [agentError]
+      split
+      · exact abs_nonneg _
+      · exact le_rfl
+    have single := Finset.single_le_sum (f := fun agent => agentError agent n)
+      (fun agent _ => nonneg agent) (Finset.mem_univ ((onePacketN).agentAt site))
+    have atSite : agentError ((onePacketN).agentAt site) n =
+        |(perSite who site holds).choose n| := by
+      simp only [agentError, present, ↓reduceDIte]
+    have spec := (perSite who site holds).choose_spec.2 n
+    exact mono n who site _ _ ((le_abs_self _).trans (atSite ▸ single)) spec
+
+omit [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+    scheduler).InfoState who)] in
+open Filter in
+/-- **Uniform decorrelation.** If at every site satisfying a condition the
+beliefs decorrelate the operational records and the decoded points up to a
+vanishing error, one vanishing error serves every such site. -/
+theorem exists_uniform_decorrelation
+    (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
+    (condition : ∀ who, (onePacketN).InformationSite who → Prop)
+    (perSite : ∀ who (site : (onePacketN).InformationSite who), condition who site →
+      ∃ error : ℕ → ℝ, Tendsto error atTop (nhds 0) ∧ ∀ n,
+        BeliefDecorrelated ((targetSequence n).belief who site)
+          (fun history => operationalRecord setup leaks bounds horizon scheduler
+            history.1.trace)
+          (fun history => nativeDecodedState setup leaks history.1.state) (error n)) :
+    ∃ error : ℕ → ℝ, Tendsto error atTop (nhds 0) ∧
+      ∀ n who (site : (onePacketN).InformationSite who), condition who site →
+        BeliefDecorrelated ((targetSequence n).belief who site)
+          (fun history => operationalRecord setup leaks bounds horizon scheduler
+            history.1.trace)
+          (fun history => nativeDecodedState setup leaks history.1.state) (error n) :=
+  exists_uniform_of_sites setup leaks bounds horizon scheduler
+    (fun n who site error => BeliefDecorrelated ((targetSequence n).belief who site)
+      (fun history => operationalRecord setup leaks bounds horizon scheduler history.1.trace)
+      (fun history => nativeDecodedState setup leaks history.1.state) error)
+    (fun _ _ _ _ _ le decorrelated => decorrelated.mono le) condition perSite
 
 end Vegas

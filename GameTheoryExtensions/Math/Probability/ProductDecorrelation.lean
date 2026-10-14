@@ -238,6 +238,13 @@ def BeliefDecorrelated {H R T : Type*} (law : PMF H) (record : H → R) (hidden 
     |expect law (fun h => first (record h) * second (hidden h)) -
       expect law (fun h => first (record h)) * expect law (fun h => second (hidden h))| ≤ γ
 
+/-- Decorrelation up to an error holds up to every larger error. -/
+theorem BeliefDecorrelated.mono {H R T : Type*} {law : PMF H} {record : H → R}
+    {hidden : H → T} {γ γ' : ℝ} (decorrelated : BeliefDecorrelated law record hidden γ)
+    (le : γ ≤ γ') : BeliefDecorrelated law record hidden γ' :=
+  fun first second firstBounded secondBounded =>
+    (decorrelated first second firstBounded secondBounded).trans le
+
 /-- Independent coordinates are decorrelated with no error. -/
 theorem beliefDecorrelated_of_product {H R T : Type*} (law : PMF H) (record : H → R)
     (hidden : H → T)
