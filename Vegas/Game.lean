@@ -436,3 +436,7 @@ import Vegas.Game.OnePacketLateSending
 import Vegas.Game.OnePacketOpenableCommitment
 import Vegas.Game.OnePacketSwapReplay
 import Vegas.Game.OnePacketValueTransport
+import Vegas.Game.OnePacketLateSuccessFree
+import Vegas.Game.OnePacketRelevantLumping
+import Vegas.Game.OnePacketSwapRegular
+import Vegas.Game.OnePacketUnpendingSites
