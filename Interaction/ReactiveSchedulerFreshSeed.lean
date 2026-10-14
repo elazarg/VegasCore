@@ -2,7 +2,7 @@
 
 import Interaction.ReactiveSchedulerImplementation
 import GameTheory.Math.Probability.ProductConditioning
-import GameTheory.Math.Probability.ConditionalObservation
+import GameTheoryExtensions.Math.Probability.TaggedPosterior
 
 /-! # Fresh seed coordinates before their first scheduler read
 
@@ -17,28 +17,6 @@ noncomputable section
 namespace Interaction.ReactiveApplication
 
 open GameTheory.Protocol GameTheory.Math.Probability
-
-private theorem posterior_tag {Seed Output : Type} (law : PMF Seed) (choose : Seed → Output)
-    (output : Output) :
-    (fiberPosterior (law.map fun seed => (choose seed, seed)) Prod.fst output).map Prod.snd =
-      fiberPosterior law choose output := by
-  classical
-  by_cases present : output ∈ (law.map choose).support
-  · have transfer := fiberPosterior_bind_of_observation law
-      (fun seed => PMF.pure (choose seed, seed)) choose Prod.fst
-      (fun seed _ result supported => by
-        cases (PMF.mem_support_pure_iff _ _).mp supported
-        rfl) output present
-    change fiberPosterior (law.map fun seed => (choose seed, seed)) Prod.fst output = _ at transfer
-    rw [transfer, PMF.map_bind]
-    simpa only [PMF.pure_map] using PMF.bind_pure (fiberPosterior law choose output)
-  · have notPresent : output ∉
-        ((law.map fun seed => (choose seed, seed)).map Prod.fst).support := by
-      simpa only [PMF.map_comp, Function.comp_def] using present
-    rw [fiberPosterior_of_not_mem_support _ _ notPresent,
-      fiberPosterior_of_not_mem_support _ _ present, PMF.map_comp]
-    change law.map id = law
-    exact PMF.map_id _
 
 private theorem independent_posterior_unread {A : Bool → Type} {Output : Type}
     (laws : (side : Bool) → PMF (A side)) (choose : ((side : Bool) → A side) → Output)
@@ -121,7 +99,7 @@ theorem schedulerMixture_posterior_unread {A : Bool → Type}
             fun values => (choose values past entry.beforeView, values))
           Prod.fst entry.command).map Prod.snd = independentProduct updated ∧
             updated false = laws false
-      rw [posterior_tag]
+      rw [fiberPosterior_tag]
       obtain ⟨updated, posteriorEq, unchanged⟩ := independent_posterior_unread current
         (fun values => choose values past entry.beforeView) entry.command
         (unread past entry (List.prefix_refl _))

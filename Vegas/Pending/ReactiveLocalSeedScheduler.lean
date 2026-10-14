@@ -60,14 +60,14 @@ on all lawful histories is a separate runtime obligation. -/
 structure LocalSeedController (Seed : Type) (owner : Player) (event : graph.EventId) where
   calendar : Seed → List Nat
   ordered : ∀ seed, (calendar seed).Pairwise (· ≤ ·)
-  service : Seed → CurrentSeedQuery graph → Option (app).Command
-  serviceFirst : Seed → CurrentSeedQuery graph → Bool
+  service : Seed → LocalSeedInput graph → Option (app).Command
+  serviceFirst : Seed → LocalSeedInput graph → Bool
   /-- An operational invariant of genuine executions, with no probabilistic premise. -/
   domain : (app).Execution → Prop
-  resolves : ∀ seed query execution command, domain execution →
+  resolves : ∀ seed (query : CurrentSeedQuery graph) execution command, domain execution →
     runtime.environmentSeedInput leaks owner event
       (execution.observeEnvironment app) = query.input →
-    execution.application.publicView.EventReady event → service seed query = some command →
+    execution.application.publicView.EventReady event → service seed query.input = some command →
       runtime.ResolvingSeedCommand leaks event execution command
 
 /-- Rejected traffic and all other nonresolving commands remain available to
@@ -114,9 +114,9 @@ variable {runtime leaks} {LocalSeed RestSeed : Type} {owner : Player} {event : g
 /-- Read the current calendar head and service status, never a future clock.
 A service reply ends the event; exhausted means no current activation remains. -/
 def reply (seed : LocalSeed) (query : CurrentSeedQuery graph) : LocalSeedReply (app).Command :=
-  let service := controller.service seed query
+  let service := controller.service seed query.input
   if (controller.calendar seed)[query.activationIndex]? = some query.input.elapsed then
-    if controller.serviceFirst seed query then
+    if controller.serviceFirst seed query.input then
       match service with
       | some command => .resolution command
       | none => .activation
@@ -239,10 +239,10 @@ theorem step_replaceLocal_of_log
 /-- Every resolution answer is an actual successful service lookup. -/
 theorem service_of_resolution (seed : LocalSeed) (query : CurrentSeedQuery graph)
     (command : (app).Command) (answer : controller.reply seed query = .resolution command) :
-    controller.service seed query = some command := by
+    controller.service seed query.input = some command := by
   unfold reply at answer
   split_ifs at answer <;>
-    cases serviceEq : controller.service seed query <;> simp_all
+    cases serviceEq : controller.service seed query.input <;> simp_all
 
 /-- A service answer completes the selected event on its genuine operational domain. -/
 theorem resolution_completes (seed : LocalSeed) (query : CurrentSeedQuery graph)

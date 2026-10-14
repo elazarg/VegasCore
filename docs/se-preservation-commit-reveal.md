@@ -8,8 +8,9 @@ sequential preservation theorem for the default bounded runtime with an
 exclusion payoff. Its counterpart construction and likelihood bounds are
 derived. A separate recovery runtime enforces persistent exclusion and automatic
 failure of excluded owners' later events, with checked packet accounting,
-one-packet SE extension to its raw menu, and agreement with the default runtime
-before exclusion. Constructing its law-preserving one-packet SE and proving
+one-packet SE extension to its raw menu, and exact history and information-fiber
+bijections with the default runtime before exclusion. Constructing its
+law-preserving one-packet SE and proving
 concurrent preservation remain open.
 Appendix A identifies the checked declarations; Section 9 lists the broader
 limitations.
@@ -2914,15 +2915,24 @@ needs its own review. What is known:
 | Actual recovery histories preserve permanent exclusion and native state validity | `Vegas.EventGraphRuntime.recoveryApplication_history_invariant`, `Vegas.EventGraphRuntime.recoveryApplication_exclusion_monotone` |
 | Clear recovery responses preserve the projected native execution and full recall | `Vegas.EventGraphRuntime.RecoveryProjection.respond_of_empty` |
 | Clear actual recovery histories are recovered exactly from their native projection | `Vegas.EventGraphRuntime.RecoveryProjection.liftExecution_execution_of_history_clear` |
+| All actual histories before public exclusion correspond bijectively, retaining every transition and recalled action | `Vegas.EventGraphRuntime.RecoveryProjection.clearHistoryEquiv` |
+| Complete raw information fibers at clear sites correspond bijectively, including zero-probability histories | `Vegas.EventGraphRuntime.RecoveryProjection.informationHistoryEquiv` |
+| Each command has equal full-execution probabilities at corresponding clear outcomes | `Vegas.EventGraphRuntime.RecoveryProjection.environmentStep_lift_apply` |
 | Recovery one-packet menus have zero count charges, including after exclusion | `Vegas.EventGraphRuntime.Recovery.onePacketMenu_countCharge_zero` |
 | Recovery one-packet SEs extend to the raw recovery game under count-evidence coverage and the deposit bound | `Vegas.EventGraphRuntime.Recovery.onePacket_raw_sequentialEquilibrium` |
 | Recovery and default one-packet choices agree before exclusion | `Vegas.EventGraphRuntime.Recovery.onePacketMenu_projected_of_empty` |
 | Actual environment-step coupling has both runtime marginals and equal projections at clear results | `Vegas.EventGraphRuntime.RecoveryProjection.exists_paired_environmentStep` |
 | Permanent exclusion implies source failure debt at actual decoded recovery prefixes | `Vegas.recoveryFailureRecord_history`, `Vegas.RecoveryFailureRecord.owesFailure_of_decodedPoint` |
 | The excluded set is exactly the owners of publicly failed events along actual recovery histories | `Vegas.EventGraphRuntime.publicExclusionRecord_history` |
+| Permanent exclusion fixes expected utility under every recovery continuation, without a completion premise | `Vegas.recovery_excluded_expect_exclusionBase` |
+| Latent source debt fixes expected terminal utility under actual recovery completion | `Vegas.recovery_owesFailure_expect_exclusionBase` |
+| Count-permitted commitments are accepted while ready and timely, including unusable private bindings | `Vegas.EventGraphRuntime.counted_binding_resolves_of_history` |
+| Authentic count-permitted openings are accepted while ready and timely if the owner's binding was not publicly missed | `Vegas.EventGraphRuntime.counted_opening_accepted` |
 | Coupled actual one-step kernels imply equal stopped readout laws | `GameTheory.Protocol.InformationModel.runBehavioralUntil_map_eq_of_paired_steps` |
 | An unread scheduler seed retains its law and independence in the actual joint execution law | `Interaction.ReactiveApplication.schedulerMixture_unread_execution` |
 | A scoped local seed controller retains the complete execution and query log under immutable-seed replay | `Vegas.EventGraphRuntime.LocalSeedController.runJoint_replay` |
+| The actual scheduler posterior conditioned on its transcript and query log factors with the local prior filtered by the recorded answers | `Vegas.EventGraphRuntime.LocalSeedController.posterior_transcript_log` |
+| Actual owner recall reconstructs every positive local query and its index along complete runs, under the operational-domain invariant | `Vegas.EventGraphRuntime.LocalSeedController.runJoint_initial_ownerLog` |
 
 The default-runtime theorem derives zero on-path count charges and the joint
 typed-readout and realized-payoff law, including the counterpart inputs.
@@ -2938,8 +2948,9 @@ recovery application implements automatic later failures and exclusion from
 readiness, with exact native agreement before exclusion and a sound count menu.
 Its one-packet SEs extend to the raw recovery game under the count-audit coverage
 and deposit assumptions. The intended-law one-packet SE still requires a
-continuation comparison across the first exclusion; projection alone does not
-supply it. A missed
+continuation comparison across the first exclusion and transport of actual reach
+weights and beliefs along the checked history and information-fiber bijections.
+A missed
 binding excludes its owner immediately; an accepted unopenable binding instead
 excludes it when its reveal fails. The recovery handlers retain that distinction;
 the concurrent runtime must also retain it when resetting a phase.

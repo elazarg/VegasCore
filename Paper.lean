@@ -313,6 +313,13 @@ import Vegas.Game.RecoverySourceFailure
 import Vegas.Pending.ExclusionPairedEnvironment
 import Vegas.Pending.ExclusionPublicRecord
 import Vegas.Pending.ReactiveLocalSeedReplay
+import Vegas.Pending.ExclusionInformationHistory
+import Vegas.Pending.ExclusionClearStepMass
+import Vegas.Game.RecoveryDecodedDebt
+import Vegas.Pending.ReactiveCountedBindingService
+import Vegas.Pending.ReactiveCountedOpeningAcceptance
+import Vegas.Pending.ReactiveLocalSeedPosteriorLog
+import Vegas.Pending.ReactiveLocalSeedOwnerRun
 import Interaction.ReactiveSchedulerFreshSeed
 import GameTheoryExtensions.Analysis.Protocol.StoppedKernelComparison
 
@@ -1972,6 +1979,51 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.EventGraphRuntime.LocalSeedController.runJoint_replay
+
+/-- info: 'Vegas.EventGraphRuntime.RecoveryProjection.clearHistoryEquiv' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.RecoveryProjection.clearHistoryEquiv
+
+/-- info: 'Vegas.EventGraphRuntime.RecoveryProjection.informationHistoryEquiv' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.RecoveryProjection.informationHistoryEquiv
+
+/-- info: 'Vegas.EventGraphRuntime.RecoveryProjection.environmentStep_lift_apply' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.RecoveryProjection.environmentStep_lift_apply
+
+/-- info: 'Vegas.recovery_excluded_expect_exclusionBase' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_excluded_expect_exclusionBase
+
+/-- info: 'Vegas.recovery_owesFailure_expect_exclusionBase' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_owesFailure_expect_exclusionBase
+
+/-- info: 'Vegas.EventGraphRuntime.counted_binding_resolves_of_history' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.counted_binding_resolves_of_history
+
+/-- info: 'Vegas.EventGraphRuntime.counted_opening_accepted' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.counted_opening_accepted
+
+/-- info: 'Vegas.EventGraphRuntime.LocalSeedController.posterior_transcript_log' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.LocalSeedController.posterior_transcript_log
+
+/-- info: 'Vegas.EventGraphRuntime.LocalSeedController.runJoint_initial_ownerLog' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.LocalSeedController.runJoint_initial_ownerLog
 
 open Vegas.EventGraphRuntime.BindingMemory.RecordsSubmittedBindings in
 /-- info:
