@@ -682,7 +682,8 @@ theorem OnePacketBaseInputs.lateCommitments_of_blind [Finite setup.intendedProto
       exact onePacket_beliefConverges setup leaks bounds horizon scheduler wellFormed
         sourceMixed sourceBayes mixed bayes spec.1 rfl (Classical.not_not.mp present.2.1)
         spec.2.choose_spec
-        (inputs.beliefInputs weights targetSequence assembled mixed bayes agent.1
+        (inputs.beliefInputs setup leaks bounds horizon scheduler weights targetSequence
+          assembled mixed bayes agent.1
           ⟨agent.2.1, present.1⟩ present.2.1 present.2.2.2 spec.1 spec.2.choose_spec
           (lateDecision present.2))
     · simp only [agentDistance, present, ↓reduceDIte]

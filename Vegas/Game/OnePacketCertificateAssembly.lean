@@ -195,7 +195,8 @@ def OnePacketBlindInputs.toOpenInputs {lowerUtility upperUtility : Player → �
     rw [atSite, Option.some.injEq, Prod.mk.injEq] at turnSite
     obtain ⟨pastEq, viewEq⟩ := turnSite
     subst pastEq viewEq
-    have beliefs := inputs.beliefInputs weights targetSequence assembled mixed bayes who site
+    have beliefs := inputs.beliefInputs setup leaks bounds horizon scheduler weights
+      targetSequence assembled mixed bayes who site
       forced debtFree atSite turn decision
     obtain ⟨policy, gainLe⟩ := onePacket_valueTransport_le setup leaks bounds horizon scheduler
       parameter utility excludedPayoff wellFormed contract timely retains lowerUtility
