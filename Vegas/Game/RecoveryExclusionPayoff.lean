@@ -3,6 +3,7 @@
 import Vegas.Game.OnePacketExclusionPayoff
 import Vegas.Pending.ExclusionProjection
 import Vegas.Pending.ExclusionInvariant
+import Vegas.Pending.ExclusionCountMenu
 
 /-! # Fixed utility after permanent runtime exclusion
 
@@ -59,6 +60,41 @@ theorem recoveryExclusionBase_of_not_excluded {Parameter : Type}
       exclusionBase setup parameter utility excludedPayoff leaks
         (some (RecoveryProjection.control (runtime setup) leaks control)) who := by
   simp only [recoveryExclusionBase, excluded, ↓reduceIte]
+
+/-- Normalizing private response aliases preserves the actual recovery utility. -/
+theorem recoveryExclusionBase_normalization {Parameter : Type}
+    (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (excludedPayoff : Player → ℝ)
+    (state : (recoveryApplication (runtime setup) leaks).ProtocolState) :
+    recoveryExclusionBase parameter utility excludedPayoff
+        ((Recovery.normalization (runtime setup) leaks).state state) =
+      recoveryExclusionBase parameter utility excludedPayoff state := by
+  cases state <;> rfl
+
+/-- Source utility bounds also bound recovery utility at every state, including
+permanent exclusion and the absence of a terminal source readout. -/
+theorem recoveryExclusionBase_mem_Icc {Parameter : Type}
+    (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (excludedPayoff lower upper : Player → ℝ)
+    (lower_le : ∀ outcome who, lower who ≤ utility outcome who)
+    (le_upper : ∀ outcome who, utility outcome who ≤ upper who)
+    (state : (recoveryApplication (runtime setup) leaks).ProtocolState) (who : Player) :
+    recoveryExclusionBase parameter utility excludedPayoff state who ∈
+      Set.Icc (min 0 (min (excludedPayoff who) (lower who)))
+        (max 0 (max (excludedPayoff who) (upper who))) := by
+  cases state with
+  | none => exact ⟨min_le_left _ _, le_max_left _ _⟩
+  | some control =>
+      by_cases excluded : who ∈ control.execution.application.excluded
+      · rw [recoveryExclusionBase_of_excluded parameter utility excludedPayoff control who excluded]
+        exact ⟨(min_le_right _ _).trans (min_le_left _ _),
+          (le_max_left _ _).trans (le_max_right _ _)⟩
+      · rw [recoveryExclusionBase_of_not_excluded parameter utility excludedPayoff control who
+          excluded]
+        exact exclusionBase_mem_Icc setup parameter utility excludedPayoff leaks lower upper
+          lower_le le_upper _ who
 
 /-- An initialized protocol state whose owner has permanently been excluded. -/
 def RecoveryExcluded (who : Player) :

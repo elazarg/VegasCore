@@ -3,6 +3,7 @@
 import Vegas.Game.RecoverySourceFailure
 import Vegas.Game.RecoveryExclusionPayoff
 import Vegas.Pending.ReactiveEventStability
+import Vegas.Pending.ExclusionService
 
 /-! # Source debts persist through concrete recovery continuations
 
@@ -216,11 +217,7 @@ theorem recovery_owesFailure_exclusionBase {Parameter : Type}
     (menu : (recoveryApplication (runtime setup) leaks).ResponseMenu)
     (initial : PMF (RecoveryState (graph setup))) (horizon : Nat)
     (scheduler : (recoveryApplication (runtime setup) leaks).Scheduler)
-    (completes : ∀ control,
-      ((recoveryApplication (runtime setup) leaks).protocol initial horizon scheduler).Trace
-        (some control) →
-      (recoveryApplication (runtime setup) leaks).terminal (some control) →
-        control.execution.application.native.config.cut.Terminal)
+    (completes : Recovery.CompletesPlay (runtime setup) leaks initial horizon scheduler)
     (certificate : (menu.protocol initial horizon scheduler).WellFoundedHistories)
     (players : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (who : Player) (history : (menu.protocol initial horizon scheduler).History)
@@ -257,11 +254,7 @@ theorem recovery_owesFailure_expect_exclusionBase {Parameter : Type}
     (menu : (recoveryApplication (runtime setup) leaks).ResponseMenu)
     (initial : PMF (RecoveryState (graph setup))) (horizon : Nat)
     (scheduler : (recoveryApplication (runtime setup) leaks).Scheduler)
-    (completes : ∀ control,
-      ((recoveryApplication (runtime setup) leaks).protocol initial horizon scheduler).Trace
-        (some control) →
-      (recoveryApplication (runtime setup) leaks).terminal (some control) →
-        control.execution.application.native.config.cut.Terminal)
+    (completes : Recovery.CompletesPlay (runtime setup) leaks initial horizon scheduler)
     (certificate : (menu.protocol initial horizon scheduler).WellFoundedHistories)
     (players : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (who : Player) (history : (menu.protocol initial horizon scheduler).History)

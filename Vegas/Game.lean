@@ -559,3 +559,4 @@ import Vegas.Game.RecoverySourceFailure
 import Vegas.Game.RecoveryOnePacketExtension
 import Vegas.Game.RecoveryExclusionPayoff
 import Vegas.Game.RecoveryDecodedDebt
+import Vegas.Game.RecoveryIndifference

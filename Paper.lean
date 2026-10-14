@@ -316,6 +316,11 @@ import Vegas.Pending.ReactiveLocalSeedReplay
 import Vegas.Pending.ExclusionInformationHistory
 import Vegas.Pending.ExclusionClearStepMass
 import Vegas.Game.RecoveryDecodedDebt
+import Vegas.Game.RecoveryIndifference
+import Vegas.Pending.ExclusionClearReach
+import Vegas.Pending.ReactiveCountedSeedService
+import Vegas.Pending.ReactiveLocalSeedLogRecovery
+import Vegas.Pending.ReactiveLocalSeedExhaustionRun
 import Vegas.Pending.ReactiveCountedBindingService
 import Vegas.Pending.ReactiveCountedOpeningAcceptance
 import Vegas.Pending.ReactiveLocalSeedPosteriorLog
@@ -2004,6 +2009,41 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.recovery_owesFailure_expect_exclusionBase
+
+/-- info: 'Vegas.recovery_gain_eq_zero_of_owes' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_gain_eq_zero_of_owes
+
+/-- info: 'Vegas.recoveryExclusionBase_normalization' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recoveryExclusionBase_normalization
+
+/-- info: 'Vegas.EventGraphRuntime.Recovery.CompletesPlay.clear_native' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.Recovery.CompletesPlay.clear_native
+
+/-- info: 'Vegas.EventGraphRuntime.RecoveryProjection.informationHistoryEquiv_reachWeight'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.RecoveryProjection.informationHistoryEquiv_reachWeight
+
+/-- info: 'Vegas.EventGraphRuntime.countedLocalSeedController' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.countedLocalSeedController
+
+/-- info: 'Vegas.EventGraphRuntime.LocalSeedController.CountedQueryLog.eq_of_unsent_signature'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.LocalSeedController.CountedQueryLog.eq_of_unsent_signature
+
+/-- info: 'Vegas.EventGraphRuntime.LocalSeedController.runJoint_ready_initial_exhaustionRange'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.LocalSeedController.runJoint_ready_initial_exhaustionRange
 
 /-- info: 'Vegas.EventGraphRuntime.counted_binding_resolves_of_history' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

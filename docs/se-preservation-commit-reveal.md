@@ -2926,6 +2926,8 @@ needs its own review. What is known:
 | The excluded set is exactly the owners of publicly failed events along actual recovery histories | `Vegas.EventGraphRuntime.publicExclusionRecord_history` |
 | Permanent exclusion fixes expected utility under every recovery continuation, without a completion premise | `Vegas.recovery_excluded_expect_exclusionBase` |
 | Latent source debt fixes expected terminal utility under actual recovery completion | `Vegas.recovery_owesFailure_expect_exclusionBase` |
+| Excluded or indebted histories give zero whole-policy gain, also after integration over the actual belief | `Vegas.recovery_gain_eq_zero_of_owes` |
+| Complete clear-history and raw information-fiber bijections preserve exact behavioral reach weights | `Vegas.EventGraphRuntime.RecoveryProjection.informationHistoryEquiv_reachWeight` |
 | Count-permitted commitments are accepted while ready and timely, including unusable private bindings | `Vegas.EventGraphRuntime.counted_binding_resolves_of_history` |
 | Authentic count-permitted openings are accepted while ready and timely if the owner's binding was not publicly missed | `Vegas.EventGraphRuntime.counted_opening_accepted` |
 | Coupled actual one-step kernels imply equal stopped readout laws | `GameTheory.Protocol.InformationModel.runBehavioralUntil_map_eq_of_paired_steps` |
@@ -2933,6 +2935,8 @@ needs its own review. What is known:
 | A scoped local seed controller retains the complete execution and query log under immutable-seed replay | `Vegas.EventGraphRuntime.LocalSeedController.runJoint_replay` |
 | The actual scheduler posterior conditioned on its transcript and query log factors with the local prior filtered by the recorded answers | `Vegas.EventGraphRuntime.LocalSeedController.posterior_transcript_log` |
 | Actual owner recall reconstructs every positive local query and its index along complete runs, under the operational-domain invariant | `Vegas.EventGraphRuntime.LocalSeedController.runJoint_initial_ownerLog` |
+| Counted unsent query logs are determined by their positive-query history and exhaustion count | `Vegas.EventGraphRuntime.LocalSeedController.CountedQueryLog.eq_of_unsent_signature` |
+| The concrete local service derives packet inclusion and expiry resolution on genuine clean one-packet histories | `Vegas.EventGraphRuntime.countedLocalSeedController` |
 
 The default-runtime theorem derives zero on-path count charges and the joint
 typed-readout and realized-payoff law, including the counterpart inputs.
@@ -2948,8 +2952,10 @@ recovery application implements automatic later failures and exclusion from
 readiness, with exact native agreement before exclusion and a sound count menu.
 Its one-packet SEs extend to the raw recovery game under the count-audit coverage
 and deposit assumptions. The intended-law one-packet SE still requires a
-continuation comparison across the first exclusion and transport of actual reach
-weights and beliefs along the checked history and information-fiber bijections.
+continuation comparison across the first exclusion and transport of actual Bayes
+beliefs to the bounded menu. Exact raw reach weights along the checked history
+and information-fiber bijections are established; bounded-menu belief transport
+remains separate.
 A missed
 binding excludes its owner immediately; an accepted unopenable binding instead
 excludes it when its reveal fails. The recovery handlers retain that distinction;

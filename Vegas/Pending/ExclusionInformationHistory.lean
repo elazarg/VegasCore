@@ -89,7 +89,7 @@ theorem infoOf_recoveryHistory (initial : PMF (RecoveryState graph))
   simp only [ReactiveApplication.information, ReactiveApplication.info]
   exact observe_lift runtime leaks who history.state
 
-private theorem recoveryFiber_empty (who : Player)
+theorem informationFiber_clear (who : Player)
     (reference : (runtime.reactiveApplication leaks).Control)
     (active : reference.actor = some who)
     (state : (runtime.recoveryApplication leaks).ProtocolState)
@@ -106,7 +106,7 @@ private theorem recoveryFiber_empty (who : Player)
     exact viewEq
   · cases same
 
-private theorem nativeFiber_record (initial : PMF (RecoveryState graph))
+theorem informationFiber_record (initial : PMF (RecoveryState graph))
     (initialized : ∀ state ∈ initial.support, ∃ inputs,
       state = (⟨State.initial inputs, ∅⟩ : RecoveryState graph))
     (horizon : Nat) (scheduler : (runtime.recoveryApplication leaks).Scheduler)
@@ -161,25 +161,26 @@ def informationHistoryEquiv (initial : PMF (RecoveryState graph))
   toFun history := by
     have same := history.2
     simp only [ReactiveApplication.information, ReactiveApplication.info] at same
-    have clear := recoveryFiber_empty runtime leaks who reference active history.1.state same
+    have clear := informationFiber_clear runtime leaks who reference active history.1.state same
     refine ⟨nativeHistory runtime leaks initial horizon scheduler history.1 clear, ?_⟩
     rw [infoOf_nativeHistory, history.2, information_liftInformation]
   invFun history := by
     have same := history.2
     simp only [ReactiveApplication.information, ReactiveApplication.info] at same
-    have clear := nativeFiber_record runtime leaks initial initialized horizon scheduler who
+    have clear := informationFiber_record runtime leaks initial initialized horizon scheduler who
       reference active valid history.1 same
     refine ⟨recoveryHistory runtime leaks initial initialized horizon scheduler history.1 clear, ?_⟩
     rw [infoOf_recoveryHistory, history.2]
   left_inv history := by
     apply Subtype.ext
     exact recoveryHistory_nativeHistory runtime leaks initial initialized horizon scheduler
-      history.1.trace (recoveryFiber_empty runtime leaks who reference active history.1.state
+      history.1.trace (informationFiber_clear runtime leaks who reference active history.1.state
         (by simpa only [ReactiveApplication.information, ReactiveApplication.info] using history.2))
   right_inv history := by
     apply Subtype.ext
     exact nativeHistory_recoveryHistory runtime leaks initial initialized horizon scheduler
-      history.1.trace (nativeFiber_record runtime leaks initial initialized horizon scheduler who
+      history.1.trace (informationFiber_record runtime leaks initial initialized horizon scheduler
+        who
         reference active valid history.1
         (by simpa only [ReactiveApplication.information, ReactiveApplication.info] using history.2))
 
