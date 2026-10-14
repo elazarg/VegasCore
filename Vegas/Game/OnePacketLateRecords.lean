@@ -12,7 +12,7 @@ the factorization error over one less it: the reach of a regular history is its
 factored weight, the owner mass of the site's recall times a base weight, the
 base laws of the two sites agree by the owner's hidden swap, and the irregular
 histories carry little reach (`Vegas.keyedRecord_near`). So, with independent
-hidden initial cells and a second player beside each owner, the law of records at
+hidden initial cells, the law of records at
 a fixed late delivery of each key serves every late delivery with that key, up to
 a vanishing drift (`Vegas.OnePacketBaseInputs.lateRecords_of_keyed`).
 -/
@@ -86,7 +86,7 @@ theorem keyedRecord_near
     (mixed : (targetSequence n).IsFullyMixed)
     {antichain : (onePacketN).DecisionInformationAntichain}
     (bayes : BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n) antichain)
-    {who : Player} (observer : Player) (distinct : observer ≠ who)
+    {who : Player}
     {site₁ site₂ : (onePacketN).InformationSite who}
     {past₁ past₂ : List (application setup leaks).PlayerEntry}
     {view₁ view₂ : (application setup leaks).PlayerView}
@@ -277,7 +277,7 @@ theorem keyedRecord_near
     refine bound.trans (mul_le_mul_of_nonneg_right le ?_)
     exact tsum_nonneg fun history => by split_ifs <;> simp [reach]
   have agree := ownerSwap_baseLawAgrees_late wellFormed independent coversInputs (sequence n)
-    (operationalWeight setup leaks who (steps.mass n)) observer distinct firstSite secondSite
+    (operationalWeight setup leaks who (steps.mass n)) firstSite secondSite
     sameKey firstDebtFree secondDebtFree firstLate secondLate payoff
   exact recordLaw_near_of_baseLaw (targetSequence n) site₁ site₂ reach base regular
     (fun _ => ENNReal.toReal_nonneg) (fun history _ => baseNonneg history) bayesAt
@@ -292,7 +292,7 @@ variable [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
 
 open Classical in
 /-- **Late records.** For a well-formed setup with independent hidden initial
-cells and a second player beside each owner, along every fully mixed Bayes
+cells, along every fully mixed Bayes
 sequence of assembled profiles, at late deliveries of agents that are neither
 free nor owing, the beliefs' laws of operational records give the certificate's
 lumped failure within a vanishing drift of its expectation under one record law
@@ -301,7 +301,7 @@ at each late-delivery key: the law at a fixed site with that key
 theorem OnePacketBaseInputs.lateRecords_of_keyed
     {sequence : ℕ → setup.intendedModel.BehavioralAssessment} {slots : Nat}
     (inputs : OnePacketBaseInputs setup leaks bounds horizon scheduler sequence slots)
-    (wellFormed : setup.WellFormed) (other : ∀ who : Player, ∃ observer, observer ≠ who)
+    (wellFormed : setup.WellFormed)
     (independent : setup.PrivateInputsIndependent)
     (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
@@ -401,7 +401,6 @@ theorem OnePacketBaseInputs.lateRecords_of_keyed
       obtain ⟨⟨past', view'⟩, atSite', event', turn'⟩ := lateDelivery_input setup leaks keyed'.1
       let second := inputs.counterpartInputs weights targetSequence assembled mixed bayes who
         found.choose notFree' notOwing' atSite' turn'
-      obtain ⟨observer, distinct⟩ := other who
       let ε := fun n => (1 + own.steps.error n) ^ (2 * horizon + 1) - 1
       let ρ := fun n => (Nat.card ((onePacketN).InformationHistory who site.1) : ℝ) *
           (first.slack * first.scale n / first.floors n ^ first.depth) +
@@ -432,7 +431,7 @@ theorem OnePacketBaseInputs.lateRecords_of_keyed
         by_cases smallAt : ε n < 1
         · simp only [smallAt, ↓reduceIte]
           exact keyedRecord_near wellFormed independent inputs.coversInputs n (mixed n)
-            (bayes n) observer distinct atSite atSite' (siteKey.trans foundKey.symm) debtFree
+            (bayes n) atSite atSite' (siteKey.trans foundKey.symm) debtFree
             (siteDebtFree_of_not_owing setup leaks bounds horizon scheduler notOwing') keyed.1
             keyed'.1 own.steps first second smallAt _ (lumpedUnit n who key option)
         · simp only [smallAt, ↓reduceIte]
