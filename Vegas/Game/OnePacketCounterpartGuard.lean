@@ -175,10 +175,10 @@ variable {p q : ProtocolState setup.program}
   {publicAgree : PublicCellsAgree setup p q} {succeed : CommitmentCellsSucceed setup p q}
 
 /-- **The inputs of a native history are allowed** by the swap between its
-decoded point and the end of an intended history, when the initial handles are
-compatible with the swap. -/
-theorem inputs_mem_swapAllowed_of_decoded {second : setup.intendedProtocol.History}
-    (secondState : second.state = some q)
+decoded point and a point finding the cells of a supported setup draw, when the
+initial handles are compatible with the swap. -/
+theorem inputs_mem_swapAllowed_of_drawn
+    (drawn : ∃ other ∈ setup.initialLaw.support, InitialCellsAt other q)
     (handlePairs : Handle (graph setup) → Option (Raw L × Raw L))
     (compatible : (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
       handlePairs).InitialHandlesCompatible)
@@ -191,7 +191,7 @@ theorem inputs_mem_swapAllowed_of_decoded {second : setup.intendedProtocol.Histo
     decoded_initialCellsAt trace control rfl
   rw [decodedP, Option.some.injEq] at pointEq
   subst pointEq
-  obtain ⟨other, otherMember, otherFound⟩ := exists_initialCellsAt second.trace secondState
+  obtain ⟨other, otherMember, otherFound⟩ := drawn
   have drawnMember : ∀ draw ∈ setup.initialLaw.support,
       EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs draw) ∈
         (initialLaw setup).support := fun draw drawMember => by
@@ -204,6 +204,22 @@ theorem inputs_mem_swapAllowed_of_decoded {second : setup.intendedProtocol.Histo
     funext (inputs_betweenPairs found otherFound)
   rw [swapped]
   exact drawnMember other otherMember
+
+/-- **The inputs of a native history are allowed** by the swap between its
+decoded point and the end of an intended history, when the initial handles are
+compatible with the swap. -/
+theorem inputs_mem_swapAllowed_of_decoded {second : setup.intendedProtocol.History}
+    (secondState : second.state = some q)
+    (handlePairs : Handle (graph setup) → Option (Raw L × Raw L))
+    (compatible : (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
+      handlePairs).InitialHandlesCompatible)
+    {control : (application setup leaks).Control}
+    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
+    (decodedP : decodedPoint setup control.execution.application.config = some p) :
+    control.execution.application.config.inputs ∈
+      swapAllowed (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) :=
+  inputs_mem_swapAllowed_of_drawn (exists_initialCellsAt second.trace secondState) handlePairs
+    compatible trace decodedP
 
 /-- **Ready or completed reveals read agreeing commitments.** At the end of a
 native history whose decoded point `p` a player `who` observes like the state
@@ -277,24 +293,23 @@ theorem bindingCellsAgree_of_decoded (wellFormed : setup.WellFormed)
       (ProtocolState.nodup_currentConfig setup.program setup.namesNodup p) revealedP publishedP,
       valueEq]
 
-/-- **The swap guard toward an intended history.** At the end of a native
-history whose decoded point `p` a player `who` observes like the state `q` of an
-intended history, the swap between `p` and `q`, at the table of handles
-accepted at the end, is guarded, provided every ready resolve event there
-belongs to `who`. -/
-theorem swapGuardState_of_decoded (wellFormed : setup.WellFormed)
-    {second : setup.intendedProtocol.History} (secondState : second.state = some q)
-    (who : Player)
-    (sameView : ProtocolState.observe who setup.program p =
-      ProtocolState.observe who setup.program q)
+/-- **The swap guard toward a point.** At the end of a native history with
+decoded point `p`, the swap between `p` and a point `q` finding the cells of a
+supported setup draw, at the table of handles accepted at the end, is guarded
+when `p` and `q` agree on the commitment every ready or completed reveal reads. -/
+theorem swapGuardState_of_agree
+    (drawn : ∃ other ∈ setup.initialLaw.support, InitialCellsAt other q)
     {control : (application setup leaks).Control}
     (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
     (decodedP : decodedPoint setup control.execution.application.config = some p)
-    (staticQ : ProtocolState.StaticAt setup.program [] (Revelations.initial setup.context) q)
-    (readyOwn : ∀ event, control.execution.application.config.cut.Ready event →
+    (agree : ∀ event, (control.execution.application.config.cut.Ready event ∨
+        event ∈ control.execution.application.config.cut.completed) →
       ∀ owner payload binding checks outputEq codeEq,
         nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq →
-          owner = who)
+          ProtocolState.cell? setup.program p (fieldCell setup binding.field).1
+              (.commitment owner payload) =
+            ProtocolState.cell? setup.program q (fieldCell setup binding.field).1
+              (.commitment owner payload))
     {table : AcceptedHandles (graph setup)}
     (tableEq : control.execution.application.accepted = table) :
     SwapGuardState setup (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
@@ -303,15 +318,11 @@ theorem swapGuardState_of_decoded (wellFormed : setup.WellFormed)
         (betweenHandlePairs setup p q table))) (some control) := by
   subst tableEq
   have injective := acceptedInjective_of_trace bounds trace
-  have agree := fun event active owner payload binding checks outputEq codeEq view =>
-    bindingCellsAgree_of_decoded (event := event) (owner := owner) (payload := payload)
-      (binding := binding) (checks := checks) (outputEq := outputEq) (codeEq := codeEq)
-      wellFormed secondState who sameView trace decodedP staticQ readyOwn active view
   refine ⟨?_, fun event candidate accepted =>
     bindCompatible_betweenHandlePairs injective accepted, fun event active =>
     revealFixed_between injective _ (fun _ _ held => held) event (agree event active),
     fun player recalled member submission sent => ?_⟩
-  · exact inputs_mem_swapAllowed_of_decoded secondState _
+  · exact inputs_mem_swapAllowed_of_drawn drawn _
       (initialHandlesCompatible_betweenHandlePairs injective
         (fun _ _ _ layoutEq => accepted_initial_of_trace trace layoutEq))
       trace decodedP
@@ -336,5 +347,36 @@ theorem swapGuardState_of_decoded (wellFormed : setup.WellFormed)
         · unfold betweenHandlePairs
           simp only [found, ↓reduceDIte]
           rfl
+
+/-- **The swap guard toward an intended history.** At the end of a native
+history whose decoded point `p` a player `who` observes like the state `q` of an
+intended history, the swap between `p` and `q`, at the table of handles
+accepted at the end, is guarded, provided every ready resolve event there
+belongs to `who`. -/
+theorem swapGuardState_of_decoded (wellFormed : setup.WellFormed)
+    {second : setup.intendedProtocol.History} (secondState : second.state = some q)
+    (who : Player)
+    (sameView : ProtocolState.observe who setup.program p =
+      ProtocolState.observe who setup.program q)
+    {control : (application setup leaks).Control}
+    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
+    (decodedP : decodedPoint setup control.execution.application.config = some p)
+    (staticQ : ProtocolState.StaticAt setup.program [] (Revelations.initial setup.context) q)
+    (readyOwn : ∀ event, control.execution.application.config.cut.Ready event →
+      ∀ owner payload binding checks outputEq codeEq,
+        nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq →
+          owner = who)
+    {table : AcceptedHandles (graph setup)}
+    (tableEq : control.execution.application.accepted = table) :
+    SwapGuardState setup (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
+        (betweenHandlePairs setup p q table))
+      (swapAllowed (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
+        (betweenHandlePairs setup p q table))) (some control) :=
+  swapGuardState_of_agree (exists_initialCellsAt second.trace secondState) trace decodedP
+    (fun event active owner payload binding checks outputEq codeEq view =>
+      bindingCellsAgree_of_decoded (event := event) (owner := owner) (payload := payload)
+        (binding := binding) (checks := checks) (outputEq := outputEq) (codeEq := codeEq)
+        wellFormed secondState who sameView trace decodedP staticQ readyOwn active view)
+    tableEq
 
 end Vegas
