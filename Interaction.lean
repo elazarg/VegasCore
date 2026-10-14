@@ -126,3 +126,4 @@ import Interaction.ScheduledOpening
 import Interaction.ScheduledOpeningPosterior
 import Interaction.ScheduledOpeningSupport
 import Interaction.ReactiveStoppedState
+import Interaction.ReactiveSchedulerImplementation

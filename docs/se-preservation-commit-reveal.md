@@ -1,15 +1,21 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**Progress: 2/4 stages checked · sequential runtime: assembling · concurrency: pending.**
+**Progress: 2/4 stages checked · sequential runtime: exclusion adapter · concurrency: pending.**
 
 Status: partly mechanized mathematics. The checked results include Proposition
 1(1) for events run one at a time, Lemma C, the finite core of Lemma T, and a
-conditional sequential compilation theorem. In that theorem, own-history replay,
-common operational fibers and value-blind continuation estimates are derived;
-construction of honest counterparts remains an input. The unconditional
-sequential theorem and the concurrent preservation theorem remain open.
+sequential preservation theorem for the default bounded runtime with an
+exclusion payoff. Its counterpart construction and likelihood bounds are
+derived. The exact $C_1$ runtime still needs persistent exclusion and automatic
+failure of excluded owners' later events. Its sequential preservation theorem
+and the concurrent preservation theorem remain open.
 Appendix A identifies the checked declarations; Section 9 lists the broader
 limitations.
+
+The checked runtime results assume independent private initial cells, which
+holds automatically for an empty source context. Correlated private priors
+remain outside the checked proof; independence is a proof restriction, not a
+claimed necessary condition for preservation.
 
 ## Summary
 
@@ -1585,12 +1591,15 @@ a component $\xi_e$ private to $e$, and a remainder.
 (S2) constrains seeds, not endogenous quantities. Choices, readiness clocks
 $r_f$ of later events and the remainder's behaviour may all depend on $\xi_e$,
 through $j$'s activations, its emissions and $e$'s completion. What (S2–S3)
-give is freshness: at any history at which $e$ is unresolved, $\xi_e$ is
-independent of everything else in the run given $j$'s activations for $e$ so
-far. Nothing before $r_e$ reads $\xi_e$, and afterwards the only
-$\xi_e$-dependent data in the history are those activations, which $j$ sees.
-In particular the builder cannot show $j$ a signal about $j$'s own future
-activations.
+give is a factorization through the event's local transcript: its activations,
+the owner's emissions, and the fact that it has not resolved yet. Conditioning
+on this transcript filters $\xi_e$; it need not retain its original law. For
+example, surviving an eligible inclusion tick can reveal that its coin failed.
+Nothing before $r_e$ reads $\xi_e$, and afterwards its only effects are the
+local activations and success or failure specified in (S1). The builder cannot
+give $j$ an additional signal about its future activations beyond the posterior
+determined by this local transcript. The timing argument in 4.5 uses this
+filtered law.
 
 The remainder may depend on the whole history, subject to per-event
 value-blindness and content-blind leaks:
@@ -2786,10 +2795,10 @@ player needs: the source game $\Gamma^X$.
   Theorems 2 and 3 apply unchanged. Whether $C_0$ preserves SE in that order
   is not settled.
 - **Mechanization.** Appendix A identifies the checked finite transport lemma,
-  sequential source extension, count-audit extension and conditional runtime
-  compilation theorem. The unconditional sequential and concurrent theorems
-  remain open; their prose proofs are not substitutes for the missing Lean
-  constructions.
+  sequential source extension, count-audit extension and preservation theorem
+  for the default runtime with an exclusion payoff. That runtime can still
+  activate an excluded owner at later events. The exact $C_1$ exclusion rules,
+  their sequential preservation adapter and the concurrent theorem remain open.
 
 **Activations versus a realistic clock.** In the model, the builder
 *activates* players: it decides when each player may emit. Real players are
@@ -2892,17 +2901,31 @@ needs its own review. What is known:
 | Source-weight domination from bounds on paired actual history steps | `Vegas.upperSourceWeight_le_of_paired_steps` |
 | Actual whole-history repair through arbitrary responses and scheduler steps, under original-prefix guards | `Vegas.repair_binding_history` |
 | Regular counterpart from concrete private-binding repairs and an intended witness | `Vegas.counterpart_of_intended_witness_repairs` |
+| Likelihood bound from paired actual histories and response comparisons | `Vegas.upperSourceWeight_le_of_paired_responses` |
+| Concrete regular counterpart with quantitative reach domination | `Vegas.reach_le_counterpart_certificate_of_repairs` |
+| Counterpart inputs assembled from actual private-binding repairs | `Vegas.OnePacketCounterpartInputs.ofBindingRepairs` |
+| SE preservation by the default bounded raw runtime with exclusion payoff, with zero count charges and the intended joint readout/payoff law | `Vegas.onePacket_intended_raw_sequentialEquilibrium_preserved` |
+| Typed source commit-phase rollback preserves all attempted private histories | `Vegas.SourceProgram.CommitPrefix.Close.retry_checkpoint` |
+| Any chain of these actual phase closes resets at most once per player | `Vegas.SourceProgram.CommitCloseChain.reset_bound` |
+| Behavioral realization of a fixed private scheduler seed retains the joint seed/execution law | `Interaction.ReactiveApplication.schedulerMixture_joint` |
 
-The conditional compilation theorem derives zero on-path count charges and the
-joint typed-readout and realized-payoff law. Its honest-counterpart premise is
-not yet discharged. Guarded swaps of raw values preserve the failure status of
+The default-runtime theorem derives zero on-path count charges and the joint
+typed-readout and realized-payoff law, including the counterpart inputs.
+Guarded swaps of raw values preserve the failure status of
 completed bindings (`Vegas.SwapGuard.value_eq_failure_iff`), so they cannot
 replace an accepted unopenable binding by a valid value. Such a replacement
 requires a directed repair preserving the actual operational record and the
 observing player's full information. The whole-history repair and its finite
 composition now construct such regular counterparts from an intended witness.
-The remaining sequential obligation is their likelihood bound and its assembly
-into the compilation theorem's counterpart inputs.
+Their likelihood bound and assembly are checked. This theorem uses the default
+runtime with the exclusion payoff read from its terminal store. It does not yet
+implement $C_1$'s automatic later failures and exclusion from readiness. A missed
+binding excludes its owner immediately; an accepted unopenable binding instead
+excludes it when its reveal fails. The recovery runtime must retain that
+distinction when enforcing exclusion and, under concurrency, resetting a phase.
+The checked phase-attempt and rollback primitives do not yet define the full
+concurrent source information model or recovery runtime. Scheduler-seed
+realization does not yet establish the local seed-access restrictions of (S1–S3).
 
 A mechanization must also check the following, beyond the statements above:
 

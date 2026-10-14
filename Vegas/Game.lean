@@ -549,3 +549,8 @@ import Vegas.Game.OnePacketRecallPrefix
 import Vegas.Game.OnePacketDirectedRepairOwnerResponse
 import Vegas.Game.OnePacketDirectedRepairHistory
 import Vegas.Game.OnePacketBindingRepairWitness
+import Vegas.Game.OnePacketRepairedResponderForced
+import Vegas.Game.OnePacketPairedLikelihoodWeight
+import Vegas.Game.OnePacketRepairCertificateCounterpart
+import Vegas.Game.OnePacketBindingRepairAssembly
+import Vegas.Game.OnePacketBindingRepairCompilation

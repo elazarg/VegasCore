@@ -301,6 +301,10 @@ import Vegas.Game.OnePacketPairedWeight
 import Vegas.Game.OnePacketPairedCompletionMass
 import Vegas.Pending.ReactiveBindingAcceptedRecords
 import Vegas.Game.OnePacketBindingRepairWitness
+import Vegas.Game.OnePacketRepairedResponderForced
+import Vegas.Game.OnePacketBindingRepairCompilation
+import Vegas.Source.CommitPhaseRecovery
+import Interaction.ReactiveSchedulerImplementation
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -1843,6 +1847,46 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.counterpart_of_intended_witness_repairs
+
+/-- info: 'Vegas.forcedAgent_of_intended_witness_repairs' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.forcedAgent_of_intended_witness_repairs
+
+/-- info: 'Vegas.upperSourceWeight_le_of_paired_responses' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.upperSourceWeight_le_of_paired_responses
+
+/-- info: 'Vegas.reach_le_counterpart_certificate_of_repairs' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.reach_le_counterpart_certificate_of_repairs
+
+/-- info: 'Vegas.OnePacketCounterpartInputs.ofBindingRepairs' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.OnePacketCounterpartInputs.ofBindingRepairs
+
+/-- info: 'Vegas.onePacket_intended_raw_sequentialEquilibrium_preserved' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.onePacket_intended_raw_sequentialEquilibrium_preserved
+
+/-- info: 'Vegas.SourceProgram.CommitPrefix.Close.retry_checkpoint' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.CommitPrefix.Close.retry_checkpoint
+
+/-- info: 'Vegas.SourceProgram.CommitCloseChain.reset_bound' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.CommitCloseChain.reset_bound
+
+/-- info: 'Interaction.ReactiveApplication.schedulerMixture_joint' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.ReactiveApplication.schedulerMixture_joint
 
 open Vegas.EventGraphRuntime.BindingMemory.RecordsSubmittedBindings in
 /-- info:

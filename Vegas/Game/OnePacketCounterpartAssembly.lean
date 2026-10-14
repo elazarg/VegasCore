@@ -223,22 +223,14 @@ theorem eventually_error_small {error : ℕ → ℝ} (tendsto : Tendsto error at
   obtain ⟨bound, holds⟩ := Filter.eventually_atTop.mp (half.and one)
   exact ⟨bound, holds⟩
 
-/-- **The honest-counterpart inputs of the certificate.** For a well-formed setup
-with independent hidden initial cells, under a fully mixed source sequence, at
-the tremble scale over the combined floor to depth `2 * horizon + 2`, along a
-fully mixed sequence of assembled profiles, at a forced own-turn site whose agent
-owes no failure, the honest-counterpart inputs hold, given that counterpart cells
-succeed. -/
-def OnePacketCounterpartInputs.ofCounterpartSwap (wellFormed : setup.WellFormed)
-    (independent : setup.PrivateInputsIndependent)
-    (cellsSucceed : CounterpartCellsSucceed setup leaks bounds horizon scheduler)
+/-- Certificate reach comparisons at the combined-floor tremble scale yield
+uniform counterpart inputs. The eventual ratio estimate bounds the tail;
+finite fully mixed early stages supply the remaining uniform slack. -/
+def OnePacketCounterpartInputs.ofReachComparisons
     {sequence : ℕ → setup.intendedModel.BehavioralAssessment}
-    (mixedSource : ∀ n, (sequence n).IsFullyMixed)
     {scale : ℕ → ℝ} (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     (scaleEq : ∀ n, scale n = trembleScale
       (combinedFloor setup leaks bounds horizon scheduler (sequence n)) (2 * horizon + 2) n)
-    (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     {slots : Nat}
     (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
     {targetSequence : ℕ → (onePacketN).BehavioralAssessment}
@@ -246,11 +238,28 @@ def OnePacketCounterpartInputs.ofCounterpartSwap (wellFormed : setup.WellFormed)
       scale_le_one weights targetSequence)
     (mixed : ∀ n, (targetSequence n).IsFullyMixed)
     {who : Player} {site : (onePacketN).InformationSite who}
-    (forced : ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site))
-    (notOwing : ¬ OwingAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site))
-    {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView} (atSite : site.1 = some (past, view))
-    {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? who = some event) :
+    (comparisons :
+      let floor := fun n => combinedFloor setup leaks bounds horizon scheduler (sequence n)
+      ∀ n (history : (onePacketN).InformationHistory who site.1),
+      ∃ counterpart : (onePacketN).InformationHistory who site.1,
+        ¬ RegularTrace setup leaks bounds horizon scheduler (sequence n) who history.1.trace →
+        RegularTrace setup leaks bounds horizon scheduler (sequence n) who counterpart.1.trace ∧
+        ((1 + slotError (scale n) (floor n) (trembleSlots setup bounds).card) ^
+            (2 * horizon + 1) - 1 < 1 →
+        ((onePacketN).historyReachWeight
+            (certificateProfile setup leaks bounds horizon scheduler sequence scale scale_pos
+              scale_le_one weights n) history.1).toReal ≤
+          (1 + ((1 + slotError (scale n) (floor n) (trembleSlots setup bounds).card) ^
+              (2 * horizon + 1) - 1)) /
+            (1 - ((1 + slotError (scale n) (floor n) (trembleSlots setup bounds).card) ^
+              (2 * horizon + 1) - 1)) *
+            (slotError (scale n) (floor n) (trembleSlots setup bounds).card *
+              (1 + slotError (scale n) (floor n) (trembleSlots setup bounds).card) *
+              counterpartFactor setup leaks bounds horizon scheduler sequence scale floor n ^
+                (2 * horizon + 1)) *
+          ((onePacketN).historyReachWeight
+            (certificateProfile setup leaks bounds horizon scheduler sequence scale scale_pos
+              scale_le_one weights n) counterpart.1).toReal)) :
     OnePacketCounterpartInputs setup leaks bounds horizon scheduler sequence targetSequence
       site :=
   let floor := fun n => combinedFloor setup leaks bounds horizon scheduler (sequence n)
@@ -260,19 +269,6 @@ def OnePacketCounterpartInputs.ofCounterpartSwap (wellFormed : setup.WellFormed)
     scheduler (sequence n)
   have floored : ∀ n, floor n ≤ contentFloor setup leaks bounds horizon scheduler (sequence n) :=
     fun n => combinedFloor_le_contentFloor setup leaks bounds horizon scheduler (sequence n)
-  have small : ∀ n, scale n ≤ 1 / 4 := fun n => by
-    rw [scaleEq n]
-    exact trembleScale_le_quarter (floor_pos n).le (floor_le_one n)
-  have scale_le_floor : ∀ n, scale n ≤ floor n := fun n => by
-    rw [scaleEq n]
-    unfold trembleScale
-    have power : floor n ^ (2 * horizon + 2 + 1) ≤ floor n := by
-      calc floor n ^ (2 * horizon + 2 + 1) = floor n * floor n ^ (2 * horizon + 2) := by ring
-        _ ≤ floor n * 1 := mul_le_mul_of_nonneg_left
-            (pow_le_one₀ (floor_pos n).le (floor_le_one n)) (floor_pos n).le
-        _ = floor n := mul_one _
-    rw [div_le_iff₀ (by positivity)]
-    nlinarith [Nat.cast_nonneg (α := ℝ) n, floor_pos n]
   have error_tendsto : Tendsto (fun n => slotError (scale n) (floor n)
       (trembleSlots setup bounds).card) atTop (nhds 0) := by
     have tendsto := tendsto_slotError floor floor_pos floor_le_one (2 * horizon + 2)
@@ -280,13 +276,9 @@ def OnePacketCounterpartInputs.ofCounterpartSwap (wellFormed : setup.WellFormed)
     convert tendsto using 1
     funext n
     rw [scaleEq n]
-  have covered : BindingFieldsCovered bounds := bindingFieldsCovered_of_covers covers coversInputs
   have strategyEq : ∀ n, (targetSequence n).strategy = certificateProfile setup leaks bounds
       horizon scheduler sequence scale scale_pos scale_le_one weights n := assembled
-  have chosen := fun n history => exists_counterpart_certificate wellFormed independent covered
-    cellsSucceed sequence scale scale_pos scale_le_one small floor floor_pos floored covers
-    capacity weights error_tendsto n (mixedSource n) forced notOwing atSite turn history
-  let counterpart := fun n history => Classical.choose (chosen n history)
+  let counterpart := fun n history => Classical.choose (comparisons n history)
   let reach := fun n (history : (onePacketN).InformationHistory who site.1) =>
     ((onePacketN).historyReachWeight (targetSequence n).strategy history.1).toReal
   let power := 2 * horizon + 1
@@ -309,9 +301,9 @@ def OnePacketCounterpartInputs.ofCounterpartSwap (wellFormed : setup.WellFormed)
   OnePacketCounterpartInputs.ofDomination scale_pos (2 * horizon + 2) scaleEq
     (max constant early) (le_trans constantNonneg (le_max_left _ _)) counterpart
     (fun n history irregular =>
-      ((Classical.choose_spec (chosen n history)) irregular).1)
+      ((Classical.choose_spec (comparisons n history)) irregular).1)
     (fun n history irregular => by
-      have spec := (Classical.choose_spec (chosen n history)) irregular
+      have spec := (Classical.choose_spec (comparisons n history)) irregular
       change reach n history ≤ max constant early * scale n / floor n ^ (2 * horizon + 2) *
         reach n (counterpart n history)
       have positiveCounterpart := reachPos n (counterpart n history)
@@ -386,5 +378,55 @@ def OnePacketCounterpartInputs.ofCounterpartSwap (wellFormed : setup.WellFormed)
         rw [div_le_iff₀ (mul_pos (scale_pos n) positiveCounterpart)] at termLe
         rw [div_mul_eq_mul_div, le_div_iff₀ powerPos]
         simpa only [mul_assoc] using termLe)
+
+
+/-- Successful-cell swaps provide certificate reach comparisons, yielding
+counterpart inputs at a debt-free forced own-turn site. -/
+def OnePacketCounterpartInputs.ofCounterpartSwap (wellFormed : setup.WellFormed)
+    (independent : setup.PrivateInputsIndependent)
+    (cellsSucceed : CounterpartCellsSucceed setup leaks bounds horizon scheduler)
+    {sequence : ℕ → setup.intendedModel.BehavioralAssessment}
+    (mixedSource : ∀ n, (sequence n).IsFullyMixed)
+    {scale : ℕ → ℝ} (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
+    (scaleEq : ∀ n, scale n = trembleScale
+      (combinedFloor setup leaks bounds horizon scheduler (sequence n)) (2 * horizon + 2) n)
+    (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
+    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    {slots : Nat}
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
+    {targetSequence : ℕ → (onePacketN).BehavioralAssessment}
+    (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
+      scale_le_one weights targetSequence)
+    (mixed : ∀ n, (targetSequence n).IsFullyMixed)
+    {who : Player} {site : (onePacketN).InformationSite who}
+    (forced : ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site))
+    (notOwing : ¬ OwingAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site))
+    {past : List (application setup leaks).PlayerEntry}
+    {view : (application setup leaks).PlayerView} (atSite : site.1 = some (past, view))
+    {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? who = some event) :
+    OnePacketCounterpartInputs setup leaks bounds horizon scheduler sequence targetSequence
+      site :=
+  let floor := fun n => combinedFloor setup leaks bounds horizon scheduler (sequence n)
+  have floor_pos : ∀ n, 0 < floor n := fun n => combinedFloor_pos setup leaks bounds horizon
+    scheduler (sequence n)
+  have floor_le_one : ∀ n, floor n ≤ 1 := fun n => combinedFloor_le_one setup leaks bounds horizon
+    scheduler (sequence n)
+  have floored : ∀ n, floor n ≤ contentFloor setup leaks bounds horizon scheduler (sequence n) :=
+    fun n => combinedFloor_le_contentFloor setup leaks bounds horizon scheduler (sequence n)
+  have small : ∀ n, scale n ≤ 1 / 4 := fun n => by
+    rw [scaleEq n]
+    exact trembleScale_le_quarter (floor_pos n).le (floor_le_one n)
+  have error_tendsto : Tendsto (fun n => slotError (scale n) (floor n)
+      (trembleSlots setup bounds).card) atTop (nhds 0) := by
+    have tendsto := tendsto_slotError floor floor_pos floor_le_one (2 * horizon + 2)
+      (trembleSlots setup bounds).card
+    convert tendsto using 1
+    funext n
+    rw [scaleEq n]
+  have covered : BindingFieldsCovered bounds := bindingFieldsCovered_of_covers covers coversInputs
+  OnePacketCounterpartInputs.ofReachComparisons scale_pos scale_le_one scaleEq weights assembled
+    mixed (fun n history => exists_counterpart_certificate wellFormed independent covered
+      cellsSucceed sequence scale scale_pos scale_le_one small floor floor_pos floored covers
+      capacity weights error_tendsto n (mixedSource n) forced notOwing atSite turn history)
 
 end Vegas

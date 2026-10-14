@@ -123,7 +123,8 @@ omit [DecidableEq (CellTy Player L)]
   [Finite (onePacketProtocol setup leaks bounds horizon scheduler).History] in
 /-- Own completions are intended and the public record holds along every prefix
 of a history where they hold. -/
-private theorem prefix_good {who : Player} {first : (application setup leaks).ProtocolState}
+theorem ownCompletionsIntended_and_publicRecord_of_tracePrefix
+    {who : Player} {first : (application setup leaks).ProtocolState}
     (prefixTrace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace first) :
     ∀ {final} {trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace final},
       TracePrefix prefixTrace trace →
@@ -331,7 +332,7 @@ theorem counterpart_bound_of_witness (wellFormed : setup.WellFormed)
     intro before after prior joint legal realized isPrefix guardAfter imagePrior imageLegal
       imageRealized control next actor beforeEq afterEq acting other imageStep regularPrior
       irregularStep
-    obtain ⟨ownPrior, recordPrior⟩ := prefix_good prior
+    obtain ⟨ownPrior, recordPrior⟩ := ownCompletionsIntended_and_publicRecord_of_tracePrefix prior
       ((TracePrefix.extend .refl joint legal realized).trans isPrefix) ownIntended
       (fun control same => by cases same; exact record)
     subst beforeEq

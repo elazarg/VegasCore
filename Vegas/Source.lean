@@ -61,3 +61,5 @@ import Vegas.Source.CellSwapDebt
 import Vegas.Source.PrivateInputsIndependent
 import Vegas.Source.ExclusionMoveGame
 import Vegas.Source.ExclusionFailure
+import Vegas.Source.CommitPhase
+import Vegas.Source.CommitPhaseRecovery
