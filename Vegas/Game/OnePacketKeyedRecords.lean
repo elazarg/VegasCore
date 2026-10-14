@@ -14,8 +14,8 @@ source weight times the operational weight of the record
 regular histories of two sites give every unit payoff of the operational record
 the same expectation (`Vegas.BaseLawAgrees`), and the irregular histories carry
 little reach, the two sites' belief laws of operational records are close on
-unit payoffs (`Vegas.recordLaw_near_of_baseLaw`). This is the `keyed` field of
-`Vegas.LateDeliveryBlindness` for sites with the same late-delivery key.
+unit payoffs (`Vegas.recordLaw_near_of_baseLaw`), as for sites with the same
+late-delivery key.
 
 Base agreement asks less than a weight-preserving bijection between the sites'
 histories, and holds with correlated priors: within a site, records differ only

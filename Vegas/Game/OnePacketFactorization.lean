@@ -47,13 +47,10 @@ with `error n` (`Vegas.onePacketReachFactorization`).
 
 **Late delivery at site level.** A late-delivery option's failure probability
 from one history is not a function of the late-delivery key alone: a scheduler
-may recall commands the owner never observed. Value blindness is therefore
-stated at the site level (`Vegas.LateDeliveryBlindness`). From each history of
-a site's belief, an option fails with a probability close to a function of the
-key and the operational record, and the belief's law of records is close to a
-law that depends on the key alone. Under these, two sites with the same key
-give each option belief-averaged failure probabilities within twice the drifts
-(`Vegas.LateDeliveryBlindness.site_failure_near`).
+may recall commands the owner never observed. A belief average of quantities
+close, on the histories of a set, to a function of the operational record is
+close to the average of that function, up to the mass outside the set
+(`Vegas.expect_near_of_record`).
 
 The factorization is approximate: tremble tiers put scale-dependent mass on the
 as-if-honest action, and that mass depends on the private menu. It is consumed
@@ -938,122 +935,6 @@ theorem expect_near_of_record {α R : Type*} [Finite α] (belief : PMF α) (reco
           simp [zero]
     _ = drift + ∑ a, (belief a).toReal * (if good a then 0 else 1) := by
         rw [Finset.sum_add_distrib, ← Finset.sum_mul, total, one_mul]
-
-variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup leaks).Scheduler)
-
-open Classical in
-/-- **Value blindness at late-delivery sites.** For an observer `who` and an
-assessment of the one-packet game, with a unit failure probability of each
-option from each history of each site:
-
-* `pathwise`: from every history of the belief at a site with late-delivery key
-  `key` that is in a forced state of `who`, each option fails with a probability
-  within the path drift of a function of the key, the option and the history's
-  operational record. On those histories the scheduler and the observation rule
-  read only operational data, whose only hidden value is the delivered one,
-  which the key carries (`Vegas.onePacket_pending_disclosed_of_forced`), and the
-  other players are silent while the event is pending
-  (`Vegas.onePacket_silent_of_pending`).
-* `unforced`: the belief at such a site gives the histories outside a forced
-  state of `who` mass at most the unforced drift.
-* `keyed`: at every site with key `key`, the belief's law of operational
-  records gives each such function an expectation within the belief drift of a
-  law that depends on the key alone. -/
-structure LateDeliveryBlindness
-    (assessment : (onePacketInformation setup leaks bounds horizon
-      scheduler).BehavioralAssessment) (who : Player) {LateOption : Type}
-    (historyFailure : (site : (onePacketInformation setup leaks bounds horizon
-      scheduler).InformationSite who) → LateOption →
-      (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
-        site.1 → ℝ)
-    (pathDrift unforcedDrift beliefDrift : ℝ) where
-  /-- The failure probability of an option as a function of the key and the
-  operational record. -/
-  failureOf : LateKey setup leaks → LateOption → List (Option (OperationalState setup leaks)) → ℝ
-  /-- The law of operational records at a key. -/
-  recordLaw : LateKey setup leaks → PMF (List (Option (OperationalState setup leaks)))
-  historyFailure_unit : ∀ site option history,
-    0 ≤ historyFailure site option history ∧ historyFailure site option history ≤ 1
-  failureOf_unit : ∀ key option record,
-    0 ≤ failureOf key option record ∧ failureOf key option record ≤ 1
-  pathwise : ∀ site key, lateKey setup leaks who site.1 = some key → ∀ option,
-    ∀ history ∈ (assessment.belief who site).support,
-      ForcedState setup leaks who history.1.state →
-      |historyFailure site option history -
-        failureOf key option (operationalRecord setup leaks bounds horizon scheduler
-          history.1.trace)| ≤ pathDrift
-  unforced : ∀ site key, lateKey setup leaks who site.1 = some key →
-    expect (assessment.belief who site) (fun history =>
-      if ForcedState setup leaks who history.1.state then (0 : ℝ) else 1) ≤ unforcedDrift
-  keyed : ∀ site key, lateKey setup leaks who site.1 = some key → ∀ option,
-    |expect ((assessment.belief who site).map fun history =>
-        operationalRecord setup leaks bounds horizon scheduler history.1.trace)
-        (failureOf key option) -
-      expect (recordLaw key) (failureOf key option)| ≤ beliefDrift
-
-variable {setup leaks bounds horizon scheduler}
-
-open Classical in
-/-- Under value blindness, at a site with late-delivery key `key`, each option's
-belief-averaged failure probability is within the sum of the drifts of its
-expectation under the key's record law. -/
-theorem LateDeliveryBlindness.site_failure_near_key
-    [Finite (onePacketProtocol setup leaks bounds horizon scheduler).History]
-    {assessment : (onePacketInformation setup leaks bounds horizon
-      scheduler).BehavioralAssessment} {who : Player} {LateOption : Type}
-    {historyFailure : (site : (onePacketInformation setup leaks bounds horizon
-      scheduler).InformationSite who) → LateOption →
-      (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
-        site.1 → ℝ}
-    {pathDrift unforcedDrift beliefDrift : ℝ} (pathDrift_nonneg : 0 ≤ pathDrift)
-    (blind : LateDeliveryBlindness setup leaks bounds horizon scheduler assessment who
-      historyFailure pathDrift unforcedDrift beliefDrift)
-    (site : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who)
-    (key : LateKey setup leaks) (siteKey : lateKey setup leaks who site.1 = some key)
-    (option : LateOption) :
-    |expect (assessment.belief who site) (historyFailure site option) -
-      expect (blind.recordLaw key) (blind.failureOf key option)| ≤
-        pathDrift + unforcedDrift + beliefDrift := by
-  have path := expect_near_of_record (assessment.belief who site)
-    (fun history => operationalRecord setup leaks bounds horizon scheduler history.1.trace)
-    (historyFailure site option) (blind.failureOf key option)
-    (fun history => ForcedState setup leaks who history.1.state) pathDrift pathDrift_nonneg
-    (blind.historyFailure_unit site option) (blind.failureOf_unit key option)
-    (blind.pathwise site key siteKey option)
-  have unforced := blind.unforced site key siteKey
-  have belief := blind.keyed site key siteKey option
-  calc _ ≤ _ := abs_sub_le _ _ _
-    _ ≤ (pathDrift + unforcedDrift) + beliefDrift :=
-        add_le_add (path.trans (by linarith)) belief
-
-/-- **Common site-level failure at a late-delivery key.** Under value blindness,
-two sites with the same late-delivery key give each option belief-averaged
-failure probabilities within twice the sum of the drifts of each other. -/
-theorem LateDeliveryBlindness.site_failure_near
-    [Finite (onePacketProtocol setup leaks bounds horizon scheduler).History]
-    {assessment : (onePacketInformation setup leaks bounds horizon
-      scheduler).BehavioralAssessment} {who : Player} {LateOption : Type}
-    {historyFailure : (site : (onePacketInformation setup leaks bounds horizon
-      scheduler).InformationSite who) → LateOption →
-      (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
-        site.1 → ℝ}
-    {pathDrift unforcedDrift beliefDrift : ℝ} (pathDrift_nonneg : 0 ≤ pathDrift)
-    (blind : LateDeliveryBlindness setup leaks bounds horizon scheduler assessment who
-      historyFailure pathDrift unforcedDrift beliefDrift)
-    (first second : (onePacketInformation setup leaks bounds horizon
-      scheduler).InformationSite who) (key : LateKey setup leaks)
-    (firstKey : lateKey setup leaks who first.1 = some key)
-    (secondKey : lateKey setup leaks who second.1 = some key) (option : LateOption) :
-    |expect (assessment.belief who first) (historyFailure first option) -
-      expect (assessment.belief who second) (historyFailure second option)| ≤
-      2 * (pathDrift + unforcedDrift + beliefDrift) := by
-  have firstNear := abs_le.mp
-    (blind.site_failure_near_key pathDrift_nonneg first key firstKey option)
-  have secondNear := abs_le.mp
-    (blind.site_failure_near_key pathDrift_nonneg second key secondKey option)
-  rw [abs_le]
-  constructor <;> linarith [firstNear.1, firstNear.2, secondNear.1, secondNear.2]
 
 end LateDelivery
 

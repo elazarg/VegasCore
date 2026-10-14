@@ -14,8 +14,8 @@ only on the late-delivery key and the option, if the image of a forced
 history's state is read off its operational record, and if failure is a unit
 function of the image, then the failure probability from each forced history
 is within `fuel * δ` of a function of the key, the option and the operational
-record (`Vegas.PendingLumping.pathwise`). This is the `pathwise` field of
-`Vegas.LateDeliveryBlindness`, reduced to one step of the native kernel.
+record (`Vegas.PendingLumping.pathwise`), reduced to one step of the native
+kernel.
 -/
 
 noncomputable section
