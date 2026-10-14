@@ -15,9 +15,10 @@ histories replaying `x` and those replaying `y` have the same total operational
 weight (`Vegas.fiber_sum_eq_between`): every intended history of the site carries
 a common fiber mass.
 
-The swap moves raw values within the message bounds when, at any two intended
-points of the site, each pair of successful commitment values lies inside the
-bounds together or outside them together.
+The swap moves raw values within the message bounds when the bounds contain
+every value of every binding field (`Vegas.BindingFieldsCovered`), which follows
+from covering every output value and every initial binding input
+(`Vegas.bindingFieldsCovered_of_covers`).
 -/
 
 noncomputable section
@@ -36,22 +37,35 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {scheduler : (application setup leaks).Scheduler}
   [DecidableEq (CellTy Player L)]
 
-/-- Two points whose successful commitment values lie inside the message bounds
-together or outside them together. -/
-def BoundsClosedBetween (bounds : MessageBounds (graph setup))
-    (p q : ProtocolState setup.program) : Prop :=
-  ∀ name owner payload (left right : L.Val payload),
-    ProtocolState.cell? setup.program p name (.commitment owner payload) = some (.success left) →
-    ProtocolState.cell? setup.program q name (.commitment owner payload) =
-      some (.success right) →
-    ((⟨payload, left⟩ : Raw L) ∈ bounds.values ↔ (⟨payload, right⟩ : Raw L) ∈ bounds.values)
+/-- Every value of the payload type of every binding field is within the message
+bounds. -/
+def BindingFieldsCovered (bounds : MessageBounds (graph setup)) : Prop :=
+  ∀ field owner payload, (graph setup).layout field = .binding owner payload →
+    ∀ value : L.Val payload, (⟨payload, value⟩ : Raw L) ∈ bounds.values
+
+omit [Fintype Player] [DecidableEq (CellTy Player L)] in
+/-- **Binding fields are covered** when the bounds cover every output value and
+every value of an initial binding input. -/
+theorem bindingFieldsCovered_of_covers (covers : bounds.CoversOutputValues)
+    (initialCovered : ∀ input owner payload,
+      (graph setup).inputLayout input = .binding owner payload →
+        ∀ value : L.Val payload, (⟨payload, value⟩ : Raw L) ∈ bounds.values) :
+    BindingFieldsCovered bounds := by
+  intro field owner payload layoutEq
+  cases field with
+  | inl input => exact initialCovered input owner payload layoutEq
+  | inr event =>
+      have covered := covers event
+      change (graph setup).outputLayout event = .binding owner payload at layoutEq
+      rw [layoutEq] at covered
+      exact covered
 
 omit [Fintype Player] in
-/-- **The swap between two points keeps the message bounds** when their
-commitment values are closed under the bounds. -/
+/-- **The swap between two points keeps the message bounds** when the bounds
+cover every binding field. -/
 theorem bounded_betweenHandlePairs {p q : ProtocolState setup.program}
     (pairs : (graph setup).SwapPairs) (table : AcceptedHandles (graph setup))
-    (closed : BoundsClosedBetween bounds p q) :
+    (covered : BindingFieldsCovered bounds) :
     ∀ handle raw, raw ∈ bounds.values →
       (HiddenSwap.ofPairs pairs (betweenHandlePairs setup p q table)).raw handle raw ∈
         bounds.values := by
@@ -59,11 +73,13 @@ theorem bounded_betweenHandlePairs {p q : ProtocolState setup.program}
   change EventGraph.pairSwap (betweenHandlePairs setup p q table handle) raw ∈ _
   unfold betweenHandlePairs
   split_ifs with found
-  · generalize fieldCell setup found.choose = cell
+  · have layoutEq := layout_fieldCell setup found.choose
+    generalize fieldCell setup found.choose = cell at layoutEq ⊢
     rcases cell with ⟨name, kind⟩
     cases kind with
     | publicData | privateInput | publication => exact member
     | commitment owner payload =>
+        have all := covered _ owner payload layoutEq
         cases foundFirst : ProtocolState.cell? setup.program p name (.commitment owner payload)
           with
         | none => simp only [commitmentRawPair, foundFirst]; exact member
@@ -73,13 +89,13 @@ theorem bounded_betweenHandlePairs {p q : ProtocolState setup.program}
             | none => simp only [commitmentRawPair, foundFirst, foundSecond]; exact member
             | some secondValue =>
                 cases firstValue with
-                | failure => simp only [commitmentRawPair, foundFirst, foundSecond]; exact member
+                | failure =>
+                    simp only [commitmentRawPair, foundFirst, foundSecond]; exact member
                 | success left =>
                     cases secondValue with
                     | failure =>
                         simp only [commitmentRawPair, foundFirst, foundSecond]; exact member
                     | success right =>
-                        have iff := closed name owner payload left right foundFirst foundSecond
                         simp only [commitmentRawPair, foundFirst, foundSecond]
                         split_ifs
                         · exact member
@@ -87,24 +103,18 @@ theorem bounded_betweenHandlePairs {p q : ProtocolState setup.program}
                           by_cases isLeft : raw = ⟨payload, left⟩
                           · subst isLeft
                             rw [@Equiv.swap_apply_left _
-                                (fun a b => Classical.propDecidable (a = b))]
-                            exact iff.mp member
+                              (fun a b => Classical.propDecidable (a = b))]
+                            exact all right
                           · by_cases isRight : raw = ⟨payload, right⟩
                             · subst isRight
                               rw [@Equiv.swap_apply_right _
-                                  (fun a b => Classical.propDecidable (a = b))]
-                              exact iff.mpr member
+                                (fun a b => Classical.propDecidable (a = b))]
+                              exact all left
                             · rw [@Equiv.swap_apply_of_ne_of_ne _
                                 (fun a b => Classical.propDecidable (a = b)) _ _ _
                                 isLeft isRight]
                               exact member
   · exact member
-
-omit [Fintype Player] in
-theorem BoundsClosedBetween.symm {p q : ProtocolState setup.program}
-    (closed : BoundsClosedBetween bounds p q) : BoundsClosedBetween bounds q p :=
-  fun name owner payload left right foundFirst foundSecond =>
-    (closed name owner payload right left foundSecond foundFirst).symm
 
 omit [DecidableEq (CellTy Player L)] in
 /-- **Swapping back undoes a swap**: the images of a history under two equal
@@ -234,7 +244,7 @@ def siteSwap : HiddenSwap (graph setup) :=
       (commitmentCellsSucceed_of_intended wellFormed xState yState))
     (betweenHandlePairs setup p q view.application.publicView.accepted)
 
-variable (closed : BoundsClosedBetween bounds p q)
+variable (covered : BindingFieldsCovered bounds)
 
 variable (view) in
 /-- The symmetry of the one-packet game given by the swap between two end points. -/
@@ -242,7 +252,7 @@ abbrev siteSymmetry :=
   onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler
     (siteSwap view wellFormed xState yState)
     (initialClosed_swapAllowed (siteSwap view wellFormed xState yState))
-    (bounded_betweenHandlePairs _ _ closed)
+    (bounded_betweenHandlePairs _ _ covered)
 
 variable {event : (graph setup).EventId}
   (turn : view.application.publicView.ownTurn? who = some event)
@@ -271,7 +281,7 @@ theorem siteGuard (history : ReplayClass (sequence := sequence) (n := n) decisio
 theorem siteImage_info
     (history : ReplayClass (sequence := sequence) (n := n) decision projected x) :
     (onePacketInformation setup leaks bounds horizon scheduler).infoOf who
-      ((siteSymmetry view wellFormed xState yState closed).mapHistory history.1.1
+      ((siteSymmetry view wellFormed xState yState covered).mapHistory history.1.1
         (siteGuard wellFormed forced decision projected ownIntended xState yState turn
           history)).trace = site.1 := by
   have guarded := siteGuard wellFormed forced decision projected ownIntended xState yState turn
@@ -300,16 +310,16 @@ include mixed in
 theorem siteImage_class
     (history : ReplayClass (sequence := sequence) (n := n) decision projected x) :
     RegularTrace setup leaks bounds horizon scheduler (sequence n) who
-        ((siteSymmetry view wellFormed xState yState closed).mapHistory history.1.1
+        ((siteSymmetry view wellFormed xState yState covered).mapHistory history.1.1
           (siteGuard wellFormed forced decision projected ownIntended xState yState turn
             history)).trace ∧
       replayProjection setup leaks bounds horizon scheduler sourceSite site decision projected
-        ⟨_, siteImage_info wellFormed forced decision projected ownIntended xState yState closed
-          turn history⟩ = y := by
+        ⟨_, siteImage_info wellFormed forced decision projected ownIntended xState yState
+          covered turn history⟩ = y := by
   have guarded := siteGuard wellFormed forced decision projected ownIntended xState yState turn
     history
   have info := siteImage_info wellFormed forced decision projected ownIntended xState yState
-    closed turn history
+    covered turn history
   obtain ⟨control, point, stateEq, viewEq, replayed, pointEq⟩ :=
     replay_of_class wellFormed forced decision projected ownIntended history
   rw [xState] at pointEq
@@ -325,29 +335,29 @@ theorem siteImage_class
     exact turn
   refine ⟨regularTrace_mapTrace wellFormed xState yState sameLength _
     (initialClosed_swapAllowed (siteSwap view wellFormed xState yState))
-    (bounded_betweenHandlePairs _ _ closed) mixed who trace guarded replayed ownTurn, ?_⟩
+    (bounded_betweenHandlePairs _ _ covered) mixed who trace guarded replayed ownTurn, ?_⟩
   apply Subtype.ext
   exact replayProjection_eq decision projected _
     (intendedHistory?_mapTrace_full xState yState sameLength _
       (initialClosed_swapAllowed (siteSwap view wellFormed xState yState))
-      (bounded_betweenHandlePairs _ _ closed) trace guarded replayed)
+      (bounded_betweenHandlePairs _ _ covered) trace guarded replayed)
 
 include mixed in
 /-- **The map of the histories replaying `x` to those replaying `y`.** -/
 def siteMap (history : ReplayClass (sequence := sequence) (n := n) decision projected x) :
     ReplayClass (sequence := sequence) (n := n) decision projected y :=
-  ⟨⟨_, siteImage_info wellFormed forced decision projected ownIntended xState yState closed turn
-      history⟩,
-    siteImage_class wellFormed forced decision projected ownIntended mixed xState yState closed
+  ⟨⟨_, siteImage_info wellFormed forced decision projected ownIntended xState yState covered
+      turn history⟩,
+    siteImage_class wellFormed forced decision projected ownIntended mixed xState yState covered
       turn history⟩
 
 
 include forced ownIntended mixed turn in
 /-- **The swap between two end points exchanges their replay classes.** -/
-theorem siteMap_siteMap {closed' : BoundsClosedBetween bounds q p}
+theorem siteMap_siteMap
     (history : ReplayClass (sequence := sequence) (n := n) decision projected x) :
-    siteMap wellFormed forced decision projected ownIntended mixed yState xState closed' turn
-      (siteMap wellFormed forced decision projected ownIntended mixed xState yState closed turn
+    siteMap wellFormed forced decision projected ownIntended mixed yState xState covered turn
+      (siteMap wellFormed forced decision projected ownIntended mixed xState yState covered turn
         history) = history := by
   apply Subtype.ext
   apply Subtype.ext
@@ -356,7 +366,8 @@ theorem siteMap_siteMap {closed' : BoundsClosedBetween bounds q p}
 
 
 open Classical in
-include wellFormed forced ownIntended mixed xState yState closed turn in
+omit [DecidableEq (CellTy Player L)] in
+include wellFormed forced ownIntended mixed xState yState covered turn in
 /-- **Two end points have the same fiber.** The regular histories of the site
 replaying `x` and those replaying `y` have the same total operational weight. -/
 theorem fiber_sum_eq_of_points
@@ -365,8 +376,7 @@ theorem fiber_sum_eq_of_points
     {steps : OperationalSteps setup leaks bounds horizon scheduler sequence profiles who}
     [Fintype ((onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
       site.1)]
-    [DecidableEq (setup.intendedModel.InformationHistory who sourceSite.1)]
-    (closed' : BoundsClosedBetween bounds q p) :
+    [DecidableEq (setup.intendedModel.InformationHistory who sourceSite.1)] :
     ∑ history with RegularTrace setup leaks bounds horizon scheduler (sequence n) who
         history.1.trace ∧
         replayProjection setup leaks bounds horizon scheduler sourceSite site decision projected
@@ -378,16 +388,17 @@ theorem fiber_sum_eq_of_points
         replayProjection setup leaks bounds horizon scheduler sourceSite site decision projected
           history = y,
       operationalWeight setup leaks who (steps.mass n)
-        (operationalRecord setup leaks bounds horizon scheduler history.1.trace) :=
-  fiber_sum_eq_of_swap (steps := steps) _ x y
+        (operationalRecord setup leaks bounds horizon scheduler history.1.trace) := by
+  classical
+  exact fiber_sum_eq_of_swap (steps := steps) _ x y
     { toFun := siteMap wellFormed forced decision projected ownIntended mixed xState yState
-        closed turn
+        covered turn
       invFun := siteMap wellFormed forced decision projected ownIntended mixed yState xState
-        closed' turn
+        covered turn
       left_inv := siteMap_siteMap wellFormed forced decision projected ownIntended mixed xState
-        yState closed turn
+        yState covered turn
       right_inv := siteMap_siteMap wellFormed forced decision projected ownIntended mixed yState
-        xState closed' turn }
+        xState covered turn }
     (fun history => operationalRecord_mapTrace _ _ _ history.1.1.trace _)
 
 end Points
@@ -415,12 +426,12 @@ variable {event : (graph setup).EventId}
   (turn : view.application.publicView.ownTurn? who = some event)
 
 open Classical in
+omit [DecidableEq (CellTy Player L)] in
 include wellFormed forced ownIntended mixed turn in
 /-- **Common fibers from the swap between two points.** At an own-turn forced
-decision site whose regular histories replay intended histories, if any two end
-points of the intended site are closed under the message bounds, then the
-regular histories replaying any two intended histories of the site have the same
-total operational weight. -/
+decision site whose regular histories replay intended histories, if the message
+bounds cover every binding field, then the regular histories replaying any two
+intended histories of the site have the same total operational weight. -/
 theorem fiber_sum_eq_between
     {profiles : ℕ → ∀ player,
       (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player}
@@ -428,9 +439,7 @@ theorem fiber_sum_eq_between
     [Fintype ((onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
       site.1)]
     [DecidableEq (setup.intendedModel.InformationHistory who sourceSite.1)]
-    (closed : ∀ (x y : setup.intendedModel.InformationHistory who sourceSite.1)
-      (p q : ProtocolState setup.program), x.1.state = some p → y.1.state = some q →
-        BoundsClosedBetween bounds p q)
+    (covered : BindingFieldsCovered bounds)
     (x y : setup.intendedModel.InformationHistory who sourceSite.1) :
     ∑ history with RegularTrace setup leaks bounds horizon scheduler (sequence n) who
         history.1.trace ∧
@@ -458,14 +467,14 @@ theorem fiber_sum_eq_between
             projected history = second,
         operationalWeight setup leaks who (steps.mass n)
           (operationalRecord setup leaks bounds horizon scheduler history.1.trace) := by
+    classical
     rintro first second ⟨member⟩
     obtain ⟨p, firstState⟩ :=
       pointed_of_class wellFormed forced decision projected ownIntended member first
     obtain ⟨q, secondState⟩ :=
       pointed_of_class wellFormed forced decision projected ownIntended member second
     exact fiber_sum_eq_of_points wellFormed forced decision projected ownIntended mixed
-      firstState secondState (closed first second p q firstState secondState) turn
-      (closed second first q p secondState firstState)
+      firstState secondState covered turn
   by_cases firstMember : Nonempty (ReplayClass (sequence := sequence) (n := n) decision
       projected x)
   · exact between x y firstMember
