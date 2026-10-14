@@ -1334,6 +1334,49 @@ theorem onePacket_irregularVanishes (wellFormed : setup.WellFormed)
   refine Finset.sum_congr rfl fun history _ => ?_
   split_ifs <;> simp
 
+omit [Finite setup.intendedProtocol.History]
+  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+      scheduler).InfoState who)] in
+open Classical in
+/-- **Histories outside the forced region vanish at an own-turn site.** Under
+the hypotheses of `Vegas.onePacket_beliefConverges`, the belief mass of the
+histories outside the forced region vanishes: a regular history whose own
+completions are intended is in a forced state (`Vegas.forcedState_of_regular`),
+and irregular histories vanish (`Vegas.onePacket_irregularVanishes`). -/
+theorem onePacket_unforcedVanishes (wellFormed : setup.WellFormed)
+    {sequence : ℕ → setup.intendedModel.BehavioralAssessment}
+    (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
+    {targetSequence : ℕ → (onePacketN).BehavioralAssessment}
+    (mixed : ∀ n, (targetSequence n).IsFullyMixed)
+    (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
+      ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
+        (initialLaw setup) horizon scheduler).decisionInformationAntichain)
+    {who : Player} {site : (onePacketN).InformationSite who}
+    {sourceSite : setup.intendedModel.InformationSite who}
+    {past : List (application setup leaks).PlayerEntry}
+    {view : (application setup leaks).PlayerView}
+    (decision : site.1 = some (past, view))
+    (projected : sourceSite.1 = projectView setup leaks who site.1)
+    (forced : forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
+      scheduler who site.1)
+    {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? who = some event)
+    (inputs : OnePacketBeliefInputs setup leaks bounds horizon scheduler sequence targetSequence
+      site sourceSite decision projected) :
+    Tendsto (fun n => expect ((targetSequence n).belief who site) (fun history =>
+      if ForcedState setup leaks who history.1.state then (0 : ℝ) else 1)) atTop (nhds 0) := by
+  refine squeeze_zero (fun n => expect_nonneg _ _ fun history _ => by split <;> norm_num)
+    (fun n => ?_) (onePacket_irregularVanishes setup leaks bounds horizon scheduler wellFormed
+      sourceMixed mixed bayes decision projected forced turn inputs)
+  refine expect_mono (fun history _ => ?_) (payoffIntegrable_of_finite _ _)
+    (payoffIntegrable_of_finite _ _)
+  by_cases regular : RegularTrace setup leaks bounds horizon scheduler (sequence n) who
+    history.1.trace
+  · have inForced := forcedState_of_regular wellFormed (sequence n) decision forced history
+      regular (inputs.ownIntended n history regular)
+    simp only [inForced, regular, ↓reduceIte, le_refl]
+  · simp only [regular, ↓reduceIte]
+    split <;> norm_num
+
 omit [Finite setup.intendedProtocol.History] in
 /-- A function bounded by `bound` has expectations under two laws on a finite
 type within `bound` times their `ℓ¹` distance. -/
