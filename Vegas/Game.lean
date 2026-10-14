@@ -456,3 +456,8 @@ import Vegas.Game.OnePacketNextEvent
 import Vegas.Game.OnePacketOwnIntended
 import Vegas.Game.OnePacketDoomedSites
 import Vegas.Game.OnePacketLateReveal
+import Vegas.Game.OnePacketAcceptedInjective
+import Vegas.Game.OnePacketAcceptedOwner
+import Vegas.Game.OnePacketSwapExchange
+import Vegas.Game.OnePacketSwapGuardSite
+import Vegas.Game.OnePacketSwapInputs
