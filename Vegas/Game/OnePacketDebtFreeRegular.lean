@@ -86,6 +86,28 @@ private theorem regularTrace_of_debtFree_weight (wellFormed : setup.WellFormed)
             simp only [acting, other, ↓reduceIte] at factorPos
             exact factorPos
 
+/-- **Debt-free histories at an own turn have positive source weight** under a
+fully mixed assessment: their source weight is the counterfactual reach of their
+intended replay. -/
+theorem othersSourceWeight_pos_of_debtFree (wellFormed : setup.WellFormed)
+    {assessment : setup.intendedModel.BehavioralAssessment} (mixed : assessment.IsFullyMixed)
+    (who : Player) {control : (application setup leaks).Control}
+    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
+    (free : ∀ point, decodedPoint setup control.execution.application.config = some point →
+      ∀ player, ¬ ProtocolState.OwesFailure player setup.program point)
+    {event : (graph setup).EventId}
+    (turn : (control.execution.observe (application setup leaks)
+      who).application.publicView.ownTurn? who = some event) :
+    0 < othersSourceWeight setup leaks bounds horizon scheduler assessment who trace := by
+  obtain ⟨replay, replayed⟩ := intendedHistory?_isSome_of_debtFree wellFormed trace control rfl
+    free
+  have forced := forcedState_of_debtFree wellFormed trace free who
+  have matching := actorCompletionsMatch_of_forced assessment who trace control rfl forced
+  have settled := unsettledContent_eq_one_of_ownTurn assessment who trace forced turn
+  rw [othersSourceWeight_eq_replay assessment who trace replayed
+    (replayMatches_of_actorCompletions assessment who trace matching), settled, mul_one]
+  exact counterfactualReach_pos_of_mixed mixed who replay
+
 /-- **Debt-free histories at an own turn are regular.** For a well-formed setup,
 under a fully mixed assessment, a native history whose decoded point leaves
 nobody owing a failure, at which `who` has its own ready event, is regular for
@@ -99,15 +121,8 @@ theorem regularTrace_of_debtFree (wellFormed : setup.WellFormed)
     {event : (graph setup).EventId}
     (turn : (control.execution.observe (application setup leaks)
       who).application.publicView.ownTurn? who = some event) :
-    RegularTrace setup leaks bounds horizon scheduler assessment who trace := by
-  obtain ⟨replay, replayed⟩ := intendedHistory?_isSome_of_debtFree wellFormed trace control rfl
-    free
-  have forced := forcedState_of_debtFree wellFormed trace free who
-  have matching := actorCompletionsMatch_of_forced assessment who trace control rfl forced
-  have settled := unsettledContent_eq_one_of_ownTurn assessment who trace forced turn
-  refine regularTrace_of_debtFree_weight wellFormed assessment who trace control rfl free ?_
-  rw [othersSourceWeight_eq_replay assessment who trace replayed
-    (replayMatches_of_actorCompletions assessment who trace matching), settled, mul_one]
-  exact counterfactualReach_pos_of_mixed mixed who replay
+    RegularTrace setup leaks bounds horizon scheduler assessment who trace :=
+  regularTrace_of_debtFree_weight wellFormed assessment who trace control rfl free
+    (othersSourceWeight_pos_of_debtFree wellFormed mixed who trace free turn)
 
 end Vegas
