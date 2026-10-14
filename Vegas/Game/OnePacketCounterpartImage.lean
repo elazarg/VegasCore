@@ -9,9 +9,9 @@ import Vegas.Game.OnePacketSwapFiberSum
 Fix a decision input of `who` at `who`'s own turn, a history `h` of it, and a
 history `W` of it whose decoded point leaves nobody owing a failure. Both
 decoded points `p` and `w` look alike to `who`. When the commitment cells where
-`p` and `w` differ hold values at both, and the message bounds treat the
-differing values alike, the swap between `p` and `w`, at the handles accepted at
-the end of `h`, maps `h` to a history of the same input
+`p` and `w` differ hold values at both, and the message bounds cover every
+binding field, the swap between `p` and `w`, at the handles accepted at the end
+of `h`, maps `h` to a history of the same input
 (`Vegas.infoOf_mapTrace_of_fixes`) with the same operational record
 (`Vegas.operationalRecord_mapTrace`). Its decoded point is the swap of `p`,
 which holds the cells of `w`, so nobody owes a failure there either, and the
@@ -57,8 +57,8 @@ private theorem observe_of_infoOf {who : Player}
 under a fully mixed assessment, at a decision input of `who` at its own turn,
 take a history `h` and a history `W` of the input whose decoded point `w` leaves
 nobody owing a failure. If the commitment cells where `h`'s decoded point `p`
-and `w` differ hold values at both, and the message bounds treat those values
-alike, then some regular history of the input has the operational record of
+and `w` differ hold values at both, and the message bounds cover every binding
+field, then some regular history of the input has the operational record of
 `h`. -/
 theorem counterpart_of_witness (wellFormed : setup.WellFormed)
     {assessment : setup.intendedModel.BehavioralAssessment} (mixed : assessment.IsFullyMixed)
@@ -74,7 +74,7 @@ theorem counterpart_of_witness (wellFormed : setup.WellFormed)
     (decodedP : decodedPoint setup current.execution.application.config = some p)
     (decodedW : decodedPoint setup witnessControl.execution.application.config = some w)
     (freeW : ∀ player, ¬ ProtocolState.OwesFailure player setup.program w)
-    (succeed : CommitmentCellsSucceed setup p w) (closed : BoundsClosedBetween bounds p w) :
+    (succeed : CommitmentCellsSucceed setup p w) (covered : BindingFieldsCovered bounds) :
     ∃ counterpart : (onePacketInformation setup leaks bounds horizon
         scheduler).InformationHistory who (some (past, view)),
       RegularTrace setup leaks bounds horizon scheduler assessment who counterpart.1.trace ∧
@@ -118,8 +118,8 @@ theorem counterpart_of_witness (wellFormed : setup.WellFormed)
   have guarded : SwapGuardState setup swap (swapAllowed swap) (some current) :=
     swapGuardState_of_decoded wellFormed secondState who sameView trace decodedP staticW
       readyOwn rfl
-  have bounded := bounded_betweenHandlePairs (betweenPairs publicAgree succeed)
-    current.execution.application.accepted closed
+  have bounded := bounded_betweenHandlePairs (p := p) (q := w) (betweenPairs publicAgree succeed)
+    current.execution.application.accepted covered
   have fixes : swap.Fixes who :=
     fixes_between sameView (fun _ _ accepted => accepted_owner_of_trace trace accepted)
   let symmetry := onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler swap

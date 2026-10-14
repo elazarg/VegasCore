@@ -125,6 +125,8 @@ theorem upperSourceWeight_le_swap [Finite (onePacketProtocol setup leaks bounds 
         ⟨joint, legal⟩).support) (_ : SwapGuardState setup swap allowed after)
       (control next : (application setup leaks).Control) (actor : Player),
       before = some control → after = some next → control.actor = some actor → actor ≠ who →
+      RegularStep setup leaks bounds horizon scheduler (sequence n) who
+        (swap.protocolState before) (swap.joint joint) (swap.protocolState after) →
       responseMass setup leaks bounds horizon scheduler (profiles n) control joint ≤
         K₁ * responseMass setup leaks bounds horizon scheduler (profiles n) (swap.control control)
           (swap.joint joint))
@@ -135,6 +137,8 @@ theorem upperSourceWeight_le_swap [Finite (onePacketProtocol setup leaks bounds 
         ⟨joint, legal⟩).support) (_ : SwapGuardState setup swap allowed after)
       (control next : (application setup leaks).Control) (actor : Player),
       before = some control → after = some next → control.actor = some actor → actor ≠ who →
+      RegularStep setup leaks bounds horizon scheduler (sequence n) who
+        (swap.protocolState before) (swap.joint joint) (swap.protocolState after) →
       RegularTrace setup leaks bounds horizon scheduler (sequence n) who prior →
       ¬ RegularStep setup leaks bounds horizon scheduler (sequence n) who before joint after →
       responseMass setup leaks bounds horizon scheduler (profiles n) control joint ≤
@@ -333,7 +337,7 @@ theorem upperSourceWeight_le_swap [Finite (onePacketProtocol setup leaks bounds 
                     have imageBound := imageResponse prior joint legal realized guardAfter control
                       next actor rfl rfl acting same imageStep
                     have ratio := responseBound prior joint legal realized guardAfter control next
-                      actor rfl rfl acting same
+                      actor rfl rfl acting same imageStep
                     set mass := steps.mass n (operationalState setup leaks (some control))
                       (operationalState setup leaks (some next))
                     set content := contentFactor setup leaks (sequence n) actor
@@ -388,7 +392,7 @@ theorem upperSourceWeight_le_swap [Finite (onePacketProtocol setup leaks bounds 
                   have imageBound := imageResponse prior joint legal realized guardAfter control
                     next actor rfl rfl acting same imageStep
                   have ratio := firstBound prior joint legal realized guardAfter control next
-                    actor rfl rfl acting same regularPrior irregularStep
+                    actor rfl rfl acting same imageStep regularPrior irregularStep
                   set mass := steps.mass n (operationalState setup leaks (some control))
                     (operationalState setup leaks (some next))
                   set content := contentFactor setup leaks (sequence n) actor
