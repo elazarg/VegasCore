@@ -2771,6 +2771,146 @@ def SiteThrough (who : Player) (info : (application setup leaks).Info)
   SiteConsistent who info state ∧
     ∀ event, siteTurnEvent setup leaks who info = some event → DebtClear setup leaks who event state
 
+/-- **The activation past a site.** At a state whose owner's recall extends the
+site's, the first entry past the site's recall was taken at a view showing the
+site's pending event as the owner's turn. -/
+def SiteActivated (who : Player) (info : (application setup leaks).Info)
+    (state : (application setup leaks).ProtocolState) : Prop :=
+  ∀ control, state = some control → ∀ entry rest,
+    control.execution.recall who = infoRecall info ++ entry :: rest →
+      ∀ event, pendingEvent setup leaks who info = some event →
+        ActivatedAt setup leaks who event entry
+
+/-- The site is a late delivery, or play past it recalls the activation of its
+pending event. -/
+def ActivationTracked (who : Player) (info : (application setup leaks).Info)
+    (state : (application setup leaks).ProtocolState) : Prop :=
+  LateDelivery setup leaks who info ∨ SiteActivated setup leaks who info state
+
+omit [Fintype Player] [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
+  [Finite setup.intendedProtocol.History]
+  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+    scheduler).InfoState who)] in
+/-- The control step appends to the recall of an acting player one entry taken at
+its current view, and keeps every other player's recall. -/
+theorem controlStep_recall_entry (players : Player → (application setup leaks).Policy)
+    (control : (application setup leaks).Control) {next : (application setup leaks).ProtocolState}
+    (member : next ∈ ((application setup leaks).controlStep (initialLaw setup) horizon scheduler
+      players (some control)).support) (who : Player) :
+    ∃ control', next = some control' ∧
+      (control.actor = some who → ∃ entry : (application setup leaks).PlayerEntry,
+        entry.beforeView = control.execution.observe (application setup leaks) who ∧
+          control'.execution.recall who = control.execution.recall who ++ [entry]) ∧
+      (control.actor ≠ some who →
+        control'.execution.recall who = control.execution.recall who) := by
+  rcases control with ⟨remaining, actor, execution⟩
+  unfold ReactiveApplication.controlStep at member
+  cases actor with
+  | none =>
+      have idle : (none : Option Player) ≠ some who := fun same => by cases same
+      cases remaining with
+      | zero =>
+          exact ⟨_, (PMF.mem_support_pure_iff _ _).mp member, fun acting => (idle acting).elim,
+            fun _ => rfl⟩
+      | succ remaining =>
+          obtain ⟨command, _, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ member)
+          obtain ⟨next', supported, rfl⟩ := PMF.support_map .. ▸ moved
+          exact ⟨_, rfl, fun acting => (idle acting).elim, fun _ => congrFun
+            ((application setup leaks).environmentStep_recall execution next' command supported)
+            who⟩
+  | some actor =>
+      simp only [ReactiveApplication.actor, Option.bind_some] at member
+      rw [PMF.mem_support_bind_iff] at member
+      obtain ⟨action, _, reached⟩ := member
+      refine ⟨_, (PMF.mem_support_pure_iff _ _).mp reached, ?_, ?_⟩
+      · intro acting
+        cases Option.some.inj acting
+        simp only [↓reduceIte, Option.getD_some, ReactiveApplication.Execution.respond]
+        rcases action with ⟨_ | _⟩ <;> exact ⟨_, rfl, rfl⟩
+      · intro idle
+        have different : who ≠ actor := fun same => idle (by rw [same])
+        simp only [↓reduceIte, Option.getD_some]
+        exact (application setup leaks).respond_recall_other execution actor who different _
+
+omit [Fintype Player] [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
+  [Finite setup.intendedProtocol.History]
+  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+    scheduler).InfoState who)] in
+/-- **The activation stays tracked along play.** A control step from a state
+consistent with a site keeps the activation of its pending event tracked: the
+first entry past the site's recall is taken at the site's own view. -/
+theorem activationTracked_step (players : Player → (application setup leaks).Policy)
+    (who : Player) (info : (application setup leaks).Info)
+    {state : (application setup leaks).ProtocolState} (consistent : SiteConsistent who info state)
+    (tracked : ActivationTracked setup leaks who info state)
+    {next : (application setup leaks).ProtocolState}
+    (member : next ∈ ((application setup leaks).controlStep (initialLaw setup) horizon scheduler
+      players state).support) :
+    ActivationTracked setup leaks who info next := by
+  rcases tracked with late | activated
+  · exact Or.inl late
+  right
+  cases state with
+  | none => exact consistent.elim
+  | some control =>
+      obtain ⟨control', rfl, acted, idle⟩ := controlStep_recall_entry setup leaks horizon
+        scheduler players control member who
+      intro other otherEq entry rest recallEq event pending
+      have same := Option.some.inj otherEq
+      subst same
+      rcases consistent with ⟨isSome, atSite⟩ | ⟨first, earlier, longer⟩
+      · have acting : control.actor = some who := by
+          by_contra notActing
+          simp only [ReactiveApplication.observe, notActing, ↓reduceIte] at atSite
+          rw [← atSite] at isSome
+          cases isSome
+        obtain ⟨added, before, appended⟩ := acted acting
+        simp only [ReactiveApplication.observe, acting, ↓reduceIte] at atSite
+        subst atSite
+        rw [appended] at recallEq
+        change control.execution.recall who ++ [added] =
+          control.execution.recall who ++ entry :: rest at recallEq
+        obtain ⟨rfl, -⟩ := List.cons.inj (List.append_cancel_left recallEq)
+        unfold ActivatedAt
+        rw [before]
+        exact (pendingEvent_spec (setup := setup) pending).1
+      · have activatedFirst := activated _ rfl first earlier longer event pending
+        by_cases acting : control.actor = some who
+        · obtain ⟨added, _, appended⟩ := acted acting
+          rw [appended, longer, List.append_assoc, List.cons_append] at recallEq
+          obtain ⟨rfl, -⟩ := List.cons.inj (List.append_cancel_left recallEq)
+          exact activatedFirst
+        · rw [idle acting, longer] at recallEq
+          obtain ⟨rfl, -⟩ := List.cons.inj (List.append_cancel_left recallEq)
+          exact activatedFirst
+
+omit [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
+  [Finite setup.intendedProtocol.History]
+  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+    scheduler).InfoState who)] in
+/-- The histories of a site track the activation of its pending event: their
+owner's recall is the site's. -/
+theorem siteActivated_of_history {who : Player} {site : (onePacketN).InformationSite who}
+    (history : (onePacketN).InformationHistory who site.1) :
+    SiteActivated setup leaks who site.1 history.1.state := by
+  obtain ⟨⟨state, trace⟩, seen⟩ := history
+  change (onePacketInformation setup leaks bounds horizon scheduler).infoOf who trace = site.1
+    at seen
+  rw [onePacket_infoOf] at seen
+  intro control current entry rest recallEq event pending
+  change state = some control at current
+  rw [current] at seen
+  by_cases acting : control.actor = some who
+  · simp only [ReactiveApplication.observe, acting, ↓reduceIte] at seen
+    rw [← seen] at recallEq
+    change control.execution.recall who = control.execution.recall who ++ entry :: rest
+      at recallEq
+    have lengths := congrArg List.length recallEq
+    simp at lengths
+  · simp only [ReactiveApplication.observe, acting, ↓reduceIte] at seen
+    rw [← seen] at pending
+    cases pending
+
 omit [Fintype Player] [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
   [Finite setup.intendedProtocol.History]
   [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
@@ -2810,7 +2950,8 @@ omit [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
 /-- **The site shape of an installed late component, through the site.** As
 `Vegas.siteComponentShape_of_installed`, for a predicate of states refining
 consistency with the site, with the strategy's shape asked only at the site's
-turn event at states of the predicate. -/
+turn event at states of the predicate, and the activation of the turn event
+recalled at the predicate's states past the site. -/
 theorem siteComponentShape_of_installed_within
     (assessment : setup.intendedModel.BehavioralAssessment)
     (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) {slots : Nat} {who : Player}
@@ -2832,7 +2973,10 @@ theorem siteComponentShape_of_installed_within
           site.1))
     (away : ∀ info, info ≠ site.1 → profile who info = strategy info)
     (activated : ∀ event, (PublicationTurn key event ∨ ∃ payload, BindingTurn key event payload) →
-      ∃ entry ∈ infoRecall site.1, ActivatedAt setup leaks who event entry)
+      ∀ (remaining : Nat) (execution : (application setup leaks).Execution),
+        allowed (some ⟨remaining, some who, execution⟩) →
+        (∃ entry rest, execution.recall who = infoRecall site.1 ++ entry :: rest) →
+          ∃ entry ∈ execution.recall who, ActivatedAt setup leaks who event entry)
     (strategyShape : ∀ (history : (onePacketProtocol setup leaks bounds horizon
         scheduler).History) (remaining : Nat) (execution : (application setup leaks).Execution)
         (event : (graph setup).EventId),
@@ -2918,11 +3062,8 @@ theorem siteComponentShape_of_installed_within
       rcases consistent with ⟨_, sameInfo⟩ | longer
       · exact (atSite sameInfo).elim
       · exact longer
-    obtain ⟨activation, member, activatedAt⟩ := activated event turn
-    have recalledActivation : ∃ entry ∈ execution.recall key.owner,
-        ActivatedAt setup leaks key.owner event entry := by
-      obtain ⟨entry, rest, recallEq⟩ := longer
-      exact ⟨activation, by rw [recallEq]; exact List.mem_append_left _ member, activatedAt⟩
+    have recalledActivation := activated event turn remaining execution
+      (current ▸ allowedState) longer
     have shapes := strategyShape history remaining execution event turn current allowedState
       forced ready recalledActivation
     rw [away _ notSite]
@@ -2931,11 +3072,82 @@ theorem siteComponentShape_of_installed_within
     exact shapes
 
 omit [Finite setup.intendedProtocol.History] in
+/-- **The site shape of the certificate at a pending site.** At a late delivery
+or first activation of `who`, the profile installing a late option at the site
+and otherwise following a profile assembled from the certificate's components
+has the site shape over a predicate of states consistent with the site that
+tracks the activation of its pending event, with the installed option at the
+site's key and the key weights elsewhere. -/
+theorem certificate_siteComponentShape_of_pending
+    (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
+    (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
+    {slots : Nat}
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
+    (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
+    (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
+      scale_le_one weights targetSequence) (n : ℕ) {who : Player}
+    (site : (onePacketN).InformationSite who)
+    (pendingSite : LateDelivery setup leaks who site.1 ∨ FirstActivation setup leaks who site.1)
+    {key : LateKey setup leaks} (siteKey : lateKey setup leaks who site.1 = some key)
+    (option : LateOption slots) (allowed : (application setup leaks).ProtocolState → Prop)
+    (within : ∀ state, allowed state → SiteConsistent who site.1 state)
+    (tracked : ∀ state, allowed state → ActivationTracked setup leaks who site.1 state) :
+    SiteComponentShape (sequence n) (scale n) (scale_pos n).le (scale_le_one n)
+      (certificateOptions setup leaks bounds horizon scheduler (weights n) key option) key
+      (Profile.update (sig := (onePacketN).behavioralSignature) (targetSequence n).strategy who
+        (((targetSequence n).strategy who).withLaw site.1
+          (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
+            scale_le_one (slots := slots) n ((onePacketN).agentAt site) option)))
+      allowed := by
+  obtain ⟨past, view, pendingEvent', atSite, pending⟩ : ∃ past view event,
+      site.1 = some (past, view) ∧ pendingEvent setup leaks who site.1 = some event := by
+    rcases pendingSite with ⟨past, view, event, atSite, pending, _⟩ |
+      ⟨past, view, event, atSite, pending, _⟩ <;> exact ⟨past, view, event, atSite, pending⟩
+  have turn : view.application.publicView.ownTurn? who = some pendingEvent' := by
+    have pendingHere := pending
+    rw [atSite] at pendingHere
+    exact (pendingEvent_spec pendingHere).1
+  refine siteComponentShape_of_installed_within setup leaks bounds horizon scheduler (sequence n)
+    (scale n) (scale_pos n).le (scale_le_one n) site siteKey option
+    (fun other => keyWeights setup leaks bounds horizon scheduler (weights n) (some other))
+    _ ((targetSequence n).strategy who) allowed within ?_ ?_ ?_ ?_
+  · rw [Profile.update_same, BehavioralPolicy.withLaw_self, PMF.pure_bind]
+    rfl
+  · intro info different
+    rw [Profile.update_same, BehavioralPolicy.withLaw_of_ne _ _ _ different]
+  · intro event decided remaining execution allowedState longer
+    have keyTurn : key.current.1.ownTurn? key.owner = some event := by
+      rcases decided with publication | ⟨payload, binding⟩
+      · exact publication.1
+      · exact binding.1
+    have sameEvent : event = pendingEvent' := by
+      rw [atSite] at siteKey
+      simp only [lateKey, Option.some.injEq] at siteKey
+      subst siteKey
+      exact Option.some.inj (keyTurn.symm.trans turn)
+    subst sameEvent
+    obtain ⟨entry, rest, recallEq⟩ := longer
+    rcases tracked _ allowedState with late | activated
+    · obtain ⟨past', view', event', atSite', pending', earlier, member, activatedAt⟩ := late
+      have sameEvent : event' = event := Option.some.inj (pending'.symm.trans pending)
+      subst sameEvent
+      refine ⟨earlier, ?_, activatedAt⟩
+      rw [recallEq]
+      exact List.mem_append_left _ (by rw [atSite']; exact member)
+    · refine ⟨entry, ?_, activated _ rfl entry rest recallEq event pending⟩
+      rw [recallEq]
+      exact List.mem_append_right _ (List.mem_cons.mpr (Or.inl rfl))
+  · intro history remaining execution event _ current _ forcedState ready activated
+    exact certificate_strategyShape setup leaks bounds horizon scheduler sequence scale scale_pos
+      scale_le_one weights targetSequence assembled n who history remaining execution event
+      current forcedState ready activated
+
+omit [Finite setup.intendedProtocol.History] in
 /-- **The site shape of the certificate at a late delivery.** At a late
 delivery of `who`, the profile installing a late option at the site and
 otherwise following a profile assembled from the certificate's components has
 the site shape, with the installed option at the site's key and the key weights
-elsewhere. -/
+elsewhere (`Vegas.certificate_siteComponentShape_of_pending`). -/
 theorem certificate_siteComponentShape
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
@@ -2954,33 +3166,10 @@ theorem certificate_siteComponentShape
         (((targetSequence n).strategy who).withLaw site.1
           (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
             scale_le_one (slots := slots) n ((onePacketN).agentAt site) option)))
-      allowed := by
-  obtain ⟨past, view, pendingEvent', atSite, pending, entry, member, activatedAt⟩ := late
-  rw [atSite] at pending
-  have turn := (pendingEvent_spec pending).1
-  refine siteComponentShape_of_installed_within setup leaks bounds horizon scheduler (sequence n)
-    (scale n) (scale_pos n).le (scale_le_one n) site siteKey option
-    (fun other => keyWeights setup leaks bounds horizon scheduler (weights n) (some other))
-    _ ((targetSequence n).strategy who) allowed within ?_ ?_ ?_ ?_
-  · rw [Profile.update_same, BehavioralPolicy.withLaw_self, PMF.pure_bind]
-    rfl
-  · intro info different
-    rw [Profile.update_same, BehavioralPolicy.withLaw_of_ne _ _ _ different]
-  · intro event decided
-    have keyTurn : key.current.1.ownTurn? key.owner = some event := by
-      rcases decided with publication | ⟨payload, binding⟩
-      · exact publication.1
-      · exact binding.1
-    rw [atSite] at siteKey
-    simp only [lateKey, Option.some.injEq] at siteKey
-    subst siteKey
-    have sameEvent : event = pendingEvent' := Option.some.inj (keyTurn.symm.trans turn)
-    subst sameEvent
-    exact ⟨entry, by rw [atSite]; exact member, activatedAt⟩
-  · intro history remaining execution event _ current _ forcedState ready activated
-    exact certificate_strategyShape setup leaks bounds horizon scheduler sequence scale scale_pos
-      scale_le_one weights targetSequence assembled n who history remaining execution event
-      current forcedState ready activated
+      allowed :=
+  certificate_siteComponentShape_of_pending setup leaks bounds horizon scheduler sequence scale
+    scale_pos scale_le_one weights targetSequence assembled n site (Or.inl late) siteKey option
+    allowed within fun _ _ => Or.inl late
 
 /-- The gain of a deviation at a site of the intended game under the exclusion
 payoff: the expected exclusion payoff of the deviation minus that of the
@@ -2997,18 +3186,21 @@ omit [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
   [Finite setup.intendedProtocol.History]
   [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)] in
-/-- **The histories of a debt-free late delivery pass through it.** At a late
-delivery whose owner owes no failure, every history of the site's belief is at a
-state consistent with the site at which the owner's debt is clear at the site's
-turn event. -/
-theorem siteThrough_of_history {who : Player} {site : (onePacketN).InformationSite who}
-    (late : LateDelivery setup leaks who site.1)
+/-- **The histories of a debt-free pending site pass through it.** At a late
+delivery or first activation whose owner owes no failure, every history of the
+site's belief is at a state consistent with the site at which the owner's debt
+is clear at the site's turn event. -/
+theorem siteThrough_of_pendingHistory {who : Player} {site : (onePacketN).InformationSite who}
+    (pendingSite : LateDelivery setup leaks who site.1 ∨ FirstActivation setup leaks who site.1)
     (debtFree : SiteDebtFree setup leaks bounds horizon scheduler site)
     {key : LateKey setup leaks} (siteKey : lateKey setup leaks who site.1 = some key)
     (history : (onePacketN).InformationHistory who site.1) :
     SiteThrough setup leaks who site.1 history.1.state := by
   refine ⟨siteConsistent_of_history siteKey history, fun event siteTurn => ?_⟩
-  obtain ⟨past, view, pending', atSite, pending, _⟩ := late
+  obtain ⟨past, view, pending', atSite, pending⟩ : ∃ past view event,
+      site.1 = some (past, view) ∧ pendingEvent setup leaks who site.1 = some event := by
+    rcases pendingSite with ⟨past, view, event, atSite, pending, _⟩ |
+      ⟨past, view, event, atSite, pending, _⟩ <;> exact ⟨past, view, event, atSite, pending⟩
   rw [atSite] at pending
   obtain ⟨turn, readyView, _, _⟩ := pendingEvent_spec (setup := setup) pending
   have sameEvent : pending' = event := by
@@ -3034,14 +3226,32 @@ theorem siteThrough_of_history {who : Player} {site : (onePacketN).InformationSi
   subst pastEq viewEq
   exact Or.inr ⟨(State.publicView_eventReady _ pending').mp readyView, notOwed⟩
 
-/-- **The certificate's lumping at debt-free late deliveries.** For an
-assembled sequence, at every stage and for every owner, the native kernel of the
-profiles installing the late options lumps onto the decision image at late
-deliveries at which the owner owes no failure, with drift twice the cube of the
-scale. Play from such a site stays at states consistent with it at which the
-owner's debt is clear at the site's turn event (`Vegas.debtClear_step`), and the
-installed profiles have the site shape there
-(`Vegas.certificate_siteComponentShape`). -/
+
+omit [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
+  [Finite setup.intendedProtocol.History]
+  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+    scheduler).InfoState who)] in
+/-- **The histories of a debt-free late delivery pass through it**
+(`Vegas.siteThrough_of_pendingHistory`). -/
+theorem siteThrough_of_history {who : Player} {site : (onePacketN).InformationSite who}
+    (late : LateDelivery setup leaks who site.1)
+    (debtFree : SiteDebtFree setup leaks bounds horizon scheduler site)
+    {key : LateKey setup leaks} (siteKey : lateKey setup leaks who site.1 = some key)
+    (history : (onePacketN).InformationHistory who site.1) :
+    SiteThrough setup leaks who site.1 history.1.state :=
+  siteThrough_of_pendingHistory setup leaks bounds horizon scheduler (Or.inl late) debtFree
+    siteKey history
+
+/-- **The certificate's lumping at debt-free pending sites.** For an assembled
+sequence, at every stage and for every owner, the native kernel of the profiles
+installing the late options lumps onto the decision image at late deliveries
+and first activations at which the owner owes no failure, with drift twice the
+cube of the scale. At a first activation the installed wait option is silence up
+to the scale's trembles. Play from such a site stays at states consistent with
+it at which the owner's debt is clear at the site's turn event
+(`Vegas.debtClear_step`) and the activation of its pending event is recalled
+(`Vegas.activationTracked_step`), and the installed profiles have the site shape
+there (`Vegas.certificate_siteComponentShape_of_pending`). -/
 def certificateLumping (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     {slots : Nat} (covers : bounds.CoversOutputValues) (capacity : 1 ≤ bounds.candidateCount)
@@ -3051,7 +3261,7 @@ def certificateLumping (sequence : ℕ → setup.intendedModel.BehavioralAssessm
     (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
       scale_le_one weights targetSequence) (n : ℕ) (who : Player) :
     PendingLumpingOn (targetSequence n) who
-      (fun site => LateDelivery setup leaks who site.1 ∧
+      (fun site => (LateDelivery setup leaks who site.1 ∨ FirstActivation setup leaks who site.1) ∧
         SiteDebtFree setup leaks bounds horizon scheduler site)
       (fun site option => Profile.update (sig := (onePacketN).behavioralSignature)
         (targetSequence n).strategy who (((targetSequence n).strategy who).withLaw site.1
@@ -3061,7 +3271,7 @@ def certificateLumping (sequence : ℕ → setup.intendedModel.BehavioralAssessm
       (DecisionImage (setup := setup) (leaks := leaks)) :=
   have nonnegative := (scale_pos n).le
   onePacketLateLumpingOn (targetSequence n) who
-    (fun site => LateDelivery setup leaks who site.1 ∧
+    (fun site => (LateDelivery setup leaks who site.1 ∨ FirstActivation setup leaks who site.1) ∧
       SiteDebtFree setup leaks bounds horizon scheduler site) _
     (by have := pow_nonneg nonnegative 3; linarith) (pow_nonneg nonnegative 3)
     (by linarith) (openingKernel bounds horizon scheduler
@@ -3071,29 +3281,33 @@ def certificateLumping (sequence : ℕ → setup.intendedModel.BehavioralAssessm
     (fun key option => lateBindingMoves bounds horizon scheduler (scale n) nonnegative
       (scale_le_one n)
       (certificateOptions setup leaks bounds horizon scheduler (weights n) key option) key)
-    (fun site => SiteThrough setup leaks who site.1)
+    (fun site state => SiteThrough setup leaks who site.1 state ∧
+      ActivationTracked setup leaks who site.1 state)
     (fun _ relevant _ siteKey history _ _ =>
-      siteThrough_of_history setup leaks bounds horizon scheduler relevant.1 relevant.2 siteKey
-        history)
+      ⟨siteThrough_of_pendingHistory setup leaks bounds horizon scheduler relevant.1 relevant.2
+        siteKey history, Or.inr (siteActivated_of_history setup leaks bounds horizon scheduler
+          history)⟩)
     (fun site _ _ state through next member => by
+      refine ⟨?_, activationTracked_step setup leaks horizon scheduler _ who site.1 through.1.1
+        through.2 member⟩
       cases state with
-      | none => exact through.1.elim
+      | none => exact through.1.1.elim
       | some control =>
-          exact ⟨siteConsistent_step _ who site.1 through.1 member, fun event siteTurn =>
+          exact ⟨siteConsistent_step _ who site.1 through.1.1 member, fun event siteTurn =>
             debtClear_step setup leaks horizon scheduler _ who event
-              (through.2 event siteTurn) member⟩)
+              (through.1.2 event siteTurn) member⟩)
     (fun site relevant key siteKey option => ownerStepClose_of_openingLaw bounds _ key option _
       (ownerOpeningLaw_of_siteComponents (sequence n) covers (scale n) nonnegative
         (scale_le_one n) (certificateOptions setup leaks bounds horizon scheduler (weights n))
-        key option _ _ (certificate_siteComponentShape setup leaks bounds horizon scheduler
-          sequence scale scale_pos scale_le_one weights targetSequence assembled n site
-          relevant.1 siteKey option _ (fun _ through => through.1))))
+        key option _ _ (certificate_siteComponentShape_of_pending setup leaks bounds horizon
+          scheduler sequence scale scale_pos scale_le_one weights targetSequence assembled n site
+          relevant.1 siteKey option _ (fun _ through => through.1.1) fun _ through => through.2)))
     (fun site relevant key siteKey option => ownerBindingLaw_of_siteComponents (sequence n)
       covers capacity slotsLe (scale n) nonnegative (scale_le_one n)
       (certificateOptions setup leaks bounds horizon scheduler (weights n)) key option _ _
-      (certificate_siteComponentShape setup leaks bounds horizon scheduler sequence scale
-        scale_pos scale_le_one weights targetSequence assembled n site relevant.1 siteKey option
-        _ (fun _ through => through.1)))
+      (certificate_siteComponentShape_of_pending setup leaks bounds horizon scheduler sequence
+        scale scale_pos scale_le_one weights targetSequence assembled n site relevant.1 siteKey
+        option _ (fun _ through => through.1.1) fun _ through => through.2))
 
 omit [Fintype Player] [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
   [Finite setup.intendedProtocol.History]
@@ -3629,7 +3843,8 @@ theorem OnePacketOpenInputs.siteCommonness
     exact lateHistoryFailure_near_lumped setup leaks bounds horizon scheduler sequence
       inputs.scale inputs.scale_pos inputs.scale_le_one n (targetSequence n) key.owner
       (lumping n key.owner) site
-      ⟨keyed.1, siteDebtFree_of_not_owing setup leaks bounds horizon scheduler notOwing⟩ key
+      ⟨Or.inl keyed.1, siteDebtFree_of_not_owing setup leaks bounds horizon scheduler notOwing⟩
+      key
       siteKey option
       (fun history _ _ final reached =>
         onePacketFailed_iff_decisionFailed setup leaks bounds horizon scheduler completes

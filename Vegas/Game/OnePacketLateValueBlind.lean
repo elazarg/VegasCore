@@ -593,7 +593,8 @@ theorem lateValueBlind_of_bounds
         pathError n := by
     intro option history supported forced
     exact lateHistoryFailure_near_lumped setup leaks bounds horizon scheduler sequence scale
-      scale_pos scale_le_one n (targetSequence n) who lumping site ⟨late, debtFree⟩ key siteKey
+      scale_pos scale_le_one n (targetSequence n) who lumping site
+        ⟨Or.inl late, debtFree⟩ key siteKey
       option (fun other _ _ final reached =>
         onePacketFailed_iff_decisionFailed_of_pending setup leaks bounds horizon scheduler
           completes site (decidedOf other) pending other _ final reached)

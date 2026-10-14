@@ -487,7 +487,7 @@ theorem certificate_commit_historyFailure
   have through := siteThrough_of_history setup leaks bounds horizon scheduler late debtFree
     siteKey history
   rw [current] at through forced
-  have core := lateCommit_historyFailure lumping site ⟨late, debtFree⟩ siteKey
+  have core := lateCommit_historyFailure lumping site ⟨Or.inl late, debtFree⟩ siteKey
     (none : LateOption slots) Sum.inr imageBinding history.1 current
     (fun later control laterState sameConfig longer => by
       refine ⟨?_, ?_⟩
@@ -498,7 +498,7 @@ theorem certificate_commit_historyFailure
           Or.inr ⟨ownerEq ▸ ⟨rank, point, by rw [sameConfig]; exact ordered,
             by rw [sameConfig]; exact decoded, holds⟩, by rw [sameConfig]; exact ready⟩⟩
       · rw [laterState]
-        refine ⟨?_, fun turnEvent siteTurn => ?_⟩
+        refine ⟨⟨?_, fun turnEvent siteTurn => ?_⟩, Or.inl late⟩
         · right
           obtain ⟨entry, rest, recallEq⟩ := longer
           refine ⟨entry, rest, ?_⟩
