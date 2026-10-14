@@ -332,6 +332,12 @@ import Vegas.Pending.ReactiveLocalSeedPosteriorLog
 import Vegas.Pending.ReactiveLocalSeedOwnerRun
 import Interaction.ReactiveSchedulerFreshSeed
 import GameTheoryExtensions.Analysis.Protocol.StoppedKernelComparison
+import Vegas.Game.RecoveryOnePacketCompletion
+import Vegas.Game.RecoveryForeignExitComparison
+import Vegas.Game.RecoveryProtectedCalls
+import Vegas.Game.RecoveryCanonicalSafety
+import Vegas.Game.RecoveryOwingOptimality
+import Vegas.Pending.ReactiveCountedSeedObservation
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -2035,6 +2041,51 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.recovery_exclusionPayoffs_withinTV
 
+/-- info: 'Interaction.ReactiveApplication.ResponseMenu.runBehavioralUntil_embed'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.ReactiveApplication.ResponseMenu.runBehavioralUntil_embed
+
+/-- info: 'Vegas.EventGraphRuntime.RecoveryProjection.runBehavioralUntil_exclusion_classified_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.RecoveryProjection.runBehavioralUntil_exclusion_classified_eq
+
+/-- info: 'Vegas.RecoveryOnePacket.exists_consistent_completion'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.exists_consistent_completion
+
+/-- info: 'Vegas.recovery_expect_sub_native_stopped_le_foreign_exit'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_expect_sub_native_stopped_le_foreign_exit
+
+/-- info: 'Vegas.recovery_settlesFreshCalls_environment'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_settlesFreshCalls_environment
+
+/-- info: 'Vegas.recovery_firstActivation_canonical_succeeds_environment'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_firstActivation_canonical_succeeds_environment
+
+/-- info: 'Vegas.RecoveryOnePacket.owingAgent_isSequentiallyRationalAt'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.owingAgent_isSequentiallyRationalAt
+
+/-- info: 'Vegas.EventGraphRuntime.LocalSeedController.ownerObservation_seed_product'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.LocalSeedController.ownerObservation_seed_product
+
+/-- info: 'Vegas.EventGraphRuntime.LocalSeedController.runJoint_counted_log_emittedAtActivation'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.LocalSeedController.runJoint_counted_log_emittedAtActivation
+
 /-- info: 'Vegas.EventGraphRuntime.Recovery.Opportunity.clear_native' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
@@ -2050,15 +2101,15 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.EventGraphRuntime.countedSeedDomain_dispatch_of_activated_survives
 
-/-- info: 'Vegas.EventGraphRuntime.LocalSeedController.runRounds_unsent_log_eq_of_owner_info'
+/-- info: 'Vegas.EventGraphRuntime.LocalSeedController.runRounds_log_eq_of_owner_info'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraphRuntime.LocalSeedController.runRounds_unsent_log_eq_of_owner_info
+#print axioms Vegas.EventGraphRuntime.LocalSeedController.runRounds_log_eq_of_owner_info
 
-/-- info: 'Vegas.EventGraphRuntime.LocalSeedController.posterior_unsent_activation'
+/-- info: 'Vegas.EventGraphRuntime.LocalSeedController.posterior_ready_activation'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraphRuntime.LocalSeedController.posterior_unsent_activation
+#print axioms Vegas.EventGraphRuntime.LocalSeedController.posterior_ready_activation
 
 /-- info: 'Interaction.ReactiveApplication.schedulerMixture_beforeResponse_joint'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/

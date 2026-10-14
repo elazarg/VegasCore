@@ -2,7 +2,7 @@
 
 import Vegas.Pending.ReactiveCountedSeedDecisionLog
 
-/-! # Genuine unsent owner observation fibers determine the private query log
+/-! # Genuine owner observation fibers determine the private query log
 
 The two histories may have different hidden initial inputs, command counts,
 and scheduler seeds. Equality of actual active-owner information nevertheless
@@ -24,9 +24,9 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 
 local notation "app" => runtime.reactiveApplication leaks
 
-/-- Every genuine supported clean unsent owner observation fiber has one raw
+/-- Every genuine supported clean owner observation fiber has one raw
 local query log. Initial private game inputs and scheduler seeds may vary. -/
-theorem runRounds_unsent_log_eq_of_owner_info
+theorem runRounds_log_eq_of_owner_info
     (localLaw : PMF LocalSeed) (remainderLaw : PMF RestSeed)
     (remainder : SeedRemainderController runtime leaks RestSeed owner event)
     (bounds : MessageBounds graph) (inputs : PMF graph.Inputs)
@@ -55,41 +55,51 @@ theorem runRounds_unsent_log_eq_of_owner_info
       active side ∈ ((before side).environmentStep app (.activate owner)).support)
     (ready : ∀ side, (before side).application.publicView.EventReady event)
     (unmissed : ∀ side, (before side).application.publicView.missedBindingBy owner = false)
-    (empty : ∀ side, (runtime.ownerSeedInput leaks event ((active side).recall owner)
-      ((active side).observe app owner)).emitted = [])
     (informationEq : ((active false).recall owner, (active false).observe app owner) =
       ((active true).recall owner, (active true).observe app owner)) :
     (controller.replay remainder (initialMemory (localSeed false) (remainderSeed false))
       (active false).environmentRecall).log =
     (controller.replay remainder (initialMemory (localSeed true) (remainderSeed true))
       (active true).environmentRecall).log := by
-  obtain ⟨left, leftLog, leftPositive, leftClock⟩ :=
-    controller.runRounds_unsent_activation_signature localLaw remainderLaw remainder bounds inputs
+  obtain ⟨left, leftUnresolved, leftEmitted, leftPositive, leftClock⟩ :=
+    controller.runRounds_activation_log_signature localLaw remainderLaw remainder bounds inputs
       ordered domainEq players covered owned (setup false) (horizon false) (scheduler false)
         (remaining false) (trace false) (localSeed false) (remainderSeed false) (count false)
           (before false) (active false) (reached false) (chosen false) (observed false)
-            (ready false)
-            (unmissed false) (empty false)
-  obtain ⟨right, rightLog, rightPositive, rightClock⟩ :=
-    controller.runRounds_unsent_activation_signature localLaw remainderLaw remainder bounds inputs
+            (ready false) (unmissed false)
+  obtain ⟨right, rightUnresolved, rightEmitted, rightPositive, rightClock⟩ :=
+    controller.runRounds_activation_log_signature localLaw remainderLaw remainder bounds inputs
       ordered domainEq players covered owned (setup true) (horizon true) (scheduler true)
         (remaining true) (trace true) (localSeed true) (remainderSeed true) (count true)
-          (before true) (active true) (reached true) (chosen true) (observed true) (ready true)
-            (unmissed true) (empty true)
+          (before true) (active true) (reached true) (chosen true) (observed true)
+            (ready true) (unmissed true)
   have recallEq := congrArg Prod.fst informationEq
   have viewEq := congrArg Prod.snd informationEq
   change (active false).recall owner = (active true).recall owner at recallEq
   change (active false).observe app owner = (active true).observe app owner at viewEq
-  have positiveEq : positiveQueries
-      (encodeUnsentLogFrom (runtime := runtime) (leaks := leaks) 0 0 left) =
-        positiveQueries (encodeUnsentLogFrom (runtime := runtime) (leaks := leaks) 0 0 right) := by
+  have positiveEq : positiveQueries (controller.replay remainder
+      (initialMemory (localSeed false) (remainderSeed false))
+        (active false).environmentRecall).log =
+        positiveQueries (controller.replay remainder
+          (initialMemory (localSeed true) (remainderSeed true))
+            (active true).environmentRecall).log := by
     rw [leftPositive, rightPositive, recallEq, viewEq]
-  have clockEq : (exhaustedClocks
-      (encodeUnsentLogFrom (runtime := runtime) (leaks := leaks) 0 0 left)).length =
-        (exhaustedClocks
-          (encodeUnsentLogFrom (runtime := runtime) (leaks := leaks) 0 0 right)).length := by
+  have clockEq : (exhaustedClocks (controller.replay remainder
+      (initialMemory (localSeed false) (remainderSeed false))
+        (active false).environmentRecall).log).length =
+      (exhaustedClocks (controller.replay remainder
+        (initialMemory (localSeed true) (remainderSeed true))
+          (active true).environmentRecall).log).length := by
     rw [leftClock, rightClock, recallEq, viewEq]
-  have wordEq := encodeUnsentLogFrom_signature_injective left right 0 0 positiveEq clockEq
-  rw [leftLog, rightLog, wordEq]
+  let emittedAt := runtime.ownerEmissionsAtActivation leaks event ((active false).recall owner)
+  have rightEmitted' : ∀ entry ∈ (controller.replay remainder
+      (initialMemory (localSeed true) (remainderSeed true)) (active true).environmentRecall).log,
+      entry.query.input.emitted = emittedAt entry.query.activationIndex := by
+    intro entry member
+    dsimp only [emittedAt]
+    rw [recallEq]
+    exact rightEmitted entry member
+  exact CountedQueryLog.eq_of_emission_signature emittedAt left right leftEmitted rightEmitted'
+    leftUnresolved rightUnresolved positiveEq clockEq
 
 end Vegas.EventGraphRuntime.LocalSeedController

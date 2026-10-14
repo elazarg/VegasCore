@@ -558,6 +558,16 @@ import Vegas.Game.SourceFailureRecord
 import Vegas.Game.RecoverySourceFailure
 import Vegas.Game.RecoveryOnePacketExtension
 import Vegas.Game.RecoveryExclusionPayoff
+import Vegas.Game.RecoveryForeignExitBound
+import Vegas.Game.RecoveryForeignExitComparison
 import Vegas.Game.RecoveryDecodedDebt
 import Vegas.Game.RecoveryIndifference
 import Vegas.Game.RecoveryContinuationPayoff
+import Vegas.Game.RecoveryOnePacketComponents
+import Vegas.Game.RecoveryPublicCompletion
+import Vegas.Game.RecoveryOnePacketCompletion
+import Vegas.Game.RecoveryFirstActivation
+import Vegas.Game.RecoveryProtectedCalls
+import Vegas.Game.RecoveryCanonicalSafety
+import Vegas.Game.RecoveryDebtUniformity
+import Vegas.Game.RecoveryOwingOptimality

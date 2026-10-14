@@ -116,9 +116,10 @@ theorem exists_paired_behavioralStep
         (∀ nextClear : ∀ control, next.2.state = some control →
             control.execution.application.excluded = ∅,
           next.1 = nativeHistory runtime leaks initial horizon scheduler next.2 nextClear) ∧
-        ((∀ control, next.1.state = some control →
+        (((∀ control, next.1.state = some control →
             PublicExclusionRecord (⟨control.execution.application, ∅⟩ : RecoveryState graph)) →
-          ∀ control, next.2.state = some control → control.execution.application.excluded = ∅) := by
+          ∀ control, next.2.state = some control → control.execution.application.excluded = ∅) ∧
+        PairedExclusionRecord runtime leaks next.1.state next.2.state) := by
   classical
   intro clear native
   let draws := (RecoveryModel).behavioralJoint profile history.trace running
@@ -204,8 +205,10 @@ theorem exists_paired_behavioralStep
     · intro nextClear
       exact StateSymmetry.history_extend_congr rfl rfl
         ((marginal draw).2.2.1 pair member nextClear)
-    · intro nativeClear control same
-      have lifted := (marginal draw).2.2.2 pair member nativeClear
-      exact liftProtocolState_clear runtime leaks pair.1 control (lifted.symm.trans same)
+    · constructor
+      · intro nativeClear control same
+        have lifted := (marginal draw).2.2.2.1 pair member nativeClear
+        exact liftProtocolState_clear runtime leaks pair.1 control (lifted.symm.trans same)
+      · exact (marginal draw).2.2.2.2 pair member
 
 end Vegas.EventGraphRuntime.RecoveryProjection

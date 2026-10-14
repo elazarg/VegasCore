@@ -91,3 +91,5 @@ import GameTheoryExtensions.Protocol.OwnPlayPrefix
 import GameTheoryExtensions.Analysis.Protocol.StoppedKernelComparison
 import GameTheoryExtensions.Math.Probability.TaggedPosterior
 import GameTheoryExtensions.Math.Probability.EqualMassFibers
+import GameTheoryExtensions.Math.Probability.ProductMixture
+import GameTheoryExtensions.Math.Probability.ConditionalProductMixture

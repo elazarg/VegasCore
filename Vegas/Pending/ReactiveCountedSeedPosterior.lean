@@ -1,11 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ReactiveCountedSeedDecisionLog
+import Vegas.Pending.ReactiveCountedSeedOwnerFiber
 import Vegas.Pending.ReactiveLocalSeedRecoveredPosterior
 import Vegas.Pending.ReactiveLocalSeedTranscript
 import Interaction.ReactiveSchedulerSeedSupport
 
-/-! # Actual seed posterior at a genuine clean unsent owner decision
+/-! # Actual seed posterior at a genuine clean owner decision
 
 Every supported posterior seed realizes a genuine original execution at the
 same active-owner observation. Actual query-log recovery fixes its raw log,
@@ -70,9 +70,9 @@ private theorem follows_of_fixed_decision
     ⟨before.observeEnvironment app, .activate owner⟩).mpr
   exact ⟨beforeCompatible, ((PMF.mem_support_pure_iff _ _).mp chosen).symm⟩
 
-/-- The concrete scheduler posterior at an actual clean unsent active-owner
+/-- The concrete scheduler posterior at an actual clean active-owner
 site has the product law obtained by filtering exactly its recovered local queries. -/
-theorem posterior_unsent_activation
+theorem posterior_ready_activation
     (laws : (side : Bool) → PMF (A side))
     (bounds : MessageBounds graph) (inputs : PMF graph.Inputs)
     (ordered : graph.RevealRelaxedOrdered)
@@ -95,9 +95,7 @@ theorem posterior_unsent_activation
         before.environmentRecall (before.observeEnvironment app)).support)
     (observed : active ∈ (before.environmentStep app (.activate owner)).support)
     (ready : active.application.publicView.EventReady event)
-    (unmissed : active.application.publicView.missedBindingBy owner = false)
-    (empty : (runtime.ownerSeedInput leaks event (active.recall owner)
-      (active.observe app owner)).emitted = []) :
+    (unmissed : active.application.publicView.missedBindingBy owner = false) :
     ∃ (log : List (LocalSeedEntry graph (app).Command))
       (localPositive : ∃ seed ∈ {seed | ∀ entry ∈ log,
         controller.reply seed entry.query = entry.reply}, seed ∈ (laws false).support)
@@ -130,39 +128,47 @@ theorem posterior_unsent_activation
     (app).schedulerMixture_decision_of_posterior_support _ family players count
       (State.initial setup) before active (.activate owner) values reached chosen observed supported
   have signature (values) (supported : values ∈ current.support) :
-      ∃ word : List Bool,
-        (controller.replay remainder (initialMemory (values false) (values true))
-          active.environmentRecall).log =
-            encodeUnsentLogFrom (runtime := runtime) (leaks := leaks) 0 0 word ∧
-        positiveQueries (encodeUnsentLogFrom (runtime := runtime) (leaks := leaks) 0 0 word) =
+      CountedQueryLog (controller.replay remainder
+        (initialMemory (values false) (values true)) active.environmentRecall).log ∧
+      (∀ entry ∈ (controller.replay remainder
+          (initialMemory (values false) (values true)) active.environmentRecall).log,
+        entry.reply = .activation ∨ entry.reply = .exhausted) ∧
+      (∀ entry ∈ (controller.replay remainder
+          (initialMemory (values false) (values true)) active.environmentRecall).log,
+        entry.query.input.emitted = runtime.ownerEmissionsAtActivation leaks event
+          (active.recall owner) entry.query.activationIndex) ∧
+      positiveQueries (controller.replay remainder
+        (initialMemory (values false) (values true)) active.environmentRecall).log =
           runtime.ownerActivationQueries leaks event (active.recall owner) ++
             [⟨runtime.ownerSeedInput leaks event (active.recall owner) (active.observe app owner),
                 runtime.readyActivationCount leaks event (active.recall owner)⟩] ∧
-        (exhaustedClocks
-          (encodeUnsentLogFrom (runtime := runtime) (leaks := leaks) 0 0 word)).length =
-            (runtime.ownerSeedInput leaks event (active.recall owner)
-              (active.observe app owner)).elapsed := by
+      (exhaustedClocks (controller.replay remainder
+        (initialMemory (values false) (values true)) active.environmentRecall).log).length =
+          (runtime.ownerSeedInput leaks event (active.recall owner)
+            (active.observe app owner)).elapsed := by
     obtain ⟨_, original, runs, commands, effects⟩ := actual values supported
     have unchanged := activation_application original active effects
-    apply controller.runRounds_unsent_activation_signature (laws false) (laws true) remainder
+    apply controller.runRounds_activation_log_signature (laws false) (laws true) remainder
       bounds inputs ordered domainEq players covered owned setup horizon scheduler remaining trace
         (values false) (values true) count original active runs commands effects
     · rwa [← unchanged]
     · rwa [← unchanged]
-    · exact empty
   obtain ⟨witness, witnessSupport⟩ := current.support_nonempty
-  obtain ⟨word, wordLog, wordPositive, wordClock⟩ := signature witness witnessSupport
+  obtain ⟨first, firstUnresolved, firstEmitted, firstPositive, firstClock⟩ :=
+    signature witness witnessSupport
   let log := (controller.replay remainder (initialMemory (witness false) (witness true))
     active.environmentRecall).log
   have recovered : ∀ values ∈ current.support,
       (controller.replay remainder (initialMemory (values false) (values true))
         active.environmentRecall).log = log := by
     intro values supported
-    obtain ⟨other, otherLog, otherPositive, otherClock⟩ := signature values supported
-    have same := encodeUnsentLogFrom_signature_injective other word 0 0
-      (otherPositive.trans wordPositive.symm) (otherClock.trans wordClock.symm)
+    obtain ⟨second, secondUnresolved, secondEmitted, secondPositive, secondClock⟩ :=
+      signature values supported
     dsimp only [log]
-    rw [otherLog, wordLog, same]
+    exact CountedQueryLog.eq_of_emission_signature
+      (runtime.ownerEmissionsAtActivation leaks event (active.recall owner)) second first
+        secondEmitted firstEmitted secondUnresolved firstUnresolved
+          (secondPositive.trans firstPositive.symm) (secondClock.trans firstClock.symm)
   obtain ⟨priorSupport, original, runs, commands, effects⟩ := actual witness witnessSupport
   have compatible := controller.follows_of_fixed_decision remainder laws players
     (State.initial setup) count witness original active runs commands effects

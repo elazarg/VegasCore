@@ -1,14 +1,14 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveCountedSeedOwnerLog
-import Vegas.Pending.ReactiveLocalSeedUnsentActivation
-import Vegas.Pending.ReactiveLocalSeedUnsent
+import Vegas.Pending.ReactiveCountedSeedEmissionLog
+import Vegas.Pending.ReactiveLocalSeedActivationLog
 import Interaction.ReactiveResponseAccounting
 
-/-! # Raw local seed logs at actual clean unsent decisions
+/-! # Raw local seed logs at actual clean owner decisions
 
 Initialized supported fixed-seed executions derive all local log invariants.
-The actual next owner activation therefore has a raw-log encoding determined
+The actual next owner activation therefore has its raw-log data determined
 by the owner's complete observed activation history and elapsed clock.
 -/
 
@@ -27,9 +27,9 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 
 local notation "app" => runtime.reactiveApplication leaks
 
-/-- Actual supported clean unsent decisions determine the complete replayed
+/-- Actual supported clean owner decisions determine the complete replayed
 query log by genuine owner information, with no query-log recovery premise. -/
-theorem runRounds_unsent_activation_signature
+theorem runRounds_activation_log_signature
     (localLaw : PMF LocalSeed) (remainderLaw : PMF RestSeed)
     (remainder : SeedRemainderController runtime leaks RestSeed owner event)
     (bounds : MessageBounds graph) (inputs : PMF graph.Inputs)
@@ -53,21 +53,25 @@ theorem runRounds_unsent_activation_signature
         (before.observeEnvironment app)).support)
     (observed : active ∈ (before.environmentStep app (.activate owner)).support)
     (ready : before.application.publicView.EventReady event)
-    (unmissed : before.application.publicView.missedBindingBy owner = false)
-    (empty : (runtime.ownerSeedInput leaks event (active.recall owner)
-      (active.observe app owner)).emitted = []) :
-    ∃ word : List Bool,
-      (controller.replay remainder (initialMemory localSeed remainderSeed)
-        active.environmentRecall).log =
-          encodeUnsentLogFrom (runtime := runtime) (leaks := leaks) 0 0 word ∧
-      positiveQueries (encodeUnsentLogFrom (runtime := runtime) (leaks := leaks) 0 0 word) =
+    (unmissed : before.application.publicView.missedBindingBy owner = false) :
+    CountedQueryLog (controller.replay remainder (initialMemory localSeed remainderSeed)
+      active.environmentRecall).log ∧
+    (∀ entry ∈ (controller.replay remainder (initialMemory localSeed remainderSeed)
+        active.environmentRecall).log,
+      entry.reply = .activation ∨ entry.reply = .exhausted) ∧
+    (∀ entry ∈ (controller.replay remainder (initialMemory localSeed remainderSeed)
+        active.environmentRecall).log,
+      entry.query.input.emitted = runtime.ownerEmissionsAtActivation leaks event
+        (active.recall owner) entry.query.activationIndex) ∧
+    positiveQueries (controller.replay remainder (initialMemory localSeed remainderSeed)
+      active.environmentRecall).log =
         runtime.ownerActivationQueries leaks event (active.recall owner) ++
           [⟨runtime.ownerSeedInput leaks event (active.recall owner) (active.observe app owner),
               runtime.readyActivationCount leaks event (active.recall owner)⟩] ∧
-      (exhaustedClocks
-        (encodeUnsentLogFrom (runtime := runtime) (leaks := leaks) 0 0 word)).length =
-          (runtime.ownerSeedInput leaks event (active.recall owner)
-            (active.observe app owner)).elapsed := by
+    (exhaustedClocks (controller.replay remainder (initialMemory localSeed remainderSeed)
+      active.environmentRecall).log).length =
+        (runtime.ownerSeedInput leaks event (active.recall owner)
+          (active.observe app owner)).elapsed := by
   classical
   let memory := controller.replay remainder (initialMemory localSeed remainderSeed)
     before.environmentRecall
@@ -81,6 +85,9 @@ theorem runRounds_unsent_activation_signature
     controller.runJoint_counted_ownerLog localLaw remainderLaw remainder bounds inputs ordered
       domainEq players covered owned setup horizon scheduler remaining trace localSeed remainderSeed
         count before memory joint ready unmissed
+  have remembered := controller.runJoint_counted_log_emittedAtActivation localLaw remainderLaw
+    remainder bounds inputs ordered domainEq players covered owned setup horizon scheduler remaining
+      trace localSeed remainderSeed count before memory joint ready unmissed
   obtain ⟨extended, ⟨beforeTrace⟩⟩ := controller.runJoint_trace localLaw remainderLaw remainder
     (bounds.onePacketMenu runtime leaks) (inputs.map State.initial) players covered count horizon
       scheduler remaining (ReactiveApplication.Execution.initial app (State.initial setup))
@@ -97,15 +104,9 @@ theorem runRounds_unsent_activation_signature
   have inputEq := runtime.environmentActivation_ownerSeedInput leaks before active owner owner event
     observed
   have recallEq := (app).environmentStep_recall before active (.activate owner) observed
-  have beforeEmpty : (runtime.environmentSeedInput leaks owner event
-      (before.observeEnvironment app)).emitted = [] := by
-    rw [runtime.seedInput_eq_of_inputRecall leaks before recalled owner event, ← inputEq]
-    exact empty
-  have unsent := controller.runJoint_unsent_queryInputs localLaw remainderLaw remainder players
-    count (State.initial setup) localSeed remainderSeed before memory joint beforeEmpty
-  obtain ⟨word, logEq, positiveEq, clockEq⟩ := controller.activation_unsent_signature remainder
-    memory before genuine recalled ready activated counted unresolved unsent
-      (by rwa [inputEq] at empty) positives indexed clocks
+  obtain ⟨countedAfter, unresolvedAfter, emittedAfter, positiveEq, clockEq⟩ :=
+    controller.activation_log_signature remainder memory before genuine recalled ready activated
+      counted unresolved (fun entry member => (remembered entry member).2) positives indexed clocks
   have replayEq : controller.replay remainder (initialMemory localSeed remainderSeed)
       active.environmentRecall =
         (controller.step remainder memory before.environmentRecall
@@ -113,11 +114,15 @@ theorem runRounds_unsent_activation_signature
     rw [(app).environmentStep_environmentRecall before active (.activate owner) observed]
     exact controller.replay_snoc remainder (initialMemory localSeed remainderSeed)
       before.environmentRecall ⟨before.observeEnvironment app, .activate owner⟩
-  refine ⟨word, ?_, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_, ?_, ?_⟩
   · rwa [replayEq]
-  · rw [inputEq, recallEq]
+  · rw [replayEq]
+    exact unresolvedAfter
+  · rw [replayEq, recallEq]
+    exact emittedAfter
+  · rw [replayEq, inputEq, recallEq]
     exact positiveEq
-  · rw [inputEq]
+  · rw [replayEq, inputEq]
     exact clockEq
 
 end Vegas.EventGraphRuntime.LocalSeedController

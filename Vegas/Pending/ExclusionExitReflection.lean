@@ -87,14 +87,23 @@ theorem exists_paired_transition_clear_reflection
       (∀ pair ∈ paired.support,
         (∀ next, pair.2 = some next → next.execution.application.excluded = ∅) →
         pair.1 = protocolState runtime leaks pair.2) ∧
-      ∀ pair ∈ paired.support,
+      (∀ pair ∈ paired.support,
         (∀ next, pair.1 = some next →
           PublicExclusionRecord (⟨next.execution.application, ∅⟩ : RecoveryState graph)) →
-        pair.2 = liftProtocolState runtime leaks pair.1 := by
-  obtain ⟨paired, first, second, forward⟩ := exists_paired_transition runtime leaks initial horizon
-    scheduler current trace empty joint
+        pair.2 = liftProtocolState runtime leaks pair.1) ∧
+      ∀ pair ∈ paired.support, PairedExclusionRecord runtime leaks pair.1 pair.2 := by
+  have valid := nativeHistory_record runtime leaks initial initialized horizon scheduler trace
+    (by intro next same; cases Option.some.inj same; exact empty)
+    (control runtime leaks current) rfl
+  change PublicExclusionRecord (⟨current.execution.application.native, ∅⟩ : RecoveryState graph)
+    at valid
+  rw [← empty] at valid
+  obtain ⟨paired, first, second, preserved⟩ :=
+    exists_paired_transition runtime leaks initial horizon scheduler current trace empty valid joint
+  have forward := fun pair member => (preserved pair member).1
   exact ⟨paired, first, second, forward,
     paired_transition_clear_reflection runtime leaks initial initialized horizon scheduler current
-      trace empty joint paired first second forward⟩
+      trace empty joint paired first second forward,
+    fun pair member => (preserved pair member).2⟩
 
 end Vegas.EventGraphRuntime.RecoveryProjection

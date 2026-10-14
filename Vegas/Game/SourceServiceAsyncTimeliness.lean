@@ -6,6 +6,7 @@ import Vegas.Pending.ReactiveEntryStability
 import Vegas.Pending.ReactiveEventStability
 import Vegas.Pending.ReactiveFreshCallAcceptance
 import Vegas.Pending.ReactiveCanonicalDecision
+import Vegas.Pending.ReactiveServiceConditions
 import Interaction.ReactiveMessageIdentity
 
 /-! # An acceptable fresh call settles in time under the asynchronous contract
@@ -255,11 +256,10 @@ inclusion. -/
 theorem settlesFreshCalls_environment
     {horizon : Nat} {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
     {bound : (serviceGraph setup mode).EventId → Nat}
-    (inclusion : ProtectedInclusion (serviceRuntime setup mode deadline) leaks
-        (serviceInitialLaw setup mode) horizon scheduler bound)
     (owner : Player) (event : (serviceGraph setup mode).EventId)
     (owned : (serviceGraph setup mode).actor? event = some owner)
     (remaining : Nat) (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (inclusion : ProtectedInclusionAt (serviceRuntime setup mode deadline) leaks execution bound)
     (prior :
         ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
         horizon scheduler).Trace (some ⟨remaining + 1, none, execution⟩))
@@ -286,9 +286,9 @@ theorem settlesFreshCalls_environment
       execution.application.clock ≤
         entry.beforeView.application.publicView.clock + bound event := by
     by_contra late
-    obtain ⟨accepted, receipt⟩ := inclusion ⟨remaining + 1, none, execution⟩ prior event
-      owner owned earlier later entry message split call.emitted call.authored call.addressed
-      call.ready sole unfinished (by change _ < execution.application.clock; omega)
+    obtain ⟨accepted, receipt⟩ := inclusion event owner owned earlier later entry message
+      split call.emitted call.authored call.addressed call.ready sole unfinished
+      (by change _ < execution.application.clock; omega)
     exact unfinished (before.2.2 (before.2.1 accepted receipt))
   have stableAt (unfinished : event ∉ execution.application.config.cut.completed) :=
     facts.eventStable owner entry member event call.ready unfinished
@@ -539,9 +539,9 @@ theorem settlesFreshCalls_history {horizon : Nat}
                   obtain ⟨command, _, moved⟩ :=
                     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
                   obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
-                  exact settlesFreshCalls_environment setup leaks inclusion owner
-                    event
-                    owned remaining execution prior valid command next supported
+                  exact settlesFreshCalls_environment setup leaks owner event owned remaining
+                    execution (inclusion ⟨remaining + 1, none, execution⟩ prior) prior valid command
+                    next supported
 
 /-- **Timeliness of an acceptable fresh call.** Under the contract's protected
 inclusion an owner's fresh call for its ready event, sent while an inclusion within

@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: 2/4 stages checked · next: recovery SE transfer · then: concurrency.**
+**SE: 2/4 stages checked · next: recovery bounds and assembly · then: concurrency.**
 
 Status: partly mechanized mathematics. The checked results include Proposition
 1(1) for events run one at a time, Lemma C, the finite core of Lemma T, and a
@@ -2930,8 +2930,15 @@ needs its own review. What is known:
 | Complete clear-history and raw information-fiber bijections preserve exact behavioral reach weights | `Vegas.EventGraphRuntime.RecoveryProjection.informationHistoryEquiv_reachWeight` |
 | Bounded one-packet Bayes beliefs transport exactly at clear sites, with the recovery decision site derived from ordinary positive event mass | `Vegas.EventGraphRuntime.RecoveryProjection.bounded_bayesBelief_liftedSite` |
 | Actual continuations stopped at first exclusion retain the same law of full surviving histories and the exit atom | `Vegas.EventGraphRuntime.RecoveryProjection.runBehavioralUntil_exclusion_map_eq` |
+| Actual stopped continuations retain the exact first excluded-owner set as well as every surviving native history | `Vegas.EventGraphRuntime.RecoveryProjection.runBehavioralUntil_exclusion_classified_eq` |
 | Actual recovery base-payoff laws differ from the concrete native continuation by at most the actual first-exclusion probability in total variation | `Vegas.recovery_exclusionPayoffs_withinTV` |
+| Fixed-payoff own exclusions contribute no continuation error; only foreign first-exclusion probability enters the scalar bound | `Vegas.recovery_expect_sub_stopped_le_foreign_exit` |
+| The actual finite recovery payoff compares with the induced native stopped law, with error from its foreign first-failure labels only | `Vegas.recovery_expect_sub_native_stopped_le_foreign_exit` |
+| One common recovery assessment completion retains consistent Bayes approximants and rationality at all post-exclusion sites | `Vegas.RecoveryOnePacket.exists_consistent_completion` |
+| Own latent source debt is uniform throughout the actual full recovery information fiber and gives whole-policy rationality for every assessment | `Vegas.RecoveryOnePacket.owingAgent_allHistories`, `Vegas.RecoveryOnePacket.owingAgent_isSequentiallyRationalAt` |
 | Actual recovery service timing gives native opportunity and inclusion at clear native histories | `Vegas.EventGraphRuntime.Recovery.Opportunity.clear_native`, `Vegas.EventGraphRuntime.Recovery.ProtectedInclusion.clear_native` |
+| Protected actual recovery inclusion settles fresh canonical calls through the first-exclusion environment step | `Vegas.recovery_settlesFreshCalls_environment` |
+| A protected canonical transmission cannot publicly fail through the first-exclusion environment step, under actual recovery opportunity and inclusion | `Vegas.recovery_firstActivation_canonical_succeeds_environment` |
 | Count-permitted commitments are accepted while ready and timely, including unusable private bindings | `Vegas.EventGraphRuntime.counted_binding_resolves_of_history` |
 | Authentic count-permitted openings are accepted while ready and timely if the owner's binding was not publicly missed | `Vegas.EventGraphRuntime.counted_opening_accepted` |
 | Coupled actual one-step kernels imply equal stopped readout laws | `GameTheory.Protocol.InformationModel.runBehavioralUntil_map_eq_of_paired_steps` |
@@ -2942,8 +2949,9 @@ needs its own review. What is known:
 | Counted unsent query logs are determined by their positive-query history and exhaustion count | `Vegas.EventGraphRuntime.LocalSeedController.CountedQueryLog.eq_of_unsent_signature` |
 | The concrete local service derives packet inclusion and expiry resolution on genuine clean one-packet histories | `Vegas.EventGraphRuntime.countedLocalSeedController` |
 | Genuine clean service domains persist while the selected ordered owned event survives | `Vegas.EventGraphRuntime.countedSeedDomain_dispatch_of_activated_survives` |
-| Actual clean unsent owner activations with equal full owner information have the same raw query log | `Vegas.EventGraphRuntime.LocalSeedController.runRounds_unsent_log_eq_of_owner_info` |
-| At actual clean unsent owner activations, the scheduler seed posterior factors with the local prior filtered by its recovered replies | `Vegas.EventGraphRuntime.LocalSeedController.posterior_unsent_activation` |
+| Actual clean ready owner activations with equal full owner information have the same raw query log | `Vegas.EventGraphRuntime.LocalSeedController.runRounds_log_eq_of_owner_info` |
+| At actual clean ready owner activations, the scheduler seed posterior factors with the local prior filtered by its recovered replies | `Vegas.EventGraphRuntime.LocalSeedController.posterior_ready_activation` |
+| At each fixed round count, conditioning on the actual full ready owner observation retains the filtered local seed independently of hidden initial inputs, the selected execution and every other seed | `Vegas.EventGraphRuntime.LocalSeedController.ownerObservation_seed_product` |
 
 The default-runtime theorem derives zero on-path count charges and the joint
 typed-readout and realized-payoff law, including the counterpart inputs.
@@ -2960,10 +2968,18 @@ readiness, with exact native agreement before exclusion and a sound count menu.
 Its one-packet SEs extend to the raw recovery game under the count-audit coverage
 and deposit assumptions. Exact raw reach weights and bounded-menu Bayes belief
 transport are checked. Actual stopped continuations retain the same law up to
-first exclusion, and the actual first-exclusion probability bounds the terminal
-payoff-law error. The intended-law one-packet SE still requires the sharper
-continuation comparison separating fixed-payoff own failures from foreign
-failures, bounds for the latter, and assembly of the recovery assessment.
+first exclusion, including the exact excluded-owner labels; the actual
+first-exclusion probability bounds the terminal payoff-law error. The scalar
+continuation error counts only first exits that do not exclude the focal owner.
+A common consistent assessment completion gives rationality at every
+post-exclusion site. Own latent source debt gives rationality at every owing
+site of any assessment, under actual recovery completion. The intended-law
+one-packet SE still requires the numerical
+clear-site comparisons, bounds for foreign failures, and assembly of the
+recovery assessment.
+The foreign-failure estimate is needed only before the focal player incurs
+latent own debt: every later recovery continuation already pays the exclusion
+utility. A clear public record alone does not supply this condition.
 A missed
 binding excludes its owner immediately; an accepted unopenable binding instead
 excludes it when its reveal fails. The recovery handlers retain that distinction;
@@ -2971,11 +2987,16 @@ the concurrent runtime must also retain it when resetting a phase.
 The checked phase-attempt and rollback primitives do not yet define the full
 concurrent source information model or recovery runtime. Scheduler-seed
 realization and the scoped local seed controller do not yet establish the full
-runtime conditioning needed for (S1–S3). For clean unsent activations in ordered
-graphs, actual histories now derive the resolution-safety domain and recover
-the full query log from owner information; the actual scheduler posterior has
-the resulting filtered local-seed factor. Integrating over the owner-information
-fiber and extending this scope to the full runtime remain open.
+runtime conditioning needed for (S1–S3). For clean ready activations in ordered
+graphs, actual histories derive the resolution-safety domain and recover
+the full query log from owner information, including queries after a packet
+was sent. Each earlier emitted prefix is reconstructed from full owner recall
+and its local activation index. The actual scheduler posterior has the resulting
+filtered local-seed factor. At each fixed round count, after integrating over
+the full owner information fiber, that seed is independent of the hidden initial
+inputs, selected command and execution, and all other seed coordinates. Mixing
+the actual protocol's different possible round counts and extending this scoped
+controller result to the full runtime remain open.
 
 A mechanization must also check the following, beyond the statements above:
 

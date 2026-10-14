@@ -1,12 +1,14 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ReactiveLocalSeedLogRecovery
+import Vegas.Pending.ReactiveLocalSeedEmissionPrefix
+import Vegas.Pending.ReactiveLocalSeedCountedLog
 import Vegas.Pending.ReactiveLocalSeedClock
 
-/-! # The raw local log at an unsent owner activation
+/-! # Complete raw-log data at genuine owner activations
 
-Before the selected event emits a packet, a genuine owner activation fixes
-the entire raw log from its positive owner queries and current elapsed clock.
+The owner reconstructs authored packet prefixes from recall at every local
+activation index. Ready activation records therefore retain the full raw log
+signature even when a packet has already been sent.
 -/
 
 noncomputable section
@@ -24,9 +26,9 @@ variable {Player : Type} [DecidableEq Player]
 
 local notation "app" => runtime.reactiveApplication leaks
 
-/-- The private raw log at a genuine unsent owner activation has a unique
-activation/exhaustion encoding, whose signature is actual owner information. -/
-theorem activation_unsent_signature
+/-- Every raw log field needed for uniqueness is determined at a genuine
+owner activation, including after the owner has transmitted its packet. -/
+theorem activation_log_signature
     (remainder : SeedRemainderController runtime leaks RestSeed owner event)
     (memory : LocalSeedMemory runtime leaks LocalSeed RestSeed) (execution : (app).Execution)
     (genuine : controller.domain execution) (recalled : execution.InputRecall app)
@@ -36,9 +38,9 @@ theorem activation_unsent_signature
     (counted : CountedQueryLog memory.log)
     (unresolved : ∀ entry ∈ memory.log,
       entry.reply = .activation ∨ entry.reply = .exhausted)
-    (unsent : ∀ entry ∈ memory.log, entry.query.input.emitted = [])
-    (empty : (runtime.ownerSeedInput leaks event (execution.recall owner)
-      (execution.observe app owner)).emitted = [])
+    (emitted : ∀ entry ∈ memory.log, entry.query.input.emitted =
+      runtime.ownerEmissionsAtActivation leaks event (execution.recall owner)
+        entry.query.activationIndex)
     (positiveMatch : positiveQueries memory.log =
       runtime.ownerActivationQueries leaks event (execution.recall owner))
     (indexMatch : memory.activationIndex =
@@ -50,19 +52,25 @@ theorem activation_unsent_signature
           (execution.observeEnvironment app)).elapsed then
         [(runtime.environmentSeedInput leaks owner event
           (execution.observeEnvironment app)).elapsed] else []) :
-    ∃ word : List Bool,
-      (controller.step remainder memory execution.environmentRecall
-        (execution.observeEnvironment app)).2.log =
-          encodeUnsentLogFrom (runtime := runtime) (leaks := leaks) 0 0 word ∧
-      positiveQueries (encodeUnsentLogFrom (runtime := runtime) (leaks := leaks) 0 0 word) =
+    CountedQueryLog (controller.step remainder memory execution.environmentRecall
+      (execution.observeEnvironment app)).2.log ∧
+    (∀ entry ∈ (controller.step remainder memory execution.environmentRecall
+        (execution.observeEnvironment app)).2.log,
+      entry.reply = .activation ∨ entry.reply = .exhausted) ∧
+    (∀ entry ∈ (controller.step remainder memory execution.environmentRecall
+        (execution.observeEnvironment app)).2.log,
+      entry.query.input.emitted = runtime.ownerEmissionsAtActivation leaks event
+        (execution.recall owner) entry.query.activationIndex) ∧
+    positiveQueries (controller.step remainder memory execution.environmentRecall
+      (execution.observeEnvironment app)).2.log =
         runtime.ownerActivationQueries leaks event (execution.recall owner) ++
           [⟨runtime.ownerSeedInput leaks event (execution.recall owner)
             (execution.observe app owner),
               runtime.readyActivationCount leaks event (execution.recall owner)⟩] ∧
-      (exhaustedClocks
-        (encodeUnsentLogFrom (runtime := runtime) (leaks := leaks) 0 0 word)).length =
-          (runtime.ownerSeedInput leaks event (execution.recall owner)
-            (execution.observe app owner)).elapsed := by
+    (exhaustedClocks (controller.step remainder memory execution.environmentRecall
+      (execution.observeEnvironment app)).2.log).length =
+        (runtime.ownerSeedInput leaks event (execution.recall owner)
+          (execution.observe app owner)).elapsed := by
   classical
   have indexed : memory.activationIndex = (positiveQueries memory.log).length := by
     rw [positiveMatch, runtime.ownerActivationQueries_length]
@@ -76,34 +84,33 @@ theorem activation_unsent_signature
   let query : CurrentSeedQuery graph :=
     ⟨runtime.ownerSeedInput leaks event (execution.recall owner)
       (execution.observe app owner), memory.activationIndex⟩
-  have nextUnsent : ∀ entry ∈ (controller.step remainder memory execution.environmentRecall
-      (execution.observeEnvironment app)).2.log, entry.query.input.emitted = [] := by
-    rw [newLog]
-    intro entry member
-    rcases List.mem_append.mp member with prior | last
-    · exact unsent entry prior
-    · have same : entry = ⟨query, .activation⟩ := by simpa only [List.mem_singleton] using last
-      subst entry
-      exact empty
-  have nextUnresolved : ∀ entry ∈ (controller.step remainder memory execution.environmentRecall
-      (execution.observeEnvironment app)).2.log,
-        entry.reply = .activation ∨ entry.reply = .exhausted := by
-    rw [newLog]
+  refine ⟨newCounted, ?_, ?_, ?_, ?_⟩
+  · rw [newLog]
     intro entry member
     rcases List.mem_append.mp member with prior | last
     · exact unresolved entry prior
     · have same : entry = ⟨query, .activation⟩ := by simpa only [List.mem_singleton] using last
       subst entry
       exact Or.inl rfl
-  obtain ⟨word, wordEq⟩ := newCounted.encode_unsent nextUnsent nextUnresolved
-  refine ⟨word, wordEq, ?_, ?_⟩
-  · rw [← wordEq, newLog]
-    simp only [positiveQueries, List.filterMap_append, List.filterMap_cons,
-      List.filterMap_nil]
+  · rw [newLog]
+    intro entry member
+    rcases List.mem_append.mp member with prior | last
+    · exact emitted entry prior
+    · have same : entry = ⟨query, .activation⟩ := by simpa only [List.mem_singleton] using last
+      subst entry
+      change (runtime.ownerSeedInput leaks event (execution.recall owner)
+        (execution.observe app owner)).emitted =
+          runtime.ownerEmissionsAtActivation leaks event (execution.recall owner)
+            memory.activationIndex
+      rw [indexMatch]
+      simpa only [List.append_nil] using runtime.ownerSeedInput_emitted_eq_atActivation leaks event
+        (execution.recall owner) [] (execution.observe app owner) (by simp)
+  · rw [newLog]
+    simp only [positiveQueries, List.filterMap_append, List.filterMap_cons, List.filterMap_nil]
     change positiveQueries memory.log ++ [query] = _
     rw [positiveMatch]
     simp only [query, indexMatch]
-  · rw [← wordEq, newLog]
+  · rw [newLog]
     change (exhaustedClocks (memory.log ++ [⟨query, .activation⟩])).length = _
     simp only [exhaustedClocks, List.filterMap_append, List.filterMap_cons,
       List.filterMap_nil, List.append_nil]
