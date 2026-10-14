@@ -14,7 +14,7 @@ swap may be read with the inputs of the first site's draws allowed. With
 independent hidden initial cells, the prior gives the swap of every such draw
 the same multiple `c` of its mass (`Vegas.ownerSwap_priorScaled`), so the owner
 swap multiplies the source weight of every history of the first site by `c`
-(`Vegas.ownerSwap_othersSourceWeight`).
+(`Vegas.othersSourceWeight_mapTrace_scaled`).
 -/
 
 noncomputable section
