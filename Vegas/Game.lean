@@ -571,3 +571,17 @@ import Vegas.Game.RecoveryProtectedCalls
 import Vegas.Game.RecoveryCanonicalSafety
 import Vegas.Game.RecoveryDebtUniformity
 import Vegas.Game.RecoveryOwingOptimality
+import Vegas.Game.RecoveryClearForced
+import Vegas.Game.RecoveryClearDecisionSites
+import Vegas.Game.RecoveryComponentProjection
+import Vegas.Game.RecoveryNativeWeights
+import Vegas.Game.RecoveryNativeComparison
+import Vegas.Game.RecoveryDebtStoppedBound
+import Vegas.Game.RecoveryDebtStoppedComparison
+import Vegas.Game.OnePacketMainContent
+import Vegas.Game.SourcePrefixPublications
+import Vegas.Game.OnePacketClearRecord
+import Vegas.Game.OnePacketDebtFreeResponse
+import Vegas.Game.OnePacketClearRegularity
+import Vegas.Game.RecoveryMainResponseSafety
+import Vegas.Game.OnePacketRareMainMass

@@ -72,14 +72,19 @@ def recoveryClassifiedReadout (history : (RecoveryProtocol).History) :
     .inr (nativeHistory runtime leaks initial horizon scheduler history clear)
   else .inl (recoveryFailureOwners runtime leaks history.state)
 
-/-- Actual continuations have the same law of full surviving histories and the
-exact first failed-owner set, despite automatic recovery completion at that boundary. -/
-theorem runBehavioralUntil_exclusion_classified_eq
+/-- Corresponding clear stopping conditions preserve the full surviving history
+and exact first failed-owner set, including automatic recovery completion at exit. -/
+theorem runBehavioralUntil_exclusion_or_classified_eq
     (initialized : ∀ state ∈ initial.support, ∃ inputs,
       state = (⟨State.initial inputs, ∅⟩ : RecoveryState graph))
     (profile : ∀ who, (RecoveryModel).BehavioralPolicy who)
     (nativeCertificate : (NativeProtocol).WellFoundedHistories)
     (recoveryCertificate : (RecoveryProtocol).WellFoundedHistories)
+    (nativeStop : (NativeProtocol).History → Prop)
+    (recoveryStop : (RecoveryProtocol).History → Prop)
+    (stopAgrees : ∀ history (clear : RecoveryClear runtime leaks initial horizon scheduler history),
+      nativeStop (nativeHistory runtime leaks initial horizon scheduler history clear) ↔
+        recoveryStop history)
     (history : (RecoveryProtocol).History)
     (current : (runtime.recoveryApplication leaks).Control)
     (state : history.state = some current) (empty : current.execution.application.excluded = ∅) :
@@ -87,11 +92,13 @@ theorem runBehavioralUntil_exclusion_classified_eq
       (Option.some.inj (state.symm.trans same)) ▸ empty
     ((NativeModel).runBehavioralUntil nativeCertificate
       (nativeProfile runtime leaks initial horizon scheduler profile)
-      (fun history => ¬ NativeClear runtime leaks initial horizon scheduler history)
+      (fun history => ¬ NativeClear runtime leaks initial horizon scheduler history ∨
+        nativeStop history)
       (nativeHistory runtime leaks initial horizon scheduler history clear)).map
         (nativeClassifiedReadout runtime leaks initial horizon scheduler) =
     ((RecoveryModel).runBehavioralUntil recoveryCertificate profile
-      (fun history => ¬ RecoveryClear runtime leaks initial horizon scheduler history)
+      (fun history => ¬ RecoveryClear runtime leaks initial horizon scheduler history ∨
+        recoveryStop history)
       history).map (recoveryClassifiedReadout runtime leaks initial horizon scheduler) := by
   classical
   intro clear
@@ -110,21 +117,25 @@ theorem runBehavioralUntil_exclusion_classified_eq
   refine (NativeModel).runBehavioralUntil_map_eq_of_paired_steps (RecoveryModel)
     nativeCertificate recoveryCertificate
     (nativeProfile runtime leaks initial horizon scheduler profile) profile
-    (fun history => ¬ NativeClear runtime leaks initial horizon scheduler history)
-    (fun history => ¬ RecoveryClear runtime leaks initial horizon scheduler history)
+    (fun history => ¬ NativeClear runtime leaks initial horizon scheduler history ∨
+      nativeStop history)
+    (fun history => ¬ RecoveryClear runtime leaks initial horizon scheduler history ∨
+      recoveryStop history)
     (nativeClassifiedReadout runtime leaks initial horizon scheduler)
     (recoveryClassifiedReadout runtime leaks initial horizon scheduler) related ?_ ?_ ?_
     _ history ⟨⟨current, state⟩, Or.inr ⟨clear, rfl⟩⟩
   · intro first second linked
     rcases linked.2 with ⟨firstExit, secondExit, _record⟩ | ⟨clear, rfl⟩
-    · exact ⟨fun _ => Or.inl secondExit, fun _ => Or.inl firstExit⟩
+    · exact ⟨fun _ => Or.inl (Or.inl secondExit), fun _ => Or.inl (Or.inl firstExit)⟩
     · have firstClear := clearRecord second clear
       constructor
-      · rintro (bad | ended)
+      · rintro ((bad | stopped) | ended)
         · exact (bad firstClear).elim
+        · exact Or.inl (Or.inr ((stopAgrees second clear).mp stopped))
         · exact Or.inr ((terminal_protocolState runtime leaks second.state).mp ended)
-      · rintro (bad | ended)
+      · rintro ((bad | stopped) | ended)
         · exact (bad clear).elim
+        · exact Or.inl (Or.inr ((stopAgrees second clear).mpr stopped))
         · exact Or.inr ((terminal_protocolState runtime leaks second.state).mpr ended)
   · intro first second linked _stopped
     rcases linked.2 with ⟨firstExit, secondExit, record⟩ | ⟨clear, rfl⟩
@@ -136,7 +147,7 @@ theorem runBehavioralUntil_exclusion_classified_eq
   · intro first second linked going running
     obtain ⟨current, currentState⟩ := linked.1
     rcases linked.2 with ⟨firstExit, _secondExit, _record⟩ | ⟨clear, rfl⟩
-    · exact (going firstExit).elim
+    · exact (going (Or.inl firstExit)).elim
     have secondRunning : ¬ (RecoveryProtocol).terminal second.state :=
       fun ended => running ((terminal_protocolState runtime leaks second.state).mpr ended)
     obtain ⟨paired, firstLaw, secondLaw, preserved⟩ := exists_paired_behavioralStep runtime leaks
@@ -161,6 +172,33 @@ theorem runBehavioralUntil_exclusion_classified_eq
     · exact Or.inr ⟨nextClear, (preserved next supported).1 nextClear⟩
     · exact Or.inl ⟨fun nativeClear => nextClear ((preserved next supported).2.1 nativeClear),
         nextClear, (preserved next supported).2.2⟩
+
+/-- Actual continuations have the same law of full surviving histories and the
+exact first failed-owner set, despite automatic recovery completion at that boundary. -/
+theorem runBehavioralUntil_exclusion_classified_eq
+    (initialized : ∀ state ∈ initial.support, ∃ inputs,
+      state = (⟨State.initial inputs, ∅⟩ : RecoveryState graph))
+    (profile : ∀ who, (RecoveryModel).BehavioralPolicy who)
+    (nativeCertificate : (NativeProtocol).WellFoundedHistories)
+    (recoveryCertificate : (RecoveryProtocol).WellFoundedHistories)
+    (history : (RecoveryProtocol).History)
+    (current : (runtime.recoveryApplication leaks).Control)
+    (state : history.state = some current) (empty : current.execution.application.excluded = ∅) :
+    let clear := fun next (same : history.state = some next) =>
+      (Option.some.inj (state.symm.trans same)) ▸ empty
+    ((NativeModel).runBehavioralUntil nativeCertificate
+      (nativeProfile runtime leaks initial horizon scheduler profile)
+      (fun history => ¬ NativeClear runtime leaks initial horizon scheduler history)
+      (nativeHistory runtime leaks initial horizon scheduler history clear)).map
+        (nativeClassifiedReadout runtime leaks initial horizon scheduler) =
+    ((RecoveryModel).runBehavioralUntil recoveryCertificate profile
+      (fun history => ¬ RecoveryClear runtime leaks initial horizon scheduler history)
+      history).map (recoveryClassifiedReadout runtime leaks initial horizon scheduler) := by
+  classical
+  simpa only [or_false] using
+    runBehavioralUntil_exclusion_or_classified_eq runtime leaks initial horizon scheduler
+      initialized profile nativeCertificate recoveryCertificate (fun _ => False) (fun _ => False)
+      (fun _ _ => Iff.rfl) history current state empty
 
 /-- Collapsing the exact failed-owner labels preserves the law of complete
 surviving histories and the single first-exclusion exit atom. -/

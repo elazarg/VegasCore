@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ReactiveLocalSeedDecisionLaw
+import Vegas.Pending.ReactiveLocalSeedSampledRound
 import Vegas.Pending.ReactiveCountedSeedPosterior
 import Vegas.Pending.ReactiveCountedSeedOwnerFiber
 import GameTheoryExtensions.Math.Probability.ConditionalProductMixture
@@ -95,10 +95,10 @@ private theorem decision_recovered_logs_eq
     (players : Player → (app).Policy)
     (covered : ∀ who past view action, action ∈ (players who past view).support →
       action ∈ (bounds.onePacketMenu runtime leaks).actions who past view)
-    (owned : graph.actor? event = some owner) (count : Nat)
+    (owned : graph.actor? event = some owner) (count : Bool → Nat)
     (point : Bool → graph.Inputs × (app).Command × (app).Execution)
     (supported : ∀ side, point side ∈
-      (controller.decisionLaw remainder laws inputs players count).support)
+      (controller.decisionLaw remainder laws inputs players (count side)).support)
     (acting : ∀ side, (point side).2.1 = .activate owner)
     (ready : ∀ side, (point side).2.2.application.publicView.EventReady event)
     (unmissed : ∀ side, (point side).2.2.application.publicView.missedBindingBy owner = false)
@@ -121,22 +121,22 @@ private theorem decision_recovered_logs_eq
       (point side).2.2.environmentRecall).support_nonempty
   choose values valueSupport using seedPresent
   have realized (side) : ∃ original,
-      original ∈ ((app).runRounds (family (values side)) players count
+      original ∈ ((app).runRounds (family (values side)) players (count side)
         (ReactiveApplication.Execution.initial app (State.initial (point side).1))).support ∧
       .activate owner ∈ (family (values side) original.environmentRecall
         (original.observeEnvironment app)).support ∧
       (point side).2.2 ∈ (original.environmentStep app (.activate owner)).support := by
     obtain ⟨_, before, runs, chosen, observed⟩ :=
-      controller.decisionLaw_support remainder laws inputs players count (point side)
+      controller.decisionLaw_support remainder laws inputs players (count side) (point side)
         (supported side)
     rw [acting side] at chosen observed
-    exact ((app).schedulerMixture_decision_of_posterior_support _ family players count
+    exact ((app).schedulerMixture_decision_of_posterior_support _ family players (count side)
       (State.initial (point side).1) before (point side).2.2 (.activate owner) (values side)
         runs chosen observed (valueSupport side)).2
   choose original runs chosen observed using realized
   have sources (side) := initial_menu_trace (runtime := runtime) (leaks := leaks)
     bounds inputs (point side).1
-    (controller.decisionLaw_support remainder laws inputs players count (point side)
+    (controller.decisionLaw_support remainder laws inputs players (count side) (point side)
       (supported side)).1
   choose scheduler sourceTrace using sources
   have applicationEq (side) : (point side).2.2.application = (original side).application := by
@@ -155,7 +155,7 @@ private theorem decision_recovered_logs_eq
   have same := controller.runRounds_log_eq_of_owner_info (laws false) (laws true)
     remainder bounds inputs ordered domainEq players covered owned (fun side => (point side).1)
       (fun _ => 0) scheduler (fun _ => 0) (fun side => Classical.choice (sourceTrace side))
-        (fun side => values side false) (fun side => values side true) (fun _ => count)
+        (fun side => values side false) (fun side => values side true) count
           original (fun side => (point side).2.2) runs chosen observed readyBefore clearBefore
             informationEq
   rw [recovered false (values false) (valueSupport false),
@@ -163,8 +163,9 @@ private theorem decision_recovered_logs_eq
   exact same
 
 /-- Conditioning the actual joint decision law on a genuine clean ready
-owner observation makes its filtered local seed independent of all residual
-initial game inputs, command/execution state and other seed coordinates. -/
+owner observation across independently sampled round counts makes its filtered
+local seed independent of all residual initial game inputs, command/execution
+state and other seed coordinates. -/
 theorem ownerObservation_seed_product
     (laws : (side : Bool) → PMF (A side)) (bounds : MessageBounds graph)
     (inputs : PMF graph.Inputs) (ordered : graph.RevealRelaxedOrdered)
@@ -172,56 +173,59 @@ theorem ownerObservation_seed_product
     (players : Player → (app).Policy)
     (covered : ∀ who past view action, action ∈ (players who past view).support →
       action ∈ (bounds.onePacketMenu runtime leaks).actions who past view)
-    (owned : graph.actor? event = some owner) (count : Nat)
-    (witness : graph.Inputs × (app).Command × (app).Execution)
+    (owned : graph.actor? event = some owner) (counts : PMF Nat)
+    (witness : Nat × graph.Inputs × (app).Command × (app).Execution)
     (witnessSupport : witness ∈
-      (controller.decisionLaw remainder laws inputs players count).support)
-    (acting : witness.2.1 = .activate owner)
-    (ready : witness.2.2.application.publicView.EventReady event)
-    (unmissed : witness.2.2.application.publicView.missedBindingBy owner = false) :
+      (controller.sampledRoundDecisionLaw remainder laws inputs players counts).support)
+    (acting : witness.2.2.1 = .activate owner)
+    (ready : witness.2.2.2.application.publicView.EventReady event)
+    (unmissed : witness.2.2.2.application.publicView.missedBindingBy owner = false) :
     ∃ (log : List (LocalSeedEntry graph (app).Command))
       (localPositive : ∃ seed ∈ {seed | ∀ entry ∈ log,
         controller.reply seed entry.query = entry.reply}, seed ∈ (laws false).support)
-      (residual : PMF ((graph.Inputs × (app).Command × (app).Execution) ×
+      (residual : PMF ((Nat × graph.Inputs × (app).Command × (app).Execution) ×
         ((side : {side : Bool // side ≠ false}) → A side))),
-      (∀ point ∈ (fiberPosterior (controller.decisionLaw remainder laws inputs players count)
-          (decisionObservation (owner := owner))
-            (decisionObservation (owner := owner) witness)).support,
+      (∀ point ∈ (fiberPosterior
+          (controller.sampledRoundDecisionLaw remainder laws inputs players counts)
+          (fun point => decisionObservation (owner := owner) point.2)
+            (decisionObservation (owner := owner) witness.2)).support,
         ∀ values ∈ (((app).schedulerMixture (independentProduct laws) (fun values =>
           controller.fixedScheduler remainder
             (initialMemory (values false) (values true)))).posterior
-              point.2.2.environmentRecall).support,
+              point.2.2.2.environmentRecall).support,
           (controller.replay remainder (initialMemory (values false) (values true))
-            point.2.2.environmentRecall).log = log) ∧
-      (fiberPosterior (controller.seededDecisionLaw remainder laws inputs players count)
-        (fun outcome => decisionObservation (owner := owner) outcome.1)
-          (decisionObservation (owner := owner) witness)).map
+            point.2.2.2.environmentRecall).log = log) ∧
+      (fiberPosterior
+        (controller.seededSampledRoundDecisionLaw remainder laws inputs players counts)
+        (fun outcome => decisionObservation (owner := owner) outcome.1.2)
+          (decisionObservation (owner := owner) witness.2)).map
             (fun outcome => (outcome.2 false,
               (outcome.1, fun side : {side : Bool // side ≠ false} => outcome.2 side))) =
         ((laws false).filter {seed | ∀ entry ∈ log,
           controller.reply seed entry.query = entry.reply} localPositive).bind fun localSeed =>
             residual.map (Prod.mk localSeed) := by
   classical
-  let law := controller.decisionLaw remainder laws inputs players count
-  let observe := decisionObservation (owner := owner) (runtime := runtime) (leaks := leaks)
+  let law := controller.sampledRoundDecisionLaw remainder laws inputs players counts
+  let observe := fun point : Nat × graph.Inputs × (app).Command × (app).Execution =>
+    decisionObservation (owner := owner) (runtime := runtime) (leaks := leaks) point.2
   let conditioned := fiberPosterior law observe (observe witness)
-  let draws := fun point : graph.Inputs × (app).Command × (app).Execution =>
+  let draws := fun point : Nat × graph.Inputs × (app).Command × (app).Execution =>
     (((app).schedulerMixture (independentProduct laws) (fun values =>
       controller.fixedScheduler remainder (initialMemory (values false) (values true)))).posterior
-        point.2.2.environmentRecall)
+        point.2.2.2.environmentRecall)
   have present : observe witness ∈ (law.map observe).support :=
     (PMF.mem_support_map_iff _ _ _).mpr ⟨witness, witnessSupport, rfl⟩
   have guarded (point) (supported : point ∈ conditioned.support) :
-      point.2.1 = .activate owner ∧
-      (point.2.2.recall owner, point.2.2.observe app owner) =
-        (witness.2.2.recall owner, witness.2.2.observe app owner) ∧
-      point.2.2.application.publicView.EventReady event ∧
-      point.2.2.application.publicView.missedBindingBy owner = false := by
+      point.2.2.1 = .activate owner ∧
+      (point.2.2.2.recall owner, point.2.2.2.observe app owner) =
+        (witness.2.2.2.recall owner, witness.2.2.2.observe app owner) ∧
+      point.2.2.2.application.publicView.EventReady event ∧
+      point.2.2.2.application.publicView.missedBindingBy owner = false := by
     have matched := (mem_support_fiberPosterior present supported).1
-    obtain ⟨active, infoEq⟩ := decisionObservation_active_eq point witness acting matched
+    obtain ⟨active, infoEq⟩ := decisionObservation_active_eq point.2 witness.2 acting matched
     have viewEq := congrArg Prod.snd infoEq
     have publicEq := congrArg (fun view : (app).PlayerView => view.application.publicView) viewEq
-    change point.2.2.application.publicView = witness.2.2.application.publicView at publicEq
+    change point.2.2.2.application.publicView = witness.2.2.2.application.publicView at publicEq
     refine ⟨active, infoEq, ?_, ?_⟩
     · rwa [publicEq]
     · rwa [publicEq]
@@ -232,20 +236,22 @@ theorem ownerObservation_seed_product
         (updated : (side : Bool) → PMF (A side)),
         (∀ values ∈ (draws point).support,
           (controller.replay remainder (initialMemory (values false) (values true))
-            point.2.2.environmentRecall).log = log) ∧
+            point.2.2.2.environmentRecall).log = log) ∧
         draws point = independentProduct updated ∧
         updated false = (laws false).filter {seed | ∀ entry ∈ log,
           controller.reply seed entry.query = entry.reply} localPositive := by
     have original := (mem_support_fiberPosterior present supported).2
     obtain ⟨setupSupport, before, reached, chosen, observed⟩ :=
-      controller.decisionLaw_support remainder laws inputs players count point original
+      controller.decisionLaw_support remainder laws inputs players point.1 point.2
+        (controller.sampledRoundDecisionLaw_support remainder laws inputs players counts
+          point original).2
     obtain ⟨active, _, readyAtPoint, clearAtPoint⟩ := guarded point supported
     rw [active] at chosen observed
     obtain ⟨scheduler, ⟨trace⟩⟩ := initial_menu_trace (runtime := runtime) (leaks := leaks)
-      bounds inputs point.1 setupSupport
+      bounds inputs point.2.1 setupSupport
     exact controller.posterior_ready_activation remainder laws bounds inputs ordered domainEq
       players
-      covered owned point.1 0 scheduler 0 trace count before point.2.2 reached chosen observed
+      covered owned point.2.1 0 scheduler 0 trace point.1 before point.2.2.2 reached chosen observed
         readyAtPoint clearAtPoint
   choose logOf localPositive updated recovery product localEq using decomposition
   have witnessIn : witness ∈ conditioned.support := by
@@ -256,15 +262,17 @@ theorem ownerObservation_seed_product
     controller.reply seed entry.query = entry.reply} (localPositive witness witnessIn)
   have sameLog (point) (supported : point ∈ conditioned.support) :
       logOf point supported = log := by
-    have source := (mem_support_fiberPosterior present supported).2
+    have source := (controller.sampledRoundDecisionLaw_support remainder laws inputs players
+      counts point (mem_support_fiberPosterior present supported).2).2
     obtain ⟨pointActing, pointInfo, pointReady, pointClear⟩ := guarded point supported
     exact controller.decision_recovered_logs_eq remainder laws bounds inputs ordered domainEq
-      players covered owned count (Bool.rec point witness)
+      players covered owned (Bool.rec point.1 witness.1) (Bool.rec point.2 witness.2)
         (by
           intro side
           cases side
           · exact source
-          · exact witnessSupport)
+          · exact (controller.sampledRoundDecisionLaw_support remainder laws inputs players
+              counts witness witnessSupport).2)
         (by
           intro side
           cases side
@@ -287,7 +295,7 @@ theorem ownerObservation_seed_product
           cases side
           · exact recovery point supported
           · exact recovery witness witnessIn)
-  let factors := fun point : graph.Inputs × (app).Command × (app).Execution =>
+  let factors := fun point : Nat × graph.Inputs × (app).Command × (app).Execution =>
     if supported : point ∈ conditioned.support then updated point supported else laws
   have products (point) (supported : point ∈ conditioned.support) :
       draws point = independentProduct (factors point) := by
@@ -308,7 +316,7 @@ theorem ownerObservation_seed_product
   · intro point supported values valueSupport
     rw [recovery point supported values valueSupport]
     exact sameLog point supported
-  · rw [controller.seededDecisionLaw_eq]
+  · rw [controller.seededSampledRoundDecisionLaw_eq]
     exact integrated
 
 end Vegas.EventGraphRuntime.LocalSeedController

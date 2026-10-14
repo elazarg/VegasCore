@@ -32,6 +32,50 @@ local notation "RecoveryProtocol" => ReactiveApplication.protocol
   (recoveryApplication runtime leaks) initial horizon scheduler
 
 /-- The actual finite-menu continuation has the native classified stopped law,
+including corresponding additional stopping conditions while publicly clear. -/
+theorem responseMenu_exclusion_or_classified_eq
+    (initialized : ∀ state ∈ initial.support, ∃ inputs,
+      state = (⟨State.initial inputs, ∅⟩ : RecoveryState graph))
+    (menu : (runtime.recoveryApplication leaks).ResponseMenu)
+    (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
+    (nativeCertificate : (NativeProtocol).WellFoundedHistories)
+    (recoveryCertificate : (RecoveryProtocol).WellFoundedHistories)
+    (menuCertificate : (menu.protocol initial horizon scheduler).WellFoundedHistories)
+    (nativeStop : (NativeProtocol).History → Prop)
+    (recoveryStop : (RecoveryProtocol).History → Prop)
+    (stopAgrees : ∀ history (clear : RecoveryClear runtime leaks initial horizon scheduler history),
+      nativeStop (nativeHistory runtime leaks initial horizon scheduler history clear) ↔
+        recoveryStop history)
+    (history : (menu.protocol initial horizon scheduler).History)
+    (current : (runtime.recoveryApplication leaks).Control)
+    (state : history.state = some current) (empty : current.execution.application.excluded = ∅) :
+    let raw := menu.toRawHistory initial horizon scheduler history
+    let clear := fun next (same : raw.state = some next) =>
+      (Option.some.inj (state.symm.trans same)) ▸ empty
+    ((NativeModel).runBehavioralUntil nativeCertificate
+      (nativeProfile runtime leaks initial horizon scheduler
+        (fun who => menu.embedPolicy initial horizon scheduler who (profile who)))
+      (fun history => ¬ NativeClear runtime leaks initial horizon scheduler history ∨
+        nativeStop history)
+      (nativeHistory runtime leaks initial horizon scheduler raw clear)).map
+        (nativeClassifiedReadout runtime leaks initial horizon scheduler) =
+    ((menu.information initial horizon scheduler).runBehavioralUntil menuCertificate profile
+      (fun history => ¬ RecoveryClear runtime leaks initial horizon scheduler
+        (menu.toRawHistory initial horizon scheduler history) ∨
+        recoveryStop (menu.toRawHistory initial horizon scheduler history)) history).map
+      (fun history => recoveryClassifiedReadout runtime leaks initial horizon scheduler
+        (menu.toRawHistory initial horizon scheduler history)) := by
+  intro raw clear
+  have compared := runBehavioralUntil_exclusion_or_classified_eq runtime leaks initial horizon
+    scheduler initialized (fun who => menu.embedPolicy initial horizon scheduler who (profile who))
+    nativeCertificate recoveryCertificate nativeStop recoveryStop stopAgrees raw current state empty
+  rw [← menu.runBehavioralUntil_embed initial horizon scheduler recoveryCertificate menuCertificate
+    profile (fun history => ¬ RecoveryClear runtime leaks initial horizon scheduler history ∨
+      recoveryStop history) history,
+    PMF.map_comp] at compared
+  exact compared
+
+/-- The actual finite-menu continuation has the native classified stopped law,
 including each exact first excluded-owner set and complete surviving history. -/
 theorem responseMenu_exclusion_classified_eq
     (initialized : ∀ state ∈ initial.support, ∃ inputs,
@@ -58,14 +102,10 @@ theorem responseMenu_exclusion_classified_eq
         (menu.toRawHistory initial horizon scheduler history)) history).map
       (fun history => recoveryClassifiedReadout runtime leaks initial horizon scheduler
         (menu.toRawHistory initial horizon scheduler history)) := by
-  intro raw clear
-  have compared := runBehavioralUntil_exclusion_classified_eq runtime leaks initial horizon
-    scheduler initialized (fun who => menu.embedPolicy initial horizon scheduler who (profile who))
-    nativeCertificate recoveryCertificate raw current state empty
-  rw [← menu.runBehavioralUntil_embed initial horizon scheduler recoveryCertificate menuCertificate
-    profile (fun history => ¬ RecoveryClear runtime leaks initial horizon scheduler history)
-      history,
-    PMF.map_comp] at compared
-  exact compared
+  classical
+  simpa only [or_false] using
+    responseMenu_exclusion_or_classified_eq runtime leaks initial horizon scheduler initialized
+      menu profile nativeCertificate recoveryCertificate menuCertificate (fun _ => False)
+      (fun _ => False) (fun _ _ => Iff.rfl) history current state empty
 
 end Vegas.EventGraphRuntime.RecoveryProjection

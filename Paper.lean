@@ -1,3 +1,10 @@
+import Vegas.Pending.ReactiveSeedBayesProduct
+import Vegas.Game.RecoveryDebtStoppedComparison
+import Vegas.Game.RecoveryMainResponseSafety
+import Vegas.Game.OnePacketRareMainMass
+import Vegas.Game.RecoveryNativeComparison
+import Interaction.ReactiveSchedulerStoppedSeed
+import Vegas.Pending.ReactiveSeedOccupation
 import Vegas.Game.SourceServiceUnilateralEnvironment
 import Vegas.Game.SourceServiceUnilateralExecution
 import Vegas.Game.SourceServiceUnilateralExpiry
@@ -2046,6 +2053,57 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Interaction.ReactiveApplication.ResponseMenu.runBehavioralUntil_embed
 
+open Vegas.EventGraphRuntime.RecoveryProjection in
+/-- info: 'Vegas.EventGraphRuntime.RecoveryProjection.runBehavioralUntil_exclusion_or_classified_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms runBehavioralUntil_exclusion_or_classified_eq
+
+/-- info: 'Vegas.recovery_expect_sub_native_debt_stopped_le_foreign_exit'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_expect_sub_native_debt_stopped_le_foreign_exit
+
+/-- info: 'Vegas.publicRecord_of_publicExclusionRecord'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.publicRecord_of_publicExclusionRecord
+
+/-- info: 'Vegas.recovery_firstActivation_not_main_of_publicFailure'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_firstActivation_not_main_of_publicFailure
+
+/-- info: 'Vegas.slotTrembledChoice_event_le_of_disjoint_main'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.slotTrembledChoice_event_le_of_disjoint_main
+
+/-- info: 'Vegas.RecoveryOnePacket.nativeComparisonSequence_assembled'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.nativeComparisonSequence_assembled
+
+/-- info: 'Vegas.RecoveryOnePacket.nativeComparisonSequence_bayes'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.nativeComparisonSequence_bayes
+
+/-- info: 'Interaction.ReactiveApplication.schedulerMixture_runUntil_joint'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.ReactiveApplication.schedulerMixture_runUntil_joint
+
+/-- info: 'Interaction.ReactiveApplication.ResponseMenu.bayesBelief_state_eq_occupationPosterior'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.ReactiveApplication.ResponseMenu.bayesBelief_state_eq_occupationPosterior
+
+/-- info: 'Vegas.EventGraphRuntime.LocalSeedController.seededSampledRoundDecisionLaw_control'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.LocalSeedController.seededSampledRoundDecisionLaw_control
+
 /-- info: 'Vegas.EventGraphRuntime.RecoveryProjection.runBehavioralUntil_exclusion_classified_eq'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
@@ -2075,6 +2133,11 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.RecoveryOnePacket.owingAgent_isSequentiallyRationalAt
+
+/-- info: 'Vegas.EventGraphRuntime.LocalSeedController.bayesBelief_seed_product'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.LocalSeedController.bayesBelief_seed_product
 
 /-- info: 'Vegas.EventGraphRuntime.LocalSeedController.ownerObservation_seed_product'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/

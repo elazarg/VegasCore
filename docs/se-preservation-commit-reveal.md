@@ -2934,6 +2934,12 @@ needs its own review. What is known:
 | Actual recovery base-payoff laws differ from the concrete native continuation by at most the actual first-exclusion probability in total variation | `Vegas.recovery_exclusionPayoffs_withinTV` |
 | Fixed-payoff own exclusions contribute no continuation error; only foreign first-exclusion probability enters the scalar bound | `Vegas.recovery_expect_sub_stopped_le_foreign_exit` |
 | The actual finite recovery payoff compares with the induced native stopped law, with error from its foreign first-failure labels only | `Vegas.recovery_expect_sub_native_stopped_le_foreign_exit` |
+| Corresponding clear stopping conditions retain the exact classified native/recovery law | `Vegas.EventGraphRuntime.RecoveryProjection.runBehavioralUntil_exclusion_or_classified_eq` |
+| Stopping at latent own debt bounds actual recovery payoff error by foreign labels of the debt-stopped native law, under actual recovery completion | `Vegas.recovery_expect_sub_native_debt_stopped_le_foreign_exit` |
+| A clear native record and regular trace give global intendedness and responder forcedness while the focal owner owes no failure | `Vegas.intended_of_clear_regular_notOwes`, `Vegas.forcedState_of_clear_regular_notOwes` |
+| A future first public event failure rules out a main response at its actual debt-free first activation | `Vegas.recovery_firstActivation_not_main_of_publicFailure` |
+| Total slot-trembled mass outside main support is at most the square plus the first power of the tremble scale | `Vegas.slotTrembledChoice_event_le_of_disjoint_main` |
+| Recovery completion weights determine one globally assembled, fully mixed native Bayes comparison sequence | `Vegas.RecoveryOnePacket.nativeComparisonSequence_assembled`, `Vegas.RecoveryOnePacket.nativeComparisonSequence_bayes` |
 | One common recovery assessment completion retains consistent Bayes approximants and rationality at all post-exclusion sites | `Vegas.RecoveryOnePacket.exists_consistent_completion` |
 | Own latent source debt is uniform throughout the actual full recovery information fiber and gives whole-policy rationality for every assessment | `Vegas.RecoveryOnePacket.owingAgent_allHistories`, `Vegas.RecoveryOnePacket.owingAgent_isSequentiallyRationalAt` |
 | Actual recovery service timing gives native opportunity and inclusion at clear native histories | `Vegas.EventGraphRuntime.Recovery.Opportunity.clear_native`, `Vegas.EventGraphRuntime.Recovery.ProtectedInclusion.clear_native` |
@@ -2951,7 +2957,10 @@ needs its own review. What is known:
 | Genuine clean service domains persist while the selected ordered owned event survives | `Vegas.EventGraphRuntime.countedSeedDomain_dispatch_of_activated_survives` |
 | Actual clean ready owner activations with equal full owner information have the same raw query log | `Vegas.EventGraphRuntime.LocalSeedController.runRounds_log_eq_of_owner_info` |
 | At actual clean ready owner activations, the scheduler seed posterior factors with the local prior filtered by its recovered replies | `Vegas.EventGraphRuntime.LocalSeedController.posterior_ready_activation` |
-| At each fixed round count, conditioning on the actual full ready owner observation retains the filtered local seed independently of hidden initial inputs, the selected execution and every other seed | `Vegas.EventGraphRuntime.LocalSeedController.ownerObservation_seed_product` |
+| Across independently sampled round counts, conditioning on the actual full ready owner observation retains the filtered local seed independently of the hidden count, initial inputs, selected execution and every other seed | `Vegas.EventGraphRuntime.LocalSeedController.ownerObservation_seed_product` |
+| The standard finite-menu Bayes belief on complete controls is the actual command-boundary occupation posterior across round counts | `Interaction.ReactiveApplication.ResponseMenu.bayesBelief_state_eq_occupationPosterior` |
+| At genuine clean ready finite native sites, the original immutable local seed has its recovered reply-filtered law independently of the complete runtime control and other seed coordinates | `Vegas.EventGraphRuntime.LocalSeedController.bayesBelief_seed_product` |
+| The original immutable seed law maps exactly to that command-boundary control law | `Vegas.EventGraphRuntime.LocalSeedController.seededSampledRoundDecisionLaw_control` |
 
 The default-runtime theorem derives zero on-path count charges and the joint
 typed-readout and realized-payoff law, including the counterpart inputs.
@@ -2971,6 +2980,13 @@ transport are checked. Actual stopped continuations retain the same law up to
 first exclusion, including the exact excluded-owner labels; the actual
 first-exclusion probability bounds the terminal payoff-law error. The scalar
 continuation error counts only first exits that do not exclude the focal owner.
+Stopping additionally at latent own debt gives the corresponding native
+comparison bound under actual recovery completion. Actual clear regular traces
+supply responder forcedness before own debt; a first event failure rules out
+main support at its earlier first activation. The total nonmain event mass is
+bounded by the tremble scale plus its square, independently of menu size.
+The recovery weights also determine a globally assembled native comparison
+sequence with full support and canonical Bayes beliefs.
 A common consistent assessment completion gives rationality at every
 post-exclusion site. Own latent source debt gives rationality at every owing
 site of any assessment, under actual recovery completion. The intended-law
@@ -2992,11 +3008,17 @@ graphs, actual histories derive the resolution-safety domain and recover
 the full query log from owner information, including queries after a packet
 was sent. Each earlier emitted prefix is reconstructed from full owner recall
 and its local activation index. The actual scheduler posterior has the resulting
-filtered local-seed factor. At each fixed round count, after integrating over
-the full owner information fiber, that seed is independent of the hidden initial
-inputs, selected command and execution, and all other seed coordinates. Mixing
-the actual protocol's different possible round counts and extending this scoped
-controller result to the full runtime remain open.
+filtered local-seed factor. Across independently sampled round counts, after
+integrating over the full owner information fiber, that seed is independent of
+the hidden count, initial inputs, selected command and execution, and all other
+seed coordinates. Standard finite-menu Bayes beliefs pushed to complete controls
+are the actual command-boundary occupation posterior; the original immutable
+seed law maps exactly to the same controls. At genuine clean ready finite native
+information sites, their checked conditional product retains the full current
+control and all other seed coordinates in its residual factor. Every supported
+Bayes control and latent seed recovers the same actual query log. Transfer to
+actual clear recovery sites and extension of this scoped controller result to
+the full runtime remain open.
 
 A mechanization must also check the following, beyond the statements above:
 
