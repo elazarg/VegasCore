@@ -468,9 +468,9 @@ theorem freeKeyedLocalComparisons [Finite Opt] {E : ExecutionProtocol Player}
         Tendsto slack atTop (nhds 0) ∧ (∀ n, 0 ≤ drift n) ∧ (∀ n, 0 ≤ slack n) ∧
         ∀ n who (site : N.InformationSite who) (choice : N.Choice who site.1),
           ¬ free (N.agentAt site) → compared who site choice →
-          (excluded who ≤ continuation n (N.agentAt site) + error n ∨
+          ((excluded who ≤ continuation n (N.agentAt site) + error n ∧
+              continuation n (N.agentAt site) - excluded who ≤ bound) ∨
             failed (N.agentAt site) = ∅) ∧
-          continuation n (N.agentAt site) - excluded who ≤ bound ∧
           |localSuccessValue fuel observe utility (targetSequence n) site (failed (N.agentAt site))
               (PMF.pure choice) -
             (1 - localFailure fuel (targetSequence n) site
@@ -602,9 +602,9 @@ theorem freeKeyedLocalComparisons [Finite Opt] {E : ExecutionProtocol Player}
         fun n who site choice notFree marked => ?_⟩
       have isNotFree : ¬ free (N.agentAt site) := fun isFree =>
         notFree (Finset.mem_filter.mpr ⟨Finset.mem_univ _, isFree⟩)
-      obtain ⟨excluded_le, gap_le, choiceNear, keyedFacts, unkeyedFacts⟩ :=
+      obtain ⟨lowGap, choiceNear, keyedFacts, unkeyedFacts⟩ :=
         facts n who site choice isNotFree marked
-      refine ⟨excluded_le, gap_le, choiceNear, ?_⟩
+      refine ⟨lowGap, choiceNear, ?_⟩
       have best := freeKeyedComponent_at_not_free (freeLaw n) (prescribed n) (keyedLaw n)
         (freeKeyedBest free keyed key Opt (fun k => scoreArgmax (score n k))) isNotFree
       rw [show freeKeyedBest free keyed key Opt (fun k => scoreArgmax (score n k))

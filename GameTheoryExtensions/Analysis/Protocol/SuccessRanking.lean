@@ -814,9 +814,9 @@ theorem localComparisons_of_success [DecidableEq Pool]
         Tendsto error atTop (nhds 0) ∧ Tendsto slack atTop (nhds 0) ∧ (∀ n, 0 ≤ slack n) ∧
         ∀ n who (site : N.InformationSite who) (choice : N.Choice who site.1),
           N.agentAt site ∉ free → compared who site choice →
-          (excluded who ≤ continuation n (N.agentAt site) + error n ∨
+          ((excluded who ≤ continuation n (N.agentAt site) + error n ∧
+              continuation n (N.agentAt site) - excluded who ≤ bound) ∨
             failed (N.agentAt site) = ∅) ∧
-          continuation n (N.agentAt site) - excluded who ≤ bound ∧
           |localSuccessValue fuel observe utility (targetSequence n) site (failed (N.agentAt site))
               (PMF.pure choice) -
             (1 - localFailure fuel (targetSequence n) site (failed (N.agentAt site))
@@ -917,13 +917,13 @@ theorem localComparisons_of_success [DecidableEq Pool]
   refine ⟨fun n => max (rankedError n) (otherError n), by
     simpa using rankedVanishes.max otherVanishes, fun n who site notFree choice => ?_⟩
   by_cases marked : compared who site choice
-  · obtain ⟨excludedOrEmpty, gap_le, choiceNear, bestNear, ranked⟩ :=
+  · obtain ⟨excludedOrEmpty, choiceNear, bestNear, ranked⟩ :=
       facts n who site choice notFree marked
     have dominated : localGain fuel observe utility (targetSequence n) site (PMF.pure choice) ≤
         localGain fuel observe utility (targetSequence n) site
           (component n (N.agentAt site) (best n (pool (N.agentAt site)))) +
           slack n * bound + 3 * error n := by
-      rcases excludedOrEmpty with excluded_le | empty
+      rcases excludedOrEmpty with ⟨excluded_le, gap_le⟩ | empty
       · exact localGain_le_of_failure_le fuel observe utility (targetSequence n) site
           (failed (N.agentAt site)) (excluded who) (pays (N.agentAt site))
           (continuation n (N.agentAt site)) (error n) (slack n) bound (PMF.pure choice)

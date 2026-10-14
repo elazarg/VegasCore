@@ -432,9 +432,9 @@ structure OnePacketCertificateInputs (sequence : ℕ → setup.intendedModel.Beh
               site.1),
             ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
                 compared who site choice →
-            (excludedPayoff who ≤ continuation n ((onePacketN).agentAt site) + error n ∨
+            ((excludedPayoff who ≤ continuation n ((onePacketN).agentAt site) + error n ∧
+                continuation n ((onePacketN).agentAt site) - excludedPayoff who ≤ gapBound) ∨
               failed ((onePacketN).agentAt site) = ∅) ∧
-            continuation n ((onePacketN).agentAt site) - excludedPayoff who ≤ gapBound ∧
             |localSuccessValue (2 * horizon + 1) (readoutExclusion setup leaks bounds (initialLaw
                 setup) horizon
             scheduler parameter utility excludedPayoff) (payoffComponent setup) (targetSequence n)

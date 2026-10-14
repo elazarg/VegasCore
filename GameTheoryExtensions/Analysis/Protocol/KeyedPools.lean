@@ -382,9 +382,9 @@ theorem keyedLocalComparisons [Finite Opt] {E : ExecutionProtocol Player}
         Tendsto slack atTop (nhds 0) ∧ (∀ n, 0 ≤ drift n) ∧ (∀ n, 0 ≤ slack n) ∧
         ∀ n who (site : N.InformationSite who) (choice : N.Choice who site.1),
           N.agentAt site ∉ free → compared who site choice →
-          (excluded who ≤ continuation n (N.agentAt site) + error n ∨
+          ((excluded who ≤ continuation n (N.agentAt site) + error n ∧
+              continuation n (N.agentAt site) - excluded who ≤ bound) ∨
             failed (N.agentAt site) = ∅) ∧
-          continuation n (N.agentAt site) - excluded who ≤ bound ∧
           |localSuccessValue fuel observe utility (targetSequence n) site (failed (N.agentAt site))
               (PMF.pure choice) -
             (1 - localFailure fuel (targetSequence n) site
@@ -511,9 +511,9 @@ theorem keyedLocalComparisons [Finite Opt] {E : ExecutionProtocol Player}
         by simpa using (driftVanishes.const_mul 2).add slackVanishes,
         fun n => by linarith [drift_nonneg n, slack_nonneg n],
         fun n who site choice notFree marked => ?_⟩
-      obtain ⟨excluded_le, gap_le, choiceNear, keyedFacts, unkeyedFacts⟩ :=
+      obtain ⟨lowGap, choiceNear, keyedFacts, unkeyedFacts⟩ :=
         facts n who site choice notFree marked
-      refine ⟨excluded_le, gap_le, choiceNear, ?_⟩
+      refine ⟨lowGap, choiceNear, ?_⟩
       by_cases isKeyed : keyed (N.agentAt site)
       · obtain ⟨near, common, choiceRanked⟩ := keyedFacts isKeyed
         rw [keyedComponent_best_of_keyed (key := key) (prescribed n) (keyedLaw n)
