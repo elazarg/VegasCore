@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketSwapFibers
 import Vegas.Game.SourceSwapAgreement
+import Vegas.Game.DecodedRevelations
 
 /-! # The swap between two source points at accepted handles
 
@@ -148,5 +149,59 @@ theorem bindCompatible_betweenHandlePairs {table : AcceptedHandles (graph setup)
                         ↓reduceIte]
                     exact HiddenSwap.bindCompatible_ofPairs _ _ outputEq left right pairEq
                       handlePair owner payload outputEq candidate
+
+/-- A swap pair at a field whose cells agree at both points is absent. -/
+theorem betweenPair_eq_none_of_agree {field : (graph setup).Field} {name : VarId}
+    {kind : CellTy Player L} (cell : fieldCell setup field = (name, kind))
+    (agree : ProtocolState.cell? setup.program first name kind =
+      ProtocolState.cell? setup.program second name kind) :
+    betweenPair setup first second field = none := by
+  rw [betweenPair_eq cell ((layout_fieldCell setup field).trans (by rw [cell]))]
+  rw [agree]
+  cases ProtocolState.cell? setup.program second name kind with
+  | none => exact transportPair_none _
+  | some value =>
+      simp only [cellPair, ↓reduceIte]
+      exact transportPair_none _
+
+/-- A commitment pair at a cell whose values agree at both points is absent. -/
+theorem commitmentRawPair_eq_none_of_agree {name : VarId} {owner : Player} {payload : L.Ty}
+    (agree : ProtocolState.cell? setup.program first name (.commitment owner payload) =
+      ProtocolState.cell? setup.program second name (.commitment owner payload)) :
+    commitmentRawPair setup first second (name, .commitment owner payload) = none := by
+  simp only [commitmentRawPair]
+  rw [agree]
+  cases ProtocolState.cell? setup.program second name (.commitment owner payload) with
+  | none => rfl
+  | some value => cases value <;> simp
+
+/-- **The swap between two points fixes every reveal of a binding they agree on.** -/
+theorem revealFixed_between {table : AcceptedHandles (graph setup)}
+    (injective : AcceptedInjective table) (state : EventGraphRuntime.State (graph setup))
+    (kept : ∀ field handle, state.accepted field = some handle → table field = some handle)
+    (event : (graph setup).EventId)
+    (agree : ∀ owner payload binding checks outputEq codeEq,
+      nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq →
+      ProtocolState.cell? setup.program first (fieldCell setup binding.field).1
+          (.commitment owner payload) =
+        ProtocolState.cell? setup.program second (fieldCell setup binding.field).1
+          (.commitment owner payload)) :
+    RevealFixed (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
+      (betweenHandlePairs setup first second table)) state event := by
+  unfold RevealFixed
+  cases view : nodeView (graph setup) event with
+  | bind | sample => trivial
+  | resolve owner payload binding checks outputEq codeEq =>
+      have same := agree owner payload binding checks outputEq codeEq view
+      obtain ⟨name, _, _, cell⟩ := fieldCell_resolveBinding outputEq codeEq
+      rw [cell] at same
+      refine ⟨?_, fun handle accepted => ?_⟩
+      · change EventGraph.pairSwap (betweenPair setup first second binding.field) = id
+        rw [betweenPair_eq_none_of_agree cell same]
+        rfl
+      · change EventGraph.pairSwap (betweenHandlePairs setup first second table handle) = id
+        rw [betweenHandlePairs_of_accepted injective (kept _ _ accepted), cell,
+          commitmentRawPair_eq_none_of_agree same]
+        rfl
 
 end Vegas
