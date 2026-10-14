@@ -78,6 +78,10 @@ theorem slots_pos : 0 < slots := Nat.one_pos
 
 theorem slotsCover : bounds.candidateCount ≤ slots := le_rfl
 
+theorem slotsLe : slots ≤ bounds.candidateCount := le_rfl
+
+theorem oneSlot : 1 ≤ bounds.candidateCount := le_rfl
+
 /-- A constant utility. -/
 def utility : Bool × PublicOutcome program → Player → ℝ := fun _ _ => 0
 
@@ -107,12 +111,13 @@ theorem structural (parameter : State simpleExpr setup.context → Bool) :
         CommittedResolutionService.scheduler bound ∧
       bounds.CoversOutputValues ∧
       (∀ who, bindingEventCount nativeGraph who < bounds.candidateCount) ∧
-      0 < slots ∧ bounds.candidateCount ≤ slots ∧
+      0 < slots ∧ bounds.candidateCount ≤ slots ∧ slots ≤ bounds.candidateCount ∧
+      1 ≤ bounds.candidateCount ∧
       (∀ (final : setup.intendedProtocol.History) terminal,
         setup.protocolReadout final.state = some terminal →
           ∀ who, excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who) :=
-  ⟨wellFormed, contract, timely, retains, covers, capacity, slots_pos, slotsCover,
-    below parameter⟩
+  ⟨wellFormed, contract, timely, retains, covers, capacity, slots_pos, slotsCover, slotsLe,
+    oneSlot, below parameter⟩
 
 open Classical in
 /-- The one-packet preservation theorem applies to the program: its structural
