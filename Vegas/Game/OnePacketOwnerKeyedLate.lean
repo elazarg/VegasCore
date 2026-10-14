@@ -34,7 +34,6 @@ theorem ownerSwap_baseLawAgrees_late
     (covers : bounds.CoversInputValues)
     (assessment : setup.intendedModel.BehavioralAssessment)
     (weight : List (Option (OperationalState setup leaks)) → ℝ) {who : Player}
-    (observer : Player) (distinct : observer ≠ who)
     {site₁ site₂ : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who}
     {past₁ past₂ : List (application setup leaks).PlayerEntry}
     {view₁ view₂ : (application setup leaks).PlayerView}
@@ -57,7 +56,7 @@ theorem ownerSwap_baseLawAgrees_late
           history.trace))
       (fun history => RegularTrace setup leaks bounds horizon scheduler assessment who
         history.trace) site₁ site₂ payoff :=
-  ownerSwap_baseLawAgrees wellFormed independent covers assessment weight observer distinct
+  ownerSwap_baseLawAgrees wellFormed independent covers assessment weight
     firstSite secondSite sameKey firstDebtFree secondDebtFree
     (ownerSwap_info firstSite secondSite sameKey firstDebtFree secondDebtFree firstLate
       secondLate) payoff

@@ -30,6 +30,22 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
   {scheduler : (application setup leaks).Scheduler}
 
+/-- **Alone, every history is regular**: regularity constrains only the
+responses of other players. -/
+theorem regularTrace_of_alone (assessment : setup.intendedModel.BehavioralAssessment)
+    {who : Player} (alone : ∀ player, player = who) :
+    ∀ {state} (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace state),
+      RegularTrace setup leaks bounds horizon scheduler assessment who trace
+  | _, .start => trivial
+  | _, .extend (source := before) (target := after) prior _ _ _ =>
+      ⟨regularTrace_of_alone assessment alone prior, by
+        cases before with
+        | none => trivial
+        | some _ =>
+            cases after with
+            | none => trivial
+            | some _ => exact fun actor _ different => (different (alone actor)).elim⟩
+
 /-- **Agreeing base laws at two sites with one late key.** -/
 theorem ownerSwap_baseLawAgrees
     [Finite (onePacketProtocol setup leaks bounds horizon scheduler).History]
@@ -37,7 +53,6 @@ theorem ownerSwap_baseLawAgrees
     (covers : bounds.CoversInputValues)
     (assessment : setup.intendedModel.BehavioralAssessment)
     (weight : List (Option (OperationalState setup leaks)) → ℝ) {who : Player}
-    (observer : Player) (distinct : observer ≠ who)
     {site₁ site₂ : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who}
     {past₁ past₂ : List (application setup leaks).PlayerEntry}
     {view₁ view₂ : (application setup leaks).PlayerView}
@@ -110,8 +125,13 @@ theorem ownerSwap_baseLawAgrees
           (guardedSecond history member)) = site₁.1
     rw [infoOf_mapTrace, member, ← infoEq]
     exact swap.info_involutive _
-  · exact regularTrace_mapTrace_iff_of_fixes swap _ bounded assessment who fixesOthers
-      observer distinct history.trace _
+  · by_cases other : ∃ observer, observer ≠ who
+    · obtain ⟨observer, distinct⟩ := other
+      exact regularTrace_mapTrace_iff_of_fixes swap _ bounded assessment who fixesOthers
+        observer distinct history.trace _
+    · push Not at other
+      exact iff_of_true (regularTrace_of_alone assessment other _)
+        (regularTrace_of_alone assessment other _)
   · obtain ⟨state, trace⟩ := history
     obtain ⟨control, draw, stateEq, drawMember, inputsEq, drawStore⟩ :=
       siteDraw firstSite ⟨⟨state, trace⟩, member⟩
