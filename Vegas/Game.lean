@@ -454,3 +454,5 @@ import Vegas.Game.OnePacketNonLateDecomposition
 import Vegas.Game.OnePacketCertificateField
 import Vegas.Game.OnePacketNextEvent
 import Vegas.Game.OnePacketOwnIntended
+import Vegas.Game.OnePacketDoomedSites
+import Vegas.Game.OnePacketLateReveal
