@@ -145,4 +145,90 @@ theorem ownerSwap_info_of_traces {first second : (application setup leaks).Contr
   · exact EventGraphRuntime.HiddenSwap.view_ownerSwap_of_settled who firstSettled
       secondSettled firstSettled.earlier secondSettled.earlier rfl rfl currentEq
 
+/-- A late delivery leaves a ready event named by none of the player's
+packets. -/
+theorem pending_of_lateDelivery {control : (application setup leaks).Control}
+    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
+    {who : Player}
+    (late : LateDelivery setup leaks who (some (control.execution.recall who,
+      control.execution.observe (application setup leaks) who))) :
+    ∃ event, control.execution.application.config.cut.Ready event ∧
+      ∀ message ∈ (application setup leaks).outputs (control.execution.recall who),
+        message.payload.call.event? (graph setup) ≠ some event := by
+  obtain ⟨past, view, event, infoEq, pending, _⟩ := late
+  obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj infoEq)
+  obtain ⟨_, ready, _, unrecorded⟩ := pendingEvent_spec pending
+  refine ⟨event, (State.publicView_eventReady _ event).mp ready, fun message member named => ?_⟩
+  have rawTrace := (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup)
+    horizon scheduler trace
+  have recorded := (history_eventRecorded_iff rawTrace who event).mpr ⟨message, member, named⟩
+  rw [unrecorded] at recorded
+  cases recorded
+
+/-- A site of `who` is reached at a history ending where `who` acts with the
+site's recall and view. -/
+private theorem site_realized {who : Player}
+    (site : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who)
+    {past : List (application setup leaks).PlayerEntry}
+    {view : (application setup leaks).PlayerView} (atSite : site.1 = some (past, view))
+    (debtFree : ∀ history : (onePacketInformation setup leaks bounds horizon
+        scheduler).InformationHistory who site.1, ∀ point,
+      nativeDecodedState setup leaks history.1.state = some point →
+        ¬ ProtocolState.OwesFailure who setup.program point) :
+    ∃ control : (application setup leaks).Control,
+      Nonempty ((onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control)) ∧
+      control.execution.recall who = past ∧
+      control.execution.observe (application setup leaks) who = view ∧
+      ∀ point, nativeDecodedState setup leaks (some control) = some point →
+        ¬ ProtocolState.OwesFailure who setup.program point := by
+  obtain ⟨⟨history, member⟩, -⟩ := site.2
+  have info := member
+  rw [onePacket_infoOf, atSite] at info
+  cases stateEq : history.state with
+  | none =>
+      rw [stateEq] at info
+      cases info
+  | some control =>
+      have trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace
+          (some control) := stateEq ▸ history.trace
+      rw [stateEq] at info
+      simp only [ReactiveApplication.observe] at info
+      split at info
+      · obtain ⟨recallEq, viewEq⟩ := Prod.mk.inj (Option.some.inj info)
+        exact ⟨control, ⟨trace⟩, recallEq, viewEq, fun point decoded =>
+          debtFree ⟨history, member⟩ point (by rw [stateEq]; exact decoded)⟩
+      · cases info
+
+/-- **The two sites' information states differ exactly by the owner swap.**
+Take two late-delivery information sites of `who` with the same late-delivery
+key, at neither of which `who` owes a failure at the decoded point of any
+history (the negation of `Vegas.OwingAgent` at the site's agent). The owner
+swap between the views of `who` at the two sites sends the information state of
+the first site to that of the second. -/
+theorem ownerSwap_info {who : Player}
+    {site₁ site₂ : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who}
+    {past₁ past₂ : List (application setup leaks).PlayerEntry}
+    {view₁ view₂ : (application setup leaks).PlayerView}
+    (firstSite : site₁.1 = some (past₁, view₁)) (secondSite : site₂.1 = some (past₂, view₂))
+    (sameKey : lateKey setup leaks who site₁.1 = lateKey setup leaks who site₂.1)
+    (firstDebtFree : ∀ history : (onePacketInformation setup leaks bounds horizon
+        scheduler).InformationHistory who site₁.1, ∀ point,
+      nativeDecodedState setup leaks history.1.state = some point →
+        ¬ ProtocolState.OwesFailure who setup.program point)
+    (secondDebtFree : ∀ history : (onePacketInformation setup leaks bounds horizon
+        scheduler).InformationHistory who site₂.1, ∀ point,
+      nativeDecodedState setup leaks history.1.state = some point →
+        ¬ ProtocolState.OwesFailure who setup.program point)
+    (firstLate : LateDelivery setup leaks who site₁.1)
+    (secondLate : LateDelivery setup leaks who site₂.1) :
+    (ownerSwap who view₁.application view₂.application).info site₁.1 = site₂.1 := by
+  obtain ⟨first, ⟨firstTrace⟩, rfl, rfl, firstDebt⟩ := site_realized site₁ firstSite firstDebtFree
+  obtain ⟨second, ⟨secondTrace⟩, rfl, rfl, secondDebt⟩ :=
+    site_realized site₂ secondSite secondDebtFree
+  rw [firstSite] at sameKey firstLate
+  rw [secondSite] at sameKey secondLate
+  rw [firstSite, secondSite]
+  exact ownerSwap_info_of_traces firstTrace secondTrace sameKey firstDebt secondDebt
+    (pending_of_lateDelivery firstTrace firstLate) (pending_of_lateDelivery secondTrace secondLate)
+
 end Vegas
