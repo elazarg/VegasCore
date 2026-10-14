@@ -28,6 +28,14 @@ value up to five times the error times the payoff bound: the failure
 probability is at most the error at every history, so it is uncorrelated with
 the continuation value up to twice the error times the bound
 (`Vegas.abs_siteStopValue_sub_le_of_sureCompletion`).
+
+**Off a bad set.** The completion value from every history is bounded by the
+payoff bound (`Vegas.abs_historyStopValue_le`). So when the completion-point law
+is known only at the histories of the belief satisfying a predicate, the site's
+completion value is one less its failure probability times its continuation
+value up to five times the error times the bound plus four times the bound
+times the belief mass of the other histories
+(`Vegas.abs_siteStopValue_sub_le_of_sureCompletion_off`).
 -/
 
 noncomputable section
@@ -440,6 +448,219 @@ theorem abs_siteStopValue_sub_le_of_sureCompletion
   have total := abs_siteStopValue_sub_le_of_valueFree setup leaks bounds horizon scheduler
     parameter utility excludedPayoff assessment profile site law historyNear uncorrelated
   linarith
+
+omit [DecidableEq Player] [Fintype Player] [IExpr.ResultTypes L] in
+/-- An expectation is at most the expectation of the absolute value. -/
+private theorem abs_expect_le_expect_abs {α : Type*} [Finite α] (μ : PMF α) (f : α → ℝ) :
+    |expect μ f| ≤ expect μ (fun a => |f a|) := by
+  have upper := expect_mono (μ := μ) (f := f) (g := fun a => |f a|)
+    (fun a _ => le_abs_self _) (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)
+  have lower := expect_mono (μ := μ) (f := fun a => -1 * |f a|) (g := f)
+    (fun a _ => by linarith [neg_abs_le (f a)]) (payoffIntegrable_of_finite _ _)
+    (payoffIntegrable_of_finite _ _)
+  rw [expect_const_mul] at lower
+  exact abs_le.mpr ⟨by linarith, upper⟩
+
+omit [Finite ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+    scheduler).History] in
+open Classical in
+/-- The completion value from every history is bounded by a bound on the
+readout payoff and the exclusion payoff. -/
+theorem abs_historyStopValue_le (assessment : (onePacketN).BehavioralAssessment)
+    (profile : BehavioralProfile setup.program) {who : Player}
+    (site : (onePacketN).InformationSite who) (law : PMF ((onePacketN).Choice who site.1))
+    (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+      horizon scheduler).History) {bound : ℝ}
+    (readoutBounded : ∀ readout, |exclusionReadoutUtility setup parameter utility excludedPayoff
+      readout who| ≤ bound) (excludedBounded : |excludedPayoff who| ≤ bound) :
+    |historyStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+        assessment profile site law history| ≤ bound := by
+  have boundNonneg : 0 ≤ bound := (abs_nonneg _).trans excludedBounded
+  have payoffBounded : ∀ final : ((bounds.onePacketMenu (runtime setup) leaks).protocol
+      (initialLaw setup) horizon scheduler).History,
+      |(if final ∈ onePacketFailed setup leaks bounds horizon scheduler
+          ((onePacketN).agentAt site) then 0
+        else exclusionBase setup parameter utility excludedPayoff leaks final.state who)| ≤
+        bound := fun final => by
+    split
+    · rw [abs_zero]
+      exact boundNonneg
+    · rw [exclusionBase_eq_readout]
+      exact readoutBounded _
+  unfold historyStopValue
+  refine expect_abs_le_of_bounded boundNonneg fun stop => ?_
+  split
+  · unfold completionValue
+    split
+    · exact expect_abs_le_of_bounded boundNonneg payoffBounded
+    · split
+      · exact expect_abs_le_of_bounded boundNonneg payoffBounded
+      · split
+        · exact expect_abs_le_of_bounded boundNonneg readoutBounded
+        · exact expect_abs_le_of_bounded boundNonneg payoffBounded
+  · exact payoffBounded stop
+
+open Classical in
+/-- **Sure completion at a site, off a bad set.** At a site with a pending
+event, if from every history of the belief satisfying `good` the completion-
+point law of the installed profile has success one up to `error` with a step
+law keeping the history's continuation value, the site's completion value is
+one less its failure probability times its continuation value up to five times
+`error` times the payoff bound plus four times the bound times the belief mass
+of the histories outside `good`. -/
+theorem abs_siteStopValue_sub_le_of_sureCompletion_off
+    (assessment : (onePacketN).BehavioralAssessment) (profile : BehavioralProfile setup.program)
+    {who : Player} (site : (onePacketN).InformationSite who)
+    (law : PMF ((onePacketN).Choice who site.1)) {event : (graph setup).EventId}
+    (pending : pendingEvent setup leaks who site.1 = some event)
+    (good : (onePacketN).InformationHistory who site.1 → Prop) {error bound : ℝ}
+    (errorNonneg : 0 ≤ error)
+    (readoutBounded : ∀ readout, |exclusionReadoutUtility setup parameter utility excludedPayoff
+      readout who| ≤ bound) (excludedBounded : |excludedPayoff who| ≤ bound)
+    (laws : ∀ history ∈ (assessment.belief who site).support, good history →
+      ∃ stepLaw : PMF (ProtocolState setup.program),
+        CompletionPointLaw setup leaks bounds horizon scheduler
+          (Profile.update (sig := (onePacketN).behavioralSignature) assessment.strategy who
+            ((assessment.strategy who).withLaw site.1 law))
+          (siteRank site.1) (siteFresh who site.1) history.1 1 stepLaw error ∧
+        expect stepLaw (sourcePointValue setup parameter utility excludedPayoff profile who) =
+          decodedPointValue setup leaks bounds horizon scheduler parameter utility
+            excludedPayoff profile who (siteRank site.1) history.1) :
+    |siteStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+        assessment profile site law -
+      (1 - onePacketSiteFailure setup leaks bounds horizon scheduler assessment site law) *
+        siteValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+          assessment profile site| ≤
+      5 * error * bound +
+        4 * bound * expect (assessment.belief who site) (fun history =>
+          if good history then (0 : ℝ) else 1) := by
+  let belief := assessment.belief who site
+  let failure := siteHistoryFailure setup leaks bounds horizon scheduler assessment site law
+  let value := fun history : (onePacketN).InformationHistory who site.1 =>
+    decodedPointValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+      profile who (siteRank site.1) history.1
+  let stopValue := fun history : (onePacketN).InformationHistory who site.1 =>
+    historyStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+      assessment profile site law history.1
+  let bad := fun history : (onePacketN).InformationHistory who site.1 =>
+    if good history then (0 : ℝ) else 1
+  have boundNonneg : 0 ≤ bound := (abs_nonneg _).trans excludedBounded
+  have failureNonneg : ∀ history, 0 ≤ failure history := fun history =>
+    expect_nonneg _ _ fun _ _ => by split <;> norm_num
+  have failureLeOne : ∀ history, failure history ≤ 1 := fun history =>
+    expect_le_const _ _ (payoffIntegrable_of_finite _ _) 1 fun _ _ => by split <;> norm_num
+  have valueBounded : ∀ history, |value history| ≤ bound := fun history => by
+    simp only [value]
+    unfold decodedPointValue
+    split
+    · exact excludedBounded
+    · split
+      · exact excludedBounded
+      · split
+        · exact expect_abs_le_of_bounded boundNonneg readoutBounded
+        · exact excludedBounded
+  have stopBounded : ∀ history, |stopValue history| ≤ bound := fun history =>
+    abs_historyStopValue_le setup leaks bounds horizon scheduler parameter utility
+      excludedPayoff assessment profile site law history.1 readoutBounded excludedBounded
+  have badNonneg : ∀ history, 0 ≤ bad history := fun history => by
+    simp only [bad]
+    split <;> norm_num
+  -- Failure is at most the error on good histories and at most one elsewhere.
+  have failureLe : ∀ history ∈ belief.support, failure history ≤ error + bad history :=
+    fun history member => by
+      by_cases holds : good history
+      · obtain ⟨_, pointLaw, _⟩ := laws history member holds
+        have := siteHistoryFailure_le_of_completionPointLaw setup leaks bounds horizon scheduler
+          assessment site law pending history pointLaw
+        have := badNonneg history
+        linarith
+      · simp only [bad, holds, ↓reduceIte]
+        linarith [failureLeOne history]
+  have nearLe : ∀ history ∈ belief.support,
+      |stopValue history - (1 - failure history) * value history| ≤
+        3 * error * bound + 2 * bound * bad history := fun history member => by
+    by_cases holds : good history
+    · obtain ⟨_, pointLaw, stepValue⟩ := laws history member holds
+      have near := abs_historyStopValue_sub_le_of_sureCompletion setup leaks bounds horizon
+        scheduler parameter utility excludedPayoff assessment profile site law pending history
+        readoutBounded pointLaw stepValue
+      have := mul_nonneg (mul_nonneg (by norm_num : (0 : ℝ) ≤ 2) boundNonneg) (badNonneg history)
+      linarith
+    · simp only [bad, holds, ↓reduceIte, mul_one]
+      have scaled : |(1 - failure history) * value history| ≤ bound := by
+        rw [abs_mul, abs_of_nonneg (by linarith [failureLeOne history])]
+        exact (mul_le_of_le_one_left (abs_nonneg _) (by linarith [failureNonneg history])).trans
+          (valueBounded history)
+      have := mul_nonneg (mul_nonneg (by norm_num : (0 : ℝ) ≤ 3) errorNonneg) boundNonneg
+      linarith [abs_sub _ _ |>.trans (add_le_add (stopBounded history) scaled)]
+  have failureEq : onePacketSiteFailure setup leaks bounds horizon scheduler assessment site law =
+      expect (assessment.belief who site)
+        (siteHistoryFailure setup leaks bounds horizon scheduler assessment site law) := by
+    unfold onePacketSiteFailure localFailure siteHistoryFailure
+    exact expect_localRun _ _ _ _ _
+  rw [failureEq]
+  unfold siteStopValue siteValue
+  change |expect belief stopValue - (1 - expect belief failure) * expect belief value| ≤ _
+  -- The first part: the belief average of the per-history errors.
+  have first : |expect belief (fun history => stopValue history -
+      (1 - failure history) * value history)| ≤
+      3 * error * bound + 2 * bound * expect belief bad := by
+    have upper := expect_mono (μ := belief)
+      (f := fun history => |stopValue history - (1 - failure history) * value history|)
+      (g := fun history => 3 * error * bound + 2 * bound * bad history) nearLe
+      (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)
+    rw [expect_add (payoffIntegrable_constant _ _) (payoffIntegrable_of_finite _ _),
+      expect_constant, expect_const_mul] at upper
+    exact (abs_expect_le_expect_abs _ _).trans upper
+  -- The second part: failure is small off the bad set, so it is nearly uncorrelated.
+  have meanFailure : expect belief failure ≤ error + expect belief bad := by
+    have upper := expect_mono (μ := belief) (f := failure)
+      (g := fun history => error + bad history) failureLe
+      (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)
+    rwa [expect_add (payoffIntegrable_constant _ _) (payoffIntegrable_of_finite _ _),
+      expect_constant] at upper
+  have meanFailureNonneg : 0 ≤ expect belief failure :=
+    expect_nonneg _ _ fun history _ => failureNonneg history
+  have meanValue : |expect belief value| ≤ bound :=
+    expect_abs_le_of_bounded boundNonneg valueBounded
+  have productLe : |expect belief (fun history => failure history * value history)| ≤
+      bound * (error + expect belief bad) := by
+    have pointwise : ∀ history ∈ belief.support,
+        |failure history * value history| ≤ bound * (error + bad history) :=
+      fun history member => by
+        rw [abs_mul, abs_of_nonneg (failureNonneg history), mul_comm]
+        exact mul_le_mul (valueBounded history) (failureLe history member)
+          (failureNonneg history) boundNonneg
+    have upper := expect_mono (μ := belief)
+      (f := fun history => |failure history * value history|)
+      (g := fun history => bound * (error + bad history)) pointwise
+      (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)
+    rw [expect_const_mul, expect_add (payoffIntegrable_constant _ _)
+      (payoffIntegrable_of_finite _ _), expect_constant] at upper
+    exact (abs_expect_le_expect_abs _ _).trans upper
+  have meanProduct : |expect belief failure * expect belief value| ≤
+      bound * (error + expect belief bad) := by
+    rw [abs_mul, abs_of_nonneg meanFailureNonneg, mul_comm]
+    exact mul_le_mul meanValue meanFailure meanFailureNonneg boundNonneg
+  have split : expect belief stopValue - (1 - expect belief failure) * expect belief value =
+      expect belief (fun history => stopValue history - (1 - failure history) * value history) +
+        (expect belief failure * expect belief value -
+          expect belief (fun history => failure history * value history)) := by
+    have difference := expect_sub (μ := belief) (f := stopValue)
+      (g := fun history => (1 - failure history) * value history)
+      (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)
+    have product : expect belief (fun history => (1 - failure history) * value history) =
+        expect belief value - expect belief (fun history => failure history * value history) := by
+      rw [← expect_sub (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)]
+      exact congrArg _ (funext fun history => by ring)
+    rw [difference, product]
+    ring
+  rw [split]
+  calc _ ≤ _ := abs_add_le _ _
+    _ ≤ (3 * error * bound + 2 * bound * expect belief bad) +
+        (bound * (error + expect belief bad) + bound * (error + expect belief bad)) :=
+      add_le_add first ((abs_sub _ _).trans (add_le_add meanProduct productLe))
+    _ = _ := by ring
 
 end Values
 
