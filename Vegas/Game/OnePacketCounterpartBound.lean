@@ -3,16 +3,19 @@
 import Vegas.Game.OnePacketCounterpartImage
 import Vegas.Game.OnePacketCounterpartSteps
 import Vegas.Game.OnePacketOwnIntended
+import Vegas.Game.OnePacketSpliceForced
 
 /-! # Regular counterparts with dominated weight
 
 The swap toward a forced witness (`Vegas.counterpart_of_witness`) also
-dominates weights: when the response masses along a history are at most `K₁`
-times those of their images under such swaps
-(`Vegas.SwapResponseBound`), and at most `ε` times at the first irregular
-response (`Vegas.SwapFirstBound`), an irregular history's upper source weight is
-at most `ε (1 + error)` times `K` to the length bound times the source weight
-of its counterpart (`Vegas.counterpart_bound_of_witness`).
+dominates weights: when the response masses of players acting at forced
+information along a history are at most `K₁` times those of their images under
+such swaps (`Vegas.SwapResponseBound`), and at most `ε` times at the first
+irregular response (`Vegas.SwapFirstBound`), an irregular history's upper source
+weight is at most `ε (1 + error)` times `K` to the length bound times the source
+weight of its counterpart (`Vegas.counterpart_bound_of_witness`). With
+independent hidden initial cells, every player responding along the history
+acts at forced information (`Vegas.forcedAgent_of_splice`).
 -/
 
 noncomputable section
@@ -35,9 +38,10 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
 
 variable (setup leaks bounds horizon scheduler sequence profiles) in
 /-- **Response masses compared under hidden swaps.** At stage `n`, every
-response of a player other than `who` along a history ending at a state
-guarded for a hidden swap, whose image under the swap is regular, has response
-mass at most `K₁` times that of its image. -/
+response of a player other than `who`, acting at an information state forced for
+it, along a history ending at a state guarded for a hidden swap, whose image
+under the swap is regular, has response mass at most `K₁` times that of its
+image. -/
 def SwapResponseBound (n : ℕ) (who : Player) (K₁ : ℝ) : Prop :=
   ∀ (swap : HiddenSwap (graph setup)) (allowed : Set (graph setup).Inputs) {before after}
     (_ : (onePacketProtocol setup leaks bounds horizon scheduler).Trace before) joint
@@ -46,6 +50,8 @@ def SwapResponseBound (n : ℕ) (who : Player) (K₁ : ℝ) : Prop :=
       ⟨joint, legal⟩).support) (_ : SwapGuardState setup swap allowed after)
     (control next : (application setup leaks).Control) (actor : Player),
     before = some control → after = some next → control.actor = some actor → actor ≠ who →
+    forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon scheduler
+      actor ((application setup leaks).observe actor (some control)) →
     RegularStep setup leaks bounds horizon scheduler (sequence n) who
       (swap.protocolState before) (swap.joint joint) (swap.protocolState after) →
     responseMass setup leaks bounds horizon scheduler (profiles n) control joint ≤
@@ -129,16 +135,17 @@ private theorem prefix_good {who : Player} {first : (application setup leaks).Pr
         horizon scheduler control target joint realized
       exact publicRecord_of_transition prior joint realized (record next rfl)
 
-/-- **A regular counterpart with dominated weight.** For a well-formed setup,
-under a fully mixed source assessment at stage `n`, at a decision input of
-`who` at its own turn, take an irregular history `h` and a history `W` of the
-input whose decoded point `w` leaves nobody owing a failure. When the
-commitment cells where `h`'s decoded point `p` and `w` differ hold values at
-both and the message bounds cover every binding field, some regular history of
-the input has the operational record of `h` and source weight at least the
-upper source weight of `h` divided by `ε (1 + error)` times `K` to the power
-`2 * horizon + 1`. -/
+/-- **A regular counterpart with dominated weight.** For a well-formed setup
+with independent hidden initial cells, under a fully mixed source assessment at
+stage `n`, at a decision input of `who` at its own turn, take an irregular
+history `h` and a history `W` of the input whose decoded point `w` leaves nobody
+owing a failure. When the commitment cells where `h`'s decoded point `p` and `w`
+differ hold values at both and the message bounds cover every binding field,
+some regular history of the input has the operational record of `h` and source
+weight at least the upper source weight of `h` divided by `ε (1 + error)` times
+`K` to the power `2 * horizon + 1`. -/
 theorem counterpart_bound_of_witness (wellFormed : setup.WellFormed)
+    (independent : setup.PrivateInputsIndependent)
     {who : Player} {steps : OperationalSteps setup leaks bounds horizon scheduler sequence
       profiles who}
     (positive : ∀ n {before after : (application setup leaks).ProtocolState}
@@ -328,9 +335,30 @@ theorem counterpart_bound_of_witness (wellFormed : setup.WellFormed)
       imageLegal imageRealized control next actor rfl afterEq acting other (forcedAll who)
       ⟨⟨some control, prior⟩, (bounds.onePacketMenu (runtime setup) leaks).info (initialLaw setup)
         horizon scheduler actor prior, forcedAll actor⟩ imageStep regularPrior irregularStep
+  have responseStep : ∀ {before after} (prior : (onePacketProtocol setup leaks bounds horizon
+      scheduler).Trace before) joint
+      (legal : (onePacketProtocol setup leaks bounds horizon scheduler).Legal before joint)
+      (realized : after ∈ ((onePacketProtocol setup leaks bounds horizon scheduler).step before
+        ⟨joint, legal⟩).support), TracePrefix (prior.extend joint legal realized) trace →
+      SwapGuardState setup swap (swapAllowed swap) after →
+      ∀ (control next : (application setup leaks).Control) (actor : Player),
+      before = some control → after = some next → control.actor = some actor → actor ≠ who →
+      RegularStep setup leaks bounds horizon scheduler (sequence n) who
+        (swap.protocolState before) (swap.joint joint) (swap.protocolState after) →
+      responseMass setup leaks bounds horizon scheduler (profiles n) control joint ≤
+        K₁ * responseMass setup leaks bounds horizon scheduler (profiles n) (swap.control control)
+          (swap.joint joint) := by
+    intro before after prior joint legal realized isPrefix guardAfter control next actor beforeEq
+      afterEq acting other imageStep
+    subst beforeEq
+    exact responseBound swap (swapAllowed swap) prior joint legal realized guardAfter control next
+      actor rfl afterEq acting other
+      (forcedAgent_of_splice wellFormed independent covered trace decodedP secondState sameView
+        staticW readyOwn succeed prior ((TracePrefix.extend .refl joint legal realized).trans
+          isPrefix) other) imageStep
   have weight := upperSourceWeight_le_swap positive swap (initialClosed_swapAllowed swap)
     bounded n ιPos initialFloored K₁Nonneg εNonneg trace guarded
-    (responseBound swap (swapAllowed swap)) firstStep imageRegular irregularHistory
+    responseStep firstStep imageRegular irregularHistory
   refine weight.trans ?_
   set K := max 1 (max (max (1 / ι) (1 / contentFloor setup leaks bounds horizon scheduler
     (sequence n))) (K₁ * (1 + steps.error n)))

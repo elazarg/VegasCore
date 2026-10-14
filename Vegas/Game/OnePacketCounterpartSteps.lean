@@ -120,12 +120,13 @@ theorem upperSourceWeight_le_swap [Finite (onePacketProtocol setup leaks bounds 
     (K₁Nonneg : 0 ≤ K₁) (εNonneg : 0 ≤ ε)
     {state} (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace state)
     (guarded : SwapGuardState setup swap allowed state)
-    (responseBound : ∀ {before after} (_ : (onePacketProtocol setup leaks bounds horizon
+    (responseBound : ∀ {before after} (prior : (onePacketProtocol setup leaks bounds horizon
         scheduler).Trace before) joint
       (legal : (onePacketProtocol setup leaks bounds horizon scheduler).Legal before joint)
-      (_ : after ∈ ((onePacketProtocol setup leaks bounds horizon scheduler).step before
-        ⟨joint, legal⟩).support) (_ : SwapGuardState setup swap allowed after)
-      (control next : (application setup leaks).Control) (actor : Player),
+      (realized : after ∈ ((onePacketProtocol setup leaks bounds horizon scheduler).step before
+        ⟨joint, legal⟩).support), TracePrefix (prior.extend joint legal realized) trace →
+      SwapGuardState setup swap allowed after →
+      ∀ (control next : (application setup leaks).Control) (actor : Player),
       before = some control → after = some next → control.actor = some actor → actor ≠ who →
       RegularStep setup leaks bounds horizon scheduler (sequence n) who
         (swap.protocolState before) (swap.joint joint) (swap.protocolState after) →
@@ -221,7 +222,7 @@ theorem upperSourceWeight_le_swap [Finite (onePacketProtocol setup leaks bounds 
     symmetry one_le (mul_nonneg εNonneg (by linarith)) trace ?_ ?_ trace guarded .refl
     imageRegular).2
     irregularTrace
-  · intro before after prior joint legal realized guardAfter imageStep
+  · intro before after prior joint legal realized isPrefix guardAfter imageStep
     cases before with
     | none =>
         cases after with
@@ -344,8 +345,8 @@ theorem upperSourceWeight_le_swap [Finite (onePacketProtocol setup leaks bounds 
                           (operationalState setup leaks (some next)) ≤ _
                     have imageBound := imageResponse prior joint legal realized guardAfter control
                       next actor rfl rfl acting same imageStep
-                    have ratio := responseBound prior joint legal realized guardAfter control next
-                      actor rfl rfl acting same imageStep
+                    have ratio := responseBound prior joint legal realized isPrefix guardAfter
+                      control next actor rfl rfl acting same imageStep
                     set mass := steps.mass n (operationalState setup leaks (some control))
                       (operationalState setup leaks (some next))
                     set content := contentFactor setup leaks (sequence n) actor
