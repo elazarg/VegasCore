@@ -87,3 +87,5 @@ import GameTheoryExtensions.Math.Probability.ProductDecorrelation
 import GameTheoryExtensions.Math.Probability.NearDecorrelation
 import GameTheoryExtensions.Analysis.Protocol.RestrictedComponentCompletion
 import GameTheoryExtensions.Protocol.OwnPlayPrefix
+
+import GameTheoryExtensions.Analysis.Protocol.StoppedKernelComparison

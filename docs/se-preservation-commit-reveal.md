@@ -6,9 +6,10 @@ Status: partly mechanized mathematics. The checked results include Proposition
 1(1) for events run one at a time, Lemma C, the finite core of Lemma T, and a
 sequential preservation theorem for the default bounded runtime with an
 exclusion payoff. Its counterpart construction and likelihood bounds are
-derived. The exact $C_1$ runtime still needs persistent exclusion and automatic
-failure of excluded owners' later events. Its sequential preservation theorem
-and the concurrent preservation theorem remain open.
+derived. A separate recovery runtime enforces persistent exclusion and automatic
+failure of excluded owners' later events, with checked packet accounting and
+agreement with the default runtime before exclusion. SE transfer to that runtime
+and concurrent preservation remain open.
 Appendix A identifies the checked declarations; Section 9 lists the broader
 limitations.
 
@@ -2908,6 +2909,14 @@ needs its own review. What is known:
 | Typed source commit-phase rollback preserves all attempted private histories | `Vegas.SourceProgram.CommitPrefix.Close.retry_checkpoint` |
 | Any chain of these actual phase closes resets at most once per player | `Vegas.SourceProgram.CommitCloseChain.reset_bound` |
 | Behavioral realization of a fixed private scheduler seed retains the joint seed/execution law | `Interaction.ReactiveApplication.schedulerMixture_joint` |
+| Automatic failure completion terminates with no excluded-owner event ready | `Vegas.EventGraphRuntime.RecoveryState.drain_quiescent` |
+| Actual recovery histories preserve permanent exclusion and native state validity | `Vegas.EventGraphRuntime.recoveryApplication_history_invariant`, `Vegas.EventGraphRuntime.recoveryApplication_exclusion_monotone` |
+| Clear recovery responses preserve the projected native execution and full recall | `Vegas.EventGraphRuntime.RecoveryProjection.respond_of_empty` |
+| Clear actual recovery histories are recovered exactly from their native projection | `Vegas.EventGraphRuntime.RecoveryProjection.liftExecution_execution_of_history_clear` |
+| Recovery one-packet menus have zero count charges, including after exclusion | `Vegas.EventGraphRuntime.Recovery.onePacketMenu_countCharge_zero` |
+| Recovery and default one-packet choices agree before exclusion | `Vegas.EventGraphRuntime.Recovery.onePacketMenu_projected_of_empty` |
+| Coupled actual one-step kernels imply equal stopped readout laws | `GameTheory.Protocol.InformationModel.runBehavioralUntil_map_eq_of_paired_steps` |
+| An unread scheduler seed retains its law and independence in the actual joint execution law | `Interaction.ReactiveApplication.schedulerMixture_unread_execution` |
 
 The default-runtime theorem derives zero on-path count charges and the joint
 typed-readout and realized-payoff law, including the counterpart inputs.
@@ -2918,11 +2927,14 @@ requires a directed repair preserving the actual operational record and the
 observing player's full information. The whole-history repair and its finite
 composition now construct such regular counterparts from an intended witness.
 Their likelihood bound and assembly are checked. This theorem uses the default
-runtime with the exclusion payoff read from its terminal store. It does not yet
-implement $C_1$'s automatic later failures and exclusion from readiness. A missed
+runtime with the exclusion payoff read from its terminal store. The separate
+recovery application implements automatic later failures and exclusion from
+readiness, with exact native agreement before exclusion and a sound count menu.
+Its SE preservation theorem still requires a continuation comparison across the
+first exclusion; projection alone does not supply it. A missed
 binding excludes its owner immediately; an accepted unopenable binding instead
-excludes it when its reveal fails. The recovery runtime must retain that
-distinction when enforcing exclusion and, under concurrency, resetting a phase.
+excludes it when its reveal fails. The recovery handlers retain that distinction;
+the concurrent runtime must also retain it when resetting a phase.
 The checked phase-attempt and rollback primitives do not yet define the full
 concurrent source information model or recovery runtime. Scheduler-seed
 realization does not yet establish the local seed-access restrictions of (S1–S3).

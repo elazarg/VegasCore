@@ -256,3 +256,11 @@ import Vegas.Pending.ReactiveBindingRejectedInclusion
 import Vegas.Pending.ReactiveBindingExpiryAccepted
 import Vegas.Pending.ReactiveBindingCountedInclusion
 import Vegas.Pending.ReactiveCountedResponseForms
+import Vegas.Pending.ExclusionCompletion
+import Vegas.Pending.ExclusionApplication
+import Vegas.Pending.ExclusionInvariant
+import Vegas.Pending.ExclusionBoundary
+import Vegas.Pending.ExclusionProjection
+import Vegas.Pending.ExclusionCountMenu
+import Vegas.Pending.ExclusionClearLift
+import Vegas.Pending.ExclusionMenuProjection

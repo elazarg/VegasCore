@@ -305,6 +305,11 @@ import Vegas.Game.OnePacketRepairedResponderForced
 import Vegas.Game.OnePacketBindingRepairCompilation
 import Vegas.Source.CommitPhaseRecovery
 import Interaction.ReactiveSchedulerImplementation
+import Vegas.Pending.ExclusionMenuProjection
+import Vegas.Pending.ExclusionClearLift
+import Vegas.Pending.ExclusionBoundary
+import Interaction.ReactiveSchedulerFreshSeed
+import GameTheoryExtensions.Analysis.Protocol.StoppedKernelComparison
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -1887,6 +1892,51 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Interaction.ReactiveApplication.schedulerMixture_joint
+
+/-- info: 'Vegas.EventGraphRuntime.RecoveryState.drain_quiescent' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.RecoveryState.drain_quiescent
+
+/-- info: 'Vegas.EventGraphRuntime.recoveryApplication_history_invariant' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.recoveryApplication_history_invariant
+
+/-- info: 'Vegas.EventGraphRuntime.recoveryApplication_exclusion_monotone' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.recoveryApplication_exclusion_monotone
+
+/-- info: 'Vegas.EventGraphRuntime.RecoveryProjection.respond_of_empty' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.RecoveryProjection.respond_of_empty
+
+/-- info: 'Vegas.EventGraphRuntime.RecoveryProjection.liftExecution_execution_of_history_clear' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.RecoveryProjection.liftExecution_execution_of_history_clear
+
+/-- info: 'Vegas.EventGraphRuntime.Recovery.onePacketMenu_countCharge_zero' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.Recovery.onePacketMenu_countCharge_zero
+
+/-- info: 'Vegas.EventGraphRuntime.Recovery.onePacketMenu_projected_of_empty' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.Recovery.onePacketMenu_projected_of_empty
+
+/-- info: 'GameTheory.Protocol.InformationModel.runBehavioralUntil_map_eq_of_paired_steps' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.Protocol.InformationModel.runBehavioralUntil_map_eq_of_paired_steps
+
+/-- info: 'Interaction.ReactiveApplication.schedulerMixture_unread_execution' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.ReactiveApplication.schedulerMixture_unread_execution
 
 open Vegas.EventGraphRuntime.BindingMemory.RecordsSubmittedBindings in
 /-- info:
