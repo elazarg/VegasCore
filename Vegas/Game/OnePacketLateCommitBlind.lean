@@ -451,10 +451,10 @@ theorem certificate_lateCommit_siteValue
 
 open Classical Filter in
 /-- **Value-blind late commitments.** Along an assembled sequence of vanishing
-scale, let a vanishing `unforcedDrift` bound the belief mass outside the forced
+scale, let a vanishing drift bound the belief mass outside the forced
 region, and let the beliefs decorrelate the operational records and the decoded
-points up to a vanishing `decorrelation`, at every debt-free late delivery of an
-agent that is not free. With payoffs bounded by `bound`, late commitments are
+points up to a vanishing error, at every debt-free late delivery of an
+agent that is not free. With bounded payoffs, late commitments are
 value-blind with a vanishing error. -/
 theorem lateCommitBlind_of_bounds
     [Finite ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
