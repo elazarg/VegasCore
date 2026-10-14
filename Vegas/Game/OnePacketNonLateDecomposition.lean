@@ -81,7 +81,7 @@ from late deliveries the successful part of every compared choice and of the
 prescribed component is its success probability times the continuation value of
 `Vegas.nonLateContinuation` up to a vanishing error, and the exclusion payoff is
 at most that continuation value up to the error, with gap at most the gap bound,
-or the site's failure set is empty. -/
+or the site has no pending event. -/
 theorem onePacket_nonLateDecomposition_of_pending
     [Finite ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
       scheduler).History]
@@ -112,8 +112,8 @@ theorem onePacket_nonLateDecomposition_of_pending
           (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
       ∃ blindError : ℕ → ℝ, Tendsto blindError atTop (nhds 0) ∧
         ∀ n who (site : (onePacketN).InformationSite who),
-          ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-          ¬ ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+          ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+          ¬ ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
             (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
             ((onePacketN).agentAt site) →
           pendingEvent setup leaks who site.1 ≠ none →
@@ -147,13 +147,13 @@ theorem onePacket_nonLateDecomposition_of_pending
     ∃ (continuation : ℕ → (onePacketN).InformationAgent (onePacketN).playedInformation → ℝ)
       (error : ℕ → ℝ), Tendsto error atTop (nhds 0) ∧
       ∀ n who (site : (onePacketN).InformationSite who),
-        ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-        ¬ ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+        ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+        ¬ ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
           (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
           ((onePacketN).agentAt site) →
         ((excludedPayoff who ≤ continuation n ((onePacketN).agentAt site) + error n ∧
             continuation n ((onePacketN).agentAt site) - excludedPayoff who ≤ gapBound) ∨
-          onePacketFailed setup leaks bounds horizon scheduler ((onePacketN).agentAt site) = ∅) ∧
+          pendingEvent setup leaks who site.1 = none) ∧
         (∀ choice, onePacketCompared setup leaks bounds horizon scheduler who site choice →
           |onePacketSiteSuccess setup leaks bounds horizon scheduler parameter utility
               excludedPayoff (targetSequence n) site (PMF.pure choice) -
@@ -231,7 +231,7 @@ theorem onePacket_nonLateDecomposition_of_pending
           change some action = none at member
           cases member
       | some input => exact ⟨input.1, input.2, rfl⟩
-    refine ⟨Or.inr emptyFailed, fun choice marked => ?_, ?_⟩
+    refine ⟨Or.inr pending, fun choice marked => ?_, ?_⟩
     · beta_reduce
       rw [zeroFailure, continuationEq, sub_zero, one_mul]
       refine (abs_siteSuccess_sub_prescribed_le_of_unpending setup leaks bounds horizon scheduler

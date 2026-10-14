@@ -68,8 +68,8 @@ structure OnePacketBlindInputs (upperUtility : Player → ℝ)
           (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
       ∃ blindError : ℕ → ℝ, Tendsto blindError atTop (nhds 0) ∧
         ∀ n who (site : (onePacketN).InformationSite who),
-          ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-          ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+          ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+          ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
             (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
             ((onePacketN).agentAt site) →
           (∀ choice, onePacketCompared setup leaks bounds horizon scheduler who site choice →
@@ -117,8 +117,8 @@ structure OnePacketBlindInputs (upperUtility : Player → ℝ)
           (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
       ∃ blindError : ℕ → ℝ, Tendsto blindError atTop (nhds 0) ∧
         ∀ n who (site : (onePacketN).InformationSite who),
-          ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-          ¬ ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+          ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+          ¬ ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
             (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
             ((onePacketN).agentAt site) →
           (∀ choice, onePacketCompared setup leaks bounds horizon scheduler who site choice →

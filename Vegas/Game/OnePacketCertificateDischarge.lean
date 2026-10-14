@@ -21,6 +21,7 @@ import Vegas.Game.OnePacketSlotLawDischarge
 import Vegas.Game.OnePacketOwnDisclosure
 import Vegas.Game.OnePacketOpeningLaw
 import Vegas.Game.OnePacketRelevantLumping
+import Vegas.Game.OnePacketDebtRouting
 
 /-! # Discharging inputs of the one-packet certificate
 
@@ -161,6 +162,10 @@ theorem onePacketMixture_ge_honest_of_not_late
       horizon scheduler).History, (onePacketN).infoOf who history.trace = info)
     (forced : forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
       scheduler who info)
+    (debtFree : ∀ input, info = some input →
+      ∀ history : (onePacketN).InformationHistory who info, ∀ point,
+        nativeDecodedState setup leaks history.1.state = some point →
+          ¬ ProtocolState.OwesFailure who setup.program point)
     (choice : (onePacketN).Choice who info) :
     slotRetention (scale n) * ((honestProfile setup leaks bounds (initialLaw setup) horizon
         scheduler (sequence n) who info) choice).toReal ≤
@@ -175,12 +180,34 @@ theorem onePacketMixture_ge_honest_of_not_late
               scale_le_one (slots := slots) n) agent)) who info) choice).toReal := by
   classical
   have retention_le_one := slotRetention_le_one (scale_pos n).le (scale_le_one n)
+  have atNone : info = none → slotRetention (scale n) * ((honestProfile setup leaks bounds
+      (initialLaw setup) horizon scheduler (sequence n) who info) choice).toReal ≤
+      (((onePacketN).agentBehavior (onePacketN).playedInformation
+        (onePacketFallback setup leaks bounds horizon scheduler)
+        (fun agent => (weights (onePacketPool setup leaks bounds horizon scheduler agent)).bind
+          (freeKeyedComponent
+            (onePacketUnforced setup leaks bounds horizon scheduler scale scale_pos scale_le_one n)
+            (onePacketPrescribed setup leaks bounds horizon scheduler sequence scale scale_pos
+              scale_le_one n)
+            (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
+              scale_le_one (slots := slots) n) agent)) who info) choice).toReal := by
+    intro none
+    subst none
+    have : Subsingleton ((onePacketN).Choice who none) :=
+      InformationModel.subsingleton_choice_of_menu_subsingleton _ _ Set.subsingleton_singleton
+    rw [apply_eq_one_of_subsingleton _ choice, apply_eq_one_of_subsingleton _ choice,
+      ENNReal.toReal_one, mul_one]
+    exact retention_le_one
   by_cases present : info ∈ (onePacketN).playedInformation who
-  · let agent : (onePacketN).InformationAgent (onePacketN).playedInformation :=
+  · by_cases isNone : info = none
+    · exact atNone isNone
+    obtain ⟨input, infoSome⟩ := Option.ne_none_iff_exists'.mp isNone
+    let agent : (onePacketN).InformationAgent (onePacketN).playedInformation :=
       ⟨who, ⟨info, present⟩⟩
-    have notFree : ¬ UnforcedAgent setup leaks bounds horizon scheduler agent :=
-      fun unforced => unforced forced
-    have notKeyed : ¬ ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+    have notFree : ¬ FreeAgent setup leaks bounds horizon scheduler agent :=
+      fun free => free.elim (fun unforced => unforced forced)
+        fun ⟨history, point, decoded, owes⟩ => debtFree input infoSome history point decoded owes
+    have notKeyed : ¬ ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
         (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler) agent :=
       fun keyed => notLate keyed.1
     obtain ⟨identify, componentEq⟩ := freeKeyedComponent_of_not_free
@@ -264,6 +291,93 @@ theorem onePacketMixture_ge_honest_of_not_late
       ENNReal.toReal_one, mul_one]
     exact retention_le_one
 
+omit [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+    scheduler).InfoState who)] in
+/-- **As-if-honest play leaves no debt.** For a well-formed setup, under the
+asynchronous contract with timely delays and retention of first covered
+canonical packets, at every history as-if-honest play of an intended assessment
+reaches, nobody owes a failure at the decoded point: a decoded debt would record
+a failed reveal on every terminal continuation, while as-if-honest play reads
+out the intended law, which records none. -/
+theorem honest_reached_noDebt (wellFormed : setup.WellFormed)
+    {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
+      bound)
+    (timely : AsyncTimely (runtime setup) delay bound)
+    (assessment : setup.intendedModel.BehavioralAssessment)
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound) (fuel : Nat)
+    (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+      scheduler).History)
+    (reached : history ∈ ((onePacketN).runBehavioral
+        (honestProfile setup leaks bounds (initialLaw setup) horizon scheduler assessment)
+        fuel).support)
+    (player : Player) {point : ProtocolState setup.program}
+    (decoded : nativeDecodedState setup leaks history.state = some point) :
+    ¬ ProtocolState.OwesFailure player setup.program point := by
+  let menu := bounds.onePacketMenu (runtime setup) leaks
+  let model := onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
+  let honest := honestProfile setup leaks bounds (initialLaw setup) horizon scheduler assessment
+  let profile := setup.intendedOpeningProfile assessment.strategy
+  let certificate := (menu.bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
+  intro owed
+  have owing : DecodedState setup leaks profile (ProtocolState.OwesFailure player setup.program)
+      history.state := decodedState_of_nativeDecodedState profile history decoded owed
+  obtain ⟨final, finalMem⟩ := (model.runBehavioralTerminalFrom certificate honest
+    history).support_nonempty
+  obtain ⟨terminal, read, failed⟩ := decoded_owesFailure_failedReveals menu horizon scheduler
+    contract.completes certificate honest player history owing final finalMem
+  have inRun := mem_runBehavioral_of_terminalFrom model certificate
+    (menu.bounded (initialLaw setup) horizon scheduler) honest reached finalMem
+  have inLaw : some terminal ∈ ((model.runBehavioral honest (2 * horizon + 1)).map
+      (fun final => sourceReadout setup leaks final.state)).support :=
+    (PMF.mem_support_map_iff _ _ _).mpr ⟨final, inRun, read⟩
+  rw [honestProfile_readout_law bounds wellFormed contract timely assessment retains] at inLaw
+  obtain ⟨intendedHistory, _, intendedRead⟩ := (PMF.mem_support_map_iff _ _ _).mp inLaw
+  have zero := setup.failedReveals_eq_zero_of_intendedState
+    (setup.intendedState_trace wellFormed intendedHistory.trace) player intendedRead
+  omega
+
+omit [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+    scheduler).InfoState who)] in
+/-- **Information states as-if-honest play reaches are debt free.** Under the
+hypotheses of `Vegas.honest_reached_noDebt`, at a decision input as-if-honest
+play reaches, its owner owes a failure at the decoded point of no history of
+the input: it owes none at the honest history, and owing is the same at every
+history of an information state. -/
+theorem honestReached_debtFree (wellFormed : setup.WellFormed)
+    {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
+      bound)
+    (timely : AsyncTimely (runtime setup) delay bound)
+    (assessment : setup.intendedModel.BehavioralAssessment)
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound)
+    {who : Player} {info : (application setup leaks).Info}
+    (reachedInfo : HonestReached setup leaks bounds horizon scheduler assessment who info)
+    (input : List (application setup leaks).PlayerEntry × (application setup leaks).PlayerView)
+    (infoEq : info = some input)
+    (history : (onePacketN).InformationHistory who info) (point : ProtocolState setup.program)
+    (decoded : nativeDecodedState setup leaks history.1.state = some point) :
+    ¬ ProtocolState.OwesFailure who setup.program point := by
+  obtain ⟨fuel, honestHistory, reached, honestInfo⟩ := reachedInfo
+  subst infoEq
+  obtain ⟨control, current⟩ : ∃ control, honestHistory.state = some control := by
+    have observed := ((bounds.onePacketMenu (runtime setup) leaks).info (initialLaw setup)
+      horizon scheduler who honestHistory.trace).symm.trans honestInfo
+    cases state : honestHistory.state with
+    | none =>
+        rw [state] at observed
+        cases observed
+    | some control => exact ⟨control, rfl⟩
+  obtain ⟨honestPoint, honestDecoded⟩ := nativeDecodedState_isSome honestHistory current
+  have honestFree := honest_reached_noDebt setup leaks bounds horizon scheduler wellFormed
+    contract timely assessment retains fuel honestHistory reached who honestDecoded
+  intro owes
+  exact honestFree ((owesFailure_iff_of_infoOf (bounds := bounds) (horizon := horizon)
+    (scheduler := scheduler) ⟨history.1, history.2⟩ ⟨honestHistory, honestInfo⟩ decoded
+    honestDecoded).mp owes)
+
 /-- **Mixtures of one-packet components keep as-if-honest play.** Under the
 hypotheses of `Vegas.not_lateDelivery_of_honestReached`, at every forced
 information state as-if-honest play reaches, every mixture of the components
@@ -303,7 +417,9 @@ theorem onePacketMixture_ge_honest (wellFormed : setup.WellFormed)
     (by
       obtain ⟨_, history, _, infoEq⟩ := reachedInfo
       exact ⟨history, infoEq⟩)
-    forced choice
+    forced (fun input infoEq history point decoded => honestReached_debtFree setup leaks bounds
+      horizon scheduler wellFormed contract timely (sequence n) retains reachedInfo input infoEq
+      history point decoded) choice
 
 /-- **The law approximation of the one-packet certificate.** For a
 well-formed setup, under the asynchronous contract with timely delays and
@@ -832,8 +948,8 @@ theorem onePacket_prescribedFailure {delay bound : (graph setup).EventId → Nat
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment) :
     ∃ slack : ℕ → ℝ, Tendsto slack atTop (nhds 0) ∧ (∀ n, 0 ≤ slack n) ∧
       ∀ n who (site : (onePacketN).InformationSite who) choice,
-        ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-        ¬ ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+        ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+        ¬ ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
           (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
           ((onePacketN).agentAt site) →
         onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
@@ -880,7 +996,8 @@ theorem onePacket_prescribedFailure {delay bound : (graph setup).EventId → Nat
         intro entry member activated
         exact notLate ⟨past, view, event, rfl, pendCase, entry, member, activated⟩
       have forced : forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup)
-          horizon scheduler who (some (past, view)) := Classical.not_not.mp notFree
+          horizon scheduler who (some (past, view)) :=
+        forcedAgent_of_not_free setup leaks bounds horizon scheduler notFree
       have failEq : onePacketFailed setup leaks bounds horizon scheduler
           ((onePacketN).agentAt ⟨some (past, view), decision⟩) =
           EventFailedHistory setup leaks bounds horizon scheduler who event := by
@@ -1134,11 +1251,19 @@ theorem owes_of_not_siteDebtFree (profile : BehavioralProfile setup.program) {wh
       cases Option.some.inj decodedPoint
       exact owes
 
+omit [Finite setup.intendedProtocol.History] in
+/-- The site of an agent that is not free is debt free. -/
+theorem siteDebtFree_of_not_free {who : Player} {site : (onePacketN).InformationSite who}
+    (notFree : ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site)) :
+    SiteDebtFree setup leaks bounds horizon scheduler site :=
+  fun history point decoded owes => not_owingAgent_of_not_free setup leaks bounds horizon
+    scheduler notFree ⟨history, point, decoded, owes⟩
+
 /-- A forced site outside late deliveries, at which the player owes no failure,
 with a choice committing an intended value at the player's own turn. -/
 def ValueChangingSite {who : Player} (site : (onePacketN).InformationSite who) : Prop :=
-  ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) ∧
-    ¬ ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+  ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) ∧
+    ¬ ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
         (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
         ((onePacketN).agentAt site) ∧
     SiteDebtFree setup leaks bounds horizon scheduler site ∧
@@ -1184,7 +1309,8 @@ theorem valueChangingSite_projectedDecision (wellFormed : setup.WellFormed) {who
     {site : (onePacketN).InformationSite who}
     (changing : ValueChangingSite setup leaks bounds horizon scheduler site) :
     setup.intendedModel.IsDecisionInfo who (projectView setup leaks who site.1) :=
-  projectedDecision_of_forcedAgent wellFormed (Classical.not_not.mp changing.1)
+  projectedDecision_of_forcedAgent wellFormed
+    (forcedAgent_of_not_free setup leaks bounds horizon scheduler changing.1)
     (changingInput_decision setup leaks bounds horizon scheduler changing)
     (changingInput_turn setup leaks bounds horizon scheduler changing).choose_spec
     changing.2.2.1
@@ -1717,14 +1843,14 @@ theorem lateHistoryFailure_near_lumped (sequence : ℕ → setup.intendedModel.B
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     {slots : Nat} (n : ℕ) (assessment : (onePacketN).BehavioralAssessment) (who : Player)
     {failedState : LateKey setup leaks → (application setup leaks).ProtocolState → Prop}
-    {δ : ℝ} {Y : Type}
-    (lumping : PendingLumpingOn assessment who (fun site => LateDelivery setup leaks who site.1)
+    {δ : ℝ} {Y : Type} {relevant : (onePacketN).InformationSite who → Prop}
+    (lumping : PendingLumpingOn assessment who relevant
       (fun site option => Profile.update (sig := (onePacketN).behavioralSignature)
         assessment.strategy who ((assessment.strategy who).withLaw site.1
           (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
             scale_le_one (slots := slots) n ((onePacketN).agentAt site) option)))
       failedState δ Y)
-    (site : (onePacketN).InformationSite who) (late : LateDelivery setup leaks who site.1)
+    (site : (onePacketN).InformationSite who) (isRelevant : relevant site)
     (key : LateKey setup leaks) (siteKey : lateKey setup leaks who site.1 = some key)
     (option : LateOption slots)
     (agrees : ∀ history ∈ (assessment.belief who site).support,
@@ -1746,7 +1872,7 @@ theorem lateHistoryFailure_near_lumped (sequence : ℕ → setup.intendedModel.B
       lumpedFailure setup leaks bounds horizon scheduler lumping (2 * horizon + 1) key option
         (operationalRecord setup leaks bounds horizon scheduler history.1.trace)| ≤
       ((2 * horizon + 1 : ℕ) : ℝ) * δ := by
-  have near := lumping.pathwise (2 * horizon + 1) site late key siteKey option history
+  have near := lumping.pathwise (2 * horizon + 1) site isRelevant key siteKey option history
     supported forced
   have same : lateHistoryFailure setup leaks bounds horizon scheduler assessment site
       (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
@@ -1880,8 +2006,8 @@ theorem onePacket_siteCommonness (sequence : ℕ → setup.intendedModel.Behavio
     (failureUnit : ∀ n key option record,
       0 ≤ failureOf n key option record ∧ failureOf n key option record ≤ 1)
     (pathwise : ∀ n who (site : (onePacketN).InformationSite who),
-      ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-      ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+      ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+      ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
         (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
         ((onePacketN).agentAt site) →
       ∀ key, lateKey setup leaks who site.1 = some key → ∀ option,
@@ -1894,15 +2020,15 @@ theorem onePacket_siteCommonness (sequence : ℕ → setup.intendedModel.Behavio
             (operationalRecord setup leaks bounds horizon scheduler history.1.trace)| ≤
           pathDrift n)
     (unforced : ∀ n who (site : (onePacketN).InformationSite who),
-      ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-      ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+      ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+      ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
         (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
         ((onePacketN).agentAt site) →
       expect ((targetSequence n).belief who site) (fun history =>
         if ForcedState setup leaks who history.1.state then (0 : ℝ) else 1) ≤ unforcedDrift n)
     (keyed : ∀ n who (site : (onePacketN).InformationSite who),
-      ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-      ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+      ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+      ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
         (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
         ((onePacketN).agentAt site) →
       ∀ key, lateKey setup leaks who site.1 = some key → ∀ option,
@@ -1911,8 +2037,8 @@ theorem onePacket_siteCommonness (sequence : ℕ → setup.intendedModel.Behavio
           (failureOf n key option) -
         expect (recordLaw n key) (failureOf n key option)| ≤ beliefDrift n)
     (marked : ∀ n who (site : (onePacketN).InformationSite who),
-      ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-      ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+      ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+      ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
         (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
         ((onePacketN).agentAt site) →
       ∀ choice, onePacketCompared setup leaks bounds horizon scheduler who site choice →
@@ -1928,8 +2054,8 @@ theorem onePacket_siteCommonness (sequence : ℕ → setup.intendedModel.Behavio
     ∃ (score : ℕ → Option (LateKey setup leaks) → LateOption slots → ℝ) (drift : ℕ → ℝ),
       Tendsto drift atTop (nhds 0) ∧ (∀ n, 0 ≤ drift n) ∧
       ∀ n who (site : (onePacketN).InformationSite who),
-        ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-        ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+        ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+        ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
           (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
           ((onePacketN).agentAt site) →
         (∀ option,
@@ -2029,10 +2155,10 @@ theorem exists_part_eq_late (sequence : ℕ → setup.intendedModel.BehavioralAs
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     {slots : Nat} (n : ℕ)
     {agent : (onePacketN).InformationAgent (onePacketN).playedInformation}
-    (isKeyed : ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+    (isKeyed : ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
       (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler) agent)
     (option : LateOption slots) :
-    ∃ part, freeKeyedComponent (free := UnforcedAgent setup leaks bounds horizon scheduler)
+    ∃ part, freeKeyedComponent (free := FreeAgent setup leaks bounds horizon scheduler)
         (keyed := LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
         (key := agentLateKey setup leaks bounds (initialLaw setup) horizon scheduler)
         (onePacketUnforced setup leaks bounds horizon scheduler scale scale_pos scale_le_one n)
@@ -2052,7 +2178,7 @@ theorem exists_part_eq_late (sequence : ℕ → setup.intendedModel.BehavioralAs
   have keyedEq : ∀ keyedPart, ∃ part, identify part = keyedPart := fun keyedPart =>
     ⟨identify.symm keyedPart, identify.apply_symm_apply keyedPart⟩
   have optionPart : ∃ keyedPart, keyedComponent
-      (keyed := ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+      (keyed := ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
         (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler))
       (key := agentLateKey setup leaks bounds (initialLaw setup) horizon scheduler)
       (onePacketPrescribed setup leaks bounds horizon scheduler sequence scale scale_pos
@@ -2300,7 +2426,7 @@ theorem lateOpening_siteGain_le (wellFormed : setup.WellFormed)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     {slots : Nat} (n : ℕ) (assessment : (onePacketN).BehavioralAssessment) {who : Player}
     (site : (onePacketN).InformationSite who)
-    (forced : ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site))
+    (forced : ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site))
     (late : LateDelivery setup leaks who site.1)
     (debtFree : SiteDebtFree setup leaks bounds horizon scheduler site)
     (choice : (onePacketN).Choice who site.1)
@@ -2319,7 +2445,8 @@ theorem lateOpening_siteGain_le (wellFormed : setup.WellFormed)
             scale_pos scale_le_one (slots := slots) n ((onePacketN).agentAt site) (some slot)) +
         6 * scale n * bound := by
   have notOwed := debtFree
-  obtain ⟨native, seen, forcedNative⟩ := Classical.not_not.mp forced
+  obtain ⟨native, seen, forcedNative⟩ :=
+    forcedAgent_of_not_free setup leaks bounds horizon scheduler forced
   obtain ⟨past, view, pending', atSite, pending, _⟩ := late
   rw [atSite] at pending
   obtain ⟨past, view, turnResponse, turnEvent, turnSite, turnChosen, submitted, turn⟩ :=
@@ -2454,7 +2581,9 @@ theorem certificate_strategyShape (sequence : ℕ → setup.intendedModel.Behavi
     (current : history.state = some ⟨remaining, some who, execution⟩)
     (forcedState : ForcedState setup leaks who history.state)
     (ready : execution.application.config.cut.Ready event)
-    (activated : ∃ entry ∈ execution.recall who, ActivatedAt setup leaks who event entry) :
+    (activated : ∃ entry ∈ execution.recall who, ActivatedAt setup leaks who event entry)
+    (debtFree : ∀ point, decodedPoint setup execution.application.config = some point →
+      ¬ ProtocolState.OwesFailure who setup.program point) :
     ((runtime setup).eventRecorded leaks (execution.recall who) event = false →
       (targetSequence n).strategy who
           (some (execution.recall who, execution.observe (application setup leaks) who)) =
@@ -2511,8 +2640,14 @@ theorem certificate_strategyShape (sequence : ℕ → setup.intendedModel.Behavi
     observed ▸ forcedAgent_of_history history forcedState
   let agent : (onePacketN).InformationAgent (onePacketN).playedInformation :=
     ⟨who, ⟨_, played⟩⟩
-  have notFree : ¬ UnforcedAgent setup leaks bounds horizon scheduler agent :=
-    fun unforced => unforced forced
+  have notFree : ¬ FreeAgent setup leaks bounds horizon scheduler agent := by
+    rintro (unforced | ⟨other, point, decoded, owes⟩)
+    · exact unforced forced
+    · obtain ⟨current', currentDecoded⟩ := nativeDecodedState_isSome history current
+      have same := owesFailure_iff_of_infoOf (bounds := bounds) (horizon := horizon)
+        (scheduler := scheduler) ⟨other.1, other.2⟩ ⟨history, observed⟩ decoded currentDecoded
+      rw [current] at currentDecoded
+      exact debtFree current' currentDecoded (same.mp owes)
   have atAgent := (onePacketN).agentBehavior_at (onePacketN).playedInformation
     (onePacketFallback setup leaks bounds horizon scheduler)
     (fun agent => (weights n (onePacketPool setup leaks bounds horizon scheduler agent)).bind
@@ -2532,7 +2667,7 @@ theorem certificate_strategyShape (sequence : ℕ → setup.intendedModel.Behavi
     have late : LateDelivery setup leaks who (some (execution.recall who,
         execution.observe (application setup leaks) who)) :=
       ⟨_, _, event, rfl, pendingEvent_of_spec turn unrecorded, entry, member, activatedAt⟩
-    have keyed : ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+    have keyed : ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
         (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler) agent :=
       ⟨late, notFree⟩
     have weightsEq : keyWeights setup leaks bounds horizon scheduler (weights n)
@@ -2543,7 +2678,7 @@ theorem certificate_strategyShape (sequence : ℕ → setup.intendedModel.Behavi
       have present : some (LateKey.ofView setup leaks who (execution.recall who)
           (execution.observe (application setup leaks) who)) ∈ Set.range
             fun agent : {agent : (onePacketN).InformationAgent (onePacketN).playedInformation //
-              ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+              ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
                 (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
                   agent} =>
             agentLateKey setup leaks bounds (initialLaw setup) horizon scheduler agent.1 :=
@@ -2573,7 +2708,7 @@ theorem certificate_strategyShape (sequence : ℕ → setup.intendedModel.Behavi
       subst sameEvent
       rw [recorded] at unrecorded
       cases unrecorded
-    have unkeyed : ¬ ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+    have unkeyed : ¬ ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
         (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler) agent :=
       fun keyed => notLate keyed.1
     have mixture := freeKeyedMixture_of_not_keyed (key := agentLateKey setup leaks bounds
@@ -2588,6 +2723,187 @@ theorem certificate_strategyShape (sequence : ℕ → setup.intendedModel.Behavi
     change (onePacketN).agentBehavior _ _ _ agent.1 agent.2.1 = _
     rw [atAgent, mixture]
     rfl
+
+/-- **The owner's debt is clear at an event.** The event has completed, or it is
+ready and the owner owes no failure at the decoded point. -/
+def DebtClear (who : Player) (event : (graph setup).EventId) :
+    (application setup leaks).ProtocolState → Prop
+  | none => True
+  | some control => event ∈ control.execution.application.config.cut.completed ∨
+      (control.execution.application.config.cut.Ready event ∧
+        ∀ point, decodedPoint setup control.execution.application.config = some point →
+          ¬ ProtocolState.OwesFailure who setup.program point)
+
+/-- The event of the owner's turn at an information state, if any. -/
+def siteTurnEvent (who : Player) : (application setup leaks).Info → Option (graph setup).EventId
+  | none => none
+  | some (_, view) => view.application.publicView.ownTurn? who
+
+/-- **States through a debt-free site.** States consistent with a site at which
+the owner's debt is clear at the site's turn event. -/
+def SiteThrough (who : Player) (info : (application setup leaks).Info)
+    (state : (application setup leaks).ProtocolState) : Prop :=
+  SiteConsistent who info state ∧
+    ∀ event, siteTurnEvent setup leaks who info = some event → DebtClear setup leaks who event state
+
+omit [Fintype Player] [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
+  [Finite setup.intendedProtocol.History]
+  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+    scheduler).InfoState who)] in
+/-- **Debt stays clear along play.** A control step from an initialized state
+keeps the owner's debt clear at an event: the configuration is unchanged, or the
+one ready event completes, so a ready event either stays ready with the same
+decoded point or completes. -/
+theorem debtClear_step (players : Player → (application setup leaks).Policy)
+    (who : Player) (event : (graph setup).EventId) {control : (application setup leaks).Control}
+    (clear : DebtClear setup leaks who event (some control))
+    {next : (application setup leaks).ProtocolState}
+    (member : next ∈ ((application setup leaks).controlStep (initialLaw setup) horizon scheduler
+      players (some control)).support) :
+    DebtClear setup leaks who event next := by
+  obtain ⟨control', rfl, step⟩ := controlStep_configStep (horizon := horizon)
+    (scheduler := scheduler) players control member
+  change control'.execution.application.config = control.execution.application.config ∨ _
+    at step
+  rcases step with same | ⟨completed, completedReady, action, completedMember⟩
+  · change event ∈ control'.execution.application.config.cut.completed ∨ _
+    rw [same]
+    exact clear
+  · change event ∈ control'.execution.application.config.cut.completed ∨ _
+    left
+    rw [control.execution.application.config.step_cut completed completedReady action _
+      completedMember, EventOrder.Cut.mem_complete]
+    rcases clear with done | ⟨ready, _⟩
+    · exact Or.inr done
+    · exact Or.inl (setup.eventGraph.sequentialize_ready_unique _ ready completedReady)
+
+open Classical in
+omit [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
+  [Finite setup.intendedProtocol.History]
+  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+    scheduler).InfoState who)] in
+/-- **The site shape of an installed late component, through the site.** As
+`Vegas.siteComponentShape_of_installed`, for a predicate of states refining
+consistency with the site, with the strategy's shape asked only at the site's
+turn event at states of the predicate. -/
+theorem siteComponentShape_of_installed_within
+    (assessment : setup.intendedModel.BehavioralAssessment)
+    (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) {slots : Nat} {who : Player}
+    (site : (onePacketN).InformationSite who)
+    {key : LateKey setup leaks} (siteKey : lateKey setup leaks who site.1 = some key)
+    (option : LateOption slots) (weights : LateKey setup leaks → PMF (LateOption slots))
+    (profile : ∀ player, (onePacketN).BehavioralPolicy player)
+    (strategy : (onePacketN).BehavioralPolicy who)
+    (allowed : (application setup leaks).ProtocolState → Prop)
+    (within : ∀ state, allowed state → SiteConsistent who site.1 state)
+    (installed : profile who site.1 =
+      slotTrembledChoice setup leaks bounds (initialLaw setup) horizon scheduler scale
+        nonnegative le_one who site.1
+        ((PMF.pure option).bind (lateChoice setup leaks bounds (initialLaw setup) horizon
+          scheduler assessment who site.1))
+        (PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler who
+          site.1))
+        (slotChoice setup leaks bounds (initialLaw setup) horizon scheduler assessment who
+          site.1))
+    (away : ∀ info, info ≠ site.1 → profile who info = strategy info)
+    (activated : ∀ event, (PublicationTurn key event ∨ ∃ payload, BindingTurn key event payload) →
+      ∃ entry ∈ infoRecall site.1, ActivatedAt setup leaks who event entry)
+    (strategyShape : ∀ (history : (onePacketProtocol setup leaks bounds horizon
+        scheduler).History) (remaining : Nat) (execution : (application setup leaks).Execution)
+        (event : (graph setup).EventId),
+      (PublicationTurn key event ∨ ∃ payload, BindingTurn key event payload) →
+      history.state = some ⟨remaining, some who, execution⟩ →
+      allowed history.state →
+      ForcedState setup leaks who history.state →
+      execution.application.config.cut.Ready event →
+      (∃ entry ∈ execution.recall who, ActivatedAt setup leaks who event entry) →
+      ((runtime setup).eventRecorded leaks (execution.recall who) event = false →
+        strategy (some (execution.recall who, execution.observe (application setup leaks) who)) =
+          slotTrembledChoice setup leaks bounds (initialLaw setup) horizon scheduler scale
+            nonnegative le_one who (some (execution.recall who,
+              execution.observe (application setup leaks) who))
+            ((weights (LateKey.ofView setup leaks who (execution.recall who)
+                (execution.observe (application setup leaks) who))).bind
+              (lateChoice setup leaks bounds (initialLaw setup) horizon scheduler assessment who
+                (some (execution.recall who, execution.observe (application setup leaks) who))))
+            (PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler who
+              (some (execution.recall who, execution.observe (application setup leaks) who))))
+            (slotChoice setup leaks bounds (initialLaw setup) horizon scheduler assessment who
+              (some (execution.recall who, execution.observe (application setup leaks) who)))) ∧
+      ((runtime setup).eventRecorded leaks (execution.recall who) event = true →
+        ∃ main : PMF ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+            scheduler).Choice who (some (execution.recall who,
+              execution.observe (application setup leaks) who))),
+          (main = honestChoice setup leaks bounds (initialLaw setup) horizon scheduler
+              assessment who (some (execution.recall who,
+                execution.observe (application setup leaks) who)) ∨
+            ∃ others : PMF (LateOption slots), main = others.bind
+              (lateChoice setup leaks bounds (initialLaw setup) horizon scheduler assessment who
+                (some (execution.recall who,
+                  execution.observe (application setup leaks) who)))) ∧
+          strategy (some (execution.recall who,
+              execution.observe (application setup leaks) who)) =
+            slotTrembledChoice setup leaks bounds (initialLaw setup) horizon scheduler scale
+              nonnegative le_one who (some (execution.recall who,
+                execution.observe (application setup leaks) who)) main
+              (PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler
+                who (some (execution.recall who,
+                  execution.observe (application setup leaks) who))))
+              (slotChoice setup leaks bounds (initialLaw setup) horizon scheduler assessment who
+                (some (execution.recall who,
+                  execution.observe (application setup leaks) who))))) :
+    SiteComponentShape assessment scale nonnegative le_one
+      (fun other => if other = key then PMF.pure option else weights other) key profile
+      allowed := by
+  have ownerEq : key.owner = who := owner_of_lateKey siteKey
+  subst ownerEq
+  intro event turn history remaining execution current allowedState forced ready
+  have consistent := within _ allowedState
+  rw [current] at consistent
+  by_cases atSite : (application setup leaks).observe key.owner
+      (some ⟨remaining, some key.owner, execution⟩) = site.1
+  · have infoEq : site.1 = some (execution.recall key.owner,
+        execution.observe (application setup leaks) key.owner) := by
+      rw [← atSite]
+      simp only [ReactiveApplication.observe, ↓reduceIte]
+    have keyEq : LateKey.ofView setup leaks key.owner (execution.recall key.owner)
+        (execution.observe (application setup leaks) key.owner) = key := by
+      rw [infoEq] at siteKey
+      exact Option.some.inj siteKey
+    rw [infoEq] at installed
+    constructor
+    · intro _
+      rw [installed]
+      beta_reduce
+      rw [keyEq]
+      simp only [↓reduceIte]
+    · intro _
+      exact ⟨_, Or.inr ⟨PMF.pure option, rfl⟩, installed⟩
+  · have notSite : some (execution.recall key.owner,
+        execution.observe (application setup leaks) key.owner) ≠ site.1 := by
+      intro same
+      apply atSite
+      rw [← same]
+      simp only [ReactiveApplication.observe, ↓reduceIte]
+    have keyNe : LateKey.ofView setup leaks key.owner (execution.recall key.owner)
+        (execution.observe (application setup leaks) key.owner) ≠ key := fun same =>
+      atSite (siteConsistent_key siteKey consistent same)
+    have longer : ∃ entry rest, execution.recall key.owner =
+        infoRecall site.1 ++ entry :: rest := by
+      rcases consistent with ⟨_, sameInfo⟩ | longer
+      · exact (atSite sameInfo).elim
+      · exact longer
+    obtain ⟨activation, member, activatedAt⟩ := activated event turn
+    have recalledActivation : ∃ entry ∈ execution.recall key.owner,
+        ActivatedAt setup leaks key.owner event entry := by
+      obtain ⟨entry, rest, recallEq⟩ := longer
+      exact ⟨activation, by rw [recallEq]; exact List.mem_append_left _ member, activatedAt⟩
+    have shapes := strategyShape history remaining execution event turn current allowedState
+      forced ready recalledActivation
+    rw [away _ notSite]
+    beta_reduce
+    simp only [keyNe, ↓reduceIte]
+    exact shapes
 
 omit [Finite setup.intendedProtocol.History] in
 /-- **The site shape of the certificate at a late delivery.** At a late
@@ -2605,21 +2921,24 @@ theorem certificate_siteComponentShape
       scale_le_one weights targetSequence) (n : ℕ) {who : Player}
     (site : (onePacketN).InformationSite who) (late : LateDelivery setup leaks who site.1)
     {key : LateKey setup leaks} (siteKey : lateKey setup leaks who site.1 = some key)
-    (option : LateOption slots) :
+    (option : LateOption slots) (allowed : (application setup leaks).ProtocolState → Prop)
+    (within : ∀ state, allowed state → SiteConsistent who site.1 state)
+    (clear : ∀ state, allowed state → ∀ event,
+      siteTurnEvent setup leaks who site.1 = some event → DebtClear setup leaks who event state) :
     SiteComponentShape (sequence n) (scale n) (scale_pos n).le (scale_le_one n)
       (certificateOptions setup leaks bounds horizon scheduler (weights n) key option) key
       (Profile.update (sig := (onePacketN).behavioralSignature) (targetSequence n).strategy who
         (((targetSequence n).strategy who).withLaw site.1
           (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
             scale_le_one (slots := slots) n ((onePacketN).agentAt site) option)))
-      (SiteConsistent who site.1) := by
+      allowed := by
   obtain ⟨past, view, pendingEvent', atSite, pending, entry, member, activatedAt⟩ := late
   rw [atSite] at pending
   have turn := (pendingEvent_spec pending).1
-  refine siteComponentShape_of_installed (sequence n) (scale n) (scale_pos n).le
-    (scale_le_one n) site siteKey option
+  refine siteComponentShape_of_installed_within setup leaks bounds horizon scheduler (sequence n)
+    (scale n) (scale_pos n).le (scale_le_one n) site siteKey option
     (fun other => keyWeights setup leaks bounds horizon scheduler (weights n) (some other))
-    _ ((targetSequence n).strategy who) ?_ ?_ ?_ ?_
+    _ ((targetSequence n).strategy who) allowed within ?_ ?_ ?_ ?_
   · rw [Profile.update_same, BehavioralPolicy.withLaw_self, PMF.pure_bind]
     rfl
   · intro info different
@@ -2635,10 +2954,23 @@ theorem certificate_siteComponentShape
     have sameEvent : event = pendingEvent' := Option.some.inj (keyTurn.symm.trans turn)
     subst sameEvent
     exact ⟨entry, by rw [atSite]; exact member, activatedAt⟩
-  · intro history remaining execution event current forcedState ready activated
+  · intro history remaining execution event decided current through forcedState ready activated
+    have keyTurn : key.current.1.ownTurn? key.owner = some event := by
+      rcases decided with publication | ⟨payload, binding⟩
+      · exact publication.1
+      · exact binding.1
+    have siteTurn : siteTurnEvent setup leaks who site.1 = some event := by
+      rw [atSite] at siteKey ⊢
+      simp only [lateKey, Option.some.injEq] at siteKey
+      subst siteKey
+      exact keyTurn
+    have clearHere := clear _ through event siteTurn
+    rw [current] at clearHere
+    rcases clearHere with done | ⟨_, debtFree⟩
+    · exact (ready.1 done).elim
     exact certificate_strategyShape setup leaks bounds horizon scheduler sequence scale scale_pos
       scale_le_one weights targetSequence assembled n who history remaining execution event
-      current forcedState ready activated
+      current forcedState ready activated debtFree
 
 /-- The gain of a deviation at a site of the intended game under the exclusion
 payoff: the expected exclusion payoff of the deviation minus that of the
@@ -2651,11 +2983,55 @@ def intendedSiteGain (assessment : setup.intendedModel.BehavioralAssessment) {wh
   expect comparison.alternative ((payoffComponent setup) · who) -
     expect comparison.prescribed ((payoffComponent setup) · who)
 
-/-- **The certificate's lumping at late deliveries.** For an assembled
-sequence, at every stage and for every owner, the native kernel of the profiles
-installing the late options lumps onto the decision image at late deliveries
-with drift twice the cube of the scale: the installed profiles have the site
-shape at late deliveries (`Vegas.certificate_siteComponentShape`). -/
+omit [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
+  [Finite setup.intendedProtocol.History]
+  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+    scheduler).InfoState who)] in
+/-- **The histories of a debt-free late delivery pass through it.** At a late
+delivery whose owner owes no failure, every history of the site's belief is at a
+state consistent with the site at which the owner's debt is clear at the site's
+turn event. -/
+theorem siteThrough_of_history {who : Player} {site : (onePacketN).InformationSite who}
+    (late : LateDelivery setup leaks who site.1)
+    (debtFree : SiteDebtFree setup leaks bounds horizon scheduler site)
+    {key : LateKey setup leaks} (siteKey : lateKey setup leaks who site.1 = some key)
+    (history : (onePacketN).InformationHistory who site.1) :
+    SiteThrough setup leaks who site.1 history.1.state := by
+  refine ⟨siteConsistent_of_history siteKey history, fun event siteTurn => ?_⟩
+  obtain ⟨past, view, pending', atSite, pending, _⟩ := late
+  rw [atSite] at pending
+  obtain ⟨turn, readyView, _, _⟩ := pendingEvent_spec (setup := setup) pending
+  have sameEvent : pending' = event := by
+    rw [atSite] at siteTurn
+    exact Option.some.inj (turn.symm.trans siteTurn)
+  subst sameEvent
+  have notOwed := debtFree history
+  obtain ⟨⟨state, trace⟩, seen⟩ := history
+  change (onePacketInformation setup leaks bounds horizon scheduler).infoOf who trace = site.1
+    at seen
+  rw [onePacket_infoOf, atSite] at seen
+  cases state with
+  | none => cases seen
+  | some control =>
+  rcases control with ⟨remaining, actor, execution⟩
+  by_cases active : actor = some who
+  swap
+  · simp only [ReactiveApplication.observe, active, ↓reduceIte] at seen
+    cases seen
+  subst active
+  simp only [ReactiveApplication.observe, ↓reduceIte] at seen
+  obtain ⟨pastEq, viewEq⟩ := Prod.mk.inj (Option.some.inj seen)
+  subst pastEq viewEq
+  exact Or.inr ⟨(State.publicView_eventReady _ pending').mp readyView, notOwed⟩
+
+/-- **The certificate's lumping at debt-free late deliveries.** For an
+assembled sequence, at every stage and for every owner, the native kernel of the
+profiles installing the late options lumps onto the decision image at late
+deliveries at which the owner owes no failure, with drift twice the cube of the
+scale. Play from such a site stays at states consistent with it at which the
+owner's debt is clear at the site's turn event (`Vegas.debtClear_step`), and the
+installed profiles have the site shape there
+(`Vegas.certificate_siteComponentShape`). -/
 def certificateLumping (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     {slots : Nat} (covers : bounds.CoversOutputValues) (capacity : 1 ≤ bounds.candidateCount)
@@ -2664,20 +3040,64 @@ def certificateLumping (sequence : ℕ → setup.intendedModel.BehavioralAssessm
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
     (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
       scale_le_one weights targetSequence) (n : ℕ) (who : Player) :
-    PendingLumpingOn (targetSequence n) who (fun site => LateDelivery setup leaks who site.1)
+    PendingLumpingOn (targetSequence n) who
+      (fun site => LateDelivery setup leaks who site.1 ∧
+        SiteDebtFree setup leaks bounds horizon scheduler site)
       (fun site option => Profile.update (sig := (onePacketN).behavioralSignature)
         (targetSequence n).strategy who (((targetSequence n).strategy who).withLaw site.1
           (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
             scale_le_one (slots := slots) n ((onePacketN).agentAt site) option)))
       DecisionFailed (scale n ^ 3 + scale n ^ 3)
       (DecisionImage (setup := setup) (leaks := leaks)) :=
-  onePacketSiteLumpingOn (targetSequence n) who (fun site => LateDelivery setup leaks who site.1)
-    _ (sequence n) covers capacity slotsLe (scale n) (scale_pos n).le (scale_le_one n)
-    (fun key option => certificateOptions setup leaks bounds horizon scheduler (weights n) key
-      option)
-    (fun site late _ siteKey option => certificate_siteComponentShape setup leaks bounds horizon
-      scheduler sequence scale scale_pos scale_le_one weights targetSequence assembled n site late
-      siteKey option)
+  have nonnegative := (scale_pos n).le
+  onePacketLateLumpingOn (targetSequence n) who
+    (fun site => LateDelivery setup leaks who site.1 ∧
+      SiteDebtFree setup leaks bounds horizon scheduler site) _
+    (by have := pow_nonneg nonnegative 3; linarith) (pow_nonneg nonnegative 3)
+    (by linarith) (openingKernel bounds horizon scheduler
+      (fun key option => lateOpeningSilence bounds horizon scheduler (sequence n) (scale n)
+        nonnegative (scale_le_one n)
+        (certificateOptions setup leaks bounds horizon scheduler (weights n) key option) key))
+    (fun key option => lateBindingMoves bounds horizon scheduler (scale n) nonnegative
+      (scale_le_one n)
+      (certificateOptions setup leaks bounds horizon scheduler (weights n) key option) key)
+    (fun site => SiteThrough setup leaks who site.1)
+    (fun _ relevant _ siteKey history _ _ =>
+      siteThrough_of_history setup leaks bounds horizon scheduler relevant.1 relevant.2 siteKey
+        history)
+    (fun site _ _ state through next member => by
+      cases state with
+      | none => exact through.1.elim
+      | some control =>
+          exact ⟨siteConsistent_step _ who site.1 through.1 member, fun event siteTurn =>
+            debtClear_step setup leaks horizon scheduler _ who event
+              (through.2 event siteTurn) member⟩)
+    (fun site relevant key siteKey option => ownerStepClose_of_openingLaw bounds _ key option _
+      (ownerOpeningLaw_of_siteComponents (sequence n) covers (scale n) nonnegative
+        (scale_le_one n) (certificateOptions setup leaks bounds horizon scheduler (weights n))
+        key option _ _ (certificate_siteComponentShape setup leaks bounds horizon scheduler
+          sequence scale scale_pos scale_le_one weights targetSequence assembled n site
+          relevant.1 siteKey option _ (fun _ through => through.1)
+          (fun _ through => through.2))))
+    (fun site relevant key siteKey option => ownerBindingLaw_of_siteComponents (sequence n)
+      covers capacity slotsLe (scale n) nonnegative (scale_le_one n)
+      (certificateOptions setup leaks bounds horizon scheduler (weights n)) key option _ _
+      (certificate_siteComponentShape setup leaks bounds horizon scheduler sequence scale
+        scale_pos scale_le_one weights targetSequence assembled n site relevant.1 siteKey option
+        _ (fun _ through => through.1) (fun _ through => through.2)))
+
+omit [Fintype Player] [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
+  [Finite setup.intendedProtocol.History]
+  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+    scheduler).InfoState who)] in
+/-- A late delivery is a decision input showing the player's own turn. -/
+theorem lateDelivery_input {who : Player} {info : (application setup leaks).Info}
+    (late : LateDelivery setup leaks who info) :
+    ∃ input : List (application setup leaks).PlayerEntry × (application setup leaks).PlayerView,
+      info = some input ∧ ∃ event, input.2.application.publicView.ownTurn? who = some event := by
+  obtain ⟨past, view, event, atSite, pending, _⟩ := late
+  rw [atSite] at pending
+  exact ⟨(past, view), atSite, event, (pendingEvent_spec (setup := setup) pending).1⟩
 
 open Classical in
 /-- **The base inputs of the one-packet certificate** for one source sequence:
@@ -2701,10 +3121,9 @@ structure OnePacketBaseInputs (sequence : ℕ → setup.intendedModel.Behavioral
   capacity : 1 ≤ bounds.candidateCount
   /-- The late options use bounded slots. -/
   slotsLe : slots ≤ bounds.candidateCount
-  /-- **Late records.** At forced late deliveries, the belief mass outside the
-  forced region vanishes, and the belief's operational records give the
-  certificate's lumped failure within a vanishing drift of its expectation under
-  a law of records at the key. -/
+  /-- **Late records.** At late deliveries of agents that are not free, the
+  belief's operational records give the certificate's lumped failure within a
+  vanishing drift of its expectation under a law of records at the key. -/
   lateRecords : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon
       scheduler slots p)) (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
     (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
@@ -2713,21 +3132,12 @@ structure OnePacketBaseInputs (sequence : ℕ → setup.intendedModel.Behavioral
     (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
       ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
         (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
-    ∃ (unforcedDrift beliefDrift : ℕ → ℝ),
-      Tendsto unforcedDrift atTop (nhds 0) ∧ Tendsto beliefDrift atTop (nhds 0) ∧
+    ∃ beliefDrift : ℕ → ℝ, Tendsto beliefDrift atTop (nhds 0) ∧
       ∀ n who, ∃ recordLaw : LateKey setup leaks →
           PMF (List (Option (OperationalState setup leaks))),
-        (∀ (site : (onePacketN).InformationSite who),
-          ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-          ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
-            (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
-            ((onePacketN).agentAt site) →
-          expect ((targetSequence n).belief who site) (fun history =>
-            if ForcedState setup leaks who history.1.state then (0 : ℝ) else 1) ≤
-            unforcedDrift n) ∧
         ∀ (site : (onePacketN).InformationSite who),
-          ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-          ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+          ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+          ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
             (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
             ((onePacketN).agentAt site) →
           ∀ key, lateKey setup leaks who site.1 = some key → ∀ option,
@@ -2753,7 +3163,7 @@ structure OnePacketBaseInputs (sequence : ℕ → setup.intendedModel.Behavioral
       ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
         (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
     ∀ who (site : (onePacketN).InformationSite who),
-      ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+      ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
       ∀ {past : List (application setup leaks).PlayerEntry}
         {view : (application setup leaks).PlayerView}, site.1 = some (past, view) →
       ∀ {event : (graph setup).EventId},
@@ -2773,7 +3183,7 @@ structure OnePacketBaseInputs (sequence : ℕ → setup.intendedModel.Behavioral
       ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
         (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
     ∀ who (site : (onePacketN).InformationSite who),
-      ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+      ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
       SiteDebtFree setup leaks bounds horizon scheduler site →
       ∀ {past : List (application setup leaks).PlayerEntry}
         {view : (application setup leaks).PlayerView} (atSite : site.1 = some (past, view))
@@ -2800,7 +3210,7 @@ def OnePacketBaseInputs.beliefInputs {sequence : ℕ → setup.intendedModel.Beh
       ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
         (initialLaw setup) horizon scheduler).decisionInformationAntichain)
     (who : Player) (site : (onePacketN).InformationSite who)
-    (forced : ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site))
+    (forced : ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site))
     (debtFree : SiteDebtFree setup leaks bounds horizon scheduler site)
     {past : List (application setup leaks).PlayerEntry}
     {view : (application setup leaks).PlayerView} (atSite : site.1 = some (past, view))
@@ -2812,6 +3222,82 @@ def OnePacketBaseInputs.beliefInputs {sequence : ℕ → setup.intendedModel.Beh
     bayes who site forced atSite turn
   toOnePacketOwnInputs := inputs.ownInputs weights targetSequence assembled mixed bayes who site
     forced debtFree atSite turn decision
+
+omit [Finite setup.intendedProtocol.History] in
+open Classical in
+/-- **Histories outside the forced region vanish at late deliveries.** For a
+well-formed setup, along every fully mixed Bayes sequence of assembled profiles,
+the belief mass outside the forced region at late deliveries of agents that are
+not free vanishes uniformly: such a site is forced, debt free and at the
+owner's turn, where the honest counterparts and the intended own completions
+make it vanish (`Vegas.onePacket_unforcedVanishes`). -/
+theorem OnePacketBaseInputs.lateUnforced {sequence : ℕ → setup.intendedModel.BehavioralAssessment}
+    {slots : Nat}
+    (inputs : OnePacketBaseInputs setup leaks bounds horizon scheduler sequence slots)
+    (wellFormed : setup.WellFormed)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
+    (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
+    (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence inputs.scale
+      inputs.scale_pos inputs.scale_le_one weights targetSequence)
+    (mixed : ∀ n, (targetSequence n).IsFullyMixed)
+    (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
+      ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
+        (initialLaw setup) horizon scheduler).decisionInformationAntichain) :
+    ∃ unforcedDrift : ℕ → ℝ, Tendsto unforcedDrift atTop (nhds 0) ∧
+      ∀ n who (site : (onePacketN).InformationSite who),
+        ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+        ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
+          (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
+          ((onePacketN).agentAt site) →
+        expect ((targetSequence n).belief who site) (fun history =>
+          if ForcedState setup leaks who history.1.state then (0 : ℝ) else 1) ≤
+          unforcedDrift n := by
+  let LateSite := fun {who : Player} (site : (onePacketN).InformationSite who) =>
+    ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) ∧
+      ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
+        (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
+        ((onePacketN).agentAt site)
+  let mass := fun (n : ℕ) {who : Player} (site : (onePacketN).InformationSite who) =>
+    expect ((targetSequence n).belief who site) (fun history =>
+      if ForcedState setup leaks who history.1.state then (0 : ℝ) else 1)
+  let agentMass := fun (n : ℕ)
+      (agent : (onePacketN).InformationAgent (onePacketN).playedInformation) =>
+    if present : ∃ decision : (onePacketN).IsDecisionInfo agent.1 agent.2.1,
+        LateSite (⟨agent.2.1, decision⟩ : (onePacketN).InformationSite agent.1) then
+      mass n ⟨agent.2.1, present.1⟩ else 0
+  have massNonneg : ∀ n agent, 0 ≤ agentMass n agent := fun n agent => by
+    simp only [agentMass]
+    split
+    · exact expect_nonneg _ _ fun history _ => by split <;> norm_num
+    · exact le_rfl
+  refine ⟨fun n => ∑ agent, agentMass n agent, ?_, fun n who site notFree keyed => ?_⟩
+  · rw [show (0 : ℝ) = ∑ _agent : (onePacketN).InformationAgent (onePacketN).playedInformation,
+      (0 : ℝ) by simp]
+    refine tendsto_finsetSum _ fun agent _ => ?_
+    by_cases present : ∃ decision : (onePacketN).IsDecisionInfo agent.1 agent.2.1,
+        LateSite (⟨agent.2.1, decision⟩ : (onePacketN).InformationSite agent.1)
+    · simp only [agentMass, present, ↓reduceDIte]
+      obtain ⟨input, atSite, event, turn⟩ := lateDelivery_input setup leaks present.2.2.1
+      have notFree := present.2.1
+      have forced := forcedAgent_of_not_free setup leaks bounds horizon scheduler notFree
+      have debtFree := siteDebtFree_of_not_free setup leaks bounds horizon scheduler notFree
+      have decision := projectedDecision_of_forcedAgent wellFormed forced atSite turn debtFree
+      exact onePacket_unforcedVanishes setup leaks bounds horizon scheduler wellFormed mixed bayes
+        atSite forced
+        (inputs.counterpartInputs weights targetSequence assembled mixed bayes agent.1
+          ⟨agent.2.1, present.1⟩ notFree atSite turn)
+        (inputs.ownInputs weights targetSequence assembled mixed bayes agent.1
+          ⟨agent.2.1, present.1⟩ notFree debtFree atSite turn decision).ownIntended
+    · simp only [agentMass, present, ↓reduceDIte]
+      exact tendsto_const_nhds
+  · have single := Finset.single_le_sum (fun agent _ => massNonneg n agent)
+      (Finset.mem_univ ((onePacketN).agentAt site))
+    refine le_trans (le_of_eq ?_) single
+    have present : ∃ decision : (onePacketN).IsDecisionInfo who site.1,
+        LateSite (⟨site.1, decision⟩ : (onePacketN).InformationSite who) :=
+      ⟨site.2, notFree, keyed⟩
+    simp only [agentMass, present, ↓reduceDIte]
+    rfl
 
 open Classical in
 /-- **The open inputs of the one-packet certificate other than the value
@@ -2836,8 +3322,8 @@ structure OnePacketCoreInputs (sequence : ℕ → setup.intendedModel.Behavioral
         (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
     ∃ (valueError : ℕ → ℝ) (bound : ℝ), Tendsto valueError atTop (nhds 0) ∧ 0 ≤ bound ∧
       ∀ n who (site : (onePacketN).InformationSite who) choice,
-        ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-        ¬ ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+        ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+        ¬ ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
           (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
           ((onePacketN).agentAt site) →
         CommitsAtTurn setup leaks bounds horizon scheduler who site choice →
@@ -2884,8 +3370,8 @@ structure OnePacketCoreInputs (sequence : ℕ → setup.intendedModel.Behavioral
         (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
     ∃ lateError : ℕ → ℝ, Tendsto lateError atTop (nhds 0) ∧
       ∀ n who (site : (onePacketN).InformationSite who) choice,
-        ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-        ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+        ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+        ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
           (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
           ((onePacketN).agentAt site) →
         CommitsAtTurn setup leaks bounds horizon scheduler who site choice →
@@ -2953,8 +3439,8 @@ structure OnePacketOpenInputs (sequence : ℕ → setup.intendedModel.Behavioral
     ∃ (continuation : ℕ → (onePacketN).InformationAgent (onePacketN).playedInformation → ℝ)
       (error : ℕ → ℝ), Tendsto error atTop (nhds 0) ∧
       ∀ n who (site : (onePacketN).InformationSite who),
-        ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-        ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+        ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+        ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
           (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
           ((onePacketN).agentAt site) →
         excludedPayoff who ≤ continuation n ((onePacketN).agentAt site) + error n ∧
@@ -2990,8 +3476,8 @@ structure OnePacketOpenInputs (sequence : ℕ → setup.intendedModel.Behavioral
     ∃ (continuation : ℕ → (onePacketN).InformationAgent (onePacketN).playedInformation → ℝ)
       (error : ℕ → ℝ), Tendsto error atTop (nhds 0) ∧
       ∀ n who (site : (onePacketN).InformationSite who),
-        ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-        ¬ ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+        ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+        ¬ ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
           (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
           ((onePacketN).agentAt site) →
         excludedPayoff who ≤ continuation n ((onePacketN).agentAt site) + error n ∧
@@ -3019,6 +3505,7 @@ theorem OnePacketOpenInputs.siteCommonness
     {sequence : ℕ → setup.intendedModel.BehavioralAssessment} {slots : Nat}
     (inputs : OnePacketOpenInputs setup leaks bounds horizon scheduler parameter utility
       excludedPayoff sequence slots)
+    (wellFormed : setup.WellFormed)
     (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
     (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
@@ -3031,8 +3518,8 @@ theorem OnePacketOpenInputs.siteCommonness
     ∃ (score : ℕ → Option (LateKey setup leaks) → LateOption slots → ℝ) (drift : ℕ → ℝ),
       Tendsto drift atTop (nhds 0) ∧ (∀ n, 0 ≤ drift n) ∧
       ∀ n who (site : (onePacketN).InformationSite who),
-        ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-        ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+        ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+        ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
           (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
           ((onePacketN).agentAt site) →
         (∀ option,
@@ -3050,8 +3537,10 @@ theorem OnePacketOpenInputs.siteCommonness
                 ((onePacketN).agentAt site)) option)| ≤ drift n) ∨
           onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
             (PMF.pure choice) = 1 := by
-  obtain ⟨unforcedDrift, beliefDrift, unforcedLimit, beliefLimit, records⟩ :=
+  obtain ⟨beliefDrift, beliefLimit, records⟩ :=
     inputs.lateRecords weights targetSequence assembled mixed bayes
+  obtain ⟨unforcedDrift, unforcedLimit, unforced⟩ := inputs.lateUnforced setup leaks bounds
+    horizon scheduler wellFormed weights targetSequence assembled mixed bayes
   let lumping := fun n who => certificateLumping setup leaks bounds horizon scheduler sequence
     inputs.scale inputs.scale_pos inputs.scale_le_one inputs.covers inputs.capacity
     inputs.slotsLe weights targetSequence assembled n who
@@ -3081,8 +3570,8 @@ theorem OnePacketOpenInputs.siteCommonness
   have markNonneg : ∀ n, 0 ≤ 1 - slotRetention (inputs.scale n) := fun n =>
     sub_nonneg.mpr (slotRetention_le_one (inputs.scale_pos n).le (inputs.scale_le_one n))
   have marked : ∀ n who (site : (onePacketN).InformationSite who),
-      ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-      ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+      ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+      ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
         (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
         ((onePacketN).agentAt site) →
       ∀ choice, onePacketCompared setup leaks bounds horizon scheduler who site choice →
@@ -3106,14 +3595,16 @@ theorem OnePacketOpenInputs.siteCommonness
     (fun n => 1 - slotRetention (inputs.scale n)) pathLimit unforcedLimit beliefLimit markLimit
     pathNonneg markNonneg failureOf recordLaw
     (fun n key option record => unit_expect _ _ ((lumping n key.owner).failure_unit key))
-    (fun n who site _ keyed key siteKey option history supported forced => ?_)
-    (fun n who site notFree keyed => ((records n who).choose_spec.1 site notFree keyed))
+    (fun n who site notFree keyed key siteKey option history supported forced => ?_)
+    unforced
     (fun n who site notFree keyed key siteKey option => ?_) marked
   · have owner := ownerEq siteKey
     subst owner
     exact lateHistoryFailure_near_lumped setup leaks bounds horizon scheduler sequence
       inputs.scale inputs.scale_pos inputs.scale_le_one n (targetSequence n) key.owner
-      (lumping n key.owner) site keyed.1 key siteKey option
+      (lumping n key.owner) site
+      ⟨keyed.1, siteDebtFree_of_not_free setup leaks bounds horizon scheduler notFree⟩ key
+      siteKey option
       (fun history _ _ final reached =>
         onePacketFailed_iff_decisionFailed setup leaks bounds horizon scheduler completes
           (setup.intendedOpeningProfile (sequence n).strategy) site keyed.1 siteKey history _
@@ -3121,7 +3612,7 @@ theorem OnePacketOpenInputs.siteCommonness
       history supported forced
   · have owner := ownerEq siteKey
     subst owner
-    exact (records n key.owner).choose_spec.2 site notFree keyed key siteKey option
+    exact (records n key.owner).choose_spec site notFree keyed key siteKey option
 
 omit [Finite setup.intendedProtocol.History] in
 /-- **Late options gain vanishingly.** Under a scheduler completing play, along
@@ -3133,6 +3624,7 @@ theorem OnePacketOpenInputs.lateMemberGain_le
     {sequence : ℕ → setup.intendedModel.BehavioralAssessment} {slots : Nat}
     (inputs : OnePacketOpenInputs setup leaks bounds horizon scheduler parameter utility
       excludedPayoff sequence slots)
+    (wellFormed : setup.WellFormed)
     (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
     (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
@@ -3147,7 +3639,7 @@ theorem OnePacketOpenInputs.lateMemberGain_le
       (slots := slots) targetSequence) :
     ∃ memberError : ℕ → ℝ, Tendsto memberError atTop (nhds 0) ∧
       ∀ n who (site : (onePacketN).InformationSite who),
-        ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+        ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
           (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
           ((onePacketN).agentAt site) →
         ∀ option : LateOption slots,
@@ -3165,7 +3657,7 @@ theorem OnePacketOpenInputs.lateMemberGain_le
     (readoutExclusion setup leaks bounds (initialLaw setup) horizon scheduler parameter utility
       excludedPayoff) (payoffComponent setup)
     (onePacketFallback setup leaks bounds horizon scheduler)
-    (UnforcedAgent setup leaks bounds horizon scheduler)
+    (FreeAgent setup leaks bounds horizon scheduler)
     (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
     (agentLateKey setup leaks bounds (initialLaw setup) horizon scheduler)
     (fun n => onePacketUnforced setup leaks bounds horizon scheduler inputs.scale
@@ -3182,7 +3674,7 @@ theorem OnePacketOpenInputs.lateMemberGain_le
         inputs.lateDecomposition weights targetSequence assembled mixed bayes
       obtain ⟨score, drift, driftLimit, driftNonneg, common⟩ :=
         inputs.siteCommonness setup leaks bounds horizon scheduler parameter utility
-          excludedPayoff completes weights targetSequence assembled mixed bayes
+          excludedPayoff wellFormed completes weights targetSequence assembled mixed bayes
       refine ⟨continuation, score, error, drift, errorLimit, driftLimit, driftNonneg,
         fun n agent keyed decision => ?_⟩
       obtain ⟨low, gap, _, late⟩ := value n agent.1 ⟨agent.2.1, decision⟩ keyed.2 keyed
@@ -3230,7 +3722,7 @@ def OnePacketOpenInputs.toCertificateInputs
       inputs.lateDecomposition weights targetSequence assembled mixed bayes
     obtain ⟨score, drift, driftLimit, driftNonneg, common⟩ :=
       inputs.siteCommonness setup leaks bounds horizon scheduler parameter utility
-        excludedPayoff contract.completes weights targetSequence assembled mixed bayes
+        excludedPayoff wellFormed contract.completes weights targetSequence assembled mixed bayes
     refine ⟨continuation, score, error, drift, errorLimit, driftLimit, driftNonneg,
       fun n agent keyed decision => ?_⟩
     obtain ⟨low, gap, _, late⟩ := value n agent.1 ⟨agent.2.1, decision⟩ keyed.2 keyed
@@ -3243,19 +3735,19 @@ def OnePacketOpenInputs.toCertificateInputs
       inputs.nonLateDecomposition weights targetSequence assembled mixed bayes
     obtain ⟨score, drift, driftLimit, driftNonneg, common⟩ :=
       inputs.siteCommonness setup leaks bounds horizon scheduler parameter utility
-        excludedPayoff contract.completes weights targetSequence assembled mixed bayes
+        excludedPayoff wellFormed contract.completes weights targetSequence assembled mixed bayes
     obtain ⟨slack, slackLimit, slackNonneg, prescribed⟩ :=
       onePacket_prescribedFailure setup leaks bounds horizon scheduler contract timely retains
         (firstActivationTransmits_of_contract setup leaks bounds horizon scheduler contract)
         sequence inputs.scale inputs.scale_pos inputs.scale_le_one inputs.scale_vanishing
         targetSequence
-    refine ⟨fun n agent => if ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+    refine ⟨fun n agent => if ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
         (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler) agent then
           lateContinuation n agent else otherContinuation n agent, score,
       fun n => max (lateError n) (otherError n), drift, slack,
       by simpa using lateLimit.max otherLimit, driftLimit, slackLimit, driftNonneg, slackNonneg,
       fun n who site choice notFree marked => ?_⟩
-    by_cases keyed : ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+    by_cases keyed : ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
         (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
         ((onePacketN).agentAt site)
     · obtain ⟨low, gap, chosen, late⟩ := lateValue n who site notFree keyed
@@ -3274,7 +3766,7 @@ def OnePacketOpenInputs.toCertificateInputs
   otherComparisons weights targetSequence assembled mixed bayes poolBest := by
     classical
     obtain ⟨memberError, memberLimit, member⟩ := inputs.lateMemberGain_le setup leaks bounds
-      horizon scheduler parameter utility excludedPayoff contract.completes weights
+      horizon scheduler parameter utility excludedPayoff wellFormed contract.completes weights
       targetSequence assembled mixed bayes poolBest
     obtain ⟨lateContinuation, lateValueError, lateValueLimit, lateValue⟩ :=
       inputs.lateDecomposition weights targetSequence assembled mixed bayes
@@ -3351,7 +3843,7 @@ def OnePacketOpenInputs.toCertificateInputs
           sourceMixed sourceBayes mixed bayes
           (changingInput_decision setup leaks bounds horizon scheduler present.2)
           rfl
-          (Classical.not_not.mp present.2.1)
+          (forcedAgent_of_not_free setup leaks bounds horizon scheduler present.2.1)
           (changingInput_turn setup leaks bounds horizon scheduler present.2).choose_spec
           (inputs.beliefInputs setup leaks bounds horizon scheduler weights targetSequence
             assembled mixed bayes agent.1
@@ -3384,7 +3876,7 @@ def OnePacketOpenInputs.toCertificateInputs
       positivity
     have := abs_nonneg (memberError n)
     have := abs_nonneg (lateValueError n)
-    have forced : ¬ UnforcedAgent setup leaks bounds horizon scheduler
+    have forced : ¬ FreeAgent setup leaks bounds horizon scheduler
         ((onePacketN).agentAt site) := fun unforced =>
       notFree (Finset.mem_filter.mpr ⟨Finset.mem_univ _, unforced⟩)
     have sumNonneg : 0 ≤ bound * ∑ agent, agentDistance n agent :=
@@ -3431,7 +3923,7 @@ def OnePacketOpenInputs.toCertificateInputs
       dsimp only
       rw [zero]
       positivity
-    by_cases keyedSite : ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+    by_cases keyedSite : ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
         (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
         ((onePacketN).agentAt site)
     · obtain ⟨past, view, turnResponse, event, atSite, turnChosen, submittedTurn, turn⟩ :=
@@ -3494,7 +3986,8 @@ def OnePacketOpenInputs.toCertificateInputs
           · right
             right
             have decision := projectedDecision_of_forcedAgent wellFormed
-              (Classical.not_not.mp forced) atSite turn debtFree
+              (forcedAgent_of_not_free setup leaks bounds horizon scheduler forced) atSite turn
+                debtFree
             obtain ⟨option, policy, weight, weightNonneg, weightLe, lateBound⟩ :=
               late n who site choice forced keyedSite atTurn debtFree intended decision
             have memberBound := member n who site keyedSite option

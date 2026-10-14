@@ -6,6 +6,7 @@ import Vegas.Game.OnePacketExclusionPayoff
 import GameTheoryExtensions.Analysis.Protocol.CopiedSiteLimit
 import GameTheoryExtensions.Analysis.Protocol.FreeKeyedPools
 import Vegas.Game.OnePacketDelivery
+import Vegas.Game.OnePacketIntendedProjection
 
 /-! # Sequential preservation for the one-packet game
 
@@ -218,18 +219,49 @@ def UnforcedAgent (agent : (onePacketN).InformationAgent (onePacketN).playedInfo
   ¬ forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
     scheduler agent.1 agent.2.1
 
-/-- **The pools of the one-packet certificate.** An unforced agent sits alone,
+/-- An agent owing a failure: it owes one at the decoded point of some history
+of its information state. -/
+def OwingAgent (agent : (onePacketN).InformationAgent (onePacketN).playedInformation) : Prop :=
+  ∃ history : (onePacketN).InformationHistory agent.1 agent.2.1, ∃ point,
+    nativeDecodedState setup leaks history.1.state = some point ∧
+      ProtocolState.OwesFailure agent.1 setup.program point
+
+/-- **The free agents of the one-packet certificate**: the agents outside the
+forced region and the agents owing a failure. A free agent sits alone in its
+pool, choosing among its choices. -/
+def FreeAgent (agent : (onePacketN).InformationAgent (onePacketN).playedInformation) : Prop :=
+  UnforcedAgent setup leaks bounds horizon scheduler agent ∨
+    OwingAgent setup leaks bounds horizon scheduler agent
+
+omit [Finite setup.intendedProtocol.History] in
+/-- An agent that is not free is in the forced region. -/
+theorem forcedAgent_of_not_free
+    {agent : (onePacketN).InformationAgent (onePacketN).playedInformation}
+    (notFree : ¬ FreeAgent setup leaks bounds horizon scheduler agent) :
+    forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
+      scheduler agent.1 agent.2.1 :=
+  Classical.not_not.mp fun unforced => notFree (Or.inl unforced)
+
+omit [Finite setup.intendedProtocol.History] in
+/-- An agent that is not free owes no failure. -/
+theorem not_owingAgent_of_not_free
+    {agent : (onePacketN).InformationAgent (onePacketN).playedInformation}
+    (notFree : ¬ FreeAgent setup leaks bounds horizon scheduler agent) :
+    ¬ OwingAgent setup leaks bounds horizon scheduler agent :=
+  fun owing => notFree (Or.inr owing)
+
+/-- **The pools of the one-packet certificate.** A free agent sits alone,
 choosing among its choices; forced late deliveries sharing a late-delivery key
 form a pool with the late options as parts; every other agent sits in one pool
 with one part. -/
 abbrev onePacketPool :=
-  freeKeyedPool (UnforcedAgent setup leaks bounds horizon scheduler)
+  freeKeyedPool (FreeAgent setup leaks bounds horizon scheduler)
     (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
     (agentLateKey setup leaks bounds (initialLaw setup) horizon scheduler)
 
 /-- The parts of the pools of the one-packet certificate. -/
 abbrev OnePacketPart (slots : Nat) :=
-  FreeKeyedPart (UnforcedAgent setup leaks bounds horizon scheduler)
+  FreeKeyedPart (FreeAgent setup leaks bounds horizon scheduler)
     (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
     (agentLateKey setup leaks bounds (initialLaw setup) horizon scheduler) (LateOption slots)
 
@@ -379,7 +411,7 @@ structure OnePacketCertificateInputs (sequence : ℕ → setup.intendedModel.Beh
           (score : ℕ → Option (LateKey setup leaks) → LateOption slots → ℝ) (error drift : ℕ → ℝ),
           Tendsto error atTop (nhds 0) ∧ Tendsto drift atTop (nhds 0) ∧ (∀ n, 0 ≤ drift n) ∧
           ∀ n (agent : (onePacketN).InformationAgent (onePacketN).playedInformation), ownedKeyed
-              (UnforcedAgent setup leaks bounds horizon scheduler)
+              (FreeAgent setup leaks bounds horizon scheduler)
               (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler) agent →
             ∀ decision : (onePacketN).IsDecisionInfo agent.1 agent.2.1,
             excludedPayoff agent.1 ≤ continuation n agent + error n ∧
@@ -430,7 +462,7 @@ structure OnePacketCertificateInputs (sequence : ℕ → setup.intendedModel.Beh
           Tendsto slack atTop (nhds 0) ∧ (∀ n, 0 ≤ drift n) ∧ (∀ n, 0 ≤ slack n) ∧
           ∀ n who (site : (onePacketN).InformationSite who) (choice : (onePacketN).Choice who
               site.1),
-            ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+            ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
                 compared who site choice →
             ((excludedPayoff who ≤ continuation n ((onePacketN).agentAt site) + error n ∧
                 continuation n ((onePacketN).agentAt site) - excludedPayoff who ≤ gapBound) ∨
@@ -443,7 +475,7 @@ structure OnePacketCertificateInputs (sequence : ℕ → setup.intendedModel.Beh
               (1 - localFailure (2 * horizon + 1) (targetSequence n) site
                 (failed ((onePacketN).agentAt site)) (PMF.pure choice)) *
                 continuation n ((onePacketN).agentAt site)| ≤ error n ∧
-            (ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+            (ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
               (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
                   ((onePacketN).agentAt site) →
               (∀ option, |localSuccessValue (2 * horizon + 1) (readoutExclusion setup leaks bounds
@@ -472,7 +504,7 @@ structure OnePacketCertificateInputs (sequence : ℕ → setup.intendedModel.Beh
               ((onePacketN).agentAt site)) option)| ≤ drift n) ∨
                 localFailure (2 * horizon + 1) (targetSequence n) site
                   (failed ((onePacketN).agentAt site)) (PMF.pure choice) = 1)) ∧
-            (¬ ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+            (¬ ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
               (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
                   ((onePacketN).agentAt site) →
               |localSuccessValue (2 * horizon + 1) (readoutExclusion setup leaks bounds (initialLaw
@@ -538,7 +570,7 @@ structure OnePacketCertificateInputs (sequence : ℕ → setup.intendedModel.Beh
             else 0) ≤ 0) →
         ∃ otherError : ℕ → ℝ, Tendsto otherError atTop (nhds 0) ∧
           ∀ n who (site : (onePacketN).InformationSite who), (onePacketN).agentAt site ∉
-              Finset.univ.filter (UnforcedAgent setup leaks bounds horizon scheduler) →
+              Finset.univ.filter (FreeAgent setup leaks bounds horizon scheduler) →
             ∀ choice : (onePacketN).Choice who site.1, ¬ compared who site choice →
             let gain := fun law : PMF ((onePacketN).Choice who site.1) =>
               let comparison := (onePacketN).assessmentComparisonWith ((onePacketN).truncatedRunner
@@ -638,7 +670,7 @@ def onePacketCertificate (sequence : ℕ → setup.intendedModel.BehavioralAsses
         scheduler)
       (payoffComponent setup) sequence where
   fallback := onePacketFallback setup leaks bounds horizon scheduler
-  Pool := FreeKeyedPool (UnforcedAgent setup leaks bounds horizon scheduler)
+  Pool := FreeKeyedPool (FreeAgent setup leaks bounds horizon scheduler)
     (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
     (agentLateKey setup leaks bounds (initialLaw setup) horizon scheduler)
   poolDecidable := inferInstance
@@ -653,7 +685,7 @@ def onePacketCertificate (sequence : ℕ → setup.intendedModel.BehavioralAsses
       inputs.scale_le_one (slots := slots) n)
   componentFull n agent part := onePacketComponent_fullSupport setup leaks bounds horizon
     scheduler (sequence n) (inputs.scale_pos n) (inputs.scale_le_one n) agent part
-  free := Finset.univ.filter (UnforcedAgent setup leaks bounds horizon scheduler)
+  free := Finset.univ.filter (FreeAgent setup leaks bounds horizon scheduler)
   freeSpanning := freeKeyedSpanning
     (fun n => onePacketUnforced setup leaks bounds horizon scheduler inputs.scale
       inputs.scale_pos inputs.scale_le_one n)
@@ -671,7 +703,7 @@ def onePacketCertificate (sequence : ℕ → setup.intendedModel.BehavioralAsses
       (readoutExclusion setup leaks bounds (initialLaw setup) horizon scheduler parameter utility
         excludedPayoff) (payoffComponent setup) (onePacketFallback setup leaks bounds horizon
           scheduler)
-      (UnforcedAgent setup leaks bounds horizon scheduler)
+      (FreeAgent setup leaks bounds horizon scheduler)
       (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
       (agentLateKey setup leaks bounds (initialLaw setup) horizon scheduler)
       (fun n => onePacketUnforced setup leaks bounds horizon scheduler inputs.scale
@@ -690,7 +722,7 @@ def onePacketCertificate (sequence : ℕ → setup.intendedModel.BehavioralAsses
       (readoutExclusion setup leaks bounds (initialLaw setup) horizon scheduler parameter utility
         excludedPayoff) (payoffComponent setup) (onePacketFallback setup leaks bounds horizon
           scheduler)
-      (UnforcedAgent setup leaks bounds horizon scheduler)
+      (FreeAgent setup leaks bounds horizon scheduler)
       (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
       (agentLateKey setup leaks bounds (initialLaw setup) horizon scheduler)
       (intendedReadoutExclusion setup parameter utility excludedPayoff)

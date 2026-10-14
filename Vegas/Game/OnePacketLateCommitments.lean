@@ -101,8 +101,8 @@ def LateCommitBlind (sequence : ℕ → setup.intendedModel.BehavioralAssessment
     {slots : Nat} (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
     (blindError : ℕ → ℝ) : Prop :=
   ∀ n who (site : (onePacketN).InformationSite who),
-    ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-    ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+    ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+    ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
       (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
       ((onePacketN).agentAt site) →
     SiteDebtFree setup leaks bounds horizon scheduler site →
@@ -438,18 +438,6 @@ theorem onePacket_commitment_serial_lt {who : Player}
   rw [packet] at handle
   exact handle
 
-omit [Fintype Player] [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
-    scheduler).InfoState who)] in
-/-- A late delivery is a decision input showing the player's own turn. -/
-theorem lateDelivery_input {who : Player} {info : (application setup leaks).Info}
-    (late : LateDelivery setup leaks who info) :
-    ∃ input : List (application setup leaks).PlayerEntry × (application setup leaks).PlayerView,
-      info = some input ∧ ∃ event, input.2.application.publicView.ownTurn? who = some event := by
-  obtain ⟨past, view, event, atSite, pending, _⟩ := late
-  rw [atSite] at pending
-  exact ⟨(past, view), atSite, event, (pendingEvent_spec (setup := setup) pending).1⟩
-
 omit [DecidableEq Player] [Fintype Player] [IExpr.ResultTypes L] in
 /-- **Late commitments against late options, algebraically.** -/
 private theorem lateGain_le {gainChoice gainOption valueChoice valueOption successChoice
@@ -521,8 +509,8 @@ theorem OnePacketBaseInputs.lateCommitments_of_blind [Finite setup.intendedProto
           (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
       ∃ blindError : ℕ → ℝ, Tendsto blindError atTop (nhds 0) ∧
         ∀ n who (site : (onePacketN).InformationSite who),
-          ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-          ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+          ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+          ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
             (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
             ((onePacketN).agentAt site) →
           ∀ option,
@@ -560,8 +548,8 @@ theorem OnePacketBaseInputs.lateCommitments_of_blind [Finite setup.intendedProto
         (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
     ∃ lateError : ℕ → ℝ, Tendsto lateError atTop (nhds 0) ∧
       ∀ n who (site : (onePacketN).InformationSite who) choice,
-        ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-        ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+        ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+        ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
           (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
           ((onePacketN).agentAt site) →
         CommitsAtTurn setup leaks bounds horizon scheduler who site choice →
@@ -585,8 +573,8 @@ theorem OnePacketBaseInputs.lateCommitments_of_blind [Finite setup.intendedProto
     optionBlind weights targetSequence assembled mixed bayes
   obtain ⟨commitError, commitLimit, commitNear⟩ :=
     commitBlind weights targetSequence assembled mixed bayes
-  obtain ⟨unforcedDrift, _, unforcedLimit, _, records⟩ :=
-    inputs.lateRecords weights targetSequence assembled mixed bayes
+  obtain ⟨unforcedDrift, unforcedLimit, unforced⟩ := inputs.lateUnforced setup leaks bounds
+    horizon scheduler wellFormed weights targetSequence assembled mixed bayes
   -- A bound on every payoff.
   let range := fun who : Player => max 0 (max (excludedPayoff who) (upperUtility who)) -
     min 0 (min (excludedPayoff who) (lowerUtility who))
@@ -642,8 +630,8 @@ theorem OnePacketBaseInputs.lateCommitments_of_blind [Finite setup.intendedProto
     exact mul_nonneg (Nat.cast_nonneg _) (by linarith)
   -- Projected beliefs at late deliveries converge.
   let LateSite := fun {who : Player} (site : (onePacketN).InformationSite who) =>
-    ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) ∧
-      ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+    ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) ∧
+      ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
         (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
         ((onePacketN).agentAt site) ∧
       SiteDebtFree setup leaks bounds horizon scheduler site
@@ -652,7 +640,8 @@ theorem OnePacketBaseInputs.lateCommitments_of_blind [Finite setup.intendedProto
         setup.intendedModel.IsDecisionInfo who (projectView setup leaks who site.1) := by
     intro who site late
     obtain ⟨input, atSite, event, turn⟩ := lateDelivery_input setup leaks late.2.1.1
-    exact projectedDecision_of_forcedAgent wellFormed (Classical.not_not.mp late.1) atSite turn
+    exact projectedDecision_of_forcedAgent wellFormed
+      (forcedAgent_of_not_free setup leaks bounds horizon scheduler late.1) atSite turn
       late.2.2
   let distance := fun (n : ℕ) {who : Player} (site : (onePacketN).InformationSite who)
       (late : LateSite site) =>
@@ -680,7 +669,8 @@ theorem OnePacketBaseInputs.lateCommitments_of_blind [Finite setup.intendedProto
     · simp only [agentDistance, present, ↓reduceDIte]
       have spec := (lateDelivery_input setup leaks present.2.2.1.1).choose_spec
       exact onePacket_beliefConverges setup leaks bounds horizon scheduler wellFormed
-        sourceMixed sourceBayes mixed bayes spec.1 rfl (Classical.not_not.mp present.2.1)
+        sourceMixed sourceBayes mixed bayes spec.1 rfl
+        (forcedAgent_of_not_free setup leaks bounds horizon scheduler present.2.1)
         spec.2.choose_spec
         (inputs.beliefInputs setup leaks bounds horizon scheduler weights targetSequence
           assembled mixed bayes agent.1
@@ -743,7 +733,7 @@ theorem OnePacketBaseInputs.lateCommitments_of_blind [Finite setup.intendedProto
   have unforcedMass : expect ((targetSequence n).belief who site) (fun history =>
       if ForcedState setup leaks who history.1.state then (0 : ℝ) else 1) ≤
       |unforcedDrift n| := by
-    exact ((records n who).choose_spec.1 site forced keyed).trans (le_abs_self _)
+    exact (unforced n who site forced keyed).trans (le_abs_self _)
   have transportBound : |siteCommitValue setup leaks bounds horizon scheduler parameter utility
       excludedPayoff (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy)
       site committed.1 -

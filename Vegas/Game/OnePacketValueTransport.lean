@@ -203,8 +203,8 @@ theorem onePacket_valueTransport_le
       scale_le_one weights targetSequence)
     (n : ℕ) {who : Player} (site : (onePacketN).InformationSite who)
     (choice : (onePacketN).Choice who site.1)
-    (forced : ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site))
-    (unkeyed : ¬ ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+    (forced : ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site))
+    (unkeyed : ¬ ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
       (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
       ((onePacketN).agentAt site))
     (atTurn : CommitsAtTurn setup leaks bounds horizon scheduler who site choice)
@@ -276,7 +276,8 @@ theorem onePacket_valueTransport_le
     by_cases regular : RegularTrace setup leaks bounds horizon scheduler (sequence n) who
       history.1.trace
     · have near := perHistory history (not_owesFailure_of_regular wellFormed (sequence n) atSite
-        (not_not.mp forced) history regular (ownIntended history regular))
+        (forcedAgent_of_not_free setup leaks bounds horizon scheduler forced) history regular
+        (ownIntended history regular))
       simp only [irregular, regular, ↓reduceIte, mul_zero, add_zero]
       exact near
     · have nativeBound : |native history| ≤ 2 * range := abs_onePacket_historyGain_le setup

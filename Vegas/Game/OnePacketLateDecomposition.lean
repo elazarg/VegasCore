@@ -75,6 +75,82 @@ def siteRank : (application setup leaks).Info → Nat
   | none => 0
   | some (_, view) => view.application.publicView.observation.completionOrder.length
 
+omit [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+    scheduler).InfoState who)] in
+/-- **As-if-honest play from a reached boundary leaves no debt.** Under the
+asynchronous contract with timely delays and retention of first covered
+canonical packets, from a one-packet history ending between rounds at a reached
+boundary decoding to a point of the intended game, nobody owes a failure at the
+decoded point of a history as-if-honest play reaches: a decoded debt would
+record a failed reveal on every terminal continuation, while the continuation
+reads out the intended continuation, which records none. -/
+theorem honest_boundary_noDebt {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
+      bound)
+    (timely : AsyncTimely (runtime setup) delay bound)
+    (assessment : setup.intendedModel.BehavioralAssessment)
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound) {rank : Nat}
+    {anchor : (application setup leaks).Execution}
+    (reached : ReachedBoundary setup leaks horizon scheduler rank anchor)
+    (point : ProtocolState setup.program)
+    (decoded : sourceServicePrefix? setup rank anchor.application.config = some point)
+    (intendedPoint : ProtocolState.Intended setup.program point)
+    (start : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+      scheduler).History)
+    (state : start.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩)
+    (fuel : Nat)
+    (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+      scheduler).History)
+    (reachedHistory : history ∈ ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+      scheduler).runBehavioralFrom
+        (honestProfile setup leaks bounds (initialLaw setup) horizon scheduler assessment) fuel
+        start).support)
+    (player : Player) {current : ProtocolState setup.program}
+    (decodedHistory : nativeDecodedState setup leaks history.state = some current) :
+    ¬ ProtocolState.OwesFailure player setup.program current := by
+  let menu := bounds.onePacketMenu (runtime setup) leaks
+  let model := onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
+  let honest := honestProfile setup leaks bounds (initialLaw setup) horizon scheduler assessment
+  let opening := setup.intendedOpeningProfile assessment.strategy
+  let certificate := (menu.bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
+  have staticPoint : ProtocolState.StaticAt setup.program [] (Revelations.initial setup.context)
+      point := by
+    have boundary := reachedBoundary_completionBoundary reached
+      (firstTurnClients setup leaks bound 0 opening)
+    obtain ⟨staticRank, ⟨staticResidual⟩, staticHolds⟩ := roundsFrom_static scheduler
+      (ReactiveApplication.anchoredPolicy anchor (firstTurnClients setup leaks bound 0 opening))
+      opening anchor.environmentRecall.length anchor boundary.supported
+    have sameRank := isPrefix_unique staticResidual.checkpoint.ordered reached.ordered
+    subst sameRank
+    exact staticHolds point decoded
+  intro owed
+  have owing : DecodedState setup leaks opening (ProtocolState.OwesFailure player setup.program)
+      history.state := decodedState_of_nativeDecodedState opening history decodedHistory owed
+  obtain ⟨final, finalMem⟩ := (model.runBehavioralTerminalFrom certificate honest
+    history).support_nonempty
+  obtain ⟨terminal, read, failed⟩ := decoded_owesFailure_failedReveals menu horizon scheduler
+    contract.completes certificate honest player history owing final finalMem
+  have inRun : final ∈ (model.runBehavioralFrom honest (fuel + (2 * horizon + 1))
+      start).support := by
+    rw [model.runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded certificate
+      (menu.bounded (initialLaw setup) horizon scheduler)] at finalMem
+    rw [model.runBehavioralFrom_add]
+    exact (PMF.mem_support_bind_iff _ _ _).mpr ⟨history, reachedHistory, finalMem⟩
+  have inLaw : some terminal ∈ ((model.runBehavioralFrom honest (fuel + (2 * horizon + 1))
+      start).map (fun final => sourceReadout setup leaks final.state)).support :=
+    (PMF.mem_support_map_iff _ _ _).mpr ⟨final, inRun, read⟩
+  rw [honestProfile_boundary_readout_law bounds contract timely assessment retains reached
+    point decoded intendedPoint start state _ (by omega)] at inLaw
+  change some terminal ∈ ((setup.continuationLaw opening
+    (sourceServicePrefix? setup rank anchor.application.config)).map some).support at inLaw
+  rw [decoded] at inLaw
+  obtain ⟨source, sourceMem, sourceEq⟩ := (PMF.mem_support_map_iff _ _ _).mp inLaw
+  cases Option.some.inj sourceEq
+  have zero := setup.intendedOpening_continuation_failedReveals assessment.strategy _ point le_rfl
+    staticPoint intendedPoint terminal sourceMem player
+  omega
+
 /-- **Installed laws keep as-if-honest play after the site's event.** Under the
 asynchronous contract with timely delays and retention of first covered
 canonical packets, installing any law at a site of a profile assembled from
@@ -124,8 +200,29 @@ theorem installed_dominates {delay bound : (graph setup).EventId → Nat}
       (onePacketN).infoOf who history.trace = info := by
     obtain ⟨_, history, _, infoEq⟩ := reachedInfo
     exact ⟨history, infoEq⟩
+  have debtFree : ∀ input, info = some input →
+      ∀ other : (onePacketN).InformationHistory who info, ∀ current,
+        nativeDecodedState setup leaks other.1.state = some current →
+          ¬ ProtocolState.OwesFailure who setup.program current := by
+    intro input infoEq other current decodedOther owes
+    obtain ⟨fuel, honestHistory, mem, honestInfo⟩ := reachedInfo
+    subst infoEq
+    obtain ⟨control, controlEq⟩ : ∃ control, honestHistory.state = some control := by
+      have observed := ((bounds.onePacketMenu (runtime setup) leaks).info (initialLaw setup)
+        horizon scheduler who honestHistory.trace).symm.trans honestInfo
+      cases honestState : honestHistory.state with
+      | none =>
+          rw [honestState] at observed
+          cases observed
+      | some control => exact ⟨control, rfl⟩
+    obtain ⟨honestPoint, honestDecoded⟩ := nativeDecodedState_isSome honestHistory controlEq
+    exact honest_boundary_noDebt setup leaks bounds horizon scheduler contract timely
+      (sequence n) retains reached point decoded intendedPoint start state fuel honestHistory mem
+      who honestDecoded ((owesFailure_iff_of_infoOf (bounds := bounds) (horizon := horizon)
+        (scheduler := scheduler) ⟨other.1, other.2⟩ ⟨honestHistory, honestInfo⟩ decodedOther
+        honestDecoded).mp owes)
   have base := onePacketMixture_ge_honest_of_not_late setup leaks bounds horizon scheduler
-    sequence scale scale_pos scale_le_one n (weights n) notLate occurs forced choice
+    sequence scale scale_pos scale_le_one n (weights n) notLate occurs forced debtFree choice
   -- Every state play reaches from the boundary has completed more events than the site.
   have beyond : info ≠ site := by
     intro same
@@ -819,8 +916,8 @@ theorem onePacket_lateDecomposition (wellFormed : setup.WellFormed)
           (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
       ∃ blindError : ℕ → ℝ, Tendsto blindError atTop (nhds 0) ∧
         ∀ n who (site : (onePacketN).InformationSite who),
-          ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-          ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+          ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+          ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
             (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
             ((onePacketN).agentAt site) →
           (∀ choice, onePacketCompared setup leaks bounds horizon scheduler who site choice →
@@ -854,8 +951,8 @@ theorem onePacket_lateDecomposition (wellFormed : setup.WellFormed)
     ∃ (continuation : ℕ → (onePacketN).InformationAgent (onePacketN).playedInformation → ℝ)
       (error : ℕ → ℝ), Tendsto error atTop (nhds 0) ∧
       ∀ n who (site : (onePacketN).InformationSite who),
-        ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-        ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+        ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+        ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
           (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
           ((onePacketN).agentAt site) →
         excludedPayoff who ≤ continuation n ((onePacketN).agentAt site) + error n ∧
@@ -925,8 +1022,8 @@ theorem onePacket_nonLateDecomposition (wellFormed : setup.WellFormed)
           (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
       ∃ blindError : ℕ → ℝ, Tendsto blindError atTop (nhds 0) ∧
         ∀ n who (site : (onePacketN).InformationSite who),
-          ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-          ¬ ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+          ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+          ¬ ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
             (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
             ((onePacketN).agentAt site) →
           (∀ choice, onePacketCompared setup leaks bounds horizon scheduler who site choice →
@@ -959,8 +1056,8 @@ theorem onePacket_nonLateDecomposition (wellFormed : setup.WellFormed)
     ∃ (continuation : ℕ → (onePacketN).InformationAgent (onePacketN).playedInformation → ℝ)
       (error : ℕ → ℝ), Tendsto error atTop (nhds 0) ∧
       ∀ n who (site : (onePacketN).InformationSite who),
-        ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-        ¬ ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+        ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+        ¬ ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
           (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
           ((onePacketN).agentAt site) →
         excludedPayoff who ≤ continuation n ((onePacketN).agentAt site) + error n ∧

@@ -3,6 +3,7 @@
 import Vegas.Game.OnePacketFactorBounds
 import Vegas.Game.OnePacketSequentialPreservation
 import Vegas.Game.OnePacketStepGlue
+import Vegas.Game.OnePacketProjectedDecision
 
 /-! # The slot law of the certificate's profile
 
@@ -166,7 +167,7 @@ def keyWeights {slots : Nat}
     (weights : ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
     (key : Option (LateKey setup leaks)) : PMF (LateOption slots) :=
   if present : key ∈ Set.range fun agent : {agent : (onePacketN).InformationAgent
-      (onePacketN).playedInformation // ownedKeyed (UnforcedAgent setup leaks bounds horizon
+      (onePacketN).playedInformation // ownedKeyed (FreeAgent setup leaks bounds horizon
         scheduler) (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
           agent} =>
       agentLateKey setup leaks bounds (initialLaw setup) horizon scheduler agent.1 then
@@ -205,6 +206,30 @@ private theorem bind_lateOption_toReal {slots : Nat} {α : Type}
     ENNReal.mul_ne_top (PMF.apply_ne_top _ _) (PMF.apply_ne_top _ _)]
   simp only [ENNReal.toReal_mul]
 
+/-- **Responders at an observer's forced state owe nothing.** At a state forced
+for an observer, another player acting there is not owing a failure at its
+information state: it owes none at this history's decoded point, and owing is
+the same at every history of an information state. -/
+theorem not_owingAgent_of_forcedState {observer actor : Player} (other : actor ≠ observer)
+    {control : (application setup leaks).Control}
+    (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control))
+    (acting : control.actor = some actor)
+    (forced : ForcedState setup leaks observer (some control))
+    (played : (onePacketN).infoOf actor trace ∈ (onePacketN).playedInformation actor) :
+    ¬ OwingAgent setup leaks bounds horizon scheduler ⟨actor, ⟨_, played⟩⟩ := by
+  rintro ⟨history, point, decoded, owes⟩
+  obtain ⟨current, currentDecoded, forcedPoint⟩ := (forcedState_iff_decodedPoint control).mp forced
+  have infoEq : (onePacketN).infoOf actor trace = some (control.execution.recall actor,
+      control.execution.observe (application setup leaks) actor) := by
+    change (onePacketInformation setup leaks bounds horizon scheduler).infoOf actor trace = _
+    rw [onePacket_infoOf]
+    simp [ReactiveApplication.observe, acting]
+  have same := owesFailure_iff_of_infoOf (bounds := bounds) (horizon := horizon)
+    (scheduler := scheduler) ⟨history.1, history.2.trans infoEq⟩
+    ⟨⟨some control, trace⟩, infoEq⟩ decoded currentDecoded
+  exact (forcedPoint.2 actor other).2 (same.mp owes)
+
 /-- **The slot law at a response.** At a history of the one-packet game where a
 forced player whose disclosure is canonical responds with positive content,
 the certificate's profile at its information is a slot-trembled component
@@ -241,6 +266,7 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
     (infoEq : info = some (control.execution.recall actor,
       control.execution.observe (application setup leaks) actor))
     (played : info ∈ (onePacketN).playedInformation actor)
+    (notOwing : ¬ OwingAgent setup leaks bounds horizon scheduler ⟨actor, ⟨info, played⟩⟩)
     (choice : (onePacketN).Choice actor info) (chosen : choice.1 = some response) :
     ∃ (scale' : ℝ) (nonnegative : 0 ≤ scale') (le_one : scale' ≤ 1)
       (main alternative slot : PMF ((onePacketN).Choice actor info))
@@ -308,8 +334,8 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
   have keyLate := LateKey.ofView_isLate rawTrace actor
   let agent : (onePacketN).InformationAgent (onePacketN).playedInformation :=
     ⟨actor, ⟨_, played⟩⟩
-  have notFree : ¬ UnforcedAgent setup leaks bounds horizon scheduler agent :=
-    fun unforced => unforced forced
+  have notFree : ¬ FreeAgent setup leaks bounds horizon scheduler agent :=
+    fun free => free.elim (fun unforced => unforced forced) notOwing
   have atAgent := (onePacketN).agentBehavior_at (onePacketN).playedInformation
     (onePacketFallback setup leaks bounds horizon scheduler)
     (fun agent => (weights n (onePacketPool setup leaks bounds horizon scheduler agent)).bind
@@ -418,7 +444,7 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
           (silenceFactor_mem _).1 uniform
   by_cases isLate : LateDelivery setup leaks actor (some (control.execution.recall actor,
       control.execution.observe (application setup leaks) actor))
-  · have keyed : ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+  · have keyed : ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
         (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler) agent :=
       ⟨isLate, notFree⟩
     have weightsEq : keyWeights setup leaks bounds horizon scheduler (weights n)
@@ -429,7 +455,7 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
       have present : some (LateKey.ofView setup leaks actor (control.execution.recall actor)
           (control.execution.observe (application setup leaks) actor)) ∈ Set.range
             fun agent : {agent : (onePacketN).InformationAgent (onePacketN).playedInformation //
-              ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+              ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
                 (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
                   agent} =>
             agentLateKey setup leaks bounds (initialLaw setup) horizon scheduler agent.1 :=
@@ -501,7 +527,7 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
       ring
     · rw [responseEq]
       exact cube _ (mainFactor_mem bounds _ _ _).1
-  · have unkeyed : ¬ ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+  · have unkeyed : ¬ ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
         (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler) agent :=
       fun keyed => isLate keyed.1
     have mixture := freeKeyedMixture_of_not_keyed (key := agentLateKey setup leaks bounds
@@ -639,7 +665,8 @@ theorem certificate_slotLaw (sequence : ℕ → setup.intendedModel.BehavioralAs
   rw [chosenJoint, Option.getD_some] at positive floorStep ⊢
   exact certificate_slotLaw_at sequence scale scale_pos scale_le_one small floor floor_pos covers
     capacity weights n prior acting forced (canonical prior actor observerForced other) response
-    member nextEq positive (fun _ => (floored n).trans floorStep) _ infoEq played _ chosenJoint
+    member nextEq positive (fun _ => (floored n).trans floorStep) _ infoEq played
+    (not_owingAgent_of_forcedState other prior acting observerForced played) _ chosenJoint
 
 end Profile
 

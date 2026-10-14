@@ -56,8 +56,8 @@ theorem assembled_strategy_of_unpooled
     (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
       scale_le_one weights targetSequence)
     (n : ℕ) {who : Player} (site : (onePacketN).InformationSite who)
-    (forced : ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site))
-    (unkeyed : ¬ ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+    (forced : ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site))
+    (unkeyed : ¬ ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
       (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
       ((onePacketN).agentAt site)) :
     (targetSequence n).strategy who site.1 =
@@ -131,8 +131,8 @@ theorem onePacket_commitment_gain_le_of_regular (wellFormed : setup.WellFormed)
     (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
       scale_le_one weights targetSequence)
     (n : ℕ) {who : Player} (site : (onePacketN).InformationSite who)
-    (forced : ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site))
-    (unkeyed : ¬ ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+    (forced : ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site))
+    (unkeyed : ¬ ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
       (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
       ((onePacketN).agentAt site))
     {past : List (application setup leaks).PlayerEntry}
@@ -420,8 +420,8 @@ theorem onePacket_intendedCommitment_gain_le (wellFormed : setup.WellFormed)
       scale_le_one weights targetSequence)
     (n : ℕ) {who : Player} (site : (onePacketN).InformationSite who)
     (choice : (onePacketN).Choice who site.1)
-    (forced : ¬ UnforcedAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site))
-    (unkeyed : ¬ ownedKeyed (UnforcedAgent setup leaks bounds horizon scheduler)
+    (forced : ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site))
+    (unkeyed : ¬ ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
       (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
       ((onePacketN).agentAt site))
     (atTurn : CommitsAtTurn setup leaks bounds horizon scheduler who site choice)
