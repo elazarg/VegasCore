@@ -709,8 +709,8 @@ section Main
 Take two information sites of `who` with the same late-delivery key, at neither
 of which `who` owes a failure at the decoded point of any history (the negation
 of `Vegas.OwingAgent` at the site's agent), and the owner swap between their
-views. When the setup prior is closed under the swap of `who`'s inputs, the
-swap guard holds at every history of the first site. -/
+views. When the setup prior is closed under the swap of the inputs of the
+first site's histories, the swap guard holds at every history of the first site. -/
 theorem ownerSwap_guard {who : Player}
     {site₁ site₂ : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who}
     {past₁ past₂ : List (application setup leaks).PlayerEntry}
@@ -725,8 +725,12 @@ theorem ownerSwap_guard {who : Player}
         scheduler).InformationHistory who site₂.1, ∀ point,
       nativeDecodedState setup leaks history.1.state = some point →
         ¬ ProtocolState.OwesFailure who setup.program point)
-    (priorClosed : ∀ initial ∈ setup.initialLaw.support, ∃ other ∈ setup.initialLaw.support,
-      setup.eventInputs other =
+    (priorClosed : ∀ initial ∈ setup.initialLaw.support,
+      (∃ history : (onePacketInformation setup leaks bounds horizon
+          scheduler).InformationHistory who site₁.1, ∃ control : (application setup leaks).Control,
+        history.1.state = some control ∧
+          control.execution.application.config.inputs = setup.eventInputs initial) →
+      ∃ other ∈ setup.initialLaw.support, setup.eventInputs other =
         (ownerSwap who view₁.application view₂.application).inputs (setup.eventInputs initial))
     (history : (onePacketProtocol setup leaks bounds horizon scheduler).History)
     (member : (onePacketInformation setup leaks bounds horizon scheduler).infoOf who
@@ -800,6 +804,7 @@ theorem ownerSwap_guard {who : Player}
         refine ⟨_, drawnMember initial initialMember, inputsEq.symm, ?_⟩
         rw [State.swap_initial _ compatible]
         obtain ⟨other, otherMember, otherEq⟩ := priorClosed initial initialMember
+          ⟨⟨⟨some control₁, trace₁⟩, firstMember⟩, control₁, rfl, inputsEq⟩
         have target := drawnMember other otherMember
         rw [otherEq] at target
         exact target
