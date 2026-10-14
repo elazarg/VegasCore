@@ -11,9 +11,10 @@ Along every history of the one-packet game, a transmitting response of a player
 who owes no failure at the decoded point names the event of its turn
 (`Vegas.onePacket_submission_atTurn`). At a reveal every offered packet decodes
 to the disclosure, which as-if-honest play supports, so its content is
-positive. Hence a transmitting response of content factor zero by a player who
-owes no failure commits at a binding of its turn
-(`Vegas.zeroContent_binding`).
+positive. Hence a transmitting response of content factor zero naming the event
+of the player's turn commits at a binding of that turn
+(`Vegas.zeroContent_binding_of_turn`), and so does every such response of a
+player who owes no failure (`Vegas.zeroContent_binding`).
 -/
 
 noncomputable section
@@ -31,22 +32,22 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
   {scheduler : (application setup leaks).Scheduler}
 
-/-- **A zero-content response commits at a binding of the player's turn.** Along
-every history of the one-packet game, at a response of a player who owes no
-failure at the decoded point, a transmitting response of content factor zero
-commits at a binding event of the player's turn. -/
-theorem zeroContent_binding (assessment : setup.intendedModel.BehavioralAssessment)
+/-- **A zero-content response at the player's turn commits at a binding.** Along
+every history of the one-packet game, a transmitting response of content factor
+zero whose packet names the event of the player's turn commits at a binding
+event of that turn. -/
+theorem zeroContent_binding_of_turn (assessment : setup.intendedModel.BehavioralAssessment)
     {remaining : Nat} {who : Player} {execution : (application setup leaks).Execution}
     (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩))
-    (notOwed : ∀ point, decodedPoint setup execution.application.config = some point →
-      ¬ ProtocolState.OwesFailure who setup.program point)
     (response : (application setup leaks).Action)
     (member : response ∈ bounds.onePacketActions (runtime setup) leaks who (execution.recall who)
       (execution.observe (application setup leaks) who))
     (transmits : response.transmission ≠ none)
     (zero : contentFactor setup leaks assessment who execution
-      (execution.respond (application setup leaks) who response) response = 0) :
+      (execution.respond (application setup leaks) who response) response = 0)
+    (atTurn : ∀ named, (runtime setup).submittedEvent? leaks response = some named →
+      execution.application.publicView.ownTurn? who = some named) :
     ∃ (event : (graph setup).EventId) (payload : L.Ty)
       (outputEq : (graph setup).outputLayout event = .binding who payload)
       (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
@@ -56,22 +57,12 @@ theorem zeroContent_binding (assessment : setup.intendedModel.BehavioralAssessme
   obtain ⟨material, sends⟩ := Option.ne_none_iff_exists'.mp transmits
   obtain ⟨named, _, packetEvent, _, _⟩ := onePacket_sentSourceAction who _ _ response member
     material sends (execution.respond (application setup leaks) who response)
-  have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-      (some ⟨remaining, some who, execution⟩) :=
-    (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon scheduler
-      trace
-  obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (failureProfile setup.program)
-    (bounds.onePacketMenu (runtime setup) leaks) horizon scheduler trace ⟨remaining, some who,
-      execution⟩ rfl
   have submitted : (runtime setup).submittedEvent? leaks response = some named := by
     unfold EventGraphRuntime.submittedEvent?
     rw [sends]
     exact packetEvent
-  have turn : execution.application.publicView.ownTurn? who = some named := by
-    rcases onePacket_submission_atTurn bounds (failureProfile setup.program) rawTrace residual
-        response member named submitted with turn | owes
-    · exact turn
-    · exact (notOwed _ (decodedPoint_eq residual) (owes _ residual.decode)).elim
+  have turn : execution.application.publicView.ownTurn? who = some named :=
+    atTurn named submitted
   have owned := (PublicView.ownTurn?_spec _ who named turn).2
   cases node : nodeView (graph setup) named with
   | sample payload law outputEq codeEq =>
@@ -131,5 +122,41 @@ theorem zeroContent_binding (assessment : setup.intendedModel.BehavioralAssessme
               have positive := (PMF.mem_support_iff _ _).mp supported
               exact positive ((ENNReal.toReal_eq_zero_iff _).mp zero |>.resolve_right
                 (PMF.apply_ne_top _ _))
+
+/-- **A zero-content response commits at a binding of the player's turn.** Along
+every history of the one-packet game, at a response of a player who owes no
+failure at the decoded point, a transmitting response of content factor zero
+commits at a binding event of the player's turn. -/
+theorem zeroContent_binding (assessment : setup.intendedModel.BehavioralAssessment)
+    {remaining : Nat} {who : Player} {execution : (application setup leaks).Execution}
+    (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some ⟨remaining, some who, execution⟩))
+    (notOwed : ∀ point, decodedPoint setup execution.application.config = some point →
+      ¬ ProtocolState.OwesFailure who setup.program point)
+    (response : (application setup leaks).Action)
+    (member : response ∈ bounds.onePacketActions (runtime setup) leaks who (execution.recall who)
+      (execution.observe (application setup leaks) who))
+    (transmits : response.transmission ≠ none)
+    (zero : contentFactor setup leaks assessment who execution
+      (execution.respond (application setup leaks) who response) response = 0) :
+    ∃ (event : (graph setup).EventId) (payload : L.Ty)
+      (outputEq : (graph setup).outputLayout event = .binding who payload)
+      (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+        ((graph setup).nodes event) = .bind who payload),
+      execution.application.publicView.ownTurn? who = some event ∧
+      nodeView (graph setup) event = .bind who payload outputEq codeEq := by
+  have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨remaining, some who, execution⟩) :=
+    (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon scheduler
+      trace
+  obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (failureProfile setup.program)
+    (bounds.onePacketMenu (runtime setup) leaks) horizon scheduler trace ⟨remaining, some who,
+      execution⟩ rfl
+  refine zeroContent_binding_of_turn assessment trace response member transmits zero
+    fun named submitted => ?_
+  rcases onePacket_submission_atTurn bounds (failureProfile setup.program) rawTrace residual
+      response member named submitted with turn | owes
+  · exact turn
+  · exact (notOwed _ (decodedPoint_eq residual) (owes _ residual.decode)).elim
 
 end Vegas
