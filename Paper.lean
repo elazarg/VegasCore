@@ -308,6 +308,11 @@ import Interaction.ReactiveSchedulerImplementation
 import Vegas.Pending.ExclusionMenuProjection
 import Vegas.Pending.ExclusionClearLift
 import Vegas.Pending.ExclusionBoundary
+import Vegas.Game.RecoveryOnePacketExtension
+import Vegas.Game.RecoverySourceFailure
+import Vegas.Pending.ExclusionPairedEnvironment
+import Vegas.Pending.ExclusionPublicRecord
+import Vegas.Pending.ReactiveLocalSeedReplay
 import Interaction.ReactiveSchedulerFreshSeed
 import GameTheoryExtensions.Analysis.Protocol.StoppedKernelComparison
 
@@ -1937,6 +1942,36 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Interaction.ReactiveApplication.schedulerMixture_unread_execution
+
+/-- info: 'Vegas.EventGraphRuntime.Recovery.onePacket_raw_sequentialEquilibrium' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.Recovery.onePacket_raw_sequentialEquilibrium
+
+/-- info: 'Vegas.recoveryFailureRecord_history' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recoveryFailureRecord_history
+
+/-- info: 'Vegas.RecoveryFailureRecord.owesFailure_of_decodedPoint' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryFailureRecord.owesFailure_of_decodedPoint
+
+/-- info: 'Vegas.EventGraphRuntime.RecoveryProjection.exists_paired_environmentStep' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.RecoveryProjection.exists_paired_environmentStep
+
+/-- info: 'Vegas.EventGraphRuntime.publicExclusionRecord_history' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.publicExclusionRecord_history
+
+/-- info: 'Vegas.EventGraphRuntime.LocalSeedController.runJoint_replay' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.LocalSeedController.runJoint_replay
 
 open Vegas.EventGraphRuntime.BindingMemory.RecordsSubmittedBindings in
 /-- info:

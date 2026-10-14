@@ -554,3 +554,6 @@ import Vegas.Game.OnePacketPairedLikelihoodWeight
 import Vegas.Game.OnePacketRepairCertificateCounterpart
 import Vegas.Game.OnePacketBindingRepairAssembly
 import Vegas.Game.OnePacketBindingRepairCompilation
+import Vegas.Game.SourceFailureRecord
+import Vegas.Game.RecoverySourceFailure
+import Vegas.Game.RecoveryOnePacketExtension
