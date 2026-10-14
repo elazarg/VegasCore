@@ -2,7 +2,7 @@
 
 import Vegas.Game.OnePacketOwnerInfo
 import Vegas.Game.OnePacketOwnerGuard
-import Vegas.Game.OnePacketCommitmentCompletion
+import Vegas.Game.OnePacketCanonicalPermits
 import Vegas.Game.OnePacketFreshSlots
 
 /-! # What a player's recall records along one-packet histories
@@ -376,6 +376,49 @@ theorem freshExact_of_trace {control : (application setup leaks).Control}
     obtain ⟨present, sender⟩ := List.mem_filter.mp member
     exact ⟨message, present, by simpa using sender, event, call⟩
 
+/-- A one-packet commitment names a slot that is fresh before the response. -/
+theorem onePacket_commitment_slotFresh {control : (application setup leaks).Control}
+    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
+    (who : Player) (response : (application setup leaks).Action)
+    (member : response ∈ bounds.onePacketActions (runtime setup) leaks who
+      (control.execution.recall who) (control.execution.observe (application setup leaks) who))
+    (material : (application setup leaks).Submission)
+    (sends : response.transmission = some material) {event : (graph setup).EventId}
+    {serial : Nat} (packet : material.call.packet = .commitment event (who, .prepared serial)) :
+    control.execution.application.candidates.lookup (who, .prepared serial) = .fresh := by
+  have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some control) :=
+    (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon scheduler
+      trace
+  have recalled := (runtime setup).countRecall_history leaks rawTrace
+  obtain ⟨_, permitted⟩ := (bounds.mem_onePacketActions (runtime setup) leaks who _ _
+    response).mp member
+  have verdict : CountPermits ((application setup leaks).outputs (control.execution.recall who))
+      ((runtime setup).localEnvelope leaks who (control.execution.recall who)
+        (control.execution.observe (application setup leaks) who) material) := by
+    rcases permitted with silent | ⟨other, otherSends, counted⟩
+    · rw [sends] at silent
+      cases silent
+    · rw [sends] at otherSends
+      cases Option.some.inj otherSends
+      exact (countPermits_eq_true_iff _ _).mp counted
+  have callEq : ((runtime setup).localEnvelope leaks who (control.execution.recall who)
+      (control.execution.observe (application setup leaks) who) material).payload.call =
+      material.call.packet := rfl
+  have correct := verdict.2.1
+  unfold CountCallCorrect at correct
+  rw [callEq, packet] at correct
+  obtain ⟨_, _, _, _, unused⟩ := correct
+  refine (freshExact_of_trace trace who serial).mpr ?_
+  rintro ⟨message, output, committed, call⟩
+  have earlier := earlierOwnPacket_of_output rawTrace who
+    ((application setup leaks).packet ((application setup leaks).submit
+      control.execution.application who material) who (control.execution.network.known who)
+        material) message output
+  rw [← (runtime setup).localEnvelope_eq_of_recall leaks control.execution recalled.1
+    recalled.2.1 who material] at earlier
+  exact unused message earlier committed call
+
 /-- **A response is recorded.** The entry a one-packet response appends to the
 responder's recall is recorded at the state after the response. -/
 theorem recordedResponse_respond {control : (application setup leaks).Control}
@@ -436,7 +479,7 @@ theorem recordedResponse_respond {control : (application setup leaks).Control}
         cases packet : material.call.packet with
         | commitment event handle =>
             obtain ⟨serial, rfl⟩ := onePacket_commitment_handle member rfl packet
-            have fresh := (onePacket_commitment_fresh trace who _ member material rfl packet).1
+            have fresh := onePacket_commitment_slotFresh trace who _ member material rfl packet
             unfold PreparationRecorded
             rw [packet]
             refine ⟨serial, rfl, ?_⟩
