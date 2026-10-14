@@ -489,3 +489,10 @@ import Vegas.Game.OnePacketLateCommitBlind
 import Vegas.Game.OnePacketOwnerGuard
 import Vegas.Game.OnePacketOwnerInfo
 import Vegas.Game.OnePacketSilentShape
+import Vegas.Game.OnePacketOwnerBase
+import Vegas.Game.OnePacketOwnerKeyed
+import Vegas.Game.OnePacketOwnerPrior
+import Vegas.Game.OnePacketOwnerPriorSite
+import Vegas.Game.OnePacketOwnerRecall
+import Vegas.Game.OnePacketOwnerSettled
+import Vegas.Game.OnePacketSwapDecorrelationLimit
