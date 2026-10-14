@@ -14,7 +14,10 @@ for every player, splicing two states both ways preserves the product of their
 masses (`Vegas.SourceProgram.Setup.PrivateInputsIndependent`); for a law with
 nonnegative masses this says the law factors as a function of the player's
 hidden cells times a function of the other cells. It holds for every law over
-an empty context. Then exchanging a player's hidden cells for fixed ones
+an empty context, and for every law under which only one player's hidden
+cells vary
+(`Vegas.SourceProgram.Setup.privateInputsIndependent_of_single_owner`). Then
+exchanging a player's hidden cells for fixed ones
 changes the mass of every state sharing those cells by the same ratio
 (`Vegas.SourceProgram.Setup.initialLaw_splice_mul`), and splices of supported
 states are supported (`Vegas.SourceProgram.Setup.splice_mem_support`).
@@ -105,6 +108,107 @@ theorem privateInputsIndependent_of_nil (setup : Setup (Player := Player) (L := 
   dsimp only at empty first second ⊢
   subst empty
   rw [splice_nil, splice_nil, mul_comm]
+
+open Classical in
+/-- **One player's hidden cells vary.** An initial law whose supported states
+agree with `base` at every cell not hidden by `owner` has independent hidden
+cells: the law is the mass of the owner's hidden cells times the indicator that
+the other cells are `base`'s. -/
+theorem privateInputsIndependent_of_single_owner (setup : Setup (Player := Player) (L := L))
+    (owner : Player) (base : State L setup.context)
+    (constant : ∀ state ∈ setup.initialLaw.support, ∀ name τ
+      (member : HasVar setup.context name τ), τ.hiddenOwner? ≠ some owner →
+        state name τ member = base name τ member) :
+    setup.PrivateInputsIndependent := by
+  let Off := fun state : State L setup.context => ∀ name τ
+    (member : HasVar setup.context name τ), τ.hiddenOwner? ≠ some owner →
+      state name τ member = base name τ member
+  have factor : ∀ state, setup.initialLaw state =
+      setup.initialLaw (splice owner state base) * (if Off state then 1 else 0) := by
+    intro state
+    by_cases off : Off state
+    · simp only [off, ↓reduceIte, mul_one]
+      congr 1
+      funext name τ member
+      unfold splice
+      split
+      · rfl
+      · rename_i hidden
+        exact off name τ member hidden
+    · simp only [off, ↓reduceIte, mul_zero]
+      by_contra nonzero
+      exact off (constant state ((PMF.mem_support_iff _ _).mpr nonzero))
+  intro who first second
+  rw [factor (splice who first second), factor (splice who second first), factor first,
+    factor second]
+  by_cases same : who = owner
+  · subst same
+    rw [splice_splice_left, splice_splice_left]
+    have offSplice : ∀ mine others : State L setup.context,
+        Off (splice who mine others) ↔ Off others := by
+      intro mine others
+      constructor
+      · intro off name τ member hidden
+        have := off name τ member hidden
+        unfold splice at this
+        simpa only [hidden, ↓reduceIte] using this
+      · intro off name τ member hidden
+        unfold splice
+        simp only [hidden, ↓reduceIte]
+        exact off name τ member hidden
+    simp only [offSplice]
+    ring
+  · have ownerSplice : ∀ mine others : State L setup.context,
+        splice owner (splice who mine others) base = splice owner others base := by
+      intro mine others
+      funext name τ member
+      unfold splice
+      split
+      · rename_i hidden
+        have notMine : ¬ τ.hiddenOwner? = some who :=
+          fun other => same (Option.some.inj (other.symm.trans hidden))
+        simp only [notMine, ↓reduceIte]
+      · rfl
+    rw [ownerSplice, ownerSplice]
+    have offIff : (Off (splice who first second) ∧ Off (splice who second first)) ↔
+        (Off first ∧ Off second) := by
+      constructor
+      · rintro ⟨offFirst, offSecond⟩
+        constructor
+        · intro name τ member hidden
+          by_cases mine : τ.hiddenOwner? = some who
+          · have := offFirst name τ member hidden
+            unfold splice at this
+            simpa only [mine, ↓reduceIte] using this
+          · have := offSecond name τ member hidden
+            unfold splice at this
+            simpa only [mine, ↓reduceIte] using this
+        · intro name τ member hidden
+          by_cases mine : τ.hiddenOwner? = some who
+          · have := offSecond name τ member hidden
+            unfold splice at this
+            simpa only [mine, ↓reduceIte] using this
+          · have := offFirst name τ member hidden
+            unfold splice at this
+            simpa only [mine, ↓reduceIte] using this
+      · rintro ⟨offFirst, offSecond⟩
+        constructor
+        · intro name τ member hidden
+          unfold splice
+          split
+          · exact offFirst name τ member hidden
+          · exact offSecond name τ member hidden
+        · intro name τ member hidden
+          unfold splice
+          split
+          · exact offSecond name τ member hidden
+          · exact offFirst name τ member hidden
+    by_cases offFirst : Off first <;> by_cases offSecond : Off second <;>
+      by_cases offOne : Off (splice who first second) <;>
+      by_cases offTwo : Off (splice who second first) <;>
+      simp only [offFirst, offSecond, offOne, offTwo, ↓reduceIte, mul_one, mul_zero, zero_mul,
+        and_true, and_false, iff_true, iff_false, not_true_eq_false] at offIff ⊢
+    ring
 
 /-- **The prior ratio of a hidden exchange is common.** With independent hidden
 cells, exchanging a player's hidden cells for those of `source` multiplies the
