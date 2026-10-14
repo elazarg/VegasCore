@@ -434,3 +434,5 @@ import Vegas.Game.OnePacketLateCompletion
 import Vegas.Game.OnePacketLateCompletionLaw
 import Vegas.Game.OnePacketLateSending
 import Vegas.Game.OnePacketOpenableCommitment
+import Vegas.Game.OnePacketSwapReplay
+import Vegas.Game.OnePacketValueTransport
