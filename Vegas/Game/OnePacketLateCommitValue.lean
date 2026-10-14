@@ -51,8 +51,8 @@ theorem lateCommit_historyNear [Finite ((bounds.onePacketMenu (runtime setup) le
     (assessment : (onePacketModel setup leaks bounds (initialLaw setup) horizon
       scheduler).BehavioralAssessment) (profile : BehavioralProfile setup.program) {who : Player}
     (site : (onePacketModel setup leaks bounds (initialLaw setup) horizon
-      scheduler).InformationSite who) (late : LateDelivery setup leaks who site.1)
-    {key : LateKey setup leaks} (siteKey : lateKey setup leaks who site.1 = some key)
+      scheduler).InformationSite who)
+    {key : LateKey setup leaks}
     {event : (graph setup).EventId} (decided : decidedEvent key = some event)
     (pending : pendingEvent setup leaks who site.1 = some event)
     (choice : (onePacketModel setup leaks bounds (initialLaw setup) horizon
@@ -208,7 +208,7 @@ theorem lateCommit_historyNear [Finite ((bounds.onePacketMenu (runtime setup) le
       exact ⟨completionPoint_eq_none_of_not_fresh finalState fun freshHere =>
         (freshIff final).mp freshHere failedHere, failedHere⟩
   rw [historyStopValue_eq_of_stops parameter utility excludedPayoff completes assessment site
-    late siteKey decided pending (PMF.pure choice) history current ordered ready profile stops
+    decided pending (PMF.pure choice) history current ordered ready profile stops
     readoutBounded]
   congr 1
   unfold decodedCommitValue

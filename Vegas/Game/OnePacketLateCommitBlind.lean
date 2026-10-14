@@ -212,7 +212,7 @@ theorem certificate_lateCommit_historyValue
         rw [sourceCase] at offeredAt
         exact ⟨sourceAction, rfl, offeredAt.2⟩
   exact lateCommit_historyNear parameter utility excludedPayoff completes assessment profile site
-    late siteKey decided pending choice response selected history current atSite member material
+    decided pending choice response selected history current atSite member material
     sends packet turnExecution ordered outputEq codeEq after decoded reachedPoint targetIntended
     readoutBounded
 

@@ -163,8 +163,8 @@ theorem historyStopValue_eq_of_stops [Finite ((bounds.onePacketMenu (runtime set
     (assessment : (onePacketModel setup leaks bounds (initialLaw setup) horizon
       scheduler).BehavioralAssessment) {who : Player}
     (site : (onePacketModel setup leaks bounds (initialLaw setup) horizon
-      scheduler).InformationSite who) (late : LateDelivery setup leaks who site.1)
-    {key : LateKey setup leaks} (siteKey : lateKey setup leaks who site.1 = some key)
+      scheduler).InformationSite who)
+    {key : LateKey setup leaks}
     {event : (graph setup).EventId} (decided : decidedEvent key = some event)
     (pending : pendingEvent setup leaks who site.1 = some event)
     (law : PMF ((onePacketModel setup leaks bounds (initialLaw setup) horizon
@@ -218,8 +218,8 @@ theorem historyStopValue_eq_of_stops [Finite ((bounds.onePacketMenu (runtime set
       · simp only [completionIndicator, some_, Option.elim_some, one_mul, sub_self]
       · simp only [completionIndicator, none_, Option.elim_none, zero_mul, sub_self]),
       expect_constant, abs_zero]
-  have split := lateStop_split setup leaks bounds horizon scheduler completes assessment site late
-    siteKey decided pending law history current ordered ready
+  have split := lateStop_split setup leaks bounds horizon scheduler completes assessment site
+    decided pending law history current ordered ready
   have noBad : ∀ stop ∈ untilLaw.support, lateBadStop setup leaks bounds horizon scheduler
       (siteRank site.1) (siteFresh who site.1) event stop = 0 := by
     intro stop member
@@ -286,8 +286,8 @@ theorem lateReveal_historyNear [Finite ((bounds.onePacketMenu (runtime setup) le
     (assessment : (onePacketModel setup leaks bounds (initialLaw setup) horizon
       scheduler).BehavioralAssessment) {who : Player}
     (site : (onePacketModel setup leaks bounds (initialLaw setup) horizon
-      scheduler).InformationSite who) (late : LateDelivery setup leaks who site.1)
-    {key : LateKey setup leaks} (siteKey : lateKey setup leaks who site.1 = some key)
+      scheduler).InformationSite who)
+    {key : LateKey setup leaks}
     {event : (graph setup).EventId} (decided : decidedEvent key = some event)
     (pending : pendingEvent setup leaks who site.1 = some event)
     (law : PMF ((onePacketModel setup leaks bounds (initialLaw setup) horizon
@@ -490,7 +490,7 @@ theorem lateReveal_historyNear [Finite ((bounds.onePacketMenu (runtime setup) le
     rw [ite_eq_left reachedPoint ..]
   rw [pointValue]
   exact historyStopValue_eq_of_stops parameter utility excludedPayoff completes assessment site
-    late siteKey decided pending law history current ordered ready profile stops readoutBounded
+    decided pending law history current ordered ready profile stops readoutBounded
 
 end Value
 

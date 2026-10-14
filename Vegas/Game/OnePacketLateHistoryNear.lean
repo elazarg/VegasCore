@@ -4,8 +4,10 @@ import Vegas.Game.OnePacketLateBadMass
 
 /-! # The completion value from a late history
 
-**Failure, completion and bad stops.** From a history of a late delivery of a
-binding, every stop of play until the event completes has completed the event;
+**Failure, completion and bad stops.** From a history of a site at which a
+binding is pending and decided by the site's key, failure is store failure of
+the event (`Vegas.onePacketFailed_iff_decisionFailed_of_pending`), and every
+stop of play until the event completes has completed the event;
 terminal play from it fails the event exactly when the stop has, and a stop
 with a completion point has not failed. So one less the failure probability
 from the history is the completion mass plus the mass of bad stops, and the
@@ -41,6 +43,70 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
 local notation "onePacketN" =>
   onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
 
+/-- **Event-level failure is store-level failure of the pending event.** Under a
+scheduler completing play, at a site with a pending event decided by its key,
+every final history of play for the horizon from a history of the site is an
+event-level failed history of the site's agent exactly when its store records a
+failure of the event the key decides. -/
+theorem onePacketFailed_iff_decisionFailed_of_pending
+    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
+    {who : Player} (site : (onePacketN).InformationSite who) {key : LateKey setup leaks}
+    {event : (graph setup).EventId} (decided : decidedEvent key = some event)
+    (pending : pendingEvent setup leaks who site.1 = some event)
+    (history : (onePacketN).InformationHistory who site.1)
+    (profile : ∀ player, (onePacketN).BehavioralPolicy player)
+    (final : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+      scheduler).History)
+    (reached : final ∈ ((onePacketN).runBehavioralFrom profile (2 * horizon + 1)
+      history.1).support) :
+    final ∈ onePacketFailed setup leaks bounds horizon scheduler ((onePacketN).agentAt site) ↔
+      DecisionFailed key final.state := by
+  let menu := bounds.onePacketMenu (runtime setup) leaks
+  have bounded := menu.bounded (initialLaw setup) horizon scheduler
+  let certificate := bounded.wellFoundedHistories
+  have owned : (graph setup).actor? event = some who := by
+    obtain ⟨info, decision⟩ := site
+    cases info with
+    | none => cases pending
+    | some input => exact (pendingEvent_spec (setup := setup) pending).2.2.1
+  have terminalReached : final ∈ ((onePacketN).runBehavioralTerminalFrom certificate profile
+      history.1).support := by
+    rw [(onePacketN).runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded certificate
+      bounded]
+    exact reached
+  have stopped := (onePacketN).runBehavioralTerminalFrom_support_terminal certificate profile
+    history.1 final terminalReached
+  have failedEq : onePacketFailed setup leaks bounds horizon scheduler
+      ((onePacketN).agentAt site) =
+      EventFailedHistory setup leaks bounds horizon scheduler who event := by
+    unfold onePacketFailed
+    change (match pendingEvent setup leaks who site.1 with
+      | none => ∅
+      | some event => EventFailedHistory setup leaks bounds horizon scheduler who event) = _
+    rw [pending]
+  rw [failedEq]
+  have finalTrace := final.trace
+  cases finalState : final.state with
+  | none => rw [finalState] at stopped; exact stopped.elim
+  | some control =>
+      have rawTrace := menu.toRawTrace (initialLaw setup) horizon scheduler finalTrace
+      rw [finalState] at rawTrace stopped
+      have cutTerminal := completes control rawTrace stopped
+      unfold DecisionFailed
+      rw [decided]
+      constructor
+      · intro failedHistory
+        change sourceReadout setup leaks final.state ∈ EventFailedReadout setup who event
+          at failedHistory
+        rw [finalState] at failedHistory
+        obtain ⟨terminal, read, _, cellFailed⟩ := failedHistory
+        exact ⟨by rw [cutTerminal]; exact Finset.mem_univ _,
+          storeEventFailed_of_readout setup leaks control event read cellFailed⟩
+      · rintro ⟨_, storeFailed⟩
+        exact eventFailedHistory_of_storeEventFailed bounds horizon scheduler
+          (failureProfile setup.program) completes certificate profile final
+          (by rw [finalState]; exact stopped) finalState owned storeFailed
+
 open Classical in
 /-- **Failure, completion and bad stops at a stop.** From a history of a late
 delivery of the binding `event`, the ready event of the site's rank, every stop
@@ -50,8 +116,7 @@ point at which terminal play does not surely fail are bad. -/
 theorem lateStop_split
     (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
     (assessment : (onePacketN).BehavioralAssessment) {who : Player}
-    (site : (onePacketN).InformationSite who) (late : LateDelivery setup leaks who site.1)
-    {key : LateKey setup leaks} (siteKey : lateKey setup leaks who site.1 = some key)
+    (site : (onePacketN).InformationSite who) {key : LateKey setup leaks}
     {event : (graph setup).EventId} (decided : decidedEvent key = some event)
     (pending : pendingEvent setup leaks who site.1 = some event)
     (law : PMF ((onePacketN).Choice who site.1))
@@ -125,8 +190,8 @@ theorem lateStop_split
         history.1).support := by
       rw [← terminalRun, terminalSplit, PMF.mem_support_bind_iff]
       exact ⟨stop, member, laterMember⟩
-    rw [onePacketFailed_iff_decisionFailed setup leaks bounds horizon scheduler completes
-      (failureProfile setup.program) site late siteKey history installed later reachedFromStart]
+    rw [onePacketFailed_iff_decisionFailed_of_pending setup leaks bounds horizon scheduler
+      completes site decided pending history installed later reachedFromStart]
     obtain ⟨laterControl, laterState, keeps⟩ := model.runBehavioralTerminalFrom_support_closed
       certificate installed
       (fun reachedState => ∃ reachedControl, reachedState = some reachedControl ∧
@@ -218,8 +283,7 @@ theorem lateBinding_historyNear [Finite ((bounds.onePacketMenu (runtime setup) l
     (source : setup.intendedModel.BehavioralAssessment) {scale : ℝ} (positive : 0 < scale)
     (le_one : scale ≤ 1) {slots : Nat} (slotsLe : slots ≤ bounds.candidateCount)
     (assessment : (onePacketN).BehavioralAssessment) {who : Player}
-    (site : (onePacketN).InformationSite who) (late : LateDelivery setup leaks who site.1)
-    {key : LateKey setup leaks} (siteKey : lateKey setup leaks who site.1 = some key)
+    (site : (onePacketN).InformationSite who) {key : LateKey setup leaks}
     {event : (graph setup).EventId} (decided : decidedEvent key = some event)
     (pending : pendingEvent setup leaks who site.1 = some event)
     (law : PMF ((onePacketN).Choice who site.1))
@@ -238,10 +302,9 @@ theorem lateBinding_historyNear [Finite ((bounds.onePacketMenu (runtime setup) l
       some point)
     (intendedPoint : ProtocolState.Intended setup.program point)
     (reachedPoint : IntendedReached setup point)
-    (shape : LateOwnerShape setup leaks bounds horizon scheduler source positive.le le_one slots
-      (Profile.update (sig := (onePacketN).behavioralSignature) assessment.strategy who
-        ((assessment.strategy who).withLaw site.1 law)) who event execution.application.config
-      (execution.recall who))
+    (shape : LateOwnerShapeFrom setup leaks bounds horizon scheduler source positive.le le_one
+      slots (Profile.update (sig := (onePacketN).behavioralSignature) assessment.strategy who
+        ((assessment.strategy who).withLaw site.1 law)) who event execution)
     {η : ℝ} (η_nonneg : 0 ≤ η)
     (successFree : ∀ (later : ((bounds.onePacketMenu (runtime setup) leaks).protocol
         (initialLaw setup) horizon scheduler).History) (laterRemaining : Nat)
@@ -304,8 +367,8 @@ theorem lateBinding_historyNear [Finite ((bounds.onePacketMenu (runtime setup) l
     η_nonneg successFree
   have badMass := lateBinding_badMass completes covers capacity source positive le_one slotsLe
     installed history.1 current node turn unrecorded ordered decoded intendedPoint freshIff shape
-  have split := lateStop_split setup leaks bounds horizon scheduler completes assessment site late
-    siteKey decided pending law history current ordered ready
+  have split := lateStop_split setup leaks bounds horizon scheduler completes assessment site
+    decided pending law history current ordered ready
   have badBounded : ∀ stop, |bad stop| ≤ 1 := by
     intro stop
     simp only [bad, lateBadStop]

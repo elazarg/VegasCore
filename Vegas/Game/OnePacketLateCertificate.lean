@@ -396,11 +396,11 @@ theorem certificate_lateBinding_historyNear
     siteKeyHere turn unrecorded node
   exact lateBinding_historyNear setup leaks bounds horizon scheduler parameter utility
     excludedPayoff completes covers capacity (sequence n) (scale_pos n) (scale_le_one n) slotsLe
-    (targetSequence n) site late siteKey decided pending law history current node turn
+    (targetSequence n) site decided pending law history current node turn
     unrecorded ordered decoded intendedPoint reachedPoint
-    (certificate_lateOwnerShape setup leaks bounds horizon scheduler sequence scale scale_pos
-      scale_le_one weights targetSequence assembled n site late pending law lawShape history
-      current atSite forced)
+    (LateOwnerShape.from (certificate_lateOwnerShape setup leaks bounds horizon scheduler
+      sequence scale scale_pos scale_le_one weights targetSequence assembled n site late pending
+      law lawShape history current atSite forced))
     (mul_nonneg (Nat.cast_nonneg _) (by have := pow_nonneg (scale_pos n).le 3; linarith))
     (certificate_lateSuccessFree setup leaks bounds horizon scheduler sequence scale scale_pos
       scale_le_one weights targetSequence assembled n completes covers capacity slotsLe site late

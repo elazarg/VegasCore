@@ -72,8 +72,8 @@ theorem lateBinding_badMass
     {fresh : (application setup leaks).Control → Prop}
     (freshIff : ∀ control, fresh control ↔
       ¬ StoreEventFailed control.execution.application.config.store event)
-    (shape : LateOwnerShape setup leaks bounds horizon scheduler assessment positive.le le_one
-      slots installed who event execution.application.config (execution.recall who)) :
+    (shape : LateOwnerShapeFrom setup leaks bounds horizon scheduler assessment positive.le
+      le_one slots installed who event execution) :
     expect ((onePacketModel setup leaks bounds (initialLaw setup) horizon
         scheduler).runBehavioralUntil
         ((bounds.onePacketMenu (runtime setup) leaks).bounded (initialLaw setup) horizon

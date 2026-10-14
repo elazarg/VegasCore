@@ -20,7 +20,9 @@ stops vanishing while `who` is unsent and at failures, and after each permitted
 commitment a slot factor times a centered function of the choice up to `ε`, has
 expectation at most the cube of the scale times its bound plus `ε` per step of
 the horizon (`Vegas.lateBinding_exitBound`). So, when `who` plays at
-each of its decisions a slot-trembled mixture of late options or silence, the
+each of its decisions since the history, at the history itself and after its
+response there, a slot-trembled mixture of late options or silence
+(`Vegas.LateOwnerShapeFrom`, implied by `Vegas.LateOwnerShape`), the
 completion-point law from the history is the completion mass times the step of
 the intended effective opening at the decoded point, up to twice the cube of the
 scale plus `η`, per step of the horizon
@@ -106,6 +108,57 @@ def LateOwnerShape (assessment : setup.intendedModel.BehavioralAssessment) {scal
       PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler who
         (some (reached.recall who, reached.observe (application setup leaks) who)))
 
+variable (setup leaks bounds horizon scheduler) in
+/-- **The late owner shape from a decision.** The shape of the owner's laws at
+its decisions while it has sent nothing for the event since the decision
+`start`: at the decision itself, identified by its view, and at decisions whose
+recall extends the start's by the entry of a response there. -/
+def LateOwnerShapeFrom (assessment : setup.intendedModel.BehavioralAssessment) {scale : ℝ}
+    (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) (slots : Nat)
+    (installed : ∀ player, (onePacketModel setup leaks bounds (initialLaw setup) horizon
+      scheduler).BehavioralPolicy player) (who : Player) (event : (graph setup).EventId)
+    (start : (application setup leaks).Execution) : Prop :=
+  ∀ (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol
+      (initialLaw setup) horizon scheduler).History) (later : Nat)
+      (reached : (application setup leaks).Execution),
+    history.state = some ⟨later, some who, reached⟩ →
+    LateUnsent setup leaks who event start.application.config (start.recall who)
+      history.state →
+    (reached.recall who = start.recall who →
+      reached.observe (application setup leaks) who =
+        start.observe (application setup leaks) who) →
+    (reached.recall who ≠ start.recall who → ∃ response,
+      start.recall who ++ [respondEntry setup leaks start who response] <+:
+        reached.recall who) →
+    (∃ options : PMF (LateOption slots),
+      installed who (some (reached.recall who, reached.observe (application setup leaks) who)) =
+        slotTrembledChoice setup leaks bounds (initialLaw setup) horizon scheduler scale
+          nonnegative le_one who
+          (some (reached.recall who, reached.observe (application setup leaks) who))
+          (options.bind (lateChoice setup leaks bounds (initialLaw setup) horizon scheduler
+            assessment who
+            (some (reached.recall who, reached.observe (application setup leaks) who))))
+          (PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler who
+            (some (reached.recall who, reached.observe (application setup leaks) who))))
+          (slotChoice setup leaks bounds (initialLaw setup) horizon scheduler assessment who
+            (some (reached.recall who, reached.observe (application setup leaks) who)))) ∨
+    installed who (some (reached.recall who, reached.observe (application setup leaks) who)) =
+      PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler who
+        (some (reached.recall who, reached.observe (application setup leaks) who)))
+
+/-- The late owner shape since a decision's recall is the late owner shape from
+the decision. -/
+theorem LateOwnerShape.from {assessment : setup.intendedModel.BehavioralAssessment}
+    {scale : ℝ} {nonnegative : 0 ≤ scale} {le_one : scale ≤ 1} {slots : Nat}
+    {installed : ∀ player, (onePacketModel setup leaks bounds (initialLaw setup) horizon
+      scheduler).BehavioralPolicy player} {who : Player} {event : (graph setup).EventId}
+    {start : (application setup leaks).Execution}
+    (shape : LateOwnerShape setup leaks bounds horizon scheduler assessment nonnegative le_one
+      slots installed who event start.application.config (start.recall who)) :
+    LateOwnerShapeFrom setup leaks bounds horizon scheduler assessment nonnegative le_one
+      slots installed who event start :=
+  fun history later reached state holds _ _ => shape history later reached state holds
+
 omit [Fintype Player] in
 /-- At a decision of the owner while it has sent nothing, the configuration is
 the one it decodes at, and the event is ready and the owner's turn there. -/
@@ -164,8 +217,8 @@ theorem lateBinding_exitBound
     (turn : execution.application.publicView.ownTurn? who = some event)
     (unrecorded : (runtime setup).eventRecorded leaks (execution.recall who) event = false)
     {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
-    (shape : LateOwnerShape setup leaks bounds horizon scheduler assessment positive.le le_one
-      slots installed who event execution.application.config (execution.recall who))
+    (shape : LateOwnerShapeFrom setup leaks bounds horizon scheduler assessment positive.le
+      le_one slots installed who event execution)
     (payoff : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
       horizon scheduler).History → ℝ) {bound ε : ℝ}
     (payoffBounded : ∀ stop, |payoff stop| ≤ bound)
@@ -227,8 +280,17 @@ theorem lateBinding_exitBound
   let sent := execution.application.config
   let past := execution.recall who
   let stopped := LateStopped setup leaks bounds horizon scheduler rank
+  -- Before the owner's response at the start the state is the start's; after it the
+  -- recall extends the start's by the entry of that response.
+  let through : (application setup leaks).ProtocolState → Prop := fun state =>
+    ∀ control : (application setup leaks).Control, state = some control →
+      (control.execution.recall who = past → state = start.state) ∧
+      (control.execution.recall who ≠ past → ∃ response,
+        past ++ [respondEntry setup leaks execution who response] <+:
+          control.execution.recall who)
   let inside : (menu.protocol (initialLaw setup) horizon scheduler).History → Prop :=
-    fun history => LateUnsent setup leaks who event sent past history.state
+    fun history => LateUnsent setup leaks who event sent past history.state ∧
+      through history.state
   have boundNonneg : 0 ≤ bound := (abs_nonneg _).trans (payoffBounded start)
   have κNonneg : 0 ≤ scale ^ 3 * bound + ε :=
     add_nonneg (mul_nonneg (pow_nonneg positive.le 3) boundNonneg) ε_nonneg
@@ -237,14 +299,14 @@ theorem lateBinding_exitBound
       (menu.protocol (initialLaw setup) horizon scheduler).terminal history.state) →
       payoff history = 0 := by
     intro history holds _
-    simp only [inside] at holds
+    have unsent := holds.1
     cases state : history.state with
     | none =>
-        rw [state] at holds
-        exact holds.elim
+        rw [state] at unsent
+        exact unsent.elim
     | some control =>
-        rw [state] at holds
-        exact unsentZero history control state holds.1
+        rw [state] at unsent
+        exact unsentZero history control state unsent.1
   have descends : ∀ history next, inside history → ¬ stopped history →
       ¬ (menu.protocol (initialLaw setup) horizon scheduler).terminal history.state →
       next ∈ (model.runBehavioralFrom installed 1 history).support →
@@ -262,15 +324,16 @@ theorem lateBinding_exitBound
         scale ^ 3 * bound + ε := by
     intro history holds going running
     obtain ⟨control, state⟩ : ∃ control, history.state = some control := by
-      simp only [inside] at holds
+      have unsent := holds.1
       cases historyState : history.state with
       | none =>
-          rw [historyState] at holds
-          exact holds.elim
+          rw [historyState] at unsent
+          exact unsent.elim
       | some control => exact ⟨control, rfl⟩
-    have holdsHere := holds
-    simp only [inside, state] at holdsHere
+    have holdsHere := holds.1
+    simp only [state] at holdsHere
     obtain ⟨atSent, extends_, unrecordedHere⟩ := holdsHere
+    have throughHere := holds.2 control state
     rcases control with ⟨later, actor, reached⟩
     have readySent : sent.cut.Ready event :=
       (execution.application.publicView_eventReady event).mp
@@ -378,17 +441,38 @@ theorem lateBinding_exitBound
       have silentInside : ∀ next : (menu.protocol (initialLaw setup) horizon scheduler).History,
           next.state = respondState ⟨none⟩ → inside next := by
         intro next nextState
-        simp only [inside, nextState, respondState, LateUnsent]
-        have recallEq := (runtime setup).respond_recall leaks reached who who ⟨none⟩
-        rw [ite_eq_left rfl ..] at recallEq
-        refine ⟨((runtime setup).reactive_respond_application leaks reached who _).1.trans
-          atSent, ?_, ?_⟩
-        · rw [recallEq]
-          exact extends_.trans (List.prefix_append _ _)
-        · rw [recallEq]
-          unfold EventGraphRuntime.eventRecorded at unrecordedHere ⊢
-          rw [List.any_append, unrecordedHere]
-          simp [EventGraphRuntime.submittedEvent?]
+        have recallEq : (reached.respond (application setup leaks) who ⟨none⟩).recall who =
+            reached.recall who ++ [respondEntry setup leaks reached who ⟨none⟩] := by
+          rw [(runtime setup).respond_recall leaks reached who who ⟨none⟩, ite_eq_left rfl ..]
+          rfl
+        refine ⟨?_, ?_⟩
+        · simp only [nextState, respondState, LateUnsent]
+          refine ⟨((runtime setup).reactive_respond_application leaks reached who _).1.trans
+            atSent, ?_, ?_⟩
+          · rw [recallEq]
+            exact extends_.trans (List.prefix_append _ _)
+          · rw [recallEq]
+            unfold EventGraphRuntime.eventRecorded at unrecordedHere ⊢
+            rw [List.any_append, unrecordedHere]
+            simp [EventGraphRuntime.submittedEvent?, respondEntry]
+        · intro nextControl nextEq
+          rw [nextState] at nextEq
+          cases Option.some.inj nextEq
+          have longer : (reached.respond (application setup leaks) who ⟨none⟩).recall who ≠
+              past := by
+            intro same
+            have lengthEq := congrArg List.length same
+            rw [recallEq, List.length_append, List.length_singleton] at lengthEq
+            have shorter : past.length ≤ (reached.recall who).length := extends_.length_le
+            omega
+          refine ⟨fun same => (longer same).elim, fun _ => ?_⟩
+          by_cases atStart : reached.recall who = past
+          · have startEq := (throughHere.1 atStart).symm
+            rw [current, state] at startEq
+            cases startEq
+            exact ⟨⟨none⟩, by rw [recallEq]⟩
+          · obtain ⟨response, prefixed⟩ := throughHere.2 atStart
+            exact ⟨response, by rw [recallEq]; exact prefixed.trans (List.prefix_append _ _)⟩
       have silentZero : ∀ next : (menu.protocol (initialLaw setup) horizon scheduler).History,
           next.state = respondState ⟨none⟩ → exit next = 0 := by
         intro next nextState
@@ -399,8 +483,17 @@ theorem lateBinding_exitBound
           bounds.silence_onePacket (runtime setup) leaks who, ↓reduceDIte, Option.getD_some]
       rw [expectEq]
       have holdsState : LateUnsent setup leaks who event execution.application.config
-          (execution.recall who) history.state := holds
-      rcases shape history later reached state holdsState with ⟨options, lawEq⟩ | silenceEq
+          (execution.recall who) history.state := holds.1
+      have sameView : reached.recall who = execution.recall who →
+          reached.observe (application setup leaks) who =
+            execution.observe (application setup leaks) who := by
+        intro atStart
+        have startEq := (throughHere.1 atStart).symm
+        rw [current, state] at startEq
+        cases startEq
+        rfl
+      rcases shape history later reached state holdsState sameView throughHere.2 with
+        ⟨options, lawEq⟩ | silenceEq
       · -- A slot-trembled mixture of late options.
         rw [lawEq]
         have fullSupport := slotTrembledChoice_fullSupport setup leaks bounds (initialLaw setup)
@@ -477,7 +570,7 @@ theorem lateBinding_exitBound
               rfl
             have recordedNext : ¬ inside next := by
               simp only [inside, nextState, respondState, LateUnsent]
-              rintro ⟨_, _, unrecordedNext⟩
+              rintro ⟨⟨_, _, unrecordedNext⟩, _⟩
               rw [(runtime setup).respond_recall leaks reached who who, ite_eq_left rfl ..]
                 at unrecordedNext
               unfold EventGraphRuntime.eventRecorded at unrecordedNext
@@ -530,7 +623,20 @@ theorem lateBinding_exitBound
         rcases lateUnsent_transition_other ordered readySent outputEq
             ⟨later, actor, reached⟩ ⟨atSent, extends_, unrecordedHere⟩ owner joint realized'
             (rawAfter next) with unsent | ⟨after, afterState, prefixed, failed⟩
-        · simp only [show inside next from unsent, ↓reduceIte]
+        · have throughNext : through next.state := by
+            intro nextControl nextEq
+            have recallEq := recall_eq_of_transition (initial := initialLaw setup)
+              (horizon := horizon) (scheduler := scheduler) who ⟨later, actor, reached⟩ owner
+              joint (nextEq ▸ realized')
+            have notStart : reached.recall who ≠ past := by
+              intro atStart
+              have startEq := (throughHere.1 atStart).symm
+              rw [current, state] at startEq
+              cases startEq
+              exact owner rfl
+            rw [recallEq]
+            exact ⟨fun atStart => (notStart atStart).elim, fun _ => throughHere.2 notStart⟩
+          simp only [show inside next from ⟨unsent, throughNext⟩, ↓reduceIte]
         · split
           · rfl
           · have halted : stopped next := ⟨after, afterState, prefixed⟩
@@ -540,8 +646,12 @@ theorem lateBinding_exitBound
       rw [expect_congr_on_support (g := fun _ => 0) zero, expect_constant, abs_zero]
       exact κNonneg
   have startInside : inside start := by
-    simp only [inside, current]
-    exact ⟨rfl, List.prefix_refl _, unrecorded⟩
+    refine ⟨?_, fun control startEq => ⟨fun _ => rfl, fun different => ?_⟩⟩
+    · simp only [current]
+      exact ⟨rfl, List.prefix_refl _, unrecorded⟩
+    · rw [current] at startEq
+      cases Option.some.inj startEq
+      exact (different rfl).elim
   have main := model.abs_expect_runBehavioralUntil_le_of_exits certificate installed stopped
     inside payoff payoffBounded κNonneg (fun history => (2 * horizon + 1) - history.trace.length)
     atEnd descends exits start startInside
@@ -589,8 +699,8 @@ theorem lateBinding_completionPointLaw
     {fresh : (application setup leaks).Control → Prop}
     (failedStale : ∀ control, StoreEventFailed control.execution.application.config.store event →
       ¬ fresh control)
-    (shape : LateOwnerShape setup leaks bounds horizon scheduler assessment positive.le le_one
-      slots installed who event execution.application.config (execution.recall who))
+    (shape : LateOwnerShapeFrom setup leaks bounds horizon scheduler assessment positive.le
+      le_one slots installed who event execution)
     {η : ℝ} (η_nonneg : 0 ≤ η)
     (successFree : ∀ (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol
         (initialLaw setup) horizon scheduler).History) (later : Nat)
