@@ -13,7 +13,10 @@ installed at the site plays the late owner shape, the late component of the
 key's weights while `who` has sent nothing for the event
 (`Vegas.certificate_firstActivation_lateOwnerShape`). The site itself is not
 covered: there the installed law is played, and other first activations with
-the site's recall are not late deliveries.
+the site's recall are not late deliveries. With silence installed at the site,
+the profile plays the late owner shape from the site's execution, silence at
+the site and the late component after a response there
+(`Vegas.certificate_firstActivation_lateOwnerShapeFrom`).
 -/
 
 noncomputable section
@@ -114,5 +117,56 @@ theorem certificate_firstActivation_lateOwnerShape
   exact ⟨_, (certificate_strategyShape setup leaks bounds horizon scheduler sequence scale
     scale_pos scale_le_one weights targetSequence assembled n who later laterRemaining reached
     event state forcedHere ready activated).1 unrecordedHere⟩
+
+/-- **The owner shape from a first activation with silence installed.** At a
+forced history of a site of `who` with `event` pending, a profile assembled from
+the certificate's components with silence installed at the site plays the late
+owner shape from the site's execution: silence at the site itself, and the late
+component of the key's weights at every later decision whose recall extends the
+site's by the entry of a response there. -/
+theorem certificate_firstActivation_lateOwnerShapeFrom
+    (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
+    (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
+    {slots : Nat}
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
+    (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
+    (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
+      scale_le_one weights targetSequence) (n : ℕ) {who : Player}
+    (site : (onePacketN).InformationSite who) {event : (graph setup).EventId}
+    (pending : pendingEvent setup leaks who site.1 = some event)
+    (history : (onePacketN).InformationHistory who site.1)
+    {remaining : Nat} {execution : (application setup leaks).Execution}
+    (current : history.1.state = some ⟨remaining, some who, execution⟩)
+    (atSite : site.1 = some (execution.recall who,
+      execution.observe (application setup leaks) who))
+    (forced : ForcedState setup leaks who history.1.state) :
+    LateOwnerShapeFrom setup leaks bounds horizon scheduler (sequence n) (scale_pos n).le
+      (scale_le_one n) slots
+      (Profile.update (sig := (onePacketN).behavioralSignature) (targetSequence n).strategy who
+        (((targetSequence n).strategy who).withLaw site.1
+          (PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler who
+            site.1)))) who event execution := by
+  intro later laterRemaining reached state holds sameView extended
+  by_cases sameRecall : reached.recall who = execution.recall who
+  · -- The site itself: silence.
+    right
+    rw [Profile.update_same]
+    have same : (some (reached.recall who, reached.observe (application setup leaks) who) :
+        (application setup leaks).Info) = site.1 := by
+      rw [atSite, sameRecall, sameView sameRecall]
+    obtain ⟨siteInfo, decision⟩ := site
+    change _ = siteInfo at same
+    subst same
+    rw [BehavioralPolicy.withLaw_self]
+  · -- Later: the late component, after a response at the site.
+    obtain ⟨response, extends_⟩ := extended sameRecall
+    have unsent : LateUnsent setup leaks who event execution.application.config
+        (execution.recall who ++ [respondEntry setup leaks execution who response])
+        later.state := by
+      rw [state] at holds ⊢
+      exact ⟨holds.1, extends_, holds.2.2⟩
+    exact certificate_firstActivation_lateOwnerShape setup leaks bounds horizon scheduler
+      sequence scale scale_pos scale_le_one weights targetSequence assembled n site pending _
+      history current atSite forced response later laterRemaining reached state unsent
 
 end Vegas
