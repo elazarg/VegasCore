@@ -498,8 +498,7 @@ option at that slot gains plus its success probability times the source gain of
 committing that value at the projected site, up to a vanishing error. -/
 theorem OnePacketBaseInputs.lateCommitments_of_blind [Finite setup.intendedProtocol.History]
     {sequence : ℕ → setup.intendedModel.BehavioralAssessment} {slots : Nat}
-    (inputs : OnePacketBaseInputs setup leaks bounds horizon scheduler parameter utility
-      excludedPayoff sequence slots)
+    (inputs : OnePacketBaseInputs setup leaks bounds horizon scheduler sequence slots)
     (wellFormed : setup.WellFormed) {delay bound : (graph setup).EventId → Nat}
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
       bound)

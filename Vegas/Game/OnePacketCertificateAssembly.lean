@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketLateDecomposition
 import Vegas.Game.OnePacketLateCommitments
+import Vegas.Game.OnePacketValueTransport
 
 /-! # Assembling the one-packet certificate from value blindness
 
@@ -52,8 +53,7 @@ bounded slots, value blindness of the completion value at forced late
 deliveries and at the other forced sites, and value-blind late commitments. -/
 structure OnePacketBlindInputs (upperUtility : Player → ℝ)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment) (slots : Nat) extends
-    OnePacketBaseInputs setup leaks bounds horizon scheduler parameter utility excludedPayoff
-      sequence slots where
+    OnePacketBaseInputs setup leaks bounds horizon scheduler sequence slots where
   /-- The gap bound is at least the spread of the utility over the exclusion
   payoff. -/
   gap_le : ∀ who, upperUtility who - excludedPayoff who ≤ gapBound
@@ -166,6 +166,59 @@ def OnePacketBlindInputs.toOpenInputs {lowerUtility upperUtility : Player → �
     OnePacketOpenInputs setup leaks bounds horizon scheduler parameter utility excludedPayoff
       sequence slots where
   toOnePacketBaseInputs := inputs.toOnePacketBaseInputs
+  valueTransport weights targetSequence assembled mixed bayes := by
+    classical
+    let range := fun who : Player => max 0 (max (excludedPayoff who) (upperUtility who)) -
+      min 0 (min (excludedPayoff who) (lowerUtility who))
+    let total := ∑ who, range who
+    have rangeNonneg : ∀ who, 0 ≤ range who := fun who => by
+      have := le_max_left 0 (max (excludedPayoff who) (upperUtility who))
+      have := min_le_left 0 (min (excludedPayoff who) (lowerUtility who))
+      simp only [range]
+      linarith
+    have rangeLe : ∀ who, range who ≤ total := fun who =>
+      Finset.single_le_sum (fun player _ => rangeNonneg player) (Finset.mem_univ who)
+    have totalNonneg : 0 ≤ total := Finset.sum_nonneg fun player _ => rangeNonneg player
+    let valueError := fun n => 2 * (((Fintype.card Player * (2 * horizon + 1) : ℕ) *
+      (1 - slotRetention (inputs.scale n))) * total) + 12 * inputs.scale n * total
+    have valueLimit : Tendsto valueError atTop (nhds 0) := by
+      have retention := tendsto_slotRetention inputs.scale_vanishing
+      have limit := (((((tendsto_const_nhds (x := (1 : ℝ))).sub retention).const_mul
+        ((Fintype.card Player * (2 * horizon + 1) : ℕ) : ℝ)).mul_const total).const_mul 2).add
+        (((inputs.scale_vanishing.const_mul 12).mul_const total))
+      simp only [sub_self, mul_zero, zero_mul, add_zero] at limit
+      exact limit
+    refine ⟨valueError, 4 * total, valueLimit, by positivity,
+      fun n who site choice forced unkeyed atTurn debtFree intended decision past view atSite =>
+        ?_⟩
+    obtain ⟨turnPast, turnView, response, event, turnSite, _, _, turn⟩ := atTurn
+    rw [atSite, Option.some.injEq, Prod.mk.injEq] at turnSite
+    obtain ⟨pastEq, viewEq⟩ := turnSite
+    subst pastEq viewEq
+    have beliefs := inputs.beliefInputs weights targetSequence assembled mixed bayes who site
+      forced debtFree atSite turn decision
+    obtain ⟨policy, gainLe⟩ := onePacket_valueTransport_le setup leaks bounds horizon scheduler
+      parameter utility excludedPayoff wellFormed contract timely retains lowerUtility
+      upperUtility lower_le le_upper sequence inputs.scale inputs.scale_pos inputs.scale_le_one
+      weights targetSequence assembled n site choice forced unkeyed
+      ⟨_, _, response, event, atSite, by assumption, by assumption, turn⟩ intended decision
+      atSite (beliefs.ownIntended n)
+    refine ⟨policy, gainLe.trans ?_, fun point =>
+      (abs_intended_historyGain_le setup parameter utility excludedPayoff lowerUtility
+        upperUtility lower_le le_upper (sequence n) _ point).trans (by linarith [rangeLe who])⟩
+    have retentionLe := slotRetention_le_one (inputs.scale_pos n).le (inputs.scale_le_one n)
+    have scaleNonneg := (inputs.scale_pos n).le
+    have irregularNonneg : 0 ≤ expect ((targetSequence n).belief who site) (fun history =>
+        if RegularTrace setup leaks bounds horizon scheduler (sequence n) who history.1.trace
+        then (0 : ℝ) else 1) :=
+      expect_nonneg _ _ fun history _ => by split <;> norm_num
+    have retentionTerm : 0 ≤ ((Fintype.card Player * (2 * horizon + 1) : ℕ) : ℝ) *
+        (1 - slotRetention (inputs.scale n)) := mul_nonneg (Nat.cast_nonneg _) (by linarith)
+    have first := mul_le_mul_of_nonneg_left (rangeLe who) retentionTerm
+    have second := mul_le_mul_of_nonneg_left (rangeLe who) scaleNonneg
+    have third := mul_le_mul_of_nonneg_right (rangeLe who) irregularNonneg
+    simp only [valueError, range] at first second third ⊢
+    nlinarith [first, second, third]
   lateCommitments := inputs.toOnePacketBaseInputs.lateCommitments_of_blind setup leaks bounds
     horizon scheduler parameter utility excludedPayoff wellFormed contract timely retains
     lowerUtility upperUtility lower_le le_upper sourceMixed sourceBayes inputs.slotsCover
