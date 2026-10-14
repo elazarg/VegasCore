@@ -3696,10 +3696,11 @@ structure OnePacketOpenInputs (sequence : ℕ → setup.intendedModel.Behavioral
                 scale_le_one (slots := slots) n ((onePacketN).agentAt site) option)) *
               continuation n ((onePacketN).agentAt site)| ≤ error n
   /-- **The value decomposition away from late deliveries.** At every forced site
-  that is not a late delivery, the exclusion payoff is at most the agent's
-  continuation value up to a vanishing error, with gap at most the gap bound, or
-  the site has no pending event; and the successful part of every marked choice
-  and of the prescribed component is its success probability times that
+  of an agent owing no failure that is not a late delivery, the exclusion payoff
+  is at most the agent's continuation value up to a vanishing error, with gap at
+  most the gap bound, or the site has no pending event; and the successful part
+  of every marked choice and of the prescribed component is its success
+  probability times that
   continuation value up to the error. -/
   nonLateDecomposition : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon
       scheduler slots p)) (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
@@ -3713,6 +3714,7 @@ structure OnePacketOpenInputs (sequence : ℕ → setup.intendedModel.Behavioral
       (error : ℕ → ℝ), Tendsto error atTop (nhds 0) ∧
       ∀ n who (site : (onePacketN).InformationSite who),
         ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+        ¬ OwingAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
         ¬ ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
           (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
           ((onePacketN).agentAt site) →
@@ -4009,7 +4011,7 @@ def OnePacketOpenInputs.toCertificateInputs
       refine ⟨Or.inl ⟨by linarith, gap⟩, (chosen choice marked).trans bound, fun _ =>
         ⟨fun option => (late option).trans bound, options, near choice marked⟩,
         fun unkeyed => (unkeyed trivial).elim⟩
-    · obtain ⟨lowGap, chosen, other⟩ := otherValue n who site notFree keyed
+    · obtain ⟨lowGap, chosen, other⟩ := otherValue n who site notFree notOwing keyed
       simp only [keyed, ↓reduceIte]
       have bound := le_max_right (lateError n) (otherError n)
       refine ⟨?_, (chosen choice marked).trans bound,
@@ -4321,7 +4323,7 @@ def OnePacketOpenInputs.toCertificateInputs
     swap
     · right
       left
-      obtain ⟨lowGap, _, prescribedNear⟩ := otherValue n who site forced keyedSite
+      obtain ⟨lowGap, _, prescribedNear⟩ := otherValue n who site forced notOwing keyedSite
       have pending := pendingEvent_of_turnSubmission setup leaks bounds horizon scheduler site
         atSite turn choice turnChosen submittedTurn
       obtain ⟨low, _⟩ := lowGap.resolve_right fun unpending => by

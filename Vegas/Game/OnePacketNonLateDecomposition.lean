@@ -113,6 +113,7 @@ theorem onePacket_nonLateDecomposition_of_pending
       ∃ blindError : ℕ → ℝ, Tendsto blindError atTop (nhds 0) ∧
         ∀ n who (site : (onePacketN).InformationSite who),
           ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+          ¬ OwingAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
           ¬ ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
             (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
             ((onePacketN).agentAt site) →
@@ -148,6 +149,7 @@ theorem onePacket_nonLateDecomposition_of_pending
       (error : ℕ → ℝ), Tendsto error atTop (nhds 0) ∧
       ∀ n who (site : (onePacketN).InformationSite who),
         ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+        ¬ OwingAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
         ¬ ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
           (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
           ((onePacketN).agentAt site) →
@@ -189,7 +191,7 @@ theorem onePacket_nonLateDecomposition_of_pending
   refine ⟨fun n => nonLateContinuation setup leaks bounds horizon scheduler parameter utility
       excludedPayoff sequence scale scale_pos scale_le_one n (targetSequence n),
     fun n => transportError n + |blindError n| + 2 * scale n ^ 3 * total, ?_,
-    fun n who site notFree notKeyed => ?_⟩
+    fun n who site notFree notOwing notKeyed => ?_⟩
   · have cube := ((scale_vanishing.pow 3).const_mul 2).mul_const total
     simpa using (transportLimit.add blindLimit.abs).add cube
   have cubeNonneg : 0 ≤ 2 * scale n ^ 3 * total := by
@@ -256,7 +258,7 @@ theorem onePacket_nonLateDecomposition_of_pending
       rw [dite_eq_left_of_eq_true (eq_true site.2)]
       simp only [pending, ↓reduceIte]
     obtain ⟨lower, gap, decompose⟩ := holds n who site
-    obtain ⟨choices, prescribed⟩ := blind n who site notFree notKeyed pending
+    obtain ⟨choices, prescribed⟩ := blind n who site notFree notOwing notKeyed pending
     beta_reduce
     rw [continuationEq]
     refine ⟨Or.inl ⟨by linarith, gap⟩, fun choice marked => ?_, ?_⟩

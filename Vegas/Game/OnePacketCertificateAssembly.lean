@@ -121,6 +121,7 @@ structure OnePacketBlindInputs (upperUtility : Player → ℝ)
       ∃ blindError : ℕ → ℝ, Tendsto blindError atTop (nhds 0) ∧
         ∀ n who (site : (onePacketN).InformationSite who),
           ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+          ¬ OwingAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
           ¬ ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
             (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
             ((onePacketN).agentAt site) →
