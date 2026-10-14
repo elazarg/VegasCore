@@ -69,6 +69,7 @@ structure OnePacketBlindInputs (upperUtility : Player → ℝ)
       ∃ blindError : ℕ → ℝ, Tendsto blindError atTop (nhds 0) ∧
         ∀ n who (site : (onePacketN).InformationSite who),
           ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+          ¬ OwingAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
           ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
             (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
             ((onePacketN).agentAt site) →
@@ -197,7 +198,8 @@ def OnePacketBlindInputs.toOpenInputs {lowerUtility upperUtility : Player → �
     subst pastEq viewEq
     have beliefs := inputs.beliefInputs setup leaks bounds horizon scheduler weights
       targetSequence assembled mixed bayes who site
-      forced debtFree atSite turn decision
+      forced (not_owingAgent_of_siteDebtFree setup leaks bounds horizon scheduler debtFree)
+      atSite turn decision
     obtain ⟨policy, gainLe⟩ := onePacket_valueTransport_le setup leaks bounds horizon scheduler
       parameter utility excludedPayoff wellFormed contract timely retains lowerUtility
       upperUtility lower_le le_upper sequence inputs.scale inputs.scale_pos inputs.scale_le_one
@@ -226,8 +228,8 @@ def OnePacketBlindInputs.toOpenInputs {lowerUtility upperUtility : Player → �
     (fun weights targetSequence assembled mixed bayes => by
       obtain ⟨blindError, blindLimit, blind⟩ :=
         inputs.lateValueBlind weights targetSequence assembled mixed bayes
-      exact ⟨blindError, blindLimit, fun n who site forced keyed =>
-        (blind n who site forced keyed).2⟩)
+      exact ⟨blindError, blindLimit, fun n who site forced notOwing keyed =>
+        (blind n who site forced notOwing keyed).2⟩)
     inputs.lateCommitBlind
   lateDecomposition := onePacket_lateDecomposition setup leaks bounds horizon scheduler parameter
     utility excludedPayoff wellFormed contract timely retains lowerUtility upperUtility lower_le

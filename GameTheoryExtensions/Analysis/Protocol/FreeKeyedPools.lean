@@ -19,7 +19,9 @@ A free agent alone in its pool is rational among its component mixtures, so the
 member-rationality obligation of a pooled limit certificate reduces to the
 keyed pools (`GameTheory.Protocol.InformationModel.freeKeyedMemberRational`),
 and the local comparisons are required only away from the free agents
-(`GameTheory.Protocol.InformationModel.freeKeyedLocalComparisons`).
+(`GameTheory.Protocol.InformationModel.freeKeyedLocalComparisons`). An
+indifferent agent, one that gains nothing from any local law, stays in its
+pool with its usual components but is exempt from both obligations.
 -/
 
 noncomputable section
@@ -275,14 +277,16 @@ variable [Fintype Player] [DecidableEq Player] {Outcome : Type*} {Key : Type*}
   (fallback : ∀ who, N.Policy who)
   (free keyed : N.InformationAgent N.playedInformation → Prop) [DecidablePred free]
   (key : N.InformationAgent N.playedInformation → Key) {Opt : Type} [Nonempty Opt]
+  (indifferent : N.InformationAgent N.playedInformation → Prop)
 
 omit [DecidablePred free] in
 include bounded in
 open Classical in
 /-- **Member rationality with free agents.** As
 `GameTheory.Protocol.InformationModel.keyedMemberRational`, for the keyed
-agents that are not free; a free agent alone in its pool is rational among its
-component mixtures, and every other agent has one component. -/
+agents that are neither free nor indifferent; a free agent alone in its pool is
+rational among its component mixtures, an indifferent agent gains nothing from
+any local law, and every other agent has one component. -/
 theorem freeKeyedMemberRational [Finite Opt]
     (freeLaw : ℕ → ∀ agent : N.InformationAgent N.playedInformation,
       N.Choice agent.1 agent.2.1 → PMF (N.Choice agent.1 agent.2.1))
@@ -294,6 +298,9 @@ theorem freeKeyedMemberRational [Finite Opt]
     (pays : ∀ agent, ∀ history ∈ failed agent, utility (observe history) agent.1 =
       excluded agent.1)
     (bound : ℝ) (bound_nonneg : 0 ≤ bound)
+    (noGain : ∀ (assessment : N.BehavioralAssessment) who (site : N.InformationSite who),
+      indifferent (N.agentAt site) → ∀ law,
+        localGain fuel observe utility assessment site law = 0)
     (oneDimensional : ∀ (weights : ℕ → ∀ p, PMF (FreeKeyedPart free keyed key Opt p))
         (targetSequence : ℕ → N.BehavioralAssessment),
       (∀ n, (targetSequence n).strategy = N.agentBehavior N.playedInformation fallback
@@ -306,7 +313,7 @@ theorem freeKeyedMemberRational [Finite Opt]
         (score : ℕ → Key → Opt → ℝ) (error drift : ℕ → ℝ),
         Tendsto error atTop (nhds 0) ∧ Tendsto drift atTop (nhds 0) ∧ (∀ n, 0 ≤ drift n) ∧
         ∀ n (agent : N.InformationAgent N.playedInformation), ownedKeyed free keyed agent →
-          ∀ decision : N.IsDecisionInfo agent.1 agent.2.1,
+          ¬ indifferent agent → ∀ decision : N.IsDecisionInfo agent.1 agent.2.1,
           excluded agent.1 ≤ continuation n agent + error n ∧
           continuation n agent - excluded agent.1 ≤ bound ∧
           (∀ option, |localSuccessValue fuel observe utility (targetSequence n)
@@ -365,7 +372,10 @@ theorem freeKeyedMemberRational [Finite Opt]
       have isKeyed : ownedKeyed free keyed agent := by
         rw [freeKeyedPool_of_not_free notFree] at poolEq
         exact (isSome_keyedPool_iff agent).mp (by rw [Sum.inr.inj poolEq]; rfl)
-      obtain ⟨excluded_le, gap_le, near, common⟩ := facts n agent isKeyed decision
+      by_cases isIndifferent : indifferent agent
+      · exact Or.inl fun part => noGain (targetSequence n) agent.1 ⟨agent.2.1, decision⟩
+          isIndifferent _
+      obtain ⟨excluded_le, gap_le, near, common⟩ := facts n agent isKeyed isIndifferent decision
       obtain ⟨identify, componentEq⟩ := freeKeyedComponent_of_not_free (key := key)
         (freeLaw n) (prescribed n) (keyedLaw n) notFree
       have best := freeKeyedComponent_at_not_free (freeLaw n) (prescribed n) (keyedLaw n)
@@ -375,7 +385,7 @@ theorem freeKeyedMemberRational [Finite Opt]
         keyedBest (fun k => scoreArgmax (score n k))
           (keyedPool (ownedKeyed free keyed) key agent) from rfl,
         keyedComponent_best_of_keyed (prescribed n) (keyedLaw n) _ isKeyed] at best
-      refine ⟨excluded_le, gap_le, fun part => ?_, fun part => ?_⟩
+      refine Or.inr ⟨excluded_le, gap_le, fun part => ?_, fun part => ?_⟩
       · obtain ⟨option, equal⟩ := keyedComponent_of_keyed (key := key) (prescribed n)
           (keyedLaw n) isKeyed (identify part)
         rw [componentEq, equal]
@@ -439,7 +449,8 @@ include bounded in
 open Classical in
 /-- **Local comparisons with free agents.** As
 `GameTheory.Protocol.InformationModel.keyedLocalComparisons`, required at the
-sites of agents that are not free. -/
+sites of agents that are neither free nor indifferent; an indifferent agent
+gains nothing from any local law. -/
 theorem freeKeyedLocalComparisons [Finite Opt] {E : ExecutionProtocol Player}
     {M : InformationModel E} (sourceObserve : E.History → Outcome) (sourceFuel : Nat)
     (sourceSequence : ℕ → M.BehavioralAssessment)
@@ -454,6 +465,9 @@ theorem freeKeyedLocalComparisons [Finite Opt] {E : ExecutionProtocol Player}
     (pays : ∀ agent, ∀ history ∈ failed agent, utility (observe history) agent.1 =
       excluded agent.1)
     (bound : ℝ) (bound_nonneg : 0 ≤ bound)
+    (noGain : ∀ (assessment : N.BehavioralAssessment) who (site : N.InformationSite who),
+      indifferent (N.agentAt site) → ∀ law,
+        localGain fuel observe utility assessment site law = 0)
     (ranking : ∀ (weights : ℕ → ∀ p, PMF (FreeKeyedPart free keyed key Opt p))
         (targetSequence : ℕ → N.BehavioralAssessment),
       (∀ n, (targetSequence n).strategy = N.agentBehavior N.playedInformation fallback
@@ -467,7 +481,7 @@ theorem freeKeyedLocalComparisons [Finite Opt] {E : ExecutionProtocol Player}
         Tendsto error atTop (nhds 0) ∧ Tendsto drift atTop (nhds 0) ∧
         Tendsto slack atTop (nhds 0) ∧ (∀ n, 0 ≤ drift n) ∧ (∀ n, 0 ≤ slack n) ∧
         ∀ n who (site : N.InformationSite who) (choice : N.Choice who site.1),
-          ¬ free (N.agentAt site) → compared who site choice →
+          ¬ free (N.agentAt site) → ¬ indifferent (N.agentAt site) → compared who site choice →
           ((excluded who ≤ continuation n (N.agentAt site) + error n ∧
               continuation n (N.agentAt site) - excluded who ≤ bound) ∨
             failed (N.agentAt site) = ∅) ∧
@@ -522,7 +536,8 @@ theorem freeKeyedLocalComparisons [Finite Opt] {E : ExecutionProtocol Player}
           else 0) ≤ 0) →
       ∃ otherError : ℕ → ℝ, Tendsto otherError atTop (nhds 0) ∧
         ∀ n who (site : N.InformationSite who), N.agentAt site ∉ Finset.univ.filter free →
-          ∀ choice : N.Choice who site.1, ¬ compared who site choice →
+          ¬ indifferent (N.agentAt site) → ∀ choice : N.Choice who site.1,
+          ¬ compared who site choice →
           let gain := fun law : PMF (N.Choice who site.1) =>
             let comparison := N.assessmentComparisonWith (N.truncatedRunner
                 fuel) observe (targetSequence n)
@@ -584,11 +599,15 @@ theorem freeKeyedLocalComparisons [Finite Opt] {E : ExecutionProtocol Player}
                       sourceFuel) sourceObserve
                     (sourceSequence n) who deviation
                   expect sourceComparison.alternative (utility · who) -
-                    expect sourceComparison.prescribed (utility · who)) + comparisonError n :=
-  localComparisons_of_success sourceObserve sourceFuel sourceSequence fuel bounded targetRecall
+                    expect sourceComparison.prescribed (utility · who)) + comparisonError n := by
+  intro weights targetSequence played mixed bayes pooled
+  -- The indifferent agents are set aside with the free ones and gain nothing.
+  obtain ⟨comparisonError, errorVanishes, compares⟩ := localComparisons_of_success sourceObserve
+    sourceFuel sourceSequence fuel bounded targetRecall
     observe utility fallback (freeKeyedPool free keyed key)
     (fun n => freeKeyedComponent (freeLaw n) (prescribed n) (keyedLaw n))
-    (Finset.univ.filter free) compared failed excluded pays bound bound_nonneg
+    (Finset.univ.filter fun agent => free agent ∨ indifferent agent) compared failed excluded
+    pays bound bound_nonneg
     (fun weights targetSequence played mixed bayes => by
       let := Fintype.ofFinite Opt
       obtain ⟨continuation, score, error, drift, slack, errorVanishes, driftVanishes,
@@ -601,9 +620,11 @@ theorem freeKeyedLocalComparisons [Finite Opt] {E : ExecutionProtocol Player}
         fun n => by linarith [drift_nonneg n, slack_nonneg n],
         fun n who site choice notFree marked => ?_⟩
       have isNotFree : ¬ free (N.agentAt site) := fun isFree =>
-        notFree (Finset.mem_filter.mpr ⟨Finset.mem_univ _, isFree⟩)
+        notFree (Finset.mem_filter.mpr ⟨Finset.mem_univ _, Or.inl isFree⟩)
+      have isNotIndifferent : ¬ indifferent (N.agentAt site) := fun isIndifferent =>
+        notFree (Finset.mem_filter.mpr ⟨Finset.mem_univ _, Or.inr isIndifferent⟩)
       obtain ⟨lowGap, choiceNear, keyedFacts, unkeyedFacts⟩ :=
-        facts n who site choice isNotFree marked
+        facts n who site choice isNotFree isNotIndifferent marked
       refine ⟨lowGap, choiceNear, ?_⟩
       have best := freeKeyedComponent_at_not_free (freeLaw n) (prescribed n) (keyedLaw n)
         (freeKeyedBest free keyed key Opt (fun k => scoreArgmax (score n k))) isNotFree
@@ -644,7 +665,30 @@ theorem freeKeyedLocalComparisons [Finite Opt] {E : ExecutionProtocol Player}
         · have := localFailure_le_of_sure_failure fuel (targetSequence n) site
             (failed (N.agentAt site)) (prescribed n (N.agentAt site)) (PMF.pure choice) sure
           linarith [slack_nonneg n, drift_nonneg n])
-    otherComparisons
+    (fun weights targetSequence played mixed bayes pooled => by
+      obtain ⟨otherError, otherVanishes, others⟩ :=
+        otherComparisons weights targetSequence played mixed bayes pooled
+      refine ⟨otherError, otherVanishes, fun n who site outside => ?_⟩
+      simp only [Finset.mem_filter, Finset.mem_univ, true_and, not_or] at outside
+      exact others n who site (by simpa using outside.1) outside.2)
+    weights targetSequence played mixed bayes pooled
+  refine ⟨fun n => max (comparisonError n) 0,
+    by simpa using errorVanishes.max (tendsto_const_nhds (x := (0 : ℝ))),
+    fun n who site outside choice => ?_⟩
+  by_cases isIndifferent : indifferent (N.agentAt site)
+  · refine Or.inl ?_
+    change localGain fuel observe utility (targetSequence n) site (PMF.pure choice) ≤ _
+    rw [noGain (targetSequence n) who site isIndifferent]
+    exact le_max_right _ _
+  have outsideBoth : N.agentAt site ∉ Finset.univ.filter fun agent =>
+      free agent ∨ indifferent agent := by
+    simp only [Finset.mem_filter, Finset.mem_univ, true_and, not_or]
+    exact ⟨by simpa using outside, isIndifferent⟩
+  have errorLe := le_max_left (comparisonError n) 0
+  rcases compares n who site outsideBoth choice with near | ⟨alternative, near⟩ | ⟨mixture, near⟩
+  · exact Or.inl (near.trans errorLe)
+  · exact Or.inr (Or.inl ⟨alternative, near.trans (by linarith)⟩)
+  · exact Or.inr (Or.inr ⟨mixture, near.trans (by linarith)⟩)
 
 end Certificate
 

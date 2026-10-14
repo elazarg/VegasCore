@@ -91,9 +91,7 @@ theorem certificate_lateOwnerShape (sequence : ℕ → setup.intendedModel.Behav
     (current : history.1.state = some ⟨remaining, some who, execution⟩)
     (atSite : site.1 = some (execution.recall who,
       execution.observe (application setup leaks) who))
-    (forced : ForcedState setup leaks who history.1.state)
-    (clear : ∀ point, decodedPoint setup execution.application.config = some point →
-      ¬ ProtocolState.OwesFailure who setup.program point) :
+    (forced : ForcedState setup leaks who history.1.state) :
     LateOwnerShape setup leaks bounds horizon scheduler (sequence n) (scale_pos n).le
       (scale_le_one n) slots
       (Profile.update (sig := (onePacketN).behavioralSignature) (targetSequence n).strategy who
@@ -141,9 +139,7 @@ theorem certificate_lateOwnerShape (sequence : ℕ → setup.intendedModel.Behav
       ⟨entry, extends_.subset member, activatedAt⟩
     exact ⟨_, (certificate_strategyShape setup leaks bounds horizon scheduler sequence scale
       scale_pos scale_le_one weights targetSequence assembled n who later laterRemaining reached
-      event state forcedHere ready activated
-      (fun point decodedHere => clear point (by rw [← atSent]; exact decodedHere))).1
-      unrecordedHere⟩
+      event state forcedHere ready activated).1 unrecordedHere⟩
 
 omit [Fintype Player] [(application setup leaks).FiniteNature (initialLaw setup) scheduler] in
 /-- The key of a late delivery of a binding with nothing sent decides that
@@ -221,11 +217,7 @@ theorem certificate_lateSuccessFree (sequence : ℕ → setup.intendedModel.Beha
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup (siteRank site.1) execution.application.config =
       some point)
-    (intendedPoint : ProtocolState.Intended setup.program point)
-    (consistentClear : ∀ site' : (onePacketN).InformationSite who,
-      LateDelivery setup leaks who site'.1 → ∀ state, SiteConsistent who site'.1 state →
-        ∀ event', siteTurnEvent setup leaks who site'.1 = some event' →
-          DebtClear setup leaks who event' state) :
+    (intendedPoint : ProtocolState.Intended setup.program point) :
     ∀ (later : ((bounds.onePacketMenu (runtime setup) leaks).protocol
         (initialLaw setup) horizon scheduler).History) (laterRemaining : Nat)
         (reached : (application setup leaks).Execution),
@@ -278,8 +270,7 @@ theorem certificate_lateSuccessFree (sequence : ℕ → setup.intendedModel.Beha
     (certificateOptions setup leaks bounds horizon scheduler (weights n))
     (fun site isLate _ siteKey option => certificate_siteComponentShape setup leaks bounds
       horizon scheduler sequence scale scale_pos scale_le_one weights targetSequence assembled n
-      site isLate siteKey option _ (fun _ consistent => consistent)
-      (consistentClear site isLate))
+      site isLate siteKey option _ (fun _ consistent => consistent))
   have imageBinding : ∀ state, lumping.image key state =
       Sum.inr (bindingImage event who payload state) := by
     intro state
@@ -381,10 +372,6 @@ theorem certificate_lateBinding_historyNear
       some point)
     (intendedPoint : ProtocolState.Intended setup.program point)
     (reachedPoint : IntendedReached setup point)
-    (consistentClear : ∀ site' : (onePacketN).InformationSite who,
-      LateDelivery setup leaks who site'.1 → ∀ state, SiteConsistent who site'.1 state →
-        ∀ event', siteTurnEvent setup leaks who site'.1 = some event' →
-          DebtClear setup leaks who event' state)
     {bound : ℝ} (readoutBounded : ∀ readout,
       |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ bound) :
     |historyStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
@@ -413,15 +400,11 @@ theorem certificate_lateBinding_historyNear
     unrecorded ordered decoded intendedPoint reachedPoint
     (certificate_lateOwnerShape setup leaks bounds horizon scheduler sequence scale scale_pos
       scale_le_one weights targetSequence assembled n site late pending law lawShape history
-      current atSite forced (fun current' decodedHere owes => by
-        rw [decodedPoint_eq_of_isPrefix ordered, decoded] at decodedHere
-        cases Option.some.inj decodedHere
-        exact ProtocolState.Intended.not_owesFailure who setup.program point intendedPoint owes))
+      current atSite forced)
     (mul_nonneg (Nat.cast_nonneg _) (by have := pow_nonneg (scale_pos n).le 3; linarith))
     (certificate_lateSuccessFree setup leaks bounds horizon scheduler sequence scale scale_pos
       scale_le_one weights targetSequence assembled n completes covers capacity slotsLe site late
-      siteKey pending law history current atSite forced node ordered decoded intendedPoint
-      consistentClear)
+      siteKey pending law history current atSite forced node ordered decoded intendedPoint)
     readoutBounded
 
 end Value

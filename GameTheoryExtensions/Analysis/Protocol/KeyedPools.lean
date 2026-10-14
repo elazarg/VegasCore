@@ -312,7 +312,7 @@ theorem keyedMemberRational [Finite Opt]
       obtain ⟨excluded_le, gap_le, near, common⟩ := facts n agent isKeyed decision
       have best := keyedComponent_best_of_keyed (key := key) (prescribed n) (keyedLaw n)
         (fun k => scoreArgmax (score n k)) isKeyed
-      refine ⟨excluded_le, gap_le, fun part => ?_, fun part => ?_⟩
+      refine Or.inr ⟨excluded_le, gap_le, fun part => ?_, fun part => ?_⟩
       · obtain ⟨option, equal⟩ :=
           keyedComponent_of_keyed (key := key) (prescribed n) (keyedLaw n) isKeyed part
         rw [equal]

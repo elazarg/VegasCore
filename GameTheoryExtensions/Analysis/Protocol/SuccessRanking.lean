@@ -650,8 +650,9 @@ payoff is at most that continuation value up to `error n`, the gap is at most
 weights family, fails with probability at most that of every other part at
 every member's site up to `slack n`, as when the success probability of each
 part is common to the pool and the best part maximizes it
-(`failure_le_of_common`). If `error` and `slack` vanish and the members of the
-other pools are rational up to a vanishing error, the member-rationality
+(`failure_le_of_common`). A member whose local gain is zero for every
+component is exempt from all of this. If `error` and `slack` vanish and the
+members of the other pools are rational up to a vanishing error, the member-rationality
 obligation of a pooled limit certificate holds. -/
 theorem memberRational_of_success [Finite Pool] [DecidableEq Pool]
     (component : ℕ → ∀ agent, Part (pool agent) →
@@ -673,7 +674,9 @@ theorem memberRational_of_success [Finite Pool] [DecidableEq Pool]
         Tendsto error atTop (nhds 0) ∧ Tendsto slack atTop (nhds 0) ∧ (∀ n, 0 ≤ slack n) ∧
         ∀ n (agent : N.InformationAgent N.playedInformation), pool agent ∈ delivery →
           ∀ decision : N.IsDecisionInfo agent.1 agent.2.1,
-          excluded agent.1 ≤ continuation n agent + error n ∧
+          (∀ part, localGain fuel observe utility (targetSequence n)
+              (who := agent.1) ⟨agent.2.1, decision⟩ (component n agent part) = 0) ∨
+          (excluded agent.1 ≤ continuation n agent + error n ∧
           continuation n agent - excluded agent.1 ≤ bound ∧
           (∀ part, |localSuccessValue fuel observe utility (targetSequence n)
               (who := agent.1) ⟨agent.2.1, decision⟩ (failed agent) (component n agent part) -
@@ -685,7 +688,7 @@ theorem memberRational_of_success [Finite Pool] [DecidableEq Pool]
               (failed agent) (component n agent (best n (pool agent))) ≤
             localFailure fuel (targetSequence n)
               (who := agent.1) ⟨agent.2.1, decision⟩
-              (failed agent) (component n agent part) + slack n)
+              (failed agent) (component n agent part) + slack n))
     (otherMembers : ∀ (weights : ℕ → ∀ p, PMF (Part p))
         (targetSequence : ℕ → N.BehavioralAssessment),
       (∀ n, (targetSequence n).strategy = N.agentBehavior N.playedInformation fallback
@@ -742,10 +745,14 @@ theorem memberRational_of_success [Finite Pool] [DecidableEq Pool]
     facts⟩ := oneDimensional weights targetSequence played mixed bayes
   obtain ⟨otherError, otherVanishes, otherBound⟩ :=
     otherMembers weights targetSequence played mixed bayes pooled
+  -- A member with no gain needs a nonnegative error; the positive part of `error` vanishes too.
+  let errorPart (n : ℕ) : ℝ := max (error n) 0
+  have errorPartVanishes : Tendsto errorPart atTop (nhds 0) := by
+    simpa using errorVanishes.max (tendsto_const_nhds (x := (0 : ℝ)))
   let deliveryError (n : ℕ) : ℝ :=
-    Fintype.card (N.InformationAgent N.playedInformation) * (slack n * bound + 3 * error n)
+    Fintype.card (N.InformationAgent N.playedInformation) * (slack n * bound + 3 * errorPart n)
   have deliveryVanishes : Tendsto deliveryError atTop (nhds 0) := by
-    have := ((slackVanishes.mul_const bound).add (errorVanishes.const_mul 3)).const_mul
+    have := ((slackVanishes.mul_const bound).add (errorPartVanishes.const_mul 3)).const_mul
       (Fintype.card (N.InformationAgent N.playedInformation) : ℝ)
     rwa [zero_mul, mul_zero, zero_add, mul_zero] at this
   refine ⟨fun n => max (deliveryError n) (otherError n), by
@@ -754,10 +761,15 @@ theorem memberRational_of_success [Finite Pool] [DecidableEq Pool]
   · refine le_trans ?_ (le_max_left _ _)
     exact memberGain_le_of_common_best fuel bounded observe utility fallback pool
       targetRecall.actsOnceWhereItMatters (component n) (weights n) (targetSequence n) (played n)
-      (pooled n) (pool (N.agentAt site)) (best n) (slack n * bound + 3 * error n)
+      (pooled n) (pool (N.agentAt site)) (best n) (slack n * bound + 3 * errorPart n)
       (fun agent inPool decision part => by
-        obtain ⟨excluded_le, gap_le, near, ranked⟩ :=
-          facts n agent (inPool ▸ inDelivery) decision
+        have slackBound := mul_nonneg (slack_nonneg n) bound_nonneg
+        have errorLe : error n ≤ errorPart n := le_max_left _ _
+        have errorPartNonneg : 0 ≤ errorPart n := le_max_right _ _
+        rcases facts n agent (inPool ▸ inDelivery) decision with
+          noGain | ⟨excluded_le, gap_le, near, ranked⟩
+        · rw [noGain part, noGain (best n (pool agent))]
+          linarith
         have := localGain_le_of_failure_le fuel observe utility (targetSequence n)
           (who := agent.1) ⟨agent.2.1, decision⟩ (failed agent) (excluded agent.1)
           (pays agent) (continuation n agent) (error n) (slack n) bound
