@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**Progress: 2/4 stages checked · sequential runtime: exclusion adapter · concurrency: pending.**
+**SE: 2/4 stages checked · next: sequential recovery adapter · then: concurrency.**
 
 Status: partly mechanized mathematics. The checked results include Proposition
 1(1) for events run one at a time, Lemma C, the finite core of Lemma T, and a
