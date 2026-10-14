@@ -379,4 +379,163 @@ theorem ownOutput_eq_of_event {control : (application setup leaks).Control}
 
 end Settled
 
+section Openable
+
+/-- **A named slot of a debt-free late owner is openable.** Along a history at
+whose decoded point `who` owes no failure, and at which some ready event is
+named by none of `who`'s packets, every prepared slot that a packet of `who`
+names is openable. -/
+theorem openable_of_pending {control : (application setup leaks).Control}
+    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
+    {who : Player}
+    (debtFree : ∀ point, nativeDecodedState setup leaks (some control) = some point →
+      ¬ ProtocolState.OwesFailure who setup.program point)
+    (pending : ∃ event, control.execution.application.config.cut.Ready event ∧
+      ∀ message ∈ (application setup leaks).outputs (control.execution.recall who),
+        message.payload.call.event? (graph setup) ≠ some event)
+    (serial : Nat)
+    (named : NamedSlot who ((application setup leaks).outputs (control.execution.recall who))
+      serial) :
+    ∃ raw, control.execution.application.candidates.lookup (who, .prepared serial) =
+      .openable raw := by
+  obtain ⟨message, output, event, call⟩ := named
+  have rawTrace := (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup)
+    horizon scheduler trace
+  have clean := (bounds.onePacketMenu_countClean (runtime setup) leaks scheduler).history
+    (initialLaw setup) horizon (fun state _ => (runtime setup).countClean_initial leaks state)
+    trace
+  have signed := signedCommitments_history (runtime setup) leaks (initialLaw setup)
+    (serviceInitialLaw_initialized setup) horizon scheduler rawTrace
+  obtain ⟨entry, entryMember, entryEmitted⟩ := List.mem_filterMap.mp output
+  obtain ⟨k, inside, entryEq⟩ := List.getElem_of_mem entryMember
+  obtain ⟨_, _, _, _, _, recorded⟩ := recallRecord_of_trace trace control rfl who k inside
+  rw [entryEq] at recorded
+  have sender := (signed.emissions who entry entryMember message entryEmitted).1
+  rcases entry with ⟨view, ⟨transmission⟩, emitted⟩
+  cases transmission with
+  | none =>
+      change emitted = none at recorded
+      change emitted = some message at entryEmitted
+      rw [recorded] at entryEmitted
+      cases entryEmitted
+  | some submission =>
+      obtain ⟨other, sent, packetEq, _, prepared⟩ := recorded
+      change emitted = some other at sent
+      change emitted = some message at entryEmitted
+      rw [sent] at entryEmitted
+      cases entryEmitted
+      change PreparationRecorded who control.execution.application submission.call at prepared
+      unfold PreparationRecorded at prepared
+      rw [← packetEq, call] at prepared
+      obtain ⟨other, handleEq, meaning⟩ := prepared
+      cases handleEq
+      cases opening : submission.call.opening with
+      | some raw =>
+          refine ⟨raw, ?_⟩
+          rw [meaning, opening]
+          rfl
+      | none =>
+          exfalso
+          rw [opening] at meaning
+          change control.execution.application.candidates.lookup (who, .prepared serial) =
+            .unopenable at meaning
+          -- The committed event is complete.
+          have input := output_mem_inputs_of_trace bounds trace who message output
+          have permitted := (countPermits_eq_true_iff _ _).mp (clean.2 message input)
+          obtain ⟨tokenEvent, tokenNamed, tokenEq⟩ :=
+            (WitnessedPacket.tokenValid_iff _).mp permitted.1
+          rw [call] at tokenNamed
+          cases Option.some.inj tokenNamed
+          obtain ⟨emittedMessage, emittedEq, _, tokens⟩ := ownedRequestsEmitted_history bounds
+            trace who _ entryMember submission rfl
+          change emitted = some emittedMessage at emittedEq
+          rw [sent] at emittedEq
+          cases emittedEq
+          have predecessors := tokens event tokenEq
+          have done : event ∈ control.execution.application.config.cut.completed := by
+            by_contra notDone
+            obtain ⟨pendingEvent, pendingReady, unsent⟩ := pending
+            have same := setup.eventGraph.sequentialize_ready_unique
+              control.execution.application.config.cut ⟨notDone, predecessors⟩ pendingReady
+            apply unsent message output
+            rw [call, ← same]
+            rfl
+          -- The committed event is a binding of `who` storing a success.
+          have correct := permitted.2.1
+          unfold CountCallCorrect at correct
+          rw [call] at correct
+          have owned := correct.1
+          rw [sender] at owned
+          obtain ⟨payload, layoutEq⟩ : ∃ payload,
+              (graph setup).outputLayout event = .binding who payload := by
+            unfold bindingOwnedBy at owned
+            revert owned
+            cases (graph setup).outputLayout event with
+            | binding owner payload =>
+                intro owned
+                exact ⟨payload, by rw [of_decide_eq_true owned]⟩
+            | publicData | privateInput | publication => intro owned; cases owned
+          have present := (control.execution.application.config.output_available event).mpr done
+          obtain ⟨value, stored⟩ := Option.isSome_iff_exists.mp present
+          have privateTo : PrivateTo who (.inr event) := privateTo_of_binding layoutEq
+          have notFailed := noFailure_of_debtFree trace debtFree (.inr event) privateTo value
+            stored
+          let ref : EventGraph.FieldRef (graph setup).layout (.binding who payload) :=
+            ⟨.inr event, layoutEq⟩
+          have read := get?_of_some ref (store := control.execution.application.config.store)
+            stored
+          have general : ∀ (kind : EventGraph.EventField Player L)
+              (kindEq : kind = .binding who payload) (current : kind.Value),
+                ¬ kind.IsFailure current → ∃ bound,
+                  cast (congrArg EventGraph.EventField.Value kindEq) current = .success bound := by
+            rintro _ rfl current notFailure
+            cases current with
+            | failure => exact (notFailure rfl).elim
+            | success bound => exact ⟨bound, rfl⟩
+          obtain ⟨bound, success⟩ := general _ layoutEq value notFailed
+          change ref.get? control.execution.application.config.store =
+            some (cast (congrArg EventGraph.EventField.Value layoutEq) value) at read
+          rw [success] at read
+          have valid : control.execution.application.BindingInvariant :=
+            ((runtime setup).reactiveBindingInvariant leaks).history (initialLaw setup) horizon
+              scheduler (fun state member => by
+                obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ member
+                exact State.initial_bindingInvariant _) rawTrace
+          obtain ⟨handle, accepted, handleOwner, lookup⟩ := valid.success_provenance ref bound read
+          obtain ⟨committed, committedOutput, committedCall⟩ :=
+            signed.acceptedSigned event handle accepted
+          rw [handleOwner] at committedOutput
+          have sameMessage := ownOutput_eq_of_event trace who event output committedOutput
+            (by rw [call]; rfl) (by rw [committedCall]; rfl)
+          subst sameMessage
+          rw [call] at committedCall
+          cases committedCall
+          rw [meaning] at lookup
+          cases lookup
+
+/-- **A debt-free late owner is settled.** Along a history of the one-packet
+game at whose decoded point `who` owes no failure, and at which some ready event
+is named by none of `who`'s packets, the application state is settled for
+`who` with the slots its own packets name. -/
+theorem ownerSettled_of_trace {control : (application setup leaks).Control}
+    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
+    {who : Player}
+    (debtFree : ∀ point, nativeDecodedState setup leaks (some control) = some point →
+      ¬ ProtocolState.OwesFailure who setup.program point)
+    (pending : ∃ event, control.execution.application.config.cut.Ready event ∧
+      ∀ message ∈ (application setup leaks).outputs (control.execution.recall who),
+        message.payload.call.event? (graph setup) ≠ some event) :
+    OwnerSettled who (NamedSlot who ((application setup leaks).outputs
+      (control.execution.recall who))) control.execution.application where
+  noFailure := noFailure_of_debtFree trace debtFree
+  bindAction completion member owner payload outputEq codeEq :=
+    ConfigReaches.binding_output (configReaches_of_trace trace control rfl) member
+      (by simp [EventGraph.Config.initial]) outputEq codeEq
+  disclosed := disclosed_of_debtFree trace debtFree
+  fresh := freshExact_of_trace trace who
+  openable := openable_of_pending trace debtFree pending
+  initial input := initialCandidates_of_trace trace control rfl who input
+
+end Openable
+
 end Vegas
