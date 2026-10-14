@@ -118,6 +118,8 @@ theorem upperSourceWeight_le_swap [Finite (onePacketProtocol setup leaks bounds 
     (n : ℕ) {ι K₁ ε : ℝ} (ιPos : 0 < ι)
     (initialFloored : ∀ state ∈ (initialLaw setup).support, ι ≤ (initialLaw setup state).toReal)
     (K₁Nonneg : 0 ≤ K₁) (εNonneg : 0 ≤ ε)
+    {state} (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace state)
+    (guarded : SwapGuardState setup swap allowed state)
     (responseBound : ∀ {before after} (_ : (onePacketProtocol setup leaks bounds horizon
         scheduler).Trace before) joint
       (legal : (onePacketProtocol setup leaks bounds horizon scheduler).Legal before joint)
@@ -133,9 +135,10 @@ theorem upperSourceWeight_le_swap [Finite (onePacketProtocol setup leaks bounds 
     (firstBound : ∀ {before after} (prior : (onePacketProtocol setup leaks bounds horizon
         scheduler).Trace before) joint
       (legal : (onePacketProtocol setup leaks bounds horizon scheduler).Legal before joint)
-      (_ : after ∈ ((onePacketProtocol setup leaks bounds horizon scheduler).step before
-        ⟨joint, legal⟩).support) (_ : SwapGuardState setup swap allowed after)
-      (control next : (application setup leaks).Control) (actor : Player),
+      (realized : after ∈ ((onePacketProtocol setup leaks bounds horizon scheduler).step before
+        ⟨joint, legal⟩).support), TracePrefix (prior.extend joint legal realized) trace →
+      SwapGuardState setup swap allowed after →
+      ∀ (control next : (application setup leaks).Control) (actor : Player),
       before = some control → after = some next → control.actor = some actor → actor ≠ who →
       RegularStep setup leaks bounds horizon scheduler (sequence n) who
         (swap.protocolState before) (swap.joint joint) (swap.protocolState after) →
@@ -144,8 +147,6 @@ theorem upperSourceWeight_le_swap [Finite (onePacketProtocol setup leaks bounds 
       responseMass setup leaks bounds horizon scheduler (profiles n) control joint ≤
         ε * responseMass setup leaks bounds horizon scheduler (profiles n) (swap.control control)
           (swap.joint joint))
-    {state} (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace state)
-    (guarded : SwapGuardState setup swap allowed state)
     (imageRegular : RegularTrace setup leaks bounds horizon scheduler (sequence n) who
       ((onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler swap initialClosed
         bounded).mapTrace trace guarded))
@@ -211,7 +212,8 @@ theorem upperSourceWeight_le_swap [Finite (onePacketProtocol setup leaks bounds 
     have upper := (abs_le.mp component).2
     linarith
   refine (upperSourceWeight_le_mapTrace (IrregularStepBound.ofResponseMass steps positive) n
-    symmetry one_le (mul_nonneg εNonneg (by linarith)) ?_ ?_ trace guarded imageRegular).2
+    symmetry one_le (mul_nonneg εNonneg (by linarith)) trace ?_ ?_ trace guarded .refl
+    imageRegular).2
     irregularTrace
   · intro before after prior joint legal realized guardAfter imageStep
     cases before with
@@ -355,7 +357,8 @@ theorem upperSourceWeight_le_swap [Finite (onePacketProtocol setup leaks bounds 
                           exact mul_le_mul_of_nonneg_right responseFactor imagePositive.le
                     · rw [← massZero, div_zero]
                       exact mul_nonneg (by linarith) imagePositive.le
-  · intro before after prior joint legal realized guardAfter imageStep regularPrior irregularStep
+  · intro before after prior joint legal realized isPrefix guardAfter imageStep regularPrior
+      irregularStep
     cases before with
     | none => exact (irregularStep trivial).elim
     | some control =>
@@ -391,8 +394,8 @@ theorem upperSourceWeight_le_swap [Finite (onePacketProtocol setup leaks bounds 
                         (operationalState setup leaks (some next)) ≤ _
                   have imageBound := imageResponse prior joint legal realized guardAfter control
                     next actor rfl rfl acting same imageStep
-                  have ratio := firstBound prior joint legal realized guardAfter control next
-                    actor rfl rfl acting same imageStep regularPrior irregularStep
+                  have ratio := firstBound prior joint legal realized isPrefix guardAfter control
+                    next actor rfl rfl acting same imageStep regularPrior irregularStep
                   set mass := steps.mass n (operationalState setup leaks (some control))
                     (operationalState setup leaks (some next))
                   set content := contentFactor setup leaks (sequence n) actor

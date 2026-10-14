@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketCounterpartDomination
 import GameTheoryExtensions.Protocol.StateSymmetry
+import GameTheoryExtensions.Protocol.TracePrefix
 
 /-! # Upper source weights along an image history
 
@@ -48,6 +49,8 @@ theorem upperSourceWeight_le_mapTrace
     (irregular : IrregularStepBound setup leaks bounds horizon scheduler steps) (n : ℕ)
     (symmetry : (onePacketProtocol setup leaks bounds horizon scheduler).StateSymmetry)
     {K small : ℝ} (one_le : 1 ≤ K) (smallNonneg : 0 ≤ small)
+    {final : (onePacketProtocol setup leaks bounds horizon scheduler).State}
+    (top : (onePacketProtocol setup leaks bounds horizon scheduler).Trace final)
     (every : ∀ {before after} (_ : (onePacketProtocol setup leaks bounds horizon
         scheduler).Trace before) joint
       (legal : (onePacketProtocol setup leaks bounds horizon scheduler).Legal before joint)
@@ -61,8 +64,9 @@ theorem upperSourceWeight_le_mapTrace
     (first : ∀ {before after} (prior : (onePacketProtocol setup leaks bounds horizon
         scheduler).Trace before) joint
       (legal : (onePacketProtocol setup leaks bounds horizon scheduler).Legal before joint)
-      (_ : after ∈ ((onePacketProtocol setup leaks bounds horizon scheduler).step before
-        ⟨joint, legal⟩).support), symmetry.Guard after →
+      (realized : after ∈ ((onePacketProtocol setup leaks bounds horizon scheduler).step before
+        ⟨joint, legal⟩).support),
+      TracePrefix (prior.extend joint legal realized) top → symmetry.Guard after →
       RegularStep setup leaks bounds horizon scheduler (sequence n) who (symmetry.map before)
         (symmetry.act before joint) (symmetry.map after) →
       RegularTrace setup leaks bounds horizon scheduler (sequence n) who prior →
@@ -72,6 +76,7 @@ theorem upperSourceWeight_le_mapTrace
           (symmetry.act before joint) (symmetry.map after)) :
     ∀ {state} (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace state)
       (guarded : symmetry.Guard state),
+      TracePrefix trace top →
       RegularTrace setup leaks bounds horizon scheduler (sequence n) who
         (symmetry.mapTrace trace guarded) →
       upperSourceWeight irregular n trace ≤
@@ -81,19 +86,21 @@ theorem upperSourceWeight_le_mapTrace
           upperSourceWeight irregular n trace ≤
             small * K ^ trace.length * othersSourceWeight setup leaks bounds horizon scheduler
               (sequence n) who (symmetry.mapTrace trace guarded))
-  | _, .start, _, _ => by
+  | _, .start, _, _, _ => by
       refine ⟨?_, fun irregularStart => (irregularStart trivial).elim⟩
       change (1 : ℝ) ≤ 1 * othersSourceWeight setup leaks bounds horizon scheduler (sequence n)
         who (symmetry.map_init.symm ▸ Trace.start)
       rw [othersSourceWeight_cast_start, one_mul]
   | _, .extend (source := before) (target := after) prior joint legal realized, guarded,
-      imageRegular => by
+      isPrefix, imageRegular => by
+      have priorPrefix : TracePrefix prior top :=
+        (TracePrefix.extend .refl joint legal realized).trans isPrefix
       have priorGuard := symmetry.guard_source legal realized guarded
       rw [StateSymmetry.mapTrace_extend] at imageRegular
       obtain ⟨priorImageRegular, imageStep⟩ := imageRegular
       obtain ⟨priorBound, priorIrregular⟩ :=
-        upperSourceWeight_le_mapTrace irregular n symmetry one_le smallNonneg every first prior
-          priorGuard priorImageRegular
+        upperSourceWeight_le_mapTrace irregular n symmetry one_le smallNonneg top every first prior
+          priorGuard priorPrefix priorImageRegular
       rw [StateSymmetry.mapTrace_extend]
       change upperSourceWeight irregular n prior *
             upperSourceFactor irregular n before joint after ≤
@@ -129,8 +136,8 @@ theorem upperSourceWeight_le_mapTrace
             who prior
         · have irregularStep : ¬ RegularStep setup leaks bounds horizon scheduler (sequence n)
               who before joint after := fun regularStep => irregularNow ⟨regularPrior, regularStep⟩
-          have firstBound := first prior joint legal realized guarded imageStep regularPrior
-            irregularStep
+          have firstBound := first prior joint legal realized isPrefix guarded imageStep
+            regularPrior irregularStep
           calc upperSourceWeight irregular n prior *
                 upperSourceFactor irregular n before joint after
               ≤ (K ^ prior.length * othersSourceWeight setup leaks bounds horizon scheduler

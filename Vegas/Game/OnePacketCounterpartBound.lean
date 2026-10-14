@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketCounterpartImage
 import Vegas.Game.OnePacketCounterpartSteps
+import Vegas.Game.OnePacketOwnIntended
 
 /-! # Regular counterparts with dominated weight
 
@@ -53,9 +54,9 @@ def SwapResponseBound (n : ℕ) (who : Player) (K₁ : ℝ) : Prop :=
 
 variable (setup leaks bounds horizon scheduler sequence profiles) in
 /-- **The first irregular response compared under hidden swaps.** At stage `n`,
-an irregular response of a player other than `who` after a regular history,
-whose image under a hidden swap is regular, has response mass at most `ε` times
-that of its image. -/
+an irregular response of a forced player other than `who` from a state forced
+for `who`, after a regular history, whose image under a hidden swap is regular,
+has response mass at most `ε` times that of its image. -/
 def SwapFirstBound (n : ℕ) (who : Player) (ε : ℝ) : Prop :=
   ∀ (swap : HiddenSwap (graph setup)) (allowed : Set (graph setup).Inputs) {before after}
     (prior : (onePacketProtocol setup leaks bounds horizon scheduler).Trace before) joint
@@ -64,6 +65,9 @@ def SwapFirstBound (n : ℕ) (who : Player) (ε : ℝ) : Prop :=
       ⟨joint, legal⟩).support) (_ : SwapGuardState setup swap allowed after)
     (control next : (application setup leaks).Control) (actor : Player),
     before = some control → after = some next → control.actor = some actor → actor ≠ who →
+    ForcedState setup leaks who (some control) →
+    forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon scheduler
+      actor ((application setup leaks).observe actor (some control)) →
     RegularStep setup leaks bounds horizon scheduler (sequence n) who
       (swap.protocolState before) (swap.joint joint) (swap.protocolState after) →
     RegularTrace setup leaks bounds horizon scheduler (sequence n) who prior →
@@ -93,6 +97,31 @@ private theorem observe_of_infoOf'' {who : Player}
   · simp only [ReactiveApplication.observe, active, ↓reduceIte] at seen
     exact (Prod.mk.inj (Option.some.inj seen)).2
   · simp [ReactiveApplication.observe, active] at seen
+
+omit [DecidableEq (CellTy Player L)]
+  [Finite (onePacketProtocol setup leaks bounds horizon scheduler).History] in
+/-- Own completions are intended and the public record holds along every prefix
+of a history where they hold. -/
+private theorem prefix_good {who : Player} {first : (application setup leaks).ProtocolState}
+    (prefixTrace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace first) :
+    ∀ {final} {trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace final},
+      TracePrefix prefixTrace trace →
+      OwnCompletionsIntended (bounds := bounds) (horizon := horizon) (scheduler := scheduler)
+        who trace →
+      (∀ control, final = some control → PublicRecord setup who control) →
+      OwnCompletionsIntended (bounds := bounds) (horizon := horizon) (scheduler := scheduler)
+          who prefixTrace ∧
+        ∀ control, first = some control → PublicRecord setup who control := by
+  intro final trace isPrefix
+  induction isPrefix with
+  | refl => exact fun own record => ⟨own, record⟩
+  | @extend source target prior _ joint legal realized ih =>
+      intro own record
+      refine ih own.1 fun control same => ?_
+      subst same
+      obtain ⟨next, rfl, _⟩ := (application setup leaks).transition_recall_prefix (initialLaw setup)
+        horizon scheduler control target joint realized
+      exact publicRecord_of_transition prior joint realized (record next rfl)
 
 /-- **A regular counterpart with dominated weight.** For a well-formed setup,
 under a fully mixed source assessment at stage `n`, at a decision input of
@@ -216,9 +245,79 @@ theorem counterpart_bound_of_witness (wellFormed : setup.WellFormed)
     (symmetry.mapTrace trace guarded) freeImage imageTurn
   refine ⟨⟨⟨_, symmetry.mapTrace trace guarded⟩, imageInfo⟩, imageRegular,
     operationalRecord_mapTrace swap (initialClosed_swapAllowed swap) bounded trace guarded, ?_⟩
+  -- Along the regular prefixes of `h`, every state is forced.
+  have witnessForced := forcedState_of_debtFree wellFormed witnessTrace freeWitness who
+  have witnessRecord := publicRecord_of_forced who witnessTrace witnessControl rfl witnessForced
+  have sameObserved : current.execution.observe (application setup leaks) who =
+      witnessControl.execution.observe (application setup leaks) who :=
+    currentView.trans witnessView.symm
+  have samePublic : current.execution.application.publicView =
+      witnessControl.execution.application.publicView :=
+    congrArg (fun observed : (application setup leaks).PlayerView =>
+      observed.application.publicView) sameObserved
+  have sameAccepted : current.execution.application.accepted =
+      witnessControl.execution.application.accepted :=
+    congrArg PublicView.accepted samePublic
+  have sameOrder : current.execution.application.config.history.map EventGraph.Completion.event =
+      witnessControl.execution.application.config.history.map EventGraph.Completion.event :=
+    congrArg (fun publicView : PublicView (graph setup) =>
+      publicView.observation.completionOrder) samePublic
+  have record : PublicRecord setup who current := by
+    refine ⟨fun event owner payload layout other completed => ?_,
+      fun player other point decoded failed => ?_⟩
+    · rw [sameAccepted]
+      refine witnessRecord.1 event owner payload layout other ?_
+      apply (witnessControl.execution.application.config.history_exact event).mp
+      rw [← sameOrder]
+      exact (current.execution.application.config.history_exact event).mpr completed
+    · rw [decodedP, Option.some.injEq] at decoded
+      subst decoded
+      exact witnessRecord.2 player other w decodedW
+        ((ProtocolState.revealFailed_iff_of_observe_eq player who setup.program _ _
+          sameView).mp failed)
+  have notOwed : ∀ point, decodedPoint setup current.execution.application.config = some point →
+      ¬ ProtocolState.OwesFailure who setup.program point := by
+    intro point decoded owes
+    rw [decodedP, Option.some.injEq] at decoded
+    subst decoded
+    exact freeW who ((owesFailure_iff_of_infoOf (bounds := bounds) (horizon := horizon)
+      (scheduler := scheduler) ⟨⟨some current, trace⟩, seen⟩
+      ⟨⟨some witnessControl, witnessTrace⟩, witnessSeen⟩ decodedP decodedW).mp owes)
+  have ownIntended := ownCompletionsIntended_of_notOwes (bounds := bounds) wellFormed who trace
+    current rfl notOwed
+  have firstStep : ∀ {before after} (prior : (onePacketProtocol setup leaks bounds horizon
+      scheduler).Trace before) joint
+      (legal : (onePacketProtocol setup leaks bounds horizon scheduler).Legal before joint)
+      (realized : after ∈ ((onePacketProtocol setup leaks bounds horizon scheduler).step before
+        ⟨joint, legal⟩).support), TracePrefix (prior.extend joint legal realized) trace →
+      SwapGuardState setup swap (swapAllowed swap) after →
+      ∀ (control next : (application setup leaks).Control) (actor : Player),
+      before = some control → after = some next → control.actor = some actor → actor ≠ who →
+      RegularStep setup leaks bounds horizon scheduler (sequence n) who
+        (swap.protocolState before) (swap.joint joint) (swap.protocolState after) →
+      RegularTrace setup leaks bounds horizon scheduler (sequence n) who prior →
+      ¬ RegularStep setup leaks bounds horizon scheduler (sequence n) who before joint after →
+      responseMass setup leaks bounds horizon scheduler (profiles n) control joint ≤
+        ε * responseMass setup leaks bounds horizon scheduler (profiles n) (swap.control control)
+          (swap.joint joint) := by
+    intro before after prior joint legal realized isPrefix guardAfter control next actor
+      beforeEq afterEq acting other imageStep regularPrior irregularStep
+    obtain ⟨ownPrior, recordPrior⟩ := prefix_good prior
+      ((TracePrefix.extend .refl joint legal realized).trans isPrefix) ownIntended
+      (fun control same => by cases same; exact record)
+    subst beforeEq
+    obtain ⟨point, decodedBefore, intended⟩ := intended_of_regular wellFormed (sequence n) who
+      prior control rfl (recordPrior control rfl) regularPrior ownPrior
+    have forcedAll : ∀ player, ForcedState setup leaks player (some control) := fun player =>
+      (forcedState_iff_decodedPoint control).mpr
+        ⟨point, decodedBefore, forcedPoint_of_intended player intended⟩
+    exact firstBound swap (swapAllowed swap) prior joint legal realized guardAfter control next
+      actor rfl afterEq acting other (forcedAll who)
+      ⟨⟨some control, prior⟩, (bounds.onePacketMenu (runtime setup) leaks).info (initialLaw setup)
+        horizon scheduler actor prior, forcedAll actor⟩ imageStep regularPrior irregularStep
   have weight := upperSourceWeight_le_swap positive swap (initialClosed_swapAllowed swap)
-    bounded n ιPos initialFloored K₁Nonneg εNonneg (responseBound swap (swapAllowed swap))
-    (firstBound swap (swapAllowed swap)) trace guarded imageRegular irregularHistory
+    bounded n ιPos initialFloored K₁Nonneg εNonneg trace guarded
+    (responseBound swap (swapAllowed swap)) firstStep imageRegular irregularHistory
   refine weight.trans ?_
   set K := max 1 (max (max (1 / ι) (1 / contentFloor setup leaks bounds horizon scheduler
     (sequence n))) (K₁ * (1 + steps.error n)))
