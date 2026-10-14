@@ -15,7 +15,11 @@ fails (`Vegas.expect_centeredCompletion_of_openableCommitment`); if the
 completion mass after the commitment depends on the slot alone up to `η`, the
 value of the commitment is drawn independently of its success, and the
 as-if-honest step is the step of the intended effective opening
-(`Vegas.asIfHonest_bind_step_eq_behavioralStateStep`). So, when `who` plays at
+(`Vegas.asIfHonest_bind_step_eq_behavioralStateStep`). In general, a payoff of
+stops vanishing while `who` is unsent and at failures, and after each permitted
+commitment a slot factor times a centered function of the choice up to `ε`, has
+expectation at most the cube of the scale times its bound plus `ε` per step of
+the horizon (`Vegas.lateBinding_exitBound`). So, when `who` plays at
 each of its decisions a slot-trembled mixture of late options or silence, the
 completion-point law from the history is the completion mass times the step of
 the intended effective opening at the decoded point, up to twice the cube of the
@@ -73,23 +77,76 @@ theorem completionPoint_eq_none_of_not_fresh {rank : Nat}
     · rfl
   · rfl
 
+variable (setup leaks bounds horizon scheduler) in
+/-- The shape of the owner's laws at its decisions while it has sent nothing for
+the event: a slot-trembled mixture of late options, or silence. -/
+def LateOwnerShape (assessment : setup.intendedModel.BehavioralAssessment) {scale : ℝ}
+    (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) (slots : Nat)
+    (installed : ∀ player, (onePacketModel setup leaks bounds (initialLaw setup) horizon
+      scheduler).BehavioralPolicy player) (who : Player) (event : (graph setup).EventId)
+    (sent : (graph setup).Config) (past : List (application setup leaks).PlayerEntry) : Prop :=
+  ∀ (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol
+      (initialLaw setup) horizon scheduler).History) (later : Nat)
+      (reached : (application setup leaks).Execution),
+    history.state = some ⟨later, some who, reached⟩ →
+    LateUnsent setup leaks who event sent past history.state →
+    (∃ options : PMF (LateOption slots),
+      installed who (some (reached.recall who, reached.observe (application setup leaks) who)) =
+        slotTrembledChoice setup leaks bounds (initialLaw setup) horizon scheduler scale
+          nonnegative le_one who
+          (some (reached.recall who, reached.observe (application setup leaks) who))
+          (options.bind (lateChoice setup leaks bounds (initialLaw setup) horizon scheduler
+            assessment who
+            (some (reached.recall who, reached.observe (application setup leaks) who))))
+          (PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler who
+            (some (reached.recall who, reached.observe (application setup leaks) who))))
+          (slotChoice setup leaks bounds (initialLaw setup) horizon scheduler assessment who
+            (some (reached.recall who, reached.observe (application setup leaks) who)))) ∨
+    installed who (some (reached.recall who, reached.observe (application setup leaks) who)) =
+      PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler who
+        (some (reached.recall who, reached.observe (application setup leaks) who)))
+
+omit [Fintype Player] in
+/-- At a decision of the owner while it has sent nothing, the configuration is
+the one it decodes at, and the event is ready and the owner's turn there. -/
+theorem lateUnsent_facts {who : Player} {event : (graph setup).EventId}
+    {execution : (application setup leaks).Execution}
+    (turn : execution.application.publicView.ownTurn? who = some event)
+    {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
+    {point : ProtocolState setup.program}
+    (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
+    {later : Nat} {actor : Option Player} {reached : (application setup leaks).Execution}
+    (holds : LateUnsent setup leaks who event execution.application.config
+      (execution.recall who) (some ⟨later, actor, reached⟩)) :
+    reached.application.config.cut.Ready event ∧
+      reached.application.config.cut.IsPrefix rank ∧
+      sourceServicePrefix? setup rank reached.application.config = some point ∧
+      reached.application.publicView.ownTurn? who = some event := by
+  obtain ⟨atSent, _, _⟩ := holds
+  have readySent : execution.application.config.cut.Ready event :=
+    (execution.application.publicView_eventReady event).mp
+      (PublicView.ownTurn?_spec _ who event turn).1
+  refine ⟨by rw [atSent]; exact readySent, by rw [atSent]; exact ordered,
+    by rw [atSent]; exact decoded, ?_⟩
+  rw [ownTurn?_eq_of_eventReady_iff (second := execution.application.publicView)
+    (fun other => by
+      rw [State.publicView_eventReady, State.publicView_eventReady, atSent]) who]
+  exact turn
+
 open Classical in
-/-- **The completion-point law at a late binding.** Under a scheduler completing
-play, with every binding value bounded and a positive candidate capacity, let
-`who` be at a decision at a history whose configuration is a prefix of `rank`
-events decoding to a point of the intended game, with its binding `event` its
-turn and nothing sent for it. Suppose that, at each of its decisions while it
-has sent nothing for the event, `installed` plays a slot-trembled mixture of
-late options over slots within the capacity, or silence (shape), and that the
-completion mass after committing at a permitted slot depends, up to `η`, on the
-slot alone and not on the committed as-if-honest choice (successFree). Then the
-completion-point law from the history, for every property `fresh` of controls
-failing at a failed event, is the completion mass times the step of the
-intended effective opening of `assessment` at the decoded point, up to twice
-the cube of the scale plus `η` per step of the horizon. -/
-theorem lateBinding_completionPointLaw
+/-- **Exit errors at a late binding.** Let `who` be at a decision at a history
+whose configuration is a prefix of `rank` events, with its binding `event` its
+turn and nothing sent for it, and let `installed` play the late owner shape.
+Let a payoff of stops, bounded by `bound` and reading only states, vanish while
+`who` has sent nothing and at failed completions of the event. Suppose that
+after committing an as-if-honest source choice at a permitted slot within the
+capacity, the payoff of play until the event completes is, up to `ε`, a factor
+of the slot times `centered` of the choice, where `centered` is bounded by
+`bound` and has mean zero under the as-if-honest law. Then the payoff of play
+until the event completes from the history is at most the cube of the scale
+times `bound` plus `ε`, per step of the horizon. -/
+theorem lateBinding_exitBound
     [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
-    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
     (covers : bounds.CoversOutputValues) (capacity : 1 ≤ bounds.candidateCount)
     (assessment : setup.intendedModel.BehavioralAssessment) {scale : ℝ} (positive : 0 < scale)
     (le_one : scale ≤ 1) {slots : Nat} (slotsLe : slots ≤ bounds.candidateCount)
@@ -107,35 +164,35 @@ theorem lateBinding_completionPointLaw
     (turn : execution.application.publicView.ownTurn? who = some event)
     (unrecorded : (runtime setup).eventRecorded leaks (execution.recall who) event = false)
     {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
-    {point : ProtocolState setup.program}
-    (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
-    (intendedPoint : ProtocolState.Intended setup.program point)
-    {fresh : (application setup leaks).Control → Prop}
-    (failedStale : ∀ control, StoreEventFailed control.execution.application.config.store event →
-      ¬ fresh control)
-    (shape : ∀ (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol
+    (shape : LateOwnerShape setup leaks bounds horizon scheduler assessment positive.le le_one
+      slots installed who event execution.application.config (execution.recall who))
+    (payoff : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+      horizon scheduler).History → ℝ) {bound ε : ℝ}
+    (payoffBounded : ∀ stop, |payoff stop| ≤ bound)
+    (payoffState : ∀ first second : ((bounds.onePacketMenu (runtime setup) leaks).protocol
+        (initialLaw setup) horizon scheduler).History,
+      first.state = second.state → payoff first = payoff second)
+    (unsentZero : ∀ (stop : ((bounds.onePacketMenu (runtime setup) leaks).protocol
+        (initialLaw setup) horizon scheduler).History)
+        (control : (application setup leaks).Control),
+      stop.state = some control →
+      control.execution.application.config = execution.application.config → payoff stop = 0)
+    (failedZero : ∀ (stop : ((bounds.onePacketMenu (runtime setup) leaks).protocol
+        (initialLaw setup) horizon scheduler).History)
+        (control : (application setup leaks).Control),
+      stop.state = some control → control.execution.application.config.cut.IsPrefix (rank + 1) →
+      StoreEventFailed control.execution.application.config.store event → payoff stop = 0)
+    (centered : Option (OwnAction Player L) → ℝ)
+    (centeredBounded : ∀ choice, |centered choice| ≤ bound) (ε_nonneg : 0 ≤ ε)
+    (mean : ∀ (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol
         (initialLaw setup) horizon scheduler).History) (later : Nat)
         (reached : (application setup leaks).Execution),
       history.state = some ⟨later, some who, reached⟩ →
       LateUnsent setup leaks who event execution.application.config (execution.recall who)
         history.state →
-      (∃ options : PMF (LateOption slots),
-        installed who (some (reached.recall who, reached.observe (application setup leaks) who)) =
-          slotTrembledChoice setup leaks bounds (initialLaw setup) horizon scheduler scale
-            positive.le le_one who
-            (some (reached.recall who, reached.observe (application setup leaks) who))
-            (options.bind (lateChoice setup leaks bounds (initialLaw setup) horizon scheduler
-              assessment who
-              (some (reached.recall who, reached.observe (application setup leaks) who))))
-            (PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler who
-              (some (reached.recall who, reached.observe (application setup leaks) who))))
-            (slotChoice setup leaks bounds (initialLaw setup) horizon scheduler assessment who
-              (some (reached.recall who, reached.observe (application setup leaks) who)))) ∨
-      installed who (some (reached.recall who, reached.observe (application setup leaks) who)) =
-        PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler who
-          (some (reached.recall who, reached.observe (application setup leaks) who))))
-    {η : ℝ} (η_nonneg : 0 ≤ η)
-    (successFree : ∀ (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol
+      expect (asIfHonestProfile setup leaks assessment who
+        (some (reached.recall who, reached.observe (application setup leaks) who))) centered = 0)
+    (committed : ∀ (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol
         (initialLaw setup) horizon scheduler).History) (later : Nat)
         (reached : (application setup leaks).Execution),
       history.state = some ⟨later, some who, reached⟩ →
@@ -156,46 +213,25 @@ theorem lateBinding_completionPointLaw
                 scheduler).runBehavioralUntil
                 ((bounds.onePacketMenu (runtime setup) leaks).bounded (initialLaw setup) horizon
                   scheduler).wellFoundedHistories installed
-                (LateStopped setup leaks bounds horizon scheduler rank) next)
-                (completionIndicator setup leaks bounds horizon scheduler rank fresh) -
-              factor| ≤ η) :
-    CompletionPointLaw setup leaks bounds horizon scheduler installed rank fresh start
-      (expect ((onePacketModel setup leaks bounds (initialLaw setup) horizon
-          scheduler).runBehavioralUntil
-          ((bounds.onePacketMenu (runtime setup) leaks).bounded (initialLaw setup) horizon
-            scheduler).wellFoundedHistories installed
-          (LateStopped setup leaks bounds horizon scheduler rank) start)
-        (completionIndicator setup leaks bounds horizon scheduler rank fresh))
-      (ProtocolState.behavioralStateStep setup.program
-        (setup.intendedOpeningProfile assessment.strategy) point)
-      (2 * (scale ^ 3 + η) * (2 * horizon + 1)) := by
-  intro value bound valueBounded
+                (LateStopped setup leaks bounds horizon scheduler rank) next) payoff -
+              factor * centered choice| ≤ ε) :
+    |expect ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+        scheduler).runBehavioralUntil
+        ((bounds.onePacketMenu (runtime setup) leaks).bounded (initialLaw setup) horizon
+          scheduler).wellFoundedHistories installed
+        (LateStopped setup leaks bounds horizon scheduler rank) start) payoff| ≤
+      (scale ^ 3 * bound + ε) * (2 * horizon + 1) := by
   let menu := bounds.onePacketMenu (runtime setup) leaks
   let model := onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
   let certificate := (menu.bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
   let sent := execution.application.config
   let past := execution.recall who
-  let center := expect (ProtocolState.behavioralStateStep setup.program
-    (setup.intendedOpeningProfile assessment.strategy) point) value
   let stopped := LateStopped setup leaks bounds horizon scheduler rank
-  let payoff := centeredCompletion setup leaks bounds horizon scheduler rank fresh value center
   let inside : (menu.protocol (initialLaw setup) horizon scheduler).History → Prop :=
     fun history => LateUnsent setup leaks who event sent past history.state
-  have boundNonneg : 0 ≤ bound := (abs_nonneg _).trans (valueBounded point)
-  have centerBounded : |center| ≤ bound := expect_abs_le_of_bounded boundNonneg valueBounded
-  have payoffBounded : ∀ stop, |payoff stop| ≤ 2 * bound := by
-    intro stop
-    simp only [payoff, centeredCompletion]
-    cases completionPoint setup leaks bounds horizon scheduler rank fresh stop with
-    | none =>
-        rw [Option.elim_none, abs_zero]
-        linarith
-    | some target =>
-        rw [Option.elim_some]
-        calc |value target - center| ≤ |value target| + |center| := abs_sub _ _
-          _ ≤ 2 * bound := by linarith [valueBounded target]
-  have κNonneg : 0 ≤ 2 * bound * (scale ^ 3 + η) :=
-    mul_nonneg (by linarith) (add_nonneg (pow_nonneg positive.le 3) η_nonneg)
+  have boundNonneg : 0 ≤ bound := (abs_nonneg _).trans (payoffBounded start)
+  have κNonneg : 0 ≤ scale ^ 3 * bound + ε :=
+    add_nonneg (mul_nonneg (pow_nonneg positive.le 3) boundNonneg) ε_nonneg
   have horizonBound := menu.bounded (initialLaw setup) horizon scheduler
   have atEnd : ∀ history, inside history → (stopped history ∨
       (menu.protocol (initialLaw setup) horizon scheduler).terminal history.state) →
@@ -208,14 +244,7 @@ theorem lateBinding_completionPointLaw
         exact holds.elim
     | some control =>
         rw [state] at holds
-        obtain ⟨atSent, _, _⟩ := holds
-        have prefixed : control.execution.application.config.cut.IsPrefix rank := by
-          rw [atSent]
-          exact ordered
-        change (completionPoint setup leaks bounds horizon scheduler rank fresh history).elim 0
-          (fun target => value target - center) = 0
-        rw [completionPoint_eq_none_of_isPrefix state prefixed]
-        rfl
+        exact unsentZero history control state holds.1
   have descends : ∀ history next, inside history → ¬ stopped history →
       ¬ (menu.protocol (initialLaw setup) horizon scheduler).terminal history.state →
       next ∈ (model.runBehavioralFrom installed 1 history).support →
@@ -230,7 +259,7 @@ theorem lateBinding_completionPointLaw
       ¬ (menu.protocol (initialLaw setup) horizon scheduler).terminal history.state →
       |expect (model.runBehavioralFrom installed 1 history) (fun next => if inside next then 0
         else expect (model.runBehavioralUntil certificate installed stopped next) payoff)| ≤
-        2 * bound * (scale ^ 3 + η) := by
+        scale ^ 3 * bound + ε := by
     intro history holds going running
     obtain ⟨control, state⟩ : ∃ control, history.state = some control := by
       simp only [inside] at holds
@@ -252,22 +281,12 @@ theorem lateBinding_completionPointLaw
       menu.toRawTrace (initialLaw setup) horizon scheduler next.trace
     let later' := fun next : (menu.protocol (initialLaw setup) horizon scheduler).History =>
       expect (model.runBehavioralUntil certificate installed stopped next) payoff
-    have laterBounded : ∀ next, |later' next| ≤ 2 * bound := fun next =>
-      expect_abs_le_of_bounded (by linarith) payoffBounded
+    have laterBounded : ∀ next, |later' next| ≤ bound := fun next =>
+      expect_abs_le_of_bounded boundNonneg payoffBounded
     by_cases owner : actor = some who
     · subst owner
       have traceHere : (menu.protocol (initialLaw setup) horizon scheduler).Trace
           (some ⟨later, some who, reached⟩) := state ▸ history.trace
-      have readyHere : reached.application.config.cut.Ready event := by
-        rw [atSent]
-        exact readySent
-      have orderedHere : reached.application.config.cut.IsPrefix rank := by
-        rw [atSent]
-        exact ordered
-      have decodedHere : sourceServicePrefix? setup rank reached.application.config =
-          some point := by
-        rw [atSent]
-        exact decoded
       have turnHere : reached.application.publicView.ownTurn? who = some event := by
         rw [ownTurn?_eq_of_eventReady_iff (second := execution.application.publicView)
           (fun other => by
@@ -284,27 +303,27 @@ theorem lateBinding_completionPointLaw
       let statePayoff : (application setup leaks).ProtocolState → ℝ := fun reachedState =>
         if found : ∃ other : (menu.protocol (initialLaw setup) horizon scheduler).History,
             other.state = reachedState then payoff found.choose else 0
-      have payoffState : ∀ stop, payoff stop = statePayoff stop.state := by
+      have payoffAt : ∀ stop, payoff stop = statePayoff stop.state := by
         intro stop
         have found : ∃ other : (menu.protocol (initialLaw setup) horizon scheduler).History,
             other.state = stop.state := ⟨stop, rfl⟩
-        simp only [statePayoff, found, ↓reduceDIte, payoff, centeredCompletion]
-        rw [completionPoint_congr_state found.choose_spec]
-      have statePayoffBounded : ∀ reachedState, |statePayoff reachedState| ≤ 2 * bound := by
+        simp only [statePayoff, found, ↓reduceDIte]
+        exact payoffState _ _ found.choose_spec.symm
+      have statePayoffBounded : ∀ reachedState, |statePayoff reachedState| ≤ bound := by
         intro reachedState
         simp only [statePayoff]
         split
         · exact payoffBounded _
         · rw [abs_zero]
-          linarith
+          exact boundNonneg
       have laterState : ∀ first second : (menu.protocol (initialLaw setup) horizon
           scheduler).History, first.state = second.state → later' first = later' second := by
         intro first second same
         simp only [later']
         rw [expect_congr_on_support (g := fun stop => statePayoff stop.state)
-            (fun stop _ => payoffState stop),
+            (fun stop _ => payoffAt stop),
           expect_congr_on_support (μ := model.runBehavioralUntil certificate installed stopped
-            second) (g := fun stop => statePayoff stop.state) (fun stop _ => payoffState stop)]
+            second) (g := fun stop => statePayoff stop.state) (fun stop _ => payoffAt stop)]
         exact menu.expect_runBehavioralUntil_eq_of_state_eq (initialLaw setup) horizon scheduler
           installed certificate stopped (fun x y same => by
             simp only [stopped, LateStopped, same]) statePayoff statePayoffBounded first second
@@ -320,20 +339,20 @@ theorem lateBinding_completionPointLaw
         have found : ∃ other ∈ step.support, other.state = next.state := ⟨next, member, rfl⟩
         simp only [readOff, found, ↓reduceDIte]
         exact exitState _ _ found.choose_spec.2
-      have exitBounded : ∀ next, |exit next| ≤ 2 * bound := by
+      have exitBounded : ∀ next, |exit next| ≤ bound := by
         intro next
         simp only [exit]
         split
         · rw [abs_zero]
-          linarith
+          exact boundNonneg
         · exact laterBounded next
-      have readOffBounded : ∀ reachedState, |readOff reachedState| ≤ 2 * bound := by
+      have readOffBounded : ∀ reachedState, |readOff reachedState| ≤ bound := by
         intro reachedState
         simp only [readOff]
         split
         · exact exitBounded _
         · rw [abs_zero]
-          linarith
+          exact boundNonneg
       -- The exit as an expectation over the owner's choices.
       have stepStates := menu.run_one_response (initialLaw setup) horizon scheduler installed
         history who later reached state
@@ -394,31 +413,6 @@ theorem lateBinding_completionPointLaw
         have reachable : ∀ choice, ∃ next ∈ step.support,
             next.state = respondState (choiceResponse choice) := fun choice =>
           drawn choice (by rw [lawEq]; exact fullSupport choice)
-        let centered := fun choice : Option (OwnAction Player L) =>
-          expect (ProtocolState.step setup.program point (fun _ => choice)) value - center
-        have centeredBounded : ∀ choice, |centered choice| ≤ 2 * bound := by
-          intro choice
-          have inner := expect_abs_le_of_bounded (μ := ProtocolState.step setup.program point
-            (fun _ => choice)) boundNonneg valueBounded
-          calc |centered choice| ≤ |expect (ProtocolState.step setup.program point
-                (fun _ => choice)) value| + |center| := abs_sub _ _
-            _ ≤ 2 * bound := by linarith
-        have stepLaw := asIfHonest_bind_step_eq_behavioralStateStep assessment who reached
-          orderedHere decodedHere intendedPoint turnHere (reached.recall who)
-        have mean : expect (asIfHonestProfile setup leaks assessment who info) centered = 0 := by
-          have firstIntegrable : PayoffIntegrable (asIfHonestProfile setup leaks assessment who
-              info) (fun choice => expect (ProtocolState.step setup.program point
-                (fun _ => choice)) value) :=
-            payoffIntegrable_of_bounded _ _ (C := bound) fun choice =>
-              expect_abs_le_of_bounded boundNonneg valueBounded
-          simp only [centered]
-          rw [expect_sub firstIntegrable (payoffIntegrable_constant _ center), expect_constant,
-            ← expect_bind_tower_bounded _ _ _ valueBounded]
-          change expect ((asIfHonestProfile setup leaks assessment who
-            (some (reached.recall who, reached.observe (application setup leaks) who))).bind
-              fun choice => ProtocolState.step setup.program point (fun _ => choice)) value -
-            center = 0
-          rw [stepLaw, sub_self]
         have silent : readOff (respondState ⟨none⟩) = 0 := by
           obtain ⟨next, member, nextState⟩ := reachable (silenceChoice setup leaks bounds
             (initialLaw setup) horizon scheduler who info)
@@ -440,12 +434,12 @@ theorem lateBinding_completionPointLaw
                   (initialLaw setup) horizon scheduler who info
                   (slotResponse setup leaks who (reached.recall who)
                     (reached.observe (application setup leaks) who) event slot choice)))) -
-                factor * centered choice| ≤ 2 * bound * η := by
+                factor * centered choice| ≤ ε := by
           intro slot below
           by_cases permitted : countPermits ((application setup leaks).outputs
               (reached.recall who)) (slotEnvelope setup leaks who (reached.recall who)
                 (reached.observe (application setup leaks) who) event slot) = true
-          · obtain ⟨factor, near⟩ := successFree history later reached state holdsState slot
+          · obtain ⟨factor, near⟩ := committed history later reached state holdsState slot
               below permitted
             refine ⟨factor, fun choice member => ?_⟩
             have covered := onePacket_honest_covered assessment covers traceHere who event
@@ -466,8 +460,7 @@ theorem lateBinding_completionPointLaw
                 choice))
             rw [responded] at nextState
             rw [responded, ← nextState, readOffEq next nextMember]
-            obtain ⟨action, encoded, values⟩ := covered
-            obtain ⟨committed, successful, _⟩ := values who payload outputEq codeEq node
+            obtain ⟨action, encoded, _⟩ := covered
             obtain ⟨material, transmits, envelope⟩ := slotResponse_transmission setup leaks who
               (reached.recall who) (reached.observe (application setup leaks) who) event node
               slot choice action encoded
@@ -491,57 +484,7 @@ theorem lateBinding_completionPointLaw
               rw [List.any_append] at unrecordedNext
               simp [named] at unrecordedNext
             simp only [exit, recordedNext, ↓reduceIte]
-            have nextState' : next.state = some ⟨later, none, reached.respond
-                (application setup leaks) who (slotResponse setup leaks who (reached.recall who)
-                  (reached.observe (application setup leaks) who) event slot choice)⟩ := nextState
-            obtain ⟨entry, message, invariant⟩ := openableCommitmentInvariant_slot bounds horizon
-              scheduler traceHere node readyHere slot choice action encoded successful permitted
-              (nextState' ▸ next.trace)
-            obtain ⟨found, ⟨residualFound⟩⟩ := protocol_sourceResidual
-              (failureProfile setup.program) menu horizon scheduler traceHere _ rfl
-            have foundEq : found = rank :=
-              isPrefix_unique residualFound.checkpoint.ordered orderedHere
-            have residual := foundEq ▸ residualFound
-            cases choice with
-            | none => simp at encoded
-            | some source =>
-                have encodedSource : encodeEventAction? setup.program event source =
-                    some action := encoded
-                have decodeEq := decodeEventAction_encodeEventAction?_eq_some setup.program event
-                  source action encodedSource
-                have owned : (graph setup).actor? event = some who :=
-                  nodeView_bind_actor outputEq codeEq
-                have pointDecoded : decodedPoint setup reached.application.config = some point :=
-                  (decodedPoint_eq_of_isPrefix orderedHere).trans decodedHere
-                have acts := (decodedPoint_actor who readyHere pointDecoded).trans owned
-                obtain ⟨target, stepEq⟩ := ProtocolState.step_eq_pure_of_actor who who
-                  setup.program point (fun _ => some source) acts
-                have stepEq' : ProtocolState.step setup.program point
-                    (fun _ => decodeEventAction setup.program event action) = PMF.pure target := by
-                  rw [decodeEq]
-                  exact stepEq
-                have valueAt := expect_centeredCompletion_of_openableCommitment completes
-                  certificate installed codeEq successful residual decodedHere stepEq'
-                  failedStale next (by rw [nextState']; exact invariant) value center
-                have centeredEq : centered (some source) = value target - center := by
-                  simp only [centered, stepEq, expect_pure]
-                change |expect (model.runBehavioralUntil certificate installed stopped next)
-                  payoff - _| ≤ _
-                simp only [payoff]
-                rw [valueAt, centeredEq]
-                have closeness := near (some source) member next nextState
-                have targetBounded : |value target - center| ≤ 2 * bound := by
-                  calc |value target - center| ≤ |value target| + |center| := abs_sub _ _
-                    _ ≤ 2 * bound := by linarith [valueBounded target]
-                rw [show (value target - center) * expect (model.runBehavioralUntil certificate
-                    installed (LateStopped setup leaks bounds horizon scheduler rank) next)
-                    (completionIndicator setup leaks bounds horizon scheduler rank fresh) -
-                    factor * (value target - center) = (value target - center) *
-                    (expect (model.runBehavioralUntil certificate installed
-                      (LateStopped setup leaks bounds horizon scheduler rank) next)
-                      (completionIndicator setup leaks bounds horizon scheduler rank fresh) -
-                      factor) by ring, abs_mul]
-                exact mul_le_mul targetBounded closeness (abs_nonneg _) (by linarith)
+            exact near choice member next nextState
           · refine ⟨0, fun choice member => ?_⟩
             have covered := onePacket_honest_covered assessment covers traceHere who event
               turnHere choice member
@@ -559,14 +502,13 @@ theorem lateBinding_completionPointLaw
               simp only [choiceResponse, responseChoice, info, notMenu, ↓reduceDIte,
                 Option.getD_some]
             rw [responded, silent, zero_mul, sub_zero, abs_zero]
-            exact mul_nonneg (by linarith) η_nonneg
-        have bounded' := abs_expect_slotTrembled_lateChoice_le assessment positive.le le_one
+            exact ε_nonneg
+        exact abs_expect_slotTrembled_lateChoice_le assessment positive.le le_one
           options who (reached.recall who) (reached.observe (application setup leaks) who) event
           turnHere (fun response => readOff (respondState response)) centered
-          (bound := 2 * bound) (ε := 2 * bound * η) (fun response => readOffBounded _)
-          centeredBounded mean silent bounds.candidateCount tierBelow optionsBelow sending
-        calc _ ≤ scale ^ 3 * (2 * bound) + 2 * bound * η := bounded'
-          _ = 2 * bound * (scale ^ 3 + η) := by ring
+          (fun response => readOffBounded _) centeredBounded
+          (mean history later reached state holdsState) silent bounds.candidateCount tierBelow
+          optionsBelow sending
       · -- Silence.
         rw [silenceEq, expect_pure, silenceAction]
         obtain ⟨next, member, nextState⟩ := drawn (silenceChoice setup leaks bounds
@@ -593,9 +535,8 @@ theorem lateBinding_completionPointLaw
           · rfl
           · have halted : stopped next := ⟨after, afterState, prefixed⟩
             simp only [later', model.runBehavioralUntil_of_stopped certificate installed halted,
-              expect_pure, payoff, centeredCompletion]
-            rw [completionPoint_eq_none_of_not_fresh afterState (failedStale after failed)]
-            rfl
+              expect_pure]
+            exact failedZero next after afterState prefixed failed
       rw [expect_congr_on_support (g := fun _ => 0) zero, expect_constant, abs_zero]
       exact κNonneg
   have startInside : inside start := by
@@ -604,6 +545,222 @@ theorem lateBinding_completionPointLaw
   have main := model.abs_expect_runBehavioralUntil_le_of_exits certificate installed stopped
     inside payoff payoffBounded κNonneg (fun history => (2 * horizon + 1) - history.trace.length)
     atEnd descends exits start startInside
+  refine main.trans ?_
+  have depthLe : (((2 * horizon + 1) - start.trace.length : ℕ) : ℝ) ≤ 2 * horizon + 1 := by
+    have : (2 * horizon + 1) - start.trace.length ≤ 2 * horizon + 1 := Nat.sub_le _ _
+    exact_mod_cast this
+  exact mul_le_mul_of_nonneg_left depthLe κNonneg
+
+open Classical in
+/-- **The completion-point law at a late binding.** Under a scheduler completing
+play, with every binding value bounded and a positive candidate capacity, let
+`who` be at a decision at a history whose configuration is a prefix of `rank`
+events decoding to a point of the intended game, with its binding `event` its
+turn and nothing sent for it. Suppose that `installed` plays the late owner
+shape, and that the completion mass after committing at a permitted slot
+depends, up to `η`, on the slot alone and not on the committed as-if-honest
+choice (successFree). Then the completion-point law from the history, for every
+property `fresh` of controls failing at a failed event, is the completion mass
+times the step of the intended effective opening of `assessment` at the decoded
+point, up to twice the cube of the scale plus `η` per step of the horizon. -/
+theorem lateBinding_completionPointLaw
+    [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
+    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
+    (covers : bounds.CoversOutputValues) (capacity : 1 ≤ bounds.candidateCount)
+    (assessment : setup.intendedModel.BehavioralAssessment) {scale : ℝ} (positive : 0 < scale)
+    (le_one : scale ≤ 1) {slots : Nat} (slotsLe : slots ≤ bounds.candidateCount)
+    (installed : ∀ player, (onePacketModel setup leaks bounds (initialLaw setup) horizon
+      scheduler).BehavioralPolicy player)
+    (start : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+      scheduler).History)
+    {remaining : Nat} {who : Player} {execution : (application setup leaks).Execution}
+    (current : start.state = some ⟨remaining, some who, execution⟩)
+    {event : (graph setup).EventId} {payload : L.Ty}
+    {outputEq : (graph setup).outputLayout event = .binding who payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .bind who payload}
+    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
+    (turn : execution.application.publicView.ownTurn? who = some event)
+    (unrecorded : (runtime setup).eventRecorded leaks (execution.recall who) event = false)
+    {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
+    {point : ProtocolState setup.program}
+    (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
+    (intendedPoint : ProtocolState.Intended setup.program point)
+    {fresh : (application setup leaks).Control → Prop}
+    (failedStale : ∀ control, StoreEventFailed control.execution.application.config.store event →
+      ¬ fresh control)
+    (shape : LateOwnerShape setup leaks bounds horizon scheduler assessment positive.le le_one
+      slots installed who event execution.application.config (execution.recall who))
+    {η : ℝ} (η_nonneg : 0 ≤ η)
+    (successFree : ∀ (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol
+        (initialLaw setup) horizon scheduler).History) (later : Nat)
+        (reached : (application setup leaks).Execution),
+      history.state = some ⟨later, some who, reached⟩ →
+      LateUnsent setup leaks who event execution.application.config (execution.recall who)
+        history.state →
+      ∀ slot < bounds.candidateCount,
+        countPermits ((application setup leaks).outputs (reached.recall who))
+          (slotEnvelope setup leaks who (reached.recall who)
+            (reached.observe (application setup leaks) who) event slot) = true →
+        ∃ factor : ℝ, ∀ choice ∈ (asIfHonestProfile setup leaks assessment who
+            (some (reached.recall who, reached.observe (application setup leaks) who))).support,
+          ∀ next : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+              horizon scheduler).History,
+            next.state = some ⟨later, none, reached.respond (application setup leaks) who
+              (slotResponse setup leaks who (reached.recall who)
+                (reached.observe (application setup leaks) who) event slot choice)⟩ →
+            |expect ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+                scheduler).runBehavioralUntil
+                ((bounds.onePacketMenu (runtime setup) leaks).bounded (initialLaw setup) horizon
+                  scheduler).wellFoundedHistories installed
+                (LateStopped setup leaks bounds horizon scheduler rank) next)
+                (completionIndicator setup leaks bounds horizon scheduler rank fresh) -
+              factor| ≤ η) :
+    CompletionPointLaw setup leaks bounds horizon scheduler installed rank fresh start
+      (expect ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+          scheduler).runBehavioralUntil
+          ((bounds.onePacketMenu (runtime setup) leaks).bounded (initialLaw setup) horizon
+            scheduler).wellFoundedHistories installed
+          (LateStopped setup leaks bounds horizon scheduler rank) start)
+        (completionIndicator setup leaks bounds horizon scheduler rank fresh))
+      (ProtocolState.behavioralStateStep setup.program
+        (setup.intendedOpeningProfile assessment.strategy) point)
+      (2 * (scale ^ 3 + η) * (2 * horizon + 1)) := by
+  intro value bound valueBounded
+  let menu := bounds.onePacketMenu (runtime setup) leaks
+  let model := onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
+  let certificate := (menu.bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
+  let center := expect (ProtocolState.behavioralStateStep setup.program
+    (setup.intendedOpeningProfile assessment.strategy) point) value
+  let stopped := LateStopped setup leaks bounds horizon scheduler rank
+  let payoff := centeredCompletion setup leaks bounds horizon scheduler rank fresh value center
+  have boundNonneg : 0 ≤ bound := (abs_nonneg _).trans (valueBounded point)
+  have centerBounded : |center| ≤ bound := expect_abs_le_of_bounded boundNonneg valueBounded
+  have payoffBounded : ∀ stop, |payoff stop| ≤ 2 * bound := by
+    intro stop
+    simp only [payoff, centeredCompletion]
+    cases completionPoint setup leaks bounds horizon scheduler rank fresh stop with
+    | none =>
+        rw [Option.elim_none, abs_zero]
+        linarith
+    | some target =>
+        rw [Option.elim_some]
+        calc |value target - center| ≤ |value target| + |center| := abs_sub _ _
+          _ ≤ 2 * bound := by linarith [valueBounded target]
+  let centered := fun choice : Option (OwnAction Player L) =>
+    expect (ProtocolState.step setup.program point (fun _ => choice)) value - center
+  have centeredBounded : ∀ choice, |centered choice| ≤ 2 * bound := by
+    intro choice
+    have inner := expect_abs_le_of_bounded (μ := ProtocolState.step setup.program point
+      (fun _ => choice)) boundNonneg valueBounded
+    calc |centered choice| ≤ |expect (ProtocolState.step setup.program point
+          (fun _ => choice)) value| + |center| := abs_sub _ _
+      _ ≤ 2 * bound := by linarith
+  have mean : ∀ (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
+      (later : Nat) (reached : (application setup leaks).Execution),
+      history.state = some ⟨later, some who, reached⟩ →
+      LateUnsent setup leaks who event execution.application.config (execution.recall who)
+        history.state →
+      expect (asIfHonestProfile setup leaks assessment who
+        (some (reached.recall who, reached.observe (application setup leaks) who))) centered =
+        0 := by
+    intro history later reached state holds
+    obtain ⟨_, orderedHere, decodedHere, turnHere⟩ := lateUnsent_facts turn ordered decoded
+      (by simpa only [state] using holds)
+    have stepLaw := asIfHonest_bind_step_eq_behavioralStateStep assessment who reached
+      orderedHere decodedHere intendedPoint turnHere (reached.recall who)
+    have firstIntegrable : PayoffIntegrable (asIfHonestProfile setup leaks assessment who
+        (some (reached.recall who, reached.observe (application setup leaks) who)))
+        (fun choice => expect (ProtocolState.step setup.program point
+          (fun _ => choice)) value) :=
+      payoffIntegrable_of_bounded _ _ (C := bound) fun choice =>
+        expect_abs_le_of_bounded boundNonneg valueBounded
+    simp only [centered]
+    rw [expect_sub firstIntegrable (payoffIntegrable_constant _ center), expect_constant,
+      ← expect_bind_tower_bounded _ _ _ valueBounded, stepLaw, sub_self]
+  have committed : ∀ (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
+      (later : Nat) (reached : (application setup leaks).Execution),
+      history.state = some ⟨later, some who, reached⟩ →
+      LateUnsent setup leaks who event execution.application.config (execution.recall who)
+        history.state →
+      ∀ slot < bounds.candidateCount,
+        countPermits ((application setup leaks).outputs (reached.recall who))
+          (slotEnvelope setup leaks who (reached.recall who)
+            (reached.observe (application setup leaks) who) event slot) = true →
+        ∃ factor : ℝ, ∀ choice ∈ (asIfHonestProfile setup leaks assessment who
+            (some (reached.recall who, reached.observe (application setup leaks) who))).support,
+          ∀ next : (menu.protocol (initialLaw setup) horizon scheduler).History,
+            next.state = some ⟨later, none, reached.respond (application setup leaks) who
+              (slotResponse setup leaks who (reached.recall who)
+                (reached.observe (application setup leaks) who) event slot choice)⟩ →
+            |expect (model.runBehavioralUntil certificate installed stopped next) payoff -
+              factor * centered choice| ≤ 2 * bound * η := by
+    intro history later reached state holds slot below permitted
+    obtain ⟨factor, near⟩ := successFree history later reached state holds slot below permitted
+    refine ⟨factor, fun choice member next nextState => ?_⟩
+    have traceHere : (menu.protocol (initialLaw setup) horizon scheduler).Trace
+        (some ⟨later, some who, reached⟩) := state ▸ history.trace
+    obtain ⟨readyHere, orderedHere, decodedHere, turnHere⟩ := lateUnsent_facts turn ordered
+      decoded (by simpa only [state] using holds)
+    obtain ⟨action, encoded, values⟩ := onePacket_honest_covered assessment covers traceHere who
+      event turnHere choice member
+    obtain ⟨committedValue, successful, _⟩ := values who payload outputEq codeEq node
+    obtain ⟨entry, message, invariant⟩ := openableCommitmentInvariant_slot bounds horizon
+      scheduler traceHere node readyHere slot choice action encoded successful permitted
+      (nextState ▸ next.trace)
+    obtain ⟨found, ⟨residualFound⟩⟩ := protocol_sourceResidual
+      (failureProfile setup.program) menu horizon scheduler traceHere _ rfl
+    have foundEq : found = rank := isPrefix_unique residualFound.checkpoint.ordered orderedHere
+    have residual := foundEq ▸ residualFound
+    cases choice with
+    | none => simp at encoded
+    | some source =>
+    have encodedSource : encodeEventAction? setup.program event source = some action := encoded
+    have decodeEq := decodeEventAction_encodeEventAction?_eq_some setup.program event source
+      action encodedSource
+    have owned : (graph setup).actor? event = some who := nodeView_bind_actor outputEq codeEq
+    have pointDecoded : decodedPoint setup reached.application.config = some point :=
+      (decodedPoint_eq_of_isPrefix orderedHere).trans decodedHere
+    have acts := (decodedPoint_actor who readyHere pointDecoded).trans owned
+    obtain ⟨target, stepEq⟩ := ProtocolState.step_eq_pure_of_actor who who setup.program point
+      (fun _ => some source) acts
+    have stepEq' : ProtocolState.step setup.program point
+        (fun _ => decodeEventAction setup.program event action) = PMF.pure target := by
+      rw [decodeEq]
+      exact stepEq
+    have valueAt := expect_centeredCompletion_of_openableCommitment completes certificate
+      installed codeEq successful residual decodedHere stepEq' failedStale next
+      (by rw [nextState]; exact invariant) value center
+    have centeredEq : centered (some source) = value target - center := by
+      simp only [centered, stepEq, expect_pure]
+    simp only [payoff]
+    rw [valueAt, centeredEq]
+    have closeness := near (some source) member next nextState
+    have targetBounded : |value target - center| ≤ 2 * bound := by
+      calc |value target - center| ≤ |value target| + |center| := abs_sub _ _
+        _ ≤ 2 * bound := by linarith [valueBounded target]
+    rw [show (value target - center) * expect (model.runBehavioralUntil certificate installed
+        stopped next) (completionIndicator setup leaks bounds horizon scheduler rank fresh) -
+        factor * (value target - center) = (value target - center) *
+        (expect (model.runBehavioralUntil certificate installed stopped next)
+          (completionIndicator setup leaks bounds horizon scheduler rank fresh) - factor) by ring,
+      abs_mul]
+    exact mul_le_mul targetBounded closeness (abs_nonneg _) (by linarith)
+  have main := lateBinding_exitBound covers capacity assessment positive le_one slotsLe installed
+    start current node turn unrecorded ordered shape payoff payoffBounded
+    (fun first second same => by
+      simp only [payoff, centeredCompletion, completionPoint_congr_state same])
+    (fun stop control state atSent => by
+      change (completionPoint setup leaks bounds horizon scheduler rank fresh stop).elim 0
+        (fun target => value target - center) = 0
+      rw [completionPoint_eq_none_of_isPrefix state (by rw [atSent]; exact ordered)]
+      rfl)
+    (fun stop control state _ failed => by
+      change (completionPoint setup leaks bounds horizon scheduler rank fresh stop).elim 0
+        (fun target => value target - center) = 0
+      rw [completionPoint_eq_none_of_not_fresh state (failedStale control failed)]
+      rfl)
+    centered centeredBounded (mul_nonneg (by linarith) η_nonneg) mean committed
   have rewriteEq : expect (model.runBehavioralUntil certificate installed stopped start)
         (fun stop => (completionPoint setup leaks bounds horizon scheduler rank fresh stop).elim
           0 value) -
@@ -638,13 +795,7 @@ theorem lateBinding_completionPointLaw
     expect (model.runBehavioralUntil certificate installed stopped start)
       (completionIndicator setup leaks bounds horizon scheduler rank fresh) * center| ≤ _
   rw [rewriteEq]
-  refine main.trans ?_
-  have depthLe : (((2 * horizon + 1) - start.trace.length : ℕ) : ℝ) ≤ 2 * horizon + 1 := by
-    have : (2 * horizon + 1) - start.trace.length ≤ 2 * horizon + 1 := Nat.sub_le _ _
-    exact_mod_cast this
-  calc 2 * bound * (scale ^ 3 + η) * (((2 * horizon + 1) - start.trace.length : ℕ) : ℝ)
-      ≤ 2 * bound * (scale ^ 3 + η) * (2 * horizon + 1) :=
-        mul_le_mul_of_nonneg_left depthLe κNonneg
-    _ = 2 * (scale ^ 3 + η) * (2 * horizon + 1) * bound := by ring
+  refine main.trans (le_of_eq ?_)
+  ring
 
 end Vegas
