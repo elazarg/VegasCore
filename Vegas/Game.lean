@@ -440,3 +440,5 @@ import Vegas.Game.OnePacketLateSuccessFree
 import Vegas.Game.OnePacketRelevantLumping
 import Vegas.Game.OnePacketSwapRegular
 import Vegas.Game.OnePacketUnpendingSites
+import Vegas.Game.OnePacketSwapFibers
+import Vegas.Game.SourceSwapAgreement
