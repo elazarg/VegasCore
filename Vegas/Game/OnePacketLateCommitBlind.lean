@@ -18,7 +18,9 @@ decoded point; so when the belief decorrelates the record and the decoded point,
 the site's completion value is one less the site's failure probability times the
 site's value of committing, up to errors that vanish with the scale, the belief
 mass outside the forced region and the decorrelation
-(`Vegas.certificate_lateCommit_siteValue`).
+(`Vegas.certificate_lateCommit_siteValue`). With a vanishing scale, unforced mass
+and decorrelation, late commitments are value-blind with a vanishing error
+(`Vegas.lateCommitBlind_of_bounds`).
 -/
 
 noncomputable section
@@ -446,5 +448,140 @@ theorem certificate_lateCommit_siteValue
         |expect belief (fun history => (1 - failure history) * commitValue history) -
           (1 - expect belief failure) * expect belief commitValue| := abs_sub_le _ _ _
     _ ≤ _ := add_le_add (stopNear.trans unforcedBound) decorrelation
+
+open Classical Filter in
+/-- **Value-blind late commitments.** Along an assembled sequence of vanishing
+scale, let a vanishing `unforcedDrift` bound the belief mass outside the forced
+region, and let the beliefs decorrelate the operational records and the decoded
+points up to a vanishing `decorrelation`, at every debt-free late delivery of an
+agent that is not free. With payoffs bounded by `bound`, late commitments are
+value-blind with a vanishing error. -/
+theorem lateCommitBlind_of_bounds
+    [Finite ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+      scheduler).History]
+    (wellFormed : setup.WellFormed)
+    (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
+    (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
+    (scale_vanishing : Tendsto scale atTop (nhds 0))
+    {slots : Nat}
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
+    (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
+    (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
+      scale_le_one weights targetSequence)
+    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
+    (covers : bounds.CoversOutputValues) (capacity : 1 ≤ bounds.candidateCount)
+    (slotsLe : slots ≤ bounds.candidateCount)
+    (unforcedDrift decorrelation : ℕ → ℝ)
+    (unforcedLimit : Tendsto unforcedDrift atTop (nhds 0))
+    (decorrelationLimit : Tendsto decorrelation atTop (nhds 0))
+    (unforced : ∀ n who (site : (onePacketN).InformationSite who),
+      ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+      ¬ OwingAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+      ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
+        (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
+        ((onePacketN).agentAt site) →
+      SiteDebtFree setup leaks bounds horizon scheduler site →
+      expect ((targetSequence n).belief who site) (fun history =>
+        if ForcedState setup leaks who history.1.state then (0 : ℝ) else 1) ≤ unforcedDrift n)
+    (decorrelated : ∀ n who (site : (onePacketN).InformationSite who),
+      ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+      ¬ OwingAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+      ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
+        (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
+        ((onePacketN).agentAt site) →
+      SiteDebtFree setup leaks bounds horizon scheduler site →
+      BeliefDecorrelated ((targetSequence n).belief who site)
+        (fun history => operationalRecord setup leaks bounds horizon scheduler history.1.trace)
+        (fun history => nativeDecodedState setup leaks history.1.state) (decorrelation n))
+    {bound : ℝ} (readoutBounded : ∀ who readout,
+      |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ bound)
+    (excludedBounded : ∀ who, |excludedPayoff who| ≤ bound) :
+    ∃ blindError : ℕ → ℝ, Tendsto blindError atTop (nhds 0) ∧
+      LateCommitBlind setup leaks bounds horizon scheduler parameter utility excludedPayoff
+        sequence scale scale_pos scale_le_one (slots := slots) targetSequence blindError := by
+  let pathError := fun n => ((2 * horizon + 1 : ℕ) : ℝ) * (scale n ^ 3 + scale n ^ 3)
+  let failureError := fun n => 2 * pathError n + |unforcedDrift n| + 3 * scale n
+  let valueError := fun n => 2 * |bound| * |unforcedDrift n| +
+    (2 * |bound| * (pathError n + |unforcedDrift n|) + 2 * |bound| * |decorrelation n|)
+  have pathLimit : Tendsto pathError atTop (nhds 0) := by
+    have cube := scale_vanishing.pow 3
+    simpa [pathError] using (cube.add cube).const_mul ((2 * horizon + 1 : ℕ) : ℝ)
+  refine ⟨fun n => failureError n + valueError n, ?_, ?_⟩
+  · have failureLimit : Tendsto failureError atTop (nhds 0) := by
+      simpa [failureError] using ((pathLimit.const_mul 2).add unforcedLimit.abs).add
+        (scale_vanishing.const_mul 3)
+    have valueLimit : Tendsto valueError atTop (nhds 0) := by
+      simpa [valueError] using (unforcedLimit.abs.const_mul (2 * |bound|)).add
+        (((pathLimit.add unforcedLimit.abs).const_mul (2 * |bound|)).add
+          (decorrelationLimit.abs.const_mul (2 * |bound|)))
+    simpa using failureLimit.add valueLimit
+  intro n who site notFree notOwing keyed debtFree choice past view response material event
+    serial payload outputEq value atSite selected sends packet turn after offered inRange
+  have boundNonneg : 0 ≤ bound := (abs_nonneg _).trans (excludedBounded who)
+  have pathNonneg : 0 ≤ pathError n :=
+    mul_nonneg (Nat.cast_nonneg _) (by have := pow_nonneg (scale_pos n).le 3; linarith)
+  have failureNonneg : 0 ≤ failureError n := by
+    have := (scale_pos n).le
+    simp only [failureError]
+    have := abs_nonneg (unforcedDrift n)
+    linarith
+  have valueNonneg : 0 ≤ valueError n := by
+    simp only [valueError]
+    have := abs_nonneg bound
+    have := abs_nonneg (unforcedDrift n)
+    have := abs_nonneg (decorrelation n)
+    positivity
+  have late : LateDelivery setup leaks who site.1 := keyed.1
+  obtain ⟨latePast, lateView, lateEvent, lateAt, latePending, _⟩ := late
+  rw [atSite, Option.some.injEq, Prod.mk.injEq] at lateAt
+  obtain ⟨rfl, rfl⟩ := lateAt
+  have pendingAt := latePending
+  rw [atSite] at pendingAt
+  have sameEvent : lateEvent = event :=
+    Option.some.inj ((pendingEvent_spec pendingAt).1.symm.trans turn)
+  subst sameEvent
+  obtain ⟨key, siteKey⟩ : ∃ key, lateKey setup leaks who site.1 = some key :=
+    ⟨_, by rw [atSite]; rfl⟩
+  obtain ⟨codeEq, node⟩ : ∃ codeEq, nodeView (graph setup) lateEvent =
+      .bind who payload outputEq codeEq := by
+    cases view : nodeView (graph setup) lateEvent with
+    | bind owner bindPayload bindEq codeEq =>
+        obtain ⟨rfl, rfl⟩ := EventGraph.EventField.binding.inj (bindEq.symm.trans outputEq)
+        exact ⟨codeEq, rfl⟩
+    | resolve _ _ _ _ resolveEq _ =>
+        rw [outputEq] at resolveEq
+        cases resolveEq
+    | sample _ _ sampleEq _ =>
+        rw [outputEq] at sampleEq
+        cases sampleEq
+  have lateHere : LateDelivery setup leaks who site.1 := keyed.1
+  have unforcedHere := unforced n who site notFree notOwing keyed debtFree
+  have unforcedAbs : expect ((targetSequence n).belief who site) (fun history =>
+      if ForcedState setup leaks who history.1.state then (0 : ℝ) else 1) ≤
+      |unforcedDrift n| := unforcedHere.trans (le_abs_self _)
+  constructor
+  · have failure := certificate_lateCommit_siteFailure setup leaks bounds horizon scheduler
+      sequence scale scale_pos scale_le_one weights targetSequence assembled n completes covers
+      capacity slotsLe site lateHere debtFree siteKey latePending node atSite unforcedAbs choice
+      response selected sends packet after inRange
+    refine failure.trans ?_
+    have := valueNonneg
+    simp only [failureError] at failureNonneg ⊢
+    linarith
+  · have decorrelatedAbs : BeliefDecorrelated ((targetSequence n).belief who site)
+        (fun history => operationalRecord setup leaks bounds horizon scheduler history.1.trace)
+        (fun history => nativeDecodedState setup leaks history.1.state)
+        |decorrelation n| := fun first second firstBounded secondBounded =>
+      (decorrelated n who site notFree notOwing keyed debtFree first second firstBounded
+        secondBounded).trans (le_abs_self _)
+    have valueBound := certificate_lateCommit_siteValue setup leaks bounds horizon scheduler
+      parameter utility excludedPayoff wellFormed sequence scale scale_pos scale_le_one weights
+      targetSequence assembled n completes covers capacity slotsLe site lateHere debtFree siteKey
+      latePending node atSite unforcedAbs decorrelatedAbs choice response selected sends packet
+      after offered (readoutBounded who) (excludedBounded who)
+    refine valueBound.trans ?_
+    have boundEq : |bound| = bound := abs_of_nonneg boundNonneg
+    simp only [valueError, boundEq]
+    linarith
 
 end Vegas
