@@ -19,7 +19,8 @@ committing at a prepared slot fails, from every forced history, within the
 horizon times twice the cube of the scale of the certificate's lumped failure of
 the slot (`Vegas.certificate_commit_historyFailure`,
 `Vegas.certificateCommitFailure`), in particular a choice committing a value
-its candidate opens to (`Vegas.certificate_lateCommit_historyFailure`). So a choice committing a value at a slot of
+its candidate opens to (`Vegas.certificate_lateCommit_historyFailure`). So a
+choice committing a value at a slot of
 the late options fails, at the site, within twice that error plus the belief
 mass outside the forced region plus three times the scale of the late option
 sending at the slot (`Vegas.certificate_lateCommit_siteFailure`).
