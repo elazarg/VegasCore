@@ -94,6 +94,12 @@ theorem lateBinding_badMass
       history.state = some ⟨later, some who, reached⟩ →
       LateUnsent setup leaks who event execution.application.config (execution.recall who)
         history.state →
+      (reached.recall who = execution.recall who →
+        reached.observe (application setup leaks) who =
+          execution.observe (application setup leaks) who) →
+      (reached.recall who ≠ execution.recall who → ∃ response,
+        execution.recall who ++ [respondEntry setup leaks execution who response] <+:
+          reached.recall who) →
       ∀ slot < bounds.candidateCount,
         countPermits ((application setup leaks).outputs (reached.recall who))
           (slotEnvelope setup leaks who (reached.recall who)
@@ -107,7 +113,7 @@ theorem lateBinding_badMass
             |expect (model.runBehavioralUntil certificate installed
                 (LateStopped setup leaks bounds horizon scheduler rank) next) bad -
               factor * (fun _ : Option (OwnAction Player L) => (0 : ℝ)) choice| ≤ 0 := by
-    intro history later reached state holds slot below permitted
+    intro history later reached state holds _ _ slot below permitted
     refine ⟨0, fun choice member next nextState => ?_⟩
     have traceHere : (menu.protocol (initialLaw setup) horizon scheduler).Trace
         (some ⟨later, some who, reached⟩) := state ▸ history.trace

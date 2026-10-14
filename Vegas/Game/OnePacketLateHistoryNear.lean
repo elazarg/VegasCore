@@ -312,6 +312,12 @@ theorem lateBinding_historyNear [Finite ((bounds.onePacketMenu (runtime setup) l
       later.state = some ⟨laterRemaining, some who, reached⟩ →
       LateUnsent setup leaks who event execution.application.config (execution.recall who)
         later.state →
+      (reached.recall who = execution.recall who →
+        reached.observe (application setup leaks) who =
+          execution.observe (application setup leaks) who) →
+      (reached.recall who ≠ execution.recall who → ∃ response,
+        execution.recall who ++ [respondEntry setup leaks execution who response] <+:
+          reached.recall who) →
       ∀ slot < bounds.candidateCount,
         countPermits ((application setup leaks).outputs (reached.recall who))
           (slotEnvelope setup leaks who (reached.recall who)

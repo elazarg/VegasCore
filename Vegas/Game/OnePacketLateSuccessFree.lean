@@ -221,10 +221,11 @@ open Classical in
 /-- **Value-free success after a late commitment.** Let a one-step lumping of
 the profiles `profileOf` fail where the decided binding `event` of `who` fails
 in the store, with its image at the key read off the binding image, and keep
-every forced state with the event ready at which the recall of `who` strictly
-extends the one at a late history. Let `installed` agree with the profile of
-an option wherever the recall of `who` is longer than there. Then, at every
-decision of `who` at which it has sent nothing for the event, after committing
+every forced state with the event ready, the configuration of a history, and a
+recall of `who` extending the one there by an entry taken at its view. Let
+`installed` agree with the profile of an option wherever the recall of `who` is
+longer than there. Then, at every decision of `who` since the history at which
+it has sent nothing for the event, after committing
 an as-if-honest source choice at a permitted slot within the capacity, the
 completion mass of play of `installed` until the event completes depends, up
 to the horizon times `δ`, on the slot alone. -/
@@ -259,7 +260,9 @@ theorem lateBinding_successFree
         (control : (application setup leaks).Control),
       history.state = some control → ForcedState setup leaks who (some control) →
       control.execution.application.config.cut.Ready event →
-      (∃ entry rest, control.execution.recall who = execution.recall who ++ entry :: rest) →
+      control.execution.application.config = execution.application.config →
+      (∃ entry rest, control.execution.recall who = execution.recall who ++ entry :: rest ∧
+        entry.beforeView = execution.observe (application setup leaks) who) →
       history.state ∈ lumping.keep site key)
     (installed : ∀ player, (onePacketInformation setup leaks bounds horizon
       scheduler).BehavioralPolicy player)
@@ -292,6 +295,12 @@ theorem lateBinding_successFree
       history.state = some ⟨later, some who, reached⟩ →
       LateUnsent setup leaks who event execution.application.config (execution.recall who)
         history.state →
+      (reached.recall who = execution.recall who →
+        reached.observe (application setup leaks) who =
+          execution.observe (application setup leaks) who) →
+      (reached.recall who ≠ execution.recall who → ∃ response,
+        execution.recall who ++ [respondEntry setup leaks execution who response] <+:
+          reached.recall who) →
       ∀ slot < bounds.candidateCount,
         countPermits ((application setup leaks).outputs (reached.recall who))
           (slotEnvelope setup leaks who (reached.recall who)
@@ -310,7 +319,7 @@ theorem lateBinding_successFree
                 (LateStopped setup leaks bounds horizon scheduler rank) next)
                 (completionIndicator setup leaks bounds horizon scheduler rank fresh) -
               factor| ≤ (2 * horizon + 1 : ℕ) * δ := by
-  intro history later reached state holds slot below permitted
+  intro history later reached state holds sameView extended slot below permitted
   let menu := bounds.onePacketMenu (runtime setup) leaks
   let model := menu.information (initialLaw setup) horizon scheduler
   obtain ⟨atSent, extends_, _⟩ := (by simpa only [state] using holds :
@@ -436,20 +445,35 @@ theorem lateBinding_successFree
     exact if_congr same rfl rfl
   -- The kept image after the commitment is the committed image.
   have keptNext : next.state ∈ lumping.keep site key := by
-    refine keptOf next _ nextState (forcedHere _ ?_) ?_ ?_
-    · exact ((runtime setup).reactive_respond_application leaks reached who _).1.trans atSent
+    have configEq := ((runtime setup).reactive_respond_application leaks reached who
+      (slotResponse setup leaks who (reached.recall who)
+        (reached.observe (application setup leaks) who) event slot (some source))).1.trans atSent
+    refine keptOf next _ nextState (forcedHere _ configEq) ?_ configEq ?_
     · rw [((runtime setup).reactive_respond_application leaks reached who _).1]
       exact readyHere
-    · have extended : ∀ appended : (application setup leaks).PlayerEntry, ∃ entry rest,
-          reached.recall who ++ [appended] = execution.recall who ++ entry :: rest := by
-        intro appended
-        have extendsHere : execution.recall who <+: reached.recall who := extends_
-        obtain ⟨rest, restEq⟩ := extendsHere
-        cases rest with
-        | nil => exact ⟨appended, [], by simp [← restEq]⟩
-        | cons head tail => exact ⟨head, tail ++ [appended], by simp [← restEq]⟩
-      rw [(runtime setup).respond_recall leaks reached who who, ite_eq_left rfl ..]
-      exact extended _
+    · have respondRecall : ∃ emitted, (reached.respond (application setup leaks) who
+          (slotResponse setup leaks who (reached.recall who)
+            (reached.observe (application setup leaks) who) event slot (some source))).recall
+            who = reached.recall who ++
+            [⟨reached.observe (application setup leaks) who, slotResponse setup leaks who
+              (reached.recall who) (reached.observe (application setup leaks) who) event slot
+              (some source), emitted⟩] := by
+        rcases (slotResponse setup leaks who (reached.recall who)
+          (reached.observe (application setup leaks) who) event slot (some source)) with
+          ⟨transmission⟩
+        cases transmission <;>
+          simp only [ReactiveApplication.Execution.respond, ↓reduceIte] <;> exact ⟨_, rfl⟩
+      obtain ⟨emitted, recallEq⟩ := respondRecall
+      rw [recallEq]
+      by_cases atStart : reached.recall who = execution.recall who
+      · exact ⟨_, [], by rw [atStart], sameView atStart⟩
+      · obtain ⟨response, tail, tailEq⟩ := extended atStart
+        refine ⟨respondEntry setup leaks execution who response,
+          tail ++ [⟨reached.observe (application setup leaks) who, slotResponse setup leaks who
+            (reached.recall who) (reached.observe (application setup leaks) who) event slot
+            (some source), emitted⟩], ?_, rfl⟩
+        rw [← tailEq]
+        simp
   have fresh' : reached.application.candidates.lookup (who, .prepared slot) = .fresh :=
     onePacket_permitted_fresh (control := ⟨later, some who, reached⟩) traceHere who event slot
       permitted

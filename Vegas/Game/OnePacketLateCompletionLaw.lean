@@ -251,6 +251,12 @@ theorem lateBinding_exitBound
       history.state = some ⟨later, some who, reached⟩ →
       LateUnsent setup leaks who event execution.application.config (execution.recall who)
         history.state →
+      (reached.recall who = execution.recall who →
+        reached.observe (application setup leaks) who =
+          execution.observe (application setup leaks) who) →
+      (reached.recall who ≠ execution.recall who → ∃ response,
+        execution.recall who ++ [respondEntry setup leaks execution who response] <+:
+          reached.recall who) →
       ∀ slot < bounds.candidateCount,
         countPermits ((application setup leaks).outputs (reached.recall who))
           (slotEnvelope setup leaks who (reached.recall who)
@@ -532,8 +538,8 @@ theorem lateBinding_exitBound
           by_cases permitted : countPermits ((application setup leaks).outputs
               (reached.recall who)) (slotEnvelope setup leaks who (reached.recall who)
                 (reached.observe (application setup leaks) who) event slot) = true
-          · obtain ⟨factor, near⟩ := committed history later reached state holdsState slot
-              below permitted
+          · obtain ⟨factor, near⟩ := committed history later reached state holdsState
+              sameView throughHere.2 slot below permitted
             refine ⟨factor, fun choice member => ?_⟩
             have covered := onePacket_honest_covered assessment covers traceHere who event
               turnHere choice member
@@ -708,6 +714,12 @@ theorem lateBinding_completionPointLaw
       history.state = some ⟨later, some who, reached⟩ →
       LateUnsent setup leaks who event execution.application.config (execution.recall who)
         history.state →
+      (reached.recall who = execution.recall who →
+        reached.observe (application setup leaks) who =
+          execution.observe (application setup leaks) who) →
+      (reached.recall who ≠ execution.recall who → ∃ response,
+        execution.recall who ++ [respondEntry setup leaks execution who response] <+:
+          reached.recall who) →
       ∀ slot < bounds.candidateCount,
         countPermits ((application setup leaks).outputs (reached.recall who))
           (slotEnvelope setup leaks who (reached.recall who)
@@ -793,6 +805,12 @@ theorem lateBinding_completionPointLaw
       history.state = some ⟨later, some who, reached⟩ →
       LateUnsent setup leaks who event execution.application.config (execution.recall who)
         history.state →
+      (reached.recall who = execution.recall who →
+        reached.observe (application setup leaks) who =
+          execution.observe (application setup leaks) who) →
+      (reached.recall who ≠ execution.recall who → ∃ response,
+        execution.recall who ++ [respondEntry setup leaks execution who response] <+:
+          reached.recall who) →
       ∀ slot < bounds.candidateCount,
         countPermits ((application setup leaks).outputs (reached.recall who))
           (slotEnvelope setup leaks who (reached.recall who)
@@ -805,8 +823,9 @@ theorem lateBinding_completionPointLaw
                 (reached.observe (application setup leaks) who) event slot choice)⟩ →
             |expect (model.runBehavioralUntil certificate installed stopped next) payoff -
               factor * centered choice| ≤ 2 * bound * η := by
-    intro history later reached state holds slot below permitted
-    obtain ⟨factor, near⟩ := successFree history later reached state holds slot below permitted
+    intro history later reached state holds sameView extended slot below permitted
+    obtain ⟨factor, near⟩ := successFree history later reached state holds sameView extended slot
+      below permitted
     refine ⟨factor, fun choice member next nextState => ?_⟩
     have traceHere : (menu.protocol (initialLaw setup) horizon scheduler).Trace
         (some ⟨later, some who, reached⟩) := state ▸ history.trace
