@@ -21,7 +21,10 @@ timeliness margin, at a first activation for a resolve event whose configuration
 decodes to a point of the intended game, the canonical decision disclosing, when
 it transmits, has, under play of any other policies until the event completes,
 the completion-point law of the source step of the disclosure, with success one
-and no error (`Vegas.firstActivation_disclose_completionPointLaw`).
+and no error (`Vegas.firstActivation_disclose_completionPointLaw`). Installing
+the slot-trembled prescribed component there gives the step of the intended
+effective opening with error six times the scale
+(`Vegas.firstActivation_prescribed_disclose_completionPointLaw`).
 -/
 
 noncomputable section
@@ -420,5 +423,169 @@ theorem firstActivation_disclose_completionPointLaw
       rw [pointAt stop member]
       rfl,
     expect_constant, stepEq, expect_pure, one_mul, sub_self, abs_zero, zero_mul]
+
+/-- **The prescribed component at a disclosure first activation.** Under the
+asynchronous contract, the timeliness margin and retention of covered canonical
+packets, let who be at its first activation for the resolve event pending at a
+history, whose configuration is a prefix of rank events decoding to a point of
+the intended game, and let the canonical decision of every successful encoded
+source action transmit there. Installing at the history's information state the
+slot-trembled prescribed component of an intended assessment source, with any
+other policies, until the event completes, the completion-point law is the step
+of the intended effective opening of source at the decoded point, with success
+one and error six times the scale, for every property fresh of controls implied
+by the event not having failed. -/
+theorem firstActivation_prescribed_disclose_completionPointLaw
+    [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
+    [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+      scheduler).InfoState who)]
+    {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
+      bound)
+    (timely : (runtime setup).AsyncTimely delay bound)
+    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound)
+    (source : setup.intendedModel.BehavioralAssessment) {scale : ℝ} (nonnegative : 0 ≤ scale)
+    (le_one : scale ≤ 1)
+    (profile : ∀ player, (onePacketModel setup leaks bounds (initialLaw setup) horizon
+      scheduler).BehavioralPolicy player)
+    (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+      horizon scheduler).History)
+    {remaining : Nat} {who : Player} {execution : (application setup leaks).Execution}
+    (current : history.state = some ⟨remaining, some who, execution⟩)
+    (event : (graph setup).EventId)
+    (pending : pendingEvent setup leaks who (some (execution.recall who,
+      execution.observe (application setup leaks) who)) = some event)
+    (never : ∀ entry ∈ execution.recall who, ¬ ActivatedAt setup leaks who event entry)
+    {payload : L.Ty}
+    {binding : EventGraph.FieldRef (graph setup).layout (.binding who payload)}
+    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
+    {outputEq : (graph setup).outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .resolve who payload binding checks}
+    (node : nodeView (graph setup) event = .resolve who payload binding checks outputEq codeEq)
+    (transmits : CanonicalTransmitsAt setup leaks who (execution.recall who)
+      (execution.observe (application setup leaks) who) event)
+    {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
+    {point : ProtocolState setup.program}
+    (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
+    (intendedPoint : ProtocolState.Intended setup.program point)
+    {fresh : (application setup leaks).Control → Prop}
+    (freshOf : ∀ control, ¬ StoreEventFailed control.execution.application.config.store event →
+      fresh control)
+    (info : (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).InfoState
+      who)
+    (observed : (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).infoOf who
+      history.trace = info) :
+    CompletionPointLaw setup leaks bounds horizon scheduler
+      (Profile.update (sig := (onePacketModel setup leaks bounds (initialLaw setup) horizon
+        scheduler).behavioralSignature) profile who ((profile who).withLaw info
+          (slotPrescribedComponent setup leaks bounds (initialLaw setup) horizon scheduler source
+            scale nonnegative le_one who info)))
+      rank fresh history 1
+      (ProtocolState.behavioralStateStep setup.program
+        (setup.intendedOpeningProfile source.strategy) point)
+      (6 * scale) := by
+  classical
+  let menu := bounds.onePacketMenu (runtime setup) leaks
+  let model := menu.information (initialLaw setup) horizon scheduler
+  let certificate := (menu.bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
+  have infoEq : model.infoOf who history.trace =
+      some (execution.recall who, execution.observe (application setup leaks) who) := by
+    change (menu.signals (initialLaw setup) horizon scheduler).infoOf who history.trace = _
+    rw [menu.info, current]
+    simp [ReactiveApplication.observe]
+  have atSite := observed.symm.trans infoEq
+  subst atSite
+  obtain ⟨turn, readyView, _, unrecorded⟩ := pendingEvent_spec pending
+  have turnExecution : execution.application.publicView.ownTurn? who = some event := turn
+  have trace : (menu.protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨remaining, some who, execution⟩) := current ▸ history.trace
+  have fits := firstActivation_inclusionFits contract timely
+    (menu.toRawTrace (initialLaw setup) horizon scheduler trace) rfl event turnExecution never
+  have ready := (execution.application.publicView_eventReady event).mp readyView
+  rw [← asIfHonest_bind_step_eq_behavioralStateStep source who execution ordered decoded
+    intendedPoint turnExecution (execution.recall who)]
+  have notStopped : ¬ LateStopped setup leaks bounds horizon scheduler rank history := by
+    rintro ⟨control, state, prefixed⟩
+    rw [current] at state
+    cases Option.some.inj state
+    exact Nat.succ_ne_self rank (isPrefix_unique prefixed ordered)
+  have running : ¬ (menu.protocol (initialLaw setup) horizon scheduler).terminal
+      history.state := by
+    rw [current]
+    rintro ⟨_, impossible⟩
+    cases impossible
+  have active : (menu.protocol (initialLaw setup) horizon scheduler).active history.state who := by
+    rw [current]
+    rfl
+  have actsOnce := (menu.decisionRecall (initialLaw setup) horizon scheduler).actsOnceWhereItMatters
+  intro value valueBound valueBounded
+  have boundNonneg : 0 ≤ valueBound := (abs_nonneg _).trans (valueBounded point)
+  have pointBounded : ∀ stop, |(completionPoint setup leaks bounds horizon scheduler rank fresh
+      stop).elim 0 value| ≤ valueBound := by
+    intro stop
+    cases completionPoint setup leaks bounds horizon scheduler rank fresh stop with
+    | none => simpa using boundNonneg
+    | some target => exact valueBounded target
+  rw [model.runBehavioralUntil_update_withLaw_eq_bind certificate actsOnce profile who
+      (profile who) _ _ _ history observed notStopped running active,
+    expect_bind_tower_bounded _ _ _ pointBounded, one_mul]
+  have stepBounded : |expect ((asIfHonestProfile setup leaks source who
+      (some (execution.recall who, execution.observe (application setup leaks) who))).bind
+        fun choice => ProtocolState.step setup.program point (fun _ => choice)) value| ≤
+      valueBound := expect_abs_le_of_bounded boundNonneg valueBounded
+  refine abs_expect_slotTrembledChoice_sub_le nonnegative le_one who _ _ _ _ _
+    (fun choice => expect_abs_le_of_bounded boundNonneg pointBounded) stepBounded ?_
+  -- The as-if-honest choices complete at the source step committing them.
+  change expect ((honestResponse setup leaks source who (execution.recall who)
+    (execution.observe (application setup leaks) who)).map (responseChoice setup leaks bounds
+      (initialLaw setup) horizon scheduler who (some (execution.recall who,
+        execution.observe (application setup leaks) who)))) _ = _
+  unfold honestResponse
+  rw [turn]
+  dsimp only
+  rw [PMF.map_comp, expect_map, expect_bind_tower_bounded _ _ _ valueBounded]
+  refine expect_congr_on_support fun choice member => ?_
+  have encodes := asIfHonestProfile_encodes source who execution rank ordered point decoded
+    (execution.recall who) event turnExecution choice member
+  rcases choice with _ | action
+  · simp at encodes
+  cases encoded : encodeEventAction? setup.program event action with
+  | none => simp [encoded] at encodes
+  | some graphAction =>
+      have success := asIfHonestProfile_success source who execution rank ordered point decoded
+        (execution.recall who) action member
+      have sends := transmits action graphAction encoded success.1 success.2
+      obtain ⟨material, submits⟩ := Option.ne_none_iff_exists'.mp sends
+      have effective : EffectiveDecision event graphAction := by
+        unfold EffectiveDecision
+        rw [node]
+        trivial
+      have offered := canonical_mem_onePacket_of_pending bounds trace who event turnExecution
+        unrecorded graphAction
+        (retains trace who event graphAction turnExecution unrecorded fits effective sends)
+      have selected : (responseChoice setup leaks bounds (initialLaw setup) horizon scheduler who
+          (some (execution.recall who, execution.observe (application setup leaks) who))
+          ((runtime setup).canonicalServiceDecision leaks who (execution.recall who)
+            (execution.observe (application setup leaks) who) event graphAction)).1 =
+          some ((runtime setup).canonicalServiceDecision leaks who (execution.recall who)
+            (execution.observe (application setup leaks) who) event graphAction) := by
+        unfold responseChoice
+        simp only [offered, ↓reduceDIte]
+      obtain ⟨intended, _, same⟩ := (mem_support_asIfHonestProfile_observe setup leaks source who
+        execution rank ordered point decoded (execution.recall who) _).mp member
+      have legal := intended.2
+      change ProtocolView.intendedMenu who setup.program
+        (ProtocolState.observe who setup.program point) intended.1 at legal
+      rw [same] at legal
+      have law := firstActivation_disclose_completionPointLaw contract timely profile history
+        current event turnExecution never node graphAction material submits _ observed _
+        selected
+        ordered decoded intendedPoint
+        (decodeEventAction_encodeEventAction?_eq_some setup.program event action graphAction
+          encoded) legal.2 freshOf value valueBound valueBounded
+      rw [zero_mul, one_mul] at law
+      simp only [Function.comp_apply, Option.bind_some, encoded]
+      exact sub_eq_zero.mp (abs_nonpos_iff.mp law)
 
 end Vegas
