@@ -29,6 +29,12 @@ value of the prescribed component is one less its failure probability times
 the site's continuation value up to thirty times the scale times the payoff
 bound (`Vegas.abs_siteStopValue_prescribed_sub_le`).
 
+**Compared transmissions name the pending reveal.** At a site with a pending
+event, every compared choice that transmits sends a packet naming that event,
+which is a reveal of the site's player
+(`Vegas.compared_transmission_names`); at a pending binding the only compared
+choice is silence.
+
 **Sure completion of a disclosure.** At a pending reveal there, every packet the
 one-packet menu offers naming the reveal is the canonical disclosure, which has
 the completion-point law of the source step of the disclosure with success one
@@ -176,6 +182,59 @@ theorem firstActivation_history_facts (wellFormed : setup.WellFormed) {who : Pla
   rw [rankEq]
   exact ⟨remaining, execution, point, rfl, observedState.symm, never, ordered, decoded,
     intendedPoint, reached⟩
+
+omit [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+    scheduler).InfoState who)] in
+/-- **Compared transmissions name the pending reveal.** At a site with a pending
+event, a compared choice that transmits sends a packet naming that event, and
+the event is a reveal of the site's player: the one-packet menu sends no
+malformed packet, a compared choice commits no value, and it submits only for
+the event of the player's turn. -/
+theorem compared_transmission_names {who : Player} (site : (onePacketN).InformationSite who)
+    {event : (graph setup).EventId} (pending : pendingEvent setup leaks who site.1 = some event)
+    (choice : (onePacketN).Choice who site.1)
+    (marked : onePacketCompared setup leaks bounds horizon scheduler who site choice)
+    {response : (application setup leaks).Action} (selected : choice.1 = some response)
+    {material : (application setup leaks).Submission}
+    (sends : response.transmission = some material) :
+    material.call.packet.event? (graph setup) = some event ∧
+      ∃ (payload : L.Ty) (binding : EventGraph.FieldRef (graph setup).layout
+        (.binding who payload)) (checks : List (EventGraph.GuardCheck (graph setup).layout
+          payload)) (outputEq : (graph setup).outputLayout event = .publication payload)
+        (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+          ((graph setup).nodes event) = .resolve who payload binding checks),
+        nodeView (graph setup) event = .resolve who payload binding checks outputEq codeEq := by
+  obtain ⟨past, view, atSite⟩ : ∃ past view, site.1 = some (past, view) := by
+    cases info : site.1 with
+    | none =>
+        rw [info] at pending
+        cases pending
+    | some input => exact ⟨input.1, input.2, rfl⟩
+  obtain ⟨offered, offeredEq, member⟩ := choice_response setup leaks bounds horizon scheduler
+    site atSite choice
+  rw [selected, Option.some.injEq] at offeredEq
+  rw [← offeredEq] at member
+  obtain ⟨noValue, own⟩ := marked.2 response selected
+  have pendingAt := pending
+  rw [atSite] at pendingAt
+  obtain ⟨turn, _, _, _⟩ := pendingEvent_spec pendingAt
+  cases packet : material.call.packet with
+  | commitment named handle => exact (noValue material sends named handle packet).elim
+  | malformed raw => exact (onePacket_not_malformed (bounds := bounds) member sends raw packet).elim
+  | opening named handle raw =>
+      have submitted : (runtime setup).submittedEvent? leaks response = some named := by
+        unfold EventGraphRuntime.submittedEvent?
+        rw [sends]
+        dsimp only
+        rw [packet]
+        rfl
+      obtain ⟨past', view', atSite', turn'⟩ := own named submitted
+      rw [atSite, Option.some.injEq, Prod.mk.injEq] at atSite'
+      obtain ⟨_, rfl⟩ := atSite'
+      have sameEvent : named = event := Option.some.inj (turn'.symm.trans turn)
+      subst sameEvent
+      exact ⟨rfl, onePacket_opening_node member sends packet⟩
 
 section Values
 
