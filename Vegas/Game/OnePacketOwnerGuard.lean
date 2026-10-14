@@ -7,6 +7,32 @@ import Vegas.Game.OnePacketDisclosureResolves
 import Vegas.Game.OnePacketIntendedProjection
 import Vegas.Game.OnePacketPrescribedSupport
 
+/-! # The swap guard of the owner swap
+
+Fix two information sites of a player `who` with the same late-delivery key, at
+neither of which `who` owes a failure at the decoded point of any history, and
+the owner swap between their views (`Vegas.ownerSwap`). The swap guard holds at
+every history of the first site (`Vegas.ownerSwap_guard`), provided the setup
+prior is closed under the swap of `who`'s inputs:
+
+* the inputs are allowed: the initial handles of `who` keep the candidates of
+  their inputs (`Vegas.initialSlots_of_trace`), so the swap of an initial state
+  is the initial state of the swapped inputs;
+* accepted commitments are compatible: every field accepting a handle of `who`
+  stores a value whose candidate is the handle's meaning
+  (`Vegas.ownBinding_candidate`), since a failed binding makes its owner owe a
+  failure; so the pair at the field and the pair at the handle are the same
+  transposition, or both absent (`Vegas.ownerPairs_of_accepted`);
+* ready and completed reveals are fixed: a ready reveal of `who` is its turn,
+  whose binding both keys deliver alike, and a completed reveal published the
+  success its binding holds, or `who`'s reveal failed
+  (`Vegas.RevealRecord`, `Vegas.revealRecord_history`), which is a debt;
+* recalled owned requests are fixed: they name handles of the recalling player
+  (`Vegas.ownedRequestsOwn_history`), and when that player is `who` the
+  envelope carrying the fact is recalled at both sites, so the fact holds at
+  both and the handle carries no pair.
+-/
+
 noncomputable section
 
 namespace Vegas
@@ -562,5 +588,400 @@ theorem ownedRequestsOwn_history
     (initialLaw setup) horizon (fun _ _ _ _ member => (List.not_mem_nil member).elim) trace
 
 end Requests
+
+section Guard
+
+/-- **Owner pairs at an accepted handle.** At two histories of the one-packet
+game at whose decoded points `who` owes no failure, with the same accepted
+handles, a field of `who` accepting a handle carries either no pair at the field
+and the handle, or the two typed successes and their raw values. -/
+theorem ownerPairs_of_accepted {who : Player} {first second : (application setup leaks).Control}
+    (firstTrace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some first))
+    (secondTrace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some second))
+    (firstDebtFree : ∀ point, nativeDecodedState setup leaks (some first) = some point →
+      ¬ ProtocolState.OwesFailure who setup.program point)
+    (secondDebtFree : ∀ point, nativeDecodedState setup leaks (some second) = some point →
+      ¬ ProtocolState.OwesFailure who setup.program point)
+    (acceptedEq : first.execution.application.accepted = second.execution.application.accepted)
+    {field : (graph setup).Field} {slot : CandidateSlot (graph setup)} {payload : L.Ty}
+    (layoutEq : (graph setup).layout field = .binding who payload)
+    (accepted : first.execution.application.accepted field = some (who, slot)) :
+    let firstView := first.execution.application.playerView who
+    let secondView := second.execution.application.playerView who
+    ((ownerPairs who firstView secondView).pair field = none ∧
+        ownerHandlePairs who firstView secondView (who, slot) = none) ∨
+      ∃ firstValue secondValue : L.Val payload,
+        (ownerPairs who firstView secondView).pair field =
+          some (cast (congrArg EventGraph.EventField.Value layoutEq.symm) (.success firstValue),
+            cast (congrArg EventGraph.EventField.Value layoutEq.symm)
+              (.success secondValue)) ∧
+        ownerHandlePairs who firstView secondView (who, slot) =
+          some (⟨payload, firstValue⟩, ⟨payload, secondValue⟩) := by
+  intro firstView secondView
+  obtain ⟨left, leftStore, leftCandidate⟩ :=
+    ownBinding_candidate firstTrace firstDebtFree accepted rfl
+  obtain ⟨right, rightStore, rightCandidate⟩ :=
+    ownBinding_candidate secondTrace secondDebtFree (acceptedEq ▸ accepted) rfl
+  have visible := (privateTo_of_binding layoutEq).1
+  exact ownerPairs_of_candidateOfValue layoutEq
+    ((EventGraph.playerStore_of_visible _ who _ field visible).trans leftStore)
+    ((EventGraph.playerStore_of_visible _ who _ field visible).trans rightStore)
+    leftCandidate rightCandidate
+
+omit [Fintype Player] in
+/-- A field that is not visible to `who` carries no owner pair. -/
+theorem ownerPairs_of_not_visible {who : Player} {first second : PlayerView (graph setup)}
+    {field : (graph setup).Field} (hidden : ¬ (graph setup).fieldVisibleTo who field) :
+    (ownerPairs who first second).pair field = none := by
+  change ownerValuePair who first second field = none
+  have notPrivate : ¬ PrivateTo who field := fun privateTo => hidden privateTo.1
+  unfold ownerValuePair
+  simp [notPrivate]
+
+omit [Fintype Player] in
+/-- A handle of another player carries no owner pair. -/
+theorem ownerHandlePairs_of_ne {who : Player} {first second : PlayerView (graph setup)}
+    {handle : Handle (graph setup)} (different : handle.1 ≠ who) :
+    ownerHandlePairs who first second handle = none := by
+  unfold ownerHandlePairs
+  simp [different]
+
+omit [Fintype Player] in
+/-- A binding field of another player is not visible to `who`. -/
+theorem not_visible_of_binding {who owner : Player} {field : (graph setup).Field}
+    {payload : L.Ty} (layoutEq : (graph setup).layout field = .binding owner payload)
+    (different : owner ≠ who) : ¬ (graph setup).fieldVisibleTo who field := by
+  unfold EventGraph.fieldVisibleTo
+  rw [layoutEq]
+  exact different
+
+omit [Fintype Player] in
+/-- A field both views store alike carries no owner pair. -/
+theorem ownerPairs_of_store_eq {who : Player} {first second : PlayerView (graph setup)}
+    {field : (graph setup).Field}
+    (same : first.observation.store field = second.observation.store field) :
+    (ownerPairs who first second).pair field = none := by
+  change ownerValuePair who first second field = none
+  unfold ownerValuePair
+  split_ifs
+  · rw [same]
+    cases second.observation.store field with
+    | none => rfl
+    | some value => simp
+  · rfl
+
+omit [Fintype Player] in
+/-- A slot both views hold alike carries no owner pair. -/
+theorem ownerHandlePairs_of_candidates_eq {who : Player} {first second : PlayerView (graph setup)}
+    {slot : CandidateSlot (graph setup)} (same : first.candidates slot = second.candidates slot) :
+    ownerHandlePairs who first second (who, slot) = none := by
+  unfold ownerHandlePairs
+  simp only [↓reduceIte]
+  rw [same]
+  cases second.candidates slot with
+  | openable raw => simp
+  | fresh | unopenable => rfl
+
+omit [Fintype Player] in
+/-- At a reveal that is the owner's turn, the delivered value is the owner's
+stored binding. -/
+theorem deliveredValue_of_turn {who : Player} {view : (application setup leaks).PlayerView}
+    {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? who = some event)
+    {owner : Player} {payload : L.Ty}
+    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
+    {outputEq : (graph setup).outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .resolve owner payload binding checks}
+    (resolveView : nodeView (graph setup) event =
+      .resolve owner payload binding checks outputEq codeEq) :
+    deliveredValue setup leaks who view =
+      some ⟨.binding owner payload, binding.get? view.application.observation.store⟩ := by
+  unfold deliveredValue
+  rw [turn]
+  simp only [resolveView]
+
+end Guard
+
+section Main
+
+/-- **The swap guard of the owner swap at every history of the first site.**
+Take two information sites of `who` with the same late-delivery key, at neither
+of which `who` owes a failure at the decoded point of any history (the negation
+of `Vegas.OwingAgent` at the site's agent), and the owner swap between their
+views. When the setup prior is closed under the swap of `who`'s inputs, the
+swap guard holds at every history of the first site. -/
+theorem ownerSwap_guard {who : Player}
+    {site₁ site₂ : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who}
+    {past₁ past₂ : List (application setup leaks).PlayerEntry}
+    {view₁ view₂ : (application setup leaks).PlayerView}
+    (firstSite : site₁.1 = some (past₁, view₁)) (secondSite : site₂.1 = some (past₂, view₂))
+    (sameKey : lateKey setup leaks who site₁.1 = lateKey setup leaks who site₂.1)
+    (firstDebtFree : ∀ history : (onePacketInformation setup leaks bounds horizon
+        scheduler).InformationHistory who site₁.1, ∀ point,
+      nativeDecodedState setup leaks history.1.state = some point →
+        ¬ ProtocolState.OwesFailure who setup.program point)
+    (secondDebtFree : ∀ history : (onePacketInformation setup leaks bounds horizon
+        scheduler).InformationHistory who site₂.1, ∀ point,
+      nativeDecodedState setup leaks history.1.state = some point →
+        ¬ ProtocolState.OwesFailure who setup.program point)
+    (priorClosed : ∀ initial ∈ setup.initialLaw.support, ∃ other ∈ setup.initialLaw.support,
+      setup.eventInputs other =
+        (ownerSwap who view₁.application view₂.application).inputs (setup.eventInputs initial))
+    (history : (onePacketProtocol setup leaks bounds horizon scheduler).History)
+    (member : (onePacketInformation setup leaks bounds horizon scheduler).infoOf who
+      history.trace = site₁.1) :
+    SwapGuardState setup (ownerSwap who view₁.application view₂.application)
+      (swapAllowed (ownerSwap who view₁.application view₂.application)) history.state := by
+  -- The two histories and their views.
+  obtain ⟨state₁, trace₁⟩ := history
+  have firstMember := member
+  rw [onePacket_infoOf, firstSite] at member
+  cases state₁ with
+  | none => cases member
+  | some control₁ =>
+  obtain ⟨⟨history₂, secondMember⟩, -⟩ := site₂.2
+  have secondInfo := secondMember
+  rw [onePacket_infoOf, secondSite] at secondInfo
+  cases state₂Eq : history₂.state with
+  | none => rw [state₂Eq] at secondInfo; cases secondInfo
+  | some control₂ =>
+  have trace₂ : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control₂) :=
+    state₂Eq ▸ history₂.trace
+  rw [state₂Eq] at secondInfo
+  simp only [ReactiveApplication.observe] at member secondInfo
+  split at member
+  · split at secondInfo
+    · obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj member).symm
+      obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj secondInfo).symm
+      have firstDebt : ∀ point, nativeDecodedState setup leaks (some control₁) = some point →
+          ¬ ProtocolState.OwesFailure who setup.program point := fun point decoded =>
+        firstDebtFree ⟨⟨some control₁, trace₁⟩, firstMember⟩ point decoded
+      have secondDebt : ∀ point, nativeDecodedState setup leaks (some control₂) = some point →
+          ¬ ProtocolState.OwesFailure who setup.program point := fun point decoded =>
+        secondDebtFree ⟨history₂, secondMember⟩ point (by rw [state₂Eq]; exact decoded)
+      rw [firstSite, secondSite] at sameKey
+      simp only [lateKey, Option.some.injEq, LateKey.mk.injEq] at sameKey
+      obtain ⟨-, currentEq, recalledEq, deliveredEq⟩ := sameKey
+      simp only [operationalView, Prod.mk.injEq] at currentEq
+      have publicEq : control₁.execution.application.publicView =
+          control₂.execution.application.publicView := currentEq.1
+      have acceptedEq : control₁.execution.application.accepted =
+          control₂.execution.application.accepted := congrArg PublicView.accepted publicEq
+      have valid₁ := bindingInvariant_of_trace trace₁
+      have firstRaw := (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup)
+        horizon scheduler trace₁
+      have secondRaw := (bounds.onePacketMenu (runtime setup) leaks).toRawTrace
+        (initialLaw setup) horizon scheduler trace₂
+      change SwapGuard setup (ownerSwap who (control₁.execution.application.playerView who)
+        (control₂.execution.application.playerView who))
+        (swapAllowed (ownerSwap who (control₁.execution.application.playerView who)
+          (control₂.execution.application.playerView who))) control₁.execution
+      refine ⟨?_, ?_, ?_, ?_⟩
+      · -- The inputs: initial handles are compatible, and the prior is closed.
+        obtain ⟨initial, initialMember, inputsEq, -⟩ := initialSlots_of_trace trace₁ control₁ rfl
+        have drawnMember : ∀ draw ∈ setup.initialLaw.support,
+            EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs draw) ∈
+              (initialLaw setup).support := fun draw drawMember => by
+          rw [initialLaw, serviceInitialLaw, PMF.support_map]
+          exact ⟨draw, drawMember, rfl⟩
+        have compatible : (ownerSwap who (control₁.execution.application.playerView who)
+            (control₂.execution.application.playerView who)).InitialHandlesCompatible := by
+          unfold ownerSwap
+          apply HiddenSwap.initialHandlesCompatible_ofPairs
+          intro input owner payload layoutEq
+          by_cases owned : owner = who
+          · subst owned
+            exact ownerPairs_of_accepted trace₁ trace₂ firstDebt secondDebt acceptedEq
+              (field := .inl input) layoutEq (accepted_initial_of_trace trace₁ layoutEq)
+          · exact Or.inl ⟨ownerPairs_of_not_visible
+              (not_visible_of_binding (field := .inl input) layoutEq owned),
+              ownerHandlePairs_of_ne owned⟩
+        refine ⟨_, drawnMember initial initialMember, inputsEq.symm, ?_⟩
+        rw [State.swap_initial _ compatible]
+        obtain ⟨other, otherMember, otherEq⟩ := priorClosed initial initialMember
+        have target := drawnMember other otherMember
+        rw [otherEq] at target
+        exact target
+      · -- Accepted commitments: the pairs at the event and at the handle match.
+        intro event candidate accepted
+        obtain ⟨payload, layoutEq⟩ := valid₁.accepted_typed _ candidate accepted
+        obtain ⟨owner, slot⟩ := candidate
+        by_cases owned : owner = who
+        · subst owned
+          rcases ownerPairs_of_accepted trace₁ trace₂ firstDebt secondDebt acceptedEq layoutEq
+              accepted with ⟨eventNone, handleNone⟩ | ⟨left, right, eventPair, handlePair⟩
+          · exact HiddenSwap.bindCompatible_ofPairs_none _ _ eventNone handleNone
+          · exact HiddenSwap.bindCompatible_ofPairs _ _ layoutEq left right eventPair handlePair
+        · exact HiddenSwap.bindCompatible_ofPairs_none _ _
+            (ownerPairs_of_not_visible (not_visible_of_binding layoutEq owned))
+            (ownerHandlePairs_of_ne owned)
+      · -- Ready and completed reveals read bindings both views store alike.
+        intro event active
+        unfold RevealFixed
+        cases resolveView : nodeView (graph setup) event with
+        | bind | sample => trivial
+        | resolve owner payload binding checks outputEq codeEq =>
+            have bindingLayout : (graph setup).layout binding.field = .binding owner payload :=
+              binding.layout_eq
+            by_cases owned : owner = who
+            · subst owned
+              have getEq : binding.get? control₁.execution.application.config.store =
+                  binding.get? control₂.execution.application.config.store := by
+                have visible := (privateTo_of_binding bindingLayout).1
+                have masked : ∀ store : EventGraph.Store (graph setup).layout,
+                    binding.get? ((graph setup).playerStore owner store) = binding.get? store :=
+                  fun store => EventGraph.FieldRef.get?_congr binding _ _
+                    (EventGraph.playerStore_of_visible _ owner store _ visible)
+                rcases active with ready | completed
+                · -- A ready reveal of the owner is its turn: both keys deliver its binding.
+                  have actor : (graph setup).actor? event = some owner :=
+                    nodeView_resolve_actor outputEq codeEq
+                  have firstTurn := ownTurn?_of_ready setup control₁.execution.application ready
+                    actor
+                  have secondTurn : control₂.execution.application.publicView.ownTurn? owner =
+                      some event := publicEq ▸ firstTurn
+                  rw [deliveredValue_of_turn (view := control₁.execution.observe
+                      (application setup leaks) owner) firstTurn resolveView,
+                    deliveredValue_of_turn (view := control₂.execution.observe
+                      (application setup leaks) owner) secondTurn resolveView] at deliveredEq
+                  have viewGet := eq_of_heq (Sigma.mk.inj (Option.some.inj deliveredEq)).2
+                  exact (masked _).symm.trans (viewGet.trans (masked _))
+                · -- A completed reveal published its binding: the publication is public.
+                  have publicField : (graph setup).fieldPublic (.inr event) := by
+                    unfold EventGraph.fieldPublic
+                    change ((graph setup).outputLayout event).IsPublic
+                    rw [outputEq]
+                    trivial
+                  have publicStore := congrArg (fun view : PublicView (graph setup) =>
+                    view.observation.store (.inr event)) publicEq
+                  change (if (graph setup).fieldPublic (.inr event) then
+                      control₁.execution.application.config.store (.inr event) else none) =
+                    (if (graph setup).fieldPublic (.inr event) then
+                      control₂.execution.application.config.store (.inr event) else none)
+                    at publicStore
+                  simp only [publicField, ↓reduceIte] at publicStore
+                  obtain ⟨value, stored⟩ := Option.isSome_iff_exists.mp
+                    ((control₁.execution.application.config.output_available event).mpr completed)
+                  change control₁.execution.application.config.store (.inr event) = some value
+                    at stored
+                  have secondStored := publicStore ▸ stored
+                  have secondCompleted :
+                      event ∈ control₂.execution.application.config.cut.completed := by
+                    apply (control₂.execution.application.config.output_available event).mp
+                    change (control₂.execution.application.config.store (.inr event)).isSome
+                    rw [secondStored]
+                    rfl
+                  let publication : EventGraph.FieldRef (graph setup).layout
+                      (.publication payload) := ⟨.inr event, outputEq⟩
+                  have firstRead := get?_of_store publication stored
+                  have secondRead := get?_of_store publication secondStored
+                  have noFailure : ∀ {control : (application setup leaks).Control},
+                      (∀ point, nativeDecodedState setup leaks (some control) = some point →
+                        ¬ ProtocolState.OwesFailure owner setup.program point) →
+                      ∀ {rank} (_ : SourceResidual setup (failureProfile setup.program) rank
+                        control.execution.application.config),
+                      ¬ DecodedHolds (ProtocolState.RevealFailed owner setup.program) rank
+                        control.execution.application.config :=
+                    fun debt _ residual failed => debt _ (decodedPoint_eq residual)
+                      (Or.inl (ProtocolState.RevealFailed.indebted _ _
+                        (failed _ residual.decode)))
+                  obtain ⟨_, ⟨firstResidual⟩, firstRecord⟩ :=
+                    revealRecord_history (failureProfile setup.program) firstRaw
+                  obtain ⟨_, ⟨secondResidual⟩, secondRecord⟩ :=
+                    revealRecord_history (failureProfile setup.program) secondRaw
+                  rcases firstRecord event completed owner payload binding checks outputEq codeEq
+                      resolveView _ firstRead with ⟨first, firstResult, firstBound⟩ | failed
+                  · rcases secondRecord event secondCompleted owner payload binding checks
+                        outputEq codeEq resolveView _ secondRead with
+                      ⟨second, secondResult, secondBound⟩ | failed
+                    · rw [firstBound, secondBound, firstResult.symm.trans secondResult]
+                    · exact (noFailure secondDebt secondResidual failed).elim
+                  · exact (noFailure firstDebt firstResidual failed).elim
+              have storeEq : control₁.execution.application.config.store binding.field =
+                  control₂.execution.application.config.store binding.field := by
+                unfold EventGraph.FieldRef.get? at getEq
+                exact (cast_inj _).mp getEq
+              have visible := (privateTo_of_binding bindingLayout).1
+              refine ⟨?_, fun candidate accepted => ?_⟩
+              · change EventGraph.pairSwap ((ownerPairs owner _ _).pair binding.field) = id
+                rw [ownerPairs_of_store_eq ((EventGraph.playerStore_of_visible _ owner _ _
+                  visible).trans (storeEq.trans (EventGraph.playerStore_of_visible _ owner _ _
+                    visible).symm))]
+                rfl
+              · obtain ⟨other, candidateLayout⟩ := valid₁.accepted_typed _ candidate accepted
+                have candidateOwner : candidate.1 = owner :=
+                  (EventGraph.EventField.binding.inj (candidateLayout.symm.trans bindingLayout)).1
+                obtain ⟨candidateOwner', slot⟩ := candidate
+                change candidateOwner' = owner at candidateOwner
+                subst candidateOwner
+                obtain ⟨left, leftStore, leftCandidate⟩ :=
+                  ownBinding_candidate trace₁ firstDebt accepted rfl
+                obtain ⟨right, rightStore, rightCandidate⟩ :=
+                  ownBinding_candidate trace₂ secondDebt (acceptedEq ▸ accepted) rfl
+                rw [storeEq, rightStore] at leftStore
+                cases Option.some.inj leftStore
+                change EventGraph.pairSwap (ownerHandlePairs candidateOwner' _ _
+                  (candidateOwner', slot)) = id
+                rw [ownerHandlePairs_of_candidates_eq (leftCandidate.trans rightCandidate.symm)]
+                rfl
+            · refine ⟨?_, fun candidate accepted => ?_⟩
+              · change EventGraph.pairSwap ((ownerPairs who _ _).pair binding.field) = id
+                rw [ownerPairs_of_not_visible (not_visible_of_binding bindingLayout owned)]
+                rfl
+              · obtain ⟨other, candidateLayout⟩ := valid₁.accepted_typed _ candidate accepted
+                have candidateOwner : candidate.1 = owner :=
+                  (EventGraph.EventField.binding.inj (candidateLayout.symm.trans bindingLayout)).1
+                change EventGraph.pairSwap (ownerHandlePairs who _ _ candidate) = id
+                rw [ownerHandlePairs_of_ne (candidateOwner ▸ owned)]
+                rfl
+      · -- Owned requests in recall certify values both views hold alike.
+        intro player recalled recalledMember submission sent
+        cases owned : submission.evidence with
+        | none | forward => trivial
+        | owned fact =>
+            change EventGraph.pairSwap (ownerHandlePairs who _ _ fact.handle) fact.raw = fact.raw
+            have own := ownedRequestsOwn_history trace₁ player recalled recalledMember submission
+              sent fact owned
+            by_cases same : player = who
+            · rw [same] at recalledMember own
+              obtain ⟨message, emitted, evidence, -⟩ := ownedRequestsEmitted_history bounds trace₁
+                who recalled recalledMember submission sent
+              have carried := evidence fact owned
+              have decoded : fact ∈ message.payload.evidence.toList := by
+                rw [carried]
+                exact List.mem_singleton_self fact
+              have firstInput := output_mem_inputs_of_trace bounds trace₁ who message
+                (List.mem_filterMap.mpr ⟨recalled, recalledMember, emitted⟩)
+              have firstSound : ((runtime setup).packetEvidence leaks).Sound control₁.execution :=
+                ((runtime setup).packetEvidence leaks).history_sound (initialLaw setup) horizon
+                  scheduler firstRaw
+              have firstHolds : fact.Holds control₁.execution.application :=
+                firstSound.inputs message firstInput fact decoded
+              have mapped := recalledEq ▸ List.mem_map_of_mem
+                (f := fun entry : (application setup leaks).PlayerEntry =>
+                  (operationalView setup leaks entry.beforeView, entry.emitted)) recalledMember
+              obtain ⟨entry, entryMember, entryEq⟩ := List.mem_map.mp mapped
+              have entryEmitted : entry.emitted = some message :=
+                (congrArg Prod.snd entryEq).trans emitted
+              have secondInput := output_mem_inputs_of_trace bounds trace₂ who message
+                (List.mem_filterMap.mpr ⟨entry, entryMember, entryEmitted⟩)
+              have secondSound : ((runtime setup).packetEvidence leaks).Sound
+                  control₂.execution :=
+                ((runtime setup).packetEvidence leaks).history_sound (initialLaw setup) horizon
+                  scheduler secondRaw
+              have secondHolds : fact.Holds control₂.execution.application :=
+                secondSound.inputs message secondInput fact decoded
+              have handleEq : fact.handle = (who, fact.handle.2) := Prod.ext own rfl
+              unfold OpeningFact.Holds at firstHolds secondHolds
+              rw [handleEq] at firstHolds secondHolds ⊢
+              rw [ownerHandlePairs_of_candidates_eq (firstHolds.trans secondHolds.symm)]
+              rfl
+            · rw [ownerHandlePairs_of_ne (fun ownerEq => same (own.symm.trans ownerEq))]
+              rfl
+    · cases secondInfo
+  · cases member
+
+end Main
 
 end Vegas
