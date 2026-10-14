@@ -442,3 +442,8 @@ import Vegas.Game.OnePacketSwapRegular
 import Vegas.Game.OnePacketUnpendingSites
 import Vegas.Game.OnePacketSwapFibers
 import Vegas.Game.SourceSwapAgreement
+import Vegas.Game.DecodedRevelations
+import Vegas.Game.OnePacketDisclosureCompletion
+import Vegas.Game.OnePacketLateBadMass
+import Vegas.Game.OnePacketLateHistoryNear
+import Vegas.Game.OnePacketSwapGuard

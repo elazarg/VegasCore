@@ -236,3 +236,4 @@ import Vegas.Examples.LateOpeningRuntimeRecoveryDomination
 import Vegas.Examples.LateOpeningRuntimeProtectedBobMenu
 import Vegas.Examples.LateOpeningRuntimeLabelContinuation
 import Vegas.Examples.OnePacketStructuralHypotheses
+import Vegas.Examples.OnePacketCommitRevealHypotheses
