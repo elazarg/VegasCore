@@ -43,17 +43,20 @@ def BindingFieldsCovered (bounds : MessageBounds (graph setup)) : Prop :=
   ∀ field owner payload, (graph setup).layout field = .binding owner payload →
     ∀ value : L.Val payload, (⟨payload, value⟩ : Raw L) ∈ bounds.values
 
+/-- The message bounds cover every value of every initial binding input. -/
+def EventGraphRuntime.MessageBounds.CoversInputValues (bounds : MessageBounds (graph setup)) :
+    Prop :=
+  ∀ input owner payload, (graph setup).inputLayout input = .binding owner payload →
+    ∀ value : L.Val payload, (⟨payload, value⟩ : Raw L) ∈ bounds.values
+
 omit [Fintype Player] [DecidableEq (CellTy Player L)] in
 /-- **Binding fields are covered** when the bounds cover every output value and
 every value of an initial binding input. -/
 theorem bindingFieldsCovered_of_covers (covers : bounds.CoversOutputValues)
-    (initialCovered : ∀ input owner payload,
-      (graph setup).inputLayout input = .binding owner payload →
-        ∀ value : L.Val payload, (⟨payload, value⟩ : Raw L) ∈ bounds.values) :
-    BindingFieldsCovered bounds := by
+    (inputs : bounds.CoversInputValues) : BindingFieldsCovered bounds := by
   intro field owner payload layoutEq
   cases field with
-  | inl input => exact initialCovered input owner payload layoutEq
+  | inl input => exact inputs input owner payload layoutEq
   | inr event =>
       have covered := covers event
       change (graph setup).outputLayout event = .binding owner payload at layoutEq
