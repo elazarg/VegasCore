@@ -311,24 +311,23 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
       control.execution.observe (application setup leaks) actor))
     (played : info ∈ (onePacketN).playedInformation actor)
     (choice : (onePacketN).Choice actor info) (chosen : choice.1 = some response) :
-    ∃ (scale' : ℝ) (nonnegative : 0 ≤ scale') (le_one : scale' ≤ 1)
-      (main alternative slot : PMF ((onePacketN).Choice actor info))
+    ∃ (main alternative slot : PMF ((onePacketN).Choice actor info))
       (mainFactor' alternativeFactor slotFactor : ℝ),
       certificateProfile setup leaks bounds horizon scheduler sequence scale scale_pos
           scale_le_one weights n actor info =
-        slotTrembledChoice setup leaks bounds (initialLaw setup) horizon scheduler scale'
-          nonnegative le_one actor info main alternative slot ∧
+        slotTrembledChoice setup leaks bounds (initialLaw setup) horizon scheduler (scale n)
+          (scale_pos n).le (scale_le_one n) actor info main alternative slot ∧
       (main choice).toReal = contentFactor setup leaks (sequence n) actor control.execution
         next.execution response * mainFactor' ∧
       (alternative choice).toReal = contentFactor setup leaks (sequence n) actor
         control.execution next.execution response * alternativeFactor ∧
       (slot choice).toReal = contentFactor setup leaks (sequence n) actor control.execution
         next.execution response * slotFactor ∧
-      slotCombination scale' mainFactor' alternativeFactor slotFactor =
+      slotCombination (scale n) mainFactor' alternativeFactor slotFactor =
         stepResponse bounds (keyWeights setup leaks bounds horizon scheduler (weights n))
           (scale n) (operationalState setup leaks (some control))
           (operationalState setup leaks (some next)) ∧
-      scale' ^ 3 ≤ slotError (scale n) (floor n) (trembleSlots setup bounds).card *
+      scale n ^ 3 ≤ slotError (scale n) (floor n) (trembleSlots setup bounds).card *
         (contentFactor setup leaks (sequence n) actor control.execution next.execution
           response *
         stepResponse bounds (keyWeights setup leaks bounds horizon scheduler (weights n))
@@ -553,7 +552,7 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
                 (application setup leaks) actor)) option := by
       unfold mainFactor
       simp only [keyLate.mpr isLate, ↓reduceIte]
-    refine ⟨scale n, (scale_pos n).le, scale_le_one n, _, _, _, mainFactor bounds
+    refine ⟨_, _, _, mainFactor bounds
       (keyWeights setup leaks bounds horizon scheduler (weights n)
         (some (LateKey.ofView setup leaks actor (control.execution.recall actor)
           (control.execution.observe (application setup leaks) actor))))
@@ -612,7 +611,7 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
               (application setup leaks) actor)) := by
       unfold mainFactor
       exact ite_eq_right_iff.mpr fun late => absurd (keyLate.mp late) isLate
-    refine ⟨scale n, (scale_pos n).le, scale_le_one n, _, _, _, mainFactor bounds
+    refine ⟨_, _, _, mainFactor bounds
       (keyWeights setup leaks bounds horizon scheduler (weights n)
         (some (LateKey.ofView setup leaks actor (control.execution.recall actor)
           (control.execution.observe (application setup leaks) actor))))
@@ -664,16 +663,15 @@ theorem certificate_slotLaw (sequence : ℕ → setup.intendedModel.BehavioralAs
     (positive : 0 < contentFactor setup leaks (sequence n) actor control.execution next.execution
       ((joint actor).getD ⟨none⟩))
     (observerForced : ForcedState setup leaks who before) :
-    ∃ (scale' : ℝ) (nonnegative : 0 ≤ scale') (le_one : scale' ≤ 1)
-      (main alternative slot : PMF ((onePacketInformation setup leaks bounds horizon
+    ∃ (main alternative slot : PMF ((onePacketInformation setup leaks bounds horizon
         scheduler).Choice actor
           ((onePacketInformation setup leaks bounds horizon scheduler).infoOf actor prior)))
       (mainFactor' alternativeFactor slotFactor : ℝ),
       certificateProfile setup leaks bounds horizon scheduler sequence scale scale_pos
           scale_le_one weights n actor
           ((onePacketInformation setup leaks bounds horizon scheduler).infoOf actor prior) =
-        slotTrembledChoice setup leaks bounds (initialLaw setup) horizon scheduler scale'
-          nonnegative le_one actor _ main alternative slot ∧
+        slotTrembledChoice setup leaks bounds (initialLaw setup) horizon scheduler (scale n)
+          (scale_pos n).le (scale_le_one n) actor _ main alternative slot ∧
       (main (InformationModel.choicesOfLegal _ prior ⟨joint, legal⟩ actor)).toReal =
         contentFactor setup leaks (sequence n) actor control.execution next.execution
           ((joint actor).getD ⟨none⟩) * mainFactor' ∧
@@ -683,10 +681,10 @@ theorem certificate_slotLaw (sequence : ℕ → setup.intendedModel.BehavioralAs
       (slot (InformationModel.choicesOfLegal _ prior ⟨joint, legal⟩ actor)).toReal =
         contentFactor setup leaks (sequence n) actor control.execution next.execution
           ((joint actor).getD ⟨none⟩) * slotFactor ∧
-      slotCombination scale' mainFactor' alternativeFactor slotFactor =
+      slotCombination (scale n) mainFactor' alternativeFactor slotFactor =
         stepResponse bounds (keyWeights setup leaks bounds horizon scheduler (weights n))
           (scale n) (operationalState setup leaks before) (operationalState setup leaks after) ∧
-      scale' ^ 3 ≤ slotError (scale n) (floor n) (trembleSlots setup bounds).card *
+      scale n ^ 3 ≤ slotError (scale n) (floor n) (trembleSlots setup bounds).card *
         (contentFactor setup leaks (sequence n) actor control.execution next.execution
           ((joint actor).getD ⟨none⟩) *
         stepResponse bounds (keyWeights setup leaks bounds horizon scheduler (weights n))
