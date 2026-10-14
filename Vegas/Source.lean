@@ -57,3 +57,5 @@ import Vegas.Source.CellSwap
 import Vegas.Source.IntendedTraceUnique
 import Vegas.Source.IntendedBetween
 import Vegas.Source.IntendedPrefixSwap
+import Vegas.Source.CellSwapDebt
+import Vegas.Source.PrivateInputsIndependent
