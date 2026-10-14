@@ -16,7 +16,15 @@ nonnegative masses this says the law factors as a function of the player's
 hidden cells times a function of the other cells. It holds for every law over
 an empty context. Then exchanging a player's hidden cells for fixed ones
 changes the mass of every state sharing those cells by the same ratio
-(`Vegas.SourceProgram.Setup.initialLaw_splice_mul`).
+(`Vegas.SourceProgram.Setup.initialLaw_splice_mul`), and splices of supported
+states are supported (`Vegas.SourceProgram.Setup.splice_mem_support`).
+
+The condition is a device of the argument that compares two late deliveries of
+an owner with the same late-delivery key by exchanging the owner's hidden
+values: the exchange must change the prior by a common factor. It is not known
+to be necessary for the comparison, and an initial law correlating different
+players' private values, such as a joint prior over private valuations, does
+not satisfy it.
 -/
 
 namespace Vegas
@@ -110,6 +118,20 @@ theorem initialLaw_splice_mul (setup : Setup (Player := Player) (L := L))
   have product := independent who (splice who source first) second
   rw [splice_splice_left, splice_splice_right, splice_of_hiddenAgree agree] at product
   exact product.symm
+
+/-- With independent hidden cells, splicing two supported initial states for a
+player gives a supported initial state. -/
+theorem splice_mem_support (setup : Setup (Player := Player) (L := L))
+    (independent : setup.PrivateInputsIndependent) (who : Player)
+    {first second : State L setup.context} (firstMember : first ∈ setup.initialLaw.support)
+    (secondMember : second ∈ setup.initialLaw.support) :
+    splice who first second ∈ setup.initialLaw.support := by
+  rw [PMF.mem_support_iff] at firstMember secondMember ⊢
+  have product := independent who first second
+  have positive : setup.initialLaw first * setup.initialLaw second ≠ 0 :=
+    mul_ne_zero firstMember secondMember
+  rw [← product] at positive
+  exact left_ne_zero_of_mul positive
 
 end Setup
 
