@@ -13,9 +13,10 @@ installed at the site plays the late owner shape, the late component of the
 key's weights while `who` has sent nothing for the event
 (`Vegas.certificate_firstActivation_lateOwnerShape`). The site itself is not
 covered: there the installed law is played, and other first activations with
-the site's recall are not late deliveries. With silence installed at the site,
-the profile plays the late owner shape from the site's execution, silence at
-the site and the late component after a response there
+the site's recall are not late deliveries. With the late component of an option
+or silence installed at the site, the profile plays the late owner shape from
+the site's execution, the installed law at the site and the late component
+after a response there
 (`Vegas.certificate_firstActivation_lateOwnerShapeFrom`).
 -/
 
@@ -118,12 +119,12 @@ theorem certificate_firstActivation_lateOwnerShape
     scale_pos scale_le_one weights targetSequence assembled n who later laterRemaining reached
     event state forcedHere ready activated).1 unrecordedHere⟩
 
-/-- **The owner shape from a first activation with silence installed.** At a
-forced history of a site of `who` with `event` pending, a profile assembled from
-the certificate's components with silence installed at the site plays the late
-owner shape from the site's execution: silence at the site itself, and the late
-component of the key's weights at every later decision whose recall extends the
-site's by the entry of a response there. -/
+/-- **The owner shape from a first activation.** At a forced history of a site
+of `who` with `event` pending, a profile assembled from the certificate's
+components with the late component of an option or silence installed at the
+site plays the late owner shape from the site's execution: the installed law at
+the site itself, and the late component of the key's weights at every later
+decision whose recall extends the site's by the entry of a response there. -/
 theorem certificate_firstActivation_lateOwnerShapeFrom
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
@@ -134,6 +135,11 @@ theorem certificate_firstActivation_lateOwnerShapeFrom
       scale_le_one weights targetSequence) (n : ℕ) {who : Player}
     (site : (onePacketN).InformationSite who) {event : (graph setup).EventId}
     (pending : pendingEvent setup leaks who site.1 = some event)
+    (law : PMF ((onePacketN).Choice who site.1))
+    (lawShape : (∃ option : LateOption slots, law = onePacketLate setup leaks bounds horizon
+        scheduler sequence scale scale_pos scale_le_one n ((onePacketN).agentAt site) option) ∨
+      law = PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler who
+        site.1))
     (history : (onePacketN).InformationHistory who site.1)
     {remaining : Nat} {execution : (application setup leaks).Execution}
     (current : history.1.state = some ⟨remaining, some who, execution⟩)
@@ -143,13 +149,10 @@ theorem certificate_firstActivation_lateOwnerShapeFrom
     LateOwnerShapeFrom setup leaks bounds horizon scheduler (sequence n) (scale_pos n).le
       (scale_le_one n) slots
       (Profile.update (sig := (onePacketN).behavioralSignature) (targetSequence n).strategy who
-        (((targetSequence n).strategy who).withLaw site.1
-          (PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler who
-            site.1)))) who event execution := by
+        (((targetSequence n).strategy who).withLaw site.1 law)) who event execution := by
   intro later laterRemaining reached state holds sameView extended
   by_cases sameRecall : reached.recall who = execution.recall who
-  · -- The site itself: silence.
-    right
+  · -- The site itself: the installed late option or silence.
     rw [Profile.update_same]
     have same : (some (reached.recall who, reached.observe (application setup leaks) who) :
         (application setup leaks).Info) = site.1 := by
@@ -158,6 +161,13 @@ theorem certificate_firstActivation_lateOwnerShapeFrom
     change _ = siteInfo at same
     subst same
     rw [BehavioralPolicy.withLaw_self]
+    rcases lawShape with ⟨option, lawEq⟩ | lawEq
+    · left
+      refine ⟨PMF.pure option, ?_⟩
+      rw [lawEq, PMF.pure_bind]
+      rfl
+    · right
+      exact lawEq
   · -- Later: the late component, after a response at the site.
     obtain ⟨response, extends_⟩ := extended sameRecall
     have unsent : LateUnsent setup leaks who event execution.application.config
@@ -166,7 +176,7 @@ theorem certificate_firstActivation_lateOwnerShapeFrom
       rw [state] at holds ⊢
       exact ⟨holds.1, extends_, holds.2.2⟩
     exact certificate_firstActivation_lateOwnerShape setup leaks bounds horizon scheduler
-      sequence scale scale_pos scale_le_one weights targetSequence assembled n site pending _
+      sequence scale scale_pos scale_le_one weights targetSequence assembled n site pending law
       history current atSite forced response later laterRemaining reached state unsent
 
 end Vegas
