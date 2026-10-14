@@ -54,7 +54,7 @@ theorem ConfigReaches.first_step_of_ready_unique {before after : (graph setup).C
 
 /-- One protocol transition from an initialized state reaches an initialized
 state by one configuration step. -/
-private theorem transition_reaches (initial : PMF (application setup leaks).State)
+theorem transition_some_configStep (initial : PMF (application setup leaks).State)
     (horizon : Nat) (scheduler : (application setup leaks).Scheduler)
     (before : (application setup leaks).Control) (after : (application setup leaks).ProtocolState)
     (joint : Player → Option (application setup leaks).Action)
@@ -83,7 +83,8 @@ variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
 
 /-- **The pending event is the only ready event.** At a history of the
 one-packet game whose information for `who` has `event` pending, the state is a
-control at which `event` is ready, and every ready event is `event`. -/
+control at which `event` is ready, every ready event is `event`, and the view
+is that of the control's execution. -/
 theorem pendingEvent_ready_unique {who : Player}
     {past : List (application setup leaks).PlayerEntry}
     {view : (application setup leaks).PlayerView} {event : (graph setup).EventId}
@@ -94,7 +95,8 @@ theorem pendingEvent_ready_unique {who : Player}
       horizon scheduler).infoOf who history.trace = some (past, view)) :
     ∃ control, history.state = some control ∧
       control.execution.application.config.cut.Ready event ∧
-      ∀ other, control.execution.application.config.cut.Ready other → other = event := by
+      (∀ other, control.execution.application.config.cut.Ready other → other = event) ∧
+      view = control.execution.observe (application setup leaks) who := by
   let app := application setup leaks
   let menu := bounds.onePacketMenu (runtime setup) leaks
   obtain ⟨turn, _, _, _⟩ := pendingEvent_spec pending
@@ -116,7 +118,7 @@ theorem pendingEvent_ready_unique {who : Player}
   have ready : execution.application.config.cut.Ready event :=
     (execution.application.publicView_eventReady event).mp
       (PublicView.ownTurn?_spec _ who event turnExec).1
-  exact ⟨_, rfl, ready, fun other otherReady => ready_unique _ otherReady ready⟩
+  exact ⟨_, rfl, ready, fun other otherReady => ready_unique _ otherReady ready, rfl⟩
 
 /-- **The pending event completes next.** Under a scheduler that completes play,
 let the information of `who` at a history of the one-packet game have `event`
@@ -145,7 +147,7 @@ theorem pendingEvent_completes_next
             ∃ middle ∈ (control.execution.application.config.step event ready action).support,
               ConfigReaches setup middle finalControl.execution.application.config := by
   let menu := bounds.onePacketMenu (runtime setup) leaks
-  obtain ⟨control, current, ready, only⟩ :=
+  obtain ⟨control, current, ready, only, _⟩ :=
     pendingEvent_ready_unique bounds horizon scheduler pending history infoEq
   refine ⟨control, current, fun final supported => ?_⟩
   have reaches := (menu.information (initialLaw setup) horizon
@@ -154,8 +156,8 @@ theorem pendingEvent_completes_next
       control.execution.application.config next.execution.application.config)
     (fun state joint _ target holds reached => by
       obtain ⟨before, rfl, reach⟩ := holds
-      obtain ⟨next, rfl, step⟩ := transition_reaches (initialLaw setup) horizon scheduler before
-        target joint reached
+      obtain ⟨next, rfl, step⟩ := transition_some_configStep (initialLaw setup) horizon
+        scheduler before target joint reached
       exact ⟨next, rfl, reach.tail step⟩)
     history ⟨control, current, Relation.ReflTransGen.refl⟩ final supported
   obtain ⟨finalControl, state, reach⟩ := reaches
