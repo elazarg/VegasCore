@@ -118,6 +118,12 @@ theorem covers : bounds.CoversOutputValues := by
     (intro value
      exact Finset.mem_image.mpr ⟨value, Finset.mem_univ _, rfl⟩)
 
+/-- The program has no initial inputs. -/
+theorem coversInputs : bounds.CoversInputValues := by
+  intro input
+  change Fin 0 at input
+  exact input.elim0
+
 theorem capacity : ∀ who, bindingEventCount nativeGraph who < bounds.candidateCount := by
   intro who
   change (Finset.univ.filter fun event => bindingOwnedBy nativeGraph who event = true).card < 2
@@ -186,14 +192,15 @@ theorem structural (parameter : State simpleExpr setup.context → Unit) :
       AsyncTimely (runtime setup) delay bound ∧
       RetainsCoveredCanonical setup leaks bounds horizon scheduler bound ∧
       bounds.CoversOutputValues ∧
+      bounds.CoversInputValues ∧
       (∀ who, bindingEventCount nativeGraph who < bounds.candidateCount) ∧
       0 < slots ∧ bounds.candidateCount ≤ slots ∧ slots ≤ bounds.candidateCount ∧
       1 ≤ bounds.candidateCount ∧
       (∀ (final : setup.intendedProtocol.History) terminal,
         setup.protocolReadout final.state = some terminal →
           ∀ who, excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who) :=
-  ⟨wellFormed, contract, timely, retains, covers, capacity, slots_pos, slotsCover, slotsLe,
-    oneSlot, below parameter⟩
+  ⟨wellFormed, contract, timely, retains, covers, coversInputs, capacity, slots_pos, slotsCover,
+    slotsLe, oneSlot, below parameter⟩
 
 open Classical in
 /-- The one-packet preservation theorem applies to committed matching pennies:
@@ -203,7 +210,8 @@ example (parameter : State simpleExpr setup.context → Unit) :=
   have : Finite setup.intendedProtocol.History := setup.intended_finite_history
     ⟨inferInstance, inferInstance, trivial⟩
   onePacket_intended_sequentialEquilibrium_of_blindInputs setup leaks bounds horizon scheduler
-    parameter utility excludedPayoff wellFormed contract timely retains (fun _ => -1)
+    parameter utility excludedPayoff wellFormed
+    (setup.privateInputsIndependent_of_nil rfl) contract timely retains (fun _ => -1)
     (fun _ => 1) lower_le le_upper (below parameter)
 
 end Vegas.Examples.OnePacketCommitRevealHypotheses

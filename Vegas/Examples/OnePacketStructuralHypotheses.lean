@@ -58,6 +58,29 @@ theorem covers : bounds.CoversOutputValues := by
     | (intro value
        exact Finset.mem_image.mpr ⟨value, Finset.mem_univ _, rfl⟩)
 
+theorem coversInputs : bounds.CoversInputValues := by
+  intro input owner payload layoutEq value
+  change Fin 2 at input
+  fin_cases input <;> cases layoutEq <;>
+    exact Finset.mem_image.mpr ⟨value, Finset.mem_univ _, rfl⟩
+
+/-- Only Alice's commitment varies under the initial law, so the hidden
+initial cells are independent. -/
+theorem privateInputsIndependent : setup.PrivateInputsIndependent :=
+  setup.privateInputsIndependent_of_single_owner alice (sourceInitial true)
+    fun state member name τ cell notAlice => by
+      have pure : state = sourceInitial true ∨ state = sourceInitial false := by
+        rcases mem_support_mix_cases (h0 := by norm_num) (h1 := by norm_num) member with
+          first | second
+        · exact Or.inl ((PMF.mem_support_pure_iff _ _).mp first)
+        · exact Or.inr ((PMF.mem_support_pure_iff _ _).mp second)
+      cases cell with
+      | here => exact absurd rfl notAlice
+      | there cell =>
+          cases cell with
+          | here => rcases pure with rfl | rfl <;> rfl
+          | there cell => cases cell
+
 theorem capacity : ∀ who, bindingEventCount nativeGraph who < bounds.candidateCount := by
   intro who
   change (Finset.univ.filter fun event => bindingOwnedBy nativeGraph who event = true).card < 1
@@ -110,14 +133,15 @@ theorem structural (parameter : State simpleExpr setup.context → Bool) :
       RetainsCoveredCanonical setup leaks bounds CommittedResolutionService.horizon
         CommittedResolutionService.scheduler bound ∧
       bounds.CoversOutputValues ∧
+      bounds.CoversInputValues ∧
       (∀ who, bindingEventCount nativeGraph who < bounds.candidateCount) ∧
       0 < slots ∧ bounds.candidateCount ≤ slots ∧ slots ≤ bounds.candidateCount ∧
       1 ≤ bounds.candidateCount ∧
       (∀ (final : setup.intendedProtocol.History) terminal,
         setup.protocolReadout final.state = some terminal →
           ∀ who, excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who) :=
-  ⟨wellFormed, contract, timely, retains, covers, capacity, slots_pos, slotsCover, slotsLe,
-    oneSlot, below parameter⟩
+  ⟨wellFormed, contract, timely, retains, covers, coversInputs, capacity, slots_pos, slotsCover,
+    slotsLe, oneSlot, below parameter⟩
 
 open Classical in
 /-- The one-packet preservation theorem applies to the program: its structural
@@ -127,7 +151,7 @@ example (parameter : State simpleExpr setup.context → Bool) :=
   have : Finite setup.intendedProtocol.History := setup.intended_finite_history trivial
   onePacket_intended_sequentialEquilibrium_of_blindInputs setup leaks bounds
     CommittedResolutionService.horizon CommittedResolutionService.scheduler parameter utility
-    excludedPayoff wellFormed contract timely retains (fun _ => 0) (fun _ => 0) lower_le
-    le_upper (below parameter)
+    excludedPayoff wellFormed privateInputsIndependent contract timely retains (fun _ => 0)
+    (fun _ => 0) lower_le le_upper (below parameter)
 
 end Vegas.Examples.OnePacketStructuralHypotheses

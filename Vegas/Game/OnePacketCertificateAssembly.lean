@@ -249,8 +249,16 @@ and the exclusion payoff at most every intended outcome, for every sequential
 equilibrium of the intended game, if every fully mixed Bayes sequence
 converging to it supplies the open inputs by value blindness, there is a
 sequential equilibrium of the one-packet game under the exclusion payoff whose
-joint law of typed readout and exclusion payoff is the intended one. -/
+joint law of typed readout and exclusion payoff is the intended one.
+
+Each player's hidden initial cells must be independent of the other initial
+cells (`Vegas.SourceProgram.Setup.PrivateInputsIndependent`). This is a device
+of the comparison of late deliveries, not a known limit of preservation; it
+holds over an empty context and when a single player owns hidden cells, but a
+correlated prior over private values, as in the private-value auction with a
+non-product prior, is not covered by this theorem. -/
 theorem onePacket_intended_sequentialEquilibrium_of_blindInputs (wellFormed : setup.WellFormed)
+    (independent : setup.PrivateInputsIndependent)
     {delay bound : (graph setup).EventId → Nat}
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
       bound)
@@ -292,7 +300,8 @@ theorem onePacket_intended_sequentialEquilibrium_of_blindInputs (wellFormed : se
           (instructionCount setup.program + 1)).map
           (intendedReadoutExclusion setup parameter utility excludedPayoff) :=
   onePacket_intended_sequentialEquilibrium_of_openInputs setup leaks bounds horizon scheduler
-    parameter utility excludedPayoff wellFormed contract timely retains intended equilibrium
+    parameter utility excludedPayoff wellFormed independent contract timely retains intended
+    equilibrium
     fun sequence mixed bayes converges =>
       (inputs sequence mixed bayes converges).toOpenInputs setup leaks bounds horizon scheduler
         parameter utility excludedPayoff wellFormed contract timely retains lower_le le_upper
@@ -307,7 +316,8 @@ under the exclusion payoff minus the deposit for each collected count charge,
 that charges nobody on its paths, whose joint law of typed readout and realized
 payoffs is the intended joint law of typed readout and exclusion payoff. -/
 theorem onePacket_intended_raw_sequentialEquilibrium_of_blindInputs
-    (wellFormed : setup.WellFormed) {delay bound : (graph setup).EventId → Nat}
+    (wellFormed : setup.WellFormed)
+    (independent : setup.PrivateInputsIndependent) {delay bound : (graph setup).EventId → Nat}
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
       bound)
     (timely : AsyncTimely (runtime setup) delay bound)
@@ -362,7 +372,8 @@ theorem onePacket_intended_raw_sequentialEquilibrium_of_blindInputs
           (instructionCount setup.program + 1)).map
           (intendedReadoutExclusion setup parameter utility excludedPayoff) :=
   onePacket_intended_raw_sequentialEquilibrium_of_openInputs setup leaks bounds horizon scheduler
-    parameter utility excludedPayoff wellFormed contract timely retains intended equilibrium
+    parameter utility excludedPayoff wellFormed independent contract timely retains intended
+    equilibrium
     (fun sequence mixed bayes converges =>
       (inputs sequence mixed bayes converges).toOpenInputs setup leaks bounds horizon scheduler
         parameter utility excludedPayoff wellFormed contract timely retains lower_le le_upper
