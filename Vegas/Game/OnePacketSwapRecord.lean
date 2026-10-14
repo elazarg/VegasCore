@@ -239,6 +239,7 @@ theorem recall_swap_of_fixes (swap : HiddenSwap (graph setup)) {who : Player}
 /-- **The image of a history leaves a fixed player in the same information
 state** at each of its decisions. -/
 theorem infoOf_mapTrace_of_fixes (swap : HiddenSwap (graph setup))
+    [InitialAcceptedCompleted (leaks := leaks) initial]
     (initialClosed : ∀ state ∈ initial.support, state.config.inputs ∈ allowed →
       state.swap swap ∈ initial.support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)

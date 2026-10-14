@@ -65,8 +65,8 @@ theorem swapGuardState_inter (swap : HiddenSwap (graph setup))
   cases state with
   | none => trivial
   | some control =>
-      obtain ⟨inputs, compatible, reveals, requests⟩ := guarded
-      exact ⟨⟨inputs, inside control rfl⟩, compatible, reveals, requests⟩
+      obtain ⟨inputs, compatible, reveals, requests, expired⟩ := guarded
+      exact ⟨⟨inputs, inside control rfl⟩, compatible, reveals, requests, expired⟩
 
 omit [Fintype Player] in
 /-- Setup draws are determined by their encoded inputs. -/

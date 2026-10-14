@@ -321,7 +321,7 @@ theorem swapGuardState_of_agree
   refine ⟨?_, fun event candidate accepted =>
     bindCompatible_betweenHandlePairs injective accepted, fun event active =>
     revealFixed_between injective _ (fun _ _ held => held) event (agree event active),
-    fun player recalled member submission sent => ?_⟩
+    fun player recalled member submission sent => ?_, HiddenSwap.expired_ofPairs _ _ _⟩
   · exact inputs_mem_swapAllowed_of_drawn drawn _
       (initialHandlesCompatible_betweenHandlePairs injective
         (fun _ _ _ layoutEq => accepted_initial_of_trace trace layoutEq))

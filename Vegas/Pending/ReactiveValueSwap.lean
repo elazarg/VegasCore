@@ -246,7 +246,12 @@ theorem environmentStep_execution (current : (runtime.reactiveApplication leaks)
     (command : (runtime.reactiveApplication leaks).Command)
     (fixed : ∀ id envelope, command = .include id → current.network.lookup id = some envelope →
       envelope.payload.tokenValid = true →
-      InclusionFixed runtime swap current.application ⟨envelope.id, envelope.payload.call⟩) :
+      InclusionFixed runtime swap current.application ⟨envelope.id, envelope.payload.call⟩)
+    (expiry : ∀ event entered, command = .application (.expire event) →
+      current.application.config.cut.Ready event →
+      current.application.activatedAt event = some entered →
+      runtime.deadline event ≤ current.application.clock - entered →
+        swap.values.ExpiryFixed event) :
     (swap.execution current).environmentStep (runtime.reactiveApplication leaks) command =
       (current.environmentStep (runtime.reactiveApplication leaks) command).map
         swap.execution := by
@@ -268,7 +273,9 @@ theorem environmentStep_execution (current : (runtime.reactiveApplication leaks)
       simp only [execution_application]
       change PMF.map _ (PMF.map _ (environmentStep runtime (current.application.swap swap)
         command)) = _
-      rw [environmentStep_swap, PMF.map_comp, PMF.map_comp, PMF.map_comp]
+      rw [environmentStep_swap runtime swap current.application command
+        (fun event entered same => expiry event entered (by rw [same])),
+        PMF.map_comp, PMF.map_comp, PMF.map_comp]
       rfl
 
 end HiddenSwap

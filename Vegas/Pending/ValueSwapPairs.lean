@@ -129,16 +129,22 @@ def ValueSwap.ofPairs (pairs : graph.SwapPairs) : graph.ValueSwap where
   action_involutive := pairs.action_involutive
   value_public field isPublic := by rw [pairs.public_none field isPublic]; rfl
   action_publication := pairs.action_publication
-  output_failure event owner payload outputEq := by
-    cases paired : pairs.pair (.inr event) with
-    | none => rfl
-    | some pair =>
-        obtain ⟨left, right⟩ := pair
-        obtain ⟨leftNe, rightNe⟩ := pairs.binding_success event owner payload outputEq left right
-          paired
-        exact pairSwap_of_ne left right _ (Ne.symm leftNe) (Ne.symm rightNe)
   action_binding event owner payload outputEq result := pairs.action_binding event owner payload
     outputEq result
+
+/-- **Value swaps of pairs keep failures at binding events**: pairs never pair a
+failure there. -/
+theorem ValueSwap.ofPairs_expiryFixed (pairs : graph.SwapPairs) (event : graph.EventId) :
+    (ValueSwap.ofPairs pairs).ExpiryFixed event := by
+  intro owner payload outputEq
+  change pairSwap (pairs.pair (.inr event)) _ = _
+  cases paired : pairs.pair (.inr event) with
+  | none => rfl
+  | some pair =>
+      obtain ⟨left, right⟩ := pair
+      obtain ⟨leftNe, rightNe⟩ := pairs.binding_success event owner payload outputEq left right
+        paired
+      exact pairSwap_of_ne left right _ (Ne.symm leftNe) (Ne.symm rightNe)
 
 end Vegas.EventGraph
 
@@ -236,5 +242,13 @@ theorem HiddenSwap.bindCompatible_ofPairs (pairs : graph.SwapPairs)
                 exact isLeft (by cases same; rfl)
               · intro same
                 exact isRight (by cases same; rfl)
+
+/-- **Swaps of pairs keep every expiry**, so they meet the expiry clause of the
+swap guard at every state. -/
+theorem HiddenSwap.expired_ofPairs (pairs : graph.SwapPairs)
+    (handlePairs : Handle graph → Option (Raw L × Raw L)) (current : State graph) :
+    ∀ event, ¬ (HiddenSwap.ofPairs pairs handlePairs).values.ExpiryFixed event →
+      event ∈ current.config.cut.completed → current.accepted (.inr event) ≠ none :=
+  fun event notFixed => absurd (ValueSwap.ofPairs_expiryFixed pairs event) notFixed
 
 end Vegas.EventGraphRuntime

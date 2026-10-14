@@ -116,6 +116,9 @@ structure SwapGuard (swap : HiddenSwap (graph setup)) (allowed : Set (graph setu
       event ∈ current.application.config.cut.completed →
     RevealFixed swap current.application event
   requests : ∀ who, ∀ recalled ∈ current.recall who, swap.RequestFixed recalled.action
+  expired : ∀ event, ¬ swap.values.ExpiryFixed event →
+    event ∈ current.application.config.cut.completed →
+      current.application.accepted (.inr event) ≠ none
 
 variable (setup) in
 /-- The swap guard at a protocol state; nothing is asked before setup. -/
@@ -164,6 +167,97 @@ theorem acceptedGrows_step :
     rw [(environmentStep_tables (runtime setup) state next command reached).1]
     exact held
 
+/-- Every handle accepted at an event completed it. -/
+def AcceptedCompleted (state : EventGraphRuntime.State (graph setup)) : Prop :=
+  ∀ event candidate, state.accepted (.inr event) = some candidate →
+    event ∈ state.config.cut.completed
+
+/-- A handle newly accepted by an operation was accepted at an event ready
+before and completed after. -/
+def AcceptedFresh (before after : EventGraphRuntime.State (graph setup)) : Prop :=
+  ∀ field candidate, after.accepted field = some candidate → before.accepted field = none →
+    ∃ event, field = .inr event ∧ before.config.cut.Ready event ∧
+      event ∈ after.config.cut.completed
+
+variable (leaks) in
+theorem acceptedFresh_step :
+    ((runtime setup).reactiveApplication leaks).StepRelation (AcceptedFresh (setup := setup)) where
+  refl _ _ _ held vacant := by
+    rw [vacant] at held
+    cases held
+  submit state who material field candidate held vacant := by
+    change (submitStep (material.call.register state who) who
+      material.call.packet).accepted field = _ at held
+    rw [submitStep_accepted, Submission.register_accepted, vacant] at held
+    cases held
+  handle state message next accepted field candidate held vacant := by
+    have call := reactiveHandle_call accepted
+    cases packet : message.payload.call with
+    | malformed raw =>
+        rw [packet] at call
+        simp [handle] at call
+    | opening named other raw =>
+        rw [packet] at call
+        have tables := handle_resolution_tables (runtime setup) state next _
+          (fun _ _ same => by cases same) call
+        rw [tables.1, vacant] at held
+        cases held
+    | commitment named other =>
+        rw [packet] at call
+        obtain ⟨ready, _, table, completed⟩ :=
+          handle_commitment_accepted state next message.id named other call
+        by_cases same : field = .inr named
+        · exact ⟨named, same, ready, completed⟩
+        · rw [table, Function.update_of_ne same, vacant] at held
+          cases held
+  environment state command next reached field candidate held vacant := by
+    rw [(environmentStep_tables (runtime setup) state next command reached).1, vacant] at held
+    cases held
+
+/-- A completed event stays completed. -/
+theorem configStep_completed {before after : (graph setup).Config}
+    (step : ConfigStep setup before after) {event : (graph setup).EventId}
+    (done : event ∈ before.cut.completed) : event ∈ after.cut.completed := by
+  rcases step with same | ⟨other, ready, action, member⟩
+  · subst same
+    exact done
+  · rw [before.step_cut other ready action after member]
+    exact (EventOrder.Cut.mem_complete _ _ _ _).mpr (Or.inr done)
+
+/-- Accepted handles keep completing their events along every transition. -/
+theorem acceptedCompleted_transition (initial : PMF (application setup leaks).State)
+    (horizon : Nat) (scheduler : (application setup leaks).Scheduler)
+    (before after : (application setup leaks).Control)
+    (joint : Player → Option (application setup leaks).Action)
+    (reached : some after ∈ ((application setup leaks).transition initial horizon scheduler
+      (some before) joint).support)
+    (valid : AcceptedCompleted before.execution.application) :
+    AcceptedCompleted after.execution.application := by
+  have grows := (acceptedGrows_step leaks).transition initial horizon scheduler before after joint
+    reached
+  have fresh := (acceptedFresh_step leaks).transition initial horizon scheduler before after joint
+    reached
+  have step := transition_configStep initial horizon scheduler before after joint reached
+  intro event candidate held
+  cases earlier : before.execution.application.accepted (.inr event) with
+  | none =>
+      obtain ⟨other, same, _, completed⟩ := fresh _ _ held earlier
+      cases Sum.inr.inj same
+      exact completed
+  | some old =>
+      exact configStep_completed step (valid event old earlier)
+
+/-- An initial law whose states complete every event with an accepted handle. -/
+class InitialAcceptedCompleted (initial : PMF (application setup leaks).State) : Prop where
+  initial_accepted : ∀ state ∈ initial.support, AcceptedCompleted (setup := setup) state
+
+instance : InitialAcceptedCompleted (leaks := leaks) (initialLaw setup) where
+  initial_accepted state member event candidate held := by
+    rw [initialLaw, serviceInitialLaw, PMF.support_map] at member
+    obtain ⟨_, _, rfl⟩ := member
+    obtain ⟨_, _, _, field, _, _⟩ := State.initial_accepted_eq_some _ _ candidate held
+    cases field
+
 /-- A ready or completed event stays ready or completed. -/
 theorem readyOrCompleted_of_configStep {before after : (graph setup).Config}
     (step : ConfigStep setup before after) (event : (graph setup).EventId)
@@ -210,13 +304,24 @@ theorem swapGuard_of_transition (swap : HiddenSwap (graph setup))
   have grows := (acceptedGrows_step leaks).transition initial horizon scheduler before after joint
     reached
   have step := transition_configStep initial horizon scheduler before after joint reached
+  have fresh := (acceptedFresh_step leaks).transition initial horizon scheduler before after joint
+    reached
   obtain ⟨next, nextEq, prefixes⟩ := (application setup leaks).transition_recall_prefix initial
     horizon scheduler before (some after) joint reached
   cases Option.some.inj nextEq
   refine ⟨?_, fun event candidate held => guarded.compatible event candidate (grows _ _ held),
     fun event held => revealFixed_of_grows swap grows event
       (guarded.reveals event (readyOrCompleted_of_configStep step event held)),
-    fun who recalled member => guarded.requests who recalled ((prefixes who).subset member)⟩
+    fun who recalled member => guarded.requests who recalled ((prefixes who).subset member),
+    fun event notFixed done vacant => ?_⟩
+  swap
+  · have later := guarded.expired event notFixed (configStep_completed step done)
+    cases accepted : after.execution.application.accepted (.inr event) with
+    | none => exact later accepted
+    | some candidate =>
+        obtain ⟨other, same, ready, _⟩ := fresh _ _ accepted vacant
+        cases Sum.inr.inj same
+        exact ready.1 done
   rcases step with same | ⟨other, ready, action, member⟩
   · rw [← same]
     exact guarded.inputs
@@ -257,6 +362,46 @@ theorem inclusionFixed_of_guard (swap : HiddenSwap (graph setup))
   apply targetCompatible event candidate
   rw [applicationEq, accepted.2.2.1, Function.update_self]
 
+/-- **An expiry at a guarded target keeps its failure**: the expired event has
+no accepted handle before, since accepted handles completed their events, so
+the guard at the target fixes its failure. -/
+theorem expiryFixed_of_guard (swap : HiddenSwap (graph setup))
+    (current next : (application setup leaks).Execution) (event : (graph setup).EventId)
+    (entered : Nat)
+    (stepped : next ∈ (current.environmentStep (application setup leaks)
+      (.application (.expire event))).support)
+    (ready : current.application.config.cut.Ready event)
+    (activated : current.application.activatedAt event = some entered)
+    (due : (runtime setup).deadline event ≤ current.application.clock - entered)
+    (valid : AcceptedCompleted current.application)
+    (guarded : SwapGuard setup swap allowed next) :
+    swap.values.ExpiryFixed event := by
+  by_contra notFixed
+  have vacant : current.application.accepted (.inr event) = none := by
+    cases held : current.application.accepted (.inr event) with
+    | none => rfl
+    | some candidate => exact absurd (valid event candidate held) ready.1
+  cases view : nodeView (graph setup) event with
+  | bind owner payload outputEq codeEq =>
+      unfold ReactiveApplication.Execution.environmentStep at stepped
+      simp only [PMF.support_map, Set.mem_image] at stepped
+      obtain ⟨_, ⟨expired, member, rfl⟩, rfl⟩ := stepped
+      change expired ∈ (environmentStep (runtime setup) current.application
+        (.expire event)).support at member
+      rw [environmentStep_expire_bind_eq (runtime setup) _ event ready entered activated due owner
+        payload outputEq codeEq view, PMF.mem_support_pure_iff] at member
+      subst member
+      exact guarded.expired event notFixed
+        ((EventOrder.Cut.mem_complete _ event ready event).mpr (Or.inl rfl)) vacant
+  | resolve owner payload binding checks outputEq codeEq =>
+      exact notFixed fun _ _ bindingEq => by
+        rw [outputEq] at bindingEq
+        cases bindingEq
+  | sample payload law outputEq codeEq =>
+      exact notFixed fun _ _ bindingEq => by
+        rw [outputEq] at bindingEq
+        cases bindingEq
+
 /-- **Transitions into guarded states commute with the swap.** -/
 theorem transition_swap (swap : HiddenSwap (graph setup))
     (initial : PMF (application setup leaks).State)
@@ -267,6 +412,8 @@ theorem transition_swap (swap : HiddenSwap (graph setup))
     (joint : Player → Option (application setup leaks).Action)
     (reached : target ∈ ((application setup leaks).transition initial horizon scheduler source
       joint).support)
+    (valid : ∀ control : (application setup leaks).Control, source = some control →
+      AcceptedCompleted control.execution.application)
     (guarded : SwapGuardState setup swap allowed target) :
     swap.protocolState target ∈ ((application setup leaks).transition initial horizon scheduler
       (swap.protocolState source) (swap.joint joint)).support := by
@@ -343,6 +490,10 @@ theorem transition_swap (swap : HiddenSwap (graph setup))
                   rw [PMF.mem_support_pure_iff] at member
                   subst member
                   exact held
+                · intro event entered commandEq ready activated due
+                  subst commandEq
+                  exact expiryFixed_of_guard swap current next event entered stepped ready
+                    activated due (valid _ rfl) guarded
 
 /-- A response recorded at a guarded state has a fixed evidence request. -/
 theorem requestFixed_of_respond (swap : HiddenSwap (graph setup))
@@ -383,10 +534,38 @@ theorem swapGuardState_of_step (bounds : MessageBounds (graph setup))
       exact swapGuard_of_transition swap initial horizon scheduler before after joint reached
         guarded
 
+/-- **Accepted handles completed their events** along every history from an
+initial law whose states have this property. -/
+theorem acceptedCompleted_of_trace (bounds : MessageBounds (graph setup))
+    (initial : PMF (application setup leaks).State) (horizon : Nat)
+    (scheduler : (application setup leaks).Scheduler)
+    [InitialAcceptedCompleted (leaks := leaks) initial] :
+    ∀ {state} (_trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol initial horizon
+      scheduler).Trace state) (control : (application setup leaks).Control),
+      state = some control → AcceptedCompleted control.execution.application := by
+  intro state trace
+  induction trace with
+  | start => intro _ initialized; cases initialized
+  | @extend before after prior joint legal realized ih =>
+      intro control initialized
+      subst initialized
+      cases before with
+      | none =>
+          change some control ∈ ((application setup leaks).transition initial horizon scheduler
+            none joint).support at realized
+          rw [ReactiveApplication.transition, PMF.support_map] at realized
+          obtain ⟨state, member, same⟩ := realized
+          cases Option.some.inj same
+          exact InitialAcceptedCompleted.initial_accepted state member
+      | some before =>
+          exact acceptedCompleted_transition initial horizon scheduler before control joint
+            realized (ih before rfl)
+
 /-- **The hidden swap is a guarded state symmetry of the one-packet game** when
 the initial law and the bounded values are closed under it. -/
 def onePacketSwapSymmetry (bounds : MessageBounds (graph setup))
-    (initial : PMF (application setup leaks).State) (horizon : Nat)
+    (initial : PMF (application setup leaks).State)
+    [InitialAcceptedCompleted (leaks := leaks) initial] (horizon : Nat)
     (scheduler : (application setup leaks).Scheduler) (swap : HiddenSwap (graph setup))
     (initialClosed : ∀ state ∈ initial.support, state.config.inputs ∈ allowed →
       state.swap swap ∈ initial.support)
@@ -443,13 +622,14 @@ def onePacketSwapSymmetry (bounds : MessageBounds (graph setup))
             exact bounds.swap_mem_onePacketActions swap who _ _ rfl response available fixed
               bounded
   realized := by
-    intro source target joint _ isLegal reached guarded
+    intro source target joint prior isLegal reached guarded
     exact transition_swap swap initial initialClosed horizon scheduler source target joint
-      reached guarded
+      reached (acceptedCompleted_of_trace bounds initial horizon scheduler prior) guarded
 
 /-- **The one-packet swap symmetry is involutive.** -/
 theorem onePacketSwapSymmetry_involutive (bounds : MessageBounds (graph setup))
-    (initial : PMF (application setup leaks).State) (horizon : Nat)
+    (initial : PMF (application setup leaks).State)
+    [InitialAcceptedCompleted (leaks := leaks) initial] (horizon : Nat)
     (scheduler : (application setup leaks).Scheduler) (swap : HiddenSwap (graph setup))
     (initialClosed : ∀ state ∈ initial.support, state.config.inputs ∈ allowed →
       state.swap swap ∈ initial.support)
@@ -463,8 +643,9 @@ theorem onePacketSwapSymmetry_involutive (bounds : MessageBounds (graph setup))
     cases state with
     | none => trivial
     | some current =>
-        obtain ⟨inputs, compatible, reveals, requests⟩ := guarded
-        refine ⟨allowedClosed _ inputs, compatible, reveals, fun who recalled member => ?_⟩
+        obtain ⟨inputs, compatible, reveals, requests, expired⟩ := guarded
+        refine ⟨allowedClosed _ inputs, compatible, reveals, fun who recalled member => ?_,
+          expired⟩
         obtain ⟨original, originalMember, rfl⟩ := List.mem_map.mp member
         exact (swap.requestFixed_action original.action).mpr
           (requests who original originalMember)

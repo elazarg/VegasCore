@@ -781,7 +781,7 @@ theorem ownerSwap_guard {who : Player}
         (control₂.execution.application.playerView who))
         (swapAllowed (ownerSwap who (control₁.execution.application.playerView who)
           (control₂.execution.application.playerView who))) control₁.execution
-      refine ⟨?_, ?_, ?_, ?_⟩
+      refine ⟨?_, ?_, ?_, ?_, HiddenSwap.expired_ofPairs _ _ _⟩
       · -- The inputs: initial handles are compatible, and the prior is closed.
         obtain ⟨initial, initialMember, inputsEq, -⟩ := initialSlots_of_trace trace₁ control₁ rfl
         have drawnMember : ∀ draw ∈ setup.initialLaw.support,

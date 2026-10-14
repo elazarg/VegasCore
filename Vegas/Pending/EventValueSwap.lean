@@ -28,9 +28,8 @@ variable {Player : Type} {L : IExpr} [R : IExpr.ResultTypes L]
 
 variable (graph) in
 /-- **A value swap.** An involution on the value of every field and on the
-action of every event. Public fields and resolution actions are fixed, and a
-failed binding stays failed. At a binding event, the action and the stored
-result are swapped alike. -/
+action of every event. Public fields and resolution actions are fixed. At a
+binding event, the action and the stored result are swapped alike. -/
 structure ValueSwap where
   /-- The swap of a field's stored value. -/
   value : (field : graph.Field) → (graph.layout field).Value → (graph.layout field).Value
@@ -41,10 +40,6 @@ structure ValueSwap where
   value_public : ∀ field, graph.fieldPublic field → value field = id
   action_publication : ∀ event payload, graph.outputLayout event = .publication payload →
     action event = id
-  output_failure : ∀ event owner payload (outputEq : graph.outputLayout event =
-      .binding owner payload),
-    value (.inr event) (cast (congrArg EventField.Value outputEq.symm) .failure) =
-      cast (congrArg EventField.Value outputEq.symm) .failure
   action_binding : ∀ event owner payload (outputEq : graph.outputLayout event =
       .binding owner payload) (result : PublicationResult (L.Val payload)),
     action event (cast (congrArg EventField.Action outputEq.symm) result) =
@@ -53,6 +48,12 @@ structure ValueSwap where
           (value (.inr event) (cast (congrArg EventField.Value outputEq.symm) result)))
 
 namespace ValueSwap
+
+/-- The swap keeps a failure at a binding event: what an expiry stores there. -/
+def ExpiryFixed (swap : graph.ValueSwap) (event : graph.EventId) : Prop :=
+  ∀ owner payload (outputEq : graph.outputLayout event = .binding owner payload),
+    swap.value (.inr event) (cast (congrArg EventField.Value outputEq.symm) .failure) =
+      cast (congrArg EventField.Value outputEq.symm) .failure
 
 variable (swap : graph.ValueSwap)
 
@@ -931,7 +932,10 @@ omit [DecidableEq Player] in
 /-- **Environment operations commute with the swap.** Clocks, samples and
 expiries read no hidden value, and an expired binding fails on both sides. -/
 theorem environmentStep_swap (runtime : EventGraphRuntime graph) (swap : HiddenSwap graph)
-    (state : State graph) (command : EnvironmentCommand graph) :
+    (state : State graph) (command : EnvironmentCommand graph)
+    (expiry : ∀ event entered, command = .expire event → state.config.cut.Ready event →
+      state.activatedAt event = some entered → runtime.deadline event ≤ state.clock - entered →
+        swap.values.ExpiryFixed event) :
     environmentStep runtime (state.swap swap) command =
       (environmentStep runtime state command).map (State.swap swap) := by
   cases command with
@@ -998,7 +1002,7 @@ theorem environmentStep_swap (runtime : EventGraphRuntime graph) (swap : HiddenS
                     environmentStep_expire_bind_eq runtime state event ready entered activated due
                     owner payload outputEq codeEq view, PMF.pure_map, State.swap_complete,
                     swap.values.action_binding event owner payload outputEq,
-                    swap.values.output_failure event owner payload outputEq]
+                    expiry event entered rfl ready activated due owner payload outputEq]
                   simp only [cast_cast, cast_eq]
               | resolve owner payload binding checks outputEq codeEq =>
                   rw [environmentStep_expire_resolve_eq runtime (state.swap swap) event ready

@@ -49,6 +49,7 @@ variable [Fintype Player] {bounds : MessageBounds (graph setup)}
 /-- **The image of a history is in the swapped information state** of every
 player. -/
 theorem infoOf_mapTrace (swap : HiddenSwap (graph setup))
+    [InitialAcceptedCompleted (leaks := leaks) initial]
     (initialClosed : ∀ state ∈ initial.support, state.config.inputs ∈ allowed →
       state.swap swap ∈ initial.support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
