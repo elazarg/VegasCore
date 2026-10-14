@@ -585,3 +585,8 @@ import Vegas.Game.OnePacketDebtFreeResponse
 import Vegas.Game.OnePacketClearRegularity
 import Vegas.Game.RecoveryMainResponseSafety
 import Vegas.Game.OnePacketRareMainMass
+import Vegas.Game.OnePacketForeignFreshness
+import Vegas.Game.RecoveryPrescribedMixture
+
+import Vegas.Game.RecoveryCommitmentFreshCall
+import Vegas.Game.RecoveryNativeLaw

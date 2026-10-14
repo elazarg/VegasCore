@@ -1,3 +1,11 @@
+import Vegas.Game.RecoveryCommitmentFreshCall
+import Vegas.Game.OnePacketForeignFreshness
+import Vegas.Game.RecoveryPrescribedMixture
+import Vegas.Game.RecoveryNativeLaw
+import Vegas.Pending.ReactiveOwnerActivationRecall
+import Vegas.Pending.ExclusionSchedulerSeed
+import Vegas.Pending.ExclusionBoundedStateBelief
+import Interaction.ReactiveSchedulerSeedOccupation
 import Vegas.Pending.ReactiveSeedBayesProduct
 import Vegas.Game.RecoveryDebtStoppedComparison
 import Vegas.Game.RecoveryMainResponseSafety
@@ -2052,6 +2060,54 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Interaction.ReactiveApplication.ResponseMenu.runBehavioralUntil_embed
+
+open Vegas.EventGraphRuntime.RecoveryProjection in
+/-- info: 'Vegas.EventGraphRuntime.RecoveryProjection.schedulerMixture_liftScheduler_posterior'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms schedulerMixture_liftScheduler_posterior
+
+open Vegas.EventGraphRuntime.RecoveryProjection in
+/-- info: 'Vegas.EventGraphRuntime.RecoveryProjection.bounded_bayesBelief_projectedState'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms bounded_bayesBelief_projectedState
+
+open Interaction.ReactiveApplication in
+/-- info: 'Interaction.ReactiveApplication.schedulerMixture_occupation_joint'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms schedulerMixture_occupation_joint
+
+open Vegas in
+/-- info: 'Vegas.foreign_ready_prefix_after_ownTurn'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms foreign_ready_prefix_after_ownTurn
+
+open Vegas in
+/-- info: 'Vegas.firstActivation_response_prefix_of_recall'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms firstActivation_response_prefix_of_recall
+
+open Vegas.EventGraphRuntime.Recovery in
+/-- info: 'Vegas.EventGraphRuntime.Recovery.due_owner_recalled_turn_clear_native'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms due_owner_recalled_turn_clear_native
+
+open Vegas in
+/-- info: 'Vegas.recovery_commitment_freshCall'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms recovery_commitment_freshCall
+
+open Vegas.RecoveryOnePacket in
+/-- info: 'Vegas.RecoveryOnePacket.component_mixture_projected_of_forced_nonlate'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms component_mixture_projected_of_forced_nonlate
 
 open Vegas.EventGraphRuntime.RecoveryProjection in
 /-- info: 'Vegas.EventGraphRuntime.RecoveryProjection.runBehavioralUntil_exclusion_or_classified_eq'

@@ -214,21 +214,15 @@ theorem acceptanceInvariant_respond_commitment {remaining : Nat} {who : Player}
     rw [← sameId] at lower
     exact Nat.lt_irrefl _ lower
 
-/-- **A commitment sent at the first activation is a fresh call.** Under the
-asynchronous contract and the timeliness margin, at the first activation of who
-for a binding event at its turn in the one-packet game, a transmission of the
-one-packet menu committing the event to a prepared slot of who is recorded by
-the response as a fresh call of who for the event. -/
-theorem onePacket_commitment_freshCall {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
-      bound)
-    (timely : (runtime setup).AsyncTimely delay bound)
+/-- A count-permitted commitment sent while its protected inclusion window fits
+is recorded as a fresh call. Only the actual window is needed. -/
+theorem onePacket_commitment_freshCall {bound : (graph setup).EventId → Nat}
     {remaining : Nat} {who : Player} {execution : (application setup leaks).Execution}
     (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩))
     (event : (graph setup).EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
-    (never : ∀ entry ∈ execution.recall who, ¬ ActivatedAt setup leaks who event entry)
+    (fits : execution.application.publicView.InclusionFitsDeadline (runtime setup) bound event)
     {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind who payload}
@@ -248,7 +242,6 @@ theorem onePacket_commitment_freshCall {delay bound : (graph setup).EventId → 
   have facts := legalFacts setup leaks horizon scheduler _ rawTrace
   have readyView := (PublicView.ownTurn?_spec _ who event turn).1
   have ready := (execution.application.publicView_eventReady event).mp readyView
-  have fits := firstActivation_inclusionFits contract timely rawTrace rfl event turn never
   obtain ⟨fresh, evidenceNone⟩ := onePacket_commitment_fresh trace who response member material
     sends packet
   have inTime : (match execution.application.activatedAt event with
@@ -412,7 +405,9 @@ theorem firstActivation_commitment_completionPointLaw
     rw [current]
     rintro ⟨_, impossible⟩
     cases impossible
-  have call := onePacket_commitment_freshCall contract timely trace event turn never node response
+  have fits := firstActivation_inclusionFits contract timely
+    (menu.toRawTrace (initialLaw setup) horizon scheduler trace) rfl event turn never
+  have call := onePacket_commitment_freshCall trace event turn fits node response
     member material sends packet
   have callEq : (sentEnvelope setup leaks execution who material).payload.call =
       .commitment event (who, .prepared serial) := by
