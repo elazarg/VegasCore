@@ -138,6 +138,12 @@ theorem upperSourceWeight_le_swap [Finite (onePacketProtocol setup leaks bounds 
       (realized : after ∈ ((onePacketProtocol setup leaks bounds horizon scheduler).step before
         ⟨joint, legal⟩).support), TracePrefix (prior.extend joint legal realized) trace →
       SwapGuardState setup swap allowed after →
+      ∀ (_ : (onePacketProtocol setup leaks bounds horizon scheduler).Trace
+        (swap.protocolState before))
+      (imageLegal : (onePacketProtocol setup leaks bounds horizon scheduler).Legal
+        (swap.protocolState before) (swap.joint joint)),
+      swap.protocolState after ∈ ((onePacketProtocol setup leaks bounds horizon scheduler).step
+        (swap.protocolState before) ⟨swap.joint joint, imageLegal⟩).support →
       ∀ (control next : (application setup leaks).Control) (actor : Player),
       before = some control → after = some next → control.actor = some actor → actor ≠ who →
       RegularStep setup leaks bounds horizon scheduler (sequence n) who
@@ -394,8 +400,11 @@ theorem upperSourceWeight_le_swap [Finite (onePacketProtocol setup leaks bounds 
                         (operationalState setup leaks (some next)) ≤ _
                   have imageBound := imageResponse prior joint legal realized guardAfter control
                     next actor rfl rfl acting same imageStep
-                  have ratio := firstBound prior joint legal realized isPrefix guardAfter control
-                    next actor rfl rfl acting same imageStep regularPrior irregularStep
+                  have ratio := firstBound prior joint legal realized isPrefix guardAfter
+                    (symmetry.mapTrace prior (symmetry.guard_source legal realized guardAfter))
+                    (symmetry.legal legal realized guardAfter)
+                    (symmetry.realized legal realized guardAfter) control next actor rfl rfl acting
+                    same imageStep regularPrior irregularStep
                   set mass := steps.mass n (operationalState setup leaks (some control))
                     (operationalState setup leaks (some next))
                   set content := contentFactor setup leaks (sequence n) actor

@@ -63,6 +63,12 @@ def SwapFirstBound (n : ℕ) (who : Player) (ε : ℝ) : Prop :=
     (legal : (onePacketProtocol setup leaks bounds horizon scheduler).Legal before joint)
     (_ : after ∈ ((onePacketProtocol setup leaks bounds horizon scheduler).step before
       ⟨joint, legal⟩).support) (_ : SwapGuardState setup swap allowed after)
+    (_ : (onePacketProtocol setup leaks bounds horizon scheduler).Trace
+      (swap.protocolState before))
+    (imageLegal : (onePacketProtocol setup leaks bounds horizon scheduler).Legal
+      (swap.protocolState before) (swap.joint joint))
+    (_ : swap.protocolState after ∈ ((onePacketProtocol setup leaks bounds horizon scheduler).step
+      (swap.protocolState before) ⟨swap.joint joint, imageLegal⟩).support)
     (control next : (application setup leaks).Control) (actor : Player),
     before = some control → after = some next → control.actor = some actor → actor ≠ who →
     ForcedState setup leaks who (some control) →
@@ -291,6 +297,12 @@ theorem counterpart_bound_of_witness (wellFormed : setup.WellFormed)
       (realized : after ∈ ((onePacketProtocol setup leaks bounds horizon scheduler).step before
         ⟨joint, legal⟩).support), TracePrefix (prior.extend joint legal realized) trace →
       SwapGuardState setup swap (swapAllowed swap) after →
+      ∀ (_ : (onePacketProtocol setup leaks bounds horizon scheduler).Trace
+        (swap.protocolState before))
+      (imageLegal : (onePacketProtocol setup leaks bounds horizon scheduler).Legal
+        (swap.protocolState before) (swap.joint joint)),
+      swap.protocolState after ∈ ((onePacketProtocol setup leaks bounds horizon scheduler).step
+        (swap.protocolState before) ⟨swap.joint joint, imageLegal⟩).support →
       ∀ (control next : (application setup leaks).Control) (actor : Player),
       before = some control → after = some next → control.actor = some actor → actor ≠ who →
       RegularStep setup leaks bounds horizon scheduler (sequence n) who
@@ -300,8 +312,9 @@ theorem counterpart_bound_of_witness (wellFormed : setup.WellFormed)
       responseMass setup leaks bounds horizon scheduler (profiles n) control joint ≤
         ε * responseMass setup leaks bounds horizon scheduler (profiles n) (swap.control control)
           (swap.joint joint) := by
-    intro before after prior joint legal realized isPrefix guardAfter control next actor
-      beforeEq afterEq acting other imageStep regularPrior irregularStep
+    intro before after prior joint legal realized isPrefix guardAfter imagePrior imageLegal
+      imageRealized control next actor beforeEq afterEq acting other imageStep regularPrior
+      irregularStep
     obtain ⟨ownPrior, recordPrior⟩ := prefix_good prior
       ((TracePrefix.extend .refl joint legal realized).trans isPrefix) ownIntended
       (fun control same => by cases same; exact record)
@@ -311,8 +324,8 @@ theorem counterpart_bound_of_witness (wellFormed : setup.WellFormed)
     have forcedAll : ∀ player, ForcedState setup leaks player (some control) := fun player =>
       (forcedState_iff_decodedPoint control).mpr
         ⟨point, decodedBefore, forcedPoint_of_intended player intended⟩
-    exact firstBound swap (swapAllowed swap) prior joint legal realized guardAfter control next
-      actor rfl afterEq acting other (forcedAll who)
+    exact firstBound swap (swapAllowed swap) prior joint legal realized guardAfter imagePrior
+      imageLegal imageRealized control next actor rfl afterEq acting other (forcedAll who)
       ⟨⟨some control, prior⟩, (bounds.onePacketMenu (runtime setup) leaks).info (initialLaw setup)
         horizon scheduler actor prior, forcedAll actor⟩ imageStep regularPrior irregularStep
   have weight := upperSourceWeight_le_swap positive swap (initialClosed_swapAllowed swap)
