@@ -35,7 +35,8 @@ intended game (`Vegas.excludedPayoff_le_of_reached`,
 value of each law the decomposition compares is its success probability times
 this continuation value up to a vanishing error, the value decompositions at
 late deliveries and away from them follow
-(`Vegas.onePacket_lateDecomposition`, `Vegas.onePacket_nonLateDecomposition`).
+(`Vegas.onePacket_lateDecomposition`,
+`Vegas.onePacket_nonLateDecomposition_of_pending`).
 That premise is value-blind success: the success probability depends neither
 on the committed value nor, under the belief, on the hidden values the
 continuation value depends on. It is discharged by value-blind binding
@@ -893,110 +894,6 @@ theorem onePacket_lateDecomposition (wellFormed : setup.WellFormed)
   refine ⟨by linarith [transportNonneg n, abs_nonneg (blindError n)], gap,
     fun choice marked => decompose _ _ ((choices choice marked).trans (le_abs_self _)),
     fun option => decompose _ _ ((options option).trans (le_abs_self _))⟩
-
-/-- **The value decomposition away from late deliveries.** Under the hypotheses
-of `Vegas.onePacket_lateDecomposition`, with value-blind success away from late
-deliveries (valueBlind): the completion value of each marked choice and of
-the prescribed component is within a vanishing error of its success
-probability times the site's continuation value. Then the non-late value
-decomposition of `Vegas.OnePacketOpenInputs` holds. -/
-theorem onePacket_nonLateDecomposition (wellFormed : setup.WellFormed)
-    {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
-      bound)
-    (timely : AsyncTimely (runtime setup) delay bound)
-    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound)
-    (lowerUtility upperUtility : Player → ℝ)
-    (lower_le : ∀ outcome who, lowerUtility who ≤ utility outcome who)
-    (le_upper : ∀ outcome who, utility outcome who ≤ upperUtility who)
-    (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
-    (below : ∀ (final : setup.intendedProtocol.History) terminal,
-      setup.protocolReadout final.state = some terminal →
-        ∀ who, excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who)
-    (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
-    (scale_vanishing : Tendsto scale atTop (nhds 0))
-    (gapBound : ℝ) (gap_le : ∀ who, upperUtility who - excludedPayoff who ≤ gapBound)
-    (gapBound_nonneg : 0 ≤ gapBound) {slots : Nat}
-    (valueBlind : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler
-        slots p)) (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
-      OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
-        scale_le_one weights targetSequence →
-      (∀ n, (targetSequence n).IsFullyMixed) →
-      (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
-        ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
-          (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
-      ∃ blindError : ℕ → ℝ, Tendsto blindError atTop (nhds 0) ∧
-        ∀ n who (site : (onePacketN).InformationSite who),
-          ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-          ¬ ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
-            (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
-            ((onePacketN).agentAt site) →
-          (∀ choice, onePacketCompared setup leaks bounds horizon scheduler who site choice →
-            |siteStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-                (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site
-                (PMF.pure choice) -
-              (1 - onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n)
-                site (PMF.pure choice)) *
-              siteValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-                (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site| ≤
-              blindError n) ∧
-          |siteStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-              (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site
-              (onePacketPrescribed setup leaks bounds horizon scheduler sequence scale scale_pos
-                scale_le_one n ((onePacketN).agentAt site)) -
-            (1 - onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n)
-              site (onePacketPrescribed setup leaks bounds horizon scheduler sequence scale
-                scale_pos scale_le_one n ((onePacketN).agentAt site))) *
-            siteValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-              (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site| ≤
-            blindError n) :
-    ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
-      (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
-    OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos scale_le_one
-      weights targetSequence →
-    (∀ n, (targetSequence n).IsFullyMixed) →
-    (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
-      ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
-        (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
-    ∃ (continuation : ℕ → (onePacketN).InformationAgent (onePacketN).playedInformation → ℝ)
-      (error : ℕ → ℝ), Tendsto error atTop (nhds 0) ∧
-      ∀ n who (site : (onePacketN).InformationSite who),
-        ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-        ¬ ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
-          (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
-          ((onePacketN).agentAt site) →
-        excludedPayoff who ≤ continuation n ((onePacketN).agentAt site) + error n ∧
-        continuation n ((onePacketN).agentAt site) - excludedPayoff who ≤ gapBound ∧
-        (∀ choice, onePacketCompared setup leaks bounds horizon scheduler who site choice →
-          |onePacketSiteSuccess setup leaks bounds horizon scheduler parameter utility
-              excludedPayoff (targetSequence n) site (PMF.pure choice) -
-            (1 - onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n)
-              site (PMF.pure choice)) * continuation n ((onePacketN).agentAt site)| ≤
-            error n) ∧
-        |onePacketSiteSuccess setup leaks bounds horizon scheduler parameter utility
-            excludedPayoff (targetSequence n) site
-            (onePacketPrescribed setup leaks bounds horizon scheduler sequence scale scale_pos
-              scale_le_one n ((onePacketN).agentAt site)) -
-          (1 - onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
-            (onePacketPrescribed setup leaks bounds horizon scheduler sequence scale scale_pos
-              scale_le_one n ((onePacketN).agentAt site))) *
-            continuation n ((onePacketN).agentAt site)| ≤ error n := by
-  intro weights targetSequence assembled mixed bayes
-  obtain ⟨blindError, blindLimit, blind⟩ := valueBlind weights targetSequence assembled mixed bayes
-  obtain ⟨transportError, transportLimit, transportNonneg, holds⟩ :=
-    siteDecomposition_of_completion setup leaks bounds horizon scheduler parameter utility
-      excludedPayoff wellFormed contract timely retains lowerUtility upperUtility lower_le
-      le_upper sequence below scale scale_pos scale_le_one scale_vanishing gapBound gap_le
-      gapBound_nonneg weights targetSequence assembled
-  refine ⟨fun n => siteContinuation setup leaks bounds horizon scheduler parameter utility
-      excludedPayoff (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy),
-    fun n => transportError n + |blindError n|,
-    by simpa using transportLimit.add blindLimit.abs, fun n who site notFree notKeyed => ?_⟩
-  obtain ⟨lower, gap, decompose⟩ := holds n who site
-  obtain ⟨choices, prescribed⟩ := blind n who site notFree notKeyed
-  refine ⟨by linarith [transportNonneg n, abs_nonneg (blindError n)], gap,
-    fun choice marked => decompose _ _ ((choices choice marked).trans (le_abs_self _)),
-    decompose _ _ (prescribed.trans (le_abs_self _))⟩
 
 end Field
 

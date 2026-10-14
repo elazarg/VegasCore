@@ -10,7 +10,8 @@ import Vegas.Game.OnePacketNonLateDecomposition
 The value decompositions of the one-packet certificate follow from the bounds on
 the utility, the exclusion payoff at most every intended outcome, a gap bound,
 and value blindness of the completion value at forced sites
-(`Vegas.onePacket_lateDecomposition`, `Vegas.onePacket_nonLateDecomposition`).
+(`Vegas.onePacket_lateDecomposition`,
+`Vegas.onePacket_nonLateDecomposition_of_pending`).
 Late commitments of intended values follow from value-blind late options and
 value-blind late commitments (`Vegas.OnePacketBaseInputs.lateCommitments_of_blind`).
 So the base inputs with these hypotheses give the open inputs
