@@ -16,6 +16,13 @@ their expectations
 lumped success probability and the value are only uncorrelated up to `γ`, the
 error grows by `γ`
 (`GameTheory.Math.Probability.abs_expect_mul_sub_le_of_uncorrelated`).
+
+A law decorrelates a record and a hidden part up to `γ` when every pair of
+unit-bounded functions of them has covariance at most `γ`
+(`GameTheory.Math.Probability.BeliefDecorrelated`); independent coordinates do
+so with no error (`GameTheory.Math.Probability.beliefDecorrelated_of_product`),
+and the error then grows by twice the bound times `γ`
+(`GameTheory.Math.Probability.abs_expect_mul_sub_le_of_decorrelated`).
 -/
 
 noncomputable section
@@ -221,5 +228,91 @@ theorem abs_expect_mul_sub_le_of_product {H R T : Type*} (law : PMF H) (record :
   have bounded := abs_expect_mul_sub_le_of_uncorrelated law record failure value lumped
     failureBounded lumpedBounded valueBounded' near (γ := 0) (by rw [key, sub_self, abs_zero])
   linarith
+
+/-- **A decorrelated record and hidden part.** Under `law`, every function of
+the record and every function of the hidden part, both bounded by one, have the
+expectation of their product within `γ` of the product of their expectations. -/
+def BeliefDecorrelated {H R T : Type*} (law : PMF H) (record : H → R) (hidden : H → T)
+    (γ : ℝ) : Prop :=
+  ∀ (first : R → ℝ) (second : T → ℝ), (∀ ρ, |first ρ| ≤ 1) → (∀ τ, |second τ| ≤ 1) →
+    |expect law (fun h => first (record h) * second (hidden h)) -
+      expect law (fun h => first (record h)) * expect law (fun h => second (hidden h))| ≤ γ
+
+/-- Independent coordinates are decorrelated with no error. -/
+theorem beliefDecorrelated_of_product {H R T : Type*} (law : PMF H) (record : H → R)
+    (hidden : H → T)
+    (product : law.map (fun h => (record h, hidden h)) =
+      (law.map record).bind fun ρ => (law.map hidden).map (Prod.mk ρ)) :
+    BeliefDecorrelated law record hidden 0 := by
+  intro first second firstBounded secondBounded
+  rw [expect_mul_eq_of_product law record hidden product first second firstBounded
+    secondBounded, sub_self, abs_zero]
+
+/-- **Decorrelation up to a covariance bound.** Let a law decorrelate a record
+and a hidden part up to `γ`. Let `failure` be within `ε`, in mean absolute
+deviation, of a function of the record bounded by one, and let `value` be a
+function of the hidden part bounded by `bound`. Then the expected success
+probability times the value is within twice the bound times `ε + γ` of the
+expected success probability times the expected value. -/
+theorem abs_expect_mul_sub_le_of_decorrelated {H R T : Type*} (law : PMF H) (record : H → R)
+    (hidden : H → T) {γ : ℝ} (decorrelated : BeliefDecorrelated law record hidden γ)
+    (failure value : H → ℝ) (lumped : R → ℝ) (valueOf : T → ℝ) {bound ε : ℝ}
+    (failureBounded : ∀ h, |failure h| ≤ 1) (lumpedBounded : ∀ ρ, |lumped ρ| ≤ 1)
+    (valueBounded : ∀ τ, |valueOf τ| ≤ bound) (valueEq : ∀ h, value h = valueOf (hidden h))
+    (near : expect law (fun h => |failure h - lumped (record h)|) ≤ ε) :
+    |expect law (fun h => (1 - failure h) * value h) -
+      (1 - expect law failure) * expect law value| ≤ 2 * bound * ε + 2 * bound * γ := by
+  have valueBounded' : ∀ h, |value h| ≤ bound := fun h => by
+    rw [valueEq]
+    exact valueBounded _
+  obtain ⟨witness, _⟩ := law.support_nonempty
+  have boundNonneg : 0 ≤ bound := (abs_nonneg _).trans (valueBounded' witness)
+  have lumpedMean : expect law (fun h => 1 - lumped (record h)) =
+      1 - expect law (fun h => lumped (record h)) := by
+    rw [expect_sub (payoffIntegrable_constant _ 1)
+      (payoffIntegrable_of_bounded _ _ fun h => lumpedBounded (record h)), expect_constant]
+  have uncorrelated : |expect law (fun h => (1 - lumped (record h)) * value h) -
+      (1 - expect law (fun h => lumped (record h))) * expect law value| ≤ 2 * bound * γ := by
+    rcases boundNonneg.lt_or_eq with positive | zero
+    · have scaled := decorrelated (fun ρ => (1 - lumped ρ) / 2) (fun τ => valueOf τ / bound)
+        (fun ρ => by
+          have := abs_le.mp (lumpedBounded ρ)
+          rw [abs_le]
+          constructor <;> linarith)
+        (fun τ => by
+          rw [abs_div, abs_of_pos positive, div_le_one positive]
+          exact valueBounded τ)
+      have productEq : (fun h => (1 - lumped (record h)) / 2 * (valueOf (hidden h) / bound)) =
+          fun h => (1 / (2 * bound)) * ((1 - lumped (record h)) * value h) := by
+        funext h
+        rw [valueEq]
+        field_simp
+      have firstEq : (fun h => (1 - lumped (record h)) / 2) =
+          fun h => (1 / 2) * (1 - lumped (record h)) := by
+        funext h
+        ring
+      have secondEq : (fun h => valueOf (hidden h) / bound) =
+          fun h => (1 / bound) * value h := by
+        funext h
+        rw [valueEq]
+        ring
+      rw [productEq, firstEq, secondEq, expect_const_mul, expect_const_mul, expect_const_mul,
+        lumpedMean] at scaled
+      have factor : (1 / (2 * bound)) * expect law (fun h => (1 - lumped (record h)) * value h) -
+          (1 / 2 * (1 - expect law (fun h => lumped (record h)))) *
+            (1 / bound * expect law value) =
+          (1 / (2 * bound)) * (expect law (fun h => (1 - lumped (record h)) * value h) -
+            (1 - expect law (fun h => lumped (record h))) * expect law value) := by
+        field_simp
+      rw [factor, abs_mul, abs_of_pos (by positivity)] at scaled
+      have twice : 0 < 2 * bound := by positivity
+      rw [one_div, inv_mul_le_iff₀ twice] at scaled
+      linarith
+    · subst zero
+      have valueZero : ∀ h, value h = 0 := fun h => abs_nonpos_iff.mp (valueBounded' h)
+      have valueFun : value = fun _ => 0 := funext valueZero
+      simp [valueFun, expect_constant]
+  exact abs_expect_mul_sub_le_of_uncorrelated law record failure value lumped failureBounded
+    lumpedBounded valueBounded' near uncorrelated |>.trans_eq (by ring)
 
 end GameTheory.Math.Probability
