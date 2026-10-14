@@ -585,8 +585,8 @@ theorem OnePacketBaseInputs.lateCommitments_of_blind [Finite setup.intendedProto
     optionBlind weights targetSequence assembled mixed bayes
   obtain ⟨commitError, commitLimit, commitNear⟩ :=
     commitBlind weights targetSequence assembled mixed bayes
-  obtain ⟨_, unforcedDrift, _, _, unforcedLimit, _, _, _, lumped⟩ :=
-    inputs.lateLumping weights targetSequence assembled mixed bayes
+  obtain ⟨unforcedDrift, _, unforcedLimit, _, records⟩ :=
+    inputs.lateRecords weights targetSequence assembled mixed bayes
   -- A bound on every payoff.
   let range := fun who : Player => max 0 (max (excludedPayoff who) (upperUtility who)) -
     min 0 (min (excludedPayoff who) (lowerUtility who))
@@ -742,8 +742,7 @@ theorem OnePacketBaseInputs.lateCommitments_of_blind [Finite setup.intendedProto
   have unforcedMass : expect ((targetSequence n).belief who site) (fun history =>
       if ForcedState setup leaks who history.1.state then (0 : ℝ) else 1) ≤
       |unforcedDrift n| := by
-    obtain ⟨_, _, _, unforced, _⟩ := lumped n who
-    exact (unforced site _ (by rw [atSite]; rfl)).trans (le_abs_self _)
+    exact ((records n who).choose_spec.1 site forced keyed).trans (le_abs_self _)
   have transportBound : |siteCommitValue setup leaks bounds horizon scheduler parameter utility
       excludedPayoff (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy)
       site committed.1 -
