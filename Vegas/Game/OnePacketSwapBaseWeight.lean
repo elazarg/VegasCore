@@ -2,6 +2,8 @@
 
 import Vegas.Game.OnePacketSwapInfo
 import Vegas.Game.OnePacketCounterpartSteps
+import Vegas.Game.OnePacketProjectedDecision
+import Vegas.Game.OnePacketPrescribedSupport
 
 /-! # Hidden swaps scale the source weight
 
@@ -24,8 +26,12 @@ weight of every history ending at a protocol state scales by `c`
 (`Vegas.othersSourceWeight_mapTrace_scaled`).
 
 **Regular histories.** The image of a history is regular exactly when the
-history is, provided forcedness for `who` is invariant under the swap at guarded
-states (`Vegas.regularTrace_mapTrace_iff`).
+history is, provided forcedness for `who` is invariant under the swap along
+guarded histories (`Vegas.regularTrace_mapTrace_iff`). It is: every other player
+sees the decoded points of a state and of its image alike, so neither is
+excluded or owes a failure at one but not the other, and whether a reveal of
+`who` failed is public, so any other player witnesses it
+(`Vegas.forcedState_swap_iff`, `Vegas.regularTrace_mapTrace_iff_of_fixes`).
 -/
 
 noncomputable section
@@ -313,7 +319,8 @@ theorem regularStep_swap_iff (swap : HiddenSwap (graph setup))
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
     (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
     (fixesOthers : ∀ other, other ≠ who → swap.Fixes other)
-    (forcedEq : ∀ state, SwapGuardState setup swap allowed state →
+    (forcedEq : ∀ state, (onePacketProtocol setup leaks bounds horizon scheduler).Trace state →
+      SwapGuardState setup swap allowed state →
       (ForcedState setup leaks who (swap.protocolState state) ↔ ForcedState setup leaks who state))
     {source target : (application setup leaks).ProtocolState}
     (prior : (onePacketProtocol setup leaks bounds horizon scheduler).Trace source)
@@ -343,7 +350,7 @@ theorem regularStep_swap_iff (swap : HiddenSwap (graph setup))
       apply forall_congr'
       intro owner
       rw [observe_swap_of_fixes swap initialClosed bounded (fixesOthers actor owner) prior
-          sourceGuarded, forcedEq _ sourceGuarded,
+          sourceGuarded, forcedEq _ prior sourceGuarded,
         contentFactor_joint_swap swap assessment next.execution legal acting
           (fixesOthers actor owner)]
 
@@ -356,7 +363,8 @@ theorem regularTrace_mapTrace_iff (swap : HiddenSwap (graph setup))
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
     (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
     (fixesOthers : ∀ other, other ≠ who → swap.Fixes other)
-    (forcedEq : ∀ state, SwapGuardState setup swap allowed state →
+    (forcedEq : ∀ state, (onePacketProtocol setup leaks bounds horizon scheduler).Trace state →
+      SwapGuardState setup swap allowed state →
       (ForcedState setup leaks who (swap.protocolState state) ↔
         ForcedState setup leaks who state)) :
     ∀ {state} (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace state)
@@ -376,5 +384,94 @@ theorem regularTrace_mapTrace_iff (swap : HiddenSwap (graph setup))
           legal reached
           ((onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler swap initialClosed
             bounded).guard_source legal reached guarded))
+
+omit [Fintype Player] in
+/-- A player the swap fixes sees the decoded points of a configuration and of
+its swap alike. -/
+theorem observe_decodedPoint_swap_of_fixes (swap : HiddenSwap (graph setup)) {player : Player}
+    (fixes : swap.Fixes player) (execution : (application setup leaks).Execution)
+    {point swapped : ProtocolState setup.program}
+    (decoded : decodedPoint setup execution.application.config = some point)
+    (swappedDecoded : decodedPoint setup (swap.execution execution).application.config =
+      some swapped) :
+    ProtocolState.observe player setup.program swapped =
+      ProtocolState.observe player setup.program point := by
+  obtain ⟨rank, ordered, read⟩ := decodedPoint_isPrefix decoded
+  obtain ⟨swappedRank, swappedOrdered, swappedRead⟩ := decodedPoint_isPrefix swappedDecoded
+  have original := projectView_observe setup leaks player execution rank ordered point read []
+  have image := projectView_observe setup leaks player (swap.execution execution) swappedRank
+    swappedOrdered swapped swappedRead []
+  rw [swap.observe_execution, swap.view_observe_of_fixes fixes, original] at image
+  exact (Option.some.inj image).symm
+
+/-- **The swap keeps forcedness for the observer** at every state of a history
+ending at a guarded state, when it fixes every other player and some other
+player exists to witness the observer's public reveals. -/
+theorem forcedState_swap_iff (swap : HiddenSwap (graph setup))
+    (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
+      state.swap swap ∈ (initialLaw setup).support)
+    (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
+    (who : Player) (fixesOthers : ∀ other, other ≠ who → swap.Fixes other)
+    (observer : Player) (distinct : observer ≠ who)
+    {state : (application setup leaks).ProtocolState}
+    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace state)
+    (guarded : SwapGuardState setup swap allowed state) :
+    ForcedState setup leaks who (swap.protocolState state) ↔ ForcedState setup leaks who state := by
+  cases state with
+  | none => exact Iff.rfl
+  | some control =>
+      obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (failureProfile setup.program)
+        (bounds.onePacketMenu (runtime setup) leaks) horizon scheduler trace control rfl
+      obtain ⟨swappedRank, ⟨swappedResidual⟩⟩ := protocol_sourceResidual
+        (failureProfile setup.program) (bounds.onePacketMenu (runtime setup) leaks) horizon
+        scheduler ((onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler swap
+          initialClosed bounded).mapTrace trace guarded) (swap.control control) rfl
+      have decoded := decodedPoint_eq residual
+      have swappedDecoded := decodedPoint_eq swappedResidual
+      change ForcedState setup leaks who (some (swap.control control)) ↔ _
+      rw [forcedState_iff_decodedPoint, forcedState_iff_decodedPoint, swappedDecoded, decoded]
+      simp only [Option.some.injEq, exists_eq_left']
+      generalize residual.lift (ProtocolState.entry residual.program residual.source) =
+        point at decoded
+      generalize swappedResidual.lift (ProtocolState.entry swappedResidual.program
+        swappedResidual.source) = swapped at swappedDecoded
+      have sameView : ∀ other, other ≠ who →
+          ProtocolState.observe other setup.program swapped =
+            ProtocolState.observe other setup.program point := fun other different =>
+        observe_decodedPoint_swap_of_fixes swap (fixesOthers other different) control.execution
+          decoded swappedDecoded
+      unfold ForcedPoint
+      refine and_congr (not_congr (ProtocolState.revealFailed_iff_of_observe_eq who observer
+        setup.program swapped point (sameView observer distinct))) (forall_congr' fun other =>
+          forall_congr' fun different => and_congr (not_congr
+            (ProtocolState.excluded_iff_of_observe_eq other setup.program swapped point
+              (sameView other different))) (not_congr ?_))
+      have projected : projectView setup leaks other
+          (some ([], (swap.execution control.execution).observe (application setup leaks)
+            other)) =
+          projectView setup leaks other
+            (some ([], control.execution.observe (application setup leaks) other)) := by
+        rw [swap.observe_execution, swap.view_observe_of_fixes (fixesOthers other different)]
+      exact owesFailure_iff_of_projectView_eq other swappedDecoded decoded projected
+
+/-- **The image of a history is regular exactly when the history is**, when the
+swap fixes every player other than the observer and some other player exists. -/
+theorem regularTrace_mapTrace_iff_of_fixes (swap : HiddenSwap (graph setup))
+    (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
+      state.swap swap ∈ (initialLaw setup).support)
+    (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
+    (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
+    (fixesOthers : ∀ other, other ≠ who → swap.Fixes other)
+    (observer : Player) (distinct : observer ≠ who)
+    {state : (application setup leaks).ProtocolState}
+    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace state)
+    (guarded : SwapGuardState setup swap allowed state) :
+    RegularTrace setup leaks bounds horizon scheduler assessment who
+        ((onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler swap initialClosed
+          bounded).mapTrace trace guarded) ↔
+      RegularTrace setup leaks bounds horizon scheduler assessment who trace :=
+  regularTrace_mapTrace_iff swap initialClosed bounded assessment who fixesOthers
+    (fun _ trace guarded => forcedState_swap_iff swap initialClosed bounded who fixesOthers
+      observer distinct trace guarded) trace guarded
 
 end Vegas
