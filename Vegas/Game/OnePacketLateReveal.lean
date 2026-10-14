@@ -16,7 +16,9 @@ the disclosure the action chooses, and a refusal publishes a failure
 the step of the intended effective opening; and at a late reveal the
 completion value from a history whose decoded point the intended game reaches
 is exactly one less its failure probability times its continuation value,
-whatever law is installed (`Vegas.lateReveal_historyNear`).
+whatever law is installed (`Vegas.lateReveal_historyNear`): whenever every stop
+is at one completion point or has failed, the completion value is one less the
+failure probability times the value there (`Vegas.historyStopValue_eq_of_stops`).
 -/
 
 noncomputable section
@@ -147,6 +149,128 @@ variable [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
   {Parameter : Type} (parameter : State L setup.context → Parameter)
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
   (excludedPayoff : Player → ℝ)
+
+open Classical in
+/-- **The completion value at one target.** Under a scheduler completing play,
+at a late delivery of `who` for its pending `event`, the ready event of the
+site's rank at a history, if every stop of play of the profile installing `law`
+until the event completes is at the completion point `target` or has failed the
+event, the completion value from the history is one less its failure
+probability times the source continuation value at `target`. -/
+theorem historyStopValue_eq_of_stops [Finite ((bounds.onePacketMenu (runtime setup)
+      leaks).protocol (initialLaw setup) horizon scheduler).History]
+    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
+    (assessment : (onePacketModel setup leaks bounds (initialLaw setup) horizon
+      scheduler).BehavioralAssessment) {who : Player}
+    (site : (onePacketModel setup leaks bounds (initialLaw setup) horizon
+      scheduler).InformationSite who) (late : LateDelivery setup leaks who site.1)
+    {key : LateKey setup leaks} (siteKey : lateKey setup leaks who site.1 = some key)
+    {event : (graph setup).EventId} (decided : decidedEvent key = some event)
+    (pending : pendingEvent setup leaks who site.1 = some event)
+    (law : PMF ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+      scheduler).Choice who site.1))
+    (history : (onePacketModel setup leaks bounds (initialLaw setup) horizon
+      scheduler).InformationHistory who site.1)
+    {remaining : Nat} {execution : (application setup leaks).Execution}
+    (current : history.1.state = some ⟨remaining, some who, execution⟩)
+    (ordered : execution.application.config.cut.IsPrefix (siteRank site.1))
+    (ready : execution.application.config.cut.Ready event)
+    (profile : BehavioralProfile setup.program) {target : ProtocolState setup.program}
+    (stops : ∀ stop ∈ ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+        scheduler).runBehavioralUntil
+        ((bounds.onePacketMenu (runtime setup) leaks).bounded (initialLaw setup) horizon
+          scheduler).wellFoundedHistories
+        (Profile.update (sig := (onePacketModel setup leaks bounds (initialLaw setup) horizon
+          scheduler).behavioralSignature) assessment.strategy who
+          ((assessment.strategy who).withLaw site.1 law))
+        (LateStopped setup leaks bounds horizon scheduler (siteRank site.1)) history.1).support,
+      ∃ final, stop.state = some final ∧
+        (completionPoint setup leaks bounds horizon scheduler (siteRank site.1)
+            (siteFresh who site.1) stop = some target ∨
+          (completionPoint setup leaks bounds horizon scheduler (siteRank site.1)
+              (siteFresh who site.1) stop = none ∧
+            StoreEventFailed final.execution.application.config.store event)))
+    {bound : ℝ} (readoutBounded : ∀ readout,
+      |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ bound) :
+    historyStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+        assessment profile site law history.1 =
+      (1 - siteHistoryFailure setup leaks bounds horizon scheduler assessment site law history) *
+        sourcePointValue setup parameter utility excludedPayoff profile who target := by
+  classical
+  let menu := bounds.onePacketMenu (runtime setup) leaks
+  let model := onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
+  have horizonBound := menu.bounded (initialLaw setup) horizon scheduler
+  let certificate := horizonBound.wellFoundedHistories
+  let installed := Profile.update (sig := model.behavioralSignature)
+    assessment.strategy who ((assessment.strategy who).withLaw site.1 law)
+  let stopped := LateStopped setup leaks bounds horizon scheduler (siteRank site.1)
+  let untilLaw := model.runBehavioralUntil certificate installed stopped history.1
+  have pointLaw : CompletionPointLaw setup leaks bounds horizon scheduler installed
+      (siteRank site.1) (siteFresh who site.1) history.1
+      (expect untilLaw (completionIndicator setup leaks bounds horizon scheduler
+        (siteRank site.1) (siteFresh who site.1))) (PMF.pure target) 0 := by
+    intro value valueBound valueBounded
+    rw [expect_pure, zero_mul, ← expect_mul_const, ← expect_sub
+      (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)]
+    rw [expect_congr_on_support (g := fun _ => 0) (fun stop member => by
+      obtain ⟨_, _, pointCase⟩ := stops stop member
+      rcases pointCase with some_ | ⟨none_, _⟩
+      · simp only [completionIndicator, some_, Option.elim_some, one_mul, sub_self]
+      · simp only [completionIndicator, none_, Option.elim_none, zero_mul, sub_self]),
+      expect_constant, abs_zero]
+  have split := lateStop_split setup leaks bounds horizon scheduler completes assessment site late
+    siteKey decided pending law history current ordered ready
+  have noBad : ∀ stop ∈ untilLaw.support, lateBadStop setup leaks bounds horizon scheduler
+      (siteRank site.1) (siteFresh who site.1) event stop = 0 := by
+    intro stop member
+    obtain ⟨final, finalState, pointCase⟩ := stops stop member
+    simp only [lateBadStop]
+    rw [ite_eq_right_iff]
+    rintro ⟨⟨control, controlState, _, notFailed⟩, pointNone⟩
+    rw [finalState] at controlState
+    cases Option.some.inj controlState
+    rcases pointCase with some_ | ⟨_, failedHere⟩
+    · rw [some_] at pointNone
+      cases pointNone
+    · exact (notFailed failedHere).elim
+  have badLaw : expect untilLaw (fun stop => if completionPoint setup leaks bounds horizon
+        scheduler (siteRank site.1) (siteFresh who site.1) stop = none ∧
+      ¬ ∀ final ∈ (model.runBehavioralTerminalFrom certificate installed stop).support,
+        final ∈ onePacketFailed setup leaks bounds horizon scheduler (model.agentAt site)
+      then 1 else 0) ≤ 0 := by
+    rw [expect_congr_on_support (g := fun _ => 0) (fun stop member => by
+      split
+      · rename_i unsure
+        have bad := (split stop member).2 unsure
+        rw [noBad stop member] at bad
+        exact absurd bad (by norm_num)
+      · rfl), expect_constant]
+  have near := abs_historyStopValue_sub_le_of_completionPointLaw setup leaks bounds horizon
+    scheduler parameter utility excludedPayoff assessment profile site law history.1 _ _
+    readoutBounded pointLaw badLaw
+  rw [zero_add, zero_mul, expect_pure] at near
+  have failureEq : 1 - siteHistoryFailure setup leaks bounds horizon scheduler assessment site
+      law history = expect untilLaw (completionIndicator setup leaks bounds horizon scheduler
+        (siteRank site.1) (siteFresh who site.1)) := by
+    have runEq : localHistoryRun (2 * horizon + 1) assessment site law history =
+        untilLaw.bind (model.runBehavioralTerminalFrom certificate installed) := by
+      change model.runBehavioralFrom installed (2 * horizon + 1) history.1 = _
+      rw [← model.runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded certificate
+        horizonBound installed history.1]
+      exact model.runBehavioralTerminalFrom_eq_bind_runBehavioralUntil certificate installed
+        stopped history.1
+    unfold siteHistoryFailure
+    rw [runEq, expect_bind_tower_bounded _ _ _ (C := 1) (fun final => by
+        split <;> norm_num)]
+    have oneSub : ∀ f : (menu.protocol (initialLaw setup) horizon scheduler).History → ℝ,
+        1 - expect untilLaw f = expect untilLaw (fun stop => 1 - f stop) := fun f => by
+      rw [expect_sub (payoffIntegrable_constant _ 1) (payoffIntegrable_of_finite _ _),
+        expect_constant]
+    rw [oneSub]
+    exact expect_congr_on_support fun stop member => by
+      rw [(split stop member).1, noBad stop member, add_zero]
+  rw [failureEq]
+  exact sub_eq_zero.mp (abs_nonpos_iff.mp near)
 
 open Classical in
 /-- **The completion value from a late reveal.** Under a scheduler completing
@@ -352,84 +476,21 @@ theorem lateReveal_historyNear [Finite ((bounds.onePacketMenu (runtime setup) le
                 exact isFailure_cast_publication_failure outputEq⟩
             exact ⟨completionPoint_eq_none_of_not_fresh finalState fun freshHere =>
               (freshIff final).mp freshHere failedHere, failedHere⟩
-  -- The completion-point law of the disclosing step, exactly.
-  have pointLaw : CompletionPointLaw setup leaks bounds horizon scheduler installed rank fresh
-      history.1 (expect untilLaw (completionIndicator setup leaks bounds horizon scheduler rank
-        fresh)) (ProtocolState.behavioralStateStep setup.program profile point) 0 := by
-    intro value valueBound valueBounded
-    rw [stepPure, expect_pure, zero_mul, ← expect_mul_const, ← expect_sub
-      (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)]
-    rw [expect_congr_on_support (g := fun _ => 0) (fun stop member => by
-      obtain ⟨_, _, pointCase⟩ := stops stop member
-      rcases pointCase with some_ | ⟨none_, _⟩
-      · simp only [completionIndicator, some_, Option.elim_some, one_mul, sub_self]
-      · simp only [completionIndicator, none_, Option.elim_none, zero_mul, sub_self]),
-      expect_constant, abs_zero]
-  have split := lateStop_split setup leaks bounds horizon scheduler completes assessment site late
-    siteKey decided pending law history current ordered ready
-  have noBad : ∀ stop ∈ untilLaw.support, lateBadStop setup leaks bounds horizon scheduler rank
-      fresh event stop = 0 := by
-    intro stop member
-    obtain ⟨final, finalState, pointCase⟩ := stops stop member
-    simp only [lateBadStop]
-    rw [ite_eq_right_iff]
-    rintro ⟨⟨control, controlState, _, notFailed⟩, pointNone⟩
-    rw [finalState] at controlState
-    cases Option.some.inj controlState
-    rcases pointCase with some_ | ⟨_, failedHere⟩
-    · rw [some_] at pointNone
-      cases pointNone
-    · exact (notFailed failedHere).elim
-  have badLaw : expect untilLaw (fun stop => if completionPoint setup leaks bounds horizon
-        scheduler rank fresh stop = none ∧
-      ¬ ∀ final ∈ (model.runBehavioralTerminalFrom certificate installed stop).support,
-        final ∈ onePacketFailed setup leaks bounds horizon scheduler (model.agentAt site)
-      then 1 else 0) ≤ 0 := by
-    rw [expect_congr_on_support (g := fun _ => 0) (fun stop member => by
-      split
-      · rename_i unsure
-        have bad := (split stop member).2 unsure
-        rw [noBad stop member] at bad
-        exact absurd bad (by norm_num)
-      · rfl), expect_constant]
-  have near := abs_historyStopValue_sub_le_of_completionPointLaw setup leaks bounds horizon
-    scheduler parameter utility excludedPayoff assessment profile site law history.1 _ _
-    readoutBounded pointLaw badLaw
-  rw [zero_add, zero_mul] at near
-  have failureEq : 1 - siteHistoryFailure setup leaks bounds horizon scheduler assessment site
-      law history = expect untilLaw (completionIndicator setup leaks bounds horizon scheduler
-        rank fresh) := by
-    have runEq : localHistoryRun (2 * horizon + 1) assessment site law history =
-        untilLaw.bind (model.runBehavioralTerminalFrom certificate installed) := by
-      change model.runBehavioralFrom installed (2 * horizon + 1) history.1 = _
-      rw [← model.runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded certificate
-        horizonBound installed history.1]
-      exact model.runBehavioralTerminalFrom_eq_bind_runBehavioralUntil certificate installed
-        stopped history.1
-    unfold siteHistoryFailure
-    rw [runEq, expect_bind_tower_bounded _ _ _ (C := 1) (fun final => by
-        split <;> norm_num)]
-    have oneSub : ∀ f : (menu.protocol (initialLaw setup) horizon scheduler).History → ℝ,
-        1 - expect untilLaw f = expect untilLaw (fun stop => 1 - f stop) := fun f => by
-      rw [expect_sub (payoffIntegrable_constant _ 1) (payoffIntegrable_of_finite _ _),
-        expect_constant]
-    rw [oneSub]
-    exact expect_congr_on_support fun stop member => by
-      rw [(split stop member).1, noBad stop member, add_zero]
   have pointValue : decodedPointValue setup leaks bounds horizon scheduler parameter utility
       excludedPayoff profile who rank history.1 =
-      expect (ProtocolState.behavioralStateStep setup.program profile point)
-        (sourcePointValue setup parameter utility excludedPayoff profile who) := by
-    rw [expect_sourcePointValue_behavioralStateStep setup parameter utility excludedPayoff
-      profile who readoutBounded point]
+      sourcePointValue setup parameter utility excludedPayoff profile who target := by
+    rw [← expect_pure target (sourcePointValue setup parameter utility excludedPayoff profile who),
+      ← stepPure, expect_sourcePointValue_behavioralStateStep setup parameter utility
+        excludedPayoff profile who readoutBounded point]
     unfold decodedPointValue
     rw [current]
     dsimp only
     rw [decoded]
     dsimp only
     rw [ite_eq_left reachedPoint ..]
-  rw [failureEq, pointValue]
-  exact sub_eq_zero.mp (abs_nonpos_iff.mp near)
+  rw [pointValue]
+  exact historyStopValue_eq_of_stops parameter utility excludedPayoff completes assessment site
+    late siteKey decided pending law history current ordered ready profile stops readoutBounded
 
 end Value
 
