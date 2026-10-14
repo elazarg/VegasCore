@@ -181,10 +181,10 @@ theorem forcedState_image_of_tracePrefix (swap : HiddenSwap (graph setup))
       cases source with
       | none => exact (not_tracePrefix_start before earlier).elim
       | some previous =>
-          have guardSource := symmetry.guard_source legal realized guarded
+          have guardSource := symmetry.guard_source before legal realized guarded
           exact ih guardSource (forcedState_of_transition
             (symmetry.mapTrace before guardSource) (symmetry.act (some previous) joint)
-            (symmetry.realized legal realized guarded) forced)
+            (symmetry.realized before legal realized guarded) forced)
 
 omit [DecidableEq (CellTy Player L)] in
 /-- The swap guard reaches back along a history. -/
@@ -202,8 +202,8 @@ theorem swapGuardState_of_tracePrefix (swap : HiddenSwap (graph setup))
     initialClosed bounded
   induction isPrefix with
   | refl => exact guarded
-  | extend earlier joint legal realized ih =>
-      exact ih (symmetry.guard_source legal realized guarded)
+  | @extend _ _ before earlier joint legal realized ih =>
+      exact ih (symmetry.guard_source before legal realized guarded)
 
 /-- **Responders along a history at a forced site are forced.** Take a history
 ending at a state `current` with decoded point `p`, at which every ready reveal

@@ -315,7 +315,7 @@ theorem intendedHistory?_mapTrace {first second : setup.intendedProtocol.History
       replayed, firstPrefix => by
       have priorGuard := (onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler
         (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
-        bounded).guard_source legal realized guarded
+        bounded).guard_source prior legal realized guarded
       change (intendedHistory? setup leaks bounds horizon scheduler prior).bind
         (fun history => advanceIntended? setup leaks history before after) = some replay
         at replayed
@@ -339,7 +339,7 @@ theorem intendedHistory?_mapTrace {first second : setup.intendedProtocol.History
         rfl
       have realizedImage := (onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler
         (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
-        bounded).realized legal realized guarded
+        bounded).realized prior legal realized guarded
       rw [mappedEq]
       have oneStep : ∀ {choice target}, extendIntended? setup previous choice target =
           some replay → replay.trace.length = previous.trace.length + 1 := by

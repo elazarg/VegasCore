@@ -96,7 +96,7 @@ theorem upperSourceWeight_le_mapTrace
       isPrefix, imageRegular => by
       have priorPrefix : TracePrefix prior top :=
         (TracePrefix.extend .refl joint legal realized).trans isPrefix
-      have priorGuard := symmetry.guard_source legal realized guarded
+      have priorGuard := symmetry.guard_source prior legal realized guarded
       rw [StateSymmetry.mapTrace_extend] at imageRegular
       obtain ⟨priorImageRegular, imageStep⟩ := imageRegular
       obtain ⟨priorBound, priorIrregular⟩ :=

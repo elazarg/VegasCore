@@ -109,22 +109,6 @@ variable [Fintype Player] {bounds : MessageBounds (graph setup)}
   {initial : PMF (application setup leaks).State} {horizon : Nat}
   {scheduler : (application setup leaks).Scheduler}
 
-/-- Every state along a history ending at a guarded state is guarded. -/
-theorem swapGuard_of_trace (swap : HiddenSwap (graph setup))
-    (initialClosed : ∀ state ∈ initial.support, state.config.inputs ∈ allowed →
-      state.swap swap ∈ initial.support)
-    (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
-    {source target : (application setup leaks).ProtocolState}
-    {joint : Player → Option (application setup leaks).Action}
-    (isLegal : ((bounds.onePacketMenu (runtime setup) leaks).protocol initial horizon
-      scheduler).Legal source joint)
-    (reached : target ∈ (((bounds.onePacketMenu (runtime setup) leaks).protocol initial horizon
-      scheduler).step source ⟨joint, isLegal⟩).support)
-    (guarded : SwapGuardState setup swap allowed target) :
-    SwapGuardState setup swap allowed source :=
-  (onePacketSwapSymmetry bounds initial horizon scheduler swap initialClosed bounded).guard_source
-    isLegal reached guarded
-
 /-- **The image of a history has the same operational record.** -/
 theorem operationalRecord_mapTrace (swap : HiddenSwap (graph setup))
     (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →

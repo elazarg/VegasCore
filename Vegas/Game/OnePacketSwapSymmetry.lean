@@ -363,6 +363,26 @@ theorem requestFixed_of_respond (swap : HiddenSwap (graph setup))
 
 variable [Fintype Player]
 
+/-- **The guard holds before every transition into a guarded state.** -/
+theorem swapGuardState_of_step (bounds : MessageBounds (graph setup))
+    (initial : PMF (application setup leaks).State) (horizon : Nat)
+    (scheduler : (application setup leaks).Scheduler) (swap : HiddenSwap (graph setup))
+    {source target : (application setup leaks).ProtocolState}
+    {joint : Player → Option (application setup leaks).Action}
+    (isLegal : ((bounds.onePacketMenu (runtime setup) leaks).protocol initial horizon
+      scheduler).Legal source joint)
+    (reached : target ∈ (((bounds.onePacketMenu (runtime setup) leaks).protocol initial horizon
+      scheduler).step source ⟨joint, isLegal⟩).support)
+    (guarded : SwapGuardState setup swap allowed target) :
+    SwapGuardState setup swap allowed source := by
+  cases source with
+  | none => trivial
+  | some before =>
+      obtain ⟨after, rfl, _⟩ := (application setup leaks).transition_recall_prefix initial
+        horizon scheduler before target joint reached
+      exact swapGuard_of_transition swap initial horizon scheduler before after joint reached
+        guarded
+
 /-- **The hidden swap is a guarded state symmetry of the one-packet game** when
 the initial law and the bounded values are closed under it. -/
 def onePacketSwapSymmetry (bounds : MessageBounds (graph setup))
@@ -377,17 +397,10 @@ def onePacketSwapSymmetry (bounds : MessageBounds (graph setup))
   act _ := swap.joint
   Guard := SwapGuardState setup swap allowed
   map_init := rfl
-  guard_source := by
-    intro source target joint _ reached guarded
-    cases source with
-    | none => trivial
-    | some before =>
-        obtain ⟨after, rfl, _⟩ := (application setup leaks).transition_recall_prefix initial
-          horizon scheduler before target joint reached
-        exact swapGuard_of_transition swap initial horizon scheduler before after joint reached
-          guarded
+  guard_source _ isLegal reached guarded :=
+    swapGuardState_of_step bounds initial horizon scheduler swap isLegal reached guarded
   legal := by
-    intro source target joint isLegal reached guarded
+    intro source target joint _ isLegal reached guarded
     cases source with
     | none =>
         refine ⟨isLegal.1, fun who => ?_⟩
@@ -430,7 +443,7 @@ def onePacketSwapSymmetry (bounds : MessageBounds (graph setup))
             exact bounds.swap_mem_onePacketActions swap who _ _ rfl response available fixed
               bounded
   realized := by
-    intro source target joint isLegal reached guarded
+    intro source target joint _ isLegal reached guarded
     exact transition_swap swap initial initialClosed horizon scheduler source target joint
       reached guarded
 
@@ -455,5 +468,5 @@ theorem onePacketSwapSymmetry_involutive (bounds : MessageBounds (graph setup))
         obtain ⟨original, originalMember, rfl⟩ := List.mem_map.mp member
         exact (swap.requestFixed_action original.action).mpr
           (requests who original originalMember)
-  act_act _ _ _ := swap.joint_involutive _
+  act_act _ _ _ _ := swap.joint_involutive _
 end Vegas

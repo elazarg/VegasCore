@@ -49,6 +49,12 @@ def SwapResponseBound (n : ℕ) (who : Player) (K₁ : ℝ) : Prop :=
     (legal : (onePacketProtocol setup leaks bounds horizon scheduler).Legal before joint)
     (_ : after ∈ ((onePacketProtocol setup leaks bounds horizon scheduler).step before
       ⟨joint, legal⟩).support) (_ : SwapGuardState setup swap allowed after)
+    (_ : (onePacketProtocol setup leaks bounds horizon scheduler).Trace
+      (swap.protocolState before))
+    (imageLegal : (onePacketProtocol setup leaks bounds horizon scheduler).Legal
+      (swap.protocolState before) (swap.joint joint))
+    (_ : swap.protocolState after ∈ ((onePacketProtocol setup leaks bounds horizon scheduler).step
+      (swap.protocolState before) ⟨swap.joint joint, imageLegal⟩).support)
     (control next : (application setup leaks).Control) (actor : Player),
     before = some control → after = some next → control.actor = some actor → actor ≠ who →
     forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon scheduler
@@ -344,6 +350,12 @@ theorem counterpart_bound_of_witness (wellFormed : setup.WellFormed)
       (realized : after ∈ ((onePacketProtocol setup leaks bounds horizon scheduler).step before
         ⟨joint, legal⟩).support), TracePrefix (prior.extend joint legal realized) trace →
       SwapGuardState setup swap (swapAllowed swap) after →
+      ∀ (_ : (onePacketProtocol setup leaks bounds horizon scheduler).Trace
+        (swap.protocolState before))
+      (imageLegal : (onePacketProtocol setup leaks bounds horizon scheduler).Legal
+        (swap.protocolState before) (swap.joint joint)),
+      swap.protocolState after ∈ ((onePacketProtocol setup leaks bounds horizon scheduler).step
+        (swap.protocolState before) ⟨swap.joint joint, imageLegal⟩).support →
       ∀ (control next : (application setup leaks).Control) (actor : Player),
       before = some control → after = some next → control.actor = some actor → actor ≠ who →
       RegularStep setup leaks bounds horizon scheduler (sequence n) who
@@ -351,13 +363,13 @@ theorem counterpart_bound_of_witness (wellFormed : setup.WellFormed)
       responseMass setup leaks bounds horizon scheduler (profiles n) control joint ≤
         K₁ * responseMass setup leaks bounds horizon scheduler (profiles n) (swap.control control)
           (swap.joint joint) := by
-    intro before after prior joint legal realized isPrefix guardAfter control next actor beforeEq
-      afterEq acting other imageStep
+    intro before after prior joint legal realized isPrefix guardAfter imagePrior imageLegal
+      imageRealized control next actor beforeEq afterEq acting other imageStep
     subst beforeEq
     have priorPrefix : TracePrefix prior trace :=
       (TracePrefix.extend .refl joint legal realized).trans isPrefix
-    exact responseBound swap (swapAllowed swap) prior joint legal realized guardAfter control next
-      actor rfl afterEq acting other
+    exact responseBound swap (swapAllowed swap) prior joint legal realized guardAfter imagePrior
+      imageLegal imageRealized control next actor rfl afterEq acting other
       (forcedAgent_of_splice wellFormed independent covered trace decodedP secondState sameView
         staticW readyOwn succeed prior priorPrefix other)
       (disclosureCanonical_of_resolves prior actor (disclosureResolves_along wellFormed trace

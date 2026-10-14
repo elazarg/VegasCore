@@ -148,7 +148,7 @@ theorem regularTrace_mapTrace_of_weight_pos
       replayed, firstPrefix, positive => by
       have priorGuard := (onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler
         (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
-        bounded).guard_source legal realized guarded
+        bounded).guard_source prior legal realized guarded
       change (intendedHistory? setup leaks bounds horizon scheduler prior).bind
         (fun history => advanceIntended? setup leaks history before after) = some replay
         at replayed

@@ -126,6 +126,12 @@ theorem upperSourceWeight_le_swap [Finite (onePacketProtocol setup leaks bounds 
       (realized : after ∈ ((onePacketProtocol setup leaks bounds horizon scheduler).step before
         ⟨joint, legal⟩).support), TracePrefix (prior.extend joint legal realized) trace →
       SwapGuardState setup swap allowed after →
+      ∀ (_ : (onePacketProtocol setup leaks bounds horizon scheduler).Trace
+        (swap.protocolState before))
+      (imageLegal : (onePacketProtocol setup leaks bounds horizon scheduler).Legal
+        (swap.protocolState before) (swap.joint joint)),
+      swap.protocolState after ∈ ((onePacketProtocol setup leaks bounds horizon scheduler).step
+        (swap.protocolState before) ⟨swap.joint joint, imageLegal⟩).support →
       ∀ (control next : (application setup leaks).Control) (actor : Player),
       before = some control → after = some next → control.actor = some actor → actor ≠ who →
       RegularStep setup leaks bounds horizon scheduler (sequence n) who
@@ -198,9 +204,9 @@ theorem upperSourceWeight_le_swap [Finite (onePacketProtocol setup leaks bounds 
             (operationalState setup leaks after)) := by
     intro before after prior joint legal realized guardAfter control next actor beforeEq
       afterEq acting other imageStep
-    have guardBefore := symmetry.guard_source legal realized guardAfter
-    have imageLegal := symmetry.legal legal realized guardAfter
-    have imageRealized := symmetry.realized legal realized guardAfter
+    have guardBefore := symmetry.guard_source prior legal realized guardAfter
+    have imageLegal := symmetry.legal prior legal realized guardAfter
+    have imageRealized := symmetry.realized prior legal realized guardAfter
     have imagePrior := symmetry.mapTrace prior guardBefore
     subst beforeEq afterEq
     obtain ⟨⟨forcedActor, forcedWho⟩, imagePositive⟩ := imageStep actor acting other
@@ -233,7 +239,7 @@ theorem upperSourceWeight_le_swap [Finite (onePacketProtocol setup leaks bounds 
             change (1 : ℝ) ≤ K * 1
             linarith
         | some first =>
-            have imageRealized := symmetry.realized legal realized guardAfter
+            have imageRealized := symmetry.realized prior legal realized guardAfter
             change some (swap.control first) ∈ ((initialLaw setup).map fun state => some
               (⟨horizon, none, ReactiveApplication.Execution.initial (application setup leaks)
                 state⟩ : (application setup leaks).Control)).support at imageRealized
@@ -317,9 +323,10 @@ theorem upperSourceWeight_le_swap [Finite (onePacketProtocol setup leaks bounds 
                   rw [imageFactor]
                   obtain ⟨⟨_, _⟩, imagePositive⟩ := imageStep actor acting same
                   have imageFloor := contentFloor_le_of_step (sequence n)
-                    (symmetry.mapTrace prior (symmetry.guard_source legal realized guardAfter))
-                    (swap.joint joint) (symmetry.legal legal realized guardAfter)
-                    (symmetry.realized legal realized guardAfter) (swap.control control)
+                    (symmetry.mapTrace prior
+                      (symmetry.guard_source prior legal realized guardAfter))
+                    (swap.joint joint) (symmetry.legal prior legal realized guardAfter)
+                    (symmetry.realized prior legal realized guardAfter) (swap.control control)
                     (swap.control next) rfl rfl actor imagePositive
                   by_cases regular : RegularStep setup leaks bounds horizon scheduler (sequence n)
                       who (some control) joint (some next)
@@ -345,7 +352,10 @@ theorem upperSourceWeight_le_swap [Finite (onePacketProtocol setup leaks bounds 
                           (operationalState setup leaks (some next)) ≤ _
                     have imageBound := imageResponse prior joint legal realized guardAfter control
                       next actor rfl rfl acting same imageStep
+                    have guardBefore := symmetry.guard_source prior legal realized guardAfter
                     have ratio := responseBound prior joint legal realized isPrefix guardAfter
+                      (symmetry.mapTrace prior guardBefore) (symmetry.legal prior legal realized
+                        guardAfter) (symmetry.realized prior legal realized guardAfter)
                       control next actor rfl rfl acting same imageStep
                     set mass := steps.mass n (operationalState setup leaks (some control))
                       (operationalState setup leaks (some next))
@@ -402,10 +412,11 @@ theorem upperSourceWeight_le_swap [Finite (onePacketProtocol setup leaks bounds 
                   have imageBound := imageResponse prior joint legal realized guardAfter control
                     next actor rfl rfl acting same imageStep
                   have ratio := firstBound prior joint legal realized isPrefix guardAfter
-                    (symmetry.mapTrace prior (symmetry.guard_source legal realized guardAfter))
-                    (symmetry.legal legal realized guardAfter)
-                    (symmetry.realized legal realized guardAfter) control next actor rfl rfl acting
-                    same imageStep regularPrior irregularStep
+                    (symmetry.mapTrace prior
+                      (symmetry.guard_source prior legal realized guardAfter))
+                    (symmetry.legal prior legal realized guardAfter)
+                    (symmetry.realized prior legal realized guardAfter) control next actor rfl rfl
+                    acting same imageStep regularPrior irregularStep
                   set mass := steps.mass n (operationalState setup leaks (some control))
                     (operationalState setup leaks (some next))
                   set content := contentFactor setup leaks (sequence n) actor

@@ -39,15 +39,17 @@ structure StateSymmetry where
   Guard : E.State → Prop
   map_init : map E.init = E.init
   guard_source : ∀ {source target : E.State} {joint : ∀ i, Option (E.Action i)}
-    (isLegal : E.Legal source joint), target ∈ (E.step source ⟨joint, isLegal⟩).support →
-      Guard target → Guard source
+    (_prior : E.Trace source) (isLegal : E.Legal source joint),
+      target ∈ (E.step source ⟨joint, isLegal⟩).support → Guard target → Guard source
   legal : ∀ {source target : E.State} {joint : ∀ i, Option (E.Action i)}
-    (isLegal : E.Legal source joint), target ∈ (E.step source ⟨joint, isLegal⟩).support →
-      Guard target → E.Legal (map source) (act source joint)
+    (_prior : E.Trace source) (isLegal : E.Legal source joint),
+      target ∈ (E.step source ⟨joint, isLegal⟩).support → Guard target →
+        E.Legal (map source) (act source joint)
   realized : ∀ {source target : E.State} {joint : ∀ i, Option (E.Action i)}
-    (isLegal : E.Legal source joint)
+    (prior : E.Trace source) (isLegal : E.Legal source joint)
     (realized : target ∈ (E.step source ⟨joint, isLegal⟩).support) (guarded : Guard target),
-      map target ∈ (E.step (map source) ⟨act source joint, legal isLegal realized guarded⟩).support
+      map target ∈
+        (E.step (map source) ⟨act source joint, legal prior isLegal realized guarded⟩).support
 
 namespace StateSymmetry
 
@@ -57,15 +59,17 @@ variable {E} (S : E.StateSymmetry)
 def mapTrace : ∀ {state : E.State}, E.Trace state → S.Guard state → E.Trace (S.map state)
   | _, .start, _ => S.map_init.symm ▸ .start
   | _, .extend (source := source) prior joint isLegal realized, guarded =>
-      .extend (mapTrace prior (S.guard_source isLegal realized guarded)) (S.act source joint)
-        (S.legal isLegal realized guarded) (S.realized isLegal realized guarded)
+      .extend (mapTrace prior (S.guard_source prior isLegal realized guarded))
+        (S.act source joint) (S.legal prior isLegal realized guarded)
+        (S.realized prior isLegal realized guarded)
 
 @[simp] theorem mapTrace_extend {source target : E.State} (prior : E.Trace source)
     (joint : ∀ i, Option (E.Action i)) (isLegal : E.Legal source joint)
     (realized : target ∈ (E.step source ⟨joint, isLegal⟩).support) (guarded : S.Guard target) :
     S.mapTrace (.extend prior joint isLegal realized) guarded =
-      .extend (S.mapTrace prior (S.guard_source isLegal realized guarded)) (S.act source joint)
-        (S.legal isLegal realized guarded) (S.realized isLegal realized guarded) := rfl
+      .extend (S.mapTrace prior (S.guard_source prior isLegal realized guarded))
+        (S.act source joint) (S.legal prior isLegal realized guarded)
+        (S.realized prior isLegal realized guarded) := rfl
 
 /-- The image of a history ending at a guarded state. -/
 def mapHistory (history : E.History) (guarded : S.Guard history.state) : E.History :=
@@ -82,8 +86,9 @@ structure Involutive : Prop where
   map_map : ∀ state, S.Guard state → S.map (S.map state) = state
   guard_map : ∀ state, S.Guard state → S.Guard (S.map state)
   act_act : ∀ {source target : E.State} {joint : ∀ i, Option (E.Action i)}
-    (isLegal : E.Legal source joint), target ∈ (E.step source ⟨joint, isLegal⟩).support →
-      S.Guard target → S.act (S.map source) (S.act source joint) = joint
+    (_prior : E.Trace source) (isLegal : E.Legal source joint),
+      target ∈ (E.step source ⟨joint, isLegal⟩).support →
+        S.Guard target → S.act (S.map source) (S.act source joint) = joint
 
 /-- Extending equal histories by equal joints to equal states gives equal
 histories. -/
@@ -132,8 +137,8 @@ theorem mapTrace_mapTrace (involutive : S.Involutive) : ∀ {state : E.State}
   | _, .extend (source := source) (target := target) prior joint isLegal realized, guarded => by
       rw [mapTrace_extend, mapTrace_extend]
       exact history_extend_congr
-        (mapTrace_mapTrace involutive prior (S.guard_source isLegal realized guarded))
-        (involutive.act_act isLegal realized guarded)
+        (mapTrace_mapTrace involutive prior (S.guard_source prior isLegal realized guarded))
+        (involutive.act_act prior isLegal realized guarded)
         (involutive.map_map target guarded)
 
 theorem mapHistory_mapHistory (involutive : S.Involutive) (history : E.History)

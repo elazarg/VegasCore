@@ -383,7 +383,7 @@ theorem regularTrace_mapTrace_iff (swap : HiddenSwap (graph setup))
         (regularStep_swap_iff swap initialClosed bounded assessment who fixesOthers forcedEq prior
           legal reached
           ((onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler swap initialClosed
-            bounded).guard_source legal reached guarded))
+            bounded).guard_source prior legal reached guarded))
 
 omit [Fintype Player] in
 /-- A player the swap fixes sees the decoded points of a configuration and of
