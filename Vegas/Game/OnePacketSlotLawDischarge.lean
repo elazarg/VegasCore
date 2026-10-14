@@ -205,6 +205,75 @@ private theorem bind_lateOption_toReal {slots : Nat} {α : Type}
     ENNReal.mul_ne_top (PMF.apply_ne_top _ _) (PMF.apply_ne_top _ _)]
   simp only [ENNReal.toReal_mul]
 
+/-- **The certificate's profile at a forced agent.** At a played information
+state of a forced agent, owing a failure or not, the certificate's profile is
+the slot-trembled choice whose main law is the honest choice, or a mixture of
+late choices when the agent is a late delivery. -/
+theorem certificateProfile_eq_slotTrembled
+    (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
+    (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
+    {slots : Nat}
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
+    (n : ℕ) {actor : Player} (info : (application setup leaks).Info)
+    (played : info ∈ (onePacketN).playedInformation actor)
+    (forced : forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
+      scheduler actor info) :
+    ∃ main : PMF ((onePacketN).Choice actor info),
+      (main = honestChoice setup leaks bounds (initialLaw setup) horizon scheduler (sequence n)
+          actor info ∨
+        ∃ late : PMF (LateOption slots), main = late.bind
+          (lateChoice setup leaks bounds (initialLaw setup) horizon scheduler (sequence n)
+            actor info)) ∧
+      certificateProfile setup leaks bounds horizon scheduler sequence scale scale_pos
+          scale_le_one weights n actor info =
+        slotTrembledChoice setup leaks bounds (initialLaw setup) horizon scheduler (scale n)
+          (scale_pos n).le (scale_le_one n) actor info main
+          (PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler
+            actor info))
+          (slotChoice setup leaks bounds (initialLaw setup) horizon scheduler (sequence n)
+            actor info) := by
+  let agent : (onePacketN).InformationAgent (onePacketN).playedInformation :=
+    ⟨actor, ⟨info, played⟩⟩
+  have notFree : ¬ FreeAgent setup leaks bounds horizon scheduler agent :=
+    fun unforced => unforced forced
+  have atAgent := (onePacketN).agentBehavior_at (onePacketN).playedInformation
+    (onePacketFallback setup leaks bounds horizon scheduler)
+    (fun agent => (weights n (onePacketPool setup leaks bounds horizon scheduler agent)).bind
+      (freeKeyedComponent
+        (onePacketUnforced setup leaks bounds horizon scheduler scale scale_pos scale_le_one n)
+        (onePacketPrescribed setup leaks bounds horizon scheduler sequence scale scale_pos
+          scale_le_one n)
+        (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
+          scale_le_one (slots := slots) n) agent)) agent
+  by_cases keyed : ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
+      (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler) agent
+  · have mixture := freeKeyedMixture_of_keyed (key := agentLateKey setup leaks bounds
+      (initialLaw setup) horizon scheduler) (weights n)
+      (onePacketUnforced setup leaks bounds horizon scheduler scale scale_pos scale_le_one n)
+      (onePacketPrescribed setup leaks bounds horizon scheduler sequence scale scale_pos
+        scale_le_one n)
+      (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
+        scale_le_one (slots := slots) n) notFree keyed
+    let late : PMF (LateOption slots) := weights n (.inr (some ⟨agentLateKey setup leaks bounds
+      (initialLaw setup) horizon scheduler agent, ⟨agent, keyed⟩, rfl⟩))
+    refine ⟨late.bind (lateChoice setup leaks bounds (initialLaw setup) horizon scheduler
+      (sequence n) actor info), Or.inr ⟨late, rfl⟩, ?_⟩
+    change (onePacketN).agentBehavior _ _ _ agent.1 agent.2.1 = _
+    rw [atAgent, mixture]
+    exact bind_lateComponent setup leaks bounds (initialLaw setup) horizon scheduler
+      (sequence n) late (scale n) (scale_pos n).le (scale_le_one n) actor info
+  · have mixture := freeKeyedMixture_of_not_keyed (key := agentLateKey setup leaks bounds
+      (initialLaw setup) horizon scheduler) (weights n)
+      (onePacketUnforced setup leaks bounds horizon scheduler scale scale_pos scale_le_one n)
+      (onePacketPrescribed setup leaks bounds horizon scheduler sequence scale scale_pos
+        scale_le_one n)
+      (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
+        scale_le_one (slots := slots) n) notFree keyed
+    refine ⟨_, Or.inl rfl, ?_⟩
+    change (onePacketN).agentBehavior _ _ _ agent.1 agent.2.1 = _
+    rw [atAgent, mixture]
+    rfl
+
 /-- **The slot law at a response.** At a history of the one-packet game where a
 forced player whose disclosure is canonical responds with positive content,
 the certificate's profile at its information is a slot-trembled component
