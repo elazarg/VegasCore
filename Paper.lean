@@ -317,6 +317,11 @@ import Vegas.Pending.ExclusionInformationHistory
 import Vegas.Pending.ExclusionClearStepMass
 import Vegas.Game.RecoveryDecodedDebt
 import Vegas.Game.RecoveryIndifference
+import Vegas.Game.RecoveryContinuationPayoff
+import Vegas.Pending.ExclusionBoundedBelief
+import Vegas.Pending.ReactiveCountedSeedPosterior
+import Vegas.Pending.ReactiveCountedSeedOwnerFiber
+import Interaction.ReactiveSchedulerBeforeResponse
 import Vegas.Pending.ExclusionClearReach
 import Vegas.Pending.ReactiveCountedSeedService
 import Vegas.Pending.ReactiveLocalSeedLogRecovery
@@ -2014,6 +2019,51 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.recovery_gain_eq_zero_of_owes
+
+/-- info: 'Vegas.EventGraphRuntime.RecoveryProjection.bounded_bayesBelief_liftedSite'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.RecoveryProjection.bounded_bayesBelief_liftedSite
+
+/-- info: 'Vegas.EventGraphRuntime.RecoveryProjection.runBehavioralUntil_exclusion_map_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.RecoveryProjection.runBehavioralUntil_exclusion_map_eq
+
+/-- info: 'Vegas.recovery_exclusionPayoffs_withinTV' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_exclusionPayoffs_withinTV
+
+/-- info: 'Vegas.EventGraphRuntime.Recovery.Opportunity.clear_native' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.Recovery.Opportunity.clear_native
+
+/-- info: 'Vegas.EventGraphRuntime.Recovery.ProtectedInclusion.clear_native' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.Recovery.ProtectedInclusion.clear_native
+
+/-- info: 'Vegas.EventGraphRuntime.countedSeedDomain_dispatch_of_activated_survives'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.countedSeedDomain_dispatch_of_activated_survives
+
+/-- info: 'Vegas.EventGraphRuntime.LocalSeedController.runRounds_unsent_log_eq_of_owner_info'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.LocalSeedController.runRounds_unsent_log_eq_of_owner_info
+
+/-- info: 'Vegas.EventGraphRuntime.LocalSeedController.posterior_unsent_activation'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.LocalSeedController.posterior_unsent_activation
+
+/-- info: 'Interaction.ReactiveApplication.schedulerMixture_beforeResponse_joint'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.ReactiveApplication.schedulerMixture_beforeResponse_joint
 
 /-- info: 'Vegas.recoveryExclusionBase_normalization' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

@@ -2928,6 +2928,10 @@ needs its own review. What is known:
 | Latent source debt fixes expected terminal utility under actual recovery completion | `Vegas.recovery_owesFailure_expect_exclusionBase` |
 | Excluded or indebted histories give zero whole-policy gain, also after integration over the actual belief | `Vegas.recovery_gain_eq_zero_of_owes` |
 | Complete clear-history and raw information-fiber bijections preserve exact behavioral reach weights | `Vegas.EventGraphRuntime.RecoveryProjection.informationHistoryEquiv_reachWeight` |
+| Bounded one-packet Bayes beliefs transport exactly at clear sites, with the recovery decision site derived from ordinary positive event mass | `Vegas.EventGraphRuntime.RecoveryProjection.bounded_bayesBelief_liftedSite` |
+| Actual continuations stopped at first exclusion retain the same law of full surviving histories and the exit atom | `Vegas.EventGraphRuntime.RecoveryProjection.runBehavioralUntil_exclusion_map_eq` |
+| Actual recovery base-payoff laws differ from the concrete native continuation by at most the actual first-exclusion probability in total variation | `Vegas.recovery_exclusionPayoffs_withinTV` |
+| Actual recovery service timing gives native opportunity and inclusion at clear native histories | `Vegas.EventGraphRuntime.Recovery.Opportunity.clear_native`, `Vegas.EventGraphRuntime.Recovery.ProtectedInclusion.clear_native` |
 | Count-permitted commitments are accepted while ready and timely, including unusable private bindings | `Vegas.EventGraphRuntime.counted_binding_resolves_of_history` |
 | Authentic count-permitted openings are accepted while ready and timely if the owner's binding was not publicly missed | `Vegas.EventGraphRuntime.counted_opening_accepted` |
 | Coupled actual one-step kernels imply equal stopped readout laws | `GameTheory.Protocol.InformationModel.runBehavioralUntil_map_eq_of_paired_steps` |
@@ -2937,6 +2941,9 @@ needs its own review. What is known:
 | Actual owner recall reconstructs every positive local query and its index along complete runs, under the operational-domain invariant | `Vegas.EventGraphRuntime.LocalSeedController.runJoint_initial_ownerLog` |
 | Counted unsent query logs are determined by their positive-query history and exhaustion count | `Vegas.EventGraphRuntime.LocalSeedController.CountedQueryLog.eq_of_unsent_signature` |
 | The concrete local service derives packet inclusion and expiry resolution on genuine clean one-packet histories | `Vegas.EventGraphRuntime.countedLocalSeedController` |
+| Genuine clean service domains persist while the selected ordered owned event survives | `Vegas.EventGraphRuntime.countedSeedDomain_dispatch_of_activated_survives` |
+| Actual clean unsent owner activations with equal full owner information have the same raw query log | `Vegas.EventGraphRuntime.LocalSeedController.runRounds_unsent_log_eq_of_owner_info` |
+| At actual clean unsent owner activations, the scheduler seed posterior factors with the local prior filtered by its recovered replies | `Vegas.EventGraphRuntime.LocalSeedController.posterior_unsent_activation` |
 
 The default-runtime theorem derives zero on-path count charges and the joint
 typed-readout and realized-payoff law, including the counterpart inputs.
@@ -2951,11 +2958,12 @@ runtime with the exclusion payoff read from its terminal store. The separate
 recovery application implements automatic later failures and exclusion from
 readiness, with exact native agreement before exclusion and a sound count menu.
 Its one-packet SEs extend to the raw recovery game under the count-audit coverage
-and deposit assumptions. The intended-law one-packet SE still requires a
-continuation comparison across the first exclusion and transport of actual Bayes
-beliefs to the bounded menu. Exact raw reach weights along the checked history
-and information-fiber bijections are established; bounded-menu belief transport
-remains separate.
+and deposit assumptions. Exact raw reach weights and bounded-menu Bayes belief
+transport are checked. Actual stopped continuations retain the same law up to
+first exclusion, and the actual first-exclusion probability bounds the terminal
+payoff-law error. The intended-law one-packet SE still requires the sharper
+continuation comparison separating fixed-payoff own failures from foreign
+failures, bounds for the latter, and assembly of the recovery assessment.
 A missed
 binding excludes its owner immediately; an accepted unopenable binding instead
 excludes it when its reveal fails. The recovery handlers retain that distinction;
@@ -2963,9 +2971,11 @@ the concurrent runtime must also retain it when resetting a phase.
 The checked phase-attempt and rollback primitives do not yet define the full
 concurrent source information model or recovery runtime. Scheduler-seed
 realization and the scoped local seed controller do not yet establish the full
-runtime conditioning needed for (S1–S3). The controller's resolution-safety
-domain must be proved for the actual histories in scope; reconstructing its
-query log at active owner information sets remains open.
+runtime conditioning needed for (S1–S3). For clean unsent activations in ordered
+graphs, actual histories now derive the resolution-safety domain and recover
+the full query log from owner information; the actual scheduler posterior has
+the resulting filtered local-seed factor. Integrating over the owner-information
+fiber and extending this scope to the full runtime remain open.
 
 A mechanization must also check the following, beyond the statements above:
 

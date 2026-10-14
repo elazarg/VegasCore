@@ -139,13 +139,13 @@ theorem countedSeedService_resolves (bounds : MessageBounds graph)
     exact environmentStep_expire_complete runtime control.execution.application state event
       readyNative (by rw [owned]; rfl) entered activated (by rw [← elapsed]; omega) reached
 
-/-- Genuine initialized one-packet histories with a binding-miss-free owner.
+/-- Genuine initialized actor-free one-packet histories with a binding-miss-free owner.
 This is an endpoint domain, without a claim of preservation after that owner's timeout. -/
 def CountedSeedDomain (bounds : MessageBounds graph) (inputs : PMF graph.Inputs)
     (owner : Player) (execution : (app).Execution) : Prop :=
-  ∃ horizon scheduler remaining actor,
+  ∃ horizon scheduler remaining,
     Nonempty (((bounds.onePacketMenu runtime leaks).protocol (inputs.map State.initial)
-      horizon scheduler).Trace (some ⟨remaining, actor, execution⟩)) ∧
+      horizon scheduler).Trace (some ⟨remaining, none, execution⟩)) ∧
       execution.application.publicView.missedBindingBy owner = false
 
 /-- Any actual clean history with no owner binding miss satisfies the concrete domain. -/
@@ -154,9 +154,12 @@ theorem countedSeedDomain_of_history (bounds : MessageBounds graph)
     (control : (app).Control)
     (trace : ((bounds.onePacketMenu runtime leaks).protocol (inputs.map State.initial)
       horizon scheduler).Trace (some control)) (owner : Player)
+    (actorFree : control.actor = none)
     (unmissed : control.execution.application.publicView.missedBindingBy owner = false) :
-    runtime.CountedSeedDomain leaks bounds inputs owner control.execution :=
-  ⟨horizon, scheduler, control.remaining, control.actor, ⟨trace⟩, unmissed⟩
+    runtime.CountedSeedDomain leaks bounds inputs owner control.execution := by
+  rcases control with ⟨remaining, actor, execution⟩
+  cases actorFree
+  exact ⟨horizon, scheduler, remaining, ⟨trace⟩, unmissed⟩
 
 /-- Finite activation calendars and the choice to serve before a scheduled activation
 remain seed parameters. Actual service acceptance follows from genuine clean traffic. -/
@@ -172,10 +175,10 @@ def countedLocalSeedController {Seed : Type} (bounds : MessageBounds graph)
   serviceFirst := serviceFirst
   domain := runtime.CountedSeedDomain leaks bounds inputs owner
   resolves := by
-    rintro seed query execution command ⟨horizon, scheduler, remaining, actor, ⟨trace⟩, unmissed⟩
+    rintro seed query execution command ⟨horizon, scheduler, remaining, ⟨trace⟩, unmissed⟩
       inputEq ready selected
     exact runtime.countedSeedService_resolves leaks bounds inputs horizon scheduler
-      ⟨remaining, actor, execution⟩ trace owner event owned unmissed query.input inputEq ready
+      ⟨remaining, none, execution⟩ trace owner event owned unmissed query.input inputEq ready
       command
       selected
 
