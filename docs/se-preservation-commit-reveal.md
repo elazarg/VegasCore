@@ -2783,9 +2783,11 @@ player needs: the source game $\Gamma^X$.
 - **Builder-first order.** If the deposit may depend on the builder's law,
   Theorems 2 and 3 apply unchanged. Whether $C_0$ preserves SE in that order
   is not settled.
-- **Mechanization.** No theorem is machine-checked. The finite games,
-  information sets and runtime conditions are taken from a Lean formalization,
-  and Appendix A maps the names.
+- **Mechanization.** Appendix A identifies the checked finite transport lemma,
+  sequential source extension, count-audit extension and conditional runtime
+  compilation theorem. The unconditional sequential and concurrent theorems
+  remain open; their prose proofs are not substitutes for the missing Lean
+  constructions.
 
 **Activations versus a realistic clock.** In the model, the builder
 *activates* players: it decides when each player may emit. Real players are
@@ -2877,6 +2879,11 @@ needs its own review. What is known:
 | Intended own completions and common operational replay fibers | `Vegas.OnePacketOwnInputs.ofAssembled` |
 | Value-blind continuation estimates from the base certificate inputs and service contract | `Vegas.OnePacketBaseInputs.toBlindInputs` |
 | Sequential raw-runtime preservation, conditional on honest-counterpart construction | `Vegas.onePacket_intended_raw_sequentialEquilibrium_of_counterparts` |
+| Actual binding-submission trace repair with the same operational record | `Vegas.DirectedBindingFrame.binding_trace` |
+| Public-record constraints throughout a forced information set | `Vegas.publicRecord_of_forced_information` |
+| Failure has the exclusion payoff at every full source information set | `Vegas.SourceProgram.Setup.exclusion_failure_context_value` |
+| Source equilibrium extension without voluntary failure at any nonexcluded site, under the nonexcluded payoff floor | `Vegas.SourceProgram.Setup.intended_sequentialEquilibrium_extends_without_voluntary_failure` |
+| Each voluntary-failure atom in its common source tremble sequence has exactly the reference mass times the tremble scale | `Vegas.SourceProgram.Setup.exclusionMoveApproximation_failure_mass` |
 
 The conditional compilation theorem derives zero on-path count charges and the
 joint typed-readout and realized-payoff law. Its honest-counterpart premise is
@@ -2885,7 +2892,8 @@ completed bindings (`Vegas.SwapGuard.value_eq_failure_iff`), so they cannot
 replace an accepted unopenable binding by a valid value. Such a replacement
 requires a directed repair preserving the actual operational record and the
 observing player's full information. The local repair frame and response-mass
-bounds do not by themselves supply that whole-history construction.
+bounds, and the actual binding-submission trace repair, do not by themselves
+supply that whole-history construction.
 
 A mechanization must also check the following, beyond the statements above:
 

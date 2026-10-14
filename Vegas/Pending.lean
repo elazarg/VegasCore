@@ -245,3 +245,4 @@ import Vegas.Pending.EventValueSwap
 import Vegas.Pending.ReactiveValueSwap
 import Vegas.Pending.OnePacketValueSwap
 import Vegas.Pending.ValueSwapPairs
+import Vegas.Pending.ReactiveOnePacketFreshness

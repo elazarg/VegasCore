@@ -289,6 +289,12 @@ import Vegas.Game.OnePacketExtension
 import Vegas.Game.OnePacketSequentialCompilation
 import Vegas.Game.OnePacketCounterpartCompatibility
 import Vegas.Game.OnePacketRepairResponseBound
+import Vegas.Game.OnePacketDirectedRepairTrace
+import Vegas.Game.OnePacketDirectedRepairGuard
+import Vegas.Game.OnePacketDirectedRepairOpeningTrace
+import GameTheoryExtensions.Analysis.Protocol.RestrictedComponentCompletion
+import Vegas.Source.ExclusionFailure
+import Vegas.Game.ExclusionMoveExtension
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -1762,6 +1768,45 @@ axioms: [propext, Classical.choice, Quot.sound] -/
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.certificate_irregularResponseMass_le_of_operationally_equal
+
+/-- info: 'Vegas.DirectedBindingFrame.binding_trace' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.DirectedBindingFrame.binding_trace
+
+/-- info: 'Vegas.DirectedBindingFrame.normalized_opening_trace' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.DirectedBindingFrame.normalized_opening_trace
+
+/-- info: 'Vegas.EventGraphRuntime.MessageBounds.onePacket_binding_fresh' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.MessageBounds.onePacket_binding_fresh
+
+/-- info: 'Vegas.publicRecord_of_forced_information' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.publicRecord_of_forced_information
+
+open GameTheory.Protocol.InformationModel.ActionRestriction in
+/-- info:
+'GameTheory.Protocol.InformationModel.ActionRestriction.exists_consistent_restricted_extension_unclocked'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms exists_consistent_restricted_extension_unclocked
+
+/-- info: 'Vegas.SourceProgram.Setup.exclusion_failure_context_value' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.exclusion_failure_context_value
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.intended_sequentialEquilibrium_extends_without_voluntary_failure'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms intended_sequentialEquilibrium_extends_without_voluntary_failure
 
 end Vegas.Paper
 

@@ -59,3 +59,5 @@ import Vegas.Source.IntendedBetween
 import Vegas.Source.IntendedPrefixSwap
 import Vegas.Source.CellSwapDebt
 import Vegas.Source.PrivateInputsIndependent
+import Vegas.Source.ExclusionMoveGame
+import Vegas.Source.ExclusionFailure

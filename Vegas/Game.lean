@@ -516,3 +516,16 @@ import Vegas.Game.OnePacketRepairResponseBound
 import Vegas.Game.OnePacketDirectedRepairFrame
 import Vegas.Game.OnePacketDirectedRepairMenu
 import Vegas.Game.OnePacketDirectedRepairSteps
+import Vegas.Game.OnePacketDirectedRepairContinuation
+import Vegas.Game.OnePacketDirectedRepairGuard
+import Vegas.Game.OnePacketDirectedRepairResponse
+import Vegas.Game.OnePacketDirectedRepairTrace
+import Vegas.Game.OnePacketDirectedRepairPrefix
+import Vegas.Game.OnePacketDirectedRepairEnvironmentTrace
+import Vegas.Game.ExclusionMoveExtension
+import Vegas.Game.OnePacketDirectedRepairDelivery
+import Vegas.Game.OnePacketDirectedRepairResponderTrace
+import Vegas.Game.OnePacketDirectedRepairChance
+import Vegas.Game.OnePacketDirectedRepairOpeningTrace
+import Vegas.Game.OnePacketDirectedRepairPassive
+import Vegas.Game.ExclusionMoveLikelihood
