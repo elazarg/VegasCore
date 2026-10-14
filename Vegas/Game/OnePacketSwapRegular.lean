@@ -198,6 +198,102 @@ theorem regularTrace_mapTrace_of_weight_pos
                 simp only [HiddenSwap.control, actingCurrent, other, ↓reduceIte] at factorPos
                 exact factorPos
 
+include firstState secondState sameLength initialClosed bounded in
+/-- **A replayed history maps to a history replaying `second`.** -/
+theorem intendedHistory?_mapTrace_full {state : (application setup leaks).ProtocolState}
+    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace state)
+    (guarded : SwapGuardState setup (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
+      handlePairs) allowed state)
+    (replayed : intendedHistory? setup leaks bounds horizon scheduler trace = some first) :
+    intendedHistory? setup leaks bounds horizon scheduler
+        ((onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler
+          (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
+          bounded).mapTrace trace guarded) = some second := by
+  obtain ⟨image, imageReplay, imagePrefix, imageLength, _⟩ := intendedHistory?_mapTrace
+    firstState secondState sameLength handlePairs initialClosed bounded trace guarded replayed
+    .refl
+  rw [imageReplay]
+  exact congrArg some (imagePrefix.eq_of_length (imageLength.trans sameLength))
+
+include wellFormed firstState secondState sameLength initialClosed bounded in
+/-- **The source weight of a swapped history at an own turn** is the
+counterfactual reach of `second`. -/
+theorem othersSourceWeight_mapTrace (assessment : setup.intendedModel.BehavioralAssessment)
+    (who : Player) {control : (application setup leaks).Control}
+    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
+    (guarded : SwapGuardState setup (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
+      handlePairs) allowed (some control))
+    (replayed : intendedHistory? setup leaks bounds horizon scheduler trace = some first)
+    {event : (graph setup).EventId}
+    (turn : (control.execution.observe (application setup leaks)
+      who).application.publicView.ownTurn? who = some event) :
+    othersSourceWeight setup leaks bounds horizon scheduler assessment who
+        ((onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler
+          (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
+          bounded).mapTrace trace guarded) =
+      setup.intendedModel.counterfactualReachProbability assessment.strategy who
+        second.trace := by
+  have imageReplay := intendedHistory?_mapTrace_full firstState secondState sameLength
+    handlePairs initialClosed bounded trace guarded replayed
+  have forced := forcedState_swap_of_replay wellFormed firstState secondState sameLength
+    handlePairs initialClosed bounded who trace guarded replayed .refl
+  have matching := actorCompletionsMatch_of_forced assessment who
+    ((onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler
+      (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
+      bounded).mapTrace trace guarded) _ rfl forced
+  have imageTurn : ((HiddenSwap.control (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
+      handlePairs) control).execution.observe (application setup leaks)
+      who).application.publicView.ownTurn? who = some event := by
+    change (((HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs).execution
+      control.execution).observe (application setup leaks) who).application.publicView.ownTurn?
+        who = some event
+    rw [HiddenSwap.observe_execution]
+    exact turn
+  have settled := unsettledContent_eq_one_of_ownTurn assessment who
+    ((onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler
+      (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
+      bounded).mapTrace trace guarded) forced imageTurn
+  rw [othersSourceWeight_eq_replay assessment who _ imageReplay
+    (replayMatches_of_actorCompletions assessment who _ matching), settled, mul_one]
+
+omit [DecidableEq (CellTy Player L)] in
+/-- Under a fully mixed assessment every intended history has positive
+counterfactual reach. -/
+theorem counterfactualReach_pos_of_mixed {assessment : setup.intendedModel.BehavioralAssessment}
+    (mixed : assessment.IsFullyMixed) (who : Player) (history : setup.intendedProtocol.History) :
+    0 < setup.intendedModel.counterfactualReachProbability assessment.strategy who
+      history.trace := by
+  have reach := setup.intendedModel.historyReachWeight_pos_of_fullSupport assessment.strategy
+    (fun player site choice => mixed player site choice) history
+  have positive : 0 < (setup.intendedModel.historyReachWeight assessment.strategy
+      ⟨history.state, history.trace⟩).toReal :=
+    ENNReal.toReal_pos reach.ne' (PMF.apply_ne_top _ _)
+  rw [InformationModel.historyReachProbability_eq_player_mul_counterfactual] at positive
+  exact ((pos_and_pos_or_neg_and_neg_of_mul_pos positive).resolve_right fun negative =>
+    absurd negative.1 (not_lt.mpr (InformationModel.playerReachProbability_nonneg _ _ _ _))).2
+
+include wellFormed firstState secondState sameLength initialClosed bounded in
+/-- **A swapped history at an own turn is regular** under a fully mixed
+assessment. -/
+theorem regularTrace_mapTrace {assessment : setup.intendedModel.BehavioralAssessment}
+    (mixed : assessment.IsFullyMixed) (who : Player) {control : (application setup leaks).Control}
+    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
+    (guarded : SwapGuardState setup (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
+      handlePairs) allowed (some control))
+    (replayed : intendedHistory? setup leaks bounds horizon scheduler trace = some first)
+    {event : (graph setup).EventId}
+    (turn : (control.execution.observe (application setup leaks)
+      who).application.publicView.ownTurn? who = some event) :
+    RegularTrace setup leaks bounds horizon scheduler assessment who
+      ((onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler
+        (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
+        bounded).mapTrace trace guarded) := by
+  refine regularTrace_mapTrace_of_weight_pos wellFormed firstState secondState sameLength
+    handlePairs initialClosed bounded assessment who trace guarded replayed .refl ?_
+  rw [othersSourceWeight_mapTrace wellFormed firstState secondState sameLength handlePairs
+    initialClosed bounded assessment who trace guarded replayed turn]
+  exact counterfactualReach_pos_of_mixed mixed who second
+
 end Image
 
 end Vegas
